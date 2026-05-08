@@ -1,0 +1,16 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local secrets / experiments — keep them out of the public repo
+*.local.json
+*.secret
+.env
+.env.*

@@ -1,0 +1,4 @@
+{
+  "_comment": "Per-player visibility map. Keys are player names (exactly as they appear in the loaded CSVs / shortlist). Each value is either an array of usernames who can see that player, or [] / omitted to mean visible to everyone. Admins always see all players. Edit via the admin Prophesy Shortlist (each row has a 'Visible to' control) and use 'Export visibility.json' to publish.",
+  "visibility": {}
+}
