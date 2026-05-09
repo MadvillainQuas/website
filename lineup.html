@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROPHESY — Lineup Analyzer</title>
+
+    <!-- Site invite gate (synchronous; hides page until verified) -->
+    <script src="gate.js"></script>
+
+    <!-- Auth/session bootstrap: kick unauthenticated visitors back to sign-in -->
+    <script>
+        (function () {
+            try {
+                var raw = sessionStorage.getItem('prophesy_auth_v2');
+                if (!raw) { window.location.replace('index.html'); return; }
+                var s = JSON.parse(raw);
+                if (!s || !s.username) { window.location.replace('index.html'); return; }
+            } catch (e) { window.location.replace('index.html'); }
+        })();
+    </script>
+
+    <!-- Site nav strip across the top -->
+    <script src="topnav.js" defer></script>
+
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; background: #0a1214; overflow: hidden; }
+        body { padding-top: 5px; }
+        #lineup-frame {
+            display: block;
+            width: 100%;
+            height: calc(100vh - 5px);
+            border: 0;
+            background: #0a1214;
+        }
+        #lineup-status {
+            position: fixed; left: 50%; bottom: 18px;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(8, 16, 18, 0.92);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(126, 200, 200, 0.35);
+            color: #a8d8c8;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.74rem;
+            z-index: 9990;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
+        #lineup-status.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <iframe id="lineup-frame"
+            src="index_9.html?embedded=1"
+            title="Lineup Analyzer"
+            allow="clipboard-write; fullscreen"></iframe>
+    <div id="lineup-status" role="status" aria-live="polite"></div>
+
+    <script>
+        // ============================================================
+        // LINEUP ANALYZER WRAPPER
+        // ----------------------------------------------------------
+        // The analyzer (index_9.html) has built-in copy protection that
+        // prompts for a password on every load. It exposes a documented
+        // postMessage parent-bridge protocol (originally for a Tauri
+        // desktop launcher). Our role is to act as that parent:
+        //
+        //   1) Fetch config/lineup.json on load → cache the password
+        //   2) When the iframe sends `slb-remote-app` events, reply
+        //      with `slb-parent-app` events carrying the saved password
+        //   3) Push the per-user data folder CSV URLs via the
+        //      DATA_FILES_INFO message — analyzer fetches them itself
+        //
+        // The analyzer in this iframe also skips its own top nav
+        // (topnav.js detects iframe context and exits).
+        // ============================================================
+        const iframe = document.getElementById('lineup-frame');
+        const statusEl = document.getElementById('lineup-status');
+        let savedPassword = '';
+        let configLoaded = false;
+        let dataFolder = '';
+        let pendingRequests = [];
+
+        // ?comp=<CODE> — when set, we look up the most recent folder for that
+        // competition in data/folders.json and use it as the source of CSVs,
+        // ignoring the user's per-user dataFolder for this session.
+        let compCode = '';
+        let compFolderPath = '';   // e.g. data/data_2026-04-27T23-24_HBBC
+        let compFolderTs = '';
+        try {
+            const params = new URLSearchParams(window.location.search);
+            compCode = (params.get('comp') || '').trim();
+        } catch (_) {}
+
+        // Per-user data folder fallback (only used when no ?comp=).
+        try {
+            const raw = sessionStorage.getItem('prophesy_auth_v2');
+            if (raw) {
+                const s = JSON.parse(raw);
+                if (s && s.dataFolder) dataFolder = String(s.dataFolder).replace(/^\/+|\/+$/g, '');
+            }
+        } catch (_) {}
+
+        function showStatus(msg, durationMs) {
+            statusEl.textContent = msg;
+            statusEl.classList.add('show');
+            if (durationMs) {
+                clearTimeout(showStatus._t);
+                showStatus._t = setTimeout(() => statusEl.classList.remove('show'), durationMs);
+            }
+        }
+        function hideStatus() {
+            statusEl.classList.remove('show');
+        }
+
+        async function loadLineupConfig() {
+            try {
+                const res = await fetch('config/lineup.json', { cache: 'no-cache' });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && typeof json.password === 'string') {
+                        savedPassword = json.password;
+                    }
+                }
+            } catch (_) { /* keep default empty */ }
+            configLoaded = true;
+            // Drain any requests that came in before we had the config
+            while (pendingRequests.length) {
+                const req = pendingRequests.shift();
+                respondToPasswordRequest(req);
+            }
+        }
+
+        // Fetch data/folders.json and pick the most recent folder for the
+        // requested competition code. Sets compFolderPath as a side effect.
+        // Returns a promise so callers can wait before building URLs.
+        let compReadyPromise = null;
+        function resolveCompFolder() {
+            if (compReadyPromise) return compReadyPromise;
+            if (!compCode) { compReadyPromise = Promise.resolve(); return compReadyPromise; }
+            compReadyPromise = (async () => {
+                try {
+                    const res = await fetch('data/folders.json', { cache: 'no-cache' });
+                    if (!res.ok) return;
+                    const j = await res.json();
+                    if (!j || !Array.isArray(j.folders)) return;
+                    const matching = j.folders
+                        .filter(f => f && f.competition_code === compCode && f.path)
+                        .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+                    if (matching.length) {
+                        compFolderPath = String(matching[0].path).replace(/^\/+|\/+$/g, '');
+                        compFolderTs = matching[0].timestamp || '';
+                        console.log('[LineupWrapper] competition', compCode, '→', compFolderPath, '(', compFolderTs, ')');
+                    } else {
+                        console.warn('[LineupWrapper] No folder published yet for competition', compCode);
+                    }
+                } catch (e) {
+                    console.warn('[LineupWrapper] Could not load folders.json:', e);
+                }
+            })();
+            return compReadyPromise;
+        }
+
+        function postToFrame(type, data) {
+            if (!iframe || !iframe.contentWindow) return;
+            try {
+                iframe.contentWindow.postMessage({
+                    source: 'slb-parent-app',
+                    type: type,
+                    ...data
+                }, '*');
+            } catch (e) {
+                console.warn('[LineupWrapper] postMessage failed:', e);
+            }
+        }
+
+        function respondToPasswordRequest(_msg) {
+            if (savedPassword && savedPassword.length) {
+                postToFrame('SAVED_PASSWORD', { password: savedPassword });
+            } else {
+                postToFrame('NO_SAVED_PASSWORD');
+                showStatus('Lineup password not configured by admin — manual entry required', 6000);
+            }
+        }
+
+        // Build the DATA_FILES_INFO payload — the analyzer accepts a list
+        // of { name, url } pairs and fetches each one. Source priority:
+        //   1) ?comp=<CODE> → data/data_<ts>_<CODE>/  (from folders.json)
+        //   2) per-user dataFolder from session
+        //   3) shared default at data/
+        function buildDataFilesPayload() {
+            const filenames = [
+                'lineup_stats_enhanced.csv',
+                'player_stats_enhanced.csv',
+                'player_lineup_stats_enhanced.csv',
+                'lineup_matchups.csv',
+                'lineup_assist_combinations.csv',
+                'clutch_lineup_stats.csv',
+                'stints.csv',
+                'player_stints.csv',
+                'team_totals.csv',
+                'play_by_play.csv'
+            ];
+            const baseHere = window.location.href.replace(/[^/]*$/, ''); // strip "lineup.html"
+
+            let basePath; // includes trailing slash
+            if (compCode && compFolderPath) {
+                basePath = compFolderPath.replace(/\/?$/, '/');
+            } else if (dataFolder) {
+                basePath = 'data/' + dataFolder + '/';
+            } else {
+                basePath = 'data/';
+            }
+
+            return filenames.map(name => ({
+                name,
+                url: baseHere + basePath + name
+            }));
+        }
+
+        async function pushDataFiles() {
+            // Wait for the manifest lookup (no-op when no ?comp=) so we
+            // build URLs from the right base path on the first push.
+            await resolveCompFolder();
+            const dataFiles = buildDataFilesPayload();
+            // Probe each file head — only push the ones that actually exist —
+            // so the analyzer doesn't waste cycles on 404s.
+            const checked = await Promise.all(dataFiles.map(async (f) => {
+                try {
+                    const res = await fetch(f.url, { method: 'HEAD', cache: 'no-cache' });
+                    return res.ok ? f : null;
+                } catch (_) { return null; }
+            }));
+            const valid = checked.filter(Boolean);
+            if (valid.length === 0) {
+                if (compCode && !compFolderPath) {
+                    showStatus('No folder published yet for competition ' + compCode + '. Run the scraper first.', 6000);
+                }
+                return;
+            }
+            postToFrame('DATA_FILES_INFO', { dataFiles: valid, appType: 'lineup-analyzer' });
+            const sourceLabel = compCode
+                ? compCode + (compFolderTs ? ' @ ' + compFolderTs : '')
+                : (dataFolder ? 'folder: ' + dataFolder : 'shared default');
+            console.log('[LineupWrapper] Pushed', valid.length, 'CSV URL(s) to iframe (' + sourceLabel + ')');
+        }
+
+        // Listen for protocol messages from the iframe.
+        window.addEventListener('message', (ev) => {
+            const data = ev.data;
+            if (!data || typeof data !== 'object' || data.source !== 'slb-remote-app') return;
+
+            switch (data.type) {
+                case 'APP_READY':
+                    // First sign of life from the iframe — push everything we have
+                    if (configLoaded) respondToPasswordRequest(data);
+                    else pendingRequests.push(data);
+                    pushDataFiles();
+                    break;
+                case 'REQUEST_SAVED_PASSWORD':
+                    if (configLoaded) respondToPasswordRequest(data);
+                    else pendingRequests.push(data);
+                    break;
+                case 'AUTH_SUCCESS':
+                    // After unlock, push data files in case the analyzer wasn't
+                    // ready earlier. Re-pushing is harmless (idempotent).
+                    pushDataFiles();
+                    break;
+                case 'SAVE_PASSWORD':
+                    // The iframe wants us to remember a password — we don't,
+                    // since the source of truth is config/lineup.json. Just
+                    // acknowledge so the iframe doesn't think saving failed.
+                    postToFrame('PASSWORD_SAVED');
+                    break;
+                case 'CLEAR_SAVED_PASSWORD':
+                    postToFrame('PASSWORD_CLEARED');
+                    break;
+                case 'DATA_LOADED': {
+                    let tag = '';
+                    if (compCode && compFolderPath) {
+                        tag = ' — ' + compCode + (compFolderTs ? ' (' + compFolderTs + ')' : '');
+                    } else if (dataFolder) {
+                        tag = ' — data folder: ' + dataFolder;
+                    }
+                    showStatus('Lineup Analyzer ready' + tag + '.', 2600);
+                    break;
+                }
+                default:
+                    // Other messages (THEME_UPDATE, image requests, etc.) — ignore
+                    break;
+            }
+        });
+
+        // Defensive proactive push: even if APP_READY never arrives (older
+        // analyzer builds, race conditions), push the password and data
+        // files once the iframe DOM is loaded.
+        iframe.addEventListener('load', () => {
+            // Slight delay so the iframe has time to register its message
+            // handlers before we send.
+            setTimeout(() => {
+                if (configLoaded) respondToPasswordRequest({});
+                pushDataFiles();
+            }, 250);
+        });
+
+        // Pre-fetch the config (password) and the competition manifest in
+        // parallel — both are needed before we push to the iframe.
+        loadLineupConfig();
+        resolveCompFolder();
+
+        if (compCode) {
+            showStatus('Loading Lineup Analyzer · ' + compCode + '…');
+        } else if (dataFolder) {
+            showStatus('Loading Lineup Analyzer · ' + dataFolder + '…');
+        } else {
+            showStatus('Loading Lineup Analyzer…');
+        }
+        // Also clear the loading status after a generous timeout in case the
+        // analyzer never sends DATA_LOADED.
+        setTimeout(hideStatus, 12000);
+    </script>
+</body>
+</html>
