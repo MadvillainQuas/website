@@ -1,0 +1,161 @@
+gameId,periodsMax,periodLengthREGULAR,periodLengthOVERTIME,inOT,attendance,team1Id,team1Code,team1Name,team1Score,team2Id,team2Code,team2Name,team2Score
+2702542,4,10,5,0,0,,BRI,Bristol Flyers,78,,SHE,B. Braun Sheffield Sharks,60
+2702543,4,10,5,0,0,,Riders,Leicester Riders,72,,Lions,London Lions,79
+2702544,4,10,5,0,0,,MAN,Manchester Basketball,92,,CHE,Cheshire Phoenix,89
+2702545,4,10,5,1,850,,CAL,Caledonia Gladiators,104,,NEW,Newcastle Eagles,109
+2702546,4,10,5,0,571,,LON,London Lions,89,,CHE,Cheshire Phoenix,83
+2702547,4,10,5,0,0,,LEI,Leicester Riders,65,,SHE,B. Braun Sheffield Sharks,93
+2702548,4,10,5,0,941,,LON,London Lions,72,,BRI,Bristol Flyers,60
+2702549,4,10,5,0,0,,NEW,Newcastle Eagles,88,,CHE,Cheshire Phoenix,70
+2702550,4,10,5,0,0,,SUR,Surrey 89ers,94,,MAN,Manchester Basketball,80
+2702551,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,78,,NEW,Newcastle Eagles,73
+2702552,4,10,5,0,0,,LEI,Leicester Riders,91,,NEW,Newcastle Eagles,77
+2702553,4,10,5,0,0,,NEW,Newcastle Eagles,83,,BRI,Bristol Flyers,87
+2702554,4,10,5,0,0,,BRI,Bristol Flyers,74,,LEI,Leicester Riders,70
+2702556,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,76,,BRI,Bristol Flyers,69
+2702557,4,10,5,0,0,,CHE,Cheshire Phoenix,108,,CAL,Caledonia Gladiators,96
+2702558,4,10,5,0,0,,CHE,Cheshire Phoenix,91,,NEW,Newcastle Eagles,85
+2702559,4,10,5,0,888,,CAL,Caledonia Gladiators,74,,MAN,Manchester Basketball,62
+2702560,4,10,5,0,0,,SUR,Surrey 89ers,66,,BRI,Bristol Flyers,96
+2702561,4,10,5,0,0,,BRI,Bristol Flyers,86,,CHE,Cheshire Phoenix,95
+2702562,4,10,5,0,1500,,LON,London Lions,82,,LEI,Leicester Riders,70
+2702563,4,10,5,0,0,,MAN,Manchester Basketball,87,,LEI,Leicester Riders,72
+2702564,4,10,5,0,0,,SUR,Surrey 89ers,78,,LEI,Leicester Riders,80
+2702565,4,10,5,0,0,,BRI,Bristol Flyers,103,,CAL,Caledonia Gladiators,94
+2702566,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,77,,CAL,Caledonia Gladiators,71
+2702567,4,10,5,0,0,,MAN,Manchester Basketball,90,,SUR,Surrey 89ers,95
+2702568,4,10,5,0,0,,NEW,Newcastle Eagles,95,,SHE,B. Braun Sheffield Sharks,99
+2702570,4,10,5,0,576,,CAL,Caledonia Gladiators,51,,LON,London Lions,96
+2702571,4,10,5,0,666,,Sharks,B. Braun Sheffield Sharks,98,,MB,Manchester Basketball,79
+2702572,4,10,5,0,0,,SUR,Surrey 89ers,85,,CAL,Caledonia Gladiators,100
+2702573,4,10,5,0,0,,CHE,Cheshire Phoenix,114,,SHE,B. Braun Sheffield Sharks,95
+2702574,4,10,5,0,900,,CAL,Caledonia Gladiators,76,,SUR,Surrey 89ers,93
+2702575,4,10,5,0,666,,Riders,Leicester Riders,95,,Phoeni,Cheshire Phoenix,93
+2702576,4,10,5,0,0,,CHE,Cheshire Phoenix,90,,SHE,B. Braun Sheffield Sharks,87
+2702577,4,10,5,0,0,,CHE,Cheshire Phoenix,74,,LON,London Lions,89
+2702578,4,10,5,0,0,,MAN,Manchester Basketball,87,,SHE,B. Braun Sheffield Sharks,75
+2702579,4,10,5,0,854,,CAL,Caledonia Gladiators,91,,BRI,Bristol Flyers,93
+2702580,4,10,5,0,0,,BRI,Bristol Flyers,68,,LON,London Lions,54
+2702581,4,10,5,0,0,,LEI,Leicester Riders,85,,CAL,Caledonia Gladiators,79
+2702582,4,10,5,0,0,,MAN,Manchester Basketball,97,,CHE,Cheshire Phoenix,91
+2702583,4,10,5,0,2223,,LON,London Lions,95,,NEW,Newcastle Eagles,82
+2702584,4,10,5,0,0,,CHE,Cheshire Phoenix,111,,BRI,Bristol Flyers,84
+2702585,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,68,,NEW,Newcastle Eagles,80
+2702586,4,10,5,0,0,,SUR,Surrey 89ers,79,,CHE,Cheshire Phoenix,86
+2702587,4,10,5,0,0,,BRI,Bristol Flyers,78,,MAN,Manchester Basketball,84
+2702588,4,10,5,0,678,,CAL,Caledonia Gladiators,65,,SHE,B. Braun Sheffield Sharks,73
+2702589,4,10,5,0,0,,CHE,Cheshire Phoenix,88,,LEI,Leicester Riders,89
+2702590,4,10,5,0,560,,BRI,Bristol Flyers,87,,CAL,Caledonia Gladiators,67
+2702591,4,10,5,0,3099,,LON,London Lions,74,,MAN,Manchester Basketball,91
+2702592,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,101,,CHE,Cheshire Phoenix,97
+2702593,4,10,5,0,0,,SUR,Surrey 89ers,88,,SHE,B. Braun Sheffield Sharks,77
+2702594,4,10,5,0,0,,NEW,Newcastle Eagles,98,,LEI,Leicester Riders,85
+2702595,4,10,5,0,1000,,Riders,Leicester Riders,85,,Flyers,Bristol Flyers,73
+2702596,4,10,5,0,0,,BRI,Bristol Flyers,79,,LEI,Leicester Riders,84
+2702597,4,10,5,0,0,,SUR,Surrey 89ers,79,,CHE,Cheshire Phoenix,101
+2702598,4,10,5,0,750,,SUR,Surrey 89ers,82,,NEW,Newcastle Eagles,88
+2702599,4,10,5,0,0,,MAN,Manchester Basketball,102,,NEW,Newcastle Eagles,98
+2702600,4,10,5,0,0,,MAN,Manchester Basketball,94,,SUR,Surrey 89ers,80
+2702601,4,10,5,0,0,,MAN,Manchester Basketball,84,,SHE,B. Braun Sheffield Sharks,106
+2702602,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,83,,LON,London Lions,92
+2702603,4,10,5,0,850,,CAL,Caledonia Gladiators,74,,LON,London Lions,82
+2702604,4,10,5,0,0,,NEW,Newcastle Eagles,50,,LON,London Lions,76
+2702605,4,10,5,0,0,,CHE,Cheshire Phoenix,100,,SUR,Surrey 89ers,90
+2702606,4,10,5,0,1800,,Riders,Leicester Riders,75,,Lions,London Lions,83
+2702607,4,10,5,0,1019,,CAL,Caledonia Gladiators,76,,CHE,Cheshire Phoenix,101
+2702608,4,10,5,0,0,,LEI,Leicester Riders,102,,MAN,Manchester Basketball,95
+2702609,4,10,5,1,0,,BRI,Bristol Flyers,86,,SUR,Surrey 89ers,87
+2702610,4,10,5,0,1100,,CAL,Caledonia Gladiators,73,,SUR,Surrey 89ers,86
+2702611,4,10,5,0,2600,,NEW,Newcastle Eagles,79,,CAL,Caledonia Gladiators,87
+2702612,4,10,5,0,0,,Riders,Leicester Riders,80,,89ers,Surrey 89ers,89
+2702613,4,10,5,0,0,,MAN,Manchester Basketball,80,,BRI,Bristol Flyers,85
+2702614,4,10,5,0,0,,CHE,Cheshire Phoenix,101,,NEW,Newcastle Eagles,98
+2702615,4,10,5,0,0,,CHE,Cheshire Phoenix,116,,MAN,Manchester Basketball,90
+2702616,4,10,5,0,0,,LON,London Lions,81,,CAL,Caledonia Gladiators,73
+2702617,4,10,5,0,0,,BRI,Bristol Flyers,77,,SHE,B. Braun Sheffield Sharks,67
+2702618,4,10,5,0,1350,,CAL,Caledonia Gladiators,75,,MAN,Manchester Basketball,88
+2702619,4,10,5,1,0,,NEW,Newcastle Eagles,83,,BRI,Bristol Flyers,85
+2702620,4,10,5,0,0,,CHE,Cheshire Phoenix,98,,MAN,Manchester Basketball,99
+2702621,4,10,5,0,0,,CHE,Cheshire Phoenix,106,,SUR,Surrey 89ers,84
+2702622,4,10,5,0,1000,,SUR,Surrey 89ers,89,,LON,London Lions,80
+2702623,4,10,5,0,0,,LEI,Leicester Riders,102,,NEW,Newcastle Eagles,100
+2702624,4,10,5,0,350,,MAN,Manchester Basketball,83,,CAL,Caledonia Gladiators,84
+2702625,4,10,5,0,0,,LON,London Lions,71,,MAN,Manchester Basketball,72
+2702626,4,10,5,0,0,,MAN,Manchester Basketball,101,,CAL,Caledonia Gladiators,78
+2702627,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,77,,CHE,Cheshire Phoenix,75
+2702628,4,10,5,0,900,,SUR,Surrey 89ers,80,,LEI,Leicester Riders,83
+2702629,4,10,5,0,0,,BRI,Bristol Flyers,76,,NEW,Newcastle Eagles,98
+2702630,4,10,5,0,0,,BRI,Bristol Flyers,94,,CHE,Cheshire Phoenix,95
+2702631,4,10,5,0,1111,,CAL,Caledonia Gladiators,70,,SHE,B. Braun Sheffield Sharks,92
+2702632,4,10,5,0,1400,,CAL,Caledonia Gladiators,71,,CHE,Cheshire Phoenix,98
+2702633,4,10,5,0,3565,,LON,London Lions,95,,LEI,Leicester Riders,78
+2702634,4,10,5,0,0,,LEI,Leicester Riders,78,,CHE,Cheshire Phoenix,82
+2702635,4,10,5,0,0,,NEW,Newcastle Eagles,99,,SUR,Surrey 89ers,72
+2702636,4,10,5,0,0,,NEW,Newcastle Eagles,104,,CAL,Caledonia Gladiators,80
+2702637,4,10,5,0,0,,MAN,Manchester Basketball,74,,LON,London Lions,82
+2702638,4,10,5,0,0,,SUR,Surrey 89ers,95,,SHE,B. Braun Sheffield Sharks,77
+2702639,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,85,,BRI,Bristol Flyers,94
+2702640,4,10,5,0,954,,CAL,Caledonia Gladiators,79,,LEI,Leicester Riders,65
+2702641,4,10,5,0,0,,LON,London Lions,98,,NEW,Newcastle Eagles,71
+2702642,4,10,5,0,0,,BRI,Bristol Flyers,77,,MAN,Manchester Basketball,86
+2702644,4,10,5,1,0,,LON,London Lions,92,,SUR,Surrey 89ers,84
+2702645,4,10,5,0,0,,LON,London Lions,87,,SHE,B. Braun Sheffield Sharks,67
+2702646,4,10,5,1,0,,LEI,Leicester Riders,100,,CAL,Caledonia Gladiators,106
+2702647,4,10,5,0,0,,LON,London Lions,77,,BRI,Bristol Flyers,57
+2702648,4,10,5,0,0,,NEW,Newcastle Eagles,93,,MAN,Manchester Basketball,120
+2702649,4,10,5,0,0,,MAN,Manchester Basketball,89,,LEI,Leicester Riders,86
+2702650,4,10,5,1,0,,SHE,B. Braun Sheffield Sharks,99,,SUR,Surrey 89ers,96
+2702651,4,10,5,0,0,,LEI,Leicester Riders,90,,SUR,Surrey 89ers,103
+2702652,4,10,5,0,0,,CHE,Cheshire Phoenix,116,,BRI,Bristol Flyers,73
+2702653,4,10,5,0,2365,,NEW,Newcastle Eagles,108,,CHE,Cheshire Phoenix,97
+2702654,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,93,,LEI,Leicester Riders,68
+2702655,4,10,5,0,0,,SUR,Surrey 89ers,94,,NEW,Newcastle Eagles,103
+2702656,4,10,5,0,0,,SUR,Surrey 89ers,94,,MAN,Manchester Basketball,77
+2702657,4,10,5,0,0,,MAN,Manchester Basketball,80,,BRI,Bristol Flyers,83
+2702658,4,10,5,0,66,,Riders,Leicester Riders,85,,Flyers,Bristol Flyers,78
+2702659,4,10,5,1,1000,,CAL,Caledonia Gladiators,93,,LEI,Leicester Riders,95
+2702660,4,10,5,0,1451,,CAL,Caledonia Gladiators,67,,NEW,Newcastle Eagles,96
+2702661,4,10,5,0,0,,LON,London Lions,81,,SHE,B. Braun Sheffield Sharks,60
+2702662,4,10,5,0,0,,CHE,Cheshire Phoenix,79,,LON,London Lions,99
+2702663,4,10,5,0,55,,Riders,Leicester Riders,98,,MCR,Manchester Basketball,101
+2702664,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,113,,CAL,Caledonia Gladiators,75
+2702665,4,10,5,0,0,,BRI,Bristol Flyers,76,,LON,London Lions,83
+2702666,4,10,5,0,0,,LON,London Lions,92,,CHE,Cheshire Phoenix,95
+2702667,4,10,5,0,0,,NEW,Newcastle Eagles,82,,SHE,B. Braun Sheffield Sharks,85
+2702669,4,10,5,0,0,,BRI,Bristol Flyers,79,,SUR,Surrey 89ers,89
+2702670,4,10,5,0,0,,MAN,Manchester Basketball,86,,LON,London Lions,91
+2702671,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,80,,LEI,Leicester Riders,92
+2702672,4,10,5,0,0,,CHE,Cheshire Phoenix,111,,CAL,Caledonia Gladiators,101
+2702673,4,10,5,0,1001,,CAL,Caledonia Gladiators,82,,BRI,Bristol Flyers,91
+2702674,4,10,5,1,0,,NEW,Newcastle Eagles,86,,LEI,Leicester Riders,94
+2702675,4,10,5,0,0,,BRI,Bristol Flyers,94,,NEW,Newcastle Eagles,75
+2702676,4,10,5,0,0,,SUR,Surrey 89ers,62,,LON,London Lions,86
+2702677,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,74,,MAN,Manchester Basketball,82
+2702678,4,10,5,0,0,,CHE,Cheshire Phoenix,98,,LEI,Leicester Riders,77
+2704988,4,10,5,1,300,,LEI,Leicester Riders,111,,MAN,Manchester Basketball,108
+2704989,4,10,5,0,0,,NEW,Newcastle Eagles,94,,SHE,B. Braun Sheffield Sharks,89
+2714364,4,10,5,0,0,,SUR,Surrey 89ers,93,,BRI,Bristol Flyers,80
+2714366,4,10,5,0,0,,BRI,Bristol Flyers,62,,LON,London Lions,71
+2714367,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,90,,CAL,Caledonia Gladiators,79
+2719734,4,10,5,0,2450,,NEW,Newcastle Eagles,77,,LON,London Lions,82
+2719735,4,10,5,0,0,,NEW,Newcastle Eagles,92,,SUR,Surrey 89ers,89
+2741000,4,10,5,0,0,,NEW,Newcastle Eagles,95,,MAN,Manchester Basketball,98
+2761932,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,79,,LON,London Lions,73
+2767732,4,10,5,0,0,,LON,London Lions,87,,SUR,Surrey 89ers,83
+2775784,4,10,5,0,0,,SUR,Surrey 89ers,99,,CAL,Caledonia Gladiators,69
+2778589,4,10,5,0,0,,Riders,Leicester Riders,94,,89ers,Surrey 89ers,102
+2778590,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,100,,CHE,Cheshire Phoenix,103
+2787330,4,10,5,0,0,,NEW,Newcastle Eagles,68,,LON,London Lions,94
+2787331,4,10,5,0,0,,MAN,Manchester Basketball,92,,BRI,Bristol Flyers,67
+2791769,4,10,5,0,0,,NEW,Newcastle Eagles,100,,CHE,Cheshire Phoenix,89
+2791770,4,10,5,0,0,,CHE,Cheshire Phoenix,112,,NEW,Newcastle Eagles,105
+2792597,4,10,5,0,0,,BRI,Bristol Flyers,76,,LON,London Lions,77
+2792598,4,10,5,0,2517,,LON,London Lions,77,,BRI,Bristol Flyers,58
+2792599,4,10,5,0,0,,SHE,B. Braun Sheffield Sharks,88,,SUR,Surrey 89ers,94
+2798637,4,10,5,0,0,,LON,London Lions,74,,NEW,Newcastle Eagles,68
+2801738,4,10,5,0,0,,MAN,Manchester Basketball,105,,NEW,Newcastle Eagles,79
+2811017,4,10,5,0,0,,LON,London Lions,87,,SUR,Surrey 89ers,72
+2811018,4,10,5,0,0,,LON,London Lions,81,,CAL,Caledonia Gladiators,68
+2816370,4,10,5,0,6000,,LON,London Lions,83,,MAN,Manchester Basketball,74
+2829677,4,10,5,0,0,,LEI,Leicester Riders,87,,SHE,B. Braun Sheffield Sharks,85
+2829681,4,10,5,1,0,,SUR,Surrey 89ers,117,,CAL,Caledonia Gladiators,120
