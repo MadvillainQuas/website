@@ -1,4 +1,4 @@
 {
   "_comment": "Lineup Analyzer auto-fill config. The 'password' field is sent via postMessage to the analyzer iframe in lineup.html so users never see the analyzer's built-in password prompt. PUBLIC FILE — anyone who knows the URL can read this. Acceptable trade-off for shared coaching access; rotate the analyzer password if it ever leaks. Edit via the admin dashboard ('Lineup Analyzer Password' card) and download a fresh copy with 'Export lineup.json'.",
-  "password": ""
+  "password": "ABS-CBN2024!"
 }
