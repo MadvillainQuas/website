@@ -1,0 +1,35 @@
+tno,pno,firstName,familyName,shirtNumber,teamName
+1,6,William,Yoakum,3,Bristol Flyers
+1,7,Zachary,Anderson,4,Bristol Flyers
+1,4,Cameron,Holden,7,Bristol Flyers
+1,8,Jonathan,Brown,9,Bristol Flyers
+1,2,Owen,Mccormack,13,Bristol Flyers
+1,5,Marcus,Delpeche,21,Bristol Flyers
+1,10,Joseph,Anderson,22,Bristol Flyers
+1,11,Milos,Dugalic,25,Bristol Flyers
+1,3,Pasquale,Landolfi,40,Bristol Flyers
+1,12,Darnell,Brodie,51,Bristol Flyers
+2,12,Dirk,Williams,1,B. Braun Sheffield Sharks
+2,1,Prentiss,Nixon,2,B. Braun Sheffield Sharks
+2,7,Rodney,Chatman Iii,3,B. Braun Sheffield Sharks
+2,8,William,Lee,4,B. Braun Sheffield Sharks
+2,6,Mervin,James,5,B. Braun Sheffield Sharks
+2,2,Reyad,West,6,B. Braun Sheffield Sharks
+2,3,Jordan,Ratinho,9,B. Braun Sheffield Sharks
+2,4,Rodney,Glasgow Jr,11,B. Braun Sheffield Sharks
+2,5,Mike,Ochereobia,15,B. Braun Sheffield Sharks
+2,9,Jalen,Deloach,23,B. Braun Sheffield Sharks
+2,10,Nick,Kern Jr,24,B. Braun Sheffield Sharks
+1,1,Duke,Shelton,2,Leicester Riders
+1,9,Travis,Evee,3,Leicester Riders
+1,13,Nathaniel,Martin,41,Leicester Riders
+2,11,Jonathan,Williams,13,London Lions
+2,14,Deane,Williams,31,London Lions
+2,13,Shavar,Reynolds Jr,33,London Lions
+1,14,Deane,Williams,31,London Lions
+1,15,Chasson,Jermar Randle,2,London Lions
+2,15,Chasson,Jermar Randle,2,London Lions
+2,16,Chasson,Jermar Randle,2,London Lions
+2,1001,Shavar,Reynolds Jr,33,London Lions
+1,16,Jordan,Kevin Williams,4,London Lions
+1,1001,Terrell,Burden,1,Newcastle Eagles
