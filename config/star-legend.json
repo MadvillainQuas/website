@@ -1,0 +1,93 @@
+{
+  "_comment": "Star-rating legend shown at the top of the Prophesy Shortlist. 'default' applies to anyone without a per-user override. 'perUser' maps username -> their personal legend. Each legend is an array of { rating, label } sorted high-to-low. Edit via the admin Prophesy Shortlist banner and download a fresh copy with 'Export star-legend.json'.",
+  "default": [
+    {
+      "rating": 5,
+      "label": "Elite — high-major recruit"
+    },
+    {
+      "rating": 4,
+      "label": "Very Good — quality starter"
+    },
+    {
+      "rating": 3,
+      "label": "Solid — reliable rotation"
+    },
+    {
+      "rating": 2,
+      "label": "Below Average — bench / specialist"
+    },
+    {
+      "rating": 1,
+      "label": "Poor — limited fit"
+    }
+  ],
+  "perUser": {
+    "sheffieldsharks": [
+      {
+        "rating": 5,
+        "label": "Top-Tier Europe Starter"
+      },
+      {
+        "rating": 4,
+        "label": "Star SLB/High Mid-Tier Europe (Poland)"
+      },
+      {
+        "rating": 3,
+        "label": "Solid SLB Starter"
+      },
+      {
+        "rating": 2,
+        "label": "SLB Rotation Option"
+      },
+      {
+        "rating": 1,
+        "label": "End of Bench SLB"
+      }
+    ],
+    "stayline": [
+      {
+        "rating": 5,
+        "label": "NBA-Level Talent"
+      },
+      {
+        "rating": 4,
+        "label": "Top-Tier Europe Talent"
+      },
+      {
+        "rating": 3,
+        "label": "Reliable Upper-Mid Europe/Top-Tier Domestic"
+      },
+      {
+        "rating": 2,
+        "label": "Mid-Tier Europe"
+      },
+      {
+        "rating": 1,
+        "label": "Lower-Tier Europe"
+      }
+    ],
+    "joe": [
+      {
+        "rating": 5,
+        "label": "Top-Tier Europe Starter"
+      },
+      {
+        "rating": 4,
+        "label": "Star SLB/High Mid-Tier Europe (Poland)"
+      },
+      {
+        "rating": 3,
+        "label": "Solid SLB Starter"
+      },
+      {
+        "rating": 2,
+        "label": "SLB Rotation Option"
+      },
+      {
+        "rating": 1,
+        "label": "End of Bench SLB"
+      }
+    ]
+  }
+}
