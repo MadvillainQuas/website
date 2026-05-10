@@ -1,10 +1,10 @@
 {
-  "_comment": "Index of every saved Prophesy Shortlist snapshot. Auto-maintained by the Save button in the Prophesy Shortlist tab. Each save is a separate file at data/shortlist-saves/<slug>.json containing the full bundled state at the time of save.",
+  "_comment": "Index of every saved Prophesy Shortlist snapshot. Auto-maintained by the Save button in the Prophesy Shortlist tab. Each save has a `visibleTo: string[]` array (empty / missing = visible to everyone) which the admin edits via the 🔒 Manage save visibility modal in the saves bar. Each save's full payload lives at data/shortlist-saves/<slug>.json.",
   "saves": [
     {
       "name": "SheffieldSharks",
       "slug": "sheffieldsharks",
-      "savedAt": "2026-05-10T12:32:19.688Z",
+      "savedAt": "2026-05-10T15:17:02.644Z",
       "savedBy": "sheffieldsharks",
       "file": "data/shortlist-saves/sheffieldsharks.json"
     }
