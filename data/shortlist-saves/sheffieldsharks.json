@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-10T11:25:55.673Z",
+    "savedAt": "2026-05-10T12:32:19.688Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -456,6 +456,42 @@
       "season": "",
       "savedAt": 1778409056363,
       "source": "manual"
+    },
+    "Sincere Malone": {
+      "metrics": {
+        "player": "Sincere Malone",
+        "team": "Nicholls",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Nicholls",
+      "season": "",
+      "savedAt": 1778415547874,
+      "source": "manual"
+    },
+    "Troy Glover II": {
+      "metrics": {
+        "player": "Troy Glover II",
+        "team": "Bowling Green",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Bowling Green",
+      "season": "",
+      "savedAt": 1778415908319,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -583,6 +619,16 @@
       "name": "Chandler Jackson",
       "team": "Arkansas State",
       "createdAt": 1778409056362
+    },
+    {
+      "name": "Sincere Malone",
+      "team": "Nicholls",
+      "createdAt": 1778415547873
+    },
+    {
+      "name": "Troy Glover II",
+      "team": "Bowling Green",
+      "createdAt": 1778415908318
     }
   ],
   "starRatings": {
@@ -610,7 +656,9 @@
     "Madison Durr": 3.5,
     "Justin Hill": 3.5,
     "Sean Smith": 3,
-    "Chandler Jackson": 3.5
+    "Chandler Jackson": 3.5,
+    "Sincere Malone": 3,
+    "Troy Glover II": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -879,6 +927,23 @@
         "1": 8,
         "2": 7,
         "3": 6
+      }
+    },
+    "Sincere Malone": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ]
+    },
+    "Troy Glover II": {
+      "primary": 5,
+      "secondary": [
+        4
+      ],
+      "suitability": {
+        "4": 3,
+        "5": 10
       }
     }
   },
@@ -2078,6 +2143,50 @@
         "def_rebounding": 7,
         "switching_up": 8
       }
+    },
+    "Troy Glover II": {
+      "positionGroup": "big",
+      "physical": {
+        "size": 8,
+        "wingspan": 8,
+        "func_strength": 6,
+        "lateral_mobility": 7,
+        "coordination": 7,
+        "vertical_athleticism": 8,
+        "stamina": 7,
+        "foot_speed": 7
+      },
+      "interior_offense": {
+        "back_basket": 6,
+        "post_sealing": 6,
+        "pnr_roll": 7,
+        "traffic_finishing": 7,
+        "rim_touch": 6,
+        "off_rebounds": 7,
+        "second_chance": 7,
+        "short_roll_decisions": 5,
+        "off_hand": 5,
+        "free_throw": 6
+      },
+      "modern_big": {
+        "dho": 5,
+        "high_post_pass": 4,
+        "three_point": 1,
+        "pick_pop": 5,
+        "closeout_attacks": 7,
+        "floor_spacing": 2,
+        "reading_help": 4
+      },
+      "def_anchor": {
+        "rim_protection": 8,
+        "block_timing": 8,
+        "def_rebounding": 6,
+        "drop_defense": 7,
+        "switch_ability": 7,
+        "hedge_show": 6,
+        "closeout_defense": 7,
+        "foul_avoidance": 6
+      }
     }
   },
   "lockedPlayers": {},
@@ -2158,6 +2267,12 @@
     ],
     "Chandler Jackson": [
       "Passing Combo-Guard"
+    ],
+    "Sincere Malone": [
+      "Secondary Wing Creator"
+    ],
+    "Troy Glover II": [
+      "Mobile Rim-Roller 5"
     ]
   },
   "playerPhysicals": {
@@ -2260,6 +2375,14 @@
     "Chandler Jackson": {
       "height": "6'5\"",
       "weight": "200"
+    },
+    "Sincere Malone": {
+      "height": "6'8\"",
+      "weight": "205"
+    },
+    "Troy Glover II": {
+      "height": "6'10\"",
+      "weight": "225"
     }
   },
   "potentialRatings": {
@@ -2287,7 +2410,9 @@
     "Madison Durr": 4.5,
     "Justin Hill": 4.5,
     "Sean Smith": 5,
-    "Chandler Jackson": 5
+    "Chandler Jackson": 5,
+    "Sincere Malone": 4,
+    "Troy Glover II": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -2422,6 +2547,14 @@
     "Chandler Jackson": {
       "league": "Sun Belt",
       "level": "Solid Mid Major"
+    },
+    "Sincere Malone": {
+      "league": "Southland",
+      "level": "Low Major"
+    },
+    "Troy Glover II": {
+      "league": "MAC",
+      "level": "Lower Mid Major"
     }
   },
   "playerDomestic": {
