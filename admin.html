@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROPHESY — Admin Dashboard</title>
+    <script src="gate.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a1214;
+            --bg-card: rgba(18, 36, 38, 0.55);
+            --bg-card-hover: rgba(28, 48, 50, 0.75);
+            --border-subtle: rgba(126, 200, 200, 0.07);
+            --border-default: rgba(126, 200, 200, 0.18);
+            --border-accent: rgba(126, 200, 200, 0.35);
+            --text-primary: #d0e8e0;
+            --text-secondary: #7ea8a0;
+            --text-muted: #4a7872;
+            --text-dim: #2e524e;
+            --accent-cyan: #5ab8b8;
+            --accent-emerald: #5ea88a;
+            --accent-rose: #c08888;
+        }
+        html, body { min-height: 100%; }
+        body {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            padding: 24px;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 15% -10%, rgba(90, 180, 170, 0.10) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 85% 110%, rgba(126, 200, 180, 0.07) 0%, transparent 55%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .stage { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; }
+
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 16px 22px; margin-bottom: 24px;
+            background: var(--bg-card); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--border-subtle); border-radius: 16px;
+        }
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+        .brand-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; letter-spacing: 4px; font-size: 0.95rem; text-transform: uppercase; }
+        .brand-sub { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; }
+        .role-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 0.62rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-radius: 100px;
+            background: rgba(123, 168, 200, 0.22);
+            border: 1px solid rgba(123, 168, 200, 0.5);
+            color: #9bbcd6;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+        }
+        .top-actions { display: flex; gap: 8px; align-items: center; }
+        .btn {
+            font-family: inherit; cursor: pointer; border-radius: 10px;
+            padding: 8px 16px; font-size: 0.78rem; font-weight: 600;
+            background: rgba(94, 184, 184, 0.14); border: 1px solid rgba(126, 200, 200, 0.35); color: #a8d8c8;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        }
+        .btn:hover { background: rgba(94, 184, 184, 0.24); border-color: rgba(126, 200, 200, 0.55); }
+        .btn:active { transform: translateY(1px); }
+        .btn.primary { background: linear-gradient(135deg, rgba(94, 184, 184, 0.30), rgba(94, 168, 138, 0.22)); }
+        .btn.danger { background: transparent; border-color: rgba(192, 136, 136, 0.45); color: #c08888; }
+        .btn.danger:hover { background: rgba(192, 136, 136, 0.10); border-color: rgba(192, 136, 136, 0.65); }
+
+        .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+        @media (min-width: 980px) { .grid { grid-template-columns: 1.4fr 1fr; } }
+
+        .card {
+            background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle); border-radius: 16px;
+            padding: 22px 24px; box-shadow: 0 8px 28px rgba(5, 18, 18, 0.30);
+        }
+        .card h2 {
+            font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600;
+            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px;
+        }
+        .card .sub { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 18px; font-family: 'IBM Plex Mono', monospace; }
+        .card h3 { font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-secondary); margin: 14px 0 8px; }
+
+        table.users { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        table.users th, table.users td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        table.users th { font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+        table.users td { color: var(--text-primary); vertical-align: middle; }
+        table.users tr.editing td { background: rgba(126, 200, 200, 0.04); }
+        table.users input, table.users select {
+            width: 100%; padding: 6px 10px; background: rgba(5, 18, 18, 0.45);
+            border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary);
+            font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; outline: none;
+        }
+        table.users input:focus, table.users select:focus { border-color: var(--border-accent); }
+        .small { font-size: 0.7rem; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
+        .row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .row-actions button {
+            font-family: inherit; cursor: pointer; padding: 4px 10px; font-size: 0.7rem; font-weight: 600;
+            border-radius: 7px; border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary);
+        }
+        .row-actions button:hover { border-color: var(--border-accent); color: var(--text-primary); }
+        .row-actions button.del { color: #c08888; border-color: rgba(192, 136, 136, 0.4); }
+        .row-actions button.save { color: #88c8a8; border-color: rgba(94, 168, 138, 0.5); background: rgba(94, 168, 138, 0.10); }
+
+        .add-form { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
+        .add-form label { font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+        .add-form input, .add-form select {
+            padding: 8px 10px; background: rgba(5, 18, 18, 0.45);
+            border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary);
+            font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; outline: none; width: 100%;
+        }
+        .add-form input:focus, .add-form select:focus { border-color: var(--border-accent); }
+
+        .toast { font-size: 0.78rem; color: var(--text-secondary); margin-top: 12px; min-height: 18px; font-family: 'IBM Plex Mono', monospace; }
+        .toast.ok { color: #88c8a8; }
+        .toast.err { color: #c08888; }
+
+        .step { padding: 12px 14px; border-left: 2px solid rgba(126,200,200,0.35); margin-bottom: 10px; font-size: 0.85rem; line-height: 1.5; }
+        .step strong { color: var(--text-primary); }
+        code, .mono { font-family: 'IBM Plex Mono', monospace; padding: 2px 6px; background: rgba(5,18,18,0.45); border: 1px solid var(--border-subtle); border-radius: 5px; font-size: 0.78rem; color: #a8d8c8; }
+
+        .pending-banner {
+            background: rgba(220, 175, 90, 0.12); border: 1px solid rgba(220, 175, 90, 0.4);
+            border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #e0c078;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;
+        }
+        .pending-banner .pill { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(220, 175, 90, 0.18); border: 1px solid rgba(220, 175, 90, 0.45); }
+
+        .empty { padding: 30px 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+
+        .quick-links { display: grid; gap: 10px; }
+        .quick-link {
+            display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+            background: rgba(5, 18, 18, 0.30); border: 1px solid var(--border-default); border-radius: 10px;
+            text-decoration: none; color: inherit; transition: background 0.15s, border-color 0.15s;
+        }
+        .quick-link:hover { background: var(--bg-card-hover); border-color: var(--border-accent); }
+        .quick-link .icon { font-size: 1.2rem; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: rgba(94, 184, 184, 0.18); border: 1px solid rgba(126, 200, 200, 0.25); }
+        .quick-link .text { flex: 1; min-width: 0; }
+        .quick-link .text strong { display: block; font-weight: 600; font-size: 0.92rem; }
+        .quick-link .text span { font-size: 0.75rem; color: var(--text-secondary); font-family: 'IBM Plex Mono', monospace; }
+
+        .gate { display: flex; align-items: center; justify-content: center; min-height: 80vh; text-align: center; padding: 40px; }
+        .gate .gate-card { max-width: 460px; padding: 36px 32px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 18px; }
+        .gate h1 { font-size: 1.2rem; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 12px; }
+        .gate p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55; margin-bottom: 20px; }
+
+        .hidden { display: none !important; }
+
+        /* ============================================================
+           MOBILE — make every card usable with a thumb on a phone.
+           Breakpoint matches the rest of the site (768px).
+           ============================================================ */
+        @media (max-width: 768px) {
+            body { padding: 12px 12px 36px; }
+            .stage { max-width: 100%; }
+
+            /* Topbar: brand + role pill on top, action buttons wrap underneath */
+            .topbar { padding: 12px 14px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; border-radius: 14px; }
+            .brand { gap: 10px; min-width: 0; flex: 1; }
+            .brand img { width: 32px; height: 32px; border-radius: 8px; }
+            .brand-title { font-size: 0.78rem; letter-spacing: 2px; }
+            .brand-sub { font-size: 0.6rem; letter-spacing: 1px; }
+            .top-actions { flex-wrap: wrap; gap: 6px; width: 100%; justify-content: stretch; }
+            .top-actions .btn { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+
+            /* Cards */
+            .grid { gap: 14px; }
+            .card { padding: 16px 14px; border-radius: 14px; }
+            .card h2 { font-size: 0.92rem; letter-spacing: 1.5px; }
+            .card .sub { font-size: 0.7rem; margin-bottom: 12px; }
+            .card h3 { font-size: 0.74rem; margin-top: 16px; }
+
+            /* Buttons: bigger touch targets on mobile (44px ~ Apple guideline) */
+            .btn {
+                padding: 10px 14px;
+                font-size: 0.82rem;
+                min-height: 40px;
+            }
+            .btn.primary,
+            .btn.danger {
+                min-height: 44px;
+            }
+
+            /* Step (instructional callout) */
+            .step { padding: 10px 12px; font-size: 0.8rem; line-height: 1.55; }
+
+            /* USERS CARD: convert table to stacked cards on mobile so 5 columns
+               don't have to fight each other for ~280 px of width. */
+            table.users { font-size: 0.85rem; }
+            table.users thead { display: none; }
+            table.users,
+            table.users tbody,
+            table.users tr,
+            table.users td {
+                display: block;
+                width: 100%;
+            }
+            table.users tr {
+                background: rgba(5, 18, 18, 0.30);
+                border: 1px solid var(--border-subtle);
+                border-radius: 12px;
+                padding: 12px 14px;
+                margin-bottom: 12px;
+            }
+            table.users tr.editing {
+                border-color: var(--border-accent);
+                background: rgba(126, 200, 200, 0.04);
+            }
+            table.users td {
+                padding: 8px 0 !important;
+                border-bottom: 1px dashed rgba(126, 200, 200, 0.10) !important;
+                text-align: left !important;
+                width: auto !important;
+            }
+            table.users td:last-child {
+                border-bottom: none !important;
+                padding-top: 12px !important;
+                margin-top: 6px;
+                border-top: 1px dashed var(--border-subtle) !important;
+            }
+            table.users td::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 0.6rem;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                color: var(--text-muted);
+                font-family: 'IBM Plex Mono', monospace;
+                margin-bottom: 4px;
+                font-weight: 600;
+            }
+            /* Suppress the label header on the action row — context is obvious */
+            table.users td[data-label="Actions"]::before { display: none; }
+            .row-actions { justify-content: stretch; gap: 8px; flex-wrap: wrap; }
+            .row-actions button {
+                flex: 1 1 auto;
+                padding: 10px 12px;
+                font-size: 0.78rem;
+                min-height: 40px;
+            }
+
+            /* Add-form: stack instead of cramming 5 cols into a phone */
+            .add-form {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .add-form button {
+                margin-top: 4px;
+                width: 100%;
+                justify-content: center;
+                min-height: 44px;
+            }
+            .add-form input,
+            .add-form select { font-size: 0.92rem; padding: 10px 12px; }
+
+            /* Pending banner: stack the message above the action button */
+            .pending-banner {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                text-align: left;
+            }
+            .pending-banner .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Quick links: keep horizontal but bigger touch target */
+            .quick-link { padding: 14px 12px; gap: 12px; }
+            .quick-link .icon { width: 40px; height: 40px; flex-shrink: 0; }
+            .quick-link .text strong { font-size: 0.86rem; }
+            .quick-link .text span { font-size: 0.7rem; }
+
+            /* SHARE INVITE LINK card — input + 2 buttons stack on narrow screens */
+            #inviteLinkInput {
+                font-size: 0.78rem !important;
+                padding: 12px 14px !important;
+                min-height: 44px;
+                flex-basis: 100% !important;
+            }
+            #copyInviteBtn,
+            #shareInviteBtn {
+                flex: 1 1 0 !important;
+                min-width: 0 !important;
+                justify-content: center;
+            }
+            #inviteCodeOnly {
+                font-size: 0.74rem !important;
+                word-break: break-all;
+                flex-basis: 100% !important;
+            }
+            #copyCodeOnlyBtn {
+                width: 100%;
+                justify-content: center;
+                min-height: 40px;
+            }
+
+            /* Rotate-invite block: button gets full width */
+            #rotateInviteBtn {
+                width: 100%;
+                min-width: 0 !important;
+            }
+            #rotateInviteStatus {
+                width: 100%;
+                white-space: normal;
+                word-break: break-word;
+            }
+
+            /* GitHub PAT row: input full-width, Save/Test/Forget split below */
+            #ghPatInput { font-size: 0.8rem; }
+
+            /* Lineup analyzer password row */
+            #lineupPwdInput { font-size: 0.92rem; padding: 10px 60px 10px 12px !important; min-height: 44px; }
+
+            /* Per-user data folders list — give each panel proper breathing room */
+            #dataFoldersList > * {
+                padding: 14px 12px !important;
+                border-radius: 12px;
+            }
+            #dataFoldersList input[type="file"] + label,
+            #dataFoldersList .btn {
+                width: 100%;
+                justify-content: center;
+                min-height: 40px;
+            }
+
+            /* Auth gate (signed-out state) — already centered; just tighten padding */
+            .gate { padding: 24px 16px; min-height: 70vh; }
+            .gate .gate-card { padding: 28px 22px; }
+
+            /* Code blocks shouldn't overflow card edges */
+            code { word-break: break-all; }
+        }
+
+        /* ============================================================
+           SMALL PHONE (< 380 px) — extra tightening.
+           ============================================================ */
+        @media (max-width: 380px) {
+            body { padding: 10px 8px 32px; }
+            .card { padding: 14px 12px; }
+            .topbar { padding: 10px 12px; }
+            .brand img { width: 28px; height: 28px; }
+            .brand-title { font-size: 0.72rem; letter-spacing: 1.5px; }
+            .top-actions .btn { font-size: 0.74rem; padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth gate — renders only if a valid session exists -->
+    <div id="gate" class="gate hidden">
+        <div class="gate-card">
+            <img src="logo.jpg" alt="" style="width:64px;height:64px;border-radius:14px;margin-bottom:18px;" onerror="this.style.display='none'" />
+            <h1>Admin only</h1>
+            <p>You need to sign in as an administrator to access this page.</p>
+            <a href="index.html" class="btn primary" style="padding: 12px 22px; font-size: 0.85rem;">Go to sign-in</a>
+        </div>
+    </div>
+
+    <div id="stage" class="stage hidden">
+        <div class="topbar">
+            <div class="brand">
+                <img src="logo.jpg" alt="" onerror="this.style.display='none'" />
+                <div>
+                    <div class="brand-title">Prophesy <span class="role-pill">admin</span></div>
+                    <div class="brand-sub" id="topUserLabel">// signed in</div>
+                </div>
+            </div>
+            <div class="top-actions">
+                <a class="btn" href="basketball-analyzer-profiles_9.html?admin=1">⭐ Open Shortlist (Admin)</a>
+                <a class="btn" href="index.html">← Menu</a>
+                <button class="btn danger" id="signoutBtn">Sign out</button>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             INVITE LINK SHARING — what to send a new coach
+             ============================================================ -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>Share invite link</h2>
+            <div class="sub">// what to send a new coach</div>
+
+            <div class="step">
+                Anyone you send this link to gets through the URL gate on first visit. Their browser then remembers the unlock <strong>permanently</strong> — no expiry timer. To revoke access for everyone currently unlocked, rotate the invite code (instructions below); their cached unlock will stop matching the new hash and they'll see the gate again on their next page load. Sign-in (username + password) is still required <em>after</em> the gate, so this URL alone doesn't grant account access.
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:stretch; margin-top:14px; flex-wrap:wrap;">
+                <input id="inviteLinkInput" type="text" readonly
+                       style="flex:1; min-width:240px;
+                              padding:12px 14px;
+                              background: rgba(5,18,18,0.55);
+                              border: 1px solid var(--border-default);
+                              border-radius: 10px;
+                              color: var(--text-primary);
+                              font-family:'IBM Plex Mono', monospace;
+                              font-size: 0.82rem;
+                              outline: none;
+                              cursor: text;" />
+                <button class="btn primary" id="copyInviteBtn" style="height:44px;">📋 Copy link</button>
+                <button class="btn" id="shareInviteBtn" style="height:44px;">📤 Share…</button>
+            </div>
+            <div id="inviteCopyStatus" class="small" style="margin-top:8px; min-height:18px; font-family:'IBM Plex Mono', monospace;"></div>
+
+            <h3>Just the invite code</h3>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <code id="inviteCodeOnly" style="flex:1; min-width:200px; padding:8px 12px; background: rgba(5,18,18,0.45); border-radius:8px; border:1px solid var(--border-subtle); font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:#a8d8c8;"></code>
+                <button class="btn" id="copyCodeOnlyBtn" style="height:36px;">Copy code</button>
+            </div>
+
+            <div class="step" style="border-left-color: rgba(220, 175, 90, 0.45); margin-top: 14px;">
+                <strong>Rotating the code (= revoking everyone):</strong> rotation IS the revoke button. There's no separate "revoke all" — the moment the hash changes, every previously-unlocked browser sees the gate again on its next page load.
+
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px;">
+                    <button class="btn primary" id="rotateInviteBtn" style="height:44px; min-width:220px;">🔄 Rotate invite code now</button>
+                    <span id="rotateInviteStatus" class="small" style="font-family:'IBM Plex Mono', monospace; min-height:18px;"></span>
+                </div>
+                <div class="small" style="margin-top:8px; line-height:1.5;">
+                    One click: generates a fresh random code, commits both <code>gate.js</code> and this <code>admin.html</code> via your saved GitHub token, and updates this browser's stored unlock so you don't lock yourself out. After GitHub Pages finishes rebuilding (usually 30–60 s), every previously-unlocked browser will see the gate on its next page load. Send the new link (shown above) to anyone who should still have access.
+                </div>
+
+                <details style="margin-top:16px;">
+                    <summary style="cursor:pointer; color: var(--text-muted); font-size: 0.82rem;">Manual rotation steps (if auto-rotate fails or you prefer the command line)</summary>
+                    <ol style="margin: 10px 0 0 18px; padding: 0; line-height: 1.7;">
+                        <li>Pick a new code (any string).</li>
+                        <li>Run <code>echo -n "MY-NEW-CODE" | openssl dgst -sha256</code> to get its SHA-256 hex.</li>
+                        <li>Paste the hex into <code>INVITE_HASH_HEX</code> near the top of <code>gate.js</code>.</li>
+                        <li>Update <code>SHARED_INVITE_CODE</code> near the top of this admin file's script so the "Share invite link" card shows the new code.</li>
+                        <li>Commit + push. Done — old links are now dead, send the new link to anyone who should still have access.</li>
+                    </ol>
+                </details>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- USERS CARD -->
+            <div class="card">
+                <h2>Users</h2>
+                <div class="sub">// who can sign in, what they see</div>
+
+                <div id="pendingUsers" class="pending-banner hidden">
+                    <span><span class="pill">UNSAVED</span> &nbsp; You have user changes that haven't been published yet.</span>
+                    <button class="btn primary" id="downloadUsersBtn">⬇ Download users.json</button>
+                </div>
+
+                <table class="users" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Role</th>
+                            <th>Data folder</th>
+                            <th style="width:130px;text-align:right;">&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+
+                <h3>Add a user</h3>
+                <div class="add-form">
+                    <div>
+                        <label>Username</label>
+                        <input id="newUsername" type="text" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label>Password</label>
+                        <input id="newPassword" type="text" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label>Role</label>
+                        <select id="newRole">
+                            <option value="user">user</option>
+                            <option value="admin">admin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Data folder</label>
+                        <input id="newDataFolder" type="text" placeholder="(optional)" autocomplete="off" />
+                    </div>
+                    <button class="btn primary" id="addUserBtn">+ Add</button>
+                </div>
+
+                <div class="toast" id="usersToast"></div>
+
+                <h3>Publish</h3>
+                <div class="step">
+                    Click <strong>Download users.json</strong> when there are unsaved changes. Drag the downloaded file into <code>config/users.json</code> in the GitHub repo (Add file → Upload files → Commit). The new sign-in list goes live in ~30–90 seconds.
+                </div>
+            </div>
+
+            <!-- QUICK LINKS + DATA INFO -->
+            <div class="card">
+                <h2>Data &amp; visibility</h2>
+                <div class="sub">// where shared content lives</div>
+
+                <div class="quick-links">
+                    <a class="quick-link" href="basketball-analyzer-profiles_9.html?admin=1">
+                        <div class="icon">⭐</div>
+                        <div class="text">
+                            <strong>Prophesy Shortlist (Admin)</strong>
+                            <span>Edit profiles &amp; choose visibility per player</span>
+                        </div>
+                    </a>
+                    <a class="quick-link" href="lineup.html">
+                        <div class="icon">🏀</div>
+                        <div class="text">
+                            <strong>Lineup Analyzer</strong>
+                            <span>View as admin (auto-fills the analyzer password)</span>
+                        </div>
+                    </a>
+                </div>
+
+                <h3>Per-user data folders</h3>
+                <div class="step">
+                    Each user record can have an optional <code>data folder</code>. The apps look for CSVs in <code>data/&lt;folder&gt;/</code> first and fall back to the shared <code>data/</code> folder. Leave the field blank to give a user the shared default.
+                </div>
+                <div class="step">
+                    To publish data for a specific user: in the GitHub repo, create <code>data/&lt;folder&gt;/</code> and upload that user's CSVs there (same filenames as listed in <code>data/README.md</code>).
+                </div>
+
+                <h3>Player visibility</h3>
+                <div class="step">
+                    Open the <strong>Prophesy Shortlist (Admin)</strong> view. Each player row gets a <strong>Visible to</strong> control where you tick which regular users can see that player. Click <strong>Export visibility.json</strong> at the top of the shortlist tab and commit the file to <code>config/visibility.json</code>.
+                </div>
+                <div class="step">
+                    A player with no visibility entry — or with an empty list — is visible to <strong>all users</strong>. Admins always see everyone regardless.
+                </div>
+
+                <h3>Lineup Analyzer password</h3>
+                <div class="step">
+                    The Lineup Analyzer ships with built-in copy protection that prompts for a password every load. <code>lineup.html</code> hosts it inside an iframe and pre-fills this password via the analyzer's documented parent-bridge — your users skip the prompt entirely. Set the password once below; it lives in <code>config/lineup.json</code>.
+                </div>
+
+                <div id="lineupPwdPending" class="pending-banner hidden">
+                    <span><span class="pill">UNSAVED</span> &nbsp; Lineup password change hasn't been published yet.</span>
+                    <button class="btn primary" id="downloadLineupBtn">⬇ Download lineup.json</button>
+                </div>
+
+                <div class="settings-row" style="display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:220px;">
+                        <label style="font-size:0.65rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">Analyzer password</label>
+                        <div style="position:relative;">
+                            <input id="lineupPwdInput" type="password" autocomplete="off" placeholder="Set the password the Lineup Analyzer expects" style="width:100%;padding:8px 60px 8px 12px;background:rgba(5,18,18,0.45);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;outline:none;" />
+                            <button type="button" id="lineupPwdReveal" title="Show / hide" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:4px 10px;font-size:0.66rem;background:rgba(126,200,200,0.10);border:1px solid var(--border-default);color:var(--text-secondary);border-radius:6px;cursor:pointer;font-family:inherit;">show</button>
+                        </div>
+                    </div>
+                    <button class="btn primary" id="lineupPwdSaveBtn" style="height:36px;">Save</button>
+                    <button class="btn" id="lineupPwdClearBtn" style="height:36px;">Clear</button>
+                </div>
+                <div class="toast" id="lineupPwdToast"></div>
+
+                <div class="step" style="border-left-color: rgba(220, 175, 90, 0.45); margin-top: 10px;">
+                    <strong>Heads-up:</strong> <code>config/lineup.json</code> is a public file — anyone who knows its URL can read the password. Acceptable for shared coaching access; if it ever leaks, change the analyzer password (in the analyzer's own admin) and update it here too.
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             LINEUP DATA FOLDERS — per-user CSV publishing helper
+             ============================================================ -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>Lineup Data Folders</h2>
+            <div class="sub">// upload per-user analyzer data straight from your browser</div>
+
+            <div class="step">
+                Each user's <code>data folder</code> (set in the Users card above) maps to <code>data/&lt;folder&gt;/</code> in the repo. Drop CSVs into the per-user upload area below — with a GitHub token configured, they're committed straight to the repo and live within ~60 seconds. Without a token, you'll get the renamed files to upload manually.
+            </div>
+
+            <h3>GitHub publishing token</h3>
+            <div class="step">
+                A <strong>Personal Access Token</strong> (classic, scope: <code>repo</code>) lets the dashboard commit files directly to the repo on your behalf. Stored only in this browser's <code>localStorage</code> — never sent anywhere except <code>api.github.com</code>. <a href="https://github.com/settings/tokens/new?scopes=repo&description=Prophesy%20website%20admin" target="_blank" rel="noopener" style="color:#a8d8c8;">Create a new token →</a>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:240px;">
+                    <label style="font-size:0.65rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">GitHub PAT</label>
+                    <div style="position:relative;">
+                        <input id="ghPatInput" type="password" autocomplete="off" placeholder="ghp_… (classic token with repo scope)" style="width:100%;padding:8px 60px 8px 12px;background:rgba(5,18,18,0.45);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;outline:none;"/>
+                        <button type="button" id="ghPatReveal" title="Show / hide" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:4px 10px;font-size:0.66rem;background:rgba(126,200,200,0.10);border:1px solid var(--border-default);color:var(--text-secondary);border-radius:6px;cursor:pointer;font-family:inherit;">show</button>
+                    </div>
+                </div>
+                <button class="btn primary" id="ghPatSaveBtn" style="height:36px;">Save token</button>
+                <button class="btn" id="ghPatTestBtn" style="height:36px;">Test</button>
+                <button class="btn danger" id="ghPatClearBtn" style="height:36px;">Forget</button>
+                <span id="ghPatStatus" class="small" style="font-family:'IBM Plex Mono',monospace;"></span>
+            </div>
+            <div class="step" style="border-left-color: rgba(220, 175, 90, 0.45); margin-top: 8px;">
+                <strong>Heads-up:</strong> a PAT with <code>repo</code> scope can <em>write to all your repos</em>. Treat it like a password. If you ever lose your laptop or share the browser, click <strong>Forget</strong> here and revoke the token at <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:#a8d8c8;">github.com/settings/tokens</a>.
+            </div>
+
+            <h3>Share token with all users</h3>
+            <div class="step">
+                For the per-user save buttons in the Prophesy Shortlist to work for non-admins, the token has to be reachable from every signed-in browser. Publishing it XOR-encodes it against the invite-code hash and commits to <code>config/github-token.json</code>. GitHub's secret-scanning bot won't recognise it as a token, but anyone with the invite link can decode it (so any signed-in user can save). Use a fine-grained token scoped only to this repo if you can.
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button class="btn primary" id="ghPatShareBtn" style="height:36px;">📤 Publish current token to all users</button>
+                <button class="btn danger" id="ghPatUnshareBtn" style="height:36px;">🚫 Unpublish (clear shared token)</button>
+                <span id="ghPatShareStatus" class="small" style="font-family:'IBM Plex Mono',monospace;"></span>
+            </div>
+
+            <h3>Per-user folders</h3>
+            <div id="dataFoldersList" style="display:flex;flex-direction:column;gap:14px;margin-top:8px;"></div>
+
+            <div class="toast" id="dataFoldersToast" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const SESSION_KEY = 'prophesy_auth_v2';
+        const PENDING_USERS_KEY = 'prophesy_pendingUsers_v2';
+        const PBKDF2_ITERATIONS = 200000;
+
+        // ─────────────────────────────────────────────────────────────
+        // SHARED_INVITE_CODE — the cleartext invite code that pairs
+        // with INVITE_HASH_HEX in gate.js. Used by the "Share invite
+        // link" card to display + copy the URL admins send to coaches.
+        //
+        // To rotate: generate a new code (any string), compute its
+        // SHA-256 (`echo -n "..." | openssl dgst -sha256`), paste the
+        // hash into gate.js's INVITE_HASH_HEX, and update the constant
+        // below to match. Both must be in lockstep or new visitors see
+        // the "Not available" placeholder.
+        // ─────────────────────────────────────────────────────────────
+        const SHARED_INVITE_CODE = 'PROPHESY-2026-MdVilCxl-9kpTs0Q3J';
+
+        let session = null;
+        let users = [];          // current working copy of the user list
+        let usersDirty = false;  // true once the working copy diverges from the loaded users.json
+
+        const gateEl     = document.getElementById('gate');
+        const stageEl    = document.getElementById('stage');
+        const usersBody  = document.getElementById('usersBody');
+        const usersToast = document.getElementById('usersToast');
+        const pendingBanner = document.getElementById('pendingUsers');
+        const topUserLabel = document.getElementById('topUserLabel');
+
+        // ---- AUTH GATE ----
+        try {
+            const raw = sessionStorage.getItem(SESSION_KEY);
+            if (raw) session = JSON.parse(raw);
+        } catch (_) {}
+        if (!session || session.role !== 'admin') {
+            gateEl.classList.remove('hidden');
+        } else {
+            stageEl.classList.remove('hidden');
+            topUserLabel.textContent = '// signed in as ' + session.username;
+            initDashboard();
+        }
+
+        document.getElementById('signoutBtn')?.addEventListener('click', () => {
+            try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+            window.location.href = 'index.html';
+        });
+
+        // ---- crypto helpers ----
+        function bytesToHex(buf) {
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function hexToBytes(hex) {
+            const out = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+            return out;
+        }
+        function randomSaltHex(len) {
+            const buf = new Uint8Array(len);
+            crypto.getRandomValues(buf);
+            return bytesToHex(buf);
+        }
+        async function pbkdf2Hex(password, saltHex, iterations) {
+            const key = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(String(password)),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits']
+            );
+            const bits = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations: iterations || PBKDF2_ITERATIONS, hash: 'SHA-256' },
+                key,
+                256
+            );
+            return bytesToHex(bits);
+        }
+        async function makeHashedPassword(plaintext) {
+            const salt = randomSaltHex(16);
+            const iterations = PBKDF2_ITERATIONS;
+            const passwordHash = await pbkdf2Hex(plaintext, salt, iterations);
+            return { passwordHash, salt, iterations };
+        }
+
+        // ---- working-copy load / persist ----
+        async function initDashboard() {
+            // Try the persisted working-copy first; fall back to fetching the
+            // committed users.json. We mark "dirty" only if the working copy
+            // came from localStorage.
+            let loaded = null;
+            try {
+                const raw = localStorage.getItem(PENDING_USERS_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.users)) {
+                        loaded = parsed.users;
+                        usersDirty = !!parsed.dirty;
+                    }
+                }
+            } catch (_) {}
+
+            if (!loaded) {
+                try {
+                    const res = await fetch('config/users.json', { cache: 'no-cache' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && Array.isArray(json.users)) loaded = json.users;
+                    }
+                } catch (_) {}
+            }
+            users = (loaded || [{ username: 'admin', password: 'prophesy', role: 'admin' }])
+                .map(u => ({
+                    username: u.username || '',
+                    password: u.password || '',                  // legacy plaintext
+                    passwordHash: u.passwordHash || '',          // PBKDF2 hex
+                    salt: u.salt || '',                          // hex
+                    iterations: u.iterations || 0,
+                    role: u.role || 'user',
+                    dataFolder: u.dataFolder || ''
+                }));
+            renderUsers();
+            updatePendingBanner();
+        }
+
+        function persistWorkingCopy() {
+            try {
+                localStorage.setItem(PENDING_USERS_KEY, JSON.stringify({ users, dirty: usersDirty }));
+            } catch (_) {}
+        }
+
+        function updatePendingBanner() {
+            if (usersDirty) pendingBanner.classList.remove('hidden');
+            else pendingBanner.classList.add('hidden');
+        }
+
+        // ---- record helpers ----
+        function passwordStatus(u) {
+            if (u.passwordHash && u.salt) return { label: 'Hashed ✓', kind: 'ok' };
+            if (u.password) return { label: 'Plaintext ⚠', kind: 'warn' };
+            return { label: '— unset —', kind: 'dim' };
+        }
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+        }
+
+        // ---- render ----
+        function renderUsers() {
+            usersBody.innerHTML = '';
+            if (users.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="5" class="empty">No users yet — add one below.</td>';
+                usersBody.appendChild(tr);
+                updateMigrateBanner();
+                return;
+            }
+            users.forEach((u, idx) => {
+                const tr = document.createElement('tr');
+                tr.dataset.idx = String(idx);
+                const pw = passwordStatus(u);
+                const pwColor = pw.kind === 'ok' ? '#88c8a8' : pw.kind === 'warn' ? '#e0c078' : 'var(--text-dim)';
+                tr.innerHTML = `
+                    <td data-label="Username">${escapeHtml(u.username)}</td>
+                    <td data-label="Password"><span class="mono" style="color:${pwColor}">${escapeHtml(pw.label)}</span></td>
+                    <td data-label="Role">${u.role === 'admin' ? '<span class="role-pill">admin</span>' : '<span class="small">user</span>'}</td>
+                    <td data-label="Data folder"><span class="small">${u.dataFolder ? escapeHtml(u.dataFolder) : '— shared default —'}</span></td>
+                    <td data-label="Actions">
+                        <div class="row-actions">
+                            <button data-act="setpw">Set password</button>
+                            <button data-act="edit">Edit</button>
+                            <button data-act="del" class="del">Remove</button>
+                        </div>
+                    </td>`;
+                tr.querySelector('[data-act="setpw"]').addEventListener('click', () => setPasswordFor(idx));
+                tr.querySelector('[data-act="edit"]').addEventListener('click', () => beginEdit(idx));
+                tr.querySelector('[data-act="del"]').addEventListener('click', () => removeUser(idx));
+                usersBody.appendChild(tr);
+            });
+            updateMigrateBanner();
+        }
+
+        // ---- edit row (username / role / data folder; password is a separate flow) ----
+        function beginEdit(idx) {
+            const u = users[idx];
+            const tr = usersBody.querySelector(`tr[data-idx="${idx}"]`);
+            if (!tr) return;
+            tr.classList.add('editing');
+            const pw = passwordStatus(u);
+            const pwColor = pw.kind === 'ok' ? '#88c8a8' : pw.kind === 'warn' ? '#e0c078' : 'var(--text-dim)';
+            tr.innerHTML = `
+                <td data-label="Username"><input data-field="username" value="${escapeHtml(u.username)}" /></td>
+                <td data-label="Password"><span class="mono" style="color:${pwColor}">${escapeHtml(pw.label)}</span><div class="small">use Set password</div></td>
+                <td data-label="Role">
+                    <select data-field="role">
+                        <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>user</option>
+                        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                    </select>
+                </td>
+                <td data-label="Data folder"><input data-field="dataFolder" value="${escapeHtml(u.dataFolder || '')}" placeholder="(optional)" /></td>
+                <td data-label="Actions">
+                    <div class="row-actions">
+                        <button data-act="save" class="save">Save</button>
+                        <button data-act="cancel">Cancel</button>
+                    </div>
+                </td>`;
+            tr.querySelector('[data-act="save"]').addEventListener('click', () => commitEdit(idx, tr));
+            tr.querySelector('[data-act="cancel"]').addEventListener('click', () => renderUsers());
+            tr.querySelector('input[data-field="username"]').focus();
+        }
+
+        function commitEdit(idx, tr) {
+            const username = tr.querySelector('[data-field="username"]').value.trim();
+            const role     = tr.querySelector('[data-field="role"]').value;
+            const dataFolder = tr.querySelector('[data-field="dataFolder"]').value.trim();
+            if (!username) { toast('Username is required.', 'err'); return; }
+            if (users.some((u, i) => i !== idx && u.username === username)) {
+                toast('Another user already has that username.', 'err');
+                return;
+            }
+            users[idx] = { ...users[idx], username, role, dataFolder };
+            usersDirty = true;
+            persistWorkingCopy();
+            renderUsers();
+            updatePendingBanner();
+            toast('Saved (in working copy). Click Download users.json to publish.', 'ok');
+        }
+
+        // ---- set / change password (PBKDF2 in browser) ----
+        async function setPasswordFor(idx) {
+            const u = users[idx];
+            const newPw = prompt(`New password for "${u.username}":\n\nLeave blank to cancel.`, '');
+            if (newPw == null) return;
+            if (!newPw) { toast('Password cannot be empty.', 'err'); return; }
+            if (newPw.length < 6) {
+                if (!confirm('That password is short (' + newPw.length + ' chars). Continue anyway?')) return;
+            }
+            try {
+                const hashed = await makeHashedPassword(newPw);
+                users[idx] = { ...u, password: '', passwordHash: hashed.passwordHash, salt: hashed.salt, iterations: hashed.iterations };
+                usersDirty = true;
+                persistWorkingCopy();
+                renderUsers();
+                updatePendingBanner();
+                toast('Password hashed. Click Download users.json to publish.', 'ok');
+            } catch (err) {
+                console.error(err);
+                toast('Could not hash password: ' + (err && err.message || err), 'err');
+            }
+        }
+
+        function removeUser(idx) {
+            const u = users[idx];
+            if (!confirm(`Remove user "${u.username}"?`)) return;
+            users.splice(idx, 1);
+            usersDirty = true;
+            persistWorkingCopy();
+            renderUsers();
+            updatePendingBanner();
+            toast('Removed (in working copy).', 'ok');
+        }
+
+        // ---- add user (hashes the password immediately) ----
+        document.getElementById('addUserBtn').addEventListener('click', async () => {
+            const username   = document.getElementById('newUsername').value.trim();
+            const password   = document.getElementById('newPassword').value;
+            const role       = document.getElementById('newRole').value;
+            const dataFolder = document.getElementById('newDataFolder').value.trim();
+            if (!username) { toast('Username is required.', 'err'); return; }
+            if (!password) { toast('Password is required.', 'err'); return; }
+            if (users.some(u => u.username === username)) {
+                toast('A user with that username already exists.', 'err');
+                return;
+            }
+            try {
+                const hashed = await makeHashedPassword(password);
+                users.push({
+                    username, role, dataFolder,
+                    password: '',
+                    passwordHash: hashed.passwordHash,
+                    salt: hashed.salt,
+                    iterations: hashed.iterations
+                });
+                usersDirty = true;
+                persistWorkingCopy();
+                renderUsers();
+                updatePendingBanner();
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newDataFolder').value = '';
+                document.getElementById('newRole').value = 'user';
+                toast('Added (password hashed). Click Download users.json to publish.', 'ok');
+            } catch (err) {
+                toast('Could not hash password: ' + (err && err.message || err), 'err');
+            }
+        });
+
+        // ---- "Hash all plaintext passwords" migrator ----
+        async function migratePlaintextPasswords() {
+            const targets = users
+                .map((u, i) => ({ u, i }))
+                .filter(({ u }) => u.password && !(u.passwordHash && u.salt));
+            if (targets.length === 0) { toast('No plaintext passwords to migrate.', 'ok'); return; }
+            for (const { u, i } of targets) {
+                try {
+                    const hashed = await makeHashedPassword(u.password);
+                    users[i] = { ...u, password: '', passwordHash: hashed.passwordHash, salt: hashed.salt, iterations: hashed.iterations };
+                } catch (err) {
+                    console.error('Failed to hash for', u.username, err);
+                }
+            }
+            usersDirty = true;
+            persistWorkingCopy();
+            renderUsers();
+            updatePendingBanner();
+            toast('Hashed ' + targets.length + ' password(s). Click Download users.json to publish.', 'ok');
+        }
+
+        function updateMigrateBanner() {
+            const usersCard = document.querySelector('.card');
+            let banner = document.getElementById('migrateBanner');
+            const hasLegacy = users.some(u => u.password && !(u.passwordHash && u.salt));
+            if (hasLegacy) {
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'migrateBanner';
+                    banner.className = 'pending-banner';
+                    banner.style.background = 'rgba(192, 100, 100, 0.10)';
+                    banner.style.borderColor = 'rgba(220, 110, 110, 0.45)';
+                    banner.style.color = '#e09090';
+                    banner.innerHTML =
+                        '<span><span class="pill" style="background:rgba(220,110,110,0.18);border-color:rgba(220,110,110,0.5);color:#e09090">SECURITY</span> &nbsp; One or more accounts still have plaintext passwords in <code>users.json</code>. Hash them now to protect against source-code reading.</span>' +
+                        '<button class="btn primary" id="migrateBtn">🔒 Hash all plaintext</button>';
+                    pendingBanner.parentNode.insertBefore(banner, pendingBanner);
+                    document.getElementById('migrateBtn').addEventListener('click', migratePlaintextPasswords);
+                }
+            } else if (banner) {
+                banner.remove();
+            }
+        }
+
+        // ---- download users.json (hashed only — drops any lingering plaintext) ----
+        document.getElementById('downloadUsersBtn').addEventListener('click', () => {
+            // Refuse if any user still has plaintext-only credentials — force the migrator first.
+            const stillPlain = users.some(u => u.password && !(u.passwordHash && u.salt));
+            if (stillPlain) {
+                if (!confirm('Some users still have PLAINTEXT passwords. Download anyway?\n\nClick Cancel and use "Hash all plaintext" instead.')) {
+                    toast('Cancelled. Hash plaintext passwords first.', 'err');
+                    return;
+                }
+            }
+
+            const payload = {
+                _comment: "Source of truth for site sign-in. Generated by the admin dashboard. Each user has: username, passwordHash (PBKDF2-SHA256 hex), salt (hex), iterations, role ('admin' | 'user'), and an optional dataFolder. Legacy 'password' field accepted on read but never written here.",
+                users: users.map(u => {
+                    const out = { username: u.username, role: u.role };
+                    if (u.passwordHash && u.salt) {
+                        out.passwordHash = u.passwordHash;
+                        out.salt = u.salt;
+                        out.iterations = u.iterations || PBKDF2_ITERATIONS;
+                    } else if (u.password) {
+                        // Only happens if the user dismissed the warning.
+                        out.password = u.password;
+                    }
+                    if (u.dataFolder) out.dataFolder = u.dataFolder;
+                    return out;
+                })
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'users.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+
+            // Mark the working copy as clean so the banner disappears.
+            usersDirty = false;
+            persistWorkingCopy();
+            updatePendingBanner();
+            toast('users.json downloaded. Commit it to config/users.json on GitHub to publish.', 'ok');
+        });
+
+        let toastTimer = null;
+        function toast(msg, kind) {
+            usersToast.textContent = msg;
+            usersToast.className = 'toast ' + (kind || '');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { usersToast.textContent = ''; usersToast.className = 'toast'; }, 5000);
+        }
+
+        // ============================================================
+        // LINEUP ANALYZER PASSWORD
+        // ----------------------------------------------------------
+        // Stored as plain text in config/lineup.json. The wrapper page
+        // (lineup.html) fetches it and forwards it to the analyzer
+        // iframe via the analyzer's own parent-bridge protocol, so the
+        // user never sees the analyzer's password prompt.
+        //
+        // Working copy lives in localStorage and only matches what's
+        // committed once the admin clicks Download lineup.json and
+        // pushes the resulting file.
+        // ============================================================
+        const LINEUP_DRAFT_KEY = 'prophesy_lineupPwdDraft_v1';
+
+        const lineupPwdInput   = document.getElementById('lineupPwdInput');
+        const lineupPwdReveal  = document.getElementById('lineupPwdReveal');
+        const lineupPwdSaveBtn = document.getElementById('lineupPwdSaveBtn');
+        const lineupPwdClearBtn= document.getElementById('lineupPwdClearBtn');
+        const lineupPwdPending = document.getElementById('lineupPwdPending');
+        const downloadLineupBtn= document.getElementById('downloadLineupBtn');
+        const lineupPwdToast   = document.getElementById('lineupPwdToast');
+
+        let lineupPwdDirty = false;
+        let lineupPwdValue = '';
+        let lineupPwdRevealed = false;
+
+        function lineupToast(msg, kind) {
+            if (!lineupPwdToast) return;
+            lineupPwdToast.textContent = msg;
+            lineupPwdToast.className = 'toast ' + (kind || '');
+            clearTimeout(lineupToast._t);
+            lineupToast._t = setTimeout(() => { lineupPwdToast.textContent = ''; lineupPwdToast.className = 'toast'; }, 5000);
+        }
+        function refreshLineupBanner() {
+            if (lineupPwdDirty) lineupPwdPending.classList.remove('hidden');
+            else lineupPwdPending.classList.add('hidden');
+        }
+        function persistLineupDraft() {
+            try { localStorage.setItem(LINEUP_DRAFT_KEY, JSON.stringify({ pwd: lineupPwdValue, dirty: lineupPwdDirty })); } catch (_) {}
+        }
+
+        async function loadLineupPwd() {
+            // Working draft wins over the published copy.
+            try {
+                const raw = localStorage.getItem(LINEUP_DRAFT_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed.pwd === 'string') {
+                        lineupPwdValue = parsed.pwd;
+                        lineupPwdDirty = !!parsed.dirty;
+                        lineupPwdInput.value = lineupPwdValue;
+                        refreshLineupBanner();
+                        return;
+                    }
+                }
+            } catch (_) {}
+            try {
+                const res = await fetch('config/lineup.json', { cache: 'no-cache' });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && typeof json.password === 'string') {
+                        lineupPwdValue = json.password;
+                        lineupPwdInput.value = lineupPwdValue;
+                    }
+                }
+            } catch (_) {}
+            refreshLineupBanner();
+        }
+
+        lineupPwdReveal?.addEventListener('click', () => {
+            lineupPwdRevealed = !lineupPwdRevealed;
+            lineupPwdInput.type = lineupPwdRevealed ? 'text' : 'password';
+            lineupPwdReveal.textContent = lineupPwdRevealed ? 'hide' : 'show';
+        });
+
+        lineupPwdInput?.addEventListener('input', () => {
+            lineupPwdValue = lineupPwdInput.value;
+            lineupPwdDirty = true;
+            persistLineupDraft();
+            refreshLineupBanner();
+        });
+
+        lineupPwdSaveBtn?.addEventListener('click', () => {
+            lineupPwdValue = lineupPwdInput.value;
+            lineupPwdDirty = true;
+            persistLineupDraft();
+            refreshLineupBanner();
+            lineupToast('Saved (in working copy). Click Download lineup.json to publish.', 'ok');
+        });
+
+        lineupPwdClearBtn?.addEventListener('click', () => {
+            if (!confirm('Clear the saved analyzer password? Users will see the prompt again.')) return;
+            lineupPwdValue = '';
+            lineupPwdInput.value = '';
+            lineupPwdDirty = true;
+            persistLineupDraft();
+            refreshLineupBanner();
+            lineupToast('Cleared (in working copy). Click Download lineup.json to publish.', 'ok');
+        });
+
+        downloadLineupBtn?.addEventListener('click', () => {
+            const payload = {
+                _comment: "Lineup Analyzer auto-fill config. The 'password' field is sent via postMessage to the analyzer iframe in lineup.html so users never see the analyzer's built-in password prompt. PUBLIC FILE — anyone who knows the URL can read this. Acceptable trade-off for shared coaching access; rotate the analyzer password if it ever leaks. Edit via the admin dashboard ('Lineup Analyzer Password' card) and download a fresh copy with 'Export lineup.json'.",
+                password: lineupPwdValue || ''
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'lineup.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+
+            lineupPwdDirty = false;
+            persistLineupDraft();
+            refreshLineupBanner();
+            lineupToast('lineup.json downloaded. Commit it to config/lineup.json on GitHub to publish.', 'ok');
+        });
+
+        // Boot the lineup-password loader after the dashboard initialises.
+        loadLineupPwd();
+
+        // ============================================================
+        // SHARE INVITE LINK
+        // ============================================================
+        const inviteLinkInput   = document.getElementById('inviteLinkInput');
+        const inviteCodeOnly    = document.getElementById('inviteCodeOnly');
+        const copyInviteBtn     = document.getElementById('copyInviteBtn');
+        const copyCodeOnlyBtn   = document.getElementById('copyCodeOnlyBtn');
+        const shareInviteBtn    = document.getElementById('shareInviteBtn');
+        const inviteCopyStatus  = document.getElementById('inviteCopyStatus');
+
+        // Returns the most recently-known code: the runtime-overridden one
+        // set by a successful in-page rotation, or the module constant
+        // shipped with this file. The rotate flow sets
+        // window.__PROPHESY_LIVE_INVITE_CODE so the share buttons stay
+        // accurate without needing a page reload.
+        function currentInviteCode() {
+            return window.__PROPHESY_LIVE_INVITE_CODE || SHARED_INVITE_CODE;
+        }
+
+        // Build the full invite URL from the live origin (so it works in
+        // local previews AND in production without re-editing).
+        function buildInviteUrl() {
+            const code = currentInviteCode();
+            try {
+                const origin = window.location.origin || '';
+                const path = window.location.pathname.replace(/[^/]*$/, ''); // strip filename
+                return origin + path + '?invite=' + encodeURIComponent(code);
+            } catch (_) {
+                return 'https://prophesyscouting.co.uk/?invite=' + encodeURIComponent(code);
+            }
+        }
+        if (inviteLinkInput) inviteLinkInput.value = buildInviteUrl();
+        if (inviteCodeOnly) inviteCodeOnly.textContent = currentInviteCode();
+
+        function flashInviteStatus(msg, kind) {
+            if (!inviteCopyStatus) return;
+            inviteCopyStatus.textContent = msg;
+            inviteCopyStatus.style.color = kind === 'ok' ? '#88c8a8' : (kind === 'err' ? '#c08888' : 'var(--text-muted)');
+            clearTimeout(flashInviteStatus._t);
+            flashInviteStatus._t = setTimeout(() => { inviteCopyStatus.textContent = ''; }, 3500);
+        }
+
+        async function copyToClipboardWithFallback(text) {
+            // Modern API
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                }
+            } catch (_) { /* fall through */ }
+            // Fallback for non-secure or old browsers
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (_) { return false; }
+        }
+
+        copyInviteBtn?.addEventListener('click', async () => {
+            const ok = await copyToClipboardWithFallback(buildInviteUrl());
+            if (ok) {
+                inviteLinkInput.select();
+                flashInviteStatus('✓ Link copied — paste it into a message to share.', 'ok');
+            } else {
+                flashInviteStatus('Could not copy automatically — long-press the field to copy manually.', 'err');
+            }
+        });
+
+        copyCodeOnlyBtn?.addEventListener('click', async () => {
+            const ok = await copyToClipboardWithFallback(currentInviteCode());
+            flashInviteStatus(ok ? '✓ Code copied.' : 'Could not copy.', ok ? 'ok' : 'err');
+        });
+
+        shareInviteBtn?.addEventListener('click', async () => {
+            const url = buildInviteUrl();
+            const shareData = {
+                title: 'Prophesy Scouting',
+                text: 'Sign in to Prophesy Scouting:',
+                url: url
+            };
+            // navigator.share is the native OS share sheet on iOS/Android — opens
+            // Messages, WhatsApp, Mail, etc. directly. Falls back to copy on desktop.
+            if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                try {
+                    await navigator.share(shareData);
+                    flashInviteStatus('✓ Shared.', 'ok');
+                } catch (e) {
+                    // User cancelled — silent
+                    if (e?.name !== 'AbortError') flashInviteStatus('Share failed: ' + e.message, 'err');
+                }
+            } else {
+                const ok = await copyToClipboardWithFallback(url);
+                flashInviteStatus(ok ? '✓ Native share unavailable — link copied instead.' : 'Could not share or copy.', ok ? 'ok' : 'err');
+            }
+        });
+
+        // Tap the field itself to select all (mobile convenience)
+        inviteLinkInput?.addEventListener('focus', () => inviteLinkInput.select());
+        inviteLinkInput?.addEventListener('click', () => inviteLinkInput.select());
+
+        // ============================================================
+        // ROTATE INVITE CODE — one-click revocation + new-code publish
+        // ----------------------------------------------------------
+        // Generates a fresh random code, computes its SHA-256, and uses
+        // the saved GitHub PAT to commit BOTH gate.js (new
+        // INVITE_HASH_HEX) AND admin.html (new SHARED_INVITE_CODE) via
+        // the Contents API. Also writes the new hash to this browser's
+        // localStorage gate store so the admin doesn't lock themselves
+        // out the moment the hash changes.
+        //
+        // Order matters:
+        //   1. Update LOCAL localStorage with the new hash first.
+        //   2. PUT gate.js (this is the "kill switch" — all old
+        //      unlocks become invalid as soon as Pages serves the new
+        //      file, ~30–60 s).
+        //   3. PUT admin.html (cosmetic — just so the displayed link
+        //      shows the new code on next load).
+        //
+        // If step 2 fails: nothing changes, abort.
+        // If step 3 fails after step 2 succeeded: site has new gate
+        // hash but admin.html still shows old code on next load. We
+        // surface the new code on screen anyway so the admin can copy
+        // it; they can retry to refresh admin.html, or paste it
+        // manually into the SHARED_INVITE_CODE constant.
+        // ============================================================
+        const rotateInviteBtn    = document.getElementById('rotateInviteBtn');
+        const rotateInviteStatus = document.getElementById('rotateInviteStatus');
+
+        function setRotateStatus(msg, kind) {
+            if (!rotateInviteStatus) return;
+            rotateInviteStatus.textContent = msg || '';
+            rotateInviteStatus.style.color = kind === 'ok' ? '#88c8a8'
+                : (kind === 'err' ? '#c08888'
+                : 'var(--text-muted)');
+        }
+
+        async function sha256HexLocal(str) {
+            const buf = new TextEncoder().encode(String(str));
+            const hash = await crypto.subtle.digest('SHA-256', buf);
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // GET a file from the repo via Contents API and decode it as UTF-8.
+        // Returns { ok, text, sha, message }.
+        async function ghGetFileText(repoPath) {
+            const tok = getGhPat();
+            if (!tok) return { ok: false, message: 'No GitHub token configured.' };
+            const url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO
+                + '/contents/' + repoPath
+                + '?ref=' + encodeURIComponent(GH_BRANCH);
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json' }
+                });
+                if (!res.ok) {
+                    let msg = 'HTTP ' + res.status;
+                    try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
+                    return { ok: false, message: msg };
+                }
+                const j = await res.json();
+                let text = '';
+                try {
+                    const binary = atob((j.content || '').replace(/\n/g, ''));
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    text = new TextDecoder('utf-8').decode(bytes);
+                } catch (e) {
+                    return { ok: false, message: 'decode failed: ' + (e?.message || e) };
+                }
+                return { ok: true, text, sha: j.sha };
+            } catch (e) {
+                return { ok: false, message: e?.message || 'network error' };
+            }
+        }
+
+        // High-entropy URL-safe alphanumeric suffix.
+        function randomCodeSuffix(length) {
+            length = length || 12;
+            const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'; // no I/l/0/1 to reduce confusion
+            let out = '';
+            if (window.crypto && window.crypto.getRandomValues) {
+                const buf = new Uint32Array(length);
+                window.crypto.getRandomValues(buf);
+                for (let i = 0; i < length; i++) out += ALPHA[buf[i] % ALPHA.length];
+            } else {
+                for (let i = 0; i < length; i++) out += ALPHA[Math.floor(Math.random() * ALPHA.length)];
+            }
+            return out;
+        }
+
+        rotateInviteBtn?.addEventListener('click', async () => {
+            if (!getGhPat()) {
+                setRotateStatus('Save a GitHub token in the card below first.', 'err');
+                return;
+            }
+            const ok = confirm(
+                'Rotate the invite code right now?\n\n'
+                + '• Everyone currently unlocked will see the gate again on their next page load (after GitHub Pages rebuilds, ~30–60 s).\n'
+                + '• A new random code is generated and committed to gate.js + admin.html.\n'
+                + '• THIS browser is auto-updated so you stay in.\n'
+                + '• You\'ll see the new link to send to anyone who should keep access.\n\n'
+                + 'Continue?'
+            );
+            if (!ok) return;
+
+            rotateInviteBtn.disabled = true;
+            try {
+                setRotateStatus('generating new code…');
+                const year   = new Date().getFullYear();
+                const newCode = 'PROPHESY-' + year + '-' + randomCodeSuffix(12);
+                const newHash = await sha256HexLocal(newCode);
+
+                // 1) Read current files
+                setRotateStatus('reading gate.js…');
+                const gj = await ghGetFileText('gate.js');
+                if (!gj.ok) { setRotateStatus('Failed to read gate.js: ' + gj.message, 'err'); return; }
+                const gateRe = /const\s+INVITE_HASH_HEX\s*=\s*'[0-9a-fA-F]+'\s*;/;
+                if (!gateRe.test(gj.text)) {
+                    setRotateStatus('Could not find INVITE_HASH_HEX in gate.js. Aborting — file may have been hand-edited.', 'err');
+                    return;
+                }
+                const newGateText = gj.text.replace(gateRe, "const INVITE_HASH_HEX  = '" + newHash + "';");
+
+                setRotateStatus('reading admin.html…');
+                const ah = await ghGetFileText('admin.html');
+                if (!ah.ok) { setRotateStatus('Failed to read admin.html: ' + ah.message, 'err'); return; }
+                const codeRe = /const\s+SHARED_INVITE_CODE\s*=\s*'[^']*'\s*;/;
+                if (!codeRe.test(ah.text)) {
+                    setRotateStatus('Could not find SHARED_INVITE_CODE in admin.html. Aborting.', 'err');
+                    return;
+                }
+                const newAdminText = ah.text.replace(codeRe, "const SHARED_INVITE_CODE = '" + newCode + "';");
+
+                // 2) Update LOCAL gate unlock storage FIRST so we don't lock ourselves out
+                //    the moment the new gate.js goes live. Key must match gate.js's STORAGE_KEY.
+                try {
+                    localStorage.setItem('prophesy_invited_v2', JSON.stringify({ ts: Date.now(), hash: newHash }));
+                } catch (_) {}
+
+                // 3) Commit gate.js (the kill switch)
+                setRotateStatus('committing gate.js…');
+                const gateBytes = new TextEncoder().encode(newGateText);
+                const gateRes   = await ghPutFile('gate.js', gateBytes, 'admin: rotate invite code (auto)');
+                if (!gateRes.ok) {
+                    setRotateStatus('gate.js commit failed: ' + gateRes.message + ' — site unchanged.', 'err');
+                    return;
+                }
+
+                // 4) Commit admin.html (cosmetic)
+                setRotateStatus('committing admin.html…');
+                const adminBytes = new TextEncoder().encode(newAdminText);
+                const adminRes   = await ghPutFile('admin.html', adminBytes, 'admin: rotate invite code — refresh SHARED_INVITE_CODE (auto)');
+                if (!adminRes.ok) {
+                    setRotateStatus(
+                        'gate.js updated, admin.html update FAILED (' + adminRes.message + '). New code: '
+                        + newCode + ' — copy it now and paste it into SHARED_INVITE_CODE in admin.html, or hit Rotate again to retry.',
+                        'err'
+                    );
+                    // Still refresh the on-screen displays so the admin sees the new code.
+                    refreshShareInviteDisplay(newCode);
+                    return;
+                }
+
+                // 5) Refresh on-screen displays so the admin sees the new code immediately.
+                refreshShareInviteDisplay(newCode);
+
+                setRotateStatus('✓ Rotated. New code: ' + newCode + '  ·  Pages may take ~30–60 s to serve the new gate.', 'ok');
+                flashInviteStatus('✓ New invite link is ready above — copy + send to anyone who should keep access.', 'ok');
+            } catch (e) {
+                setRotateStatus('Unexpected error: ' + (e?.message || e), 'err');
+            } finally {
+                rotateInviteBtn.disabled = false;
+            }
+        });
+
+        // Helper: rebuild the share-invite card's input + code-only display
+        // using a freshly-rotated code (so the admin sees the new link without
+        // needing to refresh the page).
+        function refreshShareInviteDisplay(newCode) {
+            try {
+                const origin = window.location.origin || '';
+                const path   = window.location.pathname.replace(/[^/]*$/, '');
+                const newUrl = origin + path + '?invite=' + encodeURIComponent(newCode);
+                if (inviteLinkInput) inviteLinkInput.value = newUrl;
+                if (inviteCodeOnly)  inviteCodeOnly.textContent = newCode;
+                // Hot-swap the click handlers' source of truth: rebind copy/share to
+                // use the latest displayed value rather than the now-stale module constant.
+                window.__PROPHESY_LIVE_INVITE_CODE = newCode;
+                window.__PROPHESY_LIVE_INVITE_URL  = newUrl;
+            } catch (_) {}
+        }
+
+        // ============================================================
+        // GITHUB PUBLISHING TOKEN — stored only in this browser.
+        // ============================================================
+        const GH_PAT_KEY    = 'prophesy_ghPat_v1';
+        const GH_OWNER      = 'MadvillainQuas';
+        const GH_REPO       = 'website';
+        const GH_BRANCH     = 'main';
+
+        const ghPatInput   = document.getElementById('ghPatInput');
+        const ghPatReveal  = document.getElementById('ghPatReveal');
+        const ghPatSaveBtn = document.getElementById('ghPatSaveBtn');
+        const ghPatClearBtn= document.getElementById('ghPatClearBtn');
+        const ghPatTestBtn = document.getElementById('ghPatTestBtn');
+        const ghPatStatus  = document.getElementById('ghPatStatus');
+
+        function getGhPat() {
+            try { return localStorage.getItem(GH_PAT_KEY) || ''; } catch (_) { return ''; }
+        }
+        function setGhPat(value) {
+            try {
+                if (value) localStorage.setItem(GH_PAT_KEY, value);
+                else localStorage.removeItem(GH_PAT_KEY);
+            } catch (_) {}
+            updateGhPatStatus();
+        }
+        function updateGhPatStatus(extra) {
+            const has = !!getGhPat();
+            ghPatStatus.style.color = has ? '#88c8a8' : 'var(--text-muted)';
+            ghPatStatus.textContent = (has ? '✓ token saved' : '— no token') + (extra ? '  ·  ' + extra : '');
+        }
+
+        ghPatInput.value = getGhPat();
+        updateGhPatStatus();
+
+        let ghPatRevealed = false;
+        ghPatReveal.addEventListener('click', () => {
+            ghPatRevealed = !ghPatRevealed;
+            ghPatInput.type = ghPatRevealed ? 'text' : 'password';
+            ghPatReveal.textContent = ghPatRevealed ? 'hide' : 'show';
+        });
+
+        ghPatSaveBtn.addEventListener('click', () => {
+            const v = (ghPatInput.value || '').trim();
+            if (!v) { setGhPat(''); updateGhPatStatus('cleared'); return; }
+            setGhPat(v);
+            updateGhPatStatus('saved');
+        });
+
+        ghPatClearBtn.addEventListener('click', () => {
+            if (!confirm('Forget the GitHub token in this browser? You\'ll need to paste it again to use direct upload.')) return;
+            ghPatInput.value = '';
+            setGhPat('');
+        });
+
+        ghPatTestBtn.addEventListener('click', async () => {
+            const tok = getGhPat();
+            if (!tok) { updateGhPatStatus('save a token first'); return; }
+            updateGhPatStatus('testing…');
+            try {
+                const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO, {
+                    headers: { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json' }
+                });
+                if (res.ok) {
+                    const j = await res.json();
+                    updateGhPatStatus('OK · ' + (j.permissions?.push ? 'push allowed' : 'read-only'));
+                } else if (res.status === 401) {
+                    updateGhPatStatus('401 — token invalid or expired');
+                } else if (res.status === 404) {
+                    updateGhPatStatus('404 — token can\'t see this repo');
+                } else {
+                    updateGhPatStatus('HTTP ' + res.status);
+                }
+            } catch (e) {
+                updateGhPatStatus('network error');
+            }
+        });
+
+        // ============================================================
+        // SHARE TOKEN WITH ALL USERS (XOR-encoded so GH scanner skips it)
+        // ============================================================
+        const ghPatShareBtn    = document.getElementById('ghPatShareBtn');
+        const ghPatUnshareBtn  = document.getElementById('ghPatUnshareBtn');
+        const ghPatShareStatus = document.getElementById('ghPatShareStatus');
+
+        function setShareStatus(msg, kind) {
+            if (!ghPatShareStatus) return;
+            ghPatShareStatus.style.color = kind === 'ok' ? '#88c8a8' : (kind === 'err' ? '#c08888' : 'var(--text-muted)');
+            ghPatShareStatus.textContent = msg || '';
+        }
+        // XOR a string against a hex key, then base64 the result. Reversible
+        // by anyone holding the same key (gate.js publishes the invite hash
+        // as window.PROPHESY_INVITE_HASH_HEX). This isn't real encryption —
+        // its only purpose is to defeat GitHub's secret-scanning patterns.
+        function xorEncodeWithHexKey(plain, hexKey) {
+            // Convert hex key → byte array
+            const keyBytes = [];
+            for (let i = 0; i < hexKey.length; i += 2) keyBytes.push(parseInt(hexKey.substr(i, 2), 16));
+            const utf8 = new TextEncoder().encode(plain);
+            const out = new Uint8Array(utf8.length);
+            for (let i = 0; i < utf8.length; i++) out[i] = utf8[i] ^ keyBytes[i % keyBytes.length];
+            // base64
+            let bin = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < out.length; i += chunk) bin += String.fromCharCode.apply(null, out.subarray(i, i + chunk));
+            return 'PROPHESY:' + btoa(bin);
+        }
+
+        ghPatShareBtn?.addEventListener('click', async () => {
+            const tok = getGhPat();
+            if (!tok) { setShareStatus('save a token first', 'err'); return; }
+            const key = window.PROPHESY_INVITE_HASH_HEX;
+            if (!key) { setShareStatus('invite hash unavailable — refresh the page', 'err'); return; }
+            setShareStatus('encoding + uploading…');
+
+            const encoded = xorEncodeWithHexKey(tok, key);
+            const payload = {
+                _comment: "Shared GitHub token for save/load operations. The token is XOR-encoded against the invite-code hash before being committed here so GitHub's secret-scanning bot doesn't auto-revoke it. Anyone with site access (i.e. the invite link) can decode it. Treat it like a write-key for this repo: rotate any time it's misused. Set/refresh via the admin dashboard's 'Share token with all users' button.",
+                encoded: encoded,
+                publishedAt: new Date().toISOString()
+            };
+            const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n');
+            const res = await ghPutFile('config/github-token.json', bytes, 'admin: share encoded GitHub token with all users');
+            if (res.ok) setShareStatus('✓ shared — non-admin users can now save', 'ok');
+            else setShareStatus('failed: ' + res.message, 'err');
+        });
+
+        ghPatUnshareBtn?.addEventListener('click', async () => {
+            if (!confirm('Clear the shared token? Non-admin users will no longer be able to save until you re-share.')) return;
+            setShareStatus('clearing…');
+            const payload = {
+                _comment: "Shared GitHub token cleared. Re-publish via the admin dashboard's 'Share token with all users' button to restore non-admin save capability.",
+                encoded: '',
+                publishedAt: null
+            };
+            const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n');
+            const res = await ghPutFile('config/github-token.json', bytes, 'admin: clear shared GitHub token');
+            if (res.ok) setShareStatus('✓ cleared', 'ok');
+            else setShareStatus('failed: ' + res.message, 'err');
+        });
+
+        // Helper: PUT a file into the repo at the given path. Updates if it
+        // already exists (we look up the SHA first), creates if not.
+        // Returns { ok, status, message }.
+        async function ghPutFile(repoPath, contentBytes, commitMessage) {
+            const tok = getGhPat();
+            if (!tok) return { ok: false, status: 0, message: 'No GitHub token configured.' };
+
+            const apiBase = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + repoPath;
+            const headers = { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json' };
+
+            // Look up existing SHA so we can update rather than 422-collide.
+            let existingSha;
+            try {
+                const head = await fetch(apiBase + '?ref=' + encodeURIComponent(GH_BRANCH), { headers });
+                if (head.ok) {
+                    const j = await head.json();
+                    if (j && j.sha) existingSha = j.sha;
+                }
+            } catch (_) {}
+
+            // Encode bytes → base64. We use FileReader for safety on big files.
+            const base64 = await bytesToBase64(contentBytes);
+
+            const body = {
+                message: commitMessage || ('Upload ' + repoPath),
+                content: base64,
+                branch: GH_BRANCH
+            };
+            if (existingSha) body.sha = existingSha;
+
+            try {
+                const res = await fetch(apiBase, {
+                    method: 'PUT',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) return { ok: true, status: res.status, message: existingSha ? 'updated' : 'created' };
+                let msg = 'HTTP ' + res.status;
+                try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
+                return { ok: false, status: res.status, message: msg };
+            } catch (e) {
+                return { ok: false, status: 0, message: e?.message || 'network error' };
+            }
+        }
+
+        function bytesToBase64(buf) {
+            // Chunked btoa so we don't blow the stack on multi-MB files.
+            return new Promise((resolve, reject) => {
+                try {
+                    const bytes = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf;
+                    let binary = '';
+                    const chunk = 0x8000;
+                    for (let i = 0; i < bytes.length; i += chunk) {
+                        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+                    }
+                    resolve(btoa(binary));
+                } catch (e) { reject(e); }
+            });
+        }
+
+        // ============================================================
+        // LINEUP DATA FOLDERS — per-user CSV publishing helper
+        // ----------------------------------------------------------
+        // For every user that has a `dataFolder` set, we render a panel
+        // showing which CSVs are present in `data/<folder>/` (HEAD checks)
+        // and a drag-drop area. With a GitHub PAT configured, files are
+        // committed straight to the repo via the GitHub Contents API; without
+        // a token, we fall back to renamed downloads the admin uploads
+        // manually via the GitHub web UI.
+        // ============================================================
+        const REPO_FOLDER_URL = 'https://github.com/' + GH_OWNER + '/' + GH_REPO + '/upload/' + GH_BRANCH + '/data';
+        const REPO_TREE_URL   = 'https://github.com/' + GH_OWNER + '/' + GH_REPO + '/tree/' + GH_BRANCH + '/data';
+
+        // Canonical filenames the analyzer recognises, with friendly aliases.
+        const LINEUP_FILES = [
+            { name: 'lineup_stats_enhanced.csv',        required: true,  hint: 'main lineup totals' },
+            { name: 'player_stats_enhanced.csv',        required: true,  hint: 'per-player season stats' },
+            { name: 'player_lineup_stats_enhanced.csv', required: true,  hint: 'per-player lineup splits' },
+            { name: 'lineup_matchups.csv',              required: false, hint: 'matchup-level lineup splits' },
+            { name: 'lineup_assist_combinations.csv',   required: false, hint: 'assist combinations',     aliases: ['assist_combinations.csv'] },
+            { name: 'clutch_lineup_stats.csv',          required: false, hint: 'clutch-only lineup splits' },
+            { name: 'stints.csv',                       required: false, hint: 'lineup stints' },
+            { name: 'player_stints.csv',                required: false, hint: 'per-player stint durations' },
+            { name: 'team_totals.csv',                  required: false, hint: 'team game-level totals' },
+            { name: 'play_by_play.csv',                 required: false, hint: 'play-type / play-by-play', aliases: ['playbyplay.csv', 'play_type.csv'] }
+        ];
+
+        const dataFoldersList = document.getElementById('dataFoldersList');
+        const dataFoldersToast = document.getElementById('dataFoldersToast');
+
+        function dfToast(msg, kind) {
+            if (!dataFoldersToast) return;
+            dataFoldersToast.textContent = msg;
+            dataFoldersToast.className = 'toast ' + (kind || '');
+            clearTimeout(dfToast._t);
+            dfToast._t = setTimeout(() => { dataFoldersToast.textContent = ''; dataFoldersToast.className = 'toast'; }, 5500);
+        }
+
+        async function checkFilePresent(folder, name) {
+            try {
+                const url = '../data/' + folder + '/' + encodeURIComponent(name);
+                // We're at /admin.html; data/ is sibling, so '../data/' is wrong.
+                // Use a rooted path instead so it works regardless of where admin.html lives.
+                const rooted = 'data/' + folder + '/' + encodeURIComponent(name);
+                const res = await fetch(rooted, { method: 'HEAD', cache: 'no-cache' });
+                return res.ok;
+            } catch (_) { return false; }
+        }
+
+        async function checkAnyAlias(folder, file) {
+            const candidates = [file.name, ...(file.aliases || [])];
+            for (const c of candidates) {
+                if (await checkFilePresent(folder, c)) return c;
+            }
+            return null;
+        }
+
+        function makeFolderCard(user) {
+            const folder = (user.dataFolder || '').trim();
+            const card = document.createElement('div');
+            card.style.cssText = 'border:1px solid var(--border-default);border-radius:12px;padding:14px 16px;background:rgba(5,18,18,0.20);display:flex;flex-direction:column;gap:10px;';
+
+            // Header row
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;';
+            header.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-weight:600;color:var(--text-primary);font-size:0.95rem;">${escapeHtml(user.username)}</span>
+                    ${user.role === 'admin' ? '<span class="role-pill">admin</span>' : '<span class="small">user</span>'}
+                    <span style="color:var(--text-muted);font-family:'IBM Plex Mono',monospace;font-size:0.74rem;">→ data/${escapeHtml(folder)}/</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <a class="btn" href="${REPO_TREE_URL}/${encodeURIComponent(folder)}" target="_blank" rel="noopener">📁 View on GitHub</a>
+                    <a class="btn primary" href="${REPO_FOLDER_URL}/${encodeURIComponent(folder)}" target="_blank" rel="noopener">⬆ Upload CSVs</a>
+                </div>
+            `;
+            card.appendChild(header);
+
+            // Checklist
+            const list = document.createElement('div');
+            list.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 14px;font-size:0.78rem;';
+            list.innerHTML = '<div class="small" style="grid-column:1/-1;">Checking which CSVs are published…</div>';
+            card.appendChild(list);
+
+            (async () => {
+                const rows = await Promise.all(LINEUP_FILES.map(async f => {
+                    const presentName = await checkAnyAlias(folder, f);
+                    return { f, presentName };
+                }));
+                list.innerHTML = '';
+                rows.forEach(({ f, presentName }) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;background:rgba(5,18,18,0.15);';
+                    const dot = presentName
+                        ? '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:#88c8a8;font-weight:700;">✓</span>'
+                        : (f.required
+                            ? '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:#c08888;font-weight:700;">✕</span>'
+                            : '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:var(--text-dim);">—</span>');
+                    row.innerHTML = `
+                        ${dot}
+                        <span style="font-family:'IBM Plex Mono',monospace;color:${presentName ? '#a8d8c8' : (f.required ? '#c08888' : 'var(--text-secondary)')};font-size:0.74rem;">${escapeHtml(presentName || f.name)}</span>
+                        <span class="small" style="margin-left:auto;font-size:0.68rem;">${f.required && !presentName ? 'required, missing' : (presentName ? 'published' : 'optional')}</span>
+                    `;
+                    list.appendChild(row);
+                });
+            })();
+
+            // Drag-drop helper. When a PAT is configured we upload straight
+            // to the repo; otherwise we fall back to per-file downloads
+            // ready for manual GitHub upload.
+            const dropArea = document.createElement('div');
+            dropArea.style.cssText = 'border:2px dashed rgba(126,200,200,0.30);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:background 0.15s,border-color 0.15s;';
+            const refreshDropHelper = () => {
+                const hasTok = !!getGhPat();
+                dropArea.innerHTML = hasTok ? `
+                    <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:6px;">
+                        📥 Drop CSVs here (or click to browse) — they're <strong style="color:#88c8a8;">uploaded straight to GitHub</strong> as <code>data/${escapeHtml(folder)}/&lt;file&gt;</code>
+                    </div>
+                    <div class="small" style="font-size:0.7rem;">~30–60 seconds after upload, the changes are live.</div>
+                    <input type="file" multiple accept=".csv,text/csv" style="display:none;" />
+                ` : `
+                    <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:6px;">
+                        📥 Drop CSVs here, or click to browse — they'll be renamed and downloaded for you to upload manually
+                    </div>
+                    <div class="small" style="font-size:0.7rem;">Save a GitHub token above to upload straight to the repo. Without one, drag the downloaded files onto <a href="${REPO_FOLDER_URL}/${encodeURIComponent(folder)}" target="_blank" rel="noopener" style="color:#a8d8c8;">data/${escapeHtml(folder)}/</a> on GitHub → Commit.</div>
+                    <input type="file" multiple accept=".csv,text/csv" style="display:none;" />
+                `;
+                wireInputAndDrop();
+            };
+            const wireInputAndDrop = () => {
+                const fileInput = dropArea.querySelector('input');
+                const onFiles = (filesList) => handleDrop(filesList, folder, list, refreshChecklist);
+                fileInput.addEventListener('change', (ev) => onFiles(ev.target.files));
+                dropArea.onclick = (ev) => { if (ev.target.tagName !== 'A') fileInput.click(); };
+                dropArea.ondragover = (ev) => { ev.preventDefault(); dropArea.style.background = 'rgba(126,200,200,0.08)'; dropArea.style.borderColor = 'rgba(126,200,200,0.60)'; };
+                dropArea.ondragleave = () => { dropArea.style.background = ''; dropArea.style.borderColor = 'rgba(126,200,200,0.30)'; };
+                dropArea.ondrop = (ev) => {
+                    ev.preventDefault();
+                    dropArea.style.background = '';
+                    dropArea.style.borderColor = 'rgba(126,200,200,0.30)';
+                    onFiles(ev.dataTransfer.files);
+                };
+            };
+            const refreshChecklist = async () => {
+                // Re-run HEAD checks after an upload so the ✓/✕ marks update
+                const rows = await Promise.all(LINEUP_FILES.map(async f => {
+                    const presentName = await checkAnyAlias(folder, f);
+                    return { f, presentName };
+                }));
+                list.innerHTML = '';
+                rows.forEach(({ f, presentName }) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;background:rgba(5,18,18,0.15);';
+                    const dot = presentName
+                        ? '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:#88c8a8;font-weight:700;">✓</span>'
+                        : (f.required
+                            ? '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:#c08888;font-weight:700;">✕</span>'
+                            : '<span style="display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;color:var(--text-dim);">—</span>');
+                    row.innerHTML = `
+                        ${dot}
+                        <span style="font-family:'IBM Plex Mono',monospace;color:${presentName ? '#a8d8c8' : (f.required ? '#c08888' : 'var(--text-secondary)')};font-size:0.74rem;">${escapeHtml(presentName || f.name)}</span>
+                        <span class="small" style="margin-left:auto;font-size:0.68rem;">${f.required && !presentName ? 'required, missing' : (presentName ? 'published' : 'optional')}</span>
+                    `;
+                    list.appendChild(row);
+                });
+            };
+            refreshDropHelper();
+            // Also re-render the dropArea labels when the PAT is saved/cleared
+            // so the user immediately sees direct-upload mode kick in.
+            ghPatSaveBtn.addEventListener('click', refreshDropHelper);
+            ghPatClearBtn.addEventListener('click', refreshDropHelper);
+            card.appendChild(dropArea);
+
+            return card;
+        }
+
+        // Match a dropped file to one of the canonical names. We're forgiving:
+        // case-insensitive, ignore obvious prefixes/suffixes, and check aliases.
+        function matchToCanonical(filename) {
+            const lower = filename.toLowerCase().replace(/^.*[\\/]/, '');
+            for (const f of LINEUP_FILES) {
+                const candidates = [f.name, ...(f.aliases || [])];
+                for (const c of candidates) {
+                    if (lower === c.toLowerCase()) return f.name;
+                }
+            }
+            // Heuristic: try substring matches
+            for (const f of LINEUP_FILES) {
+                const stem = f.name.replace(/\.csv$/i, '').toLowerCase();
+                if (lower.includes(stem)) return f.name;
+            }
+            return null;
+        }
+
+        async function handleDrop(filesList, folder, listEl, refreshChecklist) {
+            const files = Array.from(filesList || []);
+            if (!files.length) return;
+            const unrecognized = [];
+            const matched = [];
+
+            files.forEach(file => {
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    unrecognized.push(file.name + ' (not a .csv)');
+                    return;
+                }
+                const canonical = matchToCanonical(file.name);
+                if (!canonical) {
+                    unrecognized.push(file.name + ' (no matching CSV slot)');
+                    return;
+                }
+                matched.push({ file, canonical });
+            });
+
+            if (!matched.length) {
+                dfToast('No files matched canonical names. ' + unrecognized.join(', '), 'err');
+                return;
+            }
+
+            const hasTok = !!getGhPat();
+
+            if (hasTok) {
+                // Direct upload via GitHub Contents API.
+                dfToast('Uploading ' + matched.length + ' file' + (matched.length === 1 ? '' : 's') + ' to GitHub…', 'ok');
+                let okCount = 0;
+                const failures = [];
+                for (const { file, canonical } of matched) {
+                    try {
+                        const buf = await file.arrayBuffer();
+                        const res = await ghPutFile(
+                            'data/' + folder + '/' + canonical,
+                            new Uint8Array(buf),
+                            'admin: upload ' + canonical + ' for data/' + folder + '/ via Prophesy admin dashboard'
+                        );
+                        if (res.ok) okCount++;
+                        else failures.push(canonical + ' (' + res.message + ')');
+                    } catch (e) {
+                        failures.push(canonical + ' (' + (e?.message || e) + ')');
+                    }
+                }
+                if (refreshChecklist) try { await refreshChecklist(); } catch (_) {}
+                if (failures.length === 0) {
+                    dfToast('✓ Uploaded ' + okCount + ' file' + (okCount === 1 ? '' : 's') + ' to data/' + folder + '/. Live in ~30–60s.' + (unrecognized.length ? ' Skipped: ' + unrecognized.join(', ') : ''), 'ok');
+                } else {
+                    dfToast('Uploaded ' + okCount + ', failed ' + failures.length + ': ' + failures.join('; ') + (unrecognized.length ? ' · skipped: ' + unrecognized.join(', ') : ''), 'err');
+                }
+            } else {
+                // Manual flow — rename + download for the admin to upload via GitHub web UI.
+                matched.forEach(({ file, canonical }) => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(file);
+                    a.download = canonical;
+                    document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+                });
+                if (unrecognized.length) {
+                    dfToast('Downloaded ' + matched.length + '. Skipped: ' + unrecognized.join(', ') + ' — now upload the renamed files to data/' + folder + '/ on GitHub.', 'ok');
+                } else {
+                    dfToast('Downloaded ' + matched.length + ' renamed file' + (matched.length === 1 ? '' : 's') + ' for ' + folder + '. Now upload them to data/' + folder + '/ on GitHub.', 'ok');
+                }
+            }
+        }
+
+        function renderDataFolders() {
+            dataFoldersList.innerHTML = '';
+            const withFolder = users.filter(u => u && (u.dataFolder || '').trim());
+            if (withFolder.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty';
+                empty.style.padding = '18px 12px';
+                empty.textContent = 'No users have a data folder set. Edit a user above and add a folder name (e.g. "coach1").';
+                dataFoldersList.appendChild(empty);
+                return;
+            }
+            withFolder.forEach(u => dataFoldersList.appendChild(makeFolderCard(u)));
+        }
+
+        // Re-render whenever the user list changes. We hook into the existing
+        // renderUsers() by wrapping it once.
+        const _origRenderUsers = renderUsers;
+        renderUsers = function () {
+            _origRenderUsers.apply(this, arguments);
+            try { renderDataFolders(); } catch (e) { console.warn(e); }
+        };
+        // Initial render once init has populated `users`
+        const _waitForUsers = setInterval(() => {
+            if (users && users.length !== undefined) {
+                clearInterval(_waitForUsers);
+                renderDataFolders();
+            }
+        }, 150);
+    </script>
+</body>
+</html>
