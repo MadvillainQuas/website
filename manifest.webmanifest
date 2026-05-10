@@ -1,0 +1,41 @@
+{
+  "name": "Prophesy Scouting",
+  "short_name": "Prophesy",
+  "description": "Lineup analysis, FIBA live game visualization, and recruitment shortlist for Prophesy Scouting.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a1214",
+  "theme_color": "#5ab8b8",
+  "lang": "en",
+  "categories": ["sports", "productivity"],
+  "icons": [
+    {
+      "src": "logo.jpg",
+      "sizes": "192x192 256x256 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Prophesy Shortlist",
+      "short_name": "Shortlist",
+      "url": "./basketball-analyzer-profiles_9.html",
+      "description": "Recruitment shortlist + player profiles"
+    },
+    {
+      "name": "Lineup Analyzer",
+      "short_name": "Lineups",
+      "url": "./lineup.html",
+      "description": "Dominance + advanced games view"
+    },
+    {
+      "name": "Game Visualizer",
+      "short_name": "GameVis",
+      "url": "./gamevis.html",
+      "description": "Live FIBA box scores, play-by-play and shot charts"
+    }
+  ]
+}

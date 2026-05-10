@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PROPHESY — Admin Dashboard</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#5ab8b8">
+    <link rel="apple-touch-icon" href="logo.jpg">
+    <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
     <script src="gate.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -615,6 +619,32 @@
             <div id="dataFoldersList" style="display:flex;flex-direction:column;gap:14px;margin-top:8px;"></div>
 
             <div class="toast" id="dataFoldersToast" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- ============================================================
+             GAMEVIS COMPETITIONS — schedule URLs that the wrapper feeds
+             to the FIBA Game Visualizer for each competition.
+             ============================================================ -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>GameVis competitions</h2>
+            <div class="sub">// schedule URLs the FIBA Game Visualizer pulls for each competition</div>
+
+            <div class="step">
+                Each competition has a short <code>code</code> (used in the URL <code>?comp=…</code>), a <code>label</code> shown in the dropdown, and one or more FIBA LiveStats <strong>schedule URLs</strong>. When a user picks a competition, the wrapper iterates each URL, fetches the game list, and merges them into one schedule. Add as many schedule URLs as you need (e.g. one per competition phase).
+            </div>
+
+            <div id="gvCompList" style="display:flex; flex-direction:column; gap:14px; margin-top:8px;"></div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                <button class="btn" id="gvCompAddBtn" style="height:36px;">+ Add competition</button>
+                <button class="btn primary" id="gvCompSaveBtn" style="height:36px;">⬆ Publish to repo</button>
+                <button class="btn" id="gvCompDownloadBtn" style="height:36px;">⬇ Download JSON</button>
+                <span id="gvCompStatus" class="small" style="font-family:'IBM Plex Mono', monospace; min-height:18px; align-self:center;"></span>
+            </div>
+
+            <div class="step" style="border-left-color: rgba(220, 175, 90, 0.45); margin-top: 14px;">
+                <strong>How publishing works:</strong> the in-browser editor edits a working copy. Hit <strong>Publish to repo</strong> to commit <code>config/gamevis-competitions.json</code> via your saved GitHub token (set in the GitHub publishing-token card above). If you don't have a token, use <strong>Download JSON</strong> and upload it manually via GitHub's web UI.
+            </div>
         </div>
     </div>
 
@@ -1915,6 +1945,204 @@
                 renderDataFolders();
             }
         }, 150);
+
+        // ============================================================
+        // GAMEVIS COMPETITIONS — schedule URL editor for the wrapper
+        // ----------------------------------------------------------
+        // Reads + writes config/gamevis-competitions.json. Each entry:
+        //   { code, label, scheduleUrls: string[] }
+        // The wrapper (gamevis.html) reads this same file to populate
+        // its competition dropdown, so this admin card is the single
+        // source of truth.
+        // ============================================================
+        const GV_COMP_CONFIG_PATH = 'config/gamevis-competitions.json';
+        const gvCompList     = document.getElementById('gvCompList');
+        const gvCompAddBtn   = document.getElementById('gvCompAddBtn');
+        const gvCompSaveBtn  = document.getElementById('gvCompSaveBtn');
+        const gvCompDownload = document.getElementById('gvCompDownloadBtn');
+        const gvCompStatus   = document.getElementById('gvCompStatus');
+        let gvCompetitions = [];
+
+        function gvSetStatus(msg, kind) {
+            if (!gvCompStatus) return;
+            gvCompStatus.textContent = msg || '';
+            gvCompStatus.style.color = kind === 'ok' ? '#88c8a8'
+                : (kind === 'err' ? '#c08888' : 'var(--text-muted)');
+        }
+
+        function gvNormalizeCode(s) {
+            return String(s || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 16);
+        }
+
+        function gvRenderComps() {
+            gvCompList.innerHTML = '';
+            if (!gvCompetitions.length) {
+                const empty = document.createElement('div');
+                empty.className = 'empty';
+                empty.style.padding = '18px 12px';
+                empty.textContent = 'No competitions yet — click "+ Add competition" to create the first one.';
+                gvCompList.appendChild(empty);
+                return;
+            }
+            gvCompetitions.forEach((c, idx) => gvCompList.appendChild(gvMakeCompCard(c, idx)));
+        }
+
+        function gvMakeCompCard(c, idx) {
+            const card = document.createElement('div');
+            card.style.cssText = 'padding:14px 16px; background: rgba(5,18,18,0.30); border: 1px solid var(--border-subtle); border-radius: 12px; display:flex; flex-direction:column; gap:10px;';
+            card.dataset.idx = String(idx);
+
+            // Top row: code + label + remove
+            const topRow = document.createElement('div');
+            topRow.style.cssText = 'display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;';
+
+            const codeWrap = document.createElement('div');
+            codeWrap.style.cssText = 'flex: 0 0 140px;';
+            codeWrap.innerHTML = '<label style="font-size:0.62rem; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); font-family:\'IBM Plex Mono\', monospace;">Code</label>';
+            const codeInput = document.createElement('input');
+            codeInput.type = 'text';
+            codeInput.value = c.code || '';
+            codeInput.placeholder = 'e.g. SLB';
+            codeInput.style.cssText = 'width:100%; margin-top:3px; padding:8px 10px; background: rgba(5,18,18,0.45); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); font-family:\'IBM Plex Mono\', monospace; font-size: 0.85rem; outline: none; text-transform:uppercase;';
+            codeInput.addEventListener('input', () => {
+                const cleaned = gvNormalizeCode(codeInput.value);
+                if (cleaned !== codeInput.value) codeInput.value = cleaned;
+                gvCompetitions[idx].code = cleaned;
+            });
+            codeWrap.appendChild(codeInput);
+
+            const labelWrap = document.createElement('div');
+            labelWrap.style.cssText = 'flex:1; min-width: 200px;';
+            labelWrap.innerHTML = '<label style="font-size:0.62rem; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); font-family:\'IBM Plex Mono\', monospace;">Label (shown in dropdown)</label>';
+            const labelInput = document.createElement('input');
+            labelInput.type = 'text';
+            labelInput.value = c.label || '';
+            labelInput.placeholder = 'e.g. Super League Basketball';
+            labelInput.style.cssText = 'width:100%; margin-top:3px; padding:8px 10px; background: rgba(5,18,18,0.45); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 0.88rem; outline: none;';
+            labelInput.addEventListener('input', () => { gvCompetitions[idx].label = labelInput.value; });
+            labelWrap.appendChild(labelInput);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn danger';
+            removeBtn.style.cssText = 'height:38px; align-self:flex-end;';
+            removeBtn.textContent = '🗑 Remove';
+            removeBtn.addEventListener('click', () => {
+                if (!confirm('Remove competition "' + (gvCompetitions[idx].code || gvCompetitions[idx].label || '?') + '"? Users with this comp in the URL will get an empty schedule until you re-publish.')) return;
+                gvCompetitions.splice(idx, 1);
+                gvRenderComps();
+            });
+
+            topRow.appendChild(codeWrap);
+            topRow.appendChild(labelWrap);
+            topRow.appendChild(removeBtn);
+
+            // Schedule URLs section
+            const urlsSection = document.createElement('div');
+            urlsSection.innerHTML = '<label style="font-size:0.62rem; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); font-family:\'IBM Plex Mono\', monospace;">Schedule URLs (one per line)</label>';
+            const urlsTextarea = document.createElement('textarea');
+            urlsTextarea.rows = Math.max(2, (Array.isArray(c.scheduleUrls) ? c.scheduleUrls.length : 0) + 1);
+            urlsTextarea.placeholder = 'https://www.superleaguebasketballm.co.uk/?p=9&WHurl=%2Fcompetition%2F41897%2Fschedule';
+            urlsTextarea.value = (c.scheduleUrls || []).join('\n');
+            urlsTextarea.style.cssText = 'width:100%; margin-top:3px; padding:8px 10px; background: rgba(5,18,18,0.45); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); font-family:\'IBM Plex Mono\', monospace; font-size: 0.78rem; outline: none; resize: vertical; line-height:1.5;';
+            urlsTextarea.addEventListener('input', () => {
+                gvCompetitions[idx].scheduleUrls = urlsTextarea.value
+                    .split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            });
+            urlsSection.appendChild(urlsTextarea);
+
+            card.appendChild(topRow);
+            card.appendChild(urlsSection);
+            return card;
+        }
+
+        function gvBuildPayload() {
+            // Validate + dedupe before serialising. Empty rows are dropped.
+            const seen = new Set();
+            const cleaned = [];
+            for (const c of gvCompetitions) {
+                const code = gvNormalizeCode(c.code || '');
+                const label = String(c.label || '').trim();
+                const urls = (c.scheduleUrls || []).map(u => String(u || '').trim()).filter(Boolean);
+                if (!code || seen.has(code)) continue;
+                seen.add(code);
+                cleaned.push({ code, label: label || code, scheduleUrls: urls });
+            }
+            return {
+                _comment: "Competitions registered with the FIBA GameVis viewer. Each entry has a `code` (used in URL ?comp=, must be unique), a `label` (shown in the menu dropdown) and a `scheduleUrls` array of FIBA LiveStats schedule pages. When a user picks a competition, the wrapper iterates each schedule URL, fetches the game list, and merges them. Edit via the admin dashboard's 'GameVis competitions' card and commit via the same PAT used for other admin saves.",
+                competitions: cleaned
+            };
+        }
+
+        async function gvLoadCompetitions() {
+            try {
+                const res = await fetch(GV_COMP_CONFIG_PATH + '?t=' + Date.now(), { cache: 'no-cache' });
+                if (res.ok) {
+                    const j = await res.json();
+                    if (j && Array.isArray(j.competitions)) {
+                        gvCompetitions = j.competitions.map(c => ({
+                            code: c.code || '',
+                            label: c.label || '',
+                            scheduleUrls: Array.isArray(c.scheduleUrls) ? [...c.scheduleUrls] : []
+                        }));
+                    } else {
+                        gvCompetitions = [];
+                    }
+                } else if (res.status === 404) {
+                    gvCompetitions = [];
+                }
+            } catch (e) {
+                console.warn('[GVAdmin] failed to load competitions:', e);
+                gvCompetitions = [];
+            }
+            gvRenderComps();
+        }
+
+        gvCompAddBtn?.addEventListener('click', () => {
+            gvCompetitions.push({ code: '', label: '', scheduleUrls: [] });
+            gvRenderComps();
+            // Focus the code input on the new card
+            const cards = gvCompList.querySelectorAll('div[data-idx]');
+            const last = cards[cards.length - 1];
+            const inp = last && last.querySelector('input[type="text"]');
+            if (inp) inp.focus();
+        });
+
+        gvCompDownload?.addEventListener('click', () => {
+            const payload = gvBuildPayload();
+            const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'gamevis-competitions.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+            gvSetStatus('✓ JSON downloaded — drag into GitHub at config/gamevis-competitions.json', 'ok');
+        });
+
+        gvCompSaveBtn?.addEventListener('click', async () => {
+            if (!getGhPat()) {
+                gvSetStatus('Save a GitHub token in the publishing card above first.', 'err');
+                return;
+            }
+            gvCompSaveBtn.disabled = true;
+            try {
+                gvSetStatus('publishing…');
+                const payload = gvBuildPayload();
+                const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n');
+                const res = await ghPutFile(GV_COMP_CONFIG_PATH, bytes, 'admin: update GameVis competitions');
+                if (res.ok) {
+                    gvSetStatus('✓ Published — live for everyone in ~30–60 s.', 'ok');
+                } else {
+                    gvSetStatus('Publish failed: ' + res.message, 'err');
+                }
+            } catch (e) {
+                gvSetStatus('Publish error: ' + (e?.message || e), 'err');
+            } finally {
+                gvCompSaveBtn.disabled = false;
+            }
+        });
+
+        // Boot
+        gvLoadCompetitions();
     </script>
 </body>
 </html>
