@@ -1,0 +1,2524 @@
+{
+  "_comment": "Prophesy Shortlist save bundle. Created via the Save button in the Shortlist tab.",
+  "_meta": {
+    "name": "SheffieldSharks",
+    "slug": "sheffieldsharks",
+    "savedAt": "2026-05-10T11:25:55.673Z",
+    "savedBy": "sheffieldsharks"
+  },
+  "shortlistedPlayers": {
+    "Owen Dease": {
+      "metrics": {
+        "player": "Owen Dease",
+        "team": "Valparaiso",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Valparaiso",
+      "season": "",
+      "savedAt": 1778317491423,
+      "source": "manual"
+    },
+    "Garry Clark": {
+      "metrics": {
+        "player": "Garry Clark",
+        "team": "Utah State",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Utah State",
+      "season": "",
+      "savedAt": 1778328235139,
+      "source": "manual"
+    },
+    "Jacob Conner": {
+      "metrics": {
+        "player": "Jacob Conner",
+        "team": "Dayton",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Dayton",
+      "season": "",
+      "savedAt": 1778332033846,
+      "source": "manual"
+    },
+    "Paul Otieno": {
+      "metrics": {
+        "player": "Paul Otieno",
+        "team": "Saint Louis",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Saint Louis",
+      "season": "",
+      "savedAt": 1778333161331,
+      "source": "manual"
+    },
+    "Michael Bradley": {
+      "metrics": {
+        "player": "Michael Bradley",
+        "team": "Queluz",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Queluz",
+      "season": "",
+      "savedAt": 1778334923063,
+      "source": "manual"
+    },
+    "Tevin Brewer": {
+      "metrics": {
+        "player": "Tevin Brewer",
+        "team": "Graz",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Graz",
+      "season": "",
+      "savedAt": 1778335303167,
+      "source": "manual"
+    },
+    "DeMarcus Sharp": {
+      "metrics": {
+        "player": "DeMarcus Sharp",
+        "team": "Botev",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Botev",
+      "season": "",
+      "savedAt": 1778335865352,
+      "source": "manual"
+    },
+    "Rayshon Harrison": {
+      "metrics": {
+        "player": "Rayshon Harrison",
+        "team": "G-League",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "G-League",
+      "season": "",
+      "savedAt": 1778336374237,
+      "source": "manual"
+    },
+    "Sam Trunley": {
+      "metrics": {
+        "player": "Sam Trunley",
+        "team": "Newcastle University",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Newcastle University",
+      "season": "",
+      "savedAt": 1778336756739,
+      "source": "manual"
+    },
+    "Sean Trumper": {
+      "metrics": {
+        "player": "Sean Trumper",
+        "team": "NOG",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "NOG",
+      "season": "",
+      "savedAt": 1778337407251,
+      "source": "manual"
+    },
+    "James Okonkwo": {
+      "metrics": {
+        "player": "James Okonkwo",
+        "team": "Utah",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Utah",
+      "season": "",
+      "savedAt": 1778337810713,
+      "source": "manual"
+    },
+    "Zaire Williams": {
+      "metrics": {
+        "player": "Zaire Williams",
+        "team": "Mercer",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Mercer",
+      "season": "",
+      "savedAt": 1778338486768,
+      "source": "manual"
+    },
+    "Jalen Page": {
+      "metrics": {
+        "player": "Jalen Page",
+        "team": "Rostock 2",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Rostock 2",
+      "season": "",
+      "savedAt": 1778339046984,
+      "source": "manual"
+    },
+    "Leland Walker": {
+      "metrics": {
+        "player": "Leland Walker",
+        "team": "Wyoming",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Wyoming",
+      "season": "",
+      "savedAt": 1778339899141,
+      "source": "manual"
+    },
+    "Ben Schweiger": {
+      "metrics": {
+        "player": "Ben Schweiger",
+        "team": "Northern Iowa",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Iowa",
+      "season": "",
+      "savedAt": 1778340698412,
+      "source": "manual"
+    },
+    "Tayshawn Comer": {
+      "metrics": {
+        "player": "Tayshawn Comer",
+        "team": "Nevada",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Nevada",
+      "season": "",
+      "savedAt": 1778340858340,
+      "source": "manual"
+    },
+    "Johnathan Massie": {
+      "metrics": {
+        "player": "Johnathan Massie",
+        "team": "Tirana",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Tirana",
+      "season": "",
+      "savedAt": 1778341278940,
+      "source": "manual"
+    },
+    "Woody Newton": {
+      "metrics": {
+        "player": "Woody Newton",
+        "team": "Horsens",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Horsens",
+      "season": "",
+      "savedAt": 1778341672474,
+      "source": "manual"
+    },
+    "Richie Springs": {
+      "metrics": {
+        "player": "Richie Springs",
+        "team": "Sloga Uppsala",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Sloga Uppsala",
+      "season": "",
+      "savedAt": 1778345922828,
+      "source": "manual"
+    },
+    "Yame Butler": {
+      "metrics": {
+        "player": "Yame Butler",
+        "team": "Butler",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Butler",
+      "season": "",
+      "savedAt": 1778407090958,
+      "source": "manual"
+    },
+    "AJ Smith": {
+      "metrics": {
+        "player": "AJ Smith",
+        "team": "Bradley",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Bradley",
+      "season": "",
+      "savedAt": 1778407256294,
+      "source": "manual"
+    },
+    "Madison Durr": {
+      "metrics": {
+        "player": "Madison Durr",
+        "team": "North Carolina (Wilmington)",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "North Carolina (Wilmington)",
+      "season": "",
+      "savedAt": 1778407833967,
+      "source": "manual"
+    },
+    "Justin Hill": {
+      "metrics": {
+        "player": "Justin Hill",
+        "team": "Neuchatel",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Neuchatel",
+      "season": "",
+      "savedAt": 1778408279879,
+      "source": "manual"
+    },
+    "Sean Smith": {
+      "metrics": {
+        "player": "Sean Smith",
+        "team": "MTSU",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "MTSU",
+      "season": "",
+      "savedAt": 1778408599116,
+      "source": "manual"
+    },
+    "Chandler Jackson": {
+      "metrics": {
+        "player": "Chandler Jackson",
+        "team": "Arkansas State",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Arkansas State",
+      "season": "",
+      "savedAt": 1778409056363,
+      "source": "manual"
+    }
+  },
+  "customProfiles": [
+    {
+      "name": "Owen Dease",
+      "team": "Valparaiso",
+      "createdAt": 1778317491423
+    },
+    {
+      "name": "Garry Clark",
+      "team": "Utah State",
+      "createdAt": 1778328235139
+    },
+    {
+      "name": "Jacob Conner",
+      "team": "Dayton",
+      "createdAt": 1778332033845
+    },
+    {
+      "name": "Paul Otieno",
+      "team": "Saint Louis",
+      "createdAt": 1778333161331
+    },
+    {
+      "name": "Michael Bradley",
+      "team": "Queluz",
+      "createdAt": 1778334923063
+    },
+    {
+      "name": "Tevin Brewer",
+      "team": "Graz",
+      "createdAt": 1778335303167
+    },
+    {
+      "name": "DeMarcus Sharp",
+      "team": "Botev",
+      "createdAt": 1778335865351
+    },
+    {
+      "name": "Rayshon Harrison",
+      "team": "G-League",
+      "createdAt": 1778336374237
+    },
+    {
+      "name": "Sam Trunley",
+      "team": "Newcastle University",
+      "createdAt": 1778336756739
+    },
+    {
+      "name": "Sean Trumper",
+      "team": "NOG",
+      "createdAt": 1778337407250
+    },
+    {
+      "name": "James Okonkwo",
+      "team": "Utah",
+      "createdAt": 1778337810713
+    },
+    {
+      "name": "Zaire Williams",
+      "team": "Mercer",
+      "createdAt": 1778338486768
+    },
+    {
+      "name": "Jalen Page",
+      "team": "Rostock 2",
+      "createdAt": 1778339046984
+    },
+    {
+      "name": "Leland Walker",
+      "team": "Wyoming",
+      "createdAt": 1778339899141
+    },
+    {
+      "name": "Ben Schweiger",
+      "team": "Northern Iowa",
+      "createdAt": 1778340698412
+    },
+    {
+      "name": "Tayshawn Comer",
+      "team": "Nevada",
+      "createdAt": 1778340858340
+    },
+    {
+      "name": "Johnathan Massie",
+      "team": "Tirana",
+      "createdAt": 1778341278940
+    },
+    {
+      "name": "Woody Newton",
+      "team": "Horsens",
+      "createdAt": 1778341672474
+    },
+    {
+      "name": "Richie Springs",
+      "team": "Sloga Uppsala",
+      "createdAt": 1778345922827
+    },
+    {
+      "name": "Yame Butler",
+      "team": "Butler",
+      "createdAt": 1778407090958
+    },
+    {
+      "name": "AJ Smith",
+      "team": "Bradley",
+      "createdAt": 1778407256294
+    },
+    {
+      "name": "Madison Durr",
+      "team": "North Carolina (Wilmington)",
+      "createdAt": 1778407833967
+    },
+    {
+      "name": "Justin Hill",
+      "team": "Neuchatel",
+      "createdAt": 1778408279879
+    },
+    {
+      "name": "Sean Smith",
+      "team": "MTSU",
+      "createdAt": 1778408599116
+    },
+    {
+      "name": "Chandler Jackson",
+      "team": "Arkansas State",
+      "createdAt": 1778409056362
+    }
+  ],
+  "starRatings": {
+    "Owen Dease": 4,
+    "Garry Clark": 3.5,
+    "Jacob Conner": 3,
+    "Paul Otieno": 4,
+    "Michael Bradley": 4,
+    "Tevin Brewer": 3.5,
+    "DeMarcus Sharp": 3,
+    "Rayshon Harrison": 4,
+    "Sam Trunley": 2,
+    "Sean Trumper": 3,
+    "James Okonkwo": 3,
+    "Zaire Williams": 2.5,
+    "Jalen Page": 2.5,
+    "Leland Walker": 4,
+    "Ben Schweiger": 4,
+    "Tayshawn Comer": 4,
+    "Johnathan Massie": 4,
+    "Woody Newton": 3,
+    "Richie Springs": 3,
+    "Yame Butler": 4,
+    "AJ Smith": 3.5,
+    "Madison Durr": 3.5,
+    "Justin Hill": 3.5,
+    "Sean Smith": 3,
+    "Chandler Jackson": 3.5
+  },
+  "playerPositions": {
+    "Owen Dease": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ],
+      "suitability": {
+        "2": 5,
+        "3": 10,
+        "4": 7
+      }
+    },
+    "Garry Clark": {
+      "primary": 5,
+      "secondary": [
+        4
+      ],
+      "suitability": {
+        "4": 5,
+        "5": 10
+      }
+    },
+    "Jacob Conner": {
+      "primary": 4,
+      "secondary": [
+        1,
+        3,
+        5
+      ],
+      "suitability": {
+        "1": 4,
+        "3": 6,
+        "4": 10,
+        "5": 7
+      },
+      "ratingTemplate": "wing"
+    },
+    "Paul Otieno": {
+      "primary": 5,
+      "secondary": [
+        4
+      ],
+      "suitability": {
+        "4": 3,
+        "5": 10
+      }
+    },
+    "Michael Bradley": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
+    },
+    "Tevin Brewer": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
+    },
+    "DeMarcus Sharp": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 8
+      }
+    },
+    "Rayshon Harrison": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 8,
+        "2": 8
+      }
+    },
+    "Sam Trunley": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 6,
+        "2": 10,
+        "3": 3
+      }
+    },
+    "Sean Trumper": {
+      "primary": 4,
+      "secondary": [
+        5
+      ],
+      "suitability": {
+        "3": 3,
+        "4": 10,
+        "5": 5
+      },
+      "ratingTemplate": "wing"
+    },
+    "James Okonkwo": {
+      "primary": 5,
+      "secondary": [],
+      "suitability": {
+        "5": 10
+      }
+    },
+    "Zaire Williams": {
+      "primary": 2,
+      "secondary": [
+        3
+      ],
+      "suitability": {
+        "2": 8,
+        "3": 5
+      }
+    },
+    "Jalen Page": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 6,
+        "2": 10,
+        "3": 2
+      }
+    },
+    "Leland Walker": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 6
+      }
+    },
+    "Ben Schweiger": {
+      "primary": 3,
+      "secondary": [
+        4,
+        5
+      ],
+      "suitability": {
+        "3": 10,
+        "4": 8,
+        "5": 3
+      }
+    },
+    "Tayshawn Comer": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 7
+      }
+    },
+    "Johnathan Massie": {
+      "primary": 2,
+      "secondary": [
+        1,
+        3
+      ],
+      "suitability": {
+        "1": 6,
+        "2": 8,
+        "3": 10,
+        "4": 2
+      }
+    },
+    "Woody Newton": {
+      "primary": 4,
+      "secondary": [
+        3,
+        5
+      ],
+      "suitability": {
+        "3": 6,
+        "4": 10,
+        "5": 4
+      },
+      "ratingTemplate": "wing"
+    },
+    "Richie Springs": {
+      "primary": 4,
+      "secondary": [
+        3,
+        5
+      ],
+      "ratingTemplate": "wing",
+      "suitability": {
+        "3": 3,
+        "4": 10,
+        "5": 8
+      }
+    },
+    "Yame Butler": {
+      "primary": 2,
+      "secondary": [
+        1,
+        3
+      ],
+      "suitability": {
+        "1": 8,
+        "2": 10,
+        "3": 8
+      }
+    },
+    "AJ Smith": {
+      "primary": 3,
+      "secondary": [
+        4,
+        5
+      ],
+      "suitability": {
+        "3": 7,
+        "4": 10,
+        "5": 2
+      }
+    },
+    "Madison Durr": {
+      "primary": 2,
+      "secondary": [
+        1,
+        3
+      ],
+      "suitability": {
+        "1": 8,
+        "2": 8,
+        "3": 5
+      }
+    },
+    "Justin Hill": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 5
+      }
+    },
+    "Sean Smith": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10,
+        "2": 4
+      }
+    },
+    "Chandler Jackson": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 8,
+        "2": 7,
+        "3": 6
+      }
+    }
+  },
+  "scoutReports": {},
+  "scoutingRatings": {
+    "Owen Dease": {
+      "positionGroup": "wing",
+      "physical": {
+        "positional_size": 8,
+        "first_step": 7,
+        "speed_with_ball": 7,
+        "func_wingspan": 7,
+        "func_strength": 5,
+        "vertical_explosiveness": 6,
+        "change_pace": 6,
+        "lateral_mobility": 6,
+        "contact_absorption": 6,
+        "static_strength": 5,
+        "stamina": 6
+      },
+      "off_versatility": {
+        "shot_selection": 6,
+        "post_game": 5,
+        "advantage_creation": 7,
+        "handling_in_traffic": 7,
+        "one_on_one": 7,
+        "court_vision": 6,
+        "pass_timing": 6,
+        "secondary_playmaking": 7,
+        "off_advantage_reading": 7,
+        "foul_grifting": 6,
+        "movement_shooting": 6,
+        "three_catch_shoot": 7,
+        "finishing": 7,
+        "touch": 7,
+        "weak_hand": 6
+      },
+      "def_impact": {
+        "def_rebounding": 6,
+        "onball_def": 7,
+        "switchability": 7,
+        "help_rotations": 7,
+        "passing_lane": 6,
+        "poa_defense": 5,
+        "secondary_rim_protection": 6
+      },
+      "offball_impact": {
+        "spacing_gravity": 7,
+        "off_rebounding": 4,
+        "smart_screens": 5,
+        "cutting": 7,
+        "role_adaptation": 7
+      }
+    },
+    "Garry Clark": {
+      "positionGroup": "big",
+      "physical": {
+        "size": 6,
+        "wingspan": 8,
+        "func_strength": 5,
+        "lateral_mobility": 9,
+        "coordination": 8,
+        "vertical_athleticism": 6,
+        "stamina": 6,
+        "foot_speed": 8
+      },
+      "interior_offense": {
+        "back_basket": 6,
+        "post_sealing": 7,
+        "pnr_roll": 7,
+        "traffic_finishing": 6,
+        "rim_touch": 8,
+        "off_rebounds": 8,
+        "second_chance": 7,
+        "short_roll_decisions": 6,
+        "off_hand": 4,
+        "free_throw": 7
+      },
+      "modern_big": {
+        "pick_pop": 3,
+        "three_point": 2,
+        "dho": 5,
+        "high_post_pass": 5,
+        "reading_help": 5,
+        "closeout_attacks": 6,
+        "floor_spacing": 3
+      },
+      "def_anchor": {
+        "rim_protection": 6,
+        "block_timing": 6,
+        "def_rebounding": 7,
+        "switch_ability": 9,
+        "hedge_show": 8,
+        "drop_defense": 6,
+        "closeout_defense": 8,
+        "foul_avoidance": 8
+      }
+    },
+    "Jacob Conner": {
+      "positionGroup": "wing",
+      "physical": {
+        "size": 10,
+        "positional_size": 9,
+        "first_step": 6,
+        "speed_with_ball": 4,
+        "func_wingspan": 9,
+        "func_strength": 7,
+        "vertical_explosiveness": 7,
+        "lateral_mobility": 6,
+        "contact_absorption": 4,
+        "static_strength": 8,
+        "stamina": 6,
+        "change_pace": 4
+      },
+      "off_versatility": {
+        "shot_selection": 8,
+        "three_catch_shoot": 6,
+        "movement_shooting": 5,
+        "post_game": 5,
+        "finishing": 5,
+        "touch": 5,
+        "advantage_creation": 4,
+        "handling_in_traffic": 7,
+        "one_on_one": 3,
+        "court_vision": 8,
+        "pass_timing": 7,
+        "secondary_playmaking": 7,
+        "off_advantage_reading": 7,
+        "foul_grifting": 5,
+        "weak_hand": 5
+      },
+      "def_impact": {
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switchability": 8,
+        "help_rotations": 8,
+        "passing_lane": 7,
+        "poa_defense": 6,
+        "secondary_rim_protection": 7
+      },
+      "offball_impact": {
+        "spacing_gravity": 7,
+        "off_rebounding": 6,
+        "smart_screens": 6,
+        "cutting": 6,
+        "role_adaptation": 6
+      }
+    },
+    "Paul Otieno": {
+      "positionGroup": "big",
+      "physical": {
+        "size": 7,
+        "wingspan": 8,
+        "func_strength": 8,
+        "lateral_mobility": 8,
+        "coordination": 7,
+        "vertical_athleticism": 7,
+        "foot_speed": 8,
+        "stamina": 6
+      },
+      "interior_offense": {
+        "back_basket": 5,
+        "post_sealing": 6,
+        "pnr_roll": 7,
+        "traffic_finishing": 7,
+        "rim_touch": 6,
+        "off_rebounds": 9,
+        "second_chance": 8,
+        "short_roll_decisions": 6,
+        "off_hand": 5,
+        "free_throw": 8
+      },
+      "modern_big": {
+        "pick_pop": 3,
+        "three_point": 1,
+        "dho": 6,
+        "high_post_pass": 7,
+        "closeout_attacks": 5,
+        "floor_spacing": 1,
+        "reading_help": 5
+      },
+      "def_anchor": {
+        "foul_avoidance": 4,
+        "rim_protection": 7,
+        "block_timing": 8,
+        "boxout": 8,
+        "switch_ability": 7,
+        "hedge_show": 7,
+        "def_communication": 5,
+        "closeout_defense": 6,
+        "drop_defense": 6,
+        "def_rebounding": 8
+      }
+    },
+    "Michael Bradley": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 5,
+        "wingspan": 6,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 7,
+        "lateral_accel": 6,
+        "body_control": 5,
+        "stamina": 6,
+        "physical_strength": 5,
+        "vertical_athleticism": 5
+      },
+      "direction": {
+        "handling_pressure": 8,
+        "pnr_reading": 9,
+        "advantage_creation": 7,
+        "court_vision": 9,
+        "pass_timing": 9,
+        "pass_willingness": 9,
+        "game_control": 7,
+        "pace_mgmt": 9,
+        "punish_coverages": 8,
+        "off_hand": 6,
+        "tertiary_skill": 3
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 5,
+        "three_catch_shoot": 5,
+        "midrange": 5,
+        "rim_finishing": 6,
+        "floater": 6,
+        "touch": 7,
+        "shot_creation": 4,
+        "cutting": 4,
+        "perimeter_movement": 4,
+        "gather_skill": 5,
+        "movement_shooting": 4,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 6,
+        "recovery": 5,
+        "ball_pressure": 7,
+        "anticipation": 5,
+        "offball_def": 5,
+        "onball_def": 6,
+        "def_rebounding": 5,
+        "switching_up": 4
+      }
+    },
+    "Tevin Brewer": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 1,
+        "wingspan": 1,
+        "ball_speed": 7,
+        "first_step": 9,
+        "change_pace": 8,
+        "lateral_accel": 7,
+        "body_control": 7,
+        "stamina": 6,
+        "physical_strength": 3,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 7,
+        "advantage_creation": 9,
+        "court_vision": 7,
+        "pass_timing": 7,
+        "pass_willingness": 6,
+        "game_control": 6,
+        "pace_mgmt": 7,
+        "punish_coverages": 8,
+        "off_hand": 6,
+        "tertiary_skill": 2
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 8,
+        "three_catch_shoot": 7,
+        "midrange": 9,
+        "rim_finishing": 5,
+        "floater": 8,
+        "touch": 6,
+        "shot_creation": 8,
+        "cutting": 3,
+        "perimeter_movement": 6,
+        "gather_skill": 6,
+        "movement_shooting": 8,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 6,
+        "recovery": 4,
+        "ball_pressure": 6,
+        "anticipation": 5,
+        "offball_def": 6,
+        "onball_def": 5,
+        "switching_up": 4,
+        "def_rebounding": 4
+      }
+    },
+    "DeMarcus Sharp": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 7,
+        "wingspan": 7,
+        "ball_speed": 5,
+        "first_step": 6,
+        "change_pace": 7,
+        "lateral_accel": 6,
+        "body_control": 7,
+        "stamina": 6,
+        "physical_strength": 5,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 6,
+        "pnr_reading": 7,
+        "advantage_creation": 6,
+        "court_vision": 6,
+        "pass_willingness": 7,
+        "pass_timing": 7,
+        "game_control": 6,
+        "pace_mgmt": 8,
+        "punish_coverages": 6,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 6,
+        "three_off_dribble": 4,
+        "three_catch_shoot": 6,
+        "midrange": 7,
+        "rim_finishing": 6,
+        "floater": 5,
+        "touch": 7,
+        "shot_creation": 7,
+        "cutting": 6,
+        "perimeter_movement": 5,
+        "gather_skill": 6,
+        "foul_grifting": 7,
+        "movement_shooting": 4
+      },
+      "perimeter_def": {
+        "poa_defense": 6,
+        "recovery": 6,
+        "ball_pressure": 6,
+        "anticipation": 5,
+        "offball_def": 6,
+        "onball_def": 6,
+        "def_rebounding": 7,
+        "switching_up": 6
+      }
+    },
+    "Rayshon Harrison": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 8,
+        "wingspan": 7,
+        "ball_speed": 7,
+        "first_step": 8,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 8,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 8,
+        "pnr_reading": 5,
+        "advantage_creation": 8,
+        "court_vision": 5,
+        "pass_timing": 7,
+        "pass_willingness": 4,
+        "game_control": 6,
+        "pace_mgmt": 8,
+        "punish_coverages": 7,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 4,
+        "three_catch_shoot": 6,
+        "midrange": 8,
+        "rim_finishing": 7,
+        "floater": 7,
+        "touch": 7,
+        "shot_creation": 7,
+        "cutting": 7,
+        "perimeter_movement": 6,
+        "gather_skill": 6,
+        "movement_shooting": 5,
+        "foul_grifting": 6
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 8,
+        "ball_pressure": 8,
+        "anticipation": 7,
+        "offball_def": 7,
+        "onball_def": 8,
+        "def_rebounding": 6,
+        "switching_up": 8
+      }
+    },
+    "Sam Trunley": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 6,
+        "wingspan": 5,
+        "ball_speed": 4,
+        "first_step": 4,
+        "change_pace": 6,
+        "lateral_accel": 5,
+        "body_control": 8,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 4
+      },
+      "direction": {
+        "handling_pressure": 6,
+        "pnr_reading": 6,
+        "advantage_creation": 5,
+        "court_vision": 5,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 5,
+        "pace_mgmt": 7,
+        "punish_coverages": 6,
+        "tertiary_skill": 7,
+        "off_hand": 6
+      },
+      "scoring": {
+        "shot_selection": 6,
+        "three_off_dribble": 7,
+        "three_catch_shoot": 8,
+        "midrange": 6,
+        "rim_finishing": 7,
+        "floater": 6,
+        "touch": 7,
+        "shot_creation": 4,
+        "perimeter_movement": 7,
+        "movement_shooting": 7,
+        "cutting": 7,
+        "gather_skill": 8,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 5,
+        "recovery": 5,
+        "ball_pressure": 6,
+        "offball_def": 6,
+        "def_rebounding": 7,
+        "switching_up": 8,
+        "onball_def": 6,
+        "anticipation": 6
+      }
+    },
+    "Sean Trumper": {
+      "positionGroup": "wing",
+      "physical": {
+        "positional_size": 6,
+        "first_step": 6,
+        "speed_with_ball": 6,
+        "func_wingspan": 6,
+        "func_strength": 7,
+        "vertical_explosiveness": 5,
+        "lateral_mobility": 8,
+        "contact_absorption": 7,
+        "static_strength": 6,
+        "stamina": 6,
+        "change_pace": 7
+      },
+      "off_versatility": {
+        "shot_selection": 6,
+        "three_catch_shoot": 4,
+        "movement_shooting": 1,
+        "post_game": 6,
+        "finishing": 7,
+        "touch": 7,
+        "advantage_creation": 7,
+        "weak_hand": 6,
+        "handling_in_traffic": 7,
+        "one_on_one": 7,
+        "court_vision": 6,
+        "pass_timing": 7,
+        "secondary_playmaking": 7,
+        "off_advantage_reading": 6,
+        "foul_grifting": 8
+      },
+      "def_impact": {
+        "def_rebounding": 7,
+        "onball_def": 8,
+        "switchability": 8,
+        "help_rotations": 7,
+        "passing_lane": 8,
+        "poa_defense": 7,
+        "secondary_rim_protection": 5
+      },
+      "offball_impact": {
+        "spacing_gravity": 3,
+        "off_rebounding": 7,
+        "smart_screens": 6,
+        "cutting": 7,
+        "role_adaptation": 5
+      }
+    },
+    "James Okonkwo": {
+      "positionGroup": "big",
+      "physical": {
+        "size": 7,
+        "wingspan": 7,
+        "func_strength": 9,
+        "lateral_mobility": 6,
+        "coordination": 6,
+        "vertical_athleticism": 7,
+        "stamina": 7,
+        "foot_speed": 7
+      },
+      "interior_offense": {
+        "back_basket": 5,
+        "post_sealing": 6,
+        "pnr_roll": 6,
+        "traffic_finishing": 5,
+        "rim_touch": 4,
+        "off_rebounds": 10,
+        "second_chance": 8,
+        "short_roll_decisions": 6,
+        "off_hand": 4,
+        "free_throw": 6
+      },
+      "modern_big": {
+        "pick_pop": 3,
+        "three_point": 1,
+        "dho": 5,
+        "high_post_pass": 5,
+        "reading_help": 5,
+        "closeout_attacks": 4,
+        "floor_spacing": 1
+      },
+      "def_anchor": {
+        "rim_protection": 7,
+        "block_timing": 8,
+        "hedge_show": 7,
+        "def_rebounding": 10,
+        "drop_defense": 6,
+        "switch_ability": 8,
+        "foul_avoidance": 7,
+        "closeout_defense": 6
+      }
+    },
+    "Zaire Williams": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 7,
+        "wingspan": 5,
+        "ball_speed": 6,
+        "first_step": 7,
+        "change_pace": 6,
+        "lateral_accel": 7,
+        "body_control": 5,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 5
+      },
+      "direction": {
+        "handling_pressure": 4,
+        "pnr_reading": 5,
+        "advantage_creation": 5,
+        "court_vision": 6,
+        "pass_timing": 6,
+        "pass_willingness": 7,
+        "game_control": 4,
+        "pace_mgmt": 7,
+        "punish_coverages": 4,
+        "off_hand": 5,
+        "tertiary_skill": 7
+      },
+      "scoring": {
+        "shot_selection": 7,
+        "three_off_dribble": 7,
+        "three_catch_shoot": 7,
+        "midrange": 6,
+        "rim_finishing": 8,
+        "floater": 4,
+        "touch": 6,
+        "shot_creation": 5,
+        "cutting": 8,
+        "perimeter_movement": 8,
+        "gather_skill": 5,
+        "movement_shooting": 7,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "anticipation": 9,
+        "offball_def": 6,
+        "onball_def": 6,
+        "def_rebounding": 6,
+        "switching_up": 7,
+        "ball_pressure": 7,
+        "recovery": 6,
+        "poa_defense": 6
+      }
+    },
+    "Jalen Page": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 7,
+        "wingspan": 6,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 7,
+        "lateral_accel": 8,
+        "body_control": 4,
+        "stamina": 7,
+        "physical_strength": 4,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 4,
+        "pnr_reading": 5,
+        "advantage_creation": 6,
+        "court_vision": 7,
+        "pass_timing": 5,
+        "pass_willingness": 6,
+        "game_control": 6,
+        "pace_mgmt": 7,
+        "punish_coverages": 6,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 8,
+        "three_catch_shoot": 9,
+        "midrange": 7,
+        "rim_finishing": 5,
+        "floater": 5,
+        "touch": 5,
+        "shot_creation": 6,
+        "cutting": 6,
+        "perimeter_movement": 7,
+        "gather_skill": 4,
+        "movement_shooting": 8,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 7,
+        "ball_pressure": 8,
+        "anticipation": 7,
+        "offball_def": 5,
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switching_up": 5
+      }
+    },
+    "Leland Walker": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 5,
+        "wingspan": 6,
+        "ball_speed": 8,
+        "first_step": 8,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 6,
+        "stamina": 7,
+        "physical_strength": 6,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 8,
+        "pnr_reading": 7,
+        "advantage_creation": 8,
+        "court_vision": 7,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 7,
+        "pace_mgmt": 7,
+        "punish_coverages": 7,
+        "off_hand": 7,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 4,
+        "three_catch_shoot": 5,
+        "midrange": 7,
+        "rim_finishing": 6,
+        "floater": 7,
+        "touch": 7,
+        "shot_creation": 7,
+        "cutting": 6,
+        "perimeter_movement": 6,
+        "gather_skill": 6,
+        "movement_shooting": 4,
+        "foul_grifting": 8
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "ball_pressure": 6,
+        "anticipation": 6,
+        "offball_def": 5,
+        "onball_def": 6,
+        "def_rebounding": 6,
+        "switching_up": 6,
+        "recovery": 6
+      }
+    },
+    "Tayshawn Comer": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 5,
+        "wingspan": 6,
+        "ball_speed": 8,
+        "first_step": 8,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 7,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 8,
+        "pnr_reading": 7,
+        "advantage_creation": 8,
+        "court_vision": 7,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 6,
+        "pace_mgmt": 7,
+        "punish_coverages": 7,
+        "off_hand": 7,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 6,
+        "three_off_dribble": 6,
+        "three_catch_shoot": 7,
+        "midrange": 6,
+        "rim_finishing": 6,
+        "floater": 6,
+        "touch": 6,
+        "shot_creation": 7,
+        "cutting": 6,
+        "perimeter_movement": 7,
+        "gather_skill": 6,
+        "movement_shooting": 7,
+        "foul_grifting": 8
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 7,
+        "ball_pressure": 7,
+        "anticipation": 6,
+        "offball_def": 7,
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switching_up": 6
+      }
+    },
+    "Johnathan Massie": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 8,
+        "wingspan": 8,
+        "ball_speed": 8,
+        "first_step": 8,
+        "change_pace": 8,
+        "lateral_accel": 7,
+        "body_control": 8,
+        "physical_strength": 8,
+        "stamina": 7,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 5,
+        "advantage_creation": 8,
+        "court_vision": 4,
+        "pass_timing": 7,
+        "pass_willingness": 5,
+        "game_control": 4,
+        "pace_mgmt": 6,
+        "punish_coverages": 6,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 4,
+        "three_off_dribble": 5,
+        "three_catch_shoot": 5,
+        "midrange": 6,
+        "rim_finishing": 6,
+        "floater": 6,
+        "touch": 5,
+        "shot_creation": 7,
+        "cutting": 7,
+        "perimeter_movement": 5,
+        "gather_skill": 7,
+        "movement_shooting": 5,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 8,
+        "anticipation": 8,
+        "ball_pressure": 7,
+        "recovery": 6,
+        "offball_def": 5,
+        "onball_def": 7,
+        "def_rebounding": 7,
+        "switching_up": 7
+      }
+    },
+    "Woody Newton": {
+      "positionGroup": "wing",
+      "physical": {
+        "positional_size": 8,
+        "first_step": 7,
+        "speed_with_ball": 7,
+        "func_wingspan": 8,
+        "func_strength": 5,
+        "vertical_explosiveness": 8,
+        "lateral_mobility": 8,
+        "contact_absorption": 5,
+        "static_strength": 5,
+        "stamina": 7,
+        "change_pace": 4
+      },
+      "off_versatility": {
+        "shot_selection": 4,
+        "three_catch_shoot": 6,
+        "movement_shooting": 5,
+        "post_game": 5,
+        "finishing": 6,
+        "touch": 4,
+        "advantage_creation": 5,
+        "weak_hand": 4,
+        "handling_in_traffic": 5,
+        "one_on_one": 5,
+        "court_vision": 2,
+        "pass_timing": 4,
+        "secondary_playmaking": 4,
+        "off_advantage_reading": 5,
+        "foul_grifting": 5
+      },
+      "def_impact": {
+        "def_rebounding": 7,
+        "onball_def": 8,
+        "switchability": 9,
+        "passing_lane": 8,
+        "poa_defense": 8,
+        "secondary_rim_protection": 8,
+        "help_rotations": 5
+      },
+      "offball_impact": {
+        "spacing_gravity": 5,
+        "off_rebounding": 5,
+        "smart_screens": 4,
+        "cutting": 6,
+        "role_adaptation": 6
+      }
+    },
+    "Richie Springs": {
+      "positionGroup": "wing",
+      "physical": {
+        "positional_size": 9,
+        "first_step": 6,
+        "speed_with_ball": 5,
+        "func_wingspan": 8,
+        "func_strength": 8,
+        "vertical_explosiveness": 6,
+        "lateral_mobility": 7,
+        "contact_absorption": 6,
+        "static_strength": 7,
+        "stamina": 7,
+        "change_pace": 5
+      },
+      "off_versatility": {
+        "shot_selection": 6,
+        "three_catch_shoot": 5,
+        "movement_shooting": 4,
+        "post_game": 7,
+        "finishing": 7,
+        "touch": 6,
+        "weak_hand": 5,
+        "advantage_creation": 5,
+        "one_on_one": 6,
+        "handling_in_traffic": 6,
+        "court_vision": 4,
+        "pass_timing": 6,
+        "secondary_playmaking": 4,
+        "off_advantage_reading": 6,
+        "foul_grifting": 6
+      },
+      "def_impact": {
+        "def_rebounding": 7,
+        "onball_def": 7,
+        "switchability": 8,
+        "help_rotations": 6,
+        "passing_lane": 4,
+        "poa_defense": 4,
+        "secondary_rim_protection": 7
+      },
+      "offball_impact": {
+        "spacing_gravity": 4,
+        "off_rebounding": 7,
+        "smart_screens": 5,
+        "cutting": 6,
+        "role_adaptation": 6
+      }
+    },
+    "Yame Butler": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 8,
+        "wingspan": 8,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 7,
+        "physical_strength": 8,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 7,
+        "advantage_creation": 8
+      },
+      "scoring": {
+        "shot_selection": 7,
+        "three_off_dribble": 6,
+        "midrange": 8,
+        "rim_finishing": 7,
+        "three_catch_shoot": 7
+      }
+    },
+    "AJ Smith": {
+      "positionGroup": "wing",
+      "physical": {
+        "positional_size": 8,
+        "first_step": 6,
+        "speed_with_ball": 6,
+        "func_wingspan": 7,
+        "func_strength": 8,
+        "vertical_explosiveness": 7,
+        "lateral_mobility": 7,
+        "contact_absorption": 7,
+        "static_strength": 8,
+        "stamina": 7,
+        "change_pace": 5
+      },
+      "off_versatility": {
+        "three_catch_shoot": 7,
+        "shot_selection": 7,
+        "movement_shooting": 7,
+        "post_game": 7,
+        "finishing": 5,
+        "touch": 5,
+        "one_on_one": 6,
+        "secondary_playmaking": 6,
+        "pass_timing": 6,
+        "court_vision": 5,
+        "weak_hand": 5,
+        "advantage_creation": 5,
+        "handling_in_traffic": 6,
+        "off_advantage_reading": 7,
+        "foul_grifting": 6
+      },
+      "def_impact": {
+        "def_rebounding": 7,
+        "onball_def": 8,
+        "switchability": 8,
+        "help_rotations": 7,
+        "passing_lane": 7,
+        "poa_defense": 6,
+        "secondary_rim_protection": 7
+      },
+      "offball_impact": {
+        "spacing_gravity": 7,
+        "off_rebounding": 6,
+        "smart_screens": 7,
+        "cutting": 7,
+        "role_adaptation": 7
+      }
+    },
+    "Madison Durr": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 8,
+        "ball_speed": 9,
+        "first_step": 8,
+        "wingspan": 7,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 5,
+        "stamina": 7,
+        "physical_strength": 6,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 5,
+        "advantage_creation": 7,
+        "court_vision": 6,
+        "pass_timing": 7,
+        "pass_willingness": 6,
+        "game_control": 5,
+        "pace_mgmt": 4,
+        "punish_coverages": 6,
+        "off_hand": 5,
+        "tertiary_skill": 7
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 4,
+        "three_catch_shoot": 5,
+        "midrange": 5,
+        "rim_finishing": 6,
+        "floater": 5,
+        "touch": 6,
+        "shot_creation": 6,
+        "cutting": 7,
+        "perimeter_movement": 6,
+        "gather_skill": 5,
+        "foul_grifting": 9,
+        "movement_shooting": 4
+      },
+      "perimeter_def": {
+        "poa_defense": 8,
+        "recovery": 7,
+        "ball_pressure": 8,
+        "anticipation": 6,
+        "offball_def": 6,
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switching_up": 7
+      }
+    },
+    "Justin Hill": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 4,
+        "wingspan": 5,
+        "ball_speed": 7,
+        "first_step": 8,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 6,
+        "stamina": 6,
+        "physical_strength": 6,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 9,
+        "pnr_reading": 8,
+        "advantage_creation": 7,
+        "court_vision": 8,
+        "pass_timing": 8,
+        "pass_willingness": 7,
+        "game_control": 8,
+        "pace_mgmt": 8,
+        "punish_coverages": 7,
+        "off_hand": 7,
+        "tertiary_skill": 4
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 5,
+        "three_catch_shoot": 6,
+        "midrange": 5,
+        "rim_finishing": 4,
+        "floater": 4,
+        "touch": 5,
+        "shot_creation": 7,
+        "cutting": 7,
+        "perimeter_movement": 6,
+        "movement_shooting": 6,
+        "gather_skill": 5,
+        "foul_grifting": 8
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 7,
+        "ball_pressure": 8,
+        "anticipation": 7,
+        "offball_def": 7,
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switching_up": 6
+      }
+    },
+    "Sean Smith": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 8,
+        "wingspan": 7,
+        "ball_speed": 5,
+        "first_step": 6,
+        "change_pace": 7,
+        "lateral_accel": 7,
+        "body_control": 6,
+        "stamina": 6,
+        "physical_strength": 6,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 7,
+        "advantage_creation": 6,
+        "court_vision": 7,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 7,
+        "pace_mgmt": 8,
+        "punish_coverages": 7,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 7,
+        "three_off_dribble": 6,
+        "three_catch_shoot": 6,
+        "midrange": 7,
+        "rim_finishing": 5,
+        "floater": 6,
+        "touch": 6,
+        "shot_creation": 6,
+        "cutting": 5,
+        "perimeter_movement": 5,
+        "gather_skill": 5,
+        "movement_shooting": 6,
+        "foul_grifting": 6
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 6,
+        "ball_pressure": 6,
+        "anticipation": 6,
+        "offball_def": 6,
+        "onball_def": 7,
+        "def_rebounding": 7,
+        "switching_up": 7
+      }
+    },
+    "Chandler Jackson": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 9,
+        "wingspan": 8,
+        "ball_speed": 6,
+        "first_step": 7,
+        "change_pace": 7,
+        "lateral_accel": 7,
+        "body_control": 7,
+        "stamina": 7,
+        "physical_strength": 7,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 6,
+        "court_vision": 7,
+        "advantage_creation": 7,
+        "pass_timing": 6,
+        "pass_willingness": 6,
+        "game_control": 7,
+        "pace_mgmt": 7,
+        "punish_coverages": 6,
+        "off_hand": 6,
+        "tertiary_skill": 7
+      },
+      "scoring": {
+        "shot_selection": 7,
+        "three_catch_shoot": 3,
+        "three_off_dribble": 2,
+        "midrange": 3,
+        "rim_finishing": 7,
+        "floater": 6,
+        "touch": 5,
+        "shot_creation": 6,
+        "cutting": 8,
+        "perimeter_movement": 7,
+        "gather_skill": 7,
+        "movement_shooting": 3,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 8,
+        "recovery": 7,
+        "ball_pressure": 7,
+        "anticipation": 7,
+        "offball_def": 7,
+        "onball_def": 7,
+        "def_rebounding": 7,
+        "switching_up": 8
+      }
+    }
+  },
+  "lockedPlayers": {},
+  "playerArchetypes": {
+    "Owen Dease": [
+      "Secondary Wing Creator"
+    ],
+    "Garry Clark": [
+      "Mobile Rim-Roller/Face-Up 5"
+    ],
+    "Jacob Conner": [
+      "Secondary Wing Creator",
+      "Point-Centre"
+    ],
+    "Paul Otieno": [
+      "Mobile Rim-Roller 5"
+    ],
+    "Michael Bradley": [
+      "Pass-First PG"
+    ],
+    "Tevin Brewer": [
+      "Scoring PG"
+    ],
+    "DeMarcus Sharp": [
+      "Mixed Combo-Guard"
+    ],
+    "Rayshon Harrison": [
+      "Scoring Combo-Guard"
+    ],
+    "Sam Trunley": [
+      "Movement Shooting Combo-Guard"
+    ],
+    "Sean Trumper": [
+      "Hand-Off/Face-Up 4/5"
+    ],
+    "James Okonkwo": [
+      "Mobile Boards Crasher 5"
+    ],
+    "Zaire Williams": [
+      "Movement Shooting Wing",
+      "Off-Ball Guard"
+    ],
+    "Jalen Page": [
+      "Movement Shooting Guard"
+    ],
+    "Leland Walker": [
+      "Dual-Threat PG"
+    ],
+    "Ben Schweiger": [
+      "Secondary Wing Creator"
+    ],
+    "Tayshawn Comer": [
+      "Dual-Threat PG"
+    ],
+    "Johnathan Massie": [
+      "Slashing Combo-Guard"
+    ],
+    "Woody Newton": [
+      "3&D Wing"
+    ],
+    "Richie Springs": [
+      "Stretch-4/5"
+    ],
+    "Yame Butler": [
+      "Mixed Combo-Guard"
+    ],
+    "AJ Smith": [
+      "3&D Wing"
+    ],
+    "Madison Durr": [
+      "Slashing Combo-Guard"
+    ],
+    "Justin Hill": [
+      "Dual Threat PG"
+    ],
+    "Sean Smith": [
+      "Dual-Threat PG"
+    ],
+    "Chandler Jackson": [
+      "Passing Combo-Guard"
+    ]
+  },
+  "playerPhysicals": {
+    "Owen Dease": {
+      "height": "6'8\"",
+      "weight": "200"
+    },
+    "Garry Clark": {
+      "height": "6'9\"",
+      "weight": "220"
+    },
+    "Jacob Conner": {
+      "height": "6'10\"",
+      "weight": "220"
+    },
+    "Paul Otieno": {
+      "height": "6'8\"",
+      "weight": "240"
+    },
+    "Michael Bradley": {
+      "height": "6'1\"",
+      "weight": "180"
+    },
+    "Tevin Brewer": {
+      "height": "5'7\"",
+      "weight": "160"
+    },
+    "DeMarcus Sharp": {
+      "height": "6'3\"",
+      "weight": "170"
+    },
+    "Rayshon Harrison": {
+      "height": "6'4\"",
+      "weight": "200"
+    },
+    "Sam Trunley": {
+      "height": "6'2\"",
+      "weight": "205"
+    },
+    "Sean Trumper": {
+      "height": "6'7\"",
+      "weight": "215"
+    },
+    "James Okonkwo": {
+      "height": "6'8\"",
+      "weight": "240"
+    },
+    "Zaire Williams": {
+      "height": "6'4\"",
+      "weight": "200"
+    },
+    "Jalen Page": {
+      "height": "6'4\"",
+      "weight": "195"
+    },
+    "Leland Walker": {
+      "height": "6'1\"",
+      "weight": "195"
+    },
+    "Ben Schweiger": {
+      "height": "6'8\"",
+      "weight": "220"
+    },
+    "Tayshawn Comer": {
+      "height": "6'1\"",
+      "weight": "190"
+    },
+    "Johnathan Massie": {
+      "height": "6'6\"",
+      "weight": "210"
+    },
+    "Woody Newton": {
+      "height": "6'9\"",
+      "weight": "200"
+    },
+    "Richie Springs": {
+      "height": "6'9\"",
+      "weight": "235"
+    },
+    "Yame Butler": {
+      "height": "6'5\"",
+      "weight": "215"
+    },
+    "AJ Smith": {
+      "height": "6'7\"",
+      "weight": "220"
+    },
+    "Madison Durr": {
+      "height": "6'5\"",
+      "weight": "195"
+    },
+    "Justin Hill": {
+      "height": "5'11\"",
+      "weight": "190"
+    },
+    "Sean Smith": {
+      "height": "6'3\"",
+      "weight": "180"
+    },
+    "Chandler Jackson": {
+      "height": "6'5\"",
+      "weight": "200"
+    }
+  },
+  "potentialRatings": {
+    "Owen Dease": 5,
+    "Garry Clark": 4.5,
+    "Jacob Conner": 5,
+    "Paul Otieno": 4.5,
+    "Michael Bradley": 4,
+    "Tevin Brewer": 3.5,
+    "DeMarcus Sharp": 4,
+    "Rayshon Harrison": 5,
+    "Sam Trunley": 3,
+    "Sean Trumper": 4,
+    "James Okonkwo": 4.5,
+    "Zaire Williams": 4,
+    "Jalen Page": 4,
+    "Leland Walker": 4.5,
+    "Ben Schweiger": 5,
+    "Tayshawn Comer": 5,
+    "Johnathan Massie": 5,
+    "Woody Newton": 4,
+    "Richie Springs": 4,
+    "Yame Butler": 5,
+    "AJ Smith": 4.5,
+    "Madison Durr": 4.5,
+    "Justin Hill": 4.5,
+    "Sean Smith": 5,
+    "Chandler Jackson": 5
+  },
+  "playerCoreStats": {
+    "Garry Clark": {
+      "ts_pct": 0
+    }
+  },
+  "playerStrengthsWeaknesses": {
+    "Owen Dease": {
+      "strengths": [
+        {
+          "title": "Secondary PNR Handler Skill",
+          "description": "Owen showcases excellent feel and ability for his size in handling in the PNR, able to create his own shot in a variety of ways."
+        }
+      ],
+      "weaknesses": []
+    }
+  },
+  "playerCeilingFloor": {},
+  "playerAgentContacts": {
+    "Paul Otieno": {
+      "agentName": "Marco Calise",
+      "agency": "Tangram"
+    },
+    "Garry Clark": {
+      "agency": "Players Group"
+    },
+    "Michael Bradley": {
+      "agentName": "Nik Lawry",
+      "agency": "Vantage"
+    },
+    "Johnathan Massie": {
+      "agency": "Ten10 Agency"
+    }
+  },
+  "playerLeagueLevel": {
+    "Owen Dease": {
+      "league": "MVC",
+      "level": "High Mid Major"
+    },
+    "Garry Clark": {
+      "league": "MWC",
+      "level": "Top Mid Major"
+    },
+    "Jacob Conner": {
+      "league": "A10",
+      "level": "Top Mid Major"
+    },
+    "Paul Otieno": {
+      "league": "A10",
+      "level": "Top Mid Major"
+    },
+    "Michael Bradley": {
+      "league": "Portugal",
+      "level": "Lower Mid-Tier Europe"
+    },
+    "Tevin Brewer": {
+      "league": "Austria",
+      "level": "Lowest Mid-Tier Europe"
+    },
+    "DeMarcus Sharp": {
+      "league": "Bulgaria",
+      "level": "Lower Mid-Tier Europe"
+    },
+    "Rayshon Harrison": {
+      "league": "G-League",
+      "level": ""
+    },
+    "Sam Trunley": {
+      "league": "BCB",
+      "level": "Semi-Pro Europe"
+    },
+    "Sean Trumper": {
+      "league": "Denmark",
+      "level": "Lower Mid-Tier Europe"
+    },
+    "James Okonkwo": {
+      "league": "",
+      "level": "High Major"
+    },
+    "Zaire Williams": {
+      "league": "SoCon",
+      "level": "Solid Mid-Major"
+    },
+    "Jalen Page": {
+      "league": "ProB Germany",
+      "level": "Low-Tier Europe"
+    },
+    "Leland Walker": {
+      "league": "MWC",
+      "level": "Top Mid-Major"
+    },
+    "Ben Schweiger": {
+      "league": "MVC",
+      "level": "High Mid-Major"
+    },
+    "Tayshawn Comer": {
+      "league": "MWC",
+      "level": "Top Mid-Major"
+    },
+    "Johnathan Massie": {
+      "league": "Albania",
+      "level": "Low-Tier Europe"
+    },
+    "Woody Newton": {
+      "league": "Denmark",
+      "level": "Lower Mid-Tier Europe"
+    },
+    "Richie Springs": {
+      "league": "Sweden",
+      "level": "Mid-Tier Europe"
+    },
+    "Yame Butler": {
+      "league": "Big East",
+      "level": "High Major"
+    },
+    "AJ Smith": {
+      "league": "MVC",
+      "level": "High Mid Major"
+    },
+    "Madison Durr": {
+      "league": "CAA",
+      "level": "Solid Mid Major"
+    },
+    "Justin Hill": {
+      "league": "Switzerland",
+      "level": "Low Mid-Tier Europe"
+    },
+    "Sean Smith": {
+      "league": "Conference USA",
+      "level": "Solid/High Mid Major"
+    },
+    "Chandler Jackson": {
+      "league": "Sun Belt",
+      "level": "Solid Mid Major"
+    }
+  },
+  "playerDomestic": {
+    "Sam Trunley": true,
+    "Sean Trumper": true,
+    "James Okonkwo": true
+  },
+  "coachShortlist": {
+    "1": [],
+    "2": [],
+    "3": [],
+    "4": [],
+    "5": [],
+    "unranked": []
+  },
+  "depthChart": {
+    "1": [
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      }
+    ],
+    "2": [
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      }
+    ],
+    "3": [
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      }
+    ],
+    "4": [
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      }
+    ],
+    "5": [
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      },
+      {
+        "name": "",
+        "status": "signed"
+      }
+    ]
+  },
+  "playerVideos": {
+    "Garry Clark": {
+      "url": "",
+      "file": {
+        "name": "garryclark.mp4",
+        "size": 141062462,
+        "savedAt": 1778328407559,
+        "blobId": "vid_moyatgtk_d8no46u",
+        "type": "video/mp4"
+      }
+    }
+  }
+}
