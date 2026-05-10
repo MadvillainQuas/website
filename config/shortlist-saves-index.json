@@ -1,0 +1,12 @@
+{
+  "_comment": "Index of every saved Prophesy Shortlist snapshot. Auto-maintained by the Save button in the Prophesy Shortlist tab. Each save is a separate file at data/shortlist-saves/<slug>.json containing the full bundled state at the time of save.",
+  "saves": [
+    {
+      "name": "SheffieldSharks",
+      "slug": "sheffieldsharks",
+      "savedAt": "2026-05-10T11:25:55.673Z",
+      "savedBy": "sheffieldsharks",
+      "file": "data/shortlist-saves/sheffieldsharks.json"
+    }
+  ]
+}
