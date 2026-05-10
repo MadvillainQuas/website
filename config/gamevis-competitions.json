@@ -1,0 +1,18 @@
+{
+  "_comment": "Competitions registered with the FIBA GameVis viewer. Each entry has a `code` (used in URL ?comp=, must be unique), a `label` (shown in the menu dropdown) and a `scheduleUrls` array of FIBA LiveStats schedule pages. When a user picks a competition, the wrapper iterates each schedule URL, fetches the game list, and merges them. Edit via the admin dashboard's 'GameVis competitions' card and commit via the same PAT used for other admin saves.",
+  "competitions": [
+    {
+      "code": "SLB",
+      "label": "SLB",
+      "scheduleUrls": [
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fschedule%3FphaseName%3DRegular%20season%26poolNumber%3D0%26matchType%3DREGULAR%26roundNumber%3D-1%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F47714%2Fschedule%3FphaseName%3DSemi-Finals%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F47714%2Fschedule%3FphaseName%3DQuarter%20Finals%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F47714%2Fschedule%3FphaseName%3DQualifier%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F47714%2Fschedule%3FphaseName%3DFinal%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F48758%2Fschedule%3FphaseName%3DQuarter%20Finals%26",
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fcompetition%2F48758%2Fschedule%3FphaseName%3DSemi-Finals%26"
+      ]
+    }
+  ]
+}
