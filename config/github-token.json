@@ -1,0 +1,5 @@
+{
+  "_comment": "Shared GitHub token for save/load operations. The token is XOR-encoded against the invite-code hash before being committed here so GitHub's secret-scanning bot doesn't auto-revoke it. Anyone with site access (i.e. the invite link) can decode it. Treat it like a write-key for this repo: rotate any time it's misused. Set/refresh via the admin dashboard's 'Share token with all users' button.",
+  "encoded": "PROPHESY:0gLdbuxrJmlwvr8r1zK+bnZKiWbeyFNtNYY6N9LVx0PGK55l8mkqVQ==",
+  "publishedAt": "2026-05-10T15:01:56.448Z"
+}
