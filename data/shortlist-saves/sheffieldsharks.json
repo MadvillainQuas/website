@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-10T12:32:19.688Z",
+    "savedAt": "2026-05-10T15:17:02.644Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -492,6 +492,24 @@
       "season": "",
       "savedAt": 1778415908319,
       "source": "manual"
+    },
+    "Quimari Peterson": {
+      "metrics": {
+        "player": "Quimari Peterson",
+        "team": "Washington",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Washington",
+      "season": "",
+      "savedAt": 1778426006331,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -629,6 +647,11 @@
       "name": "Troy Glover II",
       "team": "Bowling Green",
       "createdAt": 1778415908318
+    },
+    {
+      "name": "Quimari Peterson",
+      "team": "Washington",
+      "createdAt": 1778426006331
     }
   ],
   "starRatings": {
@@ -944,6 +967,16 @@
       "suitability": {
         "4": 3,
         "5": 10
+      }
+    },
+    "Quimari Peterson": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 6,
+        "2": 10
       }
     }
   },
@@ -2273,6 +2306,9 @@
     ],
     "Troy Glover II": [
       "Mobile Rim-Roller 5"
+    ],
+    "Quimari Peterson": [
+      "Scoring Combo-Guard"
     ]
   },
   "playerPhysicals": {
@@ -2383,6 +2419,10 @@
     "Troy Glover II": {
       "height": "6'10\"",
       "weight": "225"
+    },
+    "Quimari Peterson": {
+      "height": "6'1\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -2555,7 +2595,15 @@
     "Troy Glover II": {
       "league": "MAC",
       "level": "Lower Mid Major"
+    },
+    "Quimari Peterson": {
+      "league": "Big 10",
+      "level": "High Major"
     }
+  },
+  "playerSalaries": {
+    "Garry Clark": "Yes",
+    "Quimari Peterson": "4-6k"
   },
   "playerDomestic": {
     "Sam Trunley": true,
@@ -2588,7 +2636,7 @@
     "2": [
       {
         "name": "",
-        "status": "signed"
+        "status": "unsigned"
       },
       {
         "name": "",
