@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-10T23:15:57.942Z",
+    "savedAt": "2026-05-10T23:21:47.227Z",
     "savedBy": "admin"
   },
   "shortlistedPlayers": {
@@ -510,6 +510,24 @@
       "season": "",
       "savedAt": 1778426006331,
       "source": "manual"
+    },
+    "Camryn Weston": {
+      "metrics": {
+        "player": "Camryn Weston",
+        "team": "Keravnos",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Keravnos",
+      "season": "",
+      "savedAt": 1778455184289,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -652,6 +670,11 @@
       "name": "Quimari Peterson",
       "team": "Washington",
       "createdAt": 1778426006331
+    },
+    {
+      "name": "Camryn Weston",
+      "team": "Keravnos",
+      "createdAt": 1778455184289
     }
   ],
   "starRatings": {
@@ -681,7 +704,8 @@
     "Sean Smith": 3,
     "Chandler Jackson": 3.5,
     "Sincere Malone": 3,
-    "Troy Glover II": 3.5
+    "Troy Glover II": 3.5,
+    "Camryn Weston": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -978,6 +1002,12 @@
         "1": 6,
         "2": 10
       }
+    },
+    "Camryn Weston": {
+      "primary": 1,
+      "secondary": [
+        2
+      ]
     }
   },
   "scoutReports": {},
@@ -2309,6 +2339,9 @@
     ],
     "Quimari Peterson": [
       "Scoring Combo-Guard"
+    ],
+    "Camryn Weston": [
+      "Mixed Combo-Guard"
     ]
   },
   "playerPhysicals": {
@@ -2423,6 +2456,10 @@
     "Quimari Peterson": {
       "height": "6'1\"",
       "weight": "190"
+    },
+    "Camryn Weston": {
+      "height": "6'3\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -2452,7 +2489,8 @@
     "Sean Smith": 5,
     "Chandler Jackson": 5,
     "Sincere Malone": 4,
-    "Troy Glover II": 5
+    "Troy Glover II": 5,
+    "Camryn Weston": 4.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -2599,11 +2637,16 @@
     "Quimari Peterson": {
       "league": "Big 10",
       "level": "High Major"
+    },
+    "Camryn Weston": {
+      "league": "Cyprus",
+      "level": "Mid-Tier Europe"
     }
   },
   "playerSalaries": {
     "Garry Clark": "Yes",
-    "Quimari Peterson": "4-6k"
+    "Quimari Peterson": "4-6k",
+    "Camryn Weston": "4-6k"
   },
   "playerDomestic": {
     "Sam Trunley": true,
