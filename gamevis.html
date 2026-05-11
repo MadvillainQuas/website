@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROPHESY — Game Visualizer</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#5ab8b8">
+    <link rel="apple-touch-icon" href="logo.jpg">
+    <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+
+    <!-- Site invite gate (synchronous; hides page until verified) -->
+    <script src="gate.js"></script>
+
+    <!-- Auth/session bootstrap: kick unauthenticated visitors back to sign-in -->
+    <script>
+        (function () {
+            try {
+                var raw = sessionStorage.getItem('prophesy_auth_v2');
+                if (!raw) { window.location.replace('index.html'); return; }
+                var s = JSON.parse(raw);
+                if (!s || !s.username) { window.location.replace('index.html'); return; }
+            } catch (e) { window.location.replace('index.html'); }
+        })();
+    </script>
+
+    <!-- Site nav strip across the top -->
+    <script src="topnav.js" defer></script>
+
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; background: #0a1214; overflow: hidden; }
+        body {
+            padding-top: 5px;
+            font-family: 'Space Grotesk', -apple-system, Segoe UI, Roboto, sans-serif;
+            color: #d0e8e0;
+        }
+
+        /* ============================================================
+           OVERLAY BAR — sits between the top nav (5px hint) and the
+           iframe. Holds the competition picker, manual-URL toggle,
+           and live-mode toggle. Collapses to a slim hint on mobile.
+           ============================================================ */
+        :root {
+            --gv-bar-h: 56px;
+            --gv-accent: #5ab8b8;
+        }
+        @media (max-width: 720px) { :root { --gv-bar-h: 92px; } }
+
+        #gv-bar {
+            position: fixed; top: 5px; left: 0; right: 0;
+            min-height: var(--gv-bar-h);
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 14px;
+            background: rgba(8, 16, 18, 0.92);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(126, 200, 200, 0.18);
+            font-family: inherit; font-size: 0.78rem;
+            z-index: 9990;
+            flex-wrap: wrap;
+        }
+        .gv-tab-row { display: inline-flex; gap: 4px; }
+        .gv-tab {
+            padding: 6px 12px; font-size: 0.74rem; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase;
+            background: transparent; color: #7ea8a0;
+            border: 1px solid rgba(126, 200, 200, 0.20);
+            border-radius: 999px; cursor: pointer; font-family: inherit;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .gv-tab:hover { color: #d0e8e0; border-color: rgba(126, 200, 200, 0.40); }
+        .gv-tab.active {
+            background: rgba(94, 184, 184, 0.16);
+            color: #a8d8c8;
+            border-color: rgba(126, 200, 200, 0.55);
+        }
+        .gv-comp-row {
+            display: inline-flex; align-items: center; gap: 8px;
+            min-width: 0; flex: 1 1 320px;
+        }
+        .gv-comp-row label {
+            font-size: 0.62rem; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; color: #4a7872;
+            white-space: nowrap;
+        }
+        .gv-select {
+            flex: 1; min-width: 0;
+            padding: 6px 28px 6px 10px;
+            background: rgba(5, 18, 18, 0.45);
+            border: 1px solid rgba(126, 200, 200, 0.30);
+            border-radius: 8px;
+            color: #d0e8e0;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            outline: none; cursor: pointer;
+            appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237ea8a0'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+        .gv-input {
+            flex: 1; min-width: 0;
+            padding: 8px 12px;
+            background: rgba(5, 18, 18, 0.45);
+            border: 1px solid rgba(126, 200, 200, 0.30);
+            border-radius: 8px;
+            color: #d0e8e0;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            outline: none;
+        }
+        .gv-btn {
+            padding: 7px 14px; font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase;
+            background: linear-gradient(135deg, rgba(94, 184, 184, 0.30), rgba(94, 168, 138, 0.22));
+            border: 1px solid rgba(126, 200, 200, 0.5);
+            border-radius: 8px; color: #a8d8c8;
+            cursor: pointer; font-family: inherit;
+            white-space: nowrap;
+        }
+        .gv-btn:hover { background: linear-gradient(135deg, rgba(94, 184, 184, 0.45), rgba(94, 168, 138, 0.33)); }
+        .gv-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+        .gv-toggle {
+            padding: 6px 12px; font-size: 0.7rem; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase;
+            background: transparent; color: #4a7872;
+            border: 1px solid rgba(126, 200, 200, 0.25);
+            border-radius: 999px; cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .gv-toggle.on {
+            background: rgba(74, 222, 128, 0.16);
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.55);
+        }
+        .gv-toggle .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(126, 200, 200, 0.30);
+        }
+        .gv-toggle.on .dot {
+            background: #4ade80;
+            box-shadow: 0 0 6px rgba(74, 222, 128, 0.85);
+            animation: gv-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes gv-pulse { 50% { opacity: 0.55; } }
+
+        .gv-comp-meta {
+            font-size: 0.66rem; color: #4a7872;
+            font-family: 'IBM Plex Mono', monospace;
+            white-space: nowrap;
+        }
+
+        /* ============================================================
+           IFRAME
+           ============================================================ */
+        #gv-frame {
+            display: block;
+            position: fixed;
+            top: calc(5px + var(--gv-bar-h));
+            left: 0; right: 0; bottom: 0;
+            width: 100%;
+            height: calc(100vh - 5px - var(--gv-bar-h));
+            border: 0;
+            background: #0a1214;
+        }
+
+        /* Status pill — same look as lineup.html for consistency */
+        #gv-status {
+            position: fixed; left: 50%; bottom: 18px;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(8, 16, 18, 0.92);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(126, 200, 200, 0.35);
+            color: #a8d8c8;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.74rem;
+            z-index: 9991;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
+        #gv-status.show { opacity: 1; }
+        #gv-status.err { color: #c08888; border-color: rgba(192, 136, 136, 0.45); }
+        #gv-status.ok  { color: #88c8a8; border-color: rgba(136, 200, 168, 0.45); }
+
+        /* Top bar: hidden until the splash dismisses. */
+        #gv-bar.gv-bar-hidden { display: none !important; }
+        #gv-frame.gv-frame-hidden { display: none !important; }
+        body.gv-app-mode #gv-frame { top: calc(5px + var(--gv-bar-h)); height: calc(100vh - 5px - var(--gv-bar-h)); }
+        body:not(.gv-app-mode) #gv-frame { top: 0; height: 100vh; }
+
+        /* Mobile compactness for the slim post-splash bar */
+        @media (max-width: 720px) {
+            #gv-bar { padding: 8px; gap: 8px; }
+            .gv-comp-row { flex: 1 1 100%; }
+            .gv-live-cluster { flex: 1 1 100%; justify-content: flex-start; }
+            .gv-comp-meta { display: none; }
+        }
+
+        /* ============================================================
+           SPLASH — full-screen landing with animated title + 2 cards
+           ============================================================ */
+        .gv-splash {
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            padding: 32px 20px;
+            z-index: 10000;
+            background: #060d10;
+            overflow: auto;
+            transition: opacity 0.45s ease, transform 0.45s ease;
+        }
+        .gv-splash.gv-splash-leaving {
+            opacity: 0;
+            transform: scale(1.02);
+            pointer-events: none;
+        }
+        .gv-splash[aria-hidden="true"] { display: none !important; }
+
+        /* Animated background — soft glowing gradient */
+        .gv-splash-bg {
+            position: absolute; inset: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 90% 70% at 18% 12%, rgba(94, 184, 184, 0.18), transparent 55%),
+                radial-gradient(ellipse 70% 50% at 82% 88%, rgba(168, 100, 200, 0.10), transparent 55%),
+                radial-gradient(ellipse 60% 40% at 50% 50%, rgba(94, 168, 138, 0.08), transparent 60%);
+            opacity: 0;
+            animation: gv-splash-bg-in 1.4s ease 0.05s forwards;
+        }
+        @keyframes gv-splash-bg-in {
+            from { opacity: 0; transform: scale(1.05); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .gv-splash-stage {
+            position: relative; z-index: 1;
+            max-width: 940px; width: 100%;
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center;
+        }
+
+        .gv-splash-brand {
+            display: inline-flex; align-items: center; gap: 12px;
+            margin-bottom: 22px;
+            opacity: 0;
+            animation: gv-splash-brand-in 0.7s ease 0.1s forwards;
+        }
+        .gv-splash-brand img {
+            width: 36px; height: 36px;
+            border-radius: 9px; object-fit: cover;
+        }
+        .gv-splash-eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem; font-weight: 700;
+            letter-spacing: 0.45em;
+            color: #7ea8a0;
+        }
+        @keyframes gv-splash-brand-in {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .gv-splash-title {
+            margin: 0;
+            font-family: 'Space Grotesk', -apple-system, sans-serif;
+            font-size: clamp(48px, 8.5vw, 110px);
+            font-weight: 700;
+            line-height: 1.02;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #d8f0e8 0%, #5ab8b8 55%, #88c8a8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            opacity: 0;
+            transform: translateY(36px) scale(0.92);
+            animation: gv-splash-title-in 1.1s cubic-bezier(0.18, 0.9, 0.28, 1.05) 0.18s forwards;
+        }
+        @keyframes gv-splash-title-in {
+            0%   { opacity: 0; transform: translateY(36px) scale(0.92); filter: blur(8px); }
+            55%  { opacity: 1; }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .gv-splash-sub {
+            max-width: 620px;
+            margin: 18px 0 36px;
+            font-size: clamp(14px, 1.6vw, 17px);
+            line-height: 1.55;
+            color: #9bbcb6;
+            opacity: 0;
+            animation: gv-splash-fade-in 0.9s ease 0.55s forwards;
+        }
+        @keyframes gv-splash-fade-in { to { opacity: 1; } }
+
+        .gv-splash-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 18px;
+            width: 100%;
+            opacity: 0;
+            animation: gv-splash-fade-in 1s ease 0.75s forwards;
+        }
+        .gv-splash-card {
+            text-align: left;
+            padding: 22px 22px 20px;
+            background: rgba(8, 22, 24, 0.70);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(126, 200, 200, 0.20);
+            border-radius: 18px;
+            transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .gv-splash-card:hover {
+            border-color: rgba(126, 200, 200, 0.55);
+            transform: translateY(-2px);
+            background: rgba(12, 28, 30, 0.80);
+        }
+        .gv-splash-card-icon {
+            font-size: 28px; line-height: 1;
+        }
+        .gv-splash-card-title {
+            font-size: 1.02rem; font-weight: 700;
+            color: #d8f0e8;
+            letter-spacing: 0.06em;
+        }
+        .gv-splash-card-sub {
+            font-size: 0.82rem; line-height: 1.55;
+            color: #7ea8a0;
+        }
+        .gv-splash-card-sub code {
+            background: rgba(5, 18, 18, 0.55);
+            border: 1px solid rgba(126, 200, 200, 0.20);
+            padding: 1px 6px; border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: #a8d8c8;
+        }
+        .gv-splash-card-body {
+            display: flex; gap: 8px;
+            align-items: center;
+            margin-top: 6px;
+        }
+        .gv-splash-card-body .gv-select,
+        .gv-splash-card-body .gv-input { flex: 1; min-width: 0; }
+        .gv-splash-card-meta {
+            font-size: 0.72rem;
+            color: #4a7872;
+            font-family: 'IBM Plex Mono', monospace;
+            min-height: 16px;
+        }
+        .gv-btn-large {
+            padding: 12px 18px;
+            font-size: 0.78rem;
+            min-height: 44px;
+            white-space: nowrap;
+        }
+        .gv-splash-status {
+            margin-top: 18px;
+            min-height: 22px;
+            font-size: 0.82rem;
+            color: #88c8a8;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .gv-splash-status.err { color: #c08888; }
+
+        @media (max-width: 600px) {
+            .gv-splash-cards { grid-template-columns: 1fr; }
+            .gv-splash-card-body { flex-wrap: wrap; }
+            .gv-splash-card-body .gv-btn-large { width: 100%; }
+        }
+
+        /* ============================================================
+           LOADING OVERLAY — spinner + status. Sits above the iframe
+           but below the splash (so splash → loading → app order).
+           ============================================================ */
+        .gv-loading {
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(6, 13, 16, 0.90);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 9500;
+            transition: opacity 0.25s ease;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .gv-loading[aria-hidden="true"] {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .gv-loading-stage {
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center;
+            padding: 0 20px;
+            max-width: 420px;
+        }
+        .gv-spinner {
+            width: 64px; height: 64px;
+            border: 4px solid rgba(126, 200, 200, 0.16);
+            border-top-color: #5ab8b8;
+            border-right-color: #88c8a8;
+            border-radius: 50%;
+            animation: gv-spin 0.85s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+        }
+        @keyframes gv-spin { to { transform: rotate(360deg); } }
+        .gv-loading-msg {
+            margin-top: 22px;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #d8f0e8;
+            font-family: 'Space Grotesk', -apple-system, sans-serif;
+        }
+        .gv-loading-sub {
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: #7ea8a0;
+            font-family: 'IBM Plex Mono', monospace;
+            min-height: 18px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================
+         SPLASH — animated landing screen shown on first visit (or any
+         time the user clicks "Switch" in the top bar). Auto-skips when
+         the URL has ?comp= or ?game= set so deep-links go straight to
+         the app. Two cards: pick a competition, or paste a manual URL.
+         ============================================================ -->
+    <div id="gv-splash" class="gv-splash" aria-hidden="false">
+        <div class="gv-splash-bg"></div>
+        <div class="gv-splash-stage">
+            <div class="gv-splash-brand">
+                <img src="logo.jpg" alt="" onerror="this.style.display='none'" />
+                <span class="gv-splash-eyebrow">PROPHESY</span>
+            </div>
+            <h1 class="gv-splash-title">Game Visualizer</h1>
+            <p class="gv-splash-sub">Live FIBA box scores, shot charts &amp; play-by-play — straight from the LiveStats API.</p>
+
+            <div class="gv-splash-cards">
+                <!-- Competition card -->
+                <div class="gv-splash-card">
+                    <div class="gv-splash-card-icon">📊</div>
+                    <div class="gv-splash-card-title">Pick a competition</div>
+                    <div class="gv-splash-card-sub">Loads every game from the schedule pages your admin set up.</div>
+                    <div class="gv-splash-card-body">
+                        <select id="gv-splash-comp" class="gv-select" style="font-size: 0.86rem; padding: 12px 28px 12px 14px;">
+                            <option value="">Loading competitions…</option>
+                        </select>
+                        <button type="button" id="gv-splash-comp-go" class="gv-btn gv-btn-large">→ Open</button>
+                    </div>
+                    <div id="gv-splash-comp-meta" class="gv-splash-card-meta"></div>
+                </div>
+
+                <!-- Manual URL card -->
+                <div class="gv-splash-card">
+                    <div class="gv-splash-card-icon">🔗</div>
+                    <div class="gv-splash-card-title">Manual URL</div>
+                    <div class="gv-splash-card-sub">Paste a FIBA LiveStats game URL — works with <code>bs.html</code> or <code>data.json</code> links.</div>
+                    <div class="gv-splash-card-body" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <input id="gv-splash-url" type="text" class="gv-input"
+                               placeholder="https://fibalivestats.dcd.shared.geniussports.com/u/SLB/12345/bs.html"
+                               autocomplete="off" spellcheck="false"
+                               style="font-size: 0.86rem; padding: 12px 14px;" />
+                        <button type="button" id="gv-splash-url-go" class="gv-btn gv-btn-large" style="align-self: flex-end;">→ Load game</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="gv-splash-status" class="gv-splash-status" role="status" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         APP TOP BAR — shown after the splash dismisses. Slim, holds
+         the active competition + Live mode + a "Switch" button that
+         re-opens the splash. The Manual URL flow lives on the splash
+         (and on the app bar via the Switch button → splash card).
+         ============================================================ -->
+    <div id="gv-bar" class="gv-bar-hidden">
+        <button type="button" id="gv-switch" class="gv-toggle" title="Pick a different competition or paste a new game URL">↩ Switch</button>
+
+        <div class="gv-comp-row">
+            <label for="gv-comp-select">Active</label>
+            <select id="gv-comp-select" class="gv-select"><option value="">Loading…</option></select>
+            <button type="button" id="gv-comp-load" class="gv-btn" title="Reload the schedule pages for the current competition">↻ Reload</button>
+            <span class="gv-comp-meta" id="gv-comp-meta"></span>
+        </div>
+
+        <div class="gv-live-cluster">
+            <button type="button" id="gv-live-toggle" class="gv-toggle" title="Auto-refresh the active game using the FIBA JSON API. Updates only redraw when something has actually changed.">
+                <span class="dot"></span><span>Live</span>
+            </button>
+            <select id="gv-live-interval" class="gv-select" title="How often to re-poll the FIBA JSON API while Live is on" style="width:auto; min-width:78px; padding:6px 24px 6px 8px; font-size: 0.7rem;">
+                <option value="5">5 s</option>
+                <option value="10" selected>10 s</option>
+                <option value="20">20 s</option>
+                <option value="30">30 s</option>
+                <option value="60">60 s</option>
+            </select>
+            <span id="gv-live-last" class="gv-comp-meta" style="white-space: nowrap;"></span>
+        </div>
+    </div>
+
+    <iframe id="gv-frame"
+            src="GAMEVIS_with_ShotChart_v2_6.html?embedded=1"
+            title="FIBA Game Visualizer"
+            allow="clipboard-write; fullscreen"></iframe>
+
+    <!-- ============================================================
+         LOADING OVERLAY — full-screen spinner shown after the splash
+         dismisses while the JSON / schedule fetch is in-flight.
+         Replaces GAMEVIS's older inline status text with something
+         the user can't miss.
+         ============================================================ -->
+    <div id="gv-loading" class="gv-loading" aria-hidden="true" role="status" aria-live="polite">
+        <div class="gv-loading-stage">
+            <div class="gv-spinner" aria-hidden="true"></div>
+            <div class="gv-loading-msg" id="gv-loading-msg">Loading…</div>
+            <div class="gv-loading-sub" id="gv-loading-sub"></div>
+        </div>
+    </div>
+
+    <div id="gv-status" role="status" aria-live="polite"></div>
+
+    <script>
+        // ============================================================
+        // GAMEVIS WRAPPER
+        // ----------------------------------------------------------
+        // Mirrors lineup.html for the FIBA Game Visualizer:
+        //
+        //   • Auto-fills the analyzer password from config/lineup.json
+        //     (shared with the Lineup Analyzer per admin setup).
+        //   • Reads ?comp=<CODE> from the URL → looks the code up in
+        //     config/gamevis-competitions.json → posts that competition's
+        //     schedule URLs to the iframe via the slb-parent-app bridge.
+        //   • Renders a top overlay with:
+        //       - Competition dropdown (switch within the page)
+        //       - "Manual URL" tab (paste a single game URL)
+        //       - Live mode toggle (re-fetch the active game every 30 s)
+        // ============================================================
+        // ─── FEATURE FLAGS ───────────────────────────────────────────
+        // Schedule loading is currently disabled (no client-side
+        // scraping, no auto-load, Open/Reload buttons inert) while the
+        // server-side scraper pipeline matures. Manual URL flow is the
+        // working path. Flip this back to `false` to re-enable everything.
+        const SCHEDULE_LOADING_DISABLED = true;
+
+        const iframe       = document.getElementById('gv-frame');
+        const statusEl     = document.getElementById('gv-status');
+        const bar          = document.getElementById('gv-bar');
+        const compSelect   = document.getElementById('gv-comp-select');
+        const compMeta     = document.getElementById('gv-comp-meta');
+        const compLoadBtn  = document.getElementById('gv-comp-load');
+        const switchBtn    = document.getElementById('gv-switch');
+        const liveToggle   = document.getElementById('gv-live-toggle');
+
+        // Splash refs
+        const splashEl     = document.getElementById('gv-splash');
+        const splashComp   = document.getElementById('gv-splash-comp');
+        const splashCompGo = document.getElementById('gv-splash-comp-go');
+        const splashCompMeta = document.getElementById('gv-splash-comp-meta');
+        const splashUrl    = document.getElementById('gv-splash-url');
+        const splashUrlGo  = document.getElementById('gv-splash-url-go');
+        const splashStatus = document.getElementById('gv-splash-status');
+
+        const COMP_PICK_KEY      = 'prophesy_compPick_v1';      // shared with index.html
+        const GAMEVIS_LIVE_KEY   = 'prophesy_gamevis_live_v1';
+        const GAMEVIS_MANUAL_KEY = 'prophesy_gamevis_manual_v1';
+
+        let savedPassword = '';
+        let configLoaded = false;
+        let pendingPasswordRequests = [];
+
+        let compMap = new Map();   // code → { code, label, scheduleUrls: [...] }
+        let compsLoaded = false;
+        let initialCompFromUrl = '';
+        let initialGameFromUrl = '';
+        try {
+            const params = new URLSearchParams(window.location.search);
+            initialCompFromUrl = (params.get('comp') || '').trim();
+            initialGameFromUrl = (params.get('game') || '').trim();
+        } catch (_) {}
+
+        // ───────────────────────────── helpers ─────────────────────────────
+        function showStatus(msg, kind, durationMs) {
+            statusEl.textContent = msg;
+            statusEl.classList.remove('ok', 'err');
+            if (kind === 'ok') statusEl.classList.add('ok');
+            else if (kind === 'err') statusEl.classList.add('err');
+            statusEl.classList.add('show');
+            if (durationMs) {
+                clearTimeout(showStatus._t);
+                showStatus._t = setTimeout(() => statusEl.classList.remove('show'), durationMs);
+            }
+        }
+        function hideStatus() { statusEl.classList.remove('show'); }
+
+        function postToFrame(type, data) {
+            if (!iframe || !iframe.contentWindow) return;
+            try {
+                iframe.contentWindow.postMessage({
+                    source: 'slb-parent-app',
+                    type: type,
+                    ...(data || {})
+                }, '*');
+            } catch (e) {
+                console.warn('[GameVisWrapper] postMessage failed:', e);
+            }
+        }
+
+        // ───────────────── password (shared with Lineup Analyzer) ─────────
+        async function loadLineupConfig() {
+            try {
+                const res = await fetch('config/lineup.json', { cache: 'no-cache' });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && typeof json.password === 'string') savedPassword = json.password;
+                }
+            } catch (_) {}
+            configLoaded = true;
+            while (pendingPasswordRequests.length) respondToPasswordRequest(pendingPasswordRequests.shift());
+        }
+        function respondToPasswordRequest(_msg) {
+            if (savedPassword && savedPassword.length) {
+                postToFrame('SAVED_PASSWORD', { password: savedPassword });
+            } else {
+                postToFrame('NO_SAVED_PASSWORD');
+                showStatus('Analyzer password not configured by admin — manual entry required', 'err', 6000);
+            }
+        }
+
+        // ───────────────────── competitions config ────────────────────────
+        async function loadCompetitions() {
+            try {
+                const res = await fetch('config/gamevis-competitions.json', { cache: 'no-cache' });
+                if (res.ok) {
+                    const j = await res.json();
+                    if (j && Array.isArray(j.competitions)) {
+                        compMap.clear();
+                        j.competitions.forEach(c => {
+                            if (!c || !c.code) return;
+                            compMap.set(c.code, {
+                                code: c.code,
+                                label: c.label || c.code,
+                                scheduleUrls: Array.isArray(c.scheduleUrls) ? c.scheduleUrls.filter(Boolean) : []
+                            });
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('[GameVisWrapper] gamevis-competitions.json failed to load:', e);
+            }
+            compsLoaded = true;
+            renderCompSelect();
+        }
+
+        function rememberComp(code) {
+            try { localStorage.setItem(COMP_PICK_KEY, code || ''); } catch (_) {}
+        }
+        function recallComp() {
+            try { return localStorage.getItem(COMP_PICK_KEY) || ''; } catch (_) { return ''; }
+        }
+
+        // Populate BOTH selects (top-bar + splash) from the loaded comp map.
+        function renderCompSelect() {
+            const codes = Array.from(compMap.keys()).sort((a, b) => {
+                const la = (compMap.get(a)?.label || a).toLowerCase();
+                const lb = (compMap.get(b)?.label || b).toLowerCase();
+                return la.localeCompare(lb);
+            });
+
+            const buildOptions = (selectEl, defaultLabel) => {
+                selectEl.innerHTML = '';
+                const def = document.createElement('option');
+                def.value = '';
+                def.textContent = codes.length ? defaultLabel : 'No competitions yet — set up in admin';
+                selectEl.appendChild(def);
+                codes.forEach(code => {
+                    const c = compMap.get(code);
+                    const opt = document.createElement('option');
+                    opt.value = code;
+                    const n = c.scheduleUrls.length;
+                    opt.textContent = c.label + (n ? '  ·  ' + n + ' schedule URL' + (n === 1 ? '' : 's') : '  ·  no URLs configured');
+                    selectEl.appendChild(opt);
+                });
+            };
+            buildOptions(compSelect, '— Pick a competition —');
+            if (splashComp) buildOptions(splashComp, codes.length ? '— Pick a competition —' : 'No competitions yet');
+
+            // Pick default: URL → remembered → first-with-URLs → blank
+            let pick = '';
+            if (initialCompFromUrl && compMap.has(initialCompFromUrl)) pick = initialCompFromUrl;
+            else {
+                const remembered = recallComp();
+                if (remembered && compMap.has(remembered)) pick = remembered;
+                else {
+                    const firstWithUrls = codes.find(c => (compMap.get(c)?.scheduleUrls.length || 0) > 0);
+                    if (firstWithUrls) pick = firstWithUrls;
+                }
+            }
+            compSelect.value = pick;
+            if (splashComp) splashComp.value = pick;
+            updateCompMeta();
+            updateSplashCompMeta();
+
+            // Splash always shows now → never auto-dismiss into a load.
+            // Background preload of the picked comp's schedule is gated
+            // on SCHEDULE_LOADING_DISABLED so we don't scrape anything
+            // while the feature is parked.
+            if (pick && !SCHEDULE_LOADING_DISABLED) preloadCompSchedule(pick);
+        }
+
+        function updateCompMeta() {
+            const code = compSelect.value;
+            if (!code) { compMeta.textContent = ''; return; }
+            const c = compMap.get(code);
+            const n = c?.scheduleUrls.length || 0;
+            compMeta.textContent = '↳ ' + n + ' URL' + (n === 1 ? '' : 's') + ' configured';
+        }
+        function updateSplashCompMeta() {
+            if (!splashCompMeta || !splashComp) return;
+            // While schedule loading is parked, keep the disabled hint
+            // visible — otherwise the meta-line populate would overwrite
+            // it with "N schedule URLs configured" and look inviting again.
+            if (SCHEDULE_LOADING_DISABLED) {
+                splashCompMeta.textContent = '⏸ Competition loading temporarily disabled — use Manual URL';
+                splashCompMeta.style.color = '#e0c078';
+                return;
+            }
+            const code = splashComp.value;
+            if (!code) { splashCompMeta.textContent = ''; return; }
+            const c = compMap.get(code);
+            const n = c?.scheduleUrls.length || 0;
+            splashCompMeta.textContent = '↳ ' + n + ' schedule URL' + (n === 1 ? '' : 's') + ' configured';
+        }
+
+        // Wait until the in-iframe FIBAGameVisualizer has finished its boot
+        // sequence (auth gate cleared, JSON-API patches installed). Returns
+        // the visualizer instance to the callback, or null on timeout.
+        // Used by the manual-URL + schedule-URL flows so a splash click that
+        // races the iframe load doesn't silently no-op.
+        function whenVisualizerReady(timeoutMs, callback) {
+            const deadline = Date.now() + (timeoutMs || 15000);
+            const tryNow = () => {
+                let v = null;
+                try { v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer; } catch (_) {}
+                if (v && v._prophesyJsonPatched && typeof v.selectGame === 'function') {
+                    callback(v);
+                    return;
+                }
+                if (Date.now() > deadline) { callback(null); return; }
+                setTimeout(tryNow, 200);
+            };
+            tryNow();
+        }
+
+        // ─── schedule fetch — DONE IN THE WRAPPER, NOT GAMEVIS ────────────
+        // GAMEVIS's fetchSchedule() requires DOM elements (#schedule-url-input,
+        // #fetch-schedule-btn) that don't exist in the build we ship — its own
+        // code comment literally says "may not exist if removed from UI".
+        // So we do the fetch ourselves: try a server-cached index.json first
+        // (set up by the Python pre-scraper, gives instant load), fall back
+        // to client-side scraping (works for non-SPA schedule pages), and
+        // hand the resulting games list straight to v.displayGameList().
+
+        // Try the pre-built schedule manifest at data/gamevis/<CODE>/index.json.
+        // Returns null if absent or empty so we fall through to live scraping.
+        async function tryLoadCachedScheduleIndex(code) {
+            try {
+                const res = await fetch('data/gamevis/' + code + '/index.json', { cache: 'no-cache' });
+                if (!res.ok) return null;
+                const j = await res.json();
+                if (j && Array.isArray(j.games) && j.games.length) {
+                    console.log('[GVWrapper] Server-cached schedule for', code, '·', j.games.length, 'games');
+                    return j.games;
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        // Pull the same patterns the Python scraper uses (fiba_api_scraper.py).
+        // Works for non-SPA schedule pages where game IDs appear in raw HTML.
+        // For SPA pages (most modern league sites), the list comes back empty
+        // and we surface a clear error pointing at server-side scraping.
+        function extractGameIdsFromScheduleHtml(html) {
+            const ids = new Set();
+            const patterns = [
+                /extfix_(\d{5,10})/g,
+                /\/match\/(\d{5,10})\//g,
+                /\/u\/[A-Z]+\/(\d{5,10})\//g,
+                /matchId["']?\s*[:=]\s*["']?(\d{5,10})/g,
+                /fibalivestats\.dcd\.shared\.geniussports\.com\/data\/(\d{5,10})/g,
+                /\/data\/(\d{6,10})\/data\.json/g
+            ];
+            for (const re of patterns) {
+                let m;
+                while ((m = re.exec(html)) !== null) ids.add(m[1]);
+            }
+            return Array.from(ids);
+        }
+
+        // Same proxy chain as fetchJsonViaProxies but returns plain text.
+        // Uses the same rate-limiting + per-proxy cooldown so we stay polite.
+        async function fetchTextViaProxies(url) {
+            let lastErr = null;
+            for (const p of PROXY_ENDPOINTS) {
+                if (!_proxyAvailable(p.name)) continue;
+                try {
+                    const res = await _politeFetch(p.build(url), { cache: 'no-cache' });
+                    if (!res.ok) {
+                        lastErr = new Error('HTTP ' + res.status + ' via ' + p.name);
+                        if (res.status === 429) _coolProxy(p.name, 120000);
+                        else if (res.status === 403 || res.status === 408) _coolProxy(p.name, 60000);
+                        else if (res.status === 400) _coolProxy(p.name, 30000);
+                        continue;
+                    }
+                    let text = await res.text();
+                    text = p.unwrap(text);
+                    if (text && text.length > 200) {
+                        if (p.name !== 'direct') console.log('[GVWrapper] HTML via', p.name);
+                        return text;
+                    }
+                } catch (e) { lastErr = e; }
+            }
+            throw lastErr || new Error('All proxies failed (or in cooldown)');
+        }
+
+        // Build the per-game metadata that GAMEVIS's displayGameList expects.
+        function jsonToGameMeta(id, json) {
+            if (!json || !json.tm) return null;
+            const t1 = json.tm['1'] || {};
+            const t2 = json.tm['2'] || {};
+            return {
+                gameId:    String(id),
+                homeTeam:  t1.name || t1.shortName || 'Home',
+                awayTeam:  t2.name || t2.shortName || 'Away',
+                homeScore: t1.score || 0,
+                awayScore: t2.score || 0,
+                gameDate:  json.matchDate || json.date || '',
+                bsUrl:     'https://fibalivestats.dcd.shared.geniussports.com/u/SLB/' + id + '/bs.html',
+                pbpUrl:    'https://fibalivestats.dcd.shared.geniussports.com/u/SLB/' + id + '/pbp.html'
+            };
+        }
+
+        // Client-side schedule scraping for non-SPA pages. SPAs return no IDs
+        // → caller falls through to a "needs server scraping" error.
+        // We sequence the schedule URL fetches (NOT parallel) so we don't
+        // hammer the source league site or the public proxies.
+        async function scrapeScheduleClientSide(comp) {
+            const allIds = new Set();
+            let firstErrLogged = false;
+            for (const url of comp.scheduleUrls) {
+                try {
+                    const html = await fetchTextViaProxies(url);
+                    extractGameIdsFromScheduleHtml(html).forEach(id => allIds.add(id));
+                } catch (e) {
+                    // Quietly skip per-URL failures to avoid console spam —
+                    // we already log inside the proxy chain when something
+                    // does work. Only log the FIRST failure as a hint.
+                    if (!firstErrLogged) {
+                        console.info('[GVWrapper] Schedule URL not scrapable (likely SPA-rendered):', url);
+                        firstErrLogged = true;
+                    }
+                }
+            }
+            if (!allIds.size) return [];
+            const ids = Array.from(allIds);
+            setLoadingSub('Found ' + ids.length + ' games · fetching live data…');
+            const games = [];
+            let done = 0;
+            const concurrency = 6;
+            const queue = ids.slice();
+            const workers = [];
+            for (let i = 0; i < Math.min(concurrency, queue.length); i++) {
+                workers.push((async () => {
+                    while (queue.length) {
+                        const id = queue.shift();
+                        try {
+                            const json = await fetchJsonViaProxies(FIBA_JSON_BASE + id + '/data.json');
+                            const game = jsonToGameMeta(id, json);
+                            if (game) games.push(game);
+                        } catch (_) { /* skip */ }
+                        done++;
+                        setLoadingSub('Fetched ' + done + ' / ' + ids.length + ' games…');
+                    }
+                })());
+            }
+            await Promise.all(workers);
+            return games;
+        }
+
+        // Hand the games list to GAMEVIS so its displayGameList renders the
+        // schedule modal. We also stash on fetchedGames so subsequent
+        // selectGame() lookups find them.
+        function renderScheduleInIframe(games, code) {
+            whenVisualizerReady(15000, (v) => {
+                if (!v) {
+                    hideLoading();
+                    showStatus('GameVis didn\'t initialise — try refreshing.', 'err', 6000);
+                    return;
+                }
+                v.fetchedGames = games;
+                try {
+                    if (typeof v.displayGameList === 'function') v.displayGameList(games);
+                } catch (e) {
+                    console.warn('[GVWrapper] displayGameList threw:', e);
+                }
+                hideLoading();
+                showStatus('✓ Loaded ' + games.length + ' games for ' + (compMap.get(code)?.label || code), 'ok', 3500);
+            });
+        }
+
+        async function pushScheduleUrlsToFrame(code, fromBoot) {
+            const c = code && compMap.get(code);
+            if (!c) { hideLoading(); return; }
+            if (!c.scheduleUrls.length) {
+                showStatus('No schedule URLs configured for ' + (c.label || code) + '. Add some in admin → GameVis competitions.', 'err', 6500);
+                hideLoading();
+                return;
+            }
+            rememberComp(code);
+            showStatus((fromBoot ? 'Loading ' : 'Switching to ') + (c.label || code) + '…', null, 4500);
+
+            // 1) Was this comp already preloaded in the background while
+            //    the user was looking at the splash? If yes, instant.
+            let games = _preloadedGames.get(code) || null;
+
+            // 2) Otherwise try the server-cached index.json (set up by the
+            //    Python pre-scraper). Instant — no CORS, no runtime parsing.
+            if (!games) {
+                setLoadingSub('Checking pre-built schedule index…');
+                games = await tryLoadCachedScheduleIndex(code);
+            }
+
+            // 3) Fall back to live client-side scraping.
+            if (!games || !games.length) {
+                setLoadingSub('Fetching ' + c.scheduleUrls.length + ' schedule page' + (c.scheduleUrls.length === 1 ? '' : 's') + '…');
+                games = await scrapeScheduleClientSide(c);
+            }
+
+            if (!games || !games.length) {
+                hideLoading();
+                showStatus(
+                    'No games found for ' + (c.label || code) + '. The schedule pages are SPA-rendered (browser-side scraping can\'t see them). The fix is server-side: enable the GameVis schedule GitHub Action, OR run scripts/gamevis_schedule_scraper.py once locally — see scripts/README.md.',
+                    'err', 14000
+                );
+                return;
+            }
+
+            renderScheduleInIframe(games, code);
+        }
+
+        // ───────────────────── manual URL flow (works from splash too) ────
+        // Drives the in-iframe visualizer's patched selectGame() DIRECTLY
+        // instead of going via the LOAD_GAME_BY_URL → fill input → click
+        // chain (which depended on GAMEVIS's URL-fetcher card being live and
+        // its inputs being bound). selectGame() runs the JSON-API path,
+        // renders the boxscore + pbp + shot chart in one go, and updates
+        // the URL bar via syncUrlGame for bookmarking.
+        function loadManualUrl(url) {
+            const trimmed = String(url || '').trim();
+            if (!trimmed) {
+                showStatus('Paste a FIBA LiveStats URL first.', 'err', 3500);
+                return;
+            }
+            try { localStorage.setItem(GAMEVIS_MANUAL_KEY, trimmed); } catch (_) {}
+
+            const id = extractGameId(trimmed);
+            if (!id) {
+                showStatus('Could not find a FIBA matchId in that URL. Paste a /bs.html or /data/<id>/data.json link.', 'err', 6500);
+                return;
+            }
+
+            showStatus('Loading game ' + id + ' from FIBA API…', null, 4500);
+            whenVisualizerReady(15000, (v) => {
+                if (!v) {
+                    showStatus('GameVis didn\'t initialise in time — try refreshing the page.', 'err', 6500);
+                    return;
+                }
+                try {
+                    iframe.contentWindow.__lastGameJsonId = id;
+                } catch (_) {}
+                v.selectGame(id);
+            });
+        }
+
+        // ───────────────────── splash show/hide ───────────────────────────
+        function splashIsVisible() {
+            return splashEl && splashEl.getAttribute('aria-hidden') !== 'true' && !splashEl.classList.contains('gv-splash-leaving');
+        }
+        function showSplash() {
+            if (!splashEl) return;
+            splashEl.style.display = '';
+            splashEl.setAttribute('aria-hidden', 'false');
+            splashEl.classList.remove('gv-splash-leaving');
+            document.body.classList.remove('gv-app-mode');
+            bar.classList.add('gv-bar-hidden');
+            // Re-sync splash dropdown with the current pick
+            try { if (splashComp && compSelect.value) splashComp.value = compSelect.value; } catch (_) {}
+            updateSplashCompMeta();
+        }
+        function dismissSplash(then) {
+            if (!splashEl || splashEl.getAttribute('aria-hidden') === 'true') {
+                if (typeof then === 'function') then();
+                return;
+            }
+            splashEl.classList.add('gv-splash-leaving');
+            // Reveal the app underneath right away so the iframe is visible during the fade.
+            document.body.classList.add('gv-app-mode');
+            bar.classList.remove('gv-bar-hidden');
+            setTimeout(() => {
+                try { splashEl.setAttribute('aria-hidden', 'true'); splashEl.style.display = 'none'; } catch (_) {}
+                if (typeof then === 'function') then();
+            }, 460);
+        }
+        function setSplashStatus(msg, kind) {
+            if (!splashStatus) return;
+            splashStatus.textContent = msg || '';
+            splashStatus.classList.toggle('err', kind === 'err');
+        }
+
+        // ───────────────────── loading overlay ────────────────────────────
+        const loadingEl  = document.getElementById('gv-loading');
+        const loadingMsg = document.getElementById('gv-loading-msg');
+        const loadingSub = document.getElementById('gv-loading-sub');
+        let loadingHideTimer = null;
+        function showLoading(msg, sub) {
+            if (!loadingEl) return;
+            if (loadingMsg) loadingMsg.textContent = msg || 'Loading…';
+            if (loadingSub) loadingSub.textContent = sub || '';
+            loadingEl.setAttribute('aria-hidden', 'false');
+            // Safety net: never leave the spinner up forever, even if a
+            // hideLoading() call gets dropped on a code path I missed.
+            if (loadingHideTimer) clearTimeout(loadingHideTimer);
+            loadingHideTimer = setTimeout(() => hideLoading(), 25000);
+        }
+        function setLoadingSub(sub) {
+            if (loadingSub) loadingSub.textContent = sub || '';
+        }
+        function hideLoading() {
+            if (!loadingEl) return;
+            loadingEl.setAttribute('aria-hidden', 'true');
+            if (loadingHideTimer) { clearTimeout(loadingHideTimer); loadingHideTimer = null; }
+        }
+
+        // ───────────────────── schedule preloading ────────────────────────
+        // Best path: hit the server-cached index.json (built by the Python
+        // pre-scraper, see gamevis_schedule_scraper.py). When that exists
+        // we get an instant ready + warm the per-game JSON cache, so
+        // clicking Open is essentially zero-latency.
+        //
+        // No cache yet? We fire off the same client-side scrape in the
+        // background. Side-effect: every game's JSON gets dropped into
+        // the dedup cache so the eventual click reuses them.
+        let _preloadedComp = null;
+        async function preloadCompSchedule(code) {
+            if (!code) return;
+            if (_preloadedComp === code) return;
+            const c = compMap.get(code);
+            if (!c || !c.scheduleUrls.length) return;
+            _preloadedComp = code;
+
+            const setMeta = (msg) => {
+                if (splashCompMeta && splashIsVisible() && splashComp && splashComp.value === code) {
+                    splashCompMeta.textContent = msg;
+                }
+            };
+
+            // 1) Try the server-cached index — instant if present.
+            const cached = await tryLoadCachedScheduleIndex(code);
+            if (cached && cached.length) {
+                setMeta('✓ ' + cached.length + ' games ready · pre-cached');
+                // Warm the per-game JSON dedup cache too, so the eventual
+                // Game click is also instant.
+                whenVisualizerReady(20000, (v) => {
+                    if (v && typeof v._prophesyPrewarmCache === 'function') {
+                        v._prophesyPrewarmCache(cached.map(g => g.gameId).slice(0, 50), 4).catch(() => {});
+                    }
+                });
+                return;
+            }
+
+            // 2) Fire the live client-side scrape in the background.
+            setMeta('⏳ Pre-loading schedule in background…');
+            try {
+                const games = await scrapeScheduleClientSide(c);
+                if (games.length) {
+                    setMeta('✓ ' + games.length + ' games ready');
+                    // Cache the meta so a later Open is instant
+                    _preloadedGames.set(code, games);
+                } else {
+                    setMeta('⚠ Schedule pages may be SPA-rendered — open to see error');
+                    _preloadedComp = null; // allow retry
+                }
+            } catch (e) {
+                setMeta('Pre-load failed: ' + (e?.message || e));
+                _preloadedComp = null;
+            }
+        }
+        const _preloadedGames = new Map();  // code → games[] from background scrape
+
+        // ───────────────────── live mode (smart polling) ──────────────────
+        // Polls the FIBA JSON API at the user-chosen interval (5/10/20/30/60 s).
+        // Each tick busts the per-game cache and routes through the patched
+        // selectGame, which compares fingerprints and only re-renders when
+        // the score / pbp / shot count actually changed. So the UI updates
+        // *immediately* when something happens but stays still otherwise.
+        const liveIntervalEl = document.getElementById('gv-live-interval');
+        const liveLastEl     = document.getElementById('gv-live-last');
+        const GAMEVIS_LIVE_INTERVAL_KEY = 'prophesy_gamevis_live_interval_v1';
+        let liveTimer = null;
+        let liveLastUpdate = 0;
+        let liveLastChanged = false;
+        let liveTickerTimer = null;
+
+        function isLive() { return liveToggle.classList.contains('on'); }
+
+        function getActiveGameId() {
+            try {
+                return (iframe.contentWindow && iframe.contentWindow.__lastGameJsonId)
+                    || window.__lastGameJsonId
+                    || null;
+            } catch (_) { return null; }
+        }
+
+        function bustGameCache(id) {
+            if (!id) return;
+            try {
+                const v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer;
+                if (v && v._prophesyJsonCache) v._prophesyJsonCache.delete(id);
+            } catch (_) {}
+        }
+
+        function fmtAgo(ms) {
+            if (!ms) return '—';
+            const s = Math.floor((Date.now() - ms) / 1000);
+            if (s < 5) return 'just now';
+            if (s < 60) return s + 's ago';
+            const m = Math.floor(s / 60);
+            return m + 'm ago';
+        }
+        function refreshLastLabel() {
+            if (!liveLastEl) return;
+            if (!liveLastUpdate) { liveLastEl.textContent = ''; return; }
+            const status = liveLastChanged ? '🟢 updated' : '⚪ no change';
+            liveLastEl.textContent = status + ' · ' + fmtAgo(liveLastUpdate);
+        }
+
+        // Set by the selectGame override after every live tick — true if we
+        // re-rendered (something changed), false if we skipped (no change).
+        // Declared with `let` here (not just assigned) because there is NO
+        // earlier declaration in this script — the previous "forward
+        // declaration" was placed AFTER this assignment, which threw
+        // a TDZ ReferenceError and killed the entire wrapper script
+        // (and with it the splash dropdown population, splash button
+        // wiring, etc.). Subtle, brutal, fixed.
+        let onLiveTickComplete = function (changed) {
+            liveLastUpdate = Date.now();
+            liveLastChanged = !!changed;
+            refreshLastLabel();
+        };
+
+        function tickLive() {
+            // Prefer driving selectGame directly with {live: true} so the
+            // diff-detection path runs. Falls back to RELOAD_CURRENT_GAME
+            // (the original message) if the visualizer isn't reachable.
+            const id = getActiveGameId();
+            if (!id) {
+                // No game loaded yet — try reloading via the URL flow if a URL was pasted
+                postToFrame('RELOAD_CURRENT_GAME');
+                return;
+            }
+            bustGameCache(id);
+            try {
+                const v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer;
+                if (v && typeof v.selectGame === 'function' && v._prophesyJsonPatched) {
+                    v.selectGame(id, { live: true });
+                    return;
+                }
+            } catch (_) {}
+            postToFrame('RELOAD_CURRENT_GAME');
+        }
+
+        function getIntervalSeconds() {
+            const n = parseInt(liveIntervalEl?.value || '10', 10);
+            return Math.max(5, Math.min(120, isNaN(n) ? 10 : n));
+        }
+
+        function startLive() {
+            stopLive();
+            liveToggle.classList.add('on');
+            try { localStorage.setItem(GAMEVIS_LIVE_KEY, '1'); } catch (_) {}
+            const sec = getIntervalSeconds();
+            liveTimer = setInterval(tickLive, sec * 1000);
+            // Refresh the "X s ago" label every second so it counts up.
+            if (liveTickerTimer) clearInterval(liveTickerTimer);
+            liveTickerTimer = setInterval(refreshLastLabel, 1000);
+            showStatus('Live · polling FIBA API every ' + sec + ' s · UI only redraws when something changes', 'ok', 4000);
+            // Fire one immediate tick so the user sees current state right away.
+            setTimeout(tickLive, 200);
+        }
+        function stopLive() {
+            liveToggle.classList.remove('on');
+            try { localStorage.removeItem(GAMEVIS_LIVE_KEY); } catch (_) {}
+            if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+            if (liveTickerTimer) { clearInterval(liveTickerTimer); liveTickerTimer = null; }
+            if (liveLastEl) liveLastEl.textContent = '';
+        }
+
+        // Persist + react to interval changes while Live is on (restart timer).
+        liveIntervalEl?.addEventListener('change', () => {
+            try { localStorage.setItem(GAMEVIS_LIVE_INTERVAL_KEY, liveIntervalEl.value); } catch (_) {}
+            if (isLive()) startLive(); // restart with new interval
+        });
+        try {
+            const remembered = localStorage.getItem(GAMEVIS_LIVE_INTERVAL_KEY);
+            if (remembered && liveIntervalEl) liveIntervalEl.value = remembered;
+        } catch (_) {}
+
+        // ───────────────────── FIBA JSON API intercept ────────────────────
+        // GAMEVIS posts `gamevis-app` messages of types FETCH_URLS_REQUEST
+        // and FETCH_JSON_REQUEST whenever it wants the Tauri parent to fetch
+        // game data on its behalf. Since *we* are the parent now, we
+        // intercept those, fetch the same /data/{matchId}/data.json the
+        // Python scraper (fiba_api_scraper.py) uses, and post back a
+        // {URL,JSON}_FETCH_RESULT with jsonData populated. GAMEVIS already
+        // has a full JSON-driven render pipeline behind those handlers — it
+        // was just never wired up on the website. This is the actual
+        // refit: every game load now goes via the FIBA JSON API instead of
+        // scraping bs.html / pbp.html through CORS proxies.
+        const FIBA_JSON_BASE = 'https://fibalivestats.dcd.shared.geniussports.com/data/';
+        // Proxy chain — order is "most likely to work right now" first.
+        // codetabs is the one that survived in the wild (corsproxy.io has
+        // started 403-ing free traffic; allorigins /raw has been flaky).
+        // allorigins /get returns a JSON wrapper {contents: "<body>"} which
+        // works when /raw fails for the same backend, so it's a separate
+        // entry below with a custom unwrap path.
+        //
+        // Each entry: { name, build(url), unwrap(text) }.
+        const PROXY_ENDPOINTS = [
+            // 1) Direct — works only if FIBA serves CORS for our origin (rare,
+            //    but free + fastest when it does).
+            { name: 'direct',          build: (u) => u,
+              unwrap: (text) => text },
+            // 2) Codetabs — proven working in production console logs.
+            { name: 'codetabs',        build: (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+              unwrap: (text) => text },
+            // 3) AllOrigins /get — JSON-wrapped, more reliable than /raw.
+            { name: 'allorigins/get',  build: (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
+              unwrap: (text) => { try { const j = JSON.parse(text); return j && j.contents ? j.contents : text; } catch (_) { return text; } } },
+            // 4) AllOrigins /raw — kept as fallback, sometimes works when /get rate-limits.
+            { name: 'allorigins/raw',  build: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+              unwrap: (text) => text },
+            // 5) corsproxy.io — kept last because it 403s on free traffic now.
+            { name: 'corsproxy.io',    build: (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+              unwrap: (text) => text }
+        ];
+
+        // Pull a numeric FIBA matchId out of any common URL shape.
+        //   .../u/SLB/123456/bs.html      → 123456
+        //   .../data/123456/data.json     → 123456
+        //   ?matchId=123456 / ?gameId=123456
+        function extractGameId(url) {
+            if (!url) return null;
+            const s = String(url);
+            const m = s.match(/\/(\d{5,12})(?:\/|\?|#|$)/)
+                  || s.match(/[?&](?:matchId|gameId)=(\d{5,12})/i);
+            return m ? m[1] : null;
+        }
+
+        // ───────────────── polite, rate-limited fetching ────────────────
+        // We don't want to hammer SLB or the public CORS proxies. Two layers:
+        //   (a) MIN_FETCH_GAP_MS — at least N ms between ANY two outbound
+        //       requests, regardless of which proxy.
+        //   (b) per-proxy cooldown — when a proxy returns 429/403/408/400
+        //       (rate-limited / blocked / timeout / bad-request), park it
+        //       for a while so we stop trying it on subsequent calls.
+        let _lastFetchAt = 0;
+        const MIN_FETCH_GAP_MS = 280;
+        const _proxyCooldownUntil = new Map();   // proxy.name → unix ms
+
+        async function _politeFetch(url, opts) {
+            const now = Date.now();
+            const wait = Math.max(0, _lastFetchAt + MIN_FETCH_GAP_MS - now);
+            if (wait) await new Promise(r => setTimeout(r, wait));
+            _lastFetchAt = Date.now();
+            return fetch(url, opts);
+        }
+        function _proxyAvailable(name) {
+            const u = _proxyCooldownUntil.get(name);
+            return !u || u < Date.now();
+        }
+        function _coolProxy(name, ms) {
+            _proxyCooldownUntil.set(name, Date.now() + (ms || 60000));
+        }
+
+        async function fetchJsonViaProxies(jsonUrl) {
+            let lastErr = null;
+            for (const p of PROXY_ENDPOINTS) {
+                if (!_proxyAvailable(p.name)) continue;
+                const url = p.build(jsonUrl);
+                try {
+                    const res = await _politeFetch(url, { cache: 'no-cache' });
+                    if (!res.ok) {
+                        lastErr = new Error('HTTP ' + res.status + ' via ' + p.name);
+                        // 4xx that signals "stop trying this proxy for a while"
+                        if (res.status === 429) _coolProxy(p.name, 120000);
+                        else if (res.status === 403 || res.status === 408) _coolProxy(p.name, 60000);
+                        // 400 from a proxy usually means the URL pattern is unsupported
+                        // for this proxy — quietly skip without console-spamming.
+                        else if (res.status === 400) _coolProxy(p.name, 30000);
+                        continue;
+                    }
+                    let text = await res.text();
+                    text = p.unwrap(text);
+                    if (!text || text.length < 8) { lastErr = new Error('Empty body via ' + p.name); continue; }
+                    const parsed = JSON.parse(text);
+                    if (p.name !== 'direct') console.log('[GVWrapper] FIBA JSON via', p.name);
+                    return parsed;
+                } catch (e) {
+                    lastErr = e;
+                }
+            }
+            throw lastErr || new Error('All proxies failed (or in cooldown)');
+        }
+
+        // Listen for the gamevis-app fetch requests and answer with JSON.
+        window.addEventListener('message', async (ev) => {
+            const m = ev.data;
+            if (!m || typeof m !== 'object' || m.source !== 'gamevis-app') return;
+
+            const replyTo = (resultType, payload) => postToFrame(resultType, { payload });
+
+            try {
+                if (m.type === 'FETCH_URLS_REQUEST') {
+                    const { bsUrl, pbpUrl, scUrl } = (m.payload || {});
+                    const id = extractGameId(bsUrl) || extractGameId(pbpUrl) || extractGameId(scUrl);
+                    if (!id) {
+                        replyTo('URL_FETCH_RESULT', { jsonData: null, error: 'Could not extract a FIBA matchId from the supplied URL' });
+                        return;
+                    }
+                    showStatus('Fetching game ' + id + ' from FIBA API…', null, 4000);
+                    // Use the visualizer's JSON cache when available so we don't
+                    // double-fetch when a schedule pre-fetch already pulled it.
+                    const v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer;
+                    let jsonData;
+                    if (v && typeof v._prophesyGetCachedJson === 'function') {
+                        jsonData = await v._prophesyGetCachedJson(id, /* fresh */ false);
+                    } else {
+                        jsonData = await fetchJsonViaProxies(FIBA_JSON_BASE + id + '/data.json');
+                    }
+                    try { window.__lastGameJsonId = id; } catch (_) {}
+                    replyTo('URL_FETCH_RESULT', { jsonData });
+                    // Also pre-populate the shot chart so the user doesn't have
+                    // to upload sc.html — the JSON already has every shot.
+                    applyShotChartFromJson(jsonData);
+                    showStatus('✓ Loaded ' + id + ' from FIBA JSON API', 'ok', 3000);
+                }
+                else if (m.type === 'FETCH_JSON_REQUEST') {
+                    const url = m.payload?.jsonUrl;
+                    if (!url) { replyTo('JSON_FETCH_RESULT', { jsonData: null, error: 'No jsonUrl in FETCH_JSON_REQUEST' }); return; }
+                    showStatus('Fetching game JSON…', null, 4000);
+                    const jsonData = await fetchJsonViaProxies(url);
+                    replyTo('JSON_FETCH_RESULT', { jsonData });
+                    applyShotChartFromJson(jsonData);
+                    showStatus('✓ Loaded game JSON', 'ok', 3000);
+                }
+            } catch (e) {
+                const errType = m.type === 'FETCH_JSON_REQUEST' ? 'JSON_FETCH_RESULT' : 'URL_FETCH_RESULT';
+                console.warn('[GVWrapper] FIBA JSON fetch failed:', e);
+                postToFrame(errType, { payload: { jsonData: null, error: e?.message || String(e) } });
+                showStatus('FIBA API fetch failed: ' + (e?.message || e), 'err', 5500);
+            }
+        });
+
+        // Pull the shots array out of the FIBA JSON and stash it on the
+        // visualizer so the Shot Chart tab works immediately. Without this,
+        // GAMEVIS still shows the "Upload sc.html" prompt even though we
+        // already have the structured shot data in the JSON we just fetched.
+        function applyShotChartFromJson(json, vOverride) {
+            try {
+                const v = vOverride || (iframe.contentWindow && iframe.contentWindow.fibaVisualizer);
+                if (!v || typeof v.parseShotChartJson !== 'function') return 0;
+                const shots = v.parseShotChartJson(json);
+                if (Array.isArray(shots) && shots.length) {
+                    v.shotChartLoadedData = shots;
+                    // Make the shot chart HTML stash also reflect the JSON, so any
+                    // GAMEVIS code path that re-parses from shotChartHTML still works.
+                    try { v.shotChartHTML = JSON.stringify(json); } catch (_) {}
+                    console.log('[GVWrapper] Pre-loaded', shots.length, 'shots from JSON');
+                    return shots.length;
+                }
+            } catch (e) {
+                console.warn('[GVWrapper] applyShotChartFromJson failed:', e);
+            }
+            return 0;
+        }
+
+        // Compact fingerprint for diff-detection. Anything that can change
+        // mid-game and that the UI cares about goes in here. If the
+        // fingerprint is unchanged across two polls there's no point
+        // re-rendering — saves CPU + avoids tab flicker.
+        function gameFingerprint(json) {
+            if (!json) return '';
+            const t1 = (json.tm && json.tm['1']) || {};
+            const t2 = (json.tm && json.tm['2']) || {};
+            return [
+                (json.pbp || []).length,
+                t1.score || 0, t2.score || 0,
+                (t1.shot || []).length, (t2.shot || []).length,
+                json.actualPeriod || '',
+                json.actualPeriodType || '',
+                json.actualGameTime || ''
+            ].join('|');
+        }
+
+        // Patch every per-game fetch path inside the in-iframe visualizer so
+        // it always uses the FIBA JSON API:
+        //
+        //   selectGame()        → fetch data.json directly (was: proxy pbp.html)
+        //   fetchWithProxy()    → for any /<id>/{bs,pbp,sc}.html URL, fetch
+        //                         data.json once + render the equivalent HTML
+        //                         from JSON. Schedule HTML pages still go
+        //                         through the original method.
+        //   parseSchedulePage() → wrapped to fire-and-forget a parallel
+        //                         pre-warm of every game's data.json — so by
+        //                         the time GAMEVIS's per-game pre-fetch loop
+        //                         iterates, the cache is hot.
+        //
+        // Per-game JSON cache uses Promise-dedup: concurrent callers asking
+        // for the same gameId share one in-flight fetch. Cache is busted on
+        // live mode ticks so the data stays fresh during ongoing games.
+        function installJsonInterceptors() {
+            try {
+                const v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer;
+                if (!v || v._prophesyAllPatched) return;
+                if (typeof v.selectGame !== 'function' ||
+                    typeof v.generateBoxscoreHtmlFromJson !== 'function' ||
+                    typeof v.generatePbpHtmlFromJson !== 'function' ||
+                    typeof v.processGame !== 'function') return;
+
+                v._prophesyJsonCache = v._prophesyJsonCache || new Map();
+                v._prophesyLastFingerprint = v._prophesyLastFingerprint || new Map();
+
+                // Promise-dedup cache. Concurrent callers asking for the same
+                // gameId share one in-flight fetch instead of racing.
+                async function getCachedJson(gameId, forceFresh) {
+                    if (!forceFresh) {
+                        const cached = v._prophesyJsonCache.get(gameId);
+                        if (cached) return cached; // value or in-flight Promise
+                    }
+                    const promise = fetchJsonViaProxies(FIBA_JSON_BASE + gameId + '/data.json')
+                        .then(json => {
+                            v._prophesyJsonCache.set(gameId, json); // replace promise w/ value
+                            return json;
+                        })
+                        .catch(err => {
+                            v._prophesyJsonCache.delete(gameId);
+                            throw err;
+                        });
+                    v._prophesyJsonCache.set(gameId, promise);
+                    return promise;
+                }
+
+                // Pre-warm `n` IDs in parallel with a small concurrency cap so
+                // we don't open hundreds of sockets at once on big leagues.
+                function prewarmJsonCache(ids, concurrency) {
+                    concurrency = concurrency || 6;
+                    const queue = ids.slice();
+                    const workers = [];
+                    for (let i = 0; i < Math.min(concurrency, queue.length); i++) {
+                        workers.push((async () => {
+                            while (queue.length) {
+                                const id = queue.shift();
+                                try { await getCachedJson(id, false); } catch (_) {}
+                            }
+                        })());
+                    }
+                    return Promise.all(workers);
+                }
+
+                // ── 1) selectGame: route schedule-driven clicks through the JSON API.
+                //     Also: keep the URL in sync (?comp=...&game=<id>) so the
+                //     active game is bookmarkable + survives reload, and apply
+                //     diff-detection on live ticks so we don't re-render when
+                //     nothing changed.
+                if (!v._prophesyJsonPatched) {
+                    const origSelect = v.selectGame.bind(v);
+                    v.selectGame = async function (gameId, opts) {
+                        const isLiveTick = !!(opts && opts.live);
+                        showStatus('Fetching game ' + gameId + ' from FIBA API…', null, 4000);
+
+                        // Phase 1 — fetch the JSON. If THIS fails (no proxy
+                        // works, etc.) we fall back to GAMEVIS's original
+                        // schedule-driven selectGame.
+                        if (!isLiveTick) setLoadingSub('Pulling data.json (game ' + gameId + ')…');
+                        let json;
+                        try {
+                            json = await getCachedJson(gameId, isLiveTick);
+                        } catch (e) {
+                            console.warn('[GVWrapper] JSON fetch failed, falling back to HTML proxy:', e);
+                            showStatus('JSON fetch failed — trying HTML proxy…', 'err', 4500);
+                            if (!isLiveTick) hideLoading();
+                            if (typeof onLiveTickComplete === 'function') onLiveTickComplete(false);
+                            if (Array.isArray(v.fetchedGames) && v.fetchedGames.find(g => g.gameId === gameId)) {
+                                return origSelect(gameId);
+                            }
+                            return;
+                        }
+
+                        // Phase 2 — render. From here on every step is wrapped
+                        // because GAMEVIS internals (closeGameList, processGame
+                        // helpers) sometimes null-ref when called from the
+                        // manual-URL flow where there's no schedule list to
+                        // close. We've already loaded the data — don't let one
+                        // null-ref sink the whole render.
+                        try {
+                            const fp = gameFingerprint(json);
+                            const prevFp = v._prophesyLastFingerprint.get(gameId);
+                            if (isLiveTick && prevFp === fp) {
+                                // Stable game state — skip re-render, just update timestamp.
+                                showStatus('No change · still ' + (json.tm['1'].score||0) + ' – ' + (json.tm['2'].score||0), null, 2200);
+                                if (typeof onLiveTickComplete === 'function') onLiveTickComplete(false);
+                                return;
+                            }
+                            v.fibaJsonData = json;
+                            v.boxscoreHTML = v.generateBoxscoreHtmlFromJson(json);
+                            v.pbpHTML      = v.generatePbpHtmlFromJson(json);
+                            applyShotChartFromJson(json, v);
+                            // closeGameList() throws when no list overlay exists
+                            // (manual-URL flow). Swallow — nothing to close anyway.
+                            try { if (typeof v.closeGameList === 'function') v.closeGameList(); } catch (_) {}
+                            v.processGame();
+                            v._prophesyLastFingerprint.set(gameId, fp);
+                            try { iframe.contentWindow.__lastGameJsonId = gameId; } catch (_) {}
+                            try { syncUrlGame(gameId); } catch (_) {}
+                            showStatus('✓ Loaded game ' + gameId + (isLiveTick ? ' (refresh)' : '') + ' from FIBA JSON API', 'ok', 3000);
+                            if (!isLiveTick) hideLoading();
+                            if (typeof onLiveTickComplete === 'function') onLiveTickComplete(true);
+                        } catch (e) {
+                            console.warn('[GVWrapper] render error after JSON fetch (data did load):', e);
+                            showStatus('Loaded data but render hiccuped: ' + (e?.message || e), 'err', 5000);
+                            if (!isLiveTick) hideLoading();
+                            if (typeof onLiveTickComplete === 'function') onLiveTickComplete(false);
+                        }
+                    };
+                    v._prophesyJsonPatched = true;
+                }
+
+                // ── 2) fetchWithProxy: synthesise per-game HTML from JSON.
+                if (typeof v.fetchWithProxy === 'function' && !v._prophesyFetchPatched) {
+                    const origFetch = v.fetchWithProxy.bind(v);
+                    v.fetchWithProxy = async function (url) {
+                        const s = String(url || '');
+                        const m = s.match(/\/(\d{5,12})\/(bs|pbp|sc)\.html(?:[?#].*)?$/i);
+                        if (m) {
+                            const id = m[1], kind = m[2].toLowerCase();
+                            try {
+                                const json = await getCachedJson(id, false);
+                                if (kind === 'bs')  return v.generateBoxscoreHtmlFromJson(json);
+                                if (kind === 'pbp') return v.generatePbpHtmlFromJson(json);
+                                if (kind === 'sc')  return JSON.stringify(json);
+                            } catch (e) {
+                                console.warn('[GVWrapper] JSON-API failed for', kind, id, '— falling back to HTML proxy:', e);
+                            }
+                        }
+                        return origFetch(url);
+                    };
+                    v._prophesyFetchPatched = true;
+                }
+
+                // ── 3) parseSchedulePage: fire-and-forget pre-warm.
+                //     Runs in the background while GAMEVIS's per-game loop
+                //     iterates; subsequent fetchWithProxy(bs.html) calls hit
+                //     the in-flight Promise instead of starting a new fetch.
+                if (typeof v.parseSchedulePage === 'function' && !v._prophesySchedulePatched) {
+                    const origParseSch = v.parseSchedulePage.bind(v);
+                    v.parseSchedulePage = function (html) {
+                        const games = origParseSch(html);
+                        if (Array.isArray(games) && games.length) {
+                            const ids = games.map(g => g && g.gameId).filter(Boolean);
+                            if (ids.length) {
+                                showStatus('Pre-warming ' + ids.length + ' games via FIBA API…', null, 3500);
+                                prewarmJsonCache(ids, 6).catch(() => {});
+                            }
+                        }
+                        return games;
+                    };
+                    v._prophesySchedulePatched = true;
+                }
+
+                // Expose helpers for the wrapper's other code (live-mode
+                // cache busting, manual URL flow) so we don't reach in via
+                // globals.
+                v._prophesyGetCachedJson = getCachedJson;
+                v._prophesyPrewarmCache  = prewarmJsonCache;
+
+                v._prophesyAllPatched = true;
+                console.log('[GVWrapper] All JSON-API interceptors installed (selectGame + fetchWithProxy + parseSchedulePage prewarm + dedup cache)');
+
+                // Also inject CSS into the iframe to hide Tauri-era UI bits.
+                injectEmbeddedStyles();
+            } catch (e) {
+                console.warn('[GVWrapper] Could not install JSON interceptors:', e);
+            }
+        }
+
+        // Inject a stylesheet into the iframe document that strips every
+        // Tauri-era artefact: the "🌐 Fetch from FIBA LiveStats URL" card
+        // with its visible "Tauri Desktop App" badge, the in-iframe Live
+        // Mode toggle, and any straggler labelled "Tauri" anywhere.
+        //
+        // Runs unconditionally on iframe load — does NOT wait for the
+        // visualizer to be patched — and adds the body marker class
+        // directly so it doesn't depend on the postMessage round-trip.
+        // A MutationObserver re-applies the changes if GAMEVIS later
+        // re-renders any of those elements (some live-mode UI is built
+        // dynamically when the user enters live mode).
+        function injectEmbeddedStyles() {
+            try {
+                const doc = iframe.contentDocument;
+                if (!doc || !doc.head) return false;
+
+                // Add the marker class even if it was already added by the
+                // postMessage handler — idempotent.
+                if (doc.body) doc.body.classList.add('prophesy-embedded');
+
+                if (!doc.getElementById('prophesy-embedded-styles')) {
+                    const style = doc.createElement('style');
+                    style.id = 'prophesy-embedded-styles';
+                    style.textContent = `
+                        /* Kill the entire URL-fetcher card (wrapper's splash
+                           + Manual URL flow replaces it). The inputs are
+                           kept in the DOM but offscreen so the wrapper can
+                           still drive them programmatically. */
+                        body.prophesy-embedded #url-fetch-section {
+                            display: none !important;
+                            visibility: hidden !important;
+                        }
+                        /* Belt-and-braces: any element whose visible text was
+                           "Tauri Desktop App" carries this attribute (set by
+                           our scrubber below). */
+                        body.prophesy-embedded [data-prophesy-hide],
+                        body.prophesy-embedded .tauri-only,
+                        body.prophesy-embedded .live-mode-toggle,
+                        body.prophesy-embedded #refresh-interval-container,
+                        body.prophesy-embedded #live-status-panel {
+                            display: none !important;
+                        }
+                        /* Kill GAMEVIS's own "← Back to Upload" / "Back to
+                           Games" nav button and the "Skip to main content"
+                           a11y link — both are redundant inside the Prophesy
+                           wrapper, which already has its own top nav +
+                           SWITCH/RELOAD bar above the iframe. The :focus
+                           override on .skip-link would otherwise pop it
+                           visible whenever the user tabbed in. */
+                        body.prophesy-embedded .nav-back-btn,
+                        body.prophesy-embedded .skip-link,
+                        body.prophesy-embedded .skip-link:focus {
+                            display: none !important;
+                        }
+                    `;
+                    doc.head.appendChild(style);
+                    console.log('[GVWrapper] Injected embedded-mode styles into iframe');
+                }
+
+                // First scrub for visible "Tauri" text — covers any literal
+                // strings GAMEVIS may render outside #url-fetch-section.
+                scrubTauriLabels(doc);
+
+                // Watch for re-renders. GAMEVIS rebuilds chunks of the page
+                // when the user changes tabs / enters live mode, so we need
+                // to keep killing any Tauri labels that come back.
+                if (!doc.body || doc.body._prophesyTauriObserver) return true;
+                const obs = new MutationObserver(() => scrubTauriLabels(doc));
+                obs.observe(doc.body, { childList: true, subtree: true, characterData: true });
+                doc.body._prophesyTauriObserver = obs;
+                return true;
+            } catch (e) {
+                console.warn('[GVWrapper] Could not inject embedded-mode styles:', e);
+                return false;
+            }
+        }
+
+        // Walk the iframe DOM and hide any element whose visible text is the
+        // bare phrase "Tauri Desktop App" (and a few obvious siblings). We
+        // mark them with a data-attribute that the injected stylesheet
+        // already targets, so the next observer tick is a no-op.
+        function scrubTauriLabels(doc) {
+            try {
+                if (!doc) return;
+                // Quick text-content scan — only look at small leaf elements
+                // (span / em / small / badge-like divs) so we don't accidentally
+                // hide an entire card that mentions Tauri in passing.
+                const leafSel = 'span, em, small, b, i, strong, [class*="badge"], [class*="pill"], [class*="chip"]';
+                const nodes = doc.querySelectorAll(leafSel);
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    if (n.dataset && n.dataset.prophesyHide) continue;
+                    const t = (n.textContent || '').trim();
+                    if (!t || t.length > 64) continue;
+                    if (/^Tauri\s*Desktop\s*App$/i.test(t) || /^Tauri$/i.test(t)) {
+                        n.setAttribute('data-prophesy-hide', '1');
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // (onLiveTickComplete is declared earlier — see the live-mode block.)
+
+        // ───────────────────── URL sync (bookmarkable games) ──────────────
+        // Update the address bar when a game is selected, so the URL is
+        // shareable. Uses replaceState (not pushState) so we don't create
+        // browser-history clutter every time the user clicks around.
+        function syncUrlGame(gameId) {
+            try {
+                const url = new URL(window.location.href);
+                if (gameId) url.searchParams.set('game', String(gameId));
+                else url.searchParams.delete('game');
+                history.replaceState(null, '', url.toString());
+            } catch (_) {}
+        }
+
+        // ───────────────────── iframe message handler ─────────────────────
+        window.addEventListener('message', (ev) => {
+            const data = ev.data;
+            if (!data || typeof data !== 'object' || data.source !== 'slb-remote-app') return;
+            switch (data.type) {
+                case 'APP_READY':
+                    if (configLoaded) respondToPasswordRequest(data);
+                    else pendingPasswordRequests.push(data);
+                    postToFrame('EMBEDDED_MODE_INFO', { embedded: true, host: 'prophesy-web' });
+                    break;
+                case 'REQUEST_SAVED_PASSWORD':
+                    if (configLoaded) respondToPasswordRequest(data);
+                    else pendingPasswordRequests.push(data);
+                    break;
+                case 'AUTH_SUCCESS':
+                    // After unlock, push the active competition (if any) so the
+                    // user sees games as soon as they're past the gate.
+                    // Gated on SCHEDULE_LOADING_DISABLED.
+                    if (compsLoaded && !SCHEDULE_LOADING_DISABLED) {
+                        const code = compSelect.value;
+                        if (code && !document.body.classList.contains('gv-mode-manual')) {
+                            pushScheduleUrlsToFrame(code, /* fromBoot */ true);
+                        }
+                    }
+                    break;
+                case 'SAVE_PASSWORD':
+                    postToFrame('PASSWORD_SAVED');   break;
+                case 'CLEAR_SAVED_PASSWORD':
+                    postToFrame('PASSWORD_CLEARED'); break;
+                default: break;
+            }
+        });
+
+        // ───────────────────── wire UI ────────────────────────────────────
+        // Top-bar comp dropdown — reload when changed.
+        // Both the dropdown change and the Reload button are inert while
+        // SCHEDULE_LOADING_DISABLED is on; the Reload button is also
+        // visually disabled below.
+        compSelect.addEventListener('change', () => {
+            updateCompMeta();
+            const code = compSelect.value;
+            if (!code) return;
+            if (SCHEDULE_LOADING_DISABLED) {
+                showStatus('Competition loading is temporarily disabled — use Manual URL.', 'err', 4000);
+                return;
+            }
+            pushScheduleUrlsToFrame(code, false);
+        });
+        compLoadBtn.addEventListener('click', () => {
+            if (SCHEDULE_LOADING_DISABLED) {
+                showStatus('Competition loading is temporarily disabled — use Manual URL.', 'err', 4000);
+                return;
+            }
+            const code = compSelect.value;
+            if (!code) { showStatus('Pick a competition first.', 'err', 3000); return; }
+            pushScheduleUrlsToFrame(code, false);
+        });
+
+        // Switch button → re-show the splash so user can pick differently.
+        switchBtn?.addEventListener('click', () => showSplash());
+
+        // Splash competition card — would normally kick off a background
+        // preload as soon as the user changes the dropdown, but that's
+        // gated on SCHEDULE_LOADING_DISABLED.
+        splashComp?.addEventListener('change', () => {
+            updateSplashCompMeta();
+            if (splashComp.value && !SCHEDULE_LOADING_DISABLED) preloadCompSchedule(splashComp.value);
+        });
+        const splashCompPick = () => {
+            if (SCHEDULE_LOADING_DISABLED) {
+                setSplashStatus('Competition loading is temporarily disabled. Use Manual URL on the right to open a specific game.', 'err');
+                return;
+            }
+            const code = splashComp?.value;
+            if (!code) { setSplashStatus('Pick a competition from the dropdown first.', 'err'); return; }
+            const c = compMap.get(code);
+            if (!c || !c.scheduleUrls.length) {
+                setSplashStatus('No schedule URLs configured for ' + (c?.label || code) + '. Set them up in the admin dashboard.', 'err');
+                return;
+            }
+            compSelect.value = code;
+            updateCompMeta();
+            try {
+                const u = new URL(window.location.href);
+                u.searchParams.set('comp', code);
+                u.searchParams.delete('game');
+                history.replaceState(null, '', u.toString());
+                initialCompFromUrl = code;
+            } catch (_) {}
+            setSplashStatus('Loading ' + (c.label || code) + '…');
+            showLoading('Loading ' + (c.label || code), 'Fetching ' + c.scheduleUrls.length + ' schedule page' + (c.scheduleUrls.length === 1 ? '' : 's') + '…');
+            dismissSplash(() => pushScheduleUrlsToFrame(code, true));
+        };
+        splashCompGo?.addEventListener('click', splashCompPick);
+        splashComp?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); splashCompPick(); } });
+
+        // Splash manual URL card
+        const splashManualPick = () => {
+            const url = (splashUrl?.value || '').trim();
+            if (!url) { setSplashStatus('Paste a FIBA LiveStats game URL first.', 'err'); splashUrl?.focus(); return; }
+            try {
+                const m = url.match(/\/(\d{5,12})(?:\/|\?|#|$)/) || url.match(/[?&](?:matchId|gameId)=(\d{5,12})/i);
+                const u = new URL(window.location.href);
+                u.searchParams.delete('comp');
+                if (m) u.searchParams.set('game', m[1]); else u.searchParams.delete('game');
+                history.replaceState(null, '', u.toString());
+                if (m) initialGameFromUrl = m[1];
+            } catch (_) {}
+            setSplashStatus('Fetching game from URL…');
+            showLoading('Loading game', 'Pulling data.json from the FIBA LiveStats API…');
+            dismissSplash(() => loadManualUrl(url));
+        };
+        splashUrlGo?.addEventListener('click', splashManualPick);
+        splashUrl?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); splashManualPick(); } });
+        // Pre-fill last manual URL so people don't have to re-paste it on revisit
+        try {
+            const remembered = localStorage.getItem(GAMEVIS_MANUAL_KEY);
+            if (remembered && splashUrl) splashUrl.value = remembered;
+        } catch (_) {}
+
+        liveToggle.addEventListener('click', () => {
+            if (isLive()) stopLive();
+            else startLive();
+        });
+
+        // Restore live state from previous session.
+        try {
+            if (localStorage.getItem(GAMEVIS_LIVE_KEY) === '1') startLive();
+        } catch (_) {}
+
+        // Defensive proactive push on iframe load (in case APP_READY never fires).
+        // Also installs the JSON-API interceptor on the in-iframe FIBAGameVisualizer
+        // instance — same-origin so we can reach it directly. Retries a few times
+        // because the visualizer is constructed AFTER DOMContentLoaded.
+        iframe.addEventListener('load', () => {
+            // 1) Strip Tauri UI immediately — runs unconditionally, doesn't
+            //    wait for the visualizer instance. Retried below in the patch
+            //    loop in case the iframe DOM isn't ready on the first tick.
+            injectEmbeddedStyles();
+
+            setTimeout(() => {
+                if (configLoaded) respondToPasswordRequest({});
+                postToFrame('EMBEDDED_MODE_INFO', { embedded: true, host: 'prophesy-web' });
+                if (compsLoaded && !SCHEDULE_LOADING_DISABLED) {
+                    const code = compSelect.value;
+                    if (code && !splashIsVisible()) {
+                        pushScheduleUrlsToFrame(code, true);
+                    }
+                }
+                // Re-attempt the Tauri scrub once the iframe head has had a moment
+                injectEmbeddedStyles();
+            }, 350);
+
+            // Patch selectGame as soon as the visualizer instance shows up.
+            // We retry up to ~10 s because GAMEVIS's auth gate can delay
+            // construction (instance is only created after the password is
+            // accepted in some flows, before in others — be defensive).
+            let attempts = 0;
+            const tryPatch = () => {
+                installJsonInterceptors();
+                const patched = !!(iframe.contentWindow && iframe.contentWindow.fibaVisualizer && iframe.contentWindow.fibaVisualizer._prophesyJsonPatched);
+                if (patched) {
+                    // Once the visualizer is patched, deep-link to the game in
+                    // the URL (?game=<id>) — works even without a comp picked.
+                    if (initialGameFromUrl) {
+                        try {
+                            const v = iframe.contentWindow.fibaVisualizer;
+                            if (typeof v.selectGame === 'function') {
+                                showStatus('Deep-link · loading game ' + initialGameFromUrl + '…', null, 4500);
+                                v.selectGame(initialGameFromUrl);
+                                initialGameFromUrl = ''; // only fire once
+                            }
+                        } catch (_) {}
+                    }
+                    return;
+                }
+                if (++attempts < 25) setTimeout(tryPatch, 400);
+            };
+            setTimeout(tryPatch, 400);
+        });
+
+        // ─── Apply SCHEDULE_LOADING_DISABLED to the visible UI ───────
+        // The schedule-load actions are inert under the flag; mark the
+        // two action buttons disabled at boot and drop a small hint
+        // inside the splash Competition card so users know to use
+        // Manual URL instead. Easy to flip back on later.
+        if (SCHEDULE_LOADING_DISABLED) {
+            try {
+                if (splashCompGo) {
+                    splashCompGo.disabled = true;
+                    splashCompGo.title = 'Competition loading is temporarily disabled — use Manual URL on the right.';
+                    splashCompGo.style.opacity = '0.45';
+                    splashCompGo.style.cursor = 'not-allowed';
+                }
+                if (compLoadBtn) {
+                    compLoadBtn.disabled = true;
+                    compLoadBtn.title = 'Competition loading is temporarily disabled.';
+                    compLoadBtn.style.opacity = '0.45';
+                    compLoadBtn.style.cursor = 'not-allowed';
+                }
+                // Subtle note inside the splash Competition card. We append
+                // to the existing gv-splash-comp-meta line so we don't add
+                // any extra DOM nodes.
+                if (splashCompMeta) {
+                    splashCompMeta.textContent = '⏸ Competition loading temporarily disabled — use Manual URL';
+                    splashCompMeta.style.color = '#e0c078';
+                }
+                // Tone down the whole Competition card so the eye lands on
+                // the still-working Manual URL card to its right.
+                const compCard = splashComp && splashComp.closest('.gv-splash-card');
+                if (compCard) compCard.style.opacity = '0.55';
+            } catch (_) {}
+        }
+
+        // Boot: load password + competitions in parallel
+        loadLineupConfig();
+        loadCompetitions();
+
+        // Splash always shows. Deep-link URL params just pre-select the
+        // appropriate splash card — the user still confirms with Open / Load.
+        // (Previously we skipped the splash on deep-link, but the user wanted
+        // a consistent landing experience, and pre-fill is the safer default
+        // anyway since they can change their mind.)
+        if (initialGameFromUrl) {
+            // Deep-link to a single game → pre-fill the manual URL field.
+            // Use the canonical /data/<id>/data.json shape since that's what
+            // we actually fetch, and the user might want to copy/share it.
+            try {
+                if (splashUrl && !splashUrl.value) {
+                    splashUrl.value = FIBA_JSON_BASE + initialGameFromUrl + '/data.json';
+                }
+            } catch (_) {}
+        }
+        // initialCompFromUrl is already used inside renderCompSelect to
+        // preselect the dropdown, so nothing more to do here.
+        showSplash();
+        setTimeout(hideStatus, 12000);
+    </script>
+</body>
+</html>
