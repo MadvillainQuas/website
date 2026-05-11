@@ -1,6 +1,6 @@
 {
   "_comment": "Global invite-gate suspension switch. When `suspended` is true, gate.js bypasses the URL invite check entirely AND silently persists the current INVITE_HASH_HEX into each visitor's localStorage — so when the gate is re-activated later, every browser that visited during the suspension still has a matching hash and stays unlocked without needing the invite link. Useful for short-term public events / open access windows. Toggle via the admin dashboard's 'Suspend invite gate' card. Setting `suspended: false` re-enables the gate for new visitors (anyone who visited during suspension keeps their automatically-stored unlock).",
   "suspended": true,
-  "suspendedAt": "2026-05-11T07:53:03.839Z",
+  "suspendedAt": "2026-05-11T07:53:29.131Z",
   "suspendedBy": "admin"
 }
