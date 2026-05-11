@@ -3,8 +3,8 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-10T23:58:42.110Z",
-    "savedBy": "admin"
+    "savedAt": "2026-05-11T08:41:23.686Z",
+    "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
     "Owen Dease": {
@@ -528,6 +528,60 @@
       "season": "",
       "savedAt": 1778455184289,
       "source": "manual"
+    },
+    "Fran Jacovic": {
+      "metrics": {
+        "player": "Fran Jacovic",
+        "team": "Dinamo KK",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Dinamo KK",
+      "season": "",
+      "savedAt": 1778487852062,
+      "source": "manual"
+    },
+    "Roko Rogic": {
+      "metrics": {
+        "player": "Roko Rogic",
+        "team": "Dinamo KK",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Dinamo KK",
+      "season": "",
+      "savedAt": 1778487950233,
+      "source": "manual"
+    },
+    "Giannis Karakostas": {
+      "metrics": {
+        "player": "Giannis Karakostas",
+        "team": "Maroussi",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Maroussi",
+      "season": "",
+      "savedAt": 1778488494155,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -675,6 +729,21 @@
       "name": "Camryn Weston",
       "team": "Keravnos",
       "createdAt": 1778455184289
+    },
+    {
+      "name": "Fran Jacovic",
+      "team": "Dinamo KK",
+      "createdAt": 1778487852062
+    },
+    {
+      "name": "Roko Rogic",
+      "team": "Dinamo KK",
+      "createdAt": 1778487950233
+    },
+    {
+      "name": "Giannis Karakostas",
+      "team": "Maroussi",
+      "createdAt": 1778488494155
     }
   ],
   "starRatings": {
@@ -705,7 +774,10 @@
     "Chandler Jackson": 3.5,
     "Sincere Malone": 3,
     "Troy Glover II": 3.5,
-    "Camryn Weston": 4
+    "Camryn Weston": 4,
+    "Fran Jacovic": 4,
+    "Roko Rogic": 4,
+    "Giannis Karakostas": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1008,6 +1080,36 @@
       "secondary": [
         2
       ]
+    },
+    "Fran Jacovic": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ],
+      "suitability": {
+        "2": 6,
+        "3": 10,
+        "4": 8
+      }
+    },
+    "Roko Rogic": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10,
+        "2": 4
+      }
+    },
+    "Giannis Karakostas": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 10
+      }
     }
   },
   "scoutReports": {},
@@ -2250,6 +2352,112 @@
         "closeout_defense": 7,
         "foul_avoidance": 6
       }
+    },
+    "Roko Rogic": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 7,
+        "wingspan": 6,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 6,
+        "lateral_accel": 6,
+        "body_control": 7,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 5
+      },
+      "direction": {
+        "handling_pressure": 8,
+        "pnr_reading": 8,
+        "advantage_creation": 7,
+        "court_vision": 7,
+        "pass_timing": 7,
+        "pass_willingness": 6,
+        "game_control": 7,
+        "pace_mgmt": 7,
+        "punish_coverages": 8,
+        "off_hand": 6,
+        "tertiary_skill": 6
+      },
+      "scoring": {
+        "shot_selection": 6,
+        "three_off_dribble": 6,
+        "three_catch_shoot": 6,
+        "rim_finishing": 7,
+        "floater": 7,
+        "touch": 8,
+        "midrange": 5,
+        "shot_creation": 7,
+        "cutting": 8,
+        "perimeter_movement": 6,
+        "gather_skill": 7,
+        "movement_shooting": 6,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 7,
+        "ball_pressure": 7,
+        "anticipation": 6,
+        "offball_def": 7,
+        "onball_def": 7,
+        "def_rebounding": 6,
+        "switching_up": 7
+      }
+    },
+    "Giannis Karakostas": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 7,
+        "wingspan": 7,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 7,
+        "lateral_accel": 8,
+        "body_control": 7,
+        "stamina": 6,
+        "physical_strength": 7,
+        "vertical_athleticism": 6
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "advantage_creation": 7,
+        "pnr_reading": 7,
+        "court_vision": 6,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 6,
+        "pace_mgmt": 7,
+        "punish_coverages": 7,
+        "off_hand": 5,
+        "tertiary_skill": 6
+      },
+      "perimeter_def": {
+        "poa_defense": 9,
+        "recovery": 7,
+        "ball_pressure": 8,
+        "anticipation": 7,
+        "offball_def": 7,
+        "onball_def": 8,
+        "def_rebounding": 5,
+        "switching_up": 8
+      },
+      "scoring": {
+        "rim_finishing": 7,
+        "three_catch_shoot": 7,
+        "three_off_dribble": 6,
+        "shot_selection": 6,
+        "midrange": 6,
+        "floater": 6,
+        "touch": 6,
+        "shot_creation": 6,
+        "cutting": 7,
+        "perimeter_movement": 6,
+        "gather_skill": 7,
+        "movement_shooting": 7,
+        "foul_grifting": 7
+      }
     }
   },
   "lockedPlayers": {},
@@ -2341,6 +2549,15 @@
       "Scoring Combo-Guard"
     ],
     "Camryn Weston": [
+      "Mixed Combo-Guard"
+    ],
+    "Fran Jacovic": [
+      "Secondary Wing Creator"
+    ],
+    "Roko Rogic": [
+      "Dual-Threat PG"
+    ],
+    "Giannis Karakostas": [
       "Mixed Combo-Guard"
     ]
   },
@@ -2460,6 +2677,18 @@
     "Camryn Weston": {
       "height": "6'3\"",
       "weight": "190"
+    },
+    "Fran Jacovic": {
+      "height": "6'7\"",
+      "weight": "210"
+    },
+    "Roko Rogic": {
+      "height": "6'2\"",
+      "weight": "180"
+    },
+    "Giannis Karakostas": {
+      "height": "6'3\"",
+      "weight": "180"
     }
   },
   "potentialRatings": {
@@ -2490,7 +2719,10 @@
     "Chandler Jackson": 5,
     "Sincere Malone": 4,
     "Troy Glover II": 5,
-    "Camryn Weston": 4.5
+    "Camryn Weston": 4.5,
+    "Fran Jacovic": 4.5,
+    "Roko Rogic": 4,
+    "Giannis Karakostas": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -2641,12 +2873,26 @@
     "Camryn Weston": {
       "league": "Cyprus",
       "level": "Mid-Tier Europe"
+    },
+    "Fran Jacovic": {
+      "league": "Croatia",
+      "level": "High Mid-Tier Europe"
+    },
+    "Roko Rogic": {
+      "league": "Croatia",
+      "level": "High Mid-Tier Europe"
+    },
+    "Giannis Karakostas": {
+      "league": "GBL",
+      "level": "Top-Tier Europe"
     }
   },
   "playerSalaries": {
     "Garry Clark": "Yes",
     "Quimari Peterson": "4-6k",
-    "Camryn Weston": "4-6k"
+    "Camryn Weston": "4-6k",
+    "Roko Rogic": "Previously 5k",
+    "Giannis Karakostas": "Previous Loan (4-5k)"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
