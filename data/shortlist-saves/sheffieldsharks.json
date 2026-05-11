@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-11T10:04:34.511Z",
+    "savedAt": "2026-05-11T10:12:36.964Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -755,7 +755,7 @@
     "Tevin Brewer": 3.5,
     "DeMarcus Sharp": 3,
     "Rayshon Harrison": 4,
-    "Sam Trunley": 2,
+    "Sam Trunley": 2.5,
     "Sean Trumper": 3,
     "James Okonkwo": 3,
     "Zaire Williams": 3,
@@ -973,7 +973,6 @@
     "Richie Springs": {
       "primary": 4,
       "secondary": [
-        3,
         5
       ],
       "ratingTemplate": "wing",
