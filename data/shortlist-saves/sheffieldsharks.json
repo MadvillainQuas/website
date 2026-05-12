@@ -3,8 +3,8 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-11T15:52:43.861Z",
-    "savedBy": "admin"
+    "savedAt": "2026-05-12T18:39:15.178Z",
+    "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
     "Owen Dease": {
@@ -582,6 +582,24 @@
       "season": "",
       "savedAt": 1778488494155,
       "source": "manual"
+    },
+    "Jayson Tchicamboud": {
+      "metrics": {
+        "player": "Jayson Tchicamboud",
+        "team": "Levallois",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Levallois",
+      "season": "",
+      "savedAt": 1778610644620,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -744,6 +762,11 @@
       "name": "Giannis Karakostas",
       "team": "Maroussi",
       "createdAt": 1778488494155
+    },
+    {
+      "name": "Jayson Tchicamboud",
+      "team": "Levallois",
+      "createdAt": 1778610644619
     }
   ],
   "starRatings": {
@@ -777,7 +800,8 @@
     "Camryn Weston": 4,
     "Fran Jacovic": 3.5,
     "Roko Rogic": 4,
-    "Giannis Karakostas": 4
+    "Giannis Karakostas": 4,
+    "Jayson Tchicamboud": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1108,6 +1132,16 @@
       "suitability": {
         "1": 10,
         "2": 10
+      }
+    },
+    "Jayson Tchicamboud": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 4
       }
     }
   },
@@ -2457,6 +2491,59 @@
         "movement_shooting": 7,
         "foul_grifting": 7
       }
+    },
+    "Jayson Tchicamboud": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 9,
+        "wingspan": 9,
+        "ball_speed": 8,
+        "first_step": 9,
+        "change_pace": 8,
+        "lateral_accel": 8,
+        "body_control": 5,
+        "stamina": 7,
+        "physical_strength": 5,
+        "vertical_athleticism": 7
+      },
+      "direction": {
+        "handling_pressure": 7,
+        "pnr_reading": 8,
+        "advantage_creation": 8,
+        "court_vision": 8,
+        "pass_timing": 7,
+        "pass_willingness": 8,
+        "game_control": 6,
+        "pace_mgmt": 7,
+        "punish_coverages": 7,
+        "off_hand": 6,
+        "tertiary_skill": 7
+      },
+      "scoring": {
+        "shot_selection": 6,
+        "three_off_dribble": 4,
+        "three_catch_shoot": 4,
+        "midrange": 5,
+        "rim_finishing": 6,
+        "floater": 7,
+        "touch": 7,
+        "shot_creation": 6,
+        "cutting": 6,
+        "perimeter_movement": 6,
+        "gather_skill": 5,
+        "movement_shooting": 4,
+        "foul_grifting": 7
+      },
+      "perimeter_def": {
+        "poa_defense": 8,
+        "recovery": 8,
+        "ball_pressure": 9,
+        "anticipation": 8,
+        "offball_def": 5,
+        "onball_def": 8,
+        "def_rebounding": 7,
+        "switching_up": 7
+      }
     }
   },
   "lockedPlayers": {},
@@ -2558,6 +2645,9 @@
     ],
     "Giannis Karakostas": [
       "Mixed Combo-Guard"
+    ],
+    "Jayson Tchicamboud": [
+      "Slashing Pass-First PG"
     ]
   },
   "playerPhysicals": {
@@ -2688,6 +2778,10 @@
     "Giannis Karakostas": {
       "height": "6'3\"",
       "weight": "180"
+    },
+    "Jayson Tchicamboud": {
+      "height": "6'5\"",
+      "weight": "180"
     }
   },
   "potentialRatings": {
@@ -2726,6 +2820,16 @@
   "playerCoreStats": {
     "Garry Clark": {
       "ts_pct": 0
+    },
+    "Jayson Tchicamboud": {
+      "ts_pct": 54,
+      "usg_pct": 22,
+      "dreb_pct": 21,
+      "oreb_pct": 5,
+      "ast_pct": 42,
+      "tov_pct": 21,
+      "stocks_pct": 3.3,
+      "ft_rate": 0.4
     }
   },
   "playerStrengthsWeaknesses": {
@@ -2754,6 +2858,10 @@
     },
     "Johnathan Massie": {
       "agency": "Ten10 Agency"
+    },
+    "Jayson Tchicamboud": {
+      "agency": "Comsport",
+      "agentName": "Florian Collet"
     }
   },
   "playerLeagueLevel": {
@@ -2884,6 +2992,10 @@
     "Giannis Karakostas": {
       "league": "GBL",
       "level": "Top-Tier Europe"
+    },
+    "Jayson Tchicamboud": {
+      "league": "NM1",
+      "level": "Lower Mid-Tier Europe"
     }
   },
   "playerSalaries": {
@@ -2891,7 +3003,8 @@
     "Quimari Peterson": "4-6k",
     "Camryn Weston": "4-6k",
     "Roko Rogic": "Previously 5k",
-    "Giannis Karakostas": "Previous Loan (4-5k)"
+    "Giannis Karakostas": "Previous Loan (4-5k)",
+    "Jayson Tchicamboud": "5-6k"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
