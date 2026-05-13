@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-12T18:39:15.178Z",
+    "savedAt": "2026-05-13T15:55:32.660Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -600,6 +600,24 @@
       "season": "",
       "savedAt": 1778610644620,
       "source": "manual"
+    },
+    "Dajuan Harris Jr.": {
+      "metrics": {
+        "player": "Dajuan Harris Jr.",
+        "team": "G-League",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "G-League",
+      "season": "",
+      "savedAt": 1778683985636,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -767,6 +785,11 @@
       "name": "Jayson Tchicamboud",
       "team": "Levallois",
       "createdAt": 1778610644619
+    },
+    {
+      "name": "Dajuan Harris Jr.",
+      "team": "G-League",
+      "createdAt": 1778683985636
     }
   ],
   "starRatings": {
@@ -801,7 +824,8 @@
     "Fran Jacovic": 3.5,
     "Roko Rogic": 4,
     "Giannis Karakostas": 4,
-    "Jayson Tchicamboud": 4
+    "Jayson Tchicamboud": 4,
+    "Dajuan Harris Jr.": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1143,6 +1167,10 @@
         "1": 10,
         "2": 4
       }
+    },
+    "Dajuan Harris Jr.": {
+      "primary": 1,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -2648,6 +2676,9 @@
     ],
     "Jayson Tchicamboud": [
       "Slashing Pass-First PG"
+    ],
+    "Dajuan Harris Jr.": [
+      "Pass-First PG"
     ]
   },
   "playerPhysicals": {
@@ -2782,6 +2813,10 @@
     "Jayson Tchicamboud": {
       "height": "6'5\"",
       "weight": "180"
+    },
+    "Dajuan Harris Jr.": {
+      "height": "6'2\"",
+      "weight": "173"
     }
   },
   "potentialRatings": {
@@ -2815,7 +2850,9 @@
     "Camryn Weston": 4.5,
     "Fran Jacovic": 4.5,
     "Roko Rogic": 4,
-    "Giannis Karakostas": 5
+    "Giannis Karakostas": 5,
+    "Jayson Tchicamboud": 4.5,
+    "Dajuan Harris Jr.": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -2841,6 +2878,44 @@
         }
       ],
       "weaknesses": []
+    },
+    "Dajuan Harris Jr.": {
+      "strengths": [
+        {
+          "title": "Technical Handle - Agility",
+          "description": "High-level advantage creator. Great change of pace and very flexible, slippery ball handler. Able to create separation with or without a ball-screen. Almost unpressurable, retains dribble through pressure. "
+        },
+        {
+          "title": "PNR Guile",
+          "description": "Able to manipulate defenses with his stop-start ability in the PNR and use of tempo. Smartly uses ball screens. Excellent passer to rollers/PNPers."
+        },
+        {
+          "title": "Court Vision + Pass-On-The-Move",
+          "description": "Seamless pass-on-the-move ability off-handle. Great court mapping and ability to kick-out to shooters. "
+        },
+        {
+          "title": "Floater Touch",
+          "description": "Likes to low gather into spots in the paint to fire off his floater. Acceptable touch (45FG%)."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Skinniness",
+          "description": "Low body weight and lack of good vertical ability makes his finishing ability around the rim questionable - and lessens the amount of pressure he's able to exert downhill against larger teams despite his exceptional advantage creation ability."
+        },
+        {
+          "title": "Pass Timing/Decision Making",
+          "description": ""
+        },
+        {
+          "title": "Shot Making",
+          "description": "Mediocre level of shot-maker off-the-dribble, coupled with his limitations as a slasher/finisher can make scoring avenues tough if defenses ask him to be a scorer."
+        },
+        {
+          "title": "Inconsistent Floater Touch",
+          "description": ""
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
