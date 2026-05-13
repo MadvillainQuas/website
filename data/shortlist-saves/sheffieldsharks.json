@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-13T21:25:09.030Z",
+    "savedAt": "2026-05-13T21:27:07.721Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -849,7 +849,7 @@
     "Giannis Karakostas": 4,
     "Jayson Tchicamboud": 4,
     "Dajuan Harris Jr.": 3.5,
-    "Kobe Langley": 3.5
+    "Kobe Langley": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2826,7 +2826,7 @@
     },
     "Leland Walker": {
       "height": "6'1\"",
-      "weight": "195"
+      "weight": "185"
     },
     "Ben Schweiger": {
       "height": "6'8\"",
