@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-13T15:55:32.660Z",
+    "savedAt": "2026-05-13T21:25:09.030Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -618,6 +618,24 @@
       "season": "",
       "savedAt": 1778683985636,
       "source": "manual"
+    },
+    "Kobe Langley": {
+      "metrics": {
+        "player": "Kobe Langley",
+        "team": "Leverkusen",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Leverkusen",
+      "season": "",
+      "savedAt": 1778698332069,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -790,6 +808,11 @@
       "name": "Dajuan Harris Jr.",
       "team": "G-League",
       "createdAt": 1778683985636
+    },
+    {
+      "name": "Kobe Langley",
+      "team": "Leverkusen",
+      "createdAt": 1778698332069
     }
   ],
   "starRatings": {
@@ -825,7 +848,8 @@
     "Roko Rogic": 4,
     "Giannis Karakostas": 4,
     "Jayson Tchicamboud": 4,
-    "Dajuan Harris Jr.": 3.5
+    "Dajuan Harris Jr.": 3.5,
+    "Kobe Langley": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1171,6 +1195,16 @@
     "Dajuan Harris Jr.": {
       "primary": 1,
       "secondary": []
+    },
+    "Kobe Langley": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 8
+      }
     }
   },
   "scoutReports": {},
@@ -2572,6 +2606,59 @@
         "def_rebounding": 7,
         "switching_up": 7
       }
+    },
+    "Kobe Langley": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 5,
+        "wingspan": 6,
+        "ball_speed": 8,
+        "first_step": 9,
+        "change_pace": 8,
+        "body_control": 7,
+        "stamina": 7,
+        "physical_strength": 6,
+        "vertical_athleticism": 7,
+        "lateral_accel": 6
+      },
+      "direction": {
+        "handling_pressure": 6,
+        "pnr_reading": 7,
+        "advantage_creation": 7,
+        "court_vision": 8,
+        "pass_timing": 7,
+        "pass_willingness": 7,
+        "game_control": 6,
+        "pace_mgmt": 6,
+        "punish_coverages": 6,
+        "off_hand": 5,
+        "tertiary_skill": 4
+      },
+      "scoring": {
+        "shot_selection": 5,
+        "three_off_dribble": 8,
+        "three_catch_shoot": 8,
+        "midrange": 6,
+        "rim_finishing": 5,
+        "floater": 5,
+        "touch": 5,
+        "shot_creation": 7,
+        "cutting": 7,
+        "perimeter_movement": 7,
+        "gather_skill": 5,
+        "movement_shooting": 8,
+        "foul_grifting": 6
+      },
+      "perimeter_def": {
+        "poa_defense": 6,
+        "ball_pressure": 5,
+        "anticipation": 8,
+        "offball_def": 5,
+        "onball_def": 6,
+        "recovery": 7,
+        "def_rebounding": 4,
+        "switching_up": 5
+      }
     }
   },
   "lockedPlayers": {},
@@ -2679,6 +2766,9 @@
     ],
     "Dajuan Harris Jr.": [
       "Pass-First PG"
+    ],
+    "Kobe Langley": [
+      "Shooting Dual-Threat PG"
     ]
   },
   "playerPhysicals": {
@@ -2817,6 +2907,10 @@
     "Dajuan Harris Jr.": {
       "height": "6'2\"",
       "weight": "173"
+    },
+    "Kobe Langley": {
+      "height": "6'1\"",
+      "weight": "180"
     }
   },
   "potentialRatings": {
@@ -2852,7 +2946,8 @@
     "Roko Rogic": 4,
     "Giannis Karakostas": 5,
     "Jayson Tchicamboud": 4.5,
-    "Dajuan Harris Jr.": 4
+    "Dajuan Harris Jr.": 4,
+    "Kobe Langley": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -2913,6 +3008,44 @@
         },
         {
           "title": "Inconsistent Floater Touch",
+          "description": ""
+        }
+      ]
+    },
+    "Kobe Langley": {
+      "strengths": [
+        {
+          "title": "3PT Shot-Making",
+          "description": "Kobe has the ability to consistently make tough shots from behind the arc with a hand in his face. Crafty off-the-dribble game from 3, with a plethora of step-backs/pull-ups/side-step 3's in his arsenal. Loves to get a step on his man with his fast first-step, and then  misdirect with a step-back from deep."
+        },
+        {
+          "title": "Off-Ball Gravity/Handoff Threat",
+          "description": "With Kobe's tough shotmaking ability from behind the arc, it makes it exceptionally difficult to help off of him. Likes to relocate on the perimeter for C&S opportunities. Dangerous running off of screens & pulling from handoff/get opportunities."
+        },
+        {
+          "title": "Drives for Kick-Outs/Speed",
+          "description": "Very quick first-step, with solid core strength to maintain balance with a defender on his hip - doesn't shy away from physicality. Has a full-speed cross that's tough to cover. His speed draws in help - where he remains heads up, very willing to pass out, and exploits help with kick-outs to shooters."
+        },
+        {
+          "title": "PNR Playmaking - Roller",
+          "description": "Had great synergy with his 5-man at Leverkusen - finding him for easy looks, hitting him frequently."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Finishing/Size/Level of Control",
+          "description": "Despite the decent level of physicality he plays with around the rim and straight-line speed, Kobe can struggle to finish in traffic due to his size/lack of length and mediocre level of touch at the rim. Often plays at one speed (full-speed) going downhill, which can occasionally lead to out-of-control moments at the rim."
+        },
+        {
+          "title": "Shot Selection",
+          "description": "Had a solid TS% (56%) at Leverkusen buoyed by his shot-making ability from 3, but can be trigger happy on tough looks. Due to his propensity behind the arc, for stretches he can settle from 3 - leading to, occasionally, some possessions with not a lot of ball movement. Due to his size/lack of multiple speeds (and tendency to take tough looks from deep), his shot diet can be very tough."
+        },
+        {
+          "title": "Off-Ball Defense/Inconsistent Motor",
+          "description": "Kobe can sometimes be caught ball-watching, losing his man. Defensive motor can vary. "
+        },
+        {
+          "title": "Gambling on D",
           "description": ""
         }
       ]
@@ -3071,6 +3204,10 @@
     "Jayson Tchicamboud": {
       "league": "NM1",
       "level": "Lower Mid-Tier Europe"
+    },
+    "Kobe Langley": {
+      "league": "ProA Germany",
+      "level": "Solid Mid-Tier Europe"
     }
   },
   "playerSalaries": {
