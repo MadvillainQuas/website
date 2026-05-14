@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-13T22:26:10.213Z",
+    "savedAt": "2026-05-14T22:52:46.015Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -636,6 +636,24 @@
       "season": "",
       "savedAt": 1778698332069,
       "source": "manual"
+    },
+    "Rylan Jones": {
+      "metrics": {
+        "player": "Rylan Jones",
+        "team": "Southland Sharks",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Southland Sharks",
+      "season": "",
+      "savedAt": 1778779583430,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -813,6 +831,11 @@
       "name": "Kobe Langley",
       "team": "Leverkusen",
       "createdAt": 1778698332069
+    },
+    {
+      "name": "Rylan Jones",
+      "team": "Southland Sharks",
+      "createdAt": 1778779583430
     }
   ],
   "starRatings": {
@@ -1204,6 +1227,13 @@
       "suitability": {
         "1": 10,
         "2": 8
+      }
+    },
+    "Rylan Jones": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
       }
     }
   },
@@ -2659,6 +2689,59 @@
         "def_rebounding": 4,
         "switching_up": 5
       }
+    },
+    "Rylan Jones": {
+      "positionGroup": "guard",
+      "physical": {
+        "height": 4,
+        "wingspan": 2,
+        "ball_speed": 7,
+        "first_step": 7,
+        "change_pace": 8,
+        "lateral_accel": 7,
+        "body_control": 8,
+        "stamina": 7,
+        "physical_strength": 3,
+        "vertical_athleticism": 4
+      },
+      "direction": {
+        "handling_pressure": 9,
+        "pnr_reading": 8,
+        "pace_mgmt": 8,
+        "advantage_creation": 8,
+        "court_vision": 8,
+        "pass_timing": 8,
+        "pass_willingness": 9,
+        "game_control": 8,
+        "punish_coverages": 7,
+        "off_hand": 6,
+        "tertiary_skill": 2
+      },
+      "scoring": {
+        "shot_selection": 8,
+        "three_off_dribble": 8,
+        "three_catch_shoot": 8,
+        "midrange": 7,
+        "rim_finishing": 6,
+        "floater": 8,
+        "touch": 7,
+        "shot_creation": 6,
+        "cutting": 5,
+        "perimeter_movement": 7,
+        "gather_skill": 5,
+        "movement_shooting": 8,
+        "foul_grifting": 4
+      },
+      "perimeter_def": {
+        "poa_defense": 7,
+        "recovery": 5,
+        "ball_pressure": 8,
+        "anticipation": 5,
+        "offball_def": 7,
+        "onball_def": 7,
+        "def_rebounding": 5,
+        "switching_up": 4
+      }
     }
   },
   "lockedPlayers": {},
@@ -3049,6 +3132,40 @@
           "description": ""
         }
       ]
+    },
+    "Rylan Jones": {
+      "strengths": [
+        {
+          "title": "Handle/Advantage Creation/Control",
+          "description": "Loves to Nash dribble - keeps his dribble alive for the best opportunity (assist/scoring) possible, playing with a high degree of patience. Fluid, agile athlete with a very tight handle that looks to navigate tight spaces inside the arc for assist-opportunities. Remains constantly under control, with a deceptive use of change-of-pace and hesi's. Very slippery."
+        },
+        {
+          "title": "3PT/Mid Shot-Making ",
+          "description": "Good shot-maker - able to hit both off-the-dribble or C&S with high degrees of difficulty. Relocates when off-ball for his shot - good at hitting running off-screens or in hand-offs. Can curl into his floater/mid."
+        },
+        {
+          "title": "Court-Vision/Pass-On-The-Move/PNR Probing",
+          "description": "Seamless passer off dribble. Cerebral PNR operator with great court vision and very pass-first mentality, able to hit tight window passes while he probes the defense looking for gaps."
+        },
+        {
+          "title": "Defense/Smarts",
+          "description": "Despite his small size, his ability to navigate screens with his level of agility and motor is at a very good level. Uses verticality and his body very well as a defender, making shots difficult. Remains aware off-ball, with good close-out defense,"
+        },
+        {
+          "title": "Floater Touch",
+          "description": "Almost automatic if he gets enough space in the paint. Great touch on extended-range touch shots, able to hit contested looks."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Threat Inside The Arc/Spot-Ups",
+          "description": "Due to his small-size and diminuitive frame, it can be tough for Rylan to generate space inside the arc for his own shot. Limited threat at the rim unless wide open/has a step on his man. Often has to Nash dribble instead of finish at the rim. If he can't separate with his speed, it can be a struggle. Often has to pass up C&S spot-up opportunities on the perimeter due to his low release point."
+        },
+        {
+          "title": "Frame/Strength",
+          "description": "Due to his small frame, he's a threat to be pinned by larger players in the post. Very small effective height with his negative wingspan and low body weight. Little margin for error defensively - close-to-zero impact contesting shots (has to do his work early), or ability to defend from behind the play. If a screen makes contact, it can take him out of the play."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -3070,6 +3187,9 @@
     "Jayson Tchicamboud": {
       "agency": "Comsport",
       "agentName": "Florian Collet"
+    },
+    "Rylan Jones": {
+      "agentName": ""
     }
   },
   "playerLeagueLevel": {
@@ -3208,6 +3328,10 @@
     "Kobe Langley": {
       "league": "ProA Germany",
       "level": "Solid Mid-Tier Europe"
+    },
+    "Rylan Jones": {
+      "league": "New Zealand",
+      "level": "Lower Mid-Tier Europe"
     }
   },
   "playerSalaries": {
