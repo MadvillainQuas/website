@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-15T16:19:44.650Z",
+    "savedAt": "2026-05-15T16:22:22.007Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1259,6 +1259,10 @@
       "suitability": {
         "1": 10
       }
+    },
+    "Sam Hoiberg": {
+      "primary": 1,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -2876,6 +2880,12 @@
     ],
     "Kobe Langley": [
       "Shooting Dual-Threat PG"
+    ],
+    "Sam Hoiberg": [
+      "Slashing Pass-First PG"
+    ],
+    "Rylan Jones": [
+      "Probing Pass-First PG"
     ]
   },
   "playerPhysicals": {
@@ -3018,6 +3028,14 @@
     "Kobe Langley": {
       "height": "6'1\"",
       "weight": "180"
+    },
+    "Sam Hoiberg": {
+      "height": "6'0\"",
+      "weight": "185"
+    },
+    "Rylan Jones": {
+      "height": "6'0\"",
+      "weight": "175"
     }
   },
   "potentialRatings": {
