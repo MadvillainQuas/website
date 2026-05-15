@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-14T22:52:46.015Z",
+    "savedAt": "2026-05-15T16:19:44.650Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -654,6 +654,24 @@
       "season": "",
       "savedAt": 1778779583430,
       "source": "manual"
+    },
+    "Sam Hoiberg": {
+      "metrics": {
+        "player": "Sam Hoiberg",
+        "team": "Nebraska",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Nebraska",
+      "season": "",
+      "savedAt": 1778854382869,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -836,6 +854,11 @@
       "name": "Rylan Jones",
       "team": "Southland Sharks",
       "createdAt": 1778779583430
+    },
+    {
+      "name": "Sam Hoiberg",
+      "team": "Nebraska",
+      "createdAt": 1778854382868
     }
   ],
   "starRatings": {
@@ -872,7 +895,8 @@
     "Giannis Karakostas": 4,
     "Jayson Tchicamboud": 4,
     "Dajuan Harris Jr.": 3.5,
-    "Kobe Langley": 4
+    "Kobe Langley": 4,
+    "Rylan Jones": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3030,7 +3054,8 @@
     "Giannis Karakostas": 5,
     "Jayson Tchicamboud": 4.5,
     "Dajuan Harris Jr.": 4,
-    "Kobe Langley": 4
+    "Kobe Langley": 4,
+    "Rylan Jones": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -3164,6 +3189,40 @@
         {
           "title": "Frame/Strength",
           "description": "Due to his small frame, he's a threat to be pinned by larger players in the post. Very small effective height with his negative wingspan and low body weight. Little margin for error defensively - close-to-zero impact contesting shots (has to do his work early), or ability to defend from behind the play. If a screen makes contact, it can take him out of the play."
+        }
+      ]
+    },
+    "Sam Hoiberg": {
+      "strengths": [
+        {
+          "title": "Straight-Line Drive Craft & Speed/Finishing",
+          "description": "Very fast downhill with a quick first step - and uses change-of-pace/hesi's smartly to throw defenders off-balance. Likes to reject the ball-screen and exploit his speed. Uses footwork and craft around the rim to alter the timing of shot-blockers/draw fouls. Great on curl actions where he can exploit his speed to the rim. Finds a way to finish in traffic."
+        },
+        {
+          "title": "Foul Grifting",
+          "description": "Very smart at drawing fouls around the rim if he senses he's in a bad position/defender out of legal guarding position, with clever use of footwork/gather."
+        },
+        {
+          "title": "Movement/Aggression Off-The-Catch/Hand-Offs",
+          "description": "Relocates off-ball when he passes off, creating a constant flow of offense with his straight-line drive ability off-the-catch, level of aggression and passing ability. Crafty movement on  hand-offs, where he can leverage his speed downhill for looks at the rim/passing opportunities. Attacks full-speed off-the-catch, also incorporating stampede cuts to the rim."
+        },
+        {
+          "title": "Drive & Kick Ability",
+          "description": "Leverages his fearless, aggressive drives to the rim into points for others. Willing passer out to shooters."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Outside Shotmaking",
+          "description": "Mainly only a threat on open C&S opportunities. Inconsistent shot if the defense goes under on ball screens."
+        },
+        {
+          "title": "Left-Side Finishing",
+          "description": "Still very capable, but weaker finishing to the left-side (weaker touch if he goes with his left, likes the reverse lay-up)"
+        },
+        {
+          "title": "",
+          "description": "Not completely perfect court-vision, can occasionally miss passing opportunities. "
         }
       ]
     }
@@ -3332,6 +3391,10 @@
     "Rylan Jones": {
       "league": "New Zealand",
       "level": "Lower Mid-Tier Europe"
+    },
+    "Sam Hoiberg": {
+      "league": "Big 10",
+      "level": "High Major D1"
     }
   },
   "playerSalaries": {
