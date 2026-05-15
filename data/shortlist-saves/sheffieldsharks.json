@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-15T16:22:22.007Z",
+    "savedAt": "2026-05-15T18:14:57.728Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -672,6 +672,24 @@
       "season": "",
       "savedAt": 1778854382869,
       "source": "manual"
+    },
+    "Frankie Collins": {
+      "metrics": {
+        "player": "Frankie Collins",
+        "team": "Vanderbilt",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Vanderbilt",
+      "season": "",
+      "savedAt": 1778864724035,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -859,6 +877,11 @@
       "name": "Sam Hoiberg",
       "team": "Nebraska",
       "createdAt": 1778854382868
+    },
+    {
+      "name": "Frankie Collins",
+      "team": "Vanderbilt",
+      "createdAt": 1778864724035
     }
   ],
   "starRatings": {
@@ -1262,7 +1285,18 @@
     },
     "Sam Hoiberg": {
       "primary": 1,
-      "secondary": []
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
+    },
+    "Frankie Collins": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10,
+        "2": 7
+      }
     }
   },
   "scoutReports": {},
@@ -2881,11 +2915,8 @@
     "Kobe Langley": [
       "Shooting Dual-Threat PG"
     ],
-    "Sam Hoiberg": [
-      "Slashing Pass-First PG"
-    ],
-    "Rylan Jones": [
-      "Probing Pass-First PG"
+    "Frankie Collins": [
+      "Probing PG"
     ]
   },
   "playerPhysicals": {
@@ -3029,13 +3060,9 @@
       "height": "6'1\"",
       "weight": "180"
     },
-    "Sam Hoiberg": {
-      "height": "6'0\"",
-      "weight": "185"
-    },
-    "Rylan Jones": {
-      "height": "6'0\"",
-      "weight": "175"
+    "Frankie Collins": {
+      "height": "6'1\"",
+      "weight": "205"
     }
   },
   "potentialRatings": {
@@ -3222,11 +3249,19 @@
         },
         {
           "title": "Movement/Aggression Off-The-Catch/Hand-Offs",
-          "description": "Relocates off-ball when he passes off, creating a constant flow of offense with his straight-line drive ability off-the-catch, level of aggression and passing ability. Crafty movement on  hand-offs, where he can leverage his speed downhill for looks at the rim/passing opportunities. Attacks full-speed off-the-catch, also incorporating stampede cuts to the rim."
+          "description": "Relocates off-ball when he passes off, creating a constant flow of offense with his straight-line drive ability off-the-catch, level of aggression and passing ability. Crafty movement on  hand-offs, where he can leverage his speed downhill for looks at the rim/passing opportunities. Attacks full-speed off-the-catch, also incorporating stampede cuts to the rim. Likes to play get with his 5-man vs. holding the ball for too long."
         },
         {
           "title": "Drive & Kick Ability",
           "description": "Leverages his fearless, aggressive drives to the rim into points for others. Willing passer out to shooters."
+        },
+        {
+          "title": "Anticipation on Defense",
+          "description": "Sometimes played in a free-safety-esque role off-ball on the weakside, Sam racks up a lot of steals with his anticipation, where he's great at denying the pass to the screener. Quick hands on-ball gets strips."
+        },
+        {
+          "title": "Switching",
+          "description": "Fights hard on the mismatch, solid physically and frame. "
         }
       ],
       "weaknesses": [
@@ -3239,8 +3274,62 @@
           "description": "Still very capable, but weaker finishing to the left-side (weaker touch if he goes with his left, likes the reverse lay-up)"
         },
         {
-          "title": "",
-          "description": "Not completely perfect court-vision, can occasionally miss passing opportunities. "
+          "title": "High-Level PG Skills",
+          "description": "Not completely perfect court-vision, can occasionally miss passing opportunities. Low turnover rate but occasionally can get stripped."
+        },
+        {
+          "title": "Length",
+          "description": "Short wingspan and height. Helped often by a Nebraska liberal help defense scheme as a 1-on-1 defender."
+        }
+      ]
+    },
+    "Frankie Collins": {
+      "strengths": [
+        {
+          "title": "P&R Play/Foul Drawing",
+          "description": "Loves to probe and play patient in the P&R. Creates great looks for his 5-man. Draws a lot of fouls. Uses his frame to hold defenders on his back."
+        },
+        {
+          "title": "Change of Speed/Shiftiness/Dynamism Downhill",
+          "description": "Creates looks at the rim in the P&R through his stop-start style of play, which exploits his quick change of pace. Bursty, with quick change of direction."
+        },
+        {
+          "title": "Straight-Line Drive Ability",
+          "description": "Quick first-step, physicality and handles on the move make him a tough threat attacking off-the-catch/if the defense give him a lane to the rim. Great at dump-off/lob passes to bigs in the dunker spot. Decent floater touch. Occasional mid-range step-back counter (although inconsistent)."
+        },
+        {
+          "title": "Passing Vision/Pass to the Big",
+          "description": "Mixes his scoring threat downhill with a willingness to pass to shooters, with good vision."
+        },
+        {
+          "title": "Frame/Point-Of-Attack Defense",
+          "description": "Solid, strong frame at 205lbs which he uses effectively. Applies a lot of ball pressure defensively."
+        },
+        {
+          "title": "Hands/Steals",
+          "description": "Very quick hands and anticipation off-ball. Very disruptive defender."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Finishing/Touch",
+          "description": "Inconsistent finisher, weaker touch on contested looks around the basket"
+        },
+        {
+          "title": "FT%",
+          "description": "Draws a lot of fouls in the paint, but can struggle to convert at the line (around 60% on his career)."
+        },
+        {
+          "title": "Inconsistent Shot (3PT/Mid)",
+          "description": "Weaker shooter from the outside - I don't think he's as bad as the 25-27% from 3 the past couple seasons, but still shot 31% from deep his last fully healthy season."
+        },
+        {
+          "title": "Injury",
+          "description": "Previous two seasons were cut short due to injury."
+        },
+        {
+          "title": "TOs",
+          "description": "Can be occasionally TO prone (pass selection/losing his handle)."
         }
       ]
     }
@@ -3412,6 +3501,10 @@
     },
     "Sam Hoiberg": {
       "league": "Big 10",
+      "level": "High Major D1"
+    },
+    "Frankie Collins": {
+      "league": "SEC",
       "level": "High Major D1"
     }
   },
