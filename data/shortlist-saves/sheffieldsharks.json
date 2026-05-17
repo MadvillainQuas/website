@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-15T18:14:57.728Z",
+    "savedAt": "2026-05-17T01:02:17.824Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -690,6 +690,276 @@
       "season": "",
       "savedAt": 1778864724035,
       "source": "manual"
+    },
+    "Alex Williams": {
+      "metrics": {
+        "player": "Alex Williams",
+        "team": "Duquense",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Duquense",
+      "season": "",
+      "savedAt": 1778977752805,
+      "source": "manual"
+    },
+    "Aaron Gray": {
+      "metrics": {
+        "player": "Aaron Gray",
+        "team": "Komano",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Komano",
+      "season": "",
+      "savedAt": 1778977804609,
+      "source": "manual"
+    },
+    "Mahamane Coulibaly": {
+      "metrics": {
+        "player": "Mahamane Coulibaly",
+        "team": "JCA",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "JCA",
+      "season": "",
+      "savedAt": 1778977866065,
+      "source": "manual"
+    },
+    "Jake Hilmer": {
+      "metrics": {
+        "player": "Jake Hilmer",
+        "team": "Huima",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Huima",
+      "season": "",
+      "savedAt": 1778977934195,
+      "source": "manual"
+    },
+    "Isaac Abidde": {
+      "metrics": {
+        "player": "Isaac Abidde",
+        "team": "Albany",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Albany",
+      "season": "",
+      "savedAt": 1778978161904,
+      "source": "manual"
+    },
+    "Kamari Lands": {
+      "metrics": {
+        "player": "Kamari Lands",
+        "team": "Middle Tennessee St.",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Middle Tennessee St.",
+      "season": "",
+      "savedAt": 1778978187686,
+      "source": "manual"
+    },
+    "JJ Traynor": {
+      "metrics": {
+        "player": "JJ Traynor",
+        "team": "Murray St.",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Murray St.",
+      "season": "",
+      "savedAt": 1778978215129,
+      "source": "manual"
+    },
+    "Stephen Giwa": {
+      "metrics": {
+        "player": "Stephen Giwa",
+        "team": "Rice",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Rice",
+      "season": "",
+      "savedAt": 1778978227072,
+      "source": "manual"
+    },
+    "Carlos Jurgens": {
+      "metrics": {
+        "player": "Carlos Jurgens",
+        "team": "Ourense",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Ourense",
+      "season": "",
+      "savedAt": 1778978244928,
+      "source": "manual"
+    },
+    "Marcell McCreary": {
+      "metrics": {
+        "player": "Marcell McCreary",
+        "team": "Texas-Arlington",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Texas-Arlington",
+      "season": "",
+      "savedAt": 1778978276123,
+      "source": "manual"
+    },
+    "Masiah Gilard": {
+      "metrics": {
+        "player": "Masiah Gilard",
+        "team": "Temple",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Temple",
+      "season": "",
+      "savedAt": 1778978335028,
+      "source": "manual"
+    },
+    "Lamin Sabally": {
+      "metrics": {
+        "player": "Lamin Sabally",
+        "team": "Iona",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Iona",
+      "season": "",
+      "savedAt": 1778978381047,
+      "source": "manual"
+    },
+    "Sahmi Willoughby": {
+      "metrics": {
+        "player": "Sahmi Willoughby",
+        "team": "Lahti",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Lahti",
+      "season": "",
+      "savedAt": 1778978408348,
+      "source": "manual"
+    },
+    "Quinn Slazinski": {
+      "metrics": {
+        "player": "Quinn Slazinski",
+        "team": "Manly War.",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Manly War.",
+      "season": "",
+      "savedAt": 1778978434083,
+      "source": "manual"
+    },
+    "Aaron Rhooms": {
+      "metrics": {
+        "player": "Aaron Rhooms",
+        "team": "Edmonton Stingers/TMU",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Edmonton Stingers/TMU",
+      "season": "",
+      "savedAt": 1778979695270,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -882,6 +1152,81 @@
       "name": "Frankie Collins",
       "team": "Vanderbilt",
       "createdAt": 1778864724035
+    },
+    {
+      "name": "Alex Williams",
+      "team": "Duquense",
+      "createdAt": 1778977752805
+    },
+    {
+      "name": "Aaron Gray",
+      "team": "Komano",
+      "createdAt": 1778977804609
+    },
+    {
+      "name": "Mahamane Coulibaly",
+      "team": "JCA",
+      "createdAt": 1778977866065
+    },
+    {
+      "name": "Jake Hilmer",
+      "team": "Huima",
+      "createdAt": 1778977934195
+    },
+    {
+      "name": "Isaac Abidde",
+      "team": "Albany",
+      "createdAt": 1778978161904
+    },
+    {
+      "name": "Kamari Lands",
+      "team": "Middle Tennessee St.",
+      "createdAt": 1778978187685
+    },
+    {
+      "name": "JJ Traynor",
+      "team": "Murray St.",
+      "createdAt": 1778978215129
+    },
+    {
+      "name": "Stephen Giwa",
+      "team": "Rice",
+      "createdAt": 1778978227072
+    },
+    {
+      "name": "Carlos Jurgens",
+      "team": "Ourense",
+      "createdAt": 1778978244928
+    },
+    {
+      "name": "Marcell McCreary",
+      "team": "Texas-Arlington",
+      "createdAt": 1778978276122
+    },
+    {
+      "name": "Masiah Gilard",
+      "team": "Temple",
+      "createdAt": 1778978335028
+    },
+    {
+      "name": "Lamin Sabally",
+      "team": "Iona",
+      "createdAt": 1778978381047
+    },
+    {
+      "name": "Sahmi Willoughby",
+      "team": "Lahti",
+      "createdAt": 1778978408348
+    },
+    {
+      "name": "Quinn Slazinski",
+      "team": "Manly War.",
+      "createdAt": 1778978434083
+    },
+    {
+      "name": "Aaron Rhooms",
+      "team": "Edmonton Stingers/TMU",
+      "createdAt": 1778979695269
     }
   ],
   "starRatings": {
@@ -919,7 +1264,8 @@
     "Jayson Tchicamboud": 4,
     "Dajuan Harris Jr.": 3.5,
     "Kobe Langley": 4,
-    "Rylan Jones": 4
+    "Rylan Jones": 4,
+    "Alex Williams": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1297,6 +1643,36 @@
         "1": 10,
         "2": 7
       }
+    },
+    "Alex Williams": {
+      "primary": 3,
+      "secondary": [
+        4
+      ]
+    },
+    "Aaron Gray": {
+      "primary": 4,
+      "secondary": [
+        3
+      ]
+    },
+    "Mahamane Coulibaly": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ]
+    },
+    "Jake Hilmer": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Aaron Rhooms": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ]
     }
   },
   "scoutReports": {},
@@ -2917,6 +3293,18 @@
     ],
     "Frankie Collins": [
       "Probing PG"
+    ],
+    "Alex Williams": [
+      "Physical 3&D Wing"
+    ],
+    "Aaron Gray": [
+      "Stretch-4/3 & D"
+    ],
+    "Mahamane Coulibaly": [
+      "Slashing Secondary Wing Creator"
+    ],
+    "Jake Hilmer": [
+      "Slashing PG"
     ]
   },
   "playerPhysicals": {
@@ -3063,6 +3451,26 @@
     "Frankie Collins": {
       "height": "6'1\"",
       "weight": "205"
+    },
+    "Alex Williams": {
+      "height": "6'5\"",
+      "weight": "235"
+    },
+    "Aaron Gray": {
+      "height": "6'7\"",
+      "weight": "215"
+    },
+    "Mahamane Coulibaly": {
+      "height": "6'8\"",
+      "weight": "210"
+    },
+    "Jake Hilmer": {
+      "height": "5'11\"",
+      "weight": "175"
+    },
+    "Aaron Rhooms": {
+      "height": "6'5\"",
+      "weight": "225"
     }
   },
   "potentialRatings": {
@@ -3100,7 +3508,8 @@
     "Jayson Tchicamboud": 4.5,
     "Dajuan Harris Jr.": 4,
     "Kobe Langley": 4,
-    "Rylan Jones": 4
+    "Rylan Jones": 4,
+    "Alex Williams": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
