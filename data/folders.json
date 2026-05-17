@@ -2,6 +2,12 @@
   "_comment": "Manifest of every data_<timestamp>_<COMP> folder under data/. Auto-maintained by scrape-now.py after each upload. The website reads this file to find the most recent folder per competition code; first match wins.",
   "folders": [
     {
+      "path": "data/data_2026-05-17T23-07_USPORTS",
+      "folder_name": "data_2026-05-17T23-07_USPORTS",
+      "timestamp": "2026-05-17T23-07",
+      "competition_code": "USPORTS"
+    },
+    {
       "path": "data/data_2026-05-16T19-02_PRO_B",
       "folder_name": "data_2026-05-16T19-02_PRO_B",
       "timestamp": "2026-05-16T19-02",
