@@ -6,7 +6,10 @@
       "slug": "sheffieldsharks",
       "savedAt": "2026-05-17T01:02:17.824Z",
       "savedBy": "sheffieldsharks",
-      "file": "data/shortlist-saves/sheffieldsharks.json"
+      "file": "data/shortlist-saves/sheffieldsharks.json",
+      "visibleTo": [
+        "sheffieldsharks"
+      ]
     }
   ]
 }
