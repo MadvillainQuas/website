@@ -1,0 +1,217 @@
+{
+  "_comment": "Per-player visibility map. Keys are player names (exactly as they appear in the loaded CSVs / shortlist). Each value is either an array of usernames who can see that player, or [] / omitted to mean visible to everyone. Admins always see all players. Edit via the admin Prophesy Shortlist (each row has a 'Visible to' control) and use 'Export visibility.json' to publish.",
+  "visibility": {
+    "Aaron Gray": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Aaron Rhooms": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "AJ Smith": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Alex Williams": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Ben Schweiger": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Camryn Weston": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Carlos Jurgens": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Chandler Jackson": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Dajuan Harris Jr.": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "DeMarcus Sharp": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Fran Jacovic": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Frankie Collins": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Garry Clark": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Giannis Karakostas": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Isaac Abidde": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Jacob Conner": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Jake Hilmer": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Jalen Page": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "James Okonkwo": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Jayson Tchicamboud": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "JJ Traynor": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Johnathan Massie": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Justin Hill": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Kamari Lands": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Kobe Langley": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Lamin Sabally": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Leland Walker": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Madison Durr": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Mahamane Coulibaly": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Marcell McCreary": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Masiah Gilard": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Michael Bradley": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Owen Dease": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Paul Otieno": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Quimari Peterson": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Quinn Slazinski": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Rayshon Harrison": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Richie Springs": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Roko Rogic": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Rylan Jones": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sahmi Willoughby": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sam Hoiberg": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sam Trunley": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sean Smith": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sean Trumper": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Sincere Malone": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Stephen Giwa": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Tayshawn Comer": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Tevin Brewer": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Troy Glover II": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Woody Newton": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Yame Butler": [
+      "sheffieldsharks",
+      "joe"
+    ],
+    "Zaire Williams": [
+      "sheffieldsharks",
+      "joe"
+    ]
+  }
+}
