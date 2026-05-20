@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T12:28:24.878Z",
+    "savedAt": "2026-05-20T12:32:12.379Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1266,6 +1266,24 @@
       "season": "",
       "savedAt": 1779280047686,
       "source": "manual"
+    },
+    "Nathan Scott": {
+      "metrics": {
+        "player": "Nathan Scott",
+        "team": "Alytus",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Alytus",
+      "season": "",
+      "savedAt": 1779280240813,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1618,6 +1636,11 @@
       "name": "Brandon Mitchell-Day",
       "team": "Dartmouth",
       "createdAt": 1779280047685
+    },
+    {
+      "name": "Nathan Scott",
+      "team": "Alytus",
+      "createdAt": 1779280240812
     }
   ],
   "starRatings": {
