@@ -3,8 +3,8 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-17T01:02:17.824Z",
-    "savedBy": "sheffieldsharks"
+    "savedAt": "2026-05-20T00:26:04.554Z",
+    "savedBy": "admin"
   },
   "shortlistedPlayers": {
     "Owen Dease": {
@@ -960,6 +960,24 @@
       "season": "",
       "savedAt": 1778979695270,
       "source": "manual"
+    },
+    "Kimani Hamilton": {
+      "metrics": {
+        "player": "Kimani Hamilton",
+        "team": "UNLV",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "UNLV",
+      "season": "",
+      "savedAt": 1779235259347,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1227,6 +1245,11 @@
       "name": "Aaron Rhooms",
       "team": "Edmonton Stingers/TMU",
       "createdAt": 1778979695269
+    },
+    {
+      "name": "Kimani Hamilton",
+      "team": "UNLV",
+      "createdAt": 1779235259347
     }
   ],
   "starRatings": {
@@ -1265,7 +1288,8 @@
     "Dajuan Harris Jr.": 3.5,
     "Kobe Langley": 4,
     "Rylan Jones": 4,
-    "Alex Williams": 3.5
+    "Alex Williams": 3.5,
+    "Kimani Hamilton": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1673,6 +1697,17 @@
         2,
         4
       ]
+    },
+    "Kimani Hamilton": {
+      "primary": 3,
+      "secondary": [
+        4
+      ],
+      "suitability": {
+        "3": 10,
+        "4": 10,
+        "5": 4
+      }
     }
   },
   "scoutReports": {},
@@ -3305,6 +3340,9 @@
     ],
     "Jake Hilmer": [
       "Slashing PG"
+    ],
+    "Kimani Hamilton": [
+      "Secondary Scorer Wing"
     ]
   },
   "playerPhysicals": {
@@ -3471,6 +3509,10 @@
     "Aaron Rhooms": {
       "height": "6'5\"",
       "weight": "225"
+    },
+    "Kimani Hamilton": {
+      "height": "6'8\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
@@ -3509,7 +3551,8 @@
     "Dajuan Harris Jr.": 4,
     "Kobe Langley": 4,
     "Rylan Jones": 4,
-    "Alex Williams": 4
+    "Alex Williams": 4,
+    "Kimani Hamilton": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -3741,6 +3784,40 @@
           "description": "Can be occasionally TO prone (pass selection/losing his handle)."
         }
       ]
+    },
+    "Kimani Hamilton": {
+      "strengths": [
+        {
+          "title": "Self-Creation/Iso/Extending Advantages",
+          "description": "Able to create his own shot - either downhill, in the mid-range or from deep using his level of ball skill and shotmaking off-dribble/combination of athleticism and physicality. Able to size-up his man, create an advantage off-dribble and pass off with a level of decision making. Extends advantages with decision making off-the-catch. Can even initiate play on occasion."
+        },
+        {
+          "title": "Physicality/Strength/Speed",
+          "description": "Very strong player, especially for a man with his level of skill. Mismatch problem vs. smaller/weaker wings. Too quick for slower forwards."
+        },
+        {
+          "title": "Vertical",
+          "description": "If given space to spring - he will dunk over guys."
+        },
+        {
+          "title": "Versatility",
+          "description": "Very versatile defender. Very capable on guards. Has the size to defend in the post against 5's. Length is very impactful - gets blocks defending 1-on-1, or in recovery. Clogs up passing lanes."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Inconsistent C&S",
+          "description": "Showcases some impressive shotmaking, including step-back 3 ability (and ultimately shot mid 30's for the season), but has a bit of a slow release and is streaky."
+        },
+        {
+          "title": "Court Vision",
+          "description": "Flashes impressive passing ability and is willing as a passer - but can get tunnel-visioned on his drives occasionally."
+        },
+        {
+          "title": "Ball Watching",
+          "description": "Sometimes can be caught ball-watching off-ball."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -3915,6 +3992,10 @@
     "Frankie Collins": {
       "league": "SEC",
       "level": "High Major D1"
+    },
+    "Kimani Hamilton": {
+      "league": "Mountain West",
+      "level": "Top Mid Major"
     }
   },
   "playerSalaries": {
