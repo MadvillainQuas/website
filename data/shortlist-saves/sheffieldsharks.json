@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T00:26:04.554Z",
+    "savedAt": "2026-05-20T04:28:34.028Z",
     "savedBy": "admin"
   },
   "shortlistedPlayers": {
@@ -978,6 +978,96 @@
       "season": "",
       "savedAt": 1779235259347,
       "source": "manual"
+    },
+    "Rashad King": {
+      "metrics": {
+        "player": "Rashad King",
+        "team": "LSU",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "LSU",
+      "season": "",
+      "savedAt": 1779245884498,
+      "source": "manual"
+    },
+    "Sam Godwin": {
+      "metrics": {
+        "player": "Sam Godwin",
+        "team": "Ostrava",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Ostrava",
+      "season": "",
+      "savedAt": 1779246793072,
+      "source": "manual"
+    },
+    "Khalil Brantley": {
+      "metrics": {
+        "player": "Khalil Brantley",
+        "team": "Krka",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Krka",
+      "season": "",
+      "savedAt": 1779248217909,
+      "source": "manual"
+    },
+    "Grant Singleton": {
+      "metrics": {
+        "player": "Grant Singleton",
+        "team": "Plovdiv",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Plovdiv",
+      "season": "",
+      "savedAt": 1779249220575,
+      "source": "manual"
+    },
+    "Filip Andjusic": {
+      "metrics": {
+        "player": "Filip Andjusic",
+        "team": "Derby",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Derby",
+      "season": "",
+      "savedAt": 1779251058793,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1250,6 +1340,31 @@
       "name": "Kimani Hamilton",
       "team": "UNLV",
       "createdAt": 1779235259347
+    },
+    {
+      "name": "Rashad King",
+      "team": "LSU",
+      "createdAt": 1779245884498
+    },
+    {
+      "name": "Sam Godwin",
+      "team": "Ostrava",
+      "createdAt": 1779246793072
+    },
+    {
+      "name": "Khalil Brantley",
+      "team": "Krka",
+      "createdAt": 1779248217909
+    },
+    {
+      "name": "Grant Singleton",
+      "team": "Plovdiv",
+      "createdAt": 1779249220574
+    },
+    {
+      "name": "Filip Andjusic",
+      "team": "Derby",
+      "createdAt": 1779251058793
     }
   ],
   "starRatings": {
@@ -1289,7 +1404,9 @@
     "Kobe Langley": 4,
     "Rylan Jones": 4,
     "Alex Williams": 3.5,
-    "Kimani Hamilton": 4
+    "Kimani Hamilton": 4,
+    "Quimari Peterson": 4.5,
+    "Isaac Abidde": 3
   },
   "playerPositions": {
     "Owen Dease": {
@@ -1322,8 +1439,8 @@
         5
       ],
       "suitability": {
-        "1": 4,
-        "3": 6,
+        "1": 0,
+        "3": 2,
         "4": 10,
         "5": 7
       },
@@ -1707,6 +1824,39 @@
         "3": 10,
         "4": 10,
         "5": 4
+      }
+    },
+    "Isaac Abidde": {
+      "primary": 4,
+      "secondary": [
+        5
+      ],
+      "suitability": {
+        "3": 2,
+        "4": 10,
+        "5": 5
+      }
+    },
+    "Khalil Brantley": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
+    },
+    "Grant Singleton": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
+    },
+    "Filip Andjusic": {
+      "primary": 5,
+      "secondary": [],
+      "suitability": {
+        "4": 4,
+        "5": 10
       }
     }
   },
@@ -3343,6 +3493,18 @@
     ],
     "Kimani Hamilton": [
       "Secondary Scorer Wing"
+    ],
+    "Isaac Abidde": [
+      "Stretch-4/5"
+    ],
+    "Khalil Brantley": [
+      "Scoring PG"
+    ],
+    "Grant Singleton": [
+      "Scoring Slashing PG"
+    ],
+    "Filip Andjusic": [
+      "Mobile Playmaking 5"
     ]
   },
   "playerPhysicals": {
@@ -3513,6 +3675,22 @@
     "Kimani Hamilton": {
       "height": "6'8\"",
       "weight": "220"
+    },
+    "Isaac Abidde": {
+      "height": "6'9\"",
+      "weight": "215"
+    },
+    "Khalil Brantley": {
+      "height": "5'11\"",
+      "weight": "180"
+    },
+    "Grant Singleton": {
+      "height": "6'0\"",
+      "weight": "160"
+    },
+    "Filip Andjusic": {
+      "height": "6'10\"",
+      "weight": "240"
     }
   },
   "potentialRatings": {
@@ -3552,7 +3730,8 @@
     "Kobe Langley": 4,
     "Rylan Jones": 4,
     "Alex Williams": 4,
-    "Kimani Hamilton": 5
+    "Kimani Hamilton": 5,
+    "Quimari Peterson": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -3818,6 +3997,162 @@
           "description": "Sometimes can be caught ball-watching off-ball."
         }
       ]
+    },
+    "Jacob Conner": {
+      "strengths": [
+        {
+          "title": "High-Level Passing",
+          "description": "Elite passer for a player his size - will struggle to find anyone better at our level. Capable of running secondary PNR as a ball-handler and distributing out. Selfless connective passer, making extra passes, entry passes etc. where available. Excellent at extending advantages. Height enables him to pass from different angles vs. shorter players."
+        },
+        {
+          "title": "Ball Skill",
+          "description": "Capable of running point for periods of time as a big Point-Forward. Capable in PNR as a playmaker. Flashes some occasional, simple off-the-dribble threat from deep as a ball=handler."
+        },
+        {
+          "title": "Pinning",
+          "description": "Has a positive tendency to exploit his size if a small is placed on him, and pin players at the rim."
+        },
+        {
+          "title": "Bad Closeout Attacking",
+          "description": "Capable of finishing plays if a defender overcommits to his shooting threat/out of position and he has a linear lane to the hoop."
+        },
+        {
+          "title": "",
+          "description": ""
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Limited Scoring Craft/Handle",
+          "description": "Relative slowness/lack of handles/agility can make it difficult for him to create advantages vs. defenders, or score on more complex drives to the rim (that involves ball pressure/low man waiting). Operates well off of curls/very linear drives."
+        },
+        {
+          "title": "Finishing On The Move",
+          "description": "Touch can be lacking when contested at the rim."
+        },
+        {
+          "title": "Speed Defensively",
+          "description": "Can be slow around screens/laterally."
+        }
+      ]
+    },
+    "Isaac Abidde": {
+      "strengths": [
+        {
+          "title": "C&S 3",
+          "description": "Consistent 3PT threat from deep. Moves well off-ball to get his shot."
+        },
+        {
+          "title": "Post Scoring",
+          "description": "Capable at scoring in the post, Good at passing off of his post threat."
+        },
+        {
+          "title": "Attacking Off-The-Catch",
+          "description": "Level of fluidity attacking downhill, flashing wing skill."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Finishing",
+          "description": "Mediocre touch around the basket."
+        }
+      ]
+    },
+    "Quimari Peterson": {
+      "strengths": [
+        {
+          "title": "Advantage Creation/Shiftiness/Slashing",
+          "description": "Elite handles & quick burst. Incredibly tough to keep in front. Plays with physicality, strong at finishing through contests."
+        },
+        {
+          "title": "C&S Shotmaking",
+          "description": "Able to hit exceedingly tough shots from deep off-screens."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Pass Decision-Making",
+          "description": ""
+        }
+      ]
+    },
+    "Rashad King": {
+      "strengths": [],
+      "weaknesses": [
+        {
+          "title": "Turnover Prone",
+          "description": "Loose handle. Doesn't deal well with pressure."
+        },
+        {
+          "title": "Not Standout Athleticism",
+          "description": ""
+        },
+        {
+          "title": "Mediocre 3PT",
+          "description": ""
+        }
+      ]
+    },
+    "Khalil Brantley": {
+      "strengths": [
+        {
+          "title": "Shiftiness/Creation Advantage/Speed",
+          "description": "Exceedingly difficult to keep in front. Elite first step and very shifty handles. Very difficult to stop getting to the rim."
+        },
+        {
+          "title": "Shotmaking",
+          "description": "Able to create looks off-dribble in the mid-range and hit contested shots."
+        },
+        {
+          "title": "Hands",
+          "description": "Great, disruptive hands that he puts to use defensively."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Passing",
+          "description": "Can miss passing opportunities. Can get tunnel visioned/opt for tough looks vs. pass."
+        },
+        {
+          "title": "",
+          "description": ""
+        }
+      ]
+    },
+    "Grant Singleton": {
+      "strengths": [
+        {
+          "title": "Speed",
+          "description": "Exceedingly fast PG looking to blitz defenders downhill and finish at the rim."
+        },
+        {
+          "title": "Pass On-The-Move",
+          "description": "Capable passer off of his driving threat."
+        },
+        {
+          "title": "3PT Shooting",
+          "description": "Good off-the-bounce, capable of tough shotmaking."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Size",
+          "description": "Small defensively despite his level of motor/activity."
+        }
+      ]
+    },
+    "Filip Andjusic": {
+      "strengths": [
+        {
+          "title": "Mobility",
+          "description": "Switchable 5 with his level of size. Quick rim-roller and great at finding pockets of space in the paint for little touch shots. Great level of hands for steals."
+        },
+        {
+          "title": "Post Skill",
+          "description": "Capable post=scorer against the size of ABA bigs. Has good touch in the post."
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
@@ -3996,6 +4331,18 @@
     "Kimani Hamilton": {
       "league": "Mountain West",
       "level": "Top Mid Major"
+    },
+    "Khalil Brantley": {
+      "league": "Slovenia/ABA",
+      "level": "Top Tier Europe/Lower Mid-Tier"
+    },
+    "Grant Singleton": {
+      "league": "Bulgaria",
+      "level": "Lower Mid-Tier Europe"
+    },
+    "Filip Andjusic": {
+      "league": "ABA/Montenegro",
+      "level": "Top Level Europe"
     }
   },
   "playerSalaries": {
