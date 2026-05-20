@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T13:31:54.923Z",
+    "savedAt": "2026-05-20T13:32:41.587Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1682,7 +1682,8 @@
     "Alex Williams": 3.5,
     "Kimani Hamilton": 4,
     "Quimari Peterson": 4.5,
-    "Isaac Abidde": 3
+    "Isaac Abidde": 3,
+    "Filip Andjusic": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4154,7 +4155,8 @@
     "Rylan Jones": 4,
     "Alex Williams": 4,
     "Kimani Hamilton": 5,
-    "Quimari Peterson": 5
+    "Quimari Peterson": 5,
+    "Filip Andjusic": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
