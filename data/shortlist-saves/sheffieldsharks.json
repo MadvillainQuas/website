@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T13:37:08.638Z",
+    "savedAt": "2026-05-20T16:12:29.498Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1284,6 +1284,24 @@
       "season": "",
       "savedAt": 1779280240813,
       "source": "manual"
+    },
+    "Loudon Love": {
+      "metrics": {
+        "player": "Loudon Love",
+        "team": "Vienna",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Vienna",
+      "season": "",
+      "savedAt": 1779288363178,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1641,6 +1659,11 @@
       "name": "Nathan Scott",
       "team": "Alytus",
       "createdAt": 1779280240812
+    },
+    {
+      "name": "Loudon Love",
+      "team": "Vienna",
+      "createdAt": 1779288363178
     }
   ],
   "starRatings": {
@@ -2182,6 +2205,14 @@
     "Jacob Crews": {
       "primary": 4,
       "secondary": []
+    },
+    "Loudon Love": {
+      "primary": 5,
+      "secondary": [],
+      "suitability": {
+        "4": 3,
+        "5": 10
+      }
     }
   },
   "scoutReports": {},
@@ -4605,6 +4636,40 @@
         }
       ],
       "weaknesses": []
+    },
+    "Loudon Love": {
+      "strengths": [
+        {
+          "title": "Rebounding/Physicality",
+          "description": "Physical presence on the boards - very difficult to stop on the offensive glass. Creates second chance points with his motor. Gathers his misses for put-backs. Big impact in the CEBL. Plays physical in the low post and around the rim, going into defenders and drawing fouls. Big frame and listed weight can make him difficult to move when defending in the low post."
+        },
+        {
+          "title": "Off-Ball Movement",
+          "description": "Very smart off-ball movement in the paint, creating looks for touch shots around the basket. Generates easy points."
+        },
+        {
+          "title": "Post-Skills/Floater/Short-Roll",
+          "description": "Physical and skilled low-post player, capable of self-creating points in the post and posting a tough match-up question against smaller 5's with his bigger frame. Capable either hand, with good balance and footwork. Can use his speed advantage over slower bigs. Extended range touch shot he can hit over taller/longer 5's - which he hits with solid consistency. Can make passes in the short-roll (and with his floater and ball-skill [either for post-up iso or slashing face-up], he can be a threat to score in those positions)."
+        },
+        {
+          "title": "Mobility/Ball Skill/Versatility",
+          "description": "Solid moving his feet in space, versatile defender that can defend in a variety of ways. Acceptable switching onto guards. Played at the 4-spot in Italy, and capable of being placed on 4's. Capable operating face-up offensively and scoring on drives to the rim/cuts from the perimeter. Has a threat to score as the hand-off big on the perimeter. Can push the ball up the floor, and is comfortable handling the ball in DHOs or handling the ball in tight spots. Inconsistent decision making, but can hit some nice passes on the move which allows the offense to flow."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Length/Occasional Finishing Issues",
+          "description": "Negative/average wingspan and average height for the 5-spot can, comparatively, put a limit on his effectiveness as a defender sometimes despite his physicality and mobility. Under the basket, it can make his ability to finish off plays around length more difficult - where he can be inconsistent with his finishing. Didn't finish above the rim much in his CEBL season in the half-court (mostly when he had a run-up and space to load up either in transition or PNR)."
+        },
+        {
+          "title": "Pass Decision-Making/Hands",
+          "description": "In the post, looking to score first (20% of post-ups end in passes). Can occasionally make some wild passing decisions that lead to TOs. Hands can sometimes be left wanting on the roll/generally."
+        },
+        {
+          "title": "Bad FT%",
+          "description": ""
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
