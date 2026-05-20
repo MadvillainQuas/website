@@ -3,8 +3,8 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T05:21:07.391Z",
-    "savedBy": "admin"
+    "savedAt": "2026-05-20T12:19:55.645Z",
+    "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
     "Owen Dease": {
@@ -1086,6 +1086,168 @@
       "season": "",
       "savedAt": 1779253161075,
       "source": "manual"
+    },
+    "Bo Montgomery": {
+      "metrics": {
+        "player": "Bo Montgomery",
+        "team": "Praha",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Praha",
+      "season": "",
+      "savedAt": 1779278560162,
+      "source": "manual"
+    },
+    "Pipe Ajayi": {
+      "metrics": {
+        "player": "Pipe Ajayi",
+        "team": "Naestved",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Naestved",
+      "season": "",
+      "savedAt": 1779278865856,
+      "source": "manual"
+    },
+    "Bryce Nze": {
+      "metrics": {
+        "player": "Bryce Nze",
+        "team": "Pau-Orthez",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Pau-Orthez",
+      "season": "",
+      "savedAt": 1779278943109,
+      "source": "manual"
+    },
+    "Isaiah Jones": {
+      "metrics": {
+        "player": "Isaiah Jones",
+        "team": "South Florida",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "South Florida",
+      "season": "",
+      "savedAt": 1779278958659,
+      "source": "manual"
+    },
+    "Jacob Crews": {
+      "metrics": {
+        "player": "Jacob Crews",
+        "team": "Missouri",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Missouri",
+      "season": "",
+      "savedAt": 1779279058884,
+      "source": "manual"
+    },
+    "Kevin Kalu": {
+      "metrics": {
+        "player": "Kevin Kalu",
+        "team": "Brno",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Brno",
+      "season": "",
+      "savedAt": 1779279213118,
+      "source": "manual"
+    },
+    "Leslie Nkeurerem": {
+      "metrics": {
+        "player": "Leslie Nkeurerem",
+        "team": "Ourense",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Ourense",
+      "season": "",
+      "savedAt": 1779279239994,
+      "source": "manual"
+    },
+    "Jordan Mason": {
+      "metrics": {
+        "player": "Jordan Mason",
+        "team": "Temple",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Temple",
+      "season": "",
+      "savedAt": 1779279353910,
+      "source": "manual"
+    },
+    "Abdou Tsimbila": {
+      "metrics": {
+        "player": "Abdou Tsimbila",
+        "team": "Fordham",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Fordham",
+      "season": "",
+      "savedAt": 1779279591269,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1388,6 +1550,51 @@
       "name": "Dan Gherezgher",
       "team": "Northern Kentucky",
       "createdAt": 1779253161075
+    },
+    {
+      "name": "Bo Montgomery",
+      "team": "Praha",
+      "createdAt": 1779278560161
+    },
+    {
+      "name": "Pipe Ajayi",
+      "team": "Naestved",
+      "createdAt": 1779278865856
+    },
+    {
+      "name": "Bryce Nze",
+      "team": "Pau-Orthez",
+      "createdAt": 1779278943109
+    },
+    {
+      "name": "Isaiah Jones",
+      "team": "South Florida",
+      "createdAt": 1779278958659
+    },
+    {
+      "name": "Jacob Crews",
+      "team": "Missouri",
+      "createdAt": 1779279058884
+    },
+    {
+      "name": "Kevin Kalu",
+      "team": "Brno",
+      "createdAt": 1779279213118
+    },
+    {
+      "name": "Leslie Nkeurerem",
+      "team": "Ourense",
+      "createdAt": 1779279239994
+    },
+    {
+      "name": "Jordan Mason",
+      "team": "Temple",
+      "createdAt": 1779279353910
+    },
+    {
+      "name": "Abdou Tsimbila",
+      "team": "Fordham",
+      "createdAt": 1779279591269
     }
   ],
   "starRatings": {
