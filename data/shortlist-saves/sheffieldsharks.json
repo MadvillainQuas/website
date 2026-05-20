@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T13:07:00.189Z",
+    "savedAt": "2026-05-20T13:31:54.923Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2144,6 +2144,39 @@
         "1": 10,
         "2": 7
       }
+    },
+    "Pipe Ajayi": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Sam Godwin": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Bo Montgomery": {
+      "primary": 2,
+      "secondary": [
+        1,
+        3
+      ]
+    },
+    "Abdou Tsimbila": {
+      "primary": 5,
+      "secondary": []
+    },
+    "Isaiah Jones": {
+      "primary": 3,
+      "secondary": [
+        4
+      ]
+    },
+    "Jacob Crews": {
+      "primary": 4,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -3794,6 +3827,39 @@
     ],
     "Dan Gherezgher": [
       "Slashing Combo-Guard"
+    ],
+    "Pipe Ajayi": [
+      "Vertical Rim-Finisher 5"
+    ],
+    "Sahmi Willoughby": [
+      "Hustle Wing"
+    ],
+    "Sam Godwin": [
+      "Physical Mobile Playmaking 5"
+    ],
+    "Brandon Mitchell-Day": [
+      "Stretch 4/5"
+    ],
+    "Bo Montgomery": [
+      "Secondary Handler/Playmaker"
+    ],
+    "Isaiah Jones": [
+      "3&D Wing"
+    ],
+    "Jacob Crews": [
+      "Movement Shooting 4"
+    ],
+    "Jordan Mason": [
+      "Slashing PG"
+    ],
+    "Kamari Lands": [
+      "Secondary Creator Wing"
+    ],
+    "Kevin Kalu": [
+      "Physical Mobile 5"
+    ],
+    "Marcell McCreary": [
+      "Secondary Handler Scorer"
     ]
   },
   "playerPhysicals": {
@@ -3984,6 +4050,70 @@
     "Dan Gherezgher": {
       "height": "6'4\"",
       "weight": "190"
+    },
+    "Pipe Ajayi": {
+      "height": "6'7\"",
+      "weight": "235"
+    },
+    "Sahmi Willoughby": {
+      "height": "6'4\"",
+      "weight": "190"
+    },
+    "Sam Godwin": {
+      "height": "6'10\"",
+      "weight": "240"
+    },
+    "Stephen Giwa": {
+      "height": "6'9\"",
+      "weight": "245"
+    },
+    "Bryce Nze": {
+      "height": "6'7\"",
+      "weight": "230"
+    },
+    "Brandon Mitchell-Day": {
+      "height": "6'8\"",
+      "weight": "205"
+    },
+    "Bo Montgomery": {
+      "height": "6'5\"",
+      "weight": "205"
+    },
+    "Abdou Tsimbila": {
+      "height": "6'9\"",
+      "weight": "245"
+    },
+    "Isaiah Jones": {
+      "height": "6'7\"",
+      "weight": "230"
+    },
+    "Jacob Crews": {
+      "height": "6'8\"",
+      "weight": "220"
+    },
+    "JJ Traynor": {
+      "height": "6'9\"",
+      "weight": "210"
+    },
+    "Jordan Mason": {
+      "height": "6'3\"",
+      "weight": "200"
+    },
+    "Kamari Lands": {
+      "height": "6'8\"",
+      "weight": "230"
+    },
+    "Kevin Kalu": {
+      "height": "6'9\"",
+      "weight": "240"
+    },
+    "Leslie Nkeurerem": {
+      "height": "6'8\"",
+      "weight": "230"
+    },
+    "Marcell McCreary": {
+      "height": "6'4\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
