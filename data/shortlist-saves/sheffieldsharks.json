@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T04:28:34.028Z",
+    "savedAt": "2026-05-20T05:00:38.930Z",
     "savedBy": "admin"
   },
   "shortlistedPlayers": {
@@ -1068,6 +1068,24 @@
       "season": "",
       "savedAt": 1779251058793,
       "source": "manual"
+    },
+    "Dan Gherezgher": {
+      "metrics": {
+        "player": "Dan Gherezgher",
+        "team": "Northern Kentucky",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Kentucky",
+      "season": "",
+      "savedAt": 1779253161075,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1365,6 +1383,11 @@
       "name": "Filip Andjusic",
       "team": "Derby",
       "createdAt": 1779251058793
+    },
+    {
+      "name": "Dan Gherezgher",
+      "team": "Northern Kentucky",
+      "createdAt": 1779253161075
     }
   ],
   "starRatings": {
@@ -1857,6 +1880,16 @@
       "suitability": {
         "4": 4,
         "5": 10
+      }
+    },
+    "Dan Gherezgher": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10,
+        "2": 7
       }
     }
   },
@@ -3505,6 +3538,9 @@
     ],
     "Filip Andjusic": [
       "Mobile Playmaking 5"
+    ],
+    "Dan Gherezgher": [
+      "Slashing Combo-Guard"
     ]
   },
   "playerPhysicals": {
@@ -3691,6 +3727,10 @@
     "Filip Andjusic": {
       "height": "6'10\"",
       "weight": "240"
+    },
+    "Dan Gherezgher": {
+      "height": "6'4\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -4150,6 +4190,23 @@
         {
           "title": "Post Skill",
           "description": "Capable post=scorer against the size of ABA bigs. Has good touch in the post."
+        }
+      ],
+      "weaknesses": []
+    },
+    "Dan Gherezgher": {
+      "strengths": [
+        {
+          "title": "Speed/Straight Line Drive",
+          "description": ""
+        },
+        {
+          "title": "Multi-Faceted Game",
+          "description": ""
+        },
+        {
+          "title": "Drive and Kick",
+          "description": ""
         }
       ],
       "weaknesses": []
