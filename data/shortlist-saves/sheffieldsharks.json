@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T12:19:55.645Z",
+    "savedAt": "2026-05-20T12:28:24.878Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1248,6 +1248,24 @@
       "season": "",
       "savedAt": 1779279591269,
       "source": "manual"
+    },
+    "Brandon Mitchell-Day": {
+      "metrics": {
+        "player": "Brandon Mitchell-Day",
+        "team": "Dartmouth",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Dartmouth",
+      "season": "",
+      "savedAt": 1779280047686,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1595,6 +1613,11 @@
       "name": "Abdou Tsimbila",
       "team": "Fordham",
       "createdAt": 1779279591269
+    },
+    {
+      "name": "Brandon Mitchell-Day",
+      "team": "Dartmouth",
+      "createdAt": 1779280047685
     }
   ],
   "starRatings": {
