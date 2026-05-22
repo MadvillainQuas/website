@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-22T15:58:51.012Z",
+    "savedAt": "2026-05-22T17:00:03.398Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1338,6 +1338,24 @@
       "season": "",
       "savedAt": 1779456496092,
       "source": "manual"
+    },
+    "Eric Nottage": {
+      "metrics": {
+        "player": "Eric Nottage",
+        "team": "Charleroi",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Charleroi",
+      "season": "",
+      "savedAt": 1779465551184,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1710,6 +1728,11 @@
       "name": "Erik Pratt",
       "team": "Stony Brook",
       "createdAt": 1779456496092
+    },
+    {
+      "name": "Eric Nottage",
+      "team": "Charleroi",
+      "createdAt": 1779465551184
     }
   ],
   "starRatings": {
@@ -2279,6 +2302,13 @@
         "1": 5,
         "2": 10,
         "3": 6
+      }
+    },
+    "Eric Nottage": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
       }
     }
   },
@@ -4228,6 +4258,10 @@
     "Erik Pratt": {
       "height": "6'5\"",
       "weight": "190"
+    },
+    "Eric Nottage": {
+      "height": "6'2\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -4807,6 +4841,44 @@
         {
           "title": "3PT Inconsistency",
           "description": "Shot 31% this past season. Shoots at volume and can hit tough looks, but is very streaky."
+        }
+      ]
+    },
+    "Eric Nottage": {
+      "strengths": [
+        {
+          "title": "Shiftiness/Handles/Advantage Creation",
+          "description": "Very shifty, slippery guard with tight handles capable to creating advantages 1-on-1 without a ball-screen. Keeps his handle alive through ball-pressure - makes him difficult to play aggressive coverages against. Leverages this ability in playmaking for others/scoring himself."
+        },
+        {
+          "title": "OTD Shotmaking/3PT Threat",
+          "description": "Danger behind the arc - shooting 4 attempts per game OTD from deep. Automatic on the C&S from 3, likes to relocate and fire."
+        },
+        {
+          "title": "Downhill",
+          "description": "Good size guard with a good level of physicality around the basket and solid quickness when driving downhill, often smartly operating off of his threat from deep - shooting 59% at the rim."
+        },
+        {
+          "title": "Passing/PNR/Game Control",
+          "description": "Smooth passer off-the-dribble with great court-vision, constantly heads-up. Good control in the PNR. Great passer to his 5-man."
+        },
+        {
+          "title": "Anticipation/Steals",
+          "description": "Great hands which he uses to disrupt opposing offenses."
+        },
+        {
+          "title": "Defensive IQ",
+          "description": "Smart defender, with good size and physicality at the spot. Good help defender."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Shot Selection",
+          "description": "Can get trigger happy on his shot from deep OTD, liking to size-up and fire if he gets space."
+        },
+        {
+          "title": "Pass Selection",
+          "description": "Can get overly ambitious with his passes/be sloppy with his placement of passes leading to TOs."
         }
       ]
     }
