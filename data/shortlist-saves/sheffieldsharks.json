@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-20T16:12:32.083Z",
+    "savedAt": "2026-05-22T15:58:51.012Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1302,6 +1302,42 @@
       "season": "",
       "savedAt": 1779288363178,
       "source": "manual"
+    },
+    "Samari Curtis": {
+      "metrics": {
+        "player": "Samari Curtis",
+        "team": "Jamtland",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Jamtland",
+      "season": "",
+      "savedAt": 1779427654095,
+      "source": "manual"
+    },
+    "Erik Pratt": {
+      "metrics": {
+        "player": "Erik Pratt",
+        "team": "Stony Brook",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Stony Brook",
+      "season": "",
+      "savedAt": 1779456496092,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1664,6 +1700,16 @@
       "name": "Loudon Love",
       "team": "Vienna",
       "createdAt": 1779288363178
+    },
+    {
+      "name": "Samari Curtis",
+      "team": "Jamtland",
+      "createdAt": 1779427654095
+    },
+    {
+      "name": "Erik Pratt",
+      "team": "Stony Brook",
+      "createdAt": 1779456496092
     }
   ],
   "starRatings": {
@@ -2212,6 +2258,27 @@
       "suitability": {
         "4": 3,
         "5": 10
+      }
+    },
+    "Samari Curtis": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 7,
+        "2": 9
+      }
+    },
+    "Erik Pratt": {
+      "primary": 2,
+      "secondary": [
+        1
+      ],
+      "suitability": {
+        "1": 5,
+        "2": 10,
+        "3": 6
       }
     }
   },
@@ -4153,6 +4220,14 @@
     "Marcell McCreary": {
       "height": "6'4\"",
       "weight": "220"
+    },
+    "Samari Curtis": {
+      "height": "6'4\"",
+      "weight": "200"
+    },
+    "Erik Pratt": {
+      "height": "6'5\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -4670,6 +4745,70 @@
           "description": ""
         }
       ]
+    },
+    "Samari Curtis": {
+      "strengths": [
+        {
+          "title": "Physical Slashing/Downhill Threat",
+          "description": ""
+        },
+        {
+          "title": "Drive and Kick",
+          "description": ""
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Discipline/Gambling on D",
+          "description": ""
+        },
+        {
+          "title": "Ball Movement/Flow",
+          "description": ""
+        }
+      ]
+    },
+    "Erik Pratt": {
+      "strengths": [
+        {
+          "title": "Slashing Talent/Scoring Craft/Iso Game",
+          "description": "Quick first-step, long score-first athlete with a strong level of craft 1-on-1 to shift defenders and get to his favoured left hand around the rim. Great on curls to the rim where he can exploit his quickness/length/pull from mid. Has mid-range counters, including the middie turnaround, that he hits with solid consistency if he gets cut off on his drives to the rim,  difficult to contest with his higher release. Listed at 190lbs but is quite wiry strong, able to withstand being bumped off his path to the rim."
+        },
+        {
+          "title": "Post Game",
+          "description": "Capable of backing guards down and scoring in the post, often employing his mid-range turnaround fade. Good passer out of the post."
+        },
+        {
+          "title": "Cutting/Off-Screens/Tough Shotmaking/Varied Scoring",
+          "description": "Willing cutter/mover off-ball for his shot. Inconsistent, but can hit C&S moving off-screens/if a defender tries to shoot the gap will smartly pull.  If a shot is not on, will look to play two-man game to get a better look."
+        },
+        {
+          "title": "Transition",
+          "description": "Aggressive as a ball-handler in transition, looking to get to the rim."
+        },
+        {
+          "title": "Drive & Kick",
+          "description": "Remains heads up on his drives, capable of hitting passes from his scoring threat. Capable of being an acceptable playmaker in the PNR (although more often looking for his scoring game), can make errors."
+        },
+        {
+          "title": "Defense",
+          "description": "Not particularly stand-out, but remains focused off-ball and has good size for his spot. Can turn it on & apply good pressure on occasion."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Right Hand Finishing/Contact Avoidance",
+          "description": "Left-hand dependent around the rim, and often reluctant to finish with his right hand (will look to employ footwork to get to his left hand in the lane when on the right side) - will often try to manipulate the ball with his left instead of the simpler finish with his right, which can result in some awkward possessions, especially against clued up defenses. Can sometimes be soft going up at the rim, often wanting to use footwork to avoid contact rather than go into defenders."
+        },
+        {
+          "title": "Inconsistent Passing Vision",
+          "description": "Max Jones-esque scoring ball-handler (6 isos a game). Will sometimes opt for a tough shot vs. the pass."
+        },
+        {
+          "title": "3PT Inconsistency",
+          "description": "Shot 31% this past season. Shoots at volume and can hit tough looks, but is very streaky."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -4860,6 +4999,14 @@
     "Filip Andjusic": {
       "league": "ABA/Montenegro",
       "level": "Top Level Europe"
+    },
+    "Samari Curtis": {
+      "league": "Sweden",
+      "level": "Solid Mid-Tier Europe"
+    },
+    "Erik Pratt": {
+      "league": "CAA",
+      "level": "Decent Mid-Major"
     }
   },
   "playerSalaries": {
