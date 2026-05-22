@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-22T17:00:03.398Z",
+    "savedAt": "2026-05-22T22:39:25.421Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -5096,7 +5096,14 @@
     "James Okonkwo": true
   },
   "coachShortlist": {
-    "1": [],
+    "1": [
+      "Tevin Brewer",
+      "Sam Hoiberg",
+      "Michael Bradley",
+      "Kobe Langley",
+      "Eric Nottage",
+      "Frankie Collins"
+    ],
     "2": [],
     "3": [],
     "4": [],
