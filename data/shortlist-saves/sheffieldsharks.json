@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-22T22:39:25.421Z",
+    "savedAt": "2026-05-23T00:05:54.682Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1776,10 +1776,12 @@
     "Quimari Peterson": 4.5,
     "Isaac Abidde": 3,
     "Filip Andjusic": 4,
-    "Dan Gherezgher": 3.5,
+    "Dan Gherezgher": 4,
     "Bryce Nze": 4.5,
     "Bo Montgomery": 4,
-    "Abdou Tsimbila": 4
+    "Abdou Tsimbila": 4,
+    "Eric Nottage": 4.5,
+    "Erik Pratt": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -5096,14 +5098,7 @@
     "James Okonkwo": true
   },
   "coachShortlist": {
-    "1": [
-      "Tevin Brewer",
-      "Sam Hoiberg",
-      "Michael Bradley",
-      "Kobe Langley",
-      "Eric Nottage",
-      "Frankie Collins"
-    ],
+    "1": [],
     "2": [],
     "3": [],
     "4": [],
