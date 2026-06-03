@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-05-23T00:05:54.682Z",
+    "savedAt": "2026-06-03T09:30:45.230Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1356,6 +1356,24 @@
       "season": "",
       "savedAt": 1779465551184,
       "source": "manual"
+    },
+    "Xavier Rhodes": {
+      "metrics": {
+        "player": "Xavier Rhodes",
+        "team": "Gence",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Gence",
+      "season": "",
+      "savedAt": 1780464110416,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1733,6 +1751,11 @@
       "name": "Eric Nottage",
       "team": "Charleroi",
       "createdAt": 1779465551184
+    },
+    {
+      "name": "Xavier Rhodes",
+      "team": "Gence",
+      "createdAt": 1780464110415
     }
   ],
   "starRatings": {
@@ -2311,6 +2334,14 @@
       "secondary": [],
       "suitability": {
         "1": 10
+      }
+    },
+    "Xavier Rhodes": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10,
+        "2": 6
       }
     }
   },
@@ -4883,6 +4914,52 @@
           "description": "Can get overly ambitious with his passes/be sloppy with his placement of passes leading to TOs."
         }
       ]
+    },
+    "Xavier Rhodes": {
+      "strengths": [
+        {
+          "title": "Straight-Line Drive Speed/Tight Handles",
+          "description": "Quick first-step and speed allows him to gain separation on defenders attacking in a straight-line, where most of his threat comes from. Decent body control in mid-air enables him to finish through contact to the right. "
+        },
+        {
+          "title": "1-on-1 Defense",
+          "description": "Solid level of strength in the chest and good lateral quickness makes him tough to score on in space. Sometimes can be intermittent, but when he turns it on, his ball pressure can be tough to shake."
+        },
+        {
+          "title": "Hands/Anticipation",
+          "description": "Quick hands and good anticipation generates live-ball steals at a very good rate."
+        },
+        {
+          "title": "Passing/Drive and Kick",
+          "description": "Willing passer on his aggressive driving game, able to hit a range of advanced passes. Great at dump off passes around the rim generated from his speed downhill. Pass oriented, lower usage player"
+        },
+        {
+          "title": "Transition Threat",
+          "description": "Aggressive in transition/semi-transition where he exploits his speed."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Inconsistent Outside Shot",
+          "description": "Very inconsistent outside shot despite some willingness to shoot & some flashes of a step-back game (23% in Azerbaijan, 26% in Slovakia)."
+        },
+        {
+          "title": "FTs",
+          "description": "Shot 62% from the line this past season, 66% his last full season in Slovakia."
+        },
+        {
+          "title": "Left-Hand",
+          "description": "Will not finish with his left hand. Struggles finishing left-side, limited threat that side considering his inconsistent shot."
+        },
+        {
+          "title": "Gambling on D",
+          "description": "Has an occasional propensity to gamble defensively, in the passing lanes and particularly for behind-the-play steals in the PNR."
+        },
+        {
+          "title": "One Speed/Lack of Inbetween Game",
+          "description": "Often relies on his speed getting downhill, can occasionally lead to out of control moments."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -5081,6 +5158,10 @@
     "Erik Pratt": {
       "league": "CAA",
       "level": "Decent Mid-Major"
+    },
+    "Xavier Rhodes": {
+      "league": "Azerbaijan",
+      "level": "Lower Tier Europe"
     }
   },
   "playerSalaries": {
