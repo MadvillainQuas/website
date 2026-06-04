@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-04T21:39:44.674Z",
+    "savedAt": "2026-06-04T22:01:34.732Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2318,7 +2318,12 @@
       "primary": 3,
       "secondary": [
         4
-      ]
+      ],
+      "suitability": {
+        "3": 8,
+        "4": 9,
+        "5": 8
+      }
     },
     "Jacob Crews": {
       "primary": 4,
@@ -5033,6 +5038,32 @@
         {
           "title": "Extended-Range Touch",
           "description": "If he's forced to take a touch/push shot (i.e. not directly at the rim), his efficiency isn't that good. Can attack either side, but can sometimes opt to take a tough right handed layup on the left-side if tightly contested."
+        }
+      ]
+    },
+    "Isaiah Jones": {
+      "strengths": [
+        {
+          "title": "Physical 1-on-1 Defense",
+          "description": "Very physical defender @230lbs, almost impossible to move, with solid lateral quickness capable of being versatile. Great at defending in the low-post."
+        },
+        {
+          "title": "High Level Hands/Anticipation/Motor",
+          "description": "Elite hands/anticipation - huge disruptor on the defensive end. Strips players clean."
+        },
+        {
+          "title": "Rebounding",
+          "description": "Huge presence on the offensive boards, using his frame to outrebound defenders. Big hustle guy."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Screen Navigation",
+          "description": "Struggles to get around screens."
+        },
+        {
+          "title": "Limited Slashing Threat",
+          "description": "Simple game w/ mediocre first-step, often forced into bully-ball."
         }
       ]
     }
