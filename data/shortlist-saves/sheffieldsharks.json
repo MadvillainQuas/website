@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-03T09:30:45.230Z",
+    "savedAt": "2026-06-04T21:39:44.674Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1374,6 +1374,24 @@
       "season": "",
       "savedAt": 1780464110416,
       "source": "manual"
+    },
+    "Omar El-Shiekh": {
+      "metrics": {
+        "player": "Omar El-Shiekh",
+        "team": "Tartu",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Tartu",
+      "season": "",
+      "savedAt": 1780604512325,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1756,6 +1774,11 @@
       "name": "Xavier Rhodes",
       "team": "Gence",
       "createdAt": 1780464110415
+    },
+    {
+      "name": "Omar El-Shiekh",
+      "team": "Tartu",
+      "createdAt": 1780604512325
     }
   ],
   "starRatings": {
@@ -1804,7 +1827,8 @@
     "Bo Montgomery": 4,
     "Abdou Tsimbila": 4,
     "Eric Nottage": 4.5,
-    "Erik Pratt": 4
+    "Erik Pratt": 4,
+    "Xavier Rhodes": 3
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2342,6 +2366,15 @@
       "suitability": {
         "1": 10,
         "2": 6
+      }
+    },
+    "Omar El-Shiekh": {
+      "primary": 4,
+      "secondary": [],
+      "suitability": {
+        "3": 8,
+        "4": 10,
+        "5": 5
       }
     }
   },
@@ -4960,6 +4993,48 @@
           "description": "Often relies on his speed getting downhill, can occasionally lead to out of control moments."
         }
       ]
+    },
+    "Omar El-Shiekh": {
+      "strengths": [
+        {
+          "title": "Versatility/Hands",
+          "description": "Agile, versatile defender at 6'9\" that can switch down. Good anticipation in the passing lanes/making plays defending the PNR for steals. Can move his feet 1-on-1. Can defend close-outs. Capable defending in the post against 5's, although is a little slight against bigger, physical 5's. Occasionally caught too deep against shooters."
+        },
+        {
+          "title": "Slashing Off-The-Rip/DHO Ball-Skill/Transition/Drawing Fouls",
+          "description": "Good first-step, aggressive attacking off-the-catch, where he likes to rip through to either side. Can attack the rim out of triple-threat. Level of straight-line drive craft if his defender cuts him off, with a downhill cross/BTB and spin move. Can make decent drive and kicks and willing to pass. Very comfortable handling the ball on the perimeter for DHOs. Grab-and-go threat in transition. Can play physical at the rim, drawing fouls."
+        },
+        {
+          "title": "Rebounding/Huge O-Reb Threat",
+          "description": "High volume rebounder. Huge presence on both boards - great feel for crashing the glass. Likes to crash the O-boards from the corner."
+        },
+        {
+          "title": "Cuts",
+          "description": "Solid feel for cutting from the perimeter."
+        },
+        {
+          "title": "Mismatch: Post-Ups",
+          "description": "Capable post-up mismatch scorer, with solid footwork."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Limited 1-on-1 Skill",
+          "description": "It can be difficult to break down a set defender off-handles despite his solid first-step (does his work off-the-catch - similar to Will Yoakum)."
+        },
+        {
+          "title": "Outside Shot",
+          "description": "Very limited shooter (low 20's%). Difficult to force defenders to guard him there."
+        },
+        {
+          "title": "Rim Defense",
+          "description": "Can be passive as a defender around the rim in weak-side help/general rim defense. Better defending on the perimeter."
+        },
+        {
+          "title": "Extended-Range Touch",
+          "description": "If he's forced to take a touch/push shot (i.e. not directly at the rim), his efficiency isn't that good. Can attack either side, but can sometimes opt to take a tough right handed layup on the left-side if tightly contested."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -5162,6 +5237,10 @@
     "Xavier Rhodes": {
       "league": "Azerbaijan",
       "level": "Lower Tier Europe"
+    },
+    "Omar El-Shiekh": {
+      "league": "ELBL",
+      "level": "Solid Mid-Tier Europe"
     }
   },
   "playerSalaries": {
