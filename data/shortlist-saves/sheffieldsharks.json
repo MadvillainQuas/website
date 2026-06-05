@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-04T22:01:34.732Z",
+    "savedAt": "2026-06-05T09:57:27.751Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1392,6 +1392,24 @@
       "season": "",
       "savedAt": 1780604512325,
       "source": "manual"
+    },
+    "Malachi Smith": {
+      "metrics": {
+        "player": "Malachi Smith",
+        "team": "UConn",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "UConn",
+      "season": "",
+      "savedAt": 1780644254499,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1779,6 +1797,11 @@
       "name": "Omar El-Shiekh",
       "team": "Tartu",
       "createdAt": 1780604512325
+    },
+    {
+      "name": "Malachi Smith",
+      "team": "UConn",
+      "createdAt": 1780644254499
     }
   ],
   "starRatings": {
@@ -1803,7 +1826,7 @@
     "Richie Springs": 3,
     "Yame Butler": 4,
     "AJ Smith": 3.5,
-    "Madison Durr": 3.5,
+    "Madison Durr": 3,
     "Justin Hill": 3.5,
     "Sean Smith": 3,
     "Chandler Jackson": 3.5,
@@ -1828,7 +1851,8 @@
     "Abdou Tsimbila": 4,
     "Eric Nottage": 4.5,
     "Erik Pratt": 4,
-    "Xavier Rhodes": 3
+    "Xavier Rhodes": 3,
+    "Omar El-Shiekh": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2375,11 +2399,22 @@
     },
     "Omar El-Shiekh": {
       "primary": 4,
-      "secondary": [],
+      "secondary": [
+        3,
+        5
+      ],
       "suitability": {
         "3": 8,
         "4": 10,
         "5": 5
+      }
+    },
+    "Malachi Smith": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10,
+        "2": 4
       }
     }
   },
@@ -4333,6 +4368,10 @@
     "Eric Nottage": {
       "height": "6'2\"",
       "weight": "190"
+    },
+    "Malachi Smith": {
+      "height": "6'0\"",
+      "weight": "180"
     }
   },
   "potentialRatings": {
@@ -5064,6 +5103,36 @@
         {
           "title": "Limited Slashing Threat",
           "description": "Simple game w/ mediocre first-step, often forced into bully-ball."
+        }
+      ]
+    },
+    "Malachi Smith": {
+      "strengths": [
+        {
+          "title": "First-Step/Straight-Line Drive/Drawing Fouls",
+          "description": "Very speedy guard when attacking downhill. Able to combo moves at speed, shifting defenders and making him a tough cover in space. Has a good sense for drawing fouls around the rim."
+        },
+        {
+          "title": "Passing ",
+          "description": "Excellent connective passer when off-ball. Passing, PG mentality when on-ball."
+        },
+        {
+          "title": "Hands/Anticipation/Motor",
+          "description": "Great hands and anticipation off-ball. Plays hard."
+        },
+        {
+          "title": "1-on-1 Defense/Mismatch D",
+          "description": "Solid frame, quick laterally. Strong in the chest. Battles and fronts post mismatches."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Control Downhill",
+          "description": "Has a lot of wiggle, but attacks full-speed downhill without much of a plan occasionally, leading to being on the receiving end of nasty blocks due to his size. Can struggle with dig downs. "
+        },
+        {
+          "title": "Outside Shot",
+          "description": "Average volume from deep, inconsistent."
         }
       ]
     }
