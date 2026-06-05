@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T21:43:57.368Z",
+    "savedAt": "2026-06-05T22:24:35.030Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1464,6 +1464,60 @@
       "season": "",
       "savedAt": 1780693517018,
       "source": "manual"
+    },
+    "Ben Carlson": {
+      "metrics": {
+        "player": "Ben Carlson",
+        "team": "Riga",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Riga",
+      "season": "",
+      "savedAt": 1780696268282,
+      "source": "manual"
+    },
+    "Leo DeBruhl": {
+      "metrics": {
+        "player": "Leo DeBruhl",
+        "team": "Vitre",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Vitre",
+      "season": "",
+      "savedAt": 1780698221135,
+      "source": "manual"
+    },
+    "Ace Baldwin": {
+      "metrics": {
+        "player": "Ace Baldwin",
+        "team": "Penn State",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Penn State",
+      "season": "",
+      "savedAt": 1780698264135,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1876,6 +1930,21 @@
       "name": "Niko Rocak",
       "team": "UC Irvine",
       "createdAt": 1780693517018
+    },
+    {
+      "name": "Ben Carlson",
+      "team": "Riga",
+      "createdAt": 1780696268281
+    },
+    {
+      "name": "Leo DeBruhl",
+      "team": "Vitre",
+      "createdAt": 1780698221135
+    },
+    {
+      "name": "Ace Baldwin",
+      "team": "Penn State",
+      "createdAt": 1780698264135
     }
   ],
   "starRatings": {
@@ -1937,7 +2006,9 @@
     "Marcell McCreary": 4,
     "Leslie Nkeurerem": 4.5,
     "Lamin Sabally": 3,
-    "Isaiah Jones": 3
+    "Isaiah Jones": 3,
+    "Ben Carlson": 4,
+    "Ace Baldwin": 4.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2556,6 +2627,18 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Ben Carlson": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Leo DeBruhl": {
+      "primary": 1,
+      "secondary": [
+        2
       ]
     }
   },
@@ -4529,6 +4612,14 @@
     "Lamin Sabally": {
       "height": "6'8\"",
       "weight": "230"
+    },
+    "Ben Carlson": {
+      "height": "6'9\"",
+      "weight": "220"
+    },
+    "Leo DeBruhl": {
+      "height": "6'3\"",
+      "weight": "195"
     }
   },
   "potentialRatings": {
@@ -4585,7 +4676,9 @@
     "Leslie Nkeurerem": 4.5,
     "Lamin Sabally": 3,
     "Isaac Abidde": 3.5,
-    "Isaiah Jones": 3
+    "Isaiah Jones": 3,
+    "Ben Carlson": 4,
+    "Ace Baldwin": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
