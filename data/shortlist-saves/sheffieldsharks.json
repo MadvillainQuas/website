@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T17:32:04.206Z",
+    "savedAt": "2026-06-05T21:03:49.875Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1428,6 +1428,24 @@
       "season": "",
       "savedAt": 1780653459995,
       "source": "manual"
+    },
+    "Brock Wisne": {
+      "metrics": {
+        "player": "Brock Wisne",
+        "team": "Northern Colorado",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Colorado",
+      "season": "",
+      "savedAt": 1780691254686,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1825,6 +1843,16 @@
       "name": "Jalen Leach",
       "team": "Northwestern",
       "createdAt": 1780653459995
+    },
+    {
+      "name": "Rob Carpenter",
+      "team": "Lulea",
+      "createdAt": 1780687757012
+    },
+    {
+      "name": "Brock Wisne",
+      "team": "Northern Colorado",
+      "createdAt": 1780691254686
     }
   ],
   "starRatings": {
@@ -1875,7 +1903,12 @@
     "Eric Nottage": 4.5,
     "Erik Pratt": 4,
     "Xavier Rhodes": 3,
-    "Omar El-Shiekh": 4
+    "Omar El-Shiekh": 4,
+    "Kamari Lands": 4,
+    "Malachi Smith": 3.5,
+    "Jalen Leach": 4.5,
+    "Brock Wisne": 4.5,
+    "Brandon Mitchell-Day": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2287,7 +2320,8 @@
     "Kimani Hamilton": {
       "primary": 3,
       "secondary": [
-        4
+        4,
+        5
       ],
       "suitability": {
         "3": 10,
@@ -2384,16 +2418,6 @@
         "5": 10
       }
     },
-    "Samari Curtis": {
-      "primary": 2,
-      "secondary": [
-        1
-      ],
-      "suitability": {
-        "1": 7,
-        "2": 9
-      }
-    },
     "Erik Pratt": {
       "primary": 2,
       "secondary": [
@@ -2447,6 +2471,34 @@
       ],
       "suitability": {
         "1": 10
+      }
+    },
+    "Kamari Lands": {
+      "primary": 4,
+      "secondary": [
+        2,
+        3,
+        5
+      ]
+    },
+    "Samari Curtis": {
+      "primary": 1,
+      "secondary": [
+        2
+      ]
+    },
+    "Rob Carpenter": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Brock Wisne": {
+      "primary": 4,
+      "secondary": [],
+      "suitability": {
+        "4": 10,
+        "5": 10
       }
     }
   },
@@ -4408,6 +4460,14 @@
     "Jalen Leach": {
       "height": "6'4\"",
       "weight": "200"
+    },
+    "Rob Carpenter": {
+      "height": "6'7\"",
+      "weight": "215"
+    },
+    "Brock Wisne": {
+      "height": "6'9\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
@@ -4452,7 +4512,11 @@
     "Filip Andjusic": 4,
     "Bryce Nze": 4.5,
     "Bo Montgomery": 5,
-    "Abdou Tsimbila": 4
+    "Abdou Tsimbila": 4,
+    "Kamari Lands": 4,
+    "Jalen Leach": 5,
+    "Brock Wisne": 4.5,
+    "Brandon Mitchell-Day": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -5203,6 +5267,36 @@
         {
           "title": "Touch",
           "description": "Occasionally touch can be inconsistent in traffic."
+        }
+      ]
+    },
+    "Brock Wisne": {
+      "strengths": [
+        {
+          "title": "Mobility/Versatility",
+          "description": "Super mobile mover for his size. Very capable on switches down. Can defend the close out. Lunges out on hedge testing the handle of the ball-handler. Strong post defender listed @ 245lbs, stonewalls bigs. Disciplined defender."
+        },
+        {
+          "title": "Playmaking",
+          "description": "Excellent passer as a hand-off hub. Skilled DHO player. Good vision out of the post. Makes smart, connective passing decisions. High IQ."
+        },
+        {
+          "title": "Face-Up Slashing",
+          "description": "Good first step to where he can attack off-the-catch and beat defenders. Soft touch around the basket, where he has the ability to slow down and use his frame/size."
+        },
+        {
+          "title": "C&S 3's",
+          "description": "Capable on C&S threes (although lower volume). Can hit on the PNP."
+        },
+        {
+          "title": "Post Scoring",
+          "description": "Fluid post-scorer with good footwork and strength. Flexible upper body absorbs contact. Soft hook touch with either hand."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Neutral Wingspan/Mediocre Vertical",
+          "description": "Shorter arms has an impact on shot contests/slight impact on adding plus value as a rebounder. Mediocre vertical athlete."
         }
       ]
     }
