@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T09:57:27.751Z",
+    "savedAt": "2026-06-05T17:21:04.475Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1410,6 +1410,24 @@
       "season": "",
       "savedAt": 1780644254499,
       "source": "manual"
+    },
+    "Jalen Leach": {
+      "metrics": {
+        "player": "Jalen Leach",
+        "team": "Northwestern",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northwestern",
+      "season": "",
+      "savedAt": 1780653459995,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1802,6 +1820,11 @@
       "name": "Malachi Smith",
       "team": "UConn",
       "createdAt": 1780644254499
+    },
+    {
+      "name": "Jalen Leach",
+      "team": "Northwestern",
+      "createdAt": 1780653459995
     }
   ],
   "starRatings": {
@@ -2415,6 +2438,15 @@
       "suitability": {
         "1": 10,
         "2": 4
+      }
+    },
+    "Jalen Leach": {
+      "primary": 1,
+      "secondary": [
+        2
+      ],
+      "suitability": {
+        "1": 10
       }
     }
   },
@@ -4372,6 +4404,10 @@
     "Malachi Smith": {
       "height": "6'0\"",
       "weight": "180"
+    },
+    "Jalen Leach": {
+      "height": "6'4\"",
+      "weight": "200"
     }
   },
   "potentialRatings": {
@@ -5133,6 +5169,36 @@
         {
           "title": "Outside Shot",
           "description": "Average volume from deep, inconsistent."
+        }
+      ]
+    },
+    "Jalen Leach": {
+      "strengths": [
+        {
+          "title": "PNR Control/Handles/Tempo/Both Sides",
+          "description": "Smooth, tall scoring PG with excellent shifty handles and feel for tempo in the PNR, probing and playing at a controlled speed. Able to use his big frame to shield off defenders in jail. Very difficult to pressure him. Solid level of speed downhill."
+        },
+        {
+          "title": "Shotmaking Off-Dribble/3PT Shotmaking",
+          "description": "Great shotmaking in the mid-range (47%). Able to hit tough looks from 3 off-dribble, and run off-screens."
+        },
+        {
+          "title": "Mismatch: Small Guards",
+          "description": "Able to post-up small guards and shoot over the top of them."
+        },
+        {
+          "title": "ISO",
+          "description": "Exceptional 1-on-1 player."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Passing Vision",
+          "description": "Can miss passing reads - scoring oriented-PG."
+        },
+        {
+          "title": "Touch",
+          "description": "Occasionally touch can be inconsistent in traffic."
         }
       ]
     }
