@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T23:06:48.067Z",
+    "savedAt": "2026-06-05T23:08:34.582Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1536,6 +1536,24 @@
       "season": "",
       "savedAt": 1780700781714,
       "source": "manual"
+    },
+    "Tristan Forsythe": {
+      "metrics": {
+        "player": "Tristan Forsythe",
+        "team": "Mon-Hainut",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Mon-Hainut",
+      "season": "",
+      "savedAt": 1780700881940,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1968,6 +1986,11 @@
       "name": "Cam Morris III",
       "team": "ETSU",
       "createdAt": 1780700781713
+    },
+    {
+      "name": "Tristan Forsythe",
+      "team": "Mon-Hainut",
+      "createdAt": 1780700881940
     }
   ],
   "starRatings": {
@@ -2034,7 +2057,8 @@
     "Ace Baldwin": 4.5,
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
-    "Cam Morris III": 3.5
+    "Cam Morris III": 3.5,
+    "Tristan Forsythe": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2676,6 +2700,12 @@
       ]
     },
     "Cam Morris III": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Tristan Forsythe": {
       "primary": 4,
       "secondary": [
         5
@@ -4664,6 +4694,10 @@
     "Cam Morris III": {
       "height": "6'8\"",
       "weight": "205"
+    },
+    "Tristan Forsythe": {
+      "height": "6'10\"",
+      "weight": "230"
     }
   },
   "potentialRatings": {
@@ -4725,7 +4759,8 @@
     "Ace Baldwin": 5,
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
-    "Cam Morris III": 3.5
+    "Cam Morris III": 3.5,
+    "Tristan Forsythe": 3.5
   },
   "playerCoreStats": {
     "Garry Clark": {
