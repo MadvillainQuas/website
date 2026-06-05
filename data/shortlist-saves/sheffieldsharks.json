@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T21:03:49.875Z",
+    "savedAt": "2026-06-05T21:43:57.368Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1446,6 +1446,24 @@
       "season": "",
       "savedAt": 1780691254686,
       "source": "manual"
+    },
+    "Niko Rocak": {
+      "metrics": {
+        "player": "Niko Rocak",
+        "team": "UC Irvine",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "UC Irvine",
+      "season": "",
+      "savedAt": 1780693517018,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1853,6 +1871,11 @@
       "name": "Brock Wisne",
       "team": "Northern Colorado",
       "createdAt": 1780691254686
+    },
+    {
+      "name": "Niko Rocak",
+      "team": "UC Irvine",
+      "createdAt": 1780693517018
     }
   ],
   "starRatings": {
@@ -1894,7 +1917,7 @@
     "Alex Williams": 3.5,
     "Kimani Hamilton": 4,
     "Quimari Peterson": 4.5,
-    "Isaac Abidde": 3,
+    "Isaac Abidde": 3.5,
     "Filip Andjusic": 4,
     "Dan Gherezgher": 4,
     "Bryce Nze": 4.5,
@@ -1908,7 +1931,13 @@
     "Malachi Smith": 3.5,
     "Jalen Leach": 4.5,
     "Brock Wisne": 4.5,
-    "Brandon Mitchell-Day": 4
+    "Brandon Mitchell-Day": 4,
+    "Rob Carpenter": 3.5,
+    "Nathan Scott": 4,
+    "Marcell McCreary": 4,
+    "Leslie Nkeurerem": 4.5,
+    "Lamin Sabally": 3,
+    "Isaiah Jones": 3
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2362,16 +2391,6 @@
         "5": 10
       }
     },
-    "Dan Gherezgher": {
-      "primary": 1,
-      "secondary": [
-        2
-      ],
-      "suitability": {
-        "1": 10,
-        "2": 7
-      }
-    },
     "Pipe Ajayi": {
       "primary": 5,
       "secondary": [
@@ -2495,11 +2514,49 @@
     },
     "Brock Wisne": {
       "primary": 4,
-      "secondary": [],
+      "secondary": [
+        5
+      ],
       "suitability": {
         "4": 10,
         "5": 10
       }
+    },
+    "Dan Gherezgher": {
+      "primary": 2,
+      "secondary": [
+        1
+      ]
+    },
+    "Bryce Nze": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Niko Rocak": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Nathan Scott": {
+      "primary": 3,
+      "secondary": [
+        4
+      ]
+    },
+    "Leslie Nkeurerem": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Lamin Sabally": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
     }
   },
   "scoutReports": {},
@@ -4467,7 +4524,11 @@
     },
     "Brock Wisne": {
       "height": "6'9\"",
-      "weight": "220"
+      "weight": "245"
+    },
+    "Lamin Sabally": {
+      "height": "6'8\"",
+      "weight": "230"
     }
   },
   "potentialRatings": {
@@ -4516,7 +4577,15 @@
     "Kamari Lands": 4,
     "Jalen Leach": 5,
     "Brock Wisne": 4.5,
-    "Brandon Mitchell-Day": 4
+    "Brandon Mitchell-Day": 4,
+    "Omar El-Shiekh": 4,
+    "Rob Carpenter": 3.5,
+    "Nathan Scott": 4,
+    "Marcell McCreary": 4,
+    "Leslie Nkeurerem": 4.5,
+    "Lamin Sabally": 3,
+    "Isaac Abidde": 3.5,
+    "Isaiah Jones": 3
   },
   "playerCoreStats": {
     "Garry Clark": {
