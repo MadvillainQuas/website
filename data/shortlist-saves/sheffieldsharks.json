@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T22:24:35.030Z",
+    "savedAt": "2026-06-05T23:06:48.067Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1518,6 +1518,24 @@
       "season": "",
       "savedAt": 1780698264135,
       "source": "manual"
+    },
+    "Cam Morris III": {
+      "metrics": {
+        "player": "Cam Morris III",
+        "team": "ETSU",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "ETSU",
+      "season": "",
+      "savedAt": 1780700781714,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1945,6 +1963,11 @@
       "name": "Ace Baldwin",
       "team": "Penn State",
       "createdAt": 1780698264135
+    },
+    {
+      "name": "Cam Morris III",
+      "team": "ETSU",
+      "createdAt": 1780700781713
     }
   ],
   "starRatings": {
@@ -2008,7 +2031,10 @@
     "Lamin Sabally": 3,
     "Isaiah Jones": 3,
     "Ben Carlson": 4,
-    "Ace Baldwin": 4.5
+    "Ace Baldwin": 4.5,
+    "Grant Singleton": 4,
+    "Sam Hoiberg": 5,
+    "Cam Morris III": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2498,7 +2524,9 @@
     },
     "Jacob Crews": {
       "primary": 4,
-      "secondary": []
+      "secondary": [
+        3
+      ]
     },
     "Loudon Love": {
       "primary": 5,
@@ -2639,6 +2667,18 @@
       "primary": 1,
       "secondary": [
         2
+      ]
+    },
+    "Sahmi Willoughby": {
+      "primary": 3,
+      "secondary": [
+        4
+      ]
+    },
+    "Cam Morris III": {
+      "primary": 4,
+      "secondary": [
+        5
       ]
     }
   },
@@ -4620,6 +4660,10 @@
     "Leo DeBruhl": {
       "height": "6'3\"",
       "weight": "195"
+    },
+    "Cam Morris III": {
+      "height": "6'8\"",
+      "weight": "205"
     }
   },
   "potentialRatings": {
@@ -4678,7 +4722,10 @@
     "Isaac Abidde": 3.5,
     "Isaiah Jones": 3,
     "Ben Carlson": 4,
-    "Ace Baldwin": 5
+    "Ace Baldwin": 5,
+    "Grant Singleton": 4,
+    "Sam Hoiberg": 5,
+    "Cam Morris III": 3.5
   },
   "playerCoreStats": {
     "Garry Clark": {
