@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T17:21:04.475Z",
+    "savedAt": "2026-06-05T17:32:04.206Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -5146,19 +5146,23 @@
       "strengths": [
         {
           "title": "First-Step/Straight-Line Drive/Drawing Fouls",
-          "description": "Very speedy guard when attacking downhill. Able to combo moves at speed, shifting defenders and making him a tough cover in space. Has a good sense for drawing fouls around the rim."
+          "description": "Very speedy guard when attacking downhill, mostly looking to get direct to the rim. Can be a tough cover in space. Has a good sense for drawing fouls around the rim. Shows some body control at the rim."
         },
         {
           "title": "Passing ",
-          "description": "Excellent connective passer when off-ball. Passing, PG mentality when on-ball."
+          "description": "Excellent connective passer when off-ball. Passing, PG mentality when on-ball, allowing for good ball movement."
         },
         {
           "title": "Hands/Anticipation/Motor",
-          "description": "Great hands and anticipation off-ball. Plays hard."
+          "description": "Great hands and anticipation off-ball. Plays hard. Additional rebounder."
         },
         {
           "title": "1-on-1 Defense/Mismatch D",
           "description": "Solid frame, quick laterally. Strong in the chest. Battles and fronts post mismatches."
+        },
+        {
+          "title": "Transition",
+          "description": "Attacks in transition using his speed."
         }
       ],
       "weaknesses": [
@@ -5167,8 +5171,8 @@
           "description": "Has a lot of wiggle, but attacks full-speed downhill without much of a plan occasionally, leading to being on the receiving end of nasty blocks due to his size. Can struggle with dig downs. "
         },
         {
-          "title": "Outside Shot",
-          "description": "Average volume from deep, inconsistent."
+          "title": "Inconsistent Outside Shot",
+          "description": "Inconsistent off-the-dribble threat from 3. "
         }
       ]
     },
