@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T23:08:34.582Z",
+    "savedAt": "2026-06-05T23:43:54.477Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1554,6 +1554,24 @@
       "season": "",
       "savedAt": 1780700881940,
       "source": "manual"
+    },
+    "Jordan Dallas": {
+      "metrics": {
+        "player": "Jordan Dallas",
+        "team": "Sun-Rockers Sa-nen",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Sun-Rockers Sa-nen",
+      "season": "",
+      "savedAt": 1780703009259,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -1991,6 +2009,11 @@
       "name": "Tristan Forsythe",
       "team": "Mon-Hainut",
       "createdAt": 1780700881940
+    },
+    {
+      "name": "Jordan Dallas",
+      "team": "Sun-Rockers Sa-nen",
+      "createdAt": 1780703009258
     }
   ],
   "starRatings": {
@@ -2058,7 +2081,8 @@
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
-    "Tristan Forsythe": 3.5
+    "Tristan Forsythe": 3.5,
+    "Jordan Dallas": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2706,6 +2730,12 @@
       ]
     },
     "Tristan Forsythe": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Jordan Dallas": {
       "primary": 4,
       "secondary": [
         5
@@ -4698,6 +4728,10 @@
     "Tristan Forsythe": {
       "height": "6'10\"",
       "weight": "230"
+    },
+    "Jordan Dallas": {
+      "height": "6'10\"",
+      "weight": "230"
     }
   },
   "potentialRatings": {
@@ -4760,7 +4794,8 @@
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
-    "Tristan Forsythe": 3.5
+    "Tristan Forsythe": 3.5,
+    "Jordan Dallas": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
