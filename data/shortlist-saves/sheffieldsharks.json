@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-05T23:43:54.477Z",
+    "savedAt": "2026-06-06T03:42:33.332Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2736,6 +2736,16 @@
       ]
     },
     "Jordan Dallas": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Kevin Kalu": {
+      "primary": 5,
+      "secondary": []
+    },
+    "Brandon Mitchell-Day": {
       "primary": 4,
       "secondary": [
         5
@@ -4401,7 +4411,7 @@
       "Physical Mobile Playmaking 5"
     ],
     "Brandon Mitchell-Day": [
-      "Stretch 4/5"
+      "Slashing Stretch 4/5"
     ],
     "Bo Montgomery": [
       "Secondary Handler/Playmaker"
@@ -4426,6 +4436,12 @@
     ],
     "Aaron Rhooms": [
       "Movement Shooting 3&D Wing"
+    ],
+    "Jordan Dallas": [
+      "Stretch 5/4 w/ Post"
+    ],
+    "Brock Wisne": [
+      "Physical Stretch-4/5 w/ Post"
     ]
   },
   "playerPhysicals": {
@@ -4731,7 +4747,7 @@
     },
     "Jordan Dallas": {
       "height": "6'10\"",
-      "weight": "230"
+      "weight": "235"
     }
   },
   "potentialRatings": {
