@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-06T03:42:33.332Z",
+    "savedAt": "2026-06-06T03:45:50.924Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2074,7 +2074,7 @@
     "Nathan Scott": 4,
     "Marcell McCreary": 4,
     "Leslie Nkeurerem": 4.5,
-    "Lamin Sabally": 3,
+    "Lamin Sabally": 3.5,
     "Isaiah Jones": 3,
     "Ben Carlson": 4,
     "Ace Baldwin": 4.5,
@@ -2699,12 +2699,6 @@
         4
       ]
     },
-    "Lamin Sabally": {
-      "primary": 5,
-      "secondary": [
-        4
-      ]
-    },
     "Ben Carlson": {
       "primary": 4,
       "secondary": [
@@ -2749,6 +2743,12 @@
       "primary": 4,
       "secondary": [
         5
+      ]
+    },
+    "Lamin Sabally": {
+      "primary": 5,
+      "secondary": [
+        4
       ]
     }
   },
@@ -4442,6 +4442,12 @@
     ],
     "Brock Wisne": [
       "Physical Stretch-4/5 w/ Post"
+    ],
+    "Tristan Forsythe": [
+      "Stretch-4/5"
+    ],
+    "Lamin Sabally": [
+      "Athletic Slashing 4/5"
     ]
   },
   "playerPhysicals": {
@@ -4802,7 +4808,7 @@
     "Nathan Scott": 4,
     "Marcell McCreary": 4,
     "Leslie Nkeurerem": 4.5,
-    "Lamin Sabally": 3,
+    "Lamin Sabally": 3.5,
     "Isaac Abidde": 3.5,
     "Isaiah Jones": 3,
     "Ben Carlson": 4,
