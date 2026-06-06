@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-06T11:31:37.829Z",
+    "savedAt": "2026-06-06T11:34:27.027Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2109,7 +2109,7 @@
     "AJ Smith": 3.5,
     "Madison Durr": 3,
     "Justin Hill": 3.5,
-    "Sean Smith": 3,
+    "Sean Smith": 3.5,
     "Chandler Jackson": 3.5,
     "Sincere Malone": 3,
     "Troy Glover II": 3.5,
@@ -2151,7 +2151,8 @@
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
-    "Jordan Dallas": 4
+    "Jordan Dallas": 4,
+    "Jordan Mason": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2814,12 +2815,6 @@
         5
       ]
     },
-    "Lamin Sabally": {
-      "primary": 5,
-      "secondary": [
-        4
-      ]
-    },
     "Lakeem McAliley": {
       "primary": 4,
       "secondary": [
@@ -2833,6 +2828,12 @@
       ]
     },
     "Yaw Obeng-Mensah": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Lamin Sabally": {
       "primary": 4,
       "secondary": [
         5
@@ -4907,7 +4908,7 @@
     "Nathan Scott": 4,
     "Marcell McCreary": 4,
     "Leslie Nkeurerem": 4.5,
-    "Lamin Sabally": 3.5,
+    "Lamin Sabally": 4.5,
     "Isaac Abidde": 3.5,
     "Isaiah Jones": 3,
     "Ben Carlson": 4,
@@ -4916,7 +4917,8 @@
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
-    "Jordan Dallas": 4
+    "Jordan Dallas": 4,
+    "Jordan Mason": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
