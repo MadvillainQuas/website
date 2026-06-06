@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharks",
     "slug": "sheffieldsharks",
-    "savedAt": "2026-06-06T03:45:50.924Z",
+    "savedAt": "2026-06-06T11:31:37.829Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1572,6 +1572,60 @@
       "season": "",
       "savedAt": 1780703009259,
       "source": "manual"
+    },
+    "Jalin Bilingsley": {
+      "metrics": {
+        "player": "Jalin Bilingsley",
+        "team": "Cair 2030",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Cair 2030",
+      "season": "",
+      "savedAt": 1780744873327,
+      "source": "manual"
+    },
+    "Lakeem McAliley": {
+      "metrics": {
+        "player": "Lakeem McAliley",
+        "team": "NTD",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "NTD",
+      "season": "",
+      "savedAt": 1780744900390,
+      "source": "manual"
+    },
+    "Yaw Obeng-Mensah": {
+      "metrics": {
+        "player": "Yaw Obeng-Mensah",
+        "team": "Rogaska",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Rogaska",
+      "season": "",
+      "savedAt": 1780745477693,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2014,6 +2068,21 @@
       "name": "Jordan Dallas",
       "team": "Sun-Rockers Sa-nen",
       "createdAt": 1780703009258
+    },
+    {
+      "name": "Jalin Bilingsley",
+      "team": "Cair 2030",
+      "createdAt": 1780744873327
+    },
+    {
+      "name": "Lakeem McAliley",
+      "team": "NTD",
+      "createdAt": 1780744900389
+    },
+    {
+      "name": "Yaw Obeng-Mensah",
+      "team": "Rogaska",
+      "createdAt": 1780745477693
     }
   ],
   "starRatings": {
@@ -2749,6 +2818,24 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Lakeem McAliley": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Jalin Bilingsley": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Yaw Obeng-Mensah": {
+      "primary": 4,
+      "secondary": [
+        5
       ]
     }
   },
@@ -4754,6 +4841,18 @@
     "Jordan Dallas": {
       "height": "6'10\"",
       "weight": "235"
+    },
+    "Lakeem McAliley": {
+      "height": "6'6\"",
+      "weight": "235"
+    },
+    "Jalin Bilingsley": {
+      "height": "6'8\"",
+      "weight": "225"
+    },
+    "Yaw Obeng-Mensah": {
+      "height": "6'8\"",
+      "weight": "215"
     }
   },
   "potentialRatings": {
