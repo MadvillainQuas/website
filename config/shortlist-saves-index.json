@@ -2,6 +2,13 @@
   "_comment": "Index of every saved Prophesy Shortlist snapshot. Auto-maintained by the Save button in the Prophesy Shortlist tab. Each save has a `visibleTo: string[]` array (empty / missing = visible to everyone) which the admin edits via the 🔒 Manage save visibility modal in the saves bar. Each save's full payload lives at data/shortlist-saves/<slug>.json.",
   "saves": [
     {
+      "name": "SheffieldSharksCurrent",
+      "slug": "sheffieldsharkscurrent",
+      "savedAt": "2026-06-06T11:46:58.409Z",
+      "savedBy": "sheffieldsharks",
+      "file": "data/shortlist-saves/sheffieldsharkscurrent.json"
+    },
+    {
       "name": "SheffieldSharks",
       "slug": "sheffieldsharks",
       "savedAt": "2026-06-06T11:44:18.238Z",
