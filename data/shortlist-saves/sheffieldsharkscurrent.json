@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T13:48:16.663Z",
+    "savedAt": "2026-06-07T13:49:23.938Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1644,6 +1644,24 @@
       "season": "",
       "savedAt": 1780833063179,
       "source": "manual"
+    },
+    "Dorion Staples": {
+      "metrics": {
+        "player": "Dorion Staples",
+        "team": "Maryland-Eastern Shore",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Maryland-Eastern Shore",
+      "season": "",
+      "savedAt": 1780840139635,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2106,6 +2124,11 @@
       "name": "Jamal West",
       "team": "UTEP",
       "createdAt": 1780833063178
+    },
+    {
+      "name": "Dorion Staples",
+      "team": "Maryland-Eastern Shore",
+      "createdAt": 1780840139634
     }
   ],
   "starRatings": {
@@ -2175,7 +2198,9 @@
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
     "Jordan Dallas": 4,
-    "Jordan Mason": 3.5
+    "Jordan Mason": 3.5,
+    "Jamal West": 4,
+    "Dorion Staples": 3
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2878,6 +2903,12 @@
         "4": 10,
         "5": 7
       }
+    },
+    "Dorion Staples": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
     }
   },
   "scoutReports": {},
@@ -4898,6 +4929,10 @@
     "Jamal West": {
       "height": "6'6\"",
       "weight": "225"
+    },
+    "Dorion Staples": {
+      "height": "6'7\"",
+      "weight": "235"
     }
   },
   "potentialRatings": {
@@ -4962,7 +4997,9 @@
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
     "Jordan Dallas": 4,
-    "Jordan Mason": 4
+    "Jordan Mason": 4,
+    "Jamal West": 4,
+    "Dorion Staples": 3
   },
   "playerCoreStats": {
     "Garry Clark": {
