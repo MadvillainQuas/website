@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T22:33:31.329Z",
+    "savedAt": "2026-06-07T22:42:33.511Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1680,6 +1680,24 @@
       "season": "",
       "savedAt": 1780871399844,
       "source": "manual"
+    },
+    "JaJuan Carr": {
+      "metrics": {
+        "player": "JaJuan Carr",
+        "team": "Elon",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Elon",
+      "season": "",
+      "savedAt": 1780872114529,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2152,6 +2170,11 @@
       "name": "Adomas Sidorevicius",
       "team": "Jonava",
       "createdAt": 1780871399844
+    },
+    {
+      "name": "JaJuan Carr",
+      "team": "Elon",
+      "createdAt": 1780872114529
     }
   ],
   "starRatings": {
@@ -2229,7 +2252,8 @@
     "Aaron Gray": 3.5,
     "Jacob Crews": 3.5,
     "Jake Hilmer": 3,
-    "Frankie Collins": 4
+    "Frankie Collins": 4,
+    "JaJuan Carr": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2951,6 +2975,10 @@
       }
     },
     "Ace Baldwin": {
+      "primary": 1,
+      "secondary": []
+    },
+    "JaJuan Carr": {
       "primary": 1,
       "secondary": []
     }
@@ -4985,6 +5013,10 @@
     "Ace Baldwin": {
       "height": "6'1\"",
       "weight": "190"
+    },
+    "JaJuan Carr": {
+      "height": "6'2\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -5054,7 +5086,8 @@
     "Dorion Staples": 3,
     "Adomas Sidorevicius": 5,
     "Aaron Rhooms": 3.5,
-    "Aaron Gray": 3.5
+    "Aaron Gray": 3.5,
+    "JaJuan Carr": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
