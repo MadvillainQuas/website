@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T23:24:30.420Z",
+    "savedAt": "2026-06-07T23:29:01.906Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1752,6 +1752,42 @@
       "season": "",
       "savedAt": 1780874526177,
       "source": "manual"
+    },
+    "Trey Campbell": {
+      "metrics": {
+        "player": "Trey Campbell",
+        "team": "Northern Iowa",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Iowa",
+      "season": "",
+      "savedAt": 1780874809407,
+      "source": "manual"
+    },
+    "Jarrett Hensley": {
+      "metrics": {
+        "player": "Jarrett Hensley",
+        "team": "Southern Iowa",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Southern Iowa",
+      "season": "",
+      "savedAt": 1780874838027,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2244,6 +2280,16 @@
       "name": "Dallin Hall",
       "team": "Virginia",
       "createdAt": 1780874526177
+    },
+    {
+      "name": "Trey Campbell",
+      "team": "Northern Iowa",
+      "createdAt": 1780874809407
+    },
+    {
+      "name": "Jarrett Hensley",
+      "team": "Southern Iowa",
+      "createdAt": 1780874838027
     }
   ],
   "starRatings": {
@@ -2326,7 +2372,8 @@
     "Lester Medford": 4,
     "Tidjiane Dioumassi": 3.5,
     "Khalil Brantley": 4.5,
-    "Dallin Hall": 4.5
+    "Dallin Hall": 4.5,
+    "Jarrett Hensley": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3064,6 +3111,16 @@
       "secondary": []
     },
     "Dallin Hall": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Jarrett Hensley": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Trey Campbell": {
       "primary": 1,
       "secondary": []
     }
@@ -5114,6 +5171,14 @@
     "Dallin Hall": {
       "height": "6'3\"",
       "weight": "200"
+    },
+    "Jarrett Hensley": {
+      "height": "6'8\"",
+      "weight": "215"
+    },
+    "Trey Campbell": {
+      "height": "6'4\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -5188,7 +5253,8 @@
     "Lester Medford": 4,
     "Tidjiane Dioumassi": 3.5,
     "Khalil Brantley": 4.5,
-    "Dallin Hall": 4.5
+    "Dallin Hall": 4.5,
+    "Jarrett Hensley": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
