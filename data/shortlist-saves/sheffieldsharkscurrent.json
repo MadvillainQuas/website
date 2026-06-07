@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T21:02:36.947Z",
+    "savedAt": "2026-06-07T22:23:52.780Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2150,7 +2150,7 @@
     "Tayshawn Comer": 4,
     "Johnathan Massie": 4,
     "Woody Newton": 3,
-    "Richie Springs": 3,
+    "Richie Springs": 3.5,
     "Yame Butler": 4,
     "AJ Smith": 3.5,
     "Madison Durr": 3,
@@ -2197,7 +2197,7 @@
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
-    "Jordan Dallas": 4,
+    "Jordan Dallas": 3.5,
     "Jordan Mason": 3.5,
     "Jamal West": 4,
     "Dorion Staples": 3
@@ -2390,7 +2390,7 @@
       ],
       "ratingTemplate": "wing",
       "suitability": {
-        "3": 3,
+        "3": 5,
         "4": 10,
         "5": 8
       }
@@ -2892,7 +2892,11 @@
       "primary": 4,
       "secondary": [
         5
-      ]
+      ],
+      "suitability": {
+        "4": 7,
+        "5": 8
+      }
     },
     "Jamal West": {
       "primary": 4,
@@ -4996,7 +5000,7 @@
     "Sam Hoiberg": 5,
     "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
-    "Jordan Dallas": 4,
+    "Jordan Dallas": 3.5,
     "Jordan Mason": 4,
     "Jamal West": 4,
     "Dorion Staples": 3
@@ -5876,6 +5880,23 @@
           "description": "Limited shooter."
         }
       ]
+    },
+    "Richie Springs": {
+      "strengths": [
+        {
+          "title": "Straight-Line Drives",
+          "description": "Capable of executing simple straight-line drives with a solid first step, and mid-range step back going left. Can make passes on his drives."
+        },
+        {
+          "title": "Versatility/Mobility",
+          "description": "Solid mobility, capable of covering down positions and switching. Primarily played at the 4/3 in Sweden. Decently agile and capable of recovering out to shooters. Solid post defender @ 235lbs and good length."
+        },
+        {
+          "title": "C&S (3 & Mid)",
+          "description": "Capable of hitting the open 3. Short-roll threat in the mid-range."
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
