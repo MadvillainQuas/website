@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T22:23:52.780Z",
+    "savedAt": "2026-06-07T22:31:13.419Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1662,6 +1662,24 @@
       "season": "",
       "savedAt": 1780840139635,
       "source": "manual"
+    },
+    "Adomas Sidorevicius": {
+      "metrics": {
+        "player": "Adomas Sidorevicius",
+        "team": "Jonava",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Jonava",
+      "season": "",
+      "savedAt": 1780871399844,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2129,6 +2147,11 @@
       "name": "Dorion Staples",
       "team": "Maryland-Eastern Shore",
       "createdAt": 1780840139634
+    },
+    {
+      "name": "Adomas Sidorevicius",
+      "team": "Jonava",
+      "createdAt": 1780871399844
     }
   ],
   "starRatings": {
@@ -2200,7 +2223,10 @@
     "Jordan Dallas": 3.5,
     "Jordan Mason": 3.5,
     "Jamal West": 4,
-    "Dorion Staples": 3
+    "Dorion Staples": 3,
+    "Adomas Sidorevicius": 4.5,
+    "Aaron Rhooms": 3.5,
+    "Aaron Gray": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2913,6 +2939,13 @@
       "secondary": [
         5
       ]
+    },
+    "Adomas Sidorevicius": {
+      "primary": 1,
+      "secondary": [],
+      "suitability": {
+        "1": 10
+      }
     }
   },
   "scoutReports": {},
@@ -4937,6 +4970,10 @@
     "Dorion Staples": {
       "height": "6'7\"",
       "weight": "235"
+    },
+    "Adomas Sidorevicius": {
+      "height": "6'3\"",
+      "weight": "195"
     }
   },
   "potentialRatings": {
@@ -5003,7 +5040,10 @@
     "Jordan Dallas": 3.5,
     "Jordan Mason": 4,
     "Jamal West": 4,
-    "Dorion Staples": 3
+    "Dorion Staples": 3,
+    "Adomas Sidorevicius": 5,
+    "Aaron Rhooms": 3.5,
+    "Aaron Gray": 3.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -5921,6 +5961,9 @@
     },
     "Rylan Jones": {
       "agentName": ""
+    },
+    "Aaron Gray": {
+      "agency": "Gimpire"
     }
   },
   "playerLeagueLevel": {
@@ -6111,6 +6154,14 @@
     "Jamal West": {
       "league": "C-USA",
       "level": "Solid Mid-Major"
+    },
+    "Aaron Gray": {
+      "league": "Slovakia",
+      "level": "Decent Mid-Europe"
+    },
+    "Adomas Sidorevicius": {
+      "league": "Lithuania",
+      "level": "High Tier Europe"
     }
   },
   "playerSalaries": {
