@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T22:31:13.419Z",
+    "savedAt": "2026-06-07T22:31:33.692Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2946,6 +2946,10 @@
       "suitability": {
         "1": 10
       }
+    },
+    "Ace Baldwin": {
+      "primary": 1,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -4974,6 +4978,10 @@
     "Adomas Sidorevicius": {
       "height": "6'3\"",
       "weight": "195"
+    },
+    "Ace Baldwin": {
+      "height": "6'1\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
