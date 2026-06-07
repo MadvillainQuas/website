@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T22:58:44.966Z",
+    "savedAt": "2026-06-07T23:02:48.398Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2301,7 +2301,8 @@
     "Frankie Collins": 4,
     "JaJuan Carr": 3.5,
     "Lester Medford": 4,
-    "Tidjiane Dioumassi": 3.5
+    "Tidjiane Dioumassi": 3.5,
+    "Khalil Brantley": 4.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -5153,7 +5154,8 @@
     "Aaron Gray": 3.5,
     "JaJuan Carr": 4,
     "Lester Medford": 4,
-    "Tidjiane Dioumassi": 3.5
+    "Tidjiane Dioumassi": 3.5,
+    "Khalil Brantley": 4.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -5942,7 +5944,7 @@
         {
           "title": "Neutral Wingspan/Mediocre Vertical",
           "description": "Shorter arms has an impact on shot contests/slight impact on adding plus value as a rebounder. Mediocre vertical athlete.",
-          "level": "Solid"
+          "level": "Slight"
         }
       ]
     },
