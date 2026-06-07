@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-06T11:46:58.409Z",
+    "savedAt": "2026-06-07T13:48:16.663Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1626,6 +1626,24 @@
       "season": "",
       "savedAt": 1780745477693,
       "source": "manual"
+    },
+    "Jamal West": {
+      "metrics": {
+        "player": "Jamal West",
+        "team": "UTEP",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "UTEP",
+      "season": "",
+      "savedAt": 1780833063179,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2083,11 +2101,16 @@
       "name": "Yaw Obeng-Mensah",
       "team": "Rogaska",
       "createdAt": 1780745477693
+    },
+    {
+      "name": "Jamal West",
+      "team": "UTEP",
+      "createdAt": 1780833063178
     }
   ],
   "starRatings": {
     "Owen Dease": 4,
-    "Garry Clark": 3.5,
+    "Garry Clark": 4,
     "Jacob Conner": 3,
     "Paul Otieno": 4,
     "Michael Bradley": 4,
@@ -2165,16 +2188,6 @@
         "2": 5,
         "3": 10,
         "4": 7
-      }
-    },
-    "Garry Clark": {
-      "primary": 5,
-      "secondary": [
-        4
-      ],
-      "suitability": {
-        "4": 5,
-        "5": 10
       }
     },
     "Jacob Conner": {
@@ -2825,7 +2838,11 @@
       "primary": 4,
       "secondary": [
         5
-      ]
+      ],
+      "suitability": {
+        "4": 6,
+        "5": 8
+      }
     },
     "Yaw Obeng-Mensah": {
       "primary": 4,
@@ -2845,6 +2862,22 @@
         2,
         4
       ]
+    },
+    "Garry Clark": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "Jamal West": {
+      "primary": 4,
+      "secondary": [
+        5
+      ],
+      "suitability": {
+        "4": 10,
+        "5": 7
+      }
     }
   },
   "scoutReports": {},
@@ -4861,6 +4894,10 @@
     "Yaw Obeng-Mensah": {
       "height": "6'8\"",
       "weight": "215"
+    },
+    "Jamal West": {
+      "height": "6'6\"",
+      "weight": "225"
     }
   },
   "potentialRatings": {
@@ -5708,6 +5745,100 @@
           "description": "Shorter arms has an impact on shot contests/slight impact on adding plus value as a rebounder. Mediocre vertical athlete."
         }
       ]
+    },
+    "Jalin Bilingsley": {
+      "strengths": [
+        {
+          "title": "Finishing Off Cuts/Roll",
+          "description": "Vertical finisher with a launching pad."
+        },
+        {
+          "title": "Game Flow",
+          "description": "Solid awareness of moving the ball/making sure mismatches get the ball instead of forcing offense etc. Willing passer out of post. Good interaction with the handler in the PNR for 2-man game."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Motor (Defense)",
+          "description": "Not a high motor athlete. Can play lackadaisical on D."
+        },
+        {
+          "title": "Left-Side",
+          "description": "Can struggle left-side due to his refusal to finish w/ left. Will try to force his way right even if blocked off. Relatively predicable down low."
+        }
+      ]
+    },
+    "Garry Clark": {
+      "strengths": [
+        {
+          "title": "Rebounding",
+          "description": "Uses his long wingspan and smart sense of positioning to grab boards. Huge rate of offensive boards."
+        },
+        {
+          "title": "Versatility/Agility/Help Defense",
+          "description": "Super agile, 6'9\", long athlete. Comfortable guarding any position and switching on the perimeter. Very fluid recovering out, with quick hips. Locks down guards. Quick in help. Long rim defender. Super quick at getting out of the screen and rolling."
+        },
+        {
+          "title": "Touch/Pin/Hands",
+          "description": "Soft, extended range touch - threat in the short roll with his floater. Smartly pins defenders and uses his length advantage in the post. Can hit from the mid-range."
+        },
+        {
+          "title": "Connective Passing",
+          "description": "Smart connective passer."
+        },
+        {
+          "title": "Face-Up",
+          "description": "Solid, skilled face-up game."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Strength",
+          "description": "Can be susceptible to more physical 5's in the post."
+        },
+        {
+          "title": "Outside Shot/Perimeter Threat",
+          "description": "Reluctant shooter. "
+        }
+      ]
+    },
+    "Jamal West": {
+      "strengths": [
+        {
+          "title": "Rim Protection/Help Defense/Motor",
+          "description": "Plays in a super-aggressive defense @ UTEP. Good weakside rim protector, with quick reactions and spring. Can use verticality with his solid frame."
+        },
+        {
+          "title": "Face-Up/Iso",
+          "description": "Shifty, quick, multi-faceted face-up scorer exploiting his big frame. Too quick for bigs w/ his first step. Mid-range fade counter."
+        },
+        {
+          "title": "Vertical Finishing/Cuts",
+          "description": "Vertical finisher around the rim on cuts/rolling to the rim."
+        },
+        {
+          "title": "Mobility/Versatility",
+          "description": "Agile defender comfortable defending across multiple positions. Good close-out defense. Aggressive hedge defense."
+        },
+        {
+          "title": "Foul Drawing/Physicality/Control",
+          "description": "Expert at drawing fouls and playing under control at the rim. Huge foul drawing rate. Plays extremely physical, going into defenders. Very patient around the rim, using up-fakes smartly."
+        },
+        {
+          "title": "Passing",
+          "description": "Spreads the ball if he recognises he doesn't have an advantage. Willing passer on his drives. Solid post passer."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Rebounding/Length",
+          "description": "Physical rebounder, but with his limited length, he can be rebounded over by larger players. If he can't use his explosive vertical, his standing reach is quite easy to shoot over."
+        },
+        {
+          "title": "Outside Shot",
+          "description": "Limited shooter."
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -5914,6 +6045,14 @@
     "Omar El-Shiekh": {
       "league": "ELBL",
       "level": "Solid Mid-Tier Europe"
+    },
+    "Jalin Bilingsley": {
+      "league": "North Macedonia",
+      "level": "Lower Tier Europe"
+    },
+    "Jamal West": {
+      "league": "C-USA",
+      "level": "Solid Mid-Major"
     }
   },
   "playerSalaries": {
