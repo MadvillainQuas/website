@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T23:02:48.398Z",
+    "savedAt": "2026-06-07T23:22:35.276Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1734,6 +1734,24 @@
       "season": "",
       "savedAt": 1780873092651,
       "source": "manual"
+    },
+    "Dallin Hall": {
+      "metrics": {
+        "player": "Dallin Hall",
+        "team": "Virginia",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Virginia",
+      "season": "",
+      "savedAt": 1780874526177,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2221,6 +2239,11 @@
       "name": "Tidjiane Dioumassi",
       "team": "Western Carolina",
       "createdAt": 1780873092651
+    },
+    {
+      "name": "Dallin Hall",
+      "team": "Virginia",
+      "createdAt": 1780874526177
     }
   ],
   "starRatings": {
@@ -2302,7 +2325,8 @@
     "JaJuan Carr": 3.5,
     "Lester Medford": 4,
     "Tidjiane Dioumassi": 3.5,
-    "Khalil Brantley": 4.5
+    "Khalil Brantley": 4.5,
+    "Dallin Hall": 4.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3036,6 +3060,10 @@
       "secondary": []
     },
     "Tidjiane Dioumassi": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Dallin Hall": {
       "primary": 1,
       "secondary": []
     }
@@ -5082,6 +5110,10 @@
     "Tidjiane Dioumassi": {
       "height": "6'4\"",
       "weight": "200"
+    },
+    "Dallin Hall": {
+      "height": "6'3\"",
+      "weight": "200"
     }
   },
   "potentialRatings": {
@@ -5155,7 +5187,8 @@
     "JaJuan Carr": 4,
     "Lester Medford": 4,
     "Tidjiane Dioumassi": 3.5,
-    "Khalil Brantley": 4.5
+    "Khalil Brantley": 4.5,
+    "Dallin Hall": 4.5
   },
   "playerCoreStats": {
     "Garry Clark": {
