@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T22:45:41.636Z",
+    "savedAt": "2026-06-07T22:58:44.966Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1698,6 +1698,42 @@
       "season": "",
       "savedAt": 1780872114529,
       "source": "manual"
+    },
+    "Lester Medford": {
+      "metrics": {
+        "player": "Lester Medford",
+        "team": "Slovan Bratislava",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Slovan Bratislava",
+      "season": "",
+      "savedAt": 1780872980676,
+      "source": "manual"
+    },
+    "Tidjiane Dioumassi": {
+      "metrics": {
+        "player": "Tidjiane Dioumassi",
+        "team": "Western Carolina",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Western Carolina",
+      "season": "",
+      "savedAt": 1780873092651,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2175,6 +2211,16 @@
       "name": "JaJuan Carr",
       "team": "Elon",
       "createdAt": 1780872114529
+    },
+    {
+      "name": "Lester Medford",
+      "team": "Slovan Bratislava",
+      "createdAt": 1780872980675
+    },
+    {
+      "name": "Tidjiane Dioumassi",
+      "team": "Western Carolina",
+      "createdAt": 1780873092651
     }
   ],
   "starRatings": {
@@ -2253,7 +2299,9 @@
     "Jacob Crews": 3.5,
     "Jake Hilmer": 3,
     "Frankie Collins": 4,
-    "JaJuan Carr": 3.5
+    "JaJuan Carr": 3.5,
+    "Lester Medford": 4,
+    "Tidjiane Dioumassi": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2979,6 +3027,14 @@
       "secondary": []
     },
     "JaJuan Carr": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Lester Medford": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Tidjiane Dioumassi": {
       "primary": 1,
       "secondary": []
     }
@@ -5017,6 +5073,14 @@
     "JaJuan Carr": {
       "height": "6'2\"",
       "weight": "190"
+    },
+    "Lester Medford": {
+      "height": "6'2\"",
+      "weight": "190"
+    },
+    "Tidjiane Dioumassi": {
+      "height": "6'4\"",
+      "weight": "200"
     }
   },
   "potentialRatings": {
@@ -5087,7 +5151,9 @@
     "Adomas Sidorevicius": 5,
     "Aaron Rhooms": 3.5,
     "Aaron Gray": 3.5,
-    "JaJuan Carr": 4
+    "JaJuan Carr": 4,
+    "Lester Medford": 4,
+    "Tidjiane Dioumassi": 3.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -5156,7 +5222,8 @@
       "strengths": [
         {
           "title": "3PT Shot-Making",
-          "description": "Kobe has the ability to consistently make tough shots from behind the arc with a hand in his face. Crafty off-the-dribble game from 3, with a plethora of step-backs/pull-ups/side-step 3's in his arsenal. Loves to get a step on his man with his fast first-step, and then  misdirect with a step-back from deep."
+          "description": "Kobe has the ability to consistently make tough shots from behind the arc with a hand in his face. Crafty off-the-dribble game from 3, with a plethora of step-backs/pull-ups/side-step 3's in his arsenal. Loves to get a step on his man with his fast first-step, and then  misdirect with a step-back from deep.",
+          "level": "Strong"
         },
         {
           "title": "Off-Ball Gravity/Handoff Threat",
@@ -5174,11 +5241,13 @@
       "weaknesses": [
         {
           "title": "Finishing/Size/Level of Control",
-          "description": "Despite the decent level of physicality he plays with around the rim and straight-line speed, Kobe can struggle to finish in traffic due to his size/lack of length and mediocre level of touch at the rim. Often plays at one speed (full-speed) going downhill, which can occasionally lead to out-of-control moments at the rim."
+          "description": "Despite the decent level of physicality he plays with around the rim and straight-line speed, Kobe can struggle to finish in traffic due to his size/lack of length and mediocre level of touch at the rim. Often plays at one speed (full-speed) going downhill, which can occasionally lead to out-of-control moments at the rim.",
+          "level": "Weak"
         },
         {
           "title": "Shot Selection",
-          "description": "Had a solid TS% (56%) at Leverkusen buoyed by his shot-making ability from 3, but can be trigger happy on tough looks. Due to his propensity behind the arc, for stretches he can settle from 3 - leading to, occasionally, some possessions with not a lot of ball movement. Due to his size/lack of multiple speeds (and tendency to take tough looks from deep), his shot diet can be very tough."
+          "description": "Had a solid TS% (56%) at Leverkusen buoyed by his shot-making ability from 3, but can be trigger happy on tough looks. Due to his propensity behind the arc, for stretches he can settle from 3 - leading to, occasionally, some possessions with not a lot of ball movement. Due to his size/lack of multiple speeds (and tendency to take tough looks from deep), his shot diet can be very tough.",
+          "level": "Weak"
         },
         {
           "title": "Off-Ball Defense/Inconsistent Motor",
@@ -5845,29 +5914,35 @@
       "strengths": [
         {
           "title": "Mobility/Versatility",
-          "description": "Super mobile mover for his size. Very capable on switches down. Can defend the close out. Lunges out on hedge testing the handle of the ball-handler. Strong post defender listed @ 245lbs, stonewalls bigs. Disciplined defender."
+          "description": "Super mobile mover for his size. Very capable on switches down. Can defend the close out. Lunges out on hedge testing the handle of the ball-handler. Strong post defender listed @ 245lbs, stonewalls bigs. Disciplined defender.",
+          "level": "Solid"
         },
         {
           "title": "Playmaking",
-          "description": "Excellent passer as a hand-off hub. Skilled DHO player. Good vision out of the post. Makes smart, connective passing decisions. High IQ."
+          "description": "Excellent passer as a hand-off hub. Skilled DHO player. Good vision out of the post. Makes smart, connective passing decisions. High IQ.",
+          "level": "Strong"
         },
         {
           "title": "Face-Up Slashing",
-          "description": "Good first step to where he can attack off-the-catch and beat defenders. Soft touch around the basket, where he has the ability to slow down and use his frame/size."
+          "description": "Good first step to where he can attack off-the-catch and beat defenders. Soft touch around the basket, where he has the ability to slow down and use his frame/size.",
+          "level": "Solid"
         },
         {
           "title": "C&S 3's",
-          "description": "Capable on C&S threes (although lower volume). Can hit on the PNP."
+          "description": "Capable on C&S threes (although lower volume). Can hit on the PNP.",
+          "level": "Weak"
         },
         {
           "title": "Post Scoring",
-          "description": "Fluid post-scorer with good footwork and strength. Flexible upper body absorbs contact. Soft hook touch with either hand."
+          "description": "Fluid post-scorer with good footwork and strength. Flexible upper body absorbs contact. Soft hook touch with either hand.",
+          "level": "Strong"
         }
       ],
       "weaknesses": [
         {
           "title": "Neutral Wingspan/Mediocre Vertical",
-          "description": "Shorter arms has an impact on shot contests/slight impact on adding plus value as a rebounder. Mediocre vertical athlete."
+          "description": "Shorter arms has an impact on shot contests/slight impact on adding plus value as a rebounder. Mediocre vertical athlete.",
+          "level": "Solid"
         }
       ]
     },
@@ -5935,7 +6010,8 @@
         },
         {
           "title": "Face-Up/Iso",
-          "description": "Shifty, quick, multi-faceted face-up scorer exploiting his big frame. Too quick for bigs w/ his first step. Mid-range fade counter."
+          "description": "Shifty, quick, multi-faceted face-up scorer exploiting his big frame. Too quick for bigs w/ his first step. Mid-range fade counter.",
+          "level": "Strong"
         },
         {
           "title": "Vertical Finishing/Cuts",
@@ -5947,11 +6023,13 @@
         },
         {
           "title": "Foul Drawing/Physicality/Control",
-          "description": "Expert at drawing fouls and playing under control at the rim. Huge foul drawing rate. Plays extremely physical, going into defenders. Very patient around the rim, using up-fakes smartly."
+          "description": "Expert at drawing fouls and playing under control at the rim. Huge foul drawing rate. Plays extremely physical, going into defenders. Very patient around the rim, using up-fakes smartly.",
+          "level": "Strong"
         },
         {
           "title": "Passing",
-          "description": "Spreads the ball if he recognises he doesn't have an advantage. Willing passer on his drives. Solid post passer."
+          "description": "Spreads the ball if he recognises he doesn't have an advantage. Willing passer on his drives. Solid post passer.",
+          "level": "Weak"
         }
       ],
       "weaknesses": [
@@ -6302,6 +6380,378 @@
       }
     ]
   },
+  "playerPhotos": {},
+  "tierListData": [
+    {
+      "id": "nba",
+      "name": "NBA",
+      "color": "#00d4aa",
+      "leagues": [
+        {
+          "name": "NBA",
+          "country": "USA",
+          "flag": "🇺🇸"
+        }
+      ]
+    },
+    {
+      "id": "euroleague",
+      "name": "EuroLeague",
+      "color": "#00bcd4",
+      "leagues": [
+        {
+          "name": "EuroLeague",
+          "country": "Europe",
+          "flag": "🇪🇺"
+        }
+      ]
+    },
+    {
+      "id": "eurocup",
+      "name": "EuroCup",
+      "color": "#26a69a",
+      "leagues": [
+        {
+          "name": "EuroCup",
+          "country": "Europe",
+          "flag": "🇪🇺"
+        }
+      ]
+    },
+    {
+      "id": "tier1",
+      "name": "Tier 1",
+      "color": "#4db6ac",
+      "leagues": [
+        {
+          "name": "ACB",
+          "country": "Spain",
+          "flag": "🇪🇸"
+        },
+        {
+          "name": "BSL",
+          "country": "Turkey",
+          "flag": "🇹🇷"
+        }
+      ]
+    },
+    {
+      "id": "high_tier1",
+      "name": "High Tier 1",
+      "color": "#80cbc4",
+      "leagues": [
+        {
+          "name": "Betclic Élite",
+          "country": "France",
+          "flag": "🇫🇷"
+        },
+        {
+          "name": "BBL",
+          "country": "Germany",
+          "flag": "🇩🇪"
+        },
+        {
+          "name": "Lega A",
+          "country": "Italy",
+          "flag": "🇮🇹"
+        },
+        {
+          "name": "LKL",
+          "country": "Lithuania",
+          "flag": "🇱🇹"
+        },
+        {
+          "name": "ABA League",
+          "country": "Serbia",
+          "flag": "🇷🇸"
+        }
+      ]
+    },
+    {
+      "id": "tier2",
+      "name": "Tier 2",
+      "color": "#b2dfdb",
+      "leagues": [
+        {
+          "name": "NBL",
+          "country": "Australia",
+          "flag": "🇦🇺"
+        },
+        {
+          "name": "GBL",
+          "country": "Greece",
+          "flag": "🇬🇷"
+        },
+        {
+          "name": "ISL",
+          "country": "Israel",
+          "flag": "🇮🇱"
+        },
+        {
+          "name": "HT Premijer Liga",
+          "country": "Croatia",
+          "flag": "🇭🇷"
+        },
+        {
+          "name": "ABA 1",
+          "country": "Montenegro",
+          "flag": "🇲🇪"
+        },
+        {
+          "name": "Liga Nova KBM",
+          "country": "Slovenia",
+          "flag": "🇸🇮"
+        }
+      ]
+    },
+    {
+      "id": "high_tier2",
+      "name": "High Tier 2",
+      "color": "#80deea",
+      "leagues": [
+        {
+          "name": "BNXT League",
+          "country": "Belgium/Netherlands",
+          "flag": "🇧🇪"
+        },
+        {
+          "name": "BBL",
+          "country": "United Kingdom",
+          "flag": "🇬🇧"
+        },
+        {
+          "name": "B.League",
+          "country": "Japan",
+          "flag": "🇯🇵"
+        },
+        {
+          "name": "KBL",
+          "country": "South Korea",
+          "flag": "🇰🇷"
+        },
+        {
+          "name": "CBA",
+          "country": "China",
+          "flag": "🇨🇳"
+        },
+        {
+          "name": "LNB",
+          "country": "Argentina",
+          "flag": "🇦🇷"
+        },
+        {
+          "name": "NBB",
+          "country": "Brazil",
+          "flag": "🇧🇷"
+        },
+        {
+          "name": "PBA",
+          "country": "Philippines",
+          "flag": "🇵🇭"
+        },
+        {
+          "name": "LNB Pro B",
+          "country": "France",
+          "flag": "🇫🇷"
+        },
+        {
+          "name": "LEB Oro",
+          "country": "Spain",
+          "flag": "🇪🇸"
+        },
+        {
+          "name": "Liga Portuguesa",
+          "country": "Portugal",
+          "flag": "🇵🇹"
+        },
+        {
+          "name": "Puerto Rico BSN",
+          "country": "Puerto Rico",
+          "flag": "🇵🇷"
+        }
+      ]
+    },
+    {
+      "id": "mid_tier1",
+      "name": "Middle Tier 1",
+      "color": "#4dd0e1",
+      "leagues": [
+        {
+          "name": "CEBL",
+          "country": "Canada",
+          "flag": "🇨🇦"
+        },
+        {
+          "name": "NBL NZ",
+          "country": "New Zealand",
+          "flag": "🇳🇿"
+        },
+        {
+          "name": "Korisliiga",
+          "country": "Finland",
+          "flag": "🇫🇮"
+        },
+        {
+          "name": "SBL",
+          "country": "Sweden",
+          "flag": "🇸🇪"
+        },
+        {
+          "name": "BLNO",
+          "country": "Norway",
+          "flag": "🇳🇴"
+        },
+        {
+          "name": "Basketligaen",
+          "country": "Denmark",
+          "flag": "🇩🇰"
+        },
+        {
+          "name": "PLK",
+          "country": "Poland",
+          "flag": "🇵🇱"
+        },
+        {
+          "name": "NBL",
+          "country": "Czech Republic",
+          "flag": "🇨🇿"
+        }
+      ]
+    },
+    {
+      "id": "mid_tier2",
+      "name": "Middle Tier 2",
+      "color": "#90a4ae",
+      "leagues": [
+        {
+          "name": "Superliga",
+          "country": "Kosovo",
+          "flag": "🇽🇰"
+        },
+        {
+          "name": "Superliga",
+          "country": "Albania",
+          "flag": "🇦🇱"
+        },
+        {
+          "name": "Prva Liga",
+          "country": "North Macedonia",
+          "flag": "🇲🇰"
+        },
+        {
+          "name": "Extraliga",
+          "country": "Slovakia",
+          "flag": "🇸🇰"
+        },
+        {
+          "name": "NB I/A",
+          "country": "Hungary",
+          "flag": "🇭🇺"
+        },
+        {
+          "name": "A1 Liga",
+          "country": "Bosnia",
+          "flag": "🇧🇦"
+        },
+        {
+          "name": "Superleague",
+          "country": "Romania",
+          "flag": "🇷🇴"
+        },
+        {
+          "name": "NBL",
+          "country": "Bulgaria",
+          "flag": "🇧🇬"
+        }
+      ]
+    },
+    {
+      "id": "low_tier1",
+      "name": "Low Tier 1",
+      "color": "#78909c",
+      "leagues": [
+        {
+          "name": "Úrvalsdeild",
+          "country": "Iceland",
+          "flag": "🇮🇸"
+        },
+        {
+          "name": "Total League",
+          "country": "Luxembourg",
+          "flag": "🇱🇺"
+        },
+        {
+          "name": "SBL",
+          "country": "Switzerland",
+          "flag": "🇨🇭"
+        },
+        {
+          "name": "LEB Gold",
+          "country": "Spain",
+          "flag": "🇪🇸"
+        },
+        {
+          "name": "A2",
+          "country": "Italy",
+          "flag": "🇮🇹"
+        },
+        {
+          "name": "ProA",
+          "country": "Germany",
+          "flag": "🇩🇪"
+        }
+      ]
+    },
+    {
+      "id": "low_tier2",
+      "name": "Low Tier 2",
+      "color": "#607d8b",
+      "leagues": [
+        {
+          "name": "SuperLiga",
+          "country": "Latvia",
+          "flag": "🇱🇻"
+        },
+        {
+          "name": "KML",
+          "country": "Estonia",
+          "flag": "🇪🇪"
+        },
+        {
+          "name": "EYBL",
+          "country": "Cyprus",
+          "flag": "🇨🇾"
+        },
+        {
+          "name": "Premier League",
+          "country": "Ireland",
+          "flag": "🇮🇪"
+        },
+        {
+          "name": "TBL",
+          "country": "Taiwan",
+          "flag": "🇹🇼"
+        }
+      ]
+    },
+    {
+      "id": "entry",
+      "name": "Entry Tier",
+      "color": "#546e7a",
+      "leagues": [
+        {
+          "name": "D-League",
+          "country": "Various",
+          "flag": "🇺🇳"
+        },
+        {
+          "name": "Regional Leagues",
+          "country": "Various",
+          "flag": "🌍"
+        }
+      ]
+    }
+  ],
   "playerVideos": {
     "Garry Clark": {
       "url": "",
