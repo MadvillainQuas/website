@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T10:45:14.238Z",
+    "savedAt": "2026-06-08T10:47:14.180Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2480,7 +2480,7 @@
     "Xavier Rhodes": 3,
     "Omar El-Shiekh": 4,
     "Kamari Lands": 4,
-    "Malachi Smith": 3.5,
+    "Malachi Smith": 4,
     "Jalen Leach": 4.5,
     "Brock Wisne": 4.5,
     "Brandon Mitchell-Day": 4,
@@ -5457,7 +5457,8 @@
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
-    "Nico Galette": 4
+    "Nico Galette": 4,
+    "Malachi Smith": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
