@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T11:58:16.442Z",
+    "savedAt": "2026-06-08T12:31:11.555Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2512,7 +2512,8 @@
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
-    "Nico Galette": 4
+    "Nico Galette": 4,
+    "Jonathan Beagle": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -5458,7 +5459,8 @@
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
     "Nico Galette": 4,
-    "Malachi Smith": 4
+    "Malachi Smith": 4,
+    "Jonathan Beagle": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6398,16 +6400,32 @@
         },
         {
           "title": "Post Scoring",
-          "description": "Physical handful as a post scorer, using his big frame to back down his man.",
+          "description": "Physical handful as a post scorer, using his big frame to back down his man. Fluid footwork. Patient around the rim.",
           "level": "Good"
         },
         {
-          "title": "Transition",
-          "description": "Threat as a rim-runner on the break.",
-          "level": "Good"
+          "title": "Mobility",
+          "description": "Acceptable switch defender, although his hips can be slow against guards. Played often in drop.",
+          "level": "Decent"
+        },
+        {
+          "title": "Face-Up",
+          "description": "Quick attacking off the catch with his first step and finishing. Floater if the defense backs off. Going left, will spin back to his right.",
+          "level": "Decent"
         }
       ],
-      "weaknesses": []
+      "weaknesses": [
+        {
+          "title": "Outside Shot",
+          "description": "Limited shooter.",
+          "level": "Bad"
+        },
+        {
+          "title": "Left-Side",
+          "description": "Very reluctant to finish w/ his left.",
+          "level": "Bad"
+        }
+      ]
     },
     "Ace Baldwin": {
       "strengths": [
