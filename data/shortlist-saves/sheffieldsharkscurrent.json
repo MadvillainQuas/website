@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T10:47:14.180Z",
+    "savedAt": "2026-06-08T11:58:16.442Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -6265,11 +6265,12 @@
       "weaknesses": [
         {
           "title": "Motor (Defense)",
-          "description": "Not a high motor athlete. Can play lackadaisical on D."
+          "description": "Not a high motor athlete. Can play lackadaisical on D.",
+          "level": "Slight"
         },
         {
           "title": "Left-Side",
-          "description": "Can struggle left-side due to his refusal to finish w/ left. Will try to force his way right even if blocked off. Relatively predicable down low."
+          "description": "Can struggle left-side due to his refusal to finish w/ left. Will try to force his way right even if blocked off. Relatively predicable down low - anything left side is looking to spin to his right."
         }
       ]
     },
@@ -6324,7 +6325,7 @@
         },
         {
           "title": "Mobility/Versatility",
-          "description": "Agile defender comfortable defending across multiple positions. Good close-out defense. Aggressive hedge defense."
+          "description": "Agile defender comfortable defending across multiple positions. Good close-out defense. Aggressive hedge defense. Capable post defender."
         },
         {
           "title": "Foul Drawing/Physicality/Control",
@@ -6340,7 +6341,7 @@
       "weaknesses": [
         {
           "title": "Rebounding/Length",
-          "description": "Physical rebounder, but with his limited length, he can be rebounded over by larger players. If he can't use his explosive vertical, his standing reach is quite easy to shoot over."
+          "description": "Physical rebounder, but with his limited length, he can be rebounded over by larger players. If he can't use his explosive vertical, his standing reach is quite easy to shoot over. Undersized vs. bigger physical 5's."
         },
         {
           "title": "Outside Shot",
@@ -6417,8 +6418,18 @@
         },
         {
           "title": "Anticipation/Steals",
-          "description": "Elite anticipation and disruptive hands. ",
+          "description": "Elite, top level anticipation and disruptive hands. Generates steals with dig downs. Huge disruptive force defending the PNR.",
           "level": "Elite"
+        },
+        {
+          "title": "1-on-1 Defense",
+          "description": "Stocky build w/ quick hands and good lateral quickness.",
+          "level": "Good"
+        },
+        {
+          "title": "",
+          "description": "",
+          "level": "Good"
         }
       ],
       "weaknesses": [
@@ -6431,6 +6442,11 @@
           "title": "Shot Selection @ Rim",
           "description": "Can force some very tough looks at the rim leading to bad misses.",
           "level": "Bad"
+        },
+        {
+          "title": "Pass Selection",
+          "description": "Can be forceful with his passing.",
+          "level": "Slight"
         }
       ]
     }
