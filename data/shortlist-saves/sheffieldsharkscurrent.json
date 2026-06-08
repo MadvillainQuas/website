@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T01:55:37.896Z",
+    "savedAt": "2026-06-08T02:14:34.029Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1824,6 +1824,24 @@
       "season": "",
       "savedAt": 1780883720727,
       "source": "manual"
+    },
+    "Darius Dawson": {
+      "metrics": {
+        "player": "Darius Dawson",
+        "team": "Coburg",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Coburg",
+      "season": "",
+      "savedAt": 1780884829751,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2336,6 +2354,11 @@
       "name": "Christian Henry",
       "team": "Fordham",
       "createdAt": 1780883720727
+    },
+    {
+      "name": "Darius Dawson",
+      "team": "Coburg",
+      "createdAt": 1780884829751
     }
   ],
   "starRatings": {
@@ -3179,6 +3202,13 @@
     "Christian Henry": {
       "primary": 1,
       "secondary": []
+    },
+    "Darius Dawson": {
+      "primary": 4,
+      "secondary": [
+        1,
+        5
+      ]
     }
   },
   "scoutReports": {},
@@ -5243,6 +5273,10 @@
     "Christian Henry": {
       "height": "6'3\"",
       "weight": "190"
+    },
+    "Darius Dawson": {
+      "height": "6'6\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
