@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-07T23:29:01.906Z",
+    "savedAt": "2026-06-08T01:55:37.896Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1788,6 +1788,42 @@
       "season": "",
       "savedAt": 1780874838027,
       "source": "manual"
+    },
+    "Corey Tripp": {
+      "metrics": {
+        "player": "Corey Tripp",
+        "team": "Lahti",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Lahti",
+      "season": "",
+      "savedAt": 1780883688408,
+      "source": "manual"
+    },
+    "Christian Henry": {
+      "metrics": {
+        "player": "Christian Henry",
+        "team": "Fordham",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Fordham",
+      "season": "",
+      "savedAt": 1780883720727,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2290,6 +2326,16 @@
       "name": "Jarrett Hensley",
       "team": "Southern Iowa",
       "createdAt": 1780874838027
+    },
+    {
+      "name": "Corey Tripp",
+      "team": "Lahti",
+      "createdAt": 1780883688408
+    },
+    {
+      "name": "Christian Henry",
+      "team": "Fordham",
+      "createdAt": 1780883720727
     }
   ],
   "starRatings": {
@@ -3121,6 +3167,16 @@
       ]
     },
     "Trey Campbell": {
+      "primary": 1,
+      "secondary": []
+    },
+    "Corey Tripp": {
+      "primary": 1,
+      "secondary": [
+        2
+      ]
+    },
+    "Christian Henry": {
       "primary": 1,
       "secondary": []
     }
@@ -5178,6 +5234,14 @@
     },
     "Trey Campbell": {
       "height": "6'4\"",
+      "weight": "190"
+    },
+    "Corey Tripp": {
+      "height": "6'3\"",
+      "weight": "195"
+    },
+    "Christian Henry": {
+      "height": "6'3\"",
       "weight": "190"
     }
   },
