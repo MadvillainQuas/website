@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T08:31:44.514Z",
+    "savedAt": "2026-06-08T10:45:14.238Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1860,6 +1860,42 @@
       "season": "",
       "savedAt": 1780904695680,
       "source": "manual"
+    },
+    "Willem Brandwijk": {
+      "metrics": {
+        "player": "Willem Brandwijk",
+        "team": "Bayreuth",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Bayreuth",
+      "season": "",
+      "savedAt": 1780912132765,
+      "source": "manual"
+    },
+    "Nico Galette": {
+      "metrics": {
+        "player": "Nico Galette",
+        "team": "Menorca",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Menorca",
+      "season": "",
+      "savedAt": 1780915483479,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2382,6 +2418,16 @@
       "name": "Jonathan Beagle",
       "team": "Richmond",
       "createdAt": 1780904695680
+    },
+    {
+      "name": "Willem Brandwijk",
+      "team": "Bayreuth",
+      "createdAt": 1780912132765
+    },
+    {
+      "name": "Nico Galette",
+      "team": "Menorca",
+      "createdAt": 1780915483479
     }
   ],
   "starRatings": {
@@ -2403,7 +2449,7 @@
     "Tayshawn Comer": 4,
     "Johnathan Massie": 4,
     "Woody Newton": 3,
-    "Richie Springs": 3.5,
+    "Richie Springs": 3,
     "Yame Butler": 4.5,
     "AJ Smith": 3.5,
     "Madison Durr": 3,
@@ -2465,7 +2511,8 @@
     "Tidjiane Dioumassi": 3.5,
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
-    "Jarrett Hensley": 4
+    "Jarrett Hensley": 4,
+    "Nico Galette": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3237,6 +3284,22 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Willem Brandwijk": {
+      "primary": 4,
+      "secondary": [
+        5
+      ],
+      "suitability": {
+        "4": 10,
+        "5": 7
+      }
+    },
+    "Nico Galette": {
+      "primary": 4,
+      "secondary": [
+        3
       ]
     }
   },
@@ -5310,6 +5373,14 @@
     "Jonathan Beagle": {
       "height": "6'10\"",
       "weight": "250"
+    },
+    "Willem Brandwijk": {
+      "height": "6'9\"",
+      "weight": "215"
+    },
+    "Nico Galette": {
+      "height": "6'6\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
@@ -5385,7 +5456,8 @@
     "Tidjiane Dioumassi": 3.5,
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
-    "Jarrett Hensley": 4
+    "Jarrett Hensley": 4,
+    "Nico Galette": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6279,46 +6351,84 @@
       "strengths": [
         {
           "title": "Straight-Line Drives",
-          "description": "Capable of executing simple straight-line drives with a solid first step, and mid-range step back going left. Can make passes on his drives."
+          "description": "Capable of executing simple straight-line drives with a good first step for his size, and mid-range step back going left. Can make passes on his drives.",
+          "level": "Decent"
         },
         {
           "title": "Versatility/Mobility",
-          "description": "Solid mobility, capable of covering down positions and switching. Primarily played at the 4/3 in Sweden. Decently agile and capable of recovering out to shooters. Solid post defender @ 235lbs and good length."
+          "description": "Solid mobility, good at covering down positions and switching. Primarily played at the 4/3 in Sweden. Decently agile and capable of recovering out to shooters. Solid post defender @ 235lbs and good length."
         },
         {
           "title": "C&S (3 & Mid)",
-          "description": "Capable of hitting the open 3. Short-roll threat in the mid-range."
+          "description": "Capable of hitting the open 3. Short-roll threat in the mid-range.",
+          "level": "Decent"
+        },
+        {
+          "title": "Post",
+          "description": "Decent post-scorer with an effective post fadeaway.",
+          "level": "Decent"
         }
       ],
-      "weaknesses": []
+      "weaknesses": [
+        {
+          "title": "Close-Out D/Help",
+          "description": "Often gets blown-by closing out. Occasional limited IQ plays.",
+          "level": "Bad"
+        }
+      ]
     },
     "Jonathan Beagle": {
       "strengths": [
         {
           "title": "Rim Protection/Post Defense",
-          "description": "With his great positional size and length, and use of verticality, Jonathan has a big impact defending around the basket as a big body. Great at defending in the post against even bigger 5's.",
+          "description": "With his great positional size and length, and use of verticality, Jonathan has a solid impact defending around the basket as a big body. Great at defending in the post against even bigger 5's.",
           "level": "Good"
         },
         {
           "title": "Passing/Ball Skill",
-          "description": "Excellent as a read-and-react offense big, with mobility, good ball skills and passing vision.",
+          "description": "Excellent as a read-and-react offense big, with mobility, good ball skills and passing vision. Can reject and attack the rim with a solid first step.",
           "level": "Good"
         },
         {
           "title": "Motor/Help/Rebounding",
-          "description": "Frequent drawer of charges. Active help defender. High energy player. Big frame makes it difficult to rebound around him.",
+          "description": "Frequent drawer of charges. Active help defender. High energy player. Big frame makes it difficult to rebound around him. Active O-boards crasher.",
           "level": "Good"
         },
         {
           "title": "Post Scoring",
           "description": "Physical handful as a post scorer, using his big frame to back down his man.",
           "level": "Good"
+        },
+        {
+          "title": "Transition",
+          "description": "Threat as a rim-runner on the break.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": []
+    },
+    "Ace Baldwin": {
+      "strengths": [
+        {
+          "title": "Passing",
+          "description": "Misdirection passer, creates open looks for others. Heads up passer off-dribble. ",
+          "level": "Elite"
+        },
+        {
+          "title": "Anticipation/Steals",
+          "description": "Elite anticipation and disruptive hands. ",
+          "level": "Elite"
         }
       ],
       "weaknesses": [
         {
-          "title": "Defending Guards",
-          "description": "Slow hips make it tough to defend change of direction, looks quite clunky switched onto guards. Often played in drop at Richmond.",
+          "title": "Gambling",
+          "description": "Has a propensity to gamble for steals.",
+          "level": "Bad"
+        },
+        {
+          "title": "Shot Selection @ Rim",
+          "description": "Can force some very tough looks at the rim leading to bad misses.",
           "level": "Bad"
         }
       ]
@@ -6547,6 +6657,10 @@
     "Adomas Sidorevicius": {
       "league": "Lithuania",
       "level": "High Tier Europe"
+    },
+    "Willem Brandwijk": {
+      "league": "Germany ProA",
+      "level": "Solid Mid-Tier"
     }
   },
   "playerSalaries": {
