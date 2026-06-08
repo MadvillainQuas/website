@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T02:14:34.029Z",
+    "savedAt": "2026-06-08T08:31:44.514Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1842,6 +1842,24 @@
       "season": "",
       "savedAt": 1780884829751,
       "source": "manual"
+    },
+    "Jonathan Beagle": {
+      "metrics": {
+        "player": "Jonathan Beagle",
+        "team": "Richmond",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Richmond",
+      "season": "",
+      "savedAt": 1780904695680,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2359,6 +2377,11 @@
       "name": "Darius Dawson",
       "team": "Coburg",
       "createdAt": 1780884829751
+    },
+    {
+      "name": "Jonathan Beagle",
+      "team": "Richmond",
+      "createdAt": 1780904695680
     }
   ],
   "starRatings": {
@@ -3208,6 +3231,12 @@
       "secondary": [
         1,
         5
+      ]
+    },
+    "Jonathan Beagle": {
+      "primary": 5,
+      "secondary": [
+        4
       ]
     }
   },
@@ -5277,6 +5306,10 @@
     "Darius Dawson": {
       "height": "6'6\"",
       "weight": "220"
+    },
+    "Jonathan Beagle": {
+      "height": "6'10\"",
+      "weight": "250"
     }
   },
   "potentialRatings": {
@@ -6258,6 +6291,37 @@
         }
       ],
       "weaknesses": []
+    },
+    "Jonathan Beagle": {
+      "strengths": [
+        {
+          "title": "Rim Protection/Post Defense",
+          "description": "With his great positional size and length, and use of verticality, Jonathan has a big impact defending around the basket as a big body. Great at defending in the post against even bigger 5's.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing/Ball Skill",
+          "description": "Excellent as a read-and-react offense big, with mobility, good ball skills and passing vision.",
+          "level": "Good"
+        },
+        {
+          "title": "Motor/Help/Rebounding",
+          "description": "Frequent drawer of charges. Active help defender. High energy player. Big frame makes it difficult to rebound around him.",
+          "level": "Good"
+        },
+        {
+          "title": "Post Scoring",
+          "description": "Physical handful as a post scorer, using his big frame to back down his man.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Defending Guards",
+          "description": "Slow hips make it tough to defend change of direction, looks quite clunky switched onto guards. Often played in drop at Richmond.",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
