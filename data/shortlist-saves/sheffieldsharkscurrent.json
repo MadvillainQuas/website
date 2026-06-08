@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T12:31:11.555Z",
+    "savedAt": "2026-06-08T16:17:48.295Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1896,6 +1896,42 @@
       "season": "",
       "savedAt": 1780915483479,
       "source": "manual"
+    },
+    "Josiah Shackleford": {
+      "metrics": {
+        "player": "Josiah Shackleford",
+        "team": "North Texas",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "North Texas",
+      "season": "",
+      "savedAt": 1780932250419,
+      "source": "manual"
+    },
+    "Nikola Guzina": {
+      "metrics": {
+        "player": "Nikola Guzina",
+        "team": "British Columbia",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "British Columbia",
+      "season": "",
+      "savedAt": 1780935443290,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2428,6 +2464,16 @@
       "name": "Nico Galette",
       "team": "Menorca",
       "createdAt": 1780915483479
+    },
+    {
+      "name": "Josiah Shackleford",
+      "team": "North Texas",
+      "createdAt": 1780932250419
+    },
+    {
+      "name": "Nikola Guzina",
+      "team": "British Columbia",
+      "createdAt": 1780935443290
     }
   ],
   "starRatings": {
@@ -2437,7 +2483,7 @@
     "Paul Otieno": 4,
     "Michael Bradley": 4,
     "Tevin Brewer": 3.5,
-    "DeMarcus Sharp": 3,
+    "DeMarcus Sharp": 3.5,
     "Rayshon Harrison": 4,
     "Sam Trunley": 2.5,
     "Sean Trumper": 3,
@@ -2513,7 +2559,8 @@
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
     "Nico Galette": 4,
-    "Jonathan Beagle": 4
+    "Jonathan Beagle": 4,
+    "Josiah Shackleford": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2983,7 +3030,8 @@
     "Isaiah Jones": {
       "primary": 3,
       "secondary": [
-        4
+        4,
+        5
       ],
       "suitability": {
         "3": 8,
@@ -3278,6 +3326,7 @@
       "primary": 4,
       "secondary": [
         1,
+        3,
         5
       ]
     },
@@ -3301,6 +3350,18 @@
       "primary": 4,
       "secondary": [
         3
+      ]
+    },
+    "Josiah Shackleford": {
+      "primary": 5,
+      "secondary": [
+        4
+      ]
+    },
+    "Nikola Guzina": {
+      "primary": 4,
+      "secondary": [
+        5
       ]
     }
   },
@@ -5382,6 +5443,14 @@
     "Nico Galette": {
       "height": "6'6\"",
       "weight": "220"
+    },
+    "Josiah Shackleford": {
+      "height": "6'9\"",
+      "weight": "225"
+    },
+    "Nikola Guzina": {
+      "height": "6'10\"",
+      "weight": "235"
     }
   },
   "potentialRatings": {
@@ -6465,6 +6534,63 @@
           "title": "Pass Selection",
           "description": "Can be forceful with his passing.",
           "level": "Slight"
+        }
+      ]
+    },
+    "Darius Dawson": {
+      "strengths": [
+        {
+          "title": "Slashing/1-on-1",
+          "description": "Super quick, fluid slasher with shifty handles to move defenders and create advantages.",
+          "level": "Elite"
+        },
+        {
+          "title": "Around The Rim",
+          "description": "Solid finisher around the rim, with footwork and a good level of patience.",
+          "level": "Decent"
+        },
+        {
+          "title": "Switchability (Guards)",
+          "description": "Super switchable down positions, agile defender. Very comfortable defending guards.",
+          "level": "Elite"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Size",
+          "description": "Can be undersized defending at the rim vs. 5's. Can be rebounded over.",
+          "level": "Bad"
+        }
+      ]
+    },
+    "Josiah Shackleford": {
+      "strengths": [
+        {
+          "title": "Slashing/1-on-1/Physicality",
+          "description": "Brute force slasher with elite strength, going into defenders. Quick step, fluid.",
+          "level": "Good"
+        },
+        {
+          "title": "Mobility",
+          "description": "Very mobile defender with a high motor.",
+          "level": "Good"
+        },
+        {
+          "title": "Touch",
+          "description": "Decently soft touch around the basket with his right hook.",
+          "level": "Decent"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Shot Selection",
+          "description": "Takes some ill-advised shots around the rim. Can be forceful on O.",
+          "level": "Bad"
+        },
+        {
+          "title": "Control",
+          "description": "Can end up out of control around the rim, leading to poor misses.",
+          "level": "Bad"
         }
       ]
     }
