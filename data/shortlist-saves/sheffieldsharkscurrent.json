@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T12:40:31.342Z",
+    "savedAt": "2026-06-09T13:54:53.362Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2004,6 +2004,24 @@
       "season": "",
       "savedAt": 1781006492791,
       "source": "manual"
+    },
+    "Michael Imariagbe": {
+      "metrics": {
+        "player": "Michael Imariagbe",
+        "team": "Lakeside Lightning",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Lakeside Lightning",
+      "season": "",
+      "savedAt": 1781012688483,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2566,6 +2584,11 @@
       "name": "Richard Amaefule",
       "team": "Grambling St.",
       "createdAt": 1781006492790
+    },
+    {
+      "name": "Michael Imariagbe",
+      "team": "Lakeside Lightning",
+      "createdAt": 1781012688483
     }
   ],
   "starRatings": {
@@ -2653,7 +2676,7 @@
     "Nico Galette": 4,
     "Jonathan Beagle": 4,
     "Josiah Shackleford": 3.5,
-    "Daniel Hankins-Sanford": 3.5,
+    "Daniel Hankins-Sanford": 4,
     "Richard Amaefule": 2.5
   },
   "playerPositions": {
@@ -3483,6 +3506,12 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Michael Imariagbe": {
+      "primary": 4,
+      "secondary": [
+        5
       ]
     }
   },
@@ -5597,6 +5626,10 @@
     "Richard Amaefule": {
       "height": "6'9\"",
       "weight": "210"
+    },
+    "Michael Imariagbe": {
+      "height": "6'7\"",
+      "weight": "225"
     }
   },
   "potentialRatings": {
@@ -6760,8 +6793,8 @@
           "level": "Decent"
         },
         {
-          "title": "Post Scoring",
-          "description": "Capable at scoring in the post with his big frame. Provides a mismatch option vs. smaller 4/5's.",
+          "title": "Post Scoring/Post Pins",
+          "description": "Capable at scoring in the post with his big frame. Provides a mismatch option vs. smaller 4/5's, cleverly pins smaller defenders.",
           "level": "Decent"
         },
         {
@@ -6882,6 +6915,22 @@
         {
           "title": "Limited Face-Up Creation/Off-The-Catch",
           "description": "",
+          "level": "Bad"
+        }
+      ]
+    },
+    "Michael Imariagbe": {
+      "strengths": [
+        {
+          "title": "Rebounding",
+          "description": "Big presence on the boards. Huge impact on the offensive boards (15%).",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Rim Protection",
+          "description": "Limited capacity to defend the rim.",
           "level": "Bad"
         }
       ]
