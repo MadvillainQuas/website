@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T13:54:53.362Z",
+    "savedAt": "2026-06-09T14:04:38.451Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2677,7 +2677,8 @@
     "Jonathan Beagle": 4,
     "Josiah Shackleford": 3.5,
     "Daniel Hankins-Sanford": 4,
-    "Richard Amaefule": 2.5
+    "Richard Amaefule": 2.5,
+    "Darius Dawson": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -5710,7 +5711,8 @@
     "Malachi Smith": 4,
     "Jonathan Beagle": 4,
     "Daniel Hankins-Sanford": 5,
-    "Richard Amaefule": 3
+    "Richard Amaefule": 3,
+    "Darius Dawson": 3.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6809,8 +6811,8 @@
         },
         {
           "title": "Defensive Versatility",
-          "description": "Frame to guard physical 5's in the post, while also capable of guarding 4's and 3's. Decent switching.",
-          "level": "Good"
+          "description": "Frame to guard physical 5's in the post, while also capable of guarding 4's and 3's. Competent switching across positions.",
+          "level": "Elite"
         }
       ],
       "weaknesses": [
@@ -7238,7 +7240,8 @@
     "Willem Brandwijk": "Yes",
     "Xavier Rhodes": "Yes",
     "Yaw Obeng-Mensah": "Yes",
-    "Zaire Williams": "Yes"
+    "Zaire Williams": "Yes",
+    "Darius Dawson": "Signed"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
