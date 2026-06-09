@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T14:04:38.451Z",
+    "savedAt": "2026-06-09T16:03:43.451Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -5510,7 +5510,7 @@
     },
     "Ben Carlson": {
       "height": "6'9\"",
-      "weight": "220"
+      "weight": "225"
     },
     "Leo DeBruhl": {
       "height": "6'3\"",
@@ -6927,12 +6927,22 @@
           "title": "Rebounding",
           "description": "Big presence on the boards. Huge impact on the offensive boards (15%).",
           "level": "Good"
+        },
+        {
+          "title": "Face-Up Creation",
+          "description": "Ability to handle and shift defenders face-up off-dribble. Looking to seamlessly dribble into post-ups exploiting his physicality.",
+          "level": "Good"
         }
       ],
       "weaknesses": [
         {
           "title": "Rim Protection",
           "description": "Limited capacity to defend the rim.",
+          "level": "Bad"
+        },
+        {
+          "title": "Undersized @ The Rim",
+          "description": "Struggled scoring in the post against high major 5 men with size (6'10\"+), suffering a couple nasty blocks - uses physicality as a crutch down low.",
           "level": "Bad"
         }
       ]
