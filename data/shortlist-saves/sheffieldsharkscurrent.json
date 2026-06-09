@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T06:47:32.658Z",
+    "savedAt": "2026-06-09T12:28:57.017Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1986,6 +1986,24 @@
       "season": "",
       "savedAt": 1780987548893,
       "source": "manual"
+    },
+    "Richard Amaefule": {
+      "metrics": {
+        "player": "Richard Amaefule",
+        "team": "Grambling St.",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Grambling St.",
+      "season": "",
+      "savedAt": 1781006492791,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2543,6 +2561,11 @@
       "name": "Tamario Adley",
       "team": "Central Michigan",
       "createdAt": 1780987548893
+    },
+    {
+      "name": "Richard Amaefule",
+      "team": "Grambling St.",
+      "createdAt": 1781006492790
     }
   ],
   "starRatings": {
@@ -2630,7 +2653,8 @@
     "Nico Galette": 4,
     "Jonathan Beagle": 4,
     "Josiah Shackleford": 3.5,
-    "Daniel Hankins-Sanford": 3.5
+    "Daniel Hankins-Sanford": 3.5,
+    "Richard Amaefule": 2.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3453,6 +3477,12 @@
       "primary": 1,
       "secondary": [
         2
+      ]
+    },
+    "Richard Amaefule": {
+      "primary": 5,
+      "secondary": [
+        4
       ]
     }
   },
@@ -5158,6 +5188,9 @@
     ],
     "Ahmir Langlais": [
       "Face-Up 5/4"
+    ],
+    "Richard Amaefule": [
+      "Face-Up Big"
     ]
   },
   "playerPhysicals": {
@@ -5560,6 +5593,10 @@
     "Tamario Adley": {
       "height": "6'1\"",
       "weight": "200"
+    },
+    "Richard Amaefule": {
+      "height": "6'9\"",
+      "weight": "210"
     }
   },
   "potentialRatings": {
@@ -5639,7 +5676,8 @@
     "Nico Galette": 4,
     "Malachi Smith": 4,
     "Jonathan Beagle": 4,
-    "Daniel Hankins-Sanford": 5
+    "Daniel Hankins-Sanford": 5,
+    "Richard Amaefule": 3
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6785,6 +6823,37 @@
         }
       ],
       "weaknesses": []
+    },
+    "Richard Amaefule": {
+      "strengths": [
+        {
+          "title": "Face-Up Iso/Ball Skill",
+          "description": "Fluid handles and good footspeed allow him to create face-up 1-on-1. Comfortable running DHOs.",
+          "level": "Decent"
+        },
+        {
+          "title": "Versatility/Switchability",
+          "description": "Very mobile 4/5 capable of switching 2-5.",
+          "level": "Good"
+        },
+        {
+          "title": "Post Defense",
+          "description": "Good level of strength defending in the post against 5's.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Finishing",
+          "description": "Weak finisher around the rim.",
+          "level": "Bad"
+        },
+        {
+          "title": "Non-Shooter",
+          "description": "",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
