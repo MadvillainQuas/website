@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T12:28:57.017Z",
+    "savedAt": "2026-06-09T12:40:31.342Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -6004,6 +6004,11 @@
         {
           "title": "Finishing",
           "description": "Mediocre touch around the basket."
+        },
+        {
+          "title": "Face-Up Creation",
+          "description": "Limited face-up creation skill.",
+          "level": "Bad"
         }
       ]
     },
@@ -6504,8 +6509,8 @@
           "description": "Super agile, 6'9\", long athlete. Comfortable guarding any position and switching on the perimeter. Very fluid recovering out, with quick hips. Locks down guards. Quick in help. Long rim defender. Super quick at getting out of the screen and rolling."
         },
         {
-          "title": "Touch/Pin/Hands",
-          "description": "Soft, extended range touch - threat in the short roll with his floater. Smartly pins defenders and uses his length advantage in the post. Can hit from the mid-range."
+          "title": "Touch/Post Pin/Hands",
+          "description": "Shot 70% from the field. Soft, extended range touch - threat in the short roll with his floater, where he is a threat in the short roll. Smartly pins defenders and uses his length advantage in the post. Can hit from the mid-range."
         },
         {
           "title": "Connective Passing",
@@ -6513,7 +6518,7 @@
         },
         {
           "title": "Face-Up",
-          "description": "Solid, skilled face-up game."
+          "description": "Capable attacking off-the-catch for baskets face-up, with a degree of skill, often exploiting his length advantage. Some face-up scoring with a solid mid-range game."
         }
       ],
       "weaknesses": [
@@ -6838,8 +6843,8 @@
         },
         {
           "title": "Post Defense",
-          "description": "Good level of strength defending in the post against 5's.",
-          "level": "Good"
+          "description": "Solid level of strength defending in the post against 5's.",
+          "level": "Decent"
         }
       ],
       "weaknesses": [
@@ -6850,6 +6855,32 @@
         },
         {
           "title": "Non-Shooter",
+          "description": "",
+          "level": "Bad"
+        }
+      ]
+    },
+    "Dorion Staples": {
+      "strengths": [
+        {
+          "title": "C&S 3",
+          "description": "Capable at hitting the C&S 3 at decent volume.",
+          "level": "Good"
+        },
+        {
+          "title": "Post/Frame/Strength",
+          "description": "Good frame, where he is capable scoring in the post against 4's. Difficult to score on in the post with his size.",
+          "level": "Decent"
+        },
+        {
+          "title": "Passing",
+          "description": "Good passer, with vision.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Limited Face-Up Creation/Off-The-Catch",
           "description": "",
           "level": "Bad"
         }
