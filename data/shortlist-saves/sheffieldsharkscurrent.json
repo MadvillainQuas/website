@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-08T16:17:48.295Z",
+    "savedAt": "2026-06-09T06:25:36.113Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1932,6 +1932,42 @@
       "season": "",
       "savedAt": 1780935443290,
       "source": "manual"
+    },
+    "Daniel Hankins-Sanford": {
+      "metrics": {
+        "player": "Daniel Hankins-Sanford",
+        "team": "U-Mass",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "U-Mass",
+      "season": "",
+      "savedAt": 1780985217907,
+      "source": "manual"
+    },
+    "Ahmir Langlais": {
+      "metrics": {
+        "player": "Ahmir Langlais",
+        "team": "Etha",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Etha",
+      "season": "",
+      "savedAt": 1780985909800,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2474,6 +2510,16 @@
       "name": "Nikola Guzina",
       "team": "British Columbia",
       "createdAt": 1780935443290
+    },
+    {
+      "name": "Daniel Hankins-Sanford",
+      "team": "U-Mass",
+      "createdAt": 1780985217906
+    },
+    {
+      "name": "Ahmir Langlais",
+      "team": "Etha",
+      "createdAt": 1780985909799
     }
   ],
   "starRatings": {
@@ -2560,7 +2606,8 @@
     "Jarrett Hensley": 4,
     "Nico Galette": 4,
     "Jonathan Beagle": 4,
-    "Josiah Shackleford": 3.5
+    "Josiah Shackleford": 3.5,
+    "Daniel Hankins-Sanford": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -2998,7 +3045,9 @@
     },
     "Filip Andjusic": {
       "primary": 5,
-      "secondary": [],
+      "secondary": [
+        4
+      ],
       "suitability": {
         "4": 4,
         "5": 10
@@ -3362,6 +3411,19 @@
       "primary": 4,
       "secondary": [
         5
+      ]
+    },
+    "Daniel Hankins-Sanford": {
+      "primary": 4,
+      "secondary": [
+        3,
+        5
+      ]
+    },
+    "Ahmir Langlais": {
+      "primary": 5,
+      "secondary": [
+        4
       ]
     }
   },
@@ -5061,6 +5123,12 @@
     ],
     "Lamin Sabally": [
       "Athletic Slashing 4/5"
+    ],
+    "Daniel Hankins-Sanford": [
+      "Slashing Wing"
+    ],
+    "Ahmir Langlais": [
+      "Face-Up 5/4"
     ]
   },
   "playerPhysicals": {
@@ -5451,6 +5519,14 @@
     "Nikola Guzina": {
       "height": "6'10\"",
       "weight": "235"
+    },
+    "Daniel Hankins-Sanford": {
+      "height": "6'8\"",
+      "weight": "240"
+    },
+    "Ahmir Langlais": {
+      "height": "6'9\"",
+      "weight": "225"
     }
   },
   "potentialRatings": {
@@ -5529,7 +5605,8 @@
     "Jarrett Hensley": 4,
     "Nico Galette": 4,
     "Malachi Smith": 4,
-    "Jonathan Beagle": 4
+    "Jonathan Beagle": 4,
+    "Daniel Hankins-Sanford": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6593,6 +6670,68 @@
           "level": "Bad"
         }
       ]
+    },
+    "Daniel Hankins-Sanford": {
+      "strengths": [
+        {
+          "title": "Attack Off-The-Catch/Ball Skill/First Step",
+          "description": "Quick first-step, and a skilled straight-line game involving spin moves and a mid-range step-back counter. Attacks like a wing. Capable at drive & kick.",
+          "level": "Good"
+        },
+        {
+          "title": "Handles",
+          "description": "Decent level of advantage creation 1-on-1.",
+          "level": "Decent"
+        },
+        {
+          "title": "Post Scoring",
+          "description": "Capable at scoring in the post with his big frame. Provides a mismatch option vs. smaller 4/5's.",
+          "level": "Decent"
+        },
+        {
+          "title": "Rebounding",
+          "description": "Physical rebounder. Big offensive glass crasher.",
+          "level": "Good"
+        },
+        {
+          "title": "Cuts",
+          "description": "Willing cutter with a good sense for backdoor cuts.",
+          "level": "Good"
+        },
+        {
+          "title": "Defensive Versatility",
+          "description": "Frame to guard physical 5's in the post, while also capable of guarding 4's and 3's. Decent switching.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Mid-Range/Touch",
+          "description": "Inconsistent mid-range shot despite his ability to create space in the mid-range/willingness to shoot them. %'s on touch shots can be inconsistent, likes a right hand hook that can be so-so.",
+          "level": "Bad"
+        },
+        {
+          "title": "3PT Shot",
+          "description": "Low 20%'s shooter.",
+          "level": "Bad"
+        }
+      ]
+    },
+    "Ahmir Langlais": {
+      "strengths": [
+        {
+          "title": "Handle/Slashing/Drive & Kick",
+          "description": "Skilled handle and face-up game, capable of shifting defenders with his handle to get downhill.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "",
+          "description": "",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -6830,7 +6969,74 @@
     "Camryn Weston": "4-6k",
     "Roko Rogic": "Previously 5k",
     "Giannis Karakostas": "Previous Loan (4-5k)",
-    "Jayson Tchicamboud": "5-6k"
+    "Jayson Tchicamboud": "5-6k",
+    "Filip Andjusic": "Yes",
+    "Dorion Staples": "Yes",
+    "DeMarcus Sharp": "7k",
+    "Dan Gherezgher": "Yes",
+    "Dallin Hall": "G-League?",
+    "Dajuan Harris Jr.": "8k+?",
+    "Carlos Jurgens": "Yes",
+    "Brock Wisne": "Yes",
+    "Bo Montgomery": "Yes",
+    "Ben Carlson": "3-5k",
+    "Alex Williams": "3-5k?",
+    "Ahmir Langlais": "3-5k",
+    "Adomas Sidorevicius": "Yes",
+    "Ace Baldwin": "6-7k",
+    "Abdou Tsimbila": "Yes",
+    "Aaron Gray": "Yes",
+    "Grant Singleton": "Yes",
+    "Isaac Abidde": "Yes",
+    "Isaiah Jones": "3k",
+    "Jacob Conner": "Yes",
+    "Jacob Crews": "4-6k",
+    "Jake Hilmer": "Yes",
+    "Jalen Leach": "Yes",
+    "Jalin Bilingsley": "Yes",
+    "Jarrett Hensley": "Yes",
+    "Johnathan Massie": "Signed",
+    "Jonathan Beagle": "Yes",
+    "Jordan Dallas": "Yes",
+    "Jordan Mason": "Yes",
+    "Josiah Shackleford": "Yes",
+    "Kamari Lands": "Yes",
+    "Kevin Kalu": "Yes",
+    "Khalil Brantley": "Yes",
+    "Kimani Hamilton": "4-6k",
+    "Kobe Langley": "Yes",
+    "Lakeem McAliley": "Signed",
+    "Lamin Sabally": "Signed",
+    "Leslie Nkeurerem": "Yes",
+    "Lester Medford": "Yes?",
+    "Malachi Smith": "Yes",
+    "Marcell McCreary": "Yes",
+    "Michael Bradley": "Yes",
+    "Nathan Scott": "4k",
+    "Nico Galette": "Yes",
+    "Niko Rocak": "Yes",
+    "Omar El-Shiekh": "Yes",
+    "Owen Dease": "Yes",
+    "Paul Otieno": "?",
+    "Quinn Slazinski": "Yes",
+    "Richie Springs": "Yes",
+    "Rob Carpenter": "Yes",
+    "Rylan Jones": "Yes",
+    "Sam Godwin": "Yes",
+    "Sam Trunley": "Signed",
+    "Samari Curtis": "Yes",
+    "Sean Trumper": "Yes",
+    "Sincere Malone": "Yes",
+    "Stephen Giwa": "Yes",
+    "Tevin Brewer": "Yes",
+    "Tidjiane Dioumassi": "Yes",
+    "Trey Campbell": "Yes",
+    "Tristan Forsythe": "Yes",
+    "Troy Glover II": "Yes",
+    "Willem Brandwijk": "Yes",
+    "Xavier Rhodes": "Yes",
+    "Yaw Obeng-Mensah": "Yes",
+    "Zaire Williams": "Yes"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
