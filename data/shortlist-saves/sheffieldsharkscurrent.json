@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T06:25:36.113Z",
+    "savedAt": "2026-06-09T06:47:32.658Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -1968,6 +1968,24 @@
       "season": "",
       "savedAt": 1780985909800,
       "source": "manual"
+    },
+    "Tamario Adley": {
+      "metrics": {
+        "player": "Tamario Adley",
+        "team": "Central Michigan",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Central Michigan",
+      "season": "",
+      "savedAt": 1780987548893,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2520,6 +2538,11 @@
       "name": "Ahmir Langlais",
       "team": "Etha",
       "createdAt": 1780985909799
+    },
+    {
+      "name": "Tamario Adley",
+      "team": "Central Michigan",
+      "createdAt": 1780987548893
     }
   ],
   "starRatings": {
@@ -3424,6 +3447,12 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Tamario Adley": {
+      "primary": 1,
+      "secondary": [
+        2
       ]
     }
   },
@@ -5527,6 +5556,10 @@
     "Ahmir Langlais": {
       "height": "6'9\"",
       "weight": "225"
+    },
+    "Tamario Adley": {
+      "height": "6'1\"",
+      "weight": "200"
     }
   },
   "potentialRatings": {
@@ -6732,6 +6765,26 @@
           "level": "Bad"
         }
       ]
+    },
+    "Tamario Adley": {
+      "strengths": [
+        {
+          "title": "Vertical Athleticism",
+          "description": "Big vertical leaper. Capable",
+          "level": "Good"
+        },
+        {
+          "title": "Rebounding",
+          "description": "Strong additional rebounder from the PG spot. Good offensive boards crasher.",
+          "level": "Good"
+        },
+        {
+          "title": "1-on-1 D/Vs. Bigs Mismatch",
+          "description": "Physical, with good frame. Battles on the mismatch.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
