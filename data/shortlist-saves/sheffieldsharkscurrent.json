@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-09T16:03:43.451Z",
+    "savedAt": "2026-06-11T06:46:09.935Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2022,6 +2022,24 @@
       "season": "",
       "savedAt": 1781012688483,
       "source": "manual"
+    },
+    "Taye Donald": {
+      "metrics": {
+        "player": "Taye Donald",
+        "team": "Honka",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Honka",
+      "season": "",
+      "savedAt": 1781160337480,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2589,6 +2607,11 @@
       "name": "Michael Imariagbe",
       "team": "Lakeside Lightning",
       "createdAt": 1781012688483
+    },
+    {
+      "name": "Taye Donald",
+      "team": "Honka",
+      "createdAt": 1781160337480
     }
   ],
   "starRatings": {
@@ -2678,7 +2701,8 @@
     "Josiah Shackleford": 3.5,
     "Daniel Hankins-Sanford": 4,
     "Richard Amaefule": 2.5,
-    "Darius Dawson": 3.5
+    "Darius Dawson": 3.5,
+    "Taye Donald": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3514,6 +3538,10 @@
       "secondary": [
         5
       ]
+    },
+    "Taye Donald": {
+      "primary": 1,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -5631,6 +5659,10 @@
     "Michael Imariagbe": {
       "height": "6'7\"",
       "weight": "225"
+    },
+    "Taye Donald": {
+      "height": "6'2\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -5712,7 +5744,8 @@
     "Jonathan Beagle": 4,
     "Daniel Hankins-Sanford": 5,
     "Richard Amaefule": 3,
-    "Darius Dawson": 3.5
+    "Darius Dawson": 3.5,
+    "Taye Donald": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7251,7 +7284,8 @@
     "Xavier Rhodes": "Yes",
     "Yaw Obeng-Mensah": "Yes",
     "Zaire Williams": "Yes",
-    "Darius Dawson": "Signed"
+    "Darius Dawson": "Signed",
+    "Taye Donald": "Yes"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
