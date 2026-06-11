@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-11T07:36:35.290Z",
+    "savedAt": "2026-06-11T12:32:57.635Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2040,6 +2040,24 @@
       "season": "",
       "savedAt": 1781160337480,
       "source": "manual"
+    },
+    "Tuburu Naivalurua": {
+      "metrics": {
+        "player": "Tuburu Naivalurua",
+        "team": "Oakland",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Oakland",
+      "season": "",
+      "savedAt": 1781163427711,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2612,6 +2630,11 @@
       "name": "Taye Donald",
       "team": "Honka",
       "createdAt": 1781160337480
+    },
+    {
+      "name": "Tuburu Naivalurua",
+      "team": "Oakland",
+      "createdAt": 1781163427710
     }
   ],
   "starRatings": {
@@ -2702,7 +2725,8 @@
     "Daniel Hankins-Sanford": 4,
     "Richard Amaefule": 2.5,
     "Darius Dawson": 3.5,
-    "Taye Donald": 4
+    "Taye Donald": 4,
+    "Tuburu Naivalurua": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3406,6 +3430,7 @@
     "Jamal West": {
       "primary": 4,
       "secondary": [
+        3,
         5
       ],
       "suitability": {
@@ -3542,6 +3567,13 @@
     "Taye Donald": {
       "primary": 1,
       "secondary": []
+    },
+    "Tuburu Naivalurua": {
+      "primary": 4,
+      "secondary": [
+        3,
+        5
+      ]
     }
   },
   "scoutReports": {},
@@ -5663,6 +5695,10 @@
     "Taye Donald": {
       "height": "6'2\"",
       "weight": "190"
+    },
+    "Tuburu Naivalurua": {
+      "height": "6'6\"",
+      "weight": "240"
     }
   },
   "potentialRatings": {
@@ -5745,7 +5781,8 @@
     "Daniel Hankins-Sanford": 5,
     "Richard Amaefule": 3,
     "Darius Dawson": 3.5,
-    "Taye Donald": 4
+    "Taye Donald": 4,
+    "Tuburu Naivalurua": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -6977,6 +7014,52 @@
           "title": "Undersized @ The Rim",
           "description": "Struggled scoring in the post against high major 5 men with size (6'10\"+), suffering a couple nasty blocks - uses physicality as a crutch down low.",
           "level": "Bad"
+        }
+      ]
+    },
+    "Tuburu Naivalurua": {
+      "strengths": [
+        {
+          "title": "Physicality/Rebounding",
+          "description": "Tough to stop rebounding the ball on the O-glass when in the vicinity. Sticky hands and big frame. Likes to go back up for put-backs.",
+          "level": "Elite"
+        },
+        {
+          "title": "Post Scoring",
+          "description": "Simple post-game exploiting his physical advantages over defenders.",
+          "level": "Decent"
+        },
+        {
+          "title": "Defensive Versatility/Switching/1-on-1",
+          "description": "Capable defending across a variety of positions, mostly 3-5 (although looked very good on guards when switched onto them). Switchable onto 1's, where he has the lateral quickness to cut off drives against quick, high-major guards. Strong chest and very difficult to move. Stonewalls players in the post. Threat to block jump-shots defending 1-on-1. Great at closing out, with fluid hips.",
+          "level": "Elite"
+        },
+        {
+          "title": "Transition",
+          "description": "Quick speed and tough to stop with a head of steam as a grab-and-go threat.",
+          "level": "Decent"
+        },
+        {
+          "title": "Straight-Line Drive/Shot Selection/Mid-Range Counter",
+          "description": " Likes to rip through with a quick first-step + bully-ball physicality, looking to get a shoulder into his defender, attacking in straight lines. Hesi-cross to get downhill. Can get to a quick step-back mid-range if cut off going left/in iso situations, exploiting size to bump off his defender. Good recognition on his drives on when to terminate and kick-out.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Reluctant Shooter",
+          "description": "Reluctant to shoot from deep. Lower volume despite his solid efficiency from deep.",
+          "level": "Bad"
+        },
+        {
+          "title": "Linearity/Simple Handle",
+          "description": "Works in straight lines only. Limited ability side-to-side in creating advantages 1-on-1 if his cross doesn't work. Very simple driving game with little handle counters if dug down/cut off. If he can't blow by with speed, he is dependent on his physicality to bump off defenders vs. using skill. Sometimes has to pass out if a defender beats him to his spot due to his limited handle.",
+          "level": "Bad"
+        },
+        {
+          "title": "Rim Protection @ the 5",
+          "description": "Can be passive as the low help around the rim. Often played in a 1-3-1 zone when at the 5-spot.",
+          "level": "Slight"
         }
       ]
     }
