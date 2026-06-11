@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-11T12:35:35.993Z",
+    "savedAt": "2026-06-11T12:57:03.277Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2058,6 +2058,24 @@
       "season": "",
       "savedAt": 1781163427711,
       "source": "manual"
+    },
+    "Fabian Delph": {
+      "metrics": {
+        "player": "Fabian Delph",
+        "team": "Etzella",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Etzella",
+      "season": "",
+      "savedAt": 1781182027520,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2635,6 +2653,11 @@
       "name": "Tuburu Naivalurua",
       "team": "Oakland",
       "createdAt": 1781163427710
+    },
+    {
+      "name": "Fabian Delph",
+      "team": "Etzella",
+      "createdAt": 1781182027520
     }
   ],
   "starRatings": {
@@ -3573,6 +3596,12 @@
       "secondary": [
         3,
         5
+      ]
+    },
+    "Fabian Delph": {
+      "primary": 2,
+      "secondary": [
+        1
       ]
     }
   },
@@ -5699,6 +5728,10 @@
     "Tuburu Naivalurua": {
       "height": "6'6\"",
       "weight": "240"
+    },
+    "Fabian Delph": {
+      "height": "6'3\"",
+      "weight": "185"
     }
   },
   "potentialRatings": {
