@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-11T13:45:08.696Z",
+    "savedAt": "2026-06-11T18:11:23.673Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2076,6 +2076,24 @@
       "season": "",
       "savedAt": 1781182027520,
       "source": "manual"
+    },
+    "Mylyjael Poteat": {
+      "metrics": {
+        "player": "Mylyjael Poteat",
+        "team": "Balikesir",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Balikesir",
+      "season": "",
+      "savedAt": 1781201299475,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2658,6 +2676,11 @@
       "name": "Fabian Delph",
       "team": "Etzella",
       "createdAt": 1781182027520
+    },
+    {
+      "name": "Mylyjael Poteat",
+      "team": "Balikesir",
+      "createdAt": 1781201299475
     }
   ],
   "starRatings": {
@@ -2749,7 +2772,8 @@
     "Richard Amaefule": 2.5,
     "Darius Dawson": 3.5,
     "Taye Donald": 4,
-    "Tuburu Naivalurua": 4
+    "Tuburu Naivalurua": 4,
+    "Mylyjael Poteat": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3603,6 +3627,10 @@
       "secondary": [
         1
       ]
+    },
+    "Mylyjael Poteat": {
+      "primary": 5,
+      "secondary": []
     }
   },
   "scoutReports": {},
@@ -5732,6 +5760,10 @@
     "Fabian Delph": {
       "height": "6'3\"",
       "weight": "185"
+    },
+    "Mylyjael Poteat": {
+      "height": "6'9\"",
+      "weight": "265"
     }
   },
   "potentialRatings": {
@@ -5815,7 +5847,8 @@
     "Richard Amaefule": 3,
     "Darius Dawson": 3.5,
     "Taye Donald": 4,
-    "Tuburu Naivalurua": 4
+    "Tuburu Naivalurua": 4,
+    "Mylyjael Poteat": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7092,6 +7125,27 @@
         {
           "title": "Rim Protection @ the 5",
           "description": "Can be passive as the low help around the rim. Often played in a 1-3-1 zone when at the 5-spot.",
+          "level": "Slight"
+        }
+      ]
+    },
+    "Mylyjael Poteat": {
+      "strengths": [
+        {
+          "title": "Physicality/Post-Scoring",
+          "description": "Incredibly physical player that is very difficult to stop in the post. Too strong for most 5's.",
+          "level": "Elite"
+        },
+        {
+          "title": "Hedge Defense",
+          "description": "Capable hedge defender.",
+          "level": "Decent"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Lateral Quickness",
+          "description": "Can be slow to move his feet against guards on the switch.",
           "level": "Slight"
         }
       ]
