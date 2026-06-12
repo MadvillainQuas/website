@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-12T10:24:07.232Z",
+    "savedAt": "2026-06-12T10:49:33.993Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2793,7 +2793,7 @@
     "Ace Baldwin": 4.5,
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
-    "Cam Morris III": 4,
+    "Cam Morris III": 3.5,
     "Tristan Forsythe": 3.5,
     "Jordan Dallas": 3.5,
     "Jordan Mason": 3.5,
@@ -3456,12 +3456,6 @@
         4
       ]
     },
-    "Cam Morris III": {
-      "primary": 4,
-      "secondary": [
-        5
-      ]
-    },
     "Tristan Forsythe": {
       "primary": 4,
       "secondary": [
@@ -3698,6 +3692,12 @@
       "primary": 1,
       "secondary": [
         2
+      ]
+    },
+    "Cam Morris III": {
+      "primary": 5,
+      "secondary": [
+        4
       ]
     }
   },
@@ -7240,19 +7240,19 @@
     "Cam Morris III": {
       "strengths": [
         {
-          "title": "Versatility/Post Defense",
-          "description": "Despite his listed weight, he is able to guard bigger 5's in the post with his level of lower body strength. Good switching onto smalls.",
+          "title": "Post Defense",
+          "description": "Despite his listed weight, he is able to guard bigger 5's in the post with his level of lower body strength - stonewalling 5's. Good switching onto smalls.",
           "level": "Good"
         },
         {
           "title": "Rim Protection/Disruption/IQ",
           "description": "Plays an almost free safety role on D, being an elite disruptor off-ball with his ability to get blocks and good hands. Good communicator on D, pre-switching bad match-ups. Great timing and good spring.",
-          "level": "Elite"
+          "level": "Good"
         },
         {
           "title": "Finishing/Post Play",
-          "description": "Good level of patience under the basket, able to finish in a congested lane. Plays physical, going into his defender. Lower body strength allows him to bump off 4/5's.",
-          "level": "Decent"
+          "description": "Good level of patience under the basket, able to finish in a congested lane. Plays physical, going into his defender. Lower body strength allows him to bump off 4/5's. ",
+          "level": "Good"
         },
         {
           "title": "Pass Willingness",
@@ -7262,14 +7262,19 @@
       ],
       "weaknesses": [
         {
-          "title": "Low Volume 3",
+          "title": "Limited/Low Volume 3",
           "description": "",
           "level": "Bad"
         },
         {
-          "title": "Around Size/Reliance on Physicality",
-          "description": "Looks to go into the shoulder of his defender rather than use skill/footwork, which can lead to some problems against bigger players.",
-          "level": "Slight"
+          "title": "Around Size/Reliance on Physicality/Limited Face-Up",
+          "description": "Looks to go into the shoulder of his defender rather than use skill/footwork, which can lead to some problems against bigger players. Limited face-up game.",
+          "level": "Bad"
+        },
+        {
+          "title": "Reluctant Left Finishing",
+          "description": "",
+          "level": "Bad"
         }
       ]
     },
