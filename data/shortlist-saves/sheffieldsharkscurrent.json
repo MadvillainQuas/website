@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-12T08:42:40.232Z",
+    "savedAt": "2026-06-12T10:21:46.186Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2112,6 +2112,24 @@
       "season": "",
       "savedAt": 1781253100803,
       "source": "manual"
+    },
+    "Jackson Paveletzke": {
+      "metrics": {
+        "player": "Jackson Paveletzke",
+        "team": "Ohio",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Ohio",
+      "season": "",
+      "savedAt": 1781259640510,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2704,6 +2722,11 @@
       "name": "Riley Grigsby",
       "team": "Santa Cruz Warriors",
       "createdAt": 1781253100803
+    },
+    {
+      "name": "Jackson Paveletzke",
+      "team": "Ohio",
+      "createdAt": 1781259640510
     }
   ],
   "starRatings": {
@@ -2770,7 +2793,7 @@
     "Ace Baldwin": 4.5,
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
-    "Cam Morris III": 3.5,
+    "Cam Morris III": 4,
     "Tristan Forsythe": 3.5,
     "Jordan Dallas": 3.5,
     "Jordan Mason": 3.5,
@@ -2804,7 +2827,8 @@
     "Stephen Giwa": 3.5,
     "Tamario Adley": 3,
     "Samari Curtis": 4,
-    "Sam Godwin": 4
+    "Sam Godwin": 4,
+    "Jackson Paveletzke": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3668,6 +3692,12 @@
       "secondary": [
         2,
         4
+      ]
+    },
+    "Jackson Paveletzke": {
+      "primary": 1,
+      "secondary": [
+        2
       ]
     }
   },
@@ -5376,6 +5406,9 @@
     ],
     "Richard Amaefule": [
       "Face-Up Big"
+    ],
+    "Jackson Paveletzke": [
+      "Scoring PG"
     ]
   },
   "playerPhysicals": {
@@ -5806,6 +5839,10 @@
     "Riley Grigsby": {
       "height": "6'6\"",
       "weight": "220"
+    },
+    "Jackson Paveletzke": {
+      "height": "6'2\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -5867,7 +5904,7 @@
     "Ace Baldwin": 5,
     "Grant Singleton": 4,
     "Sam Hoiberg": 5,
-    "Cam Morris III": 3.5,
+    "Cam Morris III": 4,
     "Tristan Forsythe": 3.5,
     "Jordan Dallas": 3.5,
     "Jordan Mason": 4,
@@ -5897,7 +5934,8 @@
     "Stephen Giwa": 4,
     "Tamario Adley": 4,
     "Samari Curtis": 4,
-    "Sam Godwin": 4
+    "Sam Godwin": 4,
+    "Jackson Paveletzke": 4.5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7198,6 +7236,52 @@
           "level": "Slight"
         }
       ]
+    },
+    "Cam Morris III": {
+      "strengths": [
+        {
+          "title": "Versatility/Post Defense",
+          "description": "Despite his listed weight, he is able to guard bigger 5's in the post with his level of lower body strength. Good switching onto smalls.",
+          "level": "Good"
+        },
+        {
+          "title": "Rim Protection/Disruption/IQ",
+          "description": "Plays an almost free safety role on D, being an elite disruptor off-ball with his ability to get blocks and good hands. Good communicator on D, pre-switching bad match-ups. Great timing and good spring.",
+          "level": "Elite"
+        },
+        {
+          "title": "Finishing/Post Play",
+          "description": "Good level of patience under the basket, able to finish in a congested lane. Plays physical, going into his defender. Lower body strength allows him to bump off 4/5's.",
+          "level": "Decent"
+        },
+        {
+          "title": "Pass Willingness",
+          "description": "Capable hitting cutters as a DHO player.",
+          "level": "Decent"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Low Volume 3",
+          "description": "",
+          "level": "Bad"
+        },
+        {
+          "title": "Around Size/Reliance on Physicality",
+          "description": "Looks to go into the shoulder of his defender rather than use skill/footwork, which can lead to some problems against bigger players.",
+          "level": "Slight"
+        }
+      ]
+    },
+    "Jackson Paveletzke": {
+      "strengths": [
+        {
+          "title": "Mid-Range Shot-Creation",
+          "description": "Elite ability to craft space in the mid-range and hit shots.",
+          "level": "Elite"
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
