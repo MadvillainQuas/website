@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-11T18:12:14.176Z",
+    "savedAt": "2026-06-12T08:32:05.622Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2094,6 +2094,24 @@
       "season": "",
       "savedAt": 1781201299475,
       "source": "manual"
+    },
+    "Riley Grigsby": {
+      "metrics": {
+        "player": "Riley Grigsby",
+        "team": "Santa Cruz Warriors",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Santa Cruz Warriors",
+      "season": "",
+      "savedAt": 1781253100803,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2681,6 +2699,11 @@
       "name": "Mylyjael Poteat",
       "team": "Balikesir",
       "createdAt": 1781201299475
+    },
+    {
+      "name": "Riley Grigsby",
+      "team": "Santa Cruz Warriors",
+      "createdAt": 1781253100803
     }
   ],
   "starRatings": {
@@ -2774,7 +2797,9 @@
     "Taye Donald": 4,
     "Tuburu Naivalurua": 4,
     "Mylyjael Poteat": 4,
-    "Michael Imariagbe": 3.5
+    "Michael Imariagbe": 3.5,
+    "Jalin Bilingsley": 3.5,
+    "Riley Grigsby": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3325,10 +3350,10 @@
       }
     },
     "Kamari Lands": {
-      "primary": 4,
+      "primary": 3,
       "secondary": [
         2,
-        3,
+        4,
         5
       ]
     },
@@ -3632,6 +3657,13 @@
     "Mylyjael Poteat": {
       "primary": 5,
       "secondary": []
+    },
+    "Riley Grigsby": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
+      ]
     }
   },
   "scoutReports": {},
@@ -5765,6 +5797,10 @@
     "Mylyjael Poteat": {
       "height": "6'9\"",
       "weight": "265"
+    },
+    "Riley Grigsby": {
+      "height": "6'6\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
@@ -5850,7 +5886,8 @@
     "Taye Donald": 4,
     "Tuburu Naivalurua": 4,
     "Mylyjael Poteat": 5,
-    "Michael Imariagbe": 3.5
+    "Michael Imariagbe": 3.5,
+    "Riley Grigsby": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7544,6 +7581,13 @@
         "status": "signed"
       }
     ]
+  },
+  "squadPlanning": {
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "",
+    "5": ""
   },
   "playerPhotos": {},
   "tierListData": [
