@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-12T10:49:33.993Z",
+    "savedAt": "2026-06-12T14:27:03.780Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2130,6 +2130,60 @@
       "season": "",
       "savedAt": 1781259640510,
       "source": "manual"
+    },
+    "LJ Wells": {
+      "metrics": {
+        "player": "LJ Wells",
+        "team": "Northern Kentucky",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Kentucky",
+      "season": "",
+      "savedAt": 1781263012775,
+      "source": "manual"
+    },
+    "Tristan Smith": {
+      "metrics": {
+        "player": "Tristan Smith",
+        "team": "Northern Iowa",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Northern Iowa",
+      "season": "",
+      "savedAt": 1781263382382,
+      "source": "manual"
+    },
+    "AJ Lopez": {
+      "metrics": {
+        "player": "AJ Lopez",
+        "team": "Richmond",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Richmond",
+      "season": "",
+      "savedAt": 1781274344071,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2727,6 +2781,21 @@
       "name": "Jackson Paveletzke",
       "team": "Ohio",
       "createdAt": 1781259640510
+    },
+    {
+      "name": "LJ Wells",
+      "team": "Northern Kentucky",
+      "createdAt": 1781263012775
+    },
+    {
+      "name": "Tristan Smith",
+      "team": "Northern Iowa",
+      "createdAt": 1781263382382
+    },
+    {
+      "name": "AJ Lopez",
+      "team": "Richmond",
+      "createdAt": 1781274344071
     }
   ],
   "starRatings": {
@@ -2764,7 +2833,7 @@
     "Jayson Tchicamboud": 4,
     "Dajuan Harris Jr.": 3.5,
     "Kobe Langley": 3.5,
-    "Rylan Jones": 4,
+    "Rylan Jones": 3.5,
     "Alex Williams": 3.5,
     "Kimani Hamilton": 4,
     "Quimari Peterson": 4.5,
@@ -2828,7 +2897,11 @@
     "Tamario Adley": 3,
     "Samari Curtis": 4,
     "Sam Godwin": 4,
-    "Jackson Paveletzke": 4
+    "Jackson Paveletzke": 4,
+    "Pipe Ajayi": 4,
+    "Tristan Smith": 4,
+    "LJ Wells": 4,
+    "AJ Lopez": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -3200,7 +3273,8 @@
     "Alex Williams": {
       "primary": 3,
       "secondary": [
-        4
+        4,
+        5
       ]
     },
     "Aaron Gray": {
@@ -3698,6 +3772,24 @@
       "primary": 5,
       "secondary": [
         4
+      ]
+    },
+    "Tristan Smith": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "LJ Wells": {
+      "primary": 4,
+      "secondary": [
+        5
+      ]
+    },
+    "AJ Lopez": {
+      "primary": 2,
+      "secondary": [
+        1
       ]
     }
   },
@@ -5409,6 +5501,9 @@
     ],
     "Jackson Paveletzke": [
       "Scoring PG"
+    ],
+    "Tristan Smith": [
+      "Slashing 4/5"
     ]
   },
   "playerPhysicals": {
@@ -5843,6 +5938,18 @@
     "Jackson Paveletzke": {
       "height": "6'2\"",
       "weight": "190"
+    },
+    "Tristan Smith": {
+      "height": "6'5\"",
+      "weight": "235"
+    },
+    "LJ Wells": {
+      "height": "6'8\"",
+      "weight": "220"
+    },
+    "AJ Lopez": {
+      "height": "6'5\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
@@ -5935,7 +6042,11 @@
     "Tamario Adley": 4,
     "Samari Curtis": 4,
     "Sam Godwin": 4,
-    "Jackson Paveletzke": 4.5
+    "Jackson Paveletzke": 4.5,
+    "Pipe Ajayi": 4,
+    "Tristan Smith": 4,
+    "LJ Wells": 4,
+    "AJ Lopez": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7287,6 +7398,109 @@
         }
       ],
       "weaknesses": []
+    },
+    "Tristan Smith": {
+      "strengths": [
+        {
+          "title": "Motor/Disruption/Versatility",
+          "description": "Very high motor. Pest of a defender with his level of agility and hustle, elite hands. Quick anticipation in the passing lanes. Big offensive boards crasher for 2nd chance opportunities. Great switching on any position.",
+          "level": "Elite"
+        },
+        {
+          "title": "Slashing/Handles",
+          "description": "Quick first step and fluid handles as a driver. Sometimes initiates play as a point-forward. Can score out of the post with good footwork.",
+          "level": "Good"
+        },
+        {
+          "title": "Physicality",
+          "description": "Loves contact. Big foul drawer.",
+          "level": "Good"
+        },
+        {
+          "title": "Undersized Post D",
+          "description": "Excellent anticipation on entry passes. Very strong lower body. Great at denying.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing",
+          "description": "Smart passer off of his driving threat.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Length",
+          "description": "Listed at 6'5\" (in NAIA) with neutral wingspan. Can affect his finishing angles. Can affect his ability to contest. ",
+          "level": "Bad"
+        },
+        {
+          "title": "Outside Shot",
+          "description": "Very limited shooter.",
+          "level": "Bad"
+        }
+      ]
+    },
+    "LJ Wells": {
+      "strengths": [
+        {
+          "title": "Face-Up Game",
+          "description": "Quick first-step. Good use of tempo on his drives. Multi-faceted game.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing",
+          "description": "Good court-vision. Good at drive and kick.",
+          "level": "Good"
+        },
+        {
+          "title": "Length/Touch",
+          "description": "Good length allows him to finish over defenders. Soft touch from extended range.",
+          "level": "Good"
+        },
+        {
+          "title": "Vertical/Rebounding",
+          "description": "Above-the-rim finisher with a launch pad. Quick off the ground for second chance opportunities.",
+          "level": "Good"
+        },
+        {
+          "title": "Post Scoring",
+          "description": "",
+          "level": "Good"
+        },
+        {
+          "title": "Cutting",
+          "description": "Smart off-ball cutter from the perimeter.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Outside Shooting",
+          "description": "Low volume shooter.",
+          "level": "Bad"
+        }
+      ]
+    },
+    "AJ Lopez": {
+      "strengths": [
+        {
+          "title": "3's Off-Dribble",
+          "description": "",
+          "level": "Good"
+        },
+        {
+          "title": "Movement Shooting",
+          "description": "",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Skinniness",
+          "description": "",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -7593,7 +7807,8 @@
     "Yaw Obeng-Mensah": "Yes",
     "Zaire Williams": "Yes",
     "Darius Dawson": "Signed",
-    "Taye Donald": "Yes"
+    "Taye Donald": "Yes",
+    "Pipe Ajayi": "Signed"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
