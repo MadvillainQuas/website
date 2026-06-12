@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-12T08:32:05.622Z",
+    "savedAt": "2026-06-12T08:42:40.232Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2784,7 +2784,7 @@
     "Frankie Collins": 4,
     "JaJuan Carr": 3.5,
     "Lester Medford": 4,
-    "Tidjiane Dioumassi": 3.5,
+    "Tidjiane Dioumassi": 3,
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
@@ -2799,7 +2799,12 @@
     "Mylyjael Poteat": 4,
     "Michael Imariagbe": 3.5,
     "Jalin Bilingsley": 3.5,
-    "Riley Grigsby": 4
+    "Riley Grigsby": 4,
+    "Trey Campbell": 4,
+    "Stephen Giwa": 3.5,
+    "Tamario Adley": 3,
+    "Samari Curtis": 4,
+    "Sam Godwin": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -5873,7 +5878,7 @@
     "Aaron Gray": 3.5,
     "JaJuan Carr": 4,
     "Lester Medford": 4,
-    "Tidjiane Dioumassi": 3.5,
+    "Tidjiane Dioumassi": 3,
     "Khalil Brantley": 4.5,
     "Dallin Hall": 4.5,
     "Jarrett Hensley": 4,
@@ -5887,7 +5892,12 @@
     "Tuburu Naivalurua": 4,
     "Mylyjael Poteat": 5,
     "Michael Imariagbe": 3.5,
-    "Riley Grigsby": 4
+    "Riley Grigsby": 4,
+    "Trey Campbell": 4,
+    "Stephen Giwa": 4,
+    "Tamario Adley": 4,
+    "Samari Curtis": 4,
+    "Sam Godwin": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
