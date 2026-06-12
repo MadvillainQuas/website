@@ -1,0 +1,4 @@
+{
+  "_comment": "Manifest of every data_<timestamp>_<COMP> folder under data/. Auto-maintained by scrape-now.py after each upload. The website reads this file to find the most recent folder per competition code; first match wins.",
+  "folders": []
+}
