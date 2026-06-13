@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-12T18:25:01.924Z",
+    "savedAt": "2026-06-13T06:56:44.042Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2256,6 +2256,42 @@
       "season": "",
       "savedAt": 1781288490228,
       "source": "manual"
+    },
+    "Brett Thompson": {
+      "metrics": {
+        "player": "Brett Thompson",
+        "team": "Jedinstvo",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Jedinstvo",
+      "season": "",
+      "savedAt": 1781333557043,
+      "source": "manual"
+    },
+    "Noah Farrakhan": {
+      "metrics": {
+        "player": "Noah Farrakhan",
+        "team": "Komarno",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Komarno",
+      "season": "",
+      "savedAt": 1781333593175,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2888,6 +2924,16 @@
       "name": "Seth Leday",
       "team": "Stjarnan",
       "createdAt": 1781288490227
+    },
+    {
+      "name": "Brett Thompson",
+      "team": "Jedinstvo",
+      "createdAt": 1781333557043
+    },
+    {
+      "name": "Noah Farrakhan",
+      "team": "Komarno",
+      "createdAt": 1781333593174
     }
   ],
   "starRatings": {
@@ -2995,7 +3041,9 @@
     "LJ Wells": 4,
     "AJ Lopez": 4,
     "Jaidon Lipscomb": 3,
-    "Seth Leday": 4
+    "Seth Leday": 4,
+    "Noah Farrakhan": 4,
+    "Brett Thompson": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -6065,6 +6113,10 @@
     "Seth Leday": {
       "height": "6'7\"",
       "weight": "215"
+    },
+    "Noah Farrakhan": {
+      "height": "6'1\"",
+      "weight": "170"
     }
   },
   "potentialRatings": {
@@ -6163,7 +6215,9 @@
     "LJ Wells": 4,
     "AJ Lopez": 4,
     "Jaidon Lipscomb": 3,
-    "Seth Leday": 4
+    "Seth Leday": 4,
+    "Noah Farrakhan": 4,
+    "Brett Thompson": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7679,6 +7733,37 @@
         }
       ],
       "weaknesses": []
+    },
+    "Noah Farrakhan": {
+      "strengths": [
+        {
+          "title": "Shiftiness/Handles/Speed",
+          "description": "Exceptional advantage creator with his combination of speed and handles. Very difficult to keep in front. Threat on all levels.",
+          "level": "Elite"
+        },
+        {
+          "title": "Shot Making",
+          "description": "Tough shotmaker off-dribble.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing Vision",
+          "description": "",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Ball Dominance",
+          "description": "Ball can get sticky with Noah at the point.",
+          "level": "Bad"
+        },
+        {
+          "title": "Frame",
+          "description": "Skinny frame can make it more difficult on D.",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
@@ -7986,7 +8071,8 @@
     "Zaire Williams": "Yes",
     "Darius Dawson": "Signed",
     "Taye Donald": "Yes",
-    "Pipe Ajayi": "Signed"
+    "Pipe Ajayi": "Signed",
+    "Noah Farrakhan": "3k"
   },
   "playerExternalLinks": {},
   "playerDomestic": {
