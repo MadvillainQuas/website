@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Owning the Pipeline — Super League Basketball</title>
+<meta name="description" content="A centralised youth development & player-rights framework for Super League Basketball. Strategic proposal & investor briefing.">
+<meta name="theme-color" content="#0e1b36">
+<!-- Open Graph / social preview -->
+<meta property="og:title" content="Owning the Pipeline — Super League Basketball">
+<meta property="og:description" content="A centralised youth development & player-rights framework. Retain British talent. Monetise the pipeline. Build the next generation of stars.">
+<meta property="og:type" content="website">
+<!-- NOTE: this page deliberately does NOT load gate.js — it is the one public,
+     no-login page on the site. Everything else stays behind the invite gate. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Caladea ≈ Cambria (titles) · Carlito ≈ Calibri (body) — metric-compatible open clones -->
+<link href="https://fonts.googleapis.com/css2?family=Caladea:ital,wght@0,400;0,700;1,400&family=Carlito:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0e1b36;            /* dark slide background          */
+  --navy-panel:#16264a;      /* raised panel on dark slides    */
+  --navy-panel-2:#1b2f57;
+  --ink:#16243f;             /* navy text/titles on light      */
+  --ink-soft:#42536e;        /* body text on light             */
+  --muted:#7f8aa0;           /* secondary text                 */
+  --orange:#e1701a;          /* accent                         */
+  --orange-soft:#f29d4e;
+  --circle:#1e3a63;          /* icon circle (navy)             */
+  --light:#ffffff;           /* light slide background         */
+  --card:#f3f6fb;            /* card surface on light          */
+  --card-line:#e4e9f1;
+  --serif:'Caladea','Cambria','Georgia',serif;
+  --sans:'Carlito','Calibri','Segoe UI',system-ui,sans-serif;
+  --stage-w:1280px;
+  --stage-h:720px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#05080f;overflow:hidden;font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{display:flex;align-items:center;justify-content:center}
+
+/* ---------- letterboxed, auto-scaling stage ---------- */
+#viewport{position:fixed;inset:0;overflow:hidden;background:#05080f}
+#stage{position:absolute;top:50%;left:50%;width:var(--stage-w);height:var(--stage-h);
+  transform-origin:center center;will-change:transform}
+
+/* ---------- slides ---------- */
+.slide{position:absolute;inset:0;width:var(--stage-w);height:var(--stage-h);
+  padding:64px 72px;display:flex;flex-direction:column;opacity:0;visibility:hidden;
+  pointer-events:none;transition:opacity .01s;overflow:hidden}
+.slide.light{background:var(--light);color:var(--ink)}
+.slide.dark{background:var(--navy);color:#eaf0fb}
+/* entrance / exit transforms driven by JS classes */
+.slide.cur{opacity:1;visibility:visible;pointer-events:auto;z-index:2}
+.slide.enter-next{animation:inNext .55s cubic-bezier(.22,.61,.36,1) both}
+.slide.enter-prev{animation:inPrev .55s cubic-bezier(.22,.61,.36,1) both}
+@keyframes inNext{from{opacity:0;transform:translateX(70px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes inPrev{from{opacity:0;transform:translateX(-70px) scale(.985)}to{opacity:1;transform:none}}
+
+/* staggered child reveal — applied when slide becomes current */
+.slide.cur .reveal{animation:rise .55s cubic-bezier(.22,.61,.36,1) both}
+.reveal{opacity:0}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+/* ---------- shared bits ---------- */
+.eyebrow{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:13px;
+  color:var(--orange);margin-bottom:14px}
+.slide.dark .eyebrow{color:var(--orange-soft)}
+h1.title{font-family:var(--serif);font-weight:700;line-height:1.04;letter-spacing:-.01em}
+.slide .title{font-size:46px;color:var(--ink);margin-bottom:8px}
+.slide.dark .title{color:#fff}
+.lead{font-size:19px;line-height:1.5;color:var(--ink-soft);max-width:1040px;margin-top:10px}
+.slide.dark .lead{color:#b9c6df}
+.lead em,.fn em{font-style:italic}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.fn{margin-top:auto;padding-top:18px;font-size:15px;line-height:1.45;color:var(--ink-soft);font-style:italic;max-width:1090px}
+.slide.dark .fn{color:#9fb0cd}
+.pagefoot{position:absolute;left:72px;right:72px;bottom:26px;display:flex;justify-content:space-between;
+  font-size:12.5px;letter-spacing:.04em;color:#9aa7bd}
+.slide.dark .pagefoot{color:#5e708f}
+
+/* ---------- card grids ---------- */
+.grid{display:grid;gap:18px}
+.grid.c2{grid-template-columns:repeat(2,1fr)}
+.grid.c3{grid-template-columns:repeat(3,1fr)}
+.grid.c4{grid-template-columns:repeat(4,1fr)}
+.grid.c5{grid-template-columns:repeat(5,1fr)}
+.grid.c2x3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--card);border:1px solid var(--card-line);border-radius:14px;padding:20px 20px 22px;
+  display:flex;flex-direction:column;gap:11px;transition:transform .25s ease,box-shadow .25s ease,border-color .25s;cursor:default}
+.slide.dark .card{background:var(--navy-panel);border-color:rgba(255,255,255,.06)}
+.card:hover{transform:translateY(-6px);box-shadow:0 18px 38px rgba(14,27,54,.16);border-color:rgba(225,112,26,.45)}
+.slide.dark .card:hover{box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.card.accent{background:var(--orange);border-color:var(--orange)}
+.card.accent .ch,.card.accent .cb{color:#fff}
+.card.accent .icon{background:rgba(255,255,255,.18)}
+.ch{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.slide.dark .ch{color:#fff}
+.cb{font-size:14px;line-height:1.45;color:var(--ink-soft)}
+.slide.dark .cb{color:#a9b8d4}
+.icon{width:54px;height:54px;border-radius:50%;background:var(--circle);display:flex;align-items:center;
+  justify-content:center;flex:0 0 auto;box-shadow:0 6px 16px rgba(14,27,54,.18)}
+.icon.org{background:var(--orange)}
+.icon svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon svg.fill{fill:#fff;stroke:none}
+.compact .card{padding:16px 16px 17px;gap:8px}
+.compact .ch{font-size:16px}.compact .cb{font-size:13px;line-height:1.4}
+.compact .icon{width:46px;height:46px}.compact .icon svg{width:22px;height:22px}
+
+/* ---------- big stat ---------- */
+.statbig{font-family:var(--serif);font-weight:700;color:var(--orange);line-height:1}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:46px;align-items:center;flex:1;min-height:0}
+.two-col .col-cards{display:flex;flex-direction:column;gap:14px}
+
+/* ---------- title slide ---------- */
+.titleslide .big{font-family:var(--serif);font-weight:700;font-size:104px;color:#fff;line-height:.98;letter-spacing:-.02em}
+.titleslide .sub{font-size:24px;color:#b9c6df;max-width:760px;margin-top:22px;line-height:1.4}
+.titleslide .tag{margin-top:46px;font-size:21px;font-weight:700;color:#fff}
+.titleslide .tag .o{color:var(--orange-soft)}
+.eyebrow-stack{font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.eyebrow-stack .l1{color:#dce6f6;font-size:17px}
+.eyebrow-stack .l2{color:var(--orange-soft);font-size:14px;margin-top:6px;letter-spacing:.16em}
+
+/* concentric basketball motif (title + closing) */
+.rings{position:absolute;right:-90px;bottom:-90px;width:560px;height:560px;pointer-events:none}
+.rings span{position:absolute;border-radius:50%;border:2px solid rgba(120,150,200,.32)}
+.rings .r1{inset:0}.rings .r2{inset:90px}.rings .r3{inset:170px;border-color:var(--orange)}
+.rings .ball{position:absolute;inset:235px;border-radius:50%;background:var(--orange);display:flex;
+  align-items:center;justify-content:center}
+.rings .ball svg{width:54px;height:54px;fill:#fff}
+
+/* ---------- flow (slide 7) ---------- */
+.flow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 18px}
+.flow .node{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1}
+.flow .node .icon{width:60px;height:60px}
+.flow .node span{font-size:14px;font-weight:700;color:#dce6f6;text-align:center}
+.flow .arrow{color:var(--orange);font-size:24px;flex:0 0 auto;opacity:.85}
+.spotlight{background:linear-gradient(135deg,#16264a,#1b2f57);border:1px solid rgba(225,112,26,.4);
+  border-radius:16px;padding:22px 26px;display:flex;gap:20px;align-items:flex-start}
+.spotlight .sp-icon{width:58px;height:58px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.spotlight .sp-icon svg{width:28px;height:28px;fill:#fff}
+.spotlight .sp-tag{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--orange-soft);text-transform:uppercase}
+.spotlight .sp-h{font-family:var(--serif);font-size:24px;color:#fff;margin:4px 0 8px}
+.spotlight .sp-b{font-size:14.5px;color:#b9c6df;line-height:1.45}
+
+/* ---------- chart (slide 6) ---------- */
+.chartcard{background:var(--navy-panel);border-radius:16px;padding:24px 26px}
+.chartcard .ct{font-weight:700;color:#fff;font-size:16px}
+.chartcard .cs{color:var(--orange-soft);font-size:12.5px;margin-top:3px;letter-spacing:.02em}
+.bars{display:flex;align-items:flex-end;gap:26px;height:230px;margin:26px 8px 8px;border-bottom:2px solid rgba(255,255,255,.18);padding-bottom:0}
+.bargroup{display:flex;align-items:flex-end;gap:8px;flex:1;height:100%}
+.bar{flex:1;background:var(--circle);border-radius:5px 5px 0 0;height:0;transition:height 1s cubic-bezier(.22,.61,.36,1);position:relative;min-width:26px}
+.bar.org{background:var(--orange)}
+.bar b{position:absolute;top:-22px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:700}
+.legend{display:flex;gap:18px;margin-top:14px;font-size:13px;color:#b9c6df}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- rounds / waterfall stat rows ---------- */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:24px;flex:1;align-content:center}
+.bigcard{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.slide.dark .bigcard{background:var(--navy-panel);border-color:rgba(255,255,255,.07)}
+.bigcard .num{width:40px;height:40px;border-radius:50%;background:var(--orange);color:#fff;font-weight:700;
+  display:flex;align-items:center;justify-content:center;font-size:18px;font-family:var(--serif)}
+.bigcard .bh{font-family:var(--serif);font-size:22px;color:var(--ink)}
+.slide.dark .bigcard .bh{color:#fff}
+.statrow{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-top:1px solid var(--card-line)}
+.slide.dark .statrow{border-color:rgba(255,255,255,.08)}
+.statrow .k{font-size:14px;color:var(--ink-soft)}
+.slide.dark .statrow .k{color:#a9b8d4}
+.statrow .v{font-weight:700;color:var(--orange);font-size:19px;font-family:var(--serif)}
+.bigcard .note{font-size:13.5px;color:var(--ink-soft);font-style:italic;margin-top:4px}
+.slide.dark .bigcard .note{color:#9fb0cd}
+
+/* banner (slide 12) */
+.banner{background:var(--navy);border-radius:14px;padding:20px 28px;display:flex;align-items:center;gap:28px;margin-top:16px}
+.slide.dark .banner{background:var(--navy-panel)}
+.banner .big{font-family:var(--serif);font-weight:700;font-size:48px;color:var(--orange);flex:0 0 auto;line-height:1}
+.banner .big small{font-size:24px;color:#fff;font-weight:400}
+.banner .bt{font-size:15px;color:#cdd8ec;line-height:1.45}
+
+/* conferences (slide 17) */
+.confs{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.conf{background:var(--navy-panel);border-radius:14px;padding:20px 24px}
+.conf h3{font-family:var(--serif);color:#fff;font-size:20px;margin-bottom:12px}
+.conf .teams{display:flex;flex-wrap:wrap;gap:8px}
+.conf .teams span{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;
+  padding:6px 14px;font-size:13.5px;color:#dce6f6}
+.conf .teams span.star{border-color:var(--orange);color:var(--orange-soft)}
+
+/* ---------- chrome: progress, controls, counter, overview ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--orange);width:0;z-index:50;transition:width .4s ease;box-shadow:0 0 10px rgba(225,112,26,.6)}
+#counter{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;color:#9aa7bd;
+  font-size:13px;letter-spacing:.05em;background:rgba(8,14,26,.55);padding:6px 14px;border-radius:20px;
+  backdrop-filter:blur(8px);font-variant-numeric:tabular-nums;user-select:none}
+#counter b{color:#fff}
+.navbtn{position:fixed;top:50%;transform:translateY(-50%);z-index:50;width:46px;height:46px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);background:rgba(8,14,26,.5);color:#cdd8ec;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);transition:.2s;opacity:.5}
+.navbtn:hover{opacity:1;background:var(--orange);border-color:var(--orange);color:#fff}
+#prev{left:18px}#next{right:18px}
+.navbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+#tools{position:fixed;top:16px;right:16px;z-index:50;display:flex;gap:8px}
+.tool{width:38px;height:38px;border-radius:9px;border:1px solid rgba(255,255,255,.16);background:rgba(8,14,26,.5);
+  color:#cdd8ec;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);transition:.2s}
+.tool:hover{background:var(--orange);border-color:var(--orange);color:#fff}
+.tool svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* overview grid */
+#overview{position:fixed;inset:0;z-index:60;background:rgba(5,8,15,.96);backdrop-filter:blur(6px);
+  display:none;padding:54px 40px 40px;overflow-y:auto}
+#overview.on{display:block}
+#overview h2{color:#fff;font-family:var(--serif);font-size:24px;margin-bottom:22px;text-align:center}
+.ovgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;max-width:1200px;margin:0 auto}
+.ovcell{aspect-ratio:16/9;border-radius:9px;overflow:hidden;cursor:pointer;border:2px solid transparent;
+  position:relative;background:#0e1b36;transition:.2s}
+.ovcell:hover{border-color:var(--orange);transform:scale(1.03)}
+.ovcell .mini{position:absolute;inset:0;transform-origin:top left}
+/* minis hold a full (non-current) .slide — force them visible & static */
+.ovcell .mini .slide{opacity:1!important;visibility:visible!important;animation:none!important}
+.ovcell .mini .reveal{opacity:1!important;animation:none!important}
+.ovcell .lbl{position:absolute;left:0;bottom:0;background:rgba(8,14,26,.82);color:#cdd8ec;font-size:11px;
+  padding:3px 8px;border-radius:0 8px 0 0;z-index:3}
+.ovcell.cur{border-color:var(--orange)}
+
+/* hint toast */
+#hint{position:fixed;bottom:54px;left:50%;transform:translateX(-50%);z-index:55;color:#cdd8ec;font-size:13px;
+  background:rgba(8,14,26,.7);padding:9px 18px;border-radius:22px;backdrop-filter:blur(8px);
+  transition:opacity .5s;pointer-events:none}
+#hint.gone{opacity:0}
+
+@media (max-width:760px){
+  #tools .tool.lbl-hide{display:none}
+  #counter{bottom:12px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="viewport"><div id="stage"></div></div>
+
+<button class="navbtn" id="prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+<button class="navbtn" id="next" aria-label="Next slide"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+
+<div id="tools">
+  <button class="tool" id="t-over" title="Overview (O)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+  <button class="tool" id="t-full" title="Fullscreen (F)"><svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+</div>
+
+<div id="counter"><b id="c-cur">1</b> / <span id="c-tot">24</span></div>
+<div id="hint">Use ← → or swipe · press <b>O</b> for overview · <b>F</b> for fullscreen</div>
+
+<div id="overview"><h2>Owning the Pipeline — all slides</h2><div class="ovgrid" id="ovgrid"></div></div>
+
+<script>
+/* ============================================================
+   ICON LIBRARY — inline SVG, stroked unless .fill noted.
+   ============================================================ */
+const I = {
+  plane:'<svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>',
+  chartDown:'<svg viewBox="0 0 24 24"><polyline points="3 7 9 13 13 9 21 17"/><polyline points="21 11 21 17 15 17"/></svg>',
+  outward:'<svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="8" y2="18"/><polyline points="17 8 21 12 17 16"/><line x1="14" y1="12" x2="21" y2="12"/></svg>',
+  money:'<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>',
+  cap:'<svg viewBox="0 0 24 24"><path d="M22 9 12 5 2 9l10 4 10-4Z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/></svg>',
+  handshake:'<svg viewBox="0 0 24 24"><path d="M3 12 8 7l4 3 4-3 5 5"/><path d="M12 10l-3 3 2 2 3-3"/></svg>',
+  signature:'<svg viewBox="0 0 24 24"><path d="M14 4 18 8 8 18 4 19 5 15Z"/><line x1="3" y1="22" x2="21" y2="22"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24"><path d="M6 4h12v4a6 6 0 0 1-12 0Z"/><path d="M6 6H3v2a3 3 0 0 0 3 3"/><path d="M18 6h3v2a3 3 0 0 1-3 3"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="10" y1="18" x2="14" y2="18"/></svg>',
+  star:'<svg viewBox="0 0 24 24" class="fill"><path d="M12 2 15 9l7 .5-5.5 4.5L18.5 21 12 17 5.5 21 7.5 14 2 9.5 9 9Z"/></svg>',
+  anchor:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="21"/><path d="M5 12a7 7 0 0 0 14 0"/><line x1="5" y1="12" x2="3" y2="12"/><line x1="19" y1="12" x2="21" y2="12"/></svg>',
+  whistle:'<svg viewBox="0 0 24 24"><path d="M3 13a6 6 0 0 0 12 0v-2H3Z"/><line x1="9" y1="11" x2="9" y2="6"/><line x1="9" y1="6" x2="14" y2="6"/><circle cx="9" cy="16" r="1.4" class="fill"/></svg>',
+  scissors:'<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.1" y2="15.9"/><line x1="14" y1="14" x2="20" y2="20"/></svg>',
+  tv:'<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="13" rx="2"/><polyline points="8 21 12 18 16 21"/></svg>',
+  globe:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>',
+  broadcast:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2" class="fill"/><path d="M7 7a7 7 0 0 0 0 10M17 7a7 7 0 0 1 0 10M4 4a11 11 0 0 0 0 16M20 4a11 11 0 0 1 0 16"/></svg>',
+  sun:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="5" y1="5" x2="7" y2="7"/><line x1="17" y1="17" x2="19" y2="19"/><line x1="19" y1="5" x2="17" y2="7"/><line x1="7" y1="17" x2="5" y2="19"/></svg>',
+  arrowUp:'<svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg>',
+  badge:'<svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><polyline points="9 9 11 11 15 7"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg>',
+  calendar:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>',
+  clipboard:'<svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>',
+  userCheck:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><polyline points="16 12 18 14 22 10"/></svg>',
+  homeFlag:'<svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><line x1="12" y1="6" x2="12" y2="14"/><path d="M12 6h3v2.5h-3"/></svg>',
+  list:'<svg viewBox="0 0 24 24"><polyline points="4 7 5.5 8.5 8 6"/><polyline points="4 13 5.5 14.5 8 12"/><line x1="11" y1="7" x2="20" y2="7"/><line x1="11" y1="13" x2="20" y2="13"/><line x1="11" y1="19" x2="20" y2="19"/></svg>',
+  court:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2.5"/><path d="M3 9v6M21 9v6"/></svg>',
+  users:'<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M15 14a6 6 0 0 1 6 6"/></svg>',
+  building:'<svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5"/><line x1="4" y1="9" x2="4" y2="20"/><line x1="20" y1="9" x2="20" y2="20"/><line x1="3" y1="20" x2="21" y2="20"/><line x1="9" y1="13" x2="9" y2="20"/><line x1="15" y1="13" x2="15" y2="20"/></svg>',
+  seedling:'<svg viewBox="0 0 24 24"><path d="M12 21v-8"/><path d="M12 13C12 9 9 7 5 7c0 4 3 6 7 6Z"/><path d="M12 13c0-3 3-5 7-5 0 4-3 5-7 5Z"/></svg>',
+  player:'<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="2.5"/><path d="M12 8.5v6M12 11l-4-2M12 11l4-2M12 14.5l-3 6M12 14.5l3 6"/></svg>',
+  flag:'<svg viewBox="0 0 24 24"><line x1="5" y1="22" x2="5" y2="3"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg>',
+  scale:'<svg viewBox="0 0 24 24"><line x1="12" y1="3" x2="12" y2="21"/><line x1="6" y1="21" x2="18" y2="21"/><path d="M6 7h12"/><path d="M6 7 3 13a3 3 0 0 0 6 0Z"/><path d="M18 7l-3 6a3 3 0 0 0 6 0Z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  shield:'<svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"/><polyline points="9 12 11 14 15 10"/></svg>',
+  vault:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="8" x2="12" y2="9.5"/><line x1="14.8" y1="12" x2="13.3" y2="12"/></svg>',
+  water:'<svg viewBox="0 0 24 24"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11Z"/></svg>',
+  cards:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M7 6V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1"/></svg>',
+  camera:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 7l1.5-2h5L16 7"/></svg>',
+  staff:'<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>',
+  arena:'<svg viewBox="0 0 24 24"><path d="M3 10a9 4 0 0 1 18 0v6a9 4 0 0 1-18 0Z"/><path d="M3 10c0 2.2 4 4 9 4s9-1.8 9-4"/></svg>',
+  contract:'<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><polyline points="14 3 14 7 18 7"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>',
+  europe:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="6.5" r="1"/><circle cx="12" cy="17.5" r="1"/><circle cx="6.5" cy="12" r="1"/><circle cx="17.5" cy="12" r="1"/><circle cx="8.6" cy="8.6" r="1"/><circle cx="15.4" cy="8.6" r="1"/><circle cx="8.6" cy="15.4" r="1"/><circle cx="15.4" cy="15.4" r="1"/></svg>',
+  road:'<svg viewBox="0 0 24 24"><path d="M8 3 4 21M16 3l4 18"/><line x1="12" y1="4" x2="12" y2="7"/><line x1="12" y1="11" x2="12" y2="14"/><line x1="12" y1="18" x2="12" y2="20"/></svg>',
+  ball:'<svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 6h-3.4c.2-1.7.7-3.3 1.4-4.6A8 8 0 0 1 18.9 8ZM12 4c.1 0 .2 0 .3.1.9 1.2 1.5 2.9 1.7 3.9h-4c.2-1 .8-2.7 1.7-3.9.1-.1.2-.1.3-.1ZM7.1 3.4C7.8 4.7 8.3 6.3 8.5 8H5.1a8 8 0 0 1 2-4.6ZM4.2 10h4.4c0 .7.1 1.3.1 2s-.1 1.3-.1 2H4.2a7.9 7.9 0 0 1 0-4Zm.9 6h3.4c-.2 1.7-.7 3.3-1.4 4.6A8 8 0 0 1 5.1 16ZM12 20c-.1 0-.2 0-.3-.1-.9-1.2-1.5-2.9-1.7-3.9h4c-.2 1-.8 2.7-1.7 3.9-.1.1-.2.1-.3.1Zm4.9-.4c-.7-1.3-1.2-2.9-1.4-4.6h3.4a8 8 0 0 1-2 4.6Zm-1.5-6.6c0-.7.1-1.3.1-2s0-1.3-.1-2h4.4a7.9 7.9 0 0 1 0 4Z"/></svg>'
+};
+const ballGlyph = '<svg viewBox="0 0 24 24" class="fill"><circle cx="12" cy="12" r="10"/></svg>';
+const ballMark = `<svg viewBox="0 0 48 48" fill="#fff"><circle cx="24" cy="24" r="22" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M24 2v44M2 24h44" stroke="#fff" stroke-width="2.4" fill="none"/><path d="M7 9c6 4 9 9 9 15s-3 11-9 15M41 9c-6 4-9 9-9 15s3 11 9 15" stroke="#fff" stroke-width="2.4" fill="none"/></svg>`;
+
+/* ============================================================
+   SLIDE DATA — content transcribed from the source deck.
+   ============================================================ */
+const ic = (name)=>`<span class="icon">${I[name]||''}</span>`;
+const ico = (name)=>`<span class="icon org">${I[name]||''}</span>`;
+
+const SLIDES = [
+/* 1 — TITLE */
+{theme:'dark',cls:'titleslide',html:`
+  <div class="eyebrow-stack reveal"><div class="l1">Super League Basketball</div><div class="l2">Strategic Proposal · Investor Briefing</div></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+    <div class="big reveal">Owning the<br>Pipeline</div>
+    <div class="sub reveal">A centralised youth development &amp; player-rights framework for Super League Basketball.</div>
+    <div class="tag reveal">Retain British talent.&nbsp;&nbsp;<span class="o">Monetise the pipeline.</span>&nbsp;&nbsp;Build the next generation of stars.</div>
+  </div>
+  <div class="rings reveal"><span class="r1"></span><span class="r2"></span><span class="r3"></span><span class="ball">${ballMark}</span></div>
+  <div class="pagefoot"><span>Prepared for institutional review · June 2026</span><span></span></div>`},
+
+/* 2 — THE PROBLEM */
+{theme:'light',eyebrow:'The Problem',title:'We develop talent we don’t keep',
+ body:`<div class="two-col">
+   <div class="reveal">
+     <p class="lead" style="margin:0 0 18px">British basketball produces talent more readily than it retains it. Players who develop strongly in the British system between 16 and 19 routinely leave for US prep schools and overseas programmes at pre-college and college age — and the value of that development accrues to others.</p>
+     <p class="lead" style="font-style:italic;font-size:17px">Any future draft can only allocate the talent the system keeps. Early loss is therefore both a sporting and a commercial leak.</p>
+   </div>
+   <div class="col-cards">
+     <div class="card reveal">${ic('plane')}<div class="ch">Talent leaves early</div><div class="cb">Promising players exit at 16–19 — other countries reap the benefit.</div></div>
+     <div class="card reveal">${ic('chartDown')}<div class="ch">Development is sliding</div><div class="cb">A decline in GB U16–U20 results signals a system under-resourced versus its competitors.</div></div>
+     <div class="card reveal">${ic('outward')}<div class="ch">Value flows outward</div><div class="cb">With no early rights, SLB cannot capture the upside of the players it helped create.</div></div>
+   </div>
+ </div>`,page:'02'},
+
+/* 3 — WHY NOW */
+{theme:'dark',eyebrow:'Why Now',title:'The market now pays for rights',
+ body:`<div class="two-col">
+   <div class="reveal">
+     <div class="statbig" style="font-size:96px" data-count="500000" data-prefix="$">$500,000</div>
+     <p class="lead" style="margin-top:14px">Gonzaga’s buy-out for Mario Saint-Supéry — now one of many, as paid players move freely into the NCAA, NBA Europe and EuroLeague.</p>
+   </div>
+   <div class="col-cards">
+     <div class="card reveal">${ic('cap')}<div class="ch">Pay no longer blocks college</div><div class="cb">Paid players now keep NCAA eligibility — so a buy-out clause carries real, repeated commercial weight.</div></div>
+     <div class="card reveal">${ic('money')}<div class="ch">Every player is a potential sale</div><div class="cb">Every developing player becomes a route to the NBA, NBA Europe and EuroLeague — and a potential rights sale.</div></div>
+   </div>
+ </div>`,
+ fn:'Under today’s British structure, SLB is not positioned to capture any of this value.',page:'03'},
+
+/* 4 — THE SOLUTION (timeline) */
+{theme:'light',eyebrow:'The Solution',title:'Hold the rights early. Build a league around it.',
+ lead:'SLB takes central control of player-rights from age 16, anchored by a marketed, broadcast-ready U22 Youth League and paid apprenticeship contracts — the academy model of professional football, built for basketball.',
+ body:`<div class="grid c4 compact" style="margin-top:8px">
+   <div class="card reveal"><div class="eyebrow" style="margin:0">Age 16</div>${ic('handshake')}<div class="ch">Pre-contract</div><div class="cb">Player commits to the SLB pathway over a US prep move — paid, and the college door stays open.</div></div>
+   <div class="card reveal"><div class="eyebrow" style="margin:0">Age 17</div>${ic('signature')}<div class="ch">Academy deal</div><div class="cb">Paid apprenticeship contract and resourced development.</div></div>
+   <div class="card reveal"><div class="eyebrow" style="margin:0">To 22</div>${ic('trophy')}<div class="ch">Youth League / SLB</div><div class="cb">Competes in the marketed, broadcast-ready U22 product, with SLB minutes and buy-out fees as a club incentive.</div></div>
+   <div class="card accent reveal"><div class="eyebrow" style="margin:0;color:#fff">Draft</div>${ic('star')}<div class="ch">Monetise / retain</div><div class="cb">Rights realised via draft or buy-out — or retained via exemptions.</div></div>
+ </div>`,
+ fn:'All benefit: players get professional development and pay; the league secures the rights and the upside; the ecosystem shares the value.',page:'04'},
+
+/* 5 — STRATEGIC RATIONALE (5 cards) */
+{theme:'light',eyebrow:'Strategic Rationale',title:'Five ways the framework wins',
+ body:`<div class="grid c5 compact">
+   <div class="card reveal">${ic('anchor')}<div class="ch">Retain talent</div><div class="cb">Keep home-grown players connected to SLB through typical EABL years and beyond.</div></div>
+   <div class="card reveal">${ic('money')}<div class="ch">Monetise the pipeline</div><div class="cb">Capture buy-out value when players move to college, the NBA or EuroLeague.</div></div>
+   <div class="card reveal">${ic('whistle')}<div class="ch">Develop centrally</div><div class="cb">Direct camps, coaching and S&amp;C where they lift the standard most, with centralised talent.</div></div>
+   <div class="card reveal">${ic('scissors')}<div class="ch">Cut import reliance</div><div class="cb">Raise the level from within instead of overspending on the import market.</div></div>
+   <div class="card reveal">${ic('star')}<div class="ch">Build marketable stars</div><div class="cb">Tie the next Amari Williams or Tosan Evbuomwan to SLB from an early age.</div></div>
+ </div>`,page:'05'},
+
+/* 6 — COMMERCIAL ENGINE (chart) */
+{theme:'dark',eyebrow:'The Commercial Engine',title:'Youth basketball is already the audience',
+ lead:'On Hoopsfix, youth content out-engages senior SLB material — and across league finals, breakout creators and grassroots channels, the audience is already there, almost entirely unmarketed.',
+ body:`<div class="two-col" style="gap:36px">
+   <div class="chartcard reveal">
+     <div class="ct">Youth-basketball creators &amp; grassroots (000s)</div>
+     <div class="cs">YouTube subscribers vs Instagram followers · public channel data</div>
+     <div class="bars" id="bars6">
+       <div class="bargroup"><div class="bar" data-h="20"><b>20</b></div><div class="bar org" data-h="33"><b>33</b></div></div>
+       <div class="bargroup"><div class="bar org" data-h="3"><b>3</b></div></div>
+       <div class="bargroup"><div class="bar" data-h="2"><b>2</b></div></div>
+     </div>
+     <div class="legend"><span><i style="background:var(--circle)"></i>YouTube subs</span><span><i style="background:var(--orange)"></i>Instagram</span></div>
+   </div>
+   <div class="col-cards">
+     <div class="card reveal">${ic('tv')}<div class="ch"><span class="statbig" style="font-size:40px" data-count="41000">41,000</span></div><div class="cb">combined YouTube views across the NBL youth final fours.</div></div>
+     <div class="card reveal">${ic('globe')}<div class="ch"><span class="statbig" style="font-size:40px">No. 2</span></div><div class="cb">most-played team sport by 11–15s in England — diverse, urban, and diaspora-rich.</div></div>
+   </div>
+ </div>`,
+ fn:'The demographic is there and unmarketed — low-cost streaming and diaspora channels turn it into reach.',page:'06'},
+
+/* 7 — GROWTH PLAY (flow + spotlight) */
+{theme:'dark',eyebrow:'The Growth Play',title:'The British-Filipino bridge',
+ lead:'Britain has a large, under-served Filipino community and a passionate basketball culture. SLB can build a marketed bridge to it — starting with UK-resident British-Filipino talent and the diaspora audience that follows it.',
+ body:`<div class="flow reveal">
+     <div class="node">${ico('flag')}<span>Philippines</span></div><div class="arrow">→</div>
+     <div class="node">${ico('player')}<span>British-Filipino</span></div><div class="arrow">→</div>
+     <div class="node">${ico('trophy')}<span>KAMPI league</span></div><div class="arrow">→</div>
+     <div class="node">${ico('globe')}<span>UK diaspora</span></div>
+   </div>
+   <div class="spotlight reveal">
+     <div class="sp-icon">${I.star}</div>
+     <div><div class="sp-tag">Spotlight</div><div class="sp-h">A KAMPI All-Star team in the Youth League</div>
+     <div class="sp-b">Enter a KAMPI All-Star side — drawn from England Basketball’s UK-based Filipino league and backed by central SLB resources — into the new U22 competition, lifting home-grown British-Filipino players onto a marketed, broadcast-ready stage.</div></div>
+   </div>
+   <div class="grid c3 compact" style="margin-top:16px">
+     <div class="card reveal">${ic('arrowUp')}<div class="ch">Higher level + exposure</div><div class="cb">KAMPI’s best step up a level and onto an aired, marketed league.</div></div>
+     <div class="card reveal">${ic('globe')}<div class="ch">A Philippines bridge</div><div class="cb">A natural platform to cross-promote with one of the sport’s biggest markets.</div></div>
+     <div class="card reveal">${ic('star')}<div class="ch">Marketable stars</div><div class="cb">Develops Filipino-British talent that resonates with Filipino audiences.</div></div>
+   </div>`,
+ fn:'The British-Filipino bridge multiplies the audience and content lines — an engagement play, with international recruitment a later, regulated option.',page:'07'},
+
+/* 8 — THE MODEL (4 cards) */
+{theme:'light',eyebrow:'The Model',title:'Four reinforcing revenue streams',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal">${ic('money')}<div class="ch">Buy-outs &amp; sale-on fees</div><div class="cb">Frequent training-comp-scale fees as players move to college and Europe, plus occasional six-figure sales — shared with schools and federations.</div></div>
+   <div class="card reveal">${ic('broadcast')}<div class="ch">Media &amp; sponsorship</div><div class="cb">A produced, broadcast-ready Youth League opens a new content and partnership base.</div></div>
+   <div class="card reveal">${ic('sun')}<div class="ch">Summer programming</div><div class="cb">In-house Pro-Am, multi-day Combine and 1-on-1 events at league venues drive central revenue year-round.</div></div>
+   <div class="card reveal">${ic('globe')}<div class="ch">International markets</div><div class="cb">New diaspora audiences, sponsorship and regulated media- and data-rights — content-led, reaching Filipino and wider Asian markets.</div></div>
+ </div>`,
+ fn:'A share of every rights sale trickles down to the originating school, grassroots club and national federation — keeping the whole ecosystem invested.',page:'08'},
+
+/* 9 — STRUCTURE & GOVERNANCE (3 cards) */
+{theme:'light',eyebrow:'Structure & Governance',title:'A closed, vetted system — built to broadcast',
+ body:`<div class="grid c3">
+   <div class="card reveal">${ic('arrowUp')}<div class="ch">Elevate, with the academies</div><div class="cb">An SLB-controlled tier above the EABL — SLB club teams (e.g. Gladiators Blue), delivered with DiSE colleges and Basketball England, Wales and beyond.</div></div>
+   <div class="card reveal">${ic('badge')}<div class="ch">Earn your place</div><div class="cb">Entry against clear minimum standards — residency, court access, coaching, facilities — modelled on the Premier League’s Academy Category grading.</div></div>
+   <div class="card reveal">${ic('broadcast')}<div class="ch">Broadcast by design</div><div class="cb">Teams rebranded into one Youth League identity, with minimum broadcasting standards built into the entry criteria.</div></div>
+ </div>`,page:'09'},
+
+/* 10 — DRAFT EVENT */
+{theme:'dark',eyebrow:'A New Off-Season Event',title:'The SLB Draft — an event the league doesn’t have yet',
+ lead:'SLB has no draft today. Creating one turns the quiet off-season into the league’s marquee commercial event — and a structured route from youth talent to senior contracts.',
+ body:`<div class="grid c3 compact">
+   <div class="card reveal">${ic('calendar')}<div class="ch">Off-season salience</div><div class="cb">Keeps the league in conversation when no games are being played.</div></div>
+   <div class="card reveal">${ic('star')}<div class="ch">A marketable spectacle</div><div class="cb">An engaging, must-watch moment built for broadcast and sponsors.</div></div>
+   <div class="card reveal">${ic('clipboard')}<div class="ch">Test before you sign</div><div class="cb">Clubs assess every prospect in one place before committing.</div></div>
+ </div>
+ <div class="spotlight reveal" style="margin-top:16px">
+   <div class="sp-icon">${I.clipboard}</div>
+   <div><div class="sp-tag">The Combine</div><div class="sp-h" style="font-size:21px">Pre-draft testing for U23s in one central venue</div>
+   <div class="sp-b">Continuous media coverage and ticketed income. Storylines built in — who’s the most athletic Brit? Who dominates the scrimmages? Open NCAA &amp; pro-scout access fuels the buy-out pipeline. Open to every British U23 who declares their interest.</div></div>
+ </div>`,page:'10'},
+
+/* 11 — DRAFT STRUCTURE (two rounds) */
+{theme:'light',eyebrow:'Draft Structure',title:'Two rounds, real commitments',
+ lead:'Open to every British player U23 who declares. Each round guarantees senior terms, a team option and negotiated buy-out clauses — the clauses that feed the rights-sale engine.',
+ body:`<div class="cols2">
+   <div class="bigcard reveal"><div style="display:flex;align-items:center;gap:14px"><span class="num">1</span><span class="bh">First round (first 5 picks)</span></div>
+     <div class="statrow"><span class="k">Guaranteed contract</span><span class="v">2 years</span></div>
+     <div class="statrow"><span class="k">Team option</span><span class="v">+1 year</span></div>
+     <div class="statrow"><span class="k">Buy-out clauses</span><span class="v">Negotiated</span></div>
+     <div class="note">The marquee picks — top declared prospects, the headline of the night.</div>
+   </div>
+   <div class="bigcard reveal"><div style="display:flex;align-items:center;gap:14px"><span class="num">2</span><span class="bh">Second round</span></div>
+     <div class="statrow"><span class="k">Guaranteed contract</span><span class="v">1 year</span></div>
+     <div class="statrow"><span class="k">Team option</span><span class="v">+2 years</span></div>
+     <div class="statrow"><span class="k">Buy-out clauses</span><span class="v">Negotiated</span></div>
+     <div class="note">Depth and upside — longer club control in exchange for a lower guarantee.</div>
+   </div>
+ </div>`,
+ fn:'Negotiated buy-out clauses on every contract turn developed talent into a recurring revenue stream.',page:'11'},
+
+/* 12 — DRAFT INTEGRATION (3 cards + banner) */
+{theme:'light',eyebrow:'Draft Integration',title:'Feeding the draft — without punishing developers',
+ lead:'A meaningful share of non-SLB teams keeps the system fair, so clubs aren’t simply developing talent for rivals to profit from.',
+ body:`<div class="grid c3 compact">
+   <div class="card reveal">${ic('userCheck')}<div class="ch">Player exemptions</div><div class="cb">Clubs that develop a draft-eligible player for 2+ years can retain rights or take first option — modelled on the B.League.</div></div>
+   <div class="card reveal">${ic('homeFlag')}<div class="ch">Home-country rules</div><div class="cb">Optional mechanisms keep Scottish, Welsh and Irish players with clubs from their own nation.</div></div>
+   <div class="card reveal">${ic('list')}<div class="ch">Minimum roster rule</div><div class="cb">At least three draftees retained on the 12-man roster — the draft must create real senior minutes.</div></div>
+ </div>
+ <div class="banner reveal"><div class="big" data-count="2">2 <small>of 12</small></div><div class="bt">roster spots reserved for draftees — turning the draft into a guaranteed, visible pathway into the senior game.</div></div>`,page:'12'},
+
+/* 13 — SENIOR GAME (3 cards, 1 accent) */
+{theme:'light',eyebrow:'Developing in the Senior Game',title:'The SLB Trophy, reimagined for youth',
+ lead:'Convert the existing SLB Trophy into a youth-focused group stage and knockout tournament — a competitive proving ground that forces senior minutes for the next generation, giving NCAA scouts good tape.',
+ body:`<div class="grid c3">
+   <div class="card reveal"><div class="eyebrow" style="margin:0">2 × U22</div>${ic('court')}<div class="ch">On the court</div><div class="cb">At least two U22 players on the floor at all times — real minutes, real stakes.</div></div>
+   <div class="card reveal"><div class="eyebrow" style="margin:0">3 × U19</div>${ic('users')}<div class="ch">In the squad</div><div class="cb">At least three U19 players in every registered squad — a guaranteed seat at the table.</div></div>
+   <div class="card accent reveal"><div class="eyebrow" style="margin:0;color:#fff">Minutes = £</div>${ic('money')}<div class="ch">Subsidised by play</div><div class="cb">A ProB France-style mechanism, backed by Basketball England, paying clubs by the youth minutes they play.</div></div>
+ </div>`,
+ fn:'A secondary competition becomes a development engine — and clubs are paid to feed it.',page:'13'},
+
+/* 14 — ALIGNED INCENTIVES (6 cards) */
+{theme:'light',eyebrow:'Aligned Incentives',title:'A system where everyone wins',
+ body:`<div class="grid c2x3 compact" style="gap:14px">
+   <div class="card reveal">${ic('shield')}<div class="ch">SLB</div><div class="cb">Talent control, buy-out revenue, a new media product and marketable stars.</div></div>
+   <div class="card reveal">${ic('building')}<div class="ch">SLB clubs</div><div class="cb">A return on development via exemptions, retained rights and draft access.</div></div>
+   <div class="card reveal">${ic('cap')}<div class="ch">Schools &amp; academies</div><div class="cb">Sale-on fees, elevated competition and justified facility investment.</div></div>
+   <div class="card reveal">${ic('flag')}<div class="ch">Home nations</div><div class="cb">Trickle-down funding and a stronger national-team pipeline.</div></div>
+   <div class="card reveal">${ic('seedling')}<div class="ch">Grassroots clubs</div><div class="cb">Token fees and a clear, visible pathway for their players.</div></div>
+   <div class="card reveal">${ic('player')}<div class="ch">Players</div><div class="cb">Paid apprenticeships, real pro development incentivised by buy-out fees, and exposure to NBA &amp; NCAA.</div></div>
+ </div>`,page:'14'},
+
+/* 15 — ROADMAP (4 phases) */
+{theme:'light',eyebrow:'The Roadmap',title:'A phased path to scale',
+ lead:'Each phase de-risks the next and builds stakeholder confidence before scale.',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal"><div class="eyebrow" style="margin:0">Phase 1</div><div class="ch">Establish</div><div class="cb">Set entry criteria and grading, confirm founding participants, agree the rights framework with Basketball England.</div></div>
+   <div class="card reveal"><div class="eyebrow" style="margin:0">Phase 2</div><div class="ch">Launch</div><div class="cb">Stand up the U22 Youth League with broadcast standards; implement apprenticeships and the trickle-down model.</div></div>
+   <div class="card reveal"><div class="eyebrow" style="margin:0">Phase 3</div><div class="ch">Integrate</div><div class="cb">Connect to the senior draft; add mid-season events and final fours; begin international exposure.</div></div>
+   <div class="card accent reveal"><div class="eyebrow" style="margin:0;color:#fff">Phase 4</div><div class="ch">Scale</div><div class="cb">Expand into Ireland; grow diaspora content; move showcase games to right-sized arenas; build summer and media revenue.</div></div>
+ </div>`,page:'15'},
+
+/* 16 — WHY IT HOLDS UP (4 cards) */
+{theme:'light',eyebrow:'Why It Holds Up',title:'Built on structure, not optimism',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal">${ic('vault')}<div class="ch">A stable contracting vehicle</div><div class="cb">An SLB-controlled entity holds the contracts and stands behind multi-year deals — capitalised to sign three-year terms with teenagers.</div></div>
+   <div class="card reveal">${ic('contract')}<div class="ch">Contracts that bind</div><div class="cb">Paid, genuinely beneficial apprenticeships are enforceable — the football-scholarship model — so buy-out clauses hold at a college or European move.</div></div>
+   <div class="card reveal">${ic('handshake')}<div class="ch">Delivered with the system</div><div class="cb">Vetted academies and DiSE colleges deliver and subsidise housing; Basketball England co-sanctions the tier above the EABL.</div></div>
+   <div class="card reveal">${ic('arena')}<div class="ch">Right-sized venues</div><div class="cb">A central Combine at the National Basketball Performance Centre, and two showcase windows — a winter finals and a summer Combine — in venues you can fill.</div></div>
+ </div>`,
+ fn:'Every revenue line rests on a contract that holds and a vehicle that can stand behind it — both designed in from day one.',page:'16'},
+
+/* 17 — COMPETITION (conferences) */
+{theme:'dark',eyebrow:'The Competition',title:'Ten teams, two conferences',
+ body:`<div class="confs reveal">
+   <div class="conf"><h3>Northern Conference</h3><div class="teams">
+     <span>Caledonia Blues</span><span>Newcastle Eagles</span><span>Sheffield Sharks II</span><span>Manchester Giants / Magic</span><span>Liverpool / Cheshire (Carmel College)</span>
+   </div></div>
+   <div class="conf"><h3>Southern Conference</h3><div class="teams">
+     <span>London Lions II</span><span class="star">KAMPI All-Stars</span><span>Surrey 89ers</span><span>Bristol Flyers II</span><span>Charnwood Riders</span>
+   </div></div>
+ </div>
+ <div class="card reveal" style="background:var(--navy-panel);border-color:rgba(255,255,255,.07);margin-top:20px">
+   <div class="ch">Format &amp; identity</div>
+   <div class="cb">Home-and-away round-robin within each conference, top four cross into play-offs, finishing at a winter-cup finals and a summer showcase. One Youth League identity — shared branding, broadcast overlays and arena dressing — over each club’s sub-brand.</div>
+ </div>`,page:'17'},
+
+/* 18 — CENTRAL POT (4 cards) */
+{theme:'light',eyebrow:'Central Pot & Contracts',title:'One pot. One employer. One waterfall.',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal">${ic('vault')}<div class="ch">One central pot — blended funding</div><div class="cb">Public / NGB money (Basketball England, Wales, Scotland) funds the development layer; private SLB and commercial money funds the contract layer.</div></div>
+   <div class="card reveal">${ic('player')}<div class="ch">Players employed by the league</div><div class="cb">Central, single-entity contracts (the MLS model) — not club-by-club. One standard, one paymaster, with player consent and beneficial terms.</div></div>
+   <div class="card reveal">${ic('water')}<div class="ch">A preset buy-out waterfall</div><div class="cb">Every sale splits on agreed shares — X to the league pot, X to the developing club, X to the grassroots originating club. Agreed once, applied every time.</div></div>
+   <div class="card reveal">${ic('list')}<div class="ch">A cleaner draft</div><div class="cb">Because the league already holds the paper, drafting and movement are contractually simple — no club-to-club transfer friction to clear first.</div></div>
+ </div>`,
+ fn:'Public funds the pathway, private funds the contracts, and every exit feeds the pot — a self-reinforcing, FIBA-compliant solidarity model.',page:'18'},
+
+/* 19 — WORKED EXAMPLE (waterfall) */
+{theme:'light',eyebrow:'Worked Example',title:'The waterfall, worked',
+ lead:'Every buy-out splits on shares agreed once, at league entry — 65% to the league pot, 30% to the developing club, 5% to the grassroots originating club.',
+ body:`<div class="cols2">
+   <div class="bigcard reveal"><div style="display:flex;align-items:center;gap:14px"><span class="num">1</span><span class="bh">A £500k sale</span></div>
+     <div class="statrow"><span class="k">League pot · 65%</span><span class="v">£325k</span></div>
+     <div class="statrow"><span class="k">Developing club · 30%</span><span class="v">£150k</span></div>
+     <div class="statrow"><span class="k">Grassroots · 5%</span><span class="v">£25k</span></div>
+     <div class="note">A top prospect sold to the NBA, EuroLeague or a US college.</div>
+   </div>
+   <div class="bigcard reveal"><div style="display:flex;align-items:center;gap:14px"><span class="num">2</span><span class="bh">A £25k sale</span></div>
+     <div class="statrow"><span class="k">League pot · 65%</span><span class="v">£16.25k</span></div>
+     <div class="statrow"><span class="k">Developing club · 30%</span><span class="v">£7.5k</span></div>
+     <div class="statrow"><span class="k">Grassroots · 5%</span><span class="v">£1.25k</span></div>
+     <div class="note">The frequent, small fees that make the base case, not the headline.</div>
+   </div>
+ </div>`,
+ fn:'Agreed once at entry, applied to every exit — the pot’s share recycles straight into next season’s contracts. Shares configurable by founding participants.',page:'19'},
+
+/* 20 — HOW IT RUNS (4 cards) */
+{theme:'light',eyebrow:'How It Runs',title:'Practical delivery, costed',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal">${ic('camera')}<div class="ch">Season &amp; production</div><div class="cb">Regular-season games at clubs’ own venues — no hire. A small 2-camera stream with a commentator on a ~£50–100 per-game fee.</div></div>
+   <div class="card reveal">${ic('staff')}<div class="ch">Central staff</div><div class="cb">Operations and marketing only — clubs already run their own youth programs. A lean team of ~3–4: ~£150–250k a year.</div></div>
+   <div class="card reveal">${ic('arena')}<div class="ch">Showcase venues</div><div class="cb">Only the winter-cup finals and summer Combine are hired — 2,000–4,000-seat arenas at ~£15–30k a day; the Combine at the NBPC, Manchester.</div></div>
+   <div class="card reveal">${ic('contract')}<div class="ch">The contract layer</div><div class="cb">~65 central U22 contracts — apprentice wage ~£8–9k, rising to NMW at 18+ until a player leaves or is drafted. DiSE offsets the academy cohort.</div></div>
+ </div>`,
+ fn:'All-in, an illustrative £1.0–1.6m a year — modest apprentice wages plus minimal central overhead.',page:'20'},
+
+/* 21 — BEYOND THE LEAGUE (6 cards) */
+{theme:'light',eyebrow:'Beyond the League',title:'External initiatives that compound the platform',
+ body:`<div class="grid c2x3 compact" style="gap:14px">
+   <div class="card reveal">${ic('star')}<div class="ch">adidas Next Gen Tournament</div><div class="cb">An SLB All-Star side in Europe’s elite junior tournament — top exposure and a potential anchor apparel partner.</div></div>
+   <div class="card reveal">${ic('cap')}<div class="ch">NCAA pre-season games</div><div class="cb">Host touring US college programmes for pre-season exhibitions on British soil — elite opposition and scout eyes.</div></div>
+   <div class="card reveal">${ic('globe')}<div class="ch">American EYBL tours</div><div class="cb">An SLB All-Stars tour of the Nike EYBL circuit in the US — elite grassroots exposure and direct scout visibility.</div></div>
+   <div class="card reveal">${ic('europe')}<div class="ch">Cross-federation games</div><div class="cb">Challenge fixtures vs European youth sides — e.g. French Espoirs — to raise the level and create marquee content.</div></div>
+   <div class="card reveal">${ic('sun')}<div class="ch">Summer development camps</div><div class="cb">Centrally hosted, scout-attended camps — development, content and a revenue line from fees and sponsorship.</div></div>
+   <div class="card accent reveal">${ic('arrowUp')}<div class="ch">Why it compounds</div><div class="cb">Each adds exposure, sponsorship and playing level — same players, same platform, no new competition.</div></div>
+ </div>`,page:'21'},
+
+/* 22 — THE NUMBERS (4 cards) */
+{theme:'dark',eyebrow:'The Numbers',title:'The unit economics — illustrative',
+ body:`<div class="grid c4 compact">
+   <div class="card reveal">${ic('contract')}<div class="ch">Cost base</div><div class="cb">10 teams × 6–7 contracts ≈ ~65 players on apprentice wages (~£8–9k, rising to NMW at 18+). Clubs supply coaching, S&amp;C and venues. Illustratively £1.0–1.4m a year.</div></div>
+   <div class="card reveal">${ic('money')}<div class="ch">Base-case revenue</div><div class="cb">Media and sponsorship to youth and diaspora audiences, summer programming, central service fees and frequent small fees (£20–30k) cover the floor.</div></div>
+   <div class="card reveal">${ic('arrowUp')}<div class="ch">The upside</div><div class="cb">Occasional six-figure sales sit on top — a single £500k buy-out can reset a year. Real, but lumpy, and never the base case.</div></div>
+   <div class="card reveal">${ic('water')}<div class="ch">How it’s funded</div><div class="cb">A blend — club subsidisation, public development funding, commercial revenue and buy-out receipts — so no single source carries the league.</div></div>
+ </div>`,
+ fn:'Recurring revenue and subsidy hold the floor; the buy-outs are the upside that makes the asset compelling.',page:'22'},
+
+/* 23 — REVENUE & CAPITAL (3 cards + stat) */
+{theme:'dark',eyebrow:'Revenue & Capital',title:'The revenue, and the funding',
+ lead:'Three commercial revenue lines, plus a subsidisation fee from each club, carry operations — external capital is needed only to launch and bridge the early seasons.',
+ body:`<div class="two-col" style="gap:36px">
+   <div class="col-cards">
+     <div class="card reveal">${ic('broadcast')}<div class="ch">Sponsorship &amp; media</div><div class="cb">An anchor apparel partner (adidas/Nike) plus title and conference sponsors and content rights — ~£150–400k a year, building.</div></div>
+     <div class="card reveal">${ic('sun')}<div class="ch">Programming &amp; gate</div><div class="cb">Summer camps, the Combine, Pro-Am/1-on-1 and showcase finals — fees, tickets and sponsorship — ~£80–200k a year.</div></div>
+     <div class="card reveal">${ic('money')}<div class="ch">Buy-outs</div><div class="cb">Frequent small fees plus occasional six-figure sales — ~£100–300k a year, lumpy and growing.</div></div>
+   </div>
+   <div class="reveal" style="text-align:center">
+     <div class="statbig" style="font-size:88px">~£45k</div>
+     <p class="lead" style="margin-top:10px">per club a year — floating the residual ~£400–500k that public funding and revenue don’t cover, so the ten clubs carry operations together.</p>
+   </div>
+ </div>`,page:'23'},
+
+/* 24 — CLOSING */
+{theme:'dark',cls:'',eyebrow:'The Opportunity',title:'Own the pipeline.',
+ lead:'This framework converts British basketball’s greatest vulnerability — the early loss of its best young players — into the league’s most valuable long-term asset.',
+ body:`<div class="grid c3 compact" style="margin-top:8px;position:relative;z-index:2">
+   <div class="card reveal">${ico('seedling')}<div class="ch">Growth capital</div><div class="cb">Patient, strategic capital for the Youth League and central development — a long-horizon asset, not a quick return.</div></div>
+   <div class="card reveal">${ico('handshake')}<div class="ch">Founding participants</div><div class="cb">Vetted academies and SLB clubs anchoring season one.</div></div>
+   <div class="card reveal">${ico('building')}<div class="ch">Federation partnership</div><div class="cb">A rights and trickle-down agreement with the NGBs and its member clubs.</div></div>
+ </div>
+ <div class="rings reveal"><span class="r1"></span><span class="r2"></span><span class="r3"></span><span class="ball">${ballMark}</span></div>`,
+ page:'Super League Basketball · June 2026'},
+];
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const stage = document.getElementById('stage');
+function buildSlide(s,i){
+  const el=document.createElement('section');
+  el.className='slide '+s.theme+(s.cls?(' '+s.cls):'');
+  el.dataset.i=i;
+  let inner='';
+  if(s.html){ inner=s.html; }
+  else{
+    inner+=`<div class="reveal">`;
+    if(s.eyebrow) inner+=`<div class="eyebrow">${s.eyebrow}</div>`;
+    if(s.title)   inner+=`<h1 class="title">${s.title}</h1>`;
+    if(s.lead)    inner+=`<p class="lead">${s.lead}</p>`;
+    inner+=`</div>`;
+    inner+=`<div class="body">${s.body||''}</div>`;
+    if(s.fn) inner+=`<div class="fn reveal">${s.fn}</div>`;
+    inner+=`<div class="pagefoot"><span>Owning the Pipeline</span><span>${s.page||''}</span></div>`;
+  }
+  el.innerHTML=inner;
+  return el;
+}
+SLIDES.forEach((s,i)=>stage.appendChild(buildSlide(s,i)));
+const slideEls=[...stage.querySelectorAll('.slide')];   /* main deck only — not overview minis */
+document.getElementById('c-tot').textContent=SLIDES.length;
+
+/* ============================================================
+   SCALE TO FIT (letterbox)
+   ============================================================ */
+function fit(){
+  const sc=Math.min(window.innerWidth/1280, window.innerHeight/720);
+  stage.style.transform=`translate(-50%,-50%) scale(${sc})`;
+}
+window.addEventListener('resize',fit); fit();
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+let cur=-1, animating=false;
+function stagger(el){
+  [...el.querySelectorAll('.reveal')].forEach((r,k)=>{ r.style.animationDelay=(0.05+k*0.07)+'s'; });
+}
+function animateNums(el){
+  el.querySelectorAll('[data-count]').forEach(n=>{
+    const tgt=+n.dataset.count, pre=n.dataset.prefix||'', dur=900, t0=performance.now();
+    const fmt=v=>{ if(tgt>=1000) return Math.round(v).toLocaleString('en-GB'); return Math.round(v); };
+    const suffix = n.querySelector('small') ? n.querySelector('small').outerHTML : '';
+    function step(t){ const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3);
+      n.firstChild && (n.childNodes[0].nodeType===3) ? n.childNodes[0].textContent=pre+fmt(tgt*e)+(suffix?' ':'') : n.textContent=pre+fmt(tgt*e);
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+function animateBars(el){
+  el.querySelectorAll('.bar[data-h]').forEach(b=>{
+    const max=33; b.style.height=(b.dataset.h/max*100)+'%';
+  });
+}
+function go(n,dir){
+  n=Math.max(0,Math.min(SLIDES.length-1,n));
+  if(n===cur) return;
+  const el=slideEls[n];
+  dir = dir!==undefined ? dir : (n>cur?1:-1);
+  // Visibility is driven purely by the `cur` class (see CSS). No inline styles,
+  // so a revisited slide always becomes visible again.
+  slideEls.forEach(s=>s.classList.remove('cur','enter-next','enter-prev'));
+  // reset reveals so the staggered entrance re-runs each visit
+  el.querySelectorAll('.reveal').forEach(r=>{ r.style.animation='none'; void r.offsetWidth; r.style.animation=''; });
+  el.classList.add('cur', dir>=0?'enter-next':'enter-prev');
+  stagger(el);
+  cur=n;
+  document.getElementById('c-cur').textContent=n+1;
+  document.getElementById('progress').style.width=((n+1)/SLIDES.length*100)+'%';
+  if(location.hash!=='#'+(n+1)) history.replaceState(null,'','#'+(n+1));
+  // kick off in-slide animations slightly after entrance
+  setTimeout(()=>{ animateNums(el); animateBars(el); },380);
+  updateOverview();
+}
+function next(){ go(cur+1,1); }
+function prev(){ go(cur-1,-1); }
+
+document.getElementById('next').onclick=next;
+document.getElementById('prev').onclick=prev;
+
+/* keyboard */
+addEventListener('keydown',e=>{
+  if(document.getElementById('overview').classList.contains('on')){
+    if(e.key==='Escape'||e.key==='o'||e.key==='O'){toggleOverview();}
+    return;
+  }
+  switch(e.key){
+    case 'ArrowRight': case ' ': case 'PageDown': next(); e.preventDefault(); break;
+    case 'ArrowLeft': case 'PageUp': prev(); e.preventDefault(); break;
+    case 'Home': go(0); break;
+    case 'End': go(SLIDES.length-1); break;
+    case 'f': case 'F': toggleFull(); break;
+    case 'o': case 'O': toggleOverview(); break;
+  }
+});
+
+/* click zones (left third = prev, right = next) — ignore interactive cards */
+document.getElementById('viewport').addEventListener('click',e=>{
+  if(e.target.closest('.card,.navbtn,.tool,#overview,a,button')) return;
+  if(e.clientX < window.innerWidth*0.32) prev(); else next();
+});
+
+/* swipe */
+let tx=0,ty=0;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){ dx<0?next():prev(); }
+},{passive:true});
+
+/* fullscreen */
+function toggleFull(){ if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.(); } else { document.exitFullscreen?.(); } }
+document.getElementById('t-full').onclick=toggleFull;
+
+/* overview */
+const ov=document.getElementById('overview'), ovgrid=document.getElementById('ovgrid');
+SLIDES.forEach((s,i)=>{
+  const cell=document.createElement('div'); cell.className='ovcell'; cell.dataset.i=i;
+  const mini=document.createElement('div'); mini.className='mini';
+  mini.innerHTML=buildSlide(s,i).outerHTML;
+  cell.appendChild(mini);
+  const lbl=document.createElement('div'); lbl.className='lbl'; lbl.textContent=(i+1)+'. '+(s.title? s.title.replace(/<[^>]+>/g,'').slice(0,34) : 'Title');
+  cell.appendChild(lbl);
+  cell.onclick=()=>{ go(i); toggleOverview(); };
+  ovgrid.appendChild(cell);
+});
+function scaleMinis(){
+  document.querySelectorAll('.ovcell').forEach(c=>{
+    const w=c.clientWidth; const m=c.querySelector('.mini .slide')||c.querySelector('.mini > *');
+    const mini=c.querySelector('.mini');
+    mini.style.transform=`scale(${w/1280})`; mini.style.width='1280px'; mini.style.height='720px';
+  });
+}
+function updateOverview(){ document.querySelectorAll('.ovcell').forEach(c=>c.classList.toggle('cur',+c.dataset.i===cur)); }
+function toggleOverview(){ ov.classList.toggle('on'); if(ov.classList.contains('on')){ scaleMinis(); updateOverview(); } }
+document.getElementById('t-over').onclick=toggleOverview;
+addEventListener('resize',()=>{ if(ov.classList.contains('on')) scaleMinis(); });
+
+/* hint auto-hide */
+setTimeout(()=>document.getElementById('hint').classList.add('gone'),4600);
+
+/* deep-link + start */
+addEventListener('hashchange',()=>{ const n=parseInt(location.hash.slice(1))-1; if(!isNaN(n)) go(n); });
+const start=parseInt(location.hash.slice(1))-1;
+go(!isNaN(start)&&start>=0?start:0,1);
+</script>
+</body>
+</html>
