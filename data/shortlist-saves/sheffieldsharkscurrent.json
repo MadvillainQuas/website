@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-13T17:36:03.822Z",
+    "savedAt": "2026-06-15T11:47:43.683Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2292,6 +2292,60 @@
       "season": "",
       "savedAt": 1781333593175,
       "source": "manual"
+    },
+    "JR Konieczny": {
+      "metrics": {
+        "player": "JR Konieczny",
+        "team": "Florida Gulf Coast",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Florida Gulf Coast",
+      "season": "",
+      "savedAt": 1781522924705,
+      "source": "manual"
+    },
+    "Tevin Smith": {
+      "metrics": {
+        "player": "Tevin Smith",
+        "team": "Lucenec",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Lucenec",
+      "season": "",
+      "savedAt": 1781523419870,
+      "source": "manual"
+    },
+    "Quinton Mincey": {
+      "metrics": {
+        "player": "Quinton Mincey",
+        "team": "Tikvesh",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Tikvesh",
+      "season": "",
+      "savedAt": 1781524038627,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -2934,6 +2988,21 @@
       "name": "Noah Farrakhan",
       "team": "Komarno",
       "createdAt": 1781333593174
+    },
+    {
+      "name": "JR Konieczny",
+      "team": "Florida Gulf Coast",
+      "createdAt": 1781522924704
+    },
+    {
+      "name": "Tevin Smith",
+      "team": "Lucenec",
+      "createdAt": 1781523419870
+    },
+    {
+      "name": "Quinton Mincey",
+      "team": "Tikvesh",
+      "createdAt": 1781524038626
     }
   ],
   "starRatings": {
@@ -3945,6 +4014,26 @@
       "primary": 4,
       "secondary": [
         5
+      ]
+    },
+    "JR Konieczny": {
+      "primary": 3,
+      "secondary": [
+        4
+      ]
+    },
+    "Tevin Smith": {
+      "primary": 2,
+      "secondary": [
+        3,
+        4
+      ]
+    },
+    "Quinton Mincey": {
+      "primary": 3,
+      "secondary": [
+        2,
+        4
       ]
     }
   },
@@ -6117,6 +6206,18 @@
     "Noah Farrakhan": {
       "height": "6'1\"",
       "weight": "170"
+    },
+    "JR Konieczny": {
+      "height": "6'7\"",
+      "weight": "210"
+    },
+    "Tevin Smith": {
+      "height": "6'5\"",
+      "weight": "200"
+    },
+    "Quinton Mincey": {
+      "height": "6'7\"",
+      "weight": "190"
     }
   },
   "potentialRatings": {
