@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-15T11:47:43.683Z",
+    "savedAt": "2026-06-19T19:28:56.814Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2346,6 +2346,24 @@
       "season": "",
       "savedAt": 1781524038627,
       "source": "manual"
+    },
+    "Jeremiah Burke": {
+      "metrics": {
+        "player": "Jeremiah Burke",
+        "team": "Denver",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Denver",
+      "season": "",
+      "savedAt": 1781897261841,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3003,6 +3021,11 @@
       "name": "Quinton Mincey",
       "team": "Tikvesh",
       "createdAt": 1781524038626
+    },
+    {
+      "name": "Jeremiah Burke",
+      "team": "Denver",
+      "createdAt": 1781897261840
     }
   ],
   "starRatings": {
@@ -3112,7 +3135,8 @@
     "Jaidon Lipscomb": 3,
     "Seth Leday": 4,
     "Noah Farrakhan": 4,
-    "Brett Thompson": 4
+    "Brett Thompson": 4,
+    "Jeremiah Burke": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4034,6 +4058,12 @@
       "secondary": [
         2,
         4
+      ]
+    },
+    "Jeremiah Burke": {
+      "primary": 4,
+      "secondary": [
+        5
       ]
     }
   },
@@ -6218,6 +6248,10 @@
     "Quinton Mincey": {
       "height": "6'7\"",
       "weight": "190"
+    },
+    "Jeremiah Burke": {
+      "height": "6'7\"",
+      "weight": "220"
     }
   },
   "potentialRatings": {
@@ -6318,7 +6352,8 @@
     "Jaidon Lipscomb": 3,
     "Seth Leday": 4,
     "Noah Farrakhan": 4,
-    "Brett Thompson": 4
+    "Brett Thompson": 4,
+    "Jeremiah Burke": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7865,6 +7900,26 @@
           "level": "Bad"
         }
       ]
+    },
+    "Jeremiah Burke": {
+      "strengths": [
+        {
+          "title": "Physicality",
+          "description": "",
+          "level": "Good"
+        },
+        {
+          "title": "Face-Up Scoring",
+          "description": "",
+          "level": "Good"
+        },
+        {
+          "title": "C&S 3PT",
+          "description": "",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
