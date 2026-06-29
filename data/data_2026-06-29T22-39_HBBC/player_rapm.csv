@@ -1,0 +1,143 @@
+# RAPM - Regularized Adjusted Plus/Minus
+# Regularization parameter (alpha/lambda): 800
+# Minimum possessions filter: 250
+# Total players in calculation: 225
+# Qualified players exported: 135
+# Total stints used: 4644
+# Garbage time stints excluded: 327
+Team,Player_Number,Player_Name,Possessions,ORAPM,DRAPM,RAPM
+Nottingham Hoods,24,Donell Nixon Ii,1374,4.28,4.76,9.05
+Milton Keynes Breakers,23,Jordan Spencer,1606,4.0,2.05,6.05
+Newcastle Knights,10,Sam Trunley,1685,4.02,1.48,5.5
+Worthing Thunder,4,Adrian Scarborough,916,2.57,2.92,5.49
+Reading Rockets,4,Jax Bouknight,1393,1.83,3.33,5.16
+Essex Rebels,2,Miles Brown,1415,4.61,0.39,5.0
+London Cavaliers,10,Juan Manning,1616,3.21,1.5,4.71
+Reading Rockets,12,Ty Nsangu,974,2.85,1.7,4.55
+Reading Rockets,10,Malik Bryant,1273,2.04,2.06,4.1
+Birmingham Rockets,3,Eric Donaldson,1623,1.83,2.24,4.08
+Hemel Storm,11,Kai Walker,1176,2.89,0.86,3.75
+Worthing Thunder,7,Elliott Dadds,1420,-1.32,5.06,3.74
+Hemel Storm,4,Sam Newman,1759,2.64,1.02,3.66
+Milton Keynes Breakers,21,Xavier Wilson,1147,1.4,2.13,3.53
+Reading Rockets,14,Cooper Creek,1240,1.81,1.65,3.46
+Loughborough Riders,31,Jalen Cook,1526,0.86,2.56,3.42
+Bristol Hurricanes,31,Denzel Ubiaro,1451,1.34,1.8,3.15
+Nottingham Hoods,25,Byrce Johnson,1212,1.82,0.96,2.79
+Birmingham Rockets,13,Orlan Jackman,979,1.8,0.93,2.74
+Milton Keynes Breakers,7,Blayne Freckleton,670,2.35,0.31,2.66
+Birmingham Rockets,8,Martyn Gayle,891,4.44,-1.88,2.57
+Derby Trailblazers,9,Malcolm Smith,649,0.92,1.59,2.51
+Newcastle Knights,5,Messiah Jones,1301,0.79,1.7,2.49
+Yorkshire Dragons,4,Jordan Jefferson,535,1.38,1.05,2.43
+Hemel Storm,2,Matt Norman,1318,2.71,-0.44,2.27
+Nottingham Hoods,1,Tyrone Williams,1635,1.34,0.86,2.2
+Derby Trailblazers,3,Sean Mo Walker,1257,2.46,-0.38,2.08
+Essex Rebels,22,Tom Child,1624,-0.87,2.85,1.98
+Worthing Thunder,15,Justin Hopkins,1784,1.54,0.43,1.97
+Milton Keynes Breakers,10,Chase Thompson,1055,0.68,1.23,1.91
+Birmingham Rockets,0,Ronald Blain,1749,0.81,0.98,1.79
+Yorkshire Dragons,10,David Ulph,1674,0.37,1.41,1.78
+Yorkshire Dragons,6,Corey Johnson,1554,-0.44,2.15,1.72
+Newcastle Knights,1,Bradley Dean,1668,3.61,-1.99,1.62
+Newcastle Knights,8,Max Matthews,691,1.09,0.47,1.56
+Derby Trailblazers,7,Raheem May-Thompson,1380,0.78,0.69,1.47
+Loughborough Riders,36,Tomide Akinsuku,999,1.38,-0.07,1.31
+Birmingham Rockets,14,Zack Powell,1583,0.57,0.69,1.26
+Loughborough Riders,0,Johde Campbell,1479,-0.33,1.52,1.19
+Loughborough Riders,4,Liam Campbell,501,-0.63,1.82,1.18
+Nottingham Hoods,14,Micah Savery-Richards,941,-1.82,3.0,1.17
+Derby Trailblazers,22,Jai Pathmarajah,1629,3.06,-1.91,1.15
+Reading Rockets,8,Victor Olarerin,1488,2.21,-1.07,1.13
+London Cavaliers,4,Aj Roberts,1636,2.02,-0.91,1.11
+Yorkshire Dragons,1,Ronnie Ani,482,1.02,0.08,1.1
+Derby Trailblazers,4,Charlie Brown,1337,1.41,-0.33,1.08
+Milton Keynes Breakers,9,Dashawn Jackson,1222,-1.24,2.25,1.01
+Yorkshire Dragons,93,Nick Lewis,1360,0.97,0.03,1.0
+Reading Rockets,5,Yusef Salih,635,0.12,0.88,1.0
+Newcastle Knights,15,Theo Riley,302,1.83,-0.89,0.93
+London Cavaliers,13,Mekhi Collins,1385,1.09,-0.17,0.92
+London Cavaliers,15,Marquel Beasley,1370,2.23,-1.48,0.75
+Milton Keynes Breakers,13,Luke Gregory,543,-1.68,2.31,0.63
+Milton Keynes Breakers,12,Jonas Dietrich,1209,0.71,-0.1,0.61
+Hemel Storm,10,Darien Nelson-Henry,1170,0.44,0.15,0.58
+Bristol Hurricanes,9,Chris Taylor,538,-2.33,2.75,0.42
+Reading Rockets,6,Eliaz (Zain) Poorman,1238,-1.27,1.51,0.24
+Birmingham Rockets,21,Luke Okosieme,1130,-2.63,2.81,0.18
+Nottingham Hoods,0,Abiodun Adedo,370,2.52,-2.47,0.05
+Essex Rebels,10,Kyron Martin,1294,0.96,-0.91,0.05
+Birmingham Rockets,6,Lucas Mcgregor,1482,-1.42,1.45,0.03
+Bristol Hurricanes,55,Vilmantas Dilys,945,-2.25,2.22,-0.03
+Newcastle Knights,3,Mekhi Hendry,643,0.81,-0.9,-0.09
+Yorkshire Dragons,23,Jordan Whelan,1403,1.24,-1.48,-0.24
+Essex Rebels,13,Daniel Johnson-Thompson,608,-2.44,2.17,-0.26
+London Cavaliers,23,Daniel Braster,1398,-1.43,1.07,-0.36
+Reading Rockets,9,Simon Chamberlain,625,0.94,-1.3,-0.36
+Hemel Storm,3,Brayden Inger,1253,0.45,-0.83,-0.38
+Bristol Hurricanes,4,Corey Samuels,1381,0.68,-1.07,-0.4
+Newcastle Knights,11,Jaron Thames,2013,3.04,-3.56,-0.52
+Yorkshire Dragons,7,Andreas Lycoudis,365,-0.24,-0.43,-0.67
+Loughborough Riders,22,Milo Gordon,335,0.08,-0.79,-0.71
+Bristol Hurricanes,11,David Forsyth,582,-3.72,3.01,-0.71
+Nottingham Hoods,23,Latrell Maitland,300,-0.06,-0.95,-1.01
+Newcastle Knights,3,Hafeez Abdul,636,0.52,-1.56,-1.04
+Loughborough Riders,6,Oscar Curran,353,-0.24,-1.05,-1.29
+Nottingham Hoods,7,Sam Akano,1216,-0.33,-1.0,-1.33
+Essex Rebels,1,Michael Amako,512,-3.53,2.18,-1.36
+Newcastle Knights,15,Will Neighbour,533,2.91,-4.31,-1.39
+Loughborough Riders,8,Callum Keys,664,-1.07,-0.35,-1.42
+Derby Trailblazers,0,Casey Burr,518,-2.37,0.85,-1.52
+Yorkshire Dragons,5,Jack Mielke,578,0.1,-2.0,-1.9
+Yorkshire Dragons,5,Jack Melke,1087,-0.69,-1.25,-1.95
+Milton Keynes Breakers,15,Mike New Jr.,884,-0.87,-1.08,-1.96
+Worthing Thunder,11,Matthew Bryan-Amaning,1264,0.04,-2.03,-1.99
+Loughborough Riders,43,Seth Wylie,663,-2.34,0.31,-2.03
+Hemel Storm,21,Veron Eze,892,-1.61,-0.49,-2.11
+Derby Trailblazers,13,Connor Washington,1614,-2.2,-0.1,-2.3
+Nottingham Hoods,0,Mergin Sokoli,268,-2.38,-0.04,-2.41
+Milton Keynes Breakers,11,Ben Baker-Mccann,803,-2.99,0.55,-2.44
+London Cavaliers,3,Darren Ainembabazi,361,-2.65,0.15,-2.5
+Nottingham Hoods,6,Elliot Bailey,1385,-0.47,-2.13,-2.59
+Birmingham Rockets,7,Faaris Mughaal,685,-1.89,-0.82,-2.72
+Bristol Hurricanes,23,Jules Dang-Akodo,577,-1.62,-1.13,-2.75
+Yorkshire Dragons,14,Logan Rooney,770,-1.19,-1.71,-2.9
+Essex Rebels,5,Ben Winter,546,-1.53,-1.39,-2.92
+Loughborough Riders,11,Michael Joiner,1301,-2.68,-0.27,-2.95
+Essex Rebels,9,Tyreese Hudson,702,0.18,-3.15,-2.97
+Worthing Thunder,0,Danny Evans,1033,-2.63,-0.39,-3.02
+Bristol Hurricanes,12,Elvisi Dusha,1356,-1.53,-1.66,-3.19
+Worthing Thunder,5,Bode Adeluola,1169,-0.07,-3.13,-3.2
+Milton Keynes Breakers,14,Kai Williams,264,-2.28,-1.03,-3.31
+London Cavaliers,7,Aaron Pyne,308,-3.12,-0.22,-3.34
+Loughborough Riders,5,Dan Hadley,573,-1.22,-2.25,-3.46
+Bristol Flyers II,6,Ebuka Ekwegh,443,-1.63,-2.06,-3.69
+Bristol Flyers II,0,Yusuf Hafid,1234,-2.68,-1.05,-3.73
+Loughborough Riders,10,Ben Woog,359,-2.83,-0.97,-3.8
+Bristol Hurricanes,2,Kobe Hill,352,-1.99,-1.99,-3.98
+Hemel Storm,3,Mergim Sokoli,334,-1.94,-2.1,-4.04
+London Cavaliers,11,Joe Richards,632,-3.8,-0.25,-4.05
+London Cavaliers,21,Daniel Delsol-Lowry,477,-0.4,-3.77,-4.17
+Essex Rebels,0,Mou Wol-Cummings,373,-4.11,-0.07,-4.18
+Bristol Flyers II,7,Giuseppe Landolfi,437,-4.01,-0.24,-4.25
+Worthing Thunder,22,Elijah Maynard,1616,-2.55,-1.85,-4.4
+Bristol Flyers II,13,Reggie Eigbe,999,-2.52,-1.96,-4.49
+Newcastle Knights,13,Finn Cork,329,-1.36,-3.13,-4.49
+Bristol Hurricanes,1,Daniel Edozie,1385,-3.3,-1.26,-4.56
+Bristol Flyers II,11,Roman Price,538,-2.29,-2.41,-4.7
+Bristol Flyers II,10,Lanre Ayinla,952,-5.43,0.58,-4.85
+Derby Trailblazers,30,Robert Marsden,934,-2.69,-2.31,-5.0
+Hemel Storm,7,Jack Burnell,674,-2.27,-2.8,-5.07
+Hemel Storm,12,Taylor Johnson,651,-3.76,-1.41,-5.18
+Hemel Storm,23,Di-Jani Parkinson,392,-2.67,-2.78,-5.46
+Bristol Hurricanes,24,James Claar,293,-2.06,-3.43,-5.49
+Essex Rebels,14,Remy Udeh,1101,-2.46,-3.19,-5.66
+Bristol Flyers II,24,Nassim Ladjimi,1198,-2.8,-3.04,-5.84
+Bristol Flyers II,21,Nikolas Sagkovits,692,-2.24,-3.83,-6.08
+Bristol Flyers II,12,Jack Craggs,635,-5.65,-0.46,-6.11
+Essex Rebels,20,Anthony Idiata-Mendez,607,-4.73,-1.62,-6.35
+Nottingham Hoods,4,Thierry Walker,547,-5.53,-0.89,-6.43
+Bristol Flyers II,6,Wickens Simba,289,-3.69,-3.24,-6.94
+Essex Rebels,36,Harry Gent,688,-5.97,-1.02,-6.99
+Worthing Thunder,35,Jonathan Lashley,625,-5.72,-2.04,-7.76
+Bristol Flyers II,8,Thomas Browne,528,-3.64,-4.41,-8.05
+Bristol Flyers II,4,Anthony Bhebhe,452,-4.57,-4.14,-8.71
