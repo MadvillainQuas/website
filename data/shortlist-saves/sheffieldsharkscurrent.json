@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-07T09:48:15.067Z",
+    "savedAt": "2026-07-07T11:00:53.127Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -7965,24 +7965,29 @@
         },
         {
           "title": "Post-Ups",
-          "description": "Post pins smaller defenders for post opportunities, opportunistic on the break. Capable additional scoring outlet against 3's in the post, w/ some variety to his scoring including turnaround J. Pepperdine liked to play some post-entry w/ him. Occasionally likes to Barkley when attacking off-catch.",
-          "level": "Good"
+          "description": "Post pins smaller defenders for post opportunities, opportunistic on the break. Capable additional scoring outlet against 3's in the post. Pepperdine liked to play some post-entry w/ him. Occasionally likes to Barkley when attacking off-catch.",
+          "level": "Decent"
         },
         {
           "title": "Frame/Additional D Rebounding",
           "description": "Good frame for his position, solid chest when defending 1-on-1. Can get around screens as a on-ball defender. Good D-reb % (15%)",
+          "level": "Decent"
+        },
+        {
+          "title": "Nail D",
+          "description": "Aggressive digging down, can get steals.",
           "level": "Good"
         },
         {
-          "title": "",
-          "description": "",
-          "level": "Good"
+          "title": "First Step",
+          "description": "Good first-step off-catch, can rip through and go. Average from mid but does have a pull from there.",
+          "level": "Decent"
         }
       ],
       "weaknesses": [
         {
-          "title": "Athleticism/First-Step",
-          "description": "For a heavy cuts player, is an average athlete/finisher around the rim. Average first-step when slashing, doesn't separate w/ speed (requires an advantage).",
+          "title": "Finishing",
+          "description": "Mediocre finisher around the rim if contested. Can struggle if he doesn't get a step on his man. Not particularly high driving volume (1 per game).",
           "level": "Slight"
         },
         {
@@ -7992,7 +7997,7 @@
         },
         {
           "title": "Guard Skills",
-          "description": "Mostly a 3 profile (vs. 2), almost always played @ the 3 w/ less handling responsibilities. Limited dribbles possessions (mostly catch and pass), simple PNR if he's put in it. Played at a super-low usage% at Marist (13% and below) at the low-major level before his transfer to Pepperdine. ",
+          "description": "Mostly a 3 profile (vs. 2), almost always played @ the 3 w/ less handling responsibilities (0.3 PNR per game). Simple PNR if he's put in it. Played at a super-low usage% at Marist (13% and below) at the low-major level before his transfer to Pepperdine. Doesn't break down w/ handle.",
           "level": "Slight"
         },
         {
