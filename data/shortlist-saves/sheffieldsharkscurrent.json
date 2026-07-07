@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-06-19T19:28:56.814Z",
+    "savedAt": "2026-07-07T08:23:40.716Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2364,6 +2364,24 @@
       "season": "",
       "savedAt": 1781897261841,
       "source": "manual"
+    },
+    "Javon Cooley": {
+      "metrics": {
+        "player": "Javon Cooley",
+        "team": "Pepperdine",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Pepperdine",
+      "season": "",
+      "savedAt": 1783407194181,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3026,6 +3044,11 @@
       "name": "Jeremiah Burke",
       "team": "Denver",
       "createdAt": 1781897261840
+    },
+    {
+      "name": "Javon Cooley",
+      "team": "Pepperdine",
+      "createdAt": 1783407194180
     }
   ],
   "starRatings": {
@@ -3136,7 +3159,8 @@
     "Seth Leday": 4,
     "Noah Farrakhan": 4,
     "Brett Thompson": 4,
-    "Jeremiah Burke": 3.5
+    "Jeremiah Burke": 3.5,
+    "Javon Cooley": 3
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4064,6 +4088,12 @@
       "primary": 4,
       "secondary": [
         5
+      ]
+    },
+    "Javon Cooley": {
+      "primary": 3,
+      "secondary": [
+        2
       ]
     }
   },
@@ -6252,6 +6282,10 @@
     "Jeremiah Burke": {
       "height": "6'7\"",
       "weight": "220"
+    },
+    "Javon Cooley": {
+      "height": "6'5\"",
+      "weight": "205"
     }
   },
   "potentialRatings": {
@@ -6353,7 +6387,8 @@
     "Seth Leday": 4,
     "Noah Farrakhan": 4,
     "Brett Thompson": 4,
-    "Jeremiah Burke": 4
+    "Jeremiah Burke": 4,
+    "Javon Cooley": 3
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -7920,6 +7955,52 @@
         }
       ],
       "weaknesses": []
+    },
+    "Javon Cooley": {
+      "strengths": [
+        {
+          "title": "Cuts/Off-Ball Movement",
+          "description": "Very smart, very active cutter especially on the baseline. Interacts smartly with handoffs to get easy points off backdoor cuts. Frequent points off of cuts. Constantly moving.",
+          "level": "Elite"
+        },
+        {
+          "title": "Post-Ups",
+          "description": "Post pins smaller defenders for post opportunities. Capable scorer on mismatches in the post. Pepperdine liked to play a lot of post-entry w/ him.",
+          "level": "Good"
+        },
+        {
+          "title": "Frame",
+          "description": "Good frame for his position, solid chest when defending 1-on-1. Can get around screens as a on-ball defender.",
+          "level": "Good"
+        },
+        {
+          "title": "",
+          "description": "",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Athleticism",
+          "description": "For a heavy cuts player, is a mediocre athlete/finisher around the rim. Average first-step when slashing.",
+          "level": "Bad"
+        },
+        {
+          "title": "Inconsistency of Shot",
+          "description": "Shot 29% from deep the past season at Pepperdine, his first season shooting a solid volume (8/100 3's - at Marist was taking a low volume, mostly corner 3's).",
+          "level": "Bad"
+        },
+        {
+          "title": "Handle",
+          "description": "More of a 3 profile w/ limited handling responsibilities. Limited dribbles possessions (mostly catch and pass). Played at a super-low usage% at Marist (13% and below) at the low-major level before his transfer to Pepperdine.",
+          "level": "Bad"
+        },
+        {
+          "title": "Close-Out D/Off-Ball",
+          "description": "Sluggish hips when defending the close-out. Could be caught ball-watching at times.",
+          "level": "Slight"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
