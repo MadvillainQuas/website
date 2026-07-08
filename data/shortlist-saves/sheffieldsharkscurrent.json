@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-07T11:00:53.127Z",
+    "savedAt": "2026-07-08T04:12:10.493Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2382,6 +2382,42 @@
       "season": "",
       "savedAt": 1783407194181,
       "source": "manual"
+    },
+    "Malik Messina-Moore": {
+      "metrics": {
+        "player": "Malik Messina-Moore",
+        "team": "Xavier",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Xavier",
+      "season": "",
+      "savedAt": 1783483278316,
+      "source": "manual"
+    },
+    "Christian May": {
+      "metrics": {
+        "player": "Christian May",
+        "team": "UNC Wilmington",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "UNC Wilmington",
+      "season": "",
+      "savedAt": 1783483913853,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3049,6 +3085,16 @@
       "name": "Javon Cooley",
       "team": "Pepperdine",
       "createdAt": 1783407194180
+    },
+    {
+      "name": "Malik Messina-Moore",
+      "team": "Xavier",
+      "createdAt": 1783483278316
+    },
+    {
+      "name": "Christian May",
+      "team": "UNC Wilmington",
+      "createdAt": 1783483913853
     }
   ],
   "starRatings": {
@@ -3160,7 +3206,9 @@
     "Noah Farrakhan": 4,
     "Brett Thompson": 4,
     "Jeremiah Burke": 3.5,
-    "Javon Cooley": 3
+    "Javon Cooley": 3,
+    "Malik Messina-Moore": 4,
+    "Christian May": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4094,6 +4142,12 @@
       "primary": 3,
       "secondary": [
         2
+      ]
+    },
+    "Malik Messina-Moore": {
+      "primary": 2,
+      "secondary": [
+        3
       ]
     }
   },
@@ -6286,6 +6340,10 @@
     "Javon Cooley": {
       "height": "6'5\"",
       "weight": "205"
+    },
+    "Malik Messina-Moore": {
+      "height": "6'5\"",
+      "weight": "205"
     }
   },
   "potentialRatings": {
@@ -6388,7 +6446,8 @@
     "Noah Farrakhan": 4,
     "Brett Thompson": 4,
     "Jeremiah Burke": 4,
-    "Javon Cooley": 3
+    "Javon Cooley": 3,
+    "Christian May": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8006,6 +8065,21 @@
           "level": "Slight"
         }
       ]
+    },
+    "Malik Messina-Moore": {
+      "strengths": [
+        {
+          "title": "Defense",
+          "description": "Agile, high motor defender. Good ability to move around screens - occasionally used as a dogged POA defender. Switchable 1-4. Physical and strong defending the post. ",
+          "level": "Good"
+        },
+        {
+          "title": "Speed",
+          "description": "",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
