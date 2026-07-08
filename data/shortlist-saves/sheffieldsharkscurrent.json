@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-08T04:12:10.493Z",
+    "savedAt": "2026-07-08T04:37:01.888Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -4147,6 +4147,7 @@
     "Malik Messina-Moore": {
       "primary": 2,
       "secondary": [
+        1,
         3
       ]
     }
@@ -6357,7 +6358,7 @@
     "Rayshon Harrison": 5,
     "Sam Trunley": 3,
     "Sean Trumper": 4,
-    "James Okonkwo": 4.5,
+    "James Okonkwo": 3.5,
     "Zaire Williams": 4,
     "Jalen Page": 4,
     "Leland Walker": 4.5,
@@ -6447,7 +6448,8 @@
     "Brett Thompson": 4,
     "Jeremiah Burke": 4,
     "Javon Cooley": 3,
-    "Christian May": 4
+    "Christian May": 4,
+    "Malik Messina-Moore": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8070,12 +8072,17 @@
       "strengths": [
         {
           "title": "Defense",
-          "description": "Agile, high motor defender. Good ability to move around screens - occasionally used as a dogged POA defender. Switchable 1-4. Physical and strong defending the post. ",
+          "description": "Agile, high motor defender. Good ability to move around screens - occasionally used as a dogged POA defender, picks up full-court/high pick-up point. Tests handle w/ jabs at the ball. Switchable 1-4. Physical and strong defending the post. ",
           "level": "Good"
         },
         {
-          "title": "Speed",
-          "description": "",
+          "title": "Speed/Handles",
+          "description": "Quick downhill speed. Able to shift defenders w/ his tight handle. Handles ball pressure well. Likes to snake toward the middle of the paint.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing",
+          "description": "Heads-up passer off-catch, looking to make the right play - generates points for others with his ability to handle in traffic (19% ast rate, +1 AST/USG). Able to offload in tight spaces. Capable additional pick-and-roll playmaker.",
           "level": "Good"
         }
       ],
