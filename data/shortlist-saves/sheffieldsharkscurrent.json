@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-08T04:37:01.888Z",
+    "savedAt": "2026-07-08T05:27:40.062Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -8082,11 +8082,22 @@
         },
         {
           "title": "Passing",
-          "description": "Heads-up passer off-catch, looking to make the right play - generates points for others with his ability to handle in traffic (19% ast rate, +1 AST/USG). Able to offload in tight spaces. Capable additional pick-and-roll playmaker.",
+          "description": "Heads-up passer off-catch, looking to make the right play - generates points for others with his ability to handle in traffic (19% ast rate, +1 AST/USG) and ability to smoothly pass off-handle. Able to offload in tight spaces. Capable additional pick-and-roll playmaker, deals with aggressive coverages.",
+          "level": "Good"
+        },
+        {
+          "title": "Hand-Offs/Off-Ball/3PT Shooting",
+          "description": "Manipulates defenders with his movement off-ball. Passes and moves into his shot. Shot the 3 @ good volume, and at 40% at Montana State last year, operating off of screens/movement shooting.",
           "level": "Good"
         }
       ],
-      "weaknesses": []
+      "weaknesses": [
+        {
+          "title": "Inconsistent w/ his Shot in the HMs",
+          "description": "Shot 40% on good volume at Montana State, but dipped down to 31% at Xavier.",
+          "level": "Bad"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
