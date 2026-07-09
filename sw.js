@@ -18,7 +18,7 @@
  * Versioned cache name → bump CACHE_VERSION to invalidate the old
  * cache after a deploy. Old caches are pruned on activate.
  * ============================================================ */
-const CACHE_VERSION = 'prophesy-v26-2026-06-12';
+const CACHE_VERSION = 'prophesy-v27-2026-07-09';
 const APP_SHELL = [
     './',
     './index.html',
@@ -101,6 +101,15 @@ self.addEventListener('fetch', (event) => {
     }
 
     const sameOrigin = (url.origin === self.location.origin);
+
+    // Transfer Matrix (/transfermatrix/): bypass the SW entirely. Its
+    // player_stats CSVs are ~77 MB total — caching them here would pin a
+    // stale copy in Cache Storage until the next version bump. The app
+    // fetches them with cache:'no-cache', so the browser's HTTP cache +
+    // GitHub Pages ETags handle freshness (304s) far more cheaply.
+    if (sameOrigin && /^\/transfermatrix\//i.test(url.pathname)) {
+        return; // let the browser handle it normally
+    }
 
     // Network-first for our config files (so admin updates propagate fast).
     if (sameOrigin && /\/config\//.test(url.pathname)) {

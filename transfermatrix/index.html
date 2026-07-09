@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRANSFER MATRIX // League BPM Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04070d; --panel:rgba(8,18,32,.78); --panel2:rgba(6,13,24,.9);
+  --line:rgba(0,229,255,.22); --line-hot:rgba(0,229,255,.65);
+  --cyan:#00e5ff; --cyan-dim:#0e94ab; --magenta:#ff2d95; --amber:#ffb347;
+  --green:#39ff9c; --red:#ff4d5e; --text:#c9e7f6; --dim:#5d7f96; --faint:#33546a;
+  --mono:'Share Tech Mono','Consolas',monospace;
+  --disp:'Orbitron','Segoe UI',sans-serif;
+  --body:'Rajdhani','Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{
+  font-family:var(--body); color:var(--text); min-height:100vh; overflow-x:hidden;
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(255,45,149,.10), transparent 60%),
+    radial-gradient(1000px 700px at 15% 10%, rgba(0,229,255,.10), transparent 55%),
+    var(--bg);
+}
+body::before{
+  content:""; position:fixed; left:-50%; right:-50%; bottom:-12vh; height:55vh; z-index:0;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,229,255,.14) 0 1px, transparent 1px 70px),
+    repeating-linear-gradient(0deg, rgba(0,229,255,.14) 0 1px, transparent 1px 46px);
+  transform:perspective(420px) rotateX(62deg);
+  mask-image:linear-gradient(to top, rgba(0,0,0,.8), transparent);
+  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,.8), transparent);
+  animation:gridflow 9s linear infinite; pointer-events:none;
+}
+@keyframes gridflow{from{background-position:0 0,0 0}to{background-position:0 0,0 46px}}
+body::after{
+  content:""; position:fixed; inset:0; z-index:60; pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;
+}
+.wrap{position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:26px 22px 60px}
+
+header{display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; margin-bottom:8px}
+h1{
+  font-family:var(--disp); font-weight:900; font-size:clamp(24px,3.4vw,40px); letter-spacing:.14em;
+  color:#eaffff; text-shadow:0 0 8px rgba(0,229,255,.9),0 0 32px rgba(0,229,255,.45);
+}
+h1 .mg{color:var(--magenta); text-shadow:0 0 8px rgba(255,45,149,.9),0 0 30px rgba(255,45,149,.5)}
+.sub{font-family:var(--mono); color:var(--dim); font-size:13px; letter-spacing:.22em}
+.hr{height:2px; margin:12px 0 24px; border:0;
+  background:linear-gradient(90deg, var(--cyan), rgba(0,229,255,.05) 45%, rgba(255,45,149,.05) 55%, var(--magenta));
+  box-shadow:0 0 12px rgba(0,229,255,.5)}
+
+.deck{display:grid; grid-template-columns:1fr .82fr 1fr; gap:18px}
+@media(max-width:980px){.deck{grid-template-columns:1fr}}
+.card{
+  background:var(--panel); border:1px solid var(--line); position:relative;
+  padding:18px 18px 20px; backdrop-filter:blur(4px);
+  clip-path:polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+}
+.card::before{content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(180deg, rgba(0,229,255,.06), transparent 30%)}
+.card h2{
+  font-family:var(--disp); font-size:13px; font-weight:700; letter-spacing:.3em; color:var(--cyan);
+  text-shadow:0 0 10px rgba(0,229,255,.7); margin-bottom:14px; display:flex; align-items:center; gap:10px;
+}
+.card h2 .tick{width:8px;height:8px;background:var(--cyan);box-shadow:0 0 8px var(--cyan);display:inline-block}
+.card.dst h2{color:var(--magenta); text-shadow:0 0 10px rgba(255,45,149,.7)}
+.card.dst h2 .tick{background:var(--magenta); box-shadow:0 0 8px var(--magenta)}
+.card.dst{border-color:rgba(255,45,149,.28)}
+
+label.fl{display:block; font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--dim); margin:10px 0 4px}
+select,input[type=text],input[type=number]{
+  width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  font-family:var(--body); font-weight:600; font-size:16px; padding:9px 10px; outline:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+select:focus,input:focus{border-color:var(--line-hot); box-shadow:0 0 10px rgba(0,229,255,.35)}
+select{appearance:none; -webkit-appearance:none;
+  background-image:linear-gradient(45deg, transparent 50%, var(--cyan) 50%),linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+  background-position:calc(100% - 18px) 55%, calc(100% - 12px) 55%; background-size:6px 6px; background-repeat:no-repeat; padding-right:34px}
+option{background:#06101d; color:var(--text)}
+input[type=number]{font-family:var(--mono); font-size:15px}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+.search{position:relative}
+.results{
+  position:absolute; top:100%; left:0; right:0; z-index:40; max-height:280px; overflow-y:auto;
+  background:#050d18; border:1px solid var(--line-hot); box-shadow:0 8px 30px rgba(0,0,0,.7),0 0 18px rgba(0,229,255,.25);
+  display:none;
+}
+.results.open{display:block}
+.rrow{display:flex; justify-content:space-between; gap:10px; padding:8px 12px; cursor:pointer; border-bottom:1px solid rgba(0,229,255,.08)}
+.rrow:hover{background:rgba(0,229,255,.10)}
+.rrow .nm{font-weight:700; color:#eaffff}
+.rrow .meta{font-family:var(--mono); font-size:11px; color:var(--dim)}
+.rrow .bpm{font-family:var(--mono); font-size:12px; color:var(--cyan); white-space:nowrap}
+.chip{
+  display:none; margin-top:8px; font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+  color:var(--green); border:1px solid rgba(57,255,156,.4); padding:4px 8px;
+  text-shadow:0 0 8px rgba(57,255,156,.6);
+}
+.chip.on{display:inline-block}
+
+.minrow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stab{display:flex; align-items:center; gap:8px; margin-top:14px; font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.08em; cursor:pointer}
+.stab input{width:auto; accent-color:var(--cyan)}
+
+.transit{display:flex; flex-direction:column; gap:12px; justify-content:center}
+.gradebar{position:relative; height:14px; background:rgba(255,255,255,.05); border:1px solid var(--line); overflow:hidden}
+.gradebar i{position:absolute; inset:0; transform-origin:left;
+  background:linear-gradient(90deg, var(--cyan-dim), var(--cyan)); box-shadow:0 0 12px rgba(0,229,255,.6)}
+.gradebar.mg i{background:linear-gradient(90deg,#8b1053,var(--magenta)); box-shadow:0 0 12px rgba(255,45,149,.6)}
+.gl{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--dim); margin-bottom:3px}
+.gl b{color:var(--text); font-weight:400}
+.gapbox{text-align:center; margin:2px 0}
+.gapbox .arrow{font-size:26px; line-height:1}
+.gapbox .gap{font-family:var(--disp); font-weight:700; font-size:15px; letter-spacing:.12em}
+.gapbox .cap{font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:.2em; margin-top:2px}
+.up{color:var(--red); text-shadow:0 0 10px rgba(255,77,94,.7)}
+.down{color:var(--green); text-shadow:0 0 10px rgba(57,255,156,.7)}
+.conf{border:1px dashed var(--line); padding:8px 10px; font-family:var(--mono); font-size:11px; color:var(--dim); line-height:1.7}
+.conf b{color:var(--cyan); font-weight:400}
+.conf .lvl{letter-spacing:.2em}
+.swap{
+  align-self:center; background:none; border:1px solid var(--line-hot); color:var(--cyan); cursor:pointer;
+  font-family:var(--disp); font-size:12px; letter-spacing:.25em; padding:8px 18px;
+  text-shadow:0 0 8px rgba(0,229,255,.8); transition:all .15s;
+}
+.swap:hover{background:rgba(0,229,255,.12); box-shadow:0 0 18px rgba(0,229,255,.5)}
+.modes{display:flex; gap:6px}
+.modes button{
+  flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer;
+  font-family:var(--disp); font-size:10px; letter-spacing:.14em; padding:8px 4px; transition:all .15s;
+}
+.modes button:hover{color:var(--text); border-color:var(--line-hot)}
+.modes button.on{color:#031318; background:var(--cyan); border-color:var(--cyan);
+  box-shadow:0 0 14px rgba(0,229,255,.55); text-shadow:none}
+.modes button.dis{opacity:.3; cursor:not-allowed}
+.modehint{font-family:var(--mono); font-size:10px; color:var(--faint); letter-spacing:.06em; line-height:1.5; min-height:30px}
+
+.filterbar{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px; padding:12px 18px;
+  clip-path:none; z-index:5}  /* no clip + raised stacking context so the exclusion dropdown paints over the cards below */
+.filterbar label.fl{margin:0}
+.filterbar select{width:auto; min-width:150px}
+.filterbar .fbarrow{color:var(--magenta); font-size:16px; text-shadow:0 0 8px rgba(255,45,149,.7)}
+.filterbar .yrinfo{font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.08em; margin-left:auto}
+
+.tabs{display:flex; gap:8px; margin-bottom:16px}
+.tabs button{
+  background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer;
+  font-family:var(--disp); font-size:11px; letter-spacing:.22em; padding:10px 22px; transition:all .15s;
+}
+.tabs button:hover{color:var(--text); border-color:var(--line-hot)}
+.tabs button.on{color:#031318; background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 16px rgba(0,229,255,.5)}
+
+.idxctl{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+.idxctl select{width:auto; min-width:230px}
+.idxctl .yrinfo{font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.08em; margin-left:auto}
+.idxchart-wrap{overflow-x:auto}
+.idxg{transition:opacity .12s}
+#idxTip{position:fixed; display:none; z-index:80; background:#050d18; border:1px solid var(--line-hot);
+  padding:6px 10px; font-family:var(--mono); font-size:11px; color:var(--text); pointer-events:none;
+  box-shadow:0 0 14px rgba(0,229,255,.3); line-height:1.7}
+.idxtable-wrap{overflow-x:auto; padding:0 0 8px}
+.idxtable{border-collapse:collapse; width:100%}
+.idxtable th,.idxtable td{padding:6px 10px; text-align:center; font-size:13px; border-bottom:1px solid rgba(0,229,255,.08); white-space:nowrap}
+.idxtable th{font-family:var(--mono); font-size:10px; color:var(--dim); font-weight:400}
+.idxtable td{font-family:var(--mono)}
+.idxtable .lgcol{position:sticky; left:0; background:#081524; text-align:left; z-index:2; font-family:var(--body); font-weight:600; font-size:14px}
+.idxtable tr.hl td{background:rgba(0,229,255,.10)}
+.idxtable tr{cursor:default}
+.idxtable td .rk{display:block; font-size:13px; color:#dce9f5; line-height:1.3}
+.idxtable td .gd{display:inline-block; font-size:10px; line-height:1; padding:2px 6px; margin-top:2px; border-radius:2px; letter-spacing:.05em}
+.sw{display:inline-block; width:9px; height:9px; margin-right:8px}
+.rup{color:var(--green)} .rdn{color:var(--red)} .rsame{color:var(--dim)}
+
+.exwrap{position:relative}
+#exBtn,#idxNcaa,#rbBtn,#idxRb{background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer;
+  font-family:var(--disp); font-size:10px; letter-spacing:.14em; padding:9px 14px; transition:all .15s}
+#exBtn:hover,#idxNcaa:hover,#rbBtn:hover,#idxRb:hover{color:var(--text); border-color:var(--line-hot)}
+#exBtn.active,#idxNcaa.active{color:var(--amber); border-color:rgba(255,179,71,.6); text-shadow:0 0 8px rgba(255,179,71,.5)}
+#rbBtn.active,#idxRb.active{color:var(--green); border-color:rgba(57,255,156,.55); text-shadow:0 0 8px rgba(57,255,156,.5)}
+.idxtable .lgcol{cursor:pointer}
+#ledgerClose{background:none; border:1px solid var(--line); color:var(--dim); cursor:pointer;
+  font-family:var(--mono); font-size:11px; padding:2px 9px; margin-left:auto}
+#ledgerClose:hover{color:var(--red); border-color:rgba(255,77,94,.6)}
+.ledgerhead{font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.08em; padding:0 18px 10px; line-height:1.8}
+.ledgerhead b{color:var(--cyan); font-weight:400}
+.expanel{position:absolute; top:100%; left:0; z-index:45; min-width:300px; max-height:340px; overflow-y:auto;
+  background:#050d18; border:1px solid var(--line-hot);
+  box-shadow:0 8px 30px rgba(0,0,0,.7),0 0 18px rgba(0,229,255,.25); display:none}
+.expanel.open{display:block}
+.exhead{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 12px;
+  border-bottom:1px solid rgba(0,229,255,.15); font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:.08em}
+.exhead button{background:none; border:1px solid var(--line); color:var(--cyan); cursor:pointer;
+  font-family:var(--mono); font-size:10px; padding:3px 8px}
+.exhead button:hover{border-color:var(--line-hot)}
+.exrow{display:flex; align-items:center; gap:8px; padding:5px 12px; font-size:14px; cursor:pointer; font-weight:600}
+.exrow:hover{background:rgba(0,229,255,.08)}
+.exrow input{width:auto; accent-color:var(--cyan)}
+.exrow.off{color:var(--faint); text-decoration:line-through}
+.exx{background:none; border:none; color:var(--faint); cursor:pointer; font-size:12px; margin-left:8px; padding:0 4px}
+.exx:hover{color:var(--red); text-shadow:0 0 8px rgba(255,77,94,.7)}
+
+.hero{text-align:center; margin:6px 0 2px}
+.hero .cap{font-family:var(--mono); font-size:11px; letter-spacing:.3em; color:var(--dim)}
+.hero .val{
+  font-family:var(--disp); font-weight:900; font-size:clamp(44px,5vw,62px); line-height:1.05;
+}
+.hero .units{font-family:var(--mono); font-size:12px; color:var(--dim); letter-spacing:.3em}
+.gauge{position:relative; height:10px; margin:14px 6px 4px; background:rgba(255,255,255,.05); border:1px solid var(--line)}
+.gauge .zone{position:absolute; top:0; bottom:0; background:linear-gradient(90deg,#3a0f1c,#123a4a,#0b4d3d)}
+.gauge .mk{position:absolute; top:-5px; bottom:-5px; width:3px}
+.gauge .mk.src{background:var(--dim)}
+.gauge .mk.dst{background:var(--magenta); box-shadow:0 0 10px var(--magenta)}
+.gaugelab{display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--faint); margin:0 6px}
+.legend{display:flex; gap:16px; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--dim); margin-top:8px}
+.legend .sq{display:inline-block; width:8px; height:8px; margin-right:5px}
+
+.matrix{margin-top:20px}
+table{width:100%; border-collapse:collapse}
+.matrix .card{padding:0; overflow:hidden}
+.matrix h2{padding:16px 18px 0}
+th,td{padding:9px 14px; text-align:right; font-size:15px; border-bottom:1px solid rgba(0,229,255,.09)}
+th{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--dim); font-weight:400; text-transform:uppercase}
+td:first-child,th:first-child{text-align:left}
+td.stat{font-family:var(--disp); font-size:12px; letter-spacing:.15em; color:var(--cyan); text-shadow:0 0 8px rgba(0,229,255,.4)}
+tr.bpmrow td{background:rgba(0,229,255,.05)}
+tr.bpmrow td.stat{color:#eaffff}
+td input{width:88px; text-align:right; padding:5px 8px; font-size:15px}
+td .arr{font-size:13px}
+td.proj{font-family:var(--mono); font-size:16px; color:#eaffff}
+td.delta{font-family:var(--mono); font-size:13px; width:110px}
+.pos{color:var(--green); text-shadow:0 0 8px rgba(57,255,156,.5)}
+.neg{color:var(--red); text-shadow:0 0 8px rgba(255,77,94,.5)}
+.neu{color:var(--dim)}
+
+.ghost{margin-top:20px}
+.ghost .empty{padding:16px 18px 20px; font-family:var(--mono); font-size:12px; color:var(--dim); letter-spacing:.06em}
+.ghost td,.ghost th{font-size:14px}
+.ghost td.gname{font-weight:700; color:#eaffff; text-align:left}
+.ghost td.gmeta{font-family:var(--mono); font-size:12px; color:var(--dim); text-align:left}
+.ghost .gbpm{font-family:var(--mono)}
+
+details{margin-top:18px; border:1px solid rgba(0,229,255,.15); background:rgba(6,13,24,.6)}
+summary{cursor:pointer; padding:10px 16px; font-family:var(--mono); font-size:11px; letter-spacing:.25em; color:var(--dim)}
+summary:hover{color:var(--cyan)}
+.method{padding:4px 18px 16px; font-size:15px; color:var(--dim); line-height:1.65; max-width:70em}
+.method b{color:var(--text); font-weight:600}
+footer{margin-top:26px; font-family:var(--mono); font-size:10px; color:var(--faint); letter-spacing:.15em; text-align:center}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:#050b14}
+::-webkit-scrollbar-thumb{background:#12455a; border:1px solid #0a2635}
+
+/* ---------- boot overlay ---------- */
+#boot{
+  position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center;
+  background:
+    radial-gradient(900px 500px at 50% 0%, rgba(0,229,255,.08), transparent 60%),
+    radial-gradient(700px 500px at 80% 100%, rgba(255,45,149,.07), transparent 60%), var(--bg);
+  transition:opacity .6s;
+}
+#boot.hide{opacity:0; pointer-events:none}
+.bwrap{width:min(720px,94vw)}
+.blogo{
+  font-family:var(--disp); font-weight:900; font-size:clamp(26px,4vw,42px); letter-spacing:.14em;
+  color:#eaffff; text-shadow:0 0 8px rgba(0,229,255,.9),0 0 32px rgba(0,229,255,.45); margin-bottom:6px;
+}
+.blogo span{color:var(--magenta); text-shadow:0 0 8px rgba(255,45,149,.9),0 0 30px rgba(255,45,149,.5)}
+.btag{font-family:var(--mono); color:var(--dim); font-size:11px; letter-spacing:.25em; margin-bottom:16px}
+.blog{
+  font-family:var(--mono); font-size:12px; line-height:1.85; color:var(--text);
+  border:1px solid var(--line); background:var(--panel2); padding:14px 18px;
+  min-height:180px; max-height:52vh; overflow-y:auto; white-space:pre-wrap; word-break:break-all;
+}
+.blog .ok{color:var(--green)} .blog .warn{color:var(--amber)} .blog .err{color:var(--red)} .blog .dim{color:var(--faint)}
+.bbtns{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap}
+.bbtns button,.bbtns label.bfile{
+  background:none; border:1px solid var(--line-hot); color:var(--cyan); cursor:pointer;
+  font-family:var(--disp); font-size:12px; letter-spacing:.2em; padding:12px 20px;
+  text-shadow:0 0 8px rgba(0,229,255,.8); transition:all .15s; display:inline-block;
+}
+.bbtns button:hover,.bbtns label.bfile:hover{background:rgba(0,229,255,.12); box-shadow:0 0 18px rgba(0,229,255,.5)}
+.bbtns .alt{border-color:rgba(255,179,71,.5); color:var(--amber); text-shadow:0 0 8px rgba(255,179,71,.6)}
+.bbtns .alt:hover{background:rgba(255,179,71,.1); box-shadow:0 0 18px rgba(255,179,71,.35)}
+</style>
+</head>
+<body>
+
+<!-- boot overlay -->
+<div id="boot">
+  <div class="bwrap">
+    <div class="blogo">TRANSFER<span>_MATRIX</span></div>
+    <div class="btag">// RUNTIME DATA CORE — reads the csv files in its own folder</div>
+    <div class="blog" id="bootLog"></div>
+    <div class="bbtns" id="bootBtns" style="display:none">
+      <button id="btnPick">▸ OPEN DATA FOLDER</button>
+      <button id="btnRe" style="display:none"></button>
+      <label class="bfile alt">▸ FALLBACK FOLDER PICKER<input type="file" id="dirInput" webkitdirectory multiple hidden></label>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>TRANSFER<span class="mg">_MATRIX</span></h1>
+    <div class="sub" id="subTag">// EUROPEAN LEAGUE BPM TRANSLATION GRID</div>
+  </header>
+  <hr class="hr">
+
+  <div class="tabs">
+    <button class="on" data-tab="translator">◈ TRANSLATOR</button>
+    <button data-tab="index">◈ LEAGUE INDEX</button>
+  </div>
+
+  <div id="view-translator">
+  <section class="card filterbar">
+    <label class="fl">SEASON WINDOW //</label>
+    <label class="fl" for="yrOld">EARLIEST</label><select id="yrOld"></select>
+    <span class="fbarrow">⇢</span>
+    <label class="fl" for="yrNew">LATEST</label><select id="yrNew"></select>
+    <div class="exwrap">
+      <button id="exBtn">◈ LEAGUES: ALL</button>
+      <div id="exPanel" class="expanel">
+        <div class="exhead"><span>UNCHECK TO EXCLUDE // SESSION ONLY</span>
+          <span style="display:flex;gap:6px"><button id="exNcaa">NO NCAA</button><button id="exClear">RESET</button></span></div>
+        <div id="exList"></div>
+      </div>
+    </div>
+    <button id="rbBtn"></button>
+    <span class="yrinfo" id="yrInfo"></span>
+  </section>
+
+  <div class="deck">
+    <!-- SOURCE -->
+    <section class="card src">
+      <h2><span class="tick"></span>SOURCE FEED</h2>
+      <label class="fl">ORIGIN LEAGUE</label>
+      <select id="fromLg"></select>
+      <label class="fl">PLAYER LOOKUP <span style="color:var(--faint)">(type a name, or enter stats manually below)</span></label>
+      <div class="search">
+        <input type="text" id="pSearch" placeholder="&gt;_ search player-seasons…" autocomplete="off" spellcheck="false">
+        <div class="results" id="pResults"></div>
+      </div>
+      <span class="chip" id="pChip"></span>
+      <div class="minrow">
+        <div><label class="fl">MINUTES (SEASON)</label><input type="number" id="inMIN" value="700" step="10"></div>
+        <div><label class="fl">GAMES</label><input type="number" id="inGP" value="30" step="1"></div>
+      </div>
+      <label class="stab"><input type="checkbox" id="stab">STABILIZE // regress low-minute inputs toward league mean</label>
+    </section>
+
+    <!-- TRANSIT -->
+    <section class="card transit">
+      <h2><span class="tick"></span>TRANSIT LINK</h2>
+      <div>
+        <label class="fl">TRANSLATION MODE</label>
+        <div class="modes" id="modes">
+          <button data-m="direct">DIRECT</button>
+          <button data-m="blend" class="on">BLEND</button>
+          <button data-m="spain">SPAIN SCALE</button>
+        </div>
+        <div class="modehint" id="modeHint"></div>
+      </div>
+      <div>
+        <div class="gl"><span>ORIGIN GRADE</span><b id="gradeFromTxt"></b></div>
+        <div class="gradebar"><i id="gradeFrom"></i></div>
+      </div>
+      <div class="gapbox">
+        <div class="arrow" id="gapArrow">▼</div>
+        <div class="gap" id="gapTxt"></div>
+        <div class="cap" id="gapCap"></div>
+      </div>
+      <div>
+        <div class="gl"><span>DESTINATION GRADE</span><b id="gradeToTxt"></b></div>
+        <div class="gradebar mg"><i id="gradeTo"></i></div>
+      </div>
+      <button class="swap" id="swapBtn">⇄ SWAP ROUTE</button>
+      <div class="conf" id="confBox"></div>
+    </section>
+
+    <!-- DESTINATION -->
+    <section class="card dst">
+      <h2><span class="tick"></span>DESTINATION PROJECTION</h2>
+      <label class="fl">TARGET LEAGUE</label>
+      <select id="toLg"></select>
+      <div class="hero">
+        <div class="cap">PROJECTED BPM</div>
+        <div class="val" id="heroBPM">—</div>
+        <div class="units">BOX PLUS/MINUS · PER 100 POSS</div>
+      </div>
+      <div class="gauge">
+        <div class="zone" style="left:0;right:0"></div>
+        <div class="mk src" id="mkSrc"></div>
+        <div class="mk dst" id="mkDst"></div>
+      </div>
+      <div class="gaugelab"><span>-15</span><span>-10</span><span>-5</span><span>0</span><span>+5</span><span>+10</span><span>+15</span></div>
+      <div class="legend">
+        <span><span class="sq" style="background:var(--dim)"></span>SOURCE INPUT</span>
+        <span><span class="sq" style="background:var(--magenta);box-shadow:0 0 6px var(--magenta)"></span>PROJECTION</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- STATLINE MATRIX -->
+  <div class="matrix">
+    <section class="card">
+      <h2><span class="tick"></span>STATLINE MATRIX</h2>
+      <table id="statTable">
+        <thead><tr><th>Metric</th><th id="thFrom">Source</th><th></th><th id="thTo">Projected</th><th>Δ Shift</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- GHOST RECORDS -->
+  <div class="ghost">
+    <section class="card">
+      <h2><span class="tick"></span>GHOST RECORDS // REAL PLAYERS ON THIS ROUTE</h2>
+      <div id="ghostBody"></div>
+    </section>
+  </div>
+
+  <details>
+    <summary>[ + ] HOW THE PROJECTION WORKS</summary>
+    <div class="method">
+      <b>0 · Runtime data core.</b> On launch the app scans the folder it lives in, reads every <b>player_stats*.csv</b> it finds (player_stats.csv, player_stats2.csv, player_stats3.csv, …) and merges them, de-duplicating overlapping rows by player id + season + league + team. All matching is keyed on each player's unique RealGM URL id (e.g. /player/…/Summary/<b>108702</b>), never on names — dozens of names are shared by different players. Drop this file into any session folder (or add extra player_stats files) and it rebuilds everything from scratch.<br>
+      <b>1 · Empirical route data (DIRECT mode).</b> For your chosen route, the app pools all ID-verified cross-league transfers it traced (both directions, reverse moves sign-flipped), weights each by the player's minutes, and takes the mean shift per stat. DIRECT mode uses only this — no proxy, no model.<br>
+      <b>2 · Network scale (BLEND mode fallback).</b> A weighted least-squares solve over every transfer edge among all leagues (Spanish ACB anchored at 0 when present) gives each league a coefficient per stat; any route's model shift = origin coefficient − destination coefficient. BLEND mixes empirical and model by sample size: weight = n / (n + 30).<br>
+      <b>3 · SPAIN SCALE mode.</b> The scraper pipeline's Spain Scale, computed <b>live in-app</b> from the same player_stats feed using the pipeline's exact algorithm: per stat, transfers are aggregated into league-pair edges weighted by min(minutes) (50-minute stint gate, matching the scraper), then league offsets are solved over the whole transfer graph by weighted Gauss-Seidel anchored at ACB = 0 (falling back to Primera FEB / Segunda FEB if ACB is absent). A league's coefficient is the expected change in that stat moving from it to ACB; multi-hop connections propagate automatically, so every connected league gets coefficients — including ones scraped after any pipeline run (e.g. NCAA conferences). spain_scale_coefficients*.csv files are no longer needed and are ignored. Respects the season window and league exclusions; leagues with no path to the Spanish pyramid show NOT CONNECTED.<br>
+      <b>4 · Season window.</b> The filter bar restricts every calculation — stints, transfers, network scale, league means, player search — to seasons inside the chosen window. Transfers crossing the window boundary are excluded. The grid re-derives instantly on change.<br>
+      <b>5 · Stabilize (optional).</b> Regresses your input toward the origin league's minutes-weighted mean by MIN / (MIN + 350) before translating — useful for small samples. Off by default since the transfer data already bakes in typical regression.<br>
+      <b>6 · Robust weighting (toggle, default ON).</b> High-volume feeder routes (NBA↔G-League shuttles, NCAA drafts) can dominate a league's network rating with hundreds of correlated, selection-biased records. ROBUST mode applies two corrections to every solve and to route evidence: <b>one vote per player per route</b> (a shuttle player's crossings are averaged into a single record) and <b>route weight saturation</b> (each directed route's total weight is capped smoothly at 25,000 minute-equivalents, so bias can't buy influence with volume). Ghost records always show every raw crossing. Toggle OFF for the pure scraper-faithful weighting.<br>
+      <b>7 · Vote ledger.</b> Click any league in the rank timeline to see exactly which neighbor leagues set its rating: each edge's weight share, raw records vs unique movers, the mean shift in each direction (a route is trustworthy when OUT→ and ←IN roughly mirror), the neighbor's own rating, and the resulting vote. The league's rating is (approximately) the weighted mean of those votes.<br>
+      Percentage stats are clamped to sane ranges. All figures are estimates of <b>rate stats</b>; counting stats depend on role and minutes in the new team.
+    </div>
+  </details>
+  </div><!-- /view-translator -->
+
+  <!-- LEAGUE INDEX TAB -->
+  <div id="view-index" style="display:none">
+    <section class="card">
+      <h2><span class="tick"></span>LEAGUE POWER INDEX // ELO-STYLE TIMELINE</h2>
+      <div class="idxctl">
+        <label class="fl">METRIC</label>
+        <select id="idxStat">
+          <option value="bpm" selected>BPM (OVERALL)</option>
+          <optgroup label="COMPOSITES">
+            <option value="c:phys">PHYSICALITY (ORB% + DRB%)</option>
+            <option value="c:aggr">AGGRESSION (STL% + TOV%)</option>
+            <option value="c:event">EVENT GENERATION (STL% + BLK%)</option>
+            <option value="c:score">SCORING (TS% + USG%)</option>
+            <option value="c:play">PLAYMAKING (USG% + AST%)</option>
+          </optgroup>
+          <optgroup label="INDIVIDUAL STATS">
+            <option value="s:1">TS%</option>
+            <option value="s:2">USG%</option>
+            <option value="s:3">ORB%</option>
+            <option value="s:4">DRB%</option>
+            <option value="s:5">AST%</option>
+            <option value="s:6">TOV% (inverted)</option>
+            <option value="s:7">STL%</option>
+            <option value="s:8">BLK%</option>
+          </optgroup>
+        </select>
+        <label class="fl">· SEASONS</label>
+        <label class="fl" for="idxFrom">EARLIEST</label><select id="idxFrom"></select>
+        <span class="fbarrow">⇢</span>
+        <label class="fl" for="idxTo">LATEST</label><select id="idxTo"></select>
+        <label class="fl">· RATING WINDOW</label>
+        <select id="idxWin">
+          <option value="1">1 SEASON (same-season links only)</option>
+          <option value="2">2 SEASONS (trailing)</option>
+          <option value="3" selected>3 SEASONS (trailing)</option>
+          <option value="5">5 SEASONS (trailing)</option>
+          <option value="99">CUMULATIVE (all data to date)</option>
+        </select>
+        <button id="idxNcaa">NO NCAA</button>
+        <button id="idxRb"></button>
+        <span class="yrinfo" id="idxInfo"></span>
+      </div>
+      <div class="idxchart-wrap"><svg id="idxChart" viewBox="0 0 1060 560" style="width:100%;min-width:760px"></svg></div>
+      <div class="modehint" style="margin-top:8px">// every metric re-solves the league network per season from the transfers inside its trailing window (same model as BPM, applied to that stat's shifts). BPM: GRADE = 100 + 10 × BPM-vs-ACB. individual stats: expected shift in that stat moving to ACB (TOV% sign-inverted so higher = tougher league). composites: mean z-score of the component ladders × 100 (0 = average league, +100 = 1σ above). ignores the translator's season window · hover a line or row to highlight.</div>
+    </section>
+    <section class="card" style="margin-top:20px">
+      <h2><span class="tick"></span>RANK TIMELINE // RANK + METRIC BADGE · 1 = STRONGEST · <span style="color:var(--red)">RED = WEAK</span> → <span style="color:var(--amber)">AMBER</span> → <span style="color:var(--cyan)">CYAN = STRONG</span> · CLICK A LEAGUE FOR ITS VOTE LEDGER</h2>
+      <div class="idxtable-wrap" id="idxTable"></div>
+    </section>
+    <section class="card" id="idxLedgerCard" style="margin-top:20px; display:none">
+      <h2><span class="tick"></span>VOTE LEDGER <button id="ledgerClose">✕ CLOSE</button></h2>
+      <div class="ledgerhead" id="ledgerHead"></div>
+      <div class="idxtable-wrap" id="idxLedger"></div>
+    </section>
+  </div>
+  <div id="idxTip"></div>
+
+  <footer id="ftr">TRANSFER_MATRIX v3.1</footer>
+</div>
+
+<script>
+'use strict';
+// ================================================================ constants
+const STATS=['BPM','TS_pct','USG_pct','ORB_pct','DRB_pct','AST_pct','TOV_pct','STL_pct','BLK_pct'];
+const SPAIN_COLS=['SpainScale_BPM_vs_ACB','TS_pct_vs_ACB','USG_pct_vs_ACB','ORB_pct_vs_ACB','DRB_pct_vs_ACB','AST_pct_vs_ACB','TOV_pct_vs_ACB','STL_pct_vs_ACB','BLK_pct_vs_ACB'];
+const META=[
+  {k:'BPM',     lab:'BPM',  dec:1, lo:-30, hi:30, signed:true},
+  {k:'TS_pct',  lab:'TS%',  dec:1, lo:0, hi:100},
+  {k:'USG_pct', lab:'USG%', dec:1, lo:0, hi:60},
+  {k:'ORB_pct', lab:'ORB%', dec:1, lo:0, hi:35},
+  {k:'DRB_pct', lab:'DRB%', dec:1, lo:0, hi:50},
+  {k:'AST_pct', lab:'AST%', dec:1, lo:0, hi:70},
+  {k:'TOV_pct', lab:'TOV%', dec:1, lo:0, hi:60, inverse:true},
+  {k:'STL_pct', lab:'STL%', dec:1, lo:0, hi:12},
+  {k:'BLK_pct', lab:'BLK%', dec:1, lo:0, hi:18},
+];
+const MIN_FLOOR=120, K_BLEND=30, ANCHOR='Spanish ACB';
+const P_NAME=0,P_SEASON=1,P_LG=2,P_TEAM=3,P_GP=4,P_MIN=5,P_STATS=6,P_PID=15;
+let D=null, RAW=null, MODE='blend';
+const EXCLUDED=new Set();   // leagues removed for this session (not persisted)
+const MODE_HINT={
+  direct:'// pure league-to-league transfer evidence. no proxy, no model — routes without transfers return NO DATA.',
+  blend:'// direct transfers blended with the network scale (least-squares over all league links), weighted by sample size.',
+  spain:'// the scraper\'s spain-scale algorithm computed live from this feed: gauss-seidel over the transfer graph, ACB anchor, 50-min gate. ignores route-specific transfer evidence.'
+};
+const $=id=>document.getElementById(id);
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const nf=v=>{const x=parseFloat(v);return isNaN(x)?null:x;};
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtSign(v){ return (v>=0?'+':'−')+Math.abs(v).toFixed(1); }
+function fmtSigned(v){ return v===null||v===undefined?'?':fmtSign(v); }
+
+// ================================================================ csv parser
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  const lines=text.split(/\r?\n/), rows=[];
+  for(let li=0; li<lines.length; li++){
+    let line=lines[li];
+    if(!line) continue;
+    if(line.indexOf('"')===-1){ rows.push(line.split(',')); continue; }
+    const fields=[]; let cur='', inQ=false;
+    for(;;){
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(inQ){
+          if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; }
+          else cur+=ch;
+        }else{
+          if(ch==='"') inQ=true;
+          else if(ch===','){ fields.push(cur); cur=''; }
+          else cur+=ch;
+        }
+      }
+      if(inQ && li<lines.length-1){ cur+='\n'; line=lines[++li]; } else break;
+    }
+    fields.push(cur); rows.push(fields);
+  }
+  return rows;
+}
+
+// ================================================================ boot log
+const bootLog=$('bootLog');
+function blog(msg, cls){
+  const div=document.createElement('div');
+  if(cls) div.className=cls;
+  div.textContent=msg;
+  bootLog.appendChild(div);
+  bootLog.scrollTop=bootLog.scrollHeight;
+}
+
+// ================================================================ indexeddb (remember granted folder)
+function idbOpen(){ return new Promise((res,rej)=>{ const q=indexedDB.open('transfer_matrix',1);
+  q.onupgradeneeded=()=>q.result.createObjectStore('kv'); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+async function idbGet(k){ try{ const db=await idbOpen(); return await new Promise(res=>{
+  const t=db.transaction('kv').objectStore('kv').get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>res(null); }); }catch(e){ return null; } }
+async function idbSet(k,v){ try{ const db=await idbOpen(); await new Promise(res=>{
+  const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=res; }); }catch(e){} }
+
+// ================================================================ acquisition
+async function httpAcquire(){
+  blog('> scanning folder over http…');
+  let names=[];
+  try{
+    const res=await fetch('./',{cache:'no-store'});
+    if(res.ok){
+      const html=await res.text();
+      names=[...html.matchAll(/href="([^"?]+\.csv)"/gi)].map(m=>decodeURIComponent(m[1].split('/').pop()));
+    }
+  }catch(e){}
+  if(!names.length){
+    blog('  · no directory listing — probing standard filenames','warn');
+    const probe=['player_stats.csv','spain_scale_coefficients.csv','player_stints.csv','league_transfer_differentials.csv'];
+    for(let i=2;i<=12;i++) probe.push(`player_stats${i}.csv`,`spain_scale_coefficients${i}.csv`);
+    for(const n of probe){
+      try{ const r=await fetch(n,{method:'HEAD',cache:'no-store'}); if(r.ok) names.push(n); }catch(e){}
+    }
+  }
+  names=[...new Set(names)];
+  if(!names.length) return null;
+  const files=new Map();
+  for(const n of names) files.set(n, async()=>{
+    const r=await fetch('./'+encodeURIComponent(n),{cache:'no-cache'});  // revalidate via ETag on static hosts (304 = no re-download)
+    if(!r.ok) throw new Error('http '+r.status);
+    return r.text();
+  });
+  return files;
+}
+async function useDirHandle(dir){
+  const files=new Map();
+  try{
+    for await (const [name,h] of dir.entries())
+      if(h.kind==='file' && /\.csv$/i.test(name))
+        files.set(name, async()=> (await h.getFile()).text());
+  }catch(e){ blog('!! could not enumerate folder: '+e.message,'err'); return false; }
+  await idbSet('dir',dir);
+  return ingest(files,'FOLDER /'+(dir.name||''));
+}
+function showPickButtons(stored){
+  $('bootBtns').style.display='flex';
+  const canFS=!!window.showDirectoryPicker;
+  $('btnPick').style.display=canFS?'':'none';
+  if(!canFS) blog('  · this browser lacks the folder-access API — use the fallback picker','warn');
+  if(stored && canFS){
+    const b=$('btnRe');
+    b.style.display='';
+    b.textContent='▸ RECONNECT: /'+(stored.name||'last folder');
+    b.onclick=async()=>{
+      try{
+        if((await stored.requestPermission({mode:'read'}))==='granted'){ $('bootBtns').style.display='none'; await useDirHandle(stored); }
+        else blog('!! permission declined','err');
+      }catch(e){ blog('!! '+e.message,'err'); }
+    };
+  }
+}
+$('btnPick').addEventListener('click', async()=>{
+  try{
+    const dir=await window.showDirectoryPicker({mode:'read'});
+    $('bootBtns').style.display='none';
+    await useDirHandle(dir);
+  }catch(e){ if(e.name!=='AbortError') blog('!! '+e.message,'err'); }
+});
+$('dirInput').addEventListener('change', async e=>{
+  const files=new Map();
+  for(const f of e.target.files)
+    if(/\.csv$/i.test(f.name)) files.set(f.name.split('/').pop(), ()=>f.text());
+  if(!files.size){ blog('!! no csv files in that folder','err'); return; }
+  $('bootBtns').style.display='none';
+  await ingest(files,'FOLDER (fallback picker)');
+});
+
+async function boot(){
+  blog('> TRANSFER_MATRIX v3.1 — runtime data core');
+  const forcePick=/picker/.test(location.search);
+  if(location.protocol.indexOf('http')===0 && !forcePick){
+    try{
+      const files=await httpAcquire();
+      if(files){ if(await ingest(files,'HTTP FEED')) return; }
+      else blog('  · nothing found over http','warn');
+    }catch(e){ blog('!! http scan failed: '+e.message,'err'); }
+  }else if(!forcePick){
+    blog('> local file mode — browser requires folder permission','warn');
+  }
+  const stored=await idbGet('dir');
+  if(stored && !forcePick){
+    try{
+      if((await stored.queryPermission({mode:'read'}))==='granted'){
+        blog('> auto-reconnected to stored folder: /'+(stored.name||''),'ok');
+        if(await useDirHandle(stored)) return;
+      }
+    }catch(e){}
+  }
+  blog('> select the folder containing the csv data feed');
+  showPickButtons(stored);
+}
+
+// ================================================================ ingest
+async function ingest(files,label){
+  const names=[...files.keys()].sort();
+  blog(`> feed: ${label} — ${names.length} csv file(s) detected`);
+  names.forEach(n=>blog('    · '+n,'dim'));
+  const used=new Set();
+  const load=async n=>{
+    if(!n || !files.has(n)) return null;
+    used.add(n);
+    try{
+      blog(`  [..] reading ${n}`);
+      await tick();
+      const t=await files.get(n)();
+      blog(`  [ok] ${n} — ${(t.length/1e6).toFixed(1)} MB`,'ok');
+      await tick();
+      return t;
+    }catch(e){ blog(`  [!!] ${n} — ${e.message}`,'err'); return null; }
+  };
+
+  let ok=false;
+  // primary: all player_stats*.csv merged, ID-keyed
+  const psNames=names.filter(n=>/^player_stats\d*\.csv$/i.test(n))
+    .sort((a,b)=>(parseInt((a.match(/\d+/)||['1'])[0],10)-parseInt((b.match(/\d+/)||['1'])[0],10)));
+  if(psNames.length){
+    blog(`> primary source: ${psNames.length} player_stats file(s) — merging`,'ok');
+    const texts=[];
+    for(const n of psNames){ const t=await load(n); if(t) texts.push(t); }
+    if(texts.length) ok=await buildFromPlayerStats(texts);
+  }
+  // legacy fallback: pipeline stints + differentials (name-matched)
+  if(!ok){
+    const stN=names.filter(n=>/^player_stints\d*\.csv$/i.test(n));
+    const dfN=names.filter(n=>/^league_transfer_differentials\d*\.csv$/i.test(n));
+    if(stN.length && dfN.length){
+      blog('> no player_stats*.csv — falling back to pipeline stints/differentials (NAME-matched, may conflate same-name players)','warn');
+      const st=[],df=[];
+      for(const n of stN){ const t=await load(n); if(t) st.push(t); }
+      for(const n of dfN){ const t=await load(n); if(t) df.push(t); }
+      if(st.length && df.length) ok=await buildLegacy(st,df);
+    }
+  }
+  if(!ok){
+    blog('!! no usable player data — need player_stats*.csv (or player_stints*.csv + league_transfer_differentials*.csv)','err');
+    showPickButtons(await idbGet('dir'));
+    return false;
+  }
+  // spain scale is computed in-app from the feed itself (scraper's algorithm) —
+  // spain_scale_coefficients*.csv files are no longer read
+  names.filter(n=>!used.has(n)).forEach(n=>blog(`  [--] ${n} — detected, not needed (superseded by primary source)`,'dim'));
+
+  // season index for the window filter
+  RAW.years=[...new Set(RAW.stints.map(s=>s.y).filter(Boolean))].sort((a,b)=>b-a);
+  RAW.yearLabel=new Map();
+  RAW.stints.forEach(s=>{ if(s.y && !RAW.yearLabel.has(s.y)) RAW.yearLabel.set(s.y,s.season); });
+  if(!RAW.years.length){ blog('!! no parseable seasons in feed','err'); return false; }
+  blog(`  · seasons available: ${RAW.yearLabel.get(RAW.years[RAW.years.length-1])} → ${RAW.yearLabel.get(RAW.years[0])}`);
+  RAW.allTransfers = RAW.mode==='primary' ? traceTransfers(RAW.stints) : RAW.legacyTransfers;
+  RAW.allLeagues=[...new Set(RAW.stints.map(s=>s.league))].sort();
+  EXCLUDED.clear();
+  setupExcludePanel();
+  idxCache={}; idxBuiltKey=null;
+  setupSeasonFilter();
+  refreshData();
+  if(D.spain) blog(`  · spain scale computed in-app: ${D.spain.filter(Boolean).length} leagues anchored at ${D.spainAnchor} (scraper algorithm)`,'ok');
+  else blog('  · spain scale: no Spanish division in the feed — SPAIN mode disabled','warn');
+  blog(`> grid online: ${D.leagues.length} leagues · ${D.players.length.toLocaleString()} player-seasons · ${D.nTransfers.toLocaleString()} transfers`,'ok');
+  await tick();
+  setTimeout(()=>$('boot').classList.add('hide'), 450);
+  return true;
+}
+
+// ================================================================ build: primary (player_stats*, ID-keyed)
+async function buildFromPlayerStats(texts){
+  // 1 · merge files, dedupe by pid|season|league|team (keep row with most minutes = latest scrape)
+  const best=new Map(); let total=0, dupes=0;
+  for(const text of texts){
+    const rows=parseCSV(text);
+    if(!rows.length) continue;
+    const H={}; rows[0].forEach((h,i)=>{ if(!(h in H)) H[h]=i; });
+    const missing=['league','season','team','player_name','GP','MIN','player_url',...STATS].filter(c=>H[c]===undefined);
+    if(missing.length){ blog(`  [!!] file skipped — missing columns: ${missing.join(', ')}`,'err'); continue; }
+    for(let r=1;r<rows.length;r++){
+      const row=rows[r];
+      if(row.length<8) continue;
+      total++;
+      const url=(row[H.player_url]||'').replace(/\/+$/,'');
+      const pid=url.split('/').pop();
+      const mins=nf(row[H.MIN]);
+      if(!pid || mins===null || mins<=0) continue;
+      const key=pid+'|'+row[H.season]+'|'+row[H.league]+'|'+row[H.team];
+      const prev=best.get(key);
+      if(prev){ dupes++; if(mins<=prev.mins) continue; }
+      best.set(key,{H,row,pid,mins});
+    }
+    await tick();
+  }
+  blog(`  · ${total.toLocaleString()} rows scanned → ${best.size.toLocaleString()} unique rows`+(dupes?` (${dupes.toLocaleString()} cross-file duplicates merged)`:''));
+  // 2 · aggregate to (pid, season, league) stints, minutes-weighted
+  const acc=new Map();
+  for(const {H,row,pid,mins} of best.values()){
+    const key=pid+'|'+row[H.season]+'|'+row[H.league];
+    let a=acc.get(key);
+    if(!a){
+      a={pid, season:row[H.season], league:row[H.league], name:(row[H.player_name]||'').trim(),
+         nameMin:mins, teams:[], GP:0, MIN:0, s:STATS.map(()=>[0,0])};
+      acc.set(key,a);
+    }
+    if(mins>a.nameMin){ a.name=(row[H.player_name]||'').trim(); a.nameMin=mins; }
+    a.teams.push(row[H.team]); a.GP+=Math.round(nf(row[H.GP])||0); a.MIN+=mins;
+    STATS.forEach((s,k)=>{ const v=nf(row[H[s]]); if(v!==null){ a.s[k][0]+=mins*v; a.s[k][1]+=mins; } });
+  }
+  blog(`  · ${acc.size.toLocaleString()} player-league-season stints (ID-keyed)`);
+  await tick();
+  const sv=a=>a.s.map(([sw,w])=>w?sw/w:null);
+  // 3 · store stints; transfers + network scale are re-derived per season window (deriveD)
+  const stints=[];
+  for(const a of acc.values()){
+    stints.push({pid:a.pid, season:a.season, y:parseInt(a.season.split('-')[1],10)||0,
+      league:a.league, name:a.name,
+      teams:[...new Set(a.teams)].join(' / ').slice(0,48),
+      GP:a.GP, MIN:Math.round(a.MIN), vals:sv(a)});
+  }
+  RAW={mode:'primary', stints, legacyTransfers:null, spainMap:null,
+       srcLabel:`ID-VERIFIED · ${texts.length} PLAYER_STATS FILE(S)`};
+  return true;
+}
+
+// ================================================================ build: legacy fallback (name-matched pipeline files)
+async function buildLegacy(stintTexts, diffTexts){
+  const playersRaw=[];
+  for(const text of stintTexts){
+    const rows=parseCSV(text); if(!rows.length) continue;
+    const H={}; rows[0].forEach((h,i)=>H[h]=i);
+    if(H.player_name===undefined || H.BPM===undefined){ blog('  [!!] stints file missing columns — skipped','err'); continue; }
+    for(let r=1;r<rows.length;r++){
+      const row=rows[r]; if(row.length<8) continue;
+      const mins=nf(row[H.MIN]); if(mins===null || mins<=0) continue;
+      const vals=STATS.map(s=>nf(row[H[s]]));
+      if(vals[0]===null) continue;
+      playersRaw.push({name:(row[H.player_name]||'').trim(), season:row[H.season], league:row[H.league],
+        teams:(row[H.teams]||'').slice(0,48), GP:Math.round(nf(row[H.GP])||0), MIN:Math.round(mins), vals, pid:''});
+    }
+    await tick();
+  }
+  const transfers=[];
+  for(const text of diffTexts){
+    const rows=parseCSV(text); if(!rows.length) continue;
+    const H={}; rows[0].forEach((h,i)=>H[h]=i);
+    if(H.league_from===undefined || H.BPM_diff===undefined){ blog('  [!!] differentials file missing columns — skipped','err'); continue; }
+    for(let r=1;r<rows.length;r++){
+      const row=rows[r]; if(row.length<8) continue;
+      const m1=nf(row[H.MIN_from]), m2=nf(row[H.MIN_to]);
+      if(!m1 || !m2 || m1<MIN_FLOOR || m2<MIN_FLOOR) continue;
+      if(row[H.league_from]===row[H.league_to]) continue;
+      const diffs=STATS.map(s=>nf(row[H[s+'_diff']]));
+      if(diffs[0]===null) continue;
+      transfers.push({F:row[H.league_from], T:row[H.league_to], w:Math.min(m1,m2), diffs, pid:'',
+        name:(row[H.player_name]||'').trim(), sf:row[H.season_from], st:row[H.season_to],
+        teamTo:(row[H.teams_to]||'').slice(0,40), m1:Math.round(m1), m2:Math.round(m2),
+        bpm1:nf(row[H.BPM_from])||0, bpm2:nf(row[H.BPM_to])||0});
+    }
+    await tick();
+  }
+  blog(`  · ${playersRaw.length.toLocaleString()} stints · ${transfers.length.toLocaleString()} transfers (NAME-matched)`,'warn');
+  RAW={mode:'legacy',
+    stints:playersRaw.map(p=>Object.assign(p,{y:parseInt(p.season.split('-')[1],10)||0})),
+    legacyTransfers:transfers.map(t=>Object.assign(t,{y1:parseInt((t.sf||'').split('-')[1],10)||0,
+                                                      y2:parseInt((t.st||'').split('-')[1],10)||0})),
+    spainMap:null, srcLabel:'NAME-MATCHED · LEGACY PIPELINE FILES'};
+  return true;
+}
+
+// ================================================================ finalize: network scale, pairs, ghosts
+function solveLinear(M,v){
+  const n=v.length, A=M.map((row,i)=>row.concat([v[i]]));
+  for(let c=0;c<n;c++){
+    let p=c;
+    for(let r=c+1;r<n;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r;
+    const t=A[c]; A[c]=A[p]; A[p]=t;
+    const pv=A[c][c] || 1e-12;
+    for(let r=0;r<n;r++){
+      if(r===c || !A[r][c]) continue;
+      const f=A[r][c]/pv;
+      for(let k=c;k<=n;k++) A[r][k]-=f*A[c][k];
+    }
+  }
+  return A.map((row,i)=>row[n]/(row[i]||1e-12));
+}
+function finalize(playersRaw, transfers, ghostList, srcLabel){
+  const leagueNames=[...new Set(playersRaw.map(p=>p.league).concat(transfers.flatMap(t=>[t.F,t.T])))].sort();
+  // anchor: ACB when present, else the league with the most minutes
+  let anchor=ANCHOR;
+  if(!leagueNames.includes(anchor)){
+    const minSum=new Map();
+    playersRaw.forEach(p=>minSum.set(p.league,(minSum.get(p.league)||0)+p.MIN));
+    anchor=leagueNames.reduce((a,b)=>(minSum.get(b)||0)>(minSum.get(a)||0)?b:a, leagueNames[0]);
+    blog(`  · anchor league: ${anchor} (Spanish ACB not in feed)`,'warn');
+  }
+  // network scale: weighted least squares over all transfer edges, per stat
+  const nmIdx=new Map(leagueNames.map((nm,i)=>[nm,i]));
+  const aPos=nmIdx.get(anchor);
+  const varPos=leagueNames.map((_,i)=>i).filter(i=>i!==aPos);
+  const vi=new Map(varPos.map((lp,j)=>[lp,j]));
+  const linked=new Set([anchor]);
+  transfers.forEach(t=>{ linked.add(t.F); linked.add(t.T); });
+  const unlinked=leagueNames.filter(nm=>!linked.has(nm));
+  if(unlinked.length) blog(`  · no transfer links for: ${unlinked.join(', ')} — network scale unreliable there`,'warn');
+  const netByStat=[];
+  for(let k=0;k<STATS.length;k++){
+    const n=varPos.length;
+    if(!n){ netByStat.push(leagueNames.map(()=>0)); continue; }
+    const M=Array.from({length:n},()=>new Array(n).fill(0)), v=new Array(n).fill(0);
+    for(const t of transfers){
+      const d=t.diffs[k];
+      if(d===null) continue;
+      const w=t.w/100;
+      const iF=nmIdx.get(t.F), iT=nmIdx.get(t.T), g=[];
+      if(iF!==aPos) g.push([vi.get(iF),1]);
+      if(iT!==aPos) g.push([vi.get(iT),-1]);
+      for(const [j1,s1] of g){
+        v[j1]+=w*d*s1;
+        for(const [j2,s2] of g) M[j1][j2]+=w*s1*s2;
+      }
+    }
+    for(let j=0;j<n;j++) M[j][j]+=1.0; // ridge
+    const sol=solveLinear(M,v);
+    const col=leagueNames.map(()=>0);
+    varPos.forEach((lp,j)=>col[lp]=sol[j]);
+    netByStat.push(col);
+  }
+  // order leagues strongest → weakest by network BPM
+  const order=leagueNames.map((_,i)=>i).sort((a,b)=>netByStat[0][b]-netByStat[0][a]);
+  const leagues=order.map(i=>leagueNames[i]);
+  const lgI=new Map(leagues.map((nm,i)=>[nm,i]));
+  const net=order.map(oi=>STATS.map((_,k)=>+netByStat[k][oi].toFixed(2)));
+  // pair empirical diffs (both directions mirrored) + ghosts
+  const pairAcc=new Map();
+  const ghosts=[];
+  const bump=(key,k,w,d)=>{
+    let a=pairAcc.get(key);
+    if(!a){ a=STATS.map(()=>[0,0,0]); pairAcc.set(key,a); }
+    a[k][0]+=w*d; a[k][1]+=w; a[k][2]++;
+  };
+  for(const t of transfers){
+    const i=lgI.get(t.F), j=lgI.get(t.T);
+    t.diffs.forEach((d,k)=>{
+      if(d===null) return;
+      bump(i+'>'+j,k,t.w,d);
+      bump(j+'>'+i,k,t.w,-d);
+    });
+  }
+  for(const t of ghostList){
+    const i=lgI.get(t.F), j=lgI.get(t.T);
+    if(i===undefined || j===undefined) continue;
+    ghosts.push([i,j,t.name,t.sf,t.st,t.teamTo,t.m1,t.m2,+t.bpm1.toFixed(1),+t.bpm2.toFixed(1)]);
+  }
+  const pairs={};
+  for(const [key,per] of pairAcc) pairs[key]=per.map(([sw,w,n])=>w?[+(sw/w).toFixed(2),n]:[0,0]);
+  // player DB + league means
+  const players=[];
+  const meanAcc=leagues.map(()=>STATS.map(()=>[0,0]));
+  for(const p of playersRaw){
+    const li=lgI.get(p.league);
+    players.push([p.name,p.season,li,p.teams,p.GP,p.MIN,
+      ...p.vals.map(v=>v===null?null:+v.toFixed(1)), p.pid]);
+    p.vals.forEach((v,k)=>{ if(v!==null){ meanAcc[li][k][0]+=p.MIN*v; meanAcc[li][k][1]+=p.MIN; } });
+  }
+  const means=meanAcc.map(row=>row.map(([sv2,sw])=>sw?+(sv2/sw).toFixed(2):0));
+  blog(`  · network scale solved over ${leagues.length} leagues (anchor: ${anchor})`);
+  return {leagues, strength:net.map(c=>[c[0], +(100+10*c[0]).toFixed(1)]), net, spain:null,
+          means, pairs, players, ghosts, nTransfers:ghostList.length, src:srcLabel, anchor,
+          unlinked};
+}
+
+// ================================================================ season-window derivation
+function traceTransfers(stints, floor){
+  const fl=floor||MIN_FLOOR;
+  const byPid=new Map();
+  for(const s of stints){
+    if(!s.y || !s.pid) continue;
+    if(!byPid.has(s.pid)) byPid.set(s.pid,[]);
+    byPid.get(s.pid).push(s);
+  }
+  const transfers=[];
+  for(const lst of byPid.values()){
+    lst.sort((a,b)=>a.y-b.y);
+    for(let i=0;i<lst.length;i++) for(let j=i+1;j<lst.length;j++){
+      const a=lst[i], b=lst[j];
+      if(b.y!==a.y && b.y!==a.y+1) continue;
+      if(a.league===b.league) continue;
+      if(a.MIN<fl || b.MIN<fl) continue;
+      if(a.vals[0]===null || b.vals[0]===null) continue;
+      transfers.push({F:a.league, T:b.league, w:Math.min(a.MIN,b.MIN), y1:a.y, y2:b.y, pid:a.pid,
+        diffs:STATS.map((_,k)=>(a.vals[k]===null||b.vals[k]===null)?null:b.vals[k]-a.vals[k]),
+        name:b.name, sf:a.season, st:b.season, teamTo:b.teams.slice(0,40),
+        m1:a.MIN, m2:b.MIN, bpm1:+a.vals[0].toFixed(1), bpm2:+b.vals[0].toFixed(1)});
+    }
+  }
+  return transfers;
+}
+// ================================================================ robust weighting (toggleable)
+// Fixes two failure modes exposed by high-volume feeder routes (e.g. NBA<->G-League):
+//  1 · pseudo-replication — a shuttle player's many crossings collapse to ONE vote per
+//      player per directed route (diffs minutes-weight-averaged, weight = mean crossing)
+//  2 · weight ∝ volume — each directed route's total weight saturates at SAT_CAP
+//      minute-equivalents (1/(1/W + 1/CAP)), so bias can't buy influence with volume.
+// OFF = pure scraper-faithful weighting everywhere.
+let ROBUST=true;
+const SAT_CAP=25000;   // ≈ 35-40 full-season crossings' worth of weight per directed route
+function dedupTransfers(list){
+  const groups=new Map();
+  for(const t of list){
+    const key=(t.pid||t.name)+'|'+t.F+'|'+t.T;
+    let g=groups.get(key);
+    if(!g){ g={reps:[], best:t}; groups.set(key,g); }
+    g.reps.push(t);
+    if(t.w>g.best.w) g.best=t;
+  }
+  const out=[];
+  for(const g of groups.values()){
+    if(g.reps.length===1){ out.push(g.reps[0]); continue; }
+    const meanW=g.reps.reduce((a,t)=>a+t.w,0)/g.reps.length;
+    const diffs=STATS.map((_,k)=>{
+      let s=0, w=0;
+      for(const t of g.reps){ const d=t.diffs[k]; if(d!==null){ s+=t.w*d; w+=t.w; } }
+      return w ? s/w : null;
+    });
+    out.push(Object.assign({}, g.best, {w:meanW, diffs}));
+  }
+  return out;
+}
+function satScale(list){
+  const pw=new Map();
+  for(const t of list) pw.set(t.F+'>'+t.T, (pw.get(t.F+'>'+t.T)||0)+t.w);
+  return list.map(t=>{
+    const W=pw.get(t.F+'>'+t.T);
+    const f=(1/(1/W+1/SAT_CAP))/W;
+    return f>=0.999 ? t : Object.assign({}, t, {w:t.w*f});
+  });
+}
+function robustPrep(list){ return ROBUST ? satScale(dedupTransfers(list)) : list; }
+
+function deriveD(yLo,yHi){
+  const st=RAW.stints.filter(s=>s.y>=yLo && s.y<=yHi && !EXCLUDED.has(s.league));
+  let full, spainFull;
+  if(RAW.mode==='primary'){
+    full=traceTransfers(st);
+    spainFull=traceTransfers(st, SPAIN_MIN_MINUTES);  // scraper's 50-min gate
+  }else{
+    full=RAW.legacyTransfers.filter(t=>t.y1>=yLo&&t.y1<=yHi&&t.y2>=yLo&&t.y2<=yHi
+      &&!EXCLUDED.has(t.F)&&!EXCLUDED.has(t.T));
+    spainFull=full;
+  }
+  // solves + route evidence use the (optionally) robust list; ghosts always show every record
+  const D2=finalize(st.filter(s=>s.vals[0]!==null), robustPrep(full), full, RAW.srcLabel);
+  const sp=computeSpainScale(robustPrep(spainFull));
+  D2.spain = sp ? D2.leagues.map(nm=>sp.map.get(nm)||null) : null;
+  D2.spainAnchor = sp ? sp.anchor : null;
+  return D2;
+}
+
+// ================================================================ in-app spain scale
+// Faithful port of the scraper's build_spain_scale_coefficients():
+//   - per stat, aggregate transfers into league-pair edges weighted by min(minutes)
+//   - solve league offsets R over the graph by weighted Gauss-Seidel, modeled as
+//     d ≈ R(from) − R(to), anchored at ACB = 0 (falling back down the Spanish pyramid)
+//   - only leagues in the anchor's connected component get coefficients
+// A league's number = expected change in that stat moving from it to ACB.
+const SPAIN_MIN_MINUTES=50;   // scraper's TRANSFER_MIN_MINUTES
+const SPAIN_PATTERNS=[['acb'],['primera feb','leb gold','leb oro'],['segunda feb','leb silver','leb plata']];
+function spainAnchor(leagues){
+  const sorted=[...leagues].sort();
+  for(const pats of SPAIN_PATTERNS){
+    const hit=sorted.find(nm=>{const ll=nm.toLowerCase(); return pats.some(p=>ll.includes(p));});
+    if(hit) return hit;
+  }
+  return null;
+}
+function computeSpainScale(transfers){
+  if(!transfers.length) return null;
+  const leagues=new Set();
+  transfers.forEach(t=>{ leagues.add(t.F); leagues.add(t.T); });
+  const anchor=spainAnchor(leagues);
+  if(!anchor) return null;
+  const map=new Map();
+  for(let k=0;k<STATS.length;k++){
+    // aggregate edges per directed league pair: [Σw, Σw·d, from, to]
+    const edges=new Map();
+    for(const t of transfers){
+      const d=t.diffs[k];
+      if(d===null || t.w<=0) continue;
+      const key=t.F+'>'+t.T;
+      let e=edges.get(key);
+      if(!e){ e=[0,0,t.F,t.T]; edges.set(key,e); }
+      e[0]+=t.w; e[1]+=t.w*d;
+    }
+    // neighbor lists: d ≈ R(a) − R(b)  →  R[a]=R[b]+d, R[b]=R[a]−d
+    const nb=new Map();
+    const push=(x,o,d,w)=>{ let l=nb.get(x); if(!l){l=[];nb.set(x,l);} l.push([o,d,w]); };
+    for(const [w,wd,a,b] of edges.values()){
+      const d=wd/w;
+      push(a,b,d,w); push(b,a,-d,w);
+    }
+    // connected component containing the anchor
+    const reach=new Set([anchor]); const stack=[anchor];
+    while(stack.length){
+      const c=stack.pop();
+      for(const [o] of (nb.get(c)||[])) if(!reach.has(o)){ reach.add(o); stack.push(o); }
+    }
+    // weighted Gauss-Seidel, anchor pinned at 0 (scraper: 1000 iters, tol 1e-6)
+    const R=new Map([...reach].map(l=>[l,0]));
+    for(let it=0; it<1000; it++){
+      let md=0;
+      for(const lg of reach){
+        if(lg===anchor) continue;
+        let num=0, den=0;
+        for(const [o,d,w] of (nb.get(lg)||[])) if(R.has(o)){ num+=w*(R.get(o)+d); den+=w; }
+        if(den>0){
+          const nv=num/den;
+          const dv=Math.abs(nv-R.get(lg));
+          if(dv>md) md=dv;
+          R.set(lg,nv);
+        }
+      }
+      if(md<1e-6) break;
+    }
+    for(const [lg,v] of R){
+      let arr=map.get(lg);
+      if(!arr){ arr=new Array(STATS.length).fill(null); map.set(lg,arr); }
+      arr[k]=+v.toFixed(2);
+    }
+  }
+  return {anchor, map};
+}
+
+// ================================================================ app
+// static bindings run once at parse; data-dependent parts live in populate()
+const fromLg=$('fromLg'), toLg=$('toLg'), tbody=document.querySelector('#statTable tbody');
+let byLeague=[], gMin=0, gMax=1;
+let curFromName=null, curToName=null, firstPopulate=true;
+
+const statInputs={};
+META.forEach(m=>{
+  const tr=document.createElement('tr');
+  if(m.k==='BPM') tr.className='bpmrow';
+  tr.innerHTML=`<td class="stat">${m.lab}</td>
+    <td><input type="number" step="0.1" id="in_${m.k}"></td>
+    <td class="neu arr">▶</td>
+    <td class="proj" id="out_${m.k}">—</td>
+    <td class="delta" id="d_${m.k}">—</td>`;
+  tbody.appendChild(tr);
+  statInputs[m.k]=tr.querySelector('input');
+});
+META.forEach(m=>statInputs[m.k].addEventListener('input', ()=>{clearChip(); compute();}));
+
+function prefillMeans(){
+  const li=+fromLg.value;
+  META.forEach((m,k)=>{ statInputs[m.k].value = D.means[li][k].toFixed(1); });
+}
+
+// ---- player search ----
+const pSearch=$('pSearch'), pResults=$('pResults'), pChip=$('pChip');
+function clearChip(){ pChip.classList.remove('on'); }
+pSearch.addEventListener('input', showResults);
+pSearch.addEventListener('focus', showResults);
+document.addEventListener('click', e=>{ if(!e.target.closest('.search')) pResults.classList.remove('open'); });
+
+function showResults(){
+  const q=pSearch.value.trim().toLowerCase();
+  pResults.innerHTML='';
+  if(q.length<2){ pResults.classList.remove('open'); return; }
+  const li=+fromLg.value;
+  const hits=[];
+  for(const idx of byLeague[li]){
+    const p=D.players[idx], nm=p[P_NAME].toLowerCase();
+    const pos=nm.indexOf(q);
+    if(pos>=0) hits.push([pos===0?0:1, -p[P_MIN], idx]);
+  }
+  hits.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  for(const h of hits.slice(0,14)){
+    const p=D.players[h[2]];
+    const row=document.createElement('div');
+    row.className='rrow';
+    const idtag=p[P_PID]?` · ID ${p[P_PID]}`:'';
+    row.innerHTML=`<div><div class="nm">${esc(p[P_NAME])}</div>
+        <div class="meta">${esc(p[P_SEASON])} · ${esc(p[P_TEAM])} · ${p[P_GP]} GP · ${p[P_MIN]} MIN${idtag}</div></div>
+      <div class="bpm">BPM ${fmtSigned(p[P_STATS])}</div>`;
+    row.addEventListener('click', ()=>loadPlayer(h[2]));
+    pResults.appendChild(row);
+  }
+  if(!hits.length) pResults.innerHTML='<div class="rrow"><div class="meta">NO MATCH IN THIS LEAGUE\'S FEED</div></div>';
+  pResults.classList.add('open');
+}
+function loadPlayer(idx){
+  const p=D.players[idx];
+  META.forEach((m,k)=>{
+    const v=p[P_STATS+k];
+    statInputs[m.k].value = v===null ? '' : v;
+  });
+  $('inMIN').value=p[P_MIN]; $('inGP').value=p[P_GP];
+  pResults.classList.remove('open');
+  pSearch.value=p[P_NAME];
+  pChip.textContent=`▣ LOADED: ${p[P_NAME]} · ${p[P_SEASON]} · ${p[P_TEAM]}`+(p[P_PID]?` · ID ${p[P_PID]}`:'');
+  pChip.classList.add('on');
+  compute();
+}
+
+// ---- controls ----
+fromLg.addEventListener('change', ()=>{ curFromName=D.leagues[+fromLg.value]; clearChip(); pSearch.value=''; prefillMeans(); compute(); });
+toLg.addEventListener('change', ()=>{ curToName=D.leagues[+toLg.value]; compute(); });
+$('inMIN').addEventListener('input', compute);
+$('stab').addEventListener('change', compute);
+$('swapBtn').addEventListener('click', ()=>{
+  const a=fromLg.value; fromLg.value=toLg.value; toLg.value=a;
+  curFromName=D.leagues[+fromLg.value]; curToName=D.leagues[+toLg.value];
+  clearChip(); pSearch.value='';
+  compute();
+});
+
+// ---- mode switch ----
+const modeHint=$('modeHint');
+document.querySelectorAll('#modes button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if(b.classList.contains('dis')) return;
+    MODE=b.dataset.m;
+    document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on', x===b));
+    modeHint.textContent=MODE_HINT[MODE];
+    compute();
+  });
+});
+modeHint.textContent=MODE_HINT[MODE];
+
+// ---- core math ----
+// returns {diff, n, w} or null when the active mode has no basis for this route/stat
+function routeDiff(F,T,k){
+  const pair=D.pairs[F+'>'+T];
+  const emp=(pair && pair[k][1]) ? pair[k] : null;   // [mean diff, n]
+  if(MODE==='direct'){
+    return emp ? {diff:emp[0], n:emp[1], w:1} : null;
+  }
+  if(MODE==='spain'){
+    if(!D.spain || !D.spain[F] || !D.spain[T]) return null;
+    const a=D.spain[F][k], b=D.spain[T][k];
+    if(a===null || b===null) return null;
+    return {diff:a-b, n:emp?emp[1]:0, w:0};
+  }
+  const coefDiff=D.net[F][k]-D.net[T][k];
+  if(!emp) return {diff:coefDiff, n:0, w:0};
+  const w=emp[1]/(emp[1]+K_BLEND);
+  return {diff: w*emp[0]+(1-w)*coefDiff, n:emp[1], w};
+}
+function gradeFrac(g){
+  const span=Math.max(1,(gMax-gMin));
+  return Math.min(1, Math.max(0.03, (g-gMin+span*.12)/(span*1.24)));
+}
+function gaugePos(v){ if(v===null) return '0%'; const c=Math.min(15,Math.max(-15,v)); return (((c+15)/30)*100).toFixed(1)+'%'; }
+
+function compute(){
+  const F=+fromLg.value, T=+toLg.value;
+  const same=F===T;
+  const MIN=parseFloat($('inMIN').value)||0;
+  const stab=$('stab').checked;
+  const shrink=MIN/(MIN+350);
+
+  const sF=D.strength[F], sT=D.strength[T];
+  $('gradeFromTxt').textContent=`${sF[1].toFixed(0)} / BPM ${fmtSign(sF[0])}`;
+  $('gradeToTxt').textContent  =`${sT[1].toFixed(0)} / BPM ${fmtSign(sT[0])}`;
+  $('gradeFrom').style.transform=`scaleX(${gradeFrac(sF[1])})`;
+  $('gradeTo').style.transform  =`scaleX(${gradeFrac(sT[1])})`;
+  const gap=sF[0]-sT[0];
+  const up=gap<0;
+  $('gapArrow').textContent=same?'▶':(up?'▲':'▼');
+  $('gapArrow').className='arrow '+(same?'neu':(up?'up':'down'));
+  $('gapTxt').textContent=same?'SAME GRID':`${up?'CLIMBING':'DESCENDING'} ${Math.abs(gap).toFixed(1)} BPM`;
+  $('gapTxt').className='gap '+(same?'neu':(up?'up':'down'));
+  $('gapCap').textContent=same?'NO TRANSLATION REQUIRED':(up?'STRONGER LEAGUE · EXPECT COMPRESSION':'WEAKER LEAGUE · EXPECT INFLATION');
+
+  const rBPM=routeDiff(F,T,0);
+  const nRoute=rBPM?rBPM.n:0;
+  let lvl,col;
+  if(same){lvl='—';col='var(--dim)'}
+  else if(MODE==='direct' && !rBPM){lvl='NO DIRECT DATA';col='var(--red)'}
+  else if(MODE==='spain' && !rBPM){lvl='NOT CONNECTED';col='var(--red)'}
+  else if(MODE==='spain'){lvl='SPAIN SCALE';col='var(--amber)'}
+  else if(nRoute>=150){lvl='HIGH SIGNAL';col='var(--green)'}
+  else if(nRoute>=40){lvl='MODERATE SIGNAL';col='var(--cyan)'}
+  else if(nRoute>=10){lvl='SPARSE SIGNAL';col='var(--amber)'}
+  else {lvl='MODEL EXTRAPOLATION';col='var(--red)'}
+  let basis;
+  if(MODE==='direct') basis = rBPM
+      ? `BASIS: <b>100%</b> direct route transfers — no model`
+      : `BASIS: <b>NONE</b> — zero transfers on this route`;
+  else if(MODE==='spain') basis = rBPM
+      ? `BASIS: in-app spain scale — graph solve anchored at ${esc(D.spainAnchor||'ACB')} (route transfers ignored)`
+      : `BASIS: <b>NONE</b> — league not connected to the spanish pyramid in this window`;
+  else basis = `BLEND: <b>${(rBPM.w*100).toFixed(0)}%</b> empirical / ${(100-rBPM.w*100).toFixed(0)}% network scale`;
+  $('confBox').innerHTML = same
+    ? 'ROUTE: <b>IDENTITY</b> — pick two different leagues to translate.'
+    : `ROUTE SAMPLES: <b>${nRoute}</b> ${ROBUST?'unique movers':'transfers'} (both directions)<br>`+
+      basis+`<br>CONFIDENCE: <b class="lvl" style="color:${col}">${lvl}</b>`;
+
+  $('thFrom').textContent=D.leagues[F];
+  $('thTo').textContent='→ '+D.leagues[T];
+
+  let bpmOut=null, bpmIn=null;
+  META.forEach((m,k)=>{
+    const raw=parseFloat(statInputs[m.k].value);
+    const out=$('out_'+m.k), del=$('d_'+m.k);
+    if(isNaN(raw)){ out.textContent='—'; del.textContent='—'; del.className='delta neu'; return; }
+    let v=raw;
+    if(stab) v=D.means[F][k]+(v-D.means[F][k])*shrink;
+    const r=routeDiff(F,T,k);
+    if(!same && !r){ out.textContent='NO DATA'; del.textContent='—'; del.className='delta neg';
+      if(k===0){bpmOut=null; bpmIn=raw;} return; }
+    let proj=v+(same?0:r.diff);
+    proj=Math.min(m.hi,Math.max(m.lo,proj));
+    const d=proj-raw;
+    out.textContent=m.signed?fmtSign(proj):proj.toFixed(m.dec);
+    const good=m.inverse?d<0:d>0;
+    del.textContent=(d>=0?'+':'')+d.toFixed(m.dec)+(Math.abs(d)<0.05?'':(good?' ▲':' ▼'));
+    del.className='delta '+(Math.abs(d)<0.05?'neu':(good?'pos':'neg'));
+    if(k===0){bpmOut=proj; bpmIn=raw;}
+  });
+
+  const hero=$('heroBPM');
+  if(bpmOut===null){ hero.textContent='—'; hero.style.color='var(--dim)'; hero.style.textShadow='none'; }
+  else{
+    hero.textContent=fmtSign(bpmOut);
+    hero.style.color = bpmOut>=5?'var(--green)': bpmOut>=0?'var(--cyan)': bpmOut>=-5?'var(--amber)':'var(--red)';
+    hero.style.textShadow='0 0 16px currentColor, 0 0 40px currentColor';
+  }
+  $('mkSrc').style.left=gaugePos(bpmIn);
+  $('mkDst').style.left=gaugePos(bpmOut);
+  $('mkSrc').style.display=bpmIn===null?'none':'block';
+  $('mkDst').style.display=bpmOut===null?'none':'block';
+
+  renderGhosts(F,T,bpmIn);
+}
+
+function renderGhosts(F,T,bpmIn){
+  const box=$('ghostBody');
+  if(F===T){ box.innerHTML='<div class="empty">// SELECT A ROUTE TO PULL TRANSIT LOGS</div>'; return; }
+  const rows=D.ghosts.filter(g=>g[0]===F&&g[1]===T);
+  if(!rows.length){
+    const rev=D.ghosts.filter(g=>g[0]===T&&g[1]===F).length;
+    let note;
+    if(rev) note=` — projection uses ${rev} reverse-route transfers`+(MODE==='blend'?' + network model':'');
+    else if(MODE==='direct') note=' — no transfers either direction, DIRECT projection unavailable';
+    else note=' — projection is model-only';
+    box.innerHTML=`<div class="empty">// NO FORWARD TRANSIT LOGS ON THIS ROUTE${MODE==='spain'?' (SPAIN SCALE mode ignores them anyway)':note}</div>`;
+    return;
+  }
+  const ref=bpmIn===null?0:bpmIn;
+  rows.sort((a,b)=>Math.abs(a[8]-ref)-Math.abs(b[8]-ref));
+  let html='<table><thead><tr><th>Player</th><th>Route</th><th>Dest Team</th><th>Min (from→to)</th><th>BPM Shift</th></tr></thead><tbody>';
+  for(const g of rows.slice(0,8)){
+    const d=g[9]-g[8], cls=d>=0?'pos':'neg';
+    html+=`<tr><td class="gname">${esc(g[2])}</td>
+      <td class="gmeta">${esc(g[3])} → ${esc(g[4])}</td>
+      <td class="gmeta">${esc(g[5])}</td>
+      <td class="gbpm">${g[6]} → ${g[7]}</td>
+      <td class="gbpm">${fmtSign(g[8])} → <b class="${cls}">${fmtSign(g[9])}</b> <span class="${cls}">(${d>=0?'+':''}${d.toFixed(1)})</span></td></tr>`;
+  }
+  html+='</tbody></table>';
+  if(rows.length>8) html+=`<div class="empty">// +${rows.length-8} MORE TRANSFERS ON THIS ROUTE — SORTED BY BPM SIMILARITY TO YOUR INPUT</div>`;
+  box.innerHTML=html;
+}
+
+// ---- season window filter ----
+function setupSeasonFilter(){
+  const yN=$('yrNew'), yO=$('yrOld'), iF=$('idxFrom'), iT=$('idxTo');
+  [yN,yO,iF,iT].forEach(s=>s.innerHTML='');
+  RAW.years.forEach(y=>{
+    const lab=RAW.yearLabel.get(y)||String(y);
+    yN.add(new Option(lab,y)); yO.add(new Option(lab,y));
+    iF.add(new Option(lab,y)); iT.add(new Option(lab,y));
+  });
+  yN.value=RAW.years[0];  yO.value=RAW.years[RAW.years.length-1];
+  iT.value=RAW.years[0];  iF.value=RAW.years[RAW.years.length-1];
+  yN.onchange=refreshData; yO.onchange=refreshData;
+  iF.onchange=()=>{ if(RAW) buildIndex(); };
+  iT.onchange=()=>{ if(RAW) buildIndex(); };
+}
+function refreshData(){
+  let hi=+$('yrNew').value, lo=+$('yrOld').value;
+  if(lo>hi){ const t=hi; hi=lo; lo=t; }
+  D=deriveD(lo,hi);
+  populate();
+}
+
+// ---- (re)populate all data-dependent UI ----
+function populate(){
+  byLeague=D.leagues.map(()=>[]);
+  D.players.forEach((p,i)=>byLeague[p[P_LG]].push(i));
+  const grades=D.strength.map(s=>s[1]);
+  gMin=Math.min(...grades); gMax=Math.max(...grades);
+
+  // rebuild league selects, preserving the selected leagues where possible
+  const selF=curFromName!==null?D.leagues.indexOf(curFromName):-1;
+  const selT=curToName!==null?D.leagues.indexOf(curToName):-1;
+  fromLg.innerHTML=''; toLg.innerHTML='';
+  D.leagues.forEach((name,i)=>{
+    const grade=D.strength[i][1].toFixed(0);
+    fromLg.add(new Option(`${name}  ·  grade ${grade}`, i));
+    toLg.add(new Option(`${name}  ·  grade ${grade}`, i));
+  });
+  fromLg.value=selF>=0?selF:0;
+  toLg.value=selT>=0?selT:Math.min(1,D.leagues.length-1);
+  curFromName=D.leagues[+fromLg.value]; curToName=D.leagues[+toLg.value];
+
+  const spBtn=document.querySelector('#modes button[data-m="spain"]');
+  if(!D.spain){
+    spBtn.classList.add('dis');
+    spBtn.title='no Spanish division (ACB / Primera FEB / Segunda FEB) in the current data window';
+    if(MODE==='spain'){
+      MODE='blend';
+      document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on', x.dataset.m==='blend'));
+      modeHint.textContent=MODE_HINT[MODE];
+    }
+  } else spBtn.classList.remove('dis');
+
+  pSearch.placeholder=`>_ search ${Math.max(1,Math.round(D.players.length/1000))}k player-seasons…`;
+  if(firstPopulate){ prefillMeans(); firstPopulate=false; }
+
+  $('yrInfo').textContent=`// WINDOW: ${D.players.length.toLocaleString()} PLAYER-SEASONS · ${D.nTransfers.toLocaleString()} TRANSFERS · ${D.leagues.length} LEAGUES`;
+  $('subTag').textContent=`// EUROPEAN LEAGUE BPM TRANSLATION GRID · ${D.leagues.length} LEAGUES · ${D.src}`;
+  $('ftr').textContent=
+    `TRANSFER_MATRIX v3.1 · RUNTIME DATA CORE · ${D.src} · ${D.players.length.toLocaleString()} PLAYER-SEASONS · `+
+    `${D.nTransfers.toLocaleString()} TRANSFERS · ${D.leagues.length} LEAGUES · ANCHOR: ${D.anchor.toUpperCase()}`;
+  compute();
+}
+
+// ================================================================ league exclusions (session only)
+$('exBtn').addEventListener('click', ()=>$('exPanel').classList.toggle('open'));
+$('exClear').addEventListener('click', ()=>{ EXCLUDED.clear(); applyExclusions(); });
+function toggleNcaa(){
+  if(!RAW) return;
+  const ncaa=RAW.allLeagues.filter(nm=>nm.toUpperCase().includes('NCAA'));
+  if(!ncaa.length) return;
+  if(ncaa.every(nm=>EXCLUDED.has(nm))){
+    ncaa.forEach(nm=>EXCLUDED.delete(nm));            // toggle back: restore them
+  }else{
+    const would=new Set([...EXCLUDED, ...ncaa]);
+    if(RAW.allLeagues.length-would.size<2) return;    // keep at least 2 leagues live
+    ncaa.forEach(nm=>EXCLUDED.add(nm));
+  }
+  applyExclusions();
+}
+$('exNcaa').addEventListener('click', toggleNcaa);
+$('idxNcaa').addEventListener('click', toggleNcaa);
+document.addEventListener('click', e=>{ if(!e.target.closest('.exwrap')) $('exPanel').classList.remove('open'); });
+
+function setupExcludePanel(){ renderExList(); updateExBtn(); }
+function renderExList(){
+  const box=$('exList'); box.innerHTML='';
+  RAW.allLeagues.forEach(nm=>{
+    const row=document.createElement('label');
+    row.className='exrow'+(EXCLUDED.has(nm)?' off':'');
+    const cb=document.createElement('input');
+    cb.type='checkbox'; cb.checked=!EXCLUDED.has(nm);
+    cb.addEventListener('change', ()=>toggleExclude(nm));
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(' '+nm));
+    box.appendChild(row);
+  });
+}
+function toggleExclude(nm){
+  if(EXCLUDED.has(nm)) EXCLUDED.delete(nm);
+  else{
+    if(RAW.allLeagues.length-EXCLUDED.size<=2){ renderExList(); return; }  // keep at least 2 leagues live
+    EXCLUDED.add(nm);
+  }
+  applyExclusions();
+}
+function updateExBtn(){
+  const n=EXCLUDED.size;
+  $('exBtn').textContent = n ? `◈ LEAGUES: ${n} EXCLUDED` : '◈ LEAGUES: ALL';
+  $('exBtn').classList.toggle('active', n>0);
+  const ncaa=RAW?RAW.allLeagues.filter(nm=>nm.toUpperCase().includes('NCAA')):[];
+  const allOut=ncaa.length && ncaa.every(nm=>EXCLUDED.has(nm));
+  for(const id of ['exNcaa','idxNcaa']){
+    const nb=$(id);
+    nb.style.display=ncaa.length?'':'none';
+    nb.textContent=allOut?'RESTORE NCAA':(id==='idxNcaa'?'◈ NO NCAA':'NO NCAA');
+    nb.classList.toggle('active', allOut);
+  }
+}
+function applyExclusions(){
+  renderExList(); updateExBtn();
+  idxCache={}; idxBuiltKey=null;
+  refreshData();
+  if($('view-index').style.display!=='none') buildIndex();
+}
+
+// ---- robust weighting toggle ----
+function updateRobustBtns(){
+  for(const id of ['rbBtn','idxRb']){
+    const b=$(id);
+    b.textContent='◈ ROBUST: '+(ROBUST?'ON':'OFF');
+    b.classList.toggle('active', ROBUST);
+    b.title='ON: one vote per player per route + route weight saturated at '+SAT_CAP.toLocaleString()+
+      ' minute-equivalents (volume can\'t buy influence). OFF: pure scraper-faithful weighting.';
+  }
+}
+function toggleRobust(){
+  ROBUST=!ROBUST;
+  updateRobustBtns();
+  idxCache={}; idxBuiltKey=null;
+  if(RAW){
+    refreshData();
+    if($('view-index').style.display!=='none') buildIndex();
+  }
+}
+$('rbBtn').addEventListener('click', toggleRobust);
+$('idxRb').addEventListener('click', toggleRobust);
+updateRobustBtns();
+
+// ================================================================ league power index (tab 2)
+let idxCache={}, idxBuiltKey=null;
+
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on', x===b));
+    const tab=b.dataset.tab;
+    $('view-translator').style.display = tab==='translator'?'':'none';
+    $('view-index').style.display = tab==='index'?'':'none';
+    if(tab==='index' && RAW) buildIndex();
+  });
+});
+$('idxWin').addEventListener('change', ()=>{ if(RAW) buildIndex(); });
+$('idxStat').addEventListener('change', ()=>{ if(RAW) buildIndex(); });
+
+// index metrics: single stats rank by the solved vs-ACB coefficient (TOV% sign-inverted
+// so higher = tougher league); composites average the z-scored component ladders (×100)
+const STAT_ORIENT=STATS.map(s=>s==='TOV_pct'?-1:1);
+const IDX_METRICS={
+  'bpm':    {label:'BPM (OVERALL)',    comps:[0],   dec:0},
+  'c:phys': {label:'PHYSICALITY',      comps:[3,4], dec:0},
+  'c:aggr': {label:'AGGRESSION',       comps:[7,6], dec:0},
+  'c:event':{label:'EVENT GENERATION', comps:[7,8], dec:0},
+  'c:score':{label:'SCORING',          comps:[1,2], dec:0},
+  'c:play': {label:'PLAYMAKING',       comps:[2,5], dec:0},
+  's:1':{label:'TS% SHIFT',  comps:[1], dec:1}, 's:2':{label:'USG% SHIFT', comps:[2], dec:1},
+  's:3':{label:'ORB% SHIFT', comps:[3], dec:1}, 's:4':{label:'DRB% SHIFT', comps:[4], dec:1},
+  's:5':{label:'AST% SHIFT', comps:[5], dec:1}, 's:6':{label:'TOV% SHIFT (INV)', comps:[6], dec:1},
+  's:7':{label:'STL% SHIFT', comps:[7], dec:1}, 's:8':{label:'BLK% SHIFT', comps:[8], dec:1},
+};
+
+// single-stat network solve over a transfer subset (same math as finalize, one stat)
+function solveStatNet(transfers,k){
+  const names=[...new Set(transfers.flatMap(t=>[t.F,t.T]))].sort();
+  if(!names.length) return null;
+  let anchor=names.includes(ANCHOR)?ANCHOR:null;
+  if(!anchor){
+    const wsum=new Map();
+    transfers.forEach(t=>{ wsum.set(t.F,(wsum.get(t.F)||0)+t.w); wsum.set(t.T,(wsum.get(t.T)||0)+t.w); });
+    anchor=names.reduce((a,b)=>(wsum.get(b)||0)>(wsum.get(a)||0)?b:a, names[0]);
+  }
+  const nmIdx=new Map(names.map((nm,i)=>[nm,i]));
+  const aPos=nmIdx.get(anchor);
+  const varPos=names.map((_,i)=>i).filter(i=>i!==aPos);
+  const vi=new Map(varPos.map((lp,j)=>[lp,j]));
+  const n=varPos.length;
+  if(!n) return new Map([[anchor,0]]);
+  const M=Array.from({length:n},()=>new Array(n).fill(0)), v=new Array(n).fill(0);
+  for(const t of transfers){
+    const d=t.diffs[k];
+    if(d===null) continue;
+    const w=t.w/100;
+    const iF=nmIdx.get(t.F), iT=nmIdx.get(t.T), g=[];
+    if(iF!==aPos) g.push([vi.get(iF),1]);
+    if(iT!==aPos) g.push([vi.get(iT),-1]);
+    for(const [j1,s1] of g){
+      v[j1]+=w*d*s1;
+      for(const [j2,s2] of g) M[j1][j2]+=w*s1*s2;
+    }
+  }
+  for(let j=0;j<n;j++) M[j][j]+=1.0;
+  const sol=solveLinear(M,v);
+  const out=new Map([[anchor,0]]);
+  varPos.forEach((lp,j)=>out.set(names[lp], sol[j]));
+  return out;
+}
+
+function computeIndex(win,yLo,yHi,mKey){
+  // display range limits which seasons appear; each season's rating still looks back
+  // through its trailing window, so early-window transfers before yLo still inform it
+  const m=IDX_METRICS[mKey]||IDX_METRICS.bpm;
+  const seasons=RAW.years.filter(y=>y>=yLo&&y<=yHi).sort((a,b)=>a-b);
+  const base=RAW.allTransfers.filter(t=>!EXCLUDED.has(t.F)&&!EXCLUDED.has(t.T));
+  const per=[];
+  for(const Y of seasons){
+    const lo=win>=99?0:Y-win+1;
+    const tr=robustPrep(base.filter(t=>t.y1>=lo&&t.y1<=Y&&t.y2>=lo&&t.y2<=Y));
+    let list=[];
+    if(m.comps.length===1){
+      const k=m.comps[0];
+      const sol=solveStatNet(tr,k);
+      if(sol) for(const [nm,c] of sol)
+        list.push({league:nm, grade: mKey==='bpm' ? +(100+10*c).toFixed(1) : +(STAT_ORIENT[k]*c).toFixed(2)});
+    }else{
+      // composite: solve each component ladder, z-score across rated leagues, average
+      const sols=m.comps.map(k=>solveStatNet(tr,k));
+      if(sols.every(Boolean)){
+        const common=[...sols[0].keys()].filter(nm=>sols.every(s=>s.has(nm)));
+        if(common.length>=3){
+          const zmaps=m.comps.map((k,ci)=>{
+            const vals=common.map(nm=>STAT_ORIENT[k]*sols[ci].get(nm));
+            const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+            const sd=Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/vals.length)||1e-9;
+            return new Map(common.map((nm,i)=>[nm,(vals[i]-mean)/sd]));
+          });
+          list=common.map(nm=>({league:nm,
+            grade:+(100*zmaps.reduce((a,z)=>a+z.get(nm),0)/zmaps.length).toFixed(1)}));
+        }
+      }
+    }
+    list.sort((a,b)=>b.grade-a.grade);
+    list.forEach((r,i)=>r.rank=i+1);
+    per.push({y:Y, label:RAW.yearLabel.get(Y)||String(Y), list,
+              byLeague:new Map(list.map(r=>[r.league,r])), n:tr.length});
+  }
+  const lastRank=nm=>{
+    for(let i=per.length-1;i>=0;i--){
+      const r=per[i].byLeague.get(nm);
+      if(r) return r.rank+(per.length-1-i)*1000;   // recency-weighted: unrated lately sinks
+    }
+    return 1e9;
+  };
+  const leagues=[...new Set(per.flatMap(p=>p.list.map(r=>r.league)))].sort((a,b)=>lastRank(a)-lastRank(b));
+  const colors=new Map(leagues.map((nm,i)=>[nm,`hsl(${(i*137.508)%360},95%,62%)`]));
+  return {per, leagues, colors, win, metric:mKey};
+}
+
+function buildIndex(){
+  hideLedger();
+  let hi=+$('idxTo').value, lo=+$('idxFrom').value;
+  if(lo>hi){ const t=hi; hi=lo; lo=t; }
+  const win=+$('idxWin').value;
+  const mKey=$('idxStat').value;
+  const key=`w${win}|${lo}|${hi}|${mKey}|r${ROBUST?1:0}`;
+  if(!idxCache[key]) idxCache[key]=computeIndex(win,lo,hi,mKey);
+  idxBuiltKey=key;
+  renderIndex(idxCache[key]);
+}
+
+const IDX_W=1060, IDX_H=560, IDX_L=52, IDX_R=40, IDX_T=18, IDX_B=44;
+function renderIndex(data){
+  const per=data.per, S=per.length;
+  const m=IDX_METRICS[data.metric]||IDX_METRICS.bpm;
+  $('idxInfo').textContent=`// ${m.label} · ${data.leagues.length} LEAGUES RATED · WINDOW: ${data.win>=99?'CUMULATIVE':data.win+' SEASON(S)'}`+
+    (data.metric==='bpm'?` · GRADE ANCHOR: ${ANCHOR.toUpperCase()} = 100`:'')+
+    (EXCLUDED.size?` · ${EXCLUDED.size} EXCLUDED`:'')+
+    (ROBUST?' · ROBUST':' · RAW WEIGHTS');
+  const svg=$('idxChart');
+  let gmin=Infinity, gmax=-Infinity;
+  per.forEach(p=>p.list.forEach(r=>{ if(r.grade<gmin)gmin=r.grade; if(r.grade>gmax)gmax=r.grade; }));
+  if(!isFinite(gmin)){ svg.innerHTML=''; $('idxTable').innerHTML='<div class="empty">// NO TRANSFER LINKS IN THIS WINDOW</div>'; return; }
+  const span0=Math.max(1e-6, gmax-gmin);
+  const step=[0.2,0.5,1,2,5,10,20,50,100,200].find(s2=>span0/s2<=8)||500;
+  gmin=Math.floor((gmin-span0*.06)/step)*step;
+  gmax=Math.ceil((gmax+span0*.06)/step)*step;
+  const X=i=>S<2 ? (IDX_L+(IDX_W-IDX_L-IDX_R)/2) : IDX_L+i*(IDX_W-IDX_L-IDX_R)/(S-1);
+  const Yc=g=>IDX_T+(gmax-g)*(IDX_H-IDX_T-IDX_B)/(gmax-gmin);
+  let s='';
+  for(let g=gmin; g<=gmax+1e-9; g+=step){
+    s+=`<line x1="${IDX_L}" y1="${Yc(g)}" x2="${IDX_W-IDX_R}" y2="${Yc(g)}" stroke="rgba(0,229,255,.10)"/>`;
+    s+=`<text x="${IDX_L-8}" y="${Yc(g)+4}" fill="#33546a" font-size="11" text-anchor="end" font-family="monospace">${step<1?g.toFixed(1):Math.round(g)}</text>`;
+  }
+  per.forEach((p,i)=>{
+    s+=`<line x1="${X(i)}" y1="${IDX_T}" x2="${X(i)}" y2="${IDX_H-IDX_B}" stroke="rgba(0,229,255,.05)"/>`;
+    s+=`<text x="${X(i)}" y="${IDX_H-IDX_B+24}" fill="#5d7f96" font-size="11" text-anchor="middle" font-family="monospace">'${String(p.y).slice(2)}</text>`;
+  });
+  for(const nm of data.leagues){
+    const col=data.colors.get(nm);
+    const segs=[]; let seg=[];
+    per.forEach((p,i)=>{
+      const r=p.byLeague.get(nm);
+      if(r) seg.push([X(i),Yc(r.grade)]);
+      else { if(seg.length) segs.push(seg); seg=[]; }
+    });
+    if(seg.length) segs.push(seg);
+    let inner='';
+    for(const sg of segs){
+      const pts=sg.map(q=>`${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
+      if(sg.length>1){
+        inner+=`<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2"/>`;
+        inner+=`<polyline points="${pts}" fill="none" stroke="transparent" stroke-width="12"/>`;
+      }
+      for(const q of sg) inner+=`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3" fill="${col}"/>`;
+    }
+    s+=`<g class="idxg" data-lg="${esc(nm)}">${inner}</g>`;
+  }
+  svg.innerHTML=s;
+  svg.querySelectorAll('g.idxg').forEach(g=>{
+    g.addEventListener('mouseenter', ()=>hlLeague(g.dataset.lg));
+    g.addEventListener('mousemove', e=>moveTip(e, g.dataset.lg, data));
+    g.addEventListener('mouseleave', ()=>hlLeague(null));
+  });
+  renderIndexTable(data);
+}
+function hlLeague(nm){
+  document.querySelectorAll('#idxChart g.idxg').forEach(g=>{
+    g.style.opacity=(nm===null||g.dataset.lg===nm)?1:.12;
+  });
+  document.querySelectorAll('#idxTable tr[data-lg]').forEach(tr=>{
+    tr.classList.toggle('hl', tr.dataset.lg===nm);
+  });
+  if(nm===null) $('idxTip').style.display='none';
+}
+function moveTip(e, nm, data){
+  const rect=$('idxChart').getBoundingClientRect();
+  const relX=(e.clientX-rect.left)/rect.width*IDX_W;
+  const S=data.per.length;
+  let i=Math.round((relX-IDX_L)/((IDX_W-IDX_L-IDX_R)/Math.max(1,S-1)));
+  i=Math.max(0,Math.min(S-1,i));
+  const p=data.per[i], r=p.byLeague.get(nm);
+  const tip=$('idxTip');
+  if(!r){ tip.style.display='none'; return; }
+  const m=IDX_METRICS[data.metric]||IDX_METRICS.bpm;
+  tip.innerHTML=`<b>${esc(nm)}</b><br>${esc(p.label)} · ${m.label} ${r.grade.toFixed(m.dec)} · RANK ${r.rank}/${p.list.length}`;
+  tip.style.display='block';
+  tip.style.left=Math.min(window.innerWidth-240, e.clientX+14)+'px';
+  tip.style.top=(e.clientY+12)+'px';
+}
+function heatRGB(t){
+  t=Math.max(0,Math.min(1,t));
+  const R=[255,77,94], A=[255,179,71], C=[0,229,255];
+  const mix=(a,b,u)=>a.map((x,i)=>Math.round(x+(b[i]-x)*u));
+  return t<0.5 ? mix(R,A,t*2) : mix(A,C,(t-0.5)*2);
+}
+function renderIndexTable(data){
+  const per=data.per;
+  const m=IDX_METRICS[data.metric]||IDX_METRICS.bpm;
+  let gmin=Infinity, gmax=-Infinity;
+  per.forEach(p=>p.list.forEach(r=>{ if(r.grade<gmin)gmin=r.grade; if(r.grade>gmax)gmax=r.grade; }));
+  const span=Math.max(1,gmax-gmin);
+  let html='<table class="idxtable"><thead><tr><th class="lgcol">LEAGUE</th>';
+  per.forEach(p=>html+=`<th title="${p.list.length} leagues rated · ${p.n} transfers in window">'${String(p.y).slice(2)}</th>`);
+  html+='</tr></thead><tbody>';
+  for(const nm of data.leagues){
+    html+=`<tr data-lg="${esc(nm)}"><td class="lgcol"><span class="sw" style="background:${data.colors.get(nm)}"></span>${esc(nm)}<button class="exx" data-x="${esc(nm)}" title="exclude this league for the session">✕</button></td>`;
+    let prev=null;
+    per.forEach(p=>{
+      const r=p.byLeague.get(nm);
+      if(!r){ html+='<td class="rsame">—</td>'; prev=null; return; }
+      let cls='rsame', arr='';
+      if(prev!==null){
+        if(r.rank<prev){cls='rup';arr=' ▲';}
+        else if(r.rank>prev){cls='rdn';arr=' ▼';}
+      }
+      const [cr,cg,cb]=heatRGB((r.grade-gmin)/span);
+      html+=`<td title="${m.label} ${r.grade.toFixed(1)} · rank ${r.rank} of ${p.list.length}">`+
+        `<span class="rk">${r.rank}<span class="${cls}">${arr}</span></span>`+
+        `<span class="gd" style="color:rgb(${cr},${cg},${cb});background:rgba(${cr},${cg},${cb},.13);`+
+        `box-shadow:inset 0 0 0 1px rgba(${cr},${cg},${cb},.35)">${m.dec?r.grade.toFixed(1):Math.round(r.grade)}</span></td>`;
+      prev=r.rank;
+    });
+    html+='</tr>';
+  }
+  html+='</tbody></table>';
+  $('idxTable').innerHTML=html;
+  document.querySelectorAll('#idxTable tr[data-lg]').forEach(tr=>{
+    tr.addEventListener('mouseenter', ()=>hlLeague(tr.dataset.lg));
+    tr.addEventListener('mouseleave', ()=>hlLeague(null));
+  });
+  document.querySelectorAll('#idxTable .exx').forEach(b=>{
+    b.addEventListener('click', e=>{ e.stopPropagation(); hlLeague(null); toggleExclude(b.dataset.x); });
+  });
+  document.querySelectorAll('#idxTable td.lgcol').forEach(td=>{
+    td.title='click for this league\'s vote ledger';
+    td.addEventListener('click', ()=>showLedger(td.parentElement.dataset.lg));
+  });
+}
+
+// ================================================================ vote ledger (transparency)
+// Which neighbor leagues set this league's index rating, and with how much say.
+function hideLedger(){ $('idxLedgerCard').style.display='none'; }
+$('ledgerClose').addEventListener('click', hideLedger);
+function showLedger(nm){
+  const data=idxCache[idxBuiltKey];
+  if(!data || !RAW) return;
+  let hi=+$('idxTo').value, lo=+$('idxFrom').value;
+  if(lo>hi){ const t=hi; hi=lo; lo=t; }
+  const win=+$('idxWin').value;
+  const m=IDX_METRICS[data.metric]||IDX_METRICS.bpm;
+  const single=m.comps.length===1;
+  const k=single?m.comps[0]:0;
+  let Y=null;
+  for(let i=data.per.length-1;i>=0;i--){ if(data.per[i].byLeague.get(nm)){ Y=data.per[i].y; break; } }
+  if(Y===null) return;
+  const wlo=win>=99?0:Y-win+1;
+  const baseFull=RAW.allTransfers.filter(t=>!EXCLUDED.has(t.F)&&!EXCLUDED.has(t.T)
+    &&t.y1>=wlo&&t.y1<=Y&&t.y2>=wlo&&t.y2<=Y);
+  const solveList=robustPrep(baseFull);
+  const R=solveStatNet(solveList,k);
+  if(!R || !R.has(nm)) return;
+  // aggregates over the weights the solve actually used
+  const agg=new Map();
+  for(const t of solveList){
+    const d=t.diffs[k];
+    if(d===null) continue;
+    let o=null, out=false;
+    if(t.F===nm){ o=t.T; out=true; }
+    else if(t.T===nm) o=t.F;
+    else continue;
+    const a=agg.get(o)||{w1:0,ds1:0,n1:0,w2:0,ds2:0,n2:0};
+    if(out){ a.w1+=t.w; a.ds1+=t.w*d; a.n1++; }
+    else   { a.w2+=t.w; a.ds2+=t.w*d; a.n2++; }
+    agg.set(o,a);
+  }
+  // raw record + unique mover counts from the unweighted evidence
+  const movers=new Map(), recs=new Map();
+  for(const t of baseFull){
+    const o=t.F===nm?t.T:(t.T===nm?t.F:null);
+    if(!o) continue;
+    if(!movers.has(o)) movers.set(o,new Set());
+    movers.get(o).add(t.pid||t.name);
+    recs.set(o,(recs.get(o)||0)+1);
+  }
+  const rows=[]; let tw=0;
+  for(const [o,a] of agg){
+    if(!R.has(o)) continue;
+    const w=a.w1+a.w2; tw+=w;
+    const d1=a.n1? a.ds1/a.w1 : null;   // mean shift moving nm -> o
+    const d2=a.n2? a.ds2/a.w2 : null;   // mean shift moving o -> nm
+    const v=((a.w1? a.w1*(R.get(o)+d1):0)+(a.w2? a.w2*(R.get(o)-d2):0))/w;
+    rows.push({o, w, d1, d2, v, rec:recs.get(o)||0, pl:(movers.get(o)||new Set()).size});
+  }
+  rows.sort((a,b)=>b.w-a.w);
+  const fs=v=>v===null?'—':(v>=0?'+':'')+v.toFixed(2);
+  const rk=[...R.entries()].sort((a,b)=>b[1]-a[1]).findIndex(e=>e[0]===nm)+1;
+  $('ledgerHead').innerHTML=
+    `<b>${esc(nm)}</b> · ${esc(String(RAW.yearLabel.get(Y)||Y))} · METRIC: <b>${m.label}${single?'':' → LEDGER SHOWS BPM'}</b>`+
+    ` · WINDOW: ${win>=99?'CUMULATIVE':win+' SEASON(S)'} · WEIGHTS: <b>${ROBUST?'ROBUST (dedup + saturation)':'RAW'}</b><br>`+
+    `rating ≈ weighted mean of neighbor votes → <b>${fs(R.get(nm))}</b> vs ACB (rank ${rk}/${R.size})`+
+    ` · vote = R(neighbor) + observed shift on that edge · d OUT→ = mean shift leaving for the neighbor, ←d IN = mean shift arriving from it`;
+  let html='<table class="idxtable"><thead><tr><th class="lgcol" style="cursor:default">NEIGHBOR LEAGUE</th>'+
+    '<th>WEIGHT %</th><th>RECORDS</th><th>UNIQUE MOVERS</th><th>d OUT→</th><th>←d IN</th><th>R(NEIGHBOR)</th><th>VOTE</th></tr></thead><tbody>';
+  for(const r of rows){
+    html+=`<tr><td class="lgcol" style="cursor:default">${esc(r.o)}</td><td>${(100*r.w/tw).toFixed(1)}%</td>`+
+      `<td>${r.rec}</td><td>${r.pl}</td><td>${fs(r.d1)}</td><td>${fs(r.d2)}</td>`+
+      `<td>${fs(R.get(r.o))}</td><td><b style="color:var(--cyan)">${fs(r.v)}</b></td></tr>`;
+  }
+  html+='</tbody></table>';
+  $('idxLedger').innerHTML=html;
+  $('idxLedgerCard').style.display='';
+  $('idxLedgerCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+boot();
+</script>
+</body>
+</html>
