@@ -180,11 +180,14 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .rup{color:var(--green)} .rdn{color:var(--red)} .rsame{color:var(--dim)}
 
 .exwrap{position:relative}
-#exBtn,#idxNcaa,#rbBtn,#idxRb{background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer;
+#exBtn,#idxNcaa,#rbBtn,#idxRb,#tcBtn,#idxTc{background:var(--panel2); border:1px solid var(--line); color:var(--dim); cursor:pointer;
   font-family:var(--disp); font-size:10px; letter-spacing:.14em; padding:9px 14px; transition:all .15s}
-#exBtn:hover,#idxNcaa:hover,#rbBtn:hover,#idxRb:hover{color:var(--text); border-color:var(--line-hot)}
+#exBtn:hover,#idxNcaa:hover,#rbBtn:hover,#idxRb:hover,#tcBtn:hover,#idxTc:hover{color:var(--text); border-color:var(--line-hot)}
 #exBtn.active,#idxNcaa.active{color:var(--amber); border-color:rgba(255,179,71,.6); text-shadow:0 0 8px rgba(255,179,71,.5)}
-#rbBtn.active,#idxRb.active{color:var(--green); border-color:rgba(57,255,156,.55); text-shadow:0 0 8px rgba(57,255,156,.5)}
+#rbBtn.active,#idxRb.active,#tcBtn.active,#idxTc.active{color:var(--green); border-color:rgba(57,255,156,.55); text-shadow:0 0 8px rgba(57,255,156,.5)}
+.gmore{background:none; border:1px solid var(--line-hot); color:var(--cyan); cursor:pointer;
+  font-family:var(--mono); font-size:11px; padding:3px 10px; margin-left:10px; letter-spacing:.08em}
+.gmore:hover{background:rgba(0,229,255,.12)}
 .idxtable .lgcol{cursor:pointer}
 #ledgerClose{background:none; border:1px solid var(--line); color:var(--dim); cursor:pointer;
   font-family:var(--mono); font-size:11px; padding:2px 9px; margin-left:auto}
@@ -333,6 +336,7 @@ footer{margin-top:26px; font-family:var(--mono); font-size:10px; color:var(--fai
       </div>
     </div>
     <button id="rbBtn"></button>
+    <button id="tcBtn"></button>
     <span class="yrinfo" id="yrInfo"></span>
   </section>
 
@@ -437,6 +441,7 @@ footer{margin-top:26px; font-family:var(--mono); font-size:10px; color:var(--fai
       <b>5 · Stabilize (optional).</b> Regresses your input toward the origin league's minutes-weighted mean by MIN / (MIN + 350) before translating — useful for small samples. Off by default since the transfer data already bakes in typical regression.<br>
       <b>6 · Robust weighting (toggle, default ON).</b> High-volume feeder routes (NBA↔G-League shuttles, NCAA drafts) can dominate a league's network rating with hundreds of correlated, selection-biased records. ROBUST mode applies two corrections to every solve and to route evidence: <b>one vote per player per route</b> (a shuttle player's crossings are averaged into a single record) and <b>route weight saturation</b> (each directed route's total weight is capped smoothly at 25,000 minute-equivalents, so bias can't buy influence with volume). Ghost records always show every raw crossing. Toggle OFF for the pure scraper-faithful weighting.<br>
       <b>7 · Vote ledger.</b> Click any league in the rank timeline to see exactly which neighbor leagues set its rating: each edge's weight share, raw records vs unique movers, the mean shift in each direction (a route is trustworthy when OUT→ and ←IN roughly mirror), the neighbor's own rating, and the resulting vote. The league's rating is (approximately) the weighted mean of those votes.<br>
+      <b>8 · Talent-curve correction (toggle, default RAW).</b> A route's observed shift is distorted when its movers are unrepresentative — exceptionally good imports regress toward the mean and elite talent translates non-linearly, so a league fed by star imports gets a skewed edge. CORRECTED mode residualizes every transfer's shift against the mover's deviation from their origin-league mean: the slope is estimated <b>within routes</b> (pair-centered weighted regression, so genuine league gaps cannot leak into it), then subtracted per transfer. Average movers are untouched; only the exceptional-import distortion is removed. Applies to all solves and route evidence; ghost records always show raw shifts.<br>
       Percentage stats are clamped to sane ranges. All figures are estimates of <b>rate stats</b>; counting stats depend on role and minutes in the new team.
     </div>
   </details>
@@ -482,6 +487,7 @@ footer{margin-top:26px; font-family:var(--mono); font-size:10px; color:var(--fai
         </select>
         <button id="idxNcaa">NO NCAA</button>
         <button id="idxRb"></button>
+        <button id="idxTc"></button>
         <span class="yrinfo" id="idxInfo"></span>
       </div>
       <div class="idxchart-wrap"><svg id="idxChart" viewBox="0 0 1060 560" style="width:100%;min-width:760px"></svg></div>
@@ -735,6 +741,7 @@ async function ingest(files,label){
   blog(`  · seasons available: ${RAW.yearLabel.get(RAW.years[RAW.years.length-1])} → ${RAW.yearLabel.get(RAW.years[0])}`);
   RAW.allTransfers = RAW.mode==='primary' ? traceTransfers(RAW.stints) : RAW.legacyTransfers;
   RAW.allLeagues=[...new Set(RAW.stints.map(s=>s.league))].sort();
+  RAW.globalMeans=leagueMeansOf(RAW.stints);   // origin-deviation baseline for the talent correction
   EXCLUDED.clear();
   setupExcludePanel();
   idxCache={}; idxBuiltKey=null;
@@ -834,6 +841,7 @@ async function buildLegacy(stintTexts, diffTexts){
       const diffs=STATS.map(s=>nf(row[H[s+'_diff']]));
       if(diffs[0]===null) continue;
       transfers.push({F:row[H.league_from], T:row[H.league_to], w:Math.min(m1,m2), diffs, pid:'',
+        v1:STATS.map(s=>nf(row[H[s+'_from']])),
         name:(row[H.player_name]||'').trim(), sf:row[H.season_from], st:row[H.season_to],
         teamTo:(row[H.teams_to]||'').slice(0,40), m1:Math.round(m1), m2:Math.round(m2),
         bpm1:nf(row[H.BPM_from])||0, bpm2:nf(row[H.BPM_to])||0});
@@ -971,6 +979,7 @@ function traceTransfers(stints, floor){
       if(a.vals[0]===null || b.vals[0]===null) continue;
       transfers.push({F:a.league, T:b.league, w:Math.min(a.MIN,b.MIN), y1:a.y, y2:b.y, pid:a.pid,
         diffs:STATS.map((_,k)=>(a.vals[k]===null||b.vals[k]===null)?null:b.vals[k]-a.vals[k]),
+        v1:a.vals,
         name:b.name, sf:a.season, st:b.season, teamTo:b.teams.slice(0,40),
         m1:a.MIN, m2:b.MIN, bpm1:+a.vals[0].toFixed(1), bpm2:+b.vals[0].toFixed(1)});
     }
@@ -1019,6 +1028,76 @@ function satScale(list){
 }
 function robustPrep(list){ return ROBUST ? satScale(dedupTransfers(list)) : list; }
 
+// ================================================================ talent-curve correction (toggleable)
+// A route's mean shift is distorted when its movers sit far from their origin
+// league's average (elite imports regress toward the mean; talent translates
+// non-linearly). Correction: per stat, estimate the slope β of shift vs the
+// mover's deviation from their origin-league mean — WITHIN routes (pair-centered
+// weighted regression, so real league gaps cannot contaminate β) — then subtract
+// β·deviation from every transfer's shift. Routes whose movers are exceptional
+// stop biasing the ladder; average movers are untouched.
+let TALENT=false;
+function leagueMeansOf(stints){
+  const acc=new Map();
+  for(const s of stints){
+    let a=acc.get(s.league);
+    if(!a){ a=STATS.map(()=>[0,0]); acc.set(s.league,a); }
+    s.vals.forEach((v,k)=>{ if(v!==null){ a[k][0]+=s.MIN*v; a[k][1]+=s.MIN; } });
+  }
+  const out=new Map();
+  for(const [lg,a] of acc) out.set(lg, a.map(([sv,sw])=>sw? sv/sw : null));
+  return out;
+}
+function talentAdjust(list, means){
+  // pass 1: per directed route, per stat: Σw, Σw·x, Σw·y  (x = origin deviation, y = shift)
+  const pair=new Map();
+  const xy=t=>{
+    const mF=means.get(t.F);
+    if(!t.v1 || !mF) return null;
+    return STATS.map((_,k)=>{
+      const d=t.diffs[k];
+      if(d===null || t.v1[k]===null || mF[k]===null) return null;
+      return [t.v1[k]-mF[k], d];
+    });
+  };
+  for(const t of list){
+    const rows=xy(t);
+    if(!rows) continue;
+    const key=t.F+'>'+t.T;
+    let p=pair.get(key);
+    if(!p){ p=STATS.map(()=>[0,0,0]); pair.set(key,p); }
+    rows.forEach((r,k)=>{ if(r){ p[k][0]+=t.w; p[k][1]+=t.w*r[0]; p[k][2]+=t.w*r[1]; } });
+  }
+  // pass 2: pooled within-route slope β per stat
+  const num=new Array(STATS.length).fill(0), den=new Array(STATS.length).fill(0);
+  for(const t of list){
+    const rows=xy(t);
+    if(!rows) continue;
+    const p=pair.get(t.F+'>'+t.T);
+    rows.forEach((r,k)=>{
+      if(!r || !p[k][0]) return;
+      const xc=r[0]-p[k][1]/p[k][0], yc=r[1]-p[k][2]/p[k][0];
+      num[k]+=t.w*xc*yc; den[k]+=t.w*xc*xc;
+    });
+  }
+  const beta=num.map((n,k)=>{
+    if(den[k]<1e-9) return 0;
+    return Math.max(-0.9, Math.min(0.3, n/den[k]));   // sanity clamp; RTM slopes are negative
+  });
+  // pass 3: subtract β·deviation from each transfer's shifts
+  return list.map(t=>{
+    const rows=xy(t);
+    if(!rows) return t;
+    const diffs=STATS.map((_,k)=>rows[k]===null ? t.diffs[k] : t.diffs[k]-beta[k]*rows[k][0]);
+    return Object.assign({}, t, {diffs});
+  });
+}
+// full evidence pipeline: talent correction first (per raw record), then robust dedup+saturation
+function prepTransfers(list, means){
+  const t2 = TALENT ? talentAdjust(list, means) : list;
+  return ROBUST ? satScale(dedupTransfers(t2)) : t2;
+}
+
 function deriveD(yLo,yHi){
   const st=RAW.stints.filter(s=>s.y>=yLo && s.y<=yHi && !EXCLUDED.has(s.league));
   let full, spainFull;
@@ -1030,9 +1109,11 @@ function deriveD(yLo,yHi){
       &&!EXCLUDED.has(t.F)&&!EXCLUDED.has(t.T));
     spainFull=full;
   }
-  // solves + route evidence use the (optionally) robust list; ghosts always show every record
-  const D2=finalize(st.filter(s=>s.vals[0]!==null), robustPrep(full), full, RAW.srcLabel);
-  const sp=computeSpainScale(robustPrep(spainFull));
+  // solves + route evidence use the prepared list (talent correction + robust weighting
+  // per the toggles); ghosts always show every raw record
+  const wmeans=leagueMeansOf(st);
+  const D2=finalize(st.filter(s=>s.vals[0]!==null), prepTransfers(full,wmeans), full, RAW.srcLabel);
+  const sp=computeSpainScale(prepTransfers(spainFull,wmeans));
   D2.spain = sp ? D2.leagues.map(nm=>sp.map.get(nm)||null) : null;
   D2.spainAnchor = sp ? sp.anchor : null;
   return D2;
@@ -1275,7 +1356,7 @@ function compute(){
   else basis = `BLEND: <b>${(rBPM.w*100).toFixed(0)}%</b> empirical / ${(100-rBPM.w*100).toFixed(0)}% network scale`;
   $('confBox').innerHTML = same
     ? 'ROUTE: <b>IDENTITY</b> — pick two different leagues to translate.'
-    : `ROUTE SAMPLES: <b>${nRoute}</b> ${ROBUST?'unique movers':'transfers'} (both directions)<br>`+
+    : `ROUTE SAMPLES: <b>${nRoute}</b> ${ROBUST?'unique movers':'transfers'} (both directions${TALENT?', talent-adjusted':''})<br>`+
       basis+`<br>CONFIDENCE: <b class="lvl" style="color:${col}">${lvl}</b>`;
 
   $('thFrom').textContent=D.leagues[F];
@@ -1331,8 +1412,11 @@ function renderGhosts(F,T,bpmIn){
   }
   const ref=bpmIn===null?0:bpmIn;
   rows.sort((a,b)=>Math.abs(a[8]-ref)-Math.abs(b[8]-ref));
+  const key=F+'>'+T;
+  if(key!==ghostRouteKey){ ghostRouteKey=key; ghostShowAll=false; }
+  const shown=ghostShowAll ? rows : rows.slice(0,8);
   let html='<table><thead><tr><th>Player</th><th>Route</th><th>Dest Team</th><th>Min (from→to)</th><th>BPM Shift</th></tr></thead><tbody>';
-  for(const g of rows.slice(0,8)){
+  for(const g of shown){
     const d=g[9]-g[8], cls=d>=0?'pos':'neg';
     html+=`<tr><td class="gname">${esc(g[2])}</td>
       <td class="gmeta">${esc(g[3])} → ${esc(g[4])}</td>
@@ -1341,9 +1425,17 @@ function renderGhosts(F,T,bpmIn){
       <td class="gbpm">${fmtSign(g[8])} → <b class="${cls}">${fmtSign(g[9])}</b> <span class="${cls}">(${d>=0?'+':''}${d.toFixed(1)})</span></td></tr>`;
   }
   html+='</tbody></table>';
-  if(rows.length>8) html+=`<div class="empty">// +${rows.length-8} MORE TRANSFERS ON THIS ROUTE — SORTED BY BPM SIMILARITY TO YOUR INPUT</div>`;
+  if(rows.length>8){
+    html+=`<div class="empty">// ${ghostShowAll
+      ? `SHOWING ALL ${rows.length} TRANSFERS ON THIS ROUTE`
+      : `+${rows.length-8} MORE TRANSFERS ON THIS ROUTE — SORTED BY BPM SIMILARITY TO YOUR INPUT`}`+
+      `<button class="gmore" id="ghostMore">${ghostShowAll?'▲ SHOW TOP 8':'▼ VIEW ALL '+rows.length}</button></div>`;
+  }
   box.innerHTML=html;
+  const gm=document.getElementById('ghostMore');
+  if(gm) gm.addEventListener('click', ()=>{ ghostShowAll=!ghostShowAll; renderGhosts(F,T,bpmIn); });
 }
+let ghostShowAll=false, ghostRouteKey='';
 
 // ---- season window filter ----
 function setupSeasonFilter(){
@@ -1494,6 +1586,30 @@ $('rbBtn').addEventListener('click', toggleRobust);
 $('idxRb').addEventListener('click', toggleRobust);
 updateRobustBtns();
 
+// ---- talent-curve correction toggle ----
+function updateTalentBtns(){
+  for(const id of ['tcBtn','idxTc']){
+    const b=$(id);
+    b.textContent='◈ TALENT CURVE: '+(TALENT?'CORRECTED':'RAW');
+    b.classList.toggle('active', TALENT);
+    b.title='CORRECTED: each transfer\'s shift is residualized against how far the mover sat from their '+
+      'origin-league mean (slope estimated within routes, so real league gaps can\'t contaminate it). '+
+      'Routes with exceptionally good/bad imports stop distorting the ladders. RAW: shifts used as observed.';
+  }
+}
+function toggleTalent(){
+  TALENT=!TALENT;
+  updateTalentBtns();
+  idxCache={}; idxBuiltKey=null;
+  if(RAW){
+    refreshData();
+    if($('view-index').style.display!=='none') buildIndex();
+  }
+}
+$('tcBtn').addEventListener('click', toggleTalent);
+$('idxTc').addEventListener('click', toggleTalent);
+updateTalentBtns();
+
 // ================================================================ league power index (tab 2)
 let idxCache={}, idxBuiltKey=null;
 
@@ -1570,7 +1686,7 @@ function computeIndex(win,yLo,yHi,mKey){
   const per=[];
   for(const Y of seasons){
     const lo=win>=99?0:Y-win+1;
-    const tr=robustPrep(base.filter(t=>t.y1>=lo&&t.y1<=Y&&t.y2>=lo&&t.y2<=Y));
+    const tr=prepTransfers(base.filter(t=>t.y1>=lo&&t.y1<=Y&&t.y2>=lo&&t.y2<=Y), RAW.globalMeans);
     let list=[];
     if(m.comps.length===1){
       const k=m.comps[0];
@@ -1617,7 +1733,7 @@ function buildIndex(){
   if(lo>hi){ const t=hi; hi=lo; lo=t; }
   const win=+$('idxWin').value;
   const mKey=$('idxStat').value;
-  const key=`w${win}|${lo}|${hi}|${mKey}|r${ROBUST?1:0}`;
+  const key=`w${win}|${lo}|${hi}|${mKey}|r${ROBUST?1:0}${TALENT?'t':''}`;
   if(!idxCache[key]) idxCache[key]=computeIndex(win,lo,hi,mKey);
   idxBuiltKey=key;
   renderIndex(idxCache[key]);
@@ -1630,7 +1746,7 @@ function renderIndex(data){
   $('idxInfo').textContent=`// ${m.label} · ${data.leagues.length} LEAGUES RATED · WINDOW: ${data.win>=99?'CUMULATIVE':data.win+' SEASON(S)'}`+
     (data.metric==='bpm'?` · GRADE ANCHOR: ${ANCHOR.toUpperCase()} = 100`:'')+
     (EXCLUDED.size?` · ${EXCLUDED.size} EXCLUDED`:'')+
-    (ROBUST?' · ROBUST':' · RAW WEIGHTS');
+    (ROBUST?' · ROBUST':' · RAW WEIGHTS')+(TALENT?' · TALENT-ADJ':'');
   const svg=$('idxChart');
   let gmin=Infinity, gmax=-Infinity;
   per.forEach(p=>p.list.forEach(r=>{ if(r.grade<gmin)gmin=r.grade; if(r.grade>gmax)gmax=r.grade; }));
@@ -1771,7 +1887,7 @@ function showLedger(nm){
   const wlo=win>=99?0:Y-win+1;
   const baseFull=RAW.allTransfers.filter(t=>!EXCLUDED.has(t.F)&&!EXCLUDED.has(t.T)
     &&t.y1>=wlo&&t.y1<=Y&&t.y2>=wlo&&t.y2<=Y);
-  const solveList=robustPrep(baseFull);
+  const solveList=prepTransfers(baseFull, RAW.globalMeans);
   const R=solveStatNet(solveList,k);
   if(!R || !R.has(nm)) return;
   // aggregates over the weights the solve actually used
@@ -1811,7 +1927,7 @@ function showLedger(nm){
   const rk=[...R.entries()].sort((a,b)=>b[1]-a[1]).findIndex(e=>e[0]===nm)+1;
   $('ledgerHead').innerHTML=
     `<b>${esc(nm)}</b> · ${esc(String(RAW.yearLabel.get(Y)||Y))} · METRIC: <b>${m.label}${single?'':' → LEDGER SHOWS BPM'}</b>`+
-    ` · WINDOW: ${win>=99?'CUMULATIVE':win+' SEASON(S)'} · WEIGHTS: <b>${ROBUST?'ROBUST (dedup + saturation)':'RAW'}</b><br>`+
+    ` · WINDOW: ${win>=99?'CUMULATIVE':win+' SEASON(S)'} · WEIGHTS: <b>${ROBUST?'ROBUST (dedup + saturation)':'RAW'}${TALENT?' · TALENT-ADJUSTED':''}</b><br>`+
     `rating ≈ weighted mean of neighbor votes → <b>${fs(R.get(nm))}</b> vs ACB (rank ${rk}/${R.size})`+
     ` · vote = R(neighbor) + observed shift on that edge · d OUT→ = mean shift leaving for the neighbor, ←d IN = mean shift arriving from it`;
   let html='<table class="idxtable"><thead><tr><th class="lgcol" style="cursor:default">NEIGHBOR LEAGUE</th>'+
