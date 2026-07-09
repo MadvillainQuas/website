@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-09T00:16:46.258Z",
+    "savedAt": "2026-07-09T08:44:52.833Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2436,6 +2436,24 @@
       "season": "",
       "savedAt": 1783500665367,
       "source": "manual"
+    },
+    "Octavio Brito": {
+      "metrics": {
+        "player": "Octavio Brito",
+        "team": "Frayles",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Frayles",
+      "season": "",
+      "savedAt": 1783579217603,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3118,6 +3136,11 @@
       "name": "Scotty Washington",
       "team": "High Point",
       "createdAt": 1783500665366
+    },
+    {
+      "name": "Octavio Brito",
+      "team": "Frayles",
+      "createdAt": 1783579217602
     }
   ],
   "starRatings": {
@@ -3231,7 +3254,8 @@
     "Jeremiah Burke": 3.5,
     "Javon Cooley": 3,
     "Malik Messina-Moore": 4,
-    "Christian May": 3.5
+    "Christian May": 3.5,
+    "Octavio Brito": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4175,6 +4199,12 @@
       ]
     },
     "Scotty Washington": {
+      "primary": 2,
+      "secondary": [
+        3
+      ]
+    },
+    "Octavio Brito": {
       "primary": 2,
       "secondary": [
         3
@@ -6374,6 +6404,14 @@
     "Malik Messina-Moore": {
       "height": "6'5\"",
       "weight": "205"
+    },
+    "Scotty Washington": {
+      "height": "6'4\"",
+      "weight": "180"
+    },
+    "Octavio Brito": {
+      "height": "6'4\"",
+      "weight": "210"
     }
   },
   "potentialRatings": {
@@ -6479,7 +6517,8 @@
     "Javon Cooley": 3,
     "Christian May": 4,
     "Malik Messina-Moore": 5,
-    "Dan Gherezgher": 5
+    "Dan Gherezgher": 5,
+    "Octavio Brito": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8142,13 +8181,13 @@
           "level": "Good"
         },
         {
-          "title": "Slashing",
+          "title": "Off-Catch",
           "description": "Capable straight-line slasher to the basket w/ decent body control at the rim.",
-          "level": "Good"
+          "level": "Decent"
         },
         {
           "title": "Defense/Wiry Strong",
-          "description": "Despite not being big for his spot, he is wiry strong and willing to play w/ physicality as an additional defensive rebounder. Diligent off-ball defender that sticks to his man, blows up actions. Puts ball-pressure on his man on-ball. Good speed laterally.",
+          "description": "Despite not being big for his spot, he is quite wiry strong and willing to play w/ physicality as an additional defensive rebounder. Diligent off-ball defender that sticks to his man, blows up actions. Puts ball-pressure on his man on-ball. Good speed laterally.",
           "level": "Decent"
         },
         {
@@ -8164,6 +8203,36 @@
           "level": "Bad"
         }
       ]
+    },
+    "Octavio Brito": {
+      "strengths": [
+        {
+          "title": "Physicality",
+          "description": "Good post defender, capable of guarding up in the post with his strong lower body and strong frame - stonewalls wings trying to post him up. Finishes with strength at the rim, through defenders. Strong chest - difficult to move for guards/3's. Switchable up positions due to his strength.",
+          "level": "Elite"
+        },
+        {
+          "title": "Off-Catch",
+          "description": "Terrific at getting to his mid-range with creativity off-catch if his lane to the rim is cut off.",
+          "level": "Good"
+        },
+        {
+          "title": "Shotmaking/Secondary Iso",
+          "description": "Good off-dribble from 3, capable of pulling up behind the screen. Good C&S shotmaker. Can run off-screens and make shots. Capable at creating his own shot on an island in the mid-range/from 3.",
+          "level": "Good"
+        },
+        {
+          "title": "Defensive Playmaking",
+          "description": "Good secondary rim-protector at the guard spot - with good instincts for helping around the rim/aggression. Good hands/anticipation for steals.",
+          "level": "Good"
+        },
+        {
+          "title": "Drive & Kick",
+          "description": "Makes heads up reads as a driver.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": []
     }
   },
   "playerCeilingFloor": {},
