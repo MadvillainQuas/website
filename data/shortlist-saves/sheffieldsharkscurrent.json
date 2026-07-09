@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-08T05:27:40.062Z",
+    "savedAt": "2026-07-09T00:16:46.258Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2418,6 +2418,24 @@
       "season": "",
       "savedAt": 1783483913853,
       "source": "manual"
+    },
+    "Scotty Washington": {
+      "metrics": {
+        "player": "Scotty Washington",
+        "team": "High Point",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "High Point",
+      "season": "",
+      "savedAt": 1783500665367,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3095,6 +3113,11 @@
       "name": "Christian May",
       "team": "UNC Wilmington",
       "createdAt": 1783483913853
+    },
+    {
+      "name": "Scotty Washington",
+      "team": "High Point",
+      "createdAt": 1783500665366
     }
   ],
   "starRatings": {
@@ -4148,6 +4171,12 @@
       "primary": 2,
       "secondary": [
         1,
+        3
+      ]
+    },
+    "Scotty Washington": {
+      "primary": 2,
+      "secondary": [
         3
       ]
     }
@@ -6449,7 +6478,8 @@
     "Jeremiah Burke": 4,
     "Javon Cooley": 3,
     "Christian May": 4,
-    "Malik Messina-Moore": 5
+    "Malik Messina-Moore": 5,
+    "Dan Gherezgher": 5
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8077,17 +8107,17 @@
         },
         {
           "title": "Speed/Handles",
-          "description": "Quick downhill speed. Able to shift defenders w/ his tight handle. Handles ball pressure well. Likes to snake toward the middle of the paint.",
+          "description": "Quick downhill speed. Able to shift defenders w/ his tight handle. Handles ball pressure brilliantly - retains his handle and can create space even with a defender in his chest. Likes to snake toward the middle of the paint. Danger in transition as a ball-handler.",
           "level": "Good"
         },
         {
           "title": "Passing",
-          "description": "Heads-up passer off-catch, looking to make the right play - generates points for others with his ability to handle in traffic (19% ast rate, +1 AST/USG) and ability to smoothly pass off-handle. Able to offload in tight spaces. Capable additional pick-and-roll playmaker, deals with aggressive coverages.",
+          "description": "Heads-up passer off-catch, looking to make the right play - generates points for others with his ability to handle in traffic (19% ast rate, +1 AST/USG) and ability to smoothly pass off-handle. Able to offload in tight spaces. Capable additional pick-and-roll playmaker, deals with aggressive coverages. Passer mentality.",
           "level": "Good"
         },
         {
           "title": "Hand-Offs/Off-Ball/3PT Shooting",
-          "description": "Manipulates defenders with his movement off-ball. Passes and moves into his shot. Shot the 3 @ good volume, and at 40% at Montana State last year, operating off of screens/movement shooting.",
+          "description": "Manipulates defenders with his movement off-ball. Passes and moves into his shot. Shot the 3 @ good volume, and at 40% at Montana State last year, operating off of screens/movement shooting. Opportunistic in transition.",
           "level": "Good"
         }
       ],
@@ -8095,6 +8125,42 @@
         {
           "title": "Inconsistent w/ his Shot in the HMs",
           "description": "Shot 40% on good volume at Montana State, but dipped down to 31% at Xavier.",
+          "level": "Bad"
+        },
+        {
+          "title": "Finishing",
+          "description": "Average finisher at the rim.",
+          "level": "Slight"
+        }
+      ]
+    },
+    "Scotty Washington": {
+      "strengths": [
+        {
+          "title": "Decision-Making Off-Catch",
+          "description": "Safe, tight-handle, can make passes and solid decisions off-handle.",
+          "level": "Good"
+        },
+        {
+          "title": "Slashing",
+          "description": "Capable straight-line slasher to the basket w/ decent body control at the rim.",
+          "level": "Good"
+        },
+        {
+          "title": "Defense/Wiry Strong",
+          "description": "Despite not being big for his spot, he is wiry strong and willing to play w/ physicality as an additional defensive rebounder. Diligent off-ball defender that sticks to his man, blows up actions. Puts ball-pressure on his man on-ball. Good speed laterally.",
+          "level": "Decent"
+        },
+        {
+          "title": "Shot-Creation",
+          "description": "Capable shot-creator in the mid-range off-dribble. Ex-higher usage (24%) scorer at Cal State Northridge that did most of his work on-ball in the mid-range.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Finishing/Size",
+          "description": "Still quite undersized if you want to play him @ the 3, limited physicality as a finisher.",
           "level": "Bad"
         }
       ]
