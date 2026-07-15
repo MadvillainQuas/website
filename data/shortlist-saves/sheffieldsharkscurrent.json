@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-09T08:44:52.833Z",
+    "savedAt": "2026-07-15T15:39:44.717Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2454,6 +2454,24 @@
       "season": "",
       "savedAt": 1783579217603,
       "source": "manual"
+    },
+    "Travis Henson": {
+      "metrics": {
+        "player": "Travis Henson",
+        "team": "Wolmirstadt",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Wolmirstadt",
+      "season": "",
+      "savedAt": 1784125787605,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3141,6 +3159,11 @@
       "name": "Octavio Brito",
       "team": "Frayles",
       "createdAt": 1783579217602
+    },
+    {
+      "name": "Travis Henson",
+      "team": "Wolmirstadt",
+      "createdAt": 1784125787604
     }
   ],
   "starRatings": {
@@ -4206,6 +4229,12 @@
     },
     "Octavio Brito": {
       "primary": 2,
+      "secondary": [
+        3
+      ]
+    },
+    "Travis Henson": {
+      "primary": 4,
       "secondary": [
         3
       ]
@@ -6412,6 +6441,10 @@
     "Octavio Brito": {
       "height": "6'4\"",
       "weight": "210"
+    },
+    "Travis Henson": {
+      "height": "6'6\"",
+      "weight": "195"
     }
   },
   "potentialRatings": {
@@ -8233,6 +8266,52 @@
         }
       ],
       "weaknesses": []
+    },
+    "Travis Henson": {
+      "strengths": [
+        {
+          "title": "Rim Protection",
+          "description": "Great secondary rim protector, with an excellent 4% block rate in Sweden. Long and springy, aggressive going after potential blocks including on the fast break for chasedown blocks.",
+          "level": "Good"
+        },
+        {
+          "title": "Close-Out Attacking/Hand-Offs",
+          "description": "Aggressive off-catch with quick first-step. Efficient mid-range pull w/ high release he gets off over defenders, great at limited dribbles getting to his mid-range/step-back 3. Vertical athlete @ the rim.",
+          "level": "Good"
+        },
+        {
+          "title": "1-on-1 D",
+          "description": "Quick lateral speed and long arms.",
+          "level": "Good"
+        },
+        {
+          "title": "Volume from 3",
+          "description": "Good volume from deep (9/100 attempts) on decent efficiency (34%), able to shoot from a variety of actions.",
+          "level": "Good"
+        },
+        {
+          "title": "Iso",
+          "description": "Capable iso scorer w/ a solid ability to shake his man off-handle.",
+          "level": "Decent"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Rebounding/Physicality/Screen Navigation",
+          "description": "Weak rebounder for the spot (12%), with minimal impact on the offensive glass, due to his frame. Off-ball lapses exacerbate boxing-out issues/loses concentration. Cedes a lot of ground when defending the post due to his skinny frame and high centre of gravity. Can have issues with screen navigation/if the screen makes contact.",
+          "level": "Bad"
+        },
+        {
+          "title": "Off-Ball D",
+          "description": "Has a lot of lapses with ball-watching, losing his man. Can be over-aggressive going for blocks. Weak close-out D.",
+          "level": "Bad"
+        },
+        {
+          "title": "Ball Movement/Passing",
+          "description": "Very low assist rates. Efficient scorer, but can have a proclivity to sizing up and isoing/tough look - 24% usage in Germany.",
+          "level": "Slight"
+        }
+      ]
     }
   },
   "playerCeilingFloor": {},
