@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-16T06:11:48.336Z",
+    "savedAt": "2026-07-16T19:28:00.765Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2472,6 +2472,24 @@
       "season": "",
       "savedAt": 1784125787605,
       "source": "manual"
+    },
+    "Nick Farrar": {
+      "metrics": {
+        "player": "Nick Farrar",
+        "team": "Galomar",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Galomar",
+      "season": "",
+      "savedAt": 1784230070151,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3164,6 +3182,11 @@
       "name": "Travis Henson",
       "team": "Wolmirstadt",
       "createdAt": 1784125787604
+    },
+    {
+      "name": "Nick Farrar",
+      "team": "Galomar",
+      "createdAt": 1784230070150
     }
   ],
   "starRatings": {
