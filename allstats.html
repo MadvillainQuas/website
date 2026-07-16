@@ -64,7 +64,7 @@
 <body>
 <div class="wrap">
     <h1>🌍 All-League Stats</h1>
-    <div class="sub">Every league in one RealGM-style table — newest healthy data folder per league, duplicates deduped, bugged outputs skipped. RAPM &amp; APM use the exact engines from the Lineup Analyzer.</div>
+    <div class="sub">Every league in one RealGM-style table — newest healthy data folder per league, duplicates deduped, bugged outputs skipped. RAPM &amp; APM use the exact engines from the Lineup Analyzer; BPM 2.0 / VORP / Pos / Role follow the Basketball-Reference specification. Cell colors are percentiles over players passing the MPG/GP filters (datawide or vs nearest position).</div>
 
     <div class="panel">
         <div class="rowflex">
@@ -94,6 +94,13 @@
                 <select id="diffModeSel">
                     <option value="onOff">ON − OFF</option>
                     <option value="vsTeam">ON − Team Avg</option>
+                </select>
+            </label>
+            <label>Colors
+                <select id="colorModeSel">
+                    <option value="pctAll" selected>%ile (all players)</option>
+                    <option value="pctPos">%ile (by position)</option>
+                    <option value="sign">Sign +/− only</option>
                 </select>
             </label>
             <button class="btn secondary" id="showAllBtn">Show All</button>
@@ -2774,6 +2781,295 @@
 </script>
 <script>
 /* ============================================================================
+ * BPM 2.0 (Box Plus/Minus) — faithful port of REALGMSCRAPER.txt's
+ * BPMCalculator/EurobasketStatsProcessor pipeline, verified line-by-line
+ * against basketball-reference.com/about/bpm2.html (2026-07-16):
+ *   - position regression  2.130 + 8.668·%TRB − 2.486·%STL + 0.992·%PF
+ *                          − 3.536·%AST + 1.667·%BLK   (50-min prior @ 3.0)
+ *   - offensive role       6.00 − 6.642·%AST − 8.544·%ThresholdPts
+ *                          (threshold eff = team PTS/TSA − 0.33; 50-min @ 4.0)
+ *   - team minutes-weighted average position forced to 3.0 (iterative, clamps)
+ *   - BPM/OBPM coefficient tables (position-interpolated; FGA/FTA by role)
+ *   - position constant (−0.818/−1.698 @ pos 1 → 0 @ pos ≥ 3)
+ *   - role constant (±2.774 BPM, ±0.86 OBPM)
+ *   - AdjPts = PTS + (1 − TmPTS/TmTSA)·TSA  (verified vs LeBron example)
+ *   - team adjustment: (rating × 1.2 − Σ min%·raw) / Σ min%  (per the official
+ *     BPM calculation sheet; page prose says "sums to team adjusted efficiency")
+ *   - VORP = (BPM + 2.0) × min% × (teamGames / 82)
+ *
+ * Deliberate deviations from the source file (documented):
+ *   1. %ThresholdPts uses TOTALS (player & team), not per-100 values — the
+ *      source summed per-100 threshold points across players as the "team
+ *      total", which over-weights low-minute players in the share. B-Ref
+ *      defines it as "% of Team Threshold Points" (a share of team totals).
+ *   2. Players under 50 MIN get null (shown as —) instead of 0.0.
+ *   3. Team rating is the raw net rating per 100 (no SOS/lead-trail
+ *      adjustment — not available for these leagues).
+ * ==========================================================================*/
+const BPM2 = (() => {
+'use strict';
+
+const GAME_LEN = 40;               // all covered leagues play 40-minute games
+const MIN_MINUTES_FOR_BPM = 50;
+
+const COEF_BPM = {
+    pts_adj: 0.860, tpm: 0.389, to: -0.964, pf: -0.367,
+    ast: [0.580, 1.034], orb: [0.613, 0.181], drb: [0.116, 0.181],
+    stl: [1.369, 1.008], blk: [1.327, 0.703]
+};
+const COEF_BPM_ROLE = { fga: [-0.560, -0.780], fta: [-0.246, -0.343] };
+const COEF_OBPM = {
+    pts_adj: 0.605, tpm: 0.477, ast: 0.476, pf: -0.439,
+    to: [-0.579, -0.882], orb: [0.606, 0.422], drb: [-0.112, 0.103],
+    stl: [0.177, 0.294], blk: [0.725, 0.097]
+};
+const COEF_OBPM_ROLE = { fga: [-0.330, -0.472], fta: [-0.145, -0.208] };
+const POS_ADJ = { bpm: -0.818, obpm: -1.698 };     // at position 1; 0 at >= 3
+const ROLE_ADJ = { bpm: 2.774, obpm: 0.86 };       // ± at role 5 / role 1
+
+const lerp15 = (pair, x) => {
+    const t = Math.max(0, Math.min(1, (x - 1) / 4));
+    return pair[0] + t * (pair[1] - pair[0]);
+};
+const coef = (c, x) => Array.isArray(c) ? lerp15(c, x) : c;
+
+function positionAdjustment(position, kind) {
+    if (position >= 3) return 0;
+    const t = (position - 1) / 2;                  // 0 at pos1, 1 at pos3
+    return POS_ADJ[kind] * (1 - t);
+}
+function roleAdjustment(role, kind) {
+    const a = ROLE_ADJ[kind];
+    if (role <= 3) { const t = (role - 1) / 2; return -a * (1 - t); }
+    const t = (role - 3) / 2; return a * t;
+}
+
+/* --- team context -----------------------------------------------------
+ * t = aggLineups() totals for the team's lineups (own + _VS opponent sums),
+ * gp = games played, leagueOrtg = league average points per 100 poss.
+ */
+function teamContext(t, gp) {
+    const poss = t.poss, possV = t.possV;
+    const tsa = t.fga + 0.44 * t.fta;
+    return {
+        gp, poss, possV,
+        oreb: t.oreb, dreb: t.dreb, orebV: t.orebV, drebV: t.drebV,
+        fgm: t.fgm, fga: t.fga, fgaV: t.fgaV, tpaV: t.tpaV,
+        fta: t.fta, tov: t.tov, pf: t.pf !== undefined ? t.pf : 0,
+        ast: t.ast, stl: t.stl, blk: t.blk,
+        pts: t.pts, ptsV: t.ptsV,
+        ptsPerTsa: tsa > 0 ? t.pts / tsa : 1.0,
+        offRtg: poss > 0 ? (t.pts / poss) * 100 : 0,
+        defRtg: possV > 0 ? (t.ptsV / possV) * 100 : 0,
+        tmMpPer5: gp * GAME_LEN,                    // Tm MP / 5
+        totalThresholdPts: 1.0                      // filled by thresholdPass
+    };
+}
+
+/* --- per-player advanced % stats (Basketball-Reference formulas) ------- */
+function pctStats(p, T) {
+    const MIN = Math.max(p.min, 0.1);
+    const tm5 = T.tmMpPer5;
+    const dn = (num, den) => den > 0 ? num / den : 0;
+    const orbPct = 100 * dn(p.oreb * tm5, MIN * (T.oreb + T.drebV));
+    const drbPct = 100 * dn(p.dreb * tm5, MIN * (T.dreb + T.orebV));
+    const trbPct = 100 * dn((p.oreb + p.dreb) * tm5,
+        MIN * (T.oreb + T.dreb + T.orebV + T.drebV));
+    const teammateFgm = (MIN / tm5) * T.fgm - p.fgm;
+    const astPct = teammateFgm > 0 ? 100 * p.ast / teammateFgm : 0;
+    const stlPct = 100 * dn(p.stl * tm5, MIN * Math.max(T.possV, 1));
+    const opp2pa = Math.max(T.fgaV - T.tpaV, 0);
+    const blkPct = opp2pa > 0 ? 100 * dn(p.blk * tm5, MIN * opp2pa) : 0;
+    const usageEvents = p.fga + 0.44 * p.fta + p.tov;
+    const teamUsage = T.fga + 0.44 * T.fta + T.tov;
+    const usgPct = teamUsage > 0 ? 100 * dn(usageEvents * tm5, MIN * teamUsage) : 0;
+    const tovPct = usageEvents > 0 ? 100 * p.tov / usageEvents : 0;
+    // PF share vs minutes-prorated expectation (~1.0 = average), per source
+    const expectedPf = T.pf * (MIN / tm5);
+    const pfPct = expectedPf > 0 ? p.pf / expectedPf : 0;
+    return { orbPct, drbPct, trbPct, astPct, stlPct, blkPct, usgPct, tovPct, pfPct };
+}
+
+/* --- per-100 team-possession stats: poss_played = TmPoss × MIN/(GP×40) -- */
+function per100(p, T) {
+    const gameMin = T.gp * GAME_LEN;
+    let poss = (gameMin > 0 && T.poss > 0) ? T.poss * (p.min / gameMin) : p.min * 1.75;
+    poss = Math.max(poss, 0.1);
+    const k = 100 / poss;
+    return {
+        poss,
+        pts: p.pts * k, tpm: p.tpm * k, tpa: p.tpa * k, ast: p.ast * k,
+        to: p.tov * k, orb: p.oreb * k, drb: p.dreb * k,
+        stl: p.stl * k, blk: p.blk * k, pf: p.pf * k,
+        fga: p.fga * k, fta: p.fta * k
+    };
+}
+
+/* --- threshold points on TOTALS (deviation #1: b-ref share-of-team) ---- */
+function thresholdPts(p, T) {
+    const tsa = p.fga + 0.44 * p.fta;
+    if (tsa <= 0) return 0;
+    const thrEff = T.ptsPerTsa - 0.33;
+    const perTsa = p.pts / tsa;
+    return perTsa > thrEff ? Math.max(0, p.pts - thrEff * tsa) : 0;
+}
+
+/* --- position / role estimation ---------------------------------------- */
+function estimatePosition(pct, minutes, listed = 3.0) {
+    const raw = 2.130 +
+        8.668 * (pct.trbPct / 100) - 2.486 * (pct.stlPct / 100) +
+        0.992 * pct.pfPct - 3.536 * (pct.astPct / 100) + 1.667 * (pct.blkPct / 100);
+    const blended = (minutes * raw + 50 * listed) / (minutes + 50);
+    return { unclamped: blended, clamped: Math.max(1, Math.min(5, blended)) };
+}
+function estimateRole(pct, thrShare, minutes) {
+    const raw = 6.00 - 6.642 * (pct.astPct / 100) - 8.544 * thrShare;
+    const blended = (minutes * raw + 50 * 4.0) / (minutes + 50);
+    return Math.max(1, Math.min(5, blended));
+}
+
+/* --- raw BPM / OBPM ----------------------------------------------------- */
+function rawBpm(s, T, position, role, kind) {
+    const [C, CR] = kind === 'obpm' ? [COEF_OBPM, COEF_OBPM_ROLE] : [COEF_BPM, COEF_BPM_ROLE];
+    const tsa = s.fga + 0.44 * s.fta;
+    const ptsAdj = tsa > 0 ? s.pts + (1 - T.ptsPerTsa) * tsa : s.pts;
+    return coef(C.pts_adj, position) * ptsAdj +
+        coef(C.tpm, position) * s.tpm +
+        coef(C.ast, position) * s.ast +
+        coef(C.to, position) * s.to +
+        coef(C.orb, position) * s.orb +
+        coef(C.drb, position) * s.drb +
+        coef(C.stl, position) * s.stl +
+        coef(C.blk, position) * s.blk +
+        coef(C.pf, position) * s.pf +
+        coef(CR.fga, role) * s.fga +
+        coef(CR.fta, role) * s.fta;
+}
+
+/* --- main entry: annotate a league's players in place -------------------
+ * players: rows with {team, min, gp, pts, fgm, fga, tpm, tpa, ftm, fta,
+ *                     oreb, dreb, ast, stl, blk, tov, pf}
+ * teamAggs: Map(team -> aggLineups totals), teamGames: Map(team -> gp)
+ */
+function annotateLeague(players, teamAggs, teamGames) {
+    // team contexts + league average ORtg
+    const ctx = new Map();
+    let lgPts = 0, lgPoss = 0;
+    teamAggs.forEach((t, team) => {
+        const T = teamContext(t, teamGames.get(team) || 1);
+        ctx.set(team, T);
+        lgPts += t.pts; lgPoss += t.poss;
+    });
+    const leagueOrtg = lgPoss > 0 ? (lgPts / lgPoss) * 100 : 100;
+
+    // pass 1: % stats, per-100, threshold totals per team
+    const teamThreshold = new Map();
+    players.forEach(p => {
+        const T = ctx.get(p.team);
+        if (!T) { p._noBpm = true; return; }
+        p._pct = pctStats(p, T);
+        p._s100 = per100(p, T);
+        p._thr = thresholdPts(p, T);
+        teamThreshold.set(p.team, (teamThreshold.get(p.team) || 0) + p._thr);
+    });
+
+    // pass 2: position + role (raw), gated at 50 minutes
+    players.forEach(p => {
+        const T = ctx.get(p.team);
+        if (!T || p.min < MIN_MINUTES_FOR_BPM) {
+            p.pos = null; p.role = null; p._rawPos = 3.0; p._gated = true;
+            return;
+        }
+        p._gated = false;
+        const est = estimatePosition(p._pct, p.min);
+        p._rawPos = est.unclamped;
+        const thrShare = (teamThreshold.get(p.team) || 0) > 0
+            ? p._thr / Math.max(teamThreshold.get(p.team), 1) : 0;
+        p.role = estimateRole(p._pct, thrShare, p.min);
+    });
+
+    // pass 3: normalize each team's minutes-weighted average position to 3.0
+    const byTeam = new Map();
+    players.forEach(p => {
+        if (p._noBpm) return;
+        if (!byTeam.has(p.team)) byTeam.set(p.team, []);
+        byTeam.get(p.team).push(p);
+    });
+    byTeam.forEach(list => {
+        const valid = list.filter(p => p.min > 0);
+        const totMin = valid.reduce((a, p) => a + p.min, 0);
+        if (!totMin) return;
+        for (let it = 0; it < 10; it++) {
+            const avg = valid.reduce((a, p) => a + p._rawPos * p.min, 0) / totMin;
+            const adj = 3.0 - avg;
+            if (Math.abs(adj) < 0.001) break;
+            valid.forEach(p => { p._rawPos += adj; });
+        }
+        valid.forEach(p => {
+            if (!p._gated) p.pos = Math.max(1, Math.min(5, p._rawPos));
+        });
+    });
+
+    // pass 4: raw BPM/OBPM + constants
+    players.forEach(p => {
+        const T = ctx.get(p.team);
+        if (!T || p._gated) { p._rawB = null; return; }
+        const pos = p.pos, role = p.role;
+        p._rawB = rawBpm(p._s100, T, pos, role, 'bpm') +
+            positionAdjustment(pos, 'bpm') + roleAdjustment(role, 'bpm');
+        p._rawO = rawBpm(p._s100, T, pos, role, 'obpm') +
+            positionAdjustment(pos, 'obpm') + roleAdjustment(role, 'obpm');
+        p._minPct = p.min / (T.gp * GAME_LEN);
+    });
+
+    // pass 5: team adjustment (× 1.2 target) + VORP
+    byTeam.forEach((list, team) => {
+        const T = ctx.get(team);
+        const netRtg = T.offRtg - T.defRtg;
+        const offRel = T.offRtg - leagueOrtg;
+        let wB = 0, wO = 0, wSum = 0;
+        list.forEach(p => {
+            if (p._rawB === null || p._rawB === undefined) return;
+            wB += p._rawB * p._minPct; wO += p._rawO * p._minPct; wSum += p._minPct;
+        });
+        const adjB = wSum > 0 ? (netRtg * 1.2 - wB) / wSum : 0;
+        const adjO = wSum > 0 ? (offRel * 1.2 - wO) / wSum : 0;
+        list.forEach(p => {
+            if (p._rawB === null || p._rawB === undefined) {
+                p.bpm2 = null; p.obpm2 = null; p.dbpm2 = null; p.vorp = null;
+                return;
+            }
+            p.bpm2 = p._rawB + adjB;
+            p.obpm2 = p._rawO + adjO;
+            p.dbpm2 = p.bpm2 - p.obpm2;
+            p.vorp = (p.bpm2 + 2.0) * p._minPct * (T.gp / 82);
+        });
+    });
+
+    // expose advanced % columns + cleanup temps
+    players.forEach(p => {
+        if (p._pct) {
+            p.orbPct = p._pct.orbPct; p.drbPct = p._pct.drbPct; p.trbPct = p._pct.trbPct;
+            p.astPctAdv = p._pct.astPct; p.stlPctAdv = p._pct.stlPct; p.blkPctAdv = p._pct.blkPct;
+            p.usgPctAdv = p._pct.usgPct; p.tovPctAdv = p._pct.tovPct;
+        }
+        delete p._pct; delete p._s100; delete p._thr; delete p._rawPos;
+        delete p._rawB; delete p._rawO; delete p._minPct; delete p._gated; delete p._noBpm;
+    });
+    return { leagueOrtg };
+}
+
+const POS_LABELS = ['PG', 'SG', 'SF', 'PF', 'C'];
+const ROLE_LABELS = ['Cr', 'Cr-2', 'Bal', 'Fin-4', 'Fin'];
+const posLabel = (x) => x == null ? '' : POS_LABELS[Math.min(4, Math.max(0, Math.round(x) - 1))];
+const roleLabel = (x) => x == null ? '' : ROLE_LABELS[Math.min(4, Math.max(0, Math.round(x) - 1))];
+
+return { annotateLeague, posLabel, roleLabel, MIN_MINUTES_FOR_BPM };
+})();
+
+</script>
+<script>
+/* ============================================================================
  * PROPHESY — All-League Stats Hub (allstats.html)
  *
  * Discovers every data_<timestamp>_<CODE> folder in /data (folders.json +
@@ -2958,7 +3254,7 @@ async function pickLeagueFolder(code, candidates, status) {
 // reading the real TOTAL_TIME column)
 function aggLineups(rows) {
     const t = {
-        time: 0, pts: 0, ptsV: 0, poss: 0, possV: 0,
+        time: 0, pts: 0, ptsV: 0, poss: 0, possV: 0, pf: 0,
         fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0,
         fgmV: 0, fgaV: 0, tpmV: 0, tpaV: 0, ftmV: 0, ftaV: 0, orebV: 0, drebV: 0, tovV: 0,
         rimA: 0, rimM: 0, midA: 0, midM: 0, threeA: 0, threeM: 0,
@@ -2976,7 +3272,7 @@ function aggLineups(rows) {
         t.pts += fgm * 2 + tpm + ftm;
         t.ptsV += fgmV * 2 + tpmV + ftmV;
         t.fgm += fgm; t.fga += fga; t.tpm += tpm; t.tpa += f(d['3PA']); t.ftm += ftm; t.fta += fta;
-        t.oreb += oreb; t.dreb += f(d.DREB); t.ast += f(d.AST); t.stl += f(d.STL); t.blk += f(d.BLK); t.tov += tov;
+        t.oreb += oreb; t.dreb += f(d.DREB); t.ast += f(d.AST); t.stl += f(d.STL); t.blk += f(d.BLK); t.tov += tov; t.pf += f(d.PF);
         t.fgmV += fgmV; t.fgaV += fgaV; t.tpmV += tpmV; t.tpaV += f(d['3PA_VS']); t.ftmV += ftmV; t.ftaV += ftaV;
         t.orebV += orebV; t.drebV += f(d.DREB_VS); t.tovV += tovV;
         t.rimA += f(d.RIM_ATT); t.rimM += f(d.RIM_MADE);
@@ -3044,8 +3340,20 @@ function computeLeague(code, texts, games) {
         byTeam.get(r.Team).push(r);
         r._players = new Set(r.Lineup.split(',').map(p => normalizePlayerName(p.trim())).filter(Boolean));
     });
+    const teamAggRaw = new Map();
     const teamAgg = new Map();
-    byTeam.forEach((rows, team) => teamAgg.set(team, derived(aggLineups(rows))));
+    byTeam.forEach((rows, team) => {
+        const raw = aggLineups(rows);
+        teamAggRaw.set(team, raw);
+        teamAgg.set(team, derived(raw));
+    });
+    // per-team games played (one team_totals row per game per team)
+    const teamGames = new Map();
+    if (texts.team_totals) {
+        parseCSV(texts.team_totals).forEach(r => {
+            if (r.team) teamGames.set(r.team, (teamGames.get(r.team) || 0) + 1);
+        });
+    }
 
     // --- clutch lineup rows per team (DEF_POSS aware, falls back to POSS)
     const clutchByTeam = new Map();
@@ -3117,6 +3425,14 @@ function computeLeague(code, texts, games) {
         L.teams.add(d.Team);
         L.players.push(row);
     });
+
+    // BPM 2.0: position/role estimation, team-normalized positions, BPM/OBPM/
+    // DBPM/VORP + advanced % stats (ORB%..USG%) — see BPM2 module.
+    try {
+        BPM2.annotateLeague(L.players, teamAggRaw, teamGames);
+    } catch (e) {
+        console.error('[BPM2] ' + code + ' failed:', e);
+    }
     return L;
 }
 
@@ -3124,12 +3440,13 @@ function computeLeague(code, texts, games) {
 const GROUPS = [
     { id: 'box', label: 'Box Score', def: true },
     { id: 'shoot', label: 'Shooting', def: true },
+    { id: 'adv', label: 'Advanced', def: true },
     { id: 'impact', label: 'On/Off Impact', def: true },
     { id: 'ff', label: 'Four Factors ±', def: false },
     { id: 'shot', label: 'Shot Profile ±', def: false },
     { id: 'play', label: 'Playmaking/Defense ±', def: false },
     { id: 'clutch', label: 'Clutch', def: false },
-    { id: 'bpm', label: 'BPM', def: false },
+    { id: 'bpm', label: 'BPM 2.0', def: true },
     { id: 'rapm', label: 'RAPM', def: true },
     { id: 'apm', label: 'APM', def: false }
 ];
@@ -3189,9 +3506,22 @@ const COLS = [
     { k: 'clutchNet', label: 'Clutch Net', group: 'clutch', d: 1, diffColor: true },
     { k: 'clutchPpg', label: 'Clutch PPG', group: 'clutch', d: 1 },
     { k: 'clutchTs', label: 'Clutch TS%', group: 'clutch', d: 1 },
-    { k: 'bpm', label: 'BPM', group: 'bpm', d: 1, diffColor: true },
-    { k: 'obpm', label: 'OBPM', group: 'bpm', d: 1, diffColor: true },
-    { k: 'dbpm', label: 'DBPM', group: 'bpm', d: 1, diffColor: true },
+    // Advanced (Basketball-Reference formulas, computed from team+opp context)
+    { k: 'usgPctAdv', label: 'USG%', group: 'adv', d: 1 },
+    { k: 'astPctAdv', label: 'AST%', group: 'adv', d: 1 },
+    { k: 'tovPctAdv', label: 'TOV%', group: 'adv', d: 1, hb: false },
+    { k: 'orbPct', label: 'ORB%', group: 'adv', d: 1 },
+    { k: 'drbPct', label: 'DRB%', group: 'adv', d: 1 },
+    { k: 'trbPct', label: 'TRB%', group: 'adv', d: 1 },
+    { k: 'stlPctAdv', label: 'STL%', group: 'adv', d: 1 },
+    { k: 'blkPctAdv', label: 'BLK%', group: 'adv', d: 1 },
+    // BPM 2.0 (position/role BPM per basketball-reference bpm2 spec)
+    { k: 'pos', label: 'Pos', group: 'bpm', d: 1, fmt: (v) => v == null ? '—' : v.toFixed(1) + ' ' + BPM2.posLabel(v) },
+    { k: 'role', label: 'Role', group: 'bpm', d: 1, fmt: (v) => v == null ? '—' : v.toFixed(1) },
+    { k: 'bpm2', label: 'BPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'obpm2', label: 'OBPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'dbpm2', label: 'DBPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'vorp', label: 'VORP', group: 'bpm', d: 2, diffColor: true },
     { k: 'oRapm', label: 'oRAPM', group: 'rapm', d: 2, diffColor: true },
     { k: 'dRapm', label: 'dRAPM', group: 'rapm', d: 2, diffColor: true },
     { k: 'rapm', label: 'RAPM', group: 'rapm', d: 2, diffColor: true },
@@ -3209,6 +3539,7 @@ const S = {
     mode: 'pg',                  // pg | tot | p100
     diffMode: 'onOff',           // onOff | vsTeam
     search: '', minMpg: 0, minGp: 0,
+    colorMode: 'pctAll',         // sign | pctAll | pctPos
     sortKey: 'pts', sortDir: 'desc',
     showAll: false,
     lambda: 800,
@@ -3257,7 +3588,7 @@ async function boot() {
                 fetchText(pick.dir + 'lineup_stats_enhanced.csv'),
                 fetchText(pick.dir + 'clutch_lineup_stats.csv').catch(() => null)
             ]);
-            const L = computeLeague(code, { player_stats: ps, lineups: lu, clutch: cl }, pick.games);
+            const L = computeLeague(code, { player_stats: ps, lineups: lu, clutch: cl, team_totals: pick.teamTotalsText }, pick.games);
             L.folder = pick.folder.name; L.ts = pick.folder.ts; L.dir = pick.dir;
             S.leagues.set(code, L);
             S.activeLeagues.add(code);
@@ -3267,6 +3598,7 @@ async function boot() {
         }
     }
     $('#loadState').textContent = `${S.leagues.size} league(s) loaded`;
+    window.__allstats = S;   // debug/verification handle
     buildControls();
     render();
 }
@@ -3400,9 +3732,59 @@ function filteredRows() {
     return rows;
 }
 
+/* ------------------------------------------------- percentile coloring */
+// Pool = all players in ACTIVE leagues passing the min MPG/GP filters
+// (search does NOT change a player's color). Position mode buckets the
+// pool by nearest integer position (a 4.5+ estimate re-percentiles vs 5s);
+// players without a position estimate fall back to the datawide pool.
+function buildPercentilePools(cols) {
+    const pool = [];
+    for (const code of S.activeLeagues) {
+        const L = S.leagues.get(code);
+        if (!L) continue;
+        for (const p of L.players) if (p.mpg >= S.minMpg && p.gp >= S.minGp) pool.push(p);
+    }
+    const byPos = new Map();
+    if (S.colorMode === 'pctPos') {
+        pool.forEach(p => {
+            const b = p.pos == null ? 0 : Math.round(p.pos);
+            if (!byPos.has(b)) byPos.set(b, []);
+            byPos.get(b).push(p);
+        });
+    }
+    const sortedFor = (rows, col) =>
+        rows.map(r => cellValue(r, col)).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
+    const pools = new Map();
+    cols.forEach(c => {
+        if (c.str || c.k === 'gp' || c.k === 'pos' || c.k === 'role') return;
+        const entry = { all: sortedFor(pool, c) };
+        if (S.colorMode === 'pctPos') {
+            entry.byPos = new Map();
+            byPos.forEach((rows, b) => entry.byPos.set(b, sortedFor(rows, c)));
+        }
+        pools.set(c.k, entry);
+    });
+    return pools;
+}
+function pctOf(sorted, v) {
+    if (!sorted || sorted.length < 5) return null;
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] < v) lo = m + 1; else hi = m; }
+    const below = lo;
+    lo = 0; hi = sorted.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; }
+    return 100 * (below + (lo - below) * 0.5) / sorted.length;
+}
+function pctBg(goodness) {
+    const t = (goodness - 50) / 50;
+    const a = Math.min(0.5, Math.abs(t) * 0.5);
+    return t >= 0 ? `rgba(34,197,94,${a.toFixed(3)})` : `rgba(239,68,68,${a.toFixed(3)})`;
+}
+
 function render() {
     const cols = visibleCols();
     const rows = filteredRows();
+    const pools = S.colorMode !== 'sign' ? buildPercentilePools(cols) : null;
     const thead = el('tr', null, ...cols.map((c, i) =>
         el('th', {
             class: (c.str ? 'sticky-col c' + i : '') + (S.sortKey === c.k ? ' sorted' : ''),
@@ -3426,8 +3808,25 @@ function render() {
             } else if (v == null) {
                 td.textContent = '—'; td.className = 'muted';
             } else {
-                td.textContent = c.diffColor && v > 0 ? '+' + v.toFixed(c.d) : v.toFixed(c.d);
-                if (c.diffColor) {
+                td.textContent = c.fmt ? c.fmt(v, r)
+                    : (c.diffColor && v > 0 ? '+' + v.toFixed(c.d) : v.toFixed(c.d));
+                if (pools && pools.has(c.k)) {
+                    // percentile background (datawide or nearest-position pool)
+                    const entry = pools.get(c.k);
+                    let sorted = entry.all;
+                    if (S.colorMode === 'pctPos' && entry.byPos) {
+                        const b = r.pos == null ? 0 : Math.round(r.pos);
+                        const posSorted = entry.byPos.get(b);
+                        if (posSorted && posSorted.length >= 5) sorted = posSorted;
+                    }
+                    const pct = pctOf(sorted, v);
+                    if (pct != null) {
+                        const goodness = (c.hb === false) ? 100 - pct : pct;
+                        td.style.background = pctBg(goodness);
+                        td.title = (c.hb === false ? (100 - pct) : pct).toFixed(0) + 'th pctile' +
+                            (S.colorMode === 'pctPos' && r.pos != null ? ' vs ' + BPM2.posLabel(r.pos) + 's' : '');
+                    }
+                } else if (c.diffColor) {
                     const good = (c.hb === false) ? v < 0 : v > 0;
                     td.className = v === 0 ? '' : (good ? 'pos' : 'neg');
                 }
@@ -3480,6 +3879,7 @@ function wireStaticControls() {
     $('#minGp').addEventListener('change', e => { S.minGp = f(e.target.value); render(); });
     $('#modeSel').addEventListener('change', e => { S.mode = e.target.value; render(); });
     $('#diffModeSel').addEventListener('change', e => { S.diffMode = e.target.value; render(); });
+    $('#colorModeSel').addEventListener('change', e => { S.colorMode = e.target.value; render(); });
     $('#lambdaInput').addEventListener('change', e => { S.lambda = f(e.target.value) || 800; });
     $('#showAllBtn').addEventListener('click', () => { S.showAll = !S.showAll; $('#showAllBtn').textContent = S.showAll ? 'Top 100' : 'Show All'; render(); });
     $('#runRapmBtn').addEventListener('click', () => runEngines('RAPM'));
