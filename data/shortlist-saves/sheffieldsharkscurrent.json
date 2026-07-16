@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-16T06:05:15.160Z",
+    "savedAt": "2026-07-16T06:11:48.336Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -4240,6 +4240,13 @@
         2,
         4
       ]
+    },
+    "Christian May": {
+      "primary": 2,
+      "secondary": [
+        3,
+        4
+      ]
     }
   },
   "scoutReports": {},
@@ -6447,6 +6454,10 @@
     "Travis Henson": {
       "height": "6'6\"",
       "weight": "195"
+    },
+    "Christian May": {
+      "height": "6'5\"",
+      "weight": "215"
     }
   },
   "potentialRatings": {
@@ -8313,6 +8324,47 @@
           "title": "Ball Movement/Passing",
           "description": "Very low assist rates. Efficient scorer, but can have a proclivity to sizing up and isoing/tough look - 24% usage in Germany.",
           "level": "Slight"
+        }
+      ]
+    },
+    "Christian May": {
+      "strengths": [
+        {
+          "title": "Positional Size/Physicality/Rebounding",
+          "description": "Great frame and strength for his spot. Plays tough and physical, difficult to move w/ his strong chest. Can guard in the post against bigger forwards. Great additional rebounder - puts pressure on opposing defenses with his crashing on the O-boards.",
+          "level": "Good"
+        },
+        {
+          "title": "Off-Ball D",
+          "description": "Smartly blows up actions with his defensive activity.",
+          "level": "Good"
+        },
+        {
+          "title": "Attack Off-The-Catch",
+          "description": "Solid first-step w/ strong chest to withstand contact going to the basket. Can finish athletically at the rim - shot 67%.",
+          "level": "Good"
+        },
+        {
+          "title": "Movement Shooting",
+          "description": "Ability to hit tough shots off-screens at a decent consistency. Shot at a high volume on 36% (11/100).",
+          "level": "Good"
+        },
+        {
+          "title": "PNR Handling",
+          "description": "Additional PNR handler w/solid handles and downhill ability.",
+          "level": "Decent"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Mid-Range",
+          "description": "Shot 28% in the mid-range. 50/50 shot split between rim and mid inside the arc.",
+          "level": "Bad"
+        },
+        {
+          "title": "FT%",
+          "description": "Shot 64% from the line last season.",
+          "level": "Bad"
         }
       ]
     }
