@@ -1,0 +1,309 @@
+Team,Lineup,Lineup_Key,Assister_Num,Assister_Name,Scorer_Num,Scorer_Name,Assists,Points_Created,Threes_Assisted,Twos_Assisted,Games,AST/G,PTS_Created/G
+Zalgiris Kaunas,"Nigel Williams-Goss, Dustin Sleva, Laurynas Birutis, Sylvain Francisco, Edgaras Ulanovas","Zalgiris Kaunas|1,14,15,3,92",3,Sylvain Francisco,15,Laurynas Birutis,3,6,0,3,1,3.0,6.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",55,Mike James,10,Daniel Theis,3,6,0,3,1,3.0,6.0
+FC Bayern Munich,"Vladimir Lucic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes, Kamar Baldwin","FC Bayern Munich|11,22,32,4,44",4,Xavier Rathan-Mayes,44,Kamar Baldwin,2,6,2,0,1,2.0,6.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",3,Dwayne Bacon,8,Davis Bertans,2,6,2,0,1,2.0,6.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",13,Dzanan Musa,17,Mfiondu Kabengele,3,6,0,3,1,3.0,6.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Aleksej Pokusevski, Sterling Brown, Isaac Bonga, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,11,12,17,88",88,Tyrique Jones,11,Aleksej Pokusevski,2,6,2,0,1,2.0,6.0
+AS Monaco,"Elie Okobo, Daniel Theis, Nemanja Nedovic, Matthew Strazel, Nikola Mirotic","AS Monaco|0,10,26,32,33",32,Matthew Strazel,33,Nikola Mirotic,2,5,1,1,1,2.0,5.0
+Olympiacos Piraeus,"Thomas Walkup, Sasha Vezenkov, Tyler Dorsey, Nikola Milutinov, Evan Fournier","Olympiacos Piraeus|0,14,22,33,94",0,Thomas Walkup,14,Sasha Vezenkov,2,5,1,1,1,2.0,5.0
+Olympiacos Piraeus,"Thomas Walkup, Kostas Papanikolaou, Alec Peters, Tyson Ward, Donta Hall","Olympiacos Piraeus|0,16,25,3,45",0,Thomas Walkup,25,Alec Peters,2,5,1,1,1,2.0,5.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,16,22,32,4",16,Stefan Jovic,22,Isiaha Mike,2,5,1,1,1,2.0,5.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Jimmy Clark Iii, Tamir Blatt, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,10,2,45,9",45,Tamir Blatt,1,Jaylen Hoard,2,5,1,1,1,2.0,5.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",25,Mckinley Wright Iv,8,Davis Bertans,2,5,1,1,1,2.0,5.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Willy Hernangomez, Will Clyburn, Tornike Shengelia","FC Barcelona|0,13,14,21,23",13,Tomas Satoransky,21,Will Clyburn,2,5,1,1,1,2.0,5.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",0,Elie Okobo,11,Alpha Diallo,2,4,0,2,1,2.0,4.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Nikolaos Rogkavopoulos, Alexandros Samodurov, Kendrick Nunn, Omer Yurtseven","Panathinaikos AKTOR Athens|10,17,20,25,77",25,Kendrick Nunn,20,Alexandros Samodurov,2,4,0,2,1,2.0,4.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,16,31,32",1,Niccolo Mannion,32,Josh Nebo,2,4,0,2,1,2.0,4.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Rolands Smits, Ercan Osmani, Jordan Loyd","Anadolu Efes Istanbul|0,10,11,24,3",0,Shane Larkin,11,Rolands Smits,2,4,0,2,1,2.0,4.0
+Dubai Basketball,"Dzanan Musa, Mckinley Wright Iv, Filip Petrusev, Awudu Abass, Davis Bertans","Dubai Basketball|13,25,30,5,8",13,Dzanan Musa,30,Filip Petrusev,2,4,0,2,1,2.0,4.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|17,22,24,25,3",3,Elijah Bryant,25,Dan Oturu,2,4,0,2,1,2.0,4.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",21,Will Clyburn,6,Jan Vesely,2,4,0,2,1,2.0,4.0
+Valencia Basket,"Kameron Taylor, Omari Moore, Nathan Reuvers, Sergio De Larrea, Nathan Sestina","Valencia Basket|1,10,3,5,77",10,Omari Moore,3,Nathan Reuvers,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Kameron Taylor, Omari Moore, Darius Thompson, Nathan Reuvers, Nathan Sestina","Valencia Basket|1,10,13,3,77",1,Kameron Taylor,3,Nathan Reuvers,1,3,1,0,1,1.0,3.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Bodian Massa, Nando De Colo, Glynn Watson, Melvin Ajinca","LDLC ASVEL Villeurbanne|1,10,12,30,8",12,Nando De Colo,1,Zachary Seljaas,1,3,1,0,1,1.0,3.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Bodian Massa, Edwin Jackson, David Lighty, Glynn Watson","LDLC ASVEL Villeurbanne|1,10,11,23,30",11,Edwin Jackson,1,Zachary Seljaas,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Matthew Costello, Jaime Pradilla","Valencia Basket|10,13,2,24,4",24,Matthew Costello,10,Omari Moore,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Neal Sako, Darius Thompson, Ike Iroegbu, Josep Puerto, Nathan Sestina","Valencia Basket|12,13,18,2,77",13,Darius Thompson,77,Nathan Sestina,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Kameron Taylor, Omari Moore, Darius Thompson, Nathan Reuvers, Jaime Pradilla","Valencia Basket|1,10,13,3,4",13,Darius Thompson,10,Omari Moore,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Kameron Taylor, Omari Moore, Neal Sako, Darius Thompson, Nathan Sestina","Valencia Basket|1,10,12,13,77",10,Omari Moore,1,Kameron Taylor,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Matthew Costello, Jaime Pradilla","Valencia Basket|10,13,2,24,4",4,Jaime Pradilla,13,Darius Thompson,1,3,1,0,1,1.0,3.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Edwin Jackson, David Lighty, Shaquille Harrison, Bastien Vautier","LDLC ASVEL Villeurbanne|1,11,23,3,32",3,Shaquille Harrison,23,David Lighty,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Kameron Taylor, Omari Moore, Nathan Reuvers, Jaime Pradilla, Sergio De Larrea","Valencia Basket|1,10,3,4,5",10,Omari Moore,3,Nathan Reuvers,1,3,1,0,1,1.0,3.0
+Valencia Basket,"Omari Moore, Ike Iroegbu, Josep Puerto, Matthew Costello, Jaime Pradilla","Valencia Basket|10,18,2,24,4",10,Omari Moore,24,Matthew Costello,1,3,1,0,1,1.0,3.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Bodian Massa, Nando De Colo, David Lighty, Glynn Watson","LDLC ASVEL Villeurbanne|1,10,12,23,30",12,Nando De Colo,1,Zachary Seljaas,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Nadir Hifi, Jeremy Morgan, Ismael Bako, Daulton Hommes, Derek Willis","Paris Basketball|2,20,21,34,35",2,Nadir Hifi,34,Daulton Hommes,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Allan Dokossi, Jeremy Morgan, Amath M'Baye, Leopold Cavaliere, Justin Robinson","Paris Basketball|13,20,22,4,5",13,Allan Dokossi,5,Justin Robinson,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Mikael Jantunen, Devon Hall, Nicolo Melli, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,13,18,20,4,8",18,Mikael Jantunen,13,Tarik Biberovic,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Mikael Jantunen, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Bonzie Colson","Fenerbahce Beko Istanbul|0,18,2,20,4,50",2,Wade Baldwin Iv,20,Devon Hall,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Allan Dokossi, Nadir Hifi, Jeremy Morgan, Daulton Hommes, Leopold Cavaliere","Paris Basketball|13,2,20,34,4",4,Leopold Cavaliere,34,Daulton Hommes,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Allan Dokossi, Amath M'Baye, Yakuba Ouattara, Justin Robinson, Sebastian Herrera","Paris Basketball|13,22,24,5,7",5,Justin Robinson,22,Amath M'Baye,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Allan Dokossi, Amath M'Baye, Yakuba Ouattara, Justin Robinson, Sebastian Herrera","Paris Basketball|13,22,24,5,7",22,Amath M'Baye,24,Yakuba Ouattara,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Wade Baldwin Iv, Devon Hall, Nicolo Melli, Khem Birch","Fenerbahce Beko Istanbul|0,2,20,4,92",2,Wade Baldwin Iv,20,Devon Hall,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Nadir Hifi, Jeremy Morgan, Daulton Hommes, Derek Willis, Leopold Cavaliere","Paris Basketball|2,20,34,35,4",4,Leopold Cavaliere,2,Nadir Hifi,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Devon Hall, Nicolo Melli, Talen Horton Tucker, Khem Birch","Fenerbahce Beko Istanbul|0,20,4,8,92",20,Devon Hall,8,Talen Horton Tucker,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Bonzie Colson","Fenerbahce Beko Istanbul|0,13,2,20,4,50",2,Wade Baldwin Iv,4,Nicolo Melli,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Mikael Jantunen, Wade Baldwin Iv, Nicolo Melli, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,13,18,2,4,8",8,Talen Horton Tucker,4,Nicolo Melli,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Mikael Jantunen, Wade Baldwin Iv, Nicolo Melli, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,13,18,2,4,8",13,Tarik Biberovic,4,Nicolo Melli,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Bonzie Colson","Fenerbahce Beko Istanbul|0,13,2,20,4,50",4,Nicolo Melli,20,Devon Hall,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Devon Hall, Nicolo Melli, Talen Horton Tucker, Khem Birch","Fenerbahce Beko Istanbul|0,13,20,4,8,92",20,Devon Hall,8,Talen Horton Tucker,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Onuralp Bitim, Wade Baldwin Iv, Nicolo Melli, Khem Birch","Fenerbahce Beko Istanbul|0,13,17,2,4,92",4,Nicolo Melli,13,Tarik Biberovic,1,3,1,0,1,1.0,3.0
+Paris Basketball,"Allan Dokossi, Nadir Hifi, Jeremy Morgan, Amath M'Baye, Daulton Hommes","Paris Basketball|13,2,20,22,34",2,Nadir Hifi,34,Daulton Hommes,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Mikael Jantunen, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,18,2,20,4,8",2,Wade Baldwin Iv,20,Devon Hall,1,3,1,0,1,1.0,3.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Metecan Birsen, Tarik Biberovic, Onuralp Bitim, Devon Hall","Fenerbahce Beko Istanbul|0,1,13,17,20",17,Onuralp Bitim,13,Tarik Biberovic,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Dustin Sleva, Laurynas Birutis, Sylvain Francisco, Edgaras Ulanovas","Zalgiris Kaunas|1,14,15,3,92",3,Sylvain Francisco,14,Dustin Sleva,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Maodo Lo, Dustin Sleva, Sylvain Francisco, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|12,14,3,7,92",92,Edgaras Ulanovas,12,Maodo Lo,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Azuolas Tubelis, Maodo Lo, Sylvain Francisco, Moses Wright, Ignas Brazdeikis","Zalgiris Kaunas|10,12,3,7,8",3,Sylvain Francisco,10,Azuolas Tubelis,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Azuolas Tubelis, Maodo Lo, Sylvain Francisco, Moses Wright, Ignas Brazdeikis","Zalgiris Kaunas|10,12,3,7,8",12,Maodo Lo,8,Ignas Brazdeikis,1,3,1,0,1,1.0,3.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",11,Alpha Diallo,55,Mike James,1,3,1,0,1,1.0,3.0
+AS Monaco,"Alpha Diallo, Kevarrius Hayes, Matthew Strazel, Jaron Blossomgame, Mike James","AS Monaco|11,13,32,4,55",32,Matthew Strazel,55,Mike James,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Maodo Lo, Dustin Sleva, Sylvain Francisco, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|12,14,3,7,92",3,Sylvain Francisco,14,Dustin Sleva,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Azuolas Tubelis, Maodo Lo, Arnas Butkevicius, Moses Wright, Ignas Brazdeikis","Zalgiris Kaunas|10,12,51,7,8",12,Maodo Lo,51,Arnas Butkevicius,1,3,1,0,1,1.0,3.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Matthew Strazel, Nikola Mirotic","AS Monaco|0,10,11,32,33",33,Nikola Mirotic,0,Elie Okobo,1,3,1,0,1,1.0,3.0
+AS Monaco,"Elie Okobo, Daniel Theis, Nemanja Nedovic, Matthew Strazel, Nikola Mirotic","AS Monaco|0,10,26,32,33",0,Elie Okobo,10,Daniel Theis,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Dustin Sleva, Sylvain Francisco, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|1,14,3,7,92",14,Dustin Sleva,7,Moses Wright,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Sylvain Francisco, Arnas Butkevicius, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|1,3,51,7,92",51,Arnas Butkevicius,1,Nigel Williams-Goss,1,3,1,0,1,1.0,3.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Azuolas Tubelis, Maodo Lo, Sylvain Francisco, Edgaras Ulanovas","Zalgiris Kaunas|1,10,12,3,92",92,Edgaras Ulanovas,1,Nigel Williams-Goss,1,3,1,0,1,1.0,3.0
+Virtus Bologna,"Derrick Alston Jr., Carsen Edwards, Karim Jallow, Alessandro Pajola, Alen Smailagic","Virtus Bologna|21,3,34,6,9",9,Alen Smailagic,3,Carsen Edwards,1,3,1,0,1,1.0,3.0
+Virtus Bologna,"Derrick Alston Jr., Matthew Morgan, Karim Jallow, Alessandro Pajola, Saliou Niang, Alen Smailagic","Virtus Bologna|21,30,34,6,7,9",6,Alessandro Pajola,9,Alen Smailagic,1,3,1,0,1,1.0,3.0
+Virtus Bologna,"Brandon Taylor, Derrick Alston Jr., Daniel Hackett, Carsen Edwards, Mouhamet Diouf","Virtus Bologna|11,21,23,3,35",23,Daniel Hackett,3,Carsen Edwards,1,3,1,0,1,1.0,3.0
+Real Madrid,"David Kraemer, Bruno Fernando, Sergio Llull, Andres Feliz, Chuma Okeke","Real Madrid|1,20,23,24,8",23,Sergio Llull,8,Chuma Okeke,1,3,1,0,1,1.0,3.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Matthew Morgan, Aliou Diarra, Karim Jallow, Saliou Niang","Virtus Bologna|1,21,30,31,34,7",7,Saliou Niang,1,Luca Vildoza,1,3,1,0,1,1.0,3.0
+Olympiacos Piraeus,"Thomas Walkup, Sasha Vezenkov, Tyler Dorsey, Nikola Milutinov, Evan Fournier","Olympiacos Piraeus|0,14,22,33,94",0,Thomas Walkup,22,Tyler Dorsey,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Matteo Spagnolo, Clement Frisch, Markquis Nowell, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|10,25,3,9,99",3,Markquis Nowell,9,Timothe Luwawu-Cabarrot,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Matteo Spagnolo, Trent Forrest, Clement Frisch, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|10,11,25,9,99",11,Trent Forrest,25,Clement Frisch,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Matteo Spagnolo, Trent Forrest, Clement Frisch, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|10,11,25,9,99",10,Matteo Spagnolo,25,Clement Frisch,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis","Baskonia Vitoria-Gasteiz|0,11,18,6,8",8,Tadas Sedekerskis,0,Markus Howard,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis","Baskonia Vitoria-Gasteiz|0,11,18,6,8",11,Trent Forrest,0,Markus Howard,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,8,9",11,Trent Forrest,0,Markus Howard,1,3,1,0,1,1.0,3.0
+Olympiacos Piraeus,"Thomas Walkup, Alec Peters, Tyson Ward, Donta Hall, Saben Lee","Olympiacos Piraeus|0,25,3,45,9",0,Thomas Walkup,3,Tyson Ward,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|11,18,6,8,9",11,Trent Forrest,9,Timothe Luwawu-Cabarrot,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis","Baskonia Vitoria-Gasteiz|0,11,18,6,8",11,Trent Forrest,8,Tadas Sedekerskis,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Tadas Sedekerskis, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|0,11,8,9,99",11,Trent Forrest,99,Luka Samanic,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Trent Forrest, Clement Frisch, Markquis Nowell, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|11,25,3,9,99",11,Trent Forrest,3,Markquis Nowell,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,8,9",18,Khalifa Diop,9,Timothe Luwawu-Cabarrot,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,8,9",8,Tadas Sedekerskis,9,Timothe Luwawu-Cabarrot,1,3,1,0,1,1.0,3.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis","Baskonia Vitoria-Gasteiz|0,11,18,6,8",0,Markus Howard,8,Tadas Sedekerskis,1,3,1,0,1,1.0,3.0
+Olympiacos Piraeus,"Thomas Walkup, Sasha Vezenkov, Tyler Dorsey, Nikola Milutinov, Evan Fournier","Olympiacos Piraeus|0,14,22,33,94",94,Evan Fournier,14,Sasha Vezenkov,1,3,1,0,1,1.0,3.0
+Panathinaikos AKTOR Athens,"Tj Shorts, Nikolaos Rogkavopoulos, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|0,17,25,41,8",0,Tj Shorts,17,Nikolaos Rogkavopoulos,1,3,1,0,1,1.0,3.0
+FC Bayern Munich,"Vladimir Lucic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes, Kamar Baldwin","FC Bayern Munich|11,22,32,4,44",44,Kamar Baldwin,4,Xavier Rathan-Mayes,1,3,1,0,1,1.0,3.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Nikolaos Rogkavopoulos, Alexandros Samodurov, Kendrick Nunn, Omer Yurtseven","Panathinaikos AKTOR Athens|10,17,20,25,77",77,Omer Yurtseven,17,Nikolaos Rogkavopoulos,1,3,1,0,1,1.0,3.0
+FC Bayern Munich,"Vladimir Lucic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes, Kamar Baldwin","FC Bayern Munich|11,22,32,4,44",4,Xavier Rathan-Mayes,22,Isiaha Mike,1,3,1,0,1,1.0,3.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,41,8",8,Richaun Holmes,22,Jerian Grant,1,3,1,0,1,1.0,3.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Wenyen Gabriel, Kamar Baldwin, Niels Giffey","FC Bayern Munich|10,13,32,44,5",5,Niels Giffey,10,Justinian Jessup,1,3,1,0,1,1.0,3.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Omer Yurtseven","Panathinaikos AKTOR Athens|10,22,25,41,77",10,Kostas Sloukas,22,Jerian Grant,1,3,1,0,1,1.0,3.0
+Panathinaikos AKTOR Athens,"Tj Shorts, Kostas Sloukas, Alexandros Samodurov, Kendrick Nunn, Omer Yurtseven","Panathinaikos AKTOR Athens|0,10,20,25,77",0,Tj Shorts,10,Kostas Sloukas,1,3,1,0,1,1.0,3.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,16,22,32,4",22,Isiaha Mike,11,Vladimir Lucic,1,3,1,0,1,1.0,3.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Jasiel Rivero, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,14,33,95",95,Chima Moneke,33,Jordan Nwora,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,16,31,32",10,Leandro Bolmaro,31,Shavon Shields,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Vlatko Cancar, Leandro Bolmaro, Marko Guduric, Quinn Ellis, Devin Booker","EA7 Emporio Armani Milan|0,10,23,3,6",3,Quinn Ellis,10,Leandro Bolmaro,1,3,1,0,1,1.0,3.0
+Crvena Zvezda Meridianbet Belgrade,"Nikola Kalinic, Jasiel Rivero, Stefan Miljenovic, Jordan Nwora, Dejan Davidovac","Crvena Zvezda Meridianbet Belgrade|12,14,2,33,7",2,Stefan Miljenovic,12,Nikola Kalinic,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Armoni Brooks, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,12,16,31,32",32,Josh Nebo,16,Zach Leday,1,3,1,0,1,1.0,3.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Izundu Ebuka, Dejan Davidovac","Crvena Zvezda Meridianbet Belgrade|0,11,12,15,7",0,Codi Miller-Mcintyre,12,Nikola Kalinic,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Giampaolo Ricci, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,17,31,32",17,Giampaolo Ricci,31,Shavon Shields,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Giampaolo Ricci, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,17,31,32",31,Shavon Shields,17,Giampaolo Ricci,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Armoni Brooks, Giampaolo Ricci, Marko Guduric, Quinn Ellis, Devin Booker","EA7 Emporio Armani Milan|12,17,23,3,6",12,Armoni Brooks,23,Marko Guduric,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Armoni Brooks, Giampaolo Ricci, Marko Guduric, Quinn Ellis, Devin Booker","EA7 Emporio Armani Milan|12,17,23,3,6",23,Marko Guduric,17,Giampaolo Ricci,1,3,1,0,1,1.0,3.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Armoni Brooks, Giampaolo Ricci, Marko Guduric, Devin Booker","EA7 Emporio Armani Milan|1,12,17,23,6",6,Devin Booker,23,Marko Guduric,1,3,1,0,1,1.0,3.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, Jeffrey Dowtin Jr, Tamir Blatt, Uros Trifunovic, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,21,45,6,9",21,Jeffrey Dowtin Jr,1,Jaylen Hoard,1,3,1,0,1,1.0,3.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, Jeffrey Dowtin Jr, Tamir Blatt, Uros Trifunovic, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,21,45,6,9",1,Jaylen Hoard,21,Jeffrey Dowtin Jr,1,3,1,0,1,1.0,3.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Ercan Osmani, Nick Weiler-Babb, Kai Jones","Anadolu Efes Istanbul|0,10,24,8,88",24,Ercan Osmani,8,Nick Weiler-Babb,1,3,1,0,1,1.0,3.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, William Rayman, Jimmy Clark Iii, Tamir Blatt, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,11,2,45,9",1,Jaylen Hoard,45,Tamir Blatt,1,3,1,0,1,1.0,3.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Jeffrey Dowtin Jr, Marcio Santos, Lonnie Walker Iv","Maccabi Rapyd Tel Aviv|1,10,21,3,8",21,Jeffrey Dowtin Jr,8,Lonnie Walker Iv,1,3,1,0,1,1.0,3.0
+Anadolu Efes Istanbul,"Isaia Cordinier, Sehmus Hazer, Ercan Osmani, Jordan Loyd, Georgios Papagiannis","Anadolu Efes Istanbul|10,2,24,3,9",10,Isaia Cordinier,3,Jordan Loyd,1,3,1,0,1,1.0,3.0
+Anadolu Efes Istanbul,"Shane Larkin, Rolands Smits, Sehmus Hazer, Nick Weiler-Babb, Georgios Papagiannis","Anadolu Efes Istanbul|0,11,2,8,9",0,Shane Larkin,11,Rolands Smits,1,3,1,0,1,1.0,3.0
+Maccabi Rapyd Tel Aviv,"O'Shae J Brissett, Jeffrey Dowtin Jr, Tj Leaf, Marcio Santos, Lonnie Walker Iv","Maccabi Rapyd Tel Aviv|10,21,22,3,8",21,Jeffrey Dowtin Jr,10,O'Shae J Brissett,1,3,1,0,1,1.0,3.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Rolands Smits, Ercan Osmani, Jordan Loyd","Anadolu Efes Istanbul|0,10,11,24,3",10,Isaia Cordinier,11,Rolands Smits,1,3,1,0,1,1.0,3.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Rolands Smits, Ercan Osmani, Jordan Loyd","Anadolu Efes Istanbul|0,10,11,24,3",0,Shane Larkin,3,Jordan Loyd,1,3,1,0,1,1.0,3.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",8,Davis Bertans,13,Dzanan Musa,1,3,1,0,1,1.0,3.0
+Partizan Mozzart Bet Belgrade,"Sterling Brown, Arijan Lakic, Jabari Parker, Duane Washington, Dylan Osetkowski","Partizan Mozzart Bet Belgrade|12,19,22,4,5",12,Sterling Brown,22,Jabari Parker,1,3,1,0,1,1.0,3.0
+Partizan Mozzart Bet Belgrade,"Sterling Brown, Arijan Lakic, Jabari Parker, Duane Washington, Dylan Osetkowski","Partizan Mozzart Bet Belgrade|12,19,22,4,5",12,Sterling Brown,5,Dylan Osetkowski,1,3,1,0,1,1.0,3.0
+Dubai Basketball,"Kosta Kondic, Dwayne Bacon, Filip Petrusev, Awudu Abass, Klemen Prepelic","Dubai Basketball|11,3,30,5,7",11,Kosta Kondic,5,Awudu Abass,1,3,1,0,1,1.0,3.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Isaac Bonga, Shake Milton, Tyrique Jones, Vanja Marinkovic","Partizan Mozzart Bet Belgrade|1,17,2,88,9",1,Carlik Jones,2,Shake Milton,1,3,1,0,1,1.0,3.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Isaac Bonga, Shake Milton, Tyrique Jones, Vanja Marinkovic","Partizan Mozzart Bet Belgrade|1,17,2,88,9",17,Isaac Bonga,9,Vanja Marinkovic,1,3,1,0,1,1.0,3.0
+Dubai Basketball,"Justin Anderson, Mckinley Wright Iv, Filip Petrusev, Klemen Prepelic, Davis Bertans","Dubai Basketball|10,25,30,7,8",25,Mckinley Wright Iv,8,Davis Bertans,1,3,1,0,1,1.0,3.0
+Dubai Basketball,"Justin Anderson, Dzanan Musa, Mckinley Wright Iv, Filip Petrusev, Davis Bertans","Dubai Basketball|10,13,25,30,8",25,Mckinley Wright Iv,8,Davis Bertans,1,3,1,0,1,1.0,3.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Aleksej Pokusevski, Isaac Bonga, Shake Milton, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,11,17,2,88",2,Shake Milton,17,Isaac Bonga,1,3,1,0,1,1.0,3.0
+Dubai Basketball,"Dzanan Musa, Mckinley Wright Iv, Dwayne Bacon, Klemen Prepelic, Davis Bertans","Dubai Basketball|13,25,3,7,8",3,Dwayne Bacon,25,Mckinley Wright Iv,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|17,22,24,25,3",17,Collin Malcolm,24,Ish Wainright,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Willy Hernangomez, Will Clyburn, Tornike Shengelia","FC Barcelona|0,13,14,21,23",23,Tornike Shengelia,13,Tomas Satoransky,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Willy Hernangomez, Will Clyburn, Tornike Shengelia","FC Barcelona|0,13,14,21,23",23,Tornike Shengelia,0,Kevin Punter,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Juani Marcos, Nicolas Laprovittola, Myles Cale, Joel Parra, Jan Vesely","FC Barcelona|2,20,3,44,6",6,Jan Vesely,20,Nicolas Laprovittola,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",6,Jan Vesely,21,Will Clyburn,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant, Tomer Ginat","Hapoel IBI Tel Aviv|22,24,25,3,41",41,Tomer Ginat,3,Elijah Bryant,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",13,Tomas Satoransky,21,Will Clyburn,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|17,22,24,25,3",3,Elijah Bryant,24,Ish Wainright,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|17,22,24,25,3",3,Elijah Bryant,22,Vasilije Micic,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Antonio Blakeney, Elijah Bryant, Tomer Ginat","Hapoel IBI Tel Aviv|0,1,2,3,41",3,Elijah Bryant,2,Antonio Blakeney,1,3,1,0,1,1.0,3.0
+FC Barcelona,"Youssoupha Fall, Nicolas Laprovittola, Myles Cale, Joel Parra, Dario Brizuela","FC Barcelona|19,20,3,44,8",20,Nicolas Laprovittola,44,Joel Parra,1,3,1,0,1,1.0,3.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Antonio Blakeney, Vasilije Micic, Ish Wainright","Hapoel IBI Tel Aviv|0,1,2,22,24",22,Vasilije Micic,0,Johnathan Motley,1,3,1,0,1,1.0,3.0
+LDLC ASVEL Villeurbanne,"Nando De Colo, Mbaye Ndiaye, Shaquille Harrison, Bastien Vautier, Melvin Ajinca","LDLC ASVEL Villeurbanne|12,24,3,32,8",24,Mbaye Ndiaye,3,Shaquille Harrison,1,2,0,1,1,1.0,2.0
+LDLC ASVEL Villeurbanne,"Nando De Colo, Mbaye Ndiaye, Shaquille Harrison, Bastien Vautier, Melvin Ajinca","LDLC ASVEL Villeurbanne|12,24,3,32,8",3,Shaquille Harrison,8,Melvin Ajinca,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Omari Moore, Neal Sako, Darius Thompson, Josep Puerto, Matthew Costello","Valencia Basket|10,12,13,2,24",10,Omari Moore,2,Josep Puerto,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Matthew Costello, Jaime Pradilla","Valencia Basket|10,13,2,24,4",13,Darius Thompson,24,Matthew Costello,1,2,0,1,1,1.0,2.0
+LDLC ASVEL Villeurbanne,"Nando De Colo, David Lighty, Mbaye Ndiaye, Shaquille Harrison, Melvin Ajinca","LDLC ASVEL Villeurbanne|12,23,24,3,8",23,David Lighty,3,Shaquille Harrison,1,2,0,1,1,1.0,2.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Mbaye Ndiaye, Shaquille Harrison, Glynn Watson, Bastien Vautier","LDLC ASVEL Villeurbanne|1,24,3,30,32",1,Zachary Seljaas,32,Bastien Vautier,1,2,0,1,1,1.0,2.0
+LDLC ASVEL Villeurbanne,"Zachary Seljaas, Bodian Massa, Nando De Colo, Shaquille Harrison, Melvin Ajinca","LDLC ASVEL Villeurbanne|1,10,12,3,8",12,Nando De Colo,10,Bodian Massa,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Ike Iroegbu, Josep Puerto, Matthew Costello, Sergio De Larrea, Nathan Sestina","Valencia Basket|18,2,24,5,77",5,Sergio De Larrea,24,Matthew Costello,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Nathan Reuvers, Jaime Pradilla","Valencia Basket|10,13,2,3,4",10,Omari Moore,4,Jaime Pradilla,1,2,0,1,1,1.0,2.0
+LDLC ASVEL Villeurbanne,"Edwin Jackson, David Lighty, Glynn Watson, Bastien Vautier, Melvin Ajinca","LDLC ASVEL Villeurbanne|11,23,30,32,8",11,Edwin Jackson,32,Bastien Vautier,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Matthew Costello, Nathan Sestina","Valencia Basket|10,13,2,24,77",77,Nathan Sestina,2,Josep Puerto,1,2,0,1,1,1.0,2.0
+Valencia Basket,"Omari Moore, Darius Thompson, Josep Puerto, Nathan Reuvers, Jaime Pradilla","Valencia Basket|10,13,2,3,4",10,Omari Moore,13,Darius Thompson,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Mikael Jantunen, Devon Hall, Bonzie Colson, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,18,20,50,8",50,Bonzie Colson,18,Mikael Jantunen,1,2,0,1,1,1.0,2.0
+Paris Basketball,"Allan Dokossi, Amath M'Baye, Yakuba Ouattara, Leopold Cavaliere, Justin Robinson","Paris Basketball|13,22,24,4,5",13,Allan Dokossi,4,Leopold Cavaliere,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Metecan Birsen, Onuralp Bitim, Wade Baldwin Iv, Devon Hall, Khem Birch","Fenerbahce Beko Istanbul|0,1,17,2,20,92",2,Wade Baldwin Iv,1,Metecan Birsen,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Onuralp Bitim, Mikael Jantunen, Wade Baldwin Iv, Bonzie Colson, Khem Birch","Fenerbahce Beko Istanbul|0,17,18,2,50,92",2,Wade Baldwin Iv,50,Bonzie Colson,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Onuralp Bitim, Wade Baldwin Iv, Nicolo Melli, Bonzie Colson, Khem Birch","Fenerbahce Beko Istanbul|0,17,2,4,50,92",17,Onuralp Bitim,92,Khem Birch,1,2,0,1,1,1.0,2.0
+Paris Basketball,"Nadir Hifi, Jeremy Morgan, Daulton Hommes, Derek Willis, Leopold Cavaliere","Paris Basketball|2,20,34,35,4",35,Derek Willis,4,Leopold Cavaliere,1,2,0,1,1,1.0,2.0
+Paris Basketball,"Allan Dokossi, Amath M'Baye, Yakuba Ouattara, Justin Robinson, Sebastian Herrera","Paris Basketball|13,22,24,5,7",5,Justin Robinson,13,Allan Dokossi,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Onuralp Bitim, Wade Baldwin Iv, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,13,17,2,8",13,Tarik Biberovic,8,Talen Horton Tucker,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Bonzie Colson","Fenerbahce Beko Istanbul|0,13,2,20,4,50",2,Wade Baldwin Iv,50,Bonzie Colson,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Wade Baldwin Iv, Nicolo Melli, Bonzie Colson, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,13,2,4,50,8",50,Bonzie Colson,8,Talen Horton Tucker,1,2,0,1,1,1.0,2.0
+Paris Basketball,"Allan Dokossi, Nadir Hifi, Jeremy Morgan, Amath M'Baye, Daulton Hommes","Paris Basketball|13,2,20,22,34",13,Allan Dokossi,2,Nadir Hifi,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Tarik Biberovic, Wade Baldwin Iv, Devon Hall, Talen Horton Tucker, Khem Birch","Fenerbahce Beko Istanbul|0,13,2,20,8,92",92,Khem Birch,20,Devon Hall,1,2,0,1,1,1.0,2.0
+Fenerbahce Beko Istanbul,"Armando Bacot Jr., Mikael Jantunen, Wade Baldwin Iv, Devon Hall, Nicolo Melli, Talen Horton Tucker","Fenerbahce Beko Istanbul|0,18,2,20,4,8",2,Wade Baldwin Iv,8,Talen Horton Tucker,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Dustin Sleva, Laurynas Birutis, Sylvain Francisco, Edgaras Ulanovas","Zalgiris Kaunas|1,14,15,3,92",14,Dustin Sleva,1,Nigel Williams-Goss,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Dustin Sleva, Laurynas Birutis, Sylvain Francisco, Edgaras Ulanovas","Zalgiris Kaunas|1,14,15,3,92",92,Edgaras Ulanovas,15,Laurynas Birutis,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Maodo Lo, Dustin Sleva, Sylvain Francisco, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|12,14,3,7,92",3,Sylvain Francisco,7,Moses Wright,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",10,Daniel Theis,33,Nikola Mirotic,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Daniel Theis, Matthew Strazel, Jaron Blossomgame, Mike James","AS Monaco|0,10,32,4,55",0,Elie Okobo,10,Daniel Theis,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Dustin Sleva, Sylvain Francisco, Moses Wright, Deividas Sirvydis, Edgaras Ulanovas","Zalgiris Kaunas|14,3,7,91,92",3,Sylvain Francisco,7,Moses Wright,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Azuolas Tubelis, Dustin Sleva, Deividas Sirvydis, Edgaras Ulanovas","Zalgiris Kaunas|1,10,14,91,92",91,Deividas Sirvydis,10,Azuolas Tubelis,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",0,Elie Okobo,33,Nikola Mirotic,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Daniel Theis, Alpha Diallo, Nikola Mirotic, Mike James","AS Monaco|0,10,11,33,55",0,Elie Okobo,10,Daniel Theis,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Azuolas Tubelis, Maodo Lo, Arnas Butkevicius, Moses Wright, Ignas Brazdeikis","Zalgiris Kaunas|10,12,51,7,8",8,Ignas Brazdeikis,7,Moses Wright,1,2,0,1,1,1.0,2.0
+Zalgiris Kaunas,"Nigel Williams-Goss, Maodo Lo, Arnas Butkevicius, Moses Wright, Edgaras Ulanovas","Zalgiris Kaunas|1,12,51,7,92",92,Edgaras Ulanovas,7,Moses Wright,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Alpha Diallo, Kevarrius Hayes, Jaron Blossomgame, Mike James","AS Monaco|0,11,13,4,55",55,Mike James,4,Jaron Blossomgame,1,2,0,1,1,1.0,2.0
+AS Monaco,"Elie Okobo, Alpha Diallo, Nikola Mirotic, Jaron Blossomgame, Mike James","AS Monaco|0,11,33,4,55",0,Elie Okobo,33,Nikola Mirotic,1,2,0,1,1,1.0,2.0
+AS Monaco,"Alpha Diallo, Nemanja Nedovic, Nikola Mirotic, Jaron Blossomgame, Mike James","AS Monaco|11,26,33,4,55",55,Mike James,11,Alpha Diallo,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Walter Tavares, Andres Feliz, Alberto Abalde, Chuma Okeke","Real Madrid|11,22,24,6,8",11,Mario Hezonja,22,Walter Tavares,1,2,0,1,1,1.0,2.0
+Real Madrid,"Trey Lyles, David Kraemer, Gabriel Deck, Bruno Fernando, Facundo Campazzo","Real Madrid|0,1,14,20,7",20,Bruno Fernando,14,Gabriel Deck,1,2,0,1,1,1.0,2.0
+Real Madrid,"Trey Lyles, David Kraemer, Gabriel Deck, Bruno Fernando, Facundo Campazzo","Real Madrid|0,1,14,20,7",20,Bruno Fernando,1,David Kraemer,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Daniel Hackett, Matthew Morgan, Aliou Diarra, Saliou Niang","Virtus Bologna|1,21,23,30,31,7",1,Luca Vildoza,31,Aliou Diarra,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Matthew Morgan, Karim Jallow, Mouhamet Diouf, Saliou Niang","Virtus Bologna|1,21,30,34,35,7",7,Saliou Niang,35,Mouhamet Diouf,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Matthew Morgan, Karim Jallow, Mouhamet Diouf, Saliou Niang","Virtus Bologna|1,21,30,34,35,7",35,Mouhamet Diouf,7,Saliou Niang,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Walter Tavares, Sergio Llull, Andres Feliz, Chuma Okeke","Real Madrid|11,22,23,24,8",22,Walter Tavares,11,Mario Hezonja,1,2,0,1,1,1.0,2.0
+Real Madrid,"Trey Lyles, Gabriel Deck, Walter Tavares, Alberto Abalde, Facundo Campazzo","Real Madrid|0,14,22,6,7",7,Facundo Campazzo,22,Walter Tavares,1,2,0,1,1,1.0,2.0
+Real Madrid,"Trey Lyles, Gabriel Deck, Walter Tavares, Alberto Abalde, Facundo Campazzo","Real Madrid|0,14,22,6,7",7,Facundo Campazzo,6,Alberto Abalde,1,2,0,1,1,1.0,2.0
+Real Madrid,"Trey Lyles, Gabriel Deck, Walter Tavares, Alberto Abalde, Facundo Campazzo","Real Madrid|0,14,22,6,7",6,Alberto Abalde,14,Gabriel Deck,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Brandon Taylor, Derrick Alston Jr., Carsen Edwards, Karim Jallow, Alen Smailagic","Virtus Bologna|11,21,3,34,9",None,Player None,9,Alen Smailagic,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Derrick Alston Jr., Matthew Morgan, Karim Jallow, Alessandro Pajola, Saliou Niang, Alen Smailagic","Virtus Bologna|21,30,34,6,7,9",30,Matthew Morgan,7,Saliou Niang,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Gabriel Deck, Walter Tavares, Alberto Abalde, Facundo Campazzo","Real Madrid|11,14,22,6,7",6,Alberto Abalde,7,Facundo Campazzo,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Brandon Taylor, Derrick Alston Jr., Daniel Hackett, Carsen Edwards, Mouhamet Diouf","Virtus Bologna|11,21,23,3,35",3,Carsen Edwards,35,Mouhamet Diouf,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Brandon Taylor, Derrick Alston Jr., Daniel Hackett, Carsen Edwards, Aliou Diarra","Virtus Bologna|11,21,23,3,31",11,Brandon Taylor,23,Daniel Hackett,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Matthew Morgan, Aliou Diarra, Karim Jallow, Saliou Niang","Virtus Bologna|1,21,30,31,34,7",7,Saliou Niang,31,Aliou Diarra,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Bruno Fernando, Sergio Llull, Facundo Campazzo, Chuma Okeke","Real Madrid|11,20,23,7,8",7,Facundo Campazzo,23,Sergio Llull,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Luca Vildoza, Derrick Alston Jr., Carsen Edwards, Karim Jallow, Saliou Niang, Alen Smailagic","Virtus Bologna|1,21,3,34,7,9",3,Carsen Edwards,7,Saliou Niang,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Gabriel Deck, Walter Tavares, Andres Feliz, Facundo Campazzo","Real Madrid|11,14,22,24,7",7,Facundo Campazzo,22,Walter Tavares,1,2,0,1,1,1.0,2.0
+Virtus Bologna,"Brandon Taylor, Derrick Alston Jr., Carsen Edwards, Karim Jallow, Saliou Niang, Alen Smailagic","Virtus Bologna|11,21,3,34,7,9",11,Brandon Taylor,7,Saliou Niang,1,2,0,1,1,1.0,2.0
+Real Madrid,"Mario Hezonja, Gabriel Deck, Andres Feliz, Facundo Campazzo, Chuma Okeke","Real Madrid|11,14,24,7,8",7,Facundo Campazzo,24,Andres Feliz,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Tyler Dorsey, Alec Peters, Donta Hall, Saben Lee, Evan Fournier","Olympiacos Piraeus|22,25,45,9,94",9,Saben Lee,25,Alec Peters,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Tyler Dorsey, Alec Peters, Tyson Ward, Donta Hall, Saben Lee","Olympiacos Piraeus|22,25,3,45,9",3,Tyson Ward,9,Saben Lee,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,8,9",9,Timothe Luwawu-Cabarrot,11,Trent Forrest,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Thomas Walkup, Alec Peters, Tyson Ward, Donta Hall, Saben Lee","Olympiacos Piraeus|0,25,3,45,9",0,Thomas Walkup,45,Donta Hall,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Thomas Walkup, Kostas Papanikolaou, Alec Peters, Tyson Ward, Donta Hall","Olympiacos Piraeus|0,16,25,3,45",16,Kostas Papanikolaou,3,Tyson Ward,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Matteo Spagnolo, Clement Frisch, Markquis Nowell, Hamidou Diallo, Luka Samanic","Baskonia Vitoria-Gasteiz|10,25,3,6,99",10,Matteo Spagnolo,99,Luka Samanic,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Trent Forrest, Hamidou Diallo, Tadas Sedekerskis, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|11,6,8,9,99",6,Hamidou Diallo,11,Trent Forrest,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Hamidou Diallo, Tadas Sedekerskis","Baskonia Vitoria-Gasteiz|0,11,18,6,8",18,Khalifa Diop,11,Trent Forrest,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Sasha Vezenkov, Tyler Dorsey, Donta Hall, Saben Lee, Evan Fournier","Olympiacos Piraeus|14,22,45,9,94",22,Tyler Dorsey,14,Sasha Vezenkov,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Sasha Vezenkov, Tyler Dorsey, Donta Hall, Saben Lee, Evan Fournier","Olympiacos Piraeus|14,22,45,9,94",14,Sasha Vezenkov,45,Donta Hall,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Clement Frisch, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,25,9",9,Timothe Luwawu-Cabarrot,18,Khalifa Diop,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Sasha Vezenkov, Tyler Dorsey, Tyson Ward, Donta Hall, Saben Lee","Olympiacos Piraeus|14,22,3,45,9",22,Tyler Dorsey,14,Sasha Vezenkov,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Hamidou Diallo, Tadas Sedekerskis, Luka Samanic","Baskonia Vitoria-Gasteiz|0,11,6,8,99",0,Markus Howard,6,Hamidou Diallo,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Khalifa Diop, Tadas Sedekerskis, Timothe Luwawu-Cabarrot","Baskonia Vitoria-Gasteiz|0,11,18,8,9",11,Trent Forrest,8,Tadas Sedekerskis,1,2,0,1,1,1.0,2.0
+Baskonia Vitoria-Gasteiz,"Markus Howard, Trent Forrest, Hamidou Diallo, Timothe Luwawu-Cabarrot, Luka Samanic","Baskonia Vitoria-Gasteiz|0,11,6,9,99",11,Trent Forrest,6,Hamidou Diallo,1,2,0,1,1,1.0,2.0
+Olympiacos Piraeus,"Thomas Walkup, Sasha Vezenkov, Tyler Dorsey, Nikola Milutinov, Evan Fournier","Olympiacos Piraeus|0,14,22,33,94",94,Evan Fournier,33,Nikola Milutinov,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Xavier Rathan-Mayes, Leon Kratzer","FC Bayern Munich|11,16,22,4,8",4,Xavier Rathan-Mayes,22,Isiaha Mike,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Tj Shorts, Nikolaos Rogkavopoulos, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|0,17,25,41,8",25,Kendrick Nunn,8,Richaun Holmes,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,16,22,32,4",4,Xavier Rathan-Mayes,16,Stefan Jovic,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,16,22,32,4",11,Vladimir Lucic,16,Stefan Jovic,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,41,8",25,Kendrick Nunn,8,Richaun Holmes,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Stefan Jovic, Wenyen Gabriel, Niels Giffey","FC Bayern Munich|10,13,16,32,5",16,Stefan Jovic,32,Wenyen Gabriel,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Stefan Jovic, Wenyen Gabriel, Niels Giffey","FC Bayern Munich|10,13,16,32,5",5,Niels Giffey,32,Wenyen Gabriel,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Jerian Grant, Kendrick Nunn, Marius Grigonis, Konstantinos Mitoglou, Omer Yurtseven","Panathinaikos AKTOR Athens|22,25,40,44,77",25,Kendrick Nunn,77,Omer Yurtseven,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Jerian Grant, Marius Grigonis, Konstantinos Mitoglou, Omer Yurtseven","Panathinaikos AKTOR Athens|10,22,40,44,77",40,Marius Grigonis,10,Kostas Sloukas,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Stefan Jovic, Isiaha Mike, David Mccormack","FC Bayern Munich|10,13,16,22,33",10,Justinian Jessup,33,David Mccormack,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Jerian Grant, Marius Grigonis, Konstantinos Mitoglou, Omer Yurtseven","Panathinaikos AKTOR Athens|10,22,40,44,77",10,Kostas Sloukas,77,Omer Yurtseven,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Tj Shorts, Nikolaos Rogkavopoulos, Alexandros Samodurov, Kendrick Nunn, Omer Yurtseven","Panathinaikos AKTOR Athens|0,17,20,25,77",20,Alexandros Samodurov,77,Omer Yurtseven,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,41,8",22,Jerian Grant,41,Juancho Hernangomez,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,41,8",8,Richaun Holmes,25,Kendrick Nunn,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, David Mccormack, Xavier Rathan-Mayes, Niels Giffey","FC Bayern Munich|11,16,33,4,5",16,Stefan Jovic,4,Xavier Rathan-Mayes,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Juancho Hernangomez, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,41,8",22,Jerian Grant,25,Kendrick Nunn,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, David Mccormack, Kamar Baldwin, Niels Giffey","FC Bayern Munich|10,13,33,44,5",5,Niels Giffey,33,David Mccormack,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Wenyen Gabriel, Kamar Baldwin, Niels Giffey","FC Bayern Munich|10,13,32,44,5",44,Kamar Baldwin,32,Wenyen Gabriel,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Alexandros Samodurov, Jerian Grant, Marius Grigonis, Omer Yurtseven","Panathinaikos AKTOR Athens|10,20,22,40,77",20,Alexandros Samodurov,77,Omer Yurtseven,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Kostas Sloukas, Alexandros Samodurov, Jerian Grant, Marius Grigonis, Omer Yurtseven","Panathinaikos AKTOR Athens|10,20,22,40,77",77,Omer Yurtseven,20,Alexandros Samodurov,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Justinian Jessup, Andreas Obst, Isiaha Mike, David Mccormack, Kamar Baldwin","FC Bayern Munich|10,13,22,33,44",10,Justinian Jessup,33,David Mccormack,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Tj Shorts, Nikolaos Rogkavopoulos, Kendrick Nunn, Konstantinos Mitoglou, Richaun Holmes","Panathinaikos AKTOR Athens|0,17,25,44,8",0,Tj Shorts,25,Kendrick Nunn,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Konstantinos Mitoglou, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,44,8",25,Kendrick Nunn,17,Nikolaos Rogkavopoulos,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Stefan Jovic, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,16,22,32,4",4,Xavier Rathan-Mayes,22,Isiaha Mike,1,2,0,1,1,1.0,2.0
+FC Bayern Munich,"Vladimir Lucic, Andreas Obst, Isiaha Mike, Wenyen Gabriel, Xavier Rathan-Mayes","FC Bayern Munich|11,13,22,32,4",4,Xavier Rathan-Mayes,32,Wenyen Gabriel,1,2,0,1,1,1.0,2.0
+Panathinaikos AKTOR Athens,"Nikolaos Rogkavopoulos, Jerian Grant, Kendrick Nunn, Konstantinos Mitoglou, Richaun Holmes","Panathinaikos AKTOR Athens|17,22,25,44,8",22,Jerian Grant,17,Nikolaos Rogkavopoulos,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Jasiel Rivero, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,14,33,95",12,Nikola Kalinic,33,Jordan Nwora,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,16,31,32",1,Niccolo Mannion,16,Zach Leday,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,16,31,32",1,Niccolo Mannion,10,Leandro Bolmaro,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Izundu Ebuka, Jordan Nwora, Semi Ojeleye","Crvena Zvezda Meridianbet Belgrade|0,11,15,33,37",11,Tyson Carter,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Izundu Ebuka, Jordan Nwora, Semi Ojeleye","Crvena Zvezda Meridianbet Belgrade|0,11,15,33,37",33,Jordan Nwora,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Tyson Carter, Izundu Ebuka, Stefan Miljenovic, Semi Ojeleye, Dejan Davidovac","Crvena Zvezda Meridianbet Belgrade|11,15,2,37,7",2,Stefan Miljenovic,11,Tyson Carter,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Armoni Brooks, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,12,16,31,32",12,Armoni Brooks,16,Zach Leday,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Armoni Brooks, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,12,16,31,32",1,Niccolo Mannion,32,Josh Nebo,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Armoni Brooks, Zach Leday, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,12,16,31,32",31,Shavon Shields,16,Zach Leday,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Izundu Ebuka, Jordan Nwora, Dejan Davidovac","Crvena Zvezda Meridianbet Belgrade|0,12,15,33,7",12,Nikola Kalinic,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Izundu Ebuka, Dejan Davidovac","Crvena Zvezda Meridianbet Belgrade|0,11,12,15,7",11,Tyson Carter,12,Nikola Kalinic,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Leandro Bolmaro, Zach Leday, Marko Guduric, Quinn Ellis, Josh Nebo","EA7 Emporio Armani Milan|10,16,23,3,32",3,Quinn Ellis,32,Josh Nebo,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Izundu Ebuka, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,15,33,95",12,Nikola Kalinic,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Izundu Ebuka, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,15,33,95",12,Nikola Kalinic,0,Codi Miller-Mcintyre,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Giampaolo Ricci, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,17,31,32",10,Leandro Bolmaro,32,Josh Nebo,1,2,0,1,1,1.0,2.0
+EA7 Emporio Armani Milan,"Niccolo Mannion, Leandro Bolmaro, Giampaolo Ricci, Shavon Shields, Josh Nebo","EA7 Emporio Armani Milan|1,10,17,31,32",32,Josh Nebo,17,Giampaolo Ricci,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Izundu Ebuka, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,15,33,95",0,Codi Miller-Mcintyre,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Nikola Kalinic, Izundu Ebuka, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,12,15,33,95",0,Codi Miller-Mcintyre,33,Jordan Nwora,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Izundu Ebuka, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,11,12,15,95",0,Codi Miller-Mcintyre,15,Izundu Ebuka,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Izundu Ebuka, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,11,12,15,95",0,Codi Miller-Mcintyre,11,Tyson Carter,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Izundu Ebuka, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,11,12,15,95",0,Codi Miller-Mcintyre,12,Nikola Kalinic,1,2,0,1,1,1.0,2.0
+Crvena Zvezda Meridianbet Belgrade,"Codi Miller-Mcintyre, Tyson Carter, Nikola Kalinic, Jordan Nwora, Chima Moneke","Crvena Zvezda Meridianbet Belgrade|0,11,12,33,95",95,Chima Moneke,33,Jordan Nwora,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Ercan Osmani, Nick Weiler-Babb, Kai Jones","Anadolu Efes Istanbul|0,10,24,8,88",0,Shane Larkin,88,Kai Jones,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Jimmy Clark Iii, Tamir Blatt, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,10,2,45,9",45,Tamir Blatt,9,Roman Sorkin,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Ercan Osmani, Nick Weiler-Babb, Kai Jones","Anadolu Efes Istanbul|0,10,24,8,88",24,Ercan Osmani,88,Kai Jones,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Jimmy Clark Iii, Tamir Blatt, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,10,2,45,9",2,Jimmy Clark Iii,9,Roman Sorkin,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Isaia Cordinier, Ercan Osmani, Jordan Loyd, Nick Weiler-Babb, Georgios Papagiannis","Anadolu Efes Istanbul|10,24,3,8,9",8,Nick Weiler-Babb,9,Georgios Papagiannis,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"John Dibartolomeo, Jeffrey Dowtin Jr, Tj Leaf, Marcio Santos, Lonnie Walker Iv","Maccabi Rapyd Tel Aviv|12,21,22,3,8",21,Jeffrey Dowtin Jr,22,Tj Leaf,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"John Dibartolomeo, Jeffrey Dowtin Jr, Tj Leaf, Marcio Santos, Lonnie Walker Iv","Maccabi Rapyd Tel Aviv|12,21,22,3,8",22,Tj Leaf,12,John Dibartolomeo,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"John Dibartolomeo, Jeffrey Dowtin Jr, Tj Leaf, Marcio Santos, Lonnie Walker Iv","Maccabi Rapyd Tel Aviv|12,21,22,3,8",12,John Dibartolomeo,3,Marcio Santos,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Jimmy Clark Iii, Jeffrey Dowtin Jr, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,10,2,21,9",10,O'Shae J Brissett,2,Jimmy Clark Iii,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, Jeffrey Dowtin Jr, Tamir Blatt, Uros Trifunovic, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,21,45,6,9",45,Tamir Blatt,6,Uros Trifunovic,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Ercan Osmani, Nick Weiler-Babb, Kai Jones","Anadolu Efes Istanbul|0,10,24,8,88",8,Nick Weiler-Babb,0,Shane Larkin,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, William Rayman, Jimmy Clark Iii, Tamir Blatt, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,11,2,45,9",45,Tamir Blatt,9,Roman Sorkin,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Ercan Osmani, Nick Weiler-Babb, Kai Jones","Anadolu Efes Istanbul|0,10,24,8,88",8,Nick Weiler-Babb,10,Isaia Cordinier,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, Tamir Blatt, Lonnie Walker Iv, Roman Sorkin","Maccabi Rapyd Tel Aviv|1,10,45,8,9",45,Tamir Blatt,1,Jaylen Hoard,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Isaia Cordinier, Rolands Smits, Ercan Osmani, Jordan Loyd","Anadolu Efes Istanbul|0,10,11,24,3",3,Jordan Loyd,11,Rolands Smits,1,2,0,1,1,1.0,2.0
+Anadolu Efes Istanbul,"Shane Larkin, Rolands Smits, Jordan Loyd, Nick Weiler-Babb, Georgios Papagiannis","Anadolu Efes Istanbul|0,11,3,8,9",9,Georgios Papagiannis,11,Rolands Smits,1,2,0,1,1,1.0,2.0
+Maccabi Rapyd Tel Aviv,"Jaylen Hoard, O'Shae J Brissett, John Dibartolomeo, Marcio Santos, Tamir Blatt","Maccabi Rapyd Tel Aviv|1,10,12,3,45",45,Tamir Blatt,3,Marcio Santos,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",25,Mckinley Wright Iv,13,Dzanan Musa,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Sterling Brown, Arijan Lakic, Jabari Parker, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,12,19,22,88",22,Jabari Parker,19,Arijan Lakic,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Sterling Brown, Isaac Bonga, Jabari Parker, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,12,17,22,88",1,Carlik Jones,22,Jabari Parker,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Isaac Bonga, Shake Milton, Tyrique Jones, Vanja Marinkovic","Partizan Mozzart Bet Belgrade|1,17,2,88,9",1,Carlik Jones,88,Tyrique Jones,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Dzanan Musa, Mckinley Wright Iv, Filip Petrusev, Awudu Abass, Davis Bertans","Dubai Basketball|13,25,30,5,8",8,Davis Bertans,30,Filip Petrusev,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Isaac Bonga, Shake Milton, Tyrique Jones, Vanja Marinkovic","Partizan Mozzart Bet Belgrade|1,17,2,88,9",1,Carlik Jones,17,Isaac Bonga,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Sterling Brown, Shake Milton, Jabari Parker, Dylan Osetkowski","Partizan Mozzart Bet Belgrade|1,12,2,22,5",22,Jabari Parker,5,Dylan Osetkowski,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Dzanan Musa, Mfiondu Kabengele, Mckinley Wright Iv, Dwayne Bacon, Davis Bertans","Dubai Basketball|13,17,25,3,8",25,Mckinley Wright Iv,17,Mfiondu Kabengele,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Isaac Bonga, Shake Milton, Jabari Parker, Duane Washington, Dylan Osetkowski","Partizan Mozzart Bet Belgrade|17,2,22,4,5",4,Duane Washington,5,Dylan Osetkowski,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Justin Anderson, Dzanan Musa, Mckinley Wright Iv, Filip Petrusev, Davis Bertans","Dubai Basketball|10,13,25,30,8",8,Davis Bertans,30,Filip Petrusev,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Justin Anderson, Dzanan Musa, Mckinley Wright Iv, Dwayne Bacon, Filip Petrusev","Dubai Basketball|10,13,25,3,30",10,Justin Anderson,30,Filip Petrusev,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Aleksej Pokusevski, Sterling Brown, Isaac Bonga, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,11,12,17,88",1,Carlik Jones,88,Tyrique Jones,1,2,0,1,1,1.0,2.0
+Partizan Mozzart Bet Belgrade,"Carlik Jones, Aleksej Pokusevski, Isaac Bonga, Shake Milton, Tyrique Jones","Partizan Mozzart Bet Belgrade|1,11,17,2,88",2,Shake Milton,88,Tyrique Jones,1,2,0,1,1,1.0,2.0
+Dubai Basketball,"Dzanan Musa, Mckinley Wright Iv, Dwayne Bacon, Klemen Prepelic, Davis Bertans","Dubai Basketball|13,25,3,7,8",8,Davis Bertans,3,Dwayne Bacon,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Collin Malcolm, Antonio Blakeney, Ish Wainright","Hapoel IBI Tel Aviv|0,1,17,2,24",1,Chris Jones,0,Johnathan Motley,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Collin Malcolm, Antonio Blakeney, Ish Wainright","Hapoel IBI Tel Aviv|0,1,17,2,24",1,Chris Jones,17,Collin Malcolm,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Antonio Blakeney, Ish Wainright, Tomer Ginat","Hapoel IBI Tel Aviv|0,1,2,24,41",1,Chris Jones,41,Tomer Ginat,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Chris Jones, Antonio Blakeney, Ish Wainright, Tomer Ginat","Hapoel IBI Tel Aviv|0,1,2,24,41",0,Johnathan Motley,1,Chris Jones,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",13,Tomas Satoransky,6,Jan Vesely,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Dan Oturu, Elijah Bryant, Tomer Ginat","Hapoel IBI Tel Aviv|17,22,25,3,41",25,Dan Oturu,17,Collin Malcolm,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Johnathan Motley, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|0,22,24,25,3",22,Vasilije Micic,0,Johnathan Motley,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Collin Malcolm, Vasilije Micic, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|17,22,24,25,3",17,Collin Malcolm,25,Dan Oturu,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",23,Tornike Shengelia,6,Jan Vesely,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Chris Jones, Collin Malcolm, Ish Wainright, Dan Oturu, Elijah Bryant","Hapoel IBI Tel Aviv|1,17,24,25,3",3,Elijah Bryant,25,Dan Oturu,1,2,0,1,1,1.0,2.0
+Hapoel IBI Tel Aviv,"Chris Jones, Antonio Blakeney, Dan Oturu, Elijah Bryant, Tomer Ginat","Hapoel IBI Tel Aviv|1,2,25,3,41",3,Elijah Bryant,25,Dan Oturu,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Youssoupha Fall, Nicolas Laprovittola, Myles Cale, Joel Parra, Dario Brizuela","FC Barcelona|19,20,3,44,8",8,Dario Brizuela,19,Youssoupha Fall,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Youssoupha Fall, Nicolas Laprovittola, Myles Cale, Joel Parra, Dario Brizuela","FC Barcelona|19,20,3,44,8",20,Nicolas Laprovittola,8,Dario Brizuela,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Tomas Satoransky, Youssoupha Fall, Nicolas Laprovittola, Myles Cale, Joel Parra","FC Barcelona|13,19,20,3,44",20,Nicolas Laprovittola,13,Tomas Satoransky,1,2,0,1,1,1.0,2.0
+FC Barcelona,"Kevin Punter, Tomas Satoransky, Will Clyburn, Tornike Shengelia, Jan Vesely","FC Barcelona|0,13,21,23,6",0,Kevin Punter,6,Jan Vesely,1,2,0,1,1,1.0,2.0
