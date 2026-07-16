@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-15T15:39:44.717Z",
+    "savedAt": "2026-07-16T06:05:15.160Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -3278,7 +3278,8 @@
     "Javon Cooley": 3,
     "Malik Messina-Moore": 4,
     "Christian May": 3.5,
-    "Octavio Brito": 4
+    "Octavio Brito": 4,
+    "Travis Henson": 3.5
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4234,9 +4235,10 @@
       ]
     },
     "Travis Henson": {
-      "primary": 4,
+      "primary": 3,
       "secondary": [
-        3
+        2,
+        4
       ]
     }
   },
@@ -6551,7 +6553,8 @@
     "Christian May": 4,
     "Malik Messina-Moore": 5,
     "Dan Gherezgher": 5,
-    "Octavio Brito": 4
+    "Octavio Brito": 4,
+    "Travis Henson": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8276,8 +8279,8 @@
         },
         {
           "title": "Close-Out Attacking/Hand-Offs",
-          "description": "Aggressive off-catch with quick first-step. Efficient mid-range pull w/ high release he gets off over defenders, great at limited dribbles getting to his mid-range/step-back 3. Vertical athlete @ the rim.",
-          "level": "Good"
+          "description": "Shot 60TS%+ across his career. Aggressive off-catch with quick first-step. Efficient mid-range pull w/ high release he gets off over defenders, great at limited dribbles getting to his mid-range/step-back 3. Vertical athlete @ the rim.",
+          "level": "Elite"
         },
         {
           "title": "1-on-1 D",
