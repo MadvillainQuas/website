@@ -150,7 +150,9 @@
             { id: 'gamevis',   label: '📊 Game Visualizer', href: 'gamevis.html',
               owns: (p) => p.endsWith('gamevis.html') || p.endsWith('gamevis_with_shotchart_v2_6.html') },
             { id: 'playerstats', label: '📈 Player Stats Viewer', href: 'player_stats_viewer_pro.html',
-              owns: (p) => p.endsWith('player_stats_viewer_pro.html') }
+              owns: (p) => p.endsWith('player_stats_viewer_pro.html') },
+            { id: 'allstats',  label: '🌍 All-League Stats', href: 'allstats.html',
+              owns: (p) => p.endsWith('allstats.html') }
         ];
         const currentApp = APPS.find(a => a.owns(path));
         const otherApps  = APPS.filter(a => a !== currentApp);

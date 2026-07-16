@@ -1,0 +1,3524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROPHESY — All-League Stats</title>
+    <script src="gate.js"></script>
+    <script src="topnav.js" defer></script>
+    <style>
+        :root {
+            --bg: #0f172a; --bg2: #1e293b; --bg3: #273449; --border: #334155;
+            --text: #e2e8f0; --muted: #94a3b8; --accent: #a78bfa;
+            --pos: #4ade80; --neg: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text);
+               font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 13px; }
+        .wrap { max-width: 1900px; margin: 0 auto; padding: 12px 16px 60px; }
+        h1 { font-size: 20px; margin: 10px 0 2px; color: var(--accent); }
+        .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+        .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+                 padding: 10px 12px; margin-bottom: 10px; }
+        .rowflex { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .chip { background: var(--bg3); color: var(--muted); border: 1px solid var(--border);
+                border-radius: 14px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+        .chip.on { background: #4c1d95; color: #ede9fe; border-color: var(--accent); }
+        .chip.small { padding: 2px 9px; font-size: 11px; border-radius: 10px; }
+        label { color: var(--muted); font-size: 12px; }
+        input[type="text"], input[type="number"], select {
+            background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+            border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+        input[type="text"] { width: 210px; }
+        input[type="number"] { width: 70px; }
+        button.btn { background: #4c1d95; color: #ede9fe; border: 1px solid var(--accent);
+                     border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
+        button.btn.secondary { background: var(--bg3); color: var(--text); border-color: var(--border); }
+        #loadState { color: var(--accent); font-size: 12px; }
+        #statusLog { display: none; max-height: 180px; overflow-y: auto; background: #0b1120;
+                     border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+                     font-family: Consolas, monospace; font-size: 11px; margin-top: 8px; }
+        #statusLog .warn { color: #fbbf24; }
+        #calcPanel { display: none; }
+        #calcBarWrap { background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; margin-top: 6px; }
+        #calcBar { background: var(--accent); height: 100%; width: 0%; transition: width .2s; }
+        #calcMsg { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .tablewrap { overflow: auto; max-height: calc(100vh - 130px);
+                     border: 1px solid var(--border); border-radius: 8px; }
+        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+        th, td { padding: 4px 8px; text-align: right; white-space: nowrap;
+                 border-bottom: 1px solid #1e293b; }
+        thead th { position: sticky; top: 0; background: var(--bg3); color: var(--muted);
+                   cursor: pointer; z-index: 3; user-select: none; font-size: 11px;
+                   border-bottom: 2px solid var(--border); }
+        thead th.sorted { color: var(--accent); }
+        tbody tr:hover td { background: #1c2a44; }
+        td.sticky-col, th.sticky-col { position: sticky; background: var(--bg2); text-align: left; z-index: 2; }
+        thead th.sticky-col { z-index: 4; background: var(--bg3); }
+        .c0 { left: 0; min-width: 160px; } .c1 { left: 160px; min-width: 130px; } .c2 { left: 290px; min-width: 130px; }
+        td.pname { color: #fff; font-weight: 600; }
+        td.pos { color: var(--pos); } td.neg { color: var(--neg); } td.muted { color: #475569; }
+        #rowCount { color: var(--muted); font-size: 11px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>🌍 All-League Stats</h1>
+    <div class="sub">Every league in one RealGM-style table — newest healthy data folder per league, duplicates deduped, bugged outputs skipped. RAPM &amp; APM use the exact engines from the Lineup Analyzer.</div>
+
+    <div class="panel">
+        <div class="rowflex">
+            <span id="loadState">booting…</span>
+            <button class="chip small" id="statusToggle" style="margin-left:auto">data-source log</button>
+        </div>
+        <div id="statusLog"></div>
+    </div>
+
+    <div class="panel">
+        <div class="rowflex" id="leagueChips"></div>
+    </div>
+
+    <div class="panel">
+        <div class="rowflex">
+            <input type="text" id="searchBox" placeholder="Search player / team…">
+            <label>Min MPG <input type="number" id="minMpg" value="0" min="0" step="1"></label>
+            <label>Min GP <input type="number" id="minGp" value="0" min="0" step="1"></label>
+            <label>Box mode
+                <select id="modeSel">
+                    <option value="pg">Per Game</option>
+                    <option value="tot">Totals</option>
+                    <option value="p100">Per 100 poss</option>
+                </select>
+            </label>
+            <label>± baseline
+                <select id="diffModeSel">
+                    <option value="onOff">ON − OFF</option>
+                    <option value="vsTeam">ON − Team Avg</option>
+                </select>
+            </label>
+            <button class="btn secondary" id="showAllBtn">Show All</button>
+            <button class="btn secondary" id="exportBtn">⬇ CSV</button>
+            <span style="flex:1"></span>
+            <label>λ <input type="number" id="lambdaInput" value="800" min="1"></label>
+            <button class="btn" id="runRapmBtn">Calculate RAPM</button>
+            <button class="btn" id="runApmBtn">Calculate APM</button>
+            <button class="btn" id="runBothBtn">Both (all leagues)</button>
+        </div>
+        <div class="rowflex" id="groupToggles" style="margin-top:8px"></div>
+        <div id="calcPanel">
+            <div id="calcBarWrap"><div id="calcBar"></div></div>
+            <div id="calcMsg"></div>
+        </div>
+    </div>
+
+    <div class="rowflex" style="margin: 4px 2px;"><span id="rowCount"></span></div>
+    <div class="tablewrap"><table id="statTable"></table></div>
+</div>
+
+<script>
+/* ====================================================================
+ * ENGINE — carried over VERBATIM from index_9.html (PlayerRAPMEngine +
+ * parseCSV / name helpers). Do not edit here; fix in index_9 and re-sync.
+ * ==================================================================== */
+        function parseCSV(text) {
+            const lines = text.trim().split('\n'), headers = [];
+            let cur = '', inQ = false;
+            for (let c of lines[0]) { if (c === '"') inQ = !inQ; else if (c === ',' && !inQ) { headers.push(cur.trim().replace(/\r/g, '')); cur = ''; } else cur += c; }
+            headers.push(cur.trim().replace(/\r/g, ''));
+            return lines.slice(1).map(line => {
+                const vals = []; cur = ''; inQ = false;
+                for (let c of line) { if (c === '"') inQ = !inQ; else if (c === ',' && !inQ) { vals.push(cur.trim().replace(/\r/g, '')); cur = ''; } else cur += c; }
+                vals.push(cur.trim().replace(/\r/g, ''));
+                const obj = {}; headers.forEach((h, i) => obj[h] = vals[i] || ''); return obj;
+            });
+        }
+
+        let _globalPlayerMergeRules = [];
+
+        function applyGlobalPlayerMerge(playerName) {
+            if (!playerName || _globalPlayerMergeRules.length === 0) return playerName;
+            let currentName = playerName.trim();
+            let iterations = 0;
+            const maxIterations = 10; // Prevent infinite loops from circular rules
+
+            while (iterations < maxIterations) {
+                let found = false;
+                for (const rule of _globalPlayerMergeRules) {
+                    // If current name matches an alias, resolve to primary
+                    if (rule.aliases && rule.aliases.includes(currentName)) {
+                        currentName = rule.primary;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) break; // No more transformations possible
+                iterations++;
+            }
+            return currentName;
+        }
+
+        function setGlobalPlayerMergeRules(rules) {
+            _globalPlayerMergeRules = rules || [];
+        }
+
+        function normalizePlayerName(name) {
+            if (!name) return '';
+            // Apply merge first
+            const merged = applyGlobalPlayerMerge(name);
+            return merged.toLowerCase()
+                .replace(/[''`´'ʼˈ]/g, '')  // Remove all apostrophe variants
+                .replace(/[^a-z0-9\s-]/g, '')  // Remove other special chars except hyphen
+                .replace(/\s+/g, ' ')  // Normalize multiple spaces
+                .trim();
+        }
+
+        function levenshteinDistance(a, b) {
+            const la = a.length, lb = b.length;
+            if (la === 0) return lb;
+            if (lb === 0) return la;
+            const dp = Array.from({ length: la + 1 }, () => Array(lb + 1).fill(0));
+            for (let i = 0; i <= la; i++) dp[i][0] = i;
+            for (let j = 0; j <= lb; j++) dp[0][j] = j;
+            for (let i = 1; i <= la; i++) {
+                for (let j = 1; j <= lb; j++) {
+                    dp[i][j] = a[i-1] === b[j-1]
+                        ? dp[i-1][j-1]
+                        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+                }
+            }
+            return dp[la][lb];
+        }
+
+        function fuzzyMatchPlayerName(name1, name2) {
+            if (!name1 || !name2) return false;
+            const n1 = normalizePlayerName(name1);
+            const n2 = normalizePlayerName(name2);
+            
+            // Exact match after normalization
+            if (n1 === n2) return true;
+            
+            // Split into parts
+            const parts1 = n1.split(' ').filter(p => p.length > 0);
+            const parts2 = n2.split(' ').filter(p => p.length > 0);
+            
+            if (parts1.length < 2 || parts2.length < 2) return false;
+            
+            // Check if last names match exactly
+            const lastName1 = parts1[parts1.length - 1];
+            const lastName2 = parts2[parts2.length - 1];
+            if (lastName1 !== lastName2) return false;
+            
+            // Check if first name is abbreviated version or starts with same letters
+            const firstName1 = parts1[0];
+            const firstName2 = parts2[0];
+            
+            // One is prefix of the other (Aaryn vs Aaryndeep, Rian vs R'ian -> rian)
+            if (firstName1.startsWith(firstName2) || firstName2.startsWith(firstName1)) return true;
+            
+            // First 3+ chars match (handles typos and abbreviations)
+            if (firstName1.length >= 3 && firstName2.length >= 3) {
+                if (firstName1.substring(0, 3) === firstName2.substring(0, 3)) return true;
+            }
+            
+            // First 2 chars match (for shorter names like "Ri" in Rian)
+            if (firstName1.length >= 2 && firstName2.length >= 2) {
+                if (firstName1.substring(0, 2) === firstName2.substring(0, 2)) return true;
+            }
+            
+            return false;
+        }
+
+        const PlayerRAPMEngine = {
+            
+            config: {
+                // Default regularization (can be adjusted per stat)
+                defaultLambda: 800,
+                minStintPoss: 1,
+                minPlayerPoss: 20,
+                maxRating: 200.0,
+                minRating: 0.0,
+                // Stat-specific lambda scaling factors (lower = less regularization = more variance)
+                // V3.2: Adjusted to more conservative values based on research benchmarks
+                // Research: Sill (2010) recommends λ ≈ 2000 for per-100-possession data
+                lambdaScales: {
+                    'ORtg': 1.0,
+                    'eFG': 0.4,       // eFG% - increased for stability
+                    'TOV': 0.4,       // TOV% - increased for stability
+                    'OREB': 0.5,      // OREB% - increased for stability
+                    'FTR': 0.5,       // FT Rate - increased for stability
+                    'AST': 0.4,
+                    'STL': 0.5,
+                    'BLK': 0.5,
+                    // Shot location stats
+                    'RimPct': 0.45,
+                    'RimFreq': 0.5,
+                    'MidPct': 0.5,
+                    'MidFreq': 0.5,
+                    'ThreePct': 0.45,
+                    'ThreeFreq': 0.5,
+                    // Transition & secondary stats
+                    'FastBreak': 0.6,
+                    'SecondChance': 0.6,
+                    'PtsOffTov': 0.6
+                }
+            },
+            
+            // Stat configurations for multi-stat RAPM
+            // Each config defines how to extract home/away values from a stint
+            statConfigs: {
+                'ORtg': {
+                    name: 'Offensive Rating',
+                    getHomeValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.homePts / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.awayPts / p) * 100 : null; },
+                    minVal: 0, maxVal: 200,
+                    higherBetter: true,
+                    unit: 'pts/100'
+                },
+                'eFG': {
+                    name: 'Effective FG%',
+                    getHomeValue: (s) => s.homeFga > 0 ? ((s.homeFgm + 0.5 * s.homeFg3m) / s.homeFga) * 100 : null,
+                    getAwayValue: (s) => s.awayFga > 0 ? ((s.awayFgm + 0.5 * s.awayFg3m) / s.awayFga) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'TOV': {
+                    name: 'Turnover %',
+                    getHomeValue: (s) => {
+                        const denom = s.homeFga + 0.44 * s.homeFta + s.homeTov;
+                        return denom > 0 ? (s.homeTov / denom) * 100 : null;
+                    },
+                    getAwayValue: (s) => {
+                        const denom = s.awayFga + 0.44 * s.awayFta + s.awayTov;
+                        return denom > 0 ? (s.awayTov / denom) * 100 : null;
+                    },
+                    minVal: 0, maxVal: 50,
+                    higherBetter: false,
+                    unit: '%'
+                },
+                'OREB': {
+                    name: 'Offensive Rebound %',
+                    getHomeValue: (s) => {
+                        const total = s.homeOreb + s.awayDreb;
+                        return total > 0 ? (s.homeOreb / total) * 100 : null;
+                    },
+                    getAwayValue: (s) => {
+                        const total = s.awayOreb + s.homeDreb;
+                        return total > 0 ? (s.awayOreb / total) * 100 : null;
+                    },
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'FTR': {
+                    name: 'Free Throw Rate',
+                    getHomeValue: (s) => s.homeFga > 0 ? (s.homeFta / s.homeFga) * 100 : null,
+                    getAwayValue: (s) => s.awayFga > 0 ? (s.awayFta / s.awayFga) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'AST': {
+                    name: 'Assist %',
+                    getHomeValue: (s) => s.homeFgm > 0 ? (s.homeAst / s.homeFgm) * 100 : null,
+                    getAwayValue: (s) => s.awayFgm > 0 ? (s.awayAst / s.awayFgm) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'STL': {
+                    name: 'Steal %',
+                    getHomeValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.homeStl / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.awayStl / p) * 100 : null; },
+                    minVal: 0, maxVal: 20,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'BLK': {
+                    name: 'Block %',
+                    getHomeValue: (s) => {
+                        const opp2pa = s.awayFga - s.awayFg3a;
+                        return opp2pa > 0 ? (s.homeBlk / opp2pa) * 100 : null;
+                    },
+                    getAwayValue: (s) => {
+                        const opp2pa = s.homeFga - s.homeFg3a;
+                        return opp2pa > 0 ? (s.awayBlk / opp2pa) * 100 : null;
+                    },
+                    minVal: 0, maxVal: 30,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                // === SHOT LOCATION STATS ===
+                'RimPct': {
+                    name: 'Rim FG%',
+                    getHomeValue: (s) => s.homeRimAtt > 0 ? (s.homeRimMade / s.homeRimAtt) * 100 : null,
+                    getAwayValue: (s) => s.awayRimAtt > 0 ? (s.awayRimMade / s.awayRimAtt) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'RimFreq': {
+                    name: 'Rim Frequency',
+                    getHomeValue: (s) => s.homeFga > 0 ? (s.homeRimAtt / s.homeFga) * 100 : null,
+                    getAwayValue: (s) => s.awayFga > 0 ? (s.awayRimAtt / s.awayFga) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'MidPct': {
+                    name: 'Mid-Range FG%',
+                    getHomeValue: (s) => s.homeMidAtt > 0 ? (s.homeMidMade / s.homeMidAtt) * 100 : null,
+                    getAwayValue: (s) => s.awayMidAtt > 0 ? (s.awayMidMade / s.awayMidAtt) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'MidFreq': {
+                    name: 'Mid-Range Frequency',
+                    getHomeValue: (s) => s.homeFga > 0 ? (s.homeMidAtt / s.homeFga) * 100 : null,
+                    getAwayValue: (s) => s.awayFga > 0 ? (s.awayMidAtt / s.awayFga) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: false, // Generally less mid-range is better
+                    unit: '%'
+                },
+                'ThreePct': {
+                    name: '3PT FG%',
+                    getHomeValue: (s) => s.homeFg3a > 0 ? (s.homeFg3m / s.homeFg3a) * 100 : null,
+                    getAwayValue: (s) => s.awayFg3a > 0 ? (s.awayFg3m / s.awayFg3a) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                'ThreeFreq': {
+                    name: '3PT Frequency',
+                    getHomeValue: (s) => s.homeFga > 0 ? (s.homeFg3a / s.homeFga) * 100 : null,
+                    getAwayValue: (s) => s.awayFga > 0 ? (s.awayFg3a / s.awayFga) * 100 : null,
+                    minVal: 0, maxVal: 100,
+                    higherBetter: true,
+                    unit: '%'
+                },
+                // === TRANSITION & SECONDARY STATS ===
+                'FastBreak': {
+                    name: 'Fast Break Pts/100',
+                    getHomeValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.homeFastBreak / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.awayFastBreak / p) * 100 : null; },
+                    minVal: 0, maxVal: 50,
+                    higherBetter: true,
+                    unit: 'pts/100'
+                },
+                'SecondChance': {
+                    name: '2nd Chance Pts/100',
+                    getHomeValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.homeSecondChance / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.awaySecondChance / p) * 100 : null; },
+                    minVal: 0, maxVal: 50,
+                    higherBetter: true,
+                    unit: 'pts/100'
+                },
+                'PtsOffTov': {
+                    name: 'Pts Off TO/100',
+                    getHomeValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.homePtsOffTov / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.awayPtsOffTov / p) * 100 : null; },
+                    minVal: 0, maxVal: 50,
+                    higherBetter: true,
+                    unit: 'pts/100'
+                },
+                'PTS100': {
+                    name: 'Points per 100',
+                    getHomeValue: (s) => { const p = s.homePossessions || s.possessions; return p > 0 ? (s.homePts / p) * 100 : null; },
+                    getAwayValue: (s) => { const p = s.awayPossessions || s.possessions; return p > 0 ? (s.awayPts / p) * 100 : null; },
+                    minVal: 0, maxVal: 200,
+                    higherBetter: true,
+                    unit: 'pts/100'
+                }
+            },
+            
+            // Build player index exactly like Python _build_player_list
+            buildPlayerIndex: function(stints) {
+                const playerSet = new Set();
+                const playerPossessions = new Map();
+
+                stints.forEach(stint => {
+                    const homePoss = stint.homePossessions || stint.possessions;
+                    const awayPoss = stint.awayPossessions || stint.possessions;
+                    stint.homePlayers.forEach(p => {
+                        playerSet.add(p);
+                        playerPossessions.set(p, (playerPossessions.get(p) || 0) + homePoss);
+                    });
+                    stint.awayPlayers.forEach(p => {
+                        playerSet.add(p);
+                        playerPossessions.set(p, (playerPossessions.get(p) || 0) + awayPoss);
+                    });
+                });
+                
+                // Sort player list like Python
+                const playerList = Array.from(playerSet).sort();
+                const playerToIdx = new Map();
+                playerList.forEach((player, idx) => playerToIdx.set(player, idx));
+                
+                return { 
+                    playerList, 
+                    playerToIdx, 
+                    playerCount: playerList.length,
+                    playerPossessions 
+                };
+            },
+            
+            // GENERALIZED: Build RAPM matrices for ANY stat
+            // statKey: key from statConfigs (e.g., 'eFG', 'TOV', 'OREB', 'FTR', 'ORtg')
+            // V3.2: Added response centering and stat-specific weighting
+            buildRAPMMatricesForStat: function(stints, playerIndex, statKey) {
+                const config = this.statConfigs[statKey];
+                if (!config) {
+                    console.error('[RAPM V3.2] Unknown stat:', statKey);
+                    return null;
+                }
+                
+                const numPlayers = playerIndex.playerCount;
+                // V3.3: +1 column for home-court advantage (HCA). Home offense obs get +0.5,
+                // away offense obs get -0.5, so the HCA coefficient = full home-minus-away gap
+                // and venue bias no longer leaks into player coefficients.
+                const numFeatures = numPlayers * 2 + 1; // First half: offensive, Second half: defensive, last: HCA
+                const hcaCol = numPlayers * 2;
+                const self = this;
+                
+                // Helper function: Get stat-specific weight for an observation
+                // V3.2: Weights should reflect information content, not just possessions
+                function getStatSpecificWeight(stint, statKey, isHome) {
+                    const poss = isHome ? (stint.homePossessions || stint.possessions) : (stint.awayPossessions || stint.possessions);
+
+                    switch(statKey) {
+                        // Shooting percentages: weight by attempts (more shots = more info)
+                        case 'eFG':
+                        case 'MidPct':
+                        case 'RimPct':
+                        case 'FTR':  // FTRate = FTA/FGA, so FGA-based weighting
+                            return isHome ? Math.max(stint.homeFga || 1, 1) : Math.max(stint.awayFga || 1, 1);
+                        
+                        case 'ThreePct':
+                        case 'ThreeFreq':
+                            return isHome ? Math.max(stint.homeFg3a || 1, 1) : Math.max(stint.awayFg3a || 1, 1);
+                        
+                        case 'MidFreq':
+                            return isHome ? Math.max(stint.homeFga || 1, 1) : Math.max(stint.awayFga || 1, 1);
+                        
+                        case 'RimFreq':
+                            return isHome ? Math.max(stint.homeFga || 1, 1) : Math.max(stint.awayFga || 1, 1);
+                        
+                        case 'BLK':
+                            // Block % uses opponent 2PA as denominator
+                            if (isHome) {
+                                return Math.max((stint.awayFga - stint.awayFg3a) || 1, 1);
+                            } else {
+                                return Math.max((stint.homeFga - stint.homeFg3a) || 1, 1);
+                            }
+                        
+                        case 'AST':
+                            // AST% = AST/FGM, weight by FGM
+                            return isHome ? Math.max(stint.homeFgm || 1, 1) : Math.max(stint.awayFgm || 1, 1);
+
+                        case 'STL':
+                            // STL% response = steals per OPPONENT possession (see statConfigs),
+                            // so information content scales with opponent possessions —
+                            // weighting by own possessions mismatched the response units.
+                            return isHome ? (stint.awayPossessions || stint.possessions)
+                                          : (stint.homePossessions || stint.possessions);
+
+                        // Rate stats: possessions is appropriate
+                        case 'ORtg':
+                        case 'TOV':
+                        case 'OREB':
+                        case 'FastBreak':
+                        case 'SecondChance':
+                        case 'PtsOffTov':
+                        case 'PTS100':
+                        default:
+                            return poss;
+                    }
+                }
+                
+                // ========== FIRST PASS: Compute weighted mean for response centering ==========
+                // V3.2: Response centering ensures ridge penalty shrinks toward league average
+                let sumY = 0;
+                let totalWeight = 0;
+                let validStintsCount = 0;
+                let skippedNull = 0;
+                
+                stints.forEach(stint => {
+                    const poss = stint.possessions;
+                    if (poss < self.config.minStintPoss) return;
+                    
+                    const homeVal = config.getHomeValue(stint);
+                    const awayVal = config.getAwayValue(stint);
+                    
+                    // Check home observation
+                    if (homeVal !== null && homeVal !== undefined && isFinite(homeVal)) {
+                        const clampedHome = Math.max(config.minVal, Math.min(config.maxVal, homeVal));
+                        const homeWeight = getStatSpecificWeight(stint, statKey, true);
+                        if (homeWeight > 0) {
+                            sumY += homeWeight * clampedHome;
+                            totalWeight += homeWeight;
+                        }
+                    }
+                    
+                    // Check away observation
+                    if (awayVal !== null && awayVal !== undefined && isFinite(awayVal)) {
+                        const clampedAway = Math.max(config.minVal, Math.min(config.maxVal, awayVal));
+                        const awayWeight = getStatSpecificWeight(stint, statKey, false);
+                        if (awayWeight > 0) {
+                            sumY += awayWeight * clampedAway;
+                            totalWeight += awayWeight;
+                        }
+                    }
+                });
+                
+                const yMean = totalWeight > 0 ? sumY / totalWeight : 0;
+                console.log('[RAPM V3.2] ' + statKey + ': response centering with yMean=' + yMean.toFixed(3));
+                
+                // ========== SECOND PASS: Build matrices with centered response ==========
+                const XData = [];
+                const yData = [];
+                const weightsData = [];
+                const obsGameData = [];  // game_id per observation (game-blocked CV)
+                let obsIdx = 0;
+                
+                stints.forEach(stint => {
+                    const poss = stint.possessions;
+                    if (poss < self.config.minStintPoss) return;
+                    
+                    // Get home and away values for this stat
+                    const homeVal = config.getHomeValue(stint);
+                    const awayVal = config.getAwayValue(stint);
+                    
+                    // Skip if either value is null/undefined (insufficient data for this stat)
+                    if (homeVal === null || homeVal === undefined || awayVal === null || awayVal === undefined) {
+                        skippedNull++;
+                        return;
+                    }
+                    
+                    if (!isFinite(homeVal) || !isFinite(awayVal)) {
+                        skippedNull++;
+                        return;
+                    }
+                    
+                    // Clamp values
+                    const clampedHome = Math.max(config.minVal, Math.min(config.maxVal, homeVal));
+                    const clampedAway = Math.max(config.minVal, Math.min(config.maxVal, awayVal));
+                    
+                    // V3.2: CENTER THE RESPONSE (subtract weighted mean)
+                    const centeredHome = clampedHome - yMean;
+                    const centeredAway = clampedAway - yMean;
+                    
+                    // Get stat-specific weights
+                    const homeWeight = getStatSpecificWeight(stint, statKey, true);
+                    const awayWeight = getStatSpecificWeight(stint, statKey, false);
+                    
+                    // Skip if weights are too small
+                    if (homeWeight < 0.5 || awayWeight < 0.5) {
+                        skippedNull++;
+                        return;
+                    }
+                    
+                    validStintsCount++;
+                    
+                    // === OBSERVATION 1: Home team's offensive value ===
+                    // Home players get +1 in OFFENSIVE column (indices 0 to numPlayers-1)
+                    stint.homePlayers.forEach(player => {
+                        const idx = playerIndex.playerToIdx.get(player);
+                        if (idx !== undefined) {
+                            XData.push({ row: obsIdx, col: idx, val: 1.0 });
+                        }
+                    });
+                    
+                    // Away players get -1 in DEFENSIVE column (indices numPlayers to 2*numPlayers-1)
+                    // They are defending against home team's offense
+                    stint.awayPlayers.forEach(player => {
+                        const idx = playerIndex.playerToIdx.get(player);
+                        if (idx !== undefined) {
+                            XData.push({ row: obsIdx, col: numPlayers + idx, val: -1.0 });
+                        }
+                    });
+                    
+                    // V3.3: Home-court advantage indicator (+0.5 for home offense)
+                    XData.push({ row: obsIdx, col: hcaCol, val: 0.5 });
+
+                    yData.push(centeredHome);  // V3.2: Now centered
+                    weightsData.push(homeWeight);  // V3.2: Stat-specific weight
+                    obsGameData.push(stint.gameId || '');  // for game-blocked CV folds
+                    obsIdx++;
+                    
+                    // === OBSERVATION 2: Away team's offensive value ===
+                    // Away players get +1 in OFFENSIVE column
+                    stint.awayPlayers.forEach(player => {
+                        const idx = playerIndex.playerToIdx.get(player);
+                        if (idx !== undefined) {
+                            XData.push({ row: obsIdx, col: idx, val: 1.0 });
+                        }
+                    });
+                    
+                    // Home players get -1 in DEFENSIVE column
+                    // They are defending against away team's offense
+                    stint.homePlayers.forEach(player => {
+                        const idx = playerIndex.playerToIdx.get(player);
+                        if (idx !== undefined) {
+                            XData.push({ row: obsIdx, col: numPlayers + idx, val: -1.0 });
+                        }
+                    });
+                    
+                    // V3.3: Home-court advantage indicator (-0.5 for away offense)
+                    XData.push({ row: obsIdx, col: hcaCol, val: -0.5 });
+
+                    yData.push(centeredAway);  // V3.2: Now centered
+                    weightsData.push(awayWeight);  // V3.2: Stat-specific weight
+                    obsGameData.push(stint.gameId || '');  // for game-blocked CV folds
+                    obsIdx++;
+                });
+                
+                if (validStintsCount === 0) {
+                    console.warn('[RAPM V3.2] No valid stints for stat:', statKey);
+                    return null;
+                }
+                
+                console.log('[RAPM V3.2] ' + statKey + ': ' + validStintsCount + ' valid stints, ' + skippedNull + ' skipped (null/invalid values)');
+                
+                return {
+                    XData,
+                    y: yData,
+                    weights: weightsData,
+                    obsGame: obsGameData,  // game_id per observation (game-blocked CV)
+                    numObs: obsIdx,
+                    numFeatures,
+                    hcaCol,  // V3.3: index of the home-court advantage column
+                    validStints: validStintsCount,
+                    leagueAvg: yMean,  // V3.2: Now returns the actual weighted mean used for centering
+                    yMean: yMean  // V3.2: Include for reference
+                };
+            },
+            
+            // Original function for backward compatibility (uses ORtg)
+            buildRAPMMatrices: function(stints, playerIndex) {
+                return this.buildRAPMMatricesForStat(stints, playerIndex, 'ORtg');
+            },
+            
+            // Solve weighted ridge regression: (X'WX + λI)β = X'Wy
+            // Using Conjugate Gradient method
+            // V3.3: optional hcaCol gets a much lighter penalty (fixed effect, not shrunk like players)
+            solveWeightedRidge: function(XData, y, weights, numObs, numFeatures, lambda, hcaCol) {
+                console.log('[RAPM] Building normal equations...');
+                
+                // Build X'WX and X'Wy
+                const XtWX = new Float64Array(numFeatures * numFeatures);
+                const XtWy = new Float64Array(numFeatures);
+                
+                // Group XData by row for efficient processing
+                const rowData = new Map();
+                XData.forEach(entry => {
+                    if (!rowData.has(entry.row)) rowData.set(entry.row, []);
+                    rowData.get(entry.row).push({ col: entry.col, val: entry.val });
+                });
+                
+                // Compute X'WX and X'Wy
+                for (let i = 0; i < numObs; i++) {
+                    const w = weights[i];
+                    const yi = y[i];
+                    const rowEntries = rowData.get(i) || [];
+                    
+                    // X'Wy contribution
+                    rowEntries.forEach(entry => {
+                        XtWy[entry.col] += w * entry.val * yi;
+                    });
+                    
+                    // X'WX contribution
+                    rowEntries.forEach(e1 => {
+                        rowEntries.forEach(e2 => {
+                            XtWX[e1.col * numFeatures + e2.col] += w * e1.val * e2.val;
+                        });
+                    });
+                }
+                
+                // Add regularization: X'WX + λI
+                // V3.3: HCA column is a fixed effect — penalize it only lightly (1% of λ)
+                for (let i = 0; i < numFeatures; i++) {
+                    XtWX[i * numFeatures + i] += (i === hcaCol ? lambda * 0.01 : lambda);
+                }
+
+                console.log('[RAPM] Solving with Conjugate Gradient...');
+
+                // V3.3: scale-relative convergence tolerance (absolute tol is meaningless across stat scales)
+                let bNormSq = 0;
+                for (let i = 0; i < numFeatures; i++) bNormSq += XtWy[i] * XtWy[i];
+                const cgTol = Math.max(1e-10, 1e-8 * Math.sqrt(bNormSq));
+
+                // Solve using Conjugate Gradient
+                const beta = this.conjugateGradient(XtWX, XtWy, numFeatures, 2000, cgTol);
+
+                return beta;
+            },
+            
+            // Conjugate Gradient solver for Ax = b
+            conjugateGradient: function(A, b, n, maxIter, tol) {
+                const x = new Float64Array(n);
+                const r = new Float64Array(n);
+                const p = new Float64Array(n);
+                const Ap = new Float64Array(n);
+                
+                // r = b - Ax (initially x=0, so r=b)
+                for (let i = 0; i < n; i++) r[i] = b[i];
+                for (let i = 0; i < n; i++) p[i] = r[i];
+                
+                let rsold = 0;
+                for (let i = 0; i < n; i++) rsold += r[i] * r[i];
+                
+                for (let iter = 0; iter < maxIter; iter++) {
+                    // Ap = A * p
+                    for (let i = 0; i < n; i++) {
+                        Ap[i] = 0;
+                        for (let j = 0; j < n; j++) {
+                            Ap[i] += A[i * n + j] * p[j];
+                        }
+                    }
+                    
+                    // alpha = rsold / (p' * Ap)
+                    let pAp = 0;
+                    for (let i = 0; i < n; i++) pAp += p[i] * Ap[i];
+                    if (Math.abs(pAp) < 1e-15) break;
+                    
+                    const alpha = rsold / pAp;
+                    
+                    // x = x + alpha * p
+                    // r = r - alpha * Ap
+                    for (let i = 0; i < n; i++) {
+                        x[i] += alpha * p[i];
+                        r[i] -= alpha * Ap[i];
+                    }
+                    
+                    // Check convergence
+                    let rsnew = 0;
+                    for (let i = 0; i < n; i++) rsnew += r[i] * r[i];
+                    
+                    if (Math.sqrt(rsnew) < tol) {
+                        console.log('[RAPM] CG converged at iteration ' + iter);
+                        break;
+                    }
+                    
+                    // p = r + (rsnew/rsold) * p
+                    const beta = rsnew / rsold;
+                    for (let i = 0; i < n; i++) {
+                        p[i] = r[i] + beta * p[i];
+                    }
+                    
+                    rsold = rsnew;
+                }
+                
+                return x;
+            },
+            
+            // Post-center coefficients exactly like Python _center_rapm
+            centerRAPM: function(coefficients, numPlayers, playerIndex) {
+                const orapm = {};
+                const drapm = {};
+                
+                // Extract raw coefficients
+                playerIndex.playerList.forEach((player, idx) => {
+                    orapm[player] = coefficients[idx];
+                    drapm[player] = coefficients[numPlayers + idx];
+                });
+                
+                // Compute possession-weighted means
+                let totalPoss = 0;
+                let orapmSum = 0;
+                let drapmSum = 0;
+                
+                playerIndex.playerList.forEach(player => {
+                    const poss = playerIndex.playerPossessions.get(player) || 0;
+                    totalPoss += poss;
+                    orapmSum += orapm[player] * poss;
+                    drapmSum += drapm[player] * poss;
+                });
+                
+                const orapmMean = totalPoss > 0 ? orapmSum / totalPoss : 0;
+                const drapmMean = totalPoss > 0 ? drapmSum / totalPoss : 0;
+                
+                console.log('[RAPM] Centering: ORAPM mean=' + orapmMean.toFixed(3) + ', DRAPM mean=' + drapmMean.toFixed(3));
+                
+                // Center the coefficients
+                playerIndex.playerList.forEach(player => {
+                    orapm[player] -= orapmMean;
+                    drapm[player] -= drapmMean;
+                });
+                
+                return { orapm, drapm };
+            },
+            
+            // Parse stints from CSV data - EXPANDED V3.0 to include all stats
+            buildStintsFromMatchupData: function(matchupData) {
+                const stints = [];
+                const self = this;
+                
+                console.log('[RAPM V3.2] Sample row keys:', matchupData.length > 0 ? Object.keys(matchupData[0]) : 'no data');
+                
+                matchupData.forEach(m => {
+                    // Possessions columns (home/away separate + averaged)
+                    const poss = parseFloat(m.Possessions || m.possessions || m.POSS) || 0;
+                    if (poss < this.config.minStintPoss) return;
+                    const homePoss = parseFloat(m.Home_Possessions || m.home_possessions) || 0;
+                    const awayPoss = parseFloat(m.Away_Possessions || m.away_possessions) || 0;
+                    
+                    // Lineup columns
+                    const homeLineupStr = m.Home_Lineup || m.home_lineup || '';
+                    const awayLineupStr = m.Away_Lineup || m.away_lineup || '';
+
+                    // V6.1: Apply merge rules before processing
+                    const homePlayers = homeLineupStr.split(',').map(p => applyGlobalPlayerMerge(p.trim()).toLowerCase()).filter(p => p.length > 0);
+                    const awayPlayers = awayLineupStr.split(',').map(p => applyGlobalPlayerMerge(p.trim()).toLowerCase()).filter(p => p.length > 0);
+                    
+                    // Skip non-5v5 stints
+                    if (homePlayers.length !== 5 || awayPlayers.length !== 5) return;
+                    
+                    // === POINTS ===
+                    let homePts = parseFloat(m.Home_PTS || m.home_points) || 0;
+                    let awayPts = parseFloat(m.Away_PTS || m.away_points) || 0;
+                    
+                    // === SHOOTING STATS ===
+                    // Field Goals
+                    const homeFga = parseFloat(m.Home_FGA || m.home_fga) || 0;
+                    const homeFgm = parseFloat(m.Home_FGM || m.home_fgm) || 0;
+                    const awayFga = parseFloat(m.Away_FGA || m.away_fga) || 0;
+                    const awayFgm = parseFloat(m.Away_FGM || m.away_fgm) || 0;
+                    
+                    // 3-Pointers
+                    const homeFg3a = parseFloat(m['Home_3PA'] || m.home_fg3a) || 0;
+                    const homeFg3m = parseFloat(m['Home_3PM'] || m.home_fg3m) || 0;
+                    const awayFg3a = parseFloat(m['Away_3PA'] || m.away_fg3a) || 0;
+                    const awayFg3m = parseFloat(m['Away_3PM'] || m.away_fg3m) || 0;
+                    
+                    // Free Throws
+                    const homeFta = parseFloat(m.Home_FTA || m.home_fta) || 0;
+                    const homeFtm = parseFloat(m.Home_FTM || m.home_ftm) || 0;
+                    const awayFta = parseFloat(m.Away_FTA || m.away_fta) || 0;
+                    const awayFtm = parseFloat(m.Away_FTM || m.away_ftm) || 0;
+                    
+                    // === REBOUNDS ===
+                    const homeOreb = parseFloat(m.Home_OREB || m.home_oreb) || 0;
+                    const homeDreb = parseFloat(m.Home_DREB || m.home_dreb) || 0;
+                    const awayOreb = parseFloat(m.Away_OREB || m.away_oreb) || 0;
+                    const awayDreb = parseFloat(m.Away_DREB || m.away_dreb) || 0;
+                    
+                    // === TURNOVERS ===
+                    const homeTov = parseFloat(m.Home_TOV || m.home_tov) || 0;
+                    const awayTov = parseFloat(m.Away_TOV || m.away_tov) || 0;
+                    
+                    // === ASSISTS ===
+                    const homeAst = parseFloat(m.Home_AST || m.home_ast) || 0;
+                    const awayAst = parseFloat(m.Away_AST || m.away_ast) || 0;
+                    
+                    // === STEALS & BLOCKS ===
+                    const homeStl = parseFloat(m.Home_STL || m.home_stl) || 0;
+                    const awayStl = parseFloat(m.Away_STL || m.away_stl) || 0;
+                    const homeBlk = parseFloat(m.Home_BLK || m.home_blk) || 0;
+                    const awayBlk = parseFloat(m.Away_BLK || m.away_blk) || 0;
+                    
+                    // === SHOT LOCATION STATS ===
+                    const homeRimAtt = parseFloat(m.Home_RIM_ATT || m.home_rim_att) || 0;
+                    const homeRimMade = parseFloat(m.Home_RIM_MADE || m.home_rim_made) || 0;
+                    const awayRimAtt = parseFloat(m.Away_RIM_ATT || m.away_rim_att) || 0;
+                    const awayRimMade = parseFloat(m.Away_RIM_MADE || m.away_rim_made) || 0;
+                    
+                    const homeMidAtt = parseFloat(m.Home_OTD_2PT_ATT || m.home_otd_2pt_att) || 0;
+                    const homeMidMade = parseFloat(m.Home_OTD_2PT_MADE || m.home_otd_2pt_made) || 0;
+                    const awayMidAtt = parseFloat(m.Away_OTD_2PT_ATT || m.away_otd_2pt_att) || 0;
+                    const awayMidMade = parseFloat(m.Away_OTD_2PT_MADE || m.away_otd_2pt_made) || 0;
+                    
+                    // Note: otd_3pt is "off the dribble 3pt" - using fg3a/fg3m for total 3pt stats
+                    const homeOtd3ptAtt = parseFloat(m.Home_OTD_3PT_ATT || m.home_otd_3pt_att) || 0;
+                    const homeOtd3ptMade = parseFloat(m.Home_OTD_3PT_MADE || m.home_otd_3pt_made) || 0;
+                    const awayOtd3ptAtt = parseFloat(m.Away_OTD_3PT_ATT || m.away_otd_3pt_att) || 0;
+                    const awayOtd3ptMade = parseFloat(m.Away_OTD_3PT_MADE || m.away_otd_3pt_made) || 0;
+                    
+                    // === TRANSITION & SECONDARY STATS ===
+                    const homeFastBreak = parseFloat(m.Home_FAST_BREAK_PTS || m.home_fast_break_pts) || 0;
+                    const awayFastBreak = parseFloat(m.Away_FAST_BREAK_PTS || m.away_fast_break_pts) || 0;
+                    
+                    const homeSecondChance = parseFloat(m.Home_SECOND_CHANCE_PTS || m.home_second_chance_pts) || 0;
+                    const awaySecondChance = parseFloat(m.Away_SECOND_CHANCE_PTS || m.away_second_chance_pts) || 0;
+                    
+                    const homePtsOffTov = parseFloat(m.Home_PTS_OFF_TOV || m.home_pts_off_tov) || 0;
+                    const awayPtsOffTov = parseFloat(m.Away_PTS_OFF_TOV || m.away_pts_off_tov) || 0;
+                    
+                    // If no direct points, calculate from FGM, 3PM, FTM
+                    if (homePts === 0 && (homeFgm > 0 || homeFg3m > 0 || homeFtm > 0)) {
+                        // Points = 2*FGM + 3PM + FTM (FGM already includes 3PM as 2-pointers)
+                        homePts = 2 * homeFgm + homeFg3m + homeFtm;
+                    }
+                    
+                    if (awayPts === 0 && (awayFgm > 0 || awayFg3m > 0 || awayFtm > 0)) {
+                        awayPts = 2 * awayFgm + awayFg3m + awayFtm;
+                    }
+                    
+                    stints.push({
+                        gameId: m.game_id || m.Game_ID || m.GAME_ID || '',
+                        possessions: poss,
+                        homePossessions: homePoss > 0 ? homePoss : poss,  // fallback to averaged for old CSV format
+                        awayPossessions: awayPoss > 0 ? awayPoss : poss,
+                        homePlayers,
+                        awayPlayers,
+                        // Points
+                        homePts,
+                        awayPts,
+                        // Shooting
+                        homeFga, homeFgm, homeFg3a, homeFg3m, homeFta, homeFtm,
+                        awayFga, awayFgm, awayFg3a, awayFg3m, awayFta, awayFtm,
+                        // Rebounds
+                        homeOreb, homeDreb,
+                        awayOreb, awayDreb,
+                        // Turnovers
+                        homeTov, awayTov,
+                        // Assists
+                        homeAst, awayAst,
+                        // Steals & Blocks
+                        homeStl, awayStl,
+                        homeBlk, awayBlk,
+                        // Shot Location
+                        homeRimAtt, homeRimMade, awayRimAtt, awayRimMade,
+                        homeMidAtt, homeMidMade, awayMidAtt, awayMidMade,
+                        homeOtd3ptAtt, homeOtd3ptMade, awayOtd3ptAtt, awayOtd3ptMade,
+                        // Transition & Secondary
+                        homeFastBreak, awayFastBreak,
+                        homeSecondChance, awaySecondChance,
+                        homePtsOffTov, awayPtsOffTov
+                    });
+                });
+                
+                console.log('[RAPM V3.2] Built ' + stints.length + ' valid stints from ' + matchupData.length + ' rows');
+                if (stints.length > 0) {
+                    console.log('[RAPM V3.2] Sample stint keys:', Object.keys(stints[0]));
+                    console.log('[RAPM V3.2] Sample stint values:', JSON.stringify(stints[0]));
+                }
+
+                // DIAGNOSTIC: Count Tavares stints and compute raw on-off
+                const tavStints = { onOff: 0, onDef: 0, offOff: 0, offDef: 0, onOffPoss: 0, onDefPoss: 0, offOffPoss: 0, offDefPoss: 0, onOffPts: 0, onDefOppPts: 0, offOffPts: 0, offDefOppPts: 0 };
+                stints.forEach(s => {
+                    const tavOnHome = s.homePlayers.some(p => p.includes('tavares'));
+                    const tavOnAway = s.awayPlayers.some(p => p.includes('tavares'));
+                    if (tavOnHome) {
+                        tavStints.onOff++;
+                        tavStints.onOffPoss += s.homePossessions || s.possessions;
+                        tavStints.onOffPts += s.homePts;
+                        tavStints.onDef++;
+                        tavStints.onDefPoss += s.awayPossessions || s.possessions;
+                        tavStints.onDefOppPts += s.awayPts;
+                    } else if (tavOnAway) {
+                        tavStints.onOff++;
+                        tavStints.onOffPoss += s.awayPossessions || s.possessions;
+                        tavStints.onOffPts += s.awayPts;
+                        tavStints.onDef++;
+                        tavStints.onDefPoss += s.homePossessions || s.possessions;
+                        tavStints.onDefOppPts += s.homePts;
+                    } else {
+                        tavStints.offOff++;
+                        tavStints.offOffPoss += s.possessions;
+                        tavStints.offOffPts += s.homePts + s.awayPts;
+                        tavStints.offDef++;
+                        tavStints.offDefPoss += s.possessions;
+                        tavStints.offDefOppPts += s.homePts + s.awayPts;
+                    }
+                });
+                if (tavStints.onOff > 0) {
+                    const onORtg = tavStints.onOffPoss > 0 ? (tavStints.onOffPts / tavStints.onOffPoss) * 100 : 0;
+                    const onDRtg = tavStints.onDefPoss > 0 ? (tavStints.onDefOppPts / tavStints.onDefPoss) * 100 : 0;
+                    console.log('[RAPM DIAG STINTS] Tavares stint count: ON=' + tavStints.onOff + ', Total stints=' + stints.length);
+                    console.log('[RAPM DIAG STINTS] Tavares ON: ORtg=' + onORtg.toFixed(1) + ' (' + tavStints.onOffPts + 'pts/' + tavStints.onOffPoss.toFixed(0) + 'poss), DRtg=' + onDRtg.toFixed(1) + ' (' + tavStints.onDefOppPts + 'pts/' + tavStints.onDefPoss.toFixed(0) + 'poss)');
+                }
+
+                return stints;
+            },
+
+            // Build directional play type stints from play type events
+            // Groups events by (offLineup, defLineup) and aggregates per play type + category
+            buildPlayTypeStints: function(ptEvents, getCategoryTypes) {
+                const groups = {};
+                ptEvents.forEach(ev => {
+                    if (!ev.offLineup || !ev.defLineup) return;
+                    const offPlayers = ev.offLineup.split(',').map(n => applyGlobalPlayerMerge(n.trim()).toLowerCase()).filter(n => n);
+                    const defPlayers = ev.defLineup.split(',').map(n => applyGlobalPlayerMerge(n.trim()).toLowerCase()).filter(n => n);
+                    if (offPlayers.length !== 5 || defPlayers.length !== 5) return;
+                    const offSorted = [...offPlayers].sort();
+                    const defSorted = [...defPlayers].sort();
+                    const key = offSorted.join(',') + '|' + defSorted.join(',');
+                    if (!groups[key]) groups[key] = { offPlayers: offSorted, defPlayers: defSorted, events: [] };
+                    groups[key].events.push(ev);
+                });
+                return Object.values(groups).map(g => {
+                    const allPoss = g.events.filter(ev => ev.isPossession).length;
+                    const ptAggs = {};
+                    const catAggs = {};
+                    g.events.forEach(ev => {
+                        const pt = ev.shotType;
+                        if (!pt) return;
+                        if (!ptAggs[pt]) ptAggs[pt] = { poss: 0, pts: 0, fga: 0, fgm: 0, fg3m: 0, tov: 0, fta: 0 };
+                        const a = ptAggs[pt];
+                        if (ev.isPossession) a.poss++;
+                        a.pts += ev.points || 0;
+                        if (ev.isFG) a.fga++;
+                        if (ev.isMake2 || ev.isMake3) a.fgm++;
+                        if (ev.isMake3) a.fg3m++;
+                        if (ev.isTurnover) a.tov++;
+                        a.fta += ev.fta || 0;
+                        // Category aggregates
+                        if (getCategoryTypes) {
+                            ['creation', 'spacing', 'finishing', 'transition'].forEach(cat => {
+                                const types = getCategoryTypes(cat);
+                                if (types && types.includes(pt)) {
+                                    if (!catAggs[cat]) catAggs[cat] = { poss: 0, pts: 0, fga: 0, fgm: 0, fg3m: 0, tov: 0, fta: 0 };
+                                    const c = catAggs[cat];
+                                    if (ev.isPossession) c.poss++;
+                                    c.pts += ev.points || 0;
+                                    if (ev.isFG) c.fga++;
+                                    if (ev.isMake2 || ev.isMake3) c.fgm++;
+                                    if (ev.isMake3) c.fg3m++;
+                                    if (ev.isTurnover) c.tov++;
+                                    c.fta += ev.fta || 0;
+                                }
+                            });
+                        }
+                    });
+                    return { offPlayers: g.offPlayers, defPlayers: g.defPlayers, totalPoss: allPoss, playTypes: ptAggs, categories: catAggs };
+                });
+            },
+
+            // Build RAPM matrices for a specific play type stat from directional stints
+            // Each stint is one observation (offense → defense direction)
+            buildPlayTypeRAPMMatrices: function(ptStints, playerIndex, statType) {
+                const numPlayers = playerIndex.playerCount;
+                const numFeatures = numPlayers * 2;
+
+                function getValue(s, statType) {
+                    switch(statType) {
+                        case 'PPP': return s.poss > 0 ? (s.pts / s.poss) * 100 : null;
+                        case 'eFG': return s.fga > 0 ? ((s.fgm + 0.5 * s.fg3m) / s.fga) * 100 : null;
+                        case 'TOV': return s.poss > 0 ? (s.tov / s.poss) * 100 : null;
+                        case 'FTR': return s.fga > 0 ? (s.fta / s.fga) * 100 : null;
+                        case 'Freq': return s.totalPoss > 0 ? (s.poss / s.totalPoss) * 100 : null;
+                        default: return null;
+                    }
+                }
+                function getWeight(s, statType) {
+                    switch(statType) {
+                        case 'eFG': case 'FTR': return Math.max(s.fga || 1, 1);
+                        default: return Math.max(s.poss || 0, 0);
+                    }
+                }
+
+                // First pass: compute weighted mean for centering
+                let sumY = 0, totalWeight = 0;
+                ptStints.forEach(s => {
+                    const val = getValue(s, statType);
+                    if (val == null || !isFinite(val)) return;
+                    const w = getWeight(s, statType);
+                    if (w < 0.5) return;
+                    sumY += w * val;
+                    totalWeight += w;
+                });
+                const yMean = totalWeight > 0 ? sumY / totalWeight : 0;
+
+                // Second pass: build matrices
+                const XData = [], yData = [], weightsData = [];
+                let obsIdx = 0, validCount = 0;
+
+                ptStints.forEach(s => {
+                    const val = getValue(s, statType);
+                    if (val == null || !isFinite(val)) return;
+                    const w = getWeight(s, statType);
+                    if (w < 0.5) return;
+                    validCount++;
+
+                    // Offensive players: +1 in offensive columns
+                    s.offPlayers.forEach(p => {
+                        const idx = playerIndex.playerToIdx.get(p);
+                        if (idx !== undefined) XData.push({ row: obsIdx, col: idx, val: 1.0 });
+                    });
+                    // Defensive players: -1 in defensive columns
+                    s.defPlayers.forEach(p => {
+                        const idx = playerIndex.playerToIdx.get(p);
+                        if (idx !== undefined) XData.push({ row: obsIdx, col: numPlayers + idx, val: -1.0 });
+                    });
+
+                    yData.push(val - yMean);
+                    weightsData.push(w);
+                    obsIdx++;
+                });
+
+                if (obsIdx === 0) return null;
+                return { XData, y: yData, weights: weightsData, numObs: obsIdx, numFeatures, validStints: validCount, leagueAvg: yMean, yMean };
+            },
+
+            // Dynamic mapping for play type on-off column keys to RAPM stat names
+            getDynamicMapping: function(leaderboardStat) {
+                const patterns = [
+                    { prefix: 'onoff_pt_', type: 'PT', isDef: false },
+                    { prefix: 'donoff_pt_', type: 'PT', isDef: true },
+                    { prefix: 'onoff_cat_', type: 'CAT', isDef: false },
+                    { prefix: 'donoff_cat_', type: 'CAT', isDef: true }
+                ];
+                for (const p of patterns) {
+                    if (!leaderboardStat.startsWith(p.prefix)) continue;
+                    const rest = leaderboardStat.substring(p.prefix.length);
+                    const lastIdx = rest.lastIndexOf('_');
+                    if (lastIdx < 0) continue;
+                    const name = rest.substring(0, lastIdx);
+                    const stat = rest.substring(lastIdx + 1);
+                    const statMap = { ppp: 'PPP', efg: 'eFG', tovPct: 'TOV', ftr: 'FTR', possPct: 'Freq' };
+                    const rapmStat = statMap[stat];
+                    if (!rapmStat) continue;
+                    const rapmStatName = p.type + '_' + name + '_' + rapmStat;
+                    // Sign conventions matching existing RAPM stat mapping:
+                    // offTov: flipSign true (higher TOV = bad for offense)
+                    // defTov: no flipSign (higher opponent TOV = good)
+                    // def PPP/eFG/FTR: flipSign true (lower opponent = good)
+                    let flipSign = false;
+                    if (stat === 'tovPct') flipSign = !p.isDef;
+                    else if (['ppp', 'efg', 'ftr'].includes(stat)) flipSign = p.isDef;
+                    return { useRapm: true, rapmStatName, useDefCoef: p.isDef, flipSign, higherBetter: true };
+                }
+                return null;
+            },
+
+            // MULTI-STAT RAPM CALCULATION V3.2
+            // Calculates RAPM for ORtg, eFG%, TOV%, OREB%, FTRate, and more
+            // V3.2: Now with response centering and stat-specific weighting
+            calculateAsync: function(matchupData, baseLambda, onProgress, ptData) {
+                const self = this;
+                baseLambda = baseLambda || this.config.defaultLambda;
+                onProgress = onProgress || function() {};
+                
+                // Stats to calculate RAPM for (keys from statConfigs)
+                // V3.1: Added shot location, transition, and secondary stats
+                const statsToCalculate = [
+                    // Core ratings
+                    'ORtg', 
+                    // Four Factors
+                    'eFG', 'TOV', 'OREB', 'FTR',
+                    // Playmaking & Defense
+                    'AST', 'STL', 'BLK',
+                    // Shot Location
+                    'RimPct', 'RimFreq', 'MidPct', 'MidFreq', 'ThreePct', 'ThreeFreq',
+                    // Transition & Secondary
+                    'FastBreak', 'SecondChance', 'PtsOffTov'
+                ];
+                
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        try {
+                            console.log('[RAPM V3.2] Starting MULTI-STAT calculation with base lambda=' + baseLambda);
+                            onProgress(0, 'Parsing stint data...');
+                            
+                            // Step 1: Parse stints with all stats
+                            const stints = self.buildStintsFromMatchupData(matchupData);
+                            if (stints.length === 0) {
+                                resolve({ error: 'No valid stints found' });
+                                return;
+                            }
+                            console.log('[RAPM V3.2] Parsed ' + stints.length + ' valid stints');
+                            onProgress(5, stints.length + ' stints parsed');
+                            
+                            // Step 2: Build player index (shared across all stats)
+                            const playerIndex = self.buildPlayerIndex(stints);
+                            console.log('[RAPM V3.2] Found ' + playerIndex.playerCount + ' unique players');
+                            onProgress(10, playerIndex.playerCount + ' players indexed');
+                            
+                            // Step 3: Calculate RAPM for each stat
+                            const allStats = {};
+                            const leagueAverages = {};
+                            const statDetails = {};
+                            
+                            statsToCalculate.forEach((statKey, idx) => {
+                                const progressPct = 10 + Math.round((idx / statsToCalculate.length) * 70);
+                                const config = self.statConfigs[statKey];
+                                
+                                onProgress(progressPct, 'Calculating RAPM for ' + config.name + '...');
+                                console.log('[RAPM V3.2] === Processing ' + statKey + ' (' + config.name + ') ===');
+                                
+                                // Build matrices for this stat
+                                const matrices = self.buildRAPMMatricesForStat(stints, playerIndex, statKey);
+                                
+                                if (!matrices) {
+                                    console.warn('[RAPM V3.2] Skipping ' + statKey + ' - no valid data');
+                                    allStats[statKey] = { error: 'No valid data for this stat' };
+                                    return;
+                                }
+                                
+                                // Get stat-specific lambda
+                                const lambdaScale = self.config.lambdaScales[statKey] || 1.0;
+                                const statLambda = baseLambda * lambdaScale;
+                                
+                                console.log('[RAPM V3.2] ' + statKey + ': ' + matrices.numObs + ' obs, λ=' + statLambda.toFixed(0));
+                                
+                                // Solve ridge regression
+                                const coefficients = self.solveWeightedRidge(
+                                    matrices.XData,
+                                    matrices.y,
+                                    matrices.weights,
+                                    matrices.numObs,
+                                    matrices.numFeatures,
+                                    statLambda,
+                                    matrices.hcaCol
+                                );
+
+                                // V3.3: log estimated home-court advantage for this stat
+                                if (matrices.hcaCol !== undefined) {
+                                    console.log('[RAPM V3.3] ' + statKey + ': estimated HCA = ' + coefficients[matrices.hcaCol].toFixed(3));
+                                }
+
+                                // Center coefficients
+                                const { orapm, drapm } = self.centerRAPM(coefficients, playerIndex.playerCount, playerIndex);
+                                
+                                // Build player results for this stat
+                                const playerResults = {};
+                                
+                                playerIndex.playerList.forEach(player => {
+                                    const poss = playerIndex.playerPossessions.get(player) || 0;
+                                    if (poss < self.config.minPlayerPoss) return;
+                                    
+                                    playerResults[player] = {
+                                        oRAPM: orapm[player],
+                                        dRAPM: drapm[player],
+                                        totalPoss: poss
+                                    };
+                                });
+                                
+                                allStats[statKey] = playerResults;
+                                leagueAverages[statKey] = matrices.leagueAvg;
+                                statDetails[statKey] = {
+                                    numObs: matrices.numObs,
+                                    validStints: matrices.validStints,
+                                    lambda: statLambda,
+                                    higherBetter: config.higherBetter,
+                                    hca: matrices.hcaCol !== undefined ? coefficients[matrices.hcaCol] : null
+                                };
+                                
+                                // Log top 3 for this stat
+                                const sorted = Object.entries(playerResults)
+                                    .sort((a, b) => (b[1].oRAPM + b[1].dRAPM) - (a[1].oRAPM + a[1].dRAPM));
+                                console.log('[RAPM V3.2] ' + statKey + ' Top 3:');
+                                sorted.slice(0, 3).forEach(([player, data], i) => {
+                                    const net = data.oRAPM + data.dRAPM;
+                                    console.log('  ' + (i+1) + '. ' + player + ': O=' + data.oRAPM.toFixed(2) + ', D=' + data.dRAPM.toFixed(2));
+                                });
+
+                                // DIAGNOSTIC: Log specific player values for debugging
+                                if (statKey === 'ORtg') {
+                                    console.log('[RAPM DIAG] === ORtg RAPM Diagnostic ===');
+                                    console.log('[RAPM DIAG] Lambda=' + statLambda + ', Observations=' + matrices.numObs + ', Players=' + playerIndex.playerCount + ', League Avg ORtg=' + matrices.leagueAvg.toFixed(1));
+
+                                    // Log Tavares-like names
+                                    const tavares = Object.entries(playerResults).find(([p]) => p.includes('tavares'));
+                                    if (tavares) {
+                                        const [name, data] = tavares;
+                                        console.log('[RAPM DIAG] TAVARES FOUND: "' + name + '"');
+                                        console.log('[RAPM DIAG]   Raw oRAPM (β_off) = ' + data.oRAPM.toFixed(4) + ' (positive = good offense)');
+                                        console.log('[RAPM DIAG]   Raw dRAPM (β_def) = ' + data.dRAPM.toFixed(4) + ' (positive = good defense, reduces opp ORtg)');
+                                        console.log('[RAPM DIAG]   Net RAPM = ' + (data.oRAPM + data.dRAPM).toFixed(4));
+                                        console.log('[RAPM DIAG]   Total Poss = ' + data.totalPoss);
+                                        console.log('[RAPM DIAG]   Display: ORAPM=' + data.oRAPM.toFixed(2) + ', DRAPM=' + data.dRAPM.toFixed(2) + ' (after double negation in getPlayerRapmValue+display)');
+                                    } else {
+                                        console.log('[RAPM DIAG] Tavares NOT FOUND in RAPM results. Available players with "tav":');
+                                        Object.keys(playerResults).filter(p => p.includes('tav')).forEach(p => console.log('[RAPM DIAG]   "' + p + '"'));
+                                    }
+
+                                    // Log top 5 ORAPM, top 5 DRAPM, bottom 5 of each
+                                    const byORAPM = Object.entries(playerResults).sort((a, b) => b[1].oRAPM - a[1].oRAPM);
+                                    const byDRAPM = Object.entries(playerResults).sort((a, b) => b[1].dRAPM - a[1].dRAPM);
+                                    console.log('[RAPM DIAG] Top 5 ORAPM: ' + byORAPM.slice(0, 5).map(([p, d]) => p + '=' + d.oRAPM.toFixed(2)).join(', '));
+                                    console.log('[RAPM DIAG] Bottom 5 ORAPM: ' + byORAPM.slice(-5).map(([p, d]) => p + '=' + d.oRAPM.toFixed(2)).join(', '));
+                                    console.log('[RAPM DIAG] Top 5 DRAPM: ' + byDRAPM.slice(0, 5).map(([p, d]) => p + '=' + d.dRAPM.toFixed(2)).join(', '));
+                                    console.log('[RAPM DIAG] Bottom 5 DRAPM: ' + byDRAPM.slice(-5).map(([p, d]) => p + '=' + d.dRAPM.toFixed(2)).join(', '));
+
+                                    // Log coefficient stats
+                                    const allOrapm = Object.values(playerResults).map(d => d.oRAPM);
+                                    const allDrapm = Object.values(playerResults).map(d => d.dRAPM);
+                                    const oStdDev = Math.sqrt(allOrapm.reduce((s, v) => s + v*v, 0) / allOrapm.length);
+                                    const dStdDev = Math.sqrt(allDrapm.reduce((s, v) => s + v*v, 0) / allDrapm.length);
+                                    console.log('[RAPM DIAG] ORAPM std=' + oStdDev.toFixed(3) + ', DRAPM std=' + dStdDev.toFixed(3));
+                                    console.log('[RAPM DIAG] ORAPM range=[' + Math.min(...allOrapm).toFixed(2) + ', ' + Math.max(...allOrapm).toFixed(2) + '], DRAPM range=[' + Math.min(...allDrapm).toFixed(2) + ', ' + Math.max(...allDrapm).toFixed(2) + ']');
+                                }
+                            });
+                            
+                            // Play Type RAPM: compute RAPM coefficients for each play type and category
+                            let ptRapmCount = 0;
+                            if (ptData && ptData.events && ptData.events.length > 0) {
+                                onProgress(82, 'Building play type stints...');
+                                const getCatTypes = ptData.getCategoryTypes || null;
+                                const ptStints = self.buildPlayTypeStints(ptData.events, getCatTypes);
+                                console.log('[RAPM PT] Built ' + ptStints.length + ' play type stints from ' + ptData.events.length + ' events');
+
+                                if (ptStints.length > 0) {
+                                    // Discover play types and categories from stints
+                                    const allPtNames = new Set();
+                                    const allCatNames = new Set();
+                                    ptStints.forEach(s => {
+                                        Object.keys(s.playTypes).forEach(k => allPtNames.add(k));
+                                        Object.keys(s.categories).forEach(k => allCatNames.add(k));
+                                    });
+
+                                    const ptStatTypes = ['PPP', 'eFG', 'TOV', 'FTR', 'Freq'];
+                                    const ptLambdaScale = 1.2; // Higher regularization for play type stats (noisier)
+
+                                    // Process each play type
+                                    const ptEntries = [...allPtNames];
+                                    const catEntries = [...allCatNames];
+                                    const totalPtModels = (ptEntries.length + catEntries.length) * ptStatTypes.length;
+                                    let ptModelIdx = 0;
+
+                                    ptEntries.forEach(pt => {
+                                        ptStatTypes.forEach(statType => {
+                                            ptModelIdx++;
+                                            const pct = 82 + Math.round((ptModelIdx / totalPtModels) * 8);
+                                            onProgress(pct, 'Play type RAPM: ' + pt + ' ' + statType + '...');
+
+                                            // Filter stints to those with this play type and flatten
+                                            const filtered = ptStints.filter(s => s.playTypes[pt] && s.playTypes[pt].poss > 0).map(s => ({
+                                                offPlayers: s.offPlayers, defPlayers: s.defPlayers,
+                                                totalPoss: s.totalPoss, ...s.playTypes[pt]
+                                            }));
+                                            if (filtered.length < 10) return; // Need minimum data
+
+                                            const matrices = self.buildPlayTypeRAPMMatrices(filtered, playerIndex, statType);
+                                            if (!matrices || matrices.numObs < 20) return;
+
+                                            const statLambda = baseLambda * ptLambdaScale;
+                                            const coefficients = self.solveWeightedRidge(matrices.XData, matrices.y, matrices.weights, matrices.numObs, matrices.numFeatures, statLambda);
+                                            const { orapm, drapm } = self.centerRAPM(coefficients, playerIndex.playerCount, playerIndex);
+
+                                            const rapmKey = 'PT_' + pt + '_' + statType;
+                                            const playerResults = {};
+                                            playerIndex.playerList.forEach(player => {
+                                                const poss = playerIndex.playerPossessions.get(player) || 0;
+                                                if (poss < self.config.minPlayerPoss) return;
+                                                playerResults[player] = { oRAPM: orapm[player], dRAPM: drapm[player], totalPoss: poss };
+                                            });
+                                            allStats[rapmKey] = playerResults;
+                                            leagueAverages[rapmKey] = matrices.leagueAvg;
+                                            statDetails[rapmKey] = { numObs: matrices.numObs, validStints: matrices.validStints, lambda: statLambda, higherBetter: statType !== 'TOV' };
+                                            ptRapmCount++;
+                                        });
+                                    });
+
+                                    // Process each category
+                                    catEntries.forEach(cat => {
+                                        ptStatTypes.forEach(statType => {
+                                            ptModelIdx++;
+                                            const pct = 82 + Math.round((ptModelIdx / totalPtModels) * 8);
+                                            onProgress(pct, 'Category RAPM: ' + cat + ' ' + statType + '...');
+
+                                            const filtered = ptStints.filter(s => s.categories[cat] && s.categories[cat].poss > 0).map(s => ({
+                                                offPlayers: s.offPlayers, defPlayers: s.defPlayers,
+                                                totalPoss: s.totalPoss, ...s.categories[cat]
+                                            }));
+                                            if (filtered.length < 10) return;
+
+                                            const matrices = self.buildPlayTypeRAPMMatrices(filtered, playerIndex, statType);
+                                            if (!matrices || matrices.numObs < 20) return;
+
+                                            const statLambda = baseLambda * ptLambdaScale;
+                                            const coefficients = self.solveWeightedRidge(matrices.XData, matrices.y, matrices.weights, matrices.numObs, matrices.numFeatures, statLambda);
+                                            const { orapm, drapm } = self.centerRAPM(coefficients, playerIndex.playerCount, playerIndex);
+
+                                            const rapmKey = 'CAT_' + cat + '_' + statType;
+                                            const playerResults = {};
+                                            playerIndex.playerList.forEach(player => {
+                                                const poss = playerIndex.playerPossessions.get(player) || 0;
+                                                if (poss < self.config.minPlayerPoss) return;
+                                                playerResults[player] = { oRAPM: orapm[player], dRAPM: drapm[player], totalPoss: poss };
+                                            });
+                                            allStats[rapmKey] = playerResults;
+                                            leagueAverages[rapmKey] = matrices.leagueAvg;
+                                            statDetails[rapmKey] = { numObs: matrices.numObs, validStints: matrices.validStints, lambda: statLambda, higherBetter: statType !== 'TOV' };
+                                            ptRapmCount++;
+                                        });
+                                    });
+
+                                    console.log('[RAPM PT] Computed ' + ptRapmCount + ' play type RAPM models');
+                                }
+                            }
+
+                            onProgress(92, 'Finalizing results...');
+
+                            // Summary
+                            const calculatedStats = Object.keys(allStats).filter(k => !allStats[k].error);
+                            console.log('[RAPM V3.2] Successfully calculated RAPM for ' + calculatedStats.length + ' stats (' + ptRapmCount + ' play type): ' + calculatedStats.join(', '));
+
+                            onProgress(100, 'Complete! (' + calculatedStats.length + ' stats)');
+
+                            resolve({
+                                stats: allStats,
+                                leagueAverages: leagueAverages,
+                                statDetails: statDetails,
+                                lambda: baseLambda,
+                                playerCount: playerIndex.playerCount,
+                                stintCount: stints.length,
+                                calculatedStats: calculatedStats,
+                                ptRapmCount: ptRapmCount,
+                                version: '3.3-hca-cv'
+                            });
+                            
+                        } catch (err) {
+                            console.error('[RAPM V3.2] Calculation failed:', err);
+                            reject(err);
+                        }
+                    }, 10);
+                });
+            },
+            
+            // =======================================================================
+            // AUTO-TUNE LAMBDA: Finds lambda that best reproduces team ORtg/DRtg
+            // Uses golden-section search on ORtg-only RAPM, minimizing RMSE vs actual team ratings
+            // =======================================================================
+            autoTuneLambdaAsync: async function(matchupData, teamRatings, onProgress, playerMinsData) {
+                // teamRatings: { teamName: { ortg, drtg, poss } }
+                // playerMinsData: { playerName: { mins, team } } from onOffData
+                const self = this;
+                onProgress = onProgress || function() {};
+                const yieldToUI = () => new Promise(r => setTimeout(r, 0));
+
+                try {
+                    onProgress(0, 'Parsing stints for auto-tune...');
+                    await yieldToUI();
+                    const stints = self.buildStintsFromMatchupData(matchupData);
+                    if (stints.length === 0) return { error: 'No stints' };
+                            const playerIndex = self.buildPlayerIndex(stints);
+
+                            // Build player→team map directly from CSV rows (fast)
+                            const playerTeamPoss = {};
+                            matchupData.forEach(m => {
+                                const hName = m.Home_Team || m.home_team || '';
+                                const aName = m.Away_Team || m.away_team || '';
+                                const poss = parseFloat(m.Possessions || m.possessions || m.POSS) || 0;
+                                if (!hName || !aName || poss < 1) return;
+                                (m.Home_Lineup || m.home_lineup || '').split(',').forEach(p => {
+                                    const pn = p.trim().toLowerCase();
+                                    if (!pn) return;
+                                    if (!playerTeamPoss[pn]) playerTeamPoss[pn] = {};
+                                    playerTeamPoss[pn][hName] = (playerTeamPoss[pn][hName] || 0) + poss;
+                                });
+                                (m.Away_Lineup || m.away_lineup || '').split(',').forEach(p => {
+                                    const pn = p.trim().toLowerCase();
+                                    if (!pn) return;
+                                    if (!playerTeamPoss[pn]) playerTeamPoss[pn] = {};
+                                    playerTeamPoss[pn][aName] = (playerTeamPoss[pn][aName] || 0) + poss;
+                                });
+                            });
+                            const playerTeam = {};
+                            Object.entries(playerTeamPoss).forEach(([p, teams]) => {
+                                const best = Object.entries(teams).sort((a, b) => b[1] - a[1])[0];
+                                if (best) playerTeam[p] = best[0];
+                            });
+
+                            // Build matrices once (reused for all lambda trials)
+                            const matrices = self.buildRAPMMatricesForStat(stints, playerIndex, 'ORtg');
+                            if (!matrices) return { error: 'No valid ORtg data' };
+
+                            // Use player minutes from onOffData (passed as playerMinsData)
+                            // playerMinsData: { playerNameLower: { mins, team } }
+                            const playerMins = {};
+                            const teamGameMins = {};
+                            if (playerMinsData) {
+                                Object.entries(playerMinsData).forEach(([p, d]) => {
+                                    playerMins[p] = d.mins;
+                                    if (d.team) {
+                                        if (!teamGameMins[d.team]) teamGameMins[d.team] = 0;
+                                        teamGameMins[d.team] += d.mins;
+                                    }
+                                });
+                                // teamGameMins is sum of all player mins per team; divide by 5 to get team game mins
+                                Object.keys(teamGameMins).forEach(t => { teamGameMins[t] /= 5; });
+                            }
+
+                            // ============================================================
+                            // V3.3: K-FOLD CROSS-VALIDATION objective (professional standard,
+                            // cf. Sill 2010 "Improved NBA Adjusted +/-"). The previous objective
+                            // (in-sample minutes-weighted team-fit RMSE) monotonically rewards
+                            // weaker regularization — λ drifts to the search floor and overfits.
+                            // λ is now chosen by OUT-OF-SAMPLE stint-level weighted RMSE with
+                            // contiguous (≈game-blocked, chronological) folds. Team-fit RMSE is
+                            // still computed at the chosen λ as a diagnostic.
+                            // ============================================================
+                            const K = 5;
+                            const p = matrices.numFeatures;
+                            const hcaCol = matrices.hcaCol;
+                            const numObs = matrices.numObs;
+
+                            // GAME-BLOCKED folds: all observations of a game share a fold.
+                            // Contiguous stint-blocked folds split games across the
+                            // train/test boundary; lineups repeat heavily within a game,
+                            // so held-out stints had near-identical training rows —
+                            // leakage that biased lambda low (overfit). Falls back to
+                            // stint-pair blocking if the CSV predates game ids.
+                            const foldOfObs = new Int8Array(numObs);
+                            const obsGame = matrices.obsGame || [];
+                            const hasGameIds = obsGame.length === numObs && obsGame.some(g => g);
+                            if (hasGameIds) {
+                                const gameFold = new Map();
+                                obsGame.forEach(g => { if (!gameFold.has(g)) gameFold.set(g, 0); });
+                                const gamesList = Array.from(gameFold.keys());
+                                gamesList.forEach((g, gi) => gameFold.set(g, Math.min(K - 1, Math.floor(gi * K / gamesList.length))));
+                                for (let i = 0; i < numObs; i++) foldOfObs[i] = gameFold.get(obsGame[i]);
+                            } else {
+                                const numStintPairs = Math.ceil(numObs / 2);
+                                for (let i = 0; i < numObs; i++) {
+                                    const stintIdx = Math.floor(i / 2);
+                                    foldOfObs[i] = Math.min(K - 1, Math.floor(stintIdx * K / numStintPairs));
+                                }
+                            }
+
+                            // Group X rows once
+                            const rowData = new Map();
+                            matrices.XData.forEach(en => {
+                                if (!rowData.has(en.row)) rowData.set(en.row, []);
+                                rowData.get(en.row).push(en);
+                            });
+
+                            // Precompute full + per-fold normal equations (train = full − fold)
+                            const XtWXfull = new Float64Array(p * p);
+                            const XtWyFull = new Float64Array(p);
+                            const XtWXfold = [], XtWyFold = [];
+                            for (let f = 0; f < K; f++) { XtWXfold.push(new Float64Array(p * p)); XtWyFold.push(new Float64Array(p)); }
+                            for (let i = 0; i < numObs; i++) {
+                                const w = matrices.weights[i];
+                                const yi = matrices.y[i];
+                                const entries = rowData.get(i) || [];
+                                const f = foldOfObs[i];
+                                for (let a2 = 0; a2 < entries.length; a2++) {
+                                    const ea = entries[a2];
+                                    const wvy = w * ea.val * yi;
+                                    XtWyFull[ea.col] += wvy;
+                                    XtWyFold[f][ea.col] += wvy;
+                                    for (let b2 = 0; b2 < entries.length; b2++) {
+                                        const eb = entries[b2];
+                                        const v = w * ea.val * eb.val;
+                                        XtWXfull[ea.col * p + eb.col] += v;
+                                        XtWXfold[f][ea.col * p + eb.col] += v;
+                                    }
+                                }
+                            }
+
+                            const Abuf = new Float64Array(p * p);
+                            const bBuf = new Float64Array(p);
+                            const cvCache = new Map();
+
+                            // K-fold CV: weighted out-of-sample RMSE at a given lambda
+                            const evalLambdaCV = (lambda) => {
+                                const cacheKey = Math.round(lambda);
+                                if (cvCache.has(cacheKey)) return cvCache.get(cacheKey);
+                                let sse = 0, wsum = 0;
+                                for (let f = 0; f < K; f++) {
+                                    const Xf = XtWXfold[f], yf = XtWyFold[f];
+                                    for (let i = 0; i < p * p; i++) Abuf[i] = XtWXfull[i] - Xf[i];
+                                    for (let d2 = 0; d2 < p; d2++) Abuf[d2 * p + d2] += (d2 === hcaCol ? lambda * 0.01 : lambda);
+                                    let bnSq = 0;
+                                    for (let i = 0; i < p; i++) { bBuf[i] = XtWyFull[i] - yf[i]; bnSq += bBuf[i] * bBuf[i]; }
+                                    const beta = self.conjugateGradient(Abuf, bBuf, p, 1500, Math.max(1e-10, 1e-8 * Math.sqrt(bnSq)));
+                                    // Predict held-out fold observations
+                                    for (let i = 0; i < numObs; i++) {
+                                        if (foldOfObs[i] !== f) continue;
+                                        const entries = rowData.get(i) || [];
+                                        let pred = 0;
+                                        for (let a2 = 0; a2 < entries.length; a2++) pred += entries[a2].val * beta[entries[a2].col];
+                                        const err = matrices.y[i] - pred;
+                                        const w = matrices.weights[i];
+                                        sse += w * err * err;
+                                        wsum += w;
+                                    }
+                                }
+                                const rmse = wsum > 0 ? Math.sqrt(sse / wsum) : 999;
+                                cvCache.set(cacheKey, rmse);
+                                return rmse;
+                            };
+
+                            // Team-fit RMSE — diagnostic only (no longer the selection objective)
+                            const evalTeamRmse = (lambda) => {
+                                const coefficients = self.solveWeightedRidge(matrices.XData, matrices.y, matrices.weights, matrices.numObs, matrices.numFeatures, lambda, hcaCol);
+                                const { orapm, drapm } = self.centerRAPM(coefficients, playerIndex.playerCount, playerIndex);
+                                const teamPred = {};
+                                playerIndex.playerList.forEach(player => {
+                                    const t = playerTeam[player];
+                                    if (!t || !teamRatings[t]) return;
+                                    const pm = playerMins[player] || 0;
+                                    if (pm <= 0) return;
+                                    const tgm = teamGameMins[t] || 1;
+                                    const frac = pm / tgm;
+                                    if (!teamPred[t]) teamPred[t] = { netSum: 0 };
+                                    teamPred[t].netSum += frac * ((orapm[player] || 0) + (drapm[player] || 0));
+                                });
+                                let ssNet = 0, nTeams = 0;
+                                Object.entries(teamPred).forEach(([t, pred]) => {
+                                    if (!teamRatings[t]) return;
+                                    const actualNet = teamRatings[t].ortg - teamRatings[t].drtg;
+                                    ssNet += Math.pow(pred.netSum - actualNet, 2);
+                                    nTeams++;
+                                });
+                                return nTeams > 0 ? Math.sqrt(ssNet / nTeams) : 999;
+                            };
+
+                    // Golden-section search over ln(λ) in [50, 8000] — CV error is ≈unimodal in log space
+                    onProgress(10, 'Cross-validating lambda (5-fold)...');
+                    const gr = (Math.sqrt(5) + 1) / 2;
+                    let a = Math.log(50), b = Math.log(8000);
+                    const tol = 0.04;
+                    let steps = 0;
+                    while (b - a > tol && steps < 25) {
+                        const c = b - (b - a) / gr;
+                        const d = a + (b - a) / gr;
+                        const fc = evalLambdaCV(Math.exp(c));
+                        await yieldToUI();
+                        const fd = evalLambdaCV(Math.exp(d));
+                        await yieldToUI();
+                        if (fc < fd) b = d; else a = c;
+                        steps++;
+                        onProgress(10 + Math.round((steps / 25) * 80), 'Testing λ=' + Math.round(Math.exp((a + b) / 2)) + ' (CV RMSE=' + Math.min(fc, fd).toFixed(2) + ')');
+                    }
+                    const bestLambda = Math.round(Math.exp((a + b) / 2));
+                    const bestRmse = evalLambdaCV(bestLambda);
+                    const teamRmse = evalTeamRmse(bestLambda);
+
+                    onProgress(100, 'Auto-tune complete! λ=' + bestLambda + ' (5-fold CV)');
+                    console.log('[RAPM AutoTune] Best lambda=' + bestLambda + ' via 5-fold CV. CV RMSE=' + bestRmse.toFixed(3) + ', team-fit RMSE=' + teamRmse.toFixed(3));
+                    return { bestLambda, bestRmse, teamRmse, steps, method: '5-fold-cv' };
+                } catch (err) {
+                    console.error('[RAPM AutoTune] Error:', err);
+                    throw err;
+                }
+            },
+
+            // =======================================================================
+            // AUTO-TUNE APM LAMBDA: Same golden-section approach but for Bayesian Box APM
+            // Searches baseLambda while keeping tau/xi fixed
+            // =======================================================================
+            autoTuneAPMLambdaAsync: async function(matchupData, seasonStatsMap, teamRatings, onProgress, fixedLambda, playerMinsData) {
+                const self = this;
+                onProgress = onProgress || function() {};
+                const yieldToUI = () => new Promise(r => setTimeout(r, 0));
+
+                try {
+                    onProgress(0, 'Parsing stints for APM auto-tune...');
+                    const stints = self.buildStintsFromMatchupData(matchupData);
+                    if (stints.length === 0) return { error: 'No stints' };
+                            const playerIndex = self.buildPlayerIndex(stints);
+
+                            // Build player→team map
+                            const playerTeamPoss = {};
+                            matchupData.forEach(m => {
+                                const hName = m.Home_Team || m.home_team || '';
+                                const aName = m.Away_Team || m.away_team || '';
+                                const poss = parseFloat(m.Possessions || m.possessions || m.POSS) || 0;
+                                if (!hName || !aName || poss < 1) return;
+                                (m.Home_Lineup || m.home_lineup || '').split(',').forEach(p => {
+                                    const pn = p.trim().toLowerCase();
+                                    if (!pn) return;
+                                    if (!playerTeamPoss[pn]) playerTeamPoss[pn] = {};
+                                    playerTeamPoss[pn][hName] = (playerTeamPoss[pn][hName] || 0) + poss;
+                                });
+                                (m.Away_Lineup || m.away_lineup || '').split(',').forEach(p => {
+                                    const pn = p.trim().toLowerCase();
+                                    if (!pn) return;
+                                    if (!playerTeamPoss[pn]) playerTeamPoss[pn] = {};
+                                    playerTeamPoss[pn][aName] = (playerTeamPoss[pn][aName] || 0) + poss;
+                                });
+                            });
+                            const playerTeam = {};
+                            Object.entries(playerTeamPoss).forEach(([p, teams]) => {
+                                const best = Object.entries(teams).sort((a, b) => b[1] - a[1])[0];
+                                if (best) playerTeam[p] = best[0];
+                            });
+
+                            // Build shared components (reused across lambda trials)
+                            const matrices = self.buildRAPMMatricesForStat(stints, playerIndex, 'ORtg');
+                            if (!matrices) return { error: 'No valid ORtg data' };
+                            const boxResults = self.buildBoxScoreFeatures(playerIndex, seasonStatsMap);
+                            const learnedCoefs = self.learnBoxScoreCoefficients(
+                                matrices, playerIndex, boxResults,
+                                self.bayesianBoxConfig.xi_off, self.bayesianBoxConfig.xi_def
+                            );
+                            const priors = self.computeBayesianBoxPriors(playerIndex, boxResults, learnedCoefs);
+
+                            // Use fixed lambda from RAPM (don't search over lambda)
+                            const useLambda = fixedLambda || 800;
+                            onProgress(20, 'Box features and priors computed, tuning τ_off & τ_def independently at λ=' + useLambda + '...');
+
+                            const leagueAvg = matrices.leagueAvg;
+
+                            // Use player minutes from onOffData (passed as playerMinsData)
+                            const playerMins = {};
+                            const teamGameMins = {};
+                            if (playerMinsData) {
+                                Object.entries(playerMinsData).forEach(([p, d]) => {
+                                    playerMins[p] = d.mins;
+                                    if (d.team) {
+                                        if (!teamGameMins[d.team]) teamGameMins[d.team] = 0;
+                                        teamGameMins[d.team] += d.mins;
+                                    }
+                                });
+                                Object.keys(teamGameMins).forEach(t => { teamGameMins[t] /= 5; });
+                            }
+
+                            // ============================================================
+                            // V3.3: K-FOLD CROSS-VALIDATION objective for τ (out-of-sample
+                            // stint-level weighted RMSE). The previous in-sample team-fit
+                            // objective systematically rewards trusting raw plus-minus
+                            // (high τ) regardless of generalization.
+                            // ============================================================
+                            const K = 3;
+                            const numObs = matrices.numObs;
+                            const numStintPairs = Math.ceil(numObs / 2);
+                            const foldOfObs = new Int8Array(numObs);
+                            for (let i = 0; i < numObs; i++) {
+                                const stintIdx = Math.floor(i / 2);
+                                foldOfObs[i] = Math.min(K - 1, Math.floor(stintIdx * K / numStintPairs));
+                            }
+                            // Per-fold training weights (held-out fold zeroed out)
+                            const foldTrainWeights = [];
+                            for (let f = 0; f < K; f++) {
+                                const wArr = new Float64Array(numObs);
+                                for (let i = 0; i < numObs; i++) wArr[i] = foldOfObs[i] === f ? 0 : matrices.weights[i];
+                                foldTrainWeights.push(wArr);
+                            }
+                            const rowDataCV = new Map();
+                            matrices.XData.forEach(en => {
+                                if (!rowDataCV.has(en.row)) rowDataCV.set(en.row, []);
+                                rowDataCV.get(en.row).push(en);
+                            });
+
+                            // Evaluate (tauOff, tauDef) by k-fold out-of-sample stint RMSE
+                            const evalTau = (tOff, tDef) => {
+                                let sse = 0, wsum = 0;
+                                for (let f = 0; f < K; f++) {
+                                    const apmFit = self.solveBayesianBoxRidge(
+                                        matrices, playerIndex, priors, useLambda, tOff, tDef, foldTrainWeights[f]
+                                    );
+                                    const beta = apmFit.coefficients;
+                                    for (let i = 0; i < numObs; i++) {
+                                        if (foldOfObs[i] !== f) continue;
+                                        const entries = rowDataCV.get(i) || [];
+                                        let pred = 0;
+                                        for (let a2 = 0; a2 < entries.length; a2++) pred += entries[a2].val * beta[entries[a2].col];
+                                        const err = matrices.y[i] - pred;
+                                        const w = matrices.weights[i];
+                                        sse += w * err * err;
+                                        wsum += w;
+                                    }
+                                }
+                                return wsum > 0 ? Math.sqrt(sse / wsum) : 999;
+                            };
+
+                            // Team-fit RMSE diagnostic (full-data fit, NOT the selection objective)
+                            const evalTeamRmse = (tOff, tDef) => {
+                                const apmResults = self.solveBayesianBoxRidge(matrices, playerIndex, priors, useLambda, tOff, tDef);
+                                const teamPred = {};
+                                playerIndex.playerList.forEach(player => {
+                                    const t = playerTeam[player];
+                                    if (!t || !teamRatings[t]) return;
+                                    const pm = playerMins[player] || 0;
+                                    if (pm <= 0) return;
+                                    const tgm = teamGameMins[t] || 1;
+                                    const frac = pm / tgm;
+                                    if (!teamPred[t]) teamPred[t] = { netSum: 0 };
+                                    teamPred[t].netSum += frac * ((apmResults.orapm[player] || 0) + (apmResults.drapm[player] || 0));
+                                });
+                                let ssNet = 0, nTeams = 0;
+                                Object.entries(teamPred).forEach(([t, pred]) => {
+                                    if (!teamRatings[t]) return;
+                                    const actualNet = teamRatings[t].ortg - teamRatings[t].drtg;
+                                    ssNet += Math.pow(pred.netSum - actualNet, 2);
+                                    nTeams++;
+                                });
+                                return nTeams > 0 ? Math.sqrt(ssNet / nTeams) : 999;
+                            };
+
+                    // 2D coarse grid: tau_off × tau_def independently (3-fold CV per cell)
+                    const tauValues = [0.05, 0.1, 0.2, 0.4, 0.7, 1.2, 2.5, 5.0];
+                    let bestTauOff = 0.5, bestTauDef = 0.7, bestRmse = 999;
+                    let evalCount = 0;
+                    const totalEvals = tauValues.length * tauValues.length;
+
+                    for (let oi = 0; oi < tauValues.length; oi++) {
+                        for (let di = 0; di < tauValues.length; di++) {
+                            const tO = tauValues[oi];
+                            const tD = tauValues[di];
+                            const rmse = evalTau(tO, tD);
+                            if (rmse < bestRmse) { bestRmse = rmse; bestTauOff = tO; bestTauDef = tD; }
+                            evalCount++;
+                        }
+                        onProgress(20 + Math.round((evalCount / totalEvals) * 45), 'Coarse CV: τ_off=' + tauValues[oi].toFixed(2) + ' best so far CV RMSE=' + bestRmse.toFixed(2));
+                        await yieldToUI();
+                    }
+
+                    // Fine 2D refinement around best (multiplicative neighborhood)
+                    onProgress(70, 'Refining around τ_off=' + bestTauOff.toFixed(2) + ', τ_def=' + bestTauDef.toFixed(2) + '...');
+                    const fineFactors = [0.6, 0.8, 1.0, 1.25, 1.6];
+                    const fineOff = fineFactors.map(fac => Math.max(0.02, Math.round(bestTauOff * fac * 100) / 100));
+                    const fineDef = fineFactors.map(fac => Math.max(0.02, Math.round(bestTauDef * fac * 100) / 100));
+                    for (let oi = 0; oi < fineOff.length; oi++) {
+                        for (let di = 0; di < fineDef.length; di++) {
+                            if (fineFactors[oi] === 1.0 && fineFactors[di] === 1.0) continue; // already evaluated
+                            const rmse = evalTau(fineOff[oi], fineDef[di]);
+                            if (rmse < bestRmse) { bestRmse = rmse; bestTauOff = fineOff[oi]; bestTauDef = fineDef[di]; }
+                        }
+                        await yieldToUI();
+                    }
+                    const teamRmse = evalTeamRmse(bestTauOff, bestTauDef);
+                    onProgress(92, 'Fine search done: τ_off=' + bestTauOff + ', τ_def=' + bestTauDef + ', CV RMSE=' + bestRmse.toFixed(2));
+
+                    onProgress(100, 'APM τ auto-tune complete! τ_off=' + bestTauOff + ', τ_def=' + bestTauDef + ' (λ=' + useLambda + ', 3-fold CV)');
+                    console.log('[APM AutoTune] Best: τ_off=' + bestTauOff + ', τ_def=' + bestTauDef + ', λ=' + useLambda + ' (fixed). CV RMSE=' + bestRmse.toFixed(3) + ', team-fit RMSE=' + teamRmse.toFixed(3));
+                    return { bestLambda: useLambda, bestTauScale: 1.0, bestTauOff, bestTauDef, bestRmse, teamRmse, method: '3-fold-cv' };
+                } catch (err) {
+                    console.error('[APM AutoTune] Error:', err);
+                    throw err;
+                }
+            },
+
+            // =======================================================================
+            // V6.0: BAYESIAN BOX APM - Intraocular.net Methodology
+            // Based on: https://www.intraocular.net/posts/bayesian-box-plus-minus
+            // 
+            // Single unified model that learns box score coefficients (αⱼ) simultaneously
+            // with player impacts (β). Uses per-possession box stats as features.
+            //
+            // Model:  Y ~ N(Xβ, σ)           # Lineup observations
+            //         β ~ N(Σⱼ αⱼ · Zⱼ, τ)   # Box score prior for player coefficients
+            //         αⱼ ~ N(0, ξ)           # Regularization on box score weights
+            //
+            // Two levels of regularization:
+            //   τ (tau) - controls prior vs likelihood weight
+            //   ξ (xi) - controls box score coefficient magnitudes
+            // =======================================================================
+            
+            // Box score stat definitions for Bayesian Box APM
+            boxScoreStatDefs: {
+                offensive: [
+                    { key: 'fgm2_poss', label: '2PM', csv: ['FGM', '3PM'], compute: (r) => ((r.FGM || 0) - (r['3PM'] || 0)) / Math.max(1, r.POSS) },
+                    { key: 'fgmiss2_poss', label: '2PMiss', csv: ['FGA', 'FGM', '3PA', '3PM'], compute: (r) => (((r.FGA || 0) - (r.FGM || 0)) - ((r['3PA'] || 0) - (r['3PM'] || 0))) / Math.max(1, r.POSS) },
+                    { key: 'fgm3_poss', label: '3PM', csv: ['3PM'], compute: (r) => (r['3PM'] || 0) / Math.max(1, r.POSS) },
+                    { key: 'fgmiss3_poss', label: '3PMiss', csv: ['3PA', '3PM'], compute: (r) => ((r['3PA'] || 0) - (r['3PM'] || 0)) / Math.max(1, r.POSS) },
+                    { key: 'ftm_poss', label: 'FTM', csv: ['FTM'], compute: (r) => (r.FTM || 0) / Math.max(1, r.POSS) },
+                    { key: 'ftmiss_poss', label: 'FTMiss', csv: ['FTA', 'FTM'], compute: (r) => ((r.FTA || 0) - (r.FTM || 0)) / Math.max(1, r.POSS) },
+                    { key: 'oreb_poss', label: 'OREB', csv: ['OREB'], compute: (r) => (r.OREB || 0) / Math.max(1, r.POSS) },
+                    { key: 'ast_poss', label: 'AST', csv: ['AST'], compute: (r) => (r.AST || 0) / Math.max(1, r.POSS) },
+                    { key: 'tov_poss', label: 'TOV', csv: ['TOV'], compute: (r) => (r.TOV || 0) / Math.max(1, r.POSS) }
+                ],
+                defensive: [
+                    { key: 'dreb_poss', label: 'DRB', csv: ['DREB'], compute: (r) => (r.DREB || 0) / Math.max(1, r.POSS) },
+                    { key: 'stl_poss', label: 'STL', csv: ['STL'], compute: (r) => (r.STL || 0) / Math.max(1, r.POSS) },
+                    { key: 'blk_poss', label: 'BLK', csv: ['BLK'], compute: (r) => (r.BLK || 0) / Math.max(1, r.POSS) },
+                    { key: 'pf_poss', label: 'PF', csv: ['PF'], compute: (r) => (r.PF || 0) / Math.max(1, r.POSS) }
+                ]
+            },
+            
+            // Bayesian Box APM hyperparameters (tuned per Intraocular research)
+            bayesianBoxConfig: {
+                tau_off: 0.5,      // Prior weight for offense (lower = more box score influence)
+                tau_def: 0.7,      // Prior weight for defense (higher = more plus-minus influence)
+                // V5.0: FIXED - Defensive box stats are noisier predictors, need MORE regularization
+                // Research shows defensive box scores (STL, BLK, DRB) are less predictive of defensive impact
+                xi_off: 0.5,       // Box coef regularization for offense (more reliable stats)
+                xi_def: 0.3,       // Box coef regularization for defense (more regularization for noisier stats)
+                baseLambda: 3000   // Base ridge regularization parameter
+            },
+            
+            calculateAPMAsync: async function(matchupData, seasonStatsMap, baseLambda, onProgress) {
+                const self = this;
+                baseLambda = baseLambda || this.bayesianBoxConfig.baseLambda;
+                onProgress = onProgress || function() {};
+                const yieldToUI = () => new Promise(r => setTimeout(r, 0));
+
+                await yieldToUI();
+                try {
+                            console.log('[BayesianBoxAPM V2.0] Starting Intraocular-style calculation');
+                            console.log('[BayesianBoxAPM V2.0] Season stats available for', Object.keys(seasonStatsMap || {}).length, 'players');
+                            onProgress(0, 'Starting Bayesian Box APM...');
+                            
+                            // Step 1: Parse stints
+                            const stints = self.buildStintsFromMatchupData(matchupData);
+                            if (stints.length === 0) {
+                                return { error: 'No valid stints found' };
+                            }
+                            console.log('[BayesianBoxAPM V2.0] Parsed', stints.length, 'stints');
+                            onProgress(5, stints.length + ' stints parsed');
+                            
+                            // Step 2: Build player index
+                            const playerIndex = self.buildPlayerIndex(stints);
+                            console.log('[BayesianBoxAPM V2.0] Found', playerIndex.playerCount, 'unique players');
+                            onProgress(10, playerIndex.playerCount + ' players indexed');
+                            
+                            // Step 3: Build box score feature matrices (Z) for each player
+                            // Offensive features: 2PM, 2PMiss, 3PM, 3PMiss, FTM, FTMiss, OREB, AST, TOV
+                            // Defensive features: DRB, STL, BLK, PF
+                            const boxResults = self.buildBoxScoreFeatures(playerIndex, seasonStatsMap);
+                            console.log('[BayesianBoxAPM V2.0] Box features computed for', boxResults.playersWithStats, 'players');
+                            onProgress(20, 'Box score features for ' + boxResults.playersWithStats + ' players');
+                            
+                            // Step 4: Build RAPM matrices
+                            const matrices = self.buildRAPMMatricesForStat(stints, playerIndex, 'ORtg');
+                            if (!matrices) {
+                                return { error: 'Could not build APM matrices' };
+                            }
+                            console.log('[BayesianBoxAPM V2.0] Built matrices:', matrices.numObs, 'observations');
+                            onProgress(30, 'Built ' + matrices.numObs + ' possession observations');
+                            
+                            // Step 5: Learn box score coefficients (α) using regularized regression
+                            // This finds the optimal weights for each box stat
+                            onProgress(40, 'Learning box score coefficients...');
+                            const learnedCoefs = self.learnBoxScoreCoefficients(
+                                matrices, playerIndex, boxResults,
+                                self.bayesianBoxConfig.xi_off,
+                                self.bayesianBoxConfig.xi_def
+                            );
+                            console.log('[BayesianBoxAPM V2.0] Learned offensive coefs:', 
+                                Object.entries(learnedCoefs.offensive).map(([k,v]) => k + '=' + v.toFixed(3)).join(', '));
+                            console.log('[BayesianBoxAPM V2.0] Learned defensive coefs:', 
+                                Object.entries(learnedCoefs.defensive).map(([k,v]) => k + '=' + v.toFixed(3)).join(', '));
+                            onProgress(55, 'Box coefficients learned');
+                            
+                            // Step 6: Compute Bayesian Box Prior for each player using learned coefficients
+                            // Prior = Σⱼ αⱼ · Zⱼ (standardized)
+                            const priors = self.computeBayesianBoxPriors(playerIndex, boxResults, learnedCoefs);
+                            console.log('[BayesianBoxAPM V2.0] Computed priors for', Object.keys(priors.offensive).length, 'players');
+                            onProgress(65, 'Box priors computed');
+                            
+                            // Step 7: Run ridge regression with learned priors
+                            // Using prior-subtraction method: y_adj = y - X·prior, then β = prior + ridge(y_adj)
+                            onProgress(75, 'Running Bayesian ridge regression...');
+                            await yieldToUI();
+                            const apmResults = self.solveBayesianBoxRidge(
+                                matrices, playerIndex, priors,
+                                baseLambda,
+                                self.bayesianBoxConfig.tau_off,
+                                self.bayesianBoxConfig.tau_def
+                            );
+                            console.log('[BayesianBoxAPM V2.0] Ridge regression complete');
+                            onProgress(90, 'Combining box priors with plus-minus...');
+                            
+                            // Step 8: Format results
+                            const playerResults = {};
+                            playerIndex.playerList.forEach(player => {
+                                const poss = playerIndex.playerPossessions.get(player) || 0;
+                                if (poss < self.config.minPlayerPoss) return;
+                                
+                                const oAPM = apmResults.orapm[player] || 0;
+                                const dAPM = apmResults.drapm[player] || 0;
+                                const oPrior = priors.offensive[player] || 0;
+                                const dPrior = priors.defensive[player] || 0;
+                                
+                                playerResults[player] = {
+                                    oAPM: oAPM,
+                                    dAPM: dAPM,
+                                    totalAPM: oAPM + dAPM,
+                                    // Store prior components for analysis
+                                    boxPriorOff: oPrior,
+                                    boxPriorDef: dPrior,
+                                    boxPriorTotal: oPrior + dPrior,
+                                    totalPoss: poss
+                                };
+                            });
+                            
+                            // Log results
+                            const sorted = Object.entries(playerResults)
+                                .sort((a, b) => b[1].totalAPM - a[1].totalAPM);
+                            console.log('[BayesianBoxAPM V2.0] Top 5 Bayesian Box APM:');
+                            sorted.slice(0, 5).forEach(([player, data], i) => {
+                                console.log('  ' + (i+1) + '. ' + player + ': APM=' + data.totalAPM.toFixed(2) + 
+                                    ' (O=' + data.oAPM.toFixed(2) + ', D=' + data.dAPM.toFixed(2) + ')' +
+                                    ' | Prior=' + data.boxPriorTotal.toFixed(2));
+                            });
+                            
+                            onProgress(100, 'Bayesian Box APM complete!');
+                            
+                            return {
+                                players: playerResults,
+                                lambda: baseLambda,
+                                playerCount: Object.keys(playerResults).length,
+                                stintCount: stints.length,
+                                playersWithBoxStats: boxResults.playersWithStats,
+                                learnedCoefficients: learnedCoefs,
+                                leagueAvg: matrices.leagueAvg,
+                                version: '2.0-intraocular-bayesian-box'
+                            };
+
+                        } catch (err) {
+                            console.error('[APM V1.0] Calculation failed:', err);
+                            throw err;
+                        }
+            },
+            
+            // V6.0: Build box score feature vectors (Z) for each player
+            // Uses per-possession statistics, standardized (mean 0, std 1)
+            buildBoxScoreFeatures: function(playerIndex, seasonStatsMap) {
+                const self = this;
+                const offStats = self.boxScoreStatDefs.offensive;
+                const defStats = self.boxScoreStatDefs.defensive;
+                
+                // Initialize storage
+                const offFeatures = {}; // playerName -> {stat1: val, stat2: val, ...}
+                const defFeatures = {};
+                let playersWithStats = 0;
+                
+                // Helper to normalize player name for matching
+                const normalizeName = (name) => name.toLowerCase().trim().replace(/[''`´.]/g, '').replace(/\s+/g, ' ');
+                
+                // Collect raw values for all players
+                playerIndex.playerList.forEach(player => {
+                    const normalizedName = normalizeName(player);
+                    
+                    // Try to find season stats
+                    let stats = seasonStatsMap[normalizedName];
+                    if (!stats) {
+                        // Try original case
+                        stats = seasonStatsMap[player];
+                    }
+                    if (!stats) {
+                        // Try variations
+                        for (const [key, val] of Object.entries(seasonStatsMap)) {
+                            if (normalizeName(key) === normalizedName) {
+                                stats = val;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (stats && stats.POSS && stats.POSS > 0) {
+                        playersWithStats++;
+                        
+                        // Compute offensive features
+                        offFeatures[player] = {};
+                        offStats.forEach(stat => {
+                            offFeatures[player][stat.key] = stat.compute(stats);
+                        });
+                        
+                        // Compute defensive features
+                        defFeatures[player] = {};
+                        defStats.forEach(stat => {
+                            defFeatures[player][stat.key] = stat.compute(stats);
+                        });
+                    } else {
+                        // No stats - use zeros
+                        offFeatures[player] = {};
+                        offStats.forEach(stat => offFeatures[player][stat.key] = 0);
+                        defFeatures[player] = {};
+                        defStats.forEach(stat => defFeatures[player][stat.key] = 0);
+                    }
+                });
+                
+                // Standardize features (z-score) across all players
+                const standardize = (features, statDefs) => {
+                    statDefs.forEach(stat => {
+                        const values = Object.values(features).map(f => f[stat.key]).filter(v => v !== 0);
+                        if (values.length === 0) return;
+                        
+                        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                        const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+                        const std = Math.sqrt(variance) || 1;
+                        
+                        Object.keys(features).forEach(player => {
+                            if (features[player][stat.key] !== 0) {
+                                features[player][stat.key] = (features[player][stat.key] - mean) / std;
+                            }
+                        });
+                    });
+                };
+                
+                standardize(offFeatures, offStats);
+                standardize(defFeatures, defStats);
+                
+                return {
+                    offensive: offFeatures,
+                    defensive: defFeatures,
+                    playersWithStats: playersWithStats,
+                    offStatKeys: offStats.map(s => s.key),
+                    defStatKeys: defStats.map(s => s.key)
+                };
+            },
+            
+            // V6.0: Learn box score coefficients (α) using regularized regression
+            // Finds optimal weights for each box stat by regressing on plus-minus outcomes
+            learnBoxScoreCoefficients: function(matrices, playerIndex, boxResults, xiOff, xiDef) {
+                const self = this;
+                
+                // For computational efficiency, we use a simplified approach:
+                // Learn α by finding coefficients that minimize: ||y - Z_expanded · α||² + ξ||α||²
+                // where Z_expanded expands player box stats to possession level
+                
+                // Build aggregated plus-minus by player (weighted by possessions)
+                const playerPM = {}; // player -> {totalPM, totalWeight}
+                
+                // Group XData by row for efficient computation
+                const rowData = new Map();
+                matrices.XData.forEach(entry => {
+                    if (!rowData.has(entry.row)) rowData.set(entry.row, []);
+                    rowData.get(entry.row).push({ col: entry.col, val: entry.val });
+                });
+                
+                // Accumulate plus-minus for each player
+                const hcaColIdx = matrices.hcaCol !== undefined ? matrices.hcaCol : -1;
+                for (let i = 0; i < matrices.numObs; i++) {
+                    const y = matrices.y[i];
+                    const w = matrices.weights[i] || 1;
+                    const rowEntries = rowData.get(i) || [];
+
+                    rowEntries.forEach(entry => {
+                        if (entry.col === hcaColIdx) return; // V3.3: skip HCA column (not a player)
+                        const playerIdx = entry.col;
+                        const isDefensive = playerIdx >= playerIndex.playerCount;
+                        const actualIdx = isDefensive ? playerIdx - playerIndex.playerCount : playerIdx;
+                        const player = playerIndex.playerList[actualIdx];
+                        
+                        if (!playerPM[player]) {
+                            playerPM[player] = { offPM: 0, defPM: 0, offWeight: 0, defWeight: 0 };
+                        }
+                        
+                        if (isDefensive) {
+                            // Defensive: y contribution is negated (good defense = opponent scores less)
+                            playerPM[player].defPM += -y * entry.val * w;
+                            playerPM[player].defWeight += w;
+                        } else {
+                            playerPM[player].offPM += y * entry.val * w;
+                            playerPM[player].offWeight += w;
+                        }
+                    });
+                }
+                
+                // Compute average plus-minus per player
+                Object.keys(playerPM).forEach(player => {
+                    if (playerPM[player].offWeight > 0) {
+                        playerPM[player].offPM /= playerPM[player].offWeight;
+                    }
+                    if (playerPM[player].defWeight > 0) {
+                        playerPM[player].defPM /= playerPM[player].defWeight;
+                    }
+                });
+                
+                // Learn offensive coefficients via ridge regression: Z_off · α_off ≈ offPM
+                const learnCoefs = (features, statKeys, pmKey, xi) => {
+                    const n = Object.keys(features).length;
+                    const k = statKeys.length;
+                    if (n === 0 || k === 0) return {};
+                    
+                    // Build Z matrix (n x k) and y vector (n x 1)
+                    const Z = [];
+                    const y = [];
+                    const players = Object.keys(features);
+                    
+                    players.forEach(player => {
+                        if (!playerPM[player]) return;
+                        const row = statKeys.map(key => features[player][key] || 0);
+                        Z.push(row);
+                        y.push(playerPM[player][pmKey] || 0);
+                    });
+                    
+                    if (Z.length < 10) {
+                        // Not enough data - use default coefficients
+                        const coefs = {};
+                        statKeys.forEach(key => coefs[key] = 0);
+                        return coefs;
+                    }
+                    
+                    // Solve ridge regression: (Z'Z + λI)α = Z'y
+                    // Using simple closed-form solution
+                    const lambda = xi * Z.length; // Scale regularization by sample size
+                    
+                    // Compute Z'Z (k x k)
+                    const ZtZ = [];
+                    for (let i = 0; i < k; i++) {
+                        ZtZ[i] = [];
+                        for (let j = 0; j < k; j++) {
+                            let sum = 0;
+                            for (let m = 0; m < Z.length; m++) {
+                                sum += Z[m][i] * Z[m][j];
+                            }
+                            ZtZ[i][j] = sum + (i === j ? lambda : 0);
+                        }
+                    }
+                    
+                    // Compute Z'y (k x 1)
+                    const Zty = [];
+                    for (let i = 0; i < k; i++) {
+                        let sum = 0;
+                        for (let m = 0; m < Z.length; m++) {
+                            sum += Z[m][i] * y[m];
+                        }
+                        Zty[i] = sum;
+                    }
+                    
+                    // Solve (Z'Z + λI)α = Z'y using Cholesky or simple Gauss elimination
+                    const alpha = self.solveLinearSystem(ZtZ, Zty);
+                    
+                    // Map back to named coefficients
+                    const coefs = {};
+                    statKeys.forEach((key, i) => {
+                        coefs[key] = alpha[i] || 0;
+                    });
+                    
+                    return coefs;
+                };
+                
+                return {
+                    offensive: learnCoefs(boxResults.offensive, boxResults.offStatKeys, 'offPM', xiOff),
+                    defensive: learnCoefs(boxResults.defensive, boxResults.defStatKeys, 'defPM', xiDef)
+                };
+            },
+            
+            // V6.0: Simple linear system solver using Gaussian elimination with partial pivoting
+            solveLinearSystem: function(A, b) {
+                const n = A.length;
+                if (n === 0) return [];
+                
+                // Create augmented matrix
+                const M = A.map((row, i) => [...row, b[i]]);
+                
+                // Forward elimination with partial pivoting
+                for (let col = 0; col < n; col++) {
+                    // Find pivot
+                    let maxRow = col;
+                    let maxVal = Math.abs(M[col][col]);
+                    for (let row = col + 1; row < n; row++) {
+                        if (Math.abs(M[row][col]) > maxVal) {
+                            maxVal = Math.abs(M[row][col]);
+                            maxRow = row;
+                        }
+                    }
+                    
+                    // Swap rows
+                    if (maxRow !== col) {
+                        [M[col], M[maxRow]] = [M[maxRow], M[col]];
+                    }
+                    
+                    // Check for singular matrix
+                    if (Math.abs(M[col][col]) < 1e-10) continue;
+                    
+                    // Eliminate below
+                    for (let row = col + 1; row < n; row++) {
+                        const factor = M[row][col] / M[col][col];
+                        for (let j = col; j <= n; j++) {
+                            M[row][j] -= factor * M[col][j];
+                        }
+                    }
+                }
+                
+                // Back substitution
+                const x = new Array(n).fill(0);
+                for (let i = n - 1; i >= 0; i--) {
+                    if (Math.abs(M[i][i]) < 1e-10) continue;
+                    x[i] = M[i][n];
+                    for (let j = i + 1; j < n; j++) {
+                        x[i] -= M[i][j] * x[j];
+                    }
+                    x[i] /= M[i][i];
+                }
+                
+                return x;
+            },
+            
+            // V6.0: Compute Bayesian Box Priors for each player using learned coefficients
+            computeBayesianBoxPriors: function(playerIndex, boxResults, learnedCoefs) {
+                const offPriors = {};
+                const defPriors = {};
+                
+                playerIndex.playerList.forEach(player => {
+                    // Offensive prior = Σⱼ αⱼ · Zⱼ (offensive)
+                    let offPrior = 0;
+                    const offFeats = boxResults.offensive[player] || {};
+                    Object.entries(learnedCoefs.offensive).forEach(([key, coef]) => {
+                        offPrior += coef * (offFeats[key] || 0);
+                    });
+                    offPriors[player] = offPrior;
+                    
+                    // Defensive prior = Σⱼ αⱼ · Zⱼ (defensive)
+                    let defPrior = 0;
+                    const defFeats = boxResults.defensive[player] || {};
+                    Object.entries(learnedCoefs.defensive).forEach(([key, coef]) => {
+                        defPrior += coef * (defFeats[key] || 0);
+                    });
+                    defPriors[player] = defPrior;
+                });
+                
+                return {
+                    offensive: offPriors,
+                    defensive: defPriors
+                };
+            },
+            
+            // V6.0: Solve Bayesian Box ridge regression with learned priors
+            // Uses prior-subtraction method: y_adj = y - X·prior, β = prior + ridge(y_adj)
+            solveBayesianBoxRidge: function(matrices, playerIndex, priors, baseLambda, tauOff, tauDef, weightOverride) {
+                const self = this;
+                const hcaColIdx = matrices.hcaCol !== undefined ? matrices.hcaCol : -1;
+
+                // Build prior vectors (matching matrix column order)
+                const offPriorVec = new Float64Array(playerIndex.playerCount);
+                const defPriorVec = new Float64Array(playerIndex.playerCount);
+                
+                playerIndex.playerList.forEach((player, idx) => {
+                    offPriorVec[idx] = priors.offensive[player] || 0;
+                    // Defense: negate prior for RAPM convention (good defense = negative coefficient)
+                    defPriorVec[idx] = -(priors.defensive[player] || 0);
+                });
+                
+                // Adjust response: y_adjusted = y - X·prior
+                const yAdjusted = new Float64Array(matrices.y.length);
+                
+                // Group XData by row
+                const rowData = new Map();
+                matrices.XData.forEach(entry => {
+                    if (!rowData.has(entry.row)) rowData.set(entry.row, []);
+                    rowData.get(entry.row).push({ col: entry.col, val: entry.val });
+                });
+                
+                for (let i = 0; i < matrices.numObs; i++) {
+                    let priorContribution = 0;
+                    const rowEntries = rowData.get(i) || [];
+                    
+                    rowEntries.forEach(entry => {
+                        if (entry.col === hcaColIdx) return; // V3.3: HCA column has no box prior
+                        const playerIdx = entry.col;
+                        const isDefensive = playerIdx >= playerIndex.playerCount;
+                        const actualIdx = isDefensive ? playerIdx - playerIndex.playerCount : playerIdx;
+
+                        if (isDefensive) {
+                            priorContribution += entry.val * defPriorVec[actualIdx];
+                        } else {
+                            priorContribution += entry.val * offPriorVec[actualIdx];
+                        }
+                    });
+                    
+                    yAdjusted[i] = matrices.y[i] - priorContribution;
+                }
+                
+                // Apply differential tau weighting through lambda adjustment
+                // Higher tau = more weight on plus-minus (lower regularization toward prior)
+                // Lower tau = more weight on box prior (higher regularization)
+                const offLambda = baseLambda / Math.max(0.1, tauOff);
+                const defLambda = baseLambda / Math.max(0.1, tauDef);
+                
+                // Solve weighted ridge with differential lambdas for off/def
+                // V3.3: weightOverride allows training on a subset of observations (k-fold CV)
+                const residualCoefficients = self.solveWeightedRidgeDifferential(
+                    matrices.XData,
+                    yAdjusted,
+                    weightOverride || matrices.weights,
+                    matrices.numObs,
+                    matrices.numFeatures,
+                    offLambda,
+                    defLambda,
+                    playerIndex.playerCount
+                );
+
+                // Combine: β_final = prior + residual
+                const finalCoefficients = new Float64Array(matrices.numFeatures);
+                for (let i = 0; i < playerIndex.playerCount; i++) {
+                    finalCoefficients[i] = offPriorVec[i] + residualCoefficients[i];
+                    finalCoefficients[playerIndex.playerCount + i] = defPriorVec[i] + residualCoefficients[playerIndex.playerCount + i];
+                }
+                // V3.3: HCA column has no prior — carry residual through for prediction
+                if (hcaColIdx >= 0) finalCoefficients[hcaColIdx] = residualCoefficients[hcaColIdx];
+
+                // Center and format results (raw coefficients included for out-of-sample prediction)
+                const centered = self.centerRAPM(finalCoefficients, playerIndex.playerCount, playerIndex);
+                centered.coefficients = finalCoefficients;
+                return centered;
+            },
+            
+            // V6.0: Weighted ridge with different lambdas for offensive vs defensive coefficients
+            // Uses conjugate gradient (sparse, no dense matrix allocation) to avoid memory crashes
+            solveWeightedRidgeDifferential: function(XData, y, weights, numObs, numFeatures, lambdaOff, lambdaDef, playerCount) {
+                const self = this;
+                // V3.3: detect trailing HCA column (numFeatures = 2*playerCount + 1) — light penalty
+                const hcaColIdx = numFeatures === playerCount * 2 + 1 ? numFeatures - 1 : -1;
+                const hcaLambda = 0.01 * Math.min(lambdaOff, lambdaDef);
+
+                // Group by row for sparse matrix-vector products
+                const rowData = new Map();
+                XData.forEach(entry => {
+                    if (!rowData.has(entry.row)) rowData.set(entry.row, []);
+                    rowData.get(entry.row).push({ col: entry.col, val: entry.val });
+                });
+                // Group by col for transpose operations
+                const colData = new Map();
+                XData.forEach(entry => {
+                    if (!colData.has(entry.col)) colData.set(entry.col, []);
+                    colData.get(entry.col).push({ row: entry.row, val: entry.val });
+                });
+
+                // Compute X'Wy (right-hand side)
+                const XtWy = new Float64Array(numFeatures);
+                for (let col = 0; col < numFeatures; col++) {
+                    const entries = colData.get(col) || [];
+                    let sum = 0;
+                    entries.forEach(e => { sum += e.val * (weights[e.row] || 1) * y[e.row]; });
+                    XtWy[col] = sum;
+                }
+
+                // CG solver: solves (X'WX + λI)x = X'Wy without forming X'WX
+                // Matrix-vector product: Av = X'W(Xv) + λv
+                const matvec = (v) => {
+                    // Step 1: Xv (sparse)
+                    const Xv = new Float64Array(numObs);
+                    for (let row = 0; row < numObs; row++) {
+                        const entries = rowData.get(row) || [];
+                        let sum = 0;
+                        entries.forEach(e => { sum += e.val * v[e.col]; });
+                        Xv[row] = sum;
+                    }
+                    // Step 2: X'W(Xv) + λv
+                    const result = new Float64Array(numFeatures);
+                    for (let col = 0; col < numFeatures; col++) {
+                        const entries = colData.get(col) || [];
+                        let sum = 0;
+                        entries.forEach(e => { sum += e.val * (weights[e.row] || 1) * Xv[e.row]; });
+                        // Differential lambda (HCA fixed effect gets only a light penalty)
+                        const colLambda = col === hcaColIdx ? hcaLambda : (col < playerCount ? lambdaOff : lambdaDef);
+                        result[col] = sum + colLambda * v[col];
+                    }
+                    return result;
+                };
+
+                // Conjugate Gradient
+                const x = new Float64Array(numFeatures);
+                let r = new Float64Array(numFeatures);
+                for (let i = 0; i < numFeatures; i++) r[i] = XtWy[i]; // r = b - Ax, x=0 so r=b
+                let p = new Float64Array(r);
+                let rsOld = 0;
+                for (let i = 0; i < numFeatures; i++) rsOld += r[i] * r[i];
+
+                const maxIter = Math.min(2000, numFeatures * 2);
+                for (let iter = 0; iter < maxIter; iter++) {
+                    const Ap = matvec(p);
+                    let pAp = 0;
+                    for (let i = 0; i < numFeatures; i++) pAp += p[i] * Ap[i];
+                    if (pAp < 1e-20) break;
+                    const alpha = rsOld / pAp;
+                    for (let i = 0; i < numFeatures; i++) { x[i] += alpha * p[i]; r[i] -= alpha * Ap[i]; }
+                    let rsNew = 0;
+                    for (let i = 0; i < numFeatures; i++) rsNew += r[i] * r[i];
+                    if (Math.sqrt(rsNew) < 1e-10) break;
+                    const beta = rsNew / rsOld;
+                    for (let i = 0; i < numFeatures; i++) p[i] = r[i] + beta * p[i];
+                    rsOld = rsNew;
+                }
+                return x;
+            },
+            
+            // V6.0: Cholesky decomposition solver for symmetric positive definite matrices
+            choleskySolve: function(A, b) {
+                const n = A.length;
+                const L = [];
+                for (let i = 0; i < n; i++) {
+                    L[i] = new Float64Array(n);
+                }
+                
+                // Cholesky decomposition: A = LL'
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j <= i; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < j; k++) {
+                            sum += L[i][k] * L[j][k];
+                        }
+                        if (i === j) {
+                            const val = A[i][i] - sum;
+                            L[i][j] = val > 0 ? Math.sqrt(val) : 1e-10;
+                        } else {
+                            L[i][j] = (A[i][j] - sum) / (L[j][j] || 1e-10);
+                        }
+                    }
+                }
+                
+                // Forward substitution: Ly = b
+                const y = new Float64Array(n);
+                for (let i = 0; i < n; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < i; j++) {
+                        sum += L[i][j] * y[j];
+                    }
+                    y[i] = (b[i] - sum) / (L[i][i] || 1e-10);
+                }
+                
+                // Backward substitution: L'x = y
+                const x = new Float64Array(n);
+                for (let i = n - 1; i >= 0; i--) {
+                    let sum = 0;
+                    for (let j = i + 1; j < n; j++) {
+                        sum += L[j][i] * x[j];
+                    }
+                    x[i] = (y[i] - sum) / (L[i][i] || 1e-10);
+                }
+                
+                return x;
+            },
+            
+            // V6.0: Helper to get APM value for a player
+            getPlayerApmValue: function(apmResults, playerName) {
+                if (!apmResults || !apmResults.players) return null;
+                
+                // Try exact match
+                let playerData = apmResults.players[playerName];
+                
+                // Try lowercase
+                if (!playerData) {
+                    const lowercaseName = playerName.toLowerCase().trim();
+                    playerData = apmResults.players[lowercaseName];
+                }
+                
+                // Try normalized match
+                if (!playerData) {
+                    const normalizedName = playerName.toLowerCase().trim().replace(/[''`´.]/g, '').replace(/\s+/g, ' ');
+                    for (const [key, val] of Object.entries(apmResults.players)) {
+                        if (key.toLowerCase().trim().replace(/[''`´.]/g, '').replace(/\s+/g, ' ') === normalizedName) {
+                            playerData = val;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!playerData) return null;
+                
+                return {
+                    apm: playerData.totalAPM,
+                    oapm: playerData.oAPM,
+                    dapm: playerData.dAPM,
+                    poss: playerData.totalPoss
+                };
+            },
+            
+            // EXPANDED Stat mappings for leaderboard - V3.1 with all stats
+            leaderboardStatMapping: {
+                // === RATINGS (from ORtg RAPM) ===
+                'net': { useRapm: true, rapmStatName: 'ORtg', computeNet: true, higherBetter: true },
+                'off': { useRapm: true, rapmStatName: 'ORtg', useDefCoef: false, higherBetter: true },
+                'def': { useRapm: true, rapmStatName: 'ORtg', useDefCoef: true, flipSign: true, higherBetter: false },
+                
+                // === HYBRID APM (RAPM + Bayesian Box) - V5.11 ===
+                'apm': { useApm: true, computeNet: true, higherBetter: true },
+                'oapm': { useApm: true, useDefCoef: false, higherBetter: true },
+                'dapm': { useApm: true, useDefCoef: true, higherBetter: true },
+                
+                // === OFFENSIVE FOUR FACTORS (from stat-specific RAPM) ===
+                'offEfg': { useRapm: true, rapmStatName: 'eFG', useDefCoef: false, higherBetter: true },
+                'offTov': { useRapm: true, rapmStatName: 'TOV', useDefCoef: false, higherBetter: false },
+                'offOreb': { useRapm: true, rapmStatName: 'OREB', useDefCoef: false, higherBetter: true },
+                'offFtR': { useRapm: true, rapmStatName: 'FTR', useDefCoef: false, higherBetter: true },
+                
+                // === DEFENSIVE FOUR FACTORS (from stat-specific RAPM, defensive coefficients) ===
+                'defEfg': { useRapm: true, rapmStatName: 'eFG', useDefCoef: true, flipSign: true, higherBetter: false },
+                'defTov': { useRapm: true, rapmStatName: 'TOV', useDefCoef: true, flipSign: true, higherBetter: true },
+                'defOreb': { useRapm: true, rapmStatName: 'OREB', useDefCoef: true, flipSign: true, higherBetter: false },
+                'defFtR': { useRapm: true, rapmStatName: 'FTR', useDefCoef: true, flipSign: true, higherBetter: false },
+                
+                // === PLAYMAKING & DEFENSE ===
+                'offAst': { useRapm: true, rapmStatName: 'AST', useDefCoef: false, higherBetter: true },
+                'defAst': { useRapm: true, rapmStatName: 'AST', useDefCoef: true, flipSign: true, higherBetter: false },
+                'stlPct': { useRapm: true, rapmStatName: 'STL', useDefCoef: false, higherBetter: true },
+                'blkPct': { useRapm: true, rapmStatName: 'BLK', useDefCoef: false, higherBetter: true },
+                
+                // === SHOT LOCATION - OFFENSIVE ===
+                'rimPct': { useRapm: true, rapmStatName: 'RimPct', useDefCoef: false, higherBetter: true },
+                'rimFreq': { useRapm: true, rapmStatName: 'RimFreq', useDefCoef: false, higherBetter: true },
+                'midPct': { useRapm: true, rapmStatName: 'MidPct', useDefCoef: false, higherBetter: true },
+                'midFreq': { useRapm: true, rapmStatName: 'MidFreq', useDefCoef: false, higherBetter: false },
+                'threePct': { useRapm: true, rapmStatName: 'ThreePct', useDefCoef: false, higherBetter: true },
+                'threeFreq': { useRapm: true, rapmStatName: 'ThreeFreq', useDefCoef: false, higherBetter: true },
+                
+                // === SHOT LOCATION - DEFENSIVE (opponent stats) ===
+                'rimPctV': { useRapm: true, rapmStatName: 'RimPct', useDefCoef: true, flipSign: true, higherBetter: false },
+                'rimFreqV': { useRapm: true, rapmStatName: 'RimFreq', useDefCoef: true, flipSign: true, higherBetter: false },
+                'midPctV': { useRapm: true, rapmStatName: 'MidPct', useDefCoef: true, flipSign: true, higherBetter: false },
+                'midFreqV': { useRapm: true, rapmStatName: 'MidFreq', useDefCoef: true, flipSign: true, higherBetter: true },
+                'threePctV': { useRapm: true, rapmStatName: 'ThreePct', useDefCoef: true, flipSign: true, higherBetter: false },
+                'threeFreqV': { useRapm: true, rapmStatName: 'ThreeFreq', useDefCoef: true, flipSign: true, higherBetter: false },
+                
+                // === TRANSITION & SECONDARY - OFFENSIVE ===
+                'fastBreak100': { useRapm: true, rapmStatName: 'FastBreak', useDefCoef: false, higherBetter: true },
+                'secChance100': { useRapm: true, rapmStatName: 'SecondChance', useDefCoef: false, higherBetter: true },
+                'ptsOffTov100': { useRapm: true, rapmStatName: 'PtsOffTov', useDefCoef: false, higherBetter: true },
+                
+                // === TRANSITION & SECONDARY - DEFENSIVE ===
+                'fastBreak100V': { useRapm: true, rapmStatName: 'FastBreak', useDefCoef: true, flipSign: true, higherBetter: false },
+                'secChance100V': { useRapm: true, rapmStatName: 'SecondChance', useDefCoef: true, flipSign: true, higherBetter: false },
+                'ptsOffTov100V': { useRapm: true, rapmStatName: 'PtsOffTov', useDefCoef: true, flipSign: true, higherBetter: false },
+                
+                // === NON-RAPM STATS ===
+                'clutchNet': { useRapm: false },
+                'paceF': { useRapm: false },
+                'paceV': { useRapm: false },
+                // V5.10: Box Plus/Minus (from CSV or calculated)
+                'bpm': { useRapm: false, higherBetter: true },
+                'obpm': { useRapm: false, higherBetter: true },
+                'dbpm': { useRapm: false, higherBetter: true }
+            },
+            
+            // V3.0 Enhanced: Get RAPM value for any stat
+            getPlayerRapmValue: function(rapmResults, playerName, leaderboardStat) {
+                let mapping = this.leaderboardStatMapping[leaderboardStat];
+                // Check dynamic play type mapping if not in static mapping
+                if (!mapping) mapping = this.getDynamicMapping(leaderboardStat);
+                if (!mapping || !mapping.useRapm || !rapmResults || !rapmResults.stats) return null;
+                
+                const statResults = rapmResults.stats[mapping.rapmStatName];
+                if (!statResults || statResults.error) return null;
+                
+                // V4.9.8.7.31 FIX: Use normalizePlayerName for consistent matching across all systems
+                const normalizedName = normalizePlayerName(playerName);
+                
+                // Try exact normalized match first
+                let playerData = statResults[normalizedName];
+                
+                // If not found, try lowercase match (for backwards compatibility)
+                if (!playerData) {
+                    const lowercaseName = playerName.toLowerCase().trim();
+                    playerData = statResults[lowercaseName];
+                }
+                
+                // If still not found, try fuzzy match using fuzzyMatchPlayerName
+                if (!playerData) {
+                    for (const key of Object.keys(statResults)) {
+                        if (typeof statResults[key] === 'object' && fuzzyMatchPlayerName(playerName, key)) {
+                            playerData = statResults[key];
+                            break;
+                        }
+                    }
+                }
+                
+                if (!playerData) return null;
+                
+                // Get stat config for context
+                const statConfig = this.statConfigs[mapping.rapmStatName];
+                const statDetails = rapmResults.statDetails ? rapmResults.statDetails[mapping.rapmStatName] : null;
+                
+                if (mapping.computeNet) {
+                    // Net rating: combine offensive and defensive coefficients
+                    const oRAPM = playerData.oRAPM || 0;
+                    const dRAPM = playerData.dRAPM || 0;
+                    let netRAPM = oRAPM + dRAPM;
+                    
+                    return {
+                        rapm: netRAPM,
+                        oRAPM: oRAPM,
+                        dRAPM: dRAPM,
+                        totalPoss: playerData.totalPoss,
+                        leagueAvg: rapmResults.leagueAverages[mapping.rapmStatName] || 0,
+                        statName: mapping.rapmStatName,
+                        higherBetter: mapping.higherBetter
+                    };
+                }
+                
+                // Single coefficient (offensive or defensive)
+                let rapmValue = mapping.useDefCoef ? playerData.dRAPM : playerData.oRAPM;
+                
+                // Flip sign if needed (e.g., for defensive stats where lower opponent value is better)
+                if (mapping.flipSign) rapmValue = -rapmValue;
+                
+                return {
+                    rapm: rapmValue,
+                    oRAPM: playerData.oRAPM,
+                    dRAPM: playerData.dRAPM,
+                    totalPoss: playerData.totalPoss,
+                    leagueAvg: rapmResults.leagueAverages[mapping.rapmStatName] || 0,
+                    statName: mapping.rapmStatName,
+                    higherBetter: mapping.higherBetter,
+                    useDefCoef: mapping.useDefCoef
+                };
+            },
+            
+            shouldUseRapm: function(leaderboardStat) {
+                const mapping = this.leaderboardStatMapping[leaderboardStat] || this.getDynamicMapping(leaderboardStat);
+                return mapping && mapping.useRapm === true;
+            },
+            
+            // V3.0: Get all RAPM stats for a player (useful for detailed views)
+            getPlayerAllRapmStats: function(rapmResults, playerName) {
+                if (!rapmResults || !rapmResults.stats) return null;
+                
+                const normalizedName = normalizePlayerName(playerName);
+                const allStats = {};
+                
+                Object.keys(rapmResults.stats).forEach(statKey => {
+                    const statResults = rapmResults.stats[statKey];
+                    if (!statResults || statResults.error) return;
+                    
+                    // Try exact match first
+                    let playerData = statResults[normalizedName];
+                    
+                    // Try fuzzy match if not found
+                    if (!playerData) {
+                        for (const key of Object.keys(statResults)) {
+                            if (typeof statResults[key] === 'object' && fuzzyMatchPlayerName(playerName, key)) {
+                                playerData = statResults[key];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!playerData) return;
+                    
+                    const config = this.statConfigs[statKey];
+                    allStats[statKey] = {
+                        oRAPM: playerData.oRAPM,
+                        dRAPM: playerData.dRAPM,
+                        netRAPM: playerData.oRAPM + playerData.dRAPM,
+                        totalPoss: playerData.totalPoss,
+                        leagueAvg: rapmResults.leagueAverages[statKey] || 0,
+                        name: config ? config.name : statKey,
+                        higherBetter: config ? config.higherBetter : true
+                    };
+                });
+                
+                return allStats;
+            }
+        };
+
+</script>
+<script>
+/* ============================================================================
+ * PROPHESY — All-League Stats Hub (allstats.html)
+ *
+ * Discovers every data_<timestamp>_<CODE> folder in /data (folders.json +
+ * GitHub API), picks ONE folder per league — the newest that passes the file
+ * quota + data-sanity gate (so a duplicated league resolves to its most
+ * suitable folder and bugged outputs are skipped) — and merges everything
+ * into a single RealGM-style, filterable, sortable table.
+ *
+ * The RAPM and Bayesian Box APM calculators are carried over VERBATIM from
+ * index_9.html (PlayerRAPMEngine — injected above this script).
+ * ==========================================================================*/
+(function () {
+'use strict';
+
+/* ------------------------------------------------------------------ config */
+const REPO_API = 'https://api.github.com/repos/MadvillainQuas/website/contents/data';
+const RAW_BASE = 'https://raw.githubusercontent.com/MadvillainQuas/website/main/data/';
+const SAME_ORIGIN_BASE = 'data/';
+const REQUIRED_FILES = ['stints.csv', 'player_stats_enhanced.csv', 'lineup_stats_enhanced.csv', 'team_totals.csv'];
+const OPTIONAL_FILES = ['clutch_lineup_stats.csv'];
+// bugged-output detector threshold (min stints per game in stints.csv)
+
+const MIN_STINTS_PER_GAME = 4;
+
+const LEAGUE_NAMES = {
+    SLB: 'Super League Basketball (UK)', BBE: 'BBL England', BCB: 'Basketball Champions League?',
+    PRO_A: 'ProA (Germany)', PRO_B: 'ProB (Germany)', EL: 'EuroLeague', BLJ: 'B.LEAGUE (Japan)',
+    CIBA: 'CIBACOPA (Mexico)', CEBL: 'CEBL (Canada)', SBF: 'Basketligan (Sweden)',
+    HBBC: 'HBBC', USPORTS: 'U SPORTS (Canada)', KOS: 'Kosovo Superliga',
+    LNB_ELITE: 'LNB Élite (France)', LNB_ELITE2: 'LNB Élite 2 (France)', BGNBL: 'NBL (Bulgaria)',
+    BNXT: 'BNXT League', CZ_NBL: 'NBL (Czechia)', KORI: 'Korisliiga (Finland)', ACB: 'ACB (Spain)',
+    NKL: 'NKL (Lithuania)', GREEK: 'Greek Elite', SVK: 'SBL (Slovakia)', SWE: 'Superettan (Sweden)'
+};
+const leagueName = (code) => LEAGUE_NAMES[code] || code;
+
+/* ------------------------------------------------------------- tiny utils */
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'class') n.className = v;
+        else if (k === 'style') Object.assign(n.style, v);
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+        else if (k === 'text') n.textContent = v;
+        else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+};
+const f = (x) => { const v = parseFloat(x); return isFinite(v) ? v : 0; };
+const calcPoss = (fga, oreb, tov, fta) => fga - oreb + tov + 0.44 * fta;
+
+function parseFolderName(name) {
+    // data_2026-07-16T13-44_PRO_A -> { ts: '2026-07-16T13-44', code: 'PRO_A' }
+    const m = /^data_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2})_(.+)$/.exec(name);
+    return m ? { ts: m[1], code: m[2] } : null;
+}
+
+function dataBase() {
+    const h = location.hostname;
+    if (h.endsWith('prophesyscouting.co.uk') || h.endsWith('github.io') || h === 'localhost' || h === '127.0.0.1') {
+        return SAME_ORIGIN_BASE;
+    }
+    return RAW_BASE;
+}
+
+async function fetchText(url) {
+    const r = await fetch(url, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(r.status + ' ' + url);
+    return r.text();
+}
+async function exists(url) {
+    try {
+        const r = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+        return r.ok;
+    } catch (_) { return false; }
+}
+// Ranged probe of a CSV: true (uncompressed) total size from Content-Range —
+// HEAD content-length is the gzip size on GitHub's CDNs, so it can't be used —
+// plus an average row length from the sampled bytes to estimate the row count.
+async function probeCsv(url) {
+    const RANGE = 262143; // 256KB sample
+    try {
+        const r = await fetch(url, { headers: { Range: 'bytes=0-' + RANGE }, cache: 'no-cache' });
+        if (!r.ok && r.status !== 206) return null;
+        const text = await r.text();
+        let total = null;
+        const cr = r.headers.get('content-range');       // "bytes 0-262143/1325218"
+        if (cr && cr.includes('/')) total = parseInt(cr.split('/')[1], 10);
+        // If Content-Range is unreadable (CORS on the raw-CDN fallback) we only
+        // know the true total when the body is smaller than the range asked for
+        // (i.e., we received the whole file).
+        const truncated = text.length >= RANGE && (!total || !isFinite(total));
+        if (!total || !isFinite(total)) total = text.length;
+        const lines = text.split('\n');
+        const complete = lines.slice(1, truncated ? -1 : undefined).filter(l => l.length);
+        if (!complete.length) return { estRows: 0, exact: !truncated };
+        const avgRow = complete.reduce((a, l) => a + l.length + 1, 0) / complete.length;
+        const estRows = truncated ? complete.length /* lower bound */ :
+            Math.max(Math.round((total - lines[0].length - 1) / avgRow), 0);
+        return { estRows, exact: !truncated };
+    } catch (_) { return null; }
+}
+
+/* -------------------------------------------------------------- discovery */
+async function discoverFolders(status) {
+    const base = dataBase();
+    const found = new Map(); // folder_name -> {name, ts, code}
+    // 1) folders.json manifest
+    try {
+        const man = JSON.parse(await fetchText(base + 'folders.json'));
+        (man.folders || []).forEach(fo => {
+            const p = parseFolderName(fo.folder_name || '');
+            if (p) found.set(fo.folder_name, { name: fo.folder_name, ...p });
+        });
+        status.log(`manifest: ${found.size} folder(s) from folders.json`);
+    } catch (e) { status.log('manifest unavailable (' + e.message + ')'); }
+    // 2) GitHub API listing (catches folders missing from the manifest)
+    try {
+        const r = await fetch(REPO_API, { headers: { Accept: 'application/vnd.github+json' } });
+        if (r.ok) {
+            const items = await r.json();
+            let added = 0;
+            items.forEach(it => {
+                if (it.type !== 'dir') return;
+                const p = parseFolderName(it.name);
+                if (p && !found.has(it.name)) { found.set(it.name, { name: it.name, ...p }); added++; }
+            });
+            status.log(`github api: +${added} folder(s) not in manifest`);
+        } else {
+            status.log('github api listing skipped (' + r.status + ')');
+        }
+    } catch (e) { status.log('github api listing failed (' + e.message + ')'); }
+    return [...found.values()];
+}
+
+/* ------------------------------------------------- folder quota + sanity */
+async function pickLeagueFolder(code, candidates, status) {
+    // newest first; first candidate passing the quota wins (dedupe rule)
+    const sorted = candidates.slice().sort((a, b) => b.ts.localeCompare(a.ts));
+    const base = dataBase();
+    for (const cand of sorted) {
+        const dir = base + cand.name + '/';
+        const reasons = [];
+        let games = 0, teamTotalsText = null;
+        // team_totals is small — GET it (we need games count + reuse it later)
+        try {
+            teamTotalsText = await fetchText(dir + 'team_totals.csv');
+            const rows = parseCSV(teamTotalsText);
+            games = new Set(rows.map(r => r.game_id).filter(Boolean)).size || Math.floor(rows.length / 2);
+        } catch (_) { reasons.push('team_totals.csv missing'); }
+        // required files present?
+        for (const fn of REQUIRED_FILES) {
+            if (fn === 'team_totals.csv' || fn === 'stints.csv') continue;
+            if (!await exists(dir + fn)) reasons.push(fn + ' missing');
+        }
+        // stints.csv: ranged probe -> estimated stints per game (bugged-output detector).
+        // When the sample is a truncated lower bound (raw-CDN fallback hides
+        // Content-Range) we never hard-reject — the post-download sanity check
+        // in ensureStints() still protects RAPM/APM.
+        const probe = await probeCsv(dir + 'stints.csv');
+        if (!probe) reasons.push('stints.csv missing');
+        else if (games > 0 && probe.estRows / games < MIN_STINTS_PER_GAME) {
+            if (probe.exact) reasons.push(`stints.csv ~${probe.estRows} stints for ${games} games (bugged output?)`);
+            else status.log(`${code}: ${cand.name} stint count unverifiable from sample (≥${probe.estRows} rows) — accepting`, true);
+        }
+        if (games === 0) reasons.push('no completed games');
+        if (reasons.length === 0) {
+            if (sorted.length > 1) {
+                const skipped = sorted.filter(s => s !== cand).map(s => s.ts).join(', ');
+                status.log(`${code}: using ${cand.ts} (deduped older/unsuitable: ${skipped})`);
+            }
+            return { folder: cand, dir, games, teamTotalsText };
+        }
+        status.log(`${code}: skipping ${cand.name} — ${reasons.join('; ')}`, true);
+    }
+    return null;
+}
+
+/* --------------------------------------------------------- league compute */
+// Ratio-of-sums lineup aggregation (same math as index_9's FIXED calcStats,
+// reading the real TOTAL_TIME column)
+function aggLineups(rows) {
+    const t = {
+        time: 0, pts: 0, ptsV: 0, poss: 0, possV: 0,
+        fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0,
+        fgmV: 0, fgaV: 0, tpmV: 0, tpaV: 0, ftmV: 0, ftaV: 0, orebV: 0, drebV: 0, tovV: 0,
+        rimA: 0, rimM: 0, midA: 0, midM: 0, threeA: 0, threeM: 0,
+        rimAV: 0, rimMV: 0, midAV: 0, midMV: 0, threeAV: 0, threeMV: 0,
+        secChance: 0, fastBreak: 0, ptsOffTov: 0, secChanceV: 0, fastBreakV: 0, ptsOffTovV: 0
+    };
+    rows.forEach(d => {
+        const fga = f(d.FGA), oreb = f(d.OREB), tov = f(d.TOV), fta = f(d.FTA);
+        const fgaV = f(d.FGA_VS), orebV = f(d.OREB_VS), tovV = f(d.TOV_VS), ftaV = f(d.FTA_VS);
+        const fgm = f(d.FGM), tpm = f(d['3PM']), ftm = f(d.FTM);
+        const fgmV = f(d.FGM_VS), tpmV = f(d['3PM_VS']), ftmV = f(d.FTM_VS);
+        t.time += f(d.TOTAL_TIME);
+        t.poss += calcPoss(fga, oreb, tov, fta);
+        t.possV += calcPoss(fgaV, orebV, tovV, ftaV);
+        t.pts += fgm * 2 + tpm + ftm;
+        t.ptsV += fgmV * 2 + tpmV + ftmV;
+        t.fgm += fgm; t.fga += fga; t.tpm += tpm; t.tpa += f(d['3PA']); t.ftm += ftm; t.fta += fta;
+        t.oreb += oreb; t.dreb += f(d.DREB); t.ast += f(d.AST); t.stl += f(d.STL); t.blk += f(d.BLK); t.tov += tov;
+        t.fgmV += fgmV; t.fgaV += fgaV; t.tpmV += tpmV; t.tpaV += f(d['3PA_VS']); t.ftmV += ftmV; t.ftaV += ftaV;
+        t.orebV += orebV; t.drebV += f(d.DREB_VS); t.tovV += tovV;
+        t.rimA += f(d.RIM_ATT); t.rimM += f(d.RIM_MADE);
+        t.midA += f(d.OTD_2PT_ATT); t.midM += f(d.OTD_2PT_MADE);
+        t.threeA += f(d.OTD_3PT_ATT); t.threeM += f(d.OTD_3PT_MADE);
+        t.rimAV += f(d.RIM_ATT_VS); t.rimMV += f(d.RIM_MADE_VS);
+        t.midAV += f(d.OTD_2PT_ATT_VS); t.midMV += f(d.OTD_2PT_MADE_VS);
+        t.threeAV += f(d.OTD_3PT_ATT_VS); t.threeMV += f(d.OTD_3PT_MADE_VS);
+        t.secChance += f(d['2ND_CHANCE_PTS']); t.fastBreak += f(d.FAST_BREAK_PTS); t.ptsOffTov += f(d.PTS_OFF_TOV);
+        t.secChanceV += f(d['2ND_CHANCE_PTS_VS']); t.fastBreakV += f(d.FAST_BREAK_PTS_VS); t.ptsOffTovV += f(d.PTS_OFF_TOV_VS);
+    });
+    return t;
+}
+
+function derived(t) {
+    const off = t.poss > 0 ? (t.pts / t.poss) * 100 : 0;
+    const def = t.possV > 0 ? (t.ptsV / t.possV) * 100 : 0;
+    const dn = (num, den) => den > 0 ? (num / den) * 100 : 0;
+    return {
+        poss: t.poss, possV: t.possV, time: t.time,
+        off, def, net: off - def,
+        paceF: t.time > 0 ? (t.poss / t.time) * 2400 : 0,
+        paceV: t.time > 0 ? (t.possV / t.time) * 2400 : 0,
+        offEfg: dn(t.fgm + 0.5 * t.tpm, t.fga),
+        offTov: dn(t.tov, t.fga + 0.44 * t.fta + t.tov),
+        offOreb: dn(t.oreb, t.oreb + t.drebV),
+        offFtR: dn(t.fta, t.fga),
+        defEfg: dn(t.fgmV + 0.5 * t.tpmV, t.fgaV),
+        defTov: dn(t.tovV, t.fgaV + 0.44 * t.ftaV + t.tovV),
+        defOreb: dn(t.orebV, t.orebV + t.dreb),
+        defFtR: dn(t.ftaV, t.fgaV),
+        rimPct: dn(t.rimM, t.rimA), midPct: dn(t.midM, t.midA), threePct: dn(t.threeM, t.threeA),
+        rimPctV: dn(t.rimMV, t.rimAV), midPctV: dn(t.midMV, t.midAV), threePctV: dn(t.threeMV, t.threeAV),
+        rimVol: dn(t.rimA, t.poss), midVol: dn(t.midA, t.poss), threeVol: dn(t.threeA, t.poss),
+        rimVolV: dn(t.rimAV, t.possV), midVolV: dn(t.midAV, t.possV), threeVolV: dn(t.threeAV, t.possV),
+        astPct: dn(t.ast, t.fgm), stlPct: dn(t.stl, t.possV), blkPct: dn(t.blk, t.fgaV - t.tpaV),
+        fastBreak100: dn(t.fastBreak, t.poss), secChance100: dn(t.secChance, t.poss), ptsOffTov100: dn(t.ptsOffTov, t.poss),
+        fastBreak100V: dn(t.fastBreakV, t.possV), secChance100V: dn(t.secChanceV, t.possV), ptsOffTov100V: dn(t.ptsOffTovV, t.possV)
+    };
+}
+
+// on-off diff with the same directions as index_9's full table:
+// raw offensive stats: ON − cmp; "allowed" stats flipped: cmp − ON;
+// the two TOV columns keep the table's positive-is-shown-direction handling
+// via the column's higherBetter flag (values here are raw-direction diffs).
+const DIFF_KEYS_RAW = ['off', 'offEfg', 'offOreb', 'offFtR', 'defTov',
+    'rimPct', 'midPct', 'threePct', 'rimVol', 'midVol', 'threeVol',
+    'astPct', 'stlPct', 'blkPct', 'paceF',
+    'fastBreak100', 'secChance100', 'ptsOffTov100'];
+const DIFF_KEYS_FLIP = ['def', 'offTov', 'defEfg', 'defOreb', 'defFtR',
+    'rimPctV', 'midPctV', 'threePctV', 'rimVolV', 'midVolV', 'threeVolV',
+    'paceV', 'fastBreak100V', 'secChance100V', 'ptsOffTov100V'];
+
+function computeLeague(code, texts, games) {
+    const L = { code, name: leagueName(code), games, players: [], teams: new Set() };
+    const psRows = parseCSV(texts.player_stats);
+    const luRows = parseCSV(texts.lineups);
+    const clRows = texts.clutch ? parseCSV(texts.clutch) : [];
+
+    // --- team groupings of lineup rows + per-team aggregate (for vsTeam mode)
+    const byTeam = new Map();
+    luRows.forEach(r => {
+        if (!r.Team || !r.Lineup) return;
+        if (!byTeam.has(r.Team)) byTeam.set(r.Team, []);
+        byTeam.get(r.Team).push(r);
+        r._players = new Set(r.Lineup.split(',').map(p => normalizePlayerName(p.trim())).filter(Boolean));
+    });
+    const teamAgg = new Map();
+    byTeam.forEach((rows, team) => teamAgg.set(team, derived(aggLineups(rows))));
+
+    // --- clutch lineup rows per team (DEF_POSS aware, falls back to POSS)
+    const clutchByTeam = new Map();
+    clRows.forEach(r => {
+        if (!r.Team || !r.Lineup) return;
+        if (!clutchByTeam.has(r.Team)) clutchByTeam.set(r.Team, []);
+        r._players = new Set(r.Lineup.split(',').map(p => normalizePlayerName(p.trim())).filter(Boolean));
+        clutchByTeam.get(r.Team).push(r);
+    });
+
+    // --- player rows
+    psRows.forEach(d => {
+        const name = (d.Player_Name || '').trim();
+        if (!name || !d.Team) return;
+        const norm = normalizePlayerName(name);
+        const games_ = f(d.Games), min = f(d.MIN), poss = f(d.POSS);
+        const row = {
+            league: code, player: name, playerNorm: norm, team: d.Team,
+            gp: games_, min, mpg: f(d.MPG), poss,
+            pts: f(d.PTS), fgm: f(d.FGM), fga: f(d.FGA), tpm: f(d['3PM']), tpa: f(d['3PA']),
+            ftm: f(d.FTM), fta: f(d.FTA), oreb: f(d.OREB), dreb: f(d.DREB), reb: f(d.REB),
+            ast: f(d.AST), stl: f(d.STL), blk: f(d.BLK), tov: f(d.TOV), pf: f(d.PF),
+            usg: f(d['USG%']),
+            fgPct: f(d['FG%']), tpPct: f(d['3P%']), ftPct: f(d['FT%']),
+            tsPct: (f(d.FGA) + 0.44 * f(d.FTA)) > 0 ? (f(d.PTS) / (2 * (f(d.FGA) + 0.44 * f(d.FTA)))) * 100 : 0,
+            efgPct: f(d.FGA) > 0 ? ((f(d.FGM) + 0.5 * f(d['3PM'])) / f(d.FGA)) * 100 : 0,
+            bpm: f(d.BPM), obpm: f(d.OBPM), dbpm: f(d.DBPM),
+            clutchPpg: f(d.CLUTCH_PPG), clutchTs: f(d['CLUTCH_TS%']),
+            // filled below:
+            onNet: null, onOff: null, onDef: null,
+            oRapm: null, dRapm: null, rapm: null, oApm: null, dApm: null, apm: null, clutchNet: null
+        };
+        // on/off from lineup rows
+        const teamRows = byTeam.get(d.Team) || [];
+        if (teamRows.length) {
+            const onRows = teamRows.filter(r => r._players.has(norm));
+            if (onRows.length) {
+                const offRows = teamRows.filter(r => !r._players.has(norm));
+                const on = derived(aggLineups(onRows));
+                const offAgg = offRows.length ? derived(aggLineups(offRows)) : null;
+                const ta = teamAgg.get(d.Team);
+                row.onNet = on.net; row.onOff = on.off; row.onDef = on.def;
+                row.onPoss = on.poss + on.possV;
+                row._diffs = {};
+                for (const mode of ['onOff', 'vsTeam']) {
+                    const cmp = mode === 'onOff' ? (offAgg || ta) : ta;
+                    const dd = {};
+                    DIFF_KEYS_RAW.forEach(k => dd[k] = on[k] - cmp[k]);
+                    DIFF_KEYS_FLIP.forEach(k => dd[k] = cmp[k] - on[k]);
+                    dd.net = dd.off + dd.def; // both components already positive-is-good
+                    row._diffs[mode] = dd;
+                }
+            }
+        }
+        // clutch net (ON clutch lineups)
+        const cRows = (clutchByTeam.get(d.Team) || []).filter(r => r._players.has(norm));
+        if (cRows.length) {
+            const tot = cRows.reduce((a, r) => ({
+                poss: a.poss + f(r.POSS),
+                defPoss: a.defPoss + (f(r.DEF_POSS) || f(r.POSS)),
+                pts: a.pts + f(r.PTS), ptsA: a.ptsA + f(r.PTS_ALLOWED)
+            }), { poss: 0, defPoss: 0, pts: 0, ptsA: 0 });
+            if (tot.poss >= 5) {
+                row.clutchNet = (tot.poss > 0 ? tot.pts / tot.poss * 100 : 0) -
+                                (tot.defPoss > 0 ? tot.ptsA / tot.defPoss * 100 : 0);
+                row.clutchPoss = tot.poss;
+            }
+        }
+        L.teams.add(d.Team);
+        L.players.push(row);
+    });
+    return L;
+}
+
+/* --------------------------------------------------------------- columns */
+const GROUPS = [
+    { id: 'box', label: 'Box Score', def: true },
+    { id: 'shoot', label: 'Shooting', def: true },
+    { id: 'impact', label: 'On/Off Impact', def: true },
+    { id: 'ff', label: 'Four Factors ±', def: false },
+    { id: 'shot', label: 'Shot Profile ±', def: false },
+    { id: 'play', label: 'Playmaking/Defense ±', def: false },
+    { id: 'clutch', label: 'Clutch', def: false },
+    { id: 'bpm', label: 'BPM', def: false },
+    { id: 'rapm', label: 'RAPM', def: true },
+    { id: 'apm', label: 'APM', def: false }
+];
+// mode: pg (per game) / tot / p100 for box counting stats
+const COLS = [
+    { k: 'player', label: 'Player', group: 'fixed', str: true },
+    { k: 'team', label: 'Team', group: 'fixed', str: true },
+    { k: 'leagueLabel', label: 'League', group: 'fixed', str: true },
+    { k: 'gp', label: 'GP', group: 'box', d: 0 },
+    { k: 'mpg', label: 'MPG', group: 'box', d: 1, tot: 'min' },
+    { k: 'pts', label: 'PTS', group: 'box', d: 1, counting: true },
+    { k: 'reb', label: 'REB', group: 'box', d: 1, counting: true },
+    { k: 'ast', label: 'AST', group: 'box', d: 1, counting: true },
+    { k: 'stl', label: 'STL', group: 'box', d: 1, counting: true },
+    { k: 'blk', label: 'BLK', group: 'box', d: 1, counting: true },
+    { k: 'tov', label: 'TOV', group: 'box', d: 1, counting: true, hb: false },
+    { k: 'pf', label: 'PF', group: 'box', d: 1, counting: true, hb: false },
+    { k: 'oreb', label: 'OREB', group: 'box', d: 1, counting: true },
+    { k: 'dreb', label: 'DREB', group: 'box', d: 1, counting: true },
+    { k: 'usg', label: 'USG%', group: 'box', d: 1 },
+    { k: 'fgPct', label: 'FG%', group: 'shoot', d: 1 },
+    { k: 'tpPct', label: '3P%', group: 'shoot', d: 1 },
+    { k: 'ftPct', label: 'FT%', group: 'shoot', d: 1 },
+    { k: 'efgPct', label: 'eFG%', group: 'shoot', d: 1 },
+    { k: 'tsPct', label: 'TS%', group: 'shoot', d: 1 },
+    { k: 'tpm', label: '3PM', group: 'shoot', d: 1, counting: true },
+    { k: 'fta', label: 'FTA', group: 'shoot', d: 1, counting: true },
+    { k: 'onNet', label: 'ON Net', group: 'impact', d: 1, diffColor: true },
+    { k: 'onOff', label: 'ON ORtg', group: 'impact', d: 1 },
+    { k: 'onDef', label: 'ON DRtg', group: 'impact', d: 1, hb: false },
+    { k: 'net±', label: 'Net±', group: 'impact', d: 1, diff: 'net', diffColor: true },
+    { k: 'off±', label: 'ORtg±', group: 'impact', d: 1, diff: 'off', diffColor: true },
+    { k: 'def±', label: 'DRtg±', group: 'impact', d: 1, diff: 'def', diffColor: true },
+    { k: 'offEfg±', label: 'eFG%±', group: 'ff', d: 1, diff: 'offEfg', diffColor: true },
+    { k: 'offTov±', label: 'TOV%±', group: 'ff', d: 1, diff: 'offTov', diffColor: true },
+    { k: 'offOreb±', label: 'OREB%±', group: 'ff', d: 1, diff: 'offOreb', diffColor: true },
+    { k: 'offFtR±', label: 'FTR±', group: 'ff', d: 1, diff: 'offFtR', diffColor: true },
+    { k: 'defEfg±', label: 'dEFG%±', group: 'ff', d: 1, diff: 'defEfg', diffColor: true },
+    { k: 'defTov±', label: 'dTOV%±', group: 'ff', d: 1, diff: 'defTov', diffColor: true },
+    { k: 'defOreb±', label: 'dOREB%±', group: 'ff', d: 1, diff: 'defOreb', diffColor: true },
+    { k: 'defFtR±', label: 'dFTR±', group: 'ff', d: 1, diff: 'defFtR', diffColor: true },
+    { k: 'rimPct±', label: 'Rim%±', group: 'shot', d: 1, diff: 'rimPct', diffColor: true },
+    { k: 'midPct±', label: 'Mid%±', group: 'shot', d: 1, diff: 'midPct', diffColor: true },
+    { k: 'threePct±', label: '3P%±', group: 'shot', d: 1, diff: 'threePct', diffColor: true },
+    { k: 'rimVol±', label: 'RimVol±', group: 'shot', d: 1, diff: 'rimVol', diffColor: true },
+    { k: 'midVol±', label: 'MidVol±', group: 'shot', d: 1, diff: 'midVol', diffColor: true },
+    { k: 'threeVol±', label: '3Vol±', group: 'shot', d: 1, diff: 'threeVol', diffColor: true },
+    { k: 'rimPctV±', label: 'oppRim%±', group: 'shot', d: 1, diff: 'rimPctV', diffColor: true },
+    { k: 'threePctV±', label: 'opp3P%±', group: 'shot', d: 1, diff: 'threePctV', diffColor: true },
+    { k: 'astPct±', label: 'AST%±', group: 'play', d: 1, diff: 'astPct', diffColor: true },
+    { k: 'stlPct±', label: 'STL%±', group: 'play', d: 1, diff: 'stlPct', diffColor: true },
+    { k: 'blkPct±', label: 'BLK%±', group: 'play', d: 1, diff: 'blkPct', diffColor: true },
+    { k: 'paceF±', label: 'Pace±', group: 'play', d: 1, diff: 'paceF', diffColor: true },
+    { k: 'fastBreak100±', label: 'FB/100±', group: 'play', d: 1, diff: 'fastBreak100', diffColor: true },
+    { k: 'secChance100±', label: '2ndCh/100±', group: 'play', d: 1, diff: 'secChance100', diffColor: true },
+    { k: 'ptsOffTov100±', label: 'offTO/100±', group: 'play', d: 1, diff: 'ptsOffTov100', diffColor: true },
+    { k: 'clutchNet', label: 'Clutch Net', group: 'clutch', d: 1, diffColor: true },
+    { k: 'clutchPpg', label: 'Clutch PPG', group: 'clutch', d: 1 },
+    { k: 'clutchTs', label: 'Clutch TS%', group: 'clutch', d: 1 },
+    { k: 'bpm', label: 'BPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'obpm', label: 'OBPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'dbpm', label: 'DBPM', group: 'bpm', d: 1, diffColor: true },
+    { k: 'oRapm', label: 'oRAPM', group: 'rapm', d: 2, diffColor: true },
+    { k: 'dRapm', label: 'dRAPM', group: 'rapm', d: 2, diffColor: true },
+    { k: 'rapm', label: 'RAPM', group: 'rapm', d: 2, diffColor: true },
+    { k: 'oApm', label: 'oAPM', group: 'apm', d: 2, diffColor: true },
+    { k: 'dApm', label: 'dAPM', group: 'apm', d: 2, diffColor: true },
+    { k: 'apm', label: 'APM', group: 'apm', d: 2, diffColor: true }
+];
+
+/* ------------------------------------------------------------------ state */
+const S = {
+    leagues: new Map(),          // code -> league object (players etc.)
+    picked: new Map(),           // code -> {folder, dir, games}
+    activeLeagues: new Set(),
+    groupsOn: new Set(GROUPS.filter(g => g.def).map(g => g.id)),
+    mode: 'pg',                  // pg | tot | p100
+    diffMode: 'onOff',           // onOff | vsTeam
+    search: '', minMpg: 0, minGp: 0,
+    sortKey: 'pts', sortDir: 'desc',
+    showAll: false,
+    lambda: 800,
+    stintsCache: new Map(),      // code -> parsed stint rows
+    running: false
+};
+
+/* ----------------------------------------------------------------- status */
+function makeStatus() {
+    const box = $('#statusLog');
+    return {
+        log(msg, warn) {
+            const line = el('div', { class: warn ? 'warn' : '' , text: msg });
+            box.append(line); box.scrollTop = box.scrollHeight;
+        }
+    };
+}
+
+/* --------------------------------------------------------------- boot */
+async function boot() {
+    const status = makeStatus();
+    $('#loadState').textContent = 'discovering folders…';
+    const folders = await discoverFolders(status);
+    const byCode = new Map();
+    folders.forEach(fo => {
+        if (!byCode.has(fo.code)) byCode.set(fo.code, []);
+        byCode.get(fo.code).push(fo);
+    });
+    status.log(`found ${folders.length} folder(s), ${byCode.size} league code(s)`);
+
+    const codes = [...byCode.keys()].sort();
+    let done = 0;
+    for (const code of codes) {
+        $('#loadState').textContent = `checking ${code} (${++done}/${codes.length})…`;
+        const pick = await pickLeagueFolder(code, byCode.get(code), status);
+        if (!pick) { status.log(`${code}: NO usable folder — league excluded`, true); continue; }
+        S.picked.set(code, pick);
+    }
+
+    // load picked leagues (player/lineup/clutch CSVs)
+    for (const [code, pick] of S.picked) {
+        $('#loadState').textContent = `loading ${code}…`;
+        try {
+            const [ps, lu, cl] = await Promise.all([
+                fetchText(pick.dir + 'player_stats_enhanced.csv'),
+                fetchText(pick.dir + 'lineup_stats_enhanced.csv'),
+                fetchText(pick.dir + 'clutch_lineup_stats.csv').catch(() => null)
+            ]);
+            const L = computeLeague(code, { player_stats: ps, lineups: lu, clutch: cl }, pick.games);
+            L.folder = pick.folder.name; L.ts = pick.folder.ts; L.dir = pick.dir;
+            S.leagues.set(code, L);
+            S.activeLeagues.add(code);
+            status.log(`${code}: loaded ${L.players.length} players / ${L.teams.size} teams / ${pick.games} games (${pick.folder.ts})`);
+        } catch (e) {
+            status.log(`${code}: load failed — ${e.message}`, true);
+        }
+    }
+    $('#loadState').textContent = `${S.leagues.size} league(s) loaded`;
+    buildControls();
+    render();
+}
+
+/* ------------------------------------------------------- RAPM / APM run */
+async function ensureStints(code) {
+    if (S.stintsCache.has(code)) return S.stintsCache.get(code);
+    const L = S.leagues.get(code);
+    const rows = parseCSV(await fetchText(L.dir + 'stints.csv'));
+    // hard sanity (post-download): catches anything the size heuristic missed
+    const gameIds = new Set(rows.map(r => r.game_id));
+    const totalPts = rows.reduce((a, r) => a + f(r.home_points) + f(r.away_points), 0);
+    if (rows.length / Math.max(gameIds.size, 1) < MIN_STINTS_PER_GAME || totalPts === 0) {
+        throw new Error(`stints.csv failed sanity (${rows.length} stints / ${gameIds.size} games, ${totalPts} pts) — bugged output`);
+    }
+    S.stintsCache.set(code, rows);
+    return rows;
+}
+
+function mergeRapm(code, result) {
+    const L = S.leagues.get(code);
+    L.rapm = result;
+    L.players.forEach(p => {
+        const off = PlayerRAPMEngine.getPlayerRapmValue(result, p.player, 'off');
+        const def = PlayerRAPMEngine.getPlayerRapmValue(result, p.player, 'def');
+        const net = PlayerRAPMEngine.getPlayerRapmValue(result, p.player, 'net');
+        p.oRapm = off && off.rapm !== undefined ? off.rapm : null;
+        // 'def' returns flipSign(-dRAPM); display convention (index_9): positive = good defense
+        p.dRapm = def && def.rapm !== undefined ? -def.rapm : null;
+        p.rapm = net && net.rapm !== undefined ? net.rapm : null;
+    });
+}
+function mergeApm(code, result) {
+    const L = S.leagues.get(code);
+    L.apm = result;
+    L.players.forEach(p => {
+        const a = PlayerRAPMEngine.getPlayerApmValue(result, p.player);
+        p.apm = a ? (a.apm ?? null) : null;
+        p.oApm = a ? (a.oapm ?? null) : null;
+        p.dApm = a ? (a.dapm ?? null) : null;
+    });
+}
+
+async function runEngines(kind, codesArg) {
+    if (S.running) return;
+    S.running = true;
+    const codes = codesArg || [...S.activeLeagues];
+    const bar = $('#calcBar'), msg = $('#calcMsg');
+    $('#calcPanel').style.display = 'block';
+    try {
+        for (const code of codes) {
+            const L = S.leagues.get(code);
+            if (!L) continue;
+            msg.textContent = `${code}: loading stints…`;
+            let rows;
+            try { rows = await ensureStints(code); }
+            catch (e) { msg.textContent = `${code}: ${e.message}`; continue; }
+            const onProg = (p, m) => { bar.style.width = (p || 0) + '%'; msg.textContent = `${code} ${kind}: ${m || ''}`; };
+            if (kind === 'RAPM' || kind === 'BOTH') {
+                const res = await PlayerRAPMEngine.calculateAsync(rows, S.lambda, onProg);
+                if (!res.error) mergeRapm(code, res);
+                else msg.textContent = `${code}: RAPM error — ${res.error}`;
+            }
+            if (kind === 'APM' || kind === 'BOTH') {
+                // exact same statsObject construction as index_9's triggerAPMCalculation
+                const statsObject = {};
+                L.players.forEach(p => {
+                    if (p.poss > 0) statsObject[p.playerNorm] = {
+                        FGM: p.fgm, FGA: p.fga, '3PM': p.tpm, '3PA': p.tpa, FTM: p.ftm, FTA: p.fta,
+                        OREB: p.oreb, DREB: p.dreb, AST: p.ast, STL: p.stl, BLK: p.blk,
+                        TOV: p.tov, PF: p.pf, POSS: p.poss
+                    };
+                });
+                const res = await PlayerRAPMEngine.calculateAPMAsync(rows, statsObject, S.lambda, onProg);
+                if (!res.error) mergeApm(code, res);
+                else msg.textContent = `${code}: APM error — ${res.error}`;
+            }
+            render();
+        }
+        msg.textContent = 'done';
+    } finally {
+        S.running = false;
+        setTimeout(() => { $('#calcPanel').style.display = 'none'; }, 2500);
+    }
+}
+
+/* ----------------------------------------------------------------- table */
+function cellValue(row, col) {
+    if (col.k === 'leagueLabel') return leagueName(row.league);
+    if (col.diff) {
+        const d = row._diffs && row._diffs[S.diffMode];
+        return d ? d[col.diff] : null;
+    }
+    let v = row[col.k];
+    if (v == null) return null;
+    if (col.counting) {
+        if (S.mode === 'pg') return row.gp > 0 ? v / row.gp : 0;
+        if (S.mode === 'p100') return row.poss > 0 ? v / row.poss * 100 : 0;
+        return v;
+    }
+    if (col.k === 'mpg' && S.mode === 'tot') return row.min;
+    return v;
+}
+
+function visibleCols() {
+    return COLS.filter(c => c.group === 'fixed' || S.groupsOn.has(c.group));
+}
+
+function filteredRows() {
+    const q = S.search.toLowerCase();
+    const rows = [];
+    for (const code of S.activeLeagues) {
+        const L = S.leagues.get(code);
+        if (!L) continue;
+        for (const p of L.players) {
+            if (p.mpg < S.minMpg || p.gp < S.minGp) continue;
+            if (q && !(p.player.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))) continue;
+            rows.push(p);
+        }
+    }
+    const col = COLS.find(c => c.k === S.sortKey) || COLS[3];
+    rows.sort((a, b) => {
+        if (col.str) {
+            const av = String(cellValue(a, col) || ''), bv = String(cellValue(b, col) || '');
+            return S.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+        }
+        const av = cellValue(a, col), bv = cellValue(b, col);
+        const an = av == null ? -Infinity : av, bn = bv == null ? -Infinity : bv;
+        return S.sortDir === 'asc' ? an - bn : bn - an;
+    });
+    return rows;
+}
+
+function render() {
+    const cols = visibleCols();
+    const rows = filteredRows();
+    const thead = el('tr', null, ...cols.map((c, i) =>
+        el('th', {
+            class: (c.str ? 'sticky-col c' + i : '') + (S.sortKey === c.k ? ' sorted' : ''),
+            onclick: () => {
+                if (S.sortKey === c.k) S.sortDir = S.sortDir === 'asc' ? 'desc' : 'asc';
+                else { S.sortKey = c.k; S.sortDir = c.str ? 'asc' : 'desc'; }
+                render();
+            }
+        }, c.label + (S.sortKey === c.k ? (S.sortDir === 'asc' ? ' ▲' : ' ▼') : ''))
+    ));
+    const shown = S.showAll ? rows : rows.slice(0, 100);
+    const frag = document.createDocumentFragment();
+    shown.forEach((r, ri) => {
+        const tr = document.createElement('tr');
+        cols.forEach((c, i) => {
+            const td = document.createElement('td');
+            const v = cellValue(r, c);
+            if (c.str) {
+                td.textContent = v == null ? '' : v;
+                td.className = 'sticky-col c' + i + (c.k === 'player' ? ' pname' : '');
+            } else if (v == null) {
+                td.textContent = '—'; td.className = 'muted';
+            } else {
+                td.textContent = c.diffColor && v > 0 ? '+' + v.toFixed(c.d) : v.toFixed(c.d);
+                if (c.diffColor) {
+                    const good = (c.hb === false) ? v < 0 : v > 0;
+                    td.className = v === 0 ? '' : (good ? 'pos' : 'neg');
+                }
+            }
+            tr.append(td);
+        });
+        frag.append(tr);
+    });
+    const table = $('#statTable');
+    table.replaceChildren(el('thead', null, thead), el('tbody', null, frag));
+    $('#rowCount').textContent = `${shown.length} of ${rows.length} players` + (S.showAll ? '' : ' (top 100 — use Show All)');
+}
+
+/* -------------------------------------------------------------- controls */
+function buildControls() {
+    // league chips
+    const lc = $('#leagueChips');
+    lc.replaceChildren();
+    [...S.leagues.keys()].sort().forEach(code => {
+        const L = S.leagues.get(code);
+        const chip = el('button', {
+            class: 'chip' + (S.activeLeagues.has(code) ? ' on' : ''),
+            title: `${L.folder} — ${L.players.length} players, ${L.games} games`,
+            onclick: () => {
+                if (S.activeLeagues.has(code)) S.activeLeagues.delete(code);
+                else S.activeLeagues.add(code);
+                buildControls(); render();
+            }
+        }, `${leagueName(code)} (${L.games}g)`);
+        lc.append(chip);
+    });
+    // group toggles
+    const gt = $('#groupToggles');
+    gt.replaceChildren();
+    GROUPS.forEach(g => {
+        gt.append(el('button', {
+            class: 'chip small' + (S.groupsOn.has(g.id) ? ' on' : ''),
+            onclick: () => {
+                if (S.groupsOn.has(g.id)) S.groupsOn.delete(g.id);
+                else S.groupsOn.add(g.id);
+                buildControls(); render();
+            }
+        }, g.label));
+    });
+}
+
+function wireStaticControls() {
+    $('#searchBox').addEventListener('input', e => { S.search = e.target.value; render(); });
+    $('#minMpg').addEventListener('change', e => { S.minMpg = f(e.target.value); render(); });
+    $('#minGp').addEventListener('change', e => { S.minGp = f(e.target.value); render(); });
+    $('#modeSel').addEventListener('change', e => { S.mode = e.target.value; render(); });
+    $('#diffModeSel').addEventListener('change', e => { S.diffMode = e.target.value; render(); });
+    $('#lambdaInput').addEventListener('change', e => { S.lambda = f(e.target.value) || 800; });
+    $('#showAllBtn').addEventListener('click', () => { S.showAll = !S.showAll; $('#showAllBtn').textContent = S.showAll ? 'Top 100' : 'Show All'; render(); });
+    $('#runRapmBtn').addEventListener('click', () => runEngines('RAPM'));
+    $('#runApmBtn').addEventListener('click', () => runEngines('APM'));
+    $('#runBothBtn').addEventListener('click', () => runEngines('BOTH'));
+    $('#exportBtn').addEventListener('click', exportCsv);
+    $('#statusToggle').addEventListener('click', () => {
+        const p = $('#statusLog');
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    });
+}
+
+function exportCsv() {
+    const cols = visibleCols();
+    const rows = filteredRows();
+    const esc = (s) => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const lines = [cols.map(c => esc(c.label)).join(',')];
+    rows.forEach(r => {
+        lines.push(cols.map(c => {
+            const v = cellValue(r, c);
+            if (v == null) return '';
+            return c.str ? esc(String(v)) : v.toFixed(c.d);
+        }).join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: 'prophesy_allstats.csv' });
+    document.body.append(a); a.click(); a.remove();
+}
+
+/* -------------------------------------------------------------------- go */
+document.addEventListener('DOMContentLoaded', () => {
+    wireStaticControls();
+    boot().catch(e => {
+        $('#loadState').textContent = 'FAILED: ' + e.message;
+        console.error(e);
+    });
+});
+})();
+
+</script>
+</body>
+</html>
