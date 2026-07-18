@@ -3,7 +3,7 @@
   "_meta": {
     "name": "SheffieldSharksCurrent",
     "slug": "sheffieldsharkscurrent",
-    "savedAt": "2026-07-16T19:28:00.765Z",
+    "savedAt": "2026-07-18T15:54:57.703Z",
     "savedBy": "sheffieldsharks"
   },
   "shortlistedPlayers": {
@@ -2490,6 +2490,24 @@
       "season": "",
       "savedAt": 1784230070151,
       "source": "manual"
+    },
+    "Matt Hayman": {
+      "metrics": {
+        "player": "Matt Hayman",
+        "team": "Arkansas St.",
+        "totalPoss": 0,
+        "totalPPP": 0,
+        "tsPct": 0,
+        "usagePct": 0,
+        "onBallPPP": 0,
+        "spacingPPP": 0,
+        "ftRate": 0
+      },
+      "role": null,
+      "team": "Arkansas St.",
+      "season": "",
+      "savedAt": 1784387780473,
+      "source": "manual"
     }
   },
   "customProfiles": [
@@ -3187,6 +3205,11 @@
       "name": "Nick Farrar",
       "team": "Galomar",
       "createdAt": 1784230070150
+    },
+    {
+      "name": "Matt Hayman",
+      "team": "Arkansas St.",
+      "createdAt": 1784387780473
     }
   ],
   "starRatings": {
@@ -3302,7 +3325,8 @@
     "Malik Messina-Moore": 4,
     "Christian May": 3.5,
     "Octavio Brito": 4,
-    "Travis Henson": 3.5
+    "Travis Henson": 3.5,
+    "Matt Hayman": 4
   },
   "playerPositions": {
     "Owen Dease": {
@@ -4267,6 +4291,14 @@
     "Christian May": {
       "primary": 2,
       "secondary": [
+        3,
+        4
+      ]
+    },
+    "Matt Hayman": {
+      "primary": 2,
+      "secondary": [
+        1,
         3,
         4
       ]
@@ -6481,6 +6513,10 @@
     "Christian May": {
       "height": "6'5\"",
       "weight": "215"
+    },
+    "Matt Hayman": {
+      "height": "6'5\"",
+      "weight": "210"
     }
   },
   "potentialRatings": {
@@ -6588,7 +6624,8 @@
     "Malik Messina-Moore": 5,
     "Dan Gherezgher": 5,
     "Octavio Brito": 4,
-    "Travis Henson": 4
+    "Travis Henson": 4,
+    "Matt Hayman": 4
   },
   "playerCoreStats": {
     "Garry Clark": {
@@ -8387,6 +8424,52 @@
         {
           "title": "FT%",
           "description": "Shot 64% from the line last season.",
+          "level": "Bad"
+        }
+      ]
+    },
+    "Matt Hayman": {
+      "strengths": [
+        {
+          "title": "Strength/Frame/Downhill",
+          "description": "Strong frame, withstands contact at the rim (58% on a good portion of self-created looks). Good additional rebounder at his position (5% ORB%). Can guard 1-4 w/ his physical frame. Uses his strong chest on D. Uses his handle and solid step to get rim looks and paint touches for scoring/drive and kick.",
+          "level": "Good"
+        },
+        {
+          "title": "Ball Handling/Attack Off-Catch Downhill",
+          "description": "Skilled handle that can withstand ball-pressure, used sometimes as an initiator. Comfortable handling the ball in tight spaces inside the arc, where his handle is used effectively to create looks at the rim or make smart drive and kick decisions w/ solid speed. Has an ability to shift defenders 1-on-1.",
+          "level": "Good"
+        },
+        {
+          "title": "3PT",
+          "description": "Extremely high volume shooter (14/100) from deep, on 31%. Comfortable off-movement/screens. Can get to his shot off-dribble behind the arc.",
+          "level": "Good"
+        },
+        {
+          "title": "Passing",
+          "description": "Capable passer and additional playmaker, willing on drive and kicks and as a handler in the PNR (20% AST rate,). Uses tempo/his strong frame as a ball handler in the PNR smartly. Uses pass and relocation to get his shot from deep.",
+          "level": "Good"
+        },
+        {
+          "title": "Anticipation/Hands/Screen D",
+          "description": "3% steals rate - disruptive defender. Gets skinny around screens. High pick-up point as a POA defender. Good motor on D.",
+          "level": "Good"
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Passing Decisions (PNR)",
+          "description": "Slightly higher TO% due to his ball-handling responsibilities (18TO%). Can sometimes make the wrong passing decisions in the PNR/be too ambitious with passes.",
+          "level": "Bad"
+        },
+        {
+          "title": "Shot Selection (3's)",
+          "description": "Can be overzealous in shooting tougher C&S 3's.",
+          "level": "Slight"
+        },
+        {
+          "title": "Mid",
+          "description": "Limited in-between game.",
           "level": "Bad"
         }
       ]
