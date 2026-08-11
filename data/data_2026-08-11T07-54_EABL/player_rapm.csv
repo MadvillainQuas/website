@@ -1,0 +1,98 @@
+# RAPM - Regularized Adjusted Plus/Minus
+# Regularization parameter (alpha/lambda): 800
+# Minimum possessions filter: 250
+# Total players in calculation: 191
+# Qualified players exported: 90
+# Total stints used: 2186
+# Garbage time stints excluded: 172
+Team,Player_Number,Player_Name,Possessions,ORAPM,DRAPM,RAPM
+Myerscough College EABL,13,S. Latidan,799,4.47,2.7,7.17
+City of London Academy - Southwark EABL,15,A. Nwokolo,619,3.66,3.29,6.95
+Charnwood College Riders EABL,7,L. Boothe,334,4.11,2.27,6.37
+City of London Academy - Southwark EABL,13,T. Gass,595,2.33,3.19,5.52
+Myerscough College EABL,11,H. Sheehan,630,3.3,2.05,5.35
+Manchester Magic Academy EABL,8,J. Walton,766,3.14,2.1,5.24
+City of London Academy - Southwark EABL,8,D. Banjoko,1206,1.49,3.75,5.24
+Itchen College EABL,5,B. Cope,622,1.98,3.23,5.21
+Manchester Magic Academy EABL,12,L. Clayton,379,2.42,2.56,4.98
+City of London Academy - Southwark EABL,5,D. Patel,406,3.53,1.42,4.95
+Myerscough College EABL,9,O. Esingle,671,3.07,1.81,4.88
+Myerscough College EABL,8,C. Sanchez Falette,618,0.53,4.24,4.78
+Itchen College EABL,4,J. Ofman,434,2.6,1.87,4.47
+Charnwood College Riders EABL,15,Z. Gleadell-Smith,562,1.96,2.41,4.37
+Manchester Magic Academy EABL,13,O. Babalola,819,2.83,1.48,4.31
+Itchen College EABL,6,E. Round,747,1.73,2.54,4.27
+Oaklands Wolves EABL,10,L. Mcintosh,635,5.8,-1.7,4.11
+Charnwood College Riders EABL,6,T. Curran,789,2.96,0.82,3.78
+Itchen College EABL,8,E. Lotriet,525,1.9,1.87,3.77
+Manchester Magic Academy EABL,7,H. Blake,497,1.61,2.13,3.74
+Manchester Magic Academy EABL,5,A. Sagay Isiorho,287,1.15,2.49,3.65
+Myerscough College EABL,1,J. Bobkowski,483,0.29,3.18,3.47
+Barking Abbey EABL,23,J. Mendes,634,0.41,2.99,3.41
+Itchen College EABL,11,M. Yeates,341,2.69,0.52,3.22
+Barking Abbey EABL,5,M. Filho,484,0.47,2.69,3.17
+Itchen College EABL,15,D. Cimochowski,426,0.35,2.34,2.69
+City of London Academy - Southwark EABL,7,J. Hannick,387,-0.03,2.57,2.54
+Manchester Magic Academy EABL,2,S. Sidi-Boumedine,312,1.99,0.36,2.35
+Myerscough College EABL,12,Z. Trezvant,573,2.41,-0.09,2.32
+Barking Abbey EABL,10,K. Mabaya,508,-0.04,2.32,2.27
+Barking Abbey EABL,25,O. Visockas,404,0.22,1.95,2.17
+Barking Abbey EABL,12,R. Connolly,578,0.78,1.31,2.09
+Itchen College EABL,13,J. Osei-Owusu,383,0.82,0.64,1.47
+BMET City of Birmingham Rockets EABL,5,J. Agbeze,677,1.78,-0.39,1.39
+HHS Reading Rockets EABL,4,C. Okumus,387,-0.81,2.1,1.29
+Oaklands Wolves EABL,1,D. Kostadinov,669,2.59,-1.59,1.0
+Oaklands Wolves EABL,15,G. Mitchell,701,0.48,0.44,0.92
+Manchester Magic Academy EABL,6,T. Kamal Kazmi,412,0.01,0.77,0.78
+Charnwood College Riders EABL,15,T. Pearson,487,-1.69,2.36,0.67
+Derby College Trailblazers EABL,12,R. Hobday,438,1.75,-1.2,0.55
+HHS Reading Rockets EABL,15,L. Bakary,504,-0.48,0.98,0.5
+Barking Abbey EABL,22,A. Nwabueze,310,-1.36,1.84,0.47
+Manchester Magic Academy EABL,10,J. Odongo,440,-2.48,2.9,0.42
+Itchen College EABL,9,T. Blower,340,0.68,-0.35,0.33
+Barking Abbey EABL,15,A. Maitland,370,0.64,-0.53,0.11
+Manchester Magic Academy EABL,4,T. Richardson,341,0.47,-0.38,0.08
+Itchen College EABL,10,R. Radu,302,-0.26,-0.22,-0.48
+Charnwood College Riders EABL,8,D. Hanousek,282,0.15,-0.64,-0.49
+SGS College EABL,6,M. Perez Tosca,675,-0.16,-0.39,-0.56
+Oaklands Wolves EABL,24,D. Gladstone,567,-0.18,-0.47,-0.64
+Derby College Trailblazers EABL,7,E. Norman,592,0.92,-1.64,-0.72
+Oaklands Wolves EABL,8,T. Mcintosh,329,-1.16,0.21,-0.94
+HHS Reading Rockets EABL,14,J. Mackinnon,329,-2.03,0.97,-1.05
+Copleston High School EABL,5,C. Fobister,520,-0.39,-0.72,-1.11
+Derby College Trailblazers EABL,6,W. Tallon,627,-0.69,-0.44,-1.13
+SGS College EABL,5,D. Lloyd,516,0.15,-1.34,-1.19
+Charnwood College Riders EABL,5,A. Oyerinde,357,-0.23,-0.98,-1.21
+Manchester Magic Academy EABL,1,N. Brown,335,0.28,-1.76,-1.48
+Charnwood College Riders EABL,9,R. Buckingham,569,1.33,-2.85,-1.52
+Copleston High School EABL,13,I. Carty-Peters,293,-3.78,1.99,-1.8
+SGS College EABL,3,L. Matthews,419,-1.51,-0.32,-1.83
+SGS College EABL,4,M. Alburo,546,-1.01,-0.84,-1.84
+HHS Reading Rockets EABL,7,M. Daines,793,-2.44,0.48,-1.97
+Derby College Trailblazers EABL,1,L. Ngomti,261,-0.9,-1.3,-2.2
+BMET City of Birmingham Rockets EABL,15,L. Duru,858,-0.01,-2.2,-2.22
+Derby College Trailblazers EABL,4,E. Rice,541,-0.13,-2.11,-2.24
+Charnwood College Riders EABL,13,L. Stevenson,310,-1.74,-0.62,-2.36
+HHS Reading Rockets EABL,5,E. Harrington,632,-2.27,-0.21,-2.48
+SGS College EABL,8,A. Odowa,255,-1.42,-1.13,-2.55
+SGS College EABL,12,I. Toure,525,-2.04,-0.81,-2.85
+HHS Reading Rockets EABL,13,J. Waterhouse,572,-1.13,-1.88,-3.0
+Oaklands Wolves EABL,14,H. Morrell,472,-0.26,-2.83,-3.1
+Derby College Trailblazers EABL,10,C. Burr,720,-1.83,-1.35,-3.18
+SGS College EABL,15,K. Richards,316,-0.99,-2.2,-3.18
+BMET City of Birmingham Rockets EABL,10,P. Basioudis,768,-0.26,-3.0,-3.25
+Oaklands Wolves EABL,17,E. Da Cruz Fatuda,720,-0.65,-2.72,-3.37
+Derby College Trailblazers EABL,8,J. Howlett,361,-0.61,-2.77,-3.38
+SGS College EABL,14,K. Ramirez Mora,584,-0.32,-3.14,-3.45
+Charnwood College Riders EABL,10,P. Kattah,533,-3.2,-0.32,-3.52
+BMET City of Birmingham Rockets EABL,7,P. Walsh,275,-1.46,-2.26,-3.73
+Charnwood College Riders EABL,23,F. Saeed,299,-2.11,-1.63,-3.74
+Derby College Trailblazers EABL,5,G. Pastor,428,-2.31,-1.67,-3.98
+Copleston High School EABL,7,I. Little,657,-2.87,-1.13,-4.0
+BMET City of Birmingham Rockets EABL,9,J. Hyland,661,-0.63,-3.86,-4.5
+BMET City of Birmingham Rockets EABL,6,G. Angoy,704,-1.66,-3.39,-5.06
+SGS College EABL,2,S. Nelson,366,-3.6,-2.7,-6.3
+Copleston High School EABL,6,T. Rafiu,677,-3.65,-3.06,-6.71
+HHS Reading Rockets EABL,10,M. Hassan-Taylor,673,-3.33,-4.11,-7.43
+Copleston High School EABL,4,N. Wilkinson,718,-2.79,-5.16,-7.95
+Copleston High School EABL,10,M. Liddamore,827,-5.68,-4.09,-9.77
