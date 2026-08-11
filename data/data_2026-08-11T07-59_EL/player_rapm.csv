@@ -1,0 +1,273 @@
+# RAPM - Regularized Adjusted Plus/Minus
+# Regularization parameter (alpha/lambda): 800
+# Minimum possessions filter: 250
+# Total players in calculation: 361
+# Qualified players exported: 265
+# Total stints used: 13373
+# Garbage time stints excluded: 171
+Team,Player_Number,Player_Name,Possessions,ORAPM,DRAPM,RAPM
+Zalgiris Kaunas,3,Sylvain Francisco,2031,5.19,1.55,6.74
+Valencia Basket,1,Kameron Taylor,1759,3.32,3.09,6.41
+Paris Basketball,20,Jeremy Morgan,1060,5.18,1.21,6.38
+Fenerbahce Beko Istanbul,4,Nicolo Melli,1436,1.18,4.98,6.17
+Partizan Mozzart Bet Belgrade,1,Carlik Jones,683,1.96,3.85,5.81
+Maccabi Rapyd Tel Aviv,12,John Dibartolomeo,673,3.79,1.98,5.77
+Olympiacos Piraeus,34,Cory Joseph,404,1.74,3.61,5.35
+Crvena Zvezda Meridianbet Belgrade,95,Chima Moneke,1655,3.83,1.34,5.17
+FC Barcelona,13,Tomas Satoransky,1604,2.29,2.64,4.92
+EA7 Emporio Armani Milan,10,Leandro Bolmaro,1145,2.0,2.91,4.9
+Real Madrid,22,Walter Tavares,1568,2.23,2.65,4.89
+Olympiacos Piraeus,3,Tyson Ward,1143,3.61,1.24,4.85
+Virtus Bologna,1,Luca Vildoza,1144,3.69,1.03,4.73
+Hapoel IBI Tel Aviv,3,Elijah Bryant,1990,2.71,1.94,4.64
+Real Madrid,0,Trey Lyles,1593,2.28,2.35,4.63
+FC Bayern Munich,10,Justinian Jessup,1244,1.07,3.48,4.55
+FC Barcelona,23,Tornike Shengelia,1474,4.42,0.12,4.54
+Fenerbahce Beko Istanbul,12,Nando De Colo,506,2.79,1.71,4.5
+AS Monaco,22,Terry Tarpey,469,0.67,3.67,4.34
+Valencia Basket,13,Darius Thompson,1533,2.36,1.57,3.92
+Crvena Zvezda Meridianbet Belgrade,15,Ebuka Izundu,831,3.69,0.22,3.92
+FC Bayern Munich,1,Oscar Da Silva,945,1.77,2.08,3.85
+Dubai Basketball,25,Mckinley Wright Iv,1965,2.59,1.25,3.84
+Virtus Bologna,6,Alessandro Pajola,818,2.38,1.44,3.82
+Maccabi Rapyd Tel Aviv,22,Tj Leaf,777,0.8,2.97,3.77
+AS Monaco,11,Alpha Diallo,2080,2.28,1.42,3.7
+Olympiacos Piraeus,25,Alec Peters,1071,1.84,1.73,3.57
+Olympiacos Piraeus,0,Thomas Walkup,1568,1.61,1.87,3.48
+AS Monaco,33,Nikola Mirotic,1079,3.97,-0.51,3.46
+Real Madrid,14,Gabriel Deck,1481,1.67,1.7,3.37
+AS Monaco,13,Kevarrius Hayes,1255,-0.03,3.38,3.35
+Panathinaikos AKTOR Athens,10,Kostas Sloukas,1392,3.7,-0.49,3.2
+Real Madrid,16,Usman Garuba,871,3.2,-0.08,3.12
+Crvena Zvezda Meridianbet Belgrade,6,Jared Butler,1073,2.94,0.16,3.1
+Zalgiris Kaunas,10,Azuolas Tubelis,1635,2.05,1.04,3.09
+LDLC ASVEL Villeurbanne,24,Mbaye Ndiaye,1348,0.69,2.37,3.06
+Partizan Mozzart Bet Belgrade,23,Tonye Jekiri,501,-0.79,3.84,3.05
+Olympiacos Piraeus,88,Tyrique Jones,409,-0.68,3.53,2.85
+Maccabi Rapyd Tel Aviv,0,Iffe Lundberg,685,1.46,1.38,2.84
+Olympiacos Piraeus,14,Sasha Vezenkov,1912,2.25,0.51,2.76
+Valencia Basket,24,Matthew Costello,1210,0.25,2.5,2.75
+Real Madrid,7,Facundo Campazzo,1865,0.69,2.05,2.74
+Dubai Basketball,3,Dwayne Bacon,1492,2.74,-0.1,2.65
+Dubai Basketball,17,Mfiondu Kabengele,1403,2.07,0.54,2.61
+Maccabi Rapyd Tel Aviv,11,William Rayman,794,1.23,1.38,2.61
+FC Bayern Munich,0,Neno Dimitrijevic,585,-0.36,2.84,2.47
+EA7 Emporio Armani Milan,32,Josh Nebo,981,3.15,-0.7,2.45
+Anadolu Efes Istanbul,5,Saben Lee,559,0.85,1.58,2.43
+Dubai Basketball,7,Klemen Prepelic,654,-0.45,2.87,2.42
+Panathinaikos AKTOR Athens,17,Nikolaos Rogkavopoulos,694,0.88,1.5,2.39
+LDLC ASVEL Villeurbanne,12,Nando De Colo,502,1.42,0.89,2.31
+Anadolu Efes Istanbul,24,Ercan Osmani,1434,0.16,2.12,2.29
+Kosner Baskonia Vitoria-Gasteiz,25,Clement Frisch,626,-0.67,2.88,2.21
+Olympiacos Piraeus,33,Nikola Milutinov,1533,1.66,0.5,2.16
+Panathinaikos AKTOR Athens,6,Cedi Osman,1895,0.7,1.42,2.12
+Fenerbahce Beko Istanbul,8,Talen Horton Tucker,1711,-0.82,2.91,2.09
+Panathinaikos AKTOR Athens,11,Nigel Hayes-Davis,774,2.99,-0.92,2.07
+Paris Basketball,7,Sebastian Herrera,1106,-1.93,4.0,2.07
+Paris Basketball,13,Allan Dokossi,1038,-0.06,2.1,2.04
+Valencia Basket,12,Neal Sako,1004,0.23,1.71,1.93
+Baskonia Vitoria-Gasteiz,1,Mamadi Diakite,271,0.49,1.41,1.9
+Crvena Zvezda Meridianbet Belgrade,20,Donatas Motiejunas,625,-0.3,2.13,1.83
+EA7 Emporio Armani Milan,12,Armoni Brooks,1492,1.44,0.27,1.71
+EA7 Emporio Armani Milan,17,Giampaolo Ricci,1066,1.75,-0.05,1.7
+Hapoel IBI Tel Aviv,2,Antonio Blakeney,1637,1.08,0.57,1.65
+Fenerbahce Beko Istanbul,13,Tarik Biberovic,1718,0.06,1.58,1.65
+Real Madrid,24,Andres Feliz,1137,1.59,0.01,1.6
+Panathinaikos AKTOR Athens,8,Richaun Holmes,595,0.9,0.65,1.55
+Anadolu Efes Istanbul,10,Isaia Cordinier,1182,1.77,-0.25,1.51
+Paris Basketball,2,Nadir Hifi,1531,0.86,0.65,1.51
+Paris Basketball,4,Leopold Cavaliere,934,-1.3,2.74,1.45
+LDLC ASVEL Villeurbanne,1,Zachary Seljaas,1256,-0.19,1.63,1.44
+Valencia Basket,7,Braxton Key,1059,-1.36,2.74,1.37
+Dubai Basketball,8,Davis Bertans,960,0.32,1.05,1.36
+Partizan Mozzart Bet Belgrade,12,Sterling Brown,1747,1.04,0.32,1.36
+FC Barcelona,3,Myles Cale,878,-0.41,1.75,1.33
+LDLC ASVEL Villeurbanne,6,Braian Angola,651,0.6,0.69,1.29
+Anadolu Efes Istanbul,17,Vincent Poirier,449,1.1,0.17,1.27
+Panathinaikos AKTOR Athens,25,Kendrick Nunn,1942,2.04,-0.78,1.26
+FC Barcelona,6,Jan Vesely,1372,-0.05,1.29,1.24
+Hapoel IBI Tel Aviv,25,Dan Oturu,1781,0.05,1.05,1.1
+Kosner Baskonia Vitoria-Gasteiz,0,Markus Howard,662,0.96,0.13,1.1
+Anadolu Efes Istanbul,8,Nick Weiler-Babb,1747,0.16,0.91,1.07
+LDLC ASVEL Villeurbanne,30,Glynn Watson,1345,0.15,0.89,1.04
+Baskonia Vitoria-Gasteiz,6,Hamidou Diallo,469,0.21,0.82,1.03
+Virtus Bologna,35,Mouhamet Diouf,1073,0.19,0.81,1.0
+EA7 Emporio Armani Milan,2,Lorenzo Brown,304,0.16,0.83,1.0
+Kosner Baskonia Vitoria-Gasteiz,10,Matteo Spagnolo,728,1.1,-0.13,0.97
+Valencia Basket,2,Josep Puerto,1093,1.07,-0.13,0.93
+Maccabi Rapyd Tel Aviv,4,Gur Lavi,299,1.14,-0.27,0.87
+Maccabi Rapyd Tel Aviv,3,Marcio Santos,937,2.76,-1.9,0.86
+Kosner Baskonia Vitoria-Gasteiz,18,Khalifa Diop,490,1.58,-0.72,0.86
+Baskonia Vitoria-Gasteiz,9,Timothe Luwawu-Cabarrot,559,1.23,-0.58,0.65
+FC Bayern Munich,44,Kamar Baldwin,253,0.78,-0.14,0.64
+Olympiacos Piraeus,16,Kostas Papanikolaou,914,0.52,0.11,0.63
+Olympiacos Piraeus,94,Evan Fournier,1451,0.71,-0.08,0.63
+Hapoel IBI Tel Aviv,24,Ish Wainright,1733,-0.15,0.77,0.63
+Zalgiris Kaunas,12,Maodo Lo,1274,2.6,-1.98,0.62
+FC Bayern Munich,7,Johannes Voigtmann,540,-0.38,0.98,0.61
+Partizan Mozzart Bet Belgrade,88,Tyrique Jones,655,0.78,-0.18,0.6
+Zalgiris Kaunas,7,Moses Wright,1718,1.39,-0.8,0.59
+FC Bayern Munich,26,Spencer Dinwiddie,433,-1.21,1.79,0.58
+Crvena Zvezda Meridianbet Belgrade,13,Ognjen Dobric,540,0.44,0.11,0.54
+Zalgiris Kaunas,91,Deividas Sirvydis,548,-2.42,2.94,0.52
+Zalgiris Kaunas,14,Dustin Sleva,1284,0.47,0.02,0.49
+Panathinaikos AKTOR Athens,22,Jerian Grant,1736,-1.83,2.25,0.43
+Dubai Basketball,51,Bruno Caboclo,263,0.23,0.15,0.38
+Valencia Basket,8,Jean Montero,1547,1.6,-1.23,0.37
+Paris Basketball,35,Derek Willis,876,0.09,0.25,0.35
+Hapoel IBI Tel Aviv,1,Chris Jones,1504,1.54,-1.19,0.34
+EA7 Emporio Armani Milan,42,Bryant Dunston,308,-2.44,2.72,0.27
+LDLC ASVEL Villeurbanne,3,Shaquille Harrison,960,-0.8,1.03,0.23
+Paris Basketball,5,Justin Robinson,1276,0.04,0.19,0.23
+AS Monaco,32,Matthew Strazel,1852,-2.12,2.28,0.16
+Baskonia Vitoria-Gasteiz,10,Matteo Spagnolo,325,-1.19,1.34,0.16
+Dubai Basketball,30,Filip Petrusev,1599,0.79,-0.75,0.03
+Panathinaikos AKTOR Athens,26,Mathias Lessort,562,-0.46,0.48,0.02
+Partizan Mozzart Bet Belgrade,17,Isaac Bonga,1750,-0.01,0.01,-0.01
+FC Bayern Munich,13,Andreas Obst,1599,1.12,-1.15,-0.03
+Fenerbahce Beko Istanbul,11,Brandon Boston Jr,601,-0.95,0.92,-0.03
+Anadolu Efes Istanbul,3,Jordan Loyd,1303,-0.69,0.64,-0.05
+Crvena Zvezda Meridianbet Belgrade,11,Tyson Carter,291,-1.22,1.14,-0.08
+Virtus Bologna,45,Nicola Akele,457,-2.28,2.2,-0.08
+Real Madrid,8,Chuma Okeke,1326,0.6,-0.69,-0.09
+Hapoel IBI Tel Aviv,17,Collin Malcolm,1763,1.69,-1.79,-0.1
+Maccabi Rapyd Tel Aviv,2,Jimmy Clark Iii,1315,1.95,-2.05,-0.1
+Zalgiris Kaunas,51,Arnas Butkevicius,1194,0.66,-0.78,-0.12
+Kosner Baskonia Vitoria-Gasteiz,17,Gytis Radzevicius,794,-0.0,-0.11,-0.12
+Olympiacos Piraeus,1,Frank Ntilikina,675,-0.15,0.02,-0.13
+Panathinaikos AKTOR Athens,41,Juancho Hernangomez,1888,0.65,-0.82,-0.17
+Kosner Baskonia Vitoria-Gasteiz,1,Mamadi Diakite,1020,0.9,-1.08,-0.18
+Virtus Bologna,21,Derrick Alston Jr,1465,0.75,-0.96,-0.21
+Crvena Zvezda Meridianbet Belgrade,0,Codi Miller-Mcintyre,2107,0.21,-0.44,-0.23
+Olympiacos Piraeus,22,Tyler Dorsey,1911,-0.03,-0.24,-0.27
+FC Barcelona,0,Kevin Punter,1823,1.26,-1.53,-0.27
+Anadolu Efes Istanbul,33,Erkan Yilmaz,333,-2.03,1.74,-0.28
+Fenerbahce Beko Istanbul,92,Khem Birch,1247,-1.64,1.35,-0.29
+Zalgiris Kaunas,8,Ignas Brazdeikis,948,-2.09,1.72,-0.37
+Paris Basketball,8,Jared Rhoden,1036,-0.29,-0.09,-0.38
+Maccabi Rapyd Tel Aviv,8,Lonnie Walker Iv,1208,-0.26,-0.14,-0.39
+Fenerbahce Beko Istanbul,50,Bonzie Colson,1213,-0.3,-0.09,-0.39
+FC Bayern Munich,22,Isiaha Mike,1406,0.07,-0.5,-0.43
+Virtus Bologna,30,Matthew Morgan,1184,-0.03,-0.42,-0.45
+Partizan Mozzart Bet Belgrade,15,Cameron Payne,394,-0.8,0.33,-0.47
+Fenerbahce Beko Istanbul,2,Wade Baldwin Iv,1925,-0.62,0.13,-0.49
+Hapoel IBI Tel Aviv,15,Kessler Edwards,302,-2.97,2.48,-0.49
+FC Bayern Munich,33,David Mccormack,745,-1.56,0.91,-0.65
+Paris Basketball,15,Mouhamed Faye,1192,-0.93,0.27,-0.66
+Kosner Baskonia Vitoria-Gasteiz,3,Markquis Nowell,386,-1.32,0.62,-0.71
+Baskonia Vitoria-Gasteiz,18,Khalifa Diop,319,0.46,-1.17,-0.71
+Partizan Mozzart Bet Belgrade,19,Arijan Lakic,560,-1.01,0.27,-0.74
+Valencia Basket,10,Omari Moore,1372,-2.3,1.55,-0.75
+EA7 Emporio Armani Milan,3,Quinn Ellis,1560,1.81,-2.56,-0.75
+Zalgiris Kaunas,15,Laurynas Birutis,680,-0.86,0.03,-0.82
+AS Monaco,10,Daniel Theis,1407,1.26,-2.15,-0.89
+Panathinaikos AKTOR Athens,77,Omer Yurtseven,435,-1.08,0.13,-0.96
+FC Barcelona,8,Dario Brizuela,1007,-0.94,-0.02,-0.96
+Real Madrid,11,Mario Hezonja,1754,0.82,-1.81,-0.98
+LDLC ASVEL Villeurbanne,11,Edwin Jackson,589,2.25,-3.24,-0.99
+LDLC ASVEL Villeurbanne,0,Paul Eboua,593,0.14,-1.2,-1.05
+FC Bayern Munich,5,Niels Giffey,711,-0.42,-0.67,-1.09
+Fenerbahce Beko Istanbul,17,Onuralp Bitim,527,-1.02,-0.14,-1.15
+EA7 Emporio Armani Milan,16,Zach Leday,1292,0.91,-2.06,-1.16
+FC Barcelona,2,Juani Marcos,427,-2.22,1.03,-1.19
+Partizan Mozzart Bet Belgrade,4,Duane Washington,840,-0.88,-0.38,-1.27
+Hapoel IBI Tel Aviv,0,Johnathan Motley,917,-0.97,-0.31,-1.28
+Virtus Bologna,31,Aliou Diarra,510,0.43,-1.71,-1.28
+Zalgiris Kaunas,9,Dovydas Giedraitis,409,-0.84,-0.44,-1.29
+FC Barcelona,20,Nicolas Laprovittola,585,1.58,-2.87,-1.29
+Olympiacos Piraeus,45,Donta Hall,956,0.13,-1.43,-1.3
+Panathinaikos AKTOR Athens,44,Konstantinos Mitoglou,694,-0.44,-0.86,-1.31
+Partizan Mozzart Bet Belgrade,24,Bruno Fernando,1013,-2.58,1.25,-1.33
+Baskonia Vitoria-Gasteiz,3,Markquis Nowell,335,0.07,-1.42,-1.35
+Olympiacos Piraeus,77,Shaquielle Mckissic,527,-1.27,-0.08,-1.35
+AS Monaco,26,Nemanja Nedovic,817,-1.07,-0.51,-1.57
+LDLC ASVEL Villeurbanne,10,Bodian Massa,941,-1.31,-0.27,-1.58
+LDLC ASVEL Villeurbanne,94,Armel Traore,978,-1.97,0.34,-1.63
+Anadolu Efes Istanbul,0,Shane Larkin,558,0.59,-2.35,-1.76
+Partizan Mozzart Bet Belgrade,22,Jabari Parker,458,-0.5,-1.27,-1.77
+Maccabi Rapyd Tel Aviv,45,Tamir Blatt,1377,-0.52,-1.25,-1.77
+Valencia Basket,0,Brancou Badio,1470,-1.99,0.21,-1.78
+FC Bayern Munich,11,Vladimir Lucic,1299,-2.18,0.39,-1.79
+Dubai Basketball,4,Aleksa Avramovic,676,-1.57,-0.24,-1.8
+Fenerbahce Beko Istanbul,18,Mikael Jantunen,1156,-0.71,-1.09,-1.81
+Kosner Baskonia Vitoria-Gasteiz,7,Rodions Kurucs,774,-2.13,0.33,-1.81
+AS Monaco,0,Elie Okobo,1913,-0.11,-1.7,-1.82
+AS Monaco,55,Mike James,2096,1.24,-3.13,-1.89
+AS Monaco,4,Jaron Blossomgame,1804,-1.24,-0.65,-1.89
+Hapoel IBI Tel Aviv,22,Vasilije Micic,1744,-0.54,-1.39,-1.92
+Dubai Basketball,5,Awudu Abass,895,-0.82,-1.12,-1.94
+EA7 Emporio Armani Milan,23,Marko Guduric,1323,-2.58,0.63,-1.94
+Zalgiris Kaunas,1,Nigel Williams-Goss,1276,-2.41,0.46,-1.94
+Anadolu Efes Istanbul,21,Cole Swider,437,-0.81,-1.15,-1.96
+Panathinaikos AKTOR Athens,35,Kenneth Faried,789,0.66,-2.65,-1.99
+Crvena Zvezda Meridianbet Belgrade,33,Jordan Nwora,1616,-1.77,-0.24,-2.01
+Valencia Basket,4,Jaime Pradilla,1550,-0.2,-1.84,-2.03
+AS Monaco,23,Juhann Begarin,534,-1.12,-0.96,-2.08
+FC Barcelona,5,Miles Norris,751,-0.35,-1.73,-2.08
+Fenerbahce Beko Istanbul,20,Devon Hall,1515,-3.57,1.41,-2.16
+Kosner Baskonia Vitoria-Gasteiz,2,Kobi Simmons,1007,-0.76,-1.4,-2.16
+Partizan Mozzart Bet Belgrade,33,Nick Calathes,1020,-1.89,-0.28,-2.16
+Anadolu Efes Istanbul,2,Sehmus Hazer,709,-0.48,-1.72,-2.21
+Paris Basketball,11,Joel Ayayi,259,-3.03,0.78,-2.25
+EA7 Emporio Armani Milan,6,Devin Booker,1261,-0.51,-1.81,-2.32
+Virtus Bologna,7,Saliou Niang,1462,-3.51,1.15,-2.37
+EA7 Emporio Armani Milan,31,Shavon Shields,1664,0.44,-2.81,-2.37
+Dubai Basketball,13,Dzanan Musa,844,1.99,-4.37,-2.38
+Valencia Basket,5,Sergio De Larrea,634,-1.54,-0.92,-2.46
+Crvena Zvezda Meridianbet Belgrade,7,Dejan Davidovac,533,-0.91,-1.56,-2.47
+Kosner Baskonia Vitoria-Gasteiz,5,Eugene Omoruyi,848,0.99,-3.47,-2.48
+Crvena Zvezda Meridianbet Belgrade,12,Nikola Kalinic,1565,-1.9,-0.71,-2.61
+Virtus Bologna,34,Karim Jallow,1348,-0.24,-2.41,-2.65
+Real Madrid,12,Theo Maledon,1173,-1.45,-1.25,-2.7
+Real Madrid,6,Alberto Abalde,1136,-0.56,-2.18,-2.73
+Kosner Baskonia Vitoria-Gasteiz,9,Timothe Luwawu-Cabarrot,1085,-1.29,-1.58,-2.87
+EA7 Emporio Armani Milan,1,Niccolo Mannion,439,-1.58,-1.33,-2.91
+FC Barcelona,21,Will Clyburn,1465,-0.56,-2.36,-2.91
+Fenerbahce Beko Istanbul,1,Metecan Birsen,452,-2.05,-0.91,-2.96
+Baskonia Vitoria-Gasteiz,8,Tadas Sedekerskis,523,-2.02,-0.96,-2.98
+Virtus Bologna,9,Alen Smailagic,901,-2.22,-0.89,-3.1
+Valencia Basket,3,Nathan Reuvers,1524,-1.49,-1.63,-3.11
+Dubai Basketball,11,Kosta Kondic,335,-2.58,-0.55,-3.13
+Maccabi Rapyd Tel Aviv,9,Roman Sorkin,1591,-2.12,-1.04,-3.16
+Partizan Mozzart Bet Belgrade,11,Aleksej Pokusevski,538,-2.61,-0.56,-3.17
+Maccabi Rapyd Tel Aviv,21,Jeffrey Dowtin Jr,584,-2.5,-0.68,-3.18
+FC Bayern Munich,21,Justus Hollatz,726,-3.03,-0.23,-3.26
+Maccabi Rapyd Tel Aviv,1,Jaylen Hoard,1869,0.34,-3.64,-3.3
+Hapoel IBI Tel Aviv,21,Tai Odiase,617,-2.82,-0.55,-3.37
+Crvena Zvezda Meridianbet Belgrade,99,Yago Dos Santos,460,-2.36,-1.04,-3.4
+Fenerbahce Beko Istanbul,0,Armando Bacot Jr,455,-2.63,-0.79,-3.42
+Panathinaikos AKTOR Athens,0,Tj Shorts,1192,-1.73,-1.69,-3.42
+Maccabi Rapyd Tel Aviv,10,O'Shae J Brissett,1638,-1.16,-2.29,-3.45
+Crvena Zvezda Meridianbet Belgrade,37,Semi Ojeleye,1520,-5.5,2.05,-3.45
+Anadolu Efes Istanbul,1,Rodrigue Beaubois,445,-3.05,-0.49,-3.54
+Virtus Bologna,23,Daniel Hackett,892,-3.13,-0.42,-3.55
+Crvena Zvezda Meridianbet Belgrade,21,Joel Bolomboy,356,-3.21,-0.64,-3.85
+Real Madrid,23,Sergio Llull,737,-2.21,-1.67,-3.88
+Virtus Bologna,3,Carsen Edwards,1610,-1.97,-1.95,-3.92
+Anadolu Efes Istanbul,13,Brice Dessert,359,-3.95,-0.02,-3.97
+Paris Basketball,24,Yakuba Ouattara,1069,-1.31,-2.72,-4.02
+Paris Basketball,34,Daulton Hommes,511,-2.79,-1.29,-4.09
+Partizan Mozzart Bet Belgrade,5,Dylan Osetkowski,1202,-1.85,-2.25,-4.1
+Kosner Baskonia Vitoria-Gasteiz,11,Trent Forrest,973,-0.75,-3.37,-4.12
+FC Barcelona,44,Joel Parra,1276,-5.34,1.09,-4.24
+LDLC ASVEL Villeurbanne,8,Melvin Ajinca,964,-1.72,-2.52,-4.25
+LDLC ASVEL Villeurbanne,2,Adam Atamna,271,-4.15,-0.13,-4.28
+LDLC ASVEL Villeurbanne,32,Bastien Vautier,878,-3.52,-0.83,-4.35
+FC Barcelona,14,Willy Hernangomez,918,-2.64,-1.74,-4.38
+Dubai Basketball,34,Kenan Kamenjas,514,-0.31,-4.07,-4.38
+FC Bayern Munich,16,Stefan Jovic,611,-2.67,-1.76,-4.43
+Partizan Mozzart Bet Belgrade,2,Shake Milton,707,-3.35,-1.09,-4.44
+Real Madrid,25,Alex Len,361,-4.16,-0.31,-4.47
+FC Bayern Munich,32,Wenyen Gabriel,1056,-2.85,-1.65,-4.5
+Dubai Basketball,10,Justin Anderson,1367,-2.9,-1.72,-4.62
+Anadolu Efes Istanbul,88,Kai Jones,908,-3.14,-1.57,-4.72
+Paris Basketball,22,Amath M'Baye,1120,-1.17,-3.69,-4.86
+Zalgiris Kaunas,92,Edgaras Ulanovas,1334,-2.86,-2.0,-4.86
+Fenerbahce Beko Istanbul,30,Chris Silva,254,-3.5,-1.69,-5.19
+Anadolu Efes Istanbul,11,Rolands Smits,1108,-3.25,-1.99,-5.24
+Anadolu Efes Istanbul,15,Pj Dozier,972,-3.5,-1.76,-5.25
+FC Bayern Munich,4,Xavier Rathan-Mayes,821,-3.55,-1.72,-5.28
+Partizan Mozzart Bet Belgrade,9,Vanja Marinkovic,649,-3.07,-2.25,-5.32
+LDLC ASVEL Villeurbanne,7,Thomas Heurtel,909,-3.37,-2.73,-6.1
+Paris Basketball,9,Lamar Stevens,835,-3.15,-3.07,-6.22
+LDLC ASVEL Villeurbanne,23,David Lighty,1096,-4.87,-2.59,-7.46
