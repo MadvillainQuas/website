@@ -1,0 +1,98 @@
+# RAPM - Regularized Adjusted Plus/Minus
+# Regularization parameter (alpha/lambda): 800
+# Minimum possessions filter: 250
+# Total players in calculation: 199
+# Qualified players exported: 90
+# Total stints used: 2186
+# Garbage time stints excluded: 172
+Team,Player_Number,Player_Name,Possessions,ORAPM,DRAPM,RAPM
+Myerscough College EABL,13,Sayomi Latidan,486,5.97,3.7,9.67
+City of London Academy - Southwark EABL,15,Andrew Nwokolo,611,3.48,3.57,7.05
+Charnwood College Riders EABL,7,Luca Boothe,326,4.45,2.14,6.59
+City of London Academy - Southwark EABL,13,Toby Gass,585,2.49,3.31,5.8
+Myerscough College EABL,11,Harry Sheehan,623,3.31,2.29,5.61
+Manchester Magic Academy EABL,8,Jack Walton,756,3.33,2.16,5.49
+Myerscough College EABL,8,Cesar Sanchez Falette,608,1.08,4.26,5.33
+Itchen College EABL,5,Benjamin Cope,605,2.37,2.96,5.33
+City of London Academy - Southwark EABL,5,Dante Patel,400,3.63,1.63,5.27
+Myerscough College EABL,9,Olivier Esingle,664,3.13,2.1,5.23
+Manchester Magic Academy EABL,12,Lewis Clayton,374,2.48,2.58,5.05
+Itchen College EABL,6,Ethan Round,728,2.11,2.3,4.41
+Manchester Magic Academy EABL,13,Oluwademilade Babalola,811,2.69,1.69,4.38
+Itchen College EABL,4,Jakub Ofman,427,2.38,1.93,4.31
+Oaklands Wolves EABL,10,Liam Mcintosh,628,5.85,-1.61,4.23
+Charnwood College Riders EABL,15,Zavier Gleadell-Smith,551,2.04,2.17,4.21
+City of London Academy - Southwark EABL,12,David Banjoko,550,2.35,1.78,4.13
+Itchen College EABL,8,Elijah Lotriet,512,2.14,1.78,3.92
+Manchester Magic Academy EABL,7,Harley Blake,492,1.54,2.3,3.84
+Manchester Magic Academy EABL,5,Abraham Sagay Isiorho,284,1.23,2.59,3.82
+Charnwood College Riders EABL,6,Tristan Curran,775,3.1,0.66,3.76
+Barking Abbey EABL,23,Joshua Mendes,625,0.33,3.11,3.44
+Myerscough College EABL,1,Jakub Bobkowski,475,0.42,2.88,3.3
+Barking Abbey EABL,5,Micael Filho,478,0.41,2.74,3.14
+Itchen College EABL,11,Mason Yeates,335,2.49,0.62,3.12
+Itchen College EABL,15,Dawid Cimochowski,414,0.69,2.11,2.8
+City of London Academy - Southwark EABL,7,Jacob Hannick,382,-0.0,2.77,2.77
+Myerscough College EABL,12,Zach Trezvant,566,2.69,0.06,2.75
+Manchester Magic Academy EABL,2,Samy Sidi-Boumedine,308,2.11,0.41,2.52
+Barking Abbey EABL,10,Kervy Mabaya,504,-0.26,2.73,2.47
+Barking Abbey EABL,12,Raphael Connolly,570,0.86,1.43,2.29
+Barking Abbey EABL,25,Oskaras Visockas,398,0.21,2.03,2.23
+City of London Academy - Southwark EABL,8,Daniel Banjoko,636,-0.02,2.1,2.08
+Itchen College EABL,13,Javen Osei-Owusu,372,1.06,0.44,1.5
+HHS Reading Rockets EABL,4,Can Okumus,384,-0.91,2.26,1.35
+BMET City of Birmingham Rockets EABL,5,Jonathan Agbeze,672,1.55,-0.3,1.25
+Oaklands Wolves EABL,1,Daniel Kostadinov,663,2.54,-1.36,1.18
+Oaklands Wolves EABL,15,Gavin Mitchell,693,0.47,0.48,0.95
+Manchester Magic Academy EABL,6,Tarique Kamal Kazmi,407,0.05,0.78,0.83
+Charnwood College Riders EABL,15,Tom Pearson,477,-1.47,2.16,0.69
+HHS Reading Rockets EABL,15,Luca Bakary,495,-0.31,0.91,0.6
+Itchen College EABL,9,Thomas Blower,333,0.86,-0.32,0.54
+Derby College Trailblazers EABL,12,Rohan Hobday,434,1.69,-1.17,0.52
+Barking Abbey EABL,15,Amari Maitland,365,0.77,-0.35,0.42
+Manchester Magic Academy EABL,10,Jack Odongo,432,-2.34,2.71,0.37
+Manchester Magic Academy EABL,4,Tom Richardson,339,0.35,-0.21,0.14
+Charnwood College Riders EABL,8,Davin Hanousek,278,0.19,-0.64,-0.45
+Itchen College EABL,10,Richard Radu,298,-0.43,-0.08,-0.51
+SGS College EABL,6,Marcos Perez Tosca,669,-0.33,-0.25,-0.58
+Oaklands Wolves EABL,24,Dylan Gladstone,561,-0.19,-0.39,-0.58
+Derby College Trailblazers EABL,7,Elias Norman,586,0.85,-1.6,-0.76
+Oaklands Wolves EABL,8,Tristan Mcintosh,324,-1.07,0.1,-0.97
+HHS Reading Rockets EABL,14,Joseph Mackinnon,323,-1.93,0.89,-1.04
+Derby College Trailblazers EABL,6,William Tallon,621,-0.76,-0.29,-1.05
+SGS College EABL,5,Dylan Lloyd,511,0.13,-1.21,-1.08
+Copleston High School EABL,5,Callum Fobister,516,-0.45,-0.64,-1.09
+Charnwood College Riders EABL,5,Asa Oyerinde,351,-0.11,-1.01,-1.11
+Myerscough College EABL,7,Salomi Latidan,301,-1.0,-0.23,-1.22
+Manchester Magic Academy EABL,1,Nathan Brown,332,0.14,-1.7,-1.56
+Charnwood College Riders EABL,9,Rudy Buckingham,562,1.12,-2.75,-1.63
+Copleston High School EABL,13,Isaac Carty-Peters,291,-3.79,2.06,-1.72
+SGS College EABL,3,Luka Matthews,414,-1.53,-0.24,-1.77
+SGS College EABL,4,Martin Alburo,542,-1.2,-0.62,-1.82
+HHS Reading Rockets EABL,7,Matthew Daines,782,-2.35,0.46,-1.9
+Charnwood College Riders EABL,13,Lewis Stevenson,306,-1.65,-0.57,-2.21
+BMET City of Birmingham Rockets EABL,15,Larry Duru,852,-0.19,-2.1,-2.29
+Derby College Trailblazers EABL,4,Elias Rice,536,-0.19,-2.14,-2.33
+HHS Reading Rockets EABL,5,Ethan Harrington,624,-2.29,-0.1,-2.39
+SGS College EABL,8,Abubakar Odowa,254,-1.62,-1.01,-2.63
+SGS College EABL,12,Imam Toure,516,-1.83,-0.94,-2.77
+HHS Reading Rockets EABL,13,James Waterhouse,566,-1.24,-1.66,-2.91
+Oaklands Wolves EABL,14,Huxley Morrell,467,-0.31,-2.66,-2.96
+Derby College Trailblazers EABL,10,Casey Burr,712,-1.87,-1.26,-3.13
+SGS College EABL,15,Kayden Richards,315,-1.2,-1.98,-3.18
+Oaklands Wolves EABL,17,Enzo Da Cruz Fatuda,714,-0.83,-2.4,-3.23
+BMET City of Birmingham Rockets EABL,10,Philip Basioudis,762,-0.38,-2.91,-3.29
+SGS College EABL,14,Kevin Ramirez Mora,575,-0.15,-3.2,-3.35
+Derby College Trailblazers EABL,8,Jarom Howlett,357,-0.68,-2.78,-3.46
+Charnwood College Riders EABL,10,Pharrell Kattah,524,-3.08,-0.43,-3.5
+Charnwood College Riders EABL,23,Fahad Saeed,292,-1.89,-1.72,-3.61
+BMET City of Birmingham Rockets EABL,7,Patrick Walsh,274,-1.53,-2.16,-3.69
+Derby College Trailblazers EABL,5,George Pastor,422,-2.23,-1.67,-3.9
+Copleston High School EABL,7,Isaac Little,649,-2.82,-1.19,-4.01
+BMET City of Birmingham Rockets EABL,9,Jude Hyland,656,-0.64,-3.83,-4.47
+BMET City of Birmingham Rockets EABL,6,George Angoy,699,-1.85,-3.32,-5.17
+SGS College EABL,2,Shaquan Nelson,360,-3.43,-2.79,-6.22
+Copleston High School EABL,6,Timothy Rafiu,670,-3.66,-2.87,-6.53
+HHS Reading Rockets EABL,10,Malachi Hassan-Taylor,665,-3.43,-3.91,-7.34
+Copleston High School EABL,4,Noah Wilkinson,712,-2.84,-4.95,-7.79
+Copleston High School EABL,10,Matthew Liddamore,820,-5.82,-3.99,-9.81
