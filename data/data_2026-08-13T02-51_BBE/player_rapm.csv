@@ -1,0 +1,236 @@
+# RAPM - Regularized Adjusted Plus/Minus
+# Regularization parameter (alpha/lambda): 800
+# Minimum possessions filter: 250
+# Total players in calculation: 483
+# Qualified players exported: 228
+# Total stints used: 6533
+# Garbage time stints excluded: 299
+Team,Player_Number,Player_Name,Possessions,ORAPM,DRAPM,RAPM
+Birmingham City University Senior Men,11,Reiss Faure-Daley,1256,4.68,5.46,10.14
+Solent Kestrels Senior Men,6,Ethan Round,1055,4.59,3.7,8.29
+CoLA Southwark Pride Senior Men,13,Toby Gass,692,3.47,3.36,6.83
+Worcester Wolves Senior Men,21,Earl Burgess,1394,4.42,1.87,6.29
+Solent Kestrels Senior Men,5,Andre Arissol,1106,1.96,4.21,6.16
+Manchester Magic Senior Men I,10,Pharroh Gordon,337,4.42,1.22,5.64
+Barking Abbey Senior Men I,5,Micael Filho,480,-0.22,5.85,5.62
+Worcester Wolves Senior Men,9,Emmanuel Yeboah,958,3.02,2.3,5.32
+Barnet Bulldogs Senior Men,22,Robert Mccowan,572,4.03,1.17,5.2
+Myerscough Basketball Academy Senior Men I,0,Harry Sheehan,1129,3.69,1.3,4.99
+Manchester Magic Senior Men I,13,Daniel Davies,998,3.71,1.26,4.97
+St Helens Saints Senior Men,9,Connor Murtagh,1050,1.8,2.84,4.64
+Birmingham City University Senior Men,10,Vivaldo Ferreira,656,2.61,2.02,4.62
+Richmond Knights Senior Men,14,Kai Hypolite-Sealy,682,0.66,3.93,4.59
+Sheffield Arrows Senior Men,23,Diogo Soares,1699,4.19,0.35,4.54
+Birmingham City University Senior Men,17,Conroy Hayden,900,2.24,2.21,4.45
+London Stars Senior Men,83,Dayvantia Campbell-Deeble,256,3.01,1.36,4.37
+Barnet Bulldogs Senior Men,6,Sable Cooper,1067,3.23,1.11,4.34
+Barnet Bulldogs Senior Men,32,Leome Francis,397,0.37,3.92,4.29
+Sheffield Sharks Senior Men,12,Sedale Hanson-Young,1321,2.0,2.2,4.2
+Barnet Bulldogs Senior Men,21,Samuel Williams,720,0.75,3.3,4.05
+Barking Abbey Senior Men I,10,Kervy Mabaya,787,3.28,0.66,3.94
+Solent Kestrels Senior Men,4,Jakub Ofman,766,1.91,2.01,3.93
+Birmingham City University Senior Men,16,Emeka Akim Nweke,294,1.62,2.18,3.8
+Barnet Bulldogs Senior Men,8,Tobi Ojuri,542,3.62,0.12,3.74
+St Helens Saints Senior Men,10,Kieran Jones,891,2.63,1.08,3.71
+Manchester Magic Senior Men I,5,Osarumwense Fortune Iguma,761,1.54,2.06,3.6
+Leicester Warriors Senior Men,8,Pakadashe Chingombe,401,3.23,0.34,3.57
+Manchester Magic Senior Men I,3,Oluwademilade Babalola,648,0.48,2.97,3.45
+Sheffield Arrows Senior Men,25,Andreas Lycoudis,368,1.74,1.66,3.4
+St Helens Saints Senior Men,14,Disraeli Lufadeju,1464,1.81,1.48,3.29
+Myerscough Basketball Academy Senior Men I,9,Olivier Esingle,959,2.13,1.15,3.28
+London Stars Senior Men,99,Nojus Zajankauskas,1125,1.09,2.18,3.27
+Manchester Magic Senior Men I,6,Sion Gordon,851,-0.99,4.24,3.25
+Leicester Warriors Senior Men,9,Malachi Nelson,1208,0.58,2.64,3.22
+Liverpool Senior Men,9,Dante Sofia,1089,1.02,2.14,3.15
+Barking Abbey Senior Men I,12,Onome Anyanwu,449,-0.24,3.14,2.9
+Solent Kestrels Senior Men,11,Luke Busumbru,689,2.52,0.32,2.84
+London Lions Senior Men II,8,Jamil Ako - Mensah,758,1.85,0.84,2.7
+Solent Kestrels Senior Men,16,Wayne Kitenge,584,0.19,2.34,2.53
+Manchester Magic Senior Men I,15,Bailey Goodall,1139,2.12,0.4,2.52
+Myerscough Basketball Academy Senior Men I,12,Zach Trezvant,958,1.68,0.77,2.46
+St Helens Saints Senior Men,4,Joseph Collamat,758,0.56,1.81,2.37
+Manchester Magic Senior Men I,8,Jack Walton,1403,1.29,1.08,2.37
+Solent Kestrels Senior Men,15,Ashley Briggs,710,0.44,1.87,2.31
+Cardiff Met Archers Senior Men I,10,Gareth Williams,880,-0.43,2.71,2.28
+Worcester Wolves Senior Men,6,Wilfrid Santhe,1460,1.29,0.96,2.26
+Worcester Wolves Senior Men,13,Georgios Stergiopoulos,836,2.87,-0.63,2.24
+Sheffield Arrows Senior Men,8,Kunal Bagga,608,2.44,-0.25,2.19
+Worcester Wolves Senior Men,10,Humberto Ferreira,1396,-1.22,3.4,2.18
+Birmingham City University Senior Men,9,Samuel Toluwase,1113,0.63,1.54,2.17
+London Stars Senior Men,5,Samuel Pleszak,267,0.4,1.77,2.17
+London Stars Senior Men,9,Ryan Martin,1232,1.84,0.25,2.09
+Barking Abbey Senior Men I,13,Dwayne Orija,529,-0.01,2.05,2.04
+Barking Abbey Senior Men I,23,Joshua Mendes,982,-0.83,2.87,2.03
+Myerscough Basketball Academy Senior Men I,15,Solomi Laditan-Adebiyi,684,1.51,0.51,2.02
+Myerscough Basketball Academy Senior Men I,8,Daniel Azancot,893,1.0,1.01,2.01
+London Stars Senior Men,11,Jamie Hayes,926,0.59,1.25,1.83
+Solent Kestrels Senior Men,7,Javen Osei-Owusu,292,0.6,1.2,1.8
+Liverpool Senior Men,12,Torin Dubiel,908,1.34,0.45,1.79
+London Stars Senior Men,6,Nasir Cassel,415,0.99,0.78,1.77
+Sheffield Sharks Senior Men,21,Charles Andrews,817,1.03,0.73,1.76
+Leicester Warriors Senior Men,11,Benson Agrobo,397,0.44,1.31,1.75
+Sheffield Sharks Senior Men,3,Wesley Skaines,262,-1.58,3.23,1.65
+Barnet Bulldogs Senior Men,1,Dreyshun Brown,793,1.24,0.12,1.36
+Sheffield Arrows Senior Men,50,Mahamud Ibrahim,1016,2.98,-1.63,1.35
+Solent Kestrels Senior Men,8,Elijah Lotriet,511,-1.09,2.42,1.33
+Greenwich Titans Senior Men,13,Isaac Temilola,621,-0.58,1.91,1.32
+Barnet Bulldogs Senior Men,9,Lemar Clarke,282,0.41,0.89,1.3
+Myerscough Basketball Academy Senior Men I,4,Cesar Sanchez Falette,1081,-0.87,2.16,1.29
+CoLA Southwark Pride Senior Men,11,Khyle Justin Capanzana,571,1.05,0.23,1.28
+Barking Abbey Senior Men I,14,Oskaras Visockas,475,0.51,0.73,1.23
+Birmingham City University Senior Men,9,Shonn Lyn,284,0.53,0.63,1.16
+Sheffield Arrows Senior Men,33,Hamza Ibrahim,1656,3.64,-2.57,1.07
+Cobham Cobras Senior Men,4,Andrew Wilding,324,0.46,0.58,1.03
+Myerscough Basketball Academy Senior Men I,23,Ayomide Ibirinde,380,-1.88,2.87,1.0
+Manchester Magic Senior Men I,7,Aaron Bile,1210,2.47,-1.48,0.99
+Worcester Wolves Senior Men,12,Luan Ferreira,360,-1.83,2.78,0.95
+St Helens Saints Senior Men,6,William Self,1011,3.94,-3.0,0.95
+Barking Abbey Senior Men I,32,Ellis Tomking,828,-0.35,1.23,0.88
+Barnet Bulldogs Senior Men,23,Ethan Djanogly,422,1.37,-0.52,0.85
+CoLA Southwark Pride Senior Men,5,Kavell Hawes,761,-0.49,1.24,0.75
+Birmingham City University Senior Men,3,Ronald Oberia,1302,0.9,-0.15,0.75
+Sheffield Arrows Senior Men,11,George Brownell,864,1.54,-0.79,0.74
+Cobham Cobras Senior Men,30,Max Coupe,472,-0.81,1.53,0.71
+Cobham Cobras Senior Men,19,Charlie Ollis,807,0.06,0.6,0.66
+Cobham Cobras Senior Men,91,Ray Onome Akpofure,441,1.89,-1.32,0.57
+Cobham Cobras Senior Men,33,Lee Terence Mustre,266,0.45,0.1,0.55
+London Stars Senior Men,53,Bradley Kaboza,345,-0.76,1.29,0.52
+Teesside Lions Senior Men,27,Hector Omitowoju,898,0.52,-0.07,0.45
+Oxford Hoops Senior Men,23,Jamie Cummins,651,0.37,0.07,0.44
+Liverpool Senior Men,6,Louis Rogerson-Evans,1477,2.21,-1.79,0.42
+London Lions Senior Men II,21,Nestor Saa,341,0.41,-0.03,0.39
+Leicester Warriors Senior Men,12,Danny Mcdonald,969,1.66,-1.29,0.37
+Manchester Magic Senior Men I,16,Tyme Regent-Bascombe,442,-0.84,1.12,0.28
+Cardiff Met Archers Senior Men I,8,James Dawe,783,-1.0,1.27,0.27
+Solent Kestrels Senior Men,10,Greg Durand,826,-1.3,1.56,0.26
+Richmond Knights Senior Men,16,Jamal Tahraoui,504,1.08,-0.82,0.25
+Sheffield Sharks Senior Men,31,Miles Moore,296,1.35,-1.1,0.25
+Greenwich Titans Senior Men,21,Jack Green,585,0.3,-0.1,0.2
+London Lions Senior Men II,1,Malek John,859,0.44,-0.25,0.19
+Myerscough Basketball Academy Senior Men I,10,Sayomie Laditan-Adebiyi,659,1.49,-1.3,0.19
+Richmond Knights Senior Men,22,Ishmael Stephens,451,-0.39,0.56,0.17
+Teesside Lions Senior Men,45,Charlie Smythe,739,-1.01,1.14,0.13
+Worcester Wolves Senior Men,5,Finlay Rennie,758,-0.51,0.57,0.06
+Liverpool Senior Men,00,Kieran Forsythe,880,-1.37,1.33,-0.05
+Sheffield Sharks Senior Men,2,Declan Kom,1047,2.4,-2.49,-0.09
+Barnet Bulldogs Senior Men,0,Chukwuma Duru,765,2.83,-2.99,-0.16
+Barking Abbey Senior Men I,6,Ian-Titus Warari,944,-0.23,0.07,-0.16
+CoLA Southwark Pride Senior Men,6,Kemar Hawes,462,-0.65,0.42,-0.22
+Liverpool Senior Men,8,Andre Gayle,1315,-1.7,1.43,-0.27
+Barking Abbey Senior Men I,4,La’Quarne Santana Sayles,369,-0.83,0.55,-0.27
+Cardiff Met Archers Senior Men I,7,Lucas Scotland,758,-3.26,2.93,-0.32
+Birmingham City University Senior Men,7,James Miller,534,-2.84,2.49,-0.35
+Sheffield Arrows Senior Men,7,Jacob Paredes,951,-0.83,0.46,-0.37
+CoLA Southwark Pride Senior Men,8,Daniel Banjoko,419,1.74,-2.13,-0.38
+Teesside Lions Senior Men,48,Miles Felletti-O'donnell,1050,0.37,-0.77,-0.4
+Barking Abbey Senior Men I,15,Amari Maitland,347,0.4,-0.86,-0.46
+Oxford Hoops Senior Men,9,Brandon Read Strahan,563,-0.34,-0.19,-0.52
+London Lions Senior Men II,14,Adelaja Ogidan,725,-1.4,0.87,-0.53
+Oxford Hoops Senior Men,14,Adam Marzec,1269,1.48,-2.1,-0.62
+London Lions Senior Men II,4,Abdirazak Dugou,442,-0.28,-0.35,-0.63
+CoLA Southwark Pride Senior Men,14,Alei Wol,1183,-1.99,1.25,-0.74
+Worcester Wolves Senior Men,1,Harry Godwin,597,-1.23,0.34,-0.89
+CoLA Southwark Pride Senior Men,9,Oscar Leigh-Hales,306,-1.87,0.97,-0.9
+Leicester Warriors Senior Men,13,Kofe Cross,363,-0.09,-0.84,-0.93
+London Lions Senior Men II,4,Lewis Bennett,270,-1.91,0.9,-1.0
+Sheffield Sharks Senior Men,7,Oscar Baldwin,1146,-1.15,0.14,-1.01
+Liverpool Senior Men,12,Ashur Ulett-Waul,338,-0.64,-0.37,-1.02
+Teesside Lions Senior Men,31,Jaydon Wise-Malcolm,478,0.72,-1.8,-1.08
+Leicester Warriors Senior Men,4,Prince Banda,410,-2.88,1.78,-1.1
+Greenwich Titans Senior Men,10,Antonio Hughes,706,-0.01,-1.14,-1.15
+Greenwich Titans Senior Men,8,Joshua Palmer,449,-0.56,-0.68,-1.24
+Richmond Knights Senior Men,24,Aaron Williams,428,-0.44,-0.82,-1.26
+London Stars Senior Men,7,Domas Vazgys,326,-2.32,1.05,-1.28
+St Helens Saints Senior Men,5,Luca Lara-Sanchez,320,0.07,-1.46,-1.39
+Myerscough Basketball Academy Senior Men I,7,Emmanuel Akubuo,526,-1.69,0.3,-1.39
+Teesside Lions Senior Men,20,Benas Maldutis,660,-0.98,-0.41,-1.39
+London Lions Senior Men II,2,Aaron Brooks,294,-1.76,0.33,-1.43
+Richmond Knights Senior Men,1,Khafid Smith,599,-0.54,-0.9,-1.44
+Liverpool Senior Men,5,Kaphel Ulett-Waul,1539,1.15,-2.59,-1.44
+Cardiff Met Archers Senior Men I,9,Macaulay Jones,578,0.56,-2.01,-1.46
+Cardiff Met Archers Senior Men I,8,Alonzo Rosario,611,-2.12,0.64,-1.48
+Myerscough Basketball Academy Senior Men I,14,Finlay Morgan,422,-0.72,-0.84,-1.56
+London Elite Senior Men I,8,Anthony Ozobuekwe,325,0.53,-2.14,-1.61
+London Elite Senior Men I,27,Aaron Pyne,257,-2.34,0.68,-1.65
+Barnet Bulldogs Senior Men,7,Jordan Gray,711,-2.7,1.03,-1.67
+St Helens Saints Senior Men,12,Shomari Simmonds,1075,0.17,-1.88,-1.7
+Cobham Cobras Senior Men,41,Joshua Osei,431,-2.49,0.71,-1.78
+London Stars Senior Men,8,Oskaras Striuga,1072,0.53,-2.31,-1.78
+Worcester Wolves Senior Men,2,Daijaun Julianni Antonio,1127,0.38,-2.16,-1.78
+Cobham Cobras Senior Men,6,John Stewart,783,-1.06,-0.73,-1.79
+London Elite Senior Men I,5,Hammish Loader,445,-0.85,-0.95,-1.8
+Sheffield Arrows Senior Men,44,Alexander Tavares,282,-1.45,-0.39,-1.84
+CoLA Southwark Pride Senior Men,12,David Banjoko,479,-3.18,1.31,-1.86
+Richmond Knights Senior Men,13,Jayden Carvalho,375,-1.01,-0.89,-1.9
+Richmond Knights Senior Men,35,Zavier Sweeney Zinman,675,-1.72,-0.19,-1.91
+CoLA Southwark Pride Senior Men,15,Andrew Nwokolo,423,-1.94,-0.01,-1.95
+Barking Abbey Senior Men I,8,Raffy Connolly,805,-2.25,0.28,-1.96
+Leicester Warriors Senior Men,6,Taiwo Hamilton,413,-1.21,-0.8,-2.02
+Cobham Cobras Senior Men,5,Guy Rundle,537,-3.1,1.04,-2.07
+Cardiff Met Archers Senior Men I,11,Eli Andam,344,-1.2,-0.88,-2.08
+London Stars Senior Men,15,Jay Jarrett,733,0.3,-2.38,-2.08
+Richmond Knights Senior Men,9,Callum Vines,1097,-1.15,-0.95,-2.11
+St Helens Saints Senior Men,13,Ellis Evans,707,-3.59,1.44,-2.15
+London Elite Senior Men I,24,Walid Mumuni,706,-1.13,-1.12,-2.25
+Greenwich Titans Senior Men,5,Alex Charles,925,0.44,-2.73,-2.29
+Leicester Warriors Senior Men,6,Jaguar Jackson,692,0.69,-2.99,-2.3
+Greenwich Titans Senior Men,11,Muhammad Barnett,636,-0.4,-1.93,-2.34
+Richmond Knights Senior Men,16,Babawale Oyeyemi,618,-3.19,0.84,-2.35
+London Elite Senior Men I,13,Nataniel Ebifeni,250,-2.08,-0.29,-2.37
+Sheffield Sharks Senior Men,8,Gabriel Cousins,309,-4.02,1.65,-2.37
+Cardiff Met Archers Senior Men I,12,Rhys Cornelius,711,0.45,-2.82,-2.37
+London Lions Senior Men II,2,Axel Thibault,274,-3.1,0.73,-2.38
+St Helens Saints Senior Men,8,Sydney Obika,460,-1.59,-0.81,-2.4
+Solent Kestrels Senior Men,9,Thomas Blower,375,-3.07,0.67,-2.41
+Leicester Warriors Senior Men,5,Diego Perez Tosca,755,-0.44,-1.98,-2.42
+Worcester Wolves Senior Men,3,Chukwudumekwu Okibe,464,-3.14,0.69,-2.45
+London Elite Senior Men I,10,Taofiq Olaseinde,320,-0.61,-1.85,-2.46
+Cobham Cobras Senior Men,17,Marcel Alexandre Dias Mendes,554,-1.19,-1.29,-2.48
+London Lions Senior Men II,11,Melchizedek Andre,320,-2.99,0.43,-2.56
+Myerscough Basketball Academy Senior Men I,6,Jakub Bobkowski,557,-0.72,-1.9,-2.62
+Oxford Hoops Senior Men,23,Mohamed Keita Sakine,257,-3.62,0.91,-2.71
+Teesside Lions Senior Men,29,Fiontan Rogers,690,-0.14,-2.66,-2.8
+Birmingham City University Senior Men,4,Ethan Haywood,676,-2.24,-0.64,-2.88
+Liverpool Senior Men,4,Daniel Walsh,433,-4.19,1.23,-2.96
+London Elite Senior Men I,11,Tega Agbede,358,-3.53,0.48,-3.05
+Leicester Warriors Senior Men,10,Ashley Kalugin-Ugo,1146,-2.03,-1.04,-3.07
+Sheffield Sharks Senior Men,34,Calum Johnstone,280,-4.14,1.03,-3.11
+Cardiff Met Archers Senior Men I,12,Georgi Lokmadzhiev,260,-2.43,-0.83,-3.26
+CoLA Southwark Pride Senior Men,4,Jacob Hannick,302,-1.76,-1.5,-3.26
+Sheffield Arrows Senior Men,15,Paul Walsh,435,-2.29,-1.13,-3.41
+Teesside Lions Senior Men,34,Sam Forster,594,-0.47,-2.98,-3.45
+Sheffield Arrows Senior Men,12,Sheu Matewe,882,-3.37,-0.09,-3.45
+London Elite Senior Men I,0,Filippo Bozzelli,459,-1.28,-2.21,-3.48
+Greenwich Titans Senior Men,14,Uche Umekwe,359,-2.08,-1.41,-3.49
+Manchester Magic Senior Men I,11,Luca Lara-Sanchez,274,-1.58,-1.9,-3.49
+London Stars Senior Men,4,Brandon Moncrieffe,616,-1.96,-1.6,-3.56
+Oxford Hoops Senior Men,33,Patrick Wrencher Jr,1353,0.84,-4.43,-3.59
+London Elite Senior Men I,3,Jaguar Jackson,258,-0.74,-2.96,-3.69
+Cardiff Met Archers Senior Men I,14,Annureet Bajwa,467,-2.1,-1.68,-3.78
+Cobham Cobras Senior Men,11,Abdul Oladipupo,877,-0.66,-3.17,-3.83
+Oxford Hoops Senior Men,3,Malaki Hilsdon,720,-2.42,-1.67,-4.09
+Oxford Hoops Senior Men,5,Oskars Berzins,1156,-1.49,-2.69,-4.17
+Richmond Knights Senior Men,3,Jordan Murray-White,952,-6.09,1.86,-4.23
+London Elite Senior Men I,9,Nkadi Erokwu,342,-2.21,-2.07,-4.27
+London Lions Senior Men II,13,Lebron Roach,537,-2.58,-1.73,-4.31
+Liverpool Senior Men,14,Philip Deveney,352,-1.35,-3.1,-4.45
+Teesside Lions Senior Men,30,Onaopemipo Emmanuel Adeniyi,439,-3.92,-0.64,-4.56
+Oxford Hoops Senior Men,30,Errol Otto,741,-2.33,-2.27,-4.6
+Greenwich Titans Senior Men,4,Lance Macaraig,326,-1.08,-3.55,-4.63
+London Elite Senior Men I,11,Dylan Magloire,263,-2.38,-2.37,-4.74
+Oxford Hoops Senior Men,10,Mukhtar Adelakun,592,-4.04,-0.78,-4.83
+Teesside Lions Senior Men,2,Zakariah Missouri,1322,-1.8,-3.05,-4.85
+Sheffield Sharks Senior Men,0,Tyler Lister,673,-2.88,-2.01,-4.88
+Birmingham City University Senior Men,2,Muslim Mahamoud,403,-4.17,-0.81,-4.98
+Birmingham City University Senior Men,9,Damian Ogodan,844,-1.61,-3.61,-5.22
+Sheffield Sharks Senior Men,15,Courtney Alexander,635,-3.04,-2.22,-5.26
+Cardiff Met Archers Senior Men I,4,Casey Smith,863,-2.6,-2.77,-5.36
+Cardiff Met Archers Senior Men I,5,Mark James,873,-3.16,-2.26,-5.42
+Greenwich Titans Senior Men,2,Hassan Yusuf,520,-3.14,-2.29,-5.43
+Cardiff Met Archers Senior Men I,9,Shayne Scruggs,311,-2.35,-3.17,-5.52
+St Helens Saints Senior Men,7,Reiss Reynolds,656,-0.91,-5.01,-5.92
+Cardiff Met Archers Senior Men I,22,Daniel Koukouravas,326,-3.08,-2.93,-6.02
+Greenwich Titans Senior Men,9,Spyridon Mantis,371,-3.1,-3.27,-6.37
+Leicester Warriors Senior Men,5,Malik Alechicus Legania,1286,-0.71,-5.71,-6.43
+Sheffield Sharks Senior Men,2,Nathaniel Montgomery,518,-2.26,-6.02,-8.28
+Sheffield Sharks Senior Men,7,Harrison Wildie,509,-5.75,-4.17,-9.91
