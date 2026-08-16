@@ -282,6 +282,15 @@
         const h = el.offsetHeight;                       // 0 when display:none (desktop)
         const opaque = h > 0 ? Math.max(0, h - 96) : 0;  // minus the gradient lead-in
         document.documentElement.style.setProperty('--cs-legend-h', opaque + 'px');
+
+        /* The slide-up sheet also sits over the bottom of the columns — only
+           its 40px handle when closed, but that handle still covers a player
+           row. Measured rather than assumed, for the same reason. */
+        const sh = document.getElementById('sheet');
+        if (sh) {
+          const peek = Math.min(sh.offsetHeight || 40, 40);
+          document.documentElement.style.setProperty('--cs-sheet-h', peek + 'px');
+        }
       };
       apply();
       if (window.ResizeObserver) new ResizeObserver(apply).observe(el);

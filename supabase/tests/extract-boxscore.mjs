@@ -126,7 +126,31 @@ const css = `/* GENERATED from league/score/index.html by supabase/tests/extract
    DO NOT EDIT — edit the scorer's <style> block and re-run the extractor.
    These are the scorer's own rules, so the public box score is drawn by the
    same CSS as the statistician's final screen. */
-` + src.slice(styleStart + 7, styleEnd).replace(/\.\.\/kit\/fonts\//g, 'kit/fonts/');
+` + src.slice(styleStart + 7, styleEnd).replace(/\.\.\/kit\/fonts\//g, 'kit/fonts/') + `
+
+/* ==========================================================================
+   APPENDED BY THE EXTRACTOR — undo the scorer's application shell.
+
+   The scorer is a fixed-viewport app: body is position:fixed, inset:0,
+   overflow:hidden, overscroll-behavior:none, user-select:none. Every one of
+   those is correct for a scoring surface — it must not scroll under a thumb
+   mid-gesture, and selecting text instead of registering a tap loses a stat.
+
+   Every one of them is wrong for a public box score, which is a document. It
+   has five tabs of tables that are taller than any phone, so it has to scroll,
+   and a reader has to be able to select a number to copy it out.
+
+   The rules above are left exactly as the scorer writes them so the file stays
+   a faithful lift; they are overridden here instead of edited out.
+   ========================================================================== */
+html, body{
+  position:static; inset:auto; overflow:visible; height:auto;
+  overscroll-behavior:auto;
+  -webkit-user-select:text; user-select:text; -webkit-touch-callout:default;
+}
+/* the two decorative backdrops stay pinned; they are painted, not laid out */
+body::before, body::after{ position:fixed; }
+`;
 
 /* The authoritative check that the extraction took the right extent is whether
    the result parses — with the engine's own parser, not a hand-rolled one.

@@ -765,16 +765,40 @@ html, body{ height:100dvh; }
    score/bootstrap.js, so this follows a rotation, a font change or a text
    rewrap instead of guessing. The 52px fallback is the original value, which
    is what applies if that script has not run. */
-#cols{ padding-bottom:calc(var(--cs-legend-h, 52px) + 10px); }
+/* #game deliberately does NOT scroll.
 
-#game{
-  overflow-y:auto;
-  overscroll-behavior:contain;      /* never rubber-band the page behind it */
-  scrollbar-width:none;
-  /* clear the home indicator / gesture bar as well as the safe area */
-  padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
+   An earlier version of this block gave it overflow-y:auto, which made things
+   worse rather than better. The in-game screen is a fixed app shell: #cols,
+   #midpanel and .loglist are flex children with `flex:1; min-height:0` and
+   their own overflow, so they shrink to the available height and scroll
+   internally. Letting the shell scroll removes that constraint — the children
+   are then free to grow to their content height, the internal scrollers never
+   engage, and everything below the fold becomes unreachable. On desktop that
+   is exactly where the event log lives, in the mid-panel.
+
+   The bottom really was being clipped, but by the fixed legend overlapping it,
+   which is what --cs-legend-h above reserves for. Scrolling was the wrong
+   remedy for it. */
+#cols{ padding-bottom:calc(var(--cs-legend-h, 52px) + var(--cs-sheet-h, 40px) + 10px); }
+
+/* Desktop: the event log was unreachable.
+
+   #midpanel is a flex column holding the shot-chart card, the tag chips and
+   the log. The court card is 343px tall on a 640px-high window, so once the
+   panel's siblings are laid out the log's `flex:1` resolves to a NEGATIVE
+   remainder: it collapsed to 22px and the whole panel overflowed the shell by
+   about 50px, putting the log card below the fold with no way to scroll to it.
+
+   Two changes, both to sizing only. The log is given a floor so it can never
+   be squeezed away, and the court is allowed to shrink — it is a vector with
+   a viewBox, so it scales rather than crops. The panel then always fits and
+   the log scrolls internally, which is how it was meant to work. */
+@media (min-width:900px){
+  #midpanel{ overflow:hidden; }              /* never push past the shell */
+  #midpanel > .mpcard{ min-height:0; }       /* allow the siblings to give way */
+  #mpCourt svg{ max-height:32vh; }           /* the biggest card yields first */
+  .mplog{ flex:1 1 auto; min-height:150px; } /* the log always keeps a floor */
 }
-#game::-webkit-scrollbar{ display:none; }
 
 /* The final screen carries five tabs of tables and charts, so it must scroll
    on any phone. Same reasoning, same non-structural treatment. */
