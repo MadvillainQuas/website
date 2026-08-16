@@ -75,6 +75,18 @@ async function renderRoster() {
   const tbl = $('#rlist'); tbl.textContent = '';
   if (error) { say(error.message, 'err'); return; }
   say('');
+
+  /* The importer needs to know who is already here, so a re-imported sheet
+     updates people rather than creating a second copy of each of them. */
+  window.CourtsideRosterCSV.mount({
+    host: '#csvpanel', sb, team, me, say,
+    existing: data.map(r => ({
+      name: (((r.players || {}).first_name || '') + ' ' + ((r.players || {}).last_name || '')).trim(),
+      jersey: r.jersey,
+      playerId: (r.players || {}).id
+    })),
+    onDone: renderRoster
+  });
   if (!data.length) {
     const tr = tbl.insertRow(); const td = tr.insertCell();
     td.colSpan = 4; td.textContent = 'No players yet.'; td.style.color = 'var(--ink-3)';

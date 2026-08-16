@@ -40,6 +40,42 @@
     background:transparent;color:var(--ink-2);cursor:pointer;text-transform:uppercase}
   .mini:hover{background:var(--flare);color:#150406;border-color:var(--flare)}
   .minor{font-family:var(--f-micro);font-size:9px;color:var(--amber);border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);padding:1px 5px;margin-left:7px}
+
+  /* ---- team-sheet import ---- */
+  .csv-lead{color:var(--ink-3);max-width:70ch;line-height:1.85;margin:0}
+  .csv-ta{width:100%;font-family:var(--f-data);font-size:12px;line-height:1.6;
+    white-space:pre;overflow-x:auto;resize:vertical;min-height:96px}
+  .csv-bar{align-items:center;gap:10px;flex-wrap:wrap}
+  .csv-file{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);max-width:230px}
+  .csv-sum{display:flex;flex-direction:column;gap:7px}
+  .csv-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .csv-chip{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.06em;
+    padding:3px 9px;border:1px solid var(--rule-2);border-radius:2px;color:var(--ink-2)}
+  .csv-chip b{font-family:var(--f-score);font-size:13px;margin-right:4px}
+  .csv-chip.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
+  .csv-chip.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 50%,transparent)}
+  .csv-chip.err{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 50%,transparent)}
+  .csv-chip.muted{color:var(--ink-3)}
+  .csv-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.85}
+  .csv-tw{max-height:340px;overflow:auto}
+  .csv-tbl th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);text-align:left;padding:6px 11px;
+    border-bottom:1px solid var(--rule-2);position:sticky;top:0;background:var(--panel)}
+  /* the shared .plist rules assume a roster row; a preview row has its own shape */
+  .csv-tbl td:first-child{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);width:34px}
+  .csv-tbl td:nth-child(2){font-family:var(--f-score);font-size:15px;color:var(--lume);
+    width:40px;font-weight:400}
+  .csv-tbl td:nth-child(3){font-family:var(--f-ui);font-weight:600;font-size:12.5px}
+  .csv-tbl td:last-child{width:auto;text-align:left}
+  .csv-msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.7}
+  .csv-badge{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;
+    text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule-2);white-space:nowrap}
+  .csv-badge.ok{color:#04100b;background:var(--lume);border-color:var(--lume)}
+  .csv-badge.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 50%,transparent)}
+  .csv-badge.err{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 50%,transparent)}
+  .csv-badge.muted{color:var(--ink-3)}
+  .csv-tbl tr.csv-bad td{opacity:.55}
+  .csv-commit{align-items:center;gap:12px;flex-wrap:wrap}
   .setup{font-family:var(--f-data);font-size:11.5px;line-height:1.7;color:var(--ink-2);
     background:var(--panel);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
   .setup b{color:var(--lume);font-weight:400}
@@ -112,6 +148,9 @@
       <p class="cs-micro" style="color:var(--ink-3);max-width:64ch;line-height:1.8">
         Birth year only — never a full date of birth. It is used for eligibility and is never published.</p>
     </div>
+
+    <div class="cs-hdr"><span class="idx">03</span><h2>Import a team sheet</h2></div>
+    <div class="cs-band stack" id="csvpanel"></div>
   </section>
 
   <!-- ---------------- setup needed ---------------- -->
@@ -137,6 +176,8 @@
 <script src="../vendor/supabase.js"></script>
 <script src="../config.js"></script>
 <script src="../upload.js"></script>
+<script src="csv.js"></script>
+<script src="roster-csv.js"></script>
 <script src="app.js"></script>
 <script src="../nav.js"></script>
 </body>
