@@ -91,14 +91,17 @@
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
   /* ------------------------------------------------------- publishing state --- */
-  /* A signed-out statistician can still broadcast — Realtime accepts an anon
-     subscriber — but every durable write is refused by RLS. The result looks
-     almost right and is entirely wrong: viewers who happen to be watching see
-     plays appear, nothing is stored, a refresh shows an empty game, and the
-     fixture stays 'scheduled' with no log to rebuild from.
+  /* Watching is public and always works: Realtime accepts an anonymous
+     subscriber, and the scorer broadcasts a full snapshot every ten seconds,
+     so anyone can open the page at any point and have the whole game without
+     credentials. Nothing here gates that.
 
-     That failure has to be impossible to miss, so it is checked on load rather
-     than discovered at half-time, and the badge turns red and stays red. */
+     What signing out does cost is DURABILITY. Every write to game_events is
+     refused by RLS, so the game is live to whoever is watching and gone the
+     moment they refresh — no log to rebuild from, nothing to finalise, no
+     season statistics. That is worth saying plainly rather than leaving to be
+     discovered at half-time, so it is checked on load and the badge stays
+     amber until it is fixed. */
   let authOk = null;
 
   async function checkPublishing() {
@@ -108,9 +111,9 @@
     const { data: { session } } = await sb.auth.getSession();
     authOk = !!session;
     if (!authOk) {
-      say('NOT SIGNED IN — nothing is being saved', '#ff5f6b');
-      bar.style.borderColor = 'rgba(255,95,107,.75)';
-      bar.style.background = 'rgba(40,6,10,.94)';
+      say('live to viewers · NOT being saved', '#ffd166');
+      bar.style.borderColor = 'rgba(255,209,102,.7)';
+      bar.style.background = 'rgba(40,30,6,.94)';
       /* a link straight to the fix, since the statistician is mid-setup */
       if (!document.getElementById('cs-signin')) {
         const a = document.createElement('a');
@@ -678,7 +681,7 @@
       if (authOk === false) return;                 // already saying the real problem
       if (st.pending > 12) {
         /* a backlog that will not drain is a refused write, not a slow one */
-        say('not saving — ' + st.pending + ' held', '#ff5f6b');
+        say('live · not saved (' + st.pending + ' held)', '#ffd166');
       } else {
         say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
       }

@@ -120,6 +120,21 @@ const api = {
       } catch (e) { /* never let sync break scoring */ }
     }, 2000);
 
+    /* A full snapshot on a slow beat, so anyone watching has the whole game
+       whether or not they were watching when it happened — and whether or not
+       anything is being written to the database. This is the public viewer's
+       guarantee: no credentials, no table read, no luck about when they
+       opened the page. Ten seconds is chosen to be cheap: an 800-event game
+       is ~80 KB, and the delta frames in between keep the page live to the
+       quarter-second regardless. */
+    setInterval(() => {
+      try {
+        if (!S || !S.events || !S.events.length) return;
+        pub.pushSnapshot(S.events.map(e => Object.assign({ seq: e.id }, e)),
+                         stateOf(S), rosterOf(S));
+      } catch (e) { /* never let sync break scoring */ }
+    }, 10000);
+
     maybeRoster(S);
     drain(S);
     attached = true;

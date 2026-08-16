@@ -198,6 +198,26 @@ function publisher(opts) {
         timer = setTimeout(flush, FRAME_MS);
       }
     },
+    /** The whole game, not a delta.
+
+        Frames are deltas by design, so a viewer that joins mid-game only ever
+        learns about the future — which is why a public page could show one
+        play and a 3-0 score while the scorer had seven and 6-3. Re-fetching
+        the log from the table only helps when the log is being written, and a
+        signed-out statistician still broadcasts perfectly well while every
+        durable write is refused.
+
+        So the broadcast itself carries a full snapshot periodically. A viewer
+        needs no credentials, no database read and no luck about when it
+        opened the page: within one interval it holds the entire game. Frames
+        dedupe by event id, so this costs the viewer nothing but bandwidth. */
+    pushSnapshot(allEvents, state, game) {
+      lastSend = Date.now();
+      const frame = { gameId, events: allEvents || [], state, game,
+                      full: true, seq: ++seqHigh, at: Date.now() };
+      tx.send(frame).catch(() => {});     // best effort: the next one repeats it
+    },
+
     /** clock transitions: start, stop, adjust, period change */
     pushState,
     /** send everything immediately (finalise, page unload) */
