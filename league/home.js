@@ -47,9 +47,9 @@ async function games() {
       }
       scope = '&competition_id=in.(' + comps.join(',') + ')';
     }
-    gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,' +
+    gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,' +
       'home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)' +
-      '&status=in.(live,final,scheduled)' + scope + '&order=tipoff_at.desc&limit=12');
+      '&status=in.(live,final,scheduled)' + scope + '&order=tipoff_at.desc&limit=120');
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
@@ -61,15 +61,52 @@ async function games() {
     return;
   }
 
-  // live first regardless of date — that is what someone is here for
-  const rank = { live: 0, scheduled: 1, final: 2 };
-  gs.sort((a, b) => (rank[a.status] - rank[b.status]) ||
-                    (new Date(b.tipoff_at || 0) - new Date(a.tipoff_at || 0)));
+  /* The splash answers "what just happened and what is next", not "show me
+     the season" — that is what the fixtures page is for. So: anything live,
+     results from the past week, and the next fixtures up, capped at fifteen.
 
-  const liveCount = gs.filter(g => g.status === 'live').length;
-  $('#gamesNote').textContent = liveCount
-    ? liveCount + ' live now'
-    : gs.length + ' recent';
+     The week is measured from NOW rather than from the last game played,
+     because this list is explicitly about recency; a league that has not
+     played for a month should show an empty result set and a run of upcoming
+     fixtures, which is the truth. */
+  const now = Date.now();
+  const weekAgo = now - 7 * 86400000;
+  const at = g => new Date(g.tipoff_at || 0).getTime();
+
+  const live = gs.filter(g => g.status === 'live');
+  /* Both ends matter. Without the upper bound a finalised game dated in the
+     future counts as "this week" — which is not hypothetical: the demo season
+     carries finals dated months ahead, and they filled the recent list. */
+  const recent = gs.filter(g => g.status === 'final' && at(g) >= weekAgo && at(g) <= now)
+                   .sort((a, b) => at(b) - at(a));
+  const upcoming = gs.filter(g => g.status === 'scheduled' && at(g) >= now)
+                     .sort((a, b) => at(a) - at(b));
+
+  /* Anything finalised but dated ahead is neither "this week" nor "upcoming".
+     Rather than drop it silently it rides after the rest, so a mis-dated
+     fixture is visible on the page it belongs to instead of only in the
+     database. */
+  const odd = gs.filter(g => g.status === 'final' && at(g) > now)
+                .sort((a, b) => at(a) - at(b));
+
+  const CAP = 15;
+  const shown = live.concat(recent, upcoming, odd).slice(0, CAP);
+  const total = gs.length;
+
+  if (!shown.length) {
+    host.appendChild(el('div', 'empty',
+      'Nothing in the last week and nothing scheduled. The full fixture list is ' +
+      'still there — see all fixtures.'));
+    showAllLink(total);
+    return;
+  }
+
+  $('#gamesNote').textContent = live.length
+    ? live.length + ' live now'
+    : recent.length + ' this week · ' + upcoming.length + ' upcoming' +
+      (odd.length ? ' · ' + odd.length + ' dated ahead' : '');
+  showAllLink(total);
+  gs = shown;
 
   gs.forEach(g => {
     const final = g.status === 'final', live = g.status === 'live';
@@ -94,8 +131,30 @@ async function games() {
       : 'TBC';
 
     row.append(h, el('div', 'sc', final || live ? `${g.home_score}–${g.away_score}` : 'v'), a, st);
+
+    /* Where and when, on a line of its own. A fixture list without a venue is
+       a list you have to ask somebody about. */
+    const bits = [];
+    if (when) {
+      bits.push(when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+                ' · ' + when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    }
+    if (g.venue) bits.push(g.venue);
+    if (bits.length) row.appendChild(el('div', 'fxwhere', bits.join('  ·  ')));
+
     host.appendChild(row);
   });
+}
+
+/* the way through to the whole list, next to the heading rather than at the
+   bottom — somebody who wants everything decides that before reading fifteen */
+function showAllLink(total) {
+  const head = $('#gamesHead');
+  if (!head) return;
+  head.textContent = '';
+  const a = el('a', 'showall', 'show all' + (total ? ' (' + total + ')' : '') + ' →');
+  a.href = 'fixtures/' + (LEAGUE ? '?l=' + encodeURIComponent(LEAGUE.slug) : '');
+  head.appendChild(a);
 }
 
 /* ---------------------------------------------------------------- leagues --- */

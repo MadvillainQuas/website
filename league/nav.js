@@ -51,6 +51,7 @@
        navigate a directory to reach it, and one with nine should not hide them
        behind a page called "all games". */
     { leagues: true },
+    { href: root + 'fixtures/',    lg: true, ic: '▥', tx: 'fixtures',     match: /\/league\/fixtures\// },
     { href: root + 'stats/',       lg: true, ic: '▦', tx: 'statistics',   match: /\/league\/stats\/$/ },
     { href: root + 'stats/wowy/',  lg: true, ic: '◫', tx: 'wowy',    match: /\/league\/stats\/wowy\// },
     /* Everything below needs an account, and each entry needs a DIFFERENT
