@@ -92,3 +92,55 @@ body.has-nav{ padding-left:var(--nav-w) }
   .cs-nav a.item .tx{ font-size:7.5px; letter-spacing:.06em }
   body.has-nav{ padding-left:0; padding-bottom:58px }
 }
+
+/* ---- the leagues group -----------------------------------------------------
+   A collapsible header with the leagues beneath it. The header is a <button>
+   rather than a link, because it goes nowhere — making it an anchor would put
+   a destination in the tab order that does not exist, and would promise a page
+   that is not there. It therefore has to be given the row styling by hand,
+   since the rest of the rail is anchors. */
+.cs-nav .lgroup{ display:flex; flex-direction:column }
+.cs-nav button.ghead{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px 9px 14px; width:100%; text-align:left;
+  background:none; border:none; border-left:2px solid transparent;
+  color:rgba(230,255,241,.62); white-space:nowrap; cursor:pointer;
+  font:inherit;
+}
+.cs-nav button.ghead:hover{ color:#e6fff1; background:rgba(147,242,191,.08) }
+.cs-nav button.ghead .ic{
+  flex:none; width:16px; text-align:center; font-size:12px; line-height:1; opacity:.85;
+}
+.cs-nav button.ghead .tx{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
+}
+.cs-nav button.ghead .caret{
+  margin-left:auto; font-size:13px; line-height:1; color:rgba(230,255,241,.45);
+  transform:rotate(90deg); transition:transform .16s ease;
+}
+.cs-nav .lgroup.closed button.ghead .caret{ transform:rotate(0deg) }
+
+/* collapsing by max-height keeps it animatable; a generous ceiling never
+   clips a long league list */
+.cs-nav .glist{ overflow:hidden; max-height:60vh; transition:max-height .18s ease }
+.cs-nav .lgroup.closed .glist{ max-height:0 }
+
+/* a league sits one step in from its group header */
+.cs-nav a.item.sub{ padding-left:26px }
+.cs-nav a.item.sub .tx{ font-size:10px; letter-spacing:.08em; text-transform:none }
+.cs-nav a.item.sub .ic.dot{
+  width:8px; height:8px; border-radius:50%; font-size:0; opacity:1;
+}
+.cs-nav .gempty{
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
+  color:rgba(230,255,241,.4); padding:6px 0 6px 26px;
+}
+
+/* On the collapsed rail the labels are hidden with all the others, so the
+   caret and the placeholder would be floating text. Centre what remains. */
+@media (max-width:900px){
+  .cs-nav button.ghead .caret{ display:none }
+  .cs-nav a.item.sub{ padding-left:14px }
+  .cs-nav .gempty{ padding-left:0; text-align:center }
+}

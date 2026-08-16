@@ -403,11 +403,34 @@ async function renderTeamStats() {
   });
 }
 
-document.querySelectorAll('.cs-tab').forEach(b => b.addEventListener('click', () => {
+function showTab(name) {
+  const btn = [...document.querySelectorAll('.cs-tab')].find(b => b.dataset.p === name);
+  if (!btn) return false;
   document.querySelectorAll('.cs-tab').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
+  btn.classList.add('on');
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
-  document.getElementById('pane-' + b.dataset.p).classList.add('on');
+  const pane = document.getElementById('pane-' + name);
+  if (pane) pane.classList.add('on');
+  return true;
+}
+
+document.querySelectorAll('.cs-tab').forEach(b => b.addEventListener('click', () => {
+  showTab(b.dataset.p);
+  /* the tab goes in the URL so a particular view can be linked to and survives
+     a reload — which is also what makes the splash page's Leaders card able to
+     land on the leaders rather than on the table */
+  const u = new URL(location.href);
+  u.hash = b.dataset.p === 'table' ? '' : b.dataset.p;
+  history.replaceState(null, '', u.toString().replace(/#$/, ''));
 }));
+
+/* honour a hash on arrival, and when somebody follows a link to a different
+   tab on the page they are already on */
+function tabFromHash() {
+  const want = (location.hash || '').replace(/^#/, '');
+  if (want) showTab(want);
+}
+window.addEventListener('hashchange', tabFromHash);
+tabFromHash();
 
 boot();

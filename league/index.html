@@ -65,6 +65,25 @@
   .stripwrap{margin-top:calc(var(--u)*4);border:1px solid var(--rule);
     border-radius:4px;overflow:hidden;background:#04100b}
   .stripframe{display:block;width:100%;height:129px;border:0;background:#04100b}
+  /* ---- league splash: the table and leaders as clickable cards ---- */
+  .splitgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:calc(var(--u)*2);padding:calc(var(--u)*3)}
+  .embedcard{position:relative;border:1px solid var(--rule);border-radius:4px;
+    overflow:hidden;background:#04100b;transition:border-color .15s ease}
+  .embedcard:hover{border-color:var(--lume)}
+  .embedhead{display:flex;align-items:baseline;gap:10px;
+    padding:10px calc(var(--u)*2);border-bottom:1px solid var(--rule);
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .embedgo{margin-left:auto;color:var(--lume)}
+  .embedframe{display:block;width:100%;height:330px;border:0;background:#04100b}
+  /* the whole card is one link. It sits ABOVE the iframe deliberately: an
+     iframe swallows clicks, so without this the card would look clickable and
+     do nothing. It also makes the embed a picture here, which is what a
+     summary should be — glance, or click through to where it is interactive. */
+  .embedhit{position:absolute;inset:0;z-index:2;display:block}
+  .embedhit:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
+  @media (max-width:640px){ .embedframe{height:280px} }
 </style>
 </head>
 <body>
@@ -99,7 +118,7 @@
 
   <!-- leagues ------------------------------------------------------------ -->
   <div class="sec">
-    <div class="sec-h"><span class="idx">02</span><h2>Leagues</h2></div>
+    <div class="sec-h"><span class="idx">02</span><h2 id="leaguesHead">Leagues</h2></div>
     <div id="leagues"><div class="empty">Loading…</div></div>
   </div>
 

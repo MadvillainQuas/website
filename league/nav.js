@@ -46,8 +46,11 @@
      which is how the rail ended up as a logo followed by nothing. */
   const ITEMS = [
     { label: 'watch' },
-    { href: root,                  ic: '■', tx: 'all games',    match: /\/league\/$/ },
-    { href: root + 'l/',           lg: true, ic: '▤', tx: 'league table', match: /\/league\/l\// },
+    /* The leagues themselves go here, injected once they have been fetched —
+       see fillLeagues below. A platform with one league should not make you
+       navigate a directory to reach it, and one with nine should not hide them
+       behind a page called "all games". */
+    { leagues: true },
     { href: root + 'stats/',       lg: true, ic: '▦', tx: 'statistics',   match: /\/league\/stats\/$/ },
     { href: root + 'stats/wowy/',  lg: true, ic: '◫', tx: 'wowy',    match: /\/league\/stats\/wowy\// },
     { label: 'take part' },
@@ -57,6 +60,100 @@
     { gap: true },
     { href: '/index.html',               ic: '←', tx: 'prophesy' }
   ];
+
+  /* ------------------------------------------------------------- leagues ---
+     A collapsible group holding the leagues themselves.
+
+     It is built empty and filled once the list arrives, because the rail must
+     appear immediately — a navigation that pops in after a network round trip
+     is worse than one that shows a placeholder. The open/closed state is
+     remembered, since somebody who collapsed it does not want it reopening on
+     every page.
+
+     Each league points at its OWN splash page rather than at the table
+     directly: the splash is where a reader finds out what happened last night,
+     and the table is one click on from it. */
+  const LS_KEY = 'cs-nav-leagues-open';
+  function buildLeagueGroup() {
+    const wrap = document.createElement('div');
+    wrap.className = 'lgroup';
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'item ghead';
+    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = '▤';
+    const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = 'leagues';
+    const car = document.createElement('span'); car.className = 'caret'; car.textContent = '›';
+    head.append(ic, tx, car);
+    head.title = 'leagues';
+
+    const list = document.createElement('div');
+    list.className = 'glist';
+    const holding = document.createElement('div');
+    holding.className = 'gempty';
+    holding.textContent = '…';
+    list.appendChild(holding);
+
+    let open = true;
+    try { open = localStorage.getItem(LS_KEY) !== '0'; } catch (_) {}
+    const apply = () => {
+      wrap.classList.toggle('closed', !open);
+      head.setAttribute('aria-expanded', String(open));
+    };
+    head.addEventListener('click', () => {
+      open = !open;
+      try { localStorage.setItem(LS_KEY, open ? '1' : '0'); } catch (_) {}
+      apply();
+    });
+    apply();
+
+    wrap.append(head, list);
+    return { root: wrap, list, holding };
+  }
+
+  /* The rail is on public pages that already carry config.js. Where it is not
+     — or where the request fails — the group simply says so rather than
+     sitting on an ellipsis for ever. */
+  async function fillLeagues() {
+    if (!leagueGroup) return;
+    const cfg = window.COURTSIDE_CONFIG;
+    if (!cfg || !cfg.supabaseUrl) { leagueGroup.holding.textContent = ''; return; }
+    let rows = [];
+    try {
+      const r = await fetch(cfg.supabaseUrl + '/rest/v1/leagues?select=slug,name,colour_a&order=name',
+        { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+      if (!r.ok) throw new Error(String(r.status));
+      rows = await r.json();
+    } catch (_) {
+      leagueGroup.holding.textContent = 'unavailable';
+      return;
+    }
+
+    leagueGroup.list.textContent = '';
+    if (!rows.length) {
+      const d = document.createElement('div');
+      d.className = 'gempty'; d.textContent = 'none yet';
+      leagueGroup.list.appendChild(d);
+      return;
+    }
+    rows.forEach(l => {
+      const a = document.createElement('a');
+      a.className = 'item sub';
+      a.href = root + '?l=' + encodeURIComponent(l.slug);
+      /* the current league is marked whether you arrived via ?l= or the page
+         resolved it for itself */
+      if (lg && l.slug === lg) a.classList.add('on');
+      const dot = document.createElement('span');
+      dot.className = 'ic dot';
+      dot.style.background = l.colour_a || 'var(--lume)';
+      const t = document.createElement('span');
+      t.className = 'tx'; t.textContent = l.name;
+      a.append(dot, t);
+      a.title = l.name;
+      a.dataset.leagueSlug = l.slug;
+      leagueGroup.list.appendChild(a);
+    });
+  }
 
   const nav = document.createElement('nav');
   nav.className = 'cs-nav';
@@ -72,7 +169,10 @@
   brand.append(mark, word);
   nav.appendChild(brand);
 
+  let leagueGroup = null;      // filled asynchronously
+
   ITEMS.forEach(it => {
+    if (it.leagues) { leagueGroup = buildLeagueGroup(); nav.appendChild(leagueGroup.root); return; }
     if (it.gap) { const d = document.createElement('div'); d.className = 'gap'; nav.appendChild(d); return; }
     if (it.sep) { const d = document.createElement('div'); d.className = 'sep'; nav.appendChild(d); return; }
     if (it.label) {
@@ -98,8 +198,18 @@
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);
 
+  fillLeagues().then(apply);
+
   /* the assignment pages already make now repoints the rail, with no page edit */
-  const apply = () => carriers.forEach(([a, base]) => { a.href = withLeague(base); });
+  const apply = () => {
+    carriers.forEach(([a, base]) => { a.href = withLeague(base); });
+    /* and the league that is being viewed becomes the highlighted one */
+    if (leagueGroup) {
+      leagueGroup.list.querySelectorAll('a[data-league-slug]').forEach(a => {
+        a.classList.toggle('on', !!lg && a.dataset.leagueSlug === lg);
+      });
+    }
+  };
   try {
     Object.defineProperty(window, '__CS_LEAGUE_SLUG', {
       configurable: true,

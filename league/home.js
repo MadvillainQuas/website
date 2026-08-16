@@ -9,6 +9,14 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
+/* This page is two pages. Without ?l= it is the platform hub: every game, every
+   league. With ?l= it is that league's SPLASH — the same shape, narrowed to one
+   league, with the league directory replaced by that league's own table and
+   leaders. One file, because the two differ by a filter and a section, and
+   maintaining a near-copy is how they drift. */
+const WANT = new URLSearchParams(location.search).get('l') || '';
+let LEAGUE = null;              // resolved when WANT is set
+
 async function api(p) {
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
     { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
@@ -24,9 +32,23 @@ function fail(host, msg) {
 async function games() {
   let gs;
   try {
+    let scope = '';
+    if (LEAGUE) {
+      /* A game belongs to a competition, which belongs to a season, which
+         belongs to a league — so the league's competitions are resolved first
+         and the games filtered by them. Two round trips, and no dependence on
+         PostgREST resolving a three-deep embedded filter. */
+      const comps = await leagueCompetitions(LEAGUE.id);
+      if (!comps.length) {
+        const host = $('#games'); host.textContent = '';
+        host.appendChild(el('div', 'empty', 'No fixtures in this league yet.'));
+        return;
+      }
+      scope = '&competition_id=in.(' + comps.join(',') + ')';
+    }
     gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,' +
       'home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)' +
-      '&status=in.(live,final,scheduled)&order=tipoff_at.desc&limit=12');
+      '&status=in.(live,final,scheduled)' + scope + '&order=tipoff_at.desc&limit=12');
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
@@ -108,9 +130,105 @@ async function leagues() {
   });
 }
 
-$('#mode').textContent = 'transport: ' + (window.courtsideMode ? window.courtsideMode() : 'local');
-games();
-leagues();
+/* which competitions belong to a league, newest season first */
+async function leagueCompetitions(leagueId) {
+  const seasons = await api('seasons?league_id=eq.' + leagueId +
+    '&select=id&order=starts_on.desc');
+  if (!seasons.length) return [];
+  const comps = await api('competitions?season_id=in.(' +
+    seasons.map(s => s.id).join(',') + ')&select=id');
+  return comps.map(c => c.id);
+}
+
+/* ------------------------------------------------------------ the splash ---
+   A league's own front page: its table and its leaders, side by side, each a
+   real embed rather than a bespoke copy — the same widget other sites get, so
+   the thing shipped to other people's pages is the thing seen most often on
+   this one and cannot quietly rot.
+
+   Both are CLICKABLE AS A WHOLE. An iframe swallows clicks, so the card gets a
+   transparent link laid over it. That also makes the embed purely a picture
+   here, which is what a summary should be: the reader either glances and moves
+   on, or clicks through to the page where the thing is actually interactive. */
+function splash() {
+  const host = $('#leagues'); host.textContent = '';
+  const slug = encodeURIComponent(LEAGUE.slug);
+  const table = 'l/?l=' + slug;
+
+  const grid = el('div', 'splitgrid');
+  [['Table', 'embed/table/?l=' + slug + '&kind=standings&n=12', table],
+   ['Leaders', 'embed/table/?l=' + slug + '&kind=leaders&stat=ppg&n=10', table + '#leaders']]
+    .forEach(([title, src, href]) => {
+      const card = el('div', 'embedcard');
+      const h = el('div', 'embedhead');
+      h.append(el('span', null, title), el('span', 'embedgo', 'open ›'));
+      card.appendChild(h);
+
+      const f = document.createElement('iframe');
+      f.className = 'embedframe';
+      f.src = src;
+      f.loading = 'lazy';
+      f.scrolling = 'no';
+      f.title = LEAGUE.name + ' ' + title.toLowerCase();
+      card.appendChild(f);
+
+      /* the whole card is the link; the iframe is decoration under it */
+      const a = el('a', 'embedhit');
+      a.href = href;
+      a.setAttribute('aria-label', 'Open the ' + LEAGUE.name + ' ' + title.toLowerCase());
+      card.appendChild(a);
+
+      grid.appendChild(card);
+    });
+  host.appendChild(grid);
+}
+
+/* ------------------------------------------------------------------- boot --- */
+(async function boot() {
+  $('#mode').textContent = 'transport: ' +
+    (window.courtsideMode ? window.courtsideMode() : 'local');
+
+  if (WANT) {
+    try {
+      const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) +
+        '&select=id,slug,name,colour_a,colour_b&limit=1');
+      LEAGUE = ls[0] || null;
+    } catch (_) { /* fall through to the hub */ }
+  }
+
+  if (LEAGUE) {
+    window.__CS_LEAGUE_SLUG = LEAGUE.slug;      // the rail marks it as current
+    document.title = LEAGUE.name + ' · Courtside';
+    const wm = document.querySelector('.wordmark');
+    if (wm) wm.textContent = LEAGUE.name;
+    const tag = document.querySelector('.tagline');
+    if (tag) {
+      tag.textContent = 'Live box scores, standings and season statistics for ' +
+        LEAGUE.name + '. Every number is rebuilt from the game’s own event log, ' +
+        'so what you see here and what the statistician recorded cannot drift apart.';
+    }
+    if (LEAGUE.colour_a) {
+      document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
+    }
+    /* the strip narrows to this league too */
+    const strip = document.querySelector('#strip');
+    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug);
+
+    const head = document.querySelector('#leaguesHead');
+    if (head) head.textContent = 'This season';
+
+    await games();
+    splash();
+  } else {
+    if (WANT) {
+      /* asked for a league that is not there — say so rather than silently
+         showing the hub, which looks like the link worked */
+      fail('#leagues', 'No league called "' + WANT + '". Every league is listed below.');
+    }
+    await games();
+    await leagues();
+  }
+})();
 
 /* ---------------------------------------------------------------- strip --- */
 /* The fixture strip is the same iframe other sites embed, so the widget
