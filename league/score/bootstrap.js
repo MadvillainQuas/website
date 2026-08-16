@@ -90,6 +90,183 @@
 
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
+  /* ------------------------------------------------------- fixture loading --- */
+  /* Typing two rosters by hand before every game is the wrong workflow for a
+     league that already knows who is playing — and it is also why season stats
+     stayed empty: a hand-typed player gets a local id like 'p0_3', which cannot
+     be aggregated across games. Loading a fixture uses the real players.id
+     uuid as the scorer's pid, so the totals land on the right person.
+
+     Injected into the setup screen rather than built into it, so the scorer
+     itself is unchanged and still works standalone. */
+  const CFGx = window.COURTSIDE_CONFIG || {};
+  const sbApi = async p => {
+    const r = await fetch(CFGx.supabaseUrl + '/rest/v1/' + p,
+      { headers: { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' } });
+    if (!r.ok) throw new Error(r.status + ' on ' + p.split('?')[0]);
+    return r.json();
+  };
+
+  const rosterOfTeam = async (teamId) => {
+    const re = await sbApi('roster_entries?team_id=eq.' + teamId +
+      '&active=eq.true&select=jersey,position,players(id,first_name,last_name)');
+    return re
+      .filter(r => r.players)                       // a minor withheld by RLS comes back null
+      .map(r => ({
+        id: r.players.id,
+        name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim().toLowerCase(),
+        num: String(r.jersey || '')
+      }))
+      .sort((a, b) => (+a.num || 99) - (+b.num || 99));
+  };
+
+  /* ?g=<uuid> means "score this fixture": pull both squads and go straight to
+     the starting-five picker, which is the first decision that is actually the
+     statistician's to make. */
+  async function loadFixture(id) {
+    const gs = await sbApi('games?id=eq.' + encodeURIComponent(id) +
+      '&select=id,status,home_team_id,away_team_id,roster_snapshot,' +
+      'home:home_team_id(name,colour),away:away_team_id(name,colour)&limit=1');
+    if (!gs.length) throw new Error('that fixture is not visible to you');
+    const g = gs[0];
+    if (g.status === 'final') throw new Error('that game is already final');
+
+    /* a resumed game keeps the squad frozen at tip, so a roster edited
+       mid-game never rewrites who was available */
+    if (g.roster_snapshot && g.roster_snapshot.teams) return g.roster_snapshot.teams;
+
+    const [hp, ap] = await Promise.all([
+      rosterOfTeam(g.home_team_id), rosterOfTeam(g.away_team_id)
+    ]);
+    return [
+      { name: ((g.home || {}).name || 'home').toLowerCase(),
+        color: (g.home || {}).colour || '#93f2bf', players: hp },
+      { name: ((g.away || {}).name || 'away').toLowerCase(),
+        color: (g.away || {}).colour || '#8ff5ff', players: ap }
+    ];
+  }
+
+  function injectFixturePicker() {
+    const setup = document.getElementById('setup');
+    if (!setup || document.getElementById('csFixturePick')) return;
+    if (!CFGx.supabaseUrl || !CFGx.supabaseAnonKey) return;   // standalone use
+
+    const card = document.createElement('div');
+    card.id = 'csFixturePick';
+    card.className = 'glass';
+    card.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:9px;margin-bottom:4px';
+
+    const h = document.createElement('div');
+    h.style.cssText = 'font-family:var(--f-head);font-size:13px;letter-spacing:.06em;' +
+                      'text-transform:uppercase;color:var(--lume)';
+    h.textContent = 'score a league fixture';
+
+    const sub = document.createElement('div');
+    sub.style.cssText = 'font-family:var(--f-mono);font-size:10px;line-height:1.7;color:var(--dim)';
+    sub.textContent = 'Loads both squads with their real identities, so the stats count ' +
+                      'towards the season. Or ignore this and set up a one-off below.';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+
+    const mkSel = () => {
+      const s = document.createElement('select');
+      s.style.cssText = 'flex:1 1 150px;min-width:0;background:var(--bg-elevated);color:var(--txt);' +
+        'border:1px solid var(--line);border-radius:10px;padding:9px 10px;' +
+        'font-family:var(--f-mono);font-size:12px';
+      return s;
+    };
+    const lgSel = mkSel(), fxSel = mkSel();
+
+    const go = document.createElement('button');
+    go.className = 'yes';
+    go.textContent = 'load';
+    go.disabled = true;
+    go.style.cssText = 'flex:0 0 auto;padding:9px 18px';
+
+    const note = document.createElement('div');
+    note.style.cssText = 'font-family:var(--f-mono);font-size:10px;color:var(--dim);line-height:1.7';
+
+    row.append(lgSel, fxSel, go);
+    card.append(h, sub, row, note);
+    setup.insertBefore(card, setup.firstChild);
+
+    let fixtures = [];
+
+    const loadFixtures = async (leagueId) => {
+      fxSel.innerHTML = '';
+      go.disabled = true;
+      try {
+        const comps = await sbApi('competitions?select=id,name,seasons!inner(league_id)' +
+          '&seasons.league_id=eq.' + leagueId);
+        if (!comps.length) { fxSel.append(new Option('no competitions yet', '')); return; }
+        const ids = comps.map(c => c.id).join(',');
+        fixtures = await sbApi('games?competition_id=in.(' + ids + ')&status=in.(scheduled,live)' +
+          '&select=id,tipoff_at,status,venue,home:home_team_id(name),away:away_team_id(name)' +
+          '&order=tipoff_at');
+        if (!fixtures.length) {
+          fxSel.append(new Option('no fixtures to score', ''));
+          note.textContent = 'Every game in this league is finished. Schedule one in the ' +
+                             'league admin page, or set up a one-off below.';
+          return;
+        }
+        fixtures.forEach(f => {
+          const when = f.tipoff_at
+            ? new Date(f.tipoff_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+            : 'TBC';
+          const label = when + '  ' + ((f.home || {}).name || '?') + ' v ' +
+                        ((f.away || {}).name || '?') + (f.status === 'live' ? '  (live)' : '');
+          fxSel.append(new Option(label, f.id));
+        });
+        go.disabled = false;
+        note.textContent = '';
+      } catch (e) {
+        fxSel.append(new Option('could not load fixtures', ''));
+        note.textContent = e.message;
+      }
+    };
+
+    (async () => {
+      try {
+        const lgs = await sbApi('leagues?select=id,name,slug&order=name');
+        if (!lgs.length) { note.textContent = 'No leagues on the platform yet.'; return; }
+        lgs.forEach(l => lgSel.append(new Option(l.name, l.id)));
+        lgSel.addEventListener('change', () => loadFixtures(lgSel.value));
+        await loadFixtures(lgs[0].id);
+      } catch (e) {
+        note.textContent = 'Could not reach the league: ' + e.message;
+      }
+    })();
+
+    /* Reload rather than set up in place: the game id is read once at load and
+       drives the live transport and the finalise button, so it has to be in the
+       URL for those to point at the right fixture. */
+    go.addEventListener('click', () => {
+      if (!fxSel.value) return;
+      location.search = '?g=' + encodeURIComponent(fxSel.value) + '&mode=supabase';
+    });
+  }
+
+  /* If we arrived with a fixture id, skip the setup screen entirely. */
+  async function autoLoadFixture() {
+    if (!isFixture) return;
+    if (typeof showStarterPick !== 'function') return;
+    if (S && S.phase && S.phase !== 'setup') return;    // a game is already in progress
+
+    say('loading the fixture…', '#ffd166');
+    try {
+      const teams = await loadFixture(gameId);
+      const thin = teams.filter(t => t.players.length < 5);
+      showStarterPick(teams);
+      if (thin.length) {
+        say('a squad has fewer than five listed', '#ffd166');
+      }
+    } catch (e) {
+      say(e.message, '#ff5f6b');
+      console.warn('[fixture]', e);
+    }
+  }
+
   /* ------------------------------------------------------ legend clearance --- */
   /* #cols reserves a flat 52px for the fixed gesture legend, but the legend is
      150px tall on a narrow phone once its text wraps — so the bottom of the
@@ -324,4 +501,14 @@
       else say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
     }, 3000);
   }, 500);
+
+  /* ------------------------------------------------------------- wire up --- */
+  /* Both run after the scorer's own script has defined its globals — the
+     picker only needs the DOM, the auto-load needs showStarterPick(). */
+  function start() {
+    try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
+    try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();

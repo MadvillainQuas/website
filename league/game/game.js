@@ -116,35 +116,77 @@ const BODIES = {
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full table / advanced'], ['lineups', 'lineups']];
 
+/* Rendering is split three ways on purpose.
+
+   The advanced tab alone is ~107KB of HTML. Rebuilding the whole view on
+   every frame — four times a second during a live game — is what made the
+   page feel slow, and it also threw away the scroll position and any table
+   the reader was part-way down. So the shell is built once, the scoreboard
+   redraws on the clock, and the heavy body only redraws when the log has
+   actually changed. */
+let shellBuilt = false;
+let lastBodyKey = '';
+
+function renderShell() {
+  const S = window.S;
+  $('#view').innerHTML =
+    '<div class="ovhead"><div class="ovtitle" id="csHeading"></div></div>' +
+    '<div id="csHead"></div>' +
+    '<div class="tabrow" style="flex-wrap:wrap">' + TABS.map(t =>
+      '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
+      B.esc(t[1]) + '</button>').join('') + '</div>' +
+    '<div id="csBody"></div>';
+
+  document.querySelectorAll('#view .tabbtn').forEach(b => {
+    b.onclick = () => {
+      fTab = b.dataset.tab;
+      document.querySelectorAll('#view .tabbtn').forEach(x =>
+        x.classList.toggle('on', x.dataset.tab === fTab));
+      lastBodyKey = '';                 // force a redraw for the new tab
+      renderBody();
+    };
+  });
+
+  txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
+      S.teams[0].name + ' v ' + S.teams[1].name);
+  document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
+  document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
+  shellBuilt = true;
+}
+
+/* cheap: 576 characters, safe to run on every clock tick */
+function renderHead(d) {
+  const S = window.S;
+  d = d || window.derive();
+  const el = $('#csHead');
+  if (el) el.innerHTML = B.scoreHeadHTML(d);
+  txt($('#csHeading'), S.status === 'final' ? 'final'
+                     : S.status === 'live' ? 'live' : 'scheduled');
+  document.title = d.score[0] + '–' + d.score[1] + ' ' +
+      S.teams[0].name + ' v ' + S.teams[1].name + ' · Courtside';
+}
+
+function renderBody(d) {
+  d = d || window.derive();
+  /* the log length and the score are enough to know whether anything the body
+     shows can have changed; the clock alone never changes a table */
+  const key = fTab + ':' + window.S.events.length + ':' + d.score.join('-');
+  if (key === lastBodyKey) return;
+  lastBodyKey = key;
+  const el = $('#csBody');
+  if (el) el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
+}
+
 function render() {
   const S = window.S;
   if (!S) return;
   /* the pid -> player lookup the renderers name people through; rebuilt every
      pass because a live sub can introduce a player who was not on the sheet */
   B.rebuildPmap();
+  if (!shellBuilt) renderShell();
   const d = window.derive();
-
-  const heading = S.status === 'final' ? 'final'
-                : S.status === 'live' ? 'live' : 'scheduled';
-
-  $('#view').innerHTML =
-    '<div class="ovhead"><div class="ovtitle">' + B.esc(heading) + '</div></div>' +
-    B.scoreHeadHTML(d) +
-    '<div class="tabrow" style="flex-wrap:wrap">' + TABS.map(t =>
-      '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
-      B.esc(t[1]) + '</button>').join('') + '</div>' +
-    (BODIES[fTab] || BODIES.box)(d);
-
-  document.querySelectorAll('#view .tabbtn').forEach(b => {
-    b.onclick = () => { fTab = b.dataset.tab; render(); };
-  });
-
-  txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
-      S.teams[0].name + ' v ' + S.teams[1].name);
-  document.title = d.score[0] + '–' + d.score[1] + ' ' +
-      S.teams[0].name + ' v ' + S.teams[1].name + ' · Courtside';
-  document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
-  document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
+  renderHead(d);
+  renderBody(d);
 }
 
 function setStatus(s) {
@@ -168,12 +210,14 @@ function goLive() {
     onFrame(f) { mergeLive(f.game, f.events); render(); },
     onStatus(s) { if (statusVal !== 'final') setStatus(s); }
   });
+  /* The clock lives inside the scoreboard block the scorer renders, not in a
+     element of its own, so ticking it means redrawing that block — which is
+     cheap. The body is untouched, so tables keep their scroll position. */
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
     window.S.clockMs = sub.clockMs();
-    const el = document.querySelector('#view .clockbig, #view .clk, #view .gameclock');
-    if (el) el.textContent = B.fmtClock(window.S.clockMs);
-  }, 250);
+    renderHead();
+  }, 500);
 }
 
 /* A live frame carries the roster and any events the scorer has published.

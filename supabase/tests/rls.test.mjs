@@ -63,8 +63,31 @@ async function main() {
   const pend = await rows('media?select=id&status=eq.pending&limit=5');
   ok('anon reads no unapproved media', pend.n === 0, `rows=${pend.n}`);
 
-  const ev = await rows('game_events?select=id&limit=5');
-  ok('anon reads no events of non-final games', ev.n === 0 || !ev.ok, `rows=${ev.n}`);
+  /* This used to be `game_events?select=id&limit=5` asserting zero rows, which
+     passed only because the table was empty — it was testing an empty database,
+     not a policy, and it started failing the moment real games existed. Worse,
+     zero rows is the WRONG expectation: a finished game's log is public, and
+     the box score is rebuilt from it.
+
+     The actual rule is can_read_game_detail: a final game's events are public,
+     an unfinished one's are not. Both halves are asserted. */
+  const finalIds = await (await rest('games?select=id&status=eq.final&limit=1')).json().catch(() => []);
+  const openIds  = await (await rest('games?select=id&status=in.(scheduled,live)&limit=1')).json().catch(() => []);
+
+  if (finalIds?.[0]) {
+    const pub = await rows(`game_events?game_id=eq.${finalIds[0].id}&select=id&limit=5`);
+    ok('anon CAN read a finished game\'s events (the box score depends on it)',
+       pub.ok && pub.n > 0, `rows=${pub.n}`);
+  } else {
+    console.log('  SKIP  no final game to read');
+  }
+
+  if (openIds?.[0]) {
+    const hid = await rows(`game_events?game_id=eq.${openIds[0].id}&select=id&limit=5`);
+    ok('anon reads no events of an unfinished game', hid.n === 0, `rows=${hid.n}`);
+  } else {
+    console.log('  SKIP  no unfinished game to probe');
+  }
 
   console.log('\nwrites that must be refused:');
   const ZERO = '00000000-0000-0000-0000-000000000000';

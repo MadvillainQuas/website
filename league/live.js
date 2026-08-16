@@ -174,11 +174,29 @@ function publisher(opts) {
 
   return {
     transport: tx.kind,
-    /** queue events; they leave within FRAME_MS as one message */
+    /* Queue events. Leading edge, then coalesce.
+
+       A trailing-only window made every single tap wait the full FRAME_MS
+       before it left, and most of a real game is isolated taps seconds apart —
+       so the coalescing was costing latency without ever having anything to
+       coalesce. Now the first event of a burst goes immediately and anything
+       arriving during the window behind it rides the one follow-up message.
+       A 40-event flurry still costs two messages, not forty. */
     pushEvents(evs) {
       if (!evs || !evs.length) return;
       buf.push(...evs);
-      if (!timer) timer = setTimeout(flush, FRAME_MS);
+      if (timer) return;                       // a window is already open
+
+      const quiet = Date.now() - lastSend >= FRAME_MS;
+      if (quiet) {
+        flush();                               // nothing recent — go now
+        timer = setTimeout(() => {             // hold the window open behind it
+          timer = null;
+          if (buf.length) flush();
+        }, FRAME_MS);
+      } else {
+        timer = setTimeout(flush, FRAME_MS);
+      }
     },
     /** clock transitions: start, stop, adjust, period change */
     pushState,
