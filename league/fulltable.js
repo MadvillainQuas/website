@@ -24,6 +24,10 @@
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
+/* a plus/minus is meaningless without its sign: "3.9" and "-3.9" are
+   opposite verdicts and must not look alike at a glance */
+const sgn1 = v => (v == null || !isFinite(v)) ? '—'
+  : (v > 0 ? '+' : '') + Number(v).toFixed(1);
 const f1 = v => (v == null ? '—' : Number(v).toFixed(1));
 const f2 = v => (v == null ? '—' : Number(v).toFixed(2));
 const f0 = v => (v == null ? '—' : String(v));
@@ -78,6 +82,14 @@ const P = [
   { k:'fgm',    l:'FG TOT',  g:['totals'], fmt:r=>pair(r.fgm,r.fga), sort:r=>r.fgm, w:70 },
   { k:'p3m',    l:'3PT TOT', g:['totals'], fmt:r=>pair(r.p3m,r.p3a), sort:r=>r.p3m, w:70 },
   { k:'ftm',    l:'FT TOT',  g:['totals'], fmt:r=>pair(r.ftm,r.fta), sort:r=>r.ftm, w:70 },
+  /* BPM 2.0: points per 100 possessions over a league-average player, from the
+     box score. An estimate, not a measurement — it cannot see a closeout — but
+     it is the single number that comes closest to "how good was this player",
+     which is why it leads the advanced group. */
+  { k:'bpm',  l:'BPM',  g:['advanced'], fmt:r=>sgn1(r.bpm),  heat:1, w:58 },
+  { k:'obpm', l:'OBPM', g:['advanced'], fmt:r=>sgn1(r.obpm), heat:1, w:60 },
+  { k:'dbpm', l:'DBPM', g:['advanced'], fmt:r=>sgn1(r.dbpm), heat:1, w:60 },
+  { k:'vorp', l:'VORP', g:['advanced'], fmt:r=>f1(r.vorp),   heat:1, w:58 },
   { k:'efg',    l:'eFG%', g:['shooting','advanced'], fmt:r=>f1(r.efg), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting','advanced'], fmt:r=>f1(r.ts),  heat:1 },
   /* Each zone's accuracy with the volume it rests on, in that order — the same
@@ -90,6 +102,7 @@ const P = [
   { k:'mid_pct',  l:'MID%',   g:['shooting'], fmt:r=>f1(r.mid_pct), heat:1 },
   { k:'mid_apg',  l:'MIDA/G', g:['shooting'], fmt:r=>f1(r.mid_apg), heat:1, w:64 },
   { k:'rim_rate', l:'RIM/FGA', g:['shooting'], fmt:r=>f1(r.rim_rate), heat:1 },
+  { k:'mid_rate', l:'MID/FGA', g:['shooting'], fmt:r=>f1(r.mid_rate), heat:1 },
   { k:'p3_rate',  l:'3PA/FGA', g:['shooting'], fmt:r=>f1(r.p3_rate),  heat:1 },
   { k:'ftr',      l:'FTr',   g:['shooting','advanced'], fmt:r=>f1(r.ftr), heat:1 },
 

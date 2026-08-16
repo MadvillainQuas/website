@@ -114,6 +114,12 @@ jobs:
         # split is within one game for an even team count
         run: node supabase/tests/schedule.test.mjs
 
+      - name: Box plus/minus
+        # the port checks intermediate values, not just the final number — a
+        # BPM that is right in aggregate but wrong per component cannot be
+        # debugged later
+        run: node supabase/tests/bpm.test.mjs
+
       - name: Roster CSV parsing
         # the one path where a manager hands us a whole squad at once, so a
         # quiet misparse is twenty wrong rows rather than one

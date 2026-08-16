@@ -70,11 +70,62 @@ async function season(competitionId) {
   games.forEach(g => { byId[g.id] = g; });
 
   const S = window.CourtsideSeason;
-  return {
-    games, byId, pgs, tgs,
-    players: S.players(pgs, tgs),
-    teams: S.teams(tgs, byId)
-  };
+  const players = S.players(pgs, tgs);
+  const teamRows = S.teams(tgs, byId);
+
+  /* Which club each player belongs to, taken from the games they actually
+     played — a season row has no side of its own, because a side is a property
+     of a game. Last one wins, so a player who transferred is attributed to
+     where they finished, which is what a season table shows. */
+  const teamOfPlayer = new Map();
+  pgs.forEach(r => {
+    const g = byId[r.game_id];
+    const pid = r.player_uuid || r.player_id;
+    if (!g || !pid) return;
+    teamOfPlayer.set(pid, r.team_idx === 0 ? g.home_team_id : g.away_team_id);
+  });
+
+  S.attachBPM(players, teamRows, teamOfPlayer);
+
+  return { games, byId, pgs, tgs, players, teams: teamRows, teamOfPlayer };
+}
+
+/* ------------------------------------------------------ a window of games ---
+   The same aggregation as season(), over an arbitrary set of games. This is
+   what "form over the last month" is: not a different statistic, the same one
+   over fewer games, so it goes through the same code and cannot disagree with
+   the season table about what a rebound is.
+   ============================================================================ */
+async function statsForGames(games) {
+  if (!games || !games.length) return { players: [], teams: [], byId: {} };
+  const ids = games.map(g => g.id);
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+
+  const [pgsParts, tgsParts] = await Promise.all([
+    Promise.all(chunks.map(c => all(`player_game_stats?game_id=in.(${c.join(',')})` +
+      `&select=game_id,player_uuid,player_id,team_idx,stats`))),
+    Promise.all(chunks.map(c => all(`team_game_stats?game_id=in.(${c.join(',')})` +
+      `&select=game_id,team_idx,stats`)))
+  ]);
+  const pgs = pgsParts.flat(), tgs = tgsParts.flat();
+  const byId = {};
+  games.forEach(g => { byId[g.id] = g; });
+
+  const S = window.CourtsideSeason;
+  const players = S.players(pgs, tgs);
+  const teamRows = S.teams(tgs, byId);
+
+  const teamOfPlayer = new Map();
+  pgs.forEach(r => {
+    const g = byId[r.game_id];
+    const pid = r.player_uuid || r.player_id;
+    if (!g || !pid) return;
+    teamOfPlayer.set(pid, r.team_idx === 0 ? g.home_team_id : g.away_team_id);
+  });
+  S.attachBPM(players, teamRows, teamOfPlayer);
+
+  return { players, teams: teamRows, byId, teamOfPlayer, games };
 }
 
 /* Every stint for a team's games. This is what WOWY, the lineup filter and the
@@ -195,5 +246,6 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, stints, events, playerMeta, teamMeta, context, pickSeason };
+return { get, all, season, statsForGames, stints, events, playerMeta, teamMeta,
+         context, pickSeason };
 }));

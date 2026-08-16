@@ -236,33 +236,142 @@ async function lineupPanels(team) {
   }
 }
 
+/* ------------------------------------------------------------------ roster ---
+   The squad, with the measurements a scout actually asks for.
+
+   EDITABLE IN PLACE for whoever manages the club. A separate edit screen for
+   four numbers is a screen nobody opens, so the cells become inputs when the
+   viewer has the right and stay plain text when they do not. Nothing here
+   decides who may edit — it asks the database, and a save that should not
+   happen is refused by RLS whatever this page believes.
+
+   Height and wingspan are entered and shown in centimetres because that is
+   what a tape measure in a British sports hall reads, with feet and inches
+   alongside since that is how people talk about it. */
+const MEASURES = [
+  { k: 'height_cm',     l: 'HT',   w: 74, unit: 'cm', imperial: true,  min: 100, max: 260 },
+  { k: 'weight_kg',     l: 'WT',   w: 66, unit: 'kg', imperial: false, min: 30,  max: 250 },
+  { k: 'wingspan_cm',   l: 'WING', w: 74, unit: 'cm', imperial: true,  min: 120, max: 280 },
+  { k: 'previous_club', l: 'PREVIOUS CLUB', w: 160, text: true }
+];
+
+const feetInches = cm => {
+  if (!cm) return '';
+  const total = Math.round(cm / 2.54);
+  return Math.floor(total / 12) + "'" + String(total % 12) + '"';
+};
+
 async function roster(team) {
   const rows = await api(`roster_entries?team_id=eq.${team.id}&active=eq.true` +
-                         `&select=jersey,position,players(id,first_name,last_name,slug,is_minor)&order=jersey`);
+    `&select=jersey,position,players(id,first_name,last_name,slug,is_minor,` +
+    `height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
   const host = $('#roster'); host.textContent = '';
   if (!rows.length) { host.appendChild(el('div', 'empty', 'No players listed yet.')); return; }
+
+  /* May this viewer edit? The database is asked, not assumed — and a viewer
+     who is not signed in never even makes the request. */
+  let canEdit = false;
+  const sb = window.courtsideClient && window.courtsideClient();
+  if (sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        const { data } = await sb.rpc('is_team_manager', { p_team: team.id });
+        canEdit = !!data;
+      }
+    } catch (_) { canEdit = false; }
+  }
 
   const wrap = el('div', 'ft-wrap');
   const t = el('table', 'ft');
   const thead = el('thead'), hr = el('tr');
   ['#', 'PLAYER', 'POS'].forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));
+  MEASURES.forEach(m => {
+    const th = el('th', null, m.l);
+    th.style.width = m.w + 'px';
+    hr.appendChild(th);
+  });
   thead.appendChild(hr); t.appendChild(thead);
+
   const tb = el('tbody');
   rows.sort((a, b) => (+a.jersey || 99) - (+b.jersey || 99)).forEach(r => {
     const p = r.players || {};
     const tr = el('tr');
     tr.appendChild(el('td', 'stick c0', r.jersey || '–'));
+
     const nd = el('td', 'stick c1');
     const cell = el('div', 'ft-name');
     const name = ((p.first_name || '') + ' ' + (p.last_name || '')).trim();
-    if (p.id) { const a = el('a', null, name); a.href = '../p/?p=' + encodeURIComponent(p.id); cell.appendChild(a); }
+    if (p.slug) { const a = el('a', null, name); a.href = '../p/?p=' + encodeURIComponent(p.slug); cell.appendChild(a); }
     else cell.appendChild(el('span', null, name || 'Player'));
     nd.appendChild(cell); tr.appendChild(nd);
     tr.appendChild(el('td', null, r.position || ''));
+
+    MEASURES.forEach(m => {
+      const td = el('td', 'meas');
+      const val = p[m.k];
+
+      if (!canEdit) {
+        /* read-only: show it, with the imperial equivalent where it helps */
+        if (val == null || val === '') td.appendChild(el('span', 'meas-none', '–'));
+        else if (m.imperial) {
+          td.appendChild(el('span', null, val + m.unit));
+          td.appendChild(el('span', 'meas-alt', feetInches(val)));
+        } else {
+          td.appendChild(el('span', null, m.text ? String(val) : val + m.unit));
+        }
+        tr.appendChild(td);
+        return;
+      }
+
+      const inp = el('input', 'meas-in');
+      inp.value = val == null ? '' : String(val);
+      inp.placeholder = m.text ? '—' : m.unit;
+      if (!m.text) { inp.type = 'number'; inp.min = String(m.min); inp.max = String(m.max); }
+      else inp.maxLength = 80;
+
+      let last = inp.value;
+      const save = async () => {
+        const raw = inp.value.trim();
+        if (raw === last) return;
+        let out = raw === '' ? null : (m.text ? raw : parseInt(raw, 10));
+        if (!m.text && out != null && (!isFinite(out) || out < m.min || out > m.max)) {
+          inp.classList.add('bad');
+          inp.title = m.l + ' must be between ' + m.min + ' and ' + m.max + m.unit;
+          return;
+        }
+        inp.classList.remove('bad'); inp.title = '';
+        inp.classList.add('saving');
+        const patch = {}; patch[m.k] = out;
+        const { error } = await sb.from('players').update(patch).eq('id', p.id);
+        inp.classList.remove('saving');
+        if (error) {
+          inp.classList.add('bad');
+          inp.title = error.message;
+          inp.value = last;                 // put back what was there
+          return;
+        }
+        last = inp.value;
+        inp.classList.add('saved');
+        setTimeout(() => inp.classList.remove('saved'), 1200);
+      };
+      inp.addEventListener('blur', save);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
+
+  if (canEdit) {
+    host.appendChild(el('div', 'empty',
+      'You manage this club, so the measurements are editable — they save when ' +
+      'you leave the box. Heights and wingspans are in centimetres.'));
+  }
 }
+
 
 async function games(team) {
   const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +

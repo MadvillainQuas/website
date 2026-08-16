@@ -5,6 +5,7 @@
    without ever asking for a box score. */
 
 const CFG = window.COURTSIDE_CONFIG;
+const D = window.CourtsideData;      // shared loader + aggregation
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -236,6 +237,141 @@ async function clubs() {
   sec.querySelector('#clubs').appendChild(grid);
 }
 
+/* -------------------------------------------------------------- the stars ---
+   Who has actually been playing well lately, by BPM over a window.
+
+   BPM rather than points because points reward volume and a star section that
+   is really a shot-attempt leaderboard is worse than no star section. BPM asks
+   what a player added per 100 possessions and is adjusted to how their team
+   actually performed, which is as close as a box score gets to the question.
+
+   THE WINDOW IS ANCHORED TO THE LAST GAME PLAYED, not to today. A league that
+   last played in April should show April's stars in May, rather than an empty
+   panel that looks broken — and the heading says which dates it covers so the
+   reader is never guessing how fresh it is.
+
+   A MINIMUM IS ENFORCED and stated. BPM over one quiet half is noise, and a
+   podium built from noise is worse than an empty one, so a week needs a game
+   and twenty minutes, a month two games and sixty. */
+const STAR_WINDOWS = [
+  { key: 'month', label: 'Monthly stars', days: 30, minGames: 2, minMinutes: 60 },
+  { key: 'week',  label: 'Weekly stars',  days: 7,  minGames: 1, minMinutes: 20 }
+];
+
+const dayMs = 86400000;
+const shortDate = iso => { try { return new Date(iso).toLocaleDateString('en-GB',
+  { day: 'numeric', month: 'short' }); } catch (_) { return ''; } };
+
+async function stars() {
+  const sec = $('#starsSec');
+  if (!sec || !LEAGUE) return;
+
+  const comps = await leagueCompetitions(LEAGUE.id);
+  if (!comps.length) return;
+
+  let played = [];
+  try {
+    played = await api('games?competition_id=in.(' + comps.join(',') + ')' +
+      '&status=eq.final&select=id,tipoff_at,home_team_id,away_team_id&order=tipoff_at.desc');
+  } catch (_) { return; }
+  if (!played.length) return;
+
+  const latest = new Date(played[0].tipoff_at || Date.now()).getTime();
+
+  /* names and clubs, resolved once for every window */
+  const teamsById = new Map();
+  try {
+    (await api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour'))
+      .forEach(t => teamsById.set(t.id, t));
+  } catch (_) { /* the podium still works with a colourless card */ }
+
+  const rows = [];
+  for (const w of STAR_WINDOWS) {
+    const from = latest - w.days * dayMs;
+    const inWindow = played.filter(g => {
+      const t = new Date(g.tipoff_at || 0).getTime();
+      return t >= from && t <= latest;
+    });
+    if (!inWindow.length) continue;
+
+    let agg;
+    try { agg = await D.statsForGames(inWindow); } catch (_) { continue; }
+
+    const eligible = (agg.players || [])
+      .filter(p => p.bpm != null && (p.gp || 0) >= w.minGames && (p.min || 0) >= w.minMinutes)
+      .sort((a, b) => b.bpm - a.bpm)
+      .slice(0, 3);
+    if (!eligible.length) continue;
+
+    const ids = eligible.map(p => p.id);
+    let meta = {};
+    try { meta = await D.playerMeta(ids); } catch (_) { meta = {}; }
+
+    rows.push({
+      w, top: eligible, meta, teamOf: agg.teamOfPlayer, teamsById,
+      games: inWindow.length,
+      span: shortDate(inWindow[inWindow.length - 1].tipoff_at) + ' – ' + shortDate(inWindow[0].tipoff_at)
+    });
+  }
+
+  if (!rows.length) return;
+  sec.classList.remove('hide');
+  const host = sec.querySelector('#stars');
+  host.textContent = '';
+
+  rows.forEach(r => {
+    const head = el('div', 'starrow-h');
+    head.append(el('span', 'starrow-t', r.w.label.toUpperCase()),
+                el('span', 'starrow-s', r.span + ' · ' + r.games +
+                   (r.games === 1 ? ' game' : ' games') +
+                   ' · min ' + r.w.minGames + 'g/' + r.w.minMinutes + 'min'));
+    host.appendChild(head);
+
+    const grid = el('div', 'stargrid');
+    r.top.forEach((p, i) => {
+      const m = r.meta[p.id] || {};
+      const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
+      const ink = team.colour || m.colour || '#93f2bf';
+
+      const a = el('a', 'club star');
+      a.href = 'p/?p=' + encodeURIComponent(m.slug || '');
+      a.style.setProperty('--ink-c', ink);
+      a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || ''));
+
+      const plate = el('div', 'club-plate');
+      plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+      ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+
+      /* the rank is the mark, printed like the club monogram */
+      const mark = el('div', 'club-mark');
+      const rank = String(i + 1);
+      mark.append(el('span', 'club-mono ghost', rank), el('span', 'club-mono', rank));
+      plate.appendChild(mark);
+
+      /* BPM across the band, because it is why this player is on the podium */
+      const band = el('div', 'club-band');
+      band.appendChild(el('span', null,
+        (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1) + ' BPM'));
+      plate.appendChild(band);
+      plate.appendChild(el('div', 'club-grain'));
+
+      const foot = el('div', 'club-foot star-foot');
+      const who = el('div', 'star-who');
+      who.append(el('span', 'star-name', m.name || 'Player'),
+                 el('span', 'star-team', team.name || m.teamFull || ''));
+      foot.appendChild(who);
+      foot.appendChild(el('span', 'club-ed',
+        (p.ppg != null ? p.ppg + 'p' : '') +
+        (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
+        (p.apg != null ? ' ' + p.apg + 'a' : '')));
+
+      a.append(plate, foot);
+      grid.appendChild(a);
+    });
+    host.appendChild(grid);
+  });
+}
+
 /* ------------------------------------------------------------ the splash ---
    A league's own front page: its table and its leaders, side by side, each a
    real embed rather than a bespoke copy — the same widget other sites get, so
@@ -279,6 +415,20 @@ function splash() {
   host.appendChild(grid);
 }
 
+/* The section numbers are a reading aid, so they must count what is actually
+   on the page. The hub hides Clubs and Stars — both need a league — and a hub
+   whose first heading is "02" looks like something failed to load. */
+function renumber() {
+  let n = 0;
+  document.querySelectorAll('.sec').forEach(sec => {
+    if (sec.classList.contains('hide') || sec.offsetParent === null && sec.classList.contains('hide')) return;
+    const idx = sec.querySelector('.idx');
+    if (!idx) return;
+    idx.textContent = String(n).padStart(2, '0');
+    n++;
+  });
+}
+
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
   $('#mode').textContent = 'transport: ' +
@@ -315,7 +465,9 @@ function splash() {
 
     await games();
     splash();
-    clubs();
+    await clubs();
+    await stars();
+    renumber();
   } else {
     if (WANT) {
       /* asked for a league that is not there — say so rather than silently
@@ -324,6 +476,7 @@ function splash() {
     }
     await games();
     await leagues();
+    renumber();
   }
 })();
 

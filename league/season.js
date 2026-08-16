@@ -410,5 +410,61 @@ function percentiles(rows, keys, lowerIsBetter) {
   return out;
 }
 
-return { players, teams, percentiles, teamLine, POSS };
+/* ============================================================================
+   BPM, attached to rows that already exist.
+
+   It is a separate pass rather than part of players() because BPM cannot be
+   computed one player at a time: the team adjustment needs a whole roster, and
+   the league average offensive rating needs every team. Folding it into the
+   per-player loop would mean either computing it wrong or computing the league
+   twice.
+   ============================================================================ */
+function attachBPM(playerRows, teamRows, teamOfPlayer) {
+  const B = (typeof window !== 'undefined' && window.CourtsideBPM) ||
+            (typeof globalThis !== 'undefined' && globalThis.CourtsideBPM);
+  if (!B || !playerRows || !playerRows.length || !teamRows || !teamRows.length) {
+    return playerRows || [];
+  }
+
+  /* Player rows do not carry a team — a player's side is a property of each
+     GAME, not of the season row — so the caller supplies the mapping it
+     already has from the per-game rows. */
+  const teamOf = id => (teamOfPlayer && (teamOfPlayer.get ? teamOfPlayer.get(id) : teamOfPlayer[id])) || null;
+  const byTeam = new Map();
+  playerRows.forEach(p => {
+    const tid = teamOf(p.id);
+    if (!tid) return;
+    p._teamId = tid;
+    if (!byTeam.has(tid)) byTeam.set(tid, []);
+    byTeam.get(tid).push(p);
+  });
+  if (!byTeam.size) return playerRows;
+
+  const teams = teamRows.filter(t => byTeam.has(t.id)).map(t => {
+    const squad = byTeam.get(t.id).map(p => ({
+      id: p.id, minutes: p.min || 0,
+      pts: p.pts || 0, tpm: p.p3m || 0, ast: p.ast || 0, to: p.tov || 0,
+      orb: p.oreb || 0, drb: p.dreb || 0, stl: p.stl || 0, blk: p.blk || 0,
+      pf: p.pf || 0, fga: p.fga || 0, fta: p.fta || 0
+    }));
+    const totals = {
+      pts: t.pts, fga: t.fga, fta: t.fta, oreb: t.oreb, dreb: t.dreb,
+      ast: t.ast, stl: t.stl, blk: t.blk, pf: t.fouls, poss: t.poss
+    };
+    return Object.assign(
+      { id: t.id, pace: t.pace || 70, netRtg: t.net || 0, offRtg: t.ortg, players: squad },
+      B.teamInputs(totals, squad));
+  });
+
+  const out = B.forLeague(teams);
+  playerRows.forEach(p => {
+    const r = out.get(p.id);
+    if (!r) return;
+    p.bpm = r.bpm; p.obpm = r.obpm; p.dbpm = r.dbpm; p.vorp = r.vorp;
+    p.bpm_pos = r.position; p.bpm_role = r.role;
+  });
+  return playerRows;
+}
+
+return { players, teams, percentiles, teamLine, attachBPM, POSS };
 }));

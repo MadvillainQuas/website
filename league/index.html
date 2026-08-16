@@ -8,8 +8,8 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>Courtside Network</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=5">
-<link rel="stylesheet" href="kit/nav.css?v=5">
+<link rel="stylesheet" href="kit/courtside-kit.css?v=9">
+<link rel="stylesheet" href="kit/nav.css?v=9">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*4);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -162,6 +162,25 @@
     .club:hover .club-mono.ghost{transform:translate(3px,3px)}
   }
   .hide{display:none !important}
+  /* ---- stars: the club plate, with a rank where the monogram goes ---- */
+  .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+    padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u))}
+  .starrow-t{font-family:var(--f-ui);font-weight:800;font-size:11px;
+    letter-spacing:.14em;color:var(--lume)}
+  .starrow-s{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    letter-spacing:.06em}
+  .stargrid{display:grid;gap:calc(var(--u)*2);padding:0 calc(var(--u)*3) calc(var(--u)*2);
+    grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
+  @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(178px,240px));justify-content:start} }
+  .star .club-plate{aspect-ratio:4/3}
+  .star-foot{align-items:flex-start}
+  .star-who{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .star-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;
+    text-transform:uppercase;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .star:hover .star-name{color:var(--ink-c)}
+  .star-team{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -192,10 +211,17 @@
     <div id="clubs"></div>
   </div>
 
+  <!-- stars (league splash only) ----------------------------------------- -->
+  <div class="sec hide" id="starsSec">
+    <div class="sec-h"><span class="idx">01</span><h2>Stars</h2>
+      <span class="note">by box plus/minus</span></div>
+    <div id="stars"></div>
+  </div>
+
   <!-- live + recent ------------------------------------------------------ -->
   <div class="sec">
     <div class="sec-h">
-      <span class="idx">01</span><h2>Games</h2>
+      <span class="idx" id="idxGames">02</span><h2>Games</h2>
       <span class="note" id="gamesNote"></span>
     </div>
     <div id="games"><div class="empty">Loading…</div></div>
@@ -203,14 +229,14 @@
 
   <!-- leagues ------------------------------------------------------------ -->
   <div class="sec">
-    <div class="sec-h"><span class="idx">02</span><h2 id="leaguesHead">Leagues</h2></div>
+    <div class="sec-h"><span class="idx" id="idxLeagues">03</span><h2 id="leaguesHead">Leagues</h2></div>
     <div id="leagues"><div class="empty">Loading…</div></div>
   </div>
 
   <!-- entry points ------------------------------------------------------- -->
   <div class="sec">
     <div class="sec-h">
-      <span class="idx">03</span><h2>Take part</h2>
+      <span class="idx" id="idxTake">04</span><h2>Take part</h2>
       <span class="note">sign-in required</span>
     </div>
     <div class="grid">
@@ -253,8 +279,13 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=5"></script>
-<script src="home.js?v=5"></script>
-<script src="nav.js?v=5"></script>
+<script src="config.js?v=9"></script>
+<!-- the stars podium runs the same aggregation and the same BPM as the
+     season table, so it loads the same modules rather than a copy -->
+<script src="season.js?v=9"></script>
+<script src="bpm.js?v=9"></script>
+<script src="data.js?v=9"></script>
+<script src="home.js?v=9"></script>
+<script src="nav.js?v=9"></script>
 </body>
 </html>
