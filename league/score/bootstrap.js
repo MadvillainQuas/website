@@ -90,6 +90,202 @@
 
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
+  /* ------------------------------------------------------ legend clearance --- */
+  /* #cols reserves a flat 52px for the fixed gesture legend, but the legend is
+     150px tall on a narrow phone once its text wraps — so the bottom of the
+     player columns ends up underneath it. Measuring the element is the only
+     way to reserve the right amount, because the height depends on wrapping.
+     Its top 96px is a transparent gradient, so only the remainder hides
+     anything. Publishes --cs-legend-h for the stylesheet to use. */
+  (function trackLegend() {
+    const mount = () => {
+      const el = document.getElementById('ctrlHelp');
+      if (!el) return false;
+      const apply = () => {
+        const h = el.offsetHeight;                       // 0 when display:none (desktop)
+        const opaque = h > 0 ? Math.max(0, h - 96) : 0;  // minus the gradient lead-in
+        document.documentElement.style.setProperty('--cs-legend-h', opaque + 'px');
+      };
+      apply();
+      if (window.ResizeObserver) new ResizeObserver(apply).observe(el);
+      window.addEventListener('resize', apply, { passive: true });
+      window.addEventListener('orientationchange', () => setTimeout(apply, 250));
+
+      /* The legend lives inside #game, which is display:none until tip-off, so
+         the first measurement is always 0 and a ResizeObserver does not fire
+         for that transition. Re-measure whenever the scorer changes screen —
+         same global-wrapping approach as everything else here. */
+      const wrapShowScreen = () => {
+        if (typeof window.showScreen !== 'function' || window.showScreen.__csWrapped) return false;
+        const inner = window.showScreen;
+        const wrapped = function () {
+          const r = inner.apply(this, arguments);
+          /* A timer, not requestAnimationFrame: rAF does not fire while the tab
+             is backgrounded or otherwise not compositing, and the reservation
+             would then stay at whatever it was when the legend was hidden.
+             Two passes — one for the immediate layout, one after any transition. */
+          setTimeout(apply, 0);
+          setTimeout(apply, 260);
+          return r;
+        };
+        wrapped.__csWrapped = true;
+        window.showScreen = wrapped;
+        return true;
+      };
+      if (!wrapShowScreen()) {
+        const t2 = setInterval(() => { if (wrapShowScreen()) clearInterval(t2); }, 300);
+        setTimeout(() => clearInterval(t2), 15000);
+      }
+      return true;
+    };
+    if (!mount()) {
+      const t = setInterval(() => { if (mount()) clearInterval(t); }, 300);
+      setTimeout(() => clearInterval(t), 15000);
+    }
+  })();
+
+  /* ------------------------------------------------------------ finalise --- */
+  /* A real fixture has a uuid; a scratch room does not, and there is nothing
+     on the server to finalise for one. */
+  const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
+
+  async function finaliseGame(btn, note) {
+    const CFG = window.COURTSIDE_CONFIG;
+    const sb = window.courtsideClient && courtsideClient();
+    if (!sb) { note('No Supabase client — cannot finalise.', '#ff5f6b'); return; }
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      note('Sign in first — open /league/app/ in another tab, then try again.', '#ffd166');
+      return;
+    }
+
+    btn.disabled = true;
+    note('pushing the event log…', '#ffd166');
+
+    /* Push whatever the buffer still holds, then give the upserts a moment to
+       land. Finalising against a partial log would produce a box score that
+       silently disagrees with what was scored. */
+    try { window.CourtsideSync && window.CourtsideSync.flush(); } catch (_) {}
+    await new Promise(r => setTimeout(r, 1200));
+
+    /* Confirm the server actually has every event before asking it to close
+       the game — the flush is fire-and-forget by design. */
+    try {
+      const { count, error } = await sb.from('game_events')
+        .select('seq', { count: 'exact', head: true }).eq('game_id', gameId);
+      if (error) throw error;
+      const local = (S.events || []).length;
+      if (count == null || count < local) {
+        note(`server has ${count == null ? '?' : count} of ${local} events — retrying…`, '#ffd166');
+        try { window.CourtsideSync && window.CourtsideSync.flush(); } catch (_) {}
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    } catch (e) {
+      btn.disabled = false;
+      note('could not verify the log: ' + (e.message || e), '#ff5f6b');
+      return;
+    }
+
+    note('finalising…', '#ffd166');
+    try {
+      const r = await fetch(CFG.supabaseUrl + '/functions/v1/finalise-game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: CFG.supabaseAnonKey,
+          Authorization: 'Bearer ' + session.access_token
+        },
+        body: JSON.stringify({ gameId })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        btn.disabled = false;
+        note('refused: ' + (j.error || r.status), '#ff5f6b');
+        return;
+      }
+      note('final — the box score is public', '#93f2bf');
+      btn.textContent = 'finalised ✓';
+      try { window.CourtsideSync && window.CourtsideSync.finalise(); } catch (_) {}
+    } catch (e) {
+      btn.disabled = false;
+      note('network error: ' + (e.message || e), '#ff5f6b');
+    }
+  }
+
+  /* renderFinal() rebuilds #finalview wholesale, so the button is re-injected
+     after every render rather than added once. Wrapping the global is the same
+     approach sync.js takes with addEvent: the scorer's own code is untouched. */
+  function injectFinalise() {
+    const host = document.getElementById('finalview');
+    if (!host || host.querySelector('#csFinalise')) return;
+    const row = host.querySelector('.mbtns');
+    if (!row) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'mbtns';
+    wrap.style.cssText = 'padding:10px 0 0;flex-direction:column;gap:8px;align-items:stretch';
+
+    const btn = document.createElement('button');
+    btn.id = 'csFinalise';
+    btn.className = 'yes';
+    btn.type = 'button';
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'font-family:var(--f-mono);font-size:10px;line-height:1.7;text-align:center;' +
+                        'color:var(--dim);padding:0 4px';
+    const note = (t, c) => { msg.textContent = t; msg.style.color = c || 'var(--dim)'; };
+
+    if (!isFixture) {
+      btn.textContent = 'finalise to the league';
+      btn.disabled = true;
+      note('This is a practice game, so there is nothing to publish. Open a real ' +
+           'fixture from the league admin page to score one that counts.');
+    } else {
+      btn.textContent = 'finalise to the league';
+      note('Publishes the box score, updates the table and the season statistics. ' +
+           'A finalised game stops accepting events.');
+      btn.onclick = () => {
+        if (typeof askConfirm === 'function') {
+          askConfirm('finalise this game? the log is closed afterwards',
+                     () => finaliseGame(btn, note));
+        } else finaliseGame(btn, note);
+      };
+    }
+
+    wrap.append(btn, msg);
+    row.parentNode.insertBefore(wrap, row);
+
+    if (isFixture) {
+      const view = document.createElement('a');
+      view.className = 'mini';
+      view.textContent = 'open the public box score ↗';
+      view.href = '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase';
+      view.target = '_blank'; view.rel = 'noopener';
+      view.style.cssText = 'display:block;text-align:center;font-family:var(--f-mono);' +
+                           'font-size:10px;color:var(--aqua);text-decoration:none;padding-top:2px';
+      wrap.appendChild(view);
+    }
+  }
+
+  /* wrap once the scorer's own script has defined it */
+  const wrapRenderFinal = () => {
+    if (typeof window.renderFinal !== 'function' || window.renderFinal.__csWrapped) return false;
+    const inner = window.renderFinal;
+    const wrapped = function () {
+      const r = inner.apply(this, arguments);
+      try { injectFinalise(); } catch (e) { console.warn('[finalise]', e); }
+      return r;
+    };
+    wrapped.__csWrapped = true;
+    window.renderFinal = wrapped;
+    return true;
+  };
+  if (!wrapRenderFinal()) {
+    const t = setInterval(() => { if (wrapRenderFinal()) clearInterval(t); }, 300);
+    setTimeout(() => clearInterval(t), 20000);
+  }
+
   /* --------------------------------------------------------------- attach --- */
   let tries = 0;
   const timer = setInterval(() => {

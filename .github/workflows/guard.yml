@@ -77,6 +77,17 @@ jobs:
       - name: Engine smoke test
         run: node supabase/tests/engine.smoke.mjs
 
+      - name: The public box score must be the scorer's own code
+        # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
+        # changes and the extractor is not re-run, the public page silently
+        # renders yesterday's numbers.
+        run: node supabase/tests/extract-boxscore.mjs --check
+
+      - name: Box score renders with nothing but S and derive()
+        # catches a helper left behind by the extraction, which otherwise only
+        # shows up as a blank public page
+        run: node supabase/tests/boxscore.isolation.mjs
+
       - name: RLS policy tests
         # skips cleanly until the migration is applied; then it asserts the refusals
         run: node supabase/tests/rls.test.mjs

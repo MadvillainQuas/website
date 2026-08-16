@@ -1,172 +1,235 @@
 'use strict';
-const E = window.CourtsideEngine, L = window.CourtsideLive;
+/* ============================================================================
+   Public box score.
+
+   This page renders through league/boxscore.js — the scorer's own render
+   functions, lifted verbatim — over league/engine.js, the scorer's own
+   calculators. So the public box score is not a second implementation that has
+   to be kept in agreement with the statistician's screen; it is the same code
+   reading the same event log, and it carries the same five tabs.
+
+   Two sources, one code path:
+     * the event log in Postgres, for any game that has been played
+     * the live transport, for a game in progress
+
+   The previous version had only the second, which is why a finished game
+   showed a clock and nothing else: with no live publisher attached there was
+   no roster to name anyone with, and no events to replay. games.roster_snapshot
+   now supplies the first and game_events the second.
+   ============================================================================ */
+
+const E = window.CourtsideEngine, B = window.CourtsideBox, L = window.CourtsideLive;
+const CFG = window.COURTSIDE_CONFIG;
 const qp = new URLSearchParams(location.search);
-const gameId = qp.get('g') || 'demo';
-const mode   = qp.get('mode') === 'supabase' ? 'supabase' : 'local';
+const gameId = qp.get('g') || '';
+const mode = qp.get('mode') === 'supabase' ? 'supabase'
+           : qp.get('mode') === 'local' ? 'local'
+           : (window.courtsideMode ? courtsideMode() : 'local');
 
 const $ = s => document.querySelector(s);
 const txt = (el, v) => { if (el && el.textContent !== String(v)) el.textContent = v; };
-/* user-supplied strings are never interpolated into HTML — see the security plan */
-const esc = s => String(s == null ? '' : s)
-  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-let game = null;                 // {teams, starters, …}
-let events = [];                 // authoritative log
-let derived = null;
-let seenPbp = 0;
 let statusVal = 'connecting';
+let fTab = 'box';
+let sub = null;
+let liveClock = null;      // set while a live publisher is driving the clock
 
-/* ---------- rebuild every view from the event log ---------- */
-function rebuild() {
-  if (!game) return;
-  const st = sub && sub.state;
-  const g = Object.assign({}, game, {
-    events,
-    period:  st ? (st.period != null ? st.period : game.period) : game.period,
-    clockMs: sub ? sub.clockMs() : game.clockMs
-  });
-  derived = E.deriveGame(g);
-  paintBoard(g);
-  paintQuarters();
-  paintBox(g);
-  paintTeam(g);
-  paintPbp();
+/* boxscore.js reads S and derive() as free variables, exactly as it does
+   inside the scorer. Supplying them here is what lets the same code run. */
+window.S = null;
+window.derive = () => E.deriveGame(window.S);
+
+async function api(p) {
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
+    { headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+  if (!r.ok) throw new Error(`${r.status} on ${p.split('?')[0]}`);
+  return r.json();
 }
 
-function paintBoard(g) {
-  txt($('#nameA'), game.teams[0].name); txt($('#nameB'), game.teams[1].name);
-  txt($('#scoreA'), derived.score[0]);  txt($('#scoreB'), derived.score[1]);
-  txt($('#period'), E.perName(g.period).toUpperCase());
-  $('#possA').className = derived.poss === 0 ? 'on' : '';
-  $('#possB').className = derived.poss === 1 ? 'on' : '';
-  document.documentElement.style.setProperty('--team-a', game.teams[0].color || '#93f2bf');
-  document.documentElement.style.setProperty('--team-b', game.teams[1].color || '#8ff5ff');
-  txt($('#ctx'), (game.competition || 'Friendly') + ' · ' + game.teams[0].name + ' v ' + game.teams[1].name);
-  document.title = derived.score[0] + '–' + derived.score[1] + ' ' +
-                   game.teams[0].name + ' v ' + game.teams[1].name + ' · Courtside';
+function fail(msg) { $('#view').innerHTML = ''; $('#view').appendChild(
+  Object.assign(document.createElement('div'), { className: 'msg', textContent: msg })); }
+
+/* ------------------------------------------------------- load from Postgres --- */
+/* An event row is stored normalised; the scorer's replay wants it flat, with
+   the payload merged back in and `seq` back under its original name. */
+function rowToEvent(r) {
+  const e = Object.assign({ t: r.t, id: r.seq, period: r.period, clock: r.clock }, r.payload || {});
+  if (r.team != null) e.team = r.team;
+  if (r.pid != null) e.pid = r.pid;
+  return e;
 }
 
-function tickClock() {
-  if (!sub || !sub.state) return;
-  const ms = sub.clockMs();
-  txt($('#clock'), E.fmtClock(ms));
-}
+async function loadStored() {
+  const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
+    `&select=id,status,period,home_score,away_score,tipoff_at,venue,roster_snapshot,starters,` +
+    `tip_winner,arrow_init,home:home_team_id(name,short_name,colour),` +
+    `away:away_team_id(name,short_name,colour),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
+  if (!gs.length) return null;
+  const g = gs[0];
 
-function paintQuarters() {
-  const maxP = Math.max(4, ...Object.keys(derived.perQ[0]).map(Number), ...Object.keys(derived.perQ[1]).map(Number), 1);
-  let h = '';
-  for (let p = 1; p <= maxP; p++) {
-    h += '<div><div class="ql">' + esc(E.perName(p).toUpperCase()) + '</div>' +
-         '<div class="qv a">' + (derived.perQ[0][p] || 0) + '</div>' +
-         '<div class="qv b">' + (derived.perQ[1][p] || 0) + '</div></div>';
+  /* Page through the log. PostgREST caps a response, and a game runs to ~800
+     events — a silent truncation would show a box score that is quietly wrong,
+     which is worse than one that fails. */
+  let events = [], from = 0;
+  for (;;) {
+    const page = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
+      `&select=seq,t,team,pid,period,clock,payload&order=seq&offset=${from}&limit=1000`);
+    events = events.concat(page);
+    if (page.length < 1000) break;
+    from += 1000;
   }
-  h += '<div><div class="ql">TOT</div><div class="qv a">' + derived.score[0] +
-       '</div><div class="qv b">' + derived.score[1] + '</div></div>';
-  $('#qstrip').innerHTML = h;
-}
 
-function paintBox(g) {
-  const TA = [E.teamAdv(g, derived, 0), E.teamAdv(g, derived, 1)];
-  let h = '';
-  [0, 1].forEach(t => {
-    const rows = game.teams[t].players.map(p => {
-      const s = derived.stats[p.id]; if (!s) return '';
-      const on = derived.onCourt[t].includes(p.id);
-      const fg = (s.p2m + s.p3m) + '-' + (s.p2a + s.p3a);
-      return '<tr' + (on ? ' class="on"' : '') + '><td>' + esc(p.num) + '</td><td>' + esc(p.name) + '</td>' +
-        '<td>' + E.fmtMin(s.min) + '</td><td>' + s.pts + '</td><td>' + fg + '</td>' +
-        '<td>' + s.p3m + '-' + s.p3a + '</td><td>' + s.ftm + '-' + s.fta + '</td>' +
-        '<td>' + (s.or + s.dr) + '</td><td>' + s.ast + '</td><td>' + s.stl + '</td>' +
-        '<td>' + s.blk + '</td><td>' + s.to + '</td><td>' + s.pf + '</td>' +
-        '<td>' + (s.pm > 0 ? '+' : '') + s.pm + '</td></tr>';
-    }).join('');
-    const T = TA[t];
-    h += '<div class="cs-hdr"><span class="idx">' + (t ? 'AWAY' : 'HOME') + '</span>' +
-         '<h2 style="color:var(--team-' + (t ? 'b' : 'a') + ')">' + esc(game.teams[t].name) + '</h2></div>' +
-         '<div class="cs-tw"><table class="cs-tbl"><thead><tr><th>#</th><th>PLAYER</th><th>MIN</th><th>PTS</th>' +
-         '<th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th><th>+/-</th></tr></thead>' +
-         '<tbody>' + rows + '</tbody><tfoot><tr><td></td><td>TOTALS</td><td></td><td>' + T.pts + '</td>' +
-         '<td>' + T.fgm + '-' + T.fga + '</td><td>' + T.fg3m + '-' + T.fg3a + '</td><td>' + T.ftm + '-' + T.fta + '</td>' +
-         '<td>' + (T.oreb + T.dreb) + '</td><td>' + T.ast + '</td><td>' + T.stl + '</td><td>' + T.blk + '</td>' +
-         '<td>' + T.tov + '</td><td>' + derived.team[t].foulTot + '</td><td></td></tr></tfoot></table></div>';
-  });
-  $('#pane-box').innerHTML = h;
-}
+  const snap = g.roster_snapshot;
+  const teams = (snap && snap.teams) ? snap.teams : [
+    { name: (g.home || {}).name || 'home', color: (g.home || {}).colour || '#93f2bf', players: [] },
+    { name: (g.away || {}).name || 'away', color: (g.away || {}).colour || '#8ff5ff', players: [] }
+  ];
 
-function paintTeam(g) {
-  const A = E.teamAdv(g, derived, 0), B = E.teamAdv(g, derived, 1);
-  const row = (label, a, b, dp) => {
-    const f = v => (dp === 0 ? Math.round(v) : v.toFixed(dp == null ? 1 : dp));
-    const aw = a > b, bw = b > a;
-    return '<div class="cs-mir"><span class="v a' + (aw ? ' w' : '') + '">' + f(a) + '</span>' +
-      '<div><div class="cs-mb"><div class="h"><i style="width:' + Math.min(100, a / Math.max(a, b, 1) * 100) + '%"></i></div>' +
-      '<div class="g"><i style="width:' + Math.min(100, b / Math.max(a, b, 1) * 100) + '%"></i></div></div>' +
-      '<div class="cs-mlb">' + esc(label) + '</div></div>' +
-      '<span class="v b' + (bw ? ' w' : '') + '">' + f(b) + '</span></div>';
+  const comp = g.competitions || {};
+  const season = comp.seasons || {};
+  const league = season.leagues || {};
+
+  return {
+    teams,
+    starters: g.starters || [[], []],
+    events: events.map(rowToEvent),
+    period: g.period || 1,
+    clockMs: 0,
+    tipWinner: g.tip_winner, arrowInit: g.arrow_init,
+    phase: g.status === 'final' ? 'final' : 'game',
+    status: g.status,
+    competition: [league.name, comp.name].filter(Boolean).join(' · ') || 'Friendly',
+    leagueSlug: league.slug || null,
+    venue: g.venue
   };
-  $('#pane-team').innerHTML = '<div class="cs-band">' +
-    row('OFF RATING', A.ortg, B.ortg) + row('EFG%', A.efg, B.efg) + row('TOV%', A.tovp, B.tovp) +
-    row('OREB%', A.orebp, B.orebp) + row('FT RATE', A.ftr, B.ftr) + row('TS%', A.ts, B.ts) +
-    row('AST / TO', A.astTo, B.astTo, 2) + row('PACE', A.pace, B.pace) +
-    '</div>';
 }
 
-function paintPbp() {
-  const rows = derived.pbp.slice().reverse();
-  const frag = rows.map((e, i) => {
-    const isNew = (rows.length - i) > seenPbp;
-    return '<div class="pbprow' + (isNew && seenPbp ? ' new' : '') + '">' +
-      '<span class="t">' + esc(E.perName(e.period).toUpperCase()) + ' ' + E.fmtClock(e.clock) + '</span>' +
-      '<span class="x">' + esc(e.txt) + '</span>' +
-      '<span class="s">' + e.s[0] + '–' + e.s[1] + '</span></div>';
-  }).join('');
-  $('#pbp').innerHTML = frag || '<div class="empty">No plays yet</div>';
-  seenPbp = rows.length;
+/* ------------------------------------------------------------------ render --- */
+const BODIES = {
+  box:     d => B.qstripHTML(d) + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
+  pbp:     d => B.pbpHTML(d),
+  shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
+  adv:     d => B.advHTML(d),
+  lineups: () => B.lineupsHTML()
+};
+/* the same five, in the same order, with the same labels as renderFinal() */
+const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
+              ['adv', 'full table / advanced'], ['lineups', 'lineups']];
+
+function render() {
+  const S = window.S;
+  if (!S) return;
+  /* the pid -> player lookup the renderers name people through; rebuilt every
+     pass because a live sub can introduce a player who was not on the sheet */
+  B.rebuildPmap();
+  const d = window.derive();
+
+  const heading = S.status === 'final' ? 'final'
+                : S.status === 'live' ? 'live' : 'scheduled';
+
+  $('#view').innerHTML =
+    '<div class="ovhead"><div class="ovtitle">' + B.esc(heading) + '</div></div>' +
+    B.scoreHeadHTML(d) +
+    '<div class="tabrow" style="flex-wrap:wrap">' + TABS.map(t =>
+      '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
+      B.esc(t[1]) + '</button>').join('') + '</div>' +
+    (BODIES[fTab] || BODIES.box)(d);
+
+  document.querySelectorAll('#view .tabbtn').forEach(b => {
+    b.onclick = () => { fTab = b.dataset.tab; render(); };
+  });
+
+  txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
+      S.teams[0].name + ' v ' + S.teams[1].name);
+  document.title = d.score[0] + '–' + d.score[1] + ' ' +
+      S.teams[0].name + ' v ' + S.teams[1].name + ' · Courtside';
+  document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
+  document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
 }
 
-/* ---------- status ---------- */
 function setStatus(s) {
   statusVal = s;
-  const el = $('#status');
-  const label = { live: 'live', delayed: 'delayed', offline: 'offline', connecting: 'connecting', final: 'final' }[s] || s;
-  el.className = 'status ' + (s === 'connecting' ? 'offline' : s);
-  txt($('#statusText'), label);
+  $('#status').className = 'status ' + (s === 'connecting' ? 'offline' : s);
+  txt($('#statusText'), s);
 }
 
-/* ---------- wire the live feed ---------- */
-let sub = null;
-function boot() {
+/* --------------------------------------------------------------- live feed --- */
+/* Only games that are not finished need a socket. Subscribing to a finished
+   game would burn a realtime connection to learn nothing. */
+function goLive() {
   sub = L.subscriber({
     gameId, mode,
-    supabase: window.__sb || null,
+    supabase: (mode === 'supabase' && window.courtsideClient) ? courtsideClient() : null,
     onSnapshot(snap) {
-      if (snap.game) game = snap.game;
-      events = snap.events || [];
-      if (!game) { $('#pane-box').innerHTML = '<div class="empty">Waiting for the game to start…</div>'; return; }
-      seenPbp = 0;
-      rebuild();
-      if (game.status === 'final') setStatus('final');
+      if (snap.game) mergeLive(snap.game, snap.events);
+      else if (snap.events) mergeLive(null, snap.events);
+      render();
     },
-    onFrame(f) {
-      if (f.game) game = f.game;
-      if (f.events && f.events.length) {
-        const seen = new Set(events.map(e => e.seq != null ? e.seq : e.id));
-        f.events.forEach(e => { const k = e.seq != null ? e.seq : e.id; if (!seen.has(k)) events.push(e); });
-      }
-      rebuild();
-      if (game && game.status === 'final') setStatus('final');
-    },
+    onFrame(f) { mergeLive(f.game, f.events); render(); },
     onStatus(s) { if (statusVal !== 'final') setStatus(s); }
   });
-  setInterval(tickClock, 200);          // local tick: smooth, zero bandwidth
-  txt($('#foot'), 'Courtside Network · transport: ' + (sub.transport || mode));
+  liveClock = setInterval(() => {
+    if (!sub || !sub.state || !window.S) return;
+    window.S.clockMs = sub.clockMs();
+    const el = document.querySelector('#view .clockbig, #view .clk, #view .gameclock');
+    if (el) el.textContent = B.fmtClock(window.S.clockMs);
+  }, 250);
 }
 
-document.querySelectorAll('.cs-tab').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('.cs-tab').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-selected', 'false'); });
-  b.classList.add('on'); b.setAttribute('aria-selected', 'true');
-  document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
-  document.getElementById('pane-' + b.dataset.p).classList.add('on');
-}));
+/* A live frame carries the roster and any events the scorer has published.
+   Events are merged by seq so a reconnect that replays a frame cannot
+   double-count, which would silently inflate the score. */
+function mergeLive(game, events) {
+  if (!window.S) return;
+  if (game) {
+    if (game.teams) window.S.teams = game.teams;
+    if (game.starters) window.S.starters = game.starters;
+    if (game.period != null) window.S.period = game.period;
+    if (game.tipWinner != null) window.S.tipWinner = game.tipWinner;
+    if (game.arrowInit != null) window.S.arrowInit = game.arrowInit;
+    if (game.status) {
+      window.S.status = game.status;
+      window.S.phase = game.status === 'final' ? 'final' : 'game';
+      if (game.status === 'final') setStatus('final');
+    }
+  }
+  if (events && events.length) {
+    const seen = new Set(window.S.events.map(e => e.id));
+    events.forEach(e => {
+      const ev = Object.assign({}, e);
+      if (ev.seq != null && ev.id == null) ev.id = ev.seq;
+      if (!seen.has(ev.id)) { seen.add(ev.id); window.S.events.push(ev); }
+    });
+    window.S.events.sort((a, b) => a.id - b.id);
+  }
+}
 
-boot();
+/* ------------------------------------------------------------------- boot --- */
+(async function boot() {
+  if (!gameId) return fail('No game specified.');
+  txt($('#foot'), 'transport: ' + mode);
+
+  let stored = null;
+  if (mode === 'supabase') {
+    try { stored = await loadStored(); }
+    catch (e) { return fail('Could not load this game: ' + e.message); }
+    if (!stored) return fail('This game is not public, or does not exist.');
+  } else {
+    /* a local scratch room has no database row — the publisher is the source */
+    stored = { teams: [{ name: 'home', color: '#93f2bf', players: [] },
+                       { name: 'away', color: '#8ff5ff', players: [] }],
+               starters: [[], []], events: [], period: 1, clockMs: 0,
+               phase: 'game', status: 'live', competition: 'Friendly' };
+  }
+
+  window.S = stored;
+
+  if (stored.status === 'final') {
+    setStatus('final');
+    render();
+    return;                       // finished: nothing left to listen for
+  }
+
+  render();
+  goLive();
+})();

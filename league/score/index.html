@@ -8,9 +8,23 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#04170f">
 <title>courtside</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
+/* ---- Backlit kit typography -------------------------------------------
+   The kit's four faces, self-hosted. This replaces a Google Fonts request:
+   a page under /league/ should not reach a third party to render, and the
+   scorer has to work in a sports hall with no signal.
+
+   Only the @font-face rules and the three font variables below change —
+   no selector, class or rule elsewhere is touched, so the layout and every
+   interaction behave exactly as before. */
+@font-face{font-family:'Jersey25';src:url('../kit/fonts/jersey25.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Silkscreen';src:url('../kit/fonts/silkscreen.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('../kit/fonts/archivo.woff2') format('woff2');
+  font-weight:100 900;font-stretch:62% 125%;font-style:normal;font-display:swap}
+@font-face{font-family:'MartianMono';src:url('../kit/fonts/martian.woff2') format('woff2');
+  font-weight:100 800;font-stretch:75% 112.5%;font-style:normal;font-display:swap}
 :root{
   --bg0:#02100b; --bg1:#062018;
   --glass-hi:rgba(190,255,224,.11); --glass-lo:rgba(110,220,180,.035);
@@ -546,9 +560,13 @@ td.good{color:var(--green);} td.bad{color:var(--red);}
    (softclub green kept as the base hue; structure/type/motion after gamevis)
    ================================================================== */
 :root{
-  --f-body:"DM Sans","Helvetica Neue",Inter,system-ui,sans-serif;
-  --f-head:"Space Grotesk","DM Sans",system-ui,sans-serif;
-  --f-mono:"Space Mono",ui-monospace,Menlo,Consolas,monospace;
+  /* remapped onto the kit's faces — same three roles, same 32 usages */
+  --f-body:'Archivo',"DM Sans","Helvetica Neue",system-ui,sans-serif;
+  --f-head:'Archivo',"Space Grotesk",system-ui,sans-serif;
+  --f-mono:'MartianMono',"Space Mono",ui-monospace,Menlo,Consolas,monospace;
+  /* the kit's display faces, available to the scoreboard numerals below */
+  --f-score:'Jersey25',ui-monospace,monospace;
+  --f-micro:'Silkscreen',ui-monospace,monospace;
   --bg-base:#060c09; --bg-card:rgba(10,26,19,.82); --bg-elevated:rgba(28,52,42,.85); --bg-glass:rgba(255,255,255,.03);
   --text-bright:#ffffff; --text-primary:#e6fff1; --text-secondary:#8fb8a5; --text-muted:#5d7f70;
   --border-subtle:rgba(255,255,255,.06); --border-accent:rgba(147,242,191,.3);
@@ -696,6 +714,75 @@ table.bx td:nth-child(2){font-family:var(--f-body);font-weight:600;color:var(--t
 .thead[data-team="0"] .tn{color:var(--team0);} .thead[data-team="1"] .tn{color:var(--team1);}
 
 
+
+/* ====================================================================== */
+/* Backlit kit integration + viewport fixes.                              */
+/* Appended deliberately: nothing above is edited, so every existing rule, */
+/* selector and interaction is untouched and this block can be deleted     */
+/* wholesale to revert.                                                    */
+/* ====================================================================== */
+
+/* --- the kit's display face on the big numerals only.
+   Jersey25 is the kit's signature and reads well large, but it is a pixel
+   face — table figures stay on MartianMono, which is what --f-mono now is. */
+.bx-scorehead .bscore, .snum, .clk{
+  font-family:var(--f-score);
+  font-weight:400;                 /* Jersey25 ships one weight; 200/700 would synthesise */
+  letter-spacing:.02em;
+}
+
+/* --- the in-game screen was cut off at the bottom.
+   Two separate causes, both fixed here:
+
+   1. The shell is `position:fixed; inset:0`, which on mobile resolves against
+      a viewport that changes height as the browser's toolbars collapse. When
+      the toolbar is showing, the bottom of the layout sits underneath it and
+      `overflow:hidden` on body clips it away with no way to reach it. 100dvh
+      tracks the *dynamic* viewport, so the shell is only ever as tall as what
+      is actually visible.
+
+   2. #game is a flex column. When its fixed-height children total more than
+      the available height — a tall roster, a small phone, the keyboard open —
+      the flex items shrink past their content and the last row is clipped.
+      Letting #game scroll means the bottom is always reachable instead.
+
+   touch-action is deliberately not set here. .plist already declares pan-y and
+   the gesture handlers own their own elements; changing it at this level would
+   alter which drags reach them, and the drag gestures are the app. */
+html, body{ height:100dvh; }
+@supports not (height: 100dvh){ html, body{ height:100%; } }
+
+/* The real cause of the cut-off bottom.
+
+   #ctrlHelp is a fixed panel pinned to the bottom of the screen, and #cols
+   reserves a flat 52px for it. But the panel's height depends on how its text
+   wraps: on a 375px phone it is 150px tall, so the bottom of both player
+   columns sits underneath it and the last players cannot be reached. The top
+   96px of the panel is a transparent-to-opaque gradient, so the part that
+   actually hides content is height minus that padding.
+
+   --cs-legend-h is measured from the live element by a ResizeObserver in
+   score/bootstrap.js, so this follows a rotation, a font change or a text
+   rewrap instead of guessing. The 52px fallback is the original value, which
+   is what applies if that script has not run. */
+#cols{ padding-bottom:calc(var(--cs-legend-h, 52px) + 10px); }
+
+#game{
+  overflow-y:auto;
+  overscroll-behavior:contain;      /* never rubber-band the page behind it */
+  scrollbar-width:none;
+  /* clear the home indicator / gesture bar as well as the safe area */
+  padding-bottom:calc(env(safe-area-inset-bottom) + 16px);
+}
+#game::-webkit-scrollbar{ display:none; }
+
+/* The final screen carries five tabs of tables and charts, so it must scroll
+   on any phone. Same reasoning, same non-structural treatment. */
+#finalview, #boxview, #advview, #logview{
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
+}
 </style>
 </head>
 <body>
