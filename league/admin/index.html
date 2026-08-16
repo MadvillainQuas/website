@@ -102,6 +102,15 @@
   .im-bad{border-left-color:var(--flare);color:var(--flare);
     background:color-mix(in oklch,var(--flare) 7%,transparent)}
   .im-commit{margin-top:calc(var(--u));align-items:center;gap:12px}
+
+  .fmt-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--lume);margin:calc(var(--u)*3) 0 6px}
+  .fmt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;
+    margin:calc(var(--u)) 0 calc(var(--u)*2)}
+  .fmt-cell{display:flex;align-items:center;gap:8px}
+  .fmt-name{font-family:var(--f-ui);font-weight:600;font-size:12px;flex:1;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fmt-in{flex:0 0 66px;text-align:center}
 </style>
 </head>
 <body>
@@ -237,14 +246,20 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07</span><h2>Import a played game</h2>
+      <div class="sec-h"><span class="idx">07</span><h2>Format &amp; knockout</h2>
+        <span class="note" id="fmtNote"></span></div>
+      <div class="body"><div id="formatPanel"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">08</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
     </div>
 
     <div class="sec">
       <div class="sec-h">
-        <span class="idx">08</span><h2>Photographs</h2>
+        <span class="idx">09</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
       </div>
       <div class="body">
@@ -259,7 +274,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">08</span><h2>People</h2>
+      <div class="sec-h"><span class="idx">10</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -289,6 +304,7 @@
 <script src="../vendor/supabase.js"></script>
 <script src="../livestats.js"></script>
 <script src="import-ui.js"></script>
+<script src="formats-ui.js"></script>
 <script src="admin.js"></script>
 <script src="../nav.js"></script>
 </body>

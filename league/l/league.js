@@ -44,7 +44,8 @@ async function boot() {
     $('#ctx').textContent = league.name + ' · ' + season.name;
 
     renderCompPicker();
-    await Promise.all([renderTable(), renderFixtures(), renderLeaders(), renderTeamStats()]);
+    await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
+                       renderTeamStats(), renderExtras()]);
     $('#foot').textContent = 'Courtside Network · ' + league.name + ' · ' + season.name;
   } catch (e) {
     fail('Could not load: ' + e.message);
@@ -52,7 +53,7 @@ async function boot() {
 }
 
 function fail(msg) {
-  ['#pane-table', '#pane-fixtures', '#pane-leaders'].forEach(s => {
+  ['#pane-table', '#pane-fixtures', '#pane-leaders', '#pane-bracket'].forEach(s => {
     const p = $(s); p.textContent = ''; p.appendChild(el('div', 'empty', msg));
   });
 }
@@ -63,7 +64,8 @@ function renderCompPicker() {
   comps.forEach(c => {
     const b = el('button', 'cs-chip' + (c.id === comp.id ? ' on' : ''), c.name);
     b.addEventListener('click', () => {
-      comp = c; SEASON = null; renderCompPicker(); renderTable(); renderFixtures(); renderLeaders(); renderTeamStats();
+      comp = c; SEASON = null; renderCompPicker(); renderTable(); renderFixtures();
+      renderLeaders(); renderTeamStats(); renderExtras();
     });
     wrap.appendChild(b);
   });
@@ -73,11 +75,27 @@ function renderCompPicker() {
 async function renderTable() {
   const rows = await api(
     `standings?competition_id=eq.${comp.id}` +
-    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,streak,teams(name,short_name,colour,slug)` +
-    `&order=rank`);
+    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,streak,group_name,teams(name,short_name,colour,slug)` +
+    `&order=group_name.asc,rank.asc`);
   const pane = $('#pane-table'); pane.textContent = '';
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
 
+  /* A competition may run as one table or as several groups side by side.
+     Grouping here rather than in a second renderer means an ungrouped league
+     is simply the case of one group, and gets exactly the table it had. */
+  const groups = new Map();
+  rows.forEach(r => {
+    const k = r.group_name || '';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  });
+  groups.forEach((groupRows, name) => {
+    if (name) pane.appendChild(el('div', 'grouphead', 'Group ' + name));
+    pane.appendChild(groupTable(groupRows));
+  });
+}
+
+function groupTable(rows) {
   const wrap = el('div', 'cs-tw');
   const t = el('table', 'cs-tbl'); t.style.minWidth = '620px';
   const thead = el('thead'); const hr = el('tr');
@@ -109,7 +127,19 @@ async function renderTable() {
     tr.appendChild(st);
     tb.appendChild(tr);
   });
-  t.appendChild(tb); wrap.appendChild(t); pane.appendChild(wrap);
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+
+
+/* The knockout and the trophies live in their own module — they are a
+   different shape of question from a table and a fixture list, and keeping
+   them separate stops this file growing a third personality. */
+function renderExtras() {
+  const B = window.CourtsideBracket;
+  if (!B) return;
+  B.renderBracket({ host: '#pane-bracket', api, comp });
+  B.renderAwards({ host: '#awards', api, comp });
 }
 
 /* ------------------------------------------------------------- fixtures --- */

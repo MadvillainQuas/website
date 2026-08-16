@@ -24,7 +24,7 @@ const show = (id, on) => $(id).classList.toggle('hide', !on);
 
 let sb = null, me = null, who = null;
 let league = null, season = null, comp = null;
-let seasons = [], comps = [], teams = [], fixtures = [];
+let seasons = [], comps = [], teams = [], fixtures = [], enteredRows = [];
 
 function say(text, kind) {
   const m = $('#msg');
@@ -160,7 +160,7 @@ async function loadComps() {
   comps = [];
   if (season) {
     const { data, error } = await sb.from('competitions')
-      .select('id,name,kind').eq('season_id', season.id).order('name');
+      .select('id,name,kind,format,qualifiers').eq('season_id', season.id).order('name');
     if (error) return oops(error);
     comps = data || [];
   }
@@ -195,11 +195,14 @@ async function loadTeams() {
   teams = data || [];
 
   let entered = new Set();
+  enteredRows = [];
   if (comp) {
     const { data: ct } = await sb.from('competition_teams')
-      .select('team_id').eq('competition_id', comp.id);
-    entered = new Set((ct || []).map(r => r.team_id));
+      .select('team_id,group_name').eq('competition_id', comp.id);
+    enteredRows = ct || [];
+    entered = new Set(enteredRows.map(r => r.team_id));
   }
+  mountFormats();
 
   $('#tmNote').textContent = comp
     ? entered.size + ' of ' + teams.length + ' entered in ' + comp.name
@@ -262,6 +265,20 @@ function fillTeamSelects(entered) {
     s.appendChild(el('option', null, side + ' team…')).value = '';
     pool.forEach(t => { const o = el('option', null, t.name); o.value = t.id; s.appendChild(o); });
     if (pool.some(t => t.id === keep)) s.value = keep;
+  });
+}
+
+/* The format controls need the competition, the clubs entered in it and their
+   groups — all of which loadTeams has just read, so it rebuilds them from there
+   rather than fetching the same rows a second time. */
+function mountFormats() {
+  const byId = {};
+  teams.forEach(t => { byId[t.id] = t; });
+  $('#fmtNote').textContent = comp ? (comp.format || 'table') : '';
+  window.CourtsideFormats.mount({
+    host: '#formatPanel', sb, comp, comps, teams: byId,
+    entered: enteredRows, say,
+    onDone: () => { loadTeams(); loadFixtures(); }
   });
 }
 

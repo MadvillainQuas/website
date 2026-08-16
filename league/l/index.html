@@ -39,6 +39,55 @@
   .pick{display:flex;gap:8px;flex-wrap:wrap;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule)}
   a.plain{color:inherit;text-decoration:none}
+
+  /* ---- groups ---- */
+  .grouphead{font-family:var(--f-ui);font-weight:800;font-size:12px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--lume);padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u));}
+
+  /* ---- knockout bracket ---- */
+  .bracket{display:flex;gap:calc(var(--u)*3);align-items:flex-start;overflow-x:auto;
+    padding:calc(var(--u)*3)}
+  .brcol{display:flex;flex-direction:column;gap:calc(var(--u)*2);min-width:210px;flex:0 0 auto;
+    justify-content:space-around}
+  .brlabel{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:2px}
+  .brtie{border:1px solid var(--rule-2);background:var(--panel)}
+  .brside{display:flex;align-items:center;gap:8px;padding:8px 10px;
+    border-bottom:1px solid var(--rule)}
+  .brside:last-of-type{border-bottom:none}
+  .brside.win{background:color-mix(in oklch,var(--lume) 10%,transparent)}
+  .brside.win .brname{color:var(--lume);font-weight:700}
+  .brdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .brname{font-family:var(--f-ui);font-weight:600;font-size:12px;color:var(--ink);
+    text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+  a.brname:hover{color:var(--lume)}
+  .brname.pend{color:var(--ink-3);font-family:var(--f-micro);font-size:9px;
+    font-weight:400;font-style:italic}
+  .brseed{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
+    border:1px solid var(--rule-2);padding:0 4px}
+  .bragg{font-family:var(--f-score);font-size:17px;color:var(--ink);min-width:22px;
+    text-align:right}
+  .brfoot{display:flex;gap:9px;padding:6px 10px;border-top:1px solid var(--rule);
+    font-family:var(--f-micro);font-size:8.5px}
+  .brfoot a{color:var(--ink-3);text-decoration:none}
+  .brfoot a:hover{color:var(--lume)}
+  .brfoot.pend{color:var(--ink-3);font-style:italic}
+
+  /* ---- season awards ---- */
+  .awgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .awcard{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*2)}
+  .awtitle{font-family:var(--f-micro);font-size:8px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+  .awwho{font-family:var(--f-ui);font-weight:700;font-size:13.5px;line-height:1.3}
+  .awwho a{color:var(--ink);text-decoration:none}
+  .awwho a:hover{color:var(--lume)}
+  .awteam{display:block;font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    font-weight:400;margin-top:3px;letter-spacing:.08em;text-transform:uppercase}
+  .awval{font-family:var(--f-score);font-size:26px;color:var(--lume);line-height:1;margin-top:8px}
+  .awdet{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);margin-top:5px;
+    line-height:1.6}
 </style>
 </head>
 <body>
@@ -63,13 +112,16 @@
       <button class="cs-tab" data-p="fixtures" role="tab">Fixtures</button>
       <button class="cs-tab" data-p="leaders" role="tab">Leaders</button>
       <button class="cs-tab" data-p="teams" role="tab">Team Stats</button>
+      <button class="cs-tab" data-p="bracket" role="tab">Knockout</button>
     </div>
   </div>
 
   <div class="pane on" id="pane-table"></div>
+  <div id="awards" style="display:none"></div>
   <div class="pane" id="pane-fixtures"></div>
   <div class="pane" id="pane-leaders"></div>
   <div class="pane" id="pane-teams"></div>
+  <div class="pane" id="pane-bracket"></div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
     <span id="foot">Courtside Network</span>
@@ -80,6 +132,7 @@
 <script src="../season.js"></script>
 <script src="../data.js"></script>
 <script src="../fulltable.js"></script>
+<script src="bracket.js"></script>
 <script src="league.js"></script>
 <script src="../nav.js"></script>
 </body>
