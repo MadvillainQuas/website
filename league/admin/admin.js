@@ -80,6 +80,7 @@ async function render() {
 
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
+  window.CourtsideKeys.mount({ host: '#keysPanel', sb, league, say });
   await loadLeague();
 }
 

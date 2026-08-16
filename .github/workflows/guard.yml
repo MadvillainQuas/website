@@ -104,6 +104,14 @@ jobs:
         # Skips cleanly when the project is unreachable.
         run: node supabase/tests/livestats.roundtrip.mjs
 
+      - name: JSON API
+        # exercises the deployed function over HTTP with a real key.
+        # Skips cleanly when COURTSIDE_API_KEY is not set, so a fork without
+        # one still gets a green build.
+        run: node supabase/tests/api.test.mjs
+        env:
+          COURTSIDE_API_KEY: ${{ secrets.COURTSIDE_API_KEY }}
+
       - name: RLS policy tests
         # skips cleanly until the migration is applied; then it asserts the refusals
         run: node supabase/tests/rls.test.mjs

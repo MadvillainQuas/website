@@ -111,6 +111,17 @@
   .fmt-name{font-family:var(--f-ui);font-weight:600;font-size:12px;flex:1;min-width:0;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fmt-in{flex:0 0 66px;text-align:center}
+
+  .keycard{border:1px solid var(--lume);background:color-mix(in oklch,var(--lume) 8%,transparent);
+    padding:calc(var(--u)*2);margin:calc(var(--u)*2) 0}
+  .keyh{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--lume);margin-bottom:9px}
+  .keyrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .keyval{font-family:var(--f-data);font-size:12px;background:var(--panel-2);
+    padding:7px 10px;border:1px solid var(--rule-2);flex:1;min-width:0;
+    word-break:break-all;user-select:all}
+  .keynote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.85;
+    margin:9px 0 10px;max-width:66ch}
 </style>
 </head>
 <body>
@@ -258,8 +269,15 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">09</span><h2>API keys</h2>
+        <span class="note"><a href="../api/" target="_blank" rel="noopener"
+          style="color:var(--ink-3)">documentation ↗</a></span></div>
+      <div class="body"><div id="keysPanel"></div></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h">
-        <span class="idx">09</span><h2>Photographs</h2>
+        <span class="idx">10</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
       </div>
       <div class="body">
@@ -274,7 +292,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">10</span><h2>People</h2>
+      <div class="sec-h"><span class="idx">11</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -305,6 +323,7 @@
 <script src="../livestats.js"></script>
 <script src="import-ui.js"></script>
 <script src="formats-ui.js"></script>
+<script src="keys-ui.js"></script>
 <script src="admin.js"></script>
 <script src="../nav.js"></script>
 </body>
