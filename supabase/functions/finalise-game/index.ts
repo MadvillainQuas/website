@@ -173,6 +173,12 @@ Deno.serve(async (req) => {
 
     // queue the static page + OG image; a scheduled job commits these in batches
     await admin.from('publish_queue').upsert({ game_id: gameId, requested_at: new Date().toISOString() });
+
+    // Tell the league's Discord, if it has one. Deliberately last, deliberately
+    // non-throwing: the game is final and correct whatever a third-party
+    // webhook does, and a Discord outage must not fail a finalise or reopen a
+    // game. The outcome is recorded so an admin can see why nothing arrived.
+    await notify(admin, gameId, g.competition_id, d, game.teams).catch(() => {});
     await admin.from('audit_log').insert({
       actor: user.id, action: 'finalise', subject: 'game', subject_id: gameId,
       detail: { score: d.score, warnings }
@@ -185,3 +191,108 @@ Deno.serve(async (req) => {
     return json({ error: 'finalise failed, game reopened', detail: String(err) }, 500);
   }
 });
+
+/* ============================================================================
+   Webhook delivery.
+
+   The URL is a secret that never reaches a browser — league_webhooks has no
+   RLS policy at all, so only this function, holding the service role, can read
+   it. See migration 0025 for why that is a separate table rather than a column
+   on `leagues`, which is world-readable.
+
+   Everything here is best-effort by design. A final game is a fact; whether
+   Discord accepted a message about it is not, and must never be able to undo
+   it or leave a game stranded in 'finalising'.
+   ============================================================================ */
+async function notify(admin: any, gameId: string, competitionId: string | null,
+                      d: any, teams: any[]) {
+  if (!competitionId) return;
+
+  const { data: chain } = await admin.from('competitions')
+    .select('name,seasons(league_id,leagues(name,slug))')
+    .eq('id', competitionId).maybeSingle();
+  const leagueId = (chain as any)?.seasons?.league_id;
+  if (!leagueId) return;
+
+  const { data: hook } = await admin.from('league_webhooks')
+    .select('url,kind,enabled').eq('league_id', leagueId).maybeSingle();
+  if (!hook || !hook.enabled || !hook.url) return;
+
+  const { data: g } = await admin.from('games')
+    .select('venue,tipoff_at,home:home_team_id(name),away:away_team_id(name)')
+    .eq('id', gameId).maybeSingle();
+  const home = (g as any)?.home?.name || 'Home';
+  const away = (g as any)?.away?.name || 'Away';
+  const [hs, as_] = d.score;
+  const leagueName = (chain as any)?.seasons?.leagues?.name || '';
+  const slug = (chain as any)?.seasons?.leagues?.slug || '';
+
+  const base = Deno.env.get('PUBLIC_SITE_URL') || 'https://prophesyscouting.co.uk';
+  const url = `${base}/league/game/?g=${gameId}&mode=supabase`;
+
+  // the winner first reads like a result rather than a fixture list
+  const headline = hs === as_
+    ? `${home} ${hs}–${as_} ${away}`
+    : hs > as_ ? `${home} ${hs}–${as_} ${away}` : `${away} ${as_}–${hs} ${home}`;
+
+  const top = topScorers(d, teams);
+  const body = hook.kind === 'slack'
+    ? { text: `*FULL TIME* — ${headline}\n${[leagueName, (chain as any)?.name].filter(Boolean).join(' · ')}` +
+              (top ? `\n${top}` : '') + `\n<${url}|Box score>` }
+    : {
+        username: 'Courtside',
+        embeds: [{
+          title: headline,
+          url,
+          description: [leagueName, (chain as any)?.name].filter(Boolean).join(' · ') || undefined,
+          color: 0x93f2bf,
+          fields: top ? [{ name: 'Leading scorers', value: top }] : undefined,
+          footer: { text: 'Full box score, play-by-play and lineups' },
+          timestamp: new Date().toISOString()
+        }]
+      };
+
+  let status = 0, error: string | null = null;
+  try {
+    // a webhook that never answers must not hold a finalise open
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(hook.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    status = res.status;
+    if (!res.ok) error = (await res.text().catch(() => '')).slice(0, 300) || res.statusText;
+  } catch (e) {
+    error = String(e).slice(0, 300);
+  }
+
+  await admin.from('league_webhooks').update({
+    last_sent_at: new Date().toISOString(), last_status: status, last_error: error
+  }).eq('league_id', leagueId);
+}
+
+/* the two or three names that make a result worth clicking on */
+function topScorers(d: any, teams: any[]): string | null {
+  const rows = Object.keys(d.stats || {})
+    .map((pid) => ({ pid, pts: d.stats[pid]?.pts || 0 }))
+    .filter((r) => r.pts > 0)
+    .sort((a, b) => b.pts - a.pts)
+    .slice(0, 3);
+  if (!rows.length) return null;
+  const name = (pid: string) => {
+    for (const tm of teams || []) {
+      const p = (tm.players || []).find((x: any) => x.id === pid);
+      if (p) return p.name;
+    }
+    return null;
+  };
+  const parts = rows.map((r) => {
+    const n = name(r.pid);
+    return n ? `${n} ${r.pts}` : null;
+  }).filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}

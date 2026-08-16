@@ -105,7 +105,15 @@ async function loadStored() {
     status: g.status,
     competition: [league.name, comp.name].filter(Boolean).join(' · ') || 'Friendly',
     leagueSlug: league.slug || null,
-    venue: g.venue
+    venue: g.venue,
+    /* kept for the link-preview and structured-data tags, which want the
+       fixture's own facts rather than the replayed game's */
+    meta: {
+      tipoff_at: g.tipoff_at, status: g.status, venue: g.venue,
+      home_score: g.home_score, away_score: g.away_score,
+      home: g.home, away: g.away,
+      leagueName: league.name || null, competitionName: comp.name || null
+    }
   };
 }
 
@@ -169,6 +177,20 @@ function renderHead(d) {
                      : S.status === 'live' ? 'live' : 'scheduled');
   document.title = d.score[0] + '–' + d.score[1] + ' ' +
       S.teams[0].name + ' v ' + S.teams[1].name + ' · Courtside';
+
+  /* Link previews and structured data. Cheap enough to redo here, and it has
+     to be redone rather than set once: a game that finalises while somebody is
+     watching should stop describing itself as in progress. */
+  if (window.CourtsideSEO && S.meta) {
+    const m = S.meta;
+    window.CourtsideSEO.game({
+      game: { status: S.status, tipoff_at: m.tipoff_at,
+              home_score: d.score[0], away_score: d.score[1] },
+      home: m.home || { name: S.teams[0].name },
+      away: m.away || { name: S.teams[1].name },
+      league: m.leagueName, competition: m.competitionName, venue: m.venue
+    });
+  }
 }
 
 function renderBody(d) {

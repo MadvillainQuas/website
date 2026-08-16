@@ -81,6 +81,7 @@ async function render() {
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
   window.CourtsideKeys.mount({ host: '#keysPanel', sb, league, say });
+  window.CourtsideWebhook.mount({ host: '#webhookPanel', sb, league, say });
   await loadLeague();
 }
 

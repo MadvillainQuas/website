@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The public section's stable entry points.
+
+  Per-game and per-player URLs are deliberately absent: they are query-string
+  pages served from one file, and their content lives in Supabase rather than
+  in this repository, so there is nothing here to enumerate at build time. The
+  real fix is the static per-game pages the publish queue commits at finalise —
+  those get their own directory, their own baked tags, and belong in a sitemap
+  generated alongside them. Listing dynamic URLs here that a crawler cannot
+  distinguish from one another would be worse than listing none.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://prophesyscouting.co.uk/league/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://prophesyscouting.co.uk/league/stats/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://prophesyscouting.co.uk/league/stats/wowy/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://prophesyscouting.co.uk/league/api/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+</urlset>

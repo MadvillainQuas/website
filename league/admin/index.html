@@ -122,6 +122,16 @@
     word-break:break-all;user-select:all}
   .keynote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.85;
     margin:9px 0 10px;max-width:66ch}
+
+  .wh-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:calc(var(--u)*2) 0}
+  .wh-pill{font-family:var(--f-micro);font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+    padding:3px 9px;border:1px solid var(--rule-2)}
+  .wh-pill.on{color:#04100b;background:var(--lume);border-color:var(--lume)}
+  .wh-pill.off{color:var(--ink-3)}
+  .wh-note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+  .wh-err{font-family:var(--f-micro);font-size:9px;color:var(--flare);line-height:1.8;
+    width:100%;padding:6px 9px;border-left:2px solid var(--flare);
+    background:color-mix(in oklch,var(--flare) 7%,transparent)}
 </style>
 </head>
 <body>
@@ -269,7 +279,13 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">09</span><h2>API keys</h2>
+      <div class="sec-h"><span class="idx">09</span><h2>Announce results</h2>
+        <span class="note">Discord or Slack</span></div>
+      <div class="body"><div id="webhookPanel"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">10</span><h2>API keys</h2>
         <span class="note"><a href="../api/" target="_blank" rel="noopener"
           style="color:var(--ink-3)">documentation ↗</a></span></div>
       <div class="body"><div id="keysPanel"></div></div>
@@ -277,7 +293,7 @@
 
     <div class="sec">
       <div class="sec-h">
-        <span class="idx">10</span><h2>Photographs</h2>
+        <span class="idx">11</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
       </div>
       <div class="body">
@@ -292,7 +308,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">11</span><h2>People</h2>
+      <div class="sec-h"><span class="idx">12</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -324,6 +340,7 @@
 <script src="import-ui.js"></script>
 <script src="formats-ui.js"></script>
 <script src="keys-ui.js"></script>
+<script src="webhook-ui.js"></script>
 <script src="admin.js"></script>
 <script src="../nav.js"></script>
 </body>

@@ -1,0 +1,11 @@
+# The public section is meant to be found. The portal, the scorer and the
+# admin console are not — they are behind Supabase auth regardless, but there
+# is no reason to spend a crawler's budget discovering that.
+User-agent: *
+Allow: /league/
+Disallow: /league/app/
+Disallow: /league/score/
+Disallow: /league/admin/
+Disallow: /league/devfeed.html
+
+Sitemap: https://prophesyscouting.co.uk/league/sitemap.xml
