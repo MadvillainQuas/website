@@ -169,6 +169,19 @@ const T = [
   { k:'ft_pct', l:'FT%',  g:['shooting'], fmt:r=>f1(r.ft_pct), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting'], fmt:r=>f1(r.ts), heat:1 },
 
+  /* shot diet by zone: attempts per game beside the accuracy from there.
+     Either number alone misleads — 60% at the rim on three attempts a night
+     is not a rim team, and 30 attempts at 38% is not a bad shooting night. */
+  { k:'rim_apg', l:'RIM/G',  g:['scoring','shooting'], fmt:r=>f1(r.rim_apg), heat:1 },
+  { k:'rim_pct', l:'RIM%',   g:['scoring','shooting'], fmt:r=>f1(r.rim_pct), heat:1 },
+  { k:'mid_apg', l:'MID/G',  g:['scoring','shooting'], fmt:r=>f1(r.mid_apg), heat:1 },
+  { k:'mid_pct', l:'MID%',   g:['scoring','shooting'], fmt:r=>f1(r.mid_pct), heat:1 },
+  { k:'p3_apg',  l:'3PA/G',  g:['scoring','shooting'], fmt:r=>f1(r.p3_apg),  heat:1 },
+  { k:'p3_acc',  l:'3P%',    g:['scoring'], fmt:r=>f1(r.p3_acc), heat:1 },
+  { k:'rim_share', l:'RIM SHARE', g:['scoring'], fmt:r=>f1(r.rim_share), heat:1 },
+  { k:'mid_share', l:'MID SHARE', g:['scoring'], fmt:r=>f1(r.mid_share), heat:1 },
+  { k:'p3_share',  l:'3P SHARE',  g:['scoring'], fmt:r=>f1(r.p3_share),  heat:1 },
+
   { k:'paint',         l:'PAINT', g:['scoring'], fmt:r=>f0(r.paint), heat:1 },
   { k:'fast',          l:'FAST',  g:['scoring'], fmt:r=>f0(r.fast),  heat:1 },
   { k:'second_chance', l:'2ND',   g:['scoring'], fmt:r=>f0(r.second_chance), heat:1 },
@@ -346,6 +359,40 @@ function render(opts) {
     return v;
   }
 
+  /* Width each column to its own widest value rather than to a single flat
+     number. A canvas measures the glyphs at the exact font the cells use, so a
+     column of "1.7" is narrow and one of "112.5" or "7.3-14.7" gets the room
+     it needs — without any column being wide enough to skew the table.
+
+     The header is measured too: "OPP OREB%" is wider than anything under it,
+     and a clipped heading is worse than a slightly wide column. */
+  const canvas = document.createElement('canvas');
+  const ctx2d = canvas.getContext('2d');
+  function measure(cols, rows) {
+    const cs = getComputedStyle(document.body);
+    const dataFont = '11.5px ' + (cs.getPropertyValue('--f-data') || 'monospace');
+    const headFont = '8px ' + (cs.getPropertyValue('--f-micro') || 'monospace');
+    const PAD = 18;                 // 8px each side plus a hair of breathing room
+    const MIN = 44, MAX = 96;
+    const out = {};
+    /* a sample is enough — measuring 400 rows to find the widest costs more
+       than the pixel or two of accuracy it buys */
+    const sample = rows.length > 60 ? rows.slice(0, 60) : rows;
+    cols.forEach((c, i) => {
+      if (i < 2) { out[c.k] = i === 0 ? 36 : 170; return; }
+      ctx2d.font = headFont;
+      let w = ctx2d.measureText(c.l).width;
+      ctx2d.font = dataFont;
+      sample.forEach((r, idx) => {
+        const txt = String(c.fmt(r, idx));
+        const m = ctx2d.measureText(txt).width;
+        if (m > w) w = m;
+      });
+      out[c.k] = Math.max(MIN, Math.min(MAX, Math.ceil(w) + PAD));
+    });
+    return out;
+  }
+
   function draw() {
     const cols = visible();
     const v = view();
@@ -376,8 +423,9 @@ function render(opts) {
        it hands the surplus to a single column — which is exactly how PPG ended
        up 124px wide against 52px everywhere else. Summing the columns and
        stating the total leaves nothing to reconcile. */
-    const W0 = 36, W1 = 170, WD = 52;
-    const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + (c.w || WD), 0);
+    const W0 = 36, W1 = 170;
+    const widths = measure(cols, v);
+    const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
     t.style.width = totalW + 'px';
 
     const thead = el('thead'), hr = el('tr');
@@ -387,7 +435,7 @@ function render(opts) {
          column follows. Without this a long header like "OPP OREB%" or a wide
          cell like "192-440" stretched its column and squeezed every other one,
          which is what threw PPG and DIFF out of proportion. */
-      if (i >= 2) th.style.width = (c.w || WD) + 'px';
+      if (i >= 2) th.style.width = widths[c.k] + 'px';
       th.title = c.l + (c.low ? ' — lower is better' : '');
       th.addEventListener('click', () => {
         if (sortKey === c.k) sortDir = -sortDir;

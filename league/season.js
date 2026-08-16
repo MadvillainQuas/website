@@ -57,6 +57,10 @@ function teamLine(stats) {
     tov:  num(a.tov  != null ? a.tov : stats && stats.toTot),
     minutes: num(a.minutes),
     possessions: num(a.possessions),
+    /* shot zones: the scorer records a location for every attempt, so a team's
+       diet of rim / mid / three is available rather than inferred */
+    rimA: num(a.rimA), rimM: num(a.rimM),
+    midA: num(a.midA), midM: num(a.midM),
     paint: num(stats && stats.paint), fast: num(stats && stats.fast),
     sc: num(stats && stats.sc), pot: num(stats && stats.pot),
     bench: num(stats && stats.bench), fouls: num(stats && stats.foulTot)
@@ -277,7 +281,8 @@ function teams(tgs, gamesById) {
 
     A.gp += 1;
     ['pts','fgm','fga','fg3m','fg3a','ftm','fta','oreb','dreb','ast','stl','blk','tov',
-     'paint','fast','sc','pot','bench','fouls','minutes','possessions']
+     'paint','fast','sc','pot','bench','fouls','minutes','possessions',
+     'rimA','rimM','midA','midM']
       .forEach(k => { A[k] += num(T[k]); });
 
     A.for += g.home_score != null
@@ -311,7 +316,8 @@ function teams(tgs, gamesById) {
 function blankTeam(id) {
   return { id, gp:0, pts:0, fgm:0, fga:0, fg3m:0, fg3a:0, ftm:0, fta:0,
     oreb:0, dreb:0, ast:0, stl:0, blk:0, tov:0, paint:0, fast:0, sc:0, pot:0,
-    bench:0, fouls:0, minutes:0, possessions:0, for:0, against:0, opp:[], oppAgg:null };
+    bench:0, fouls:0, minutes:0, possessions:0, rimA:0, rimM:0, midA:0, midM:0,
+    for:0, against:0, opp:[], oppAgg:null };
 }
 
 function finishTeam(A) {
@@ -335,6 +341,15 @@ function finishTeam(A) {
     tov: A.tov, fouls: A.fouls,
     fgm: A.fgm, fga: A.fga, p3m: A.fg3m, p3a: A.fg3a, ftm: A.ftm, fta: A.fta,
     paint: A.paint, fast: A.fast, second_chance: A.sc, pts_off_to: A.pot, bench: A.bench,
+
+    /* ---- shot diet: attempts per game and accuracy, by zone.
+       Volume and efficiency together, because either alone misleads — a team
+       shooting 60% at the rim on three attempts a night is not a rim team. */
+    rim_apg: r1(A.rimA / g), rim_pct: r1(pct(A.rimM, A.rimA)),
+    mid_apg: r1(A.midA / g), mid_pct: r1(pct(A.midM, A.midA)),
+    p3_apg:  r1(A.fg3a / g), p3_acc:  r1(pct(A.fg3m, A.fg3a)),
+    rim_share: r1(pct(A.rimA, A.fga)), mid_share: r1(pct(A.midA, A.fga)),
+    p3_share:  r1(pct(A.fg3a, A.fga)),
 
     /* shooting */
     fg_pct: r1(pct(A.fgm, A.fga)), p3_pct: r1(pct(A.fg3m, A.fg3a)),

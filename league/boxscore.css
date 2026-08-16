@@ -802,9 +802,25 @@ html, body{ height:100dvh; }
 
    Mobile keeps the fixed shell unchanged — see the note above #cols. */
 @media (min-width:900px){
-  html, body{
-    position:static; inset:auto; height:auto; min-height:100%;
+  /* Exactly one scroll container, and it is the document.
+
+     Setting overflow-y:auto on BOTH html and body makes the body its own
+     nested scroller inside a viewport-height box: the drag-bar moves the outer
+     one while the wheel is delivered to the inner one, which is why dragging
+     the scrollbar worked and the wheel did nothing at all. body keeps
+     overflow visible so the page scrolls as a page.
+
+     overscroll-behavior is reset too — it is set to none for the phone shell,
+     where chaining a rubber-band into the browser mid-gesture is wrong, and
+     that reasoning does not apply to a scrolling desktop document. */
+  html{
+    position:static; inset:auto; height:auto;
     overflow-y:auto; overflow-x:hidden;
+  }
+  body{
+    position:static; inset:auto; height:auto; min-height:100%;
+    overflow:visible;
+    overscroll-behavior:auto;
   }
   .screen{
     position:relative; inset:auto;
