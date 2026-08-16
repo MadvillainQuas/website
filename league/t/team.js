@@ -168,7 +168,12 @@ async function lineupPanels(team) {
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id`);
-    if (!gs.length) return;
+    if (!gs.length) {
+      ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
+        $(sel).appendChild(el('div', 'empty',
+          'No finalised games yet — lineups appear once one is played.')));
+      return;
+    }
     const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
     const st = await D.stints(gs.map(g => g.id), team.id, byGame);
     if (!st.length) {
@@ -206,17 +211,28 @@ async function lineupPanels(team) {
 
     function drawWowy() {
       window.CourtsideWowy.onOffTiles('#onoff', st, subject);
-      window.CourtsideWowy.render({
-        host: '#wowy', stints: st, playerId: subject, meta,
-        href: id => '../p/?p=' + encodeURIComponent(id)
-      });
     }
     drawWowy();
+
+    /* the combination matrix, seeded with the two most-used players */
+    window.CourtsideWowy.render({
+      host: '#wowy', stints: st, meta, max: 4,
+      preselect: order.slice(0, 2)
+    });
 
     window.CourtsideLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
     window.CourtsideLineupUI.listPanel({ host: '#lulist', stints: st, meta });
   } catch (e) {
+    /* A silent catch left three empty sections with no explanation — which is
+       exactly what a reader saw when the scripts failed to load. Say what
+       happened, in the sections themselves. */
     console.warn('[lineups]', e);
+    ['#wowy', '#lufilter', '#lulist'].forEach(sel => {
+      const h = $(sel);
+      if (h && !h.children.length) {
+        h.appendChild(el('div', 'empty', 'Could not load lineup data: ' + (e.message || e)));
+      }
+    });
   }
 }
 

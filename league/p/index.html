@@ -79,6 +79,22 @@
     padding:0 calc(var(--u)*3) calc(var(--u)*2)}
   .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
     letter-spacing:.1em;text-transform:uppercase}
+  /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
+  .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
+    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
+  .wb.on{background:var(--lume);color:#04100b;font-weight:700}
+  .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
+  table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
+    background:var(--ground);text-align:center}
+  table.ft thead th.stick.c0w{z-index:4;background:#0c1f16}
+  table.ft th:not(.stick),table.ft td:not(.stick){text-align:right}
+  table.ft td .wb{margin:0 auto}
+  /* a thin sample is dimmed rather than dropped — dropping it would hide that
+     the arrangement happened at all */
+  table.ft tbody tr.thin td{opacity:.45}
+  table.ft tbody tr.none td{opacity:.3}
+  table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
+    color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
 </style>
 </head>
 <body>

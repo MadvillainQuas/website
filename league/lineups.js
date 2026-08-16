@@ -104,6 +104,50 @@ function filter(stints, ids, label) {
   return finish(acc, label);
 }
 
+/* --------------------------------------------------------- combinations ----
+   The WOWY matrix as index_9 builds it: for a set of players, every ON/OFF
+   arrangement of them, each aggregated separately.
+
+   This is the difference between "which teammate helps" and "what actually
+   happens". Picking three players gives eight rows — all three on, each pair
+   without the third, each alone, none — and the row that is usually the
+   surprise is one nobody would have thought to ask for.
+
+   A combination requires every ON player present AND every OFF player absent.
+   The second half is what makes it a real WOWY: without it, "A on, B off"
+   would quietly include the minutes B also played. */
+function combo(stints, onIds, offIds) {
+  const on = onIds || [], off = offIds || [];
+  const acc = blank();
+  (stints || []).forEach(st => {
+    const ids = st.player_ids || [];
+    for (let i = 0; i < on.length; i++) if (ids.indexOf(on[i]) === -1) return;
+    for (let i = 0; i < off.length; i++) if (ids.indexOf(off[i]) !== -1) return;
+    add(acc, st);
+  });
+  return finish(acc);
+}
+
+/* every arrangement of the chosen players, most-used first.
+   Capped at five: 2^5 is 32 rows, and beyond that every row is a sample of
+   nothing — the combinations multiply faster than the minutes divide. */
+function matrix(stints, ids) {
+  const picked = (ids || []).slice(0, 5);
+  if (!picked.length) return [];
+  const rows = [];
+  const total = 1 << picked.length;
+  for (let mask = 0; mask < total; mask++) {
+    const on = [], off = [];
+    picked.forEach((id, i) => ((mask & (1 << i)) ? on : off).push(id));
+    const line = combo(stints, on, off);
+    rows.push(Object.assign(line, {
+      on, off,
+      state: picked.map(id => on.indexOf(id) !== -1)
+    }));
+  }
+  return rows.sort((a, b) => b.mins - a.mins);
+}
+
 /* ----------------------------------------------------------- every lineup ---
    Grouped by the five, summed across games. */
 function all(stints, minMinutes) {
@@ -192,5 +236,5 @@ function pairs(stints, playerId, minMinutes) {
     .sort((a, b) => (b.swing ?? -Infinity) - (a.swing ?? -Infinity));
 }
 
-return { filter, all, wowy, onOff, pairs, finish, blank, add, poss };
+return { filter, all, wowy, onOff, pairs, combo, matrix, finish, blank, add, poss };
 }));

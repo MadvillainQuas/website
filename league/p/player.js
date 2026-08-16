@@ -309,15 +309,22 @@ function paintLog(rows) {
           const mateIds = [...new Set(st.flatMap(r => r.player_ids))];
           const mm = await D.playerMeta(mateIds);
           $('#wowyNote').textContent = st.length + ' stints';
+          /* seeded with this player, so the matrix opens on the question the
+             reader came here to ask */
           window.CourtsideWowy.render({
-            host: '#wowy', stints: st, playerId: pl.id, meta: mm,
-            href: id => '?p=' + encodeURIComponent(id)
+            host: '#wowy', stints: st, meta: mm, max: 4, preselect: [pl.id]
           });
         } else {
           $('#wowy').appendChild(el('div', 'empty', 'No lineup data yet.'));
         }
       }
-    } catch (e) { console.warn('[wowy]', e); }
+    } catch (e) {
+      console.warn('[wowy]', e);
+      if (!$('#wowy').children.length) {
+        $('#wowy').appendChild(el('div', 'empty',
+          'Could not load lineup data: ' + (e.message || e)));
+      }
+    }
 
     /* game log, with the opponent resolved from the game row */
     const gl = await api(`player_game_stats?player_uuid=eq.${pl.id}` +
