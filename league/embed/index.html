@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Embeds · Courtside</title>
+<link rel="stylesheet" href="../kit/courtside-kit.css">
+<link rel="stylesheet" href="../kit/nav.css">
+<style>
+  .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6vw,52px);line-height:.9;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-family:var(--f-micro);font-size:10.5px;color:var(--ink-3);
+    letter-spacing:.07em;max-width:64ch;line-height:1.9;margin:calc(var(--u)*2) 0 0}
+
+  .sec{border-bottom:1px solid var(--rule);padding:calc(var(--u)*3)}
+  .sec h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;
+    letter-spacing:.05em;margin:0 0 6px}
+  .sec .why{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    line-height:1.9;margin:0 0 calc(var(--u)*2);max-width:70ch}
+
+  .opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:calc(var(--u)*2);align-items:center}
+  .opts label{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+
+  .prev{border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--ground)}
+  .prev iframe{display:block;width:100%;border:0;background:var(--ground)}
+
+  .snip{position:relative;margin-top:calc(var(--u)*2)}
+  .snip pre{margin:0;padding:13px 96px 13px 14px;background:var(--panel);
+    border:1px solid var(--rule);border-radius:4px;overflow-x:auto;
+    font-family:var(--f-data);font-size:11px;line-height:1.7;color:var(--ink-2);
+    white-space:pre-wrap;word-break:break-all}
+  .snip button{position:absolute;top:9px;right:9px}
+  .foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap}
+  .foot a{color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+  <div class="hero">
+    <h1>Embeds</h1>
+    <p>
+      Four widgets any site can carry — a club's own page, a local paper, a
+      school newsletter. One line each, no account, no key to manage. They
+      update themselves, and a light theme is there for sites that are not dark.
+      Copy a snippet and paste it where you want the widget to appear.
+    </p>
+  </div>
+
+  <div class="sec">
+    <div class="opts">
+      <label>league
+        <select id="league" class="cs-input" style="font-size:11px;padding:7px 9px"></select>
+      </label>
+      <label>theme
+        <select id="theme" class="cs-input" style="font-size:11px;padding:7px 9px">
+          <option value="">dark</option>
+          <option value="light">light</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Fixture strip</h2>
+    <p class="why">
+      Live games first, then what is coming, then what has finished. Refreshes
+      itself every minute. Best across the full width of a page.
+    </p>
+    <div class="prev"><iframe id="f-strip" title="fixture strip" scrolling="no"></iframe></div>
+    <div class="snip"><pre id="s-strip"></pre>
+      <button class="cs-btn" data-copy="s-strip" style="font-size:9px;padding:6px 10px">copy</button></div>
+  </div>
+
+  <div class="sec">
+    <h2>Box score</h2>
+    <p class="why">
+      One game: teams, score, clock, date, venue, the quarter breakdown and the
+      leading scorer each side. Goes live on its own during a game.
+    </p>
+    <div class="prev"><iframe id="f-game" title="box score" scrolling="no"></iframe></div>
+    <div class="snip"><pre id="s-game"></pre>
+      <button class="cs-btn" data-copy="s-game" style="font-size:9px;padding:6px 10px">copy</button></div>
+  </div>
+
+  <div class="sec">
+    <h2>Standings</h2>
+    <p class="why">The table as it stands, top to bottom, linking through to the full league page.</p>
+    <div class="prev"><iframe id="f-tab" title="standings" scrolling="no"></iframe></div>
+    <div class="snip"><pre id="s-tab"></pre>
+      <button class="cs-btn" data-copy="s-tab" style="font-size:9px;padding:6px 10px">copy</button></div>
+  </div>
+
+  <div class="sec">
+    <h2>Leaders</h2>
+    <p class="why">
+      Any of points, rebounds, assists, steals, blocks, true shooting, effective
+      field goal or minutes per game. Two-game minimum, so one big night does not
+      top a season.
+    </p>
+    <div class="opts">
+      <label>stat
+        <select id="stat" class="cs-input" style="font-size:11px;padding:7px 9px">
+          <option value="ppg">points</option><option value="rpg">rebounds</option>
+          <option value="apg">assists</option><option value="spg">steals</option>
+          <option value="bpg">blocks</option><option value="ts">true shooting</option>
+          <option value="efg">effective FG</option><option value="mpg">minutes</option>
+        </select>
+      </label>
+    </div>
+    <div class="prev"><iframe id="f-lead" title="leaders" scrolling="no"></iframe></div>
+    <div class="snip"><pre id="s-lead"></pre>
+      <button class="cs-btn" data-copy="s-lead" style="font-size:9px;padding:6px 10px">copy</button></div>
+  </div>
+
+  <div class="foot">
+    <a href="../">← Courtside</a>
+    <span>Widgets are iframes: your stylesheet and ours cannot reach each other.</span>
+  </div>
+</div>
+<script src="../config.js"></script>
+<script src="../nav.js"></script>
+<script src="gallery.js"></script>
+</body>
+</html>

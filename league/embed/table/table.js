@@ -22,6 +22,12 @@ const kind = (qp.get('kind') || 'standings').toLowerCase();
 const stat = qp.get('stat') || 'ppg';
 const rows = Math.min(parseInt(qp.get('n'), 10) || 10, 25);
 
+/* ?theme=light for club sites that are not dark. One attribute, because the
+   palette is a variable set rather than a second stylesheet. */
+if ((new URLSearchParams(location.search).get('theme') || '') === 'light') {
+  document.body.setAttribute('data-theme', 'light');
+}
+
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };

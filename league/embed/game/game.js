@@ -19,6 +19,12 @@ const E = window.CourtsideEngine, L = window.CourtsideLive;
 const qp = new URLSearchParams(location.search);
 const gameId = qp.get('g') || '';
 
+/* ?theme=light for club sites that are not dark. One attribute, because the
+   palette is a variable set rather than a second stylesheet. */
+if ((new URLSearchParams(location.search).get('theme') || '') === 'light') {
+  document.body.setAttribute('data-theme', 'light');
+}
+
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -81,8 +87,10 @@ function render() {
     const cr = el('span', 'crest', abbr(t).slice(0, 2));
     cr.style.background = (t && t.colour) || '#93f2bf';
     const holder = el('div');
-    const n = el('div', 'nm', (t && t.name) || '—');
-    if (final) n.style.color = sc > other ? '#93f2bf' : 'rgba(230,255,241,.5)';
+    /* a class, not an inline colour: the light theme has to be able to
+       restyle the winner, and an inline value is unreachable from CSS */
+    const n = el('div', 'nm' + (final ? (sc > other ? ' win' : sc < other ? ' lose' : '') : ''),
+                 (t && t.name) || '—');
     holder.appendChild(n);
     box.append(cr, holder);
     return box;

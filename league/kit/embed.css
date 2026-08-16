@@ -156,6 +156,10 @@
   font-weight:800; font-size:16px; letter-spacing:.01em; line-height:1.2;
   overflow:hidden; text-overflow:ellipsis;
 }
+.cs-game .tm .nm.win{ color:#93f2bf }
+.cs-game .tm .nm.lose{ color:rgba(230,255,241,.5) }
+.cse[data-theme="light"] .cs-game .tm .nm.win{ color:#0f7a52 }
+.cse[data-theme="light"] .cs-game .tm .nm.lose{ color:rgba(13,31,23,.45) }
 .cs-game .tm .rec{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
   color:rgba(230,255,241,.4); letter-spacing:.1em; margin-top:3px;
@@ -208,4 +212,85 @@
 @media (max-width:520px){
   .cs-plate{ width:84px } .cs-plate .sub{ display:none }
   .cs-game .score{ font-size:32px }
+}
+
+/* ============================================================================
+   THEMES.  ?theme=light
+
+   Most club sites are light. An embed that is always near-black either looks
+   deliberate or looks broken depending on the page it lands on, and the club
+   cannot tell which until they paste it. So the palette is a variable set and
+   the light theme redefines it — one attribute on <body>, no second stylesheet
+   to keep in step.
+   ============================================================================ */
+.cse[data-theme="light"]{
+  background:#ffffff; color:#0d1f17;
+}
+.cse[data-theme="light"] .cs-plate{
+  background:linear-gradient(180deg,#f2f7f4,#e8f0eb);
+  border-right-color:rgba(13,31,23,.14);
+}
+.cse[data-theme="light"] .cs-plate .mk{
+  background:linear-gradient(0deg,#0f7a52,#0a8fa3);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.cse[data-theme="light"] .cs-card{
+  background:#ffffff; border-color:rgba(13,31,23,.14);
+}
+.cse[data-theme="light"] .cs-card:hover{ background:#f4faf7; border-color:rgba(15,122,82,.5) }
+.cse[data-theme="light"] .cs-card::before{ background:rgba(13,31,23,.16) }
+.cse[data-theme="light"] .cs-card.is-live::before{ background:#c8324a }
+.cse[data-theme="light"] .cs-card.is-upcoming::before{ background:#0a8fa3 }
+.cse[data-theme="light"] .cs-card .meta{ color:rgba(13,31,23,.5) }
+.cse[data-theme="light"] .cs-card .meta .st{ color:rgba(13,31,23,.7) }
+.cse[data-theme="light"] .cs-card.is-live .meta .st{ color:#c8324a }
+.cse[data-theme="light"] .cs-card .meta .st .dot{ background:#c8324a }
+.cse[data-theme="light"] .cs-card .abbr{ color:rgba(13,31,23,.85) }
+.cse[data-theme="light"] .cs-card .tm.win .abbr{ color:#0f7a52 }
+.cse[data-theme="light"] .cs-card .tm.lose .abbr{ color:rgba(13,31,23,.4) }
+.cse[data-theme="light"] .cs-card .sc{ color:#0d1f17 }
+.cse[data-theme="light"] .cs-card .sc .d{ color:rgba(13,31,23,.25) }
+.cse[data-theme="light"] .cs-card .vs{ color:rgba(13,31,23,.35) }
+.cse[data-theme="light"] .cs-card .when{
+  color:rgba(13,31,23,.5); border-top-color:rgba(13,31,23,.1);
+}
+.cse[data-theme="light"] .cs-arrow{
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.95));
+  color:rgba(13,31,23,.6);
+}
+.cse[data-theme="light"] .cs-arrow.l{
+  background:linear-gradient(270deg,rgba(255,255,255,0),rgba(255,255,255,.95));
+}
+.cse[data-theme="light"] .cs-game .top{
+  color:rgba(13,31,23,.55); border-bottom-color:rgba(13,31,23,.14);
+}
+.cse[data-theme="light"] .cs-game .tm .nm{ color:#0d1f17 }
+.cse[data-theme="light"] .cs-game .score{ color:#0d1f17 }
+.cse[data-theme="light"] .cs-game .score .sep{ color:rgba(13,31,23,.25) }
+.cse[data-theme="light"] .cs-game .clk{ color:rgba(13,31,23,.6) }
+.cse[data-theme="light"] .cs-game .clk.live{ color:#c8324a }
+.cse[data-theme="light"] .cs-game .qs{
+  background:rgba(13,31,23,.12); border-color:rgba(13,31,23,.12);
+}
+.cse[data-theme="light"] .cs-game .qs > div{ background:#ffffff }
+.cse[data-theme="light"] .cs-game .qs .ql{ color:rgba(13,31,23,.45) }
+.cse[data-theme="light"] .cs-game .lead{
+  color:rgba(13,31,23,.55); border-top-color:rgba(13,31,23,.12);
+}
+.cse[data-theme="light"] .cs-game .lead b{ color:#0d1f17 }
+.cse[data-theme="light"] .cs-foot{
+  color:rgba(13,31,23,.45); border-top-color:rgba(13,31,23,.12);
+}
+.cse[data-theme="light"] .cs-empty{ color:rgba(13,31,23,.5) }
+.cse[data-theme="light"] .cs-tbl th{
+  background:#eef4f1; color:rgba(13,31,23,.55);
+  border-bottom-color:rgba(13,31,23,.25);
+}
+.cse[data-theme="light"] .cs-tbl td{
+  color:rgba(13,31,23,.82); border-bottom-color:rgba(13,31,23,.1);
+}
+.cse[data-theme="light"] .cs-tbl tbody tr:nth-child(even) td{ background:rgba(13,31,23,.025) }
+.cse[data-theme="light"] .cs-tbl .nm b{ color:#0d1f17 }
+.cse[data-theme="light"] .cs-hd{
+  color:rgba(13,31,23,.6); border-bottom-color:rgba(13,31,23,.14);
 }

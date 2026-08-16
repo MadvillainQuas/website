@@ -48,6 +48,7 @@
   if (me.dataset.game)   url.searchParams.set('g', me.dataset.game);
   if (me.dataset.count)  url.searchParams.set('n', me.dataset.count);
   if (me.dataset.stat)   url.searchParams.set('stat', me.dataset.stat);
+  if (me.dataset.theme)  url.searchParams.set('theme', me.dataset.theme);
   if (kind === 'standings' || kind === 'leaders') url.searchParams.set('kind', kind);
 
   const frame = document.createElement('iframe');
@@ -65,7 +66,8 @@
     'display:block', 'width:100%', 'border:0',
     'height:' + (kind === 'game' ? '210px'
                : kind === 'strip' ? '120px' : '320px'),
-    'background:#04100b', 'color-scheme:dark',
+    'background:' + (me.dataset.theme === 'light' ? '#ffffff' : '#04100b'),
+    'color-scheme:' + (me.dataset.theme === 'light' ? 'light' : 'dark'),
     'border-radius:' + (me.dataset.radius || '4px'),
     'overflow:hidden'
   ].join(';');
