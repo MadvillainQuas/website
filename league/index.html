@@ -8,8 +8,8 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>Courtside Network</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=11">
-<link rel="stylesheet" href="kit/nav.css?v=11">
+<link rel="stylesheet" href="kit/courtside-kit.css?v=13">
+<link rel="stylesheet" href="kit/nav.css?v=13">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*4);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -188,6 +188,39 @@
     text-transform:uppercase;color:var(--lume);text-decoration:none;margin-left:12px;
     white-space:nowrap}
   .showall:hover{text-decoration:underline}
+  /* ---- the katakana strip ------------------------------------------------
+     Neon signage, borrowed carefully. It sits beside the tagline rather than
+     over the wordmark, so it reads as a mark on the page and never competes
+     with the thing it is next to. Hidden from screen readers: it is the
+     platform's own name in another script, so announcing it would just repeat
+     the wordmark in a voice that cannot pronounce it. */
+  .taglinewrap{display:flex;align-items:flex-start;gap:calc(var(--u)*3)}
+  .kana{display:flex;flex-direction:column;gap:2px;flex:none;margin-top:2px;
+    padding-left:calc(var(--u)*2);border-left:1px solid var(--rule-2);
+    font-size:13px;line-height:1.05;letter-spacing:.02em;
+    color:color-mix(in oklch,var(--lume) 72%,transparent);
+    text-shadow:0 0 6px color-mix(in oklch,var(--lume) 45%,transparent),
+                0 0 18px color-mix(in oklch,var(--aqua) 25%,transparent);
+    animation:kflicker 7s steps(1,end) infinite}
+  .kana span{display:block}
+  /* the second character down sits a shade brighter, the way one tube in a
+     sign is always newer than the rest */
+  .kana span:nth-child(2){color:var(--aqua);
+    text-shadow:0 0 8px color-mix(in oklch,var(--aqua) 60%,transparent)}
+
+  /* A sign that flickers constantly is a distraction; one that stutters once
+     every seven seconds is a place. Two frames, then left alone. */
+  @keyframes kflicker{
+    0%,96.5%,100%{opacity:1}
+    97%{opacity:.35}
+    97.6%{opacity:1}
+    98.2%{opacity:.55}
+  }
+  @media (prefers-reduced-motion:reduce){ .kana{animation:none} }
+  @media (max-width:600px){
+    .taglinewrap{gap:calc(var(--u)*2)}
+    .kana{font-size:11px;padding-left:calc(var(--u)*1.5)}
+  }
 </style>
 </head>
 <body>
@@ -195,10 +228,18 @@
 
   <div class="hero">
     <div class="wordmark">Courtside</div>
-    <div class="tagline">
-      Live box scores, standings and season statistics. Every number on this
-      site is rebuilt from the game's own event log, so what you see here and
-      what the statistician recorded cannot drift apart.
+    <div class="taglinewrap">
+      <div class="tagline">
+        Live box scores, standings and season statistics.
+      </div>
+      <!-- Katakana for "Courtside" — kōtosaido. A transliteration of the
+           platform's own name, not a translation of the sentence beside it and
+           not a machine rendering of anything a league is called: those go
+           wrong in ways nobody here could read. Set vertically because that is
+           what the signage this borrows from actually does. -->
+      <div class="kana" aria-hidden="true" title="コートサイド — kōtosaido">
+        <span>コ</span><span>ー</span><span>ト</span><span>サ</span><span>イ</span><span>ド</span>
+      </div>
     </div>
 
     <!-- The fixture strip, carried by the same embed other sites get. Using the
@@ -287,13 +328,13 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=11"></script>
+<script src="config.js?v=13"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=11"></script>
-<script src="bpm.js?v=11"></script>
-<script src="data.js?v=11"></script>
-<script src="home.js?v=11"></script>
-<script src="nav.js?v=11"></script>
+<script src="season.js?v=13"></script>
+<script src="bpm.js?v=13"></script>
+<script src="data.js?v=13"></script>
+<script src="home.js?v=13"></script>
+<script src="nav.js?v=13"></script>
 </body>
 </html>

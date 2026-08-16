@@ -509,8 +509,7 @@ function renumber() {
     const tag = document.querySelector('.tagline');
     if (tag) {
       tag.textContent = 'Live box scores, standings and season statistics for ' +
-        LEAGUE.name + '. Every number is rebuilt from the game’s own event log, ' +
-        'so what you see here and what the statistician recorded cannot drift apart.';
+        LEAGUE.name + '.';
     }
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);

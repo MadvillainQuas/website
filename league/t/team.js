@@ -51,7 +51,8 @@ function oops(msg) {
     else $('#leagueLink').style.display = 'none';
     document.title = team.name + ' · Courtside';
 
-    await Promise.all([record(team), teamStats(team), roster(team), games(team)]);
+    await Promise.all([record(team), teamStats(team), venue(team),
+                       roster(team), games(team)]);
     await lineupPanels(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
@@ -234,6 +235,16 @@ async function lineupPanels(team) {
       }
     });
   }
+}
+
+/* the home venue panel lives in its own module — it is a self-contained
+   piece of page with its own illustration and its own privacy rule */
+async function venue(team) {
+  const out = await window.CourtsideVenue.render({
+    host: '#venue', team, api, cfg: CFG
+  });
+  const note = $('#venueNote');
+  if (note) note.textContent = (out && out.photo) ? '' : 'illustrated';
 }
 
 /* ------------------------------------------------------------------ roster ---
