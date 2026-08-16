@@ -140,6 +140,102 @@ async function leagueCompetitions(leagueId) {
   return comps.map(c => c.id);
 }
 
+/* ------------------------------------------------------------- the clubs ---
+   Every club in the league, each card a print rather than a tile.
+
+   A logo goes in the middle where one exists. None do yet, so the MONOGRAM has
+   to be the artwork and not an apology for a missing image — which is why it
+   is set in the scoreboard face at plate size, printed twice with the second
+   pass out of register, over a halftone in the club's own ink.
+
+   The initials come from the club's short name where it has one, because that
+   is what the club calls itself, and are derived only as a fallback. */
+function monogram(t) {
+  const s = (t.short_name || '').trim();
+  if (s) return s.slice(0, 3).toUpperCase();
+  const words = (t.name || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (t.name || '?').slice(0, 2).toUpperCase();
+}
+
+async function clubs() {
+  const sec = $('#clubsSec');
+  if (!sec || !LEAGUE) return;
+
+  let ts = [];
+  try {
+    ts = await api('teams?league_id=eq.' + LEAGUE.id +
+      '&select=id,name,short_name,slug,colour&order=name');
+  } catch (e) {
+    return;                       // a league page without clubs is still a page
+  }
+  if (!ts.length) return;
+
+  /* an approved logo, if the club has one. Nothing unapproved is ever shown —
+     that decision belongs to the moderation queue, not to this page. */
+  const logos = new Map();
+  try {
+    const rows = await api('media?owner_type=eq.team&kind=eq.logo&status=eq.approved' +
+      '&owner_id=in.(' + ts.map(t => t.id).join(',') + ')&select=owner_id,storage_path');
+    rows.forEach(r => {
+      if (!logos.has(r.owner_id)) {
+        logos.set(r.owner_id, CFG.supabaseUrl + '/storage/v1/object/public/' + r.storage_path);
+      }
+    });
+  } catch (_) { /* monograms all round */ }
+
+  sec.classList.remove('hide');
+  $('#clubsNote').textContent = ts.length + (ts.length === 1 ? ' club' : ' clubs');
+
+  const grid = el('div', 'clubgrid');
+  ts.forEach((t, i) => {
+    const a = el('a', 'club');
+    a.href = 't/?t=' + encodeURIComponent(t.slug || '');
+    a.style.setProperty('--ink-c', t.colour || '#93f2bf');
+    a.setAttribute('aria-label', t.name);
+
+    const plate = el('div', 'club-plate');
+    plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+    ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+
+    const mark = el('div', 'club-mark');
+    const url = logos.get(t.id);
+    if (url) {
+      const img = document.createElement('img');
+      img.className = 'club-logo';
+      img.src = url; img.alt = '';
+      img.loading = 'lazy';
+      /* a logo that fails to load must fall back to the monogram rather than
+         leaving a hole where the club's identity should be */
+      img.addEventListener('error', () => {
+        img.remove();
+        mark.append(el('span', 'club-mono ghost', monogram(t)),
+                    el('span', 'club-mono', monogram(t)));
+      });
+      mark.appendChild(img);
+    } else {
+      mark.append(el('span', 'club-mono ghost', monogram(t)),
+                  el('span', 'club-mono', monogram(t)));
+    }
+    plate.appendChild(mark);
+
+    const band = el('div', 'club-band');
+    band.appendChild(el('span', null, LEAGUE.name));
+    plate.appendChild(band);
+    plate.appendChild(el('div', 'club-grain'));
+
+    const foot = el('div', 'club-foot');
+    foot.append(el('span', 'club-name', t.name),
+                el('span', 'club-ed', 'no ' + String(i + 1).padStart(2, '0') +
+                                      '/' + String(ts.length).padStart(2, '0')));
+
+    a.append(plate, foot);
+    grid.appendChild(a);
+  });
+  sec.querySelector('#clubs').textContent = '';
+  sec.querySelector('#clubs').appendChild(grid);
+}
+
 /* ------------------------------------------------------------ the splash ---
    A league's own front page: its table and its leaders, side by side, each a
    real embed rather than a bespoke copy — the same widget other sites get, so
@@ -219,6 +315,7 @@ function splash() {
 
     await games();
     splash();
+    clubs();
   } else {
     if (WANT) {
       /* asked for a league that is not there — say so rather than silently

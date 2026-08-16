@@ -80,8 +80,15 @@ const P = [
   { k:'ftm',    l:'FT TOT',  g:['totals'], fmt:r=>pair(r.ftm,r.fta), sort:r=>r.ftm, w:70 },
   { k:'efg',    l:'eFG%', g:['shooting','advanced'], fmt:r=>f1(r.efg), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting','advanced'], fmt:r=>f1(r.ts),  heat:1 },
-  { k:'rim_pct',  l:'RIM%',  g:['shooting'], fmt:r=>f1(r.rim_pct), heat:1 },
-  { k:'mid_pct',  l:'MID%',  g:['shooting'], fmt:r=>f1(r.mid_pct), heat:1 },
+  /* Each zone's accuracy with the volume it rests on, in that order — the same
+     pairing the team table uses and the player profile's bars show. 60% at the
+     rim means one thing on eight attempts a night and nothing at all on one,
+     and a column of percentages with no volume beside it invites exactly that
+     mistake. */
+  { k:'rim_pct',  l:'RIM%',   g:['shooting'], fmt:r=>f1(r.rim_pct), heat:1 },
+  { k:'rim_apg',  l:'RIMA/G', g:['shooting'], fmt:r=>f1(r.rim_apg), heat:1, w:64 },
+  { k:'mid_pct',  l:'MID%',   g:['shooting'], fmt:r=>f1(r.mid_pct), heat:1 },
+  { k:'mid_apg',  l:'MIDA/G', g:['shooting'], fmt:r=>f1(r.mid_apg), heat:1, w:64 },
   { k:'rim_rate', l:'RIM/FGA', g:['shooting'], fmt:r=>f1(r.rim_rate), heat:1 },
   { k:'p3_rate',  l:'3PA/FGA', g:['shooting'], fmt:r=>f1(r.p3_rate),  heat:1 },
   { k:'ftr',      l:'FTr',   g:['shooting','advanced'], fmt:r=>f1(r.ftr), heat:1 },
