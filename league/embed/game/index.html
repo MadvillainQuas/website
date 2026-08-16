@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<!-- EMBED. Runs inside someone else's page: no gate, no nav, no third-party
+     scripts, every style literal so it cannot inherit theirs. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Courtside box score</title>
+<link rel="stylesheet" href="../../kit/fonts.css">
+<link rel="stylesheet" href="../../kit/embed.css">
+</head>
+<body class="cse">
+  <div id="host"><div class="cs-empty">Loading…</div></div>
+  <div class="cs-foot">
+    <a id="full" href="../../" target="_blank" rel="noopener">full box score ↗</a>
+    <span>Courtside</span>
+  </div>
+<script src="../../config.js"></script>
+<script src="../../vendor/supabase.js"></script>
+<script src="../../engine.js"></script>
+<script src="../../live.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

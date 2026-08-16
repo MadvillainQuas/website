@@ -1,0 +1,199 @@
+/* ============================================================================
+   COURTSIDE EMBEDS — what other people's sites see.
+
+   Self-contained by necessity. An embed renders inside an iframe on a site
+   whose stylesheet we will never see, so every value here is literal: no
+   dependency on the kit, no inherited font, no assumed background. The one
+   thing an embed must never do is look broken on someone else's page.
+
+   Sized for a strip: the fixture bar is modelled on the LiveStats widget —
+   a row of cards, each showing competition, status, both teams and when.
+   ============================================================================ */
+
+.cse{
+  margin:0; padding:0; background:#04100b; color:#e6fff1;
+  font-family:'Archivo',system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.cse *{ box-sizing:border-box }
+.cse a{ text-decoration:none; color:inherit }
+
+/* ---------------------------------------------------------------- the strip */
+/* Height is content-driven, never 100%. The strip measures itself and posts
+   that number to the host page; stretching to the viewport made it report the
+   whole window and would have blown the iframe open on someone else's site. */
+.cs-strip{ display:flex; align-items:stretch; gap:0; min-height:104px }
+
+/* the brand plate on the left, as the LiveStats bar has */
+.cs-plate{
+  flex:none; width:132px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:6px; padding:10px 8px;
+  background:linear-gradient(160deg,#0b1f16,#081711);
+  border-right:1px solid rgba(147,242,191,.22);
+}
+.cs-plate .mk{
+  font-family:'Jersey25',ui-monospace,monospace; font-size:21px; line-height:1;
+  background:linear-gradient(100deg,#93f2bf,#8ff5ff); color:#04100b;
+  padding:3px 10px 1px; text-transform:uppercase; letter-spacing:.02em;
+}
+.cs-plate .sub{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  letter-spacing:.16em; text-transform:uppercase; color:rgba(230,255,241,.45);
+  text-align:center; line-height:1.7;
+}
+
+.cs-rail{
+  flex:1; min-width:0; display:flex; gap:8px; padding:8px;
+  overflow-x:auto; overflow-y:hidden; scroll-behavior:smooth;
+  scrollbar-width:none; scroll-snap-type:x proximity;
+}
+.cs-rail::-webkit-scrollbar{ display:none }
+
+.cs-card{
+  flex:0 0 auto; width:212px; scroll-snap-align:start;
+  display:flex; flex-direction:column;
+  background:#0a1a13; border:1px solid rgba(147,242,191,.18); border-radius:4px;
+  overflow:hidden; transition:border-color .12s, background .12s;
+}
+.cs-card:hover{ border-color:rgba(147,242,191,.5); background:#0d2118 }
+
+.cs-card .hd{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:6px 9px; background:rgba(147,242,191,.07);
+  border-bottom:1px solid rgba(147,242,191,.14);
+}
+.cs-card .comp{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  letter-spacing:.1em; text-transform:uppercase; color:rgba(230,255,241,.62);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cs-card .st{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; flex:none;
+}
+.cs-card .st.live{ color:#ff5f6b }
+.cs-card .st.final{ color:rgba(230,255,241,.5) }
+.cs-card .st.upcoming{ color:#8ff5ff }
+.cs-card .st .dot{
+  display:inline-block; width:5px; height:5px; border-radius:50%;
+  background:#ff5f6b; margin-right:4px; vertical-align:1px;
+  animation:csp 1.6s ease-in-out infinite;
+}
+@keyframes csp{ 0%,100%{opacity:1} 50%{opacity:.25} }
+@media (prefers-reduced-motion:reduce){ .cs-card .st .dot{ animation:none } }
+
+.cs-card .side{
+  display:flex; align-items:center; gap:8px; padding:7px 9px;
+}
+.cs-card .side + .side{ border-top:1px solid rgba(147,242,191,.09) }
+.cs-card .crest{
+  flex:none; width:20px; height:20px; border-radius:3px;
+  display:grid; place-items:center; color:#04100b;
+  font-family:'Jersey25',ui-monospace,monospace; font-size:10px; line-height:1;
+}
+.cs-card .abbr{
+  flex:1; min-width:0; font-weight:800; font-size:15px; letter-spacing:.02em;
+  text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cs-card .sc{
+  flex:none; font-family:'Jersey25',ui-monospace,monospace; font-size:19px;
+  line-height:1; color:#e6fff1; font-variant-numeric:tabular-nums;
+}
+.cs-card .side.win .abbr, .cs-card .side.win .sc{ color:#93f2bf }
+.cs-card .side.lose .abbr, .cs-card .side.lose .sc{ color:rgba(230,255,241,.45) }
+
+.cs-card .ft{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:5px 9px; margin-top:auto;
+  background:rgba(255,255,255,.03); border-top:1px solid rgba(147,242,191,.1);
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  letter-spacing:.08em; color:rgba(230,255,241,.5); text-transform:uppercase;
+}
+.cs-card .ft .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+
+/* scroll arrows, shown only when there is somewhere to go */
+.cs-arrow{
+  flex:none; width:26px; align-self:stretch; border:0; cursor:pointer;
+  background:linear-gradient(90deg,rgba(4,16,11,0),rgba(4,16,11,.9));
+  color:rgba(230,255,241,.65); font-size:14px; line-height:1;
+}
+.cs-arrow:hover{ color:#93f2bf }
+.cs-arrow[hidden]{ display:none }
+.cs-arrow.l{ background:linear-gradient(270deg,rgba(4,16,11,0),rgba(4,16,11,.9)) }
+
+/* --------------------------------------------------------- the game embed */
+.cs-game{ padding:14px 16px }
+.cs-game .top{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding-bottom:10px; margin-bottom:12px;
+  border-bottom:1px solid rgba(147,242,191,.18);
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+  letter-spacing:.12em; text-transform:uppercase; color:rgba(230,255,241,.55);
+}
+.cs-game .board{
+  display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center;
+}
+.cs-game .tm{ display:flex; align-items:center; gap:10px; min-width:0 }
+.cs-game .tm.away{ flex-direction:row-reverse; text-align:right }
+.cs-game .tm .crest{
+  flex:none; width:38px; height:38px; border-radius:4px; display:grid;
+  place-items:center; color:#04100b;
+  font-family:'Jersey25',ui-monospace,monospace; font-size:16px;
+}
+.cs-game .tm .nm{
+  font-weight:800; font-size:16px; letter-spacing:.01em; line-height:1.2;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.cs-game .tm .rec{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  color:rgba(230,255,241,.4); letter-spacing:.1em; margin-top:3px;
+}
+.cs-game .mid{ text-align:center; min-width:112px }
+.cs-game .score{
+  font-family:'Jersey25',ui-monospace,monospace; font-size:40px; line-height:1;
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.cs-game .score .sep{ color:rgba(230,255,241,.28); padding:0 6px }
+.cs-game .clk{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; margin-top:7px;
+  letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.6);
+}
+.cs-game .clk.live{ color:#ff5f6b }
+.cs-game .qs{
+  display:flex; gap:1px; margin-top:12px; background:rgba(147,242,191,.14);
+  border:1px solid rgba(147,242,191,.14); border-radius:3px; overflow:hidden;
+}
+.cs-game .qs > div{ flex:1; background:#0a1a13; padding:5px 2px; text-align:center }
+.cs-game .qs .ql{
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
+  color:rgba(230,255,241,.4); letter-spacing:.1em;
+}
+.cs-game .qs .qv{
+  font-family:'Jersey25',ui-monospace,monospace; font-size:13px; margin-top:2px;
+  font-variant-numeric:tabular-nums;
+}
+.cs-game .lead{
+  margin-top:12px; padding-top:10px; border-top:1px solid rgba(147,242,191,.14);
+  display:flex; flex-wrap:wrap; gap:14px;
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+  letter-spacing:.08em; text-transform:uppercase; color:rgba(230,255,241,.5);
+}
+.cs-game .lead b{ color:#e6fff1; font-weight:400 }
+
+.cs-foot{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:7px 12px; border-top:1px solid rgba(147,242,191,.14);
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
+  letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.34);
+}
+.cs-foot a:hover{ color:#93f2bf }
+
+.cs-empty{
+  padding:26px 16px; text-align:center; color:rgba(230,255,241,.45);
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; line-height:2.2;
+}
+
+@media (max-width:520px){
+  .cs-plate{ width:84px } .cs-plate .sub{ display:none }
+  .cs-game .score{ font-size:32px }
+}
