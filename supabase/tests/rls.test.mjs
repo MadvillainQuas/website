@@ -81,12 +81,56 @@ async function main() {
     [{ user_id: ZERO, role: 'platform_admin', scope_type: 'platform' }]);
   ok('anon cannot grant itself a role', !w4.allowed, `HTTP ${w4.code}`);
 
-  const w5 = await rest(`games?id=eq.${ZERO}`,
-    { method: 'PATCH', body: JSON.stringify({ home_score: 999 }) });
-  ok('anon cannot rewrite a score', !w5.ok || w5.status === 204, `HTTP ${w5.status}`);
+  /* Aim these at a row that really exists. Against a nonexistent id a refusal
+     and "matched nothing" are both 204, so the test would pass without proving
+     anything. Falls back to the zero uuid only if the table is empty. */
+  const realGame = (await (await rest('games?select=id&status=eq.final&limit=1')).json()
+                    .catch(() => []))[0]?.id || ZERO;
+  const targeted = realGame !== ZERO;
 
-  const w6 = await rest('game_events?id=gt.0', { method: 'DELETE' });
-  ok('anon cannot delete events', !w6.ok || w6.status === 204, `HTTP ${w6.status}`);
+  const w5 = await rest(`games?id=eq.${realGame}`,
+    { method: 'PATCH', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ home_score: 999 }) });
+  const changed5 = w5.ok ? (await w5.json().catch(() => [])).length : 0;
+  ok(`anon cannot rewrite a score${targeted ? ' (real final game)' : ' (no games to target)'}`,
+     !w5.ok || changed5 === 0, `HTTP ${w5.status}, ${changed5} rows changed`);
+
+  const realEvent = (await (await rest('game_events?select=id&limit=1')).json()
+                     .catch(() => []))[0]?.id;
+  const w6 = await rest(realEvent ? `game_events?id=eq.${realEvent}` : 'game_events?id=gt.0',
+    { method: 'DELETE', headers: { Prefer: 'return=representation' } });
+  const deleted6 = w6.ok ? (await w6.json().catch(() => [])).length : 0;
+  ok(`anon cannot delete events${realEvent ? ' (real event)' : ' (none readable)'}`,
+     !w6.ok || deleted6 === 0, `HTTP ${w6.status}, ${deleted6} rows deleted`);
+
+  /* ---- administration RPCs are execute-revoked from anon (migration 0007) --- */
+  console.log('\nadministration RPCs must be unreachable anonymously:');
+  const rpc = async (fn, body) => {
+    const r = await rest(`rpc/${fn}`, { method: 'POST', body: JSON.stringify(body) });
+    return { allowed: r.ok, code: r.status };
+  };
+
+  const r1 = await rpc('create_league', { p_name: 'RLS Probe', p_slug: 'rls-probe-league' });
+  ok('anon cannot create a league', !r1.allowed, `HTTP ${r1.code}`);
+
+  const r2 = await rpc('grant_role', { p_email: 'probe@example.com', p_role: 'platform_admin',
+                                       p_scope_type: 'platform' });
+  ok('anon cannot grant a role', !r2.allowed, `HTTP ${r2.code}`);
+
+  const r3 = await rpc('assign_official', { p_game: ZERO, p_email: 'probe@example.com' });
+  ok('anon cannot assign itself as statistician', !r3.allowed, `HTTP ${r3.code}`);
+
+  const r4 = await rpc('whoami', {});
+  ok('anon cannot call whoami', !r4.allowed, `HTTP ${r4.code}`);
+
+  const r5 = await rpc('league_members', { p_league: ZERO });
+  ok('anon cannot list league members (emails)', !r5.allowed, `HTTP ${r5.code}`);
+
+  /* The escalation that migration 0007 closed: game_officials used to accept
+     any insert, and holding a row there grants can_score(). Anonymously this
+     was always refused, but the assertion belongs here permanently. */
+  const w7 = await write('game_officials', [{ game_id: ZERO, user_id: ZERO }]);
+  ok('anon cannot make itself a game official', !w7.allowed, `HTTP ${w7.code}`);
 
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exitCode = fail ? 1 : 0;

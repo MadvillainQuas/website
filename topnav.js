@@ -152,7 +152,12 @@
             { id: 'playerstats', label: '📈 Player Stats Viewer', href: 'player_stats_viewer_pro.html',
               owns: (p) => p.endsWith('player_stats_viewer_pro.html') },
             { id: 'allstats',  label: '🌍 All-League Stats', href: 'allstats.html',
-              owns: (p) => p.endsWith('allstats.html') }
+              owns: (p) => p.endsWith('allstats.html') },
+            // Courtside lives under /league/ and deliberately does not load this
+            // nav (it is public and must not depend on the gate), so it only ever
+            // appears here as a link out.
+            { id: 'courtside', label: '🏟️ Courtside', href: 'league/',
+              owns: (p) => p.startsWith('/league/') }
         ];
         const currentApp = APPS.find(a => a.owns(path));
         const otherApps  = APPS.filter(a => a !== currentApp);

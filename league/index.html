@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Courtside Network</title>
+<link rel="stylesheet" href="kit/courtside-kit.css">
+<style>
+  .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*4);border-bottom:1px solid var(--rule)}
+  .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .tagline{font-family:var(--f-micro);font-size:10.5px;color:var(--ink-3);margin-top:calc(var(--u)*2);
+    letter-spacing:.08em;max-width:52ch;line-height:1.7}
+
+  .sec{border-bottom:1px solid var(--rule)}
+  .sec-h{display:flex;align-items:baseline;gap:12px;padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*2)}
+  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em}
+  .sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;
+    letter-spacing:.05em;margin:0}
+  .sec-h .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule)}
+  .card{background:var(--ground);padding:calc(var(--u)*3);text-decoration:none;color:inherit;
+    display:flex;flex-direction:column;gap:7px;min-height:104px;transition:background .12s}
+  .card:hover{background:color-mix(in oklch,var(--lume) 7%,var(--ground))}
+  .card .k{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.12em}
+  .card .t{font-family:var(--f-ui);font-weight:700;font-size:15px;letter-spacing:.01em}
+  .card .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.7}
+  .card.muted .k{color:var(--ink-3)}
+
+  .lg{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;
+    padding:12px calc(var(--u)*3);border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
+  .lg:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+  .lg .cr{display:grid;place-items:center;width:34px;height:34px;border-radius:3px;
+    font-family:var(--f-score);font-size:15px;color:#04100b}
+  .lg .nm{font-family:var(--f-ui);font-weight:700;font-size:14.5px;text-transform:uppercase;letter-spacing:.02em}
+  .lg .sub{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:3px}
+  .lg .go{font-family:var(--f-micro);font-size:16px;color:var(--ink-3)}
+
+  .fx{display:grid;grid-template-columns:1fr auto 1fr 62px;gap:10px;align-items:center;
+    padding:11px calc(var(--u)*3);border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
+  .fx:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+  .fx .tn{font-family:var(--f-ui);font-weight:700;font-size:13px;text-transform:uppercase}
+  .fx .h{text-align:right}
+  .fx .sc{font-family:var(--f-score);font-size:20px;padding:0 8px;white-space:nowrap}
+  .fx .st{font-family:var(--f-micro);font-size:9px;text-align:right}
+  .fx .st.live{color:var(--flare)} .fx .st.final{color:var(--ink-3)} .fx .st.sched{color:var(--aqua)}
+
+  .empty{padding:calc(var(--u)*4) calc(var(--u)*3);text-align:center;color:var(--ink-3);
+    font-family:var(--f-micro);font-size:10px;line-height:1.9}
+  .foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;
+    color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap}
+  .foot a{color:var(--ink-3)}
+  .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--flare);
+    margin-right:6px;vertical-align:1px;animation:p 1.6s ease-in-out infinite}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
+  @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+
+  <div class="hero">
+    <div class="wordmark">Courtside</div>
+    <div class="tagline">
+      Live box scores, standings and season statistics. Every number on this
+      site is rebuilt from the game's own event log, so what you see here and
+      what the statistician recorded cannot drift apart.
+    </div>
+  </div>
+
+  <!-- live + recent ------------------------------------------------------ -->
+  <div class="sec">
+    <div class="sec-h">
+      <span class="idx">01</span><h2>Games</h2>
+      <span class="note" id="gamesNote"></span>
+    </div>
+    <div id="games"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- leagues ------------------------------------------------------------ -->
+  <div class="sec">
+    <div class="sec-h"><span class="idx">02</span><h2>Leagues</h2></div>
+    <div id="leagues"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- entry points ------------------------------------------------------- -->
+  <div class="sec">
+    <div class="sec-h">
+      <span class="idx">03</span><h2>Take part</h2>
+      <span class="note">sign-in required</span>
+    </div>
+    <div class="grid">
+      <a class="card" href="app/">
+        <span class="k">Portal</span>
+        <span class="t">Club sign-in</span>
+        <span class="d">Manage your team, roster and kit colour. Magic-link sign-in — no password to remember.</span>
+      </a>
+      <a class="card" href="score/">
+        <span class="k">Scorer</span>
+        <span class="t">Score a game</span>
+        <span class="d">The statistician's app. Opens a practice game straight away; open a real fixture from the portal.</span>
+      </a>
+      <a class="card" href="stats/">
+        <span class="k">Season</span>
+        <span class="t">Full statistics table</span>
+        <span class="d">Every player, sortable, with eFG%, TS% and rim rates. Exports to CSV.</span>
+      </a>
+      <a class="card muted" href="devfeed.html">
+        <span class="k">Tools</span>
+        <span class="t">Transport test feed</span>
+        <span class="d">Drives a synthetic game through the live pipeline to check the viewer end to end.</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Courtside Network</span>
+    <a href="/index.html">← Prophesy Scouting</a>
+    <span id="mode"></span>
+  </div>
+</div>
+<script src="config.js"></script>
+<script src="home.js"></script>
+</body>
+</html>
