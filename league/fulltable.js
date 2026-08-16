@@ -393,6 +393,64 @@ function render(opts) {
     return out;
   }
 
+  /* ------------------------------------------------------------ resizing ---
+     Drag the right edge of any header to set that column's width.
+
+     The automatic width fits the widest value, which is right nearly always
+     and wrong exactly when a reader wants to see a long name in full or squeeze
+     a column out of the way. A grip costs one element per header and makes the
+     table theirs.
+
+     The grip swallows the click so resizing never also re-sorts — sharing an
+     edge between "drag me" and "click me" is how a table becomes infuriating.
+
+     Widths are remembered per table for the session, so switching preset and
+     coming back does not undo the adjustment. */
+  const held = {};
+
+  function addGrip(th, col, table) {
+    const grip = document.createElement('span');
+    grip.className = 'ft-grip';
+    grip.setAttribute('aria-hidden', 'true');
+    let startX = 0, startW = 0, active = false;
+
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      active = true;
+      startX = e.clientX;
+      startW = th.getBoundingClientRect().width;
+      grip.setPointerCapture(e.pointerId);
+      grip.classList.add('on');
+    });
+    grip.addEventListener('pointermove', e => {
+      if (!active) return;
+      const w = Math.max(34, Math.round(startW + (e.clientX - startX)));
+      th.style.width = w + 'px';
+      held[col.k] = w;
+      /* the table's own width must follow, or the last column absorbs the
+         change and every other column shifts under the cursor */
+      const total = [...table.tHead.rows[0].cells]
+        .reduce((n, c2) => n + c2.getBoundingClientRect().width, 0);
+      table.style.width = Math.round(total) + 'px';
+    });
+    const stop = e => {
+      if (!active) return;
+      active = false;
+      try { grip.releasePointerCapture(e.pointerId); } catch (_) {}
+      grip.classList.remove('on');
+    };
+    grip.addEventListener('pointerup', stop);
+    grip.addEventListener('pointercancel', stop);
+    /* never let the grip's click reach the header's sort handler */
+    grip.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+    grip.addEventListener('dblclick', e => {
+      e.preventDefault(); e.stopPropagation();
+      delete held[col.k];            // back to the measured width
+      draw();
+    });
+    th.appendChild(grip);
+  }
+
   function draw() {
     const cols = visible();
     const v = view();
@@ -425,6 +483,8 @@ function render(opts) {
        stating the total leaves nothing to reconcile. */
     const W0 = 36, W1 = 170;
     const widths = measure(cols, v);
+    /* a width the reader set by hand wins over the measured one */
+    Object.keys(held).forEach(k => { if (widths[k] != null) widths[k] = held[k]; });
     const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
     t.style.width = totalW + 'px';
 
@@ -437,6 +497,9 @@ function render(opts) {
          which is what threw PPG and DIFF out of proportion. */
       if (i >= 2) th.style.width = widths[c.k] + 'px';
       th.title = c.l + (c.low ? ' — lower is better' : '');
+      /* a grip on the trailing edge, so a column can be widened by hand when
+         the measured width is not what this particular reader wants */
+      if (i >= 1) addGrip(th, c, t);
       th.addEventListener('click', () => {
         if (sortKey === c.k) sortDir = -sortDir;
         else { sortKey = c.k; sortDir = c.text ? 1 : -1; }

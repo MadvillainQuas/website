@@ -70,8 +70,15 @@
   .barrow .bt i{display:block;height:100%;border-radius:2px}
   .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
   .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
+  .barrow .ba{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);opacity:.75}
+  .barrow{align-items:start}
+  .barrow .bl{padding-top:1px}
   .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
     letter-spacing:.14em;text-transform:uppercase;padding:12px 0 4px}
+  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    letter-spacing:.1em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -109,6 +116,13 @@
     <div id="log"></div>
   </div>
 
+  <div class="sec">
+    <div class="sec-h"><span class="idx">04</span><h2>With or without</h2>
+      <span class="note" id="wowyNote"></span></div>
+    <div id="onoff"></div>
+    <div id="wowy"></div>
+  </div>
+
   <div class="foot">
     <a href="../">← all games</a>
     <a id="teamLink" href="#">team page</a>
@@ -119,6 +133,8 @@
 <script src="../season.js"></script>
 <script src="../data.js"></script>
 <script src="../upload.js"></script>
+<script src="../lineups.js"></script>
+<script src="../wowy.js"></script>
 <script src="../fulltable.js"></script>
 <script src="player.js"></script>
 <script src="../nav.js"></script>

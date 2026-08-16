@@ -52,6 +52,7 @@ function oops(msg) {
     document.title = team.name + ' · Courtside';
 
     await Promise.all([record(team), teamStats(team), roster(team), games(team)]);
+    await lineupPanels(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
 
@@ -157,6 +158,65 @@ async function teamStats(team) {
       rows: squad,
       playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
     });
+  }
+}
+
+/* ------------------------------------------------------- lineups & WOWY --- */
+/* All three panels read the same stints, fetched once. */
+async function lineupPanels(team) {
+  const D = window.CourtsideData;
+  try {
+    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+      `&status=eq.final&select=id,home_team_id,away_team_id`);
+    if (!gs.length) return;
+    const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
+    const st = await D.stints(gs.map(g => g.id), team.id, byGame);
+    if (!st.length) {
+      ['#wowy', '#lufilter', '#lulist'].forEach(sel =>
+        $(sel).appendChild(el('div', 'empty', 'No lineup data yet.')));
+      return;
+    }
+
+    const ids = [...new Set(st.flatMap(r => r.player_ids))];
+    const meta = await D.playerMeta(ids);
+    $('#wowyNote').textContent = st.length + ' stints · ' + ids.length + ' players';
+
+    /* the team WOWY needs a subject; default to the most-used player and let
+       the reader change it, because "the team without X" is a question about a
+       specific X rather than about the team */
+    const mins = new Map();
+    st.forEach(s2 => (s2.player_ids || []).forEach(id =>
+      mins.set(id, (mins.get(id) || 0) + ((s2.stats && s2.stats.dur) || 0))));
+    const order = [...mins.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+    let subject = order[0];
+
+    const pick = $('#wowyPick');
+    order.forEach(id => {
+      const b = el('button', 'cs-chip' + (id === subject ? ' on' : ''),
+                   (meta[id] || {}).name || 'Player');
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        subject = id;
+        pick.querySelectorAll('.cs-chip').forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+        drawWowy();
+      });
+      pick.appendChild(b);
+    });
+
+    function drawWowy() {
+      window.CourtsideWowy.onOffTiles('#onoff', st, subject);
+      window.CourtsideWowy.render({
+        host: '#wowy', stints: st, playerId: subject, meta,
+        href: id => '../p/?p=' + encodeURIComponent(id)
+      });
+    }
+    drawWowy();
+
+    window.CourtsideLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
+    window.CourtsideLineupUI.listPanel({ host: '#lulist', stints: st, meta });
+  } catch (e) {
+    console.warn('[lineups]', e);
   }
 }
 

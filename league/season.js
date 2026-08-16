@@ -220,6 +220,11 @@ function finishPlayer(A, m) {
     efg: r1(pct(fgm + 0.5 * A.p3m, fga)),
     ts:  r1(pct(A.pts, 2 * tsa)),
     rim_pct: r1(pct(A.rimM, A.rimA)), mid_pct: r1(pct(A.midM, A.midA)),
+    /* attempts per game beside each accuracy: a percentage without a volume
+       is unreadable — 60% at the rim means one thing on eight attempts a night
+       and nothing at all on one */
+    rim_apg: r1(A.rimA / g), mid_apg: r1(A.midA / g), p3_apg: r1(A.p3a / g),
+    ft_apg:  r1(A.fta / g),
     rim_rate: r1(pct(A.rimA, fga)), mid_rate: r1(pct(A.midA, fga)),
     p3_rate:  r1(pct(A.p3a, fga)),
     ftr: r1(pct(A.fta, fga)),

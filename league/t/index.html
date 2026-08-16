@@ -55,6 +55,17 @@
   .ffside.win .ffv{color:var(--lume)}
   .ffside .ffk{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
     letter-spacing:.12em;text-transform:uppercase;margin-top:5px}
+  .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+  .lu-lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    line-height:1.9;margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);max-width:72ch}
+  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    letter-spacing:.1em;text-transform:uppercase}
+  .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
+  .cs-hdr{display:flex;align-items:baseline;gap:12px}
 </style>
 </head>
 <body>
@@ -80,6 +91,23 @@
   <div class="cs-hdr"><span class="idx">03</span><h2>Results &amp; fixtures</h2></div>
   <div id="games"></div>
 
+  <div class="cs-hdr"><span class="idx">04</span><h2>With or without</h2>
+    <span class="hnote" id="wowyNote"></span></div>
+  <div id="wowyPick" class="lu-chips"></div>
+  <div id="onoff"></div>
+  <div id="wowy"></div>
+
+  <div class="cs-hdr"><span class="idx">05</span><h2>Lineup filter</h2></div>
+  <p class="lu-lead">
+    Pick any players and see how the team does with all of them on the floor
+    together. Two or three pools every unit containing them, which is a sample
+    worth reading; five narrows it to that exact unit.
+  </p>
+  <div id="lufilter"></div>
+
+  <div class="cs-hdr"><span class="idx">06</span><h2>Every lineup</h2></div>
+  <div id="lulist"></div>
+
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
     <a id="leagueLink" href="../l/" style="color:var(--ink-3)">← league</a>
     <span>Courtside Network</span>
@@ -88,6 +116,9 @@
 <script src="../config.js"></script>
 <script src="../season.js"></script>
 <script src="../data.js"></script>
+<script src="../lineups.js"></script>
+<script src="../wowy.js"></script>
+<script src="lineupui.js"></script>
 <script src="../fulltable.js"></script>
 <script src="team.js"></script>
 <script src="../nav.js"></script>

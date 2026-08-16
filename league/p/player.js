@@ -111,10 +111,16 @@ function paintTiles(s) {
    ("11.4 AST%") into one anybody can read ("83rd percentile").
 
    Rates only. Ranking a total would just rank minutes played. */
+/* [key, label, attempts-key]
+   The third entry is what the percentage rests on. A shooting rate without its
+   volume is unreadable — 60% at the rim means one thing on eight attempts a
+   night and nothing at all on one — so the attempts sit under the number. */
 const BAR_GROUPS = [
   ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE']]],
-  ['shooting',   [['rim_pct','RIM%'],['mid_pct','MID%'],['p3_pct','3P%'],['ft_pct','FT%']]],
-  ['playmaking', [['ast_pct','ASSIST%'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']]],
+  ['shooting',   [['rim_pct','RIM%','rim_apg'],['mid_pct','MID%','mid_apg'],
+                  ['p3_pct','3P%','p3_apg'],['ft_pct','FT%','ft_apg']]],
+  ['playmaking', [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],
+                  ['tov_pct','TURNOVER%']]],
   ['rebounding', [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']]],
   ['defence',    [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['vs_efg','OPP eFG% ON']]],
   ['impact',     [['on_net','ON NET'],['diff_net','ON-OFF']]]
@@ -136,7 +142,7 @@ function paintBars(mine, field) {
   const wrap = el('div', 'bars');
   BAR_GROUPS.forEach(([title, rows]) => {
     wrap.appendChild(el('div', 'bargroup', title));
-    rows.forEach(([k, label]) => {
+    rows.forEach(([k, label, attKey]) => {
       const v = mine[k];
       const p = (ranks.get(k) || new Map()).get(mine.id);
       const row = el('div', 'barrow');
@@ -152,8 +158,13 @@ function paintBars(mine, field) {
       track.appendChild(fill);
       row.appendChild(track);
 
-      const val = el('div', 'bv', v == null ? '—' : Number(v).toFixed(k === 'ast_to' ? 2 : 1));
+      const dp = (k === 'ast_to' || k === 'au') ? 2 : 1;
+      const val = el('div', 'bv', v == null ? '—' : Number(v).toFixed(dp));
       if (p != null) val.appendChild(el('div', 'bp', ord(p)));
+      /* the volume the rate rests on, under it */
+      if (attKey && mine[attKey] != null) {
+        val.appendChild(el('div', 'ba', Number(mine[attKey]).toFixed(1) + ' att'));
+      }
       row.appendChild(val);
       wrap.appendChild(row);
     });
@@ -282,6 +293,31 @@ function paintLog(rows) {
       $('#seasons').appendChild(el('div', 'empty',
         'No finalised games yet — a season line appears once one is played.'));
     }
+
+    /* ---- with or without ----
+       Read from lineup_stints, which carries the five on the floor for every
+       stretch of every game — the only shape this question can be answered
+       from, and the reason it is real rather than an approximation. */
+    try {
+      if (team && team.id) {
+        const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+          `&status=eq.final&select=id,home_team_id,away_team_id`);
+        const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
+        const st = await D.stints(gs.map(g => g.id), team.id, byGame);
+        if (st.length) {
+          window.CourtsideWowy.onOffTiles('#onoff', st, pl.id);
+          const mateIds = [...new Set(st.flatMap(r => r.player_ids))];
+          const mm = await D.playerMeta(mateIds);
+          $('#wowyNote').textContent = st.length + ' stints';
+          window.CourtsideWowy.render({
+            host: '#wowy', stints: st, playerId: pl.id, meta: mm,
+            href: id => '?p=' + encodeURIComponent(id)
+          });
+        } else {
+          $('#wowy').appendChild(el('div', 'empty', 'No lineup data yet.'));
+        }
+      }
+    } catch (e) { console.warn('[wowy]', e); }
 
     /* game log, with the opponent resolved from the game row */
     const gl = await api(`player_game_stats?player_uuid=eq.${pl.id}` +

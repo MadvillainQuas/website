@@ -77,6 +77,28 @@ async function season(competitionId) {
   };
 }
 
+/* Every stint for a team's games. This is what WOWY, the lineup filter and the
+   lineup list all read — each row carries the five on the floor and what
+   happened while they were, which is the only shape those questions can be
+   answered from. */
+async function stints(gameIds, teamId, byId) {
+  if (!gameIds || !gameIds.length) return [];
+  const chunks = [];
+  for (let i = 0; i < gameIds.length; i += 40) chunks.push(gameIds.slice(i, i + 40));
+  const parts = await Promise.all(chunks.map(c =>
+    all(`lineup_stints?game_id=in.(${c.join(',')})&select=game_id,team_idx,player_ids,stats`)));
+  let rows = parts.flat();
+  if (teamId && byId) {
+    /* team_idx is a side of a game, not a team — resolve it through the game */
+    rows = rows.filter(r => {
+      const g = byId[r.game_id];
+      if (!g) return false;
+      return (r.team_idx === 0 ? g.home_team_id : g.away_team_id) === teamId;
+    });
+  }
+  return rows;
+}
+
 /* names, jerseys and colours for a set of player ids — the stats carry none */
 async function playerMeta(ids) {
   if (!ids.length) return {};
@@ -127,5 +149,5 @@ async function context(leagueSlug, compId) {
   return { league, season: seasonRow, comps, comp };
 }
 
-return { get, all, season, playerMeta, teamMeta, context };
+return { get, all, season, stints, playerMeta, teamMeta, context };
 }));
