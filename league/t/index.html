@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Team · Courtside</title>
+<link rel="stylesheet" href="../kit/courtside-kit.css">
+<style>
+  .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
+    font-size:24px;color:#04100b;flex:none}
+  .hname{font-family:var(--f-score);font-size:clamp(24px,5vw,40px);text-transform:uppercase;line-height:1}
+  .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
+  .rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));border-bottom:1px solid var(--rule)}
+  .rec div{padding:13px 10px;text-align:center;border-right:1px solid var(--rule)}
+  .rec div:last-child{border-right:none}
+  .rec .v{font-family:var(--f-score);font-size:24px}
+  .rec .l{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:5px}
+  .fx{display:grid;grid-template-columns:80px 1fr auto 70px;gap:10px;align-items:center;
+    padding:10px calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .fx .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
+  .fx .o{font-family:var(--f-ui);font-weight:600;font-size:13px}
+  .fx .s{font-family:var(--f-score);font-size:19px}
+  .fx .r{font-family:var(--f-micro);font-size:10px;text-align:right}
+  .fx .w{color:var(--good)} .fx .ls{color:var(--bad)}
+  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
+  a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
+    <span id="ctx" class="cs-micro"></span>
+  </div>
+
+  <div class="hero">
+    <div class="badge" id="badge"></div>
+    <div><div class="hname" id="tname">—</div><div class="hsub" id="tsub"></div></div>
+  </div>
+
+  <div class="rec" id="rec"></div>
+
+  <div class="cs-hdr"><span class="idx">01</span><h2>Roster</h2></div>
+  <div class="cs-tw" id="roster"></div>
+
+  <div class="cs-hdr"><span class="idx">02</span><h2>Results &amp; fixtures</h2></div>
+  <div id="games"></div>
+
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Courtside Network</footer>
+</div>
+<script src="../config.js"></script>
+<script src="team.js"></script>
+</body>
+</html>

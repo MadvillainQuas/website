@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>League · Courtside</title>
+<link rel="stylesheet" href="../kit/courtside-kit.css">
+<style>
+  .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .pane{display:none} .pane.on{display:block}
+  .crest{display:inline-grid;place-items:center;width:22px;height:22px;font-family:var(--f-score);
+    font-size:11px;color:#04100b;margin-right:9px;vertical-align:-5px;flex:none}
+  .tname-cell{display:flex;align-items:center}
+  .tname-cell a{color:inherit;text-decoration:none}
+  .tname-cell a:hover{color:var(--lume)}
+  .fx{display:grid;grid-template-columns:88px 1fr auto 1fr 70px;gap:10px;align-items:center;
+    padding:11px calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .fx:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+  .fx .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
+  .fx .h{text-align:right} .fx .a{text-align:left}
+  .fx .tn{font-family:var(--f-ui);font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:.02em}
+  .fx .sc{font-family:var(--f-score);font-size:22px;padding:0 10px;white-space:nowrap}
+  .fx .st{font-family:var(--f-micro);font-size:9px;text-align:right}
+  .fx .st.final{color:var(--ink-3)} .fx .st.live{color:var(--flare)} .fx .st.sched{color:var(--aqua)}
+  .fx .win{color:var(--lume)}
+  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);
+    font-family:var(--f-micro);font-size:11px}
+  .lead{display:grid;grid-template-columns:28px 1fr 60px;gap:10px;align-items:center;
+    padding:8px calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .lead .r{font-family:var(--f-score);font-size:16px;color:var(--ink-3)}
+  .lead .n{font-family:var(--f-ui);font-weight:600;font-size:13px}
+  .lead .v{font-family:var(--f-data);font-size:13px;text-align:right;color:var(--lume)}
+  .pick{display:flex;gap:8px;flex-wrap:wrap;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule)}
+  a.plain{color:inherit;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
+    <span id="ctx" class="cs-micro"></span>
+  </div>
+
+  <div class="cs-board" style="grid-template-columns:1fr">
+    <div class="cs-side a" style="padding:calc(var(--u)*3)">
+      <div class="cs-trc" id="seasonName"></div>
+      <div class="cs-tnm" id="leagueName" style="font-size:clamp(20px,4vw,30px)">—</div>
+    </div>
+  </div>
+
+  <div id="compPick" class="pick"></div>
+
+  <div class="tabs-wrap">
+    <div class="cs-tabs" role="tablist">
+      <button class="cs-tab on" data-p="table" role="tab">Table</button>
+      <button class="cs-tab" data-p="fixtures" role="tab">Fixtures</button>
+      <button class="cs-tab" data-p="leaders" role="tab">Leaders</button>
+    </div>
+  </div>
+
+  <div class="pane on" id="pane-table"></div>
+  <div class="pane" id="pane-fixtures"></div>
+  <div class="pane" id="pane-leaders"></div>
+
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
+    <span id="foot">Courtside Network</span>
+  </footer>
+</div>
+
+<script src="../config.js"></script>
+<script src="league.js"></script>
+</body>
+</html>

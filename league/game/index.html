@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC PAGE. No gate.js, no topnav.js — see the CI guard in .github/workflows. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Live game · Courtside</title>
+<link rel="stylesheet" href="../kit/courtside-kit.css">
+<style>
+  .status{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-micro);font-size:10px;
+    padding:3px 9px 2px;text-transform:uppercase}
+  .status.live{background:var(--flare);color:#150406}
+  .status.delayed{background:var(--amber);color:#1a1103}
+  .status.offline{background:var(--panel-2);color:var(--ink-3);border:1px solid var(--rule-2)}
+  .status.final{background:var(--lume);color:#04100b}
+  .status .dot{width:11px;height:11px;border-radius:50%;padding:2px;
+    background:conic-gradient(from var(--ring),rgba(21,4,6,.92) 0 30%,rgba(21,4,6,.18) 30%);animation:cs-spin 1.5s linear infinite}
+  .status .dot i{display:block;width:100%;height:100%;border-radius:50%;background:currentColor}
+  .status.delayed .dot,.status.offline .dot{animation:none}
+  .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .pane{display:none} .pane.on{display:block}
+  .pbp{display:flex;flex-direction:column}
+  .pbprow{display:grid;grid-template-columns:64px 1fr 62px;gap:10px;padding:7px calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);align-items:baseline}
+  .pbprow:nth-child(odd){background:color-mix(in oklch,var(--ink) 3%,transparent)}
+  .pbprow .t{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
+  .pbprow .x{font-size:13px;color:var(--ink)}
+  .pbprow .s{font-family:var(--f-data);font-size:11px;color:var(--ink-2);text-align:right}
+  .pbprow.new{animation:flash 1.4s var(--ease)}
+  @keyframes flash{from{background:color-mix(in oklch,var(--lume) 22%,transparent)}to{background:transparent}}
+  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
+  .qs{display:flex;gap:0;border-bottom:1px solid var(--rule);overflow-x:auto}
+  .qs div{flex:1;min-width:64px;padding:9px 6px;text-align:center;border-right:1px solid var(--rule)}
+  .qs div:last-child{border-right:none}
+  .qs .ql{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+  .qs .qv{font-family:var(--f-score);font-size:19px;margin-top:3px}
+  .qs .a{color:var(--team-a)} .qs .b{color:var(--team-b)}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+
+  <div class="mast" style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <a href="../" style="text-decoration:none"><span class="logo" style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
+    <span id="ctx" class="cs-micro"></span>
+    <span id="status" class="status offline" style="margin-left:auto"><span class="dot"><i></i></span><span id="statusText">connecting</span></span>
+  </div>
+
+  <div class="cs-board">
+    <div class="cs-side a"><div class="cs-tnm" id="nameA">—</div><div class="cs-trc" id="recA"></div><div class="cs-scr" id="scoreA">0</div></div>
+    <div class="cs-mid"><div class="cs-clk" id="clock">10:00</div><div class="cs-prd" id="period">Q1</div>
+      <div class="cs-poss"><i id="possA"></i><i id="possB"></i></div></div>
+    <div class="cs-side b"><div class="cs-tnm" id="nameB">—</div><div class="cs-trc" id="recB"></div><div class="cs-scr" id="scoreB">0</div></div>
+  </div>
+
+  <div class="qs" id="qstrip"></div>
+
+  <div class="tabs-wrap">
+    <div class="cs-tabs" role="tablist">
+      <button class="cs-tab on" data-p="box" role="tab" aria-selected="true">Box score</button>
+      <button class="cs-tab" data-p="pbp" role="tab" aria-selected="false">Play-by-play</button>
+      <button class="cs-tab" data-p="team" role="tab" aria-selected="false">Team</button>
+    </div>
+  </div>
+
+  <div class="pane on" id="pane-box"></div>
+  <div class="pane" id="pane-pbp"><div class="pbp" id="pbp"></div></div>
+  <div class="pane" id="pane-team"></div>
+
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
+    <span id="foot">Courtside Network</span>
+  </footer>
+</div>
+
+<script src="../engine.js"></script>
+<script src="../live.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

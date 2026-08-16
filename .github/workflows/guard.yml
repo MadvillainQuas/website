@@ -1,0 +1,82 @@
+name: guard
+
+# The carve-out in /league/ is defined by OMISSION — no gate.js, no topnav.js.
+# Omissions are exactly what gets undone by accident, so they are enforced here:
+# a paste of the standard <head> block becomes a failed build, not a silent outage.
+
+on:
+  push:
+    paths: ['league/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  carve-out:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Patterns match USAGE, not mentions — a comment warning against gate.js
+      # must not fail the build, or the guard gets deleted out of annoyance.
+      - name: The public section must never load the invite gate
+        run: |
+          if grep -rnE --exclude-dir=vendor '<script[^>]+src=["'"'"'][^"'"'"']*(gate|topnav)\.js|import[^;]+["'"'"'][^"'"'"']*(gate|topnav)\.js' league/; then
+            echo "::error::gate.js / topnav.js is LOADED under league/ — the public section would be hidden from visitors."
+            exit 1
+          fi
+          echo "ok — no gate references under league/"
+
+      - name: No service-role key may ship to a browser
+        run: |
+          # an actual assignment, or a raw JWT literal — not prose about them
+          # sb_publishable_* is meant to be public. sb_secret_* and service_role are not.
+          # A real key appears inside a string literal. Prose that merely NAMES these
+          # (this README does) must not fail the build — third time that bit me.
+          if grep -rnE --exclude-dir=vendor --include='*.js' --include='*.html' --include='*.ts'              '(service_role|SERVICE_ROLE[A-Z_]*)\s*[:=]|["'"'"'`]sb_secret_|["'"'"']eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.' league/; then
+            echo "::error::a service-role key or raw JWT appears under league/. Only the anon key belongs in client code."
+            exit 1
+          fi
+          echo "ok — no privileged credentials in client code"
+
+      - name: User text must never be interpolated as HTML
+        run: |
+          # innerHTML fed directly from a player/team name is the XSS the plan calls out.
+          if grep -rnE --exclude-dir=vendor 'innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b' league/; then
+            echo "::error::user-supplied text interpolated into innerHTML without escaping."
+            exit 1
+          fi
+          echo "ok — no unescaped user text in innerHTML"
+
+      - name: The service worker must not cache the public section
+        run: |
+          if [ -f sw.js ] && ! grep -q "startsWith('/league/')" sw.js; then
+            echo "::error::sw.js is missing the /league/ bypass — live pages would be served stale."
+            exit 1
+          fi
+          echo "ok — service worker bypasses /league/"
+
+  engine-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: The Edge Function and the browser must run the same engine
+        run: |
+          # supabase/functions/_shared/engine.js is league/engine.js plus an ESM tail.
+          # If they drift, the server and the public page can disagree about a score.
+          head -c $(wc -c < league/engine.js) supabase/functions/_shared/engine.js > /tmp/shared_head.js
+          if ! diff -q league/engine.js /tmp/shared_head.js > /dev/null; then
+            echo "::error::supabase/functions/_shared/engine.js has drifted from league/engine.js."
+            echo "Re-sync with:  cp league/engine.js supabase/functions/_shared/engine.js && (re-append the ESM tail)"
+            exit 1
+          fi
+          echo "ok — engines identical"
+
+      - name: Engine smoke test
+        run: node supabase/tests/engine.smoke.mjs
+
+      - name: RLS policy tests
+        # skips cleanly until the migration is applied; then it asserts the refusals
+        run: node supabase/tests/rls.test.mjs

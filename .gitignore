@@ -14,3 +14,13 @@ desktop.ini
 *.secret
 .env
 .env.*
+
+# Supabase CLI local state (link info, cached versions) — machine-specific
+supabase/.temp/
+supabase/.branches/
+
+# Claude Code session state
+.claude/
+
+# Editor backups
+*.bak-*

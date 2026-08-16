@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PORTAL. Login required. No invite gate here either — auth is the database's job.
+     frame-ancestors cannot be delivered via <meta>, and GitHub Pages cannot set headers,
+     so app.js busts out of frames instead. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Team portal · Courtside</title>
+<link rel="stylesheet" href="../kit/courtside-kit.css">
+<style>
+  .pad3{padding:calc(var(--u)*3)}
+  .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  label.f{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
+  label.f span{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);text-transform:uppercase}
+  .sw{display:flex;gap:7px;flex-wrap:wrap}
+  .swatch{width:26px;height:26px;border:2px solid transparent;cursor:pointer}
+  .swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 12px currentColor}
+  .teamcard{border-bottom:1px solid var(--rule);padding:calc(var(--u)*2) calc(var(--u)*3);
+    display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .2s}
+  .teamcard:hover{background:color-mix(in oklch,var(--lume) 7%,transparent)}
+  .teamcard .dot{width:26px;height:26px;flex:none}
+  .teamcard .nm{font-family:var(--f-ui);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em}
+  .teamcard .sub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3)}
+  .msg{padding:calc(var(--u)*2) calc(var(--u)*3);font-family:var(--f-micro);font-size:11px;
+    border-bottom:1px solid var(--rule)}
+  .msg.err{color:var(--flare)} .msg.ok{color:var(--lume)} .msg.warn{color:var(--amber)}
+  .hide{display:none}
+  .plist{width:100%}
+  .plist td{padding:7px 11px;border-bottom:1px solid var(--rule);font-family:var(--f-data);font-size:12px}
+  .plist td:nth-child(2){font-family:var(--f-ui);font-weight:600;font-size:13px;text-align:left}
+  .plist td:first-child{font-family:var(--f-score);font-size:16px;color:var(--lume);width:44px}
+  .plist td:last-child{width:44px;text-align:right}
+  .mini{font-family:var(--f-micro);font-size:10px;padding:5px 9px;border:1px solid var(--rule-2);
+    background:transparent;color:var(--ink-2);cursor:pointer;text-transform:uppercase}
+  .mini:hover{background:var(--flare);color:#150406;border-color:var(--flare)}
+  .minor{font-family:var(--f-micro);font-size:9px;color:var(--amber);border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);padding:1px 5px;margin-left:7px}
+  .setup{font-family:var(--f-data);font-size:11.5px;line-height:1.7;color:var(--ink-2);
+    background:var(--panel);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
+  .setup b{color:var(--lume);font-weight:400}
+</style>
+</head>
+<body>
+<div class="cs-frame">
+
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <a href="../" style="text-decoration:none"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
+    <span class="cs-micro">team portal</span>
+    <span id="who" class="cs-micro" style="margin-left:auto"></span>
+    <button id="out" class="mini hide">Sign out</button>
+  </div>
+
+  <div id="msg" class="msg hide"></div>
+
+  <!-- ---------------- sign in ---------------- -->
+  <section id="signin" class="hide">
+    <div class="cs-hdr"><span class="idx">01</span><h2>Sign in</h2></div>
+    <div class="cs-band stack">
+      <p style="max-width:56ch">A one-time link goes to your email. There is no password to set,
+        forget, or have stolen — which is the point.</p>
+      <div class="row">
+        <label class="f" style="max-width:320px"><span>Email</span>
+          <input class="cs-input" id="email" type="email" autocomplete="email" placeholder="you@club.co.uk"></label>
+      </div>
+      <div class="row"><button class="cs-btn pri" id="send">Send the link</button></div>
+    </div>
+  </section>
+
+  <!-- ---------------- my teams ---------------- -->
+  <section id="teams" class="hide">
+    <div class="cs-hdr"><span class="idx">01</span><h2>My teams</h2></div>
+    <div id="teamlist"></div>
+    <div class="cs-hdr"><span class="idx">02</span><h2>New team</h2></div>
+    <div class="cs-band stack">
+      <div class="row">
+        <label class="f"><span>Team name</span><input class="cs-input" id="tname" placeholder="Neon City"></label>
+        <label class="f" style="max-width:130px"><span>Short</span><input class="cs-input" id="tshort" maxlength="4" placeholder="NC"></label>
+      </div>
+      <div>
+        <div class="cs-micro" style="margin-bottom:7px">Kit colour</div>
+        <div class="sw" id="sw"></div>
+      </div>
+      <div class="row"><button class="cs-btn pri" id="mkteam">Create team</button></div>
+    </div>
+  </section>
+
+  <!-- ---------------- roster ---------------- -->
+  <section id="roster" class="hide">
+    <div class="cs-hdr"><span class="idx">01</span><h2 id="rtitle">Roster</h2>
+      <button class="mini" id="back" style="margin-left:auto">← my teams</button></div>
+    <div class="cs-tw"><table class="plist" id="rlist"></table></div>
+    <div class="cs-hdr"><span class="idx">02</span><h2>Add a player</h2></div>
+    <div class="cs-band stack">
+      <div class="row">
+        <label class="f" style="max-width:90px"><span>Jersey</span><input class="cs-input" id="pnum" inputmode="numeric" maxlength="2"></label>
+        <label class="f"><span>First name</span><input class="cs-input" id="pfirst"></label>
+        <label class="f"><span>Last name</span><input class="cs-input" id="plast"></label>
+        <label class="f" style="max-width:120px"><span>Birth year</span><input class="cs-input" id="pyear" inputmode="numeric" maxlength="4" placeholder="2007"></label>
+      </div>
+      <div class="row">
+        <label class="row" style="gap:8px;cursor:pointer">
+          <input type="checkbox" id="pminor" style="width:17px;height:17px;accent-color:var(--amber)">
+          <span class="cs-micro" style="color:var(--ink-2)">Under 18 — profile stays private, photo needs guardian consent</span>
+        </label>
+      </div>
+      <div class="row"><button class="cs-btn pri" id="addp">Add player</button></div>
+      <p class="cs-micro" style="color:var(--ink-3);max-width:64ch;line-height:1.8">
+        Birth year only — never a full date of birth. It is used for eligibility and is never published.</p>
+    </div>
+  </section>
+
+  <!-- ---------------- setup needed ---------------- -->
+  <section id="setup" class="hide">
+    <div class="cs-hdr"><span class="idx">!</span><h2>Database not set up yet</h2></div>
+    <div class="cs-band stack">
+      <p>The key works and the project is reachable, but the tables do not exist. Apply the
+        migration once, then reload this page.</p>
+      <div class="setup">1. open <b>supabase.com/dashboard</b> → your project → <b>SQL Editor</b>
+2. paste the whole of <b>supabase/migrations/0001_init.sql</b>
+3. press <b>Run</b>
+4. reload this page</div>
+      <p class="cs-micro" style="color:var(--ink-3)">Creating the tables needs privileges the
+        browser deliberately does not have, so this step is yours.</p>
+    </div>
+  </section>
+
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
+    Courtside Network · portal
+  </footer>
+</div>
+
+<script src="../vendor/supabase.js"></script>
+<script src="../config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
