@@ -5,14 +5,16 @@
    Three things, in the order somebody needs them: the name, the address laid
    out to be read and copied, and then a picture and a map side by side.
 
-   THE MAP IS CLICK-TO-LOAD ON PURPOSE. An embedded Google map is third-party
-   content that can profile whoever loads it, and this platform is a data
-   controller for children's data — the ICO's Age Appropriate Design Code is
-   the reason, not squeamishness. It also sits under a standing rule that no
-   third-party scripts load under /league/. So nothing reaches Google until a
-   visitor asks, the address is printed in full so most never need to, and
-   plain links out to Maps and to directions are there for anyone who would
-   rather use the real thing.
+   THE MAP LOADS ITSELF, from the venue's own address — a club records an
+   address once and gets a working map with nothing else to configure.
+
+   It is a third-party embed on a site used by under-18s, so two mitigations
+   stay even though the map is no longer gated behind a click: loading="lazy",
+   so nothing is fetched until the panel is actually scrolled to and most
+   visitors never reach it, and referrerPolicy="no-referrer", so the page
+   somebody is reading stays out of Google's logs. The address is also printed
+   in full above, and links out to Maps and directions sit over the corner,
+   because the embed cannot give a route.
 
    WHERE THERE IS NO PHOTOGRAPH THE ARENA IS DRAWN. That is every club right
    now. A placeholder that looks like a missing image makes a club look
@@ -119,38 +121,32 @@ function photoPane(team, url) {
 function mapPane(team, query) {
   const pane = el('div', 'vpane vmap');
 
-  const ask = el('div', 'vmap-ask');
-  ask.appendChild(el('div', 'vmap-pin', '◎'));
-  const btn = el('button', 'cs-btn', 'Show the map');
-  btn.type = 'button';
-  ask.appendChild(btn);
-  ask.appendChild(el('div', 'vmap-why',
-    'The map comes from Google, so it is only fetched when you ask for it — ' +
-    'nothing is sent to them before that.'));
+  /* The venue's own address goes straight into the embed, so a club that
+     records an address gets a working map with nothing else to configure.
+     The keyless embed is used so this needs no Maps API key; if Google ever
+     withdraws it the official replacement is
+     /maps/embed/v1/place?key=KEY&q=… and only this line changes. */
+  const f = document.createElement('iframe');
+  f.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&z=15&output=embed';
+  /* lazy, so the map is only fetched once it is actually scrolled to — it sits
+     well below the fold, and this is a third-party request on a site used by
+     under-18s, so not making it until it is wanted is worth the one attribute.
+     no-referrer keeps the page somebody is reading out of Google's logs. */
+  f.loading = 'lazy';
+  f.referrerPolicy = 'no-referrer';
+  f.title = (team.home_venue || 'Venue') + ' on a map';
+  pane.appendChild(f);
 
-  const links = el('div', 'vlinks');
+  /* Links out ride over the corner of the map. The embed cannot give
+     directions, and an address without a route is half an answer. */
+  const links = el('div', 'vlinks over');
   const ext = el('a', null, 'Open in Maps');
   ext.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
   const dir = el('a', null, 'Directions');
   dir.href = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(query);
   [ext, dir].forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
   links.append(ext, dir);
-  ask.appendChild(links);
-  pane.appendChild(ask);
-
-  btn.addEventListener('click', () => {
-    const f = document.createElement('iframe');
-    /* The keyless embed, so this works without anybody provisioning a Maps API
-       key. If Google ever withdraws it the official replacement is
-       /maps/embed/v1/place?key=KEY&q=… and only this line changes. */
-    f.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) +
-            '&z=15&output=embed';
-    f.loading = 'lazy';
-    f.referrerPolicy = 'no-referrer';
-    f.title = (team.home_venue || 'Venue') + ' on a map';
-    pane.textContent = '';
-    pane.appendChild(f);
-  });
+  pane.appendChild(links);
 
   return pane;
 }

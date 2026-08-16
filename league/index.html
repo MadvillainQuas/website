@@ -8,10 +8,10 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>Courtside Network</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=13">
-<link rel="stylesheet" href="kit/nav.css?v=13">
+<link rel="stylesheet" href="kit/courtside-kit.css?v=14">
+<link rel="stylesheet" href="kit/nav.css?v=14">
 <style>
-  .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*4);border-bottom:1px solid var(--rule)}
+  .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
     text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
     -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -62,7 +62,7 @@
     margin-right:6px;vertical-align:1px;animation:p 1.6s ease-in-out infinite}
   @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
-  .stripwrap{margin-top:calc(var(--u)*4);border:1px solid var(--rule);
+  .stripwrap{margin-top:calc(var(--u)*2);border:1px solid var(--rule);
     border-radius:4px;overflow:hidden;background:#04100b}
   .stripframe{display:block;width:100%;height:129px;border:0;background:#04100b}
   /* ---- league splash: the table and leaders as clickable cards ---- */
@@ -188,28 +188,25 @@
     text-transform:uppercase;color:var(--lume);text-decoration:none;margin-left:12px;
     white-space:nowrap}
   .showall:hover{text-decoration:underline}
-  /* ---- the katakana strip ------------------------------------------------
-     Neon signage, borrowed carefully. It sits beside the tagline rather than
-     over the wordmark, so it reads as a mark on the page and never competes
-     with the thing it is next to. Hidden from screen readers: it is the
-     platform's own name in another script, so announcing it would just repeat
-     the wordmark in a voice that cannot pronounce it. */
-  .taglinewrap{display:flex;align-items:flex-start;gap:calc(var(--u)*3)}
-  .kana{display:flex;flex-direction:column;gap:2px;flex:none;margin-top:2px;
-    padding-left:calc(var(--u)*2);border-left:1px solid var(--rule-2);
-    font-size:13px;line-height:1.05;letter-spacing:.02em;
-    color:color-mix(in oklch,var(--lume) 72%,transparent);
-    text-shadow:0 0 6px color-mix(in oklch,var(--lume) 45%,transparent),
-                0 0 18px color-mix(in oklch,var(--aqua) 25%,transparent);
+  /* ---- the katakana mark -------------------------------------------------
+     Cornered at the top right of the frame, on its own layer, so it belongs to
+     the page rather than to the hero — the way signage belongs to a building
+     rather than to whatever is written on the door. pointer-events:none so it
+     can never sit between a reader and something clickable. */
+  .kana{position:absolute;top:calc(var(--u)*3);right:calc(var(--u)*3);z-index:3;
+    display:flex;flex-direction:column;gap:3px;pointer-events:none;
+    font-size:15px;line-height:1.05;letter-spacing:.02em;
+    color:color-mix(in oklch,var(--lume) 70%,transparent);
+    text-shadow:0 0 7px color-mix(in oklch,var(--lume) 45%,transparent),
+                0 0 20px color-mix(in oklch,var(--aqua) 22%,transparent);
     animation:kflicker 7s steps(1,end) infinite}
-  .kana span{display:block}
-  /* the second character down sits a shade brighter, the way one tube in a
-     sign is always newer than the rest */
+  .kana span{display:block;text-align:center}
+  /* one tube reads brighter than the rest, the way one always is */
   .kana span:nth-child(2){color:var(--aqua);
-    text-shadow:0 0 8px color-mix(in oklch,var(--aqua) 60%,transparent)}
+    text-shadow:0 0 9px color-mix(in oklch,var(--aqua) 60%,transparent)}
 
   /* A sign that flickers constantly is a distraction; one that stutters once
-     every seven seconds is a place. Two frames, then left alone. */
+     every seven seconds is a place. */
   @keyframes kflicker{
     0%,96.5%,100%{opacity:1}
     97%{opacity:.35}
@@ -217,29 +214,29 @@
     98.2%{opacity:.55}
   }
   @media (prefers-reduced-motion:reduce){ .kana{animation:none} }
-  @media (max-width:600px){
-    .taglinewrap{gap:calc(var(--u)*2)}
-    .kana{font-size:11px;padding-left:calc(var(--u)*1.5)}
+  /* on a narrow screen the hero text runs full width, so the mark steps back
+     rather than crowding the wordmark */
+  @media (max-width:620px){
+    .kana{font-size:11px;top:calc(var(--u)*2);right:calc(var(--u)*2);opacity:.75}
   }
 </style>
 </head>
 <body>
 <div class="cs-frame">
 
+  <!-- Katakana for "Courtside" — kōtosaido. The platform's own name in another
+       script, cornered top right the way a building number is: present, not
+       competing with the wordmark. Not a translation of anything else on the
+       page, and deliberately not a machine rendering of whatever a league is
+       called — those go wrong in ways nobody here could read. -->
+  <div class="kana" aria-hidden="true" title="コートサイド — kōtosaido">
+    <span>コ</span><span>ー</span><span>ト</span><span>サ</span><span>イ</span><span>ド</span>
+  </div>
+
   <div class="hero">
     <div class="wordmark">Courtside</div>
-    <div class="taglinewrap">
-      <div class="tagline">
-        Live box scores, standings and season statistics.
-      </div>
-      <!-- Katakana for "Courtside" — kōtosaido. A transliteration of the
-           platform's own name, not a translation of the sentence beside it and
-           not a machine rendering of anything a league is called: those go
-           wrong in ways nobody here could read. Set vertically because that is
-           what the signage this borrows from actually does. -->
-      <div class="kana" aria-hidden="true" title="コートサイド — kōtosaido">
-        <span>コ</span><span>ー</span><span>ト</span><span>サ</span><span>イ</span><span>ド</span>
-      </div>
+    <div class="tagline">
+      Live box scores, standings and season statistics.
     </div>
 
     <!-- The fixture strip, carried by the same embed other sites get. Using the
@@ -328,13 +325,13 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=13"></script>
+<script src="config.js?v=14"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=13"></script>
-<script src="bpm.js?v=13"></script>
-<script src="data.js?v=13"></script>
-<script src="home.js?v=13"></script>
-<script src="nav.js?v=13"></script>
+<script src="season.js?v=14"></script>
+<script src="bpm.js?v=14"></script>
+<script src="data.js?v=14"></script>
+<script src="home.js?v=14"></script>
+<script src="nav.js?v=14"></script>
 </body>
 </html>
