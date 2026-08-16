@@ -90,6 +90,41 @@
 
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
+  /* ------------------------------------------------------- publishing state --- */
+  /* A signed-out statistician can still broadcast — Realtime accepts an anon
+     subscriber — but every durable write is refused by RLS. The result looks
+     almost right and is entirely wrong: viewers who happen to be watching see
+     plays appear, nothing is stored, a refresh shows an empty game, and the
+     fixture stays 'scheduled' with no log to rebuild from.
+
+     That failure has to be impossible to miss, so it is checked on load rather
+     than discovered at half-time, and the badge turns red and stays red. */
+  let authOk = null;
+
+  async function checkPublishing() {
+    if (!isFixture) return true;
+    const sb = window.courtsideClient && courtsideClient();
+    if (!sb) { authOk = false; return false; }
+    const { data: { session } } = await sb.auth.getSession();
+    authOk = !!session;
+    if (!authOk) {
+      say('NOT SIGNED IN — nothing is being saved', '#ff5f6b');
+      bar.style.borderColor = 'rgba(255,95,107,.75)';
+      bar.style.background = 'rgba(40,6,10,.94)';
+      /* a link straight to the fix, since the statistician is mid-setup */
+      if (!document.getElementById('cs-signin')) {
+        const a = document.createElement('a');
+        a.id = 'cs-signin';
+        a.href = '../app/'; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = 'sign in ↗';
+        a.style.cssText = 'color:#ffd166;text-decoration:underline;white-space:nowrap;flex:none';
+        bar.insertBefore(a, watch);
+      }
+    }
+    return authOk;
+  }
+  setTimeout(checkPublishing, 1200);
+
   /* ------------------------------------------------------------- tip-off --- */
   /* Nothing was ever written when a game started. The fixture stayed
      'scheduled' with a null roster_snapshot, so a viewer opening the public
@@ -112,13 +147,8 @@
     if (typeof S === 'undefined' || !S || S.phase !== 'game') return;
     claimed = true;                                   // one attempt per load
 
-    const sb = window.courtsideClient && courtsideClient();
-    if (!sb) return;
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      say('not signed in — nothing is being published', '#ff5f6b');
-      return;
-    }
+    if (!(await checkPublishing())) { claimed = false; return; }
+    const sb = courtsideClient();
 
     const snapshot = {
       teams: S.teams.map(t => ({
@@ -645,8 +675,13 @@
        scorer keeps working but the viewer is behind, and that must be visible */
     setInterval(() => {
       const st = window.CourtsideSync.status();
-      if (st.pending > 12) say('buffering ' + st.pending, '#ffd166');
-      else say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
+      if (authOk === false) return;                 // already saying the real problem
+      if (st.pending > 12) {
+        /* a backlog that will not drain is a refused write, not a slow one */
+        say('not saving — ' + st.pending + ' held', '#ff5f6b');
+      } else {
+        say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
+      }
     }, 3000);
   }, 500);
 

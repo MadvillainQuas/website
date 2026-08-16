@@ -59,17 +59,10 @@ function rowToEvent(r) {
   return e;
 }
 
-async function loadStored() {
-  const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
-    `&select=id,status,period,home_score,away_score,tipoff_at,venue,roster_snapshot,starters,` +
-    `tip_winner,arrow_init,home:home_team_id(name,short_name,colour),` +
-    `away:away_team_id(name,short_name,colour),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
-  if (!gs.length) return null;
-  const g = gs[0];
-
-  /* Page through the log. PostgREST caps a response, and a game runs to ~800
-     events — a silent truncation would show a box score that is quietly wrong,
-     which is worse than one that fails. */
+/* Page through the log. PostgREST caps a response and a game runs to ~800
+   events; a silent truncation would show a box score that is quietly wrong,
+   which is worse than one that fails. */
+async function fetchLog() {
   let events = [], from = 0;
   for (;;) {
     const page = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
@@ -78,6 +71,18 @@ async function loadStored() {
     if (page.length < 1000) break;
     from += 1000;
   }
+  return events;
+}
+
+async function loadStored() {
+  const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
+    `&select=id,status,period,home_score,away_score,tipoff_at,venue,roster_snapshot,starters,` +
+    `tip_winner,arrow_init,home:home_team_id(name,short_name,colour),` +
+    `away:away_team_id(name,short_name,colour),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
+  if (!gs.length) return null;
+  const g = gs[0];
+
+  const events = await fetchLog();
 
   const snap = g.roster_snapshot;
   const teams = (snap && snap.teams) ? snap.teams : [
@@ -238,18 +243,78 @@ function goLive() {
       if (snap.game) mergeLive(snap.game, snap.events);
       else if (snap.events) mergeLive(null, snap.events);
       render();
+      /* the snapshot is the log as the transport sees it; reconcile against
+         the table too, since the boot fetch may have run before the tip */
+      backfill('snapshot');
     },
-    onFrame(f) { mergeLive(f.game, f.events); render(); },
+    onFrame(f) { mergeLive(f.game, f.events); render(); checkGap(); },
     onStatus(s) { if (statusVal !== 'final') setStatus(s); }
   });
   /* The clock lives inside the scoreboard block the scorer renders, not in a
      element of its own, so ticking it means redrawing that block — which is
      cheap. The body is untouched, so tables keep their scroll position. */
+  /* Shortly after connecting, and then as a slow safety net. The gap check
+     above catches the normal case within one frame; this catches the case
+     where no frame arrives at all — a scorer that reconnected, a dropped
+     broadcast, a viewer that woke from sleep. */
+  setTimeout(() => backfill('post-connect'), 1500);
+  setInterval(() => checkGap(), 10000);
+
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
     window.S.clockMs = sub.clockMs();
     renderHead();
   }, 500);
+}
+
+/* THE BACKFILL.
+
+   A frame carries only the events published since the last one — that is the
+   whole point of coalescing. So a viewer that joins at 9:18 sees the play at
+   9:18 and nothing before it, which is exactly the "only shows what happened
+   while I was watching" fault: the page had one play and a 3-0 score while the
+   scorer had seven plays and 6-3.
+
+   The plan calls for sequence numbers to heal gaps, and this is that. The log
+   is re-fetched whenever the highest sequence we hold falls short of the one
+   the scorer says it has published, and once shortly after connecting — because
+   the boot fetch usually happens before the scorer has written anything, and
+   the socket then only ever tells us about the future.
+
+   Cheap: one indexed query, and only when a gap is actually detected. */
+let backfilling = false;
+
+async function backfill(why) {
+  if (backfilling || !window.S || mode !== 'supabase') return;
+  backfilling = true;
+  try {
+    const rows = await fetchLog();
+    if (!rows.length) return;
+    const seen = new Set(window.S.events.map(e => e.id));
+    let added = 0;
+    rows.map(rowToEvent).forEach(e => {
+      if (!seen.has(e.id)) { seen.add(e.id); window.S.events.push(e); added++; }
+    });
+    if (added) {
+      window.S.events.sort((a, b) => a.id - b.id);
+      render();
+      console.log('[backfill] +' + added + ' events (' + why + ')');
+    }
+  } catch (e) {
+    console.warn('[backfill]', e);
+  } finally {
+    backfilling = false;
+  }
+}
+
+/* the scorer publishes last_seq with every state frame; if ours is behind,
+   the socket has not told us something and a re-fetch is the only cure */
+function checkGap() {
+  if (!sub || !sub.state || !window.S) return;
+  const theirs = sub.state.last_seq;
+  if (theirs == null) return;
+  const ours = window.S.events.reduce((n, e) => Math.max(n, e.id || 0), 0);
+  if (theirs > ours) backfill('gap ' + ours + ' -> ' + theirs);
 }
 
 /* A live frame carries the roster and any events the scorer has published.
