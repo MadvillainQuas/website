@@ -70,7 +70,10 @@
   .barrow .bt i{display:block;height:100%;border-radius:2px}
   .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
   .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
-  .barrow .ba{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);opacity:.75}
+  /* the attempts sit under the label, and are meant to be read: the old
+     7.5px at .75 opacity in the value column was invisible in practice */
+  .barrow .blatt{font-family:var(--f-data);font-size:9.5px;color:var(--lume);
+    opacity:.85;margin-top:3px;letter-spacing:0;text-transform:none}
   .barrow{align-items:start}
   .barrow .bl{padding-top:1px}
   .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);

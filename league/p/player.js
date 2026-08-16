@@ -146,7 +146,19 @@ function paintBars(mine, field) {
       const v = mine[k];
       const p = (ranks.get(k) || new Map()).get(mine.id);
       const row = el('div', 'barrow');
-      row.appendChild(el('div', 'bl', label));
+
+      /* The label carries the volume the rate rests on, directly beneath it.
+         It used to sit under the NUMBER in the 56px column on the right, at
+         7.5px and three-quarters opacity, where it was effectively invisible —
+         and it is a fact about the shot type, so it belongs with the shot
+         type's name. 60% at the rim means one thing on eight attempts a night
+         and nothing at all on one. */
+      const lab = el('div', 'bl');
+      lab.appendChild(el('div', null, label));
+      if (attKey && mine[attKey] != null) {
+        lab.appendChild(el('div', 'blatt', Number(mine[attKey]).toFixed(1) + ' att/g'));
+      }
+      row.appendChild(lab);
 
       const track = el('div', 'bt');
       const fill = el('i');
@@ -161,10 +173,6 @@ function paintBars(mine, field) {
       const dp = (k === 'ast_to' || k === 'au') ? 2 : 1;
       const val = el('div', 'bv', v == null ? '—' : Number(v).toFixed(dp));
       if (p != null) val.appendChild(el('div', 'bp', ord(p)));
-      /* the volume the rate rests on, under it */
-      if (attKey && mine[attKey] != null) {
-        val.appendChild(el('div', 'ba', Number(mine[attKey]).toFixed(1) + ' att'));
-      }
       row.appendChild(val);
       wrap.appendChild(row);
     });
