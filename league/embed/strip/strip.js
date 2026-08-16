@@ -218,7 +218,13 @@ const SPEED = 0.28;        // px per frame at 60fps — a drift, not a carousel
 const FRICTION = 0.94;     // per 60fps frame; a flick coasts about a second
 const MIN_V = 0.04;        // below this, momentum has finished
 
-let auto = !REDUCED;
+/* When the reader last touched the bar. The drift resumes IDLE_MS after, so
+   nothing can leave it permanently stopped. */
+let lastTouch = 0;
+const IDLE_MS = 1400;
+const touch = () => { lastTouch = Date.now(); };
+const idle = () => !REDUCED && (Date.now() - lastTouch > IDLE_MS);
+
 let velocity = 0;
 let dragging = false;
 let pointerId = null;
@@ -251,7 +257,7 @@ function tick(now) {
       velocity *= Math.pow(FRICTION, dt);
     } else {
       velocity = 0;
-      if (auto) rail.scrollLeft += SPEED * dt;
+      if (idle()) rail.scrollLeft += SPEED * dt;
     }
     wrap();
   }
@@ -265,54 +271,84 @@ function startMotion() {
 }
 
 /* ---- pointer drag, with a real throw ---- */
+/* THE POINTER IS NOT CAPTURED UNTIL A DRAG HAS ACTUALLY BEGUN.
+
+   Capturing on pointerdown is what stopped a card from opening: with the
+   pointer captured by the rail, the click never reaches the anchor inside it,
+   so every tap on a fixture did nothing. The rail now watches the first few
+   pixels of movement and only takes the pointer once the gesture is clearly a
+   drag — below that threshold it stays a click and the card opens normally.
+
+   The same threshold decides whether to suppress the link afterwards, so
+   there is one number governing "was this a click or a throw" rather than two
+   that can disagree. */
+const DRAG_SLOP = 6;          // px before a press becomes a drag
+
 function wireDrag() {
   const rail = $('#rail');
-  let startScroll = 0, startX = 0, moved = 0;
+  let startScroll = 0, startX = 0, moved = 0, armed = false;
 
   rail.addEventListener('pointerdown', e => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
-    dragging = true; pointerId = e.pointerId;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerId = e.pointerId;
     startX = lastX = e.clientX;
     startScroll = rail.scrollLeft;
-    moved = 0; velocity = 0;
-    rail.classList.add('dragging');
-    rail.setPointerCapture(e.pointerId);
+    moved = 0; armed = true; dragging = false; velocity = 0;
+    touch();
   });
 
   rail.addEventListener('pointermove', e => {
-    if (!dragging || e.pointerId !== pointerId) return;
+    if (!armed || e.pointerId !== pointerId) return;
+    const total = Math.abs(e.clientX - startX);
+
+    /* below the threshold this is still a click in progress — do not scroll,
+       do not capture, do not let go of the card underneath */
+    if (!dragging) {
+      if (total < DRAG_SLOP) return;
+      dragging = true;
+      rail.classList.add('dragging');
+      try { rail.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+
     const dx = e.clientX - lastX;
     lastX = e.clientX;
     moved += Math.abs(dx);
     rail.scrollLeft = startScroll - (e.clientX - startX);
-    /* sample velocity from the last move rather than the whole gesture, so a
-       drag that stops before release does not fling */
+    /* velocity from the last move, not the whole gesture, so a drag that
+       stops before release does not fling */
     velocity = -dx;
     wrap();
+    touch();
   });
 
   const release = e => {
-    if (!dragging || (e && e.pointerId !== pointerId)) return;
-    dragging = false; pointerId = null;
-    rail.classList.remove('dragging');
-    /* a drag that barely moved was a click on a card — do not throw the bar */
-    if (moved < 4) velocity = 0;
+    if (e && e.pointerId !== pointerId) return;
+    if (dragging) {
+      try { rail.releasePointerCapture(pointerId); } catch (_) {}
+      rail.classList.remove('dragging');
+    }
+    armed = false; dragging = false; pointerId = null;
+    touch();
   };
   rail.addEventListener('pointerup', release);
   rail.addEventListener('pointercancel', release);
 
-  /* a real drag must not also follow the link under the cursor */
+  /* Only a real drag suppresses the link. A press that never passed the
+     threshold is a click and must open the box score. */
   rail.addEventListener('click', e => {
-    if (moved > 6) { e.preventDefault(); e.stopPropagation(); }
+    if (moved > DRAG_SLOP) { e.preventDefault(); e.stopPropagation(); }
+    moved = 0;
   }, true);
 
-  /* stop drifting under a pointer that is trying to read or click */
-  rail.addEventListener('pointerenter', () => { auto = false; });
-  rail.addEventListener('pointerleave', () => { if (!REDUCED) auto = true; });
-  rail.addEventListener('focusin', () => { auto = false; });
-  rail.addEventListener('focusout', () => { if (!REDUCED) auto = true; });
+  /* Pausing on hover used to latch: pointerenter can arrive before the script
+     runs, or never fire inside an iframe, leaving the bar stopped forever.
+     A last-interaction timestamp cannot latch — the drift resumes on its own
+     a moment after the reader stops touching it. */
+  rail.addEventListener('pointermove', touch, { passive: true });
+  rail.addEventListener('pointerdown', touch, { passive: true });
+  rail.addEventListener('focusin', touch);
 
-  /* the wheel should scroll the bar sideways, not the page */
+  /* the wheel scrolls the bar sideways rather than the page */
   rail.addEventListener('wheel', e => {
     const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (!d) return;
@@ -320,19 +356,10 @@ function wireDrag() {
     rail.scrollLeft += d;
     velocity = 0;
     wrap();
+    touch();
   }, { passive: false });
 }
 
-/* the host page cannot know how tall this wants to be, so tell it */
-function postHeight() {
-  try {
-    const h = Math.max(104, document.querySelector('.cs-strip').offsetHeight);
-    parent.postMessage({ courtsideEmbed: 'height', height: h }, '*');
-  } catch (_) {}
-}
-
-if (wantLeague) $('#plate').href = new URL('../../l/?l=' + encodeURIComponent(wantLeague),
-                                           location.href).href;
 wireDrag();
 load();
 setInterval(load, POLL_MS);
