@@ -18,6 +18,11 @@
     border-bottom:1px solid var(--rule)}
   table.cs-tbl th{cursor:pointer;user-select:none}
   table.cs-tbl th.sorted{color:var(--lume)}
+  .cs-hdr{display:flex;align-items:baseline;gap:12px}
+  .subpage{margin-left:auto;padding-right:calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--lume);
+    text-decoration:none;white-space:nowrap}
+  .subpage:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -26,7 +31,8 @@
     <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
     <span id="ctx" class="cs-micro"></span>
   </div>
-  <div class="cs-hdr"><span class="idx">01</span><h2 id="title">Season statistics</h2></div>
+  <div class="cs-hdr"><span class="idx">01</span><h2 id="title">Season statistics</h2>
+    <a href="wowy/" class="subpage">WOWY &amp; lineups →</a></div>
   <!-- search, min-games, stat-group pills, column toggles and CSV all come
        from the shared table component, so they behave identically here and on
        the leaders board. -->

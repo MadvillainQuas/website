@@ -99,6 +99,29 @@ async function stints(gameIds, teamId, byId) {
   return rows;
 }
 
+/* The raw event log for a set of games, flattened into the scorer's shape.
+
+   Paged, and that matters more here than anywhere: PostgREST caps a response
+   at 1000 rows whatever `limit` says, and six games is nearly 5000 events. A
+   one-shot query returns a fifth of the log and looks completely successful —
+   the first time this was tested it reported a player scoring 17 points in a
+   season where he scored 98. */
+async function events(gameIds) {
+  if (!gameIds || !gameIds.length) return [];
+  const chunks = [];
+  for (let i = 0; i < gameIds.length; i += 40) chunks.push(gameIds.slice(i, i + 40));
+  const parts = await Promise.all(chunks.map(c =>
+    all(`game_events?game_id=in.(${c.join(',')})` +
+        `&select=game_id,seq,t,team,pid,period,clock,payload&order=seq`)));
+  return parts.flat().map(r => {
+    const e = Object.assign({ t: r.t, id: r.seq, gameId: r.game_id,
+                              period: r.period, clock: r.clock }, r.payload || {});
+    if (r.team != null) e.team = r.team;
+    if (r.pid != null) e.pid = r.pid;
+    return e;
+  });
+}
+
 /* names, jerseys and colours for a set of player ids — the stats carry none */
 async function playerMeta(ids) {
   if (!ids.length) return {};
@@ -149,5 +172,5 @@ async function context(leagueSlug, compId) {
   return { league, season: seasonRow, comps, comp };
 }
 
-return { get, all, season, stints, playerMeta, teamMeta, context };
+return { get, all, season, stints, events, playerMeta, teamMeta, context };
 }));

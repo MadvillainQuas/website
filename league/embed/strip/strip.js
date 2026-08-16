@@ -57,6 +57,19 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
+/* The host page cannot know how tall this wants to be, so it is posted out and
+   embed.js applies it. Called after every render and once after fonts have
+   settled, because a face swapping in changes the card height.
+
+   The message is deliberately shaped like the other embeds' — an iframe on
+   somebody else's page is identified by that key, not by its origin. */
+function postHeight() {
+  try {
+    parent.postMessage({ courtsideEmbed: 'height',
+                         height: document.body.scrollHeight }, '*');
+  } catch (_) { /* not framed, or a host that refuses messages */ }
+}
+
 /* a three-letter code is what fits a card; prefer the club's own abbreviation */
 const abbr = t => ((t && (t.short_name || t.name)) || '???')
   .replace(/[^A-Za-z0-9 ]/g, '').trim().slice(0, 3).toUpperCase();

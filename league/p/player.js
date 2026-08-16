@@ -294,34 +294,54 @@ function paintLog(rows) {
         'No finalised games yet — a season line appears once one is played.'));
     }
 
-    /* ---- with or without ----
-       Read from lineup_stints, which carries the five on the floor for every
-       stretch of every game — the only shape this question can be answered
-       from, and the reason it is real rather than an approximation. */
+    /* ---- on the floor with ----
+       The team's on/off as tiles, then this player's OWN numbers split by who
+       was beside him. The second is derived by replaying the event log — no
+       table stores an individual box broken down by teammate — so it needs the
+       log, the stints for shared minutes, and the frozen starters to know who
+       was on the floor before the first substitution. */
     try {
       if (team && team.id) {
         const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-          `&status=eq.final&select=id,home_team_id,away_team_id`);
-        const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
-        const st = await D.stints(gs.map(g => g.id), team.id, byGame);
-        if (st.length) {
-          window.CourtsideWowy.onOffTiles('#onoff', st, pl.id);
-          const mateIds = [...new Set(st.flatMap(r => r.player_ids))];
-          const mm = await D.playerMeta(mateIds);
-          $('#wowyNote').textContent = st.length + ' stints';
-          /* seeded with this player, so the matrix opens on the question the
-             reader came here to ask */
-          window.CourtsideWowy.render({
-            host: '#wowy', stints: st, meta: mm, max: 4, preselect: [pl.id]
-          });
+          `&status=eq.final&select=id,home_team_id,away_team_id,starters`);
+        if (!gs.length) {
+          $('#withpanel').appendChild(el('div', 'empty',
+            'No finalised games yet — this fills in once one is played.'));
         } else {
-          $('#wowy').appendChild(el('div', 'empty', 'No lineup data yet.'));
+          const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
+          const [st, evs] = await Promise.all([
+            D.stints(gs.map(g => g.id), team.id, byGame),
+            D.events(gs.map(g => g.id))
+          ]);
+
+          window.CourtsideWowy.onOffTiles('#onoff', st, pl.id);
+
+          const games = gs.map(g => ({
+            starters: g.starters,
+            events: evs.filter(e => e.gameId === g.id)
+          }));
+          const recs = window.CourtsideWith.index(games);
+
+          /* teammates are whoever actually shared a stint with him */
+          const mates = new Set();
+          st.forEach(s3 => {
+            const ids = s3.player_ids || [];
+            if (ids.indexOf(pl.id) === -1) return;
+            ids.forEach(id => { if (id !== pl.id) mates.add(id); });
+          });
+          const mm = await D.playerMeta([...mates]);
+          $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates';
+
+          window.CourtsideWithUI.render({
+            host: '#withpanel', recs, stints: st, playerId: pl.id,
+            meta: mm, teammates: [...mates]
+          });
         }
       }
     } catch (e) {
-      console.warn('[wowy]', e);
-      if (!$('#wowy').children.length) {
-        $('#wowy').appendChild(el('div', 'empty',
+      console.warn('[with]', e);
+      if (!$('#withpanel').children.length) {
+        $('#withpanel').appendChild(el('div', 'empty',
           'Could not load lineup data: ' + (e.message || e)));
       }
     }
