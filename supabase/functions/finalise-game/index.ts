@@ -144,9 +144,31 @@ Deno.serve(async (req) => {
       finalised_at: new Date().toISOString(), finalised_by: user.id
     }).eq('id', gameId);
 
-    // standings recompute, if the game belongs to a competition
+    // Standings, bracket and awards, if the game belongs to a competition.
+    //
+    // These used to be one call swallowed by .catch(() => {}), which is how a
+    // broken recompute_standings survived unnoticed: the function raised on
+    // every call, the error went nowhere, and a league's table would simply
+    // stop updating with nothing anywhere saying why.
+    //
+    // A failure here must not undo a finalised game — the game IS final and
+    // its box score is correct — so these still do not throw. They are
+    // reported instead: onto the response, so the statistician sees it, and
+    // into the audit log, so it is findable afterwards.
+    const derivedWarnings: string[] = [];
     if (g.competition_id) {
-      await admin.rpc('recompute_standings', { p_competition: g.competition_id }).catch(() => {});
+      for (const [fn, label] of [
+        ['recompute_standings', 'standings'],
+        ['advance_bracket', 'bracket'],
+        ['compute_season_awards', 'awards']
+      ] as const) {
+        const { error } = await admin.rpc(fn, { p_competition: g.competition_id });
+        if (error) {
+          derivedWarnings.push(`${label} could not be rebuilt: ${error.message}`);
+          console.error(`[finalise] ${fn} failed for competition ${g.competition_id}:`, error.message);
+        }
+      }
+      if (derivedWarnings.length) warnings.push(...derivedWarnings);
     }
 
     // queue the static page + OG image; a scheduled job commits these in batches
