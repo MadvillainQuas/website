@@ -47,6 +47,21 @@ jobs:
           fi
           echo "ok — no unescaped user text in innerHTML"
 
+      - name: Assets must be version-stamped
+        # a browser that has decided a file is fresh will not ask again, so the
+        # only reliable cache-bust is a URL it has never seen
+        run: python tools/stamp-assets.py --check
+
+      - name: No personal address may be committed
+        # the contact recipient lives in an Edge Function secret; a personal
+        # address in a public repo is a spam list entry with extra steps
+        run: |
+          if grep -rniE --exclude-dir=vendor '[a-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|icloud)\.[a-z.]+' league/ supabase/; then
+            echo "::error::a personal email address appears in the repository."
+            exit 1
+          fi
+          echo "ok — no personal addresses committed"
+
       - name: The service worker must not cache the public section
         run: |
           if [ -f sw.js ] && ! grep -q "startsWith('/league/')" sw.js; then

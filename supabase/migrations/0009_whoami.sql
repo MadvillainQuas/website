@@ -47,9 +47,26 @@ grant execute on function public.whoami() to authenticated;
 -- ---------------------------------------------------------------------------
 do $$
 declare
-  target text := 'britishbasketballscout@gmail.com';
+  target text := coalesce(current_setting('courtside.admin_email', true), '');
   uid uuid;
 begin
+  /* The address was supplied when this ran and is deliberately not written
+     here: this file is in a public repository, and a personal address in a
+     public repository is a spam list entry with extra steps.
+
+     Both grants have already been applied on the live project. For a FRESH
+     database, name the admin explicitly when you push:
+
+         psql "$DATABASE_URL" -c "select public.grant_platform_admin('you@example.com')"
+
+     Hardcoding it was also the wrong shape regardless of privacy — a fresh
+     deployment of this schema by anybody else should not silently make a
+     stranger's address the platform administrator. */
+  if target = '' then
+    raise notice 'no courtside.admin_email set — skipping the platform-admin grant';
+    return;
+  end if;
+
   select id into uid from auth.users where lower(email) = lower(target) limit 1;
 
   if uid is null then

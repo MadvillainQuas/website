@@ -53,12 +53,22 @@
     { leagues: true },
     { href: root + 'stats/',       lg: true, ic: '▦', tx: 'statistics',   match: /\/league\/stats\/$/ },
     { href: root + 'stats/wowy/',  lg: true, ic: '◫', tx: 'wowy',    match: /\/league\/stats\/wowy\// },
-    { label: 'take part' },
-    { href: root + 'score/',             ic: '●', tx: 'score a game', match: /\/league\/score\// },
-    { href: root + 'app/',               ic: '◆', tx: 'club portal',  match: /\/league\/app\// },
-    { href: root + 'admin/',             ic: '▲', tx: 'league admin', match: /\/league\/admin\// },
+    /* Everything below needs an account, and each entry needs a DIFFERENT
+       account — a team manager has no business being shown "league admin".
+       The group is hidden entirely until somebody signs in, and then only the
+       entries their roles justify appear. Hiding a button is a courtesy, not a
+       control: pressing one you should not have is refused by the database. */
+    { label: 'take part', auth: true },
+    { href: root + 'score/', ic: '●', tx: 'score a game', match: /\/league\/score\//,
+      auth: true, role: w => (w.scoring || []).length || (w.leagues || []).length },
+    { href: root + 'app/',   ic: '◆', tx: 'club portal',  match: /\/league\/app\//,
+      auth: true, role: () => true },
+    { href: root + 'admin/', ic: '▲', tx: 'league admin', match: /\/league\/admin\//,
+      auth: true, role: w => (w.leagues || []).length || w.is_platform_admin },
     { gap: true },
-    { href: '/index.html',               ic: '←', tx: 'prophesy' }
+    { account: true },
+    { href: root + 'contact/', ic: '✉', tx: 'contact', match: /\/league\/contact\// },
+    { href: '/index.html',     ic: '←', tx: 'prophesy' }
   ];
 
   /* ------------------------------------------------------------- leagues ---
@@ -155,6 +165,110 @@
     });
   }
 
+  /* ------------------------------------------------------------- account ---
+     Who is signed in, and the way in or out.
+
+     The rail does NOT load the Supabase SDK. It is on every public page and
+     the SDK is a large dependency to add to a page that only needs to know
+     whether somebody is signed in — so the stored session is read directly,
+     and the actual sign-in flow lives on its own page which does load it.
+
+     The session key is the SDK's own convention: sb-<project-ref>-auth-token,
+     with the ref taken from the configured URL so this keeps working if the
+     project ever moves. */
+  let accountSlot = null;
+
+  function projectRef() {
+    const c = window.COURTSIDE_CONFIG;
+    if (!c || !c.supabaseUrl) return null;
+    const m = String(c.supabaseUrl).match(/^https?:\/\/([^.]+)\./);
+    return m ? m[1] : null;
+  }
+
+  function storedSession() {
+    const ref = projectRef();
+    if (!ref) return null;
+    let raw;
+    try { raw = localStorage.getItem('sb-' + ref + '-auth-token'); } catch (_) { return null; }
+    if (!raw) return null;
+    let j;
+    try { j = JSON.parse(raw); } catch (_) { return null; }
+    const tok = j && (j.access_token || (j.currentSession && j.currentSession.access_token));
+    if (!tok) return null;
+    /* an expired token is not a session — showing somebody as signed in when
+       every request will 401 is worse than showing them signed out */
+    const exp = j.expires_at || (j.currentSession && j.currentSession.expires_at);
+    if (exp && Number(exp) * 1000 < Date.now()) return null;
+    const user = j.user || (j.currentSession && j.currentSession.user) || {};
+    return { token: tok, email: user.email || '' };
+  }
+
+  function buildAccount() {
+    const wrap = document.createElement('div');
+    wrap.className = 'acct';
+    const link = document.createElement('a');
+    link.className = 'item';
+    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = '◐';
+    const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = 'sign in';
+    link.append(ic, tx);
+    link.href = root + 'signin/?next=' + encodeURIComponent(location.pathname + location.search);
+    link.title = 'sign in';
+    wrap.appendChild(link);
+    return { root: wrap, link, ic, tx };
+  }
+
+  /* Ask the database what this account may actually do. whoami() is the same
+     RPC the admin console uses, so the rail and the console can never disagree
+     about somebody's roles. */
+  async function whoami(token) {
+    const c = window.COURTSIDE_CONFIG;
+    const r = await fetch(c.supabaseUrl + '/rest/v1/rpc/whoami', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        apikey: c.supabaseAnonKey,
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: '{}'
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  }
+
+  async function applyAuth() {
+    const sess = storedSession();
+    if (!accountSlot) return;
+
+    if (!sess) {
+      /* signed out: the take-part group stays hidden entirely */
+      gated.forEach(([node]) => { node.hidden = true; });
+      accountSlot.tx.textContent = 'sign in';
+      accountSlot.ic.textContent = '◐';
+      accountSlot.link.href = root + 'signin/?next=' +
+        encodeURIComponent(location.pathname + location.search);
+      accountSlot.link.title = 'sign in';
+      return;
+    }
+
+    accountSlot.tx.textContent = sess.email || 'account';
+    accountSlot.ic.textContent = '◉';
+    accountSlot.link.href = root + 'signin/';
+    accountSlot.link.title = sess.email ? sess.email + ' — manage or sign out' : 'account';
+
+    let who = {};
+    try { who = await whoami(sess.token) || {}; } catch (_) { who = {}; }
+    gated.forEach(([node, pred]) => {
+      let ok = false;
+      try { ok = !!pred(who); } catch (_) { ok = false; }
+      node.hidden = !ok;
+    });
+    /* if every entry under it is hidden, hide the heading too rather than
+       leaving a label with nothing beneath it */
+    const anyShown = gated.some(([n]) => n.tagName === 'A' && !n.hidden);
+    gated.forEach(([n]) => { if (n.tagName !== 'A') n.hidden = !anyShown; });
+  }
+
   const nav = document.createElement('nav');
   nav.className = 'cs-nav';
   nav.setAttribute('aria-label', 'Courtside');
@@ -171,13 +285,18 @@
 
   let leagueGroup = null;      // filled asynchronously
 
+  const gated = [];            // [node, predicate] — shown once roles are known
+
   ITEMS.forEach(it => {
     if (it.leagues) { leagueGroup = buildLeagueGroup(); nav.appendChild(leagueGroup.root); return; }
+    if (it.account) { accountSlot = buildAccount(); nav.appendChild(accountSlot.root); return; }
     if (it.gap) { const d = document.createElement('div'); d.className = 'gap'; nav.appendChild(d); return; }
     if (it.sep) { const d = document.createElement('div'); d.className = 'sep'; nav.appendChild(d); return; }
     if (it.label) {
       const d = document.createElement('div');
       d.className = 'grouplbl'; d.textContent = it.label;
+      /* signed out, the heading goes with the things it heads */
+      if (it.auth) { d.hidden = true; gated.push([d, () => true]); }
       nav.appendChild(d); return;
     }
     const a = document.createElement('a');
@@ -188,6 +307,7 @@
     const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = it.tx;
     a.append(ic, tx);
     a.title = it.tx;
+    if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
     nav.appendChild(a);
   });
 
@@ -199,6 +319,12 @@
   else document.addEventListener('DOMContentLoaded', mount);
 
   fillLeagues().then(apply);
+  applyAuth();
+  /* signing out in another tab should not leave this one showing an
+     admin link that no longer works */
+  window.addEventListener('storage', e => {
+    if (e.key && e.key.indexOf('-auth-token') !== -1) applyAuth();
+  });
 
   /* the assignment pages already make now repoints the rail, with no page edit */
   const apply = () => {
