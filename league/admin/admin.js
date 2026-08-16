@@ -373,6 +373,21 @@ async function loadFixtures() {
   });
 
   mountImport();
+  mountFixtureGen();
+}
+
+/* The generator needs the entered teams and their groups, plus what is already
+   scheduled so a second run can say what it will replace. loadTeams has the
+   first two and loadFixtures the third, so it is mounted from here where both
+   are current. */
+function mountFixtureGen() {
+  const byId = {};
+  teams.forEach(t => { byId[t.id] = t; });
+  window.CourtsideFixtureGen.mount({
+    host: '#fixtureGen', sb, comp, teams: byId,
+    entered: enteredRows, existing: fixtures, say,
+    onDone: () => { loadFixtures(); }
+  });
 }
 
 /* The import panel needs the fixtures and the clubs, so it is rebuilt whenever

@@ -93,6 +93,12 @@ jobs:
         # log; a length-based high-water mark could see none of them
         run: node supabase/tests/live.test.mjs
 
+      - name: Round-robin scheduling
+        # a fixture list is the artefact everybody plans around: everybody
+        # plays everybody once, nobody twice in a round, and the home/away
+        # split is within one game for an even team count
+        run: node supabase/tests/schedule.test.mjs
+
       - name: Roster CSV parsing
         # the one path where a manager hands us a whole squad at once, so a
         # quiet misparse is twenty wrong rows rather than one

@@ -134,6 +134,43 @@
     background:color-mix(in oklch,var(--flare) 7%,transparent)}
   .fxmove{font-family:var(--f-micro);font-size:9px;padding:4px 6px;max-width:150px;
     flex:0 0 auto}
+
+  .fg-out{display:flex;flex-direction:column;gap:9px;margin-top:calc(var(--u)*2)}
+  .fg-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .fg-chip{font-family:var(--f-micro);font-size:9px;padding:3px 8px;
+    border:1px solid var(--rule-2);color:var(--ink-2)}
+  .fg-chip b{font-family:var(--f-score);font-size:12px;margin-right:4px}
+  .fg-chip.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 45%,transparent)}
+  .fg-chip.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 45%,transparent)}
+  .fg-chip.err{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 45%,transparent)}
+  .fg-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--lume);margin-top:calc(var(--u)*2)}
+  .fg-warn,.fg-bad{font-family:var(--f-micro);font-size:9.5px;line-height:1.85;
+    padding:8px 11px;border-left:2px solid var(--amber);color:var(--ink-2);
+    background:color-mix(in oklch,var(--amber) 7%,transparent)}
+  .fg-bad{border-left-color:var(--flare);color:var(--flare);
+    background:color-mix(in oklch,var(--flare) 7%,transparent)}
+  .fg-bal{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:5px}
+  .fg-balcell{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;
+    border:1px solid var(--rule)}
+  .fg-balcell.off{border-color:color-mix(in oklch,var(--amber) 50%,transparent)}
+  .fg-balname{font-family:var(--f-ui);font-weight:600;font-size:11.5px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fg-balnum{font-family:var(--f-data);font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .fg-rounds{max-height:340px;overflow-y:auto;border:1px solid var(--rule);padding:calc(var(--u)*2)}
+  .fg-round{margin-bottom:calc(var(--u)*2)}
+  .fg-rnum{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+  .fg-game{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:8px;
+    align-items:baseline;padding:3px 0;font-size:12px}
+  .fg-grp{font-family:var(--f-micro);font-size:8px;color:var(--lume);
+    border:1px solid var(--rule-2);padding:0 4px}
+  .fg-home{font-family:var(--f-ui);font-weight:600;text-align:right}
+  .fg-away{font-family:var(--f-ui);font-weight:600}
+  .fg-v{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+  .fg-time{font-family:var(--f-data);font-size:10.5px;color:var(--ink-3)}
+  @media (max-width:640px){ .fg-game{grid-template-columns:1fr;gap:2px}
+    .fg-home{text-align:left} }
 </style>
 </head>
 <body>
@@ -265,6 +302,8 @@
           <button id="fxGo" class="cs-btn pri" type="button">schedule</button>
         </div>
         <div id="fxList" class="list"></div>
+        <div class="fmt-h">Generate a season</div>
+        <div id="fixtureGen"></div>
       </div>
     </div>
 
@@ -340,6 +379,8 @@
 <script src="../vendor/supabase.js"></script>
 <script src="../livestats.js"></script>
 <script src="import-ui.js"></script>
+<script src="schedule.js"></script>
+<script src="fixtures-ui.js"></script>
 <script src="formats-ui.js"></script>
 <script src="keys-ui.js"></script>
 <script src="webhook-ui.js"></script>
