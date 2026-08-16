@@ -23,6 +23,13 @@ async function api(path) {
 }
 
 let league = null, season = null, seasons = [], comps = [], comp = null;
+/* A season's competitions split two ways. PHASES are the stages of the league
+   itself — the regular season, then the playoffs — and they share the Table
+   tab, because they are the same competition to a reader even though they are
+   separate rows. CUPS run alongside rather than after, so they get their own
+   tab and their own selection. The distinction is the competition's `kind`,
+   which a league admin sets. */
+let phases = [], cups = [], cupComp = null;
 
 async function boot() {
   try {
@@ -46,10 +53,13 @@ async function boot() {
 
     comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
     if (!comps.length) return fail('This season has no competitions yet.');
-    comp = comps.find(c => c.id === wantComp) || comps[0];
+    splitComps();
+    comp = phases.find(c => c.id === wantComp) || phases[0] || comps[0];
+    cupComp = cups.find(c => c.id === wantComp) || cups[0] || null;
     $('#ctx').textContent = league.name + ' · ' + season.name;
 
-    renderCompPicker();
+    renderPhasePicker();
+    renderCupPicker();
     await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
                        renderTeamStats(), renderExtras()]);
     $('#foot').textContent = 'Courtside Network · ' + league.name + ' · ' + season.name;
@@ -59,7 +69,7 @@ async function boot() {
 }
 
 function fail(msg) {
-  ['#pane-table', '#pane-fixtures', '#pane-leaders', '#pane-bracket'].forEach(s => {
+  ['#tableBody', '#pane-fixtures', '#pane-leaders', '#cupBody'].forEach(s => {
     const p = $(s); p.textContent = ''; p.appendChild(el('div', 'empty', msg));
   });
 }
@@ -99,8 +109,10 @@ function renderSeasonPicker() {
       history.replaceState(null, '', u);
       renderSeasonPicker();
       comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
-      comp = comps[0] || null;
-      renderCompPicker();
+      splitComps();
+      comp = phases[0] || comps[0] || null;
+      cupComp = cups[0] || null;
+      renderPhasePicker(); renderCupPicker();
       if (!comp) return fail('That season has no competitions.');
       await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
                          renderTeamStats(), renderExtras()]);
@@ -109,26 +121,123 @@ function renderSeasonPicker() {
   });
 }
 
-function renderCompPicker() {
-  const wrap = $('#compPick'); wrap.textContent = '';
-  if (comps.length < 2) { wrap.style.display = 'none'; return; }
-  comps.forEach(c => {
-    const b = el('button', 'cs-chip' + (c.id === comp.id ? ' on' : ''), c.name);
-    b.addEventListener('click', () => {
-      comp = c; SEASON = null; renderCompPicker(); renderTable(); renderFixtures();
-      renderLeaders(); renderTeamStats(); renderExtras();
-    });
-    wrap.appendChild(b);
-  });
+/* A cup is a competition that runs ALONGSIDE the league rather than as a stage
+   of it, which is why it gets its own tab: its table has nothing to do with
+   the league table, and putting them in one selector invites the reader to
+   compare two things that are not comparable. */
+function splitComps() {
+  phases = comps.filter(c => c.kind !== 'cup');
+  cups   = comps.filter(c => c.kind === 'cup');
+  /* a season with nothing but cups still needs something under Table */
+  if (!phases.length && cups.length) { phases = cups.slice(); cups = []; }
+}
+
+/* the tag that says what kind of stage this is, so "Playoffs" is obviously a
+   knockout before you click it */
+function kindTag(c) {
+  if (c.format === 'knockout' || c.format === 'groups_knockout') return 'knockout';
+  if (c.kind === 'playoff') return 'playoff';
+  if (c.format === 'groups') return 'groups';
+  return null;
+}
+
+function pickerChip(c, isOn, onPick) {
+  const b = el('button', 'cs-chip' + (isOn ? ' on' : ''), c.name);
+  b.type = 'button';
+  const tag = kindTag(c);
+  if (tag) b.appendChild(el('span', 'kindtag', tag));
+  b.addEventListener('click', onPick);
+  return b;
+}
+
+function renderPhasePicker() {
+  const wrap = $('#phasePick'); wrap.textContent = '';
+  /* one phase is not a choice */
+  if (phases.length < 2) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  phases.forEach(c => wrap.appendChild(pickerChip(c, comp && c.id === comp.id, () => {
+    if (comp && c.id === comp.id) return;
+    comp = c; SEASON = null;
+    const u = new URL(location.href);
+    u.searchParams.set('c', c.id);
+    history.replaceState(null, '', u);
+    renderPhasePicker();
+    renderTable(); renderFixtures(); renderLeaders(); renderTeamStats(); renderExtras();
+  })));
+}
+
+function renderCupPicker() {
+  const wrap = $('#cupPick'); wrap.textContent = '';
+  if (cups.length < 2) { wrap.style.display = 'none'; }
+  else {
+    wrap.style.display = '';
+    cups.forEach(c => wrap.appendChild(pickerChip(c, cupComp && c.id === cupComp.id, () => {
+      if (cupComp && c.id === cupComp.id) return;
+      cupComp = c; renderCupPicker(); renderCup();
+    })));
+  }
+  renderCup();
+}
+
+/* The cup tab is the same bracket the playoffs use, pointed at a cup. A cup
+   with a group stage shows its groups first, because that is what a cup with a
+   group stage IS — the bracket only becomes meaningful once they are done. */
+async function renderCup() {
+  const body = $('#cupBody');
+  if (!body) return;
+  body.textContent = '';
+  if (!cupComp) {
+    body.appendChild(el('div', 'empty',
+      'No cup in this season. A league administrator creates one by adding a ' +
+      'competition and marking it a cup.'));
+    return;
+  }
+  const B = window.CourtsideBracket;
+  if (cupComp.format === 'groups' || cupComp.format === 'groups_knockout') {
+    await renderStandingsInto(body, cupComp);
+  }
+  if (cupComp.format !== 'groups') {
+    const host = el('div');
+    host.id = 'cupBracket';
+    body.appendChild(host);
+    if (B) await B.renderBracket({ host: '#cupBracket', api, comp: cupComp });
+  }
 }
 
 /* ---------------------------------------------------------------- table --- */
+/* The Table tab shows whatever the selected phase IS.
+
+   A knockout phase has no table — it has a bracket — and showing an empty
+   standings grid for the playoffs, or hiding the playoffs behind a separate
+   tab, both misrepresent the season. A reader following a league from
+   September to May is following one thing through its stages, so the stages
+   share a tab and the tab renders what each one actually is. */
 async function renderTable() {
+  const body = $('#tableBody');
+  body.textContent = '';
+  if (!comp) { body.appendChild(el('div', 'empty', 'No phase selected.')); return; }
+
+  const knockout = comp.format === 'knockout' || comp.format === 'groups_knockout';
+
+  /* a groups-then-knockout phase shows both, groups first */
+  if (!knockout || comp.format === 'groups_knockout') {
+    await renderStandingsInto(body, comp);
+  }
+  if (knockout) {
+    const host = el('div');
+    host.id = 'phaseBracket';
+    body.appendChild(host);
+    const B = window.CourtsideBracket;
+    if (B) await B.renderBracket({ host: '#phaseBracket', api, comp });
+  }
+}
+
+/* the standings for one competition, drawn into a given element */
+async function renderStandingsInto(pane, competition) {
   const rows = await api(
-    `standings?competition_id=eq.${comp.id}` +
+    `standings?competition_id=eq.${competition.id}` +
     `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,streak,group_name,teams(name,short_name,colour,slug)` +
     `&order=group_name.asc,rank.asc`);
-  const pane = $('#pane-table'); pane.textContent = '';
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
 
   /* A competition may run as one table or as several groups side by side.
@@ -189,7 +298,9 @@ function groupTable(rows) {
 function renderExtras() {
   const B = window.CourtsideBracket;
   if (!B) return;
-  B.renderBracket({ host: '#pane-bracket', api, comp });
+  /* The bracket is no longer a tab of its own — a league phase draws its own
+     inside the Table tab, and a cup draws its own inside the Cup tab. All that
+     is left here are the awards, which belong to the selected phase. */
   B.renderAwards({ host: '#awards', api, comp });
 }
 

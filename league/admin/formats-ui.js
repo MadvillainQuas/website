@@ -37,6 +37,36 @@ function mount(opts) {
     return;
   }
 
+  /* ---- what kind of thing this is ----
+     The public page reads `kind` to decide where a competition belongs: league
+     and playoff are STAGES of the same season and share the Table tab, while a
+     cup runs alongside and gets its own. Getting this wrong puts a cup's
+     bracket where a reader expects the league table, so it is editable rather
+     than fixed at creation. */
+  const kRow = el('div', 'row');
+  kRow.appendChild(el('span', 'cs-micro', 'This is a'));
+  const kSel = el('select', 'cs-input');
+  kSel.style.flex = '0 0 auto';
+  [['league', 'league phase — shares the Table tab'],
+   ['playoff', 'playoff phase — shares the Table tab'],
+   ['cup', 'cup — gets its own tab']]
+    .forEach(([v, label]) => { const o = el('option', null, label); o.value = v; kSel.appendChild(o); });
+  kSel.value = opts.comp.kind || 'league';
+  const kSave = el('button', 'cs-btn mini', 'save');
+  kSave.type = 'button';
+  kSave.addEventListener('click', async () => {
+    const { error } = await opts.sb.from('competitions')
+      .update({ kind: kSel.value }).eq('id', opts.comp.id);
+    if (error) return opts.say(error.message, 'err');
+    opts.comp.kind = kSel.value;
+    opts.say(kSel.value === 'cup'
+      ? 'Saved — this now appears under the Cup tab.'
+      : 'Saved — this now appears as a phase on the Table tab.', 'ok');
+    if (opts.onDone) opts.onDone();
+  });
+  kRow.append(kSel, kSave);
+  host.appendChild(kRow);
+
   /* ---- format ---- */
   const fRow = el('div', 'row');
   fRow.appendChild(el('span', 'cs-micro', 'Format'));

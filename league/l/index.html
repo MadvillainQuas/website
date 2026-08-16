@@ -90,6 +90,9 @@
     line-height:1.6}
   .seasonpick .cs-chip{font-family:var(--f-micro);font-size:9.5px}
   .seasonpick{border-bottom:1px solid var(--rule)}
+  .phasepick{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .phasepick .cs-chip{font-family:var(--f-micro);font-size:9.5px}
+  .phasepick .kindtag{margin-left:6px;font-size:7.5px;opacity:.7;letter-spacing:.1em}
 </style>
 </head>
 <body>
@@ -107,7 +110,6 @@
   </div>
 
   <div id="seasonPick" class="pick seasonpick" style="display:none"></div>
-  <div id="compPick" class="pick"></div>
 
   <div class="tabs-wrap">
     <div class="cs-tabs" role="tablist">
@@ -115,16 +117,26 @@
       <button class="cs-tab" data-p="fixtures" role="tab">Fixtures</button>
       <button class="cs-tab" data-p="leaders" role="tab">Leaders</button>
       <button class="cs-tab" data-p="teams" role="tab">Team Stats</button>
-      <button class="cs-tab" data-p="bracket" role="tab">Knockout</button>
+      <button class="cs-tab" data-p="cup" role="tab">Cup</button>
     </div>
   </div>
 
-  <div class="pane on" id="pane-table"></div>
-  <div id="awards" style="display:none"></div>
+  <!-- The table tab holds the phase selector, whatever that phase renders
+       (a table, or a bracket if the phase is a knockout), and the awards.
+       The awards used to sit outside the pane system, which is why they
+       appeared under every tab. -->
+  <div class="pane on" id="pane-table">
+    <div id="phasePick" class="pick phasepick"></div>
+    <div id="tableBody"></div>
+    <div id="awards" style="display:none"></div>
+  </div>
   <div class="pane" id="pane-fixtures"></div>
   <div class="pane" id="pane-leaders"></div>
   <div class="pane" id="pane-teams"></div>
-  <div class="pane" id="pane-bracket"></div>
+  <div class="pane" id="pane-cup">
+    <div id="cupPick" class="pick phasepick"></div>
+    <div id="cupBody"></div>
+  </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
     <span id="foot">Courtside Network</span>

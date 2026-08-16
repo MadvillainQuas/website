@@ -331,6 +331,43 @@ async function loadFixtures() {
       v.target = '_blank'; v.rel = 'noopener';
       ac.appendChild(v);
     }
+    /* Move a fixture to another phase or into the cup.
+
+       A game's phase is its competition — there is no second flag to keep in
+       step, which is what stops a game being a league game on one page and a
+       cup tie on another. Moving it is therefore a real move, and it changes
+       both tables, so both are rebuilt afterwards. Only offered when there is
+       somewhere to move it TO. */
+    if (comps.length > 1) {
+      const mv = el('select', 'cs-input mini fxmove');
+      comps.forEach(c => {
+        const o = el('option', null, c.name + (c.kind === 'cup' ? ' (cup)' : ''));
+        o.value = c.id; mv.appendChild(o);
+      });
+      mv.value = comp.id;
+      mv.title = 'move this fixture to another phase';
+      mv.addEventListener('change', async () => {
+        const to = comps.find(c => c.id === mv.value);
+        if (!to || to.id === comp.id) return;
+        if (!confirm('Move this fixture to ' + to.name + '? Both tables will be rebuilt.')) {
+          mv.value = comp.id; return;
+        }
+        mv.disabled = true;
+        const { error } = await sb.from('games')
+          .update({ competition_id: to.id, tie_id: null, leg: null }).eq('id', g.id);
+        if (error) { mv.disabled = false; mv.value = comp.id; return oops(error); }
+        /* a played game counts towards a table, so BOTH ends have to be redone */
+        for (const cid of [comp.id, to.id]) {
+          await sb.rpc('recompute_standings', { p_competition: cid });
+          await sb.rpc('compute_season_awards', { p_competition: cid });
+          await sb.rpc('advance_bracket', { p_competition: cid });
+        }
+        say('Fixture moved to ' + to.name + '.', 'ok');
+        loadFixtures();
+      });
+      ac.appendChild(mv);
+    }
+
     row.appendChild(ac);
     host.appendChild(row);
   });
