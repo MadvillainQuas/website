@@ -30,10 +30,18 @@ async function api(p) {
 const theme = () => $('#theme').value;
 const league = () => $('#league').value;
 
+/* Only send a colour when it differs from ours, so a club that has not chosen
+   one gets a snippet without noise in it. */
+const DEFAULT_A1 = '#93f2bf', DEFAULT_A2 = '#8ff5ff';
+const accent  = () => ($('#accent').value.toLowerCase()  !== DEFAULT_A1 ? $('#accent').value  : '');
+const accent2 = () => ($('#accent2').value.toLowerCase() !== DEFAULT_A2 ? $('#accent2').value : '');
+
 function frameUrl(path, params) {
   const u = new URL(BASE + path, ORIGIN);
   Object.entries(params).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); });
   if (theme()) u.searchParams.set('theme', theme());
+  if (accent()) u.searchParams.set('accent', accent());
+  if (accent2()) u.searchParams.set('accent2', accent2());
   return u.href;
 }
 
@@ -42,6 +50,8 @@ function snippet(kind, extra) {
   if (league()) bits.push(`data-league="${league()}"`);
   Object.entries(extra || {}).forEach(([k, v]) => { if (v) bits.push(`data-${k}="${v}"`); });
   if (theme()) bits.push(`data-theme="${theme()}"`);
+  if (accent()) bits.push(`data-accent="${accent()}"`);
+  if (accent2()) bits.push(`data-accent2="${accent2()}"`);
   return `<script src="${ORIGIN}${BASE}embed.js"\n        ${bits.join(' ')}><\/script>`;
 }
 
@@ -91,8 +101,11 @@ document.querySelectorAll('[data-copy]').forEach(b => {
     setTimeout(() => { b.textContent = 'copy'; }, 1600);
   });
 });
-['#league', '#theme', '#stat'].forEach(sel =>
+['#league', '#theme', '#stat', '#accent', '#accent2'].forEach(sel =>
   $(sel).addEventListener('change', paint));
+$('#reset').addEventListener('click', () => {
+  $('#accent').value = DEFAULT_A1; $('#accent2').value = DEFAULT_A2; paint();
+});
 
 (async function boot() {
   try {

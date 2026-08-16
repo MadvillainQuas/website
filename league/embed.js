@@ -49,6 +49,11 @@
   if (me.dataset.count)  url.searchParams.set('n', me.dataset.count);
   if (me.dataset.stat)   url.searchParams.set('stat', me.dataset.stat);
   if (me.dataset.theme)  url.searchParams.set('theme', me.dataset.theme);
+  /* club colours: one attribute each, validated on the far side before it is
+     written into a style */
+  if (me.dataset.accent)  url.searchParams.set('accent', me.dataset.accent);
+  if (me.dataset.accent2) url.searchParams.set('accent2', me.dataset.accent2);
+  if (me.dataset.bg)      url.searchParams.set('bg', me.dataset.bg);
   if (kind === 'standings' || kind === 'leaders') url.searchParams.set('kind', kind);
 
   const frame = document.createElement('iframe');

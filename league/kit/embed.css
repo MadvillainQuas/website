@@ -11,7 +11,22 @@
    ============================================================================ */
 
 .cse{
-  margin:0; padding:0; background:#04100b; color:#e6fff1;
+  /* THE PALETTE IS A VARIABLE SET.
+
+     A club embedding this wants it to look like their site, not like ours.
+     Everything tintable below reads these, so ?accent=%23ff6b00 re-themes the
+     whole widget — the disc, the live rule, the winning side, the hover edge —
+     from one attribute, with no second stylesheet to keep in step.
+
+     --cs-accent2 defaults to the accent when it is not given, so a club that
+     supplies one colour still gets a coherent gradient rather than ours
+     bolted onto theirs. */
+  --cs-accent:#93f2bf;
+  --cs-accent-2:#8ff5ff;
+  --cs-ground:#04100b;
+  --cs-ink:#e6fff1;
+
+  margin:0; padding:0; background:var(--cs-ground); color:var(--cs-ink);
   font-family:'Archivo',system-ui,-apple-system,"Segoe UI",sans-serif;
   -webkit-font-smoothing:antialiased;
 }
@@ -19,56 +34,102 @@
 .cse a{ text-decoration:none; color:inherit }
 
 /* ---------------------------------------------------------------- the strip */
-/* Height is content-driven, never 100%. The strip measures itself and posts
-   that number to the host page; stretching to the viewport made it report the
-   whole window and would have blown the iframe open on someone else's site. */
-.cs-strip{ display:flex; align-items:stretch; gap:0; min-height:112px }
+/* Height is content-driven, never 100%: the strip measures itself and posts
+   that number to the host page, and stretching to the viewport made it report
+   the whole window and blow the iframe open on someone else's site. */
+.cs-strip{
+  display:flex; align-items:stretch; gap:0; min-height:120px;
+  position:relative; overflow:hidden;
+  /* THE RECORD. Grooves are a repeating radial gradient centred on the label
+     at the far left, so the arcs sweep across the bar the way they do across a
+     record rather than tiling. Two frequencies stacked — a fine one and a
+     coarser one — because a single even spacing reads as corduroy, not vinyl. */
+  background:
+    repeating-radial-gradient(circle at 58px 50%,
+      rgba(255,255,255,.030) 0 1px, rgba(0,0,0,0) 1px 3px),
+    repeating-radial-gradient(circle at 58px 50%,
+      rgba(255,255,255,.015) 0 1px, rgba(0,0,0,0) 1px 9px),
+    radial-gradient(circle at 58px 50%,
+      color-mix(in oklch, var(--cs-accent) 9%, #0d1a14) 0%,
+      color-mix(in oklch, var(--cs-accent) 4%, #081209) 42%,
+      var(--cs-ground) 100%);
+}
+/* the sheen: one wide highlight drifting across the grooves, which is what
+   makes it read as a pressed surface rather than a printed pattern */
+.cs-strip::before{
+  content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:linear-gradient(105deg,
+    rgba(255,255,255,0) 34%, color-mix(in oklch, var(--cs-accent) 22%, transparent) 47%,
+    rgba(255,255,255,.02) 53%, rgba(255,255,255,0) 66%);
+  animation:cs-sheen 9s cubic-bezier(.45,0,.55,1) infinite alternate;
+}
+@keyframes cs-sheen{ from{transform:translateX(-38%)} to{transform:translateX(38%)} }
 
-/* the brand plate, kept vertical so the wordmark reads down the edge rather
-   than sitting as a logo box — the first thing that makes this not a clone */
+/* the label — the plate is the centre of the record, so it is round */
 .cs-plate{
-  flex:none; width:44px; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(180deg,#0b1f16,#081711);
-  border-right:1px solid rgba(147,242,191,.22);
+  flex:none; width:112px; position:relative; z-index:2;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border-right:0;
+}
+.cs-plate .disc{
+  width:80px; height:80px; border-radius:50%;
+  display:grid; place-items:center; position:relative;
+  background:
+    radial-gradient(circle at 50% 50%, #0b1f16 0 20%, rgba(0,0,0,0) 20%),
+    conic-gradient(from 210deg, var(--cs-accent), var(--cs-accent-2), color-mix(in oklch, var(--cs-accent) 40%, var(--cs-accent-2)), var(--cs-accent));
+  box-shadow:0 0 0 1px color-mix(in oklch, var(--cs-accent) 35%, transparent), 0 6px 20px rgba(0,0,0,.5),
+             inset 0 0 22px rgba(0,0,0,.5);
+}
+/* the spindle hole */
+.cs-plate .disc::after{
+  content:''; position:absolute; width:9px; height:9px; border-radius:50%;
+  background:#04100b; box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--cs-accent) 45%, transparent);
 }
 .cs-plate .mk{
-  writing-mode:vertical-rl; transform:rotate(180deg);
-  font-family:'Jersey25',ui-monospace,monospace; font-size:17px; line-height:1;
-  letter-spacing:.14em; text-transform:uppercase;
-  background:linear-gradient(0deg,#93f2bf,#8ff5ff);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
+  position:absolute; left:0; right:0; top:14px; text-align:center;
+  font-family:'Jersey25',ui-monospace,monospace; font-size:11px;
+  letter-spacing:.1em; text-transform:uppercase; color:#04100b;
+  text-shadow:0 1px 0 rgba(255,255,255,.3);
 }
 
 .cs-rail{
-  flex:1; min-width:0; display:flex; gap:7px; padding:7px;
-  overflow-x:auto; overflow-y:hidden; scroll-behavior:smooth;
-  scrollbar-width:none; scroll-snap-type:x proximity;
+  flex:1; min-width:0; z-index:1;
+  display:flex; gap:9px; padding:10px 9px;
+  overflow-x:auto; overflow-y:hidden;
+  scrollbar-width:none;
+  touch-action:pan-y;          /* dragged horizontally, so the browser must not */
+  cursor:grab;
 }
+.cs-rail.dragging{ cursor:grabbing }
 .cs-rail::-webkit-scrollbar{ display:none }
 
-/* A CARD IS A SCOREBOARD, NOT A LIST.
-
-   The LiveStats card stacks two team rows with the score down the right. This
-   lays the fixture out the way a scoreboard does — home on the left, away on
-   the right, the score between them — with the state as a coloured rule along
-   the top rather than a word in a header bar. Same information, read
-   horizontally instead of vertically. */
+/* A CARD IS A SCOREBOARD, NOT A LIST. The LiveStats card stacks two team rows
+   with the score down the right; this lays a fixture out the way a scoreboard
+   does — home left, away right, score between — with the state as a rule along
+   the top edge rather than a word in a header bar. */
 .cs-card{
-  flex:0 0 auto; width:196px; scroll-snap-align:start;
+  flex:0 0 auto; width:198px;
   display:flex; flex-direction:column; position:relative;
-  background:#0a1a13; border:1px solid rgba(147,242,191,.16); border-radius:3px;
+  background:linear-gradient(180deg, rgba(12,32,23,.92), rgba(8,22,16,.92));
+  border:1px solid color-mix(in oklch, var(--cs-accent) 18%, transparent); border-radius:4px;
   padding:9px 10px 8px; overflow:hidden;
-  transition:border-color .12s, background .12s, transform .12s;
+  transition:border-color .14s, transform .14s, box-shadow .14s;
 }
-.cs-card:hover{ border-color:rgba(147,242,191,.48); background:#0d2118 }
+.cs-card:hover{
+  border-color:color-mix(in oklch, var(--cs-accent) 55%, transparent); transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(0,0,0,.45);
+}
+/* while dragging, nothing should lift or animate under the cursor */
+.cs-rail.dragging .cs-card, .cs-rail.dragging .cs-card:hover{
+  transition:none; transform:none; box-shadow:none;
+}
 
-/* the state, as a rule across the top edge */
 .cs-card::before{
   content:''; position:absolute; left:0; right:0; top:0; height:2px;
-  background:rgba(147,242,191,.28);
+  background:color-mix(in oklch, var(--cs-accent) 30%, transparent);
 }
 .cs-card.is-live::before{ background:#ff5f6b }
-.cs-card.is-upcoming::before{ background:#8ff5ff }
+.cs-card.is-upcoming::before{ background:var(--cs-accent-2) }
 
 .cs-card .meta{
   display:flex; align-items:baseline; justify-content:space-between; gap:6px;
@@ -85,9 +146,7 @@
   animation:csp 1.6s ease-in-out infinite;
 }
 @keyframes csp{ 0%,100%{opacity:1} 50%{opacity:.25} }
-@media (prefers-reduced-motion:reduce){ .cs-card .meta .st .dot{ animation:none } }
 
-/* home | score | away, across */
 .cs-card .row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px }
 .cs-card .tm{ display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0 }
 .cs-card .crest{
@@ -100,7 +159,7 @@
   color:rgba(230,255,241,.82); max-width:100%; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap;
 }
-.cs-card .tm.win .abbr{ color:#93f2bf }
+.cs-card .tm.win .abbr{ color:var(--cs-accent) }
 .cs-card .tm.lose .abbr{ color:rgba(230,255,241,.4) }
 
 .cs-card .mid{ text-align:center; min-width:52px }
@@ -108,7 +167,6 @@
   font-family:'Jersey25',ui-monospace,monospace; font-size:21px; line-height:1;
   color:#e6fff1; font-variant-numeric:tabular-nums; white-space:nowrap;
 }
-.cs-card .sc .v{ padding:0 1px }
 .cs-card .sc .d{ color:rgba(230,255,241,.25); padding:0 3px }
 .cs-card .vs{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px;
@@ -123,15 +181,22 @@
 }
 .cs-card .when .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
-/* scroll arrows, shown only when there is somewhere to go */
-.cs-arrow{
-  flex:none; width:24px; align-self:stretch; border:0; cursor:pointer;
-  background:linear-gradient(90deg,rgba(4,16,11,0),rgba(4,16,11,.92));
-  color:rgba(230,255,241,.6); font-size:13px; line-height:1;
+/* the right edge fades rather than cuts, so a card leaving the bar looks like
+   it is leaving rather than being sliced by the frame */
+.cs-strip::after{
+  content:''; position:absolute; right:0; top:0; bottom:0; width:44px;
+  pointer-events:none; z-index:3;
+  background:linear-gradient(270deg, var(--cs-ground), color-mix(in oklch, var(--cs-ground) 0%, transparent));
 }
-.cs-arrow:hover{ color:#93f2bf }
-.cs-arrow[hidden]{ display:none }
-.cs-arrow.l{ background:linear-gradient(270deg,rgba(4,16,11,0),rgba(4,16,11,.92)) }
+
+/* Motion is opt-out. A bar that scrolls itself is exactly what makes a page
+   unusable for someone who cannot tolerate movement, so the sheen, the pulse
+   and the scroll all stop — strip.js reads the same query. */
+@media (prefers-reduced-motion:reduce){
+  .cs-strip::before{ animation:none }
+  .cs-card .meta .st .dot{ animation:none }
+  .cs-card, .cs-card:hover{ transition:none; transform:none }
+}
 
 /* --------------------------------------------------------- the game embed */
 .cs-game{ padding:14px 16px }

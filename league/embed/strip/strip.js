@@ -28,11 +28,30 @@ const wantLeague = qp.get('l') || '';
 const limit = Math.min(parseInt(qp.get('n'), 10) || 12, 40);
 const POLL_MS = 60000;
 
-/* ?theme=light for club sites that are not dark. One attribute, because the
-   palette is a variable set rather than a second stylesheet. */
-if ((new URLSearchParams(location.search).get('theme') || '') === 'light') {
-  document.body.setAttribute('data-theme', 'light');
-}
+/* Appearance from the query string.
+
+   ?theme=light for club sites that are not dark, and ?accent / ?accent2 for
+   their colours. Both are variable sets rather than second stylesheets, so a
+   club gets their own bar without us shipping a copy of the CSS per club.
+
+   A colour is validated before it is used: this string arrives from a URL on
+   somebody else's page, and writing it unchecked into a style is how a widget
+   becomes an injection point. Only #rgb / #rrggbb is accepted. */
+(function appearance() {
+  const q = new URLSearchParams(location.search);
+  if ((q.get('theme') || '') === 'light') document.body.setAttribute('data-theme', 'light');
+
+  const hex = v => (/^#?[0-9a-f]{3}$|^#?[0-9a-f]{6}$/i.test(v || '')
+    ? (v[0] === '#' ? v : '#' + v) : null);
+  const a1 = hex(q.get('accent'));
+  const a2 = hex(q.get('accent2')) || a1;
+  if (a1) {
+    document.body.style.setProperty('--cs-accent', a1);
+    document.body.style.setProperty('--cs-accent-2', a2);
+  }
+  const g = hex(q.get('bg'));
+  if (g) document.body.style.setProperty('--cs-ground', g);
+})();
 
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -154,23 +173,155 @@ async function load() {
 
   const rail = $('#rail');
   rail.textContent = '';
-  if (!gs.length) { rail.appendChild(el('div', 'cs-empty', 'No fixtures')); }
-  else gs.forEach(g => rail.appendChild(card(g)));
-  arrows();
+  if (!gs.length) {
+    rail.appendChild(el('div', 'cs-empty', 'No fixtures'));
+  } else {
+    /* Two copies. The loop wraps at the halfway mark, where the halves are
+       pixel-identical, so the seam is invisible. The duplicate is hidden from
+       assistive technology — it is the same fixtures a second time, and a
+       screen reader should not read the list twice. */
+    gs.forEach(g => rail.appendChild(card(g)));
+    const dup = document.createElement('div');
+    dup.style.cssText = 'display:contents';
+    dup.setAttribute('aria-hidden', 'true');
+    gs.forEach(g => { const c = card(g); c.tabIndex = -1; dup.appendChild(c); });
+    rail.appendChild(dup);
+  }
   postHeight();
+  startMotion();
 }
 
-/* ------------------------------------------------------------------ chrome --- */
-function arrows() {
+
+/* ============================================================================
+   MOTION — it scrolls itself, and you can throw it.
+
+   The bar drifts left continuously so a page with it on looks alive without
+   anyone touching it, and stops the moment a pointer is over it, because
+   something moving under the cursor you are trying to click is infuriating.
+
+   Dragging is a real throw, not a scrollbar. Velocity is sampled over the last
+   few pointer moves and carried on after release with exponential decay, so a
+   flick coasts and a slow drag stops where you left it. The decay constant is
+   applied per frame at 60fps and normalised by the real frame time, so it
+   behaves the same on a 144Hz screen as on a 60Hz one.
+
+   The list is duplicated once and the scroll position wraps at the halfway
+   point, which is what makes the loop seamless — at the wrap the two halves
+   are pixel-identical, so nothing visibly jumps.
+
+   None of it runs for a reader who has asked for reduced motion.
+   ============================================================================ */
+const REDUCED = window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const SPEED = 0.28;        // px per frame at 60fps — a drift, not a carousel
+const FRICTION = 0.94;     // per 60fps frame; a flick coasts about a second
+const MIN_V = 0.04;        // below this, momentum has finished
+
+let auto = !REDUCED;
+let velocity = 0;
+let dragging = false;
+let pointerId = null;
+let lastX = 0, lastT = 0;
+let rafId = null;
+
+/* The rail holds two copies of the fixture list. Wrapping at the halfway mark
+   is invisible because the halves are identical there. */
+function halfWidth() {
   const rail = $('#rail');
-  const over = rail.scrollWidth > rail.clientWidth + 4;
-  $('#left').hidden = !over || rail.scrollLeft <= 2;
-  $('#right').hidden = !over || rail.scrollLeft >= rail.scrollWidth - rail.clientWidth - 2;
+  return rail.scrollWidth / 2;
 }
-$('#left').addEventListener('click', () => $('#rail').scrollBy({ left: -440, behavior: 'smooth' }));
-$('#right').addEventListener('click', () => $('#rail').scrollBy({ left: 440, behavior: 'smooth' }));
-$('#rail').addEventListener('scroll', arrows, { passive: true });
-window.addEventListener('resize', arrows, { passive: true });
+
+function wrap() {
+  const rail = $('#rail');
+  const half = halfWidth();
+  if (half < 8) return;
+  if (rail.scrollLeft >= half) rail.scrollLeft -= half;
+  else if (rail.scrollLeft < 0) rail.scrollLeft += half;
+}
+
+function tick(now) {
+  const rail = $('#rail');
+  const dt = lastT ? Math.min(4, (now - lastT) / 16.667) : 1;   // in 60fps frames
+  lastT = now;
+
+  if (!dragging) {
+    if (Math.abs(velocity) > MIN_V) {
+      rail.scrollLeft += velocity * dt;
+      velocity *= Math.pow(FRICTION, dt);
+    } else {
+      velocity = 0;
+      if (auto) rail.scrollLeft += SPEED * dt;
+    }
+    wrap();
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+function startMotion() {
+  if (REDUCED || rafId) return;
+  lastT = 0;
+  rafId = requestAnimationFrame(tick);
+}
+
+/* ---- pointer drag, with a real throw ---- */
+function wireDrag() {
+  const rail = $('#rail');
+  let startScroll = 0, startX = 0, moved = 0;
+
+  rail.addEventListener('pointerdown', e => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    dragging = true; pointerId = e.pointerId;
+    startX = lastX = e.clientX;
+    startScroll = rail.scrollLeft;
+    moved = 0; velocity = 0;
+    rail.classList.add('dragging');
+    rail.setPointerCapture(e.pointerId);
+  });
+
+  rail.addEventListener('pointermove', e => {
+    if (!dragging || e.pointerId !== pointerId) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    moved += Math.abs(dx);
+    rail.scrollLeft = startScroll - (e.clientX - startX);
+    /* sample velocity from the last move rather than the whole gesture, so a
+       drag that stops before release does not fling */
+    velocity = -dx;
+    wrap();
+  });
+
+  const release = e => {
+    if (!dragging || (e && e.pointerId !== pointerId)) return;
+    dragging = false; pointerId = null;
+    rail.classList.remove('dragging');
+    /* a drag that barely moved was a click on a card — do not throw the bar */
+    if (moved < 4) velocity = 0;
+  };
+  rail.addEventListener('pointerup', release);
+  rail.addEventListener('pointercancel', release);
+
+  /* a real drag must not also follow the link under the cursor */
+  rail.addEventListener('click', e => {
+    if (moved > 6) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  /* stop drifting under a pointer that is trying to read or click */
+  rail.addEventListener('pointerenter', () => { auto = false; });
+  rail.addEventListener('pointerleave', () => { if (!REDUCED) auto = true; });
+  rail.addEventListener('focusin', () => { auto = false; });
+  rail.addEventListener('focusout', () => { if (!REDUCED) auto = true; });
+
+  /* the wheel should scroll the bar sideways, not the page */
+  rail.addEventListener('wheel', e => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (!d) return;
+    e.preventDefault();
+    rail.scrollLeft += d;
+    velocity = 0;
+    wrap();
+  }, { passive: false });
+}
 
 /* the host page cannot know how tall this wants to be, so tell it */
 function postHeight() {
@@ -182,6 +333,7 @@ function postHeight() {
 
 if (wantLeague) $('#plate').href = new URL('../../l/?l=' + encodeURIComponent(wantLeague),
                                            location.href).href;
+wireDrag();
 load();
 setInterval(load, POLL_MS);
 setTimeout(postHeight, 400);
