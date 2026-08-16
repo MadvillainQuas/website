@@ -7,6 +7,7 @@ const CFG = window.COURTSIDE_CONFIG;
 const qp  = new URLSearchParams(location.search);
 const wantLeague = qp.get('l') || 'demo-league';
 const wantComp   = qp.get('c');
+const wantSeason = qp.get('s') || '';
 
 const $  = s => document.querySelector(s);
 const el = (tag, cls, text) => { const n = document.createElement(tag);
@@ -21,7 +22,7 @@ async function api(path) {
   return r.json();
 }
 
-let league = null, season = null, comps = [], comp = null;
+let league = null, season = null, seasons = [], comps = [], comp = null;
 
 async function boot() {
   try {
@@ -33,10 +34,15 @@ async function boot() {
     $('#leagueName').textContent = league.name;
     document.title = league.name + ' · Courtside';
 
-    const ss = await api(`seasons?league_id=eq.${league.id}&select=*&order=starts_on.desc&limit=1`);
-    if (!ss.length) return fail('This league has no seasons yet.');
-    season = ss[0];
+    /* every season, not just the newest — a league's history was previously
+       unreachable rather than merely unlinked, since no parameter could get
+       you there */
+    seasons = await api(`seasons?league_id=eq.${league.id}` +
+      `&select=id,name,starts_on,ends_on&order=starts_on.desc`);
+    if (!seasons.length) return fail('This league has no seasons yet.');
+    season = pickSeason(seasons, wantSeason);
     $('#seasonName').textContent = season.name;
+    renderSeasonPicker();
 
     comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
     if (!comps.length) return fail('This season has no competitions yet.');
@@ -55,6 +61,51 @@ async function boot() {
 function fail(msg) {
   ['#pane-table', '#pane-fixtures', '#pane-leaders', '#pane-bracket'].forEach(s => {
     const p = $(s); p.textContent = ''; p.appendChild(el('div', 'empty', msg));
+  });
+}
+
+
+/* A season is named like "2026-27", which is what a person would put in a URL,
+   so ?s= matches on the name before falling back to the id. A mistyped season
+   lands on the newest rather than on an error. */
+function pickSeason(list, ref) {
+  if (!list.length) return null;
+  if (!ref) return list[0];
+  const key = String(ref).toLowerCase().replace(/[^a-z0-9]/g, '');
+  return list.find(x => x.id === ref) ||
+         list.find(x => String(x.name).toLowerCase().replace(/[^a-z0-9]/g, '') === key) ||
+         list[0];
+}
+
+function renderSeasonPicker() {
+  const wrap = $('#seasonPick');
+  if (!wrap) return;
+  wrap.textContent = '';
+  /* one season is not a choice, and a control offering it is noise */
+  if (seasons.length < 2) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  seasons.forEach(sn => {
+    const b = el('button', 'cs-chip' + (sn.id === season.id ? ' on' : ''), sn.name);
+    b.type = 'button';
+    b.addEventListener('click', async () => {
+      if (sn.id === season.id) return;
+      season = sn; comp = null; SEASON = null;
+      $('#seasonName').textContent = season.name;
+      $('#ctx').textContent = league.name + ' · ' + season.name;
+      /* the URL carries the season so a past table is linkable */
+      const u = new URL(location.href);
+      u.searchParams.set('s', season.name);
+      u.searchParams.delete('c');
+      history.replaceState(null, '', u);
+      renderSeasonPicker();
+      comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
+      comp = comps[0] || null;
+      renderCompPicker();
+      if (!comp) return fail('That season has no competitions.');
+      await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
+                         renderTeamStats(), renderExtras()]);
+    });
+    wrap.appendChild(b);
   });
 }
 

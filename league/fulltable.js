@@ -245,7 +245,12 @@ function render(opts) {
   if (!host) return null;
 
   const isTeam = opts.kind === 'team';
-  const CAT = isTeam ? T : P;
+  /* The name column is not always a name. On a career table every row is the
+     same person and the column carries the season instead, so a header reading
+     PLAYER above a list of years is simply wrong. Relabelling is a caller's
+     choice rather than a guess made here. */
+  const CAT = (isTeam ? T : P).map(c =>
+    (c.k === 'name' && opts.nameLabel) ? Object.assign({}, c, { l: opts.nameLabel }) : c);
   const presets = PRESETS[isTeam ? 'team' : 'player'];
   let rows = (opts.rows || []).map((r, i) => Object.assign({ __i: i }, r));
 

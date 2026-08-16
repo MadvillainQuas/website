@@ -172,6 +172,101 @@ function paintBars(mine, field) {
   host.appendChild(wrap);
 }
 
+
+/* Every competition this player has appeared in, newest first, aggregated
+   through the shared intermediary.
+
+   Bounded at eight: each season is a full aggregation, and a profile that
+   takes ten seconds to draw because somebody played for fifteen years is worse
+   than one that shows the last eight and says so. */
+const CAREER_MAX = 8;
+
+async function paintCareer(pl, current, team) {
+  const D = window.CourtsideData;
+  const host = $('#seasons');
+  host.textContent = '';
+
+  let appearances = [];
+  try {
+    appearances = await D.all(`player_season_stats?player_id=eq.${pl.id}` +
+      `&select=competition_id,season_id,team_id,gp`);
+  } catch (e) { console.warn('[career]', e); }
+
+  if (!appearances.length) {
+    if (current) {
+      /* the intermediary found a season the view has not caught up with */
+      $('#seasonNote').textContent = current.gp + (current.gp === 1 ? ' game' : ' games');
+      return renderCareerRows(host, [Object.assign({}, current, {
+        name: ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(),
+        teamName: (team && team.short_name) || '', teamShort: (team && team.short_name) || '',
+        colour: (team && team.colour) || null
+      })], pl);
+    }
+    host.appendChild(el('div', 'empty',
+      'No finalised games yet — a season line appears once one is played.'));
+    return;
+  }
+
+  /* name the seasons and competitions so a row says which year it was */
+  const compIds = [...new Set(appearances.map(a => a.competition_id).filter(Boolean))];
+  let comps = [];
+  try {
+    comps = await D.all(`competitions?id=in.(${compIds.join(',')})` +
+      `&select=id,name,seasons(id,name,starts_on,leagues(name,slug))`);
+  } catch (e) { console.warn('[career comps]', e); }
+  const compById = new Map(comps.map(c => [c.id, c]));
+
+  /* newest first, by the season's start date */
+  const ordered = compIds.slice().sort((a, b) => {
+    const sa = (compById.get(a) || {}).seasons || {};
+    const sb = (compById.get(b) || {}).seasons || {};
+    return String(sb.starts_on || '').localeCompare(String(sa.starts_on || ''));
+  });
+  const shown = ordered.slice(0, CAREER_MAX);
+
+  const rows = [];
+  for (const cid of shown) {
+    try {
+      const S = await D.season(cid);
+      const row = S.players.find(r => r.id === pl.id);
+      if (!row) continue;
+      const c = compById.get(cid) || {};
+      const sn = c.seasons || {};
+      rows.push(Object.assign({}, row, {
+        /* the name column carries the season, since every row is the same
+           person and repeating their name down the table says nothing */
+        name: sn.name || c.name || '—',
+        teamName: (team && team.short_name) || '',
+        teamShort: (team && team.short_name) || '',
+        colour: (team && team.colour) || null,
+        _comp: c.name || '', _league: (sn.leagues && sn.leagues.name) || ''
+      }));
+    } catch (e) { console.warn('[career season]', cid, e); }
+  }
+
+  if (!rows.length) {
+    host.appendChild(el('div', 'empty', 'No finalised games yet.'));
+    return;
+  }
+
+  const games = rows.reduce((n, r) => n + (r.gp || 0), 0);
+  $('#seasonNote').textContent = rows.length +
+    (rows.length === 1 ? ' season · ' : ' seasons · ') + games +
+    (games === 1 ? ' game' : ' games') +
+    (ordered.length > shown.length ? ' · showing the last ' + CAREER_MAX : '');
+
+  renderCareerRows(host, rows, pl);
+}
+
+function renderCareerRows(host, rows, pl) {
+  window.CourtsideTable.render({
+    host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
+    filename: (pl.slug || 'player') + '-career',
+    nameLabel: 'SEASON',
+    rows
+  });
+}
+
 /* -------------------------------------------------------------- game log --- */
 function paintLog(rows) {
   const host = $('#log'); host.textContent = '';
@@ -278,21 +373,13 @@ function paintLog(rows) {
     paintTiles(mine);
     paintBars(mine, field);
 
-    if (mine) {
-      $('#seasonNote').textContent = mine.gp + (mine.gp === 1 ? ' game' : ' games');
-      T.render({
-        host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
-        filename: (pl.slug || 'player') + '-season',
-        rows: [Object.assign({}, mine, {
-          name: ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(),
-          teamName: (team && team.short_name) || '', teamShort: (team && team.short_name) || '',
-          colour: (team && team.colour) || null
-        })]
-      });
-    } else {
-      $('#seasons').appendChild(el('div', 'empty',
-        'No finalised games yet — a season line appears once one is played.'));
-    }
+    /* ---- career, a row per season ----
+       One line was fine when nobody had a second season. A career table is the
+       thing a profile is actually for, and it is built through the SAME
+       intermediary as the current season so every column means what it means
+       everywhere else — a career table assembled from a different query is how
+       a profile ends up disagreeing with the leaders board it links to. */
+    await paintCareer(pl, mine, team);
 
     /* ---- on the floor with ----
        The team's on/off as tiles, then this player's OWN numbers split by who

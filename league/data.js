@@ -159,18 +159,41 @@ async function teamMeta(leagueId) {
   return out;
 }
 
-/* resolve ?l= and ?c= into a league / season / competition once */
-async function context(leagueSlug, compId) {
+/* Resolve ?l=, ?s= and ?c= into a league / season / competition once.
+
+   Every season is fetched, not only the newest. Asking for one was the cheap
+   thing to do when no league had a second, but it meant a league's history was
+   unreachable rather than merely unlinked — there was no parameter that could
+   get you there. `seasons` comes back so a page can offer the choice, and ?s=
+   selects by slug or by name so the URL of a past season is legible and
+   shareable rather than a uuid. */
+async function context(leagueSlug, compId, seasonRef) {
   const lgs = await get(`leagues?slug=eq.${encodeURIComponent(leagueSlug)}&select=*&limit=1`);
   if (!lgs.length) throw new Error(`no league "${leagueSlug}"`);
   const league = lgs[0];
-  const ss = await get(`seasons?league_id=eq.${league.id}&select=*&order=starts_on.desc&limit=1`);
-  const seasonRow = ss[0] || null;
+
+  const seasons = await all(`seasons?league_id=eq.${league.id}` +
+    `&select=id,name,starts_on,ends_on&order=starts_on.desc`);
+  const seasonRow = pickSeason(seasons, seasonRef);
+
   let comps = [];
   if (seasonRow) comps = await get(`competitions?season_id=eq.${seasonRow.id}&select=*&order=name`);
   const comp = comps.find(c => c.id === compId) || comps[0] || null;
-  return { league, season: seasonRow, comps, comp };
+  return { league, season: seasonRow, seasons, comps, comp };
 }
 
-return { get, all, season, stints, events, playerMeta, teamMeta, context };
+/* A season is named like "2026-27", which is what a person would put in a URL,
+   so match on the name loosely before falling back to the id. Anything
+   unrecognised gives the newest rather than nothing — a mistyped season should
+   land you somewhere useful, not on an error. */
+function pickSeason(seasons, ref) {
+  if (!seasons || !seasons.length) return null;
+  if (!ref) return seasons[0];
+  const key = String(ref).toLowerCase().replace(/[^a-z0-9]/g, '');
+  return seasons.find(s => s.id === ref) ||
+         seasons.find(s => String(s.name).toLowerCase().replace(/[^a-z0-9]/g, '') === key) ||
+         seasons[0];
+}
+
+return { get, all, season, stints, events, playerMeta, teamMeta, context, pickSeason };
 }));
