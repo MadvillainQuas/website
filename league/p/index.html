@@ -10,6 +10,7 @@
 <title>Player · Courtside</title>
 <link rel="stylesheet" href="../kit/courtside-kit.css">
 <link rel="stylesheet" href="../kit/table.css">
+<link rel="stylesheet" href="../kit/nav.css">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -58,6 +59,19 @@
     font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap}
   .foot a{color:var(--ink-3)}
   @media (max-width:520px){ .photo{width:74px;height:74px} }
+  /* index_9's percentile bars: where this player sits against everyone else
+     in the competition, which is the fastest way to read a stat line. */
+  .bars{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .barrow{display:grid;grid-template-columns:104px 1fr 56px;gap:10px;align-items:center;
+    padding:5px 0}
+  .barrow .bl{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    letter-spacing:.11em;text-transform:uppercase;text-align:right}
+  .barrow .bt{height:9px;border-radius:2px;background:var(--panel-2);overflow:hidden;position:relative}
+  .barrow .bt i{display:block;height:100%;border-radius:2px}
+  .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
+  .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
+  .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
+    letter-spacing:.14em;text-transform:uppercase;padding:12px 0 4px}
 </style>
 </head>
 <body>
@@ -78,13 +92,19 @@
   <div class="tiles" id="tiles"></div>
 
   <div class="sec">
-    <div class="sec-h"><span class="idx">01</span><h2>Season</h2>
+    <div class="sec-h"><span class="idx">01</span><h2>League percentile</h2>
+      <span class="note" id="barNote"></span></div>
+    <div id="bars"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="idx">02</span><h2>Season</h2>
       <span class="note" id="seasonNote"></span></div>
     <div id="seasons"></div>
   </div>
 
   <div class="sec">
-    <div class="sec-h"><span class="idx">02</span><h2>Game log</h2>
+    <div class="sec-h"><span class="idx">03</span><h2>Game log</h2>
       <span class="note" id="logNote"></span></div>
     <div id="log"></div>
   </div>
@@ -96,7 +116,10 @@
   </div>
 </div>
 <script src="../config.js"></script>
+<script src="../season.js"></script>
+<script src="../data.js"></script>
 <script src="../fulltable.js"></script>
 <script src="player.js"></script>
+<script src="../nav.js"></script>
 </body>
 </html>

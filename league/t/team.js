@@ -76,28 +76,67 @@ async function record(team) {
    only one row of it — a one-row table is a worse way to read a single line. */
 async function teamStats(team) {
   const host = $('#teamstats'); host.textContent = '';
-  let rows = [];
-  try { rows = await api(`team_season_stats?team_id=eq.${team.id}&select=*`); }
-  catch (e) { host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
-
-  if (!rows.length) {
+  const D = window.CourtsideData;
+  let S = null;
+  try {
+    const g = await D.get(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+                          `&status=eq.final&select=competition_id&limit=1`);
+    if (g[0] && g[0].competition_id) S = await D.season(g[0].competition_id);
+  } catch (e) {
+    host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
+  }
+  const mine = S && S.teams.find(t => t.id === team.id);
+  if (!mine) {
     host.appendChild(el('div', 'empty',
       'No team statistics yet — these fill in as games are finalised in the scorer.'));
     return;
   }
-  const s = rows[0];
+
+  /* The four factors first and labelled as such: they are the four things that
+     decide a basketball game, and both ends of each are shown because a
+     defence is only describable relative to what it faced. */
+  const ff = el('div');
+  ff.appendChild(el('div', 'ffhead', 'four factors'));
+  const grid = el('div', 'ffgrid');
+  [['shooting', 'eFG%', mine.ff_efg, mine.dff_efg, false],
+   ['turnovers', 'TOV%', mine.ff_tov, mine.dff_tov, true],
+   ['rebounding', 'OREB%', mine.ff_oreb, mine.dff_oreb, false],
+   ['free throws', 'FTr', mine.ff_ftr, mine.dff_ftr, false]]
+    .forEach(([label, unit, off, def, lowGood]) => {
+      const card = el('div', 'ffcard');
+      card.appendChild(el('div', 'ffl', label + ' · ' + unit));
+      const pair = el('div', 'ffpair');
+      const o = el('div', 'ffside');
+      o.append(el('div', 'ffv', n1(off)), el('div', 'ffk', 'own'));
+      const d = el('div', 'ffside');
+      d.append(el('div', 'ffv', n1(def)), el('div', 'ffk', 'allowed'));
+      /* Green marks an ADVANTAGE TO THIS TEAM, never simply the larger number.
+         Opponents shooting a better eFG% than you is a weakness; colouring
+         "allowed" green because 49.1 > 48.1 would read as a strength and say
+         the opposite of what happened. So the edge is computed in the team's
+         favour, and a deficit is marked as such rather than dressed up. */
+      const edge = (off == null || def == null) ? null
+        : (lowGood ? def - off : off - def);          // positive = this team ahead
+      if (edge != null && Math.abs(edge) >= 0.05) {
+        (edge > 0 ? o : d).classList.add(edge > 0 ? 'win' : 'lose');
+      }
+      pair.append(o, d); card.appendChild(pair);
+      grid.appendChild(card);
+    });
+  ff.appendChild(grid);
+  host.appendChild(ff);
 
   const tiles = el('div', 'tiles');
-  [['ppg', n1(s.ppg), true], ['opp ppg', n1(s.papg), false],
-   ['diff', (s.diff > 0 ? '+' : '') + s.diff, false],
-   ['efg%', n1(s.efg), true], ['ts%', n1(s.ts), false],
-   ['ortg', n1(s.ortg), true], ['pace', n1(s.pace), false],
-   ['ast/to', s.ast_to == null ? '—' : Number(s.ast_to).toFixed(2), false],
-   ['reb', s.reb, false], ['ast', s.ast, false],
-   ['stl', s.stl, false], ['blk', s.blk, false],
-   ['paint', s.paint, false], ['fast', s.fast, false],
-   ['2nd chance', s.second_chance, false], ['off turnovers', s.pts_off_to, false],
-   ['bench', s.bench, false], ['turnovers', s.tov, false]]
+  [['ppg', n1(mine.ppg), true], ['opp ppg', n1(mine.papg), false],
+   ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true],
+   ['ortg', n1(mine.ortg), true], ['drtg', n1(mine.drtg), false],
+   ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true],
+   ['pace', n1(mine.pace), false], ['ts%', n1(mine.ts), false],
+   ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false],
+   ['reb', mine.reb, false], ['ast', mine.ast, false], ['stl', mine.stl, false],
+   ['blk', mine.blk, false], ['paint', mine.paint, false], ['fast', mine.fast, false],
+   ['2nd chance', mine.second_chance, false], ['off turnovers', mine.pts_off_to, false],
+   ['bench', mine.bench, false]]
     .forEach(([l, v, hi]) => {
       const d = el('div', 'tile' + (hi ? ' hi' : ''));
       d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
@@ -105,20 +144,18 @@ async function teamStats(team) {
     });
   host.appendChild(tiles);
 
-  /* every player on the team, same table as the leaders board */
-  let ps = [];
-  try { ps = await api(`player_season_stats?team_id=eq.${team.id}&select=*`); } catch (_) {}
-  if (ps.length) {
+  /* every player on the roster, ranked within their own team */
+  const meta = await D.playerMeta(S.players.map(p => p.id));
+  S.players.forEach(p => Object.assign(p, meta[p.id] || {}));
+  const squad = S.players.filter(p => p.teamId === team.id);
+  if (squad.length) {
     const sub = el('div');
     host.appendChild(sub);
     T.render({
       host: sub, kind: 'player', sortKey: 'ppg', showMinGames: false,
       filename: (team.slug || 'team') + '-players',
-      rows: ps.map(r => ({ ...r,
-        name: ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || 'Player',
-        teamName: r.team_short || r.team_name || '',
-        teamShort: r.team_short || '', colour: r.team_colour || null })),
-      playerHref: r => '../p/?p=' + encodeURIComponent(r.player_id || r.player_slug || '')
+      rows: squad,
+      playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
     });
   }
 }

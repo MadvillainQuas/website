@@ -20,6 +20,10 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 const n1 = (v, d = '—') => (v == null ? d : Number(v).toFixed(1));
+/* 1st, 2nd, 3rd, 4th … 11th-13th are the exceptions that catch naive code */
+const ord = n => { const v = Math.round(n), t = v % 100;
+  if (t >= 11 && t <= 13) return v + 'th';
+  return v + ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th'); };
 
 async function api(p) {
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
@@ -86,13 +90,70 @@ function paintTiles(s) {
     return;
   }
   [['games', s.gp, false], ['pts', n1(s.ppg), true], ['reb', n1(s.rpg), true],
-   ['ast', n1(s.apg), true], ['efg%', n1(s.efg), false], ['ts%', n1(s.ts), false],
-   ['min', n1(s.min), false], ['+/-', (s.pm > 0 ? '+' : '') + (s.pm ?? '—'), false]]
+   ['ast', n1(s.apg), true], ['mins', n1(s.mpg), false],
+   ['ts%', n1(s.ts), false], ['usg%', n1(s.usg), false],
+   ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true]]
     .forEach(([l, v, hi]) => {
       const d = el('div', 'tile' + (hi ? ' hi' : ''));
       d.append(el('div', 'v', v), el('div', 'l', l));
       host.appendChild(d);
     });
+}
+
+/* ------------------------------------------------------------ percentile --- */
+/* index_9's profile bars. Each row is where this player ranks in the
+   competition for that statistic, which turns a number nobody has a feel for
+   ("11.4 AST%") into one anybody can read ("83rd percentile").
+
+   Rates only. Ranking a total would just rank minutes played. */
+const BAR_GROUPS = [
+  ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE']]],
+  ['shooting',   [['rim_pct','RIM%'],['mid_pct','MID%'],['p3_pct','3P%'],['ft_pct','FT%']]],
+  ['playmaking', [['ast_pct','ASSIST%'],['ast_to','AST / TO'],['tov_pct','TURNOVER%']]],
+  ['rebounding', [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']]],
+  ['defence',    [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['vs_efg','OPP eFG% ON']]],
+  ['impact',     [['on_net','ON NET'],['diff_net','ON-OFF']]]
+];
+/* the ones where a smaller number is the better performance */
+const BAR_LOW = ['tov_pct', 'vs_efg'];
+
+function paintBars(mine, field) {
+  const host = $('#bars'); host.textContent = '';
+  if (!mine || field.length < 3) {
+    host.appendChild(el('div', 'empty',
+      'Percentiles appear once enough of the competition has played.'));
+    return;
+  }
+  const keys = BAR_GROUPS.flatMap(([, rows]) => rows.map(r => r[0]));
+  const ranks = window.CourtsideSeason.percentiles(field, keys, BAR_LOW);
+  $('#barNote').textContent = 'vs ' + field.length + ' players';
+
+  const wrap = el('div', 'bars');
+  BAR_GROUPS.forEach(([title, rows]) => {
+    wrap.appendChild(el('div', 'bargroup', title));
+    rows.forEach(([k, label]) => {
+      const v = mine[k];
+      const p = (ranks.get(k) || new Map()).get(mine.id);
+      const row = el('div', 'barrow');
+      row.appendChild(el('div', 'bl', label));
+
+      const track = el('div', 'bt');
+      const fill = el('i');
+      fill.style.width = (p == null ? 0 : Math.max(2, p)) + '%';
+      /* the same five-band scale the table's heat map uses */
+      fill.style.background = p == null ? 'var(--rule-2)'
+        : p >= 75 ? 'var(--lume)' : p >= 50 ? 'color-mix(in oklch,var(--lume) 70%,var(--amber))'
+        : p >= 25 ? 'var(--amber)' : 'var(--flare)';
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      const val = el('div', 'bv', v == null ? '—' : Number(v).toFixed(k === 'ast_to' ? 2 : 1));
+      if (p != null) val.appendChild(el('div', 'bp', ord(p)));
+      row.appendChild(val);
+      wrap.appendChild(row);
+    });
+  });
+  host.appendChild(wrap);
 }
 
 /* -------------------------------------------------------------- game log --- */
@@ -170,21 +231,38 @@ function paintLog(rows) {
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
 
-    /* season lines — the same full table as everywhere else */
-    const ss = await api(`player_season_stats?player_id=eq.${pl.id}&select=*`);
-    paintTiles(ss[0]);
-    $('#seasonNote').textContent = ss.length
-      ? ss.length + (ss.length === 1 ? ' season' : ' seasons') : '';
+    /* ---- the season, from the shared intermediary ----
+       Aggregated the same way as the leaders board, so the two cannot
+       disagree, and computed across the whole competition so this player can
+       be ranked against everyone else in it. */
+    const D = window.CourtsideData;
+    let mine = null, field = [];
+    try {
+      const comps = team && team.id
+        ? await D.get(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+                      `&status=eq.final&select=competition_id&limit=1`)
+        : [];
+      const compId = comps[0] && comps[0].competition_id;
+      if (compId) {
+        const S = await D.season(compId);
+        field = S.players;
+        mine = field.find(r => r.id === pl.id) || null;
+      }
+    } catch (e) { console.warn('[season]', e); }
 
-    if (ss.length) {
+    paintTiles(mine);
+    paintBars(mine, field);
+
+    if (mine) {
+      $('#seasonNote').textContent = mine.gp + (mine.gp === 1 ? ' game' : ' games');
       T.render({
-        host: '#seasons', kind: 'player', sortKey: 'gp',
-        showMinGames: false,
-        filename: (pl.slug || 'player') + '-seasons',
-        rows: ss.map(r => ({ ...r,
-          name: ((r.first_name || '') + ' ' + (r.last_name || '')).trim(),
-          teamName: r.team_short || r.team_name || '', teamShort: r.team_short || '',
-          colour: r.team_colour || null }))
+        host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
+        filename: (pl.slug || 'player') + '-season',
+        rows: [Object.assign({}, mine, {
+          name: ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(),
+          teamName: (team && team.short_name) || '', teamShort: (team && team.short_name) || '',
+          colour: (team && team.colour) || null
+        })]
       });
     } else {
       $('#seasons').appendChild(el('div', 'empty',

@@ -1,0 +1,89 @@
+/* ============================================================================
+   COURTSIDE NAV — the rail that appears on every public page.
+
+   A fixed left rail, collapsed to icons and expanding on hover or focus. It is
+   deliberately narrow at rest: these pages are wide statistics tables, and
+   permanent navigation would eat the columns they exist to show.
+
+   Not loaded by the scorer. A statistician's screen has gesture targets at
+   every edge, and a rail that expands under a thumb mid-drag would cost a
+   stat — that page gets the hover bar in score/bootstrap.js instead.
+   ============================================================================ */
+
+:root{ --nav-w:54px; --nav-open:206px; }
+
+.cs-nav{
+  position:fixed; left:0; top:0; bottom:0; width:var(--nav-w);
+  z-index:900; display:flex; flex-direction:column; gap:2px;
+  padding:calc(var(--u)*1.5) 0;
+  background:color-mix(in oklch,var(--panel) 92%,black);
+  border-right:1px solid var(--rule);
+  overflow:hidden; overflow-y:auto; scrollbar-width:none;
+  transition:width .16s var(--ease);
+}
+.cs-nav::-webkit-scrollbar{ display:none }
+.cs-nav:hover, .cs-nav:focus-within, .cs-nav.pin{ width:var(--nav-open) }
+
+.cs-nav .brand{
+  display:flex; align-items:center; gap:10px; text-decoration:none;
+  padding:8px 0 12px 13px; margin-bottom:calc(var(--u));
+  border-bottom:1px solid var(--rule);
+}
+.cs-nav .brand .mark{
+  flex:none; width:28px; height:28px; display:grid; place-items:center;
+  border-radius:4px; background:linear-gradient(120deg,var(--lume),var(--aqua));
+  color:#04100b; font-family:var(--f-score); font-size:16px; line-height:1;
+}
+.cs-nav .brand .word{
+  font-family:var(--f-score); font-size:17px; color:var(--ink);
+  text-transform:uppercase; white-space:nowrap;
+  opacity:0; transition:opacity .12s;
+}
+.cs-nav:hover .word, .cs-nav:focus-within .word, .cs-nav.pin .word{ opacity:1 }
+
+.cs-nav a.item{
+  display:flex; align-items:center; gap:12px; text-decoration:none;
+  padding:9px 0 9px 15px; color:var(--ink-3); white-space:nowrap;
+  border-left:2px solid transparent;
+}
+.cs-nav a.item:hover{ color:var(--ink); background:color-mix(in oklch,var(--lume) 7%,transparent) }
+.cs-nav a.item.on{
+  color:var(--lume); border-left-color:var(--lume);
+  background:color-mix(in oklch,var(--lume) 10%,transparent);
+}
+.cs-nav a.item .ic{ flex:none; width:22px; text-align:center; font-size:14px; line-height:1 }
+.cs-nav a.item .tx{
+  font-family:var(--f-micro); font-size:9.5px; letter-spacing:.11em;
+  text-transform:uppercase; opacity:0; transition:opacity .12s;
+}
+.cs-nav:hover .tx, .cs-nav:focus-within .tx, .cs-nav.pin .tx{ opacity:1 }
+
+.cs-nav .gap{ flex:1 }
+.cs-nav .sep{ height:1px; background:var(--rule); margin:calc(var(--u)) 12px }
+
+/* the page moves over to make room, rather than sitting underneath */
+body.has-nav{ padding-left:var(--nav-w) }
+
+/* ---- phones: a bottom bar, because a left rail costs width a table needs -- */
+@media (max-width:768px){
+  :root{ --nav-w:0px }
+  .cs-nav{
+    left:0; right:0; top:auto; bottom:0; width:auto !important;
+    flex-direction:row; gap:0; padding:0;
+    border-right:0; border-top:1px solid var(--rule);
+    overflow-x:auto; overflow-y:hidden;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .cs-nav .brand, .cs-nav .gap, .cs-nav .sep{ display:none }
+  .cs-nav a.item{
+    flex:1 0 auto; flex-direction:column; gap:3px; justify-content:center;
+    padding:9px 13px; border-left:0; border-top:2px solid transparent;
+  }
+  .cs-nav a.item.on{ border-left-color:transparent; border-top-color:var(--lume) }
+  .cs-nav a.item .tx{ opacity:1; font-size:7.5px; letter-spacing:.06em }
+  body.has-nav{ padding-left:0; padding-bottom:60px }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .cs-nav, .cs-nav .tx, .cs-nav .word{ transition:none }
+}

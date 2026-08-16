@@ -90,6 +90,86 @@
 
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
+  /* --------------------------------------------------------- escape hatch --- */
+  /* The scorer gets a hover bar rather than the sidebar every other page has.
+
+     A statistician's screen has gesture targets at every edge — a rail that
+     expanded under a thumb mid-drag would cost a stat, and that is the one
+     thing this app must never do. So this is a 4px lip at the very top that
+     opens only on deliberate hover, and on touch only after a press and hold
+     on the lip itself. It cannot be opened by any gesture used to score.
+
+     Leaving mid-game is also confirmed, because the game lives in
+     localStorage and a mis-tap that navigates away mid-quarter is alarming
+     even when nothing is actually lost. */
+  (function escapeHatch() {
+    const lip = document.createElement('div');
+    lip.id = 'cs-exitlip';
+    lip.style.cssText = [
+      'position:fixed', 'top:0', 'left:0', 'right:0', 'height:4px',
+      'z-index:2147482000', 'background:linear-gradient(90deg,#93f2bf,#8ff5ff)',
+      'opacity:.28', 'transition:opacity .18s', 'cursor:pointer'
+    ].join(';');
+
+    const bar = document.createElement('div');
+    bar.style.cssText = [
+      'position:fixed', 'top:0', 'left:0', 'right:0',
+      'transform:translateY(-100%)', 'transition:transform .2s var(--ease,ease)',
+      'z-index:2147482001', 'display:flex', 'align-items:center', 'gap:14px',
+      'padding:calc(env(safe-area-inset-top) + 7px) 14px 7px',
+      'background:rgba(4,16,11,.95)', 'border-bottom:1px solid rgba(147,242,191,.3)',
+      'backdrop-filter:blur(8px)', '-webkit-backdrop-filter:blur(8px)',
+      'font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace',
+      'letter-spacing:.08em', 'text-transform:uppercase', 'color:#e6fff1'
+    ].join(';');
+
+    const link = (label, href, colour) => {
+      const a = document.createElement('a');
+      a.textContent = label; a.href = href;
+      a.style.cssText = 'color:' + colour + ';text-decoration:none;white-space:nowrap';
+      a.addEventListener('click', ev => {
+        const live = (typeof S !== 'undefined' && S && S.phase === 'game');
+        if (!live) return;
+        ev.preventDefault();
+        const go = () => { location.href = href; };
+        if (typeof askConfirm === 'function') {
+          askConfirm('leave the game? it is saved and will be here when you return', go);
+        } else if (confirm('Leave the game? It is saved.')) go();
+      });
+      return a;
+    };
+
+    bar.append(
+      link('← Courtside', '../', '#93f2bf'),
+      link('league', '../l/', '#8ff5ff'),
+      link('box scores', '../', '#8ff5ff'),
+      link('Prophesy Scouting', '/index.html', 'rgba(230,255,241,.6)')
+    );
+
+    const note = document.createElement('span');
+    note.textContent = 'the game is saved as you score';
+    note.style.cssText = 'margin-left:auto;color:rgba(230,255,241,.4);white-space:nowrap';
+    bar.appendChild(note);
+
+    let open = false, hold = null;
+    const show = v => {
+      open = v;
+      bar.style.transform = v ? 'translateY(0)' : 'translateY(-100%)';
+      lip.style.opacity = v ? '0' : '.28';
+    };
+    lip.addEventListener('mouseenter', () => show(true));
+    bar.addEventListener('mouseleave', () => show(false));
+    /* touch: press and hold the lip, so a swipe from the top edge does nothing */
+    lip.addEventListener('touchstart', () => { hold = setTimeout(() => show(true), 450); },
+                         { passive: true });
+    ['touchend', 'touchcancel', 'touchmove'].forEach(e =>
+      lip.addEventListener(e, () => { clearTimeout(hold); }, { passive: true }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) show(false); });
+
+    const mountNav = () => { document.body.append(lip, bar); };
+    if (document.body) mountNav(); else document.addEventListener('DOMContentLoaded', mountNav);
+  })();
+
   /* ------------------------------------------------------- fixture loading --- */
   /* Typing two rosters by hand before every game is the wrong workflow for a
      league that already knows who is playing — and it is also why season stats
