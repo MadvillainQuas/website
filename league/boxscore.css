@@ -787,11 +787,43 @@ html, body{ height:100dvh; }
    be squeezed away, and the court is allowed to shrink — it is a vector with
    a viewBox, so it scales rather than crops. The panel then always fits and
    the log scrolls internally, which is how it was meant to work. */
+/* Desktop: stop squeezing, start scrolling.
+
+   Capping the court at 32vh was the wrong trade — it cropped the shot chart
+   into a viewfinder too small to aim in, which is the one thing that panel is
+   for. The real problem was that everything had to fit one screen at once.
+
+   On a desktop there is no reason for that. The fixed app shell exists for a
+   phone held one-handed at courtside, where the page must never scroll under
+   a thumb mid-gesture. A mouse has no such problem. So from 900px up the
+   scorer becomes an ordinary scrolling document: every panel gets its natural
+   height, the court is drawn at a size you can actually tap, and anything
+   past the fold is reached by scrolling rather than by squashing it.
+
+   Mobile keeps the fixed shell unchanged — see the note above #cols. */
 @media (min-width:900px){
-  #midpanel{ overflow:hidden; }              /* never push past the shell */
-  #midpanel > .mpcard{ min-height:0; }       /* allow the siblings to give way */
-  #mpCourt svg{ max-height:32vh; }           /* the biggest card yields first */
-  .mplog{ flex:1 1 auto; min-height:150px; } /* the log always keeps a floor */
+  html, body{
+    position:static; inset:auto; height:auto; min-height:100%;
+    overflow-y:auto; overflow-x:hidden;
+  }
+  .screen{
+    position:relative; inset:auto;
+    min-height:calc(100dvh - 16px);
+  }
+  .screen.hidden{ display:none; }
+
+  /* panels size to their content instead of fighting for a fixed height */
+  #cols{ min-height:520px; }
+  #cols .plist{ max-height:none; }
+  #midpanel{ width:360px; min-width:360px; }
+  #midpanel > .mpcard{ min-height:0; }
+  #mpCourt svg{ max-height:none; width:100%; }   /* the chart is the point */
+  .mplog{ flex:0 0 auto; }
+  .mplog .loglist{ max-height:320px; }           /* long logs scroll in place */
+
+  /* room to breathe, and clearance for the fixed sheet at the bottom */
+  #game{ padding-bottom:96px; gap:12px; }
+  #finalview, #boxview, #advview, #logview{ padding-bottom:120px; }
 }
 
 /* The final screen carries five tabs of tables and charts, so it must scroll

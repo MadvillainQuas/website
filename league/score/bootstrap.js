@@ -90,6 +90,61 @@
 
   function say(text, colour) { label.textContent = text; dot.style.background = colour; }
 
+  /* ------------------------------------------------------------- tip-off --- */
+  /* Nothing was ever written when a game started. The fixture stayed
+     'scheduled' with a null roster_snapshot, so a viewer opening the public
+     page got a game row with no squads and no log — the clock ticked locally
+     against a stale state row and nothing else ever appeared. That is the
+     "live games don't feed the public side" fault.
+
+     At tip the scorer now claims the fixture: status live, the squads frozen
+     as they were at tip, and the starting five. The snapshot is what lets the
+     public page name a player, and freezing it means a roster edited later
+     never rewrites a game that has already been played.
+
+     This needs a signed-in statistician, because writing to someone's fixture
+     should. If the write is refused the badge says so out loud rather than
+     letting a whole game be scored into a void. */
+  let claimed = false;
+
+  async function claimFixture() {
+    if (claimed || !isFixture) return;
+    if (typeof S === 'undefined' || !S || S.phase !== 'game') return;
+    claimed = true;                                   // one attempt per load
+
+    const sb = window.courtsideClient && courtsideClient();
+    if (!sb) return;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      say('not signed in — nothing is being published', '#ff5f6b');
+      return;
+    }
+
+    const snapshot = {
+      teams: S.teams.map(t => ({
+        name: t.name, color: t.color,
+        players: t.players.map(p => ({ id: p.id, name: p.name, num: p.num }))
+      }))
+    };
+    const patch = {
+      status: 'live',
+      roster_snapshot: snapshot,
+      starters: S.starters,
+      period: S.period
+    };
+    if (S.tipWinner != null) patch.tip_winner = S.tipWinner;
+    if (S.arrowInit != null) patch.arrow_init = S.arrowInit;
+
+    const { error } = await sb.from('games').update(patch).eq('id', gameId);
+    if (error) {
+      say('cannot publish: ' + (error.message || 'refused'), '#ff5f6b');
+      console.warn('[tip-off]', error);
+      claimed = false;                                // let a retry happen
+      return;
+    }
+    say('live · ' + shortId, '#93f2bf');
+  }
+
   /* --------------------------------------------------------- escape hatch --- */
   /* The scorer gets a hover bar rather than the sidebar every other page has.
 
@@ -392,6 +447,10 @@
              Two passes — one for the immediate layout, one after any transition. */
           setTimeout(apply, 0);
           setTimeout(apply, 260);
+          /* tip-off is a screen change: setup -> game. Claim the fixture the
+             moment that happens, so the public page has a roster from the
+             first possession rather than from the final whistle. */
+          setTimeout(() => { try { claimFixture(); } catch (e) { console.warn('[tip]', e); } }, 400);
           return r;
         };
         wrapped.__csWrapped = true;

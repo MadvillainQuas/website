@@ -30,6 +30,7 @@ const f0 = v => (v == null ? '—' : String(v));
 const sgn = v => (v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(1));
 const sgn0 = v => (v == null ? '—' : (v > 0 ? '+' : '') + v);
 const pair = (m, a) => (m == null ? '—' : m + '-' + a);
+const pg   = (m, a) => (m == null ? '—' : Number(m).toFixed(1) + '-' + Number(a).toFixed(1));
 
 /* ------------------------------------------------------------- catalogue ---
    g      the groups this column belongs to (a preset is a set of groups)
@@ -65,13 +66,18 @@ const P = [
   { k:'fd',   l:'FD',   g:['totals'], fmt:r=>f0(r.fd), heat:1 },
 
   /* shooting */
-  { k:'fgm',    l:'FG',   g:['basic','shooting'], fmt:r=>pair(r.fgm,r.fga), sort:r=>r.fgm },
+  /* per game, made-attempted: "6.2-11.4" is the shape of a night's work,
+     where a season total of "192-440" needs dividing in your head first */
+  { k:'fgm_pg', l:'FG',   g:['basic','shooting'], fmt:r=>pg(r.fgm_pg,r.fga_pg), sort:r=>r.fgm_pg, w:62 },
   { k:'fg_pct', l:'FG%',  g:['basic','shooting'], fmt:r=>f1(r.fg_pct), heat:1 },
   { k:'p2_pct', l:'2P%',  g:['shooting'], fmt:r=>f1(r.p2_pct), heat:1 },
-  { k:'p3m',    l:'3PT',  g:['basic','shooting'], fmt:r=>pair(r.p3m,r.p3a), sort:r=>r.p3m },
+  { k:'p3m_pg', l:'3PT',  g:['basic','shooting'], fmt:r=>pg(r.p3m_pg,r.p3a_pg), sort:r=>r.p3m_pg, w:62 },
   { k:'p3_pct', l:'3P%',  g:['basic','shooting'], fmt:r=>f1(r.p3_pct), heat:1 },
-  { k:'ftm',    l:'FT',   g:['shooting'], fmt:r=>pair(r.ftm,r.fta), sort:r=>r.ftm },
+  { k:'ftm_pg', l:'FT',   g:['basic','shooting'], fmt:r=>pg(r.ftm_pg,r.fta_pg), sort:r=>r.ftm_pg, w:62 },
   { k:'ft_pct', l:'FT%',  g:['basic','shooting'], fmt:r=>f1(r.ft_pct), heat:1 },
+  { k:'fgm',    l:'FG TOT',  g:['totals'], fmt:r=>pair(r.fgm,r.fga), sort:r=>r.fgm, w:70 },
+  { k:'p3m',    l:'3PT TOT', g:['totals'], fmt:r=>pair(r.p3m,r.p3a), sort:r=>r.p3m, w:70 },
+  { k:'ftm',    l:'FT TOT',  g:['totals'], fmt:r=>pair(r.ftm,r.fta), sort:r=>r.ftm, w:70 },
   { k:'efg',    l:'eFG%', g:['shooting','advanced'], fmt:r=>f1(r.efg), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting','advanced'], fmt:r=>f1(r.ts),  heat:1 },
   { k:'rim_pct',  l:'RIM%',  g:['shooting'], fmt:r=>f1(r.rim_pct), heat:1 },
@@ -114,10 +120,14 @@ const P = [
   { k:'on_tov',   l:'ON TOV%',  g:['onoff'], fmt:r=>f1(r.on_tov), heat:1, low:1 },
 
   /* what the opponent managed while he was on the floor */
-  { k:'vs_efg',  l:'OPP eFG%',  g:['vs','defense'], fmt:r=>f1(r.vs_efg),  heat:1, low:1 },
-  { k:'vs_tov',  l:'OPP TOV%',  g:['vs','defense'], fmt:r=>f1(r.vs_tov),  heat:1 },
-  { k:'vs_oreb', l:'OPP OREB%', g:['vs','defense'], fmt:r=>f1(r.vs_oreb), heat:1, low:1 },
-  { k:'vs_ftr',  l:'OPP FTr',   g:['vs'], fmt:r=>f1(r.vs_ftr), heat:1, low:1 }
+  /* The defensive side is in the on/off group too, not only in "opponent".
+     An on/off that shows what a team scores with a player and not what it
+     concedes tells half the story, and the missing half is usually the reason
+     the number looks the way it does. */
+  { k:'vs_efg',  l:'OPP eFG%',  g:['onoff','vs','defense'], fmt:r=>f1(r.vs_efg),  heat:1, low:1 },
+  { k:'vs_tov',  l:'OPP TOV%',  g:['onoff','vs','defense'], fmt:r=>f1(r.vs_tov),  heat:1 },
+  { k:'vs_oreb', l:'OPP OREB%', g:['onoff','vs','defense'], fmt:r=>f1(r.vs_oreb), heat:1, low:1 },
+  { k:'vs_ftr',  l:'OPP FTr',   g:['onoff','vs'], fmt:r=>f1(r.vs_ftr), heat:1, low:1 }
 ];
 
 const T = [
@@ -359,9 +369,25 @@ function render(opts) {
     }
 
     const t = el('table', 'ft');
+    /* Declare the table's own width as the sum of its columns.
+
+       With table-layout:fixed and width:max-content the browser still has to
+       reconcile a computed table width against the declared column widths, and
+       it hands the surplus to a single column — which is exactly how PPG ended
+       up 124px wide against 52px everywhere else. Summing the columns and
+       stating the total leaves nothing to reconcile. */
+    const W0 = 36, W1 = 170, WD = 52;
+    const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + (c.w || WD), 0);
+    t.style.width = totalW + 'px';
+
     const thead = el('thead'), hr = el('tr');
     cols.forEach((c, i) => {
       const th = el('th', (c.k === sortKey ? 'sorted ' : '') + (i < 2 ? 'stick c' + i : ''), c.l);
+      /* Width is set on the header only; the table is fixed-layout, so the
+         column follows. Without this a long header like "OPP OREB%" or a wide
+         cell like "192-440" stretched its column and squeezed every other one,
+         which is what threw PPG and DIFF out of proportion. */
+      if (i >= 2) th.style.width = (c.w || WD) + 'px';
       th.title = c.l + (c.low ? ' — lower is better' : '');
       th.addEventListener('click', () => {
         if (sortKey === c.k) sortDir = -sortDir;

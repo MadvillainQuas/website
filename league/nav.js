@@ -24,16 +24,21 @@
   const lg = qp.get('l') || (window.__CS_LEAGUE_SLUG || '');
   const withLeague = path => lg ? path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(lg) : path;
 
+  /* Named, grouped and labelled. Glyphs are decoration only — several of
+     these destinations are not guessable from an icon, and a couple of the
+     symbols used before did not render in the self-hosted faces at all,
+     which is how the rail ended up as a logo followed by nothing. */
   const ITEMS = [
-    { href: root,                       ic: '⌂',  tx: 'home',    match: /\/league\/$/ },
-    { href: withLeague(root + 'l/'),    ic: '▤',  tx: 'league',  match: /\/league\/l\// },
-    { href: withLeague(root + 'stats/'),ic: '▦',  tx: 'stats',   match: /\/league\/stats\// },
-    { sep: true },
-    { href: root + 'score/',            ic: '⏱',  tx: 'scorer',  match: /\/league\/score\// },
-    { href: root + 'app/',              ic: '◈',  tx: 'portal',  match: /\/league\/app\// },
-    { href: root + 'admin/',            ic: '⚙',  tx: 'admin',   match: /\/league\/admin\// },
+    { label: 'watch' },
+    { href: root,                        ic: '■', tx: 'all games',    match: /\/league\/$/ },
+    { href: withLeague(root + 'l/'),     ic: '▤', tx: 'league table', match: /\/league\/l\// },
+    { href: withLeague(root + 'stats/'), ic: '▦', tx: 'statistics',   match: /\/league\/stats\// },
+    { label: 'take part' },
+    { href: root + 'score/',             ic: '●', tx: 'score a game', match: /\/league\/score\// },
+    { href: root + 'app/',               ic: '◆', tx: 'club portal',  match: /\/league\/app\// },
+    { href: root + 'admin/',             ic: '▲', tx: 'league admin', match: /\/league\/admin\// },
     { gap: true },
-    { href: '/index.html',              ic: '←',  tx: 'prophesy' }
+    { href: '/index.html',               ic: '←', tx: 'prophesy' }
   ];
 
   const nav = document.createElement('nav');
@@ -53,6 +58,11 @@
   ITEMS.forEach(it => {
     if (it.gap) { const d = document.createElement('div'); d.className = 'gap'; nav.appendChild(d); return; }
     if (it.sep) { const d = document.createElement('div'); d.className = 'sep'; nav.appendChild(d); return; }
+    if (it.label) {
+      const d = document.createElement('div');
+      d.className = 'grouplbl'; d.textContent = it.label;
+      nav.appendChild(d); return;
+    }
     const a = document.createElement('a');
     a.className = 'item' + (it.match && it.match.test(here) ? ' on' : '');
     a.href = it.href;

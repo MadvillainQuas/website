@@ -203,6 +203,13 @@ function finishPlayer(A, m) {
     spg: r1(A.stl / g), bpg: r1(A.blk / g), topg: r1(A.tov / g), pfpg: r1(A.pf / g),
     orpg: r1(A.oreb / g), drpg: r1(A.dreb / g), fdpg: r1(A.fd / g),
 
+    /* Per-game makes and attempts. A season total of "192-440" tells you
+       almost nothing about a player without dividing by games in your head;
+       "6.2-11.4" is the shape of a night's work. */
+    fgm_pg: r1(fgm / g), fga_pg: r1(fga / g),
+    p3m_pg: r1(A.p3m / g), p3a_pg: r1(A.p3a / g),
+    ftm_pg: r1(A.ftm / g), fta_pg: r1(A.fta / g),
+
     /* ---- shooting ---- */
     fg_pct: r1(pct(fgm, fga)), p2_pct: r1(pct(A.p2m, A.p2a)), p3_pct: r1(pct(A.p3m, A.p3a)),
     ft_pct: r1(pct(A.ftm, A.fta)),
@@ -229,7 +236,11 @@ function finishPlayer(A, m) {
     pts75: r1(dv(A.pts, pPoss) == null ? null : A.pts / Math.max(1, pPoss) * 75),
     poss: r1(pPoss),
 
-    /* ---- on court ---- */
+    /* ---- on court ----
+       The defensive half is carried alongside the offensive one everywhere it
+       is offered. An on/off that shows only what a team scores with a player
+       says half of what happened, and the half it omits is usually why the
+       number is what it is. */
     on_ortg: r1(onOrtg), on_drtg: r1(onDrtg), on_net: r1(onNet),
     on_efg: r1(pct(oc.tFGM + 0.5 * oc.t3M, oc.tFGA)),
     on_tov: r1(pct(oc.tTOV, oc.tFGA + 0.44 * oc.tFTA + oc.tTOV)),
