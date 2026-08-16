@@ -269,7 +269,7 @@ function goLive() {
          the table too, since the boot fetch may have run before the tip */
       backfill('snapshot');
     },
-    onFrame(f) { mergeLive(f.game, f.events); render(); checkGap(); },
+    onFrame(f) { mergeLive(f.game, f.events, f.removed, f.full); render(); checkGap(); },
     onStatus(s) { if (statusVal !== 'final') setStatus(s); }
   });
   /* The clock lives inside the scoreboard block the scorer renders, not in a
@@ -342,7 +342,7 @@ function checkGap() {
 /* A live frame carries the roster and any events the scorer has published.
    Events are merged by seq so a reconnect that replays a frame cannot
    double-count, which would silently inflate the score. */
-function mergeLive(game, events) {
+function mergeLive(game, events, removed, full) {
   if (!window.S) return;
   if (game) {
     if (game.teams) window.S.teams = game.teams;
@@ -355,6 +355,35 @@ function mergeLive(game, events) {
       window.S.phase = game.status === 'final' ? 'final' : 'game';
       if (game.status === 'final') setStatus('final');
     }
+  }
+  /* Retractions first. A statistician who undoes a basket, or edits one in
+     the middle of the log, sends the retracted ids alongside the replacements
+     — and the replacement can reuse an id, so dropping the old ones after
+     adding the new ones would delete what just arrived. */
+  if (removed && removed.length) {
+    const gone = new Set(removed);
+    const before = window.S.events.length;
+    window.S.events = window.S.events.filter(e => !gone.has(e.id));
+    if (window.S.events.length !== before) {
+      console.log('[live] retracted ' + (before - window.S.events.length) + ' event(s)');
+    }
+  }
+
+  /* A FULL frame is the scorer's entire log, published every ten seconds. It
+     is authoritative, so it REPLACES rather than merges — merging cannot undo
+     anything, which would leave a viewer who missed a retraction frame holding
+     the retracted event until they reloaded. This is the self-healing path:
+     whatever else goes wrong, a viewer is correct within ten seconds. */
+  if (full && events) {
+    const norm = events.map(e => {
+      const ev = Object.assign({}, e);
+      if (ev.seq != null && ev.id == null) ev.id = ev.seq;
+      return ev;
+    }).sort((a, b) => a.id - b.id);
+    const changed = norm.length !== window.S.events.length;
+    window.S.events = norm;
+    if (changed) console.log('[live] snapshot resynced to ' + norm.length + ' events');
+    return;
   }
   if (events && events.length) {
     const seen = new Set(window.S.events.map(e => e.id));

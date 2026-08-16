@@ -27,7 +27,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 
-let pub = null, sent = 0, gameId = null, attached = false, lastPub = '';
+let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '';
 
 /* the scorer's own state object, published so viewers can name players */
 function rosterOf(S) {
@@ -54,14 +54,23 @@ function stateOf(S) {
   };
 }
 
-/* publish anything the scorer has that we have not sent yet */
+/* Publish whatever changed since last time — including what was taken back.
+
+   This used to be a high-water mark on the array's LENGTH, which quietly broke
+   the moment a statistician pressed undo: the array shrank, the mark stayed
+   high, and every event after it was swallowed until the count climbed back
+   past the old value. The viewer kept a retracted basket for the rest of the
+   game and never saw its replacement. The scorer can also insert an event
+   earlier in the log, which a length comparison cannot detect at all.
+
+   CourtsideLive.diffLog compares identities instead, so append, undo, redo and
+   a mid-log edit are all one code path. */
 function drain(S) {
   if (!pub) return;
-  const evs = S.events || [];
-  if (evs.length > sent) {
-    pub.pushEvents(evs.slice(sent).map(e => Object.assign({ seq: e.id }, e)));
-    sent = evs.length;
-  }
+  const d = root.CourtsideLive.diffLog(sentIds, S.events || []);
+  if (!d.added.length && !d.removed.length) return;
+  pub.pushEvents(d.added.map(e => Object.assign({ seq: e.id }, e)), d.removed);
+  sentIds = d.ids;
 }
 
 /* the roster can change (a sub-in of a player added mid-game), so re-publish
@@ -155,7 +164,8 @@ const api = {
     } catch (e) { console.warn('[sync]', e); }
   },
 
-  status() { return { gameId, sent, pending: pub ? pub.pending() : 0, transport: pub && pub.transport }; }
+  status() { return { gameId, sent: sentIds.length,
+                      pending: pub ? pub.pending() : 0, transport: pub && pub.transport }; }
 };
 
 if (typeof window !== 'undefined') {

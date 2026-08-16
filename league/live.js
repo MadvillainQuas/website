@@ -27,24 +27,68 @@
 }(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this), function () {
 'use strict';
 
+/* This module is loaded in a browser, in a worker, and in Node by the tests.
+   `self` exists in the first two and not the third, and referring to it bare
+   threw the moment a local transport was constructed under Node. */
+const G = (typeof globalThis !== 'undefined') ? globalThis
+        : (typeof self !== 'undefined') ? self : {};
+
 const FRAME_MS   = 250;    // coalescing window
 const POLL_MS    = 3000;   // fallback cadence when the socket is down
 const STALE_MS   = 12000;  // no traffic for this long => degrade (> 2 heartbeats)
 const RETRY_MAX  = 30000;
+
+/* ============================================================================
+   diffLog — what changed in the scorer's event log since we last published.
+
+   The obvious implementation is a high-water mark: remember how many events
+   were sent and publish everything past it. That was the implementation, and
+   it is wrong in a way that only shows up when a statistician corrects
+   something.
+
+   An UNDO shortens the array. The count then sits BELOW the mark, so nothing
+   is published — and worse, the mark stays high, so the next few events are
+   silently swallowed until the count climbs past it again. A viewer keeps the
+   retracted basket forever and misses its replacement. The scorer also allows
+   inserting an event at an earlier point in the log, which a length comparison
+   cannot see at all.
+
+   So compare identities, not counts. Walk both lists while they agree; from
+   the first disagreement, everything we published is retracted and everything
+   the scorer now has is new. That handles append, undo, redo, and an edit in
+   the middle of the log with one rule, and its cost is a loop over an array we
+   already hold.
+   ============================================================================ */
+function diffLog(sentIds, events) {
+  const ids = (events || []).map(e => (e.id != null ? e.id : e.seq));
+  let i = 0;
+  while (i < sentIds.length && i < ids.length && sentIds[i] === ids[i]) i++;
+  return {
+    added:   (events || []).slice(i),
+    removed: sentIds.slice(i),
+    ids
+  };
+}
 
 /* ---------------------------------------------------------------- transports */
 
 /* local: two tabs on the same origin. Durability is localStorage. */
 function localTransport(gameId) {
   const KEY = 'cslive:' + gameId;
-  const ch  = ('BroadcastChannel' in self) ? new BroadcastChannel(KEY) : null;
-  const read  = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { return null; } };
-  const write = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (_) {} };
+  const ch  = ('BroadcastChannel' in G) ? new G.BroadcastChannel(KEY) : null;
+  const read  = () => { try { return JSON.parse(G.localStorage.getItem(KEY) || 'null'); } catch (_) { return null; } };
+  const write = v => { try { G.localStorage.setItem(KEY, JSON.stringify(v)); } catch (_) {} };
   return {
     kind: 'local',
     async snapshot() { return read() || { events: [], state: null, game: null }; },
     async send(frame) {
       const cur = read() || { events: [], state: null, game: null };
+      /* retractions first: an edit republishes the tail, so applying the new
+         events before dropping the old ones would leave both in the store */
+      if (frame.removed && frame.removed.length) {
+        const gone = new Set(frame.removed);
+        cur.events = cur.events.filter(e => !gone.has(e.seq));
+      }
       if (frame.events && frame.events.length) {
         const seen = new Set(cur.events.map(e => e.seq));
         frame.events.forEach(e => { if (!seen.has(e.seq)) cur.events.push(e); });
@@ -96,6 +140,15 @@ function supabaseTransport(gameId, sb) {
           return { game_id: gameId, seq: seq != null ? seq : id, t, team, pid, period, clock, payload: rest };
         }), { onConflict: 'game_id,seq', ignoreDuplicates: true }));
       }
+      /* A retracted event must leave the durable log too, or finalise would
+         rebuild the game from a row the statistician has already taken back —
+         the public page would self-correct and the FINAL box score would not.
+         Deleting is allowed only for whoever may score the game, and only
+         while it is unfinished; the policy enforces both. */
+      if (frame.removed && frame.removed.length) {
+        jobs.push(sb.from('game_events').delete()
+          .eq('game_id', gameId).in('seq', frame.removed));
+      }
       if (frame.state) {
         jobs.push(sb.from('game_state').upsert(Object.assign({ game_id: gameId }, frame.state)));
       }
@@ -131,37 +184,56 @@ const HEARTBEAT_MS = 5000;    // quiet-period resync; MUST stay well under STALE
 function publisher(opts) {
   const { gameId, mode, supabase } = opts;
   const tx = makeTransport(gameId, mode, supabase);
-  let buf = [], timer = null, seqHigh = 0, sending = false;
+  let buf = [], retract = [], timer = null, seqHigh = 0;
+  let chain = Promise.resolve();        // sends run strictly in order
   const backlog = [];                       // frames that failed to send
   let beat = null, lastSend = 0;
 
-  async function flush() {
+  /* Sends are SERIALISED onto a chain rather than gated by a busy flag.
+
+     The flag version deferred a frame to the backlog whenever another send was
+     in flight, which is correct eventually but means flush() can return before
+     its own frame has gone anywhere. That is fine for a routine flush and not
+     fine for the one on pagehide: a correction made just before the tab closes
+     would sit in a backlog that never drains, and the retracted event would
+     survive in the log.
+
+     Chaining keeps frames strictly in order — which matters, because a
+     retraction and its replacement must not overtake each other — and lets
+     `await flushNow()` mean what it says. */
+  function flush() {
     timer = null;
-    if (!buf.length && !backlog.length) return;
+    if (!buf.length && !retract.length && !backlog.length) return chain;
     lastSend = Date.now();
     /* every frame carries the authoritative clock, so a viewer that has been
        ticking locally corrects itself on the next play — self-healing, no extra
        messages, and an adjusted or mis-synced clock can never persist. */
-    const frame = { gameId, events: buf.splice(0), state: opts.stateProvider ? opts.stateProvider() : null,
+    const frame = { gameId, events: buf.splice(0), removed: retract.splice(0),
+                    state: opts.stateProvider ? opts.stateProvider() : null,
                     seq: ++seqHigh, at: Date.now() };
-    if (sending) { backlog.push(frame); return; }
-    sending = true;
-    try {
-      const ok = await tx.send(frame);
-      if (!ok) backlog.push(frame);
-      while (backlog.length) {                       // drain in order
-        const f = backlog[0];
-        if (await tx.send(f)) backlog.shift(); else break;
-      }
-    } catch (_) { backlog.push(frame); }
-    finally { sending = false; }
+
+    chain = chain.then(async () => {
+      try {
+        const ok = await tx.send(frame);
+        if (!ok) { backlog.push(frame); return; }
+        while (backlog.length) {                     // drain in order
+          const f = backlog[0];
+          if (await tx.send(f)) backlog.shift(); else break;
+        }
+      } catch (_) { backlog.push(frame); }
+    });
+    return chain;
   }
 
+  /* A state frame carries whatever events are buffered, so it must not
+     overtake an earlier one — it goes on the chain like everything else. */
   function pushState(state, extra) {
     lastSend = Date.now();
-    const frame = Object.assign({ gameId, events: buf.splice(0), state, seq: ++seqHigh, at: Date.now() }, extra || {});
+    const frame = Object.assign({ gameId, events: buf.splice(0), removed: retract.splice(0),
+                                  state, seq: ++seqHigh, at: Date.now() }, extra || {});
     if (timer) { clearTimeout(timer); timer = null; }
-    tx.send(frame).catch(() => backlog.push(frame));
+    chain = chain.then(() => tx.send(frame)).catch(() => { backlog.push(frame); });
+    return chain;
   }
 
   /* during a quiet stretch (a long dead ball, half-time) nothing is published,
@@ -182,9 +254,10 @@ function publisher(opts) {
        coalesce. Now the first event of a burst goes immediately and anything
        arriving during the window behind it rides the one follow-up message.
        A 40-event flurry still costs two messages, not forty. */
-    pushEvents(evs) {
-      if (!evs || !evs.length) return;
-      buf.push(...evs);
+    pushEvents(evs, removed) {
+      if (removed && removed.length) retract.push(...removed);
+      if (evs && evs.length) buf.push(...evs);
+      if (!buf.length && !retract.length) return;
       if (timer) return;                       // a window is already open
 
       const quiet = Date.now() - lastSend >= FRAME_MS;
@@ -192,7 +265,7 @@ function publisher(opts) {
         flush();                               // nothing recent — go now
         timer = setTimeout(() => {             // hold the window open behind it
           timer = null;
-          if (buf.length) flush();
+          if (buf.length || retract.length) flush();
         }, FRAME_MS);
       } else {
         timer = setTimeout(flush, FRAME_MS);
@@ -211,11 +284,16 @@ function publisher(opts) {
         needs no credentials, no database read and no luck about when it
         opened the page: within one interval it holds the entire game. Frames
         dedupe by event id, so this costs the viewer nothing but bandwidth. */
+    /* The whole log, on a slow beat. ORDER MATTERS MORE HERE THAN ANYWHERE:
+       a snapshot is authoritative and replaces what a viewer holds, so one
+       captured before a correction and delivered after it would reinstate the
+       retracted event. Chaining makes that impossible. */
     pushSnapshot(allEvents, state, game) {
       lastSend = Date.now();
       const frame = { gameId, events: allEvents || [], state, game,
                       full: true, seq: ++seqHigh, at: Date.now() };
-      tx.send(frame).catch(() => {});     // best effort: the next one repeats it
+      chain = chain.then(() => tx.send(frame)).catch(() => {});  // next one repeats it
+      return chain;
     },
 
     /** clock transitions: start, stop, adjust, period change */
@@ -304,5 +382,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, FRAME_MS, POLL_MS, STALE_MS, VERSION: '1.0.0' };
+return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, VERSION: '1.1.0' };
 }));

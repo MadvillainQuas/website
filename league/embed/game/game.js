@@ -153,13 +153,29 @@ function render() {
   postHeight();
 }
 
-function merge(g, events) {
+function merge(g, events, removed, full) {
   if (!S) return;
   if (g) {
     if (g.teams) S.teams = g.teams;
     if (g.starters) S.starters = g.starters;
     if (g.period != null) S.period = g.period;
     if (g.status) { S.status = g.status; game.status = g.status; }
+  }
+  /* retractions first — an edit can reuse an id, so dropping the old ones
+     after adding the new would delete what just arrived */
+  if (removed && removed.length) {
+    const gone = new Set(removed);
+    S.events = S.events.filter(e => !gone.has(e.id));
+  }
+  /* a FULL frame is the whole log and replaces what we hold — merging can
+     never undo anything, so this is what makes a viewer self-heal */
+  if (full && events) {
+    S.events = events.map(e => {
+      const ev = Object.assign({}, e);
+      if (ev.seq != null && ev.id == null) ev.id = ev.seq;
+      return ev;
+    }).sort((a, b) => a.id - b.id);
+    return;
   }
   if (events && events.length) {
     const seen = new Set(S.events.map(e => e.id));
@@ -206,8 +222,8 @@ function merge(g, events) {
       sub = L.subscriber({
         gameId, mode: 'supabase',
         supabase: window.courtsideClient ? courtsideClient() : null,
-        onSnapshot(s) { merge(s.game, s.events); render(); },
-        onFrame(f) { merge(f.game, f.events); render(); },
+        onSnapshot(s) { merge(s.game, s.events, s.removed); render(); },
+        onFrame(f) { merge(f.game, f.events, f.removed, f.full); render(); },
         onStatus() {}
       });
       setInterval(render, 1000);         // the clock ticks locally, as everywhere

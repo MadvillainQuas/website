@@ -88,6 +88,11 @@ jobs:
         # shows up as a blank public page
         run: node supabase/tests/boxscore.isolation.mjs
 
+      - name: The live path publishes corrections, not just additions
+        # undo, redo and a mid-log edit must reach the viewer AND the durable
+        # log; a length-based high-water mark could see none of them
+        run: node supabase/tests/live.test.mjs
+
       - name: Roster CSV parsing
         # the one path where a manager hands us a whole squad at once, so a
         # quiet misparse is twenty wrong rows rather than one
