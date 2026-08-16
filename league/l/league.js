@@ -44,7 +44,7 @@ async function boot() {
     $('#ctx').textContent = league.name + ' · ' + season.name;
 
     renderCompPicker();
-    await Promise.all([renderTable(), renderFixtures(), renderLeaders()]);
+    await Promise.all([renderTable(), renderFixtures(), renderLeaders(), renderTeamStats()]);
     $('#foot').textContent = 'Courtside Network · ' + league.name + ' · ' + season.name;
   } catch (e) {
     fail('Could not load: ' + e.message);
@@ -63,7 +63,7 @@ function renderCompPicker() {
   comps.forEach(c => {
     const b = el('button', 'cs-chip' + (c.id === comp.id ? ' on' : ''), c.name);
     b.addEventListener('click', () => {
-      comp = c; renderCompPicker(); renderTable(); renderFixtures(); renderLeaders();
+      comp = c; renderCompPicker(); renderTable(); renderFixtures(); renderLeaders(); renderTeamStats();
     });
     wrap.appendChild(b);
   });
@@ -155,29 +155,72 @@ async function renderFixtures() {
 }
 
 /* -------------------------------------------------------------- leaders --- */
+/* The full table rather than a top-ten list: the same columns, sorting, stat
+   groups and search as the season statistics page, because "who leads the
+   league in X" is a question about every column, not just points. Defaults to
+   counting stats — see the note in fulltable.js about per-75. */
 async function renderLeaders() {
   const pane = $('#pane-leaders'); pane.textContent = '';
   let rows = [];
   try {
-    rows = await api(`player_season_stats?competition_id=eq.${comp.id}` +
-                     `&select=player_id,gp,ppg,rpg,apg,ts,first_name,last_name,player_slug` +
-                     `&order=ppg.desc&limit=10`);
-  } catch (_) { /* view may be empty before any game is finalised through the app */ }
+    rows = await api(`player_season_stats?competition_id=eq.${comp.id}&select=*`);
+  } catch (_) { /* the view is empty until a game is finalised through the app */ }
 
   if (!rows.length) {
     pane.appendChild(el('div', 'empty',
       'No player statistics yet — these fill in as games are finalised in the scorer.'));
     return;
   }
-  const hdr = el('div', 'cs-hdr');
-  hdr.append(el('span', 'idx', 'PPG'), el('h2', null, 'Leading scorers'));
-  pane.appendChild(hdr);
-  rows.forEach((r, i) => {
-    const row = el('div', 'lead');
-    row.appendChild(el('div', 'r', i + 1));
-    row.appendChild(el('div', 'n', ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || 'Player'));
-    row.appendChild(el('div', 'v', r.ppg != null ? Number(r.ppg).toFixed(1) : '—'));
-    pane.appendChild(row);
+
+  window.CourtsideTable.render({
+    host: pane,
+    kind: 'player',
+    sortKey: 'ppg',
+    filename: (league.slug || 'league') + '-leaders',
+    rows: rows.map(r => ({
+      ...r,
+      name: ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || 'Player',
+      teamName: r.team_short || r.team_name || '',
+      teamShort: r.team_short || '',
+      teamColour: r.team_colour || null,
+      colour: r.team_colour || null
+    })),
+    /* by id, so the link survives a rename; the profile accepts either */
+    playerHref: r => '../p/?p=' + encodeURIComponent(r.player_id || r.player_slug || '')
+  });
+}
+
+/* ----------------------------------------------------------- team stats --- */
+async function renderTeamStats() {
+  const pane = $('#pane-teams'); pane.textContent = '';
+  let rows = [], teams = [];
+  try {
+    [rows, teams] = await Promise.all([
+      api(`team_season_stats?competition_id=eq.${comp.id}&select=*`),
+      api(`teams?league_id=eq.${league.id}&select=id,name,short_name,slug,colour`)
+    ]);
+  } catch (e) {
+    pane.appendChild(el('div', 'empty', 'Could not load team statistics: ' + e.message));
+    return;
+  }
+  if (!rows.length) {
+    pane.appendChild(el('div', 'empty',
+      'No team statistics yet — these fill in as games are finalised in the scorer.'));
+    return;
+  }
+
+  const byId = new Map(teams.map(t => [t.id, t]));
+  window.CourtsideTable.render({
+    host: pane,
+    kind: 'team',
+    sortKey: 'ppg',
+    filename: (league.slug || 'league') + '-team-stats',
+    rows: rows.map(r => {
+      const t = byId.get(r.team_id) || {};
+      return { ...r, name: t.name || 'Team', teamShort: t.short_name || '',
+               colour: t.colour || null, slug: t.slug };
+    }),
+    teamHref: r => r.slug ? '../t/?t=' + encodeURIComponent(r.slug) : null
   });
 }
 

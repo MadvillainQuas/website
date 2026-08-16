@@ -1,0 +1,100 @@
+/* ============================================================================
+   COURTSIDE FULL TABLE — the dense, sortable statistics table.
+
+   Structure and behaviour follow index_9's full table: a sticky header, stat
+   group pills that swap the visible column set, per-column toggles, a search
+   box and a minimum-games filter. The look is the Backlit kit's, not
+   index_9's — same information architecture, this site's clothes.
+
+   Depends on courtside-kit.css for the tokens.
+   ============================================================================ */
+
+/* ---------- controls ---------- */
+.ft-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+.ft-bar .grow{flex:1 1 180px;min-width:0}
+.ft-count{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+  letter-spacing:.12em;white-space:nowrap}
+
+/* stat-group pills. Colour carries the group, as in index_9, but drawn from
+   the kit's neons rather than its palette. */
+.ft-pills{display:flex;flex-wrap:wrap;gap:6px;
+  padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+.ft-pill{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-3);
+  transition:color .12s,background .12s,border-color .12s;white-space:nowrap}
+.ft-pill:hover{color:var(--ink)}
+.ft-pill.on{color:#04100b;font-weight:700;border-color:transparent}
+.ft-pill.on[data-g="all"]{background:var(--ink-2)}
+.ft-pill.on[data-g="scoring"]{background:var(--amber)}
+.ft-pill.on[data-g="defense"]{background:var(--lume)}
+.ft-pill.on[data-g="playmaking"]{background:var(--aqua)}
+.ft-pill.on[data-g="hustle"]{background:var(--flare)}
+.ft-pill.on[data-g="advanced"]{background:var(--violet)}
+
+/* the column toggle drawer, collapsed by default like index_9's */
+.ft-cols{padding:0 calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
+.ft-cols[hidden]{display:none}
+.ft-colgrid{display:flex;flex-wrap:wrap;gap:5px;padding-top:calc(var(--u))}
+.ft-col{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:5px 9px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--rule);background:transparent;color:var(--ink-3)}
+.ft-col.on{color:var(--ground);background:var(--lume);border-color:var(--lume)}
+
+/* ---------- the table ---------- */
+.ft-wrap{overflow:auto;max-height:min(72vh,760px);
+  /* the header sticks against this box, so the box owns the scroll */
+  overscroll-behavior:contain}
+table.ft{border-collapse:separate;border-spacing:0;width:100%;
+  font-family:var(--f-data);font-size:11.5px;font-variant-numeric:tabular-nums}
+
+table.ft thead th{
+  position:sticky;top:0;z-index:3;
+  background:var(--panel);
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);font-weight:400;
+  padding:9px 7px;text-align:right;white-space:nowrap;cursor:pointer;
+  border-bottom:1px solid var(--rule-2);
+  /* a sticky cell's own border does not travel with it in every engine, so the
+     line under the header is drawn as a shadow that always follows */
+  box-shadow:inset 0 -1px 0 var(--rule-2)}
+table.ft thead th:hover{color:var(--ink)}
+table.ft thead th.sorted{color:var(--lume)}
+
+/* the identity columns stay put while the stats scroll sideways — a name you
+   cannot see makes the row it belongs to useless */
+table.ft th.stick, table.ft td.stick{position:sticky;background:var(--ground);z-index:2}
+table.ft thead th.stick{z-index:4;background:var(--panel)}
+table.ft th.c0, table.ft td.c0{left:0;text-align:right;width:34px}
+table.ft th.c1, table.ft td.c1{left:34px;text-align:left;min-width:132px}
+table.ft td.c1{border-right:1px solid var(--rule)}
+table.ft th.c1{border-right:1px solid var(--rule)}
+
+table.ft tbody td{padding:7px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--rule);color:var(--ink-2)}
+table.ft tbody tr:hover td{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+table.ft tbody tr:hover td.stick{background:color-mix(in oklch,var(--lume) 6%,var(--ground))}
+
+/* the player cell: crest, name, link */
+.ft-name{display:flex;align-items:center;gap:8px;min-width:0}
+.ft-name a{color:var(--ink);text-decoration:none;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-family:var(--f-ui);
+  font-weight:600;font-size:12.5px}
+.ft-name a:hover{color:var(--lume);text-decoration:underline}
+.ft-crest{display:inline-grid;place-items:center;width:20px;height:20px;
+  border-radius:3px;flex:none;font-family:var(--f-score);font-size:10px;color:#04100b}
+
+/* a leader's figure should read at a glance */
+table.ft td.lead{color:var(--lume);font-weight:600}
+table.ft td.pos{color:var(--good)} table.ft td.neg{color:var(--bad)}
+
+.ft-empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;
+  color:var(--ink-3);font-family:var(--f-micro);font-size:10px;line-height:1.9}
+
+@media (max-width:640px){
+  table.ft{font-size:11px}
+  table.ft th.c1, table.ft td.c1{min-width:108px}
+  .ft-wrap{max-height:none}          /* on a phone the page scroll is enough */
+  table.ft thead th{position:static}  /* and a sticky header eats too much of it */
+}

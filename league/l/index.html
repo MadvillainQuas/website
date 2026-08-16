@@ -9,6 +9,7 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>League · Courtside</title>
 <link rel="stylesheet" href="../kit/courtside-kit.css">
+<link rel="stylesheet" href="../kit/table.css">
 <style>
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .pane{display:none} .pane.on{display:block}
@@ -60,12 +61,14 @@
       <button class="cs-tab on" data-p="table" role="tab">Table</button>
       <button class="cs-tab" data-p="fixtures" role="tab">Fixtures</button>
       <button class="cs-tab" data-p="leaders" role="tab">Leaders</button>
+      <button class="cs-tab" data-p="teams" role="tab">Team Stats</button>
     </div>
   </div>
 
   <div class="pane on" id="pane-table"></div>
   <div class="pane" id="pane-fixtures"></div>
   <div class="pane" id="pane-leaders"></div>
+  <div class="pane" id="pane-teams"></div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
     <span id="foot">Courtside Network</span>
@@ -73,6 +76,7 @@
 </div>
 
 <script src="../config.js"></script>
+<script src="../fulltable.js"></script>
 <script src="league.js"></script>
 </body>
 </html>

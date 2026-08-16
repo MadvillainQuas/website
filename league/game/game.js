@@ -174,7 +174,39 @@ function renderBody(d) {
   if (key === lastBodyKey) return;
   lastBodyKey = key;
   const el = $('#csBody');
-  if (el) el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
+  if (el) { el.innerHTML = (BODIES[fTab] || BODIES.box)(d); linkifyPlayers(el); }
+}
+
+/* Turn every player row in the box score into a link to that player's profile.
+
+   Done here rather than in the renderer because the renderer is lifted from
+   the scorer verbatim, and inside the scorer a name is a tap target that opens
+   a player card — not a navigation. The rows already carry data-pid, and on a
+   league game that pid IS the players.id uuid, so the link needs nothing else.
+
+   A practice game's pid is a local label like 'p0_3', which is not a player and
+   must not become a link to nowhere — hence the uuid test. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function linkifyPlayers(scope) {
+  scope.querySelectorAll('tr[data-pid]').forEach(tr => {
+    const pid = tr.getAttribute('data-pid');
+    if (!UUID.test(pid || '')) return;
+    /* the name is the first cell that is not the jersey number */
+    const cells = tr.querySelectorAll('td');
+    const nameCell = cells[1];
+    if (!nameCell || nameCell.querySelector('a')) return;
+    const name = nameCell.textContent;
+    if (!name.trim()) return;
+    const a = document.createElement('a');
+    a.href = '../p/?p=' + encodeURIComponent(pid);
+    a.textContent = name;
+    a.style.cssText = 'color:inherit;text-decoration:none';
+    a.addEventListener('mouseenter', () => { a.style.textDecoration = 'underline'; });
+    a.addEventListener('mouseleave', () => { a.style.textDecoration = 'none'; });
+    nameCell.textContent = '';
+    nameCell.appendChild(a);
+  });
 }
 
 function render() {
