@@ -1,24 +1,62 @@
-# Courtside Network — Phase 1
+# Courtside Network
 
-The spine: a game scored privately, visible publicly, under a second behind the whistle.
-Drops into `MadvillainQuas/website` under `/league/`. Everything is built on the Backlit kit.
+A game is scored privately, appears publicly under a second behind the whistle, and
+everything else — tables, profiles, lineups, awards — is derived from the same event log.
+Lives under `/league/` in `MadvillainQuas/website`. Built on the Backlit kit.
 
-## Status
+**Branch `courtside-network`, not merged to `main`.** Nothing here is live on
+prophesyscouting.co.uk until it is.
 
-| Piece | State |
+## Where it is
+
+| Phase | State |
 |---|---|
-| `engine.js` — the stat engine, extracted from `courtside.html` | **verified bit-identical** to the original across 5 games (802-event sims + an OT/tech/DQ edge case) |
-| `live.js` — frames, clock transitions, degradation ladder | **verified across two tabs**: viewer matched scorer to the millisecond |
-| `game/` — public live + finished game page | **working**, strict CSP, no inline script |
-| `app/` — portal: magic-link login, teams, rosters | **working** against the live project |
-| `score/sync.js` — bridges the existing scorer to the transport | **verified** driving a public page from real courtside actions |
-| `kit/` — Backlit design system (CSS + 4 OFL fonts) | done, used by every page |
-| `../supabase/migrations/0001_init.sql` | parses under PostgreSQL's own parser · **not yet applied** |
-| `../supabase/functions/finalise-game/` | written · **not yet deployed** |
-| `../supabase/tests/` | engine smoke passing; RLS tests skip until the schema exists |
-| `../.github/workflows/guard.yml` | passing, and each guard verified to fire on an injected violation |
+| 1 — the spine (engine, live transport, public game page, portal, scorer sync) | done |
+| 2 — leagues, standings, season stats, profiles | done |
+| 3 — media pipeline, embeds, structured data, webhooks | done except OG images and the publish-queue consumer, both blocked on the GitHub credential |
+| 4 — platform (CSV import, LiveStats import, JSON API, formats, awards, seasons) | done |
 
-## Try it with no backend
+Phase 4's optional items — an origin-isolated scorer subdomain and per-league billing —
+are deliberately not built.
+
+## The rule everything follows
+
+`game_events` is append-only and is the only source of truth. Standings, box scores,
+season tables, lineup stints, brackets and awards are all **derived**: drop them, re-run
+the functions, and the same answers come back. Nothing on a page is a number somebody
+typed that could drift from what happened on the floor.
+
+Two consequences worth knowing before changing anything:
+
+* **Rates are computed from summed components, never averaged.** A two-possession stint
+  at 200 offensive rating must not outvote a twenty-possession one.
+* **plpgsql bodies are not type-checked at creation.** A function installs cleanly and
+  raises only when called. Two live bugs came from exactly this (`max(boolean)` in
+  standings, an ambiguous `key_id` in the API). Migrations that add a function should
+  call it.
+
+## Tests
+
+```
+node supabase/tests/engine.smoke.mjs          # the stat engine
+node supabase/tests/extract-boxscore.mjs --check
+node supabase/tests/boxscore.isolation.mjs    # public box score renders from S + derive()
+node supabase/tests/csv.test.mjs              # roster import parsing
+node supabase/tests/livestats.test.mjs        # FIBA -> Courtside conversion
+node supabase/tests/livestats.roundtrip.mjs   # real games out to FIBA and back
+node supabase/tests/formats.test.mjs          # groups, brackets, awards
+node supabase/tests/api.test.mjs              # the JSON API over HTTP
+node supabase/tests/rls.test.mjs              # anonymous refusals
+node supabase/tests/authed.test.mjs           # signed-in refusals
+```
+
+All of them run in CI. The ones that need the live project skip cleanly without it.
+`api.test.mjs` needs `COURTSIDE_API_KEY`; the others do not.
+
+**Never sign up a test account.** Signups draw on the same email allowance as the
+magic-link logins and will lock the owner out for an hour.
+
+## Try it without a backend
 
 ```
 python -m http.server 8741
@@ -27,47 +65,13 @@ python -m http.server 8741
 * `localhost:8741/league/devfeed.html` — press **Start live game**
 * `localhost:8741/league/game/?g=demo&mode=local` — watch it update
 
-Two tabs talking over `BroadcastChannel`, exercising the same publisher and subscriber the
-Supabase path uses. Measured identical: clock to the millisecond, score, event count,
-minutes, and both team ratings to six decimals.
+Two tabs over `BroadcastChannel`, exercising the same publisher and subscriber the
+Supabase path uses.
 
-## One step left to go live
+## Database changes
 
-The key is in and the project answers. **The tables do not exist yet** — creating them needs
-privileges the browser deliberately does not have, so this step is yours:
-
-1. Supabase dashboard → **SQL Editor**
-2. Paste all of `supabase/migrations/0001_init.sql`
-3. **Run**
-4. `node supabase/tests/rls.test.mjs` — it should stop skipping and start asserting
-
-Then:
-
-* `supabase functions deploy finalise-game`, and set `SUPABASE_SERVICE_ROLE_KEY` +
-  `ALLOWED_ORIGIN` as **function secrets** (never in this folder — CI fails the build).
-* Add to the repo-root `sw.js`, first line of the `fetch` handler, then bump `CACHE_VERSION`:
-
-  ```js
-  if (url.pathname.startsWith('/league/')) return;   // never cache the public section
-  ```
-
-* Enable **Email** auth in the dashboard so magic links send.
-
-`config.js` already flips to the Supabase transport now a key is present; force either with
-`?mode=local` / `?mode=supabase`.
-
-## Wiring the real scorer
-
-Add to `courtside.html`, after its own script:
-
-```html
-<script src="/league/live.js"></script>
-<script src="/league/score/sync.js"></script>
-<script>CourtsideSync.attach({ gameId: '…' });</script>
-```
-
-`sync.js` wraps `addEvent`, `pauseClock` and `resumeClock` — the scorer is otherwise untouched,
-and nothing in the sync path can slow a tap down or block on the network.
+Migrations only, then `npx supabase db push`. Never ad-hoc SQL against the project —
+a change that is not in a migration is a change that cannot be reviewed or replayed.
 
 ## Notes on the security posture
 
@@ -84,11 +88,15 @@ and nothing in the sync path can slow a tap down or block on the network.
 
 ## Still to build
 
-* Standings, schedule, team and player pages (Phase 2).
-* Photo upload and moderation (Phase 3) — the schema, the buckets policy and the
-  minor-consent trigger already exist.
-* A seeded RLS fixture (manager A vs manager B) to test the *authenticated* refusals; the
-  current suite covers the anonymous ones.
+* **OG images at finalise, and the publish-queue consumer** that commits a static page
+  per finished game. Both need a server-side GitHub credential, so both wait on the PAT
+  below being rotated and moved into an Edge Function secret. Until then, link previews
+  on services that do not run JavaScript fall back to the document's generic tags.
+* **A seeded RLS fixture** (manager A against manager B) to test the *authenticated*
+  refusals. The current suite covers the anonymous ones properly and the signed-in ones
+  only shallowly.
+* **Groups and brackets have no fixture generator.** A league admin can create groups and
+  seed a bracket, but the games inside a group stage are still scheduled by hand.
 
 ## Before real data
 
