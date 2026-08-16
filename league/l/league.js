@@ -14,6 +14,7 @@ const el = (tag, cls, text) => { const n = document.createElement(tag);
 
 async function api(path) {
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${path}`, {
+    cache: 'no-store',
     headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' }
   });
   if (!r.ok) throw new Error(`${r.status} ${path.split('?')[0]}`);

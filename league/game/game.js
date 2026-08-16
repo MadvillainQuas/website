@@ -41,7 +41,7 @@ window.derive = () => E.deriveGame(window.S);
 
 async function api(p) {
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
   if (!r.ok) throw new Error(`${r.status} on ${p.split('?')[0]}`);
   return r.json();
 }

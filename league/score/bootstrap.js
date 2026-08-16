@@ -102,7 +102,7 @@
   const CFGx = window.COURTSIDE_CONFIG || {};
   const sbApi = async p => {
     const r = await fetch(CFGx.supabaseUrl + '/rest/v1/' + p,
-      { headers: { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' } });
+      { cache: 'no-store', headers: { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' } });
     if (!r.ok) throw new Error(r.status + ' on ' + p.split('?')[0]);
     return r.json();
   };

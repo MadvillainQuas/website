@@ -42,7 +42,7 @@ let rows = [], sortKey = 'ppg', sortDir = -1;
 
 async function api(p) {
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
   if (!r.ok) throw new Error(r.status + ' ' + p.split('?')[0]);
   return r.json();
 }
