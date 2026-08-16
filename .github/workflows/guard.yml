@@ -88,6 +88,22 @@ jobs:
         # shows up as a blank public page
         run: node supabase/tests/boxscore.isolation.mjs
 
+      - name: Roster CSV parsing
+        # the one path where a manager hands us a whole squad at once, so a
+        # quiet misparse is twenty wrong rows rather than one
+        run: node supabase/tests/csv.test.mjs
+
+      - name: LiveStats conversion
+        # an imported game must be indistinguishable downstream from a scored
+        # one, so this checks the ENGINE's box score, not just the event shapes
+        run: node supabase/tests/livestats.test.mjs
+
+      - name: LiveStats round trip on real games
+        # takes real scored games, re-expresses them in FIBA's vocabulary,
+        # imports them back and compares every player's line.
+        # Skips cleanly when the project is unreachable.
+        run: node supabase/tests/livestats.roundtrip.mjs
+
       - name: RLS policy tests
         # skips cleanly until the migration is applied; then it asserts the refusals
         run: node supabase/tests/rls.test.mjs

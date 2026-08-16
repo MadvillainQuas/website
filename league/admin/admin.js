@@ -270,7 +270,7 @@ async function loadFixtures() {
   fixtures = [];
   if (comp) {
     const { data, error } = await sb.from('games')
-      .select('id,tipoff_at,venue,status,home_score,away_score,home_team_id,away_team_id')
+      .select('id,tipoff_at,venue,status,home_score,away_score,home_team_id,away_team_id,roster_snapshot')
       .eq('competition_id', comp.id).order('tipoff_at');
     if (error) return oops(error);
     fixtures = data || [];
@@ -314,6 +314,23 @@ async function loadFixtures() {
     }
     row.appendChild(ac);
     host.appendChild(row);
+  });
+
+  mountImport();
+}
+
+/* The import panel needs the fixtures and the clubs, so it is rebuilt whenever
+   they are — a fixture scheduled a moment ago should be importable at once. */
+function mountImport() {
+  const byId = {};
+  teams.forEach(t => { byId[t.id] = t; });
+  $('#imNote').textContent = fixtures.length
+    ? fixtures.length + ' fixture' + (fixtures.length === 1 ? '' : 's') + ' to choose from'
+    : '';
+  window.CourtsideImportUI.mount({
+    host: '#importPanel', sb, leagueId: league && league.id,
+    games: fixtures, teams: byId, say,
+    onDone: loadFixtures
   });
 }
 
