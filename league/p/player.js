@@ -111,14 +111,22 @@ function paintTiles(s) {
    ("11.4 AST%") into one anybody can read ("83rd percentile").
 
    Rates only. Ranking a total would just rank minutes played. */
-/* [key, label, attempts-key]
-   The third entry is what the percentage rests on. A shooting rate without its
-   volume is unreadable — 60% at the rim means one thing on eight attempts a
-   night and nothing at all on one — so the attempts sit under the number. */
+/* [key, label]
+   Every row is a percentile bar against the rest of the competition.
+
+   Each shooting rate is followed by its OWN VOLUME ROW, ranked the same way.
+   A rate without its volume is unreadable — 60% at the rim means one thing on
+   eight attempts a night and nothing at all on one — but a volume printed as a
+   bare number beside the rate is barely better, because nobody knows whether
+   four rim attempts a game is a lot. Ranked against the league, it answers
+   both questions at once: how often he goes there, and how he does when he
+   gets there. Those are different skills and they deserve different bars. */
 const BAR_GROUPS = [
   ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE']]],
-  ['shooting',   [['rim_pct','RIM%','rim_apg'],['mid_pct','MID%','mid_apg'],
-                  ['p3_pct','3P%','p3_apg'],['ft_pct','FT%','ft_apg']]],
+  ['shooting',   [['rim_pct','RIM%'],   ['rim_apg','RIM ATT / G'],
+                  ['mid_pct','MID%'],   ['mid_apg','MID ATT / G'],
+                  ['p3_pct','3P%'],     ['p3_apg','3P ATT / G'],
+                  ['ft_pct','FT%'],     ['ft_apg','FT ATT / G']]],
   ['playmaking', [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],
                   ['tov_pct','TURNOVER%']]],
   ['rebounding', [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']]],
@@ -142,23 +150,16 @@ function paintBars(mine, field) {
   const wrap = el('div', 'bars');
   BAR_GROUPS.forEach(([title, rows]) => {
     wrap.appendChild(el('div', 'bargroup', title));
-    rows.forEach(([k, label, attKey]) => {
+    rows.forEach(([k, label]) => {
       const v = mine[k];
       const p = (ranks.get(k) || new Map()).get(mine.id);
       const row = el('div', 'barrow');
 
-      /* The label carries the volume the rate rests on, directly beneath it.
-         It used to sit under the NUMBER in the 56px column on the right, at
-         7.5px and three-quarters opacity, where it was effectively invisible —
-         and it is a fact about the shot type, so it belongs with the shot
-         type's name. 60% at the rim means one thing on eight attempts a night
-         and nothing at all on one. */
-      const lab = el('div', 'bl');
-      lab.appendChild(el('div', null, label));
-      if (attKey && mine[attKey] != null) {
-        lab.appendChild(el('div', 'blatt', Number(mine[attKey]).toFixed(1) + ' att/g'));
-      }
-      row.appendChild(lab);
+      /* volume rows are visibly subordinate to the rate they belong to, so
+         the group still reads as four shot types rather than eight statistics */
+      const isVol = /ATT \/ G$/.test(label);
+      if (isVol) row.classList.add('volrow');
+      row.appendChild(el('div', 'bl', label));
 
       const track = el('div', 'bt');
       const fill = el('i');

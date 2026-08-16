@@ -70,10 +70,13 @@
   .barrow .bt i{display:block;height:100%;border-radius:2px}
   .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
   .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
-  /* the attempts sit under the label, and are meant to be read: the old
-     7.5px at .75 opacity in the value column was invisible in practice */
-  .barrow .blatt{font-family:var(--f-data);font-size:9.5px;color:var(--lume);
-    opacity:.85;margin-top:3px;letter-spacing:0;text-transform:none}
+  /* A volume row is a statistic in its own right — ranked like every other —
+     but it belongs to the rate above it, so it is indented and quieter. The
+     group should still read as four shot types, not eight unrelated bars. */
+  .barrow.volrow{margin-top:-4px}
+  .barrow.volrow .bl{color:var(--ink-3);opacity:.85;padding-left:10px}
+  .barrow.volrow .bt{height:6px;opacity:.8}
+  .barrow.volrow .bv{font-size:10.5px;color:var(--ink-2)}
   .barrow{align-items:start}
   .barrow .bl{padding-top:1px}
   .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
