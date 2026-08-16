@@ -80,3 +80,9 @@ jobs:
       - name: RLS policy tests
         # skips cleanly until the migration is applied; then it asserts the refusals
         run: node supabase/tests/rls.test.mjs
+
+      - name: Privilege tests (signed in, no roles)
+        # Covers the attacker anon cannot model: someone with an account.
+        # Never signs up — a signup sends email from the same allowance the
+        # magic-link logins use. Skips cleanly until the probe account exists.
+        run: node supabase/tests/authed.test.mjs
