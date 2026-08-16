@@ -168,6 +168,7 @@ async function loadComps() {
   renderCompPick();
   await loadFixtures();
   await loadMembers();
+  await loadMediaQueue();
 }
 
 function renderCompPick() {
@@ -380,6 +381,75 @@ async function officials(game, afterRow) {
   });
 
   refresh();
+}
+
+/* ----------------------------------------------------------- photographs --- */
+/* The moderation queue. Approving is the moment an image reaches the open
+   internet — it moves the object from the private bucket to the public one —
+   so it is a deliberate act by a league admin, not a side effect of uploading.
+
+   A pending image is fetched through a signed URL: it is not public yet, and
+   showing it any other way would mean it was. */
+async function loadMediaQueue() {
+  const host = $('#mediaQueue'); host.textContent = '';
+  let rows = [];
+  try { const { data, error } = await sb.rpc('media_queue', { p_league: league.id });
+        if (error) throw error; rows = data || []; }
+  catch (e) { return oops(e); }
+
+  $('#mqNote').textContent = rows.length
+    ? rows.length + (rows.length === 1 ? ' waiting' : ' waiting') : 'nothing waiting';
+  if (!rows.length) {
+    host.appendChild(el('div', 'empty', 'No photographs are waiting for approval.'));
+    return;
+  }
+
+  for (const m of rows) {
+    const row = el('div', 'mq');
+
+    /* a signed URL, because the object is deliberately not public yet */
+    let src = null;
+    try {
+      const { data } = await sb.storage.from('media-pending')
+        .createSignedUrl(m.storage_path, 300);
+      src = data && data.signedUrl;
+    } catch (_) {}
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src; img.alt = m.subject || 'pending image'; img.loading = 'lazy';
+      row.appendChild(img);
+    } else {
+      row.appendChild(el('div', null, ''));
+    }
+
+    const who = el('div');
+    who.append(el('div', 'who', m.subject || '(unnamed)'),
+               el('div', 'mt', m.owner_type + ' · uploaded ' +
+                  new Date(m.created_at).toLocaleDateString('en-GB',
+                    { day: '2-digit', month: 'short' })));
+    row.appendChild(who);
+
+    const ac = el('div', 'ac');
+    const ok = el('button', 'cs-btn mini pri', 'approve'); ok.type = 'button';
+    ok.addEventListener('click', async () => {
+      ok.disabled = true;
+      const { data, error } = await sb.rpc('approve_media', { p_media: m.id });
+      if (error) { ok.disabled = false; return oops(error); }
+      say(data + ' — ' + (m.subject || 'image'), 'ok');
+      loadMediaQueue();
+    });
+    const no = el('button', 'cs-btn mini dgr', 'reject'); no.type = 'button';
+    no.addEventListener('click', async () => {
+      no.disabled = true;
+      const { error } = await sb.rpc('reject_media', { p_media: m.id, p_reason: null });
+      if (error) { no.disabled = false; return oops(error); }
+      say('rejected — ' + (m.subject || 'image'), 'ok');
+      loadMediaQueue();
+    });
+    ac.append(ok, no);
+    row.appendChild(ac);
+    host.appendChild(row);
+  }
 }
 
 /* ----------------------------------------------------------------- people --- */

@@ -88,6 +88,41 @@ async function renderRoster() {
     if (p.is_minor) { const b = document.createElement('span'); b.className = 'minor'; b.textContent = 'U18'; nameCell.appendChild(b); }
     tr.insertCell().textContent = r.active ? '' : 'inactive';
     const act = tr.insertCell();
+
+    /* Photograph. Resized in the browser before it leaves the device — a 4 MB
+       phone picture becomes about 60 KB — then held privately until the league
+       approves it. Nothing here makes an image public; that is the league's
+       decision and it happens in the admin console.
+
+       A minor's photograph is refused by the database without recorded
+       guardian consent, so the button is offered and the refusal is honest
+       rather than the control being hidden and unexplained. */
+    const pic = document.createElement('input');
+    pic.type = 'file'; pic.accept = 'image/*'; pic.style.display = 'none';
+    const upl = document.createElement('button');
+    upl.className = 'mini'; upl.textContent = 'photo';
+    upl.title = 'upload a photograph for approval';
+    upl.addEventListener('click', () => pic.click());
+    pic.addEventListener('change', async () => {
+      const file = pic.files && pic.files[0];
+      pic.value = '';
+      if (!file) return;
+      upl.disabled = true; upl.textContent = 'resizing…';
+      try {
+        const res = await window.CourtsideUpload.upload(sb, {
+          ownerType: 'player', ownerId: p.id, kind: 'photo', file
+        });
+        const saved = Math.max(0, Math.round(res.saved / 1024));
+        say('sent for approval — ' + Math.round(res.bytes / 1024) + ' KB' +
+            (saved ? ' (' + saved + ' KB saved before upload)' : ''), 'ok');
+        upl.textContent = 'pending';
+      } catch (e) {
+        say(e.message || 'that upload was refused', 'err');
+        upl.textContent = 'photo';
+      } finally { upl.disabled = false; }
+    });
+    act.append(upl, pic);
+
     const del = document.createElement('button');
     del.className = 'mini'; del.textContent = 'remove';
     del.addEventListener('click', async () => {

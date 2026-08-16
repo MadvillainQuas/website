@@ -2,8 +2,11 @@
 /* ============================================================================
    The fixture strip — a horizontal bar of games for another site's page.
 
-   Modelled on the LiveStats widget: a brand plate, then a scrolling rail of
-   cards each carrying the competition, the state, both teams and when.
+   The information a LiveStats bar carries, laid out differently on purpose:
+   the wordmark reads down a narrow edge rather than sitting in a logo box, and
+   a card is a SCOREBOARD — home on the left, away on the right, score between
+   them — rather than two stacked rows with the score down one side. The state
+   is a coloured rule along the card's top edge instead of a word in a header.
 
    Three things it must get right, because it runs on a page we do not control:
 
@@ -54,36 +57,49 @@ function fmtTime(iso) {
 function card(g) {
   const live = g.status === 'live', final = g.status === 'final';
   const a = document.createElement('a');
-  a.className = 'cs-card';
+  a.className = 'cs-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
   a.target = '_blank'; a.rel = 'noopener';
   a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
                    location.href).href;
 
-  const hd = el('div', 'hd');
-  const comp = (g.competitions && g.competitions.name) || 'Fixture';
-  hd.appendChild(el('span', 'comp', comp));
-  const st = el('span', 'st ' + (live ? 'live' : final ? 'final' : 'upcoming'));
+  /* competition and state, small, above the scoreboard */
+  const meta = el('div', 'meta');
+  meta.appendChild(el('span', 'comp', (g.competitions && g.competitions.name) || 'Fixture'));
+  const st = el('span', 'st');
   if (live) { st.appendChild(el('span', 'dot')); st.appendChild(document.createTextNode('LIVE')); }
-  else st.textContent = final ? 'FINAL' : 'UPCOMING';
-  hd.appendChild(st);
-  a.appendChild(hd);
+  else st.textContent = final ? 'FT' : 'UPCOMING';
+  meta.appendChild(st);
+  a.appendChild(meta);
 
-  const showScore = live || final;
-  [[g.home, g.home_score, 0], [g.away, g.away_score, 1]].forEach(([t, sc]) => {
-    const other = t === g.home ? g.away_score : g.home_score;
-    const side = el('div', 'side' +
-      (final ? (sc > other ? ' win' : sc < other ? ' lose' : '') : ''));
+  /* home | score | away, laid out across as a scoreboard is */
+  const row = el('div', 'row');
+  const side = (t, sc, other) => {
+    const box = el('div', 'tm' + (final ? (sc > other ? ' win' : sc < other ? ' lose' : '') : ''));
     const cr = el('span', 'crest', abbr(t).slice(0, 2));
     cr.style.background = (t && t.colour) || '#93f2bf';
-    side.append(cr, el('span', 'abbr', abbr(t)));
-    if (showScore) side.appendChild(el('span', 'sc', sc == null ? '0' : String(sc)));
-    a.appendChild(side);
-  });
+    box.append(cr, el('span', 'abbr', abbr(t)));
+    return box;
+  };
+  row.appendChild(side(g.home, g.home_score, g.away_score));
 
-  const ft = el('div', 'ft');
-  ft.appendChild(el('span', 'vn', live ? (g.venue || 'in progress') : fmtDate(g.tipoff_at)));
-  ft.appendChild(el('span', null, live ? 'watch' : fmtTime(g.tipoff_at)));
-  a.appendChild(ft);
+  const mid = el('div', 'mid');
+  if (live || final) {
+    const sc = el('div', 'sc');
+    sc.append(el('span', 'v', String(g.home_score == null ? 0 : g.home_score)),
+              el('span', 'd', '–'),
+              el('span', 'v', String(g.away_score == null ? 0 : g.away_score)));
+    mid.appendChild(sc);
+  } else {
+    mid.appendChild(el('div', 'vs', 'v'));
+  }
+  row.appendChild(mid);
+  row.appendChild(side(g.away, g.away_score, g.home_score));
+  a.appendChild(row);
+
+  const when = el('div', 'when');
+  when.appendChild(el('span', 'vn', live ? (g.venue || 'in progress') : fmtDate(g.tipoff_at)));
+  when.appendChild(el('span', null, live ? 'watch ↗' : fmtTime(g.tipoff_at)));
+  a.appendChild(when);
   return a;
 }
 

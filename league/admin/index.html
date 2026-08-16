@@ -62,6 +62,13 @@
   .fxrow .ac{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
   .mini{font-size:9px;padding:6px 9px}
   @media (max-width:640px){ .fxrow{grid-template-columns:1fr;gap:4px} .fxrow .h{text-align:left} }
+  .mq{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;
+    padding:10px 0;border-bottom:1px solid var(--rule)}
+  .mq img{width:64px;height:64px;object-fit:cover;border-radius:4px;
+    border:1px solid var(--rule-2);background:var(--panel-2);display:block}
+  .mq .who{font-family:var(--f-ui);font-weight:700;font-size:13.5px}
+  .mq .mt{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:3px}
+  .mq .ac{display:flex;gap:6px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -197,7 +204,23 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07</span><h2>People</h2>
+      <div class="sec-h">
+        <span class="idx">07</span><h2>Photographs</h2>
+        <span class="note" id="mqNote"></span>
+      </div>
+      <div class="body">
+        <div id="mediaQueue"></div>
+        <p class="empty" style="padding-bottom:0">
+          Nothing is publicly visible until it is approved here. Approving moves
+          the file into the public bucket; rejecting deletes it. A photograph of
+          an under-18 player cannot be approved without recorded guardian
+          consent — the database refuses it, whoever presses the button.
+        </p>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">08</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -223,6 +246,7 @@
   </div>
 </div>
 <script src="../config.js"></script>
+<script src="../upload.js"></script>
 <script src="../vendor/supabase.js"></script>
 <script src="admin.js"></script>
 <script src="../nav.js"></script>
