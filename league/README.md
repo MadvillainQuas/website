@@ -7,6 +7,10 @@ Lives under `/league/` in `MadvillainQuas/website`. Built on the Backlit kit.
 **Branch `courtside-network`, not merged to `main`.** Nothing here is live on
 prophesyscouting.co.uk until it is.
 
+> **Resuming work on this?** Read [`../docs/HANDOVER.md`](../docs/HANDOVER.md)
+> first. It carries the current branch state, the traps that have already cost
+> time, and the things waiting on a human.
+
 ## Where it is
 
 | Phase | State |
