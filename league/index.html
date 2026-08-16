@@ -62,6 +62,9 @@
     margin-right:6px;vertical-align:1px;animation:p 1.6s ease-in-out infinite}
   @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+  .stripwrap{margin-top:calc(var(--u)*4);border:1px solid var(--rule);
+    border-radius:4px;overflow:hidden;background:#04100b}
+  .stripframe{display:block;width:100%;height:129px;border:0;background:#04100b}
 </style>
 </head>
 <body>
@@ -73,6 +76,15 @@
       Live box scores, standings and season statistics. Every number on this
       site is rebuilt from the game's own event log, so what you see here and
       what the statistician recorded cannot drift apart.
+    </div>
+
+    <!-- The fixture strip, carried by the same embed other sites get. Using the
+         real widget here rather than a bespoke copy means the thing shipped to
+         other people's pages is the thing seen most often on this one, so it
+         cannot quietly rot. -->
+    <div class="stripwrap">
+      <iframe id="strip" class="stripframe" title="Courtside fixtures"
+              src="embed/strip/?n=24" loading="lazy" scrolling="no"></iframe>
     </div>
   </div>
 

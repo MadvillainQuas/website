@@ -51,9 +51,14 @@ function paintIdentity(pl, entry, team) {
      recorded guardian consent — both enforced in the database, so if a photo
      comes back it is publishable. Initials stand in when it does not. */
   const box = $('#photo');
-  if (pl.photo_url) {
+  /* An approved upload wins over a pasted URL: it has been through moderation
+     and the consent check, and it is served from our own CDN rather than
+     whatever host someone linked. photo_url stays as the simple fallback. */
+  const stored = pl.__photoPath
+    ? window.CourtsideUpload.publicUrl(CFG, pl.__photoPath) : null;
+  if (stored || pl.photo_url) {
     const img = document.createElement('img');
-    img.src = pl.photo_url;
+    img.src = stored || pl.photo_url;
     img.alt = name;
     img.addEventListener('error', () => img.remove());   // never a broken frame
     box.textContent = '';
@@ -224,6 +229,15 @@ function paintLog(rows) {
       return fail('This profile is not public. Under-18 players are only visible to their club.');
     }
     const pl = ps[0];
+
+    /* the approved photograph, if the league has passed one */
+    if (pl.photo_media_id) {
+      try {
+        const md = await api(`media?id=eq.${pl.photo_media_id}` +
+                             `&status=eq.approved&select=storage_path&limit=1`);
+        if (md.length) pl.__photoPath = md[0].storage_path;
+      } catch (_) { /* an unapproved or withdrawn photo simply does not show */ }
+    }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
       `&select=jersey,position,teams(id,name,slug,colour,short_name)&order=created_at.desc&limit=1`);

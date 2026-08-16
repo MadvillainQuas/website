@@ -111,3 +111,25 @@ async function leagues() {
 $('#mode').textContent = 'transport: ' + (window.courtsideMode ? window.courtsideMode() : 'local');
 games();
 leagues();
+
+/* ---------------------------------------------------------------- strip --- */
+/* The fixture strip is the same iframe other sites embed, so the widget
+   shipped outward is the one seen most often here and cannot quietly rot.
+
+   It posts its height out; apply it, checked against our own origin AND that
+   specific frame, because a page can hold other frames and any of them can
+   post. The number is range-checked too — a posted value is never trusted.
+
+   This lives here rather than inline because the page's CSP is script-src
+   'self', which blocks inline script. That is the policy working, not an
+   obstacle to route around. */
+window.addEventListener('message', ev => {
+  if (ev.origin !== location.origin) return;
+  const f = document.getElementById('strip');
+  if (!f || ev.source !== f.contentWindow) return;
+  const d = ev.data;
+  if (!d || d.courtsideEmbed !== 'height') return;
+  const h = Number(d.height);
+  if (!isFinite(h) || h < 60 || h > 400) return;
+  f.style.height = Math.ceil(h) + 'px';
+});

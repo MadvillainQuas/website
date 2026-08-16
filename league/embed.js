@@ -34,10 +34,12 @@
   const kind = (me.dataset.courtside || 'strip').toLowerCase();
   const base = new URL('.', me.src).href;          // .../league/
 
-  const PATHS = { strip: 'embed/strip/', game: 'embed/game/' };
+  const PATHS = { strip: 'embed/strip/', game: 'embed/game/',
+                  standings: 'embed/table/', leaders: 'embed/table/' };
   const path = PATHS[kind];
   if (!path) {
-    console.warn('[courtside] unknown embed "' + kind + '" — expected strip or game');
+    console.warn('[courtside] unknown embed "' + kind +
+                 '" — expected strip, game, standings or leaders');
     return;
   }
 
@@ -45,10 +47,14 @@
   if (me.dataset.league) url.searchParams.set('l', me.dataset.league);
   if (me.dataset.game)   url.searchParams.set('g', me.dataset.game);
   if (me.dataset.count)  url.searchParams.set('n', me.dataset.count);
+  if (me.dataset.stat)   url.searchParams.set('stat', me.dataset.stat);
+  if (kind === 'standings' || kind === 'leaders') url.searchParams.set('kind', kind);
 
   const frame = document.createElement('iframe');
   frame.src = url.href;
-  frame.title = kind === 'game' ? 'Courtside box score' : 'Courtside fixtures';
+  frame.title = { game: 'Courtside box score', strip: 'Courtside fixtures',
+                  standings: 'Courtside standings',
+                  leaders: 'Courtside leaders' }[kind] || 'Courtside';
   frame.loading = 'lazy';
   frame.setAttribute('scrolling', 'no');
   /* no allow-* beyond scripts and same-origin: the frame needs neither popups
@@ -57,7 +63,8 @@
   frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
   frame.style.cssText = [
     'display:block', 'width:100%', 'border:0',
-    'height:' + (kind === 'game' ? '210px' : '120px'),
+    'height:' + (kind === 'game' ? '210px'
+               : kind === 'strip' ? '120px' : '320px'),
     'background:#04100b', 'color-scheme:dark',
     'border-radius:' + (me.dataset.radius || '4px'),
     'overflow:hidden'
