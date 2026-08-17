@@ -1,0 +1,289 @@
+/* ============================================================================
+   THE EPINOIA SPLASH — a shallow pool, seen from directly above.
+
+   THE WATER IS NOT A FILTER. An animated feTurbulence recomputes its noise
+   every frame across the whole viewport, which is how a landing page ends up
+   making a laptop fan audible. Instead there are two pre-rendered seamless
+   tiles — a marble floor and a caustic net — and the movement is nothing but
+   `transform` on oversized layers, which the compositor does on the GPU and
+   which costs the main thread nothing at all.
+
+   THE DEPTH IS THE STACK, in this order from the bottom:
+
+     1. the marble floor, dimmed and slightly blurred, because it is under
+        water and water is not glass
+     2. two caustic layers, screen-blended, drifting at different speeds and
+        in different directions — one net over another is what stops a
+        repeating tile reading as a repeating tile
+     3. a pale blue wash with a vertical gradient: shallower and brighter at
+        the top, deeper towards the bottom
+     4. the surface sheen, one very slow diagonal sweep
+
+   THE PANELS ARE THE SAME MARBLE, lifted out of the water: full brightness, a
+   hard edge, and a shadow that reads as thickness rather than as a drop
+   shadow. They are the stone the pool is lined with, cut and set above the
+   waterline.
+
+   REDUCED MOTION STOPS THE WATER. All of it. A still pool is a perfectly good
+   photograph of a pool, and somebody who has asked for no motion has asked for
+   no motion, not for less of it.
+   ============================================================================ */
+
+.pool{
+  position:fixed; inset:0; overflow:hidden; z-index:0;
+  background:#bfe2ee;                    /* the water, before anything loads */
+  /* colours of the pool, in one place */
+  --w-shallow:#d7eef6;
+  --w-deep:#8fc9de;
+  --stone:#f6f7f8;
+  --stone-edge:rgba(120,150,165,.34);
+  --ink:#2b4a58;
+  --ink-2:#517184;
+}
+
+/* every layer is oversized so a slow translate never runs out of tile */
+.pool > *{ position:absolute; inset:-30% -30%; will-change:transform }
+
+/* 1 — the floor. Blurred, because you are looking at it through water. */
+.pool-floor{
+  background:url('../brand/pool-marble.jpg') repeat;
+  background-size:620px 620px;
+  filter:blur(1.3px) saturate(.5) brightness(1.03);
+  opacity:.9;
+  animation:pool-floor 190s linear infinite;
+}
+/* 2 — the light on it. Two nets, different scales, different directions. */
+.pool-caustic{
+  background:url('../brand/pool-caustics.jpg') repeat;
+  mix-blend-mode:screen;
+}
+.pool-caustic.a{
+  background-size:760px 760px; opacity:.62;
+  animation:pool-a 74s linear infinite;
+}
+.pool-caustic.b{
+  background-size:1180px 1180px; opacity:.44;
+  filter:blur(2.4px);
+  animation:pool-b 118s linear infinite reverse;
+}
+/* 3 — the water itself: a wash, deeper towards the bottom of the frame */
+.pool-tint{
+  inset:0;
+  /* THIN. The first pass had this at 58-74% and it drowned the pool: the
+     caustics disappeared and the floor went flat, which is a painted blue
+     rectangle rather than water. Water you can see the bottom through is the
+     entire brief, so the wash only tints. */
+  background:linear-gradient(178deg,
+    color-mix(in srgb, var(--w-shallow) 30%, transparent) 0%,
+    color-mix(in srgb, var(--w-deep) 34%, transparent) 66%,
+    color-mix(in srgb, var(--w-deep) 48%, transparent) 100%);
+  pointer-events:none;
+}
+/* 4 — one long sheen across the surface */
+.pool-sheen{
+  inset:-40%;
+  background:linear-gradient(104deg, transparent 34%,
+    rgba(255,255,255,.32) 48%, rgba(255,255,255,.06) 56%, transparent 66%);
+  mix-blend-mode:screen; opacity:.5;
+  animation:pool-sheen 46s ease-in-out infinite alternate;
+}
+
+@keyframes pool-floor{ to{ transform:translate3d(-2%, 3%, 0) } }
+@keyframes pool-a{ to{ transform:translate3d(-620px, -380px, 0) } }
+@keyframes pool-b{ to{ transform:translate3d(-1180px, 640px, 0) } }
+@keyframes pool-sheen{
+  from{ transform:translate3d(-9%, -4%, 0) }
+  to  { transform:translate3d(9%, 4%, 0) }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .pool > *{ animation:none !important; will-change:auto }
+}
+
+/* ============================================================ the marble ===
+   The stone the pool is lined with, cut and set above the waterline. */
+.slab{
+  position:relative;
+  background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:520px 520px;
+  border:1px solid var(--stone-edge);
+  /* a thin light top edge and a shadow beneath: thickness, not a card */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 -1px 0 rgba(120,150,165,.18),
+    0 14px 34px rgba(30,70,90,.20),
+    0 2px 6px rgba(30,70,90,.14);
+}
+.slab.sunk{ box-shadow:inset 0 2px 7px rgba(30,70,90,.22) }
+
+/* ============================================================== the page === */
+.splash{
+  position:relative; z-index:1; min-height:100svh;
+  display:grid; grid-template-rows:1fr auto;
+  padding:calc(var(--u)*3);
+  color:var(--ink);
+}
+
+/* THE CENTRE COLUMN IS CENTRED ON THE VIEWPORT, not on what is left after the
+   rail. The pool runs full bleed underneath the rail, so centring in the
+   content box would put the title visibly off to the right of the water it
+   sits in — half the rail's width, which is exactly the sort of wrongness
+   nobody can name but everybody sees.
+
+   Only where there is room for it: the negative margin is cancelled below
+   960px, and below 820px the rail becomes a bottom bar and --nav-w is 0
+   anyway, so this becomes a no-op on its own. */
+.sp-mid{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:0; padding:calc(var(--u)*6) 0 calc(var(--u)*4);
+}
+@media (min-width:960px){
+  .sp-mid{ margin-left:calc(var(--nav-w) * -1) }
+}
+.sp-title{
+  width:min(560px, 92vw); text-align:center;
+  padding:calc(var(--u)*5) calc(var(--u)*4) calc(var(--u)*4);
+}
+.sp-title h1{
+  margin:0; line-height:.9; color:var(--w-deep);
+  font-size:clamp(44px, 9vw, 92px);
+  text-shadow:0 1px 0 rgba(255,255,255,.85);
+}
+.sp-by{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:calc(var(--u)*2);
+  font-family:var(--f-micro); font-size:10px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+/* the mark is supplied as white-on-alpha, so it is tinted rather than
+   recoloured — one file works on the marble and on the water */
+.sp-by img{ height:26px; width:auto; display:block;
+  filter:brightness(0) opacity(.72) }
+
+/* --------------------------------------------------------------- sign in --- */
+.sp-login{ width:min(560px, 92vw); padding:calc(var(--u)*2.5) calc(var(--u)*3) }
+.sp-login h2{
+  margin:0 0 calc(var(--u)*1.5); font-family:var(--f-micro); font-size:9px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2); font-weight:400;
+}
+.sp-row{ display:flex; gap:8px; flex-wrap:wrap }
+.sp-in{
+  flex:1 1 200px; min-width:0; background:rgba(255,255,255,.72);
+  border:1px solid var(--stone-edge); color:var(--ink);
+  font-family:var(--f-ui); font-size:14px; padding:9px 12px; border-radius:2px;
+}
+.sp-in:focus{ outline:none; border-color:var(--w-deep);
+  background:#fff; box-shadow:0 0 0 3px rgba(143,201,222,.28) }
+.sp-btn{
+  flex:0 0 auto; cursor:pointer; border:1px solid var(--ink);
+  background:var(--ink); color:#f2fbff;
+  font-family:var(--f-micro); font-size:9px; letter-spacing:.16em;
+  text-transform:uppercase; padding:10px 18px; border-radius:2px;
+}
+.sp-btn:hover{ background:transparent; color:var(--ink) }
+.sp-btn.ghost{ background:transparent; color:var(--ink) }
+.sp-btn.ghost:hover{ background:var(--ink); color:#f2fbff }
+.sp-btn[disabled]{ opacity:.5; cursor:default }
+.sp-or{
+  text-align:center; font-family:var(--f-micro); font-size:8px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2);
+  margin:calc(var(--u)*1.5) 0;
+}
+.sp-msg{ font-family:var(--f-micro); font-size:9px; line-height:1.85;
+  margin-top:9px; color:var(--ink-2) }
+.sp-msg.err{ color:#b1364a } .sp-msg.ok{ color:#1d6a53 }
+.sp-who{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.sp-who .em{ font-family:var(--f-ui); font-weight:700; font-size:13.5px }
+
+/* ============================================================== the three ===
+   Left, centre and right, on one row, each cut into its own segments. */
+.sp-decks{
+  display:grid; gap:calc(var(--u)*3);
+  grid-template-columns:1fr 1.25fr 1fr;
+  align-items:end;
+  padding-bottom:calc(var(--u)*2);
+}
+@media (max-width:900px){
+  .sp-decks{ grid-template-columns:1fr; align-items:stretch }
+}
+.deck-h{
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--ink-2);
+  padding:0 0 7px 2px;
+}
+.segs{ display:grid; gap:1px; background:var(--stone-edge); overflow:hidden }
+.segs.three{ grid-template-columns:repeat(3,1fr) }
+.segs.two{ grid-template-columns:repeat(2,1fr) }
+@media (max-width:560px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
+
+/* A SEGMENT IS A SLICE OF THE SAME SLAB, not a card of its own: the marble
+   runs across all of them, so the divisions read as cuts in one stone. */
+.seg{
+  position:relative; display:flex; flex-direction:column; gap:5px;
+  min-height:104px; padding:calc(var(--u)*2);
+  background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:520px 520px;
+  text-decoration:none; color:var(--ink); cursor:pointer;
+  transition:background-color .18s ease, transform .18s ease;
+  overflow:hidden;
+}
+.seg::after{
+  /* the water rising up the stone on hover — the interaction is the pool
+     reaching the surface, not a rectangle changing colour */
+  content:''; position:absolute; left:0; right:0; bottom:0; height:0;
+  background:linear-gradient(0deg,
+    color-mix(in srgb, var(--w-deep) 62%, transparent),
+    color-mix(in srgb, var(--w-shallow) 12%, transparent));
+  transition:height .26s cubic-bezier(.2,.8,.3,1);
+  pointer-events:none;
+}
+.seg:hover::after, .seg:focus-visible::after{ height:100% }
+.seg:focus-visible{ outline:2px solid var(--ink); outline-offset:-3px }
+.seg > *{ position:relative; z-index:1 }
+.seg .k{
+  font-family:var(--f-micro); font-size:8px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+.seg .t{
+  font-family:var(--f-ui); font-weight:800; font-size:15px;
+  text-transform:uppercase; letter-spacing:.02em; line-height:1.15;
+}
+.seg .d{
+  font-family:var(--f-micro); font-size:8.5px; line-height:1.85;
+  color:var(--ink-2); margin-top:auto;
+}
+.seg.off{ cursor:not-allowed }
+.seg.off .t, .seg.off .k{ opacity:.5 }
+.seg.off::after{ background:linear-gradient(0deg,
+  rgba(150,120,120,.32), rgba(150,120,120,.06)) }
+
+/* a league segment wears its own crest, washed back behind the name */
+.seg.league .crest{
+  position:absolute; inset:0; z-index:0; display:grid; place-items:center;
+  opacity:.16; filter:saturate(.5);
+}
+.seg.league .crest img{ width:64%; height:64%; object-fit:contain }
+.seg.league .mono{
+  font-family:var(--f-score); font-size:clamp(38px,7vw,64px); line-height:1;
+  color:var(--ink);
+}
+.seg.league .t{ font-size:13.5px }
+
+@media (prefers-reduced-motion:reduce){
+  .seg, .seg::after{ transition:none }
+}
+
+/* ------------------------------------------------------------------ foot --- */
+.sp-foot{
+  display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+  padding:calc(var(--u)*2) 2px 0;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.1em;
+  color:var(--ink-2);
+}
+.sp-foot a{ color:var(--ink-2); text-decoration:none }
+.sp-foot a:hover{ color:var(--ink); text-decoration:underline }
+
+/* The rail is a dark object and this page is a bright one. It keeps its own
+   colours — it is the same rail everywhere else on the site — but the page
+   must make room for it exactly as every other page does. */
+body.splash-body{ background:#bfe2ee }

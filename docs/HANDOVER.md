@@ -12,7 +12,7 @@ Branch: **`epinoia-network`** — not merged to `main`, so nothing here is live.
 
 ## 1. THE BLOCKER — read this first
 
-**52 commits are local-only.** `git push` needs an interactive credential
+**54 commits are local-only.** `git push` needs an interactive credential
 prompt that a headless session cannot satisfy:
 
 ```
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **33**).
+  under `league/`, from `league/version.txt` (currently **38**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -138,7 +138,12 @@ Error 42P16. Drop first.
 
 ```
 league/
-  index.html        hub (no ?l=) AND league splash (?l=slug) — one file, two modes
+  index.html        SPLASH (no ?l=) AND league splash (?l=slug) — one file, two
+                    pages. home.js picks; they share only a URL.
+  splash.js         the platform splash: pool, inline sign-in, the three decks
+  kit/splash.css    the water, the marble, the segments
+  learn/            the scoring app explained — sales tab first, tutorial second
+  prophesy/         what the scouting side is, for people who cannot see it
   l/                league page: Table (with phase picker) · Fixtures · Leaders · Team Stats · Cup
   fixtures/         whole-season fixture list, filterable by club
   t/  p/            team and player profiles
@@ -293,6 +298,22 @@ product is not undoable from our side.
 (`data-epinoia="shop"`), and only ever shows `status='published'` rows, which is
 structural rather than a filter: RLS hides everything earlier from anonymous
 readers.
+
+**THE SPLASH.** `/league/` with no `?l=` is now the platform's front page: a
+shallow pool over marble, a centred title, inline sign-in and three segmented
+decks. `/league/?l=slug` is untouched and must stay that way — the two are
+different pages sharing a document because they share a URL, and `home.js`
+picks between them.
+
+- The water is **two pre-rendered seamless tiles** (`brand/pool-*.jpg`, built by
+  `scratchpad/pool.py`) moved by `transform`. Never make it an animated SVG
+  filter: that recomputes noise every frame across the viewport.
+- The wash is deliberately THIN (30-48%). The first pass at 58-74% drowned the
+  caustics and flattened the floor, which is a blue rectangle rather than water.
+- The title is centred on the VIEWPORT, not on the content box — the pool runs
+  under the rail, so content-box centring puts it half a rail-width off.
+- `?train=1` on the scorer fills the setup through the real UI and presses the
+  real button, so training cannot drift from the live app.
 
 **Blocked on Louie:**
 - Push the branch (§1).

@@ -564,8 +564,11 @@ function renumber() {
 
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
-  $('#mode').textContent = 'transport: ' +
-    (window.epinoiaMode ? window.epinoiaMode() : 'local');
+  const modeEl = $('#mode');
+  if (modeEl) {
+    modeEl.textContent = 'transport: ' +
+      (window.epinoiaMode ? window.epinoiaMode() : 'local');
+  }
 
   if (WANT) {
     try {
@@ -610,14 +613,33 @@ function renumber() {
     await merch(roster, star);
     renumber();
   } else {
+    /* ------------------------------------------------------ the splash ---
+       No league asked for, so this document is the platform's front page
+       rather than a league's. It is a completely different page: a pool, a
+       title and four ways in. The league splash above is untouched by any of
+       it — the two share a document only because they share a URL.
+
+       A league that was ASKED FOR and does not exist is not the splash. It is
+       a broken link, and saying so beats silently showing something that
+       looks like the link worked. */
     if (WANT) {
-      /* asked for a league that is not there — say so rather than silently
-         showing the hub, which looks like the link worked */
+      document.querySelector('#hub').classList.remove('hide');
       fail('#leagues', 'No league called "' + WANT + '". Every league is listed below.');
+      await games();
+      await leagues();
+      renumber();
+      return;
     }
-    await games();
-    await leagues();
-    renumber();
+
+    document.body.classList.add('splash-body');
+    document.querySelector('#hub').classList.add('hide');
+    document.querySelector('#pool').classList.remove('hide');
+    document.querySelector('#splash').classList.remove('hide');
+    document.title = 'Epinoia';
+    const mode = document.querySelector('#spMode');
+    if (mode) mode.textContent = 'transport: ' +
+      (window.epinoiaMode ? window.epinoiaMode() : 'local');
+    if (window.EpinoiaSplash) window.EpinoiaSplash.mount({ api, cfg: CFG });
   }
 })();
 

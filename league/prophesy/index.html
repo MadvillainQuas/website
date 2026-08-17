@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js — this page explains the gated side, it
+     is not part of it. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Prophe(s)y Scouting · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=38">
+<link rel="stylesheet" href="../kit/nav.css?v=38">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    padding:3px 9px 1px;text-transform:uppercase}
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero .mark{height:34px;width:auto;display:block;margin-bottom:calc(var(--u)*2);
+    filter:brightness(0) invert(1) opacity(.86)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(28px,6vw,50px);line-height:.9;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:2;
+    max-width:74ch;margin:calc(var(--u)*2) 0 0}
+  .sec{border-bottom:1px solid var(--rule);padding:calc(var(--u)*3)}
+  .sec h2{font-family:var(--f-ui);font-weight:800;font-size:13px;text-transform:uppercase;
+    letter-spacing:.05em;margin:0 0 calc(var(--u)*1.5);color:var(--lume)}
+  .sec p{font-family:var(--f-micro);font-size:10px;color:var(--ink-2);line-height:2;
+    max-width:76ch;margin:0 0 calc(var(--u)*1.5)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule)}
+  .card{background:var(--ground);padding:calc(var(--u)*3);display:flex;flex-direction:column;gap:7px}
+  .card .k{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.12em}
+  .card .t{font-family:var(--f-ui);font-weight:700;font-size:15px}
+  .card .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.9}
+  .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:calc(var(--u)*2)}
+  .cta a{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    text-decoration:none;padding:10px 18px;border:1px solid var(--lume);color:var(--lume)}
+  .cta a.pri{background:var(--lume);color:#04100b}
+  .cta a:hover{background:transparent;color:var(--lume)}
+  .note{border-left:2px solid var(--amber);padding:9px 13px;
+    background:color-mix(in oklch,var(--amber) 7%,transparent);
+    font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);max-width:76ch}
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">the other side of the site</span>
+  </div>
+
+  <div class="hero">
+    <img class="mark" src="../brand/prophesy-mark@120.png" alt="Prophe(s)y" width="187" height="30">
+    <h1>Scouting</h1>
+    <p>
+      Epinoia is the public half: leagues, live scoring, tables anybody can
+      read. Prophe(s)y Scouting is the working half &mdash; the analysis tools
+      built on the same numbers, for the people who make decisions with them.
+      It sits behind an invite, which is why this page exists: so there is
+      something to read before there is something to sign into.
+    </p>
+  </div>
+
+  <div class="sec">
+    <h2>What is over there</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="k">leaderboards</span>
+        <span class="t">The full table</span>
+        <span class="d">Seventy-odd columns across every player in a competition, sortable and filterable, with percentile context rather than raw ranks alone.</span>
+      </div>
+      <div class="card">
+        <span class="k">players</span>
+        <span class="t">Profiles</span>
+        <span class="d">A player&rsquo;s season in one page: shooting by zone, playmaking, on/off splits, who they play well beside, and how each reads against the league.</span>
+      </div>
+      <div class="card">
+        <span class="k">lineups</span>
+        <span class="t">With or without</span>
+        <span class="d">What a team does with a player on the floor and off it, across every combination that has actually played, with sample sizes shown rather than hidden.</span>
+      </div>
+      <div class="card">
+        <span class="k">scouting</span>
+        <span class="t">Cross-league translation</span>
+        <span class="d">Production moved between competitions of different standards, so a season in one league can be read against a season in another.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Why the two halves are separate</h2>
+    <p>
+      They are not separate products; they are the same data at two distances.
+      A parent wants last night&rsquo;s box score and a table that is right. A
+      coach wants to know which of two forwards their team scores more with on
+      the floor. Putting both on one page serves neither, so the public side is
+      built to be glanced at and the scouting side is built to be worked in.
+    </p>
+    <p>
+      The practical consequence is that nothing on the scouting side can
+      contradict the public side: both read the same event logs through the
+      same engine.
+    </p>
+    <div class="note">
+      Prophe(s)y Scouting is invite-only, and under-18 players are withheld
+      from the public side entirely regardless of what an invited account can
+      see. That is enforced by the database rather than by each page
+      remembering.
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Getting access</h2>
+    <p>
+      If you work in a club, a federation or an agency and the tools above
+      would be useful, get in touch and say what you would use them for.
+    </p>
+    <div class="cta">
+      <a class="pri" href="/index.html">Go to Prophe(s)y Scouting</a>
+      <a href="../contact/">Ask for access</a>
+      <a href="../">Back to Epinoia</a>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <a href="../">&larr; Epinoia</a>
+    <a href="../contact/">Contact</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=38"></script>
+<script src="../nav.js?v=38"></script>
+</body>
+</html>

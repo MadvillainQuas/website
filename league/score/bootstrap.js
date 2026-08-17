@@ -19,6 +19,20 @@
   let gameId = qp.get('g');
   let mode = qp.get('mode');
 
+  /* ------------------------------------------------------------ training ---
+     ?train=1 is the door from the splash for somebody who has never seen the
+     app. No account, no fixture, nothing written anywhere — a scratch room in
+     local mode with two invented squads already on the sheet, so the first
+     thing they see is the scoring screen rather than a form.
+
+     It is driven through the SETUP UI rather than by reaching into the
+     scorer's state: filling the same inputs a person would fill and pressing
+     the same button means training cannot drift away from the real thing, and
+     there is no second code path to keep working. */
+  const TRAINING = qp.get('train') === '1';
+  if (TRAINING) mode = 'local';
+
+
   if (!gameId) {
     // a scratch room, stable across reloads so the viewer tab keeps working
     gameId = sessionStorage.getItem(ROOM_KEY);
@@ -697,4 +711,61 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
+
+  /* ---------------------------------------------------------------------- */
+  if (TRAINING) setUpTraining();
+
+  function setUpTraining() {
+    const HOME = ['Ada Shaw', 'Kit Brand', 'Sol Maddox', 'Rae Fenwick', 'Ivo Marsh',
+                  'Bea Okoro'];
+    const AWAY = ['Cass Vernon', 'Dane Hollis', 'Eli Barrow', 'Wren Castell',
+                  'Otto Lynch', 'Juno Pike'];
+    const NAMES = [HOME, AWAY];
+    const LABELS = ['harbour blues', 'marble whites'];
+
+    const start = () => {
+      const cards = document.querySelectorAll('.team-card');
+      if (cards.length < 2) return false;
+      cards.forEach((card, t) => {
+        const nameIn = card.querySelector('.tname');
+        if (!nameIn) return;
+        nameIn.value = LABELS[t];
+        const add = card.querySelector('.addP');
+        NAMES[t].forEach((who, i) => {
+          add && add.click();
+          const rows = card.querySelectorAll('.rrow');
+          const row = rows[rows.length - 1];
+          if (!row) return;
+          const n = row.querySelector('.rname'), num = row.querySelector('.rnum');
+          if (n) { n.value = who; n.dispatchEvent(new Event('input', { bubbles: true })); }
+          if (num) { num.value = String(4 + i); num.dispatchEvent(new Event('input', { bubbles: true })); }
+        });
+      });
+      const go = document.getElementById('goGame');
+      if (go) go.click();
+      return true;
+    };
+
+    /* the setup screen is built by the page's own script, which may not have
+       run yet; try until it is there, then give up rather than spin */
+    let tries = 0;
+    const tick = () => {
+      if (start() || ++tries > 40) return;
+      setTimeout(tick, 100);
+    };
+    tick();
+
+    const flag = document.createElement('div');
+    flag.textContent = 'TRAINING — nothing is saved';
+    flag.style.cssText = [
+      'position:fixed', 'top:6px', 'left:50%', 'transform:translateX(-50%)',
+      'z-index:2147483000', 'pointer-events:none',
+      'padding:4px 12px', 'border-radius:99px',
+      'background:rgba(4,16,11,.86)', 'border:1px solid rgba(147,242,191,.34)',
+      'color:#93f2bf', 'font:11px/1 ui-monospace,monospace',
+      'letter-spacing:.14em', 'text-transform:uppercase'
+    ].join(';');
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(flag));
+    if (document.body) document.body.appendChild(flag);
+  }
 })();
