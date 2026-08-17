@@ -107,9 +107,102 @@ async function renderTeams() {
   });
 }
 
+/* ---------------------------------------------------------------------------
+   THE CLUB CREST, BESIDE THE CLUB'S NAME.
+
+   It lived in the venue band, four sections down, where it read as one more
+   field about the building. A crest is not a detail about a club — it is how
+   the club appears everywhere else on the platform — so it belongs against the
+   name at the top of the only screen that shows it.
+
+   THE SLOT IS ALWAYS THERE. Empty it says ADD and is a dashed square somebody
+   can find; filled it shows the crest. A control that only appears once you
+   already have a crest is a control nobody discovers.
+
+   AND IT SAYS WHAT WILL HAPPEN, which is the other half of the request. Three
+   different things are worth knowing and none of them are guessable: what the
+   crest is used for, what file to give it, and that the league has to approve
+   it before the public sees it. "Uploaded" and "live on the website" are
+   different states and the slot shows the difference — a pending crest is
+   drawn at half strength rather than as though it were already live. */
+async function mountCrest() {
+  const slot = $('#crestSlot'), help = $('#crestHelp'), file = $('#crestFile');
+  if (!slot || !team) return;
+
+  const paint = (url, status) => {
+    slot.textContent = '';
+    slot.classList.toggle('has', !!url);
+    slot.classList.toggle('pending', status === 'pending');
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = '';
+      img.addEventListener('error', () => { img.remove(); slot.textContent = 'add'; });
+      slot.appendChild(img);
+    } else {
+      slot.textContent = 'add';
+    }
+    /* textContent throughout — a club's name is typed by a person and this
+       sentence carries it */
+    help.textContent = '';
+    const line = (t, bold) => {
+      const n = document.createElement(bold ? 'b' : 'span');
+      n.textContent = t; help.appendChild(n);
+    };
+    if (!url) {
+      line('Your club crest. ');
+      line('Add one and it replaces the initials on your club card, in the league table and on every fixture. ');
+      line('An SVG with a transparent background is best', true);
+      line(' — it stays sharp at every size, from this list to a printed shirt. A transparent PNG works too. The league approves it before it appears publicly.');
+    } else if (status === 'approved') {
+      line('Your crest is live. ');
+      line('It appears on your club card, in the league table and on every fixture. Click it to replace it.');
+    } else if (status === 'pending') {
+      line('Uploaded and waiting for the league to approve it', true);
+      line(' — your initials show publicly until then. Click the crest to replace it.');
+    } else {
+      line('That upload was not approved. ');
+      line('Click the crest to try another — an SVG with a transparent background works best.');
+    }
+  };
+
+  paint(null, null);
+  try {
+    const { data } = await sb.from('media')
+      .select('storage_path,status,created_at')
+      .eq('owner_type', 'team').eq('owner_id', team.id).eq('kind', 'logo')
+      .order('created_at', { ascending: false }).limit(1);
+    const m = data && data[0];
+    if (m && window.EpinoiaUpload) {
+      paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path), m.status);
+    }
+  } catch (_) { /* the slot still works as an upload button */ }
+
+  if (slot.dataset.wired) return;      // renderRoster runs again after every edit
+  slot.dataset.wired = '1';
+  slot.addEventListener('click', () => file.click());
+  file.addEventListener('change', async () => {
+    const f = file.files && file.files[0];
+    file.value = '';
+    if (!f) return;
+    if (!window.EpinoiaUpload) return say('The uploader did not load.', 'err');
+    slot.disabled = true;
+    try {
+      const up = await window.EpinoiaUpload.upload(sb, {
+        file: f, ownerType: 'team', ownerId: team.id, kind: 'logo' });
+      if (!up || !up.storage_path) throw new Error('the upload returned no path');
+      paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path), 'pending');
+      say('Crest uploaded — the league approves it before it appears publicly.', 'ok');
+    } catch (e) {
+      say('Upload failed: ' + (e.message || e), 'err');
+    }
+    slot.disabled = false;
+  });
+}
+
 async function renderRoster() {
   show('#roster', true);
   $('#rtitle').textContent = team.name;
+  mountCrest();
   document.documentElement.style.setProperty('--team-a', team.colour || '#93f2bf');
   const { data, error } = await sb.from('roster_entries')
     .select('id,jersey,active,players(id,first_name,last_name,is_minor)')
