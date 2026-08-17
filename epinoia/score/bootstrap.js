@@ -684,6 +684,36 @@
      on the server to finalise for one. */
   const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
 
+  /* --------------------------------------------------------- claim retry ---
+     claimFixture() is only ever called again from a screen transition —
+     tip-off, halftime, game end — because that is the one place it is wired
+     in. A statistician who was not yet signed in at tip-off sees the amber
+     "NOT being saved" badge and nothing then retries the durable write for
+     the rest of a period spent on one screen: the game stays 'scheduled' in
+     the table, watchers still see it live (that transport needs no account
+     and no row), and every other view of the site — the homepage among them
+     — correctly reports nothing live, because nothing is.
+
+     Signing in should be enough to fix it without waiting for the next
+     screen change, so it retries the moment a session appears — on the
+     initial check, on sign-in, and on the token refresh that follows a
+     cross-tab sign-in via localStorage's 'storage' event, which is how the
+     "sign in ↗" link in another tab reaches this one. It also retries on a
+     slow beat regardless, for the transient case (a dropped request, RLS
+     replication lag) that has nothing to do with auth. claimFixture() is
+     already idempotent once it has succeeded — its first line is a no-op
+     check — so calling it again after that costs nothing. */
+  if (isFixture) {
+    if (window.epinoiaClient) {
+      const sb = epinoiaClient();
+      if (sb) sb.auth.onAuthStateChange((_event, session) => { if (session) claimFixture(); });
+    }
+    const claimRetry = setInterval(() => {
+      if (claimed) { clearInterval(claimRetry); return; }
+      claimFixture();
+    }, 20000);
+  }
+
   async function finaliseGame(btn, note) {
     const CFG = window.EPINOIA_CONFIG;
     const sb = window.epinoiaClient && epinoiaClient();

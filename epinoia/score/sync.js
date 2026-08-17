@@ -27,7 +27,11 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 
-let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '';
+let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb = null, lastScorePub = '';
+
+/* Only a real fixture has a row to patch — a scratch/training game has no
+   uuid and nothing in the games table, so there is nothing to write. */
+const GAME_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /* the scorer's own state object, published so viewers can name players */
 function rosterOf(S) {
@@ -83,6 +87,36 @@ function maybeRoster(S) {
   pub.pushState(stateOf(S), { game: r });
 }
 
+/* ============================================================================
+   THE RUNNING SCORE, MIRRORED ONTO THE FIXTURE ROW.
+
+   game_state carries the score already, and that is what the box score page
+   reads — but that is a realtime/broadcast row, not the games table itself.
+   Nothing had ever written a live score onto games.home_score/away_score;
+   finalise-game sets it once, at the final whistle, and until then every
+   OTHER thing that reads a score straight off the games row — the fixture
+   strip embedded on a club's site, the platform splash's own live-games
+   list, any future API consumer — showed 0-0 for the entire game and only
+   caught up once it ended.
+
+   Deduplicated by signature like the roster above, so a tap that is not a
+   score (a foul, a sub, a timeout) costs nothing here. Best-effort: this is
+   durability for onlookers who are not on the realtime channel, not the
+   scorer's own source of truth, so a failed write is logged and dropped
+   rather than retried — the next scoring play carries a fresh signature and
+   tries again on its own. */
+function maybeScore(S) {
+  if (!sb || !gameId || !GAME_UUID.test(gameId)) return;
+  const d = (typeof derive === 'function') ? derive() : null;
+  if (!d) return;
+  const sig = d.score[0] + '-' + d.score[1];
+  if (sig === lastScorePub) return;
+  lastScorePub = sig;
+  sb.from('games').update({ home_score: d.score[0], away_score: d.score[1] })
+    .eq('id', gameId)
+    .then(({ error }) => { if (error) console.warn('[sync] score publish refused', error); });
+}
+
 const api = {
   attach(opts) {
     if (attached) return api;
@@ -92,7 +126,7 @@ const api = {
 
     gameId = opts.gameId;
     const mode = opts.mode || (root.epinoiaMode ? root.epinoiaMode() : 'local');
-    const sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
+    sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
 
     pub = root.EpinoiaLive.publisher({
       gameId, mode, supabase: sb,
@@ -104,7 +138,7 @@ const api = {
       const inner = root.addEvent;
       root.addEvent = function (ev) {
         const id = inner.apply(this, arguments);
-        try { drain(S); } catch (e) { console.warn('[sync]', e); }
+        try { drain(S); maybeScore(S); } catch (e) { console.warn('[sync]', e); }
         return id;
       };
     }
@@ -126,6 +160,7 @@ const api = {
       try {
         drain(S);
         maybeRoster(S);
+        maybeScore(S);
       } catch (e) { /* never let sync break scoring */ }
     }, 2000);
 
@@ -146,6 +181,7 @@ const api = {
 
     maybeRoster(S);
     drain(S);
+    maybeScore(S);
     attached = true;
     console.log('[sync] attached to game', gameId, 'via', pub.transport);
     return api;
