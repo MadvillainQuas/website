@@ -190,8 +190,13 @@
 
   /* ---- country panel: every country with a league in it ---- */
   const ctitle = el('a', 'ptitle', 'Countries');
-  ctitle.href = root;
-  ctitle.title = 'The platform';
+  /* THE HEADING GOES TO THE COUNTRIES PAGE, not to the splash. Every other
+     panel title in this rail opens the thing the panel is a list OF — a
+     league's name opens that league — and this one pointed at the front door
+     instead, so the one heading that had somewhere obvious to go was the one
+     that sent you back out. */
+  ctitle.href = root + 'countries/';
+  ctitle.title = 'Every country, as a page';
   const clist = el('div', 'leagues');
   clist.appendChild(el('div', 'gempty', '…'));
   countryPanel.append(ctitle, clist);
