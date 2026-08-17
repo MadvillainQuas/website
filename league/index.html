@@ -10,8 +10,8 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=32">
-<link rel="stylesheet" href="kit/nav.css?v=32">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=33">
+<link rel="stylesheet" href="kit/nav.css?v=33">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -245,6 +245,13 @@
     border:1px solid var(--rule-2);overflow:hidden;
     transition:border-color .16s ease,transform .16s ease}
   .prod-art svg{width:100%;height:100%;display:block}
+  /* a published product shows its PRINT FILE, because there is no photograph —
+     the garment is made when somebody orders it, and a stock mockup would be a
+     picture of a thing that has never existed */
+  .prod-art img.prod-print{position:absolute;inset:12%;width:76%;height:76%;
+    object-fit:contain;display:block}
+  a.prod.live .prod-foot .prod-club{color:var(--ink-c);font-family:var(--f-score);
+    font-size:12px;letter-spacing:0}
   a.prod:hover .prod-art{border-color:var(--ink-c);transform:translate(-2px,-2px)}
   .prod-foot{display:flex;align-items:baseline;gap:8px;padding:8px 2px 0}
   .prod-name{font-family:var(--f-ui);font-weight:700;font-size:11.5px;
@@ -417,14 +424,14 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=32"></script>
+<script src="config.js?v=33"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=32"></script>
-<script src="bpm.js?v=32"></script>
-<script src="data.js?v=32"></script>
-<script src="merch.js?v=32"></script>
-<script src="home.js?v=32"></script>
-<script src="nav.js?v=32"></script>
+<script src="season.js?v=33"></script>
+<script src="bpm.js?v=33"></script>
+<script src="data.js?v=33"></script>
+<script src="merch.js?v=33"></script>
+<script src="home.js?v=33"></script>
+<script src="nav.js?v=33"></script>
 </body>
 </html>

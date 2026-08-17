@@ -12,7 +12,7 @@ Branch: **`epinoia-network`** — not merged to `main`, so nothing here is live.
 
 ## 1. THE BLOCKER — read this first
 
-**48 commits are local-only.** `git push` needs an interactive credential
+**52 commits are local-only.** `git push` needs an interactive credential
 prompt that a headless session cannot satisfy:
 
 ```
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **27**).
+  under `league/`, from `league/version.txt` (currently **33**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -152,6 +152,7 @@ league/
   season.js       aggregation; rates from SUMMED components, never averaged
   bpm.js          BPM 2.0 — ALSO runs in the Edge Function, see below
   merch.js        merchandise: products drawn from club crests, star of the month
+  artwork.js      PRINT files — real inches at 300 DPI, transparent, no garment
   data.js         shared loader (paged) + season/window aggregation
   fulltable.js    the index_9-style table, 70+ columns
   live.js         publisher/subscriber, 250ms frames, corrections
@@ -261,6 +262,37 @@ touched and what it deliberately did not:
 - Brand assets are in `league/brand/`, built from the two supplied PNGs: white
   keyed to transparency, the icon cropped off its shadow. Every page now has a
   favicon, which it did not before.
+
+**THE MERCHANDISE PIPELINE** (migration 0043) turns the drawn mockups into
+things that exist. Three places on purpose:
+
+- `league/artwork.js` builds the PRINT file — the design alone, on
+  transparency, at the real physical size, 300 DPI. Not the mockup; confusing
+  the two gives you a t-shirt with a picture of a t-shirt on it.
+- **The artwork is rasterised in the ADMIN CONSOLE**, because that needs a
+  canvas. Verified: a 17.3-megapixel tee sheet renders in ~1.4s to a 483KB PNG
+  with transparent corners. One design at a time — several 17MP canvases at
+  once kills a tab. Anything over 40MP is scaled down and the real DPI is
+  recorded in the design's warnings rather than hidden.
+- **The store is called from the `merch` Edge Function**, never the browser:
+  `merch_providers` has no SELECT policy, so the API key is unreadable even to
+  the admin who set it.
+
+It is AUTOMATIC in the sense that matters: triggers put a design back to
+`pending` when its club's logo is approved or the club is renamed or
+recoloured, and the console builds anything pending the moment it is opened.
+
+Catalogue ids (Printful variants, Printify blueprint/provider) are PASTED by
+the league, never guessed — a product created against a guessed variant is a
+real product in a real shop that nobody can buy. `missing()` names the gaps in
+sentences and `action:'dryrun'` shows the exact requests with the key redacted.
+**The live store call is unverified** — it needs a real account, and creating a
+product is not undoable from our side.
+
+`/league/embed/merch/` is the shop window for other people's sites
+(`data-epinoia="shop"`), and only ever shows `status='published'` rows, which is
+structural rather than a filter: RLS hides everything earlier from anonymous
+readers.
 
 **Blocked on Louie:**
 - Push the branch (§1).

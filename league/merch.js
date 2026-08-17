@@ -320,7 +320,41 @@ function productCard(club, p, store) {
   return card;
 }
 
-/* opts: { host, note, league, clubs, star, store, cfg } */
+/* A PUBLISHED product beats a drawing of one. Where the league has actually
+   created merchandise, the rack shows the real thing with its real price and
+   a link that buys it; where it has not, the drawn mockups stand in, which is
+   what every league starts with. Both are the same card, so a club watching
+   their page does not see the layout change under them on the day the shop
+   opens. */
+function publishedCard(row, cfg) {
+  const card = el(row.external_url ? 'a' : 'div', 'prod live');
+  if (row.external_url) {
+    card.href = row.external_url;
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer nofollow';
+  }
+  card.style.setProperty('--ink-c', (row.__colour) || '#93f2bf');
+  const art = el('div', 'prod-art');
+  if (row.artwork_path) {
+    const img = document.createElement('img');
+    img.className = 'prod-print';
+    img.src = cfg.supabaseUrl + '/storage/v1/object/public/merch-print/' + row.artwork_path;
+    img.alt = '';
+    img.loading = 'lazy';
+    art.appendChild(img);
+  }
+  art.appendChild(el('div', 'club-grain'));
+  card.appendChild(art);
+  const foot = el('div', 'prod-foot');
+  const p = PRODUCTS.find(x => x.key === row.kind);
+  foot.append(el('span', 'prod-name', (p && p.name) || row.kind),
+              el('span', 'prod-club', row.price_pennies == null ? (row.__short || '')
+                : '£' + (row.price_pennies / 100).toFixed(2)));
+  card.appendChild(foot);
+  return card;
+}
+
+/* opts: { host, note, league, clubs, star, store, cfg, published } */
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return false;
@@ -338,9 +372,25 @@ function render(opts) {
   const rail = el('div', 'merch-rail');
   const rack = el('div', 'merch-rack');
 
+  const byClub = new Map();
+  (opts.published || []).forEach(r => {
+    if (!byClub.has(r.team_id)) byClub.set(r.team_id, new Map());
+    byClub.get(r.team_id).set(r.kind, r);
+  });
+
   const draw = () => {
     rack.textContent = '';
-    PRODUCTS.forEach(p => rack.appendChild(productCard(current, p, store)));
+    const real = byClub.get(current.id);
+    PRODUCTS.forEach(p => {
+      const row = real && real.get(p.key);
+      if (row) {
+        row.__colour = current.colour;
+        row.__short = current.short_name || current.name;
+        rack.appendChild(publishedCard(row, opts.cfg || {}));
+      } else {
+        rack.appendChild(productCard(current, p, store));
+      }
+    });
   };
 
   clubs.forEach(c => {
@@ -380,7 +430,9 @@ function render(opts) {
 
   if (opts.note) {
     const n = document.querySelector(opts.note);
-    if (n) n.textContent = store ? (store.name || 'shop linked') : 'preview only';
+    const live = (opts.published || []).length;
+    if (n) n.textContent = live ? live + ' on sale'
+      : (store ? (store.name || 'shop linked') : 'preview only');
   }
   return true;
 }

@@ -131,6 +131,18 @@ jobs:
         # non-UUID player id being declined rather than failing a finalise
         run: node --experimental-strip-types supabase/tests/awards.test.mjs
 
+      - name: Print files
+        # these become physical objects. A sheet at the wrong DPI, a background
+        # that prints as a white slab on a black shirt, or a design past the
+        # trim line is a refund rather than a bug report.
+        run: node supabase/tests/artwork.test.mjs
+
+      - name: Print-on-demand requests
+        # a wrong request creates a REAL product in a REAL shop, on sale. The
+        # shapes are asserted rather than discovered: Printify's two-step
+        # upload, pennies against pounds, and a 200 with no product id in it.
+        run: node supabase/tests/merchstore.test.mjs
+
       - name: Partner feed payloads
         # these are the bytes RealGM and Eurobasket republish as fact. The
         # thing worth guarding is not that it works but that it stays right

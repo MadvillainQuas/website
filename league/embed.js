@@ -35,11 +35,12 @@
   const base = new URL('.', me.src).href;          // .../league/
 
   const PATHS = { strip: 'embed/strip/', game: 'embed/game/',
-                  standings: 'embed/table/', leaders: 'embed/table/' };
+                  standings: 'embed/table/', leaders: 'embed/table/',
+                  shop: 'embed/merch/' };
   const path = PATHS[kind];
   if (!path) {
     console.warn('[epinoia] unknown embed "' + kind +
-                 '" — expected strip, game, standings or leaders');
+                 '" — expected strip, game, standings, leaders or shop');
     return;
   }
 
@@ -59,8 +60,8 @@
   const frame = document.createElement('iframe');
   frame.src = url.href;
   frame.title = { game: 'Epinoia box score', strip: 'Epinoia fixtures',
-                  standings: 'Epinoia standings',
-                  leaders: 'Epinoia leaders' }[kind] || 'Epinoia';
+                  standings: 'Epinoia standings', leaders: 'Epinoia leaders',
+                  shop: 'Epinoia shop' }[kind] || 'Epinoia';
   frame.loading = 'lazy';
   frame.setAttribute('scrolling', 'no');
   /* no allow-* beyond scripts and same-origin: the frame needs neither popups

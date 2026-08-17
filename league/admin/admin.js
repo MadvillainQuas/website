@@ -84,6 +84,9 @@ async function render() {
   window.EpinoiaWebhook.mount({ host: '#webhookPanel', sb, league, say });
   window.EpinoiaFeeds.mount({ host: '#feedsPanel', sb, league, say,
                                 cfg: window.EPINOIA_CONFIG });
+  window.EpinoiaMerchUI.mount({ host: '#merchPanel', sb, league, say,
+                                cfg: window.EPINOIA_CONFIG,
+                                season: season ? season.name : '' });
   await loadLeague();
 }
 

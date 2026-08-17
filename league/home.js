@@ -487,9 +487,19 @@ async function merch(roster, star) {
     } catch (_) { /* the printed monogram stands in for a photograph */ }
   }
 
+  /* Anything the league has actually published. RLS makes this safe to ask
+     for anonymously — a design that is still building or has failed is not
+     selectable, so a half-finished shirt cannot reach the page. */
+  let published = [];
+  try {
+    published = await api('merch_designs?league_id=eq.' + LEAGUE.id +
+      '&status=eq.published&select=team_id,kind,artwork_path,external_url,' +
+      'price_pennies,currency&limit=200');
+  } catch (_) { /* the drawings stand in */ }
+
   const ok = window.EpinoiaMerch.render({
     host: '#merch', note: '#merchNote', league: LEAGUE, clubs,
-    star: feature, cfg: CFG,
+    star: feature, cfg: CFG, published,
     store: LEAGUE.store_url ? { url: LEAGUE.store_url, name: LEAGUE.store_name } : null
   });
   if (ok) sec.classList.remove('hide');
