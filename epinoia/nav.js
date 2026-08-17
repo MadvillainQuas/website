@@ -362,6 +362,33 @@
   home.title = 'back to Epinoia';
   nav.appendChild(home);
 
+  /* THE WAY IN, ON A PHONE.
+     The bar below 820px is every one of these same rows, reflowed into a
+     58px strip you swipe sideways — nothing in it is hidden, but nothing
+     about a row of icons tells a reader that swiping reveals more, and the
+     group labels and panel titles (what a section actually IS, not just its
+     icon) are dropped entirely to fit the strip's height. This button opens
+     the identical rail a desktop visitor sees, full labels included, as a
+     sheet over the page — the honest route to everything the bar itself
+     already links to. Hidden by CSS above 820px, where the rail needs no
+     toggle because it is simply always on screen. */
+  const navToggle = el('button', 'item navtoggle');
+  navToggle.type = 'button';
+  navToggle.setAttribute('aria-label', 'Menu');
+  navToggle.setAttribute('aria-expanded', 'false');
+  const navToggleIc = el('span', 'ic', '☰');
+  navToggle.append(navToggleIc, el('span', 'tx', 'menu'));
+  navToggle.addEventListener('click', () => {
+    const open = nav.classList.toggle('drawer-open');
+    document.body.classList.toggle('nav-drawer-open', open);
+    navToggle.setAttribute('aria-expanded', String(open));
+    navToggleIc.textContent = open ? '×' : '☰';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && nav.classList.contains('drawer-open')) navToggle.click();
+  });
+  nav.appendChild(navToggle);
+
   /* ============================================================== views === */
   let leagues = [];
   const bySlug = () => leagues.find(l => l.slug === lg) || null;

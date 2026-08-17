@@ -365,6 +365,35 @@ body.pregame .plist{opacity:.72}
     position:fixed;top:calc(env(safe-area-inset-top) + 127px);}
   #ctrlHelp{display:none;} /* the mid-panel plays this role on desktop */
 }
+
+/* ============ mobile: the pregame card, as an overlay ============
+   #midpanel is display:none below 900px, which is fine for the cards that
+   only mean anything once a shot exists — the shot chart, the tag chips,
+   the log; #ctrlHelp plays their role on a phone instead, immediately above.
+   #mpPregame is not one of those. It is the ONLY place "begin game" and
+   "edit squads" live, and hiding its parent left a phone showing two roster
+   columns with no way to start the game at all — the middle of the screen
+   the buttons belonged in was simply gone.
+
+   body.pregame is already set for exactly this phase (renderAll, above),
+   and renderPregame() already keeps mpCourt/mpChips/mpLog hidden underneath
+   it with the .hidden class it always used — every child's own visibility
+   is correct already. This only makes the PARENT render, as a centred card
+   over a dimmed backdrop instead of inline in a column that has nowhere to
+   go on a narrow screen. */
+@media (max-width:899px){
+  body.pregame::before{
+    content:''; position:fixed; inset:0; z-index:50;
+    background:rgba(2,16,11,.78);
+  }
+  body.pregame #midpanel{
+    display:flex; flex-direction:column; gap:8px;
+    position:fixed; left:16px; right:16px; z-index:51;
+    top:50%; transform:translateY(-50%);
+    max-height:82vh; overflow:auto;
+  }
+  body.pregame #mpPregame{ padding:16px; }
+}
 .mptitle{font-size:9px;letter-spacing:.26em;color:var(--faint);text-transform:lowercase;padding:0 2px 7px;}
 #mpCourt svg{width:100%;display:block;border-radius:10px;cursor:crosshair;}
 #mpCourt.inactive svg{opacity:.35;cursor:default;}

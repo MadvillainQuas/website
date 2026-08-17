@@ -356,6 +356,26 @@
     0 1px 0 rgba(255,255,255,.92),
     0 2px 4px rgba(255,255,255,.55);
 }
+/* THE FLOOR WAS THE CEILING, ON EVERY PHONE. clamp(44px, 9vw, 92px) only
+   clears its own floor once the viewport passes roughly 488px — under that,
+   9vw is smaller than 44px and the clamp just returns the floor, flat, so a
+   375px phone and a 480px phone rendered the identical 44px title. That is
+   not "responsive down to a minimum", it is "fixed at the minimum for every
+   phone that exists" — measured live at 382px wide, the title still came out
+   at exactly 44px with letter-spacing rounding to 0.22px, all but invisible.
+
+   A steeper preferred rate fixes the ceiling-that-never-lifts: 14vw clears
+   44px above a 315px viewport, so it is doing real work across the phones
+   this actually has to render on, and the floor only saves the very
+   narrowest devices from crowding the two side buttons in .sp-mid. The
+   padding is trimmed to match — .sp-title's desktop 32px side padding was
+   sized for a 92px headline with room to spare, and left a 52px title
+   fighting for the same width a 44px one had. */
+@media (max-width:640px){
+  .sp-title{ padding:calc(var(--u)*4) 18px calc(var(--u)*3); }
+  .sp-title h1{ font-size:clamp(46px, 14vw, 92px); }
+  .sp-title h1.epinoia-mark{ letter-spacing:.015em !important }
+}
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
   margin-top:calc(var(--u)*2);

@@ -165,6 +165,20 @@ table.ft td.neg{ color:var(--bad,#ff5f6b) }
 @media (max-width:640px){
   table.ft{ font-size:11px }
   table.ft th.c1, table.ft td.c1{ width:132px }
-  .ft-wrap{ max-height:none }          /* the page scroll is enough on a phone */
+  /* max-height:none turns off .ft-wrap's OWN vertical scroll, but overflow:auto
+     (set above, for desktop) still sets overflow-y as well as overflow-x — a
+     box that can scroll both ways at once is exactly what trapped a touch
+     that started mid-table: the browser had to decide which axis the gesture
+     belonged to, and it decided in the table's favour, so a vertical swipe
+     over the middle of a wide table never reached the page underneath.
+     overflow-y:hidden removes the ambiguity (there is nothing to clip once
+     the height cap above is gone) and touch-action:pan-x tells the browser
+     outright, before the first pixel of movement, that this box only pans
+     sideways — a vertical touch is the page's scroll from the start. */
+  .ft-wrap{
+    max-height:none;          /* the page scroll is enough on a phone */
+    overflow-y:hidden;
+    touch-action:pan-x;
+  }
   table.ft thead th{ position:static } /* and a sticky header eats too much of it */
 }

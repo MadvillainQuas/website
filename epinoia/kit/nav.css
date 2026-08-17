@@ -75,6 +75,11 @@
 /* the page moves over rather than sitting underneath */
 body.has-nav{ padding-left:var(--nav-w) }
 
+/* the menu toggle exists only for the mobile bar below — the desktop rail
+   needs no button to open itself, it is already open */
+.ep-nav .navtoggle{ display:none }
+body.nav-drawer-open{ overflow:hidden }
+
 /* ============================================================== the deck ===
    Two panels side by side in a window one panel wide. Sliding is a transform,
    which the compositor can do without touching layout; the HEIGHT is animated
@@ -291,4 +296,66 @@ body.has-nav{ padding-left:var(--nav-w) }
   .ep-nav .phead .lname{ max-width:96px }
   .ep-nav .phead .lname .marq > span{ font-size:9.5px }
   .ep-nav .acct{ flex-direction:row }
+
+  /* THE TOGGLE ITSELF. position:sticky on a direct child of the bar's own
+     scroll container keeps it pinned to the right edge as the strip is
+     swiped, with no need to pull it out of the row into a second element —
+     it is always the one thing on the bar you do not have to scroll to. */
+  .ep-nav .navtoggle{
+    display:flex; flex:0 0 auto; position:sticky; right:0; z-index:5;
+    background:var(--nav-bg,#071710);
+    border-left:1px solid rgba(147,242,191,.22);
+    box-shadow:-8px 0 10px -6px rgba(0,0,0,.5);
+  }
+  .ep-nav.drawer-open .navtoggle{
+    position:fixed; top:10px; right:10px; z-index:2001;
+    border-radius:6px; border:1px solid rgba(147,242,191,.35);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+}
+
+/* ---- the drawer: the same rail, opened as a full sheet over the page ----
+   Everything below only ever applies under 820px (nested in the same query
+   as the bar itself) and only once .drawer-open is set, so a desktop visit
+   is completely unaffected. It undoes the bar's row-flow rules one by one
+   rather than replacing the element, because the deck underneath — the
+   countries/leagues/pages slider — has to keep working exactly as it does
+   on a real desktop rail, just laid out vertically again. */
+@media (max-width:820px){
+  .ep-nav.drawer-open{
+    top:0; height:100dvh; flex-direction:column; align-items:stretch;
+    overflow-y:auto; overflow-x:hidden; padding:14px 0 24px;
+    z-index:2000; border-top:0;
+  }
+  .ep-nav.drawer-open .gap{ display:none }
+  .ep-nav.drawer-open .sep, .ep-nav.drawer-open .grouplbl,
+  .ep-nav.drawer-open .ptitle{ display:block }
+  .ep-nav.drawer-open a.item, .ep-nav.drawer-open button.item{
+    flex-direction:row; justify-content:flex-start; gap:10px;
+    padding:9px 10px 9px 14px; border-top:0; border-left:2px solid transparent;
+    width:100%; text-align:left;
+  }
+  .ep-nav.drawer-open a.item.on{
+    border-left-color:#93f2bf; border-top-color:transparent;
+    background:rgba(147,242,191,.11);
+  }
+  .ep-nav.drawer-open .tx{ font-size:9.5px; letter-spacing:.11em }
+  .ep-nav.drawer-open a.admin-row{
+    margin-top:8px; padding-top:11px;
+    border-top:1px solid rgba(147,242,191,.16); border-left:0;
+  }
+  .ep-nav.drawer-open .navdeck{ height:auto !important; overflow:visible }
+  .ep-nav.drawer-open .deck{ align-items:stretch }
+  .ep-nav.drawer-open .panel{ flex-direction:column; overflow-x:visible }
+  .ep-nav.drawer-open .pages, .ep-nav.drawer-open .leagues{ flex-direction:column }
+  .ep-nav.drawer-open .lrow{ flex-direction:row; padding:9px 10px 9px 14px; gap:9px }
+  .ep-nav.drawer-open .marq{ flex:1; max-width:none }
+  .ep-nav.drawer-open .marq > span{ font-size:10px }
+  .ep-nav.drawer-open .phead{
+    flex-direction:row; padding:0 8px 11px 8px; margin:0 0 6px;
+    border-bottom:1px solid rgba(147,242,191,.18); border-right:0;
+  }
+  .ep-nav.drawer-open .phead .lname{ max-width:none }
+  .ep-nav.drawer-open .phead .lname .marq > span{ font-size:12.5px }
+  .ep-nav.drawer-open .acct{ flex-direction:column }
 }
