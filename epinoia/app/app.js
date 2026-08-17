@@ -133,13 +133,48 @@ async function mountCrest() {
   /* REMOVE SITS BESIDE ADD, not inside a menu. A club that has uploaded the
      wrong crest wants it gone now, and hunting for how is the worst minute of
      that. Hidden while there is nothing to remove. */
+  /* FINISH A PUBLISH THAT DID NOT. Hidden unless the crest is pending. */
+  let pubBtn = document.getElementById('crestPublish');
+  if (!pubBtn) {
+    pubBtn = document.createElement('button');
+    pubBtn.id = 'crestPublish'; pubBtn.type = 'button'; pubBtn.className = 'mini';
+    pubBtn.textContent = 'publish crest';
+    pubBtn.title = 'put this crest live now';
+    pubBtn.hidden = true;
+  }
+
   let rm = document.getElementById('crestRemove');
   if (!rm) {
     rm = document.createElement('button');
     rm.id = 'crestRemove'; rm.type = 'button'; rm.className = 'mini';
     rm.textContent = 'remove crest';
     rm.title = 'take this crest down — your initials come back';
+    slot.parentNode.insertBefore(pubBtn, document.getElementById('back'));
     slot.parentNode.insertBefore(rm, document.getElementById('back'));
+
+    pubBtn.addEventListener('click', async () => {
+      pubBtn.disabled = true;
+      try {
+        const { data: rows } = await sb.from('media')
+          .select('id,storage_path')
+          .eq('owner_type', 'team').eq('owner_id', team.id).eq('kind', 'logo')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false }).limit(1);
+        const m = rows && rows[0];
+        if (!m) { say('Nothing waiting to be published.', 'warn'); pubBtn.disabled = false; return; }
+        await moveToPublic(m.storage_path);
+        const pub = await sb.rpc('publish_team_logo', { p_media: m.id });
+        if (pub.error) throw new Error(pub.error.message);
+        const orphans = (pub.data && pub.data.orphans) || [];
+        if (orphans.length) {
+          sb.storage.from('media-public').remove(orphans).catch(() => {});
+          sb.storage.from('media-pending').remove(orphans).catch(() => {});
+        }
+        paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path), 'approved');
+        say('Crest published — it is live now.', 'ok');
+      } catch (e) { say(e.message || 'that was refused', 'err'); }
+      pubBtn.disabled = false;
+    });
     rm.addEventListener('click', async () => {
       if (!confirm('Remove your club crest?\n\nYour initials come back on your ' +
                    'club card, in the league table and on every fixture. You can ' +
@@ -157,6 +192,11 @@ async function mountCrest() {
   const paint = (url, status) => {
     slot.textContent = '';
     if (rm) rm.hidden = !url;
+    /* A CREST THAT DID NOT PUBLISH IS NOT STRANDED. The upload succeeded and
+       the file is sitting in the pending bucket; all that failed was the last
+       step. Offering to finish it beats telling somebody to upload the same
+       file again. */
+    if (pubBtn) pubBtn.hidden = (status !== 'pending');
     slot.classList.toggle('has', !!url);
     slot.classList.toggle('pending', status === 'pending');
     if (url) {
@@ -185,10 +225,9 @@ async function mountCrest() {
       line('Your crest is live. ');
       line('It appears on your club card, in the league table and on every fixture. Click it to replace it — the new one goes live straight away.');
     } else if (status === 'pending') {
-      /* only reachable if publishing was refused, or for a crest uploaded
-         before this went in */
       line('Uploaded, but not published yet', true);
-      line(' — your initials show publicly until it is. Click the crest to try again.');
+      line(' — your initials show publicly until it is. Use publish beside the ' +
+           'crest, or click the crest to upload a different one.');
     } else {
       line('That upload was not approved. ');
       line('Click the crest to try another — an SVG with a transparent background works best.');
@@ -232,7 +271,13 @@ async function mountCrest() {
          for anything else. If it fails the upload still exists as pending and
          the league can approve it the old way, which is why the message says
          what actually happened rather than assuming. */
-      const pub = await sb.rpc('publish_team_logo', { p_media: up.id });
+      /* the file first — if this throws, nothing is marked published */
+      let moveErr = null;
+      try { await moveToPublic(up.storage_path); }
+      catch (e) { moveErr = e; }
+
+      const pub = moveErr ? { error: moveErr }
+                          : await sb.rpc('publish_team_logo', { p_media: up.id });
       const live = !pub.error;
 
       /* THE OLD FILE IS REMOVED THROUGH THE STORAGE API, because SQL may not
@@ -269,6 +314,27 @@ async function mountCrest() {
    kilobytes nobody points at, and failing a removal because a tidy-up failed
    would be the wrong way round. What matters is that the row is gone — that is
    what every reader looks at. */
+/* MOVE THE FILE, THEN SAY IT IS PUBLISHED — in that order, and never the
+   other way round.
+
+   Only the Storage API can move an object, because only it moves the bytes; a
+   SQL update of storage.objects.bucket_id moves the row and leaves the file
+   where it was, which is how two crests came to be marked approved with their
+   images 404ing. So the move happens here and the row is only marked published
+   if it worked. A failed move now means "not published", which is the honest
+   outcome, instead of a record that claims otherwise.
+
+   'already exists' is treated as success: the file is in the public bucket,
+   which is the whole objective, and a retry after a half-finished move should
+   not be an error. */
+async function moveToPublic(path) {
+  const { error } = await sb.storage.from('media-pending')
+    .move(path, path, { destinationBucket: 'media-public' });
+  if (error && !/exists/i.test(error.message || '')) {
+    throw new Error(error.message || 'could not move the file to public storage');
+  }
+}
+
 async function removeImage(ownerType, ownerId, kind) {
   const { data, error } = await sb.rpc('remove_media', {
     p_owner_type: ownerType, p_owner_id: ownerId, p_kind: kind || null });

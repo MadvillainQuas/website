@@ -351,7 +351,16 @@ async function clubs() {
       '&select=owner_id,storage_path&order=created_at.desc');
     rows.forEach(r => {
       if (!logos.has(r.owner_id)) {
-        logos.set(r.owner_id, CFG.supabaseUrl + '/storage/v1/object/public/' + r.storage_path);
+        /* THE BUCKET BELONGS IN THE URL. This built
+              /storage/v1/object/public/team/<id>/logo-….webp
+           where the endpoint wants
+              /storage/v1/object/public/media-public/team/<id>/logo-….webp
+           so every club card would have asked for a path that cannot exist.
+           EpinoiaUpload.publicUrl has always built it correctly; this was a
+           second, hand-rolled copy of the same job. */
+        logos.set(r.owner_id, window.EpinoiaUpload
+          ? window.EpinoiaUpload.publicUrl(CFG, r.storage_path)
+          : CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path);
       }
     });
   } catch (_) { /* monograms all round */ }

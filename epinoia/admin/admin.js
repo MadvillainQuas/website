@@ -671,6 +671,19 @@ async function loadMediaQueue() {
     const ok = el('button', 'ep-btn mini pri', 'approve'); ok.type = 'button';
     ok.addEventListener('click', async () => {
       ok.disabled = true;
+      /* THE FILE MOVES FIRST, and approve_media no longer tries to. A SQL
+         update of storage.objects.bucket_id moved the row and left the bytes
+         in the pending bucket, so an approved image 404'd — the state that had
+         to be found by fetching one. Only the Storage API moves an object, so
+         it happens here, and the row is marked approved only if it worked.
+
+         "already exists" counts as done: the file is where it needs to be. */
+      const mv = await sb.storage.from('media-pending')
+        .move(m.storage_path, m.storage_path, { destinationBucket: 'media-public' });
+      if (mv.error && !/exists/i.test(mv.error.message || '')) {
+        ok.disabled = false;
+        return oops(new Error('could not publish the file: ' + mv.error.message));
+      }
       const { data, error } = await sb.rpc('approve_media', { p_media: m.id });
       if (error) { ok.disabled = false; return oops(error); }
       say(data + ' — ' + (m.subject || 'image'), 'ok');
