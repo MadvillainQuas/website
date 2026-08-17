@@ -8,8 +8,8 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>Courtside Network</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=21">
-<link rel="stylesheet" href="kit/nav.css?v=21">
+<link rel="stylesheet" href="kit/courtside-kit.css?v=24">
+<link rel="stylesheet" href="kit/nav.css?v=24">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -181,6 +181,83 @@
   .star:hover .star-name{color:var(--ink-c)}
   .star-team{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
     letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* ---- merchandise -------------------------------------------------------
+     A shop window, not a catalogue: one club's rack at a time, and the star of
+     the month across the top because a league shop sells the season it is
+     having. Everything is drawn from the club's own crest and colours. */
+  #merch{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .merch-star{display:grid;grid-template-columns:minmax(220px,320px) 1fr;
+    gap:calc(var(--u)*3);align-items:stretch;margin-bottom:calc(var(--u)*3);
+    padding-bottom:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  @media (max-width:720px){ .merch-star{grid-template-columns:1fr} }
+  .ms-plate{position:relative;aspect-ratio:4/5;overflow:hidden;
+    background:#07130d;border:1px solid var(--rule-2)}
+  .ms-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    filter:grayscale(.35) contrast(1.08)}
+  .ms-mono{position:absolute;inset:0;display:grid;place-items:center}
+  .ms-mono .club-mono{font-size:clamp(52px,11vw,92px)}
+  /* THE LOCKUP. "STAR OF THE" small and spaced over "MONTH" set large and
+     hollow, so a photograph reads through the letters instead of being
+     covered by them. The scrim keeps the small line legible over a bright
+     photo without dimming the whole picture. */
+  .ms-lock{position:absolute;left:0;right:0;bottom:0;z-index:2;
+    padding:calc(var(--u)*2) calc(var(--u)*2) calc(var(--u)*1.5);
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    background:linear-gradient(transparent,rgba(4,16,11,.55) 34%,rgba(4,16,11,.94))}
+  .ms-kicker{font-family:var(--f-micro);font-size:9px;letter-spacing:.44em;
+    text-transform:uppercase;color:var(--ink-c);
+    text-shadow:0 0 8px color-mix(in oklch,var(--ink-c) 45%,transparent)}
+  .ms-big{font-family:var(--f-score);font-size:clamp(30px,7vw,52px);line-height:.86;
+    letter-spacing:.02em;text-transform:uppercase;color:transparent;
+    -webkit-text-stroke:1.4px var(--ink-c);
+    text-shadow:0 0 14px color-mix(in oklch,var(--ink-c) 30%,transparent)}
+  .ms-side{display:flex;flex-direction:column;gap:9px;justify-content:center;min-width:0}
+  .ms-eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .ms-name{font-family:var(--f-score);font-size:clamp(24px,5vw,42px);line-height:.96;
+    text-transform:uppercase;color:var(--ink);text-decoration:none}
+  .ms-name:hover{color:var(--ink-c)}
+  .ms-team{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .ms-figs{display:flex;gap:1px;background:var(--rule);border:1px solid var(--rule);
+    margin-top:5px;width:fit-content;max-width:100%;flex-wrap:wrap}
+  .ms-fig{background:var(--ground);padding:8px 14px;text-align:center;min-width:58px}
+  .ms-fig .v{display:block;font-family:var(--f-score);font-size:19px;line-height:1;color:var(--ink)}
+  .ms-fig:first-child .v{color:var(--ink-c)}
+  .ms-fig .k{display:block;font-family:var(--f-micro);font-size:7.5px;
+    letter-spacing:.14em;color:var(--ink-3);margin-top:5px}
+  .ms-copy{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;
+    color:var(--ink-3);max-width:46ch;margin:4px 0 0}
+  .ms-btn{align-self:flex-start;margin-top:6px;text-decoration:none;
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    color:#04100b;background:var(--ink-c);padding:9px 16px;border:1px solid var(--ink-c)}
+  .ms-btn:hover{background:transparent;color:var(--ink-c)}
+  .ms-btn.wide{align-self:auto;display:inline-block}
+
+  .merch-rail{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:calc(var(--u)*2)}
+  .merch-rack{display:grid;gap:calc(var(--u)*2);
+    grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+  @media (min-width:1000px){ .merch-rack{grid-template-columns:repeat(5,1fr)} }
+  .prod{display:block;text-decoration:none;color:inherit}
+  .prod-art{position:relative;aspect-ratio:1;background:#07130d;
+    border:1px solid var(--rule-2);overflow:hidden;
+    transition:border-color .16s ease,transform .16s ease}
+  .prod-art svg{width:100%;height:100%;display:block}
+  a.prod:hover .prod-art{border-color:var(--ink-c);transform:translate(-2px,-2px)}
+  .prod-foot{display:flex;align-items:baseline;gap:8px;padding:8px 2px 0}
+  .prod-name{font-family:var(--f-ui);font-weight:700;font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.03em}
+  a.prod:hover .prod-name{color:var(--ink-c)}
+  .prod-club{margin-left:auto;font-family:var(--f-micro);font-size:8px;
+    letter-spacing:.14em;color:var(--ink-3)}
+  .merch-foot{margin-top:calc(var(--u)*3);padding-top:calc(var(--u)*2);
+    border-top:1px solid var(--rule)}
+  .merch-note{font-family:var(--f-micro);font-size:9px;line-height:1.95;
+    color:var(--ink-3);max-width:74ch;margin:10px 0 0}
+  @media (prefers-reduced-motion:reduce){
+    .prod-art{transition:none} a.prod:hover .prod-art{transform:none}
+  }
+
   .fx{position:relative}
   .fxwhere{grid-column:1/-1;font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
     letter-spacing:.06em;padding-top:5px}
@@ -279,10 +356,17 @@
     <div id="leagues"><div class="empty">Loading…</div></div>
   </div>
 
+  <!-- merchandise -------------------------------------------------------- -->
+  <div class="sec hide" id="merchSec">
+    <div class="sec-h"><span class="idx">04</span><h2>Merchandise</h2>
+      <span class="note" id="merchNote"></span></div>
+    <div id="merch"></div>
+  </div>
+
   <!-- entry points ------------------------------------------------------- -->
   <div class="sec">
     <div class="sec-h">
-      <span class="idx" id="idxTake">04</span><h2>Take part</h2>
+      <span class="idx" id="idxTake">05</span><h2>Take part</h2>
       <span class="note">sign-in required</span>
     </div>
     <div class="grid">
@@ -325,13 +409,14 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=21"></script>
+<script src="config.js?v=24"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=21"></script>
-<script src="bpm.js?v=21"></script>
-<script src="data.js?v=21"></script>
-<script src="home.js?v=21"></script>
-<script src="nav.js?v=21"></script>
+<script src="season.js?v=24"></script>
+<script src="bpm.js?v=24"></script>
+<script src="data.js?v=24"></script>
+<script src="merch.js?v=24"></script>
+<script src="home.js?v=24"></script>
+<script src="nav.js?v=24"></script>
 </body>
 </html>

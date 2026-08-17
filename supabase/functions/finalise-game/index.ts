@@ -17,6 +17,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { deriveGame, teamAdv, playerAdv, lineupAgg } from '../_shared/engine.js';
 // the partner feeds — built and posted by the same code the console tests with
 import { dispatchGame } from '../_shared/feeds.ts';
+// the MVP, decided by the same BPM the pages show
+import { bpmMvp } from '../_shared/awards.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -46,7 +48,59 @@ Deno.serve(async (req) => {
   const { data: { user } } = await caller.auth.getUser();
   if (!user) return json({ error: 'sign in first' }, 401);
 
-  const { gameId, reopen } = await req.json().catch(() => ({}));
+  const { gameId, reopen, competitionId, awards } = await req.json().catch(() => ({}));
+
+  /* ------------------------------------------------- recompute the awards ---
+     Awards are rebuilt whenever a game is finalised, which is right for a
+     season in progress and useless for one that has already ended — a league
+     that changes a rule, corrects a historic game, or simply wants the MVP
+     moved onto BPM without replaying anything needs a way to ask.
+
+     Authorised as the CALLER: `competitions` is only writable through RLS by
+     an administrator of its league, so asking the database whether they can
+     see it is the same question as whether they may rebuild it. */
+  if (awards && competitionId) {
+    const { data: mine } = await caller.rpc('is_league_admin_of_competition',
+      { p_competition: competitionId });
+    if (mine !== true) return json({ error: 'not your competition' }, 403);
+
+    const notes: string[] = [];
+    for (const [fn, label] of [
+      ['recompute_standings', 'standings'],
+      ['advance_bracket', 'bracket'],
+      ['compute_season_awards', 'awards']
+    ] as const) {
+      const { error } = await admin.rpc(fn, { p_competition: competitionId });
+      if (error) notes.push(`${label}: ${error.message}`);
+    }
+
+    let mvp: unknown = null;
+    try {
+      const pick = await bpmMvp(admin, competitionId);
+      if (pick) {
+        const { error } = await admin.from('season_awards').upsert({
+          competition_id: competitionId, code: 'mvp',
+          player_id: pick.player_id, team_id: pick.team_id,
+          value: pick.value, detail: pick.detail,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'competition_id,code' });
+        if (error) notes.push('MVP left on efficiency: ' + error.message);
+        else mvp = pick;
+      } else {
+        notes.push('not enough played for a BPM MVP — the efficiency award stands');
+      }
+    } catch (e) {
+      notes.push('BPM could not be computed — the efficiency award stands');
+      console.error('[awards] BPM MVP failed:', String(e));
+    }
+
+    await admin.from('audit_log').insert({
+      actor: user.id, action: 'recompute-awards', subject: 'competition',
+      subject_id: competitionId, detail: { notes, mvp }
+    });
+    return json({ ok: true, mvp, notes });
+  }
+
   if (!gameId) return json({ error: 'gameId required' }, 400);
 
   // authorisation is evaluated as the CALLER, so RLS decides — not this code
@@ -171,6 +225,34 @@ Deno.serve(async (req) => {
         }
       }
       if (derivedWarnings.length) warnings.push(...derivedWarnings);
+
+      /* THE MVP IS DECIDED BY BPM, not by the efficiency formula the SQL award
+         uses. compute_season_awards has just written the efficiency pick;
+         this replaces it with the box plus/minus leader, running the SAME
+         bpm.js and season.js the pages run so the award and the leaderboard
+         two sections below it can never name different players.
+         See _shared/awards.ts for why this is not in plpgsql.
+
+         Non-fatal on purpose: if it cannot be computed the efficiency MVP
+         stands, and its `detail` says which basis was used, so a reader is
+         never shown a number without being told what it measures. */
+      try {
+        const pick = await bpmMvp(admin, g.competition_id);
+        if (pick) {
+          const { error } = await admin.from('season_awards').upsert({
+            competition_id: g.competition_id, code: 'mvp',
+            player_id: pick.player_id, team_id: pick.team_id,
+            value: pick.value, detail: pick.detail,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'competition_id,code' });
+          if (error) {
+            warnings.push('the MVP award is still on efficiency: ' + error.message);
+          }
+        }
+      } catch (e) {
+        console.error('[finalise] BPM MVP failed:', String(e));
+        warnings.push('the MVP award is still on efficiency — BPM could not be computed');
+      }
     }
 
     // queue the static page + OG image; a scheduled job commits these in batches

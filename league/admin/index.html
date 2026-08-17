@@ -9,8 +9,8 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>League Admin · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=21">
-<link rel="stylesheet" href="../kit/nav.css?v=21">
+<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
+<link rel="stylesheet" href="../kit/nav.css?v=24">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -274,7 +274,25 @@
     <div class="sec">
       <div class="sec-h"><span class="idx">03</span><h2>League</h2>
         <span class="note" id="lgNote"></span></div>
-      <div class="body"><div id="lgPick" class="pick"></div></div>
+      <div class="body">
+        <div id="lgPick" class="pick"></div>
+        <div class="fmt-h">Merchandise</div>
+        <p class="empty" style="padding-top:0">
+          Courtside builds a shirt, a hoodie, a scarf, a print and a mug from
+          each club’s crest and colours, and shows them on the league’s front
+          page. It takes no money and ships nothing — paste the address of the
+          shop that does, and every item points at it. Leave it empty and the
+          section says the shop is not open yet.
+        </p>
+        <div class="row">
+          <input id="shopUrl" class="cs-input grow" type="url"
+                 placeholder="https://your-shop.example/leaguename">
+          <input id="shopName" class="cs-input" maxlength="60"
+                 placeholder="Shop name" style="flex:0 0 190px">
+          <button id="shopGo" class="cs-btn" type="button">save shop</button>
+          <button id="shopClear" class="cs-btn mini" type="button">clear</button>
+        </div>
+      </div>
     </div>
 
     <div class="sec">
@@ -407,18 +425,18 @@
     <a href="../" class="cs-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=21"></script>
-<script src="../upload.js?v=21"></script>
-<script src="../vendor/supabase.js?v=21"></script>
-<script src="../livestats.js?v=21"></script>
-<script src="import-ui.js?v=21"></script>
-<script src="schedule.js?v=21"></script>
-<script src="fixtures-ui.js?v=21"></script>
-<script src="formats-ui.js?v=21"></script>
-<script src="keys-ui.js?v=21"></script>
-<script src="feeds-ui.js?v=21"></script>
-<script src="webhook-ui.js?v=21"></script>
-<script src="admin.js?v=21"></script>
-<script src="../nav.js?v=21"></script>
+<script src="../config.js?v=24"></script>
+<script src="../upload.js?v=24"></script>
+<script src="../vendor/supabase.js?v=24"></script>
+<script src="../livestats.js?v=24"></script>
+<script src="import-ui.js?v=24"></script>
+<script src="schedule.js?v=24"></script>
+<script src="fixtures-ui.js?v=24"></script>
+<script src="formats-ui.js?v=24"></script>
+<script src="keys-ui.js?v=24"></script>
+<script src="feeds-ui.js?v=24"></script>
+<script src="webhook-ui.js?v=24"></script>
+<script src="admin.js?v=24"></script>
+<script src="../nav.js?v=24"></script>
 </body>
 </html>

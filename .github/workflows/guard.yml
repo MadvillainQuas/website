@@ -120,6 +120,17 @@ jobs:
         # debugged later
         run: node supabase/tests/bpm.test.mjs
 
+      - name: Shared modules match the browser copies
+        # bpm.js and season.js run in BOTH the browser and the finalise Edge
+        # Function, which is what stops the MVP award and the leaderboard from
+        # naming different players. A drift here would let them.
+        run: node supabase/tests/extract-shared.mjs --check
+
+      - name: MVP by BPM
+        # the appearance gate, the gate relaxing on a young season, and a
+        # non-UUID player id being declined rather than failing a finalise
+        run: node --experimental-strip-types supabase/tests/awards.test.mjs
+
       - name: Partner feed payloads
         # these are the bytes RealGM and Eurobasket republish as fact. The
         # thing worth guarding is not that it works but that it stays right

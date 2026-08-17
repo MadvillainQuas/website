@@ -12,7 +12,7 @@ Branch: **`courtside-network`** — not merged to `main`, so nothing here is liv
 
 ## 1. THE BLOCKER — read this first
 
-**46 commits are local-only.** `git push` needs an interactive credential
+**47 commits are local-only.** `git push` needs an interactive credential
 prompt that a headless session cannot satisfy:
 
 ```
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **21**).
+  under `league/`, from `league/version.txt` (currently **24**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -150,7 +150,8 @@ league/
 
   engine.js       the stat engine — replays events into everything
   season.js       aggregation; rates from SUMMED components, never averaged
-  bpm.js          BPM 2.0
+  bpm.js          BPM 2.0 — ALSO runs in the Edge Function, see below
+  merch.js        merchandise: products drawn from club crests, star of the month
   data.js         shared loader (paged) + season/window aggregation
   fulltable.js    the index_9-style table, 70+ columns
   live.js         publisher/subscriber, 250ms frames, corrections
@@ -214,6 +215,27 @@ league admin and this session must never create an account. Everything under it
 is proven: the SQL functions and every SSRF guard by 0037's self-test on the
 live project, the payloads by 75 unit tests, and the function refuses
 unauthenticated callers.
+
+**The MVP is decided by BPM, not by efficiency.** `compute_season_awards` still
+writes the efficiency pick and the finalise function then OVERWRITES the `mvp`
+row with the box plus/minus leader, so the award and the leaderboard two
+sections below it can never name different players. The award's `detail` always
+says which basis was used, so a failed BPM pass degrades to a labelled
+efficiency award rather than to a wrong one.
+
+**`league/bpm.js` and `league/season.js` now run in two places.**
+`supabase/tests/extract-shared.mjs` copies them into `supabase/functions/_shared/`
+with an ESM tail; **run it after editing either, CI runs `--check`**. This is the
+same arrangement `_shared/engine.js` uses, and it exists so there is never a
+second implementation of BPM to disagree with the first. Recomputing awards for
+an existing season is `POST {competitionId, awards:1}` to finalise-game, wired
+to the "recompute awards" button in the console.
+
+**Merchandise** (league splash, section 04) draws a tee, hoodie, scarf, print
+and mug from each club's crest and colours, plus the month's BPM star on a
+print. Courtside sells nothing: items link to `leagues.store_url`, set in the
+console, and the section says the shop is not open when there is none. A minor
+is never featured — RLS hides them anyway and `home.js` checks again.
 
 **Blocked on Louie:**
 - Push the branch (§1).

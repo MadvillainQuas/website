@@ -227,9 +227,9 @@ async function clubs() {
     ts = await api('teams?league_id=eq.' + LEAGUE.id +
       '&select=id,name,short_name,slug,colour&order=name');
   } catch (e) {
-    return;                       // a league page without clubs is still a page
+    return [];                    // a league page without clubs is still a page
   }
-  if (!ts.length) return;
+  if (!ts.length) return [];
 
   /* an approved logo, if the club has one. Nothing unapproved is ever shown —
      that decision belongs to the moderation queue, not to this page. */
@@ -294,6 +294,12 @@ async function clubs() {
   });
   sec.querySelector('#clubs').textContent = '';
   sec.querySelector('#clubs').appendChild(grid);
+
+  /* handed on to the merchandise section, which prints the same crests onto
+     the same clubs — resolving the logos twice would be two chances to
+     disagree about which one is approved */
+  ts.forEach(t => { t.__logo = logos.get(t.id) || null; });
+  return ts;
 }
 
 /* -------------------------------------------------------------- the stars ---
@@ -323,17 +329,17 @@ const shortDate = iso => { try { return new Date(iso).toLocaleDateString('en-GB'
 
 async function stars() {
   const sec = $('#starsSec');
-  if (!sec || !LEAGUE) return;
+  if (!sec || !LEAGUE) return null;
 
   const comps = await leagueCompetitions(LEAGUE.id);
-  if (!comps.length) return;
+  if (!comps.length) return null;
 
   let played = [];
   try {
     played = await api('games?competition_id=in.(' + comps.join(',') + ')' +
       '&status=eq.final&select=id,tipoff_at,home_team_id,away_team_id&order=tipoff_at.desc');
-  } catch (_) { return; }
-  if (!played.length) return;
+  } catch (_) { return null; }
+  if (!played.length) return null;
 
   const latest = new Date(played[0].tipoff_at || Date.now()).getTime();
 
@@ -373,7 +379,7 @@ async function stars() {
     });
   }
 
-  if (!rows.length) return;
+  if (!rows.length) return null;
   sec.classList.remove('hide');
   const host = sec.querySelector('#stars');
   host.textContent = '';
@@ -429,6 +435,64 @@ async function stars() {
     });
     host.appendChild(grid);
   });
+
+  /* The month's winner, handed to the merchandise section. It is the same row
+     that just drew the first card on the podium, so the shop cannot end up
+     celebrating a different player from the one two sections above it. */
+  const m = rows.find(r => r.w.key === 'month') || rows[0];
+  if (!m || !m.top.length) return null;
+  const p = m.top[0], meta = m.meta[p.id] || {};
+  return {
+    id: p.id, name: meta.name || 'Player', slug: meta.slug || '',
+    bpm: p.bpm, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
+    team: m.teamsById.get(m.teamOf && m.teamOf.get(p.id)) || null,
+    span: m.span
+  };
+}
+
+/* ------------------------------------------------------ the shop window ---
+   Products built here from each club's crest and colours, and the month's star
+   on a print. Courtside sells nothing; the items link out to whatever
+   storefront the league has set up, and say so when it has not.
+
+   The star's PHOTOGRAPH is fetched here rather than in the stars section,
+   because only this card is big enough to use one. Two gates, both explicit:
+   the league must have APPROVED the image, and the player must not be a minor.
+   Under-18s do not come back from the public players read at all, so the
+   second check is belt and braces — but a safeguarding rule that only holds
+   because of something happening in another file is not one I want to rely
+   on. */
+async function merch(roster, star) {
+  const sec = $('#merchSec');
+  if (!sec || !LEAGUE || !window.CourtsideMerch) return;
+  const clubs = (roster || []).slice();
+  if (!clubs.length) return;
+
+  let feature = null;
+  if (star && star.id) {
+    feature = Object.assign({}, star);
+    try {
+      const rows = await api('players?id=eq.' + encodeURIComponent(star.id) +
+        '&select=is_minor,photo_media_id&limit=1');
+      const p = rows[0];
+      if (!p || p.is_minor) {
+        feature = null;                     // never a minor, on anything
+      } else if (p.photo_media_id) {
+        const md = await api('media?id=eq.' + p.photo_media_id +
+          '&status=eq.approved&select=storage_path&limit=1');
+        if (md.length) {
+          feature.photo = CFG.supabaseUrl + '/storage/v1/object/public/' + md[0].storage_path;
+        }
+      }
+    } catch (_) { /* the printed monogram stands in for a photograph */ }
+  }
+
+  const ok = window.CourtsideMerch.render({
+    host: '#merch', note: '#merchNote', league: LEAGUE, clubs,
+    star: feature, cfg: CFG,
+    store: LEAGUE.store_url ? { url: LEAGUE.store_url, name: LEAGUE.store_name } : null
+  });
+  if (ok) sec.classList.remove('hide');
 }
 
 /* ------------------------------------------------------------ the splash ---
@@ -496,7 +560,7 @@ function renumber() {
   if (WANT) {
     try {
       const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) +
-        '&select=id,slug,name,colour_a,colour_b&limit=1');
+        '&select=id,slug,name,colour_a,colour_b,store_url,store_name&limit=1');
       LEAGUE = ls[0] || null;
     } catch (_) { /* fall through to the hub */ }
   }
@@ -523,8 +587,9 @@ function renumber() {
 
     await games();
     splash();
-    await clubs();
-    await stars();
+    const roster = await clubs();
+    const star = await stars();
+    await merch(roster, star);
     renumber();
   } else {
     if (WANT) {

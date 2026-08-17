@@ -192,17 +192,43 @@ function mount(opts) {
   host.appendChild(el('div', 'fmt-h', 'Awards'));
   host.appendChild(el('div', 'empty',
     'Awards are recomputed automatically whenever a game is finalised. This is ' +
-    'here for after a correction, or for a season imported in bulk.'));
+    'here for after a correction, or for a season imported in bulk. Most ' +
+    'valuable player is decided by box plus/minus — the same number the ' +
+    'leaderboards show — and the rest by the plain per-game leaders.'));
   const aBtn = el('button', 'cs-btn', 'recompute awards');
   aBtn.type = 'button';
   aBtn.addEventListener('click', async () => {
     aBtn.disabled = true;
-    const { data, error } = await opts.sb.rpc('compute_season_awards',
-      { p_competition: opts.comp.id });
-    aBtn.disabled = false;
-    if (error) return opts.say(error.message, 'err');
-    opts.say(data ? data + ' awards decided.' : 'Not enough games played for awards yet.',
-             data ? 'ok' : 'warn');
+    const label = aBtn.textContent;
+    aBtn.textContent = 'recomputing…';
+    /* Through the Edge Function rather than straight to the RPC, because the
+       MVP is decided by BPM and BPM is computed by the shared JavaScript the
+       pages run, not by plpgsql. Calling compute_season_awards on its own
+       would quietly leave the MVP on the efficiency formula. */
+    try {
+      const { data: { session } } = await opts.sb.auth.getSession();
+      const r = await fetch(opts.cfg.supabaseUrl + '/functions/v1/finalise-game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: opts.cfg.supabaseAnonKey,
+          Authorization: 'Bearer ' + (session ? session.access_token : '')
+        },
+        body: JSON.stringify({ competitionId: opts.comp.id, awards: 1 })
+      });
+      const j = await r.json().catch(() => ({}));
+      aBtn.disabled = false; aBtn.textContent = label;
+      if (!r.ok || j.error) return opts.say(j.error || ('Refused (' + r.status + ').'), 'err');
+      const notes = (j.notes || []).join(' · ');
+      opts.say(j.mvp
+        ? 'Awards rebuilt. MVP by BPM: ' +
+          (j.mvp.value > 0 ? '+' : '') + j.mvp.value + ' over ' + j.mvp.games + ' games.' +
+          (notes ? ' ' + notes : '')
+        : ('Awards rebuilt. ' + (notes || '')), notes && !j.mvp ? 'warn' : 'ok');
+    } catch (e) {
+      aBtn.disabled = false; aBtn.textContent = label;
+      opts.say('Could not reach the server: ' + (e.message || e), 'err');
+    }
   });
   host.appendChild(el('div', 'row')).appendChild(aBtn);
 }

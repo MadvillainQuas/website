@@ -167,7 +167,13 @@ async function renderAwards(opts) {
         who.appendChild(a);
       }
       card.appendChild(who);
-      card.appendChild(el('div', 'awval', r.value == null ? '' : String(r.value)));
+      /* A plus/minus figure without its sign is a different number. "+7.4" and
+         "7.4" read the same on a card and mean the same thing only by luck —
+         and a negative one, which happens in a weak field, would be flatly
+         wrong without it. Everything else is a count and takes no sign. */
+      const signed = /plus\/minus/.test(r.detail || '') && Number(r.value) > 0;
+      card.appendChild(el('div', 'awval',
+        r.value == null ? '' : (signed ? '+' : '') + String(r.value)));
       card.appendChild(el('div', 'awdet', r.detail || ''));
       grid.appendChild(card);
     });

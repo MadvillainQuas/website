@@ -132,10 +132,40 @@ function renderLeaguePick(admin) {
   view.target = '_blank'; view.rel = 'noopener';
   host.appendChild(view);
   $('#lgNote').textContent = league ? league.slug : '';
+
+  /* the shop the merchandise section points at — public, unlike the feed
+     endpoints, because a shop link is meant to be found */
+  $('#shopUrl').value = league.store_url || '';
+  $('#shopName').value = league.store_name || '';
+}
+
+async function saveShop(url, name) {
+  const { error } = await sb.rpc('set_league_store',
+    { p_league: league.id, p_url: url || null, p_name: name || null });
+  if (error) return oops(error);
+  league.store_url = url || null;
+  league.store_name = url ? (name || null) : null;
+  $('#shopUrl').value = league.store_url || '';
+  $('#shopName').value = league.store_name || '';
+  say(url ? 'Shop saved — the merchandise section now links to it.'
+          : 'Shop link cleared.', 'ok');
 }
 
 /* ------------------------------------------------------------ league load --- */
 async function loadLeague() {
+  /* whoami() returns a league's identity, not its settings, so the shop link
+     is read here rather than assumed absent — an empty box that silently means
+     "not loaded" would have an administrator wipe a working link by pressing
+     save on a form they never filled in. */
+  const { data: row } = await sb.from('leagues')
+    .select('store_url,store_name').eq('id', league.id).maybeSingle();
+  if (row) {
+    league.store_url = row.store_url;
+    league.store_name = row.store_name;
+    $('#shopUrl').value = row.store_url || '';
+    $('#shopName').value = row.store_name || '';
+  }
+
   const { data, error } = await sb.from('seasons')
     .select('id,name,starts_on,ends_on').eq('league_id', league.id).order('starts_on', { ascending: false });
   if (error) return oops(error);
@@ -281,7 +311,7 @@ function mountFormats() {
   $('#fmtNote').textContent = comp ? (comp.format || 'table') : '';
   window.CourtsideFormats.mount({
     host: '#formatPanel', sb, comp, comps, teams: byId,
-    entered: enteredRows, say,
+    entered: enteredRows, say, cfg: window.COURTSIDE_CONFIG,
     onDone: () => { loadTeams(); loadFixtures(); }
   });
 }
@@ -685,6 +715,14 @@ $('#grGo').addEventListener('click', async () => {
   if (error) return oops(error);
   say(data, /^no account/.test(data) ? 'err' : 'ok');
   if (!/^no account/.test(data)) { $('#grEmail').value = ''; loadMembers(); }
+});
+
+$('#shopGo').addEventListener('click', () =>
+  saveShop($('#shopUrl').value.trim(), $('#shopName').value.trim()));
+$('#shopClear').addEventListener('click', () => {
+  if (!confirm('Clear the shop link? Every product on the league page stops ' +
+               'linking anywhere and the section says the shop is not open.')) return;
+  saveShop('', '');
 });
 
 boot();

@@ -132,13 +132,16 @@ body.has-nav{ padding-left:var(--nav-w) }
   object-fit:contain; background:#04100b }
 
 /* THE SCROLLING TITLE. League names are long — "Basketball England Division
-   One (South)" is not going to fit a 174px rail at any size worth reading.
-   Rather than run every row constantly, which would turn the rail into a
-   fairground, a row that overflows scrolls WHILE IT IS HOVERED OR FOCUSED,
-   and the drilled-in league's header scrolls on its own because there is only
-   one of it and it is the thing you most need to be able to read. Everything
-   also carries a title attribute, so the full name is one hover away even
-   with animation off entirely. */
+   One (South)" is not going to fit a 174px rail at any size worth reading, and
+   an ellipsis on a rail full of leagues that all begin "Basketball England"
+   tells a reader nothing at all.
+
+   So a title that overflows scrolls, in the list and in the drilled-in header
+   alike. Rows that FIT do not move: measuring first is what keeps this from
+   becoming a fairground. Each pass dwells at both ends, so the beginning of a
+   name — the part that identifies it — is what is on screen most of the time.
+   Everything also carries a title attribute, and under prefers-reduced-motion
+   nothing moves and the name clips instead. */
 .cs-nav .marq{ overflow:hidden; min-width:0; flex:1 }
 .cs-nav .marq > span{
   display:inline-block; white-space:nowrap;
@@ -153,11 +156,14 @@ body.has-nav{ padding-left:var(--nav-w) }
   0%,14%   { transform:translateX(0) }
   86%,100% { transform:translateX(var(--shift,0)) }
 }
-.cs-nav .lrow:hover .marq.scrolls > span,
-.cs-nav .lrow:focus-visible .marq.scrolls > span,
-.cs-nav .phead .marq.scrolls > span{
+/* --stag is a small per-row offset set in JS, so a rail full of long names
+   does not slide in lockstep like a departures board */
+.cs-nav .marq.scrolls > span{
   animation:cs-marq 7s ease-in-out infinite alternate;
+  animation-delay:var(--stag,0s);
 }
+/* pointing at one holds it still, so a name can be read at your own pace */
+.cs-nav .lrow:hover .marq.scrolls > span{ animation-play-state:paused }
 
 /* ---- the league panel ---------------------------------------------------- */
 .cs-nav .phead{
@@ -180,7 +186,15 @@ body.has-nav{ padding-left:var(--nav-w) }
   font-size:12.5px; letter-spacing:.05em; text-transform:uppercase;
   color:#e6fff1;
 }
+.cs-nav .phead .lname{ display:flex; align-items:center; gap:6px }
 .cs-nav .phead .lname:hover .marq > span{ color:#93f2bf }
+/* says the heading is a destination. It is the only route from the rail to the
+   league's front page now that picking one in the list does not navigate. */
+.cs-nav .lgo{
+  flex:none; font-size:14px; line-height:1; color:rgba(230,255,241,.45);
+  transition:transform .16s ease, color .16s ease;
+}
+.cs-nav .phead .lname:hover .lgo{ color:#93f2bf; transform:translateX(2px) }
 
 /* ---- account ------------------------------------------------------------- */
 .cs-nav .acct{ display:flex; flex-direction:column }

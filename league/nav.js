@@ -48,6 +48,11 @@
      (`window.__CS_LEAGUE_SLUG = league.slug`) rebuilds the rail itself. */
   const qp = new URLSearchParams(location.search);
   let lg = qp.get('l') || (window.__CS_LEAGUE_SLUG || '');
+  /* The league THIS PAGE is about, as opposed to the one the rail is currently
+     showing. They are the same until somebody browses to another league in the
+     rail without leaving the page, and then the "you are here" marks have to
+     stop claiming otherwise. */
+  let pageLeague = lg;
   const withLeague = (path, slug) => (slug || lg)
     ? path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(slug || lg)
     : path;
@@ -106,9 +111,13 @@
      animating everything would move rows that had no need to move, and a rail
      where six names slide at once is unreadable in a different way from one
      where they are cut off. */
+  let marqN = 0;
   function marquee(text) {
     const box = el('span', 'marq');
     const inner = el('span', null, text);
+    /* a small negative offset per row, so a rail of long names is not a
+       departures board sliding in lockstep */
+    box.style.setProperty('--stag', (-1.3 * (marqN++ % 5)).toFixed(1) + 's');
     box.appendChild(inner);
     /* after layout, not during it */
     afterPaint(() => {
@@ -192,7 +201,8 @@
       pages.appendChild(d);
       return;
     }
-    const a = el('a', 'item' + (it.match && it.match.test(here) ? ' on' : ''));
+    const a = el('a', 'item');
+    if (it.match && it.match.test(here)) a.dataset.hereIs = '1';
     a.href = it.lg ? withLeague(root + it.href) : root + it.href;
     if (it.lg) carriers.push([a, root + it.href]);
     a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
@@ -200,6 +210,7 @@
     if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
     pages.appendChild(a);
   });
+  retarget();          // set the initial "you are here" marks
 
   /* ---- the three that never move ---- */
   nav.appendChild(el('div', 'gap'));
@@ -278,15 +289,31 @@
 
   function fillHeader(l) {
     lnameLink.textContent = '';
-    lnameLink.append(crest(l), marquee(l.name));
+    /* The chevron matters more than it looks. Picking a league in the list no
+       longer navigates, so this name is the ONLY route to the league's front
+       page from the rail — and a heading that happens to be a link, with
+       nothing saying so, is a route nobody finds. */
+    lnameLink.append(crest(l), marquee(l.name), el('span', 'lgo', '›'));
     lnameLink.href = root + '?l=' + encodeURIComponent(l.slug);
-    lnameLink.title = l.name + ' — league home';
+    lnameLink.title = l.name + ' — open the league’s front page';
   }
 
   back.addEventListener('click', () => {
+    /* Coming back out abandons the browse. If you drilled into another league
+       without leaving the page, the rail goes back to describing the page you
+       are actually on — otherwise the highlight in the list would be marking a
+       league you only looked at. */
+    const from = lg;
+    if (lg !== pageLeague) {
+      lg = pageLeague;
+      markCurrent();
+      retarget();
+      const l = bySlug();
+      if (l) fillHeader(l);
+    }
     setView('root', true);
     /* focus follows the eye: the row you came from is where you are now */
-    const row = list.querySelector('a[data-league-slug="' + (lg || '') + '"]');
+    const row = list.querySelector('a[data-league-slug="' + (from || '') + '"]');
     if (row) row.focus({ preventScroll: true });
   });
 
@@ -331,17 +358,18 @@
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
             e.shiftKey || e.altKey) return;
         e.preventDefault();
+
+        /* PICKING A LEAGUE CHANGES THE RAIL AND NOTHING ELSE. It used to load
+           the splash as well, which meant choosing where to go cost a full page
+           load before you had chosen anything — and threw away whatever you
+           were already reading. Opening the league's front page is a separate,
+           deliberate act: press its name at the top of the panel, which is
+           where the eye already is once the slide finishes. */
         lg = l.slug;
         markCurrent();
         fillHeader(l);
         retarget();
         setView('league', true);
-        /* The slide is allowed to finish before the page changes, so the
-           transition is something somebody sees rather than something that is
-           thrown away by a navigation a frame later. With motion turned off
-           there is nothing to wait for. */
-        const go = () => { location.href = a.href; };
-        if (reduced()) go(); else setTimeout(go, 300);
       });
 
       list.appendChild(a);
@@ -366,6 +394,13 @@
   }
   function retarget() {
     carriers.forEach(([a, base]) => { a.href = withLeague(base); });
+    /* "You are here" only while the rail is showing the league this page is
+       actually about. Browse the rail to another league and the highlight goes
+       out, because the row now points somewhere you are not. */
+    const sameLeague = (lg || '') === (pageLeague || '');
+    pages.querySelectorAll('a.item').forEach(a => {
+      a.classList.toggle('on', sameLeague && a.dataset.hereIs === '1');
+    });
   }
 
   /* --------------------------------------------------------------- account ---
@@ -483,6 +518,7 @@
       get() { return lg; },
       set(v) {
         lg = v || '';
+        pageLeague = lg;              // the page has just told us what it is about
         markCurrent();
         retarget();
         const l = bySlug();
