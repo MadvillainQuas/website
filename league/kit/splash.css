@@ -411,8 +411,30 @@ body.splash-body{
   text-shadow:0 0 10px rgba(255,255,255,.75), 0 1px 0 rgba(255,255,255,.5);
 }
 .deck-h .epinoia-mark{ font-size:11px; line-height:1 }
-.segs{ display:grid; gap:1px; background:var(--stone-edge); overflow:hidden;
-  align-items:stretch; grid-auto-rows:1fr }
+/* THE DECK IS ONE SLAB, and it needs the same depth the title slab has. It had
+   none: a bare grid with a hairline background, so three flat white rectangles
+   sat on the water with nothing holding them there.
+
+   The outer depth belongs to the CONTAINER, because the deck is one piece of
+   stone — a shadow per segment would read as three separate cards, which is
+   the opposite of what the cuts are for. overflow:hidden clips the children,
+   not the element's own shadow, so this works where an outer shadow on each
+   segment would not. */
+.segs{
+  display:grid; gap:2px; overflow:hidden;
+  align-items:stretch; grid-auto-rows:1fr;
+  /* the groove between segments: what shows through the 2px gap */
+  background:rgba(96,128,144,.44);
+  border:1px solid rgba(150,176,188,.55);
+  box-shadow:
+    /* displaced light, where the water piles up against the stone */
+    0 0 0 1px rgba(255,255,255,.5),
+    /* the contact shadow — tight, so the slab is ON something */
+    0 2px 4px rgba(20,58,74,.28),
+    /* and the depth beneath it */
+    0 14px 26px -6px rgba(20,58,74,.26),
+    0 36px 56px -26px rgba(20,58,74,.42);
+}
 .segs.three{ grid-template-columns:repeat(3,1fr) }
 .segs.two{ grid-template-columns:repeat(2,1fr) }
 @media (max-width:560px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
@@ -429,8 +451,31 @@ body.splash-body{
     #fbfbfc url('../brand/pool-marble.jpg') repeat;
   background-size:auto, 520px 520px;
   text-decoration:none; color:var(--ink); cursor:pointer;
-  transition:background-color .18s ease, transform .18s ease;
+  transition:box-shadow .18s ease, transform .18s ease;
   overflow:hidden;
+  /* EACH FACE IS SEPARATELY LIT, which is what turns a divided rectangle into
+     cut stone. The light is overhead and slightly left, so:
+
+       a catch-light along the top and the left of every segment
+       a darker return on the bottom and the right, which is the far wall of
+         the saw cut beside it
+       and the cool bounce off the water along the bottom lip, the same detail
+         that stops the title slab reading as a cut-out
+
+     Two pixels each. A slab has an arris, not a moulding — the first version
+     of the title slab used 1px and read as a hairline rather than as an edge,
+     and ten would read as a picture frame. */
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.92),
+    inset 2px 0 0 rgba(255,255,255,.62),
+    inset 0 -2px 0 rgba(88,120,136,.24),
+    inset -2px 0 0 rgba(88,120,136,.18),
+    inset 0 -7px 6px -5px rgba(120,200,225,.34),
+    /* and a little shade gathering at the edges, so the face is not flat.
+       Spread wide and kept light on purpose: at 22px it read as a frame drawn
+       inside the wide single-segment deck rather than as the face falling
+       away, which is the difference between shading and outlining. */
+    inset 0 0 34px -14px rgba(70,105,122,.16);
 }
 .seg::after{
   /* the water rising up the stone on hover — the interaction is the pool
@@ -443,6 +488,21 @@ body.splash-body{
   pointer-events:none;
 }
 .seg:hover::after, .seg:focus-visible::after{ height:100% }
+
+/* PRESSED IN, not lifted. The segment is stone in a deck of stone: it cannot
+   float, so the interaction takes the catch-light off the top edge and puts a
+   shadow there instead, which reads as the face going a millimetre below its
+   neighbours. One pixel of travel is plenty when the lighting moves with it. */
+.seg:hover, .seg:focus-visible{
+  transform:translateY(1px);
+  box-shadow:
+    inset 0 2px 3px rgba(30,66,84,.28),
+    inset 2px 0 2px rgba(30,66,84,.14),
+    inset 0 -2px 0 rgba(255,255,255,.42),
+    inset 0 -7px 6px -5px rgba(120,200,225,.30),
+    inset 0 0 34px -14px rgba(70,105,122,.18);
+}
+.seg:active{ transform:translateY(2px) }
 .seg:focus-visible{ outline:2px solid var(--ink); outline-offset:-3px }
 .seg > *{ position:relative; z-index:1 }
 .seg .k{
