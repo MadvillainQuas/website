@@ -135,7 +135,12 @@ function renderLeaguePick(admin) {
   view.href = '../l/?l=' + encodeURIComponent(league.slug);
   view.target = '_blank'; view.rel = 'noopener';
   host.appendChild(view);
-  $('#lgNote').textContent = league ? league.slug : '';
+  /* whoami() marks how a league is held (migration 0050). A platform admin
+     is offered every league on the platform, and being told that beats
+     wondering why forty of them are listed. */
+  const via = (admin[0] || {}).via;
+  $('#lgNote').textContent = (league ? league.slug : '') +
+    (via === 'platform' ? ' · all leagues, as platform admin' : '');
 
   /* the shop the merchandise section points at — public, unlike the feed
      endpoints, because a shop link is meant to be found */
@@ -241,6 +246,12 @@ async function loadTeams() {
     entered = new Set(enteredRows.map(r => r.team_id));
   }
   mountFormats();
+  /* MOUNTED HERE, NOT AT THE END OF loadFixtures(). That function returns
+     early when no competition is picked — which is the normal state on a
+     fresh league — so suspensions, the club and player record, awards and the
+     socials panel never appeared at all. Each of them puts up its own "pick a
+     competition" line when it needs one, and three of them never do. */
+  mountGovernance();
 
   $('#tmNote').textContent = comp
     ? entered.size + ' of ' + teams.length + ' entered in ' + comp.name
@@ -419,7 +430,6 @@ async function loadFixtures() {
 
   mountImport();
   mountFixtureGen();
-  mountGovernance();
 }
 
 /* teams is an array here and the governance module wants a lookup; one place
