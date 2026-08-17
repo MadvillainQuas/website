@@ -23,7 +23,7 @@ const cfg  = fs.readFileSync(new URL('../../league/config.js', import.meta.url),
 const BASE = /supabaseUrl:\s*'([^']+)'/.exec(cfg)?.[1];
 const KEY  = /supabaseAnonKey:\s*'([^']*)'/.exec(cfg)?.[1];
 
-const PROBE_EMAIL = 'courtside-rls-probe@example.com';
+const PROBE_EMAIL = 'epinoia-rls-probe@example.com';
 const PROBE_PW    = 'probe-account-with-no-rights-9f3a2b';
 
 let pass = 0, fail = 0;

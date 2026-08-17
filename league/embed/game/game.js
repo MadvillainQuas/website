@@ -14,8 +14,8 @@
    a slow beat, so this fills in whether or not the reader arrived at tip-off.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
-const E = window.CourtsideEngine, L = window.CourtsideLive;
+const CFG = window.EPINOIA_CONFIG;
+const E = window.EpinoiaEngine, L = window.EpinoiaLive;
 const qp = new URLSearchParams(location.search);
 const gameId = qp.get('g') || '';
 
@@ -50,13 +50,13 @@ const rowToEvent = r => {
 /* the host page cannot know how tall this wants to be */
 function postHeight() {
   try {
-    parent.postMessage({ courtsideEmbed: 'height', height: document.body.scrollHeight }, '*');
+    parent.postMessage({ epinoiaEmbed: 'height', height: document.body.scrollHeight }, '*');
   } catch (_) {}
 }
 
 function fail(msg) {
   $('#host').textContent = '';
-  $('#host').appendChild(el('div', 'cs-empty', msg));
+  $('#host').appendChild(el('div', 'ep-empty', msg));
   postHeight();
 }
 
@@ -68,7 +68,7 @@ function render() {
   const as = d ? d.score[1] : (game.away_score || 0);
 
   const host = $('#host'); host.textContent = '';
-  const wrap = el('div', 'cs-game');
+  const wrap = el('div', 'ep-game');
 
   /* competition, then when and where — the two things a card must state */
   const top = el('div', 'top');
@@ -221,7 +221,7 @@ function merge(g, events, removed, full) {
     if (game.status !== 'final') {
       sub = L.subscriber({
         gameId, mode: 'supabase',
-        supabase: window.courtsideClient ? courtsideClient() : null,
+        supabase: window.epinoiaClient ? epinoiaClient() : null,
         onSnapshot(s) { merge(s.game, s.events, s.removed); render(); },
         onFrame(f) { merge(f.game, f.events, f.removed, f.full); render(); },
         onStatus() {}

@@ -33,7 +33,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideBPM = api;
+  else root.EpinoiaBPM = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 /* ---------------------------------------------------------- coefficients ---

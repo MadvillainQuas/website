@@ -19,7 +19,7 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''
 const schemaMissing = e => e && (e.code === 'PGRST205' || /schema cache|does not exist/i.test(e.message || ''));
 
 async function boot() {
-  sb = window.courtsideClient && courtsideClient();
+  sb = window.epinoiaClient && epinoiaClient();
   if (!sb) { say('No Supabase key in config.js — the portal needs one.', 'err'); return; }
 
   const { data: { session } } = await sb.auth.getSession();
@@ -78,7 +78,7 @@ async function renderRoster() {
 
   /* The importer needs to know who is already here, so a re-imported sheet
      updates people rather than creating a second copy of each of them. */
-  window.CourtsideRosterCSV.mount({
+  window.EpinoiaRosterCSV.mount({
     host: '#csvpanel', sb, team, me, say,
     existing: data.map(r => ({
       name: (((r.players || {}).first_name || '') + ' ' + ((r.players || {}).last_name || '')).trim(),
@@ -121,7 +121,7 @@ async function renderRoster() {
       if (!file) return;
       upl.disabled = true; upl.textContent = 'resizing…';
       try {
-        const res = await window.CourtsideUpload.upload(sb, {
+        const res = await window.EpinoiaUpload.upload(sb, {
           ownerType: 'player', ownerId: p.id, kind: 'photo', file
         });
         const saved = Math.max(0, Math.round(res.saved / 1024));

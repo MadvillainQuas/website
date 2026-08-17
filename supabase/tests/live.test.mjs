@@ -91,7 +91,7 @@ console.log('\nthe publisher carries retractions to the transport');
   };
 
   const pub = L.publisher({ gameId: 'g1', mode: 'local' });
-  const held = () => JSON.parse(store['cslive:g1'] || '{"events":[]}').events.map(e => e.seq);
+  const held = () => JSON.parse(store['eplive:g1'] || '{"events":[]}').events.map(e => e.seq);
 
   /* flush is async — the local transport writes inside a promise, so reading
      the store synchronously after calling it races the write */

@@ -32,7 +32,7 @@ const FILES = [
   {
     src: join(repo, 'league', 'bpm.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'bpm.js'),
-    global: 'CourtsideBPM',
+    global: 'EpinoiaBPM',
     names: ['forLeague', 'forTeam', 'teamInputs', 'estimatedPossessions', 'per100',
             'estimatePosition', 'estimateOffensiveRole', 'rawBPM',
             'positionConstant', 'teamAdjustment', 'lerp']
@@ -40,7 +40,7 @@ const FILES = [
   {
     src: join(repo, 'league', 'season.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),
-    global: 'CourtsideSeason',
+    global: 'EpinoiaSeason',
     names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS']
   }
 ];

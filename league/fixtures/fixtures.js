@@ -18,7 +18,7 @@
    be, so the column means "the number you care about" either way.
    ============================================================================ */
 
-const D = window.CourtsideData;
+const D = window.EpinoiaData;
 const qp = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -88,7 +88,7 @@ function syncUrl() {
 function renderFilters() {
   const tp = $('#teamPick'); tp.textContent = '';
   const mk = (label, on, click, colour) => {
-    const b = el('button', 'cs-chip teamchip' + (on ? ' on' : ''));
+    const b = el('button', 'ep-chip teamchip' + (on ? ' on' : ''));
     b.type = 'button';
     if (colour) {
       const sw = el('span', 'sw'); sw.style.background = colour; b.appendChild(sw);
@@ -106,7 +106,7 @@ function renderFilters() {
 
   const sp = $('#statePick'); sp.textContent = '';
   STATES.forEach(([k, label]) => {
-    const b = el('button', 'cs-chip' + (stateFilter === k ? ' on' : ''), label);
+    const b = el('button', 'ep-chip' + (stateFilter === k ? ' on' : ''), label);
     b.type = 'button';
     b.addEventListener('click', () => { stateFilter = k; syncUrl(); renderFilters(); render(); });
     sp.appendChild(b);
@@ -277,7 +277,7 @@ async function render() {
     LEAGUE = ctx.league;
     window.__CS_LEAGUE_SLUG = LEAGUE.slug;
     $('#ctx').textContent = LEAGUE.name + (ctx.season ? ' · ' + ctx.season.name : '');
-    $('#foot').textContent = 'Courtside Network · ' + LEAGUE.name;
+    $('#foot').textContent = 'Epinoia Network · ' + LEAGUE.name;
     document.title = 'Fixtures · ' + LEAGUE.name;
     if (LEAGUE.colour_a) document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
 
@@ -291,7 +291,7 @@ async function render() {
           '&owner_id=in.(' + ids.join(',') + ')&select=owner_id,storage_path'))
           .forEach(r => {
             if (!LOGOS.has(r.owner_id)) {
-              LOGOS.set(r.owner_id, window.COURTSIDE_CONFIG.supabaseUrl +
+              LOGOS.set(r.owner_id, window.EPINOIA_CONFIG.supabaseUrl +
                 '/storage/v1/object/public/' + r.storage_path);
             }
           });

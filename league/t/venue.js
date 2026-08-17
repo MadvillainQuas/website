@@ -30,7 +30,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideVenue = api;
+  else root.EpinoiaVenue = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -334,9 +334,9 @@ function messageDialog(team, cfg) {
   form.appendChild(note);
 
   const row = el('div', 'vdactions');
-  const cancel = el('button', 'cs-chip', 'Close');
+  const cancel = el('button', 'ep-chip', 'Close');
   cancel.type = 'button';
-  const send = el('button', 'cs-chip on', 'Send');
+  const send = el('button', 'ep-chip on', 'Send');
   send.type = 'submit';
   row.append(cancel, send);
   form.appendChild(row);
@@ -441,7 +441,7 @@ function editor(team, c, sb, onSaved) {
   box.appendChild(opts);
 
   const note = el('div', 'vnote');
-  const save = el('button', 'cs-chip on', 'Save');
+  const save = el('button', 'ep-chip on', 'Save');
   save.type = 'button';
   const row = el('div', 'vdactions');
   row.append(save);
@@ -478,7 +478,7 @@ function editor(team, c, sb, onSaved) {
    The SDK client carries the token; the bare fetch is the signed-out path and
    the fallback for a page that never loaded the SDK. */
 async function readContact(team, cfg) {
-  const sb = window.courtsideClient && window.courtsideClient();
+  const sb = window.epinoiaClient && window.epinoiaClient();
   if (sb) {
     const { data, error } = await sb.rpc('team_contact', { p_team: team.id });
     if (error) throw new Error(error.message);
@@ -516,7 +516,7 @@ async function contactBlock(team, opts) {
     else if (c.has_phone) row.appendChild(detail('Telephone', 'Held, not published'));
 
     if (c.accepts_form) {
-      const btn = el('button', 'cs-chip on vcbtn', 'Message the club');
+      const btn = el('button', 'ep-chip on vcbtn', 'Message the club');
       btn.type = 'button';
       const dlg = messageDialog(team, opts.cfg);
       document.body.appendChild(dlg);
@@ -536,7 +536,7 @@ async function contactBlock(team, opts) {
 
   /* the editor, for whoever runs the club */
   if (c.can_edit) {
-    const sb = window.courtsideClient && window.courtsideClient();
+    const sb = window.epinoiaClient && window.epinoiaClient();
     if (sb) {
       wrap.appendChild(editor(team, c, sb, async () => {
         try { c = await readContact(team, opts.cfg); }

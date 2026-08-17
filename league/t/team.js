@@ -8,8 +8,8 @@
    join, so this page cannot leak one by forgetting a check.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
-const T = window.CourtsideTable;
+const CFG = window.EPINOIA_CONFIG;
+const T = window.EpinoiaTable;
 const want = new URLSearchParams(location.search).get('t') || '';
 const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(want);
 
@@ -49,7 +49,7 @@ function oops(msg) {
     $('#ctx').textContent = lg.name ? lg.name + ' · ' + team.name : team.name;
     if (lg.slug) $('#leagueLink').href = '../l/?l=' + encodeURIComponent(lg.slug);
     else $('#leagueLink').style.display = 'none';
-    document.title = team.name + ' · Courtside';
+    document.title = team.name + ' · Epinoia';
 
     await Promise.all([record(team), teamStats(team), venue(team),
                        roster(team), games(team)]);
@@ -78,7 +78,7 @@ async function record(team) {
    only one row of it — a one-row table is a worse way to read a single line. */
 async function teamStats(team) {
   const host = $('#teamstats'); host.textContent = '';
-  const D = window.CourtsideData;
+  const D = window.EpinoiaData;
   let S = null;
   try {
     const g = await D.get(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
@@ -165,7 +165,7 @@ async function teamStats(team) {
 /* ------------------------------------------------------- lineups & WOWY --- */
 /* All three panels read the same stints, fetched once. */
 async function lineupPanels(team) {
-  const D = window.CourtsideData;
+  const D = window.EpinoiaData;
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id`);
@@ -198,12 +198,12 @@ async function lineupPanels(team) {
 
     const pick = $('#wowyPick');
     order.forEach(id => {
-      const b = el('button', 'cs-chip' + (id === subject ? ' on' : ''),
+      const b = el('button', 'ep-chip' + (id === subject ? ' on' : ''),
                    (meta[id] || {}).name || 'Player');
       b.type = 'button';
       b.addEventListener('click', () => {
         subject = id;
-        pick.querySelectorAll('.cs-chip').forEach(c => c.classList.remove('on'));
+        pick.querySelectorAll('.ep-chip').forEach(c => c.classList.remove('on'));
         b.classList.add('on');
         drawWowy();
       });
@@ -211,18 +211,18 @@ async function lineupPanels(team) {
     });
 
     function drawWowy() {
-      window.CourtsideWowy.onOffTiles('#onoff', st, subject);
+      window.EpinoiaWowy.onOffTiles('#onoff', st, subject);
     }
     drawWowy();
 
     /* the combination matrix, seeded with the two most-used players */
-    window.CourtsideWowy.render({
+    window.EpinoiaWowy.render({
       host: '#wowy', stints: st, meta, max: 4,
       preselect: order.slice(0, 2)
     });
 
-    window.CourtsideLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
-    window.CourtsideLineupUI.listPanel({ host: '#lulist', stints: st, meta });
+    window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
+    window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
   } catch (e) {
     /* A silent catch left three empty sections with no explanation — which is
        exactly what a reader saw when the scripts failed to load. Say what
@@ -240,7 +240,7 @@ async function lineupPanels(team) {
 /* the home venue panel lives in its own module — it is a self-contained
    piece of page with its own illustration and its own privacy rule */
 async function venue(team) {
-  const out = await window.CourtsideVenue.render({
+  const out = await window.EpinoiaVenue.render({
     host: '#venue', team, api, cfg: CFG
   });
   const note = $('#venueNote');
@@ -452,7 +452,7 @@ async function roster(team) {
   /* May this viewer edit? The database is asked, not assumed — and a viewer
      who is not signed in never even makes the request. */
   let canEdit = false;
-  const sb = window.courtsideClient && window.courtsideClient();
+  const sb = window.epinoiaClient && window.epinoiaClient();
   if (sb) {
     try {
       const { data: { session } } = await sb.auth.getSession();

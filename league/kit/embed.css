@@ -1,5 +1,5 @@
 /* ============================================================================
-   COURTSIDE EMBEDS — what other people's sites see.
+   EPINOIA EMBEDS — what other people's sites see.
 
    Self-contained by necessity. An embed renders inside an iframe on a site
    whose stylesheet we will never see, so every value here is literal: no
@@ -10,6 +10,27 @@
    a row of cards, each showing competition, status, both teams and when.
    ============================================================================ */
 
+/* ---------------------------------------------------------------------------
+   THE LOGOTYPE. Declared here as well as in the kit because an embed loads
+   NEITHER — it is self-contained by necessity, rendering inside an iframe on a
+   site whose stylesheet we will never see. Without this the mark on somebody
+   else's page falls back to the scoreboard face while the same mark on ours
+   uses the logotype, which is the kind of drift nobody notices for months.
+
+   SIX GLYPHS: A E I N O P. `.epinoia-mark` may only ever go on an element
+   whose whole content is the word EPINOIA. Never on #title, which the table
+   embed replaces with a league's name.
+   --------------------------------------------------------------------------- */
+@font-face{font-family:'EpinoiaLogo';src:url('../brand/epinoia-logo.ttf') format('truetype');
+  font-weight:400;font-style:normal;font-display:swap}
+.epinoia-mark{
+  font-family:'EpinoiaLogo','Jersey25',ui-monospace,monospace !important;
+  text-transform:uppercase; letter-spacing:.02em;
+}
+/* the logotype is about twice as wide as Jersey25 at the same size, so the
+   plate's mark comes down to fit the disc it sits in */
+.ep-plate .mk.epinoia-mark{ font-size:8px; letter-spacing:.04em }
+
 .cse{
   /* THE PALETTE IS A VARIABLE SET.
 
@@ -18,15 +39,15 @@
      whole widget — the disc, the live rule, the winning side, the hover edge —
      from one attribute, with no second stylesheet to keep in step.
 
-     --cs-accent2 defaults to the accent when it is not given, so a club that
+     --ep-accent2 defaults to the accent when it is not given, so a club that
      supplies one colour still gets a coherent gradient rather than ours
      bolted onto theirs. */
-  --cs-accent:#93f2bf;
-  --cs-accent-2:#8ff5ff;
-  --cs-ground:#04100b;
-  --cs-ink:#e6fff1;
+  --ep-accent:#93f2bf;
+  --ep-accent-2:#8ff5ff;
+  --ep-ground:#04100b;
+  --ep-ink:#e6fff1;
 
-  margin:0; padding:0; background:var(--cs-ground); color:var(--cs-ink);
+  margin:0; padding:0; background:var(--ep-ground); color:var(--ep-ink);
   font-family:'Archivo',system-ui,-apple-system,"Segoe UI",sans-serif;
   -webkit-font-smoothing:antialiased;
 }
@@ -37,7 +58,7 @@
 /* Height is content-driven, never 100%: the strip measures itself and posts
    that number to the host page, and stretching to the viewport made it report
    the whole window and blow the iframe open on someone else's site. */
-.cs-strip{
+.ep-strip{
   display:flex; align-items:stretch; gap:0; min-height:132px;
   position:relative; overflow:hidden;
   /* THE RECORD. Grooves are a repeating radial gradient centred on the label
@@ -50,49 +71,49 @@
     repeating-radial-gradient(circle at 58px 50%,
       rgba(255,255,255,.015) 0 1px, rgba(0,0,0,0) 1px 9px),
     radial-gradient(circle at 58px 50%,
-      color-mix(in oklch, var(--cs-accent) 9%, #0d1a14) 0%,
-      color-mix(in oklch, var(--cs-accent) 4%, #081209) 42%,
-      var(--cs-ground) 100%);
+      color-mix(in oklch, var(--ep-accent) 9%, #0d1a14) 0%,
+      color-mix(in oklch, var(--ep-accent) 4%, #081209) 42%,
+      var(--ep-ground) 100%);
 }
 /* the sheen: one wide highlight drifting across the grooves, which is what
    makes it read as a pressed surface rather than a printed pattern */
-.cs-strip::before{
+.ep-strip::before{
   content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
   background:linear-gradient(105deg,
-    rgba(255,255,255,0) 34%, color-mix(in oklch, var(--cs-accent) 22%, transparent) 47%,
+    rgba(255,255,255,0) 34%, color-mix(in oklch, var(--ep-accent) 22%, transparent) 47%,
     rgba(255,255,255,.02) 53%, rgba(255,255,255,0) 66%);
-  animation:cs-sheen 9s cubic-bezier(.45,0,.55,1) infinite alternate;
+  animation:ep-sheen 9s cubic-bezier(.45,0,.55,1) infinite alternate;
 }
-@keyframes cs-sheen{ from{transform:translateX(-38%)} to{transform:translateX(38%)} }
+@keyframes ep-sheen{ from{transform:translateX(-38%)} to{transform:translateX(38%)} }
 
 /* the label — the plate is the centre of the record, so it is round */
-.cs-plate{
+.ep-plate{
   flex:none; width:112px; position:relative; z-index:2;
   display:flex; align-items:center; justify-content:center;
   background:transparent; border-right:0;
 }
-.cs-plate .disc{
+.ep-plate .disc{
   width:80px; height:80px; border-radius:50%;
   display:grid; place-items:center; position:relative;
   background:
     radial-gradient(circle at 50% 50%, #0b1f16 0 20%, rgba(0,0,0,0) 20%),
-    conic-gradient(from 210deg, var(--cs-accent), var(--cs-accent-2), color-mix(in oklch, var(--cs-accent) 40%, var(--cs-accent-2)), var(--cs-accent));
-  box-shadow:0 0 0 1px color-mix(in oklch, var(--cs-accent) 35%, transparent), 0 6px 20px rgba(0,0,0,.5),
+    conic-gradient(from 210deg, var(--ep-accent), var(--ep-accent-2), color-mix(in oklch, var(--ep-accent) 40%, var(--ep-accent-2)), var(--ep-accent));
+  box-shadow:0 0 0 1px color-mix(in oklch, var(--ep-accent) 35%, transparent), 0 6px 20px rgba(0,0,0,.5),
              inset 0 0 22px rgba(0,0,0,.5);
 }
 /* the spindle hole */
-.cs-plate .disc::after{
+.ep-plate .disc::after{
   content:''; position:absolute; width:9px; height:9px; border-radius:50%;
-  background:#04100b; box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--cs-accent) 45%, transparent);
+  background:#04100b; box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--ep-accent) 45%, transparent);
 }
-.cs-plate .mk{
+.ep-plate .mk{
   position:absolute; left:0; right:0; top:14px; text-align:center;
   font-family:'Jersey25',ui-monospace,monospace; font-size:11px;
   letter-spacing:.1em; text-transform:uppercase; color:#04100b;
   text-shadow:0 1px 0 rgba(255,255,255,.3);
 }
 
-.cs-rail{
+.ep-rail{
   flex:1; min-width:0; z-index:1;
   display:flex; gap:9px; align-items:center;
   /* Generous vertical padding on purpose: it is the band the reader grabs to
@@ -104,186 +125,186 @@
   touch-action:pan-y;          /* dragged horizontally, so the browser must not */
   cursor:grab;
 }
-.cs-rail.dragging{ cursor:grabbing }
-.cs-rail::-webkit-scrollbar{ display:none }
+.ep-rail.dragging{ cursor:grabbing }
+.ep-rail::-webkit-scrollbar{ display:none }
 
 /* A CARD IS A SCOREBOARD, NOT A LIST. The LiveStats card stacks two team rows
    with the score down the right; this lays a fixture out the way a scoreboard
    does — home left, away right, score between — with the state as a rule along
    the top edge rather than a word in a header bar. */
-.cs-card{
+.ep-card{
   flex:0 0 auto; width:178px;
   display:flex; flex-direction:column; position:relative;
   background:linear-gradient(180deg, rgba(12,32,23,.92), rgba(8,22,16,.92));
-  border:1px solid color-mix(in oklch, var(--cs-accent) 18%, transparent); border-radius:4px;
+  border:1px solid color-mix(in oklch, var(--ep-accent) 18%, transparent); border-radius:4px;
   padding:7px 9px 6px; overflow:hidden;
   transition:border-color .14s, transform .14s, box-shadow .14s;
 }
-.cs-card{ cursor:pointer }
-.cs-card:hover{
-  border-color:color-mix(in oklch, var(--cs-accent) 55%, transparent); transform:translateY(-2px);
+.ep-card{ cursor:pointer }
+.ep-card:hover{
+  border-color:color-mix(in oklch, var(--ep-accent) 55%, transparent); transform:translateY(-2px);
   box-shadow:0 6px 18px rgba(0,0,0,.45);
 }
 /* the grab cursor belongs to the bar, not to a fixture you are about to open */
-.cs-rail.dragging .cs-card{ cursor:grabbing }
+.ep-rail.dragging .ep-card{ cursor:grabbing }
 /* while dragging, nothing should lift or animate under the cursor */
-.cs-rail.dragging .cs-card, .cs-rail.dragging .cs-card:hover{
+.ep-rail.dragging .ep-card, .ep-rail.dragging .ep-card:hover{
   transition:none; transform:none; box-shadow:none;
 }
 
-.cs-card::before{
+.ep-card::before{
   content:''; position:absolute; left:0; right:0; top:0; height:2px;
-  background:color-mix(in oklch, var(--cs-accent) 30%, transparent);
+  background:color-mix(in oklch, var(--ep-accent) 30%, transparent);
 }
-.cs-card.is-live::before{ background:#ff5f6b }
-.cs-card.is-upcoming::before{ background:var(--cs-accent-2) }
+.ep-card.is-live::before{ background:#ff5f6b }
+.ep-card.is-upcoming::before{ background:var(--ep-accent-2) }
 
-.cs-card .meta{
+.ep-card .meta{
   display:flex; align-items:baseline; justify-content:space-between; gap:6px;
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
   letter-spacing:.12em; text-transform:uppercase; color:rgba(230,255,241,.42);
   margin-bottom:7px;
 }
-.cs-card .meta .st{ flex:none; color:rgba(230,255,241,.6) }
-.cs-card.is-live .meta .st{ color:#ff5f6b }
-.cs-card .meta .comp{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.cs-card .meta .st .dot{
+.ep-card .meta .st{ flex:none; color:rgba(230,255,241,.6) }
+.ep-card.is-live .meta .st{ color:#ff5f6b }
+.ep-card .meta .comp{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ep-card .meta .st .dot{
   display:inline-block; width:4px; height:4px; border-radius:50%;
   background:#ff5f6b; margin-right:3px; vertical-align:1px;
   animation:csp 1.6s ease-in-out infinite;
 }
 @keyframes csp{ 0%,100%{opacity:1} 50%{opacity:.25} }
 
-.cs-card .row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px }
-.cs-card .tm{ display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0 }
-.cs-card .crest{
+.ep-card .row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px }
+.ep-card .tm{ display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0 }
+.ep-card .crest{
   width:20px; height:20px; border-radius:3px; display:grid; place-items:center;
   color:#04100b; font-family:'Jersey25',ui-monospace,monospace; font-size:10px;
   line-height:1;
 }
-.cs-card .abbr{
+.ep-card .abbr{
   font-weight:800; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
   color:rgba(230,255,241,.82); max-width:100%; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap;
 }
-.cs-card .tm.win .abbr{ color:var(--cs-accent) }
-.cs-card .tm.lose .abbr{ color:rgba(230,255,241,.4) }
+.ep-card .tm.win .abbr{ color:var(--ep-accent) }
+.ep-card .tm.lose .abbr{ color:rgba(230,255,241,.4) }
 
-.cs-card .mid{ text-align:center; min-width:52px }
-.cs-card .sc{
+.ep-card .mid{ text-align:center; min-width:52px }
+.ep-card .sc{
   font-family:'Jersey25',ui-monospace,monospace; font-size:19px; line-height:1;
   color:#e6fff1; font-variant-numeric:tabular-nums; white-space:nowrap;
 }
-.cs-card .sc .d{ color:rgba(230,255,241,.25); padding:0 3px }
-.cs-card .vs{
+.ep-card .sc .d{ color:rgba(230,255,241,.25); padding:0 3px }
+.ep-card .vs{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px;
   color:rgba(230,255,241,.32); letter-spacing:.1em;
 }
 
-.cs-card .when{
+.ep-card .when{
   margin-top:7px; padding-top:6px; border-top:1px solid rgba(147,242,191,.1);
   display:flex; align-items:center; justify-content:space-between; gap:6px;
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
   letter-spacing:.08em; text-transform:uppercase; color:rgba(230,255,241,.45);
 }
-.cs-card .when .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ep-card .when .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
 /* the right edge fades rather than cuts, so a card leaving the bar looks like
    it is leaving rather than being sliced by the frame */
-.cs-strip::after{
+.ep-strip::after{
   content:''; position:absolute; right:0; top:0; bottom:0; width:44px;
   pointer-events:none; z-index:3;
-  background:linear-gradient(270deg, var(--cs-ground), color-mix(in oklch, var(--cs-ground) 0%, transparent));
+  background:linear-gradient(270deg, var(--ep-ground), color-mix(in oklch, var(--ep-ground) 0%, transparent));
 }
 
 /* Motion is opt-out. A bar that scrolls itself is exactly what makes a page
    unusable for someone who cannot tolerate movement, so the sheen, the pulse
    and the scroll all stop — strip.js reads the same query. */
 @media (prefers-reduced-motion:reduce){
-  .cs-strip::before{ animation:none }
-  .cs-card .meta .st .dot{ animation:none }
-  .cs-card, .cs-card:hover{ transition:none; transform:none }
+  .ep-strip::before{ animation:none }
+  .ep-card .meta .st .dot{ animation:none }
+  .ep-card, .ep-card:hover{ transition:none; transform:none }
 }
 
 /* --------------------------------------------------------- the game embed */
-.cs-game{ padding:14px 16px }
-.cs-game .top{
+.ep-game{ padding:14px 16px }
+.ep-game .top{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding-bottom:10px; margin-bottom:12px;
   border-bottom:1px solid rgba(147,242,191,.18);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
   letter-spacing:.12em; text-transform:uppercase; color:rgba(230,255,241,.55);
 }
-.cs-game .board{
+.ep-game .board{
   display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center;
 }
-.cs-game .tm{ display:flex; align-items:center; gap:10px; min-width:0 }
-.cs-game .tm.away{ flex-direction:row-reverse; text-align:right }
-.cs-game .tm .crest{
+.ep-game .tm{ display:flex; align-items:center; gap:10px; min-width:0 }
+.ep-game .tm.away{ flex-direction:row-reverse; text-align:right }
+.ep-game .tm .crest{
   flex:none; width:38px; height:38px; border-radius:4px; display:grid;
   place-items:center; color:#04100b;
   font-family:'Jersey25',ui-monospace,monospace; font-size:16px;
 }
-.cs-game .tm .nm{
+.ep-game .tm .nm{
   font-weight:800; font-size:16px; letter-spacing:.01em; line-height:1.2;
   overflow:hidden; text-overflow:ellipsis;
 }
-.cs-game .tm .nm.win{ color:#93f2bf }
-.cs-game .tm .nm.lose{ color:rgba(230,255,241,.5) }
-.cse[data-theme="light"] .cs-game .tm .nm.win{ color:#0f7a52 }
-.cse[data-theme="light"] .cs-game .tm .nm.lose{ color:rgba(13,31,23,.45) }
-.cs-game .tm .rec{
+.ep-game .tm .nm.win{ color:#93f2bf }
+.ep-game .tm .nm.lose{ color:rgba(230,255,241,.5) }
+.cse[data-theme="light"] .ep-game .tm .nm.win{ color:#0f7a52 }
+.cse[data-theme="light"] .ep-game .tm .nm.lose{ color:rgba(13,31,23,.45) }
+.ep-game .tm .rec{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
   color:rgba(230,255,241,.4); letter-spacing:.1em; margin-top:3px;
 }
-.cs-game .mid{ text-align:center; min-width:112px }
-.cs-game .score{
+.ep-game .mid{ text-align:center; min-width:112px }
+.ep-game .score{
   font-family:'Jersey25',ui-monospace,monospace; font-size:40px; line-height:1;
   font-variant-numeric:tabular-nums; white-space:nowrap;
 }
-.cs-game .score .sep{ color:rgba(230,255,241,.28); padding:0 6px }
-.cs-game .clk{
+.ep-game .score .sep{ color:rgba(230,255,241,.28); padding:0 6px }
+.ep-game .clk{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; margin-top:7px;
   letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.6);
 }
-.cs-game .clk.live{ color:#ff5f6b }
-.cs-game .qs{
+.ep-game .clk.live{ color:#ff5f6b }
+.ep-game .qs{
   display:flex; gap:1px; margin-top:12px; background:rgba(147,242,191,.14);
   border:1px solid rgba(147,242,191,.14); border-radius:3px; overflow:hidden;
 }
-.cs-game .qs > div{ flex:1; background:#0a1a13; padding:5px 2px; text-align:center }
-.cs-game .qs .ql{
+.ep-game .qs > div{ flex:1; background:#0a1a13; padding:5px 2px; text-align:center }
+.ep-game .qs .ql{
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
   color:rgba(230,255,241,.4); letter-spacing:.1em;
 }
-.cs-game .qs .qv{
+.ep-game .qs .qv{
   font-family:'Jersey25',ui-monospace,monospace; font-size:13px; margin-top:2px;
   font-variant-numeric:tabular-nums;
 }
-.cs-game .lead{
+.ep-game .lead{
   margin-top:12px; padding-top:10px; border-top:1px solid rgba(147,242,191,.14);
   display:flex; flex-wrap:wrap; gap:14px;
   font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
   letter-spacing:.08em; text-transform:uppercase; color:rgba(230,255,241,.5);
 }
-.cs-game .lead b{ color:#e6fff1; font-weight:400 }
+.ep-game .lead b{ color:#e6fff1; font-weight:400 }
 
-.cs-foot{
+.ep-foot{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:7px 12px; border-top:1px solid rgba(147,242,191,.14);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
   letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.34);
 }
-.cs-foot a:hover{ color:#93f2bf }
+.ep-foot a:hover{ color:#93f2bf }
 
-.cs-empty{
+.ep-empty{
   padding:26px 16px; text-align:center; color:rgba(230,255,241,.45);
   font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; line-height:2.2;
 }
 
 @media (max-width:520px){
-  .cs-plate{ width:84px } .cs-plate .sub{ display:none }
-  .cs-game .score{ font-size:32px }
+  .ep-plate{ width:84px } .ep-plate .sub{ display:none }
+  .ep-game .score{ font-size:32px }
 }
 
 /* ============================================================================
@@ -298,71 +319,71 @@
 .cse[data-theme="light"]{
   background:#ffffff; color:#0d1f17;
 }
-.cse[data-theme="light"] .cs-plate{
+.cse[data-theme="light"] .ep-plate{
   background:linear-gradient(180deg,#f2f7f4,#e8f0eb);
   border-right-color:rgba(13,31,23,.14);
 }
-.cse[data-theme="light"] .cs-plate .mk{
+.cse[data-theme="light"] .ep-plate .mk{
   background:linear-gradient(0deg,#0f7a52,#0a8fa3);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-.cse[data-theme="light"] .cs-card{
+.cse[data-theme="light"] .ep-card{
   background:#ffffff; border-color:rgba(13,31,23,.14);
 }
-.cse[data-theme="light"] .cs-card:hover{ background:#f4faf7; border-color:rgba(15,122,82,.5) }
-.cse[data-theme="light"] .cs-card::before{ background:rgba(13,31,23,.16) }
-.cse[data-theme="light"] .cs-card.is-live::before{ background:#c8324a }
-.cse[data-theme="light"] .cs-card.is-upcoming::before{ background:#0a8fa3 }
-.cse[data-theme="light"] .cs-card .meta{ color:rgba(13,31,23,.5) }
-.cse[data-theme="light"] .cs-card .meta .st{ color:rgba(13,31,23,.7) }
-.cse[data-theme="light"] .cs-card.is-live .meta .st{ color:#c8324a }
-.cse[data-theme="light"] .cs-card .meta .st .dot{ background:#c8324a }
-.cse[data-theme="light"] .cs-card .abbr{ color:rgba(13,31,23,.85) }
-.cse[data-theme="light"] .cs-card .tm.win .abbr{ color:#0f7a52 }
-.cse[data-theme="light"] .cs-card .tm.lose .abbr{ color:rgba(13,31,23,.4) }
-.cse[data-theme="light"] .cs-card .sc{ color:#0d1f17 }
-.cse[data-theme="light"] .cs-card .sc .d{ color:rgba(13,31,23,.25) }
-.cse[data-theme="light"] .cs-card .vs{ color:rgba(13,31,23,.35) }
-.cse[data-theme="light"] .cs-card .when{
+.cse[data-theme="light"] .ep-card:hover{ background:#f4faf7; border-color:rgba(15,122,82,.5) }
+.cse[data-theme="light"] .ep-card::before{ background:rgba(13,31,23,.16) }
+.cse[data-theme="light"] .ep-card.is-live::before{ background:#c8324a }
+.cse[data-theme="light"] .ep-card.is-upcoming::before{ background:#0a8fa3 }
+.cse[data-theme="light"] .ep-card .meta{ color:rgba(13,31,23,.5) }
+.cse[data-theme="light"] .ep-card .meta .st{ color:rgba(13,31,23,.7) }
+.cse[data-theme="light"] .ep-card.is-live .meta .st{ color:#c8324a }
+.cse[data-theme="light"] .ep-card .meta .st .dot{ background:#c8324a }
+.cse[data-theme="light"] .ep-card .abbr{ color:rgba(13,31,23,.85) }
+.cse[data-theme="light"] .ep-card .tm.win .abbr{ color:#0f7a52 }
+.cse[data-theme="light"] .ep-card .tm.lose .abbr{ color:rgba(13,31,23,.4) }
+.cse[data-theme="light"] .ep-card .sc{ color:#0d1f17 }
+.cse[data-theme="light"] .ep-card .sc .d{ color:rgba(13,31,23,.25) }
+.cse[data-theme="light"] .ep-card .vs{ color:rgba(13,31,23,.35) }
+.cse[data-theme="light"] .ep-card .when{
   color:rgba(13,31,23,.5); border-top-color:rgba(13,31,23,.1);
 }
-.cse[data-theme="light"] .cs-arrow{
+.cse[data-theme="light"] .ep-arrow{
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.95));
   color:rgba(13,31,23,.6);
 }
-.cse[data-theme="light"] .cs-arrow.l{
+.cse[data-theme="light"] .ep-arrow.l{
   background:linear-gradient(270deg,rgba(255,255,255,0),rgba(255,255,255,.95));
 }
-.cse[data-theme="light"] .cs-game .top{
+.cse[data-theme="light"] .ep-game .top{
   color:rgba(13,31,23,.55); border-bottom-color:rgba(13,31,23,.14);
 }
-.cse[data-theme="light"] .cs-game .tm .nm{ color:#0d1f17 }
-.cse[data-theme="light"] .cs-game .score{ color:#0d1f17 }
-.cse[data-theme="light"] .cs-game .score .sep{ color:rgba(13,31,23,.25) }
-.cse[data-theme="light"] .cs-game .clk{ color:rgba(13,31,23,.6) }
-.cse[data-theme="light"] .cs-game .clk.live{ color:#c8324a }
-.cse[data-theme="light"] .cs-game .qs{
+.cse[data-theme="light"] .ep-game .tm .nm{ color:#0d1f17 }
+.cse[data-theme="light"] .ep-game .score{ color:#0d1f17 }
+.cse[data-theme="light"] .ep-game .score .sep{ color:rgba(13,31,23,.25) }
+.cse[data-theme="light"] .ep-game .clk{ color:rgba(13,31,23,.6) }
+.cse[data-theme="light"] .ep-game .clk.live{ color:#c8324a }
+.cse[data-theme="light"] .ep-game .qs{
   background:rgba(13,31,23,.12); border-color:rgba(13,31,23,.12);
 }
-.cse[data-theme="light"] .cs-game .qs > div{ background:#ffffff }
-.cse[data-theme="light"] .cs-game .qs .ql{ color:rgba(13,31,23,.45) }
-.cse[data-theme="light"] .cs-game .lead{
+.cse[data-theme="light"] .ep-game .qs > div{ background:#ffffff }
+.cse[data-theme="light"] .ep-game .qs .ql{ color:rgba(13,31,23,.45) }
+.cse[data-theme="light"] .ep-game .lead{
   color:rgba(13,31,23,.55); border-top-color:rgba(13,31,23,.12);
 }
-.cse[data-theme="light"] .cs-game .lead b{ color:#0d1f17 }
-.cse[data-theme="light"] .cs-foot{
+.cse[data-theme="light"] .ep-game .lead b{ color:#0d1f17 }
+.cse[data-theme="light"] .ep-foot{
   color:rgba(13,31,23,.45); border-top-color:rgba(13,31,23,.12);
 }
-.cse[data-theme="light"] .cs-empty{ color:rgba(13,31,23,.5) }
-.cse[data-theme="light"] .cs-tbl th{
+.cse[data-theme="light"] .ep-empty{ color:rgba(13,31,23,.5) }
+.cse[data-theme="light"] .ep-tbl th{
   background:#eef4f1; color:rgba(13,31,23,.55);
   border-bottom-color:rgba(13,31,23,.25);
 }
-.cse[data-theme="light"] .cs-tbl td{
+.cse[data-theme="light"] .ep-tbl td{
   color:rgba(13,31,23,.82); border-bottom-color:rgba(13,31,23,.1);
 }
-.cse[data-theme="light"] .cs-tbl tbody tr:nth-child(even) td{ background:rgba(13,31,23,.025) }
-.cse[data-theme="light"] .cs-tbl .nm b{ color:#0d1f17 }
-.cse[data-theme="light"] .cs-hd{
+.cse[data-theme="light"] .ep-tbl tbody tr:nth-child(even) td{ background:rgba(13,31,23,.025) }
+.cse[data-theme="light"] .ep-tbl .nm b{ color:#0d1f17 }
+.cse[data-theme="light"] .ep-hd{
   color:rgba(13,31,23,.6); border-bottom-color:rgba(13,31,23,.14);
 }

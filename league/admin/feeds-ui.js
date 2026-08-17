@@ -25,7 +25,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideFeeds = api;
+  else root.EpinoiaFeeds = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -80,15 +80,15 @@ function mount(opts) {
 
   /* ---- new feed ---- */
   const mk = el('div', 'row');
-  const name = el('input', 'cs-input grow');
+  const name = el('input', 'ep-input grow');
   name.placeholder = 'Who receives it? e.g. RealGM';
   name.maxLength = 60;
-  const fmt = el('select', 'cs-input');
+  const fmt = el('select', 'ep-input');
   fmt.style.flex = '0 0 auto';
   [['json', 'JSON'], ['csv', 'CSV'], ['xml', 'XML']].forEach(([v, l]) => {
     const o = el('option', null, l); o.value = v; fmt.appendChild(o);
   });
-  const go = el('button', 'cs-btn pri', 'add feed');
+  const go = el('button', 'ep-btn pri', 'add feed');
   go.type = 'button';
   mk.append(name, fmt, go);
   host.appendChild(mk);
@@ -143,15 +143,15 @@ function mount(opts) {
     head.appendChild(title);
 
     const sp = el('div', 'sp');
-    const editBtn = el('button', 'cs-btn mini', 'configure');
+    const editBtn = el('button', 'ep-btn mini', 'configure');
     editBtn.type = 'button';
-    const prevBtn = el('button', 'cs-btn mini', 'preview');
+    const prevBtn = el('button', 'ep-btn mini', 'preview');
     prevBtn.type = 'button';
-    const testBtn = el('button', 'cs-btn mini', 'test send');
+    const testBtn = el('button', 'ep-btn mini', 'test send');
     testBtn.type = 'button';
     testBtn.disabled = !f.has_endpoint;
     if (!f.has_endpoint) testBtn.title = 'There is nowhere to send it yet.';
-    const delBtn = el('button', 'cs-btn mini', 'remove');
+    const delBtn = el('button', 'ep-btn mini', 'remove');
     delBtn.type = 'button';
     sp.append(editBtn, prevBtn, testBtn, delBtn);
     head.appendChild(sp);
@@ -194,16 +194,16 @@ function mount(opts) {
            box that looks blank but is not would be a lie about the state. --- */
     body.appendChild(el('div', 'flabel', 'Where it goes'));
     const r1 = el('div', 'row');
-    const url = el('input', 'cs-input grow');
+    const url = el('input', 'ep-input grow');
     url.type = 'url';
     url.placeholder = f.has_endpoint
       ? 'https://… (an endpoint is set — type a new one to replace it)'
-      : 'https://partner.example/courtside/results';
-    const secret = el('input', 'cs-input');
+      : 'https://partner.example/epinoia/results';
+    const secret = el('input', 'ep-input');
     secret.type = 'text';
     secret.placeholder = f.has_secret ? 'signing secret set — leave to keep' : 'signing secret';
     secret.style.flex = '0 0 200px';
-    const saveUrl = el('button', 'cs-btn', 'save endpoint');
+    const saveUrl = el('button', 'ep-btn', 'save endpoint');
     saveUrl.type = 'button';
     r1.append(url, secret, saveUrl);
     body.appendChild(r1);
@@ -211,7 +211,7 @@ function mount(opts) {
       'Must be https on a real hostname — an IP address or an internal name is ' +
       'refused, because a feed that will fetch any address a person types is a ' +
       'way to reach things only our server can see. Every delivery carries ' +
-      'X-Courtside-Signature: an HMAC-SHA256 of the exact body, keyed on the ' +
+      'X-Epinoia-Signature: an HMAC-SHA256 of the exact body, keyed on the ' +
       'secret. A partner who checks it cannot be fed a forged result.'));
 
     saveUrl.addEventListener('click', async () => {
@@ -230,7 +230,7 @@ function mount(opts) {
       load();
     });
 
-    const clear = el('button', 'cs-btn mini', 'clear endpoint');
+    const clear = el('button', 'ep-btn mini', 'clear endpoint');
     clear.type = 'button';
     clear.addEventListener('click', async () => {
       if (!confirm('Clear the endpoint? Deliveries stop and the secret is forgotten.')) return;
@@ -260,17 +260,17 @@ function mount(opts) {
     /* --- how it is written --- */
     body.appendChild(el('div', 'flabel', 'How it is written'));
     const r2 = el('div', 'row');
-    const fmtSel = el('select', 'cs-input');
+    const fmtSel = el('select', 'ep-input');
     [['json', 'JSON'], ['csv', 'CSV'], ['xml', 'XML']].forEach(([v, l]) => {
       const o = el('option', null, l); o.value = v; fmtSel.appendChild(o);
     });
     fmtSel.value = f.format;
-    const nameSel = el('select', 'cs-input');
+    const nameSel = el('select', 'ep-input');
     NAME_STYLES.forEach(([v, l]) => {
       const o = el('option', null, 'names: ' + l); o.value = v; nameSel.appendChild(o);
     });
     nameSel.value = f.name_style;
-    const dateSel = el('select', 'cs-input');
+    const dateSel = el('select', 'ep-input');
     DATE_STYLES.forEach(([v, l]) => {
       const o = el('option', null, 'dates: ' + l); o.value = v; dateSel.appendChild(o);
     });
@@ -284,7 +284,7 @@ function mount(opts) {
 
     /* --- the field map --- */
     body.appendChild(el('div', 'flabel', 'Their names for our fields'));
-    const map = el('textarea', 'cs-input feedmap');
+    const map = el('textarea', 'ep-input feedmap');
     map.rows = 4;
     map.spellcheck = false;
     map.value = JSON.stringify(f.field_map || {}, null, 0)
@@ -297,7 +297,7 @@ function mount(opts) {
       'who wants TRB instead of reb says it once. Our own spelling is stable and ' +
       'does not follow the engine’s internals: reb, fg3a, tov, plus_minus.'));
 
-    const save = el('button', 'cs-btn pri', 'save');
+    const save = el('button', 'ep-btn pri', 'save');
     save.type = 'button';
     const row3 = el('div', 'row');
     row3.appendChild(save);
@@ -401,7 +401,7 @@ function mount(opts) {
     const owed = rows.reduce((n, f) => n + (f.failed_count || 0) + (f.pending_count || 0), 0);
     if (owed) {
       const r = el('div', 'row');
-      const b = el('button', 'cs-btn', 'resend ' + owed + ' outstanding');
+      const b = el('button', 'ep-btn', 'resend ' + owed + ' outstanding');
       b.type = 'button';
       b.addEventListener('click', async () => {
         b.disabled = true; b.textContent = 'resending…';

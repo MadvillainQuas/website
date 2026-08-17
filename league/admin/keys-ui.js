@@ -17,7 +17,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideKeys = api;
+  else root.EpinoiaKeys = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -42,16 +42,16 @@ function mount(opts) {
     'already on the website; it exists so usage can be attributed and limited.'));
 
   const mk = el('div', 'row');
-  const name = el('input', 'cs-input grow');
+  const name = el('input', 'ep-input grow');
   name.placeholder = 'What is it for? e.g. club website';
   name.maxLength = 60;
-  const rate = el('select', 'cs-input');
+  const rate = el('select', 'ep-input');
   rate.style.flex = '0 0 auto';
   [[120, '120 / hour'], [1000, '1,000 / hour'], [5000, '5,000 / hour']]
     .forEach(([v, label]) => { const o = el('option', null, label); o.value = String(v);
       rate.appendChild(o); });
   rate.value = '1000';
-  const go = el('button', 'cs-btn pri', 'issue key');
+  const go = el('button', 'ep-btn pri', 'issue key');
   go.type = 'button';
   mk.append(name, rate, go);
   host.appendChild(mk);
@@ -84,7 +84,7 @@ function mount(opts) {
     card.appendChild(el('div', 'keyh', 'Copy this now — it cannot be shown again'));
     const box = el('div', 'keyrow');
     const code = el('code', 'keyval', key);
-    const copy = el('button', 'cs-btn mini', 'copy');
+    const copy = el('button', 'ep-btn mini', 'copy');
     copy.type = 'button';
     copy.addEventListener('click', async () => {
       try {
@@ -106,7 +106,7 @@ function mount(opts) {
     card.appendChild(el('div', 'keynote',
       'Only a hash is stored, so nobody — including you, and including us — can ' +
       'look this up later. If it is lost, revoke it and issue another.'));
-    const done = el('button', 'cs-btn mini', 'I have saved it');
+    const done = el('button', 'ep-btn mini', 'I have saved it');
     done.type = 'button';
     done.addEventListener('click', () => { fresh.textContent = ''; });
     card.appendChild(done);
@@ -137,7 +137,7 @@ function mount(opts) {
 
       const sp = el('div', 'sp');
       if (!k.revoked_at) {
-        const rv = el('button', 'cs-btn mini', 'revoke');
+        const rv = el('button', 'ep-btn mini', 'revoke');
         rv.type = 'button';
         rv.addEventListener('click', async () => {
           if (!confirm('Revoke "' + k.name + '"? Anything using it stops working immediately.')) return;

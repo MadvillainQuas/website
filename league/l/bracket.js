@@ -18,7 +18,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideBracket = api;
+  else root.EpinoiaBracket = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;

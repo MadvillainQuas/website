@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE UPLOAD — resize in the browser, then send.
+   EPINOIA UPLOAD — resize in the browser, then send.
 
    The plan calls client-side resizing the single biggest lever on both cost and
    page speed, and it is: a 4 MB phone photograph becomes about 60 KB before it
@@ -21,7 +21,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideUpload = api;
+  else root.EpinoiaUpload = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const SIZES = {

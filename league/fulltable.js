@@ -1,8 +1,8 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE FULL TABLE
+   EPINOIA FULL TABLE
 
-   A port of index_9's full table onto Courtside's own data: preset column sets,
+   A port of index_9's full table onto Epinoia's own data: preset column sets,
    per-column toggles, sortable sticky header, search, minimum games, CSV, and
    the percentile heat map that makes a wide table readable at a glance.
 
@@ -19,7 +19,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideTable = api;
+  else root.EpinoiaTable = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -293,21 +293,21 @@ function render(opts) {
 
   /* ---- row 1: search, filters, switches ---- */
   const bar = el('div', 'ft-bar');
-  const q = el('input', 'cs-input grow');
+  const q = el('input', 'ep-input grow');
   q.type = 'search';
   q.placeholder = isTeam ? 'find a team…' : 'find a player or team…';
   q.addEventListener('input', () => { search = q.value.trim().toLowerCase(); draw(); });
   bar.appendChild(q);
 
   if (!isTeam && opts.showMinGames !== false) {
-    const mg = el('input', 'cs-input');
+    const mg = el('input', 'ep-input');
     mg.type = 'number'; mg.min = '0'; mg.value = String(minGames);
     mg.style.width = '78px'; mg.title = 'minimum games played';
     mg.addEventListener('input', () => { minGames = parseInt(mg.value, 10) || 0; draw(); });
     bar.append(el('span', 'ft-count', 'min gp'), mg);
   }
 
-  const heatBtn = el('button', 'cs-btn' + (heat ? ' pri' : ''), 'heat map');
+  const heatBtn = el('button', 'ep-btn' + (heat ? ' pri' : ''), 'heat map');
   heatBtn.type = 'button'; heatBtn.style.cssText = 'font-size:9px;padding:8px 12px';
   heatBtn.title = 'shade each column by percentile within the table';
   heatBtn.addEventListener('click', () => {
@@ -315,12 +315,12 @@ function render(opts) {
   });
   bar.appendChild(heatBtn);
 
-  const colsBtn = el('button', 'cs-btn', 'columns');
+  const colsBtn = el('button', 'ep-btn', 'columns');
   colsBtn.type = 'button'; colsBtn.style.cssText = 'font-size:9px;padding:8px 12px';
   colsBtn.addEventListener('click', () => { drawer.hidden = !drawer.hidden; });
   bar.appendChild(colsBtn);
 
-  const csv = el('button', 'cs-btn', 'csv');
+  const csv = el('button', 'ep-btn', 'csv');
   csv.type = 'button'; csv.style.cssText = 'font-size:9px;padding:8px 12px';
   csv.addEventListener('click', exportCsv);
   bar.appendChild(csv);
@@ -492,10 +492,10 @@ function render(opts) {
     /* percentiles are computed over the rows on screen, so a filtered table
        ranks within what you are actually looking at — same as index_9 */
     let ranks = new Map();
-    if (heat && window.CourtsideSeason) {
+    if (heat && window.EpinoiaSeason) {
       const keys = cols.filter(c => c.heat).map(c => c.k);
       const low  = cols.filter(c => c.heat && c.low).map(c => c.k);
-      ranks = window.CourtsideSeason.percentiles(v, keys, low);
+      ranks = window.EpinoiaSeason.percentiles(v, keys, low);
     }
 
     const t = el('table', 'ft');
@@ -578,7 +578,7 @@ function render(opts) {
       .join('\r\n');
     const url = URL.createObjectURL(new Blob([body], { type: 'text/csv' }));
     const a = document.createElement('a');
-    a.href = url; a.download = (opts.filename || 'courtside') + '.csv';
+    a.href = url; a.download = (opts.filename || 'epinoia') + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

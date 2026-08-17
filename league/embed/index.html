@@ -7,9 +7,11 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Embeds · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<title>Embeds · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hero h1{font-family:var(--f-score);font-size:clamp(30px,6vw,52px);line-height:.9;margin:0;
@@ -43,7 +45,7 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
   <div class="hero">
     <h1>Embeds</h1>
     <p>
@@ -57,23 +59,23 @@
   <div class="sec">
     <div class="opts">
       <label>league
-        <select id="league" class="cs-input" style="font-size:11px;padding:7px 9px"></select>
+        <select id="league" class="ep-input" style="font-size:11px;padding:7px 9px"></select>
       </label>
       <label>theme
-        <select id="theme" class="cs-input" style="font-size:11px;padding:7px 9px">
+        <select id="theme" class="ep-input" style="font-size:11px;padding:7px 9px">
           <option value="">dark</option>
           <option value="light">light</option>
         </select>
       </label>
       <label>accent
-        <input id="accent" type="color" value="#93f2bf" class="cs-input"
+        <input id="accent" type="color" value="#93f2bf" class="ep-input"
                style="width:46px;padding:3px">
       </label>
       <label>second
-        <input id="accent2" type="color" value="#8ff5ff" class="cs-input"
+        <input id="accent2" type="color" value="#8ff5ff" class="ep-input"
                style="width:46px;padding:3px">
       </label>
-      <button id="reset" class="cs-btn" style="font-size:9px;padding:7px 11px">reset colours</button>
+      <button id="reset" class="ep-btn" style="font-size:9px;padding:7px 11px">reset colours</button>
     </div>
   </div>
 
@@ -85,7 +87,7 @@
     </p>
     <div class="prev"><iframe id="f-strip" title="fixture strip" scrolling="no"></iframe></div>
     <div class="snip"><pre id="s-strip"></pre>
-      <button class="cs-btn" data-copy="s-strip" style="font-size:9px;padding:6px 10px">copy</button></div>
+      <button class="ep-btn" data-copy="s-strip" style="font-size:9px;padding:6px 10px">copy</button></div>
   </div>
 
   <div class="sec">
@@ -96,7 +98,7 @@
     </p>
     <div class="prev"><iframe id="f-game" title="box score" scrolling="no"></iframe></div>
     <div class="snip"><pre id="s-game"></pre>
-      <button class="cs-btn" data-copy="s-game" style="font-size:9px;padding:6px 10px">copy</button></div>
+      <button class="ep-btn" data-copy="s-game" style="font-size:9px;padding:6px 10px">copy</button></div>
   </div>
 
   <div class="sec">
@@ -104,7 +106,7 @@
     <p class="why">The table as it stands, top to bottom, linking through to the full league page.</p>
     <div class="prev"><iframe id="f-tab" title="standings" scrolling="no"></iframe></div>
     <div class="snip"><pre id="s-tab"></pre>
-      <button class="cs-btn" data-copy="s-tab" style="font-size:9px;padding:6px 10px">copy</button></div>
+      <button class="ep-btn" data-copy="s-tab" style="font-size:9px;padding:6px 10px">copy</button></div>
   </div>
 
   <div class="sec">
@@ -116,7 +118,7 @@
     </p>
     <div class="opts">
       <label>stat
-        <select id="stat" class="cs-input" style="font-size:11px;padding:7px 9px">
+        <select id="stat" class="ep-input" style="font-size:11px;padding:7px 9px">
           <option value="ppg">points</option><option value="rpg">rebounds</option>
           <option value="apg">assists</option><option value="spg">steals</option>
           <option value="bpg">blocks</option><option value="ts">true shooting</option>
@@ -126,16 +128,16 @@
     </div>
     <div class="prev"><iframe id="f-lead" title="leaders" scrolling="no"></iframe></div>
     <div class="snip"><pre id="s-lead"></pre>
-      <button class="cs-btn" data-copy="s-lead" style="font-size:9px;padding:6px 10px">copy</button></div>
+      <button class="ep-btn" data-copy="s-lead" style="font-size:9px;padding:6px 10px">copy</button></div>
   </div>
 
   <div class="foot">
-    <a href="../">← Courtside</a>
+    <a href="../">← Epinoia</a>
     <span>Widgets are iframes: your stylesheet and ours cannot reach each other.</span>
   </div>
 </div>
-<script src="../config.js?v=24"></script>
-<script src="../nav.js?v=24"></script>
-<script src="gallery.js?v=24"></script>
+<script src="../config.js?v=29"></script>
+<script src="../nav.js?v=29"></script>
+<script src="gallery.js?v=29"></script>
 </body>
 </html>

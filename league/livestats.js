@@ -1,9 +1,9 @@
 'use strict';
 /* ============================================================================
-   LIVESTATS IMPORT — a FIBA play-by-play turned into Courtside events.
+   LIVESTATS IMPORT — a FIBA play-by-play turned into Epinoia events.
 
    A league that has been running for years has its history in somebody else's
-   system. Without this, Courtside starts empty and every profile, table and
+   system. Without this, Epinoia starts empty and every profile, table and
    lineup begins from the first game scored here. With it, the archive comes
    across and the season pages are worth reading on day one.
 
@@ -21,7 +21,7 @@
      changes three players at a dead ball emits six events that pair into
      three — in whatever order the operator tapped them.
 
-     PLAYERS ARE NUMBERS. The source knows shirt 7; Courtside needs a player
+     PLAYERS ARE NUMBERS. The source knows shirt 7; Epinoia needs a player
      id. That resolution is against the game's frozen roster, and anything it
      cannot resolve is REPORTED rather than dropped, because a silently
      skipped player is a box score that is quietly wrong.
@@ -36,7 +36,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideLiveStats = api;
+  else root.EpinoiaLiveStats = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 /* -------------------------------------------------------------- vocabulary ---

@@ -7,9 +7,11 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co">
-<title>Contact · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<title>Contact · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule)}
@@ -25,7 +27,7 @@
   label.f{display:flex;flex-direction:column;gap:6px;margin-bottom:calc(var(--u)*2)}
   label.f span{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
     text-transform:uppercase;color:var(--ink-3)}
-  textarea.cs-input{min-height:170px;resize:vertical;line-height:1.7}
+  textarea.ep-input{min-height:170px;resize:vertical;line-height:1.7}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2)}
   @media (max-width:560px){ .two{grid-template-columns:1fr} }
   .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:11px 14px;
@@ -46,10 +48,10 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
   <div class="topbar">
-    <a href="../" class="wm">Courtside</a>
-    <span class="cs-micro">contact</span>
+    <a href="../" class="wm epinoia-mark">Epinoia</a>
+    <span class="ep-micro">contact</span>
   </div>
 
   <div class="pane">
@@ -62,16 +64,16 @@
     <form id="form" novalidate>
       <div class="two">
         <label class="f"><span>Your name</span>
-          <input class="cs-input" id="name" autocomplete="name" maxlength="120"></label>
+          <input class="ep-input" id="name" autocomplete="name" maxlength="120"></label>
         <label class="f"><span>Your email</span>
-          <input class="cs-input" id="email" type="email" autocomplete="email"
+          <input class="ep-input" id="email" type="email" autocomplete="email"
                  inputmode="email" maxlength="200"></label>
       </div>
       <label class="f"><span>Subject</span>
-        <input class="cs-input" id="subject" maxlength="160"
+        <input class="ep-input" id="subject" maxlength="160"
                placeholder="optional, but it helps"></label>
       <label class="f"><span>Message</span>
-        <textarea class="cs-input" id="body" maxlength="5000"></textarea></label>
+        <textarea class="ep-input" id="body" maxlength="5000"></textarea></label>
       <div class="count"><span id="count">0</span> / 5000</div>
 
       <!-- for the bots. A person never sees or focuses this. -->
@@ -79,7 +81,7 @@
         <label>Website<input id="website" tabindex="-1" autocomplete="off"></label>
       </div>
 
-      <button class="cs-btn pri" id="send" type="submit">Send</button>
+      <button class="ep-btn pri" id="send" type="submit">Send</button>
     </form>
 
     <div id="msg" class="msg hide"></div>
@@ -90,8 +92,8 @@
     </p>
   </div>
 </div>
-<script src="../config.js?v=24"></script>
-<script src="contact.js?v=24"></script>
-<script src="../nav.js?v=24"></script>
+<script src="../config.js?v=29"></script>
+<script src="contact.js?v=29"></script>
+<script src="../nav.js?v=29"></script>
 </body>
 </html>

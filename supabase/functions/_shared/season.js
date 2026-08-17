@@ -1,7 +1,7 @@
 /* GENERATED from league/season.js by supabase/tests/extract-shared.mjs — do not edit. */
 'use strict';
 /* ============================================================================
-   COURTSIDE SEASON — the statistics intermediary.
+   EPINOIA SEASON — the statistics intermediary.
 
    Modelled on the scraper pipeline in "scraper files": raw per-game records go
    in, canonical aggregated stat lines come out, and every page reads those
@@ -31,7 +31,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideSeason = api;
+  else root.EpinoiaSeason = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
@@ -421,8 +421,8 @@ function percentiles(rows, keys, lowerIsBetter) {
    twice.
    ============================================================================ */
 function attachBPM(playerRows, teamRows, teamOfPlayer) {
-  const B = (typeof window !== 'undefined' && window.CourtsideBPM) ||
-            (typeof globalThis !== 'undefined' && globalThis.CourtsideBPM);
+  const B = (typeof window !== 'undefined' && window.EpinoiaBPM) ||
+            (typeof globalThis !== 'undefined' && globalThis.EpinoiaBPM);
   if (!B || !playerRows || !playerRows.length || !teamRows || !teamRows.length) {
     return playerRows || [];
   }
@@ -477,6 +477,6 @@ return { players, teams, percentiles, teamLine, attachBPM, POSS };
    The UMD half above attaches to globalThis; this re-exports the same object
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
-const __api = globalThis.CourtsideSeason;
+const __api = globalThis.EpinoiaSeason;
 export const { players, teams, percentiles, teamLine, attachBPM, POSS } = __api;
 export default __api;

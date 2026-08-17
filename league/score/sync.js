@@ -1,7 +1,7 @@
 /* ============================================================================
-   COURTSIDE SYNC — bridges the existing scorer to the live transport.
+   EPINOIA SYNC — bridges the existing scorer to the live transport.
 
-   courtside.html already keeps an append-only event log in exactly the right
+   the scorer already keeps an append-only event log in exactly the right
    shape, so this is a bridge, not a rewrite. It wraps three globals the scorer
    already calls (addEvent, pauseClock, resumeClock) and publishes:
 
@@ -9,13 +9,13 @@
      * clock TRANSITIONS only — viewers tick locally between them
      * the roster once, so late joiners can render immediately
 
-   Add to courtside.html, after its own script:
+   Add to the scorer, after its own script:
 
      <script src="/league/engine.js"></script>
      <script src="/league/live.js"></script>
      <script src="/league/config.js"></script>
      <script src="/league/score/sync.js"></script>
-     <script>CourtsideSync.attach({ gameId: 'abc-123' });</script>
+     <script>EpinoiaSync.attach({ gameId: 'abc-123' });</script>
 
    Nothing here can slow a tap down: every publish is fire-and-forget, and the
    scorer stays fully usable with the network gone.
@@ -23,7 +23,7 @@
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideSync = api;
+  else root.EpinoiaSync = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 
@@ -63,11 +63,11 @@ function stateOf(S) {
    game and never saw its replacement. The scorer can also insert an event
    earlier in the log, which a length comparison cannot detect at all.
 
-   CourtsideLive.diffLog compares identities instead, so append, undo, redo and
+   EpinoiaLive.diffLog compares identities instead, so append, undo, redo and
    a mid-log edit are all one code path. */
 function drain(S) {
   if (!pub) return;
-  const d = root.CourtsideLive.diffLog(sentIds, S.events || []);
+  const d = root.EpinoiaLive.diffLog(sentIds, S.events || []);
   if (!d.added.length && !d.removed.length) return;
   pub.pushEvents(d.added.map(e => Object.assign({ seq: e.id }, e)), d.removed);
   sentIds = d.ids;
@@ -88,13 +88,13 @@ const api = {
     if (attached) return api;
     const S0 = (typeof S !== 'undefined') ? S : null;
     if (!S0) { console.warn('[sync] no scorer state on the page — not attaching'); return api; }
-    if (!root.CourtsideLive) { console.warn('[sync] live.js missing'); return api; }
+    if (!root.EpinoiaLive) { console.warn('[sync] live.js missing'); return api; }
 
     gameId = opts.gameId;
-    const mode = opts.mode || (root.courtsideMode ? root.courtsideMode() : 'local');
-    const sb = opts.supabase || (root.courtsideClient ? root.courtsideClient() : null);
+    const mode = opts.mode || (root.epinoiaMode ? root.epinoiaMode() : 'local');
+    const sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
 
-    pub = root.CourtsideLive.publisher({
+    pub = root.EpinoiaLive.publisher({
       gameId, mode, supabase: sb,
       stateProvider: () => stateOf(S)      // every frame carries the real clock
     });

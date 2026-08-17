@@ -1,5 +1,5 @@
 /* ============================================================================
-   LiveStats import — a FIBA play-by-play turned into Courtside events.
+   LiveStats import — a FIBA play-by-play turned into Epinoia events.
 
    The value of the importer is that an imported game is indistinguishable
    downstream from a scored one, so the test that matters is not "did it emit

@@ -1,5 +1,5 @@
 /* ============================================================================
-   COURTSIDE NAV — the rail on every public page.
+   EPINOIA NAV — the rail on every public page.
 
    TWO VIEWS, ONE RAIL. At rest it is a list of leagues and nothing else.
    Pick one and the rail slides sideways to that league's own pages, with the
@@ -21,7 +21,7 @@
 
 :root{ --nav-w:174px; }
 
-.cs-nav{
+.ep-nav{
   position:fixed; left:0; top:0; bottom:0; width:var(--nav-w);
   z-index:900; display:flex; flex-direction:column; gap:1px;
   padding:14px 0;
@@ -30,34 +30,34 @@
   box-shadow:1px 0 0 rgba(0,0,0,.4);
   overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
 }
-.cs-nav::-webkit-scrollbar{ display:none }
+.ep-nav::-webkit-scrollbar{ display:none }
 
 /* ---- rows ---------------------------------------------------------------- */
-.cs-nav a.item, .cs-nav button.item{
+.ep-nav a.item, .ep-nav button.item{
   display:flex; align-items:center; gap:10px; text-decoration:none;
   padding:9px 10px 9px 14px; color:rgba(230,255,241,.62); white-space:nowrap;
   border-left:2px solid transparent; background:none; border-top:0;
   border-right:0; border-bottom:0; width:100%; text-align:left; font:inherit;
   cursor:pointer;
 }
-.cs-nav a.item:hover, .cs-nav button.item:hover{
+.ep-nav a.item:hover, .ep-nav button.item:hover{
   color:#e6fff1; background:rgba(147,242,191,.08);
 }
-.cs-nav a.item.on{
+.ep-nav a.item.on{
   color:#93f2bf; border-left-color:#93f2bf; background:rgba(147,242,191,.11);
 }
-.cs-nav .ic{
+.ep-nav .ic{
   flex:none; width:16px; text-align:center; font-size:12px; line-height:1;
   opacity:.85;
 }
-.cs-nav .tx{
+.ep-nav .tx{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
 }
 
-.cs-nav .gap{ flex:1; min-height:12px }
-.cs-nav .sep{ height:1px; background:rgba(147,242,191,.16); margin:8px 12px }
-.cs-nav .grouplbl{
+.ep-nav .gap{ flex:1; min-height:12px }
+.ep-nav .sep{ height:1px; background:rgba(147,242,191,.16); margin:8px 12px }
+.ep-nav .grouplbl{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
   color:rgba(230,255,241,.3); padding:10px 0 4px 16px;
@@ -72,63 +72,63 @@ body.has-nav{ padding-left:var(--nav-w) }
    separately from a measured value, because the two panels are different
    lengths and letting the taller one set the height leaves a hole under the
    shorter one. */
-.cs-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
-.cs-nav .deck{
+.ep-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
+.ep-nav .deck{
   display:flex; width:200%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.cs-nav[data-view="league"] .deck{ transform:translateX(-50%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-50%) }
 /* THE FIRST VIEW NEVER SLIDES. A page that knows its league opens drilled in,
    and animating into that on load would be the rail performing a decision the
    reader did not make — as well as leaving the deck mid-travel on any browser
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
-.cs-nav.noanim .deck, .cs-nav.noanim .navdeck{ transition:none }
-.cs-nav .panel{ width:50%; flex:0 0 50%; min-width:0 }
+.ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
+.ep-nav .panel{ width:50%; flex:0 0 50%; min-width:0 }
 /* the panel that is off screen is out of the tab order as well as out of
    sight — a keyboard user should never land on a link they cannot see */
-.cs-nav .panel[aria-hidden="true"]{ visibility:hidden }
-.cs-nav .navdeck.animating .panel{ visibility:visible }
+.ep-nav .panel[aria-hidden="true"]{ visibility:hidden }
+.ep-nav .navdeck.animating .panel{ visibility:visible }
 
 /* ---- the root panel ------------------------------------------------------ */
-.cs-nav .ptitle{
+.ep-nav .ptitle{
   display:block; text-decoration:none;
   font-family:var(--f-score,ui-monospace,monospace);
   font-size:15px; letter-spacing:.10em; text-transform:uppercase;
   color:#e6fff1; padding:2px 14px 12px; margin-bottom:6px;
   border-bottom:1px solid rgba(147,242,191,.18);
 }
-.cs-nav .ptitle:hover{ color:#93f2bf }
-.cs-nav .gempty{
+.ep-nav .ptitle:hover{ color:#93f2bf }
+.ep-nav .gempty{
   font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
   color:rgba(230,255,241,.4); padding:8px 0 8px 14px;
 }
 
 /* a league: its plate, then its name */
-.cs-nav .lrow{ gap:9px; padding-right:6px }
-.cs-nav .lrow.on{ color:#93f2bf; border-left-color:#93f2bf;
+.ep-nav .lrow{ gap:9px; padding-right:6px }
+.ep-nav .lrow.on{ color:#93f2bf; border-left-color:#93f2bf;
   background:rgba(147,242,191,.11) }
 
 /* THE PLATE. A league with a logo shows it; one without gets a screenprint
    monogram in its own two colours — the same language the club cards use, so
    a league looks like itself here and on its splash page. A grey box saying
    "no logo" would make a new league look broken on its first day. */
-.cs-nav .crest{
+.ep-nav .crest{
   position:relative; flex:none; width:24px; height:24px; overflow:hidden;
   display:grid; place-items:center; border-radius:3px;
   background:linear-gradient(120deg,var(--ca,#93f2bf),var(--cb,#8ff5ff));
 }
-.cs-nav .crest .mono{
+.ep-nav .crest .mono{
   position:relative; z-index:1;
   font-family:var(--f-score,ui-monospace,monospace);
   font-size:11px; line-height:1; color:#04100b; font-weight:700;
 }
-.cs-nav .crest .halftone{
+.ep-nav .crest .halftone{
   position:absolute; inset:-30%;
   background-image:radial-gradient(circle,rgba(4,16,11,.55) .8px,transparent 1.1px);
   background-size:4px 4px; transform:rotate(-14deg); opacity:.7;
 }
-.cs-nav .crest img{ position:relative; z-index:1; width:100%; height:100%;
+.ep-nav .crest img{ position:relative; z-index:1; width:100%; height:100%;
   object-fit:contain; background:#04100b }
 
 /* THE SCROLLING TITLE. League names are long — "Basketball England Division
@@ -142,67 +142,67 @@ body.has-nav{ padding-left:var(--nav-w) }
    name — the part that identifies it — is what is on screen most of the time.
    Everything also carries a title attribute, and under prefers-reduced-motion
    nothing moves and the name clips instead. */
-.cs-nav .marq{ overflow:hidden; min-width:0; flex:1 }
-.cs-nav .marq > span{
+.ep-nav .marq{ overflow:hidden; min-width:0; flex:1 }
+.ep-nav .marq > span{
   display:inline-block; white-space:nowrap;
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:10px; letter-spacing:.06em; text-transform:none;
   will-change:transform;
 }
-.cs-nav .marq:not(.scrolls) > span{
+.ep-nav .marq:not(.scrolls) > span{
   display:block; overflow:hidden; text-overflow:ellipsis;
 }
-@keyframes cs-marq{
+@keyframes ep-marq{
   0%,14%   { transform:translateX(0) }
   86%,100% { transform:translateX(var(--shift,0)) }
 }
 /* --stag is a small per-row offset set in JS, so a rail full of long names
    does not slide in lockstep like a departures board */
-.cs-nav .marq.scrolls > span{
-  animation:cs-marq 7s ease-in-out infinite alternate;
+.ep-nav .marq.scrolls > span{
+  animation:ep-marq 7s ease-in-out infinite alternate;
   animation-delay:var(--stag,0s);
 }
 /* pointing at one holds it still, so a name can be read at your own pace */
-.cs-nav .lrow:hover .marq.scrolls > span{ animation-play-state:paused }
+.ep-nav .lrow:hover .marq.scrolls > span{ animation-play-state:paused }
 
 /* ---- the league panel ---------------------------------------------------- */
-.cs-nav .phead{
+.ep-nav .phead{
   display:flex; align-items:center; gap:8px;
   padding:0 8px 11px 8px; margin-bottom:6px;
   border-bottom:1px solid rgba(147,242,191,.18);
 }
-.cs-nav button.back{
+.ep-nav button.back{
   flex:none; width:22px; height:22px; display:grid; place-items:center;
   background:none; border:1px solid rgba(147,242,191,.28); border-radius:3px;
   color:rgba(230,255,241,.7); font-size:13px; line-height:1; cursor:pointer;
   padding:0 2px 2px 0;
 }
-.cs-nav button.back:hover{ color:#04100b; background:#93f2bf; border-color:#93f2bf }
-.cs-nav .phead .lname{
+.ep-nav button.back:hover{ color:#04100b; background:#93f2bf; border-color:#93f2bf }
+.ep-nav .phead .lname{
   min-width:0; flex:1; text-decoration:none; overflow:hidden;
 }
-.cs-nav .phead .lname .marq > span{
+.ep-nav .phead .lname .marq > span{
   font-family:var(--f-score,ui-monospace,monospace);
   font-size:12.5px; letter-spacing:.05em; text-transform:uppercase;
   color:#e6fff1;
 }
-.cs-nav .phead .lname{ display:flex; align-items:center; gap:6px }
-.cs-nav .phead .lname:hover .marq > span{ color:#93f2bf }
+.ep-nav .phead .lname{ display:flex; align-items:center; gap:6px }
+.ep-nav .phead .lname:hover .marq > span{ color:#93f2bf }
 /* says the heading is a destination. It is the only route from the rail to the
    league's front page now that picking one in the list does not navigate. */
-.cs-nav .lgo{
+.ep-nav .lgo{
   flex:none; font-size:14px; line-height:1; color:rgba(230,255,241,.45);
   transition:transform .16s ease, color .16s ease;
 }
-.cs-nav .phead .lname:hover .lgo{ color:#93f2bf; transform:translateX(2px) }
+.ep-nav .phead .lname:hover .lgo{ color:#93f2bf; transform:translateX(2px) }
 
 /* ---- account ------------------------------------------------------------- */
-.cs-nav .acct{ display:flex; flex-direction:column }
+.ep-nav .acct{ display:flex; flex-direction:column }
 
 /* ---- motion off ---------------------------------------------------------- */
 @media (prefers-reduced-motion:reduce){
-  .cs-nav .deck, .cs-nav .navdeck{ transition:none }
-  .cs-nav .marq.scrolls > span{ animation:none !important;
+  .ep-nav .deck, .ep-nav .navdeck{ transition:none }
+  .ep-nav .marq.scrolls > span{ animation:none !important;
     display:block; overflow:hidden; text-overflow:ellipsis }
 }
 
@@ -210,7 +210,7 @@ body.has-nav{ padding-left:var(--nav-w) }
        screen, and these pages are wide tables. ---------------------------- */
 @media (max-width:820px){
   :root{ --nav-w:0px }
-  .cs-nav{
+  .ep-nav{
     left:0; right:0; top:auto; bottom:0; width:auto;
     flex-direction:row; gap:0; padding:0; align-items:stretch;
     border-right:0; border-top:1px solid rgba(147,242,191,.22);
@@ -218,16 +218,16 @@ body.has-nav{ padding-left:var(--nav-w) }
     overflow-x:auto; overflow-y:hidden;
     padding-bottom:env(safe-area-inset-bottom);
   }
-  .cs-nav .gap, .cs-nav .sep, .cs-nav .grouplbl, .cs-nav .ptitle{ display:none }
-  .cs-nav a.item, .cs-nav button.item{
+  .ep-nav .gap, .ep-nav .sep, .ep-nav .grouplbl, .ep-nav .ptitle{ display:none }
+  .ep-nav a.item, .ep-nav button.item{
     flex:1 0 auto; flex-direction:column; gap:3px; justify-content:center;
     padding:8px 14px; border-left:0; border-top:2px solid transparent;
     width:auto;
   }
-  .cs-nav a.item.on, .cs-nav .lrow.on{
+  .ep-nav a.item.on, .ep-nav .lrow.on{
     border-left-color:transparent; border-top-color:#93f2bf;
   }
-  .cs-nav .tx{ font-size:7.5px; letter-spacing:.06em }
+  .ep-nav .tx{ font-size:7.5px; letter-spacing:.06em }
   body.has-nav{ padding-left:0; padding-bottom:58px }
 
   /* The deck still slides; it just runs along the bar instead of down it.
@@ -235,21 +235,21 @@ body.has-nav{ padding-left:var(--nav-w) }
      .pages and .leagues are block boxes on the desktop rail, and leaving them
      that way stacks the whole menu vertically and turns a 58px bar into a
      313px one. */
-  .cs-nav .navdeck{ flex:1 1 auto; min-width:0; height:auto !important }
-  .cs-nav .deck{ align-items:stretch }
-  .cs-nav .panel{ display:flex; flex-direction:row; align-items:stretch;
+  .ep-nav .navdeck{ flex:1 1 auto; min-width:0; height:auto !important }
+  .ep-nav .deck{ align-items:stretch }
+  .ep-nav .panel{ display:flex; flex-direction:row; align-items:stretch;
     overflow-x:auto; scrollbar-width:none }
-  .cs-nav .pages, .cs-nav .leagues{
+  .ep-nav .pages, .ep-nav .leagues{
     display:flex; flex-direction:row; align-items:stretch; min-width:0;
   }
-  .cs-nav .panel::-webkit-scrollbar{ display:none }
-  .cs-nav .lrow{ flex-direction:column; padding:6px 12px }
-  .cs-nav .marq{ flex:none; max-width:78px }
-  .cs-nav .marq > span{ font-size:8px }
-  .cs-nav .phead{ flex-direction:row; align-items:center; gap:6px;
+  .ep-nav .panel::-webkit-scrollbar{ display:none }
+  .ep-nav .lrow{ flex-direction:column; padding:6px 12px }
+  .ep-nav .marq{ flex:none; max-width:78px }
+  .ep-nav .marq > span{ font-size:8px }
+  .ep-nav .phead{ flex-direction:row; align-items:center; gap:6px;
     padding:0 8px; margin:0; border-bottom:0;
     border-right:1px solid rgba(147,242,191,.18) }
-  .cs-nav .phead .lname{ max-width:96px }
-  .cs-nav .phead .lname .marq > span{ font-size:9.5px }
-  .cs-nav .acct{ flex-direction:row }
+  .ep-nav .phead .lname{ max-width:96px }
+  .ep-nav .phead .lname .marq > span{ font-size:9.5px }
+  .ep-nav .acct{ flex-direction:row }
 }

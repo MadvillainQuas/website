@@ -19,7 +19,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideRosterCSV = api;
+  else root.EpinoiaRosterCSV = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -40,18 +40,18 @@ const BADGE = {
 function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const C = window.CourtsideCSV;
+  const C = window.EpinoiaCSV;
   host.textContent = '';
   let parsed = null;
 
   /* ---- input ---- */
-  const lead = el('p', 'cs-micro csv-lead');
+  const lead = el('p', 'ep-micro csv-lead');
   lead.textContent = 'Paste a team sheet, or choose a file. Columns are worked out from the ' +
     'headings — jersey, first and last name, birth year — and a single "Name" column is fine. ' +
     'Nothing is saved until you have seen what it will do.';
   host.appendChild(lead);
 
-  const ta = el('textarea', 'cs-input csv-ta');
+  const ta = el('textarea', 'ep-input csv-ta');
   ta.rows = 6;
   ta.placeholder = '#,First,Last,Year\n4,Silas,Byrne,2007\n7,Iggy,Kovacs,1998';
   ta.spellcheck = false;
@@ -62,7 +62,7 @@ function mount(opts) {
   file.type = 'file';
   file.accept = '.csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values';
   file.className = 'csv-file';
-  const readBtn = el('button', 'cs-btn', 'Preview');
+  const readBtn = el('button', 'ep-btn', 'Preview');
   readBtn.type = 'button';
   const clearBtn = el('button', 'mini', 'clear');
   clearBtn.type = 'button';
@@ -71,7 +71,7 @@ function mount(opts) {
 
   const summary = el('div', 'csv-sum');
   host.appendChild(summary);
-  const table = el('div', 'cs-tw csv-tw');
+  const table = el('div', 'ep-tw csv-tw');
   host.appendChild(table);
   const commitBar = el('div', 'row csv-commit');
   host.appendChild(commitBar);
@@ -180,7 +180,7 @@ function mount(opts) {
       return;
     }
 
-    const go = el('button', 'cs-btn pri',
+    const go = el('button', 'ep-btn pri',
       'Import ' + willWrite + (willWrite === 1 ? ' player' : ' players'));
     go.type = 'button';
     go.addEventListener('click', () => commit(go));

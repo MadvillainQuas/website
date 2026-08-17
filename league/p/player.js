@@ -11,8 +11,8 @@
    and says so. It never has to remember to check.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
-const T = window.CourtsideTable;
+const CFG = window.EPINOIA_CONFIG;
+const T = window.EpinoiaTable;
 const want = new URLSearchParams(location.search).get('p') || '';
 const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(want);
 
@@ -42,7 +42,7 @@ function fail(msg) {
 function paintIdentity(pl, entry, team) {
   const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
   $('#name').textContent = name;
-  document.title = name + ' · Courtside';
+  document.title = name + ' · Epinoia';
 
   const colour = (team && team.colour) || '#93f2bf';
   document.documentElement.style.setProperty('--team-a', colour);
@@ -55,7 +55,7 @@ function paintIdentity(pl, entry, team) {
      and the consent check, and it is served from our own CDN rather than
      whatever host someone linked. photo_url stays as the simple fallback. */
   const stored = pl.__photoPath
-    ? window.CourtsideUpload.publicUrl(CFG, pl.__photoPath) : null;
+    ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null;
   if (stored || pl.photo_url) {
     const img = document.createElement('img');
     img.src = stored || pl.photo_url;
@@ -144,7 +144,7 @@ function paintBars(mine, field) {
     return;
   }
   const keys = BAR_GROUPS.flatMap(([, rows]) => rows.map(r => r[0]));
-  const ranks = window.CourtsideSeason.percentiles(field, keys, BAR_LOW);
+  const ranks = window.EpinoiaSeason.percentiles(field, keys, BAR_LOW);
   $('#barNote').textContent = 'vs ' + field.length + ' players';
 
   const wrap = el('div', 'bars');
@@ -191,7 +191,7 @@ function paintBars(mine, field) {
 const CAREER_MAX = 8;
 
 async function paintCareer(pl, current, team) {
-  const D = window.CourtsideData;
+  const D = window.EpinoiaData;
   const host = $('#seasons');
   host.textContent = '';
 
@@ -268,7 +268,7 @@ async function paintCareer(pl, current, team) {
 }
 
 function renderCareerRows(host, rows, pl) {
-  window.CourtsideTable.render({
+  window.EpinoiaTable.render({
     host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
     filename: (pl.slug || 'player') + '-career',
     nameLabel: 'SEASON',
@@ -364,7 +364,7 @@ function paintLog(rows) {
        Aggregated the same way as the leaders board, so the two cannot
        disagree, and computed across the whole competition so this player can
        be ranked against everyone else in it. */
-    const D = window.CourtsideData;
+    const D = window.EpinoiaData;
     let mine = null, field = [];
     try {
       const comps = team && team.id
@@ -410,13 +410,13 @@ function paintLog(rows) {
             D.events(gs.map(g => g.id))
           ]);
 
-          window.CourtsideWowy.onOffTiles('#onoff', st, pl.id);
+          window.EpinoiaWowy.onOffTiles('#onoff', st, pl.id);
 
           const games = gs.map(g => ({
             starters: g.starters,
             events: evs.filter(e => e.gameId === g.id)
           }));
-          const recs = window.CourtsideWith.index(games);
+          const recs = window.EpinoiaWith.index(games);
 
           /* teammates are whoever actually shared a stint with him */
           const mates = new Set();
@@ -428,7 +428,7 @@ function paintLog(rows) {
           const mm = await D.playerMeta([...mates]);
           $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates';
 
-          window.CourtsideWithUI.render({
+          window.EpinoiaWithUI.render({
             host: '#withpanel', recs, stints: st, playerId: pl.id,
             meta: mm, teammates: [...mates]
           });

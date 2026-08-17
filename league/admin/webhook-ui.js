@@ -19,7 +19,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideWebhook = api;
+  else root.EpinoiaWebhook = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -48,16 +48,16 @@ function mount(opts) {
   host.appendChild(status);
 
   const row = el('div', 'row');
-  const url = el('input', 'cs-input grow');
+  const url = el('input', 'ep-input grow');
   url.type = 'url';
   url.placeholder = 'https://discord.com/api/webhooks/…';
   url.autocomplete = 'off';
-  const kind = el('select', 'cs-input');
+  const kind = el('select', 'ep-input');
   kind.style.flex = '0 0 auto';
   [['discord', 'Discord'], ['slack', 'Slack']].forEach(([v, l]) => {
     const o = el('option', null, l); o.value = v; kind.appendChild(o);
   });
-  const save = el('button', 'cs-btn pri', 'save');
+  const save = el('button', 'ep-btn pri', 'save');
   save.type = 'button';
   row.append(url, kind, save);
   host.appendChild(row);

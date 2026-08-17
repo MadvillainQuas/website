@@ -9,9 +9,11 @@
      so app.js busts out of frames instead. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Team portal · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<title>Team portal · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   .pad3{padding:calc(var(--u)*3)}
   .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
@@ -82,12 +84,12 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
 
   <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
-    <a href="../" style="text-decoration:none"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
-    <span class="cs-micro">team portal</span>
-    <span id="who" class="cs-micro" style="margin-left:auto"></span>
+    <a href="../" style="text-decoration:none"><span style="font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase" class="epinoia-mark">Epinoia</span></a>
+    <span class="ep-micro">team portal</span>
+    <span id="who" class="ep-micro" style="margin-left:auto"></span>
     <button id="out" class="mini hide">Sign out</button>
   </div>
 
@@ -95,90 +97,90 @@
 
   <!-- ---------------- sign in ---------------- -->
   <section id="signin" class="hide">
-    <div class="cs-hdr"><span class="idx">01</span><h2>Sign in</h2></div>
-    <div class="cs-band stack">
+    <div class="ep-hdr"><span class="idx">01</span><h2>Sign in</h2></div>
+    <div class="ep-band stack">
       <p style="max-width:56ch">A one-time link goes to your email. There is no password to set,
         forget, or have stolen — which is the point.</p>
       <div class="row">
         <label class="f" style="max-width:320px"><span>Email</span>
-          <input class="cs-input" id="email" type="email" autocomplete="email" placeholder="you@club.co.uk"></label>
+          <input class="ep-input" id="email" type="email" autocomplete="email" placeholder="you@club.co.uk"></label>
       </div>
-      <div class="row"><button class="cs-btn pri" id="send">Send the link</button></div>
+      <div class="row"><button class="ep-btn pri" id="send">Send the link</button></div>
     </div>
   </section>
 
   <!-- ---------------- my teams ---------------- -->
   <section id="teams" class="hide">
-    <div class="cs-hdr"><span class="idx">01</span><h2>My teams</h2></div>
+    <div class="ep-hdr"><span class="idx">01</span><h2>My teams</h2></div>
     <div id="teamlist"></div>
-    <div class="cs-hdr"><span class="idx">02</span><h2>New team</h2></div>
-    <div class="cs-band stack">
+    <div class="ep-hdr"><span class="idx">02</span><h2>New team</h2></div>
+    <div class="ep-band stack">
       <div class="row">
-        <label class="f"><span>Team name</span><input class="cs-input" id="tname" placeholder="Neon City"></label>
-        <label class="f" style="max-width:130px"><span>Short</span><input class="cs-input" id="tshort" maxlength="4" placeholder="NC"></label>
+        <label class="f"><span>Team name</span><input class="ep-input" id="tname" placeholder="Neon City"></label>
+        <label class="f" style="max-width:130px"><span>Short</span><input class="ep-input" id="tshort" maxlength="4" placeholder="NC"></label>
       </div>
       <div>
-        <div class="cs-micro" style="margin-bottom:7px">Kit colour</div>
+        <div class="ep-micro" style="margin-bottom:7px">Kit colour</div>
         <div class="sw" id="sw"></div>
       </div>
-      <div class="row"><button class="cs-btn pri" id="mkteam">Create team</button></div>
+      <div class="row"><button class="ep-btn pri" id="mkteam">Create team</button></div>
     </div>
   </section>
 
   <!-- ---------------- roster ---------------- -->
   <section id="roster" class="hide">
-    <div class="cs-hdr"><span class="idx">01</span><h2 id="rtitle">Roster</h2>
+    <div class="ep-hdr"><span class="idx">01</span><h2 id="rtitle">Roster</h2>
       <button class="mini" id="back" style="margin-left:auto">← my teams</button></div>
-    <div class="cs-tw"><table class="plist" id="rlist"></table></div>
-    <div class="cs-hdr"><span class="idx">02</span><h2>Add a player</h2></div>
-    <div class="cs-band stack">
+    <div class="ep-tw"><table class="plist" id="rlist"></table></div>
+    <div class="ep-hdr"><span class="idx">02</span><h2>Add a player</h2></div>
+    <div class="ep-band stack">
       <div class="row">
-        <label class="f" style="max-width:90px"><span>Jersey</span><input class="cs-input" id="pnum" inputmode="numeric" maxlength="2"></label>
-        <label class="f"><span>First name</span><input class="cs-input" id="pfirst"></label>
-        <label class="f"><span>Last name</span><input class="cs-input" id="plast"></label>
-        <label class="f" style="max-width:120px"><span>Birth year</span><input class="cs-input" id="pyear" inputmode="numeric" maxlength="4" placeholder="2007"></label>
+        <label class="f" style="max-width:90px"><span>Jersey</span><input class="ep-input" id="pnum" inputmode="numeric" maxlength="2"></label>
+        <label class="f"><span>First name</span><input class="ep-input" id="pfirst"></label>
+        <label class="f"><span>Last name</span><input class="ep-input" id="plast"></label>
+        <label class="f" style="max-width:120px"><span>Birth year</span><input class="ep-input" id="pyear" inputmode="numeric" maxlength="4" placeholder="2007"></label>
       </div>
       <div class="row">
         <label class="row" style="gap:8px;cursor:pointer">
           <input type="checkbox" id="pminor" style="width:17px;height:17px;accent-color:var(--amber)">
-          <span class="cs-micro" style="color:var(--ink-2)">Under 18 — profile stays private, photo needs guardian consent</span>
+          <span class="ep-micro" style="color:var(--ink-2)">Under 18 — profile stays private, photo needs guardian consent</span>
         </label>
       </div>
-      <div class="row"><button class="cs-btn pri" id="addp">Add player</button></div>
-      <p class="cs-micro" style="color:var(--ink-3);max-width:64ch;line-height:1.8">
+      <div class="row"><button class="ep-btn pri" id="addp">Add player</button></div>
+      <p class="ep-micro" style="color:var(--ink-3);max-width:64ch;line-height:1.8">
         Birth year only — never a full date of birth. It is used for eligibility and is never published.</p>
     </div>
 
-    <div class="cs-hdr"><span class="idx">03</span><h2>Import a team sheet</h2></div>
-    <div class="cs-band stack" id="csvpanel"></div>
+    <div class="ep-hdr"><span class="idx">03</span><h2>Import a team sheet</h2></div>
+    <div class="ep-band stack" id="csvpanel"></div>
   </section>
 
   <!-- ---------------- setup needed ---------------- -->
   <section id="setup" class="hide">
-    <div class="cs-hdr"><span class="idx">!</span><h2>Database not set up yet</h2></div>
-    <div class="cs-band stack">
+    <div class="ep-hdr"><span class="idx">!</span><h2>Database not set up yet</h2></div>
+    <div class="ep-band stack">
       <p>The key works and the project is reachable, but the tables do not exist. Apply the
         migration once, then reload this page.</p>
       <div class="setup">1. open <b>supabase.com/dashboard</b> → your project → <b>SQL Editor</b>
 2. paste the whole of <b>supabase/migrations/0001_init.sql</b>
 3. press <b>Run</b>
 4. reload this page</div>
-      <p class="cs-micro" style="color:var(--ink-3)">Creating the tables needs privileges the
+      <p class="ep-micro" style="color:var(--ink-3)">Creating the tables needs privileges the
         browser deliberately does not have, so this step is yours.</p>
     </div>
   </section>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
-    Courtside Network · portal
+    Epinoia Network · portal
   </footer>
 </div>
 
-<script src="../vendor/supabase.js?v=24"></script>
-<script src="../config.js?v=24"></script>
-<script src="../upload.js?v=24"></script>
-<script src="csv.js?v=24"></script>
-<script src="roster-csv.js?v=24"></script>
-<script src="app.js?v=24"></script>
-<script src="../nav.js?v=24"></script>
+<script src="../vendor/supabase.js?v=29"></script>
+<script src="../config.js?v=29"></script>
+<script src="../upload.js?v=29"></script>
+<script src="csv.js?v=29"></script>
+<script src="roster-csv.js?v=29"></script>
+<script src="app.js?v=29"></script>
+<script src="../nav.js?v=29"></script>
 </body>
 </html>

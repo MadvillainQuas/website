@@ -1,5 +1,5 @@
 /* ============================================================================
-   COURTSIDE LIVE — the transport between a scorer and every watching browser.
+   EPINOIA LIVE — the transport between a scorer and every watching browser.
 
    Two rules from the plan's latency loop:
      1. Publish FRAMES, not events. Events buffer for ~250 ms and go out as one
@@ -13,17 +13,17 @@
      'local'    — BroadcastChannel + localStorage, so the whole pipeline can be
                   driven and tested across two tabs with no backend at all
 
-     const live = CourtsideLive.publisher({ gameId, mode:'local' });
+     const live = EpinoiaLive.publisher({ gameId, mode:'local' });
      live.pushEvents([ev, …]);  live.pushState({period,clockMs,running,…});
 
-     const sub = CourtsideLive.subscriber({ gameId, mode:'local',
+     const sub = EpinoiaLive.subscriber({ gameId, mode:'local',
        onSnapshot: g => …, onFrame: f => …, onStatus: s => … });
      sub.clockMs();   // smooth local tick, no bandwidth
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideLive = api;
+  else root.EpinoiaLive = api;
 }(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this), function () {
 'use strict';
 
@@ -74,7 +74,7 @@ function diffLog(sentIds, events) {
 
 /* local: two tabs on the same origin. Durability is localStorage. */
 function localTransport(gameId) {
-  const KEY = 'cslive:' + gameId;
+  const KEY = 'eplive:' + gameId;
   const ch  = ('BroadcastChannel' in G) ? new G.BroadcastChannel(KEY) : null;
   const read  = () => { try { return JSON.parse(G.localStorage.getItem(KEY) || 'null'); } catch (_) { return null; } };
   const write = v => { try { G.localStorage.setItem(KEY, JSON.stringify(v)); } catch (_) {} };

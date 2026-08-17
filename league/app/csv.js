@@ -27,7 +27,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideCSV = api;
+  else root.EpinoiaCSV = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 /* --------------------------------------------------------------- parsing ---

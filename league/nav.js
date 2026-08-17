@@ -27,7 +27,7 @@
    and it is not persisted, so the next page decides again.
    ============================================================================ */
 (function () {
-  if (document.querySelector('.cs-nav')) return;
+  if (document.querySelector('.ep-nav')) return;
 
   const here = location.pathname.replace(/\/index\.html$/, '/');
   /* Climb back to /league/ by counting the directories below it, rather than
@@ -134,7 +134,7 @@
     const c = el('span', 'crest');
     c.style.setProperty('--ca', l.colour_a || '#93f2bf');
     c.style.setProperty('--cb', l.colour_b || l.colour_a || '#8ff5ff');
-    const cfg = window.COURTSIDE_CONFIG;
+    const cfg = window.EPINOIA_CONFIG;
     if (l.logo_path && cfg && cfg.supabaseUrl) {
       const img = document.createElement('img');
       img.src = cfg.supabaseUrl + '/storage/v1/object/public/' + l.logo_path;
@@ -154,8 +154,8 @@
 
   /* =============================================================== build === */
   const nav = document.createElement('nav');
-  nav.className = 'cs-nav';
-  nav.setAttribute('aria-label', 'Courtside');
+  nav.className = 'ep-nav';
+  nav.setAttribute('aria-label', 'Epinoia');
   nav.dataset.view = 'root';
   /* No sliding until the rail has settled into the view this page belongs in.
      Removed once the leagues have arrived and the first view is chosen. */
@@ -322,7 +322,7 @@
      immediately — navigation that pops in after a network round trip is worse
      than navigation that shows a placeholder. */
   async function fillLeagues() {
-    const cfg = window.COURTSIDE_CONFIG;
+    const cfg = window.EPINOIA_CONFIG;
     if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
     try {
       const r = await fetch(cfg.supabaseUrl +
@@ -413,7 +413,7 @@
      with the ref taken from the configured URL so this keeps working if the
      project ever moves. */
   function projectRef() {
-    const c = window.COURTSIDE_CONFIG;
+    const c = window.EPINOIA_CONFIG;
     if (!c || !c.supabaseUrl) return null;
     const m = String(c.supabaseUrl).match(/^https?:\/\/([^.]+)\./);
     return m ? m[1] : null;
@@ -441,7 +441,7 @@
      RPC the admin console uses, so the rail and the console can never disagree
      about somebody's roles. */
   async function whoami(token) {
-    const c = window.COURTSIDE_CONFIG;
+    const c = window.EPINOIA_CONFIG;
     const r = await fetch(c.supabaseUrl + '/rest/v1/rpc/whoami', {
       method: 'POST', cache: 'no-store',
       headers: {

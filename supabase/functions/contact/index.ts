@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
      which is why storage happens first and unconditionally. */
   const to = teamId ? clubTo : Deno.env.get('CONTACT_TO');
   const key = Deno.env.get('RESEND_API_KEY');
-  const from = Deno.env.get('CONTACT_FROM') ?? 'Courtside <onboarding@resend.dev>';
+  const from = Deno.env.get('CONTACT_FROM') ?? 'Epinoia <onboarding@resend.dev>';
 
   if (!to || !key) {
     await admin.from('contact_messages')
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         to: [to],
         // replying to the notification reaches the person who wrote in
         reply_to: email,
-        subject: (clubName ? '[' + clubName + '] ' : '[Courtside] ') +
+        subject: (clubName ? '[' + clubName + '] ' : '[Epinoia] ') +
                  (subject || 'Message from ' + name),
         text: [
           'From: ' + name + ' <' + email + '>',
@@ -147,9 +147,9 @@ Deno.serve(async (req) => {
           '',
           '—',
           clubName
-            ? 'Sent from ' + clubName + "'s page on Courtside. Reply to this email " +
+            ? 'Sent from ' + clubName + "'s page on Epinoia. Reply to this email " +
               'and it reaches the sender directly.'
-            : 'Sent from the Courtside contact form.',
+            : 'Sent from the Epinoia contact form.',
           'Recorded as ' + row.id
         ].filter(Boolean).join('\n')
       })

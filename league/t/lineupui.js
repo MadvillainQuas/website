@@ -17,7 +17,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideLineupUI = api;
+  else root.EpinoiaLineupUI = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -79,7 +79,7 @@ function statBlock(line, baseline) {
 function filterPanel(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const L = window.CourtsideLineups;
+  const L = window.EpinoiaLineups;
   host.textContent = '';
 
   const stints = opts.stints || [];
@@ -103,7 +103,7 @@ function filterPanel(opts) {
   const chips = el('div', 'lu-chips');
   roster.forEach(id => {
     const m = (opts.meta && opts.meta[id]) || {};
-    const b = el('button', 'cs-chip', m.name || 'Player');
+    const b = el('button', 'ep-chip', m.name || 'Player');
     b.type = 'button';
     b.addEventListener('click', () => {
       if (picked.has(id)) picked.delete(id); else picked.add(id);
@@ -141,7 +141,7 @@ function filterPanel(opts) {
 function listPanel(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const L = window.CourtsideLineups;
+  const L = window.EpinoiaLineups;
   host.textContent = '';
 
   const stints = opts.stints || [];
@@ -152,7 +152,7 @@ function listPanel(opts) {
 
   let floor = 2;
   const bar = el('div', 'wowy-bar');
-  const inp = el('input', 'cs-input');
+  const inp = el('input', 'ep-input');
   inp.type = 'number'; inp.min = '0'; inp.step = '0.5'; inp.value = String(floor);
   inp.style.width = '72px';
   const note = el('span', 'wl');

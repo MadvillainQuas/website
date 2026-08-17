@@ -1,4 +1,4 @@
-# Courtside Network — handover
+# Epinoia Network — handover
 
 Written for whoever picks this up next, human or otherwise. Read this before
 touching anything; it is the compressed version of several long sessions and
@@ -6,13 +6,13 @@ most of it is things that are not obvious from the code.
 
 Repo: `MadvillainQuas/website` → prophesyscouting.co.uk
 Local: `C:\Users\Admin\Documents\website_repo`
-Branch: **`courtside-network`** — not merged to `main`, so nothing here is live.
+Branch: **`epinoia-network`** — not merged to `main`, so nothing here is live.
 
 ---
 
 ## 1. THE BLOCKER — read this first
 
-**47 commits are local-only.** `git push` needs an interactive credential
+**48 commits are local-only.** `git push` needs an interactive credential
 prompt that a headless session cannot satisfy:
 
 ```
@@ -22,7 +22,7 @@ fatal: could not read Username for 'https://github.com'
 Reads (`git ls-remote`) work; writes do not. Louie has to run this himself:
 
 ```bash
-git -C /c/Users/Admin/Documents/website_repo push origin courtside-network
+git -C /c/Users/Admin/Documents/website_repo push origin epinoia-network
 ```
 
 Until then **nothing built in these sessions exists anywhere but this machine**,
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **24**).
+  under `league/`, from `league/version.txt` (currently **27**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -194,7 +194,7 @@ python tools/stamp-assets.py --check
 
 All green as of handover. Ones needing the live project skip cleanly without
 it. `api.test.mjs` reads a key from the session scratchpad or
-`COURTSIDE_API_KEY`.
+`EPINOIA_API_KEY`.
 
 **The box score is extracted, not reimplemented.** `league/boxscore.js` is
 lifted verbatim from the scorer by `extract-boxscore.mjs`. Edit the scorer,
@@ -233,9 +233,34 @@ to the "recompute awards" button in the console.
 
 **Merchandise** (league splash, section 04) draws a tee, hoodie, scarf, print
 and mug from each club's crest and colours, plus the month's BPM star on a
-print. Courtside sells nothing: items link to `leagues.store_url`, set in the
+print. Epinoia sells nothing: items link to `leagues.store_url`, set in the
 console, and the section says the shop is not open when there is none. A minor
 is never featured — RLS hides them anyway and `home.js` checks again.
+
+**COURTSIDE IS NOW EPINOIA** (migration 0042 + a sweep of 94 files). What that
+touched and what it deliberately did not:
+
+- Text, JS globals (`EPINOIA_CONFIG`, `EpinoiaData`, `epinoiaClient`), the CSS
+  namespace (`.cs-` → `.ep-`), the feed headers (`X-Epinoia-Signature`), the
+  page titles, `courtside-kit.css` → `epinoia-kit.css`.
+- **Applied migrations 0001–0041 were left alone.** Their contents are history,
+  editing an applied migration risks a checksum mismatch on the next push, and
+  the word survives in them only in comments and a session-setting name.
+- **Keys issued as `csk_` still work.** Only the hash is stored, authentication
+  never looks at the prefix, and a partner's key must not die in a rename. New
+  keys mint as `epk_`. The demo key is still `csk_tjtCi98Q`.
+- **The scorer's saved game reads the old localStorage key once** and carries it
+  over (`league/score/index.html`, `loadSaved`). Delete that fallback after a
+  season. Renaming a storage key without it is silent data loss.
+- **The logotype has SIX GLYPHS: A E I N O P.** It is bound to `.epinoia-mark`,
+  which may only go on an element whose whole content is the word EPINOIA.
+  `home.js` removes the class when the hub's wordmark becomes a league name,
+  because anything else renders as missing-glyph boxes. The face is also twice
+  as wide as Jersey25 at the same size, so `.wordmark.epinoia-mark` and
+  `.wm.epinoia-mark` set their own smaller sizes.
+- Brand assets are in `league/brand/`, built from the two supplied PNGs: white
+  keyed to transparency, the icon cropped off its shadow. Every page now has a
+  favicon, which it did not before.
 
 **Blocked on Louie:**
 - Push the branch (§1).

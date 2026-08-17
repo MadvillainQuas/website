@@ -7,10 +7,12 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>League · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="../kit/table.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<title>League · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="../kit/table.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .pane{display:none} .pane.on{display:block}
@@ -88,36 +90,36 @@
   .awval{font-family:var(--f-score);font-size:26px;color:var(--lume);line-height:1;margin-top:8px}
   .awdet{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);margin-top:5px;
     line-height:1.6}
-  .seasonpick .cs-chip{font-family:var(--f-micro);font-size:9.5px}
+  .seasonpick .ep-chip{font-family:var(--f-micro);font-size:9.5px}
   .seasonpick{border-bottom:1px solid var(--rule)}
   .phasepick{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .phasepick .cs-chip{font-family:var(--f-micro);font-size:9.5px}
+  .phasepick .ep-chip{font-family:var(--f-micro);font-size:9.5px}
   .phasepick .kindtag{margin-left:6px;font-size:7.5px;opacity:.7;letter-spacing:.1em}
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
   <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
-    <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Courtside</span></a>
-    <span id="ctx" class="cs-micro"></span>
+    <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase" class="epinoia-mark">Epinoia</span></a>
+    <span id="ctx" class="ep-micro"></span>
   </div>
 
-  <div class="cs-board" style="grid-template-columns:1fr">
-    <div class="cs-side a" style="padding:calc(var(--u)*3)">
-      <div class="cs-trc" id="seasonName"></div>
-      <div class="cs-tnm" id="leagueName" style="font-size:clamp(20px,4vw,30px)">—</div>
+  <div class="ep-board" style="grid-template-columns:1fr">
+    <div class="ep-side a" style="padding:calc(var(--u)*3)">
+      <div class="ep-trc" id="seasonName"></div>
+      <div class="ep-tnm" id="leagueName" style="font-size:clamp(20px,4vw,30px)">—</div>
     </div>
   </div>
 
   <div id="seasonPick" class="pick seasonpick" style="display:none"></div>
 
   <div class="tabs-wrap">
-    <div class="cs-tabs" role="tablist">
-      <button class="cs-tab on" data-p="table" role="tab">Table</button>
-      <button class="cs-tab" data-p="fixtures" role="tab">Fixtures</button>
-      <button class="cs-tab" data-p="leaders" role="tab">Leaders</button>
-      <button class="cs-tab" data-p="teams" role="tab">Team Stats</button>
-      <button class="cs-tab" data-p="cup" role="tab">Cup</button>
+    <div class="ep-tabs" role="tablist">
+      <button class="ep-tab on" data-p="table" role="tab">Table</button>
+      <button class="ep-tab" data-p="fixtures" role="tab">Fixtures</button>
+      <button class="ep-tab" data-p="leaders" role="tab">Leaders</button>
+      <button class="ep-tab" data-p="teams" role="tab">Team Stats</button>
+      <button class="ep-tab" data-p="cup" role="tab">Cup</button>
     </div>
   </div>
 
@@ -139,17 +141,17 @@
   </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
-    <span id="foot">Courtside Network</span>
+    <span id="foot">Epinoia Network</span>
   </footer>
 </div>
 
-<script src="../config.js?v=24"></script>
-<script src="../bpm.js?v=24"></script>
-<script src="../season.js?v=24"></script>
-<script src="../data.js?v=24"></script>
-<script src="../fulltable.js?v=24"></script>
-<script src="bracket.js?v=24"></script>
-<script src="league.js?v=24"></script>
-<script src="../nav.js?v=24"></script>
+<script src="../config.js?v=29"></script>
+<script src="../bpm.js?v=29"></script>
+<script src="../season.js?v=29"></script>
+<script src="../data.js?v=29"></script>
+<script src="../fulltable.js?v=29"></script>
+<script src="bracket.js?v=29"></script>
+<script src="league.js?v=29"></script>
+<script src="../nav.js?v=29"></script>
 </body>
 </html>

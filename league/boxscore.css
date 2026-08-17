@@ -755,7 +755,7 @@ html, body{ height:100dvh; }
    96px of the panel is a transparent-to-opaque gradient, so the part that
    actually hides content is height minus that padding.
 
-   --cs-legend-h is measured from the live element by a ResizeObserver in
+   --ep-legend-h is measured from the live element by a ResizeObserver in
    score/bootstrap.js, so this follows a rotation, a font change or a text
    rewrap instead of guessing. The 52px fallback is the original value, which
    is what applies if that script has not run. */
@@ -771,9 +771,9 @@ html, body{ height:100dvh; }
    is exactly where the event log lives, in the mid-panel.
 
    The bottom really was being clipped, but by the fixed legend overlapping it,
-   which is what --cs-legend-h above reserves for. Scrolling was the wrong
+   which is what --ep-legend-h above reserves for. Scrolling was the wrong
    remedy for it. */
-#cols{ padding-bottom:calc(var(--cs-legend-h, 52px) + var(--cs-sheet-h, 40px) + 10px); }
+#cols{ padding-bottom:calc(var(--ep-legend-h, 52px) + var(--ep-sheet-h, 40px) + 10px); }
 
 /* Desktop: the event log was unreachable.
 
@@ -794,7 +794,7 @@ html, body{ height:100dvh; }
    for. The real problem was that everything had to fit one screen at once.
 
    On a desktop there is no reason for that. The fixed app shell exists for a
-   phone held one-handed at courtside, where the page must never scroll under
+   phone held one-handed at epinoia, where the page must never scroll under
    a thumb mid-gesture. A mouse has no such problem. So from 900px up the
    scorer becomes an ordinary scrolling document: every panel gets its natural
    height, the court is drawn at a size you can actually tap, and anything

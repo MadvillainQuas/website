@@ -14,16 +14,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const BASE = 'https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/api';
-const KEY_FILE = process.env.COURTSIDE_API_KEY_FILE ||
+const KEY_FILE = process.env.EPINOIA_API_KEY_FILE ||
   'C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-ToUtopia-BattleEngine/' +
   '753cd4fc-247c-47e9-907a-c1bfd472aa7e/scratchpad/api-test-key.txt';
 
-let KEY = process.env.COURTSIDE_API_KEY || '';
+let KEY = process.env.EPINOIA_API_KEY || '';
 if (!KEY) {
   try { KEY = fs.readFileSync(KEY_FILE, 'utf8').trim(); } catch (_) { /* none */ }
 }
 if (!KEY) {
-  console.log('\nSKIP — no API key available (set COURTSIDE_API_KEY to run)');
+  console.log('\nSKIP — no API key available (set EPINOIA_API_KEY to run)');
   process.exit(0);
 }
 
@@ -58,7 +58,7 @@ async function get(p, key = KEY) {
     ok('with a hint about how to send one', /X-API-Key/.test(r.body?.hint || ''), r.body?.hint);
   }
   {
-    const r = await get('/v1/leagues', 'csk_definitely_not_a_real_key');
+    const r = await get('/v1/leagues', 'epk_definitely_not_a_real_key');
     eq('a bogus key is refused', r.status, 401);
     ok('and is not told whether the key ever existed',
        r.body?.error === 'invalid key', r.body?.error);

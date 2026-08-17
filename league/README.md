@@ -1,10 +1,10 @@
-# Courtside Network
+# Epinoia Network
 
 A game is scored privately, appears publicly under a second behind the whistle, and
 everything else — tables, profiles, lineups, awards — is derived from the same event log.
 Lives under `/league/` in `MadvillainQuas/website`. Built on the Backlit kit.
 
-**Branch `courtside-network`, not merged to `main`.** Nothing here is live on
+**Branch `epinoia-network`, not merged to `main`.** Nothing here is live on
 prophesyscouting.co.uk until it is.
 
 > **Resuming work on this?** Read [`../docs/HANDOVER.md`](../docs/HANDOVER.md)
@@ -46,7 +46,7 @@ node supabase/tests/engine.smoke.mjs          # the stat engine
 node supabase/tests/extract-boxscore.mjs --check
 node supabase/tests/boxscore.isolation.mjs    # public box score renders from S + derive()
 node supabase/tests/csv.test.mjs              # roster import parsing
-node supabase/tests/livestats.test.mjs        # FIBA -> Courtside conversion
+node supabase/tests/livestats.test.mjs        # FIBA -> Epinoia conversion
 node supabase/tests/livestats.roundtrip.mjs   # real games out to FIBA and back
 node supabase/tests/formats.test.mjs          # groups, brackets, awards
 node supabase/tests/api.test.mjs              # the JSON API over HTTP
@@ -55,7 +55,7 @@ node supabase/tests/authed.test.mjs           # signed-in refusals
 ```
 
 All of them run in CI. The ones that need the live project skip cleanly without it.
-`api.test.mjs` needs `COURTSIDE_API_KEY`; the others do not.
+`api.test.mjs` needs `EPINOIA_API_KEY`; the others do not.
 
 **Never sign up a test account.** Signups draw on the same email allowance as the
 magic-link logins and will lock the owner out for an hour.

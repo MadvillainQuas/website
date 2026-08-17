@@ -20,7 +20,7 @@
    ============================================================================ */
 
 const $ = s => document.querySelector(s);
-const sb = window.courtsideClient && window.courtsideClient();
+const sb = window.epinoiaClient && window.epinoiaClient();
 const params = new URLSearchParams(location.search);
 
 /* where to go back to once signed in — same-origin paths only, because an
@@ -100,7 +100,7 @@ async function render() {
 }
 
 /* ------------------------------------------------------------------ send --- */
-const RATE_KEY = 'cs-signin-last';
+const RATE_KEY = 'ep-signin-last';
 const RATE_MS = 60000;
 
 $('#send').addEventListener('click', async () => {
@@ -165,7 +165,7 @@ $('#send').addEventListener('click', async () => {
    So the enabled providers are read from /auth/v1/settings first, and a button
    that would lead nowhere is simply not offered. */
 async function googleAvailable() {
-  const c = window.COURTSIDE_CONFIG;
+  const c = window.EPINOIA_CONFIG;
   if (!c || !c.supabaseUrl) return false;
   try {
     const r = await fetch(c.supabaseUrl + '/auth/v1/settings',

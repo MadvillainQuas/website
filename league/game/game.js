@@ -18,13 +18,13 @@
    now supplies the first and game_events the second.
    ============================================================================ */
 
-const E = window.CourtsideEngine, B = window.CourtsideBox, L = window.CourtsideLive;
-const CFG = window.COURTSIDE_CONFIG;
+const E = window.EpinoiaEngine, B = window.EpinoiaBox, L = window.EpinoiaLive;
+const CFG = window.EPINOIA_CONFIG;
 const qp = new URLSearchParams(location.search);
 const gameId = qp.get('g') || '';
 const mode = qp.get('mode') === 'supabase' ? 'supabase'
            : qp.get('mode') === 'local' ? 'local'
-           : (window.courtsideMode ? courtsideMode() : 'local');
+           : (window.epinoiaMode ? epinoiaMode() : 'local');
 
 const $ = s => document.querySelector(s);
 const txt = (el, v) => { if (el && el.textContent !== String(v)) el.textContent = v; };
@@ -176,14 +176,14 @@ function renderHead(d) {
   txt($('#csHeading'), S.status === 'final' ? 'final'
                      : S.status === 'live' ? 'live' : 'scheduled');
   document.title = d.score[0] + '–' + d.score[1] + ' ' +
-      S.teams[0].name + ' v ' + S.teams[1].name + ' · Courtside';
+      S.teams[0].name + ' v ' + S.teams[1].name + ' · Epinoia';
 
   /* Link previews and structured data. Cheap enough to redo here, and it has
      to be redone rather than set once: a game that finalises while somebody is
      watching should stop describing itself as in progress. */
-  if (window.CourtsideSEO && S.meta) {
+  if (window.EpinoiaSEO && S.meta) {
     const m = S.meta;
-    window.CourtsideSEO.game({
+    window.EpinoiaSEO.game({
       game: { status: S.status, tipoff_at: m.tipoff_at,
               home_score: d.score[0], away_score: d.score[1] },
       home: m.home || { name: S.teams[0].name },
@@ -260,7 +260,7 @@ function setStatus(s) {
 function goLive() {
   sub = L.subscriber({
     gameId, mode,
-    supabase: (mode === 'supabase' && window.courtsideClient) ? courtsideClient() : null,
+    supabase: (mode === 'supabase' && window.epinoiaClient) ? epinoiaClient() : null,
     onSnapshot(snap) {
       if (snap.game) mergeLive(snap.game, snap.events);
       else if (snap.events) mergeLive(null, snap.events);

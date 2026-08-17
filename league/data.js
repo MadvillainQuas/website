@@ -16,11 +16,11 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideData = api;
+  else root.EpinoiaData = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 function CFG() {
-  const c = (typeof window !== 'undefined' && window.COURTSIDE_CONFIG) || null;
+  const c = (typeof window !== 'undefined' && window.EPINOIA_CONFIG) || null;
   if (!c) throw new Error('config.js has not loaded');
   return c;
 }
@@ -69,7 +69,7 @@ async function season(competitionId) {
   const byId = {};
   games.forEach(g => { byId[g.id] = g; });
 
-  const S = window.CourtsideSeason;
+  const S = window.EpinoiaSeason;
   const players = S.players(pgs, tgs);
   const teamRows = S.teams(tgs, byId);
 
@@ -112,7 +112,7 @@ async function statsForGames(games) {
   const byId = {};
   games.forEach(g => { byId[g.id] = g; });
 
-  const S = window.CourtsideSeason;
+  const S = window.EpinoiaSeason;
   const players = S.players(pgs, tgs);
   const teamRows = S.teams(tgs, byId);
 

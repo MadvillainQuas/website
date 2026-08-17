@@ -20,7 +20,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideFormats = api;
+  else root.EpinoiaFormats = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -44,15 +44,15 @@ function mount(opts) {
      bracket where a reader expects the league table, so it is editable rather
      than fixed at creation. */
   const kRow = el('div', 'row');
-  kRow.appendChild(el('span', 'cs-micro', 'This is a'));
-  const kSel = el('select', 'cs-input');
+  kRow.appendChild(el('span', 'ep-micro', 'This is a'));
+  const kSel = el('select', 'ep-input');
   kSel.style.flex = '0 0 auto';
   [['league', 'league phase — shares the Table tab'],
    ['playoff', 'playoff phase — shares the Table tab'],
    ['cup', 'cup — gets its own tab']]
     .forEach(([v, label]) => { const o = el('option', null, label); o.value = v; kSel.appendChild(o); });
   kSel.value = opts.comp.kind || 'league';
-  const kSave = el('button', 'cs-btn mini', 'save');
+  const kSave = el('button', 'ep-btn mini', 'save');
   kSave.type = 'button';
   kSave.addEventListener('click', async () => {
     const { error } = await opts.sb.from('competitions')
@@ -69,8 +69,8 @@ function mount(opts) {
 
   /* ---- format ---- */
   const fRow = el('div', 'row');
-  fRow.appendChild(el('span', 'cs-micro', 'Format'));
-  const fSel = el('select', 'cs-input');
+  fRow.appendChild(el('span', 'ep-micro', 'Format'));
+  const fSel = el('select', 'ep-input');
   fSel.style.flex = '0 0 auto';
   [['table', 'one table'], ['groups', 'groups'],
    ['knockout', 'knockout'], ['groups_knockout', 'groups then knockout']]
@@ -78,7 +78,7 @@ function mount(opts) {
       const o = el('option', null, label); o.value = v; fSel.appendChild(o);
     });
   fSel.value = opts.comp.format || 'table';
-  const fSave = el('button', 'cs-btn mini', 'save');
+  const fSave = el('button', 'ep-btn mini', 'save');
   fSave.type = 'button';
   fSave.addEventListener('click', async () => {
     const { error } = await opts.sb.from('competitions')
@@ -109,7 +109,7 @@ function mount(opts) {
       const t = (opts.teams || {})[row.team_id] || {};
       const cell = el('div', 'fmt-cell');
       cell.appendChild(el('span', 'fmt-name', t.name || '—'));
-      const inp = el('input', 'cs-input fmt-in');
+      const inp = el('input', 'ep-input fmt-in');
       inp.value = row.group_name || '';
       inp.maxLength = 12;
       inp.placeholder = '—';
@@ -119,7 +119,7 @@ function mount(opts) {
     });
     host.appendChild(grid);
 
-    const gSave = el('button', 'cs-btn', 'save groups');
+    const gSave = el('button', 'ep-btn', 'save groups');
     gSave.type = 'button';
     gSave.addEventListener('click', async () => {
       gSave.disabled = true;
@@ -153,7 +153,7 @@ function mount(opts) {
     'in as results arrive — nothing here has to be revisited between rounds.'));
 
   const sRow = el('div', 'row');
-  const nSel = el('select', 'cs-input');
+  const nSel = el('select', 'ep-input');
   nSel.style.flex = '0 0 auto';
   [2, 4, 8, 16].forEach(n => {
     const o = el('option', null, n + ' teams'); o.value = String(n); nSel.appendChild(o);
@@ -162,7 +162,7 @@ function mount(opts) {
 
   /* the table the seeds come from — usually the league this playoff belongs
      to, which is a different competition from the playoff itself */
-  const srcSel = el('select', 'cs-input');
+  const srcSel = el('select', 'ep-input');
   srcSel.style.flex = '1 1 160px';
   (opts.comps || []).forEach(c => {
     const o = el('option', null, 'seed from ' + c.name); o.value = c.id; srcSel.appendChild(o);
@@ -170,7 +170,7 @@ function mount(opts) {
   const table = (opts.comps || []).find(c => c.id !== opts.comp.id && c.format !== 'knockout');
   if (table) srcSel.value = table.id;
 
-  const seed = el('button', 'cs-btn pri', 'seed bracket');
+  const seed = el('button', 'ep-btn pri', 'seed bracket');
   seed.type = 'button';
   seed.addEventListener('click', async () => {
     const n = parseInt(nSel.value, 10);
@@ -195,7 +195,7 @@ function mount(opts) {
     'here for after a correction, or for a season imported in bulk. Most ' +
     'valuable player is decided by box plus/minus — the same number the ' +
     'leaderboards show — and the rest by the plain per-game leaders.'));
-  const aBtn = el('button', 'cs-btn', 'recompute awards');
+  const aBtn = el('button', 'ep-btn', 'recompute awards');
   aBtn.type = 'button';
   aBtn.addEventListener('click', async () => {
     aBtn.disabled = true;

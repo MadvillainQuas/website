@@ -69,7 +69,7 @@ function extractLines(name) {
 const bodies = WANTED.map(extractLines);
 
 const out = `/* ============================================================================
-   COURTSIDE BOX SCORE — GENERATED FILE, DO NOT EDIT.
+   EPINOIA BOX SCORE — GENERATED FILE, DO NOT EDIT.
 
    Lifted verbatim from league/score/index.html by
    supabase/tests/extract-boxscore.mjs. Edit the scorer, then re-run:
@@ -89,7 +89,7 @@ const out = `/* ================================================================
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideBox = api;
+  else root.EpinoiaBox = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 

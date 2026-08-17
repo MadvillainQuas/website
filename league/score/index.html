@@ -7,7 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#04170f">
-<title>courtside</title>
+<title>Scorer · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -761,7 +763,7 @@ html, body{ height:100dvh; }
    96px of the panel is a transparent-to-opaque gradient, so the part that
    actually hides content is height minus that padding.
 
-   --cs-legend-h is measured from the live element by a ResizeObserver in
+   --ep-legend-h is measured from the live element by a ResizeObserver in
    score/bootstrap.js, so this follows a rotation, a font change or a text
    rewrap instead of guessing. The 52px fallback is the original value, which
    is what applies if that script has not run. */
@@ -777,9 +779,9 @@ html, body{ height:100dvh; }
    is exactly where the event log lives, in the mid-panel.
 
    The bottom really was being clipped, but by the fixed legend overlapping it,
-   which is what --cs-legend-h above reserves for. Scrolling was the wrong
+   which is what --ep-legend-h above reserves for. Scrolling was the wrong
    remedy for it. */
-#cols{ padding-bottom:calc(var(--cs-legend-h, 52px) + var(--cs-sheet-h, 40px) + 10px); }
+#cols{ padding-bottom:calc(var(--ep-legend-h, 52px) + var(--ep-sheet-h, 40px) + 10px); }
 
 /* Desktop: the event log was unreachable.
 
@@ -800,7 +802,7 @@ html, body{ height:100dvh; }
    for. The real problem was that everything had to fit one screen at once.
 
    On a desktop there is no reason for that. The fixed app shell exists for a
-   phone held one-handed at courtside, where the page must never scroll under
+   phone held one-handed at epinoia, where the page must never scroll under
    a thumb mid-gesture. A mouse has no such problem. So from 900px up the
    scorer becomes an ordinary scrolling document: every panel gets its natural
    height, the court is drawn at a size you can actually tap, and anything
@@ -862,7 +864,7 @@ html, body{ height:100dvh; }
 <!-- ================= setup ================= -->
 <section id="setup" class="screen">
   <div class="setup-head">
-    <div class="logo">courtside</div>
+    <div class="logo epinoia-mark">Epinoia</div>
     <div class="tagline">who's playing today?</div>
   </div>
   <div class="setup-grid">
@@ -1001,8 +1003,25 @@ function newState(){
     period:1, clockMs:PLEN(1), running:false, collapsed:false,
     tipWinner:null, arrowInit:null};
 }
-function save(){ try{ localStorage.setItem('courtside_v1', JSON.stringify(S)); }catch(e){} }
-function loadSaved(){ try{ const r = localStorage.getItem('courtside_v1'); return r ? JSON.parse(r) : null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem('epinoia_v1', JSON.stringify(S)); }catch(e){} }
+/* The saved game moved key when Courtside became Epinoia. A statistician with a
+   game open at that moment must not lose it, so the old key is read through
+   once and carried over — renaming a storage key is a silent data loss unless
+   somebody remembers the old name. Delete this fallback once no browser can
+   still be holding a pre-rename game (a season is plenty). */
+function loadSaved(){
+  try{
+    let r = localStorage.getItem('epinoia_v1');
+    if (r == null) {
+      r = localStorage.getItem('courtside_v1');
+      if (r != null) {
+        localStorage.setItem('epinoia_v1', r);
+        localStorage.removeItem('courtside_v1');
+      }
+    }
+    return r ? JSON.parse(r) : null;
+  }catch(e){ return null; }
+}
 function buildPmap(){ PMAP = {}; S.teams.forEach((tm,t)=>tm.players.forEach(p=>PMAP[p.id]={team:t,p})); applyTeamVars(); }
 function hexToRgba(h,a){ const m=(h||'').replace('#',''); if(m.length!==6) return 'rgba(147,242,191,'+a+')';
   return 'rgba('+parseInt(m.slice(0,2),16)+','+parseInt(m.slice(2,4),16)+','+parseInt(m.slice(4,6),16)+','+a+')'; }
@@ -3201,7 +3220,7 @@ function renderFinal(){
   $('#editPbp').onclick = openLog;
   $('#expJson').onclick = downloadJSON;
   $('#newGame').onclick = ()=>askConfirm('start a new game? this clears the finished one', ()=>{
-    localStorage.removeItem('courtside_v1'); location.reload();
+    localStorage.removeItem('epinoia_v1'); location.reload();
   });
 }
 
@@ -3365,7 +3384,7 @@ function buildExport(){
     if(ev.t==='sub'){ row.playerIn=pname(ev.in); row.playerOut=pname(ev.out); }
     pbp.push(row);
   });
-  return {gameInfo:{source:'courtside', exported:new Date().toISOString(),
+  return {gameInfo:{source:'epinoia', exported:new Date().toISOString(),
       periods:S.period, result:tname(0)+' '+d.score[0]+' — '+tname(1)+' '+d.score[1]},
     tm:{1:teamX(0), 2:teamX(1)}, pbp};
 }
@@ -3374,7 +3393,7 @@ function downloadJSON(){
   const b = new Blob([data], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
-  a.download = ('courtside_'+tname(0)+'_'+tname(1)).replace(/\s+/g,'-')+'.json';
+  a.download = ('epinoia_'+tname(0)+'_'+tname(1)).replace(/\s+/g,'-')+'.json';
   document.body.appendChild(a); a.click(); a.remove();
   toast('exported');
 }
@@ -3575,7 +3594,7 @@ function migrate(s){
       if(S.phase==='final'){ renderFinal(); showScreen('finalview'); }
       else { showScreen('game'); renderAll(); }
     }, ()=>{
-      localStorage.removeItem('courtside_v1');
+      localStorage.removeItem('epinoia_v1');
       S = newState(); showScreen('setup');
     });
   } else showScreen('setup');
@@ -3585,10 +3604,10 @@ function migrate(s){
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=24"></script>
-<script src="../vendor/supabase.js?v=24"></script>
-<script src="../live.js?v=24"></script>
-<script src="sync.js?v=24"></script>
-<script src="bootstrap.js?v=24"></script>
+<script src="../config.js?v=29"></script>
+<script src="../vendor/supabase.js?v=29"></script>
+<script src="../live.js?v=29"></script>
+<script src="sync.js?v=29"></script>
+<script src="bootstrap.js?v=29"></script>
 </body>
 </html>

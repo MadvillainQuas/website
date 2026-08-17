@@ -3,7 +3,7 @@
 
    The unit tests use a fixture I wrote, which means they test the converter
    against my own idea of what a play-by-play looks like. This does something
-   harder to fool: it takes a game that was actually scored in Courtside,
+   harder to fool: it takes a game that was actually scored in Epinoia,
    re-expresses its event log in FIBA's vocabulary, feeds THAT through the
    importer, and checks the engine derives the same box score from the result.
 
@@ -49,7 +49,7 @@ async function all(path) {
 }
 
 /* ---------------------------------------------------------------------------
-   Courtside events -> a FIBA-shaped payload. This is the inverse of the
+   Epinoia events -> a FIBA-shaped payload. This is the inverse of the
    importer, written independently of it so a shared misunderstanding cannot
    cancel itself out.
    --------------------------------------------------------------------------- */
@@ -106,7 +106,7 @@ function toFiba(events, roster) {
       return;
     }
     if (e.t === 'sub') {
-      /* one Courtside sub becomes the two halves FIBA writes */
+      /* one Epinoia sub becomes the two halves FIBA writes */
       const i = shirt[e.in], o = shirt[e.out];
       if (o) out.push(Object.assign({ actionType: 'substitution', subType: 'out',
         tno: o.tno, shirtNumber: o.num }, base));
@@ -124,7 +124,7 @@ function toFiba(events, roster) {
     }
     if (e.t === 'jump')     { out.push(Object.assign({ actionType: 'jumpball' }, base)); return; }
     if (e.t === 'game_end') { out.push(Object.assign({ actionType: 'game' }, base)); return; }
-    /* tag / stype / loc are Courtside's own descriptors and have no FIBA
+    /* tag / stype / loc are Epinoia's own descriptors and have no FIBA
        equivalent as separate events — they ride on the shot there */
   });
   return { tm: { 1: { name: roster.teams[0].name }, 2: { name: roster.teams[1].name } },

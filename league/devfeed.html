@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dev feed · Courtside</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=24">
+<title>Dev feed · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=29">
 <style>
   .wrap{padding:calc(var(--u)*3);display:flex;flex-direction:column;gap:14px}
   .log{font-family:var(--f-data);font-size:11px;color:var(--ink-2);max-height:280px;overflow:auto;
@@ -16,20 +18,20 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
   <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
     <span class="logo" style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Dev feed</span>
-    <span class="cs-micro">simulated scorer — publishes frames exactly as courtside will</span>
+    <span class="ep-micro">simulated scorer — publishes frames exactly as Epinoia will</span>
   </div>
 
   <div class="wrap">
-    <div class="cs-row" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-      <button class="cs-btn pri" id="start">Start live game</button>
-      <button class="cs-btn" id="pause">Pause clock</button>
-      <button class="cs-btn" id="burst">Burst 10 plays</button>
-      <button class="cs-btn" id="finalise">Finalise</button>
-      <button class="cs-btn dgr" id="reset">Reset</button>
-      <span class="cs-micro" id="mode"></span>
+    <div class="ep-row" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+      <button class="ep-btn pri" id="start">Start live game</button>
+      <button class="ep-btn" id="pause">Pause clock</button>
+      <button class="ep-btn" id="burst">Burst 10 plays</button>
+      <button class="ep-btn" id="finalise">Finalise</button>
+      <button class="ep-btn dgr" id="reset">Reset</button>
+      <span class="ep-micro" id="mode"></span>
     </div>
     <dl class="kv">
       <dt>Game id</dt><dd id="gid">—</dd>
@@ -42,14 +44,14 @@
   </div>
 </div>
 
-<script src="config.js?v=24"></script>
-<script src="engine.js?v=24"></script>
-<script src="live.js?v=24"></script>
+<script src="config.js?v=29"></script>
+<script src="engine.js?v=29"></script>
+<script src="live.js?v=29"></script>
 <script>
 'use strict';
-const E = window.CourtsideEngine, L = window.CourtsideLive;
+const E = window.EpinoiaEngine, L = window.EpinoiaLive;
 const gameId = new URLSearchParams(location.search).get('g') || 'demo';
-const mode = courtsideMode();
+const mode = epinoiaMode();
 document.getElementById('mode').textContent = 'transport: ' + mode;
 document.getElementById('gid').textContent = gameId;
 document.getElementById('watch').href = 'game/?g=' + encodeURIComponent(gameId) + '&mode=' + mode;
@@ -71,7 +73,7 @@ let pub = null;
 
 function newGame() {
   game = {
-    competition: 'Courtside Invitational',
+    competition: 'Epinoia Invitational',
     teams: [mkTeam('neon city', '#93f2bf', HOME, 0), mkTeam('soft club', '#8ff5ff', AWAY, 1)],
     starters: [HOME.slice(0, 5).map((_, i) => 'p0_' + i), AWAY.slice(0, 5).map((_, i) => 'p1_' + i)],
     period: 1, clockMs: 600000, tipWinner: 0, arrowInit: 1, status: 'live'
@@ -79,7 +81,7 @@ function newGame() {
   seq = 0; frames = 0; period = 1; clockMs = 600000; running = false;
   // stateProvider => every coalesced frame carries the authoritative clock,
   // so viewers self-correct and a heartbeat covers quiet stretches
-  pub = L.publisher({ gameId, mode, supabase: window.courtsideClient ? courtsideClient() : null,
+  pub = L.publisher({ gameId, mode, supabase: window.epinoiaClient ? epinoiaClient() : null,
                       stateProvider: () => stateNow() });
   // one metadata frame so late joiners get the rosters
   pub.pushState(stateNow());
@@ -101,7 +103,7 @@ function send(newEvents, extra) {
   if (extra && extra.game) pub.pushState(Object.assign(stateNow(), {}));
   // local transport also needs the game blob stored for late joiners
   if (extra && extra.game && mode === 'local') {
-    const KEY = 'cslive:' + gameId;
+    const KEY = 'eplive:' + gameId;
     const cur0 = JSON.parse(localStorage.getItem(KEY) || '{"events":[],"state":null,"game":null}');
     cur0.game = extra.game; localStorage.setItem(KEY, JSON.stringify(cur0));
     if ('BroadcastChannel' in window) new BroadcastChannel(KEY).postMessage({ gameId, game: extra.game, events: [], seq: frames });
@@ -183,8 +185,8 @@ document.getElementById('finalise').onclick = () => {
 };
 document.getElementById('reset').onclick = () => {
   clearInterval(timer); timer = null; evs = []; game = null; running = false;
-  localStorage.removeItem('cslive:' + gameId);
-  if ('BroadcastChannel' in window) new BroadcastChannel('cslive:' + gameId).postMessage({ reset: true });
+  localStorage.removeItem('eplive:' + gameId);
+  if ('BroadcastChannel' in window) new BroadcastChannel('eplive:' + gameId).postMessage({ reset: true });
   document.getElementById('nev').textContent = '0';
   document.getElementById('sc').textContent = '0 – 0';
   log('reset');

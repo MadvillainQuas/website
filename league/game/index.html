@@ -7,13 +7,15 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Box score · Courtside</title>
+<title>Box score · Epinoia</title>
 
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
 <!-- The scorer's own stylesheet, generated from it. The renderers below emit
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../boxscore.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<link rel="stylesheet" href="../boxscore.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   /* Page chrome only — nothing here restyles the box score itself. */
   body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
@@ -42,7 +44,7 @@
 <body>
 <div class="wrap">
   <div class="top">
-    <a href="../" class="wm">Courtside</a>
+    <a href="../" class="wm epinoia-mark">Epinoia</a>
     <span class="ctx" id="ctx"></span>
     <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
   </div>
@@ -55,13 +57,13 @@
   </div>
 </div>
 
-<script src="../config.js?v=24"></script>
-<script src="../vendor/supabase.js?v=24"></script>
-<script src="../engine.js?v=24"></script>
-<script src="../boxscore.js?v=24"></script>
-<script src="../live.js?v=24"></script>
-<script src="../seo.js?v=24"></script>
-<script src="game.js?v=24"></script>
-<script src="../nav.js?v=24"></script>
+<script src="../config.js?v=29"></script>
+<script src="../vendor/supabase.js?v=29"></script>
+<script src="../engine.js?v=29"></script>
+<script src="../boxscore.js?v=29"></script>
+<script src="../live.js?v=29"></script>
+<script src="../seo.js?v=29"></script>
+<script src="game.js?v=29"></script>
+<script src="../nav.js?v=29"></script>
 </body>
 </html>

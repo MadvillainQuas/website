@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE WITH-STATS — a player's own numbers, filtered by who was beside him.
+   EPINOIA WITH-STATS — a player's own numbers, filtered by who was beside him.
 
    The team WOWY answers "how does the team do with these players on". This
    answers the other half, which is what index_9's player profile shows and the
@@ -22,7 +22,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideWith = api;
+  else root.EpinoiaWith = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const dv = (a, b) => (b ? a / b : null);

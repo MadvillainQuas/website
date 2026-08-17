@@ -315,7 +315,7 @@ export const xmlName = (k) => {
   return /^[A-Za-z_]/.test(s) ? s : '_' + s;
 };
 
-export function toXML(value, name = 'courtside', depth = 0) {
+export function toXML(value, name = 'epinoia', depth = 0) {
   const ind = '  '.repeat(depth);
   const tag = xmlName(name);
   if (Array.isArray(value)) {
@@ -342,7 +342,7 @@ export function render(obj, feed) {
     case 'xml':
       return {
         body: '<?xml version="1.0" encoding="UTF-8"?>\n' +
-              toXML(applyFieldMap(obj, map), 'courtside'),
+              toXML(applyFieldMap(obj, map), 'epinoia'),
         contentType: 'application/xml; charset=utf-8'
       };
     default:

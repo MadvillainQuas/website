@@ -11,7 +11,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
 
 (async function boot() {
   try {
-    const D = window.CourtsideData;
+    const D = window.EpinoiaData;
     const { league, comp } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
     $('#ctx').textContent = league.name;
     $('#title').textContent = league.name + ' — season statistics';
@@ -24,7 +24,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const meta = await D.playerMeta(S.players.map(p => p.id));
     S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
 
-    window.CourtsideTable.render({
+    window.EpinoiaTable.render({
       host: '#tbl', kind: 'player', sortKey: 'ppg', minGames: 1,
       filename: league.slug + '-season-stats',
       rows: S.players,

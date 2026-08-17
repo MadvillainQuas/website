@@ -12,7 +12,7 @@
    ============================================================================ */
 
 const $ = s => document.querySelector(s);
-const CFG = window.COURTSIDE_CONFIG;
+const CFG = window.EPINOIA_CONFIG;
 
 function say(text, kind) {
   const m = $('#msg');

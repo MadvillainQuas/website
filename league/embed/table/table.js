@@ -14,8 +14,8 @@
    number here and a number on the player's own profile cannot disagree.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
-const D = window.CourtsideData;
+const CFG = window.EPINOIA_CONFIG;
+const D = window.EpinoiaData;
 const qp = new URLSearchParams(location.search);
 const leagueSlug = qp.get('l') || 'demo-league';
 const kind = (qp.get('kind') || 'standings').toLowerCase();
@@ -34,17 +34,17 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
 const f1 = v => (v == null ? '—' : Number(v).toFixed(1));
 
 function postHeight() {
-  try { parent.postMessage({ courtsideEmbed: 'height', height: document.body.scrollHeight }, '*'); }
+  try { parent.postMessage({ epinoiaEmbed: 'height', height: document.body.scrollHeight }, '*'); }
   catch (_) {}
 }
 function fail(m) {
   $('#host').textContent = '';
-  $('#host').appendChild(el('div', 'cs-empty', m));
+  $('#host').appendChild(el('div', 'ep-empty', m));
   postHeight();
 }
 
 function table(head, body) {
-  const t = el('table', 'cs-tbl');
+  const t = el('table', 'ep-tbl');
   const th = el('thead'), hr = el('tr');
   head.forEach((h, i) => hr.appendChild(el('th', i === 1 ? 'l' : (i === 0 ? '' : ''), h)));
   th.appendChild(hr); t.appendChild(th);

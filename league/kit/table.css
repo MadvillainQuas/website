@@ -1,5 +1,5 @@
 /* ============================================================================
-   COURTSIDE FULL TABLE — the dense statistics table.
+   EPINOIA FULL TABLE — the dense statistics table.
 
    Structure follows index_9's full table; the look is the Backlit kit's.
 
@@ -14,7 +14,7 @@
    column, not across a row. Digits must occupy the same width so the decimal
    points line up; otherwise the eye has to re-find the place on every line.
 
-   Depends on courtside-kit.css for tokens, with literal fallbacks so it also
+   Depends on epinoia-kit.css for tokens, with literal fallbacks so it also
    works on the box score page, which loads a different stylesheet.
    ============================================================================ */
 

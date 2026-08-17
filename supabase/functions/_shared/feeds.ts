@@ -92,13 +92,13 @@ export async function post(feed: Feed, body: string, contentType: string,
                           deliveryId: string): Promise<{ status: number; error: string | null }> {
   const headers: Record<string, string> = {
     'Content-Type': contentType,
-    'User-Agent': 'Courtside-Network/1 (+https://prophesyscouting.co.uk/league/api/)',
-    'X-Courtside-Event': 'game.final',
-    'X-Courtside-Delivery': deliveryId,
-    'X-Courtside-Timestamp': String(Math.floor(Date.now() / 1000))
+    'User-Agent': 'Epinoia-Network/1 (+https://prophesyscouting.co.uk/league/api/)',
+    'X-Epinoia-Event': 'game.final',
+    'X-Epinoia-Delivery': deliveryId,
+    'X-Epinoia-Timestamp': String(Math.floor(Date.now() / 1000))
   };
   if (feed.signing_secret) {
-    headers['X-Courtside-Signature'] = await sign(feed.signing_secret, body);
+    headers['X-Epinoia-Signature'] = await sign(feed.signing_secret, body);
   }
 
   const ctrl = new AbortController();

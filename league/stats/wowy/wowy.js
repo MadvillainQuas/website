@@ -21,7 +21,7 @@
    player shot more, passed more, or simply stood in a better place.
    ============================================================================ */
 
-const D = window.CourtsideData;
+const D = window.EpinoiaData;
 const qp = new URLSearchParams(location.search);
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -51,7 +51,7 @@ async function fetchTeam(team) {
 
   /* the on-court five is rebuilt by walking each game's log forward from its
      frozen starters, so every stat event knows the context it happened in */
-  const recs = window.CourtsideWith.index(gs.map(g => ({
+  const recs = window.EpinoiaWith.index(gs.map(g => ({
     starters: g.starters,
     events: evs.filter(e => e.gameId === g.id)
   })));
@@ -70,7 +70,7 @@ async function fetchTeam(team) {
 function paint(team, d) {
   document.documentElement.style.setProperty('--team-a', team.colour || '#93f2bf');
   $('#ctx').textContent = (league ? league.name + ' · ' : '') + team.name;
-  document.title = team.name + ' WOWY · Courtside';
+  document.title = team.name + ' WOWY · Epinoia';
 
   if (!d.games.length || !d.stints.length) {
     $('#subjbar').textContent = '';
@@ -98,13 +98,13 @@ function paint(team, d) {
   rail.style.padding = '0';
   d.roster.forEach(id => {
     const m = d.meta[id] || {};
-    const b = el('button', 'cs-chip' + (id === subject ? ' on' : ''), m.name || 'Player');
+    const b = el('button', 'ep-chip' + (id === subject ? ' on' : ''), m.name || 'Player');
     b.type = 'button';
     if (m.jersey) b.title = '#' + m.jersey + ' ' + (m.position || '');
     b.addEventListener('click', () => {
       if (id === subject) return;
       subject = id;
-      rail.querySelectorAll('.cs-chip').forEach(c => c.classList.remove('on'));
+      rail.querySelectorAll('.ep-chip').forEach(c => c.classList.remove('on'));
       b.classList.add('on');
       drawSubject();
     });
@@ -121,15 +121,15 @@ function paint(team, d) {
       if (ids.indexOf(subject) === -1) return;
       ids.forEach(id => { if (id !== subject) mates.add(id); });
     });
-    window.CourtsideWithUI.render({
+    window.EpinoiaWithUI.render({
       host: '#withpanel', recs: d.recs, stints: d.stints,
       playerId: subject, meta: d.meta, teammates: [...mates]
     });
-    window.CourtsideWowy.onOffTiles('#onoff', d.stints, subject);
+    window.EpinoiaWowy.onOffTiles('#onoff', d.stints, subject);
   }
   drawSubject();
 
-  window.CourtsideWowy.render({
+  window.EpinoiaWowy.render({
     host: '#wowy', stints: d.stints, meta: d.meta,
     max: 5, preselect: d.roster.slice(0, 2)
   });
@@ -176,7 +176,7 @@ async function select(team) {
 
     const railHost = $('#teamrail');
     teams.forEach(t => {
-      const b = el('button', 'cs-chip');
+      const b = el('button', 'ep-chip');
       b.type = 'button'; b.dataset.id = t.id;
       const sw = el('span', 'swatch');
       sw.style.background = t.colour || 'var(--lume)';

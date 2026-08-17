@@ -1,5 +1,5 @@
 /* ============================================================================
-   COURTSIDE NETWORK — client configuration.
+   EPINOIA NETWORK — client configuration.
    This file is PUBLIC. It ships to every browser. Treat it accordingly.
 
    The anon key belongs here: it is designed to be published, and it grants
@@ -13,7 +13,7 @@
    Get the anon key:  Supabase dashboard -> Project Settings -> API
                       -> Project API keys -> "anon / public"
    ============================================================================ */
-window.COURTSIDE_CONFIG = {
+window.EPINOIA_CONFIG = {
   supabaseUrl: 'https://hhvofgqqadtyvcjudhjx.supabase.co',
 
   // paste the anon (public) key here — starts "eyJ…"
@@ -26,8 +26,8 @@ window.COURTSIDE_CONFIG = {
 
 /* Lazily create the Supabase client, only if the SDK and a key are present.
    Pages work in local mode with neither. */
-window.courtsideClient = function () {
-  const c = window.COURTSIDE_CONFIG;
+window.epinoiaClient = function () {
+  const c = window.EPINOIA_CONFIG;
   if (window.__sb) return window.__sb;
   if (!c.supabaseAnonKey || !window.supabase) return null;
   window.__sb = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey, {
@@ -38,9 +38,9 @@ window.courtsideClient = function () {
 };
 
 /* Which transport should a page use? ?mode= wins, then the key's presence. */
-window.courtsideMode = function () {
+window.epinoiaMode = function () {
   const q = new URLSearchParams(location.search).get('mode');
   if (q === 'local' || q === 'supabase') return q;
-  const c = window.COURTSIDE_CONFIG;
+  const c = window.EPINOIA_CONFIG;
   return c.supabaseAnonKey ? 'supabase' : c.defaultMode;
 };

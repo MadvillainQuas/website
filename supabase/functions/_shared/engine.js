@@ -1,6 +1,6 @@
 /* ============================================================================
-   COURTSIDE ENGINE — the single source of statistical truth.
-   Extracted verbatim from courtside.html so the scorer, the finalise function
+   EPINOIA ENGINE — the single source of statistical truth.
+   Extracted verbatim from the scorer so the scorer, the finalise function
    and the public pages can never disagree about a number.
 
    Pure: no DOM, no globals, no storage. One input shape, one output shape.
@@ -8,17 +8,17 @@
      import { deriveGame, teamAdv, playerAdv, lineupAgg } from './engine.js';
      const d = deriveGame(game);
 
-   `game` is the courtside state object:
+   `game` is the epinoia state object:
      { teams:[{name,color,players:[{id,name,num}]}, …],
        starters:[[pid…],[pid…]], events:[…],
        period, clockMs, tipWinner, arrowInit }
 
-   Loads as an ES module or a classic script (window.CourtsideEngine).
+   Loads as an ES module or a classic script (window.EpinoiaEngine).
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideEngine = api;
+  else root.EpinoiaEngine = api;
 }(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this), function () {
 'use strict';
 
@@ -445,7 +445,7 @@ return {
 
 /* Deno/ESM surface. The UMD half above attaches to globalThis; re-export the
    same object so the Edge Function and the browser run one identical file. */
-const __api = globalThis.CourtsideEngine;
+const __api = globalThis.EpinoiaEngine;
 export const {
   PLEN, WIN_MS, FOULNAMES, perName, fmtClock, fmtMin, cumEl,
   mkP, mkT, mkOC, mkBox, makeNamer, activeTags, pbpLine,

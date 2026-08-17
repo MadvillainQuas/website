@@ -11,7 +11,7 @@
    something other than what is on screen.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
+const CFG = window.EPINOIA_CONFIG;
 const $ = s => document.querySelector(s);
 
 /* the absolute origin, because the snippet is pasted on someone else's site */
@@ -46,7 +46,7 @@ function frameUrl(path, params) {
 }
 
 function snippet(kind, extra) {
-  const bits = [`data-courtside="${kind}"`];
+  const bits = [`data-epinoia="${kind}"`];
   if (league()) bits.push(`data-league="${league()}"`);
   Object.entries(extra || {}).forEach(([k, v]) => { if (v) bits.push(`data-${k}="${v}"`); });
   if (theme()) bits.push(`data-theme="${theme()}"`);
@@ -84,7 +84,7 @@ function paint() {
 window.addEventListener('message', ev => {
   if (ev.origin !== location.origin) return;
   const d = ev.data;
-  if (!d || d.courtsideEmbed !== 'height') return;
+  if (!d || d.epinoiaEmbed !== 'height') return;
   const h = Number(d.height);
   if (!isFinite(h) || h < 60 || h > 900) return;
   ['f-strip', 'f-game', 'f-tab', 'f-lead'].forEach(id => {

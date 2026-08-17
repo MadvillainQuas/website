@@ -7,9 +7,11 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Courtside Network</title>
-<link rel="stylesheet" href="kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="kit/nav.css?v=24">
+<title>Epinoia Network</title>
+<link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="kit/nav.css?v=29">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -299,19 +301,25 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
 
-  <!-- Katakana for "Courtside" — kōtosaido. The platform's own name in another
-       script, cornered top right the way a building number is: present, not
-       competing with the wordmark. Not a translation of anything else on the
-       page, and deliberately not a machine rendering of whatever a league is
-       called — those go wrong in ways nobody here could read. -->
-  <div class="kana" aria-hidden="true" title="コートサイド — kōtosaido">
-    <span>コ</span><span>ー</span><span>ト</span><span>サ</span><span>イ</span><span>ド</span>
+  <!-- Katakana for "Epinoia" — エピノイア, epinoia. The platform's own name in
+       another script, cornered top right the way a building number is:
+       present, not competing with the wordmark.
+
+       IT HAD TO BE RE-SET, not renamed. It read コートサイド — kōtosaido, which
+       is "Courtside", and a find-and-replace over Latin text would have left
+       the old brand sitting in the corner of the new one in a script most
+       readers here cannot check. It is still not a translation of anything
+       else on the page, and deliberately not a machine rendering of whatever
+       a league happens to be called — those go wrong in ways nobody here
+       could read. -->
+  <div class="kana" aria-hidden="true" title="エピノイア — epinoia">
+    <span>エ</span><span>ピ</span><span>ノ</span><span>イ</span><span>ア</span>
   </div>
 
   <div class="hero">
-    <div class="wordmark">Courtside</div>
+    <div class="wordmark epinoia-mark">Epinoia</div>
     <div class="tagline">
       Live box scores, standings and season statistics.
     </div>
@@ -321,7 +329,7 @@
          other people's pages is the thing seen most often on this one, so it
          cannot quietly rot. -->
     <div class="stripwrap">
-      <iframe id="strip" class="stripframe" title="Courtside fixtures"
+      <iframe id="strip" class="stripframe" title="Epinoia fixtures"
               src="embed/strip/?n=24" loading="lazy" scrolling="no"></iframe>
     </div>
   </div>
@@ -404,19 +412,19 @@
   </div>
 
   <div class="foot">
-    <span>Courtside Network</span>
+    <span>Epinoia Network</span>
     <a href="/index.html">← Prophesy Scouting</a>
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=24"></script>
+<script src="config.js?v=29"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=24"></script>
-<script src="bpm.js?v=24"></script>
-<script src="data.js?v=24"></script>
-<script src="merch.js?v=24"></script>
-<script src="home.js?v=24"></script>
-<script src="nav.js?v=24"></script>
+<script src="season.js?v=29"></script>
+<script src="bpm.js?v=29"></script>
+<script src="data.js?v=29"></script>
+<script src="merch.js?v=29"></script>
+<script src="home.js?v=29"></script>
+<script src="nav.js?v=29"></script>
 </body>
 </html>

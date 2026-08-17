@@ -1,17 +1,17 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE EMBED — one line on someone else's page.
+   EPINOIA EMBED — one line on someone else's page.
 
      <script src="https://prophesyscouting.co.uk/league/embed.js"
-             data-courtside="strip" data-league="demo-league"></script>
+             data-epinoia="strip" data-league="demo-league"></script>
 
      <script src="https://prophesyscouting.co.uk/league/embed.js"
-             data-courtside="game" data-game="<uuid>"></script>
+             data-epinoia="game" data-game="<uuid>"></script>
 
    Or place it precisely by giving a target:
 
      <div id="scores"></div>
-     <script src=".../embed.js" data-courtside="strip" data-into="#scores"></script>
+     <script src=".../embed.js" data-epinoia="strip" data-into="#scores"></script>
 
    Design notes, all of them about being a guest on a page we do not control:
 
@@ -31,14 +31,14 @@
   const me = document.currentScript;
   if (!me) return;
 
-  const kind = (me.dataset.courtside || 'strip').toLowerCase();
+  const kind = (me.dataset.epinoia || 'strip').toLowerCase();
   const base = new URL('.', me.src).href;          // .../league/
 
   const PATHS = { strip: 'embed/strip/', game: 'embed/game/',
                   standings: 'embed/table/', leaders: 'embed/table/' };
   const path = PATHS[kind];
   if (!path) {
-    console.warn('[courtside] unknown embed "' + kind +
+    console.warn('[epinoia] unknown embed "' + kind +
                  '" — expected strip, game, standings or leaders');
     return;
   }
@@ -58,9 +58,9 @@
 
   const frame = document.createElement('iframe');
   frame.src = url.href;
-  frame.title = { game: 'Courtside box score', strip: 'Courtside fixtures',
-                  standings: 'Courtside standings',
-                  leaders: 'Courtside leaders' }[kind] || 'Courtside';
+  frame.title = { game: 'Epinoia box score', strip: 'Epinoia fixtures',
+                  standings: 'Epinoia standings',
+                  leaders: 'Epinoia leaders' }[kind] || 'Epinoia';
   frame.loading = 'lazy';
   frame.setAttribute('scrolling', 'no');
   /* no allow-* beyond scripts and same-origin: the frame needs neither popups
@@ -89,7 +89,7 @@
     if (ev.origin !== origin) return;
     if (ev.source !== frame.contentWindow) return;
     const d = ev.data;
-    if (!d || d.courtsideEmbed !== 'height') return;
+    if (!d || d.epinoiaEmbed !== 'height') return;
     const h = Number(d.height);
     if (!isFinite(h) || h < 60 || h > 2000) return;   // never trust a posted number
     frame.style.height = Math.ceil(h) + 'px';

@@ -20,7 +20,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideFixtureGen = api;
+  else root.EpinoiaFixtureGen = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -34,7 +34,7 @@ const tm = iso => { try { return new Date(iso).toLocaleTimeString('en-GB',
 function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const S = window.CourtsideSchedule;
+  const S = window.EpinoiaSchedule;
   host.textContent = '';
   let plan = null;
 
@@ -65,14 +65,14 @@ function mount(opts) {
     w.appendChild(node);
     return w;
   };
-  const start = el('input', 'cs-input'); start.type = 'date';
+  const start = el('input', 'ep-input'); start.type = 'date';
   start.value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-  const gap = el('input', 'cs-input'); gap.type = 'number';
+  const gap = el('input', 'ep-input'); gap.type = 'number';
   gap.min = '1'; gap.max = '60'; gap.value = '7';
-  const times = el('input', 'cs-input');
+  const times = el('input', 'ep-input');
   times.value = '19:30, 21:30';
   times.placeholder = '19:30, 21:30';
-  const legs = el('select', 'cs-input');
+  const legs = el('select', 'ep-input');
   [['single', 'once — everybody plays everybody'],
    ['double', 'twice — home and away']].forEach(([v, l]) => {
     const o = el('option', null, l); o.value = v; legs.appendChild(o);
@@ -84,7 +84,7 @@ function mount(opts) {
   host.appendChild(r2);
 
   const bar = el('div', 'row');
-  const prev = el('button', 'cs-btn', 'Preview the season');
+  const prev = el('button', 'ep-btn', 'Preview the season');
   prev.type = 'button';
   bar.appendChild(prev);
   host.appendChild(bar);
@@ -185,7 +185,7 @@ function mount(opts) {
     });
     out.appendChild(wrap);
 
-    const go = el('button', 'cs-btn pri', 'Create ' + fixtures.length + ' fixtures');
+    const go = el('button', 'ep-btn pri', 'Create ' + fixtures.length + ' fixtures');
     go.type = 'button';
     go.addEventListener('click', () => commit(go, played));
     const cb = el('div', 'row');

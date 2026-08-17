@@ -32,7 +32,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideSchedule = api;
+  else root.EpinoiaSchedule = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const BYE = null;

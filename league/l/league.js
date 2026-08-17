@@ -3,7 +3,7 @@
    Reads PostgREST directly: no SDK needed for anonymous reads, and RLS is what
    decides what comes back. All user text goes in via textContent, never HTML. */
 
-const CFG = window.COURTSIDE_CONFIG;
+const CFG = window.EPINOIA_CONFIG;
 const qp  = new URLSearchParams(location.search);
 const wantLeague = qp.get('l') || 'demo-league';
 const wantComp   = qp.get('c');
@@ -39,7 +39,7 @@ async function boot() {
     document.documentElement.style.setProperty('--team-a', league.colour_a || '#93f2bf');
     document.documentElement.style.setProperty('--team-b', league.colour_b || '#8ff5ff');
     $('#leagueName').textContent = league.name;
-    document.title = league.name + ' · Courtside';
+    document.title = league.name + ' · Epinoia';
 
     /* every season, not just the newest — a league's history was previously
        unreachable rather than merely unlinked, since no parameter could get
@@ -62,7 +62,7 @@ async function boot() {
     renderCupPicker();
     await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
                        renderTeamStats(), renderExtras()]);
-    $('#foot').textContent = 'Courtside Network · ' + league.name + ' · ' + season.name;
+    $('#foot').textContent = 'Epinoia Network · ' + league.name + ' · ' + season.name;
   } catch (e) {
     fail('Could not load: ' + e.message);
   }
@@ -95,7 +95,7 @@ function renderSeasonPicker() {
   if (seasons.length < 2) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
   seasons.forEach(sn => {
-    const b = el('button', 'cs-chip' + (sn.id === season.id ? ' on' : ''), sn.name);
+    const b = el('button', 'ep-chip' + (sn.id === season.id ? ' on' : ''), sn.name);
     b.type = 'button';
     b.addEventListener('click', async () => {
       if (sn.id === season.id) return;
@@ -142,7 +142,7 @@ function kindTag(c) {
 }
 
 function pickerChip(c, isOn, onPick) {
-  const b = el('button', 'cs-chip' + (isOn ? ' on' : ''), c.name);
+  const b = el('button', 'ep-chip' + (isOn ? ' on' : ''), c.name);
   b.type = 'button';
   const tag = kindTag(c);
   if (tag) b.appendChild(el('span', 'kindtag', tag));
@@ -192,7 +192,7 @@ async function renderCup() {
       'competition and marking it a cup.'));
     return;
   }
-  const B = window.CourtsideBracket;
+  const B = window.EpinoiaBracket;
   if (cupComp.format === 'groups' || cupComp.format === 'groups_knockout') {
     await renderStandingsInto(body, cupComp);
   }
@@ -227,7 +227,7 @@ async function renderTable() {
     const host = el('div');
     host.id = 'phaseBracket';
     body.appendChild(host);
-    const B = window.CourtsideBracket;
+    const B = window.EpinoiaBracket;
     if (B) await B.renderBracket({ host: '#phaseBracket', api, comp });
   }
 }
@@ -256,8 +256,8 @@ async function renderStandingsInto(pane, competition) {
 }
 
 function groupTable(rows) {
-  const wrap = el('div', 'cs-tw');
-  const t = el('table', 'cs-tbl'); t.style.minWidth = '620px';
+  const wrap = el('div', 'ep-tw');
+  const t = el('table', 'ep-tbl'); t.style.minWidth = '620px';
   const thead = el('thead'); const hr = el('tr');
   ['#', 'TEAM', 'GP', 'W', 'L', 'PF', 'PA', 'DIFF', 'PTS', 'STREAK']
     .forEach(h => hr.appendChild(el('th', null, h)));
@@ -296,7 +296,7 @@ function groupTable(rows) {
    different shape of question from a table and a fixture list, and keeping
    them separate stops this file growing a third personality. */
 function renderExtras() {
-  const B = window.CourtsideBracket;
+  const B = window.EpinoiaBracket;
   if (!B) return;
   /* The bracket is no longer a tab of its own — a league phase draws its own
      inside the Table tab, and a cup draws its own inside the Cup tab. All that
@@ -353,11 +353,11 @@ let SEASON = null;
 
 async function loadSeason() {
   if (SEASON && SEASON.__comp === comp.id) return SEASON;
-  SEASON = await window.CourtsideData.season(comp.id);
+  SEASON = await window.EpinoiaData.season(comp.id);
   SEASON.__comp = comp.id;
   const [pmeta, tmeta] = await Promise.all([
-    window.CourtsideData.playerMeta(SEASON.players.map(p => p.id)),
-    window.CourtsideData.teamMeta(league.id)
+    window.EpinoiaData.playerMeta(SEASON.players.map(p => p.id)),
+    window.EpinoiaData.teamMeta(league.id)
   ]);
   SEASON.players.forEach(p => Object.assign(p, pmeta[p.id] || { name: 'Player' }));
   SEASON.teams.forEach(t => Object.assign(t, tmeta[t.id] || { name: 'Team' }));
@@ -375,7 +375,7 @@ async function renderLeaders() {
       'No player statistics yet — these fill in as games are finalised in the scorer.'));
     return;
   }
-  window.CourtsideTable.render({
+  window.EpinoiaTable.render({
     host: pane, kind: 'player', sortKey: 'ppg', minGames: 1,
     filename: (league.slug || 'league') + '-leaders',
     rows: S.players,
@@ -395,7 +395,7 @@ async function renderTeamStats() {
       'No team statistics yet — these fill in as games are finalised in the scorer.'));
     return;
   }
-  window.CourtsideTable.render({
+  window.EpinoiaTable.render({
     host: pane, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',
     rows: S.teams,
@@ -404,9 +404,9 @@ async function renderTeamStats() {
 }
 
 function showTab(name) {
-  const btn = [...document.querySelectorAll('.cs-tab')].find(b => b.dataset.p === name);
+  const btn = [...document.querySelectorAll('.ep-tab')].find(b => b.dataset.p === name);
   if (!btn) return false;
-  document.querySelectorAll('.cs-tab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.ep-tab').forEach(x => x.classList.remove('on'));
   btn.classList.add('on');
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
   const pane = document.getElementById('pane-' + name);
@@ -414,7 +414,7 @@ function showTab(name) {
   return true;
 }
 
-document.querySelectorAll('.cs-tab').forEach(b => b.addEventListener('click', () => {
+document.querySelectorAll('.ep-tab').forEach(b => b.addEventListener('click', () => {
   showTab(b.dataset.p);
   /* the tab goes in the URL so a particular view can be linked to and survives
      a reload — which is also what makes the splash page's Leaders card able to

@@ -342,7 +342,7 @@ async function notify(admin: any, gameId: string, competitionId: string | null,
     ? { text: `*FULL TIME* — ${headline}\n${[leagueName, (chain as any)?.name].filter(Boolean).join(' · ')}` +
               (top ? `\n${top}` : '') + `\n<${url}|Box score>` }
     : {
-        username: 'Courtside',
+        username: 'Epinoia',
         embeds: [{
           title: headline,
           url,

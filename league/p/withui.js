@@ -14,7 +14,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideWithUI = api;
+  else root.EpinoiaWithUI = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -44,7 +44,7 @@ const ROWS = [
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const W = window.CourtsideWith;
+  const W = window.EpinoiaWith;
   host.textContent = '';
 
   const recs = opts.recs || [];
@@ -69,7 +69,7 @@ function render(opts) {
 
   (opts.teammates || []).forEach(id => {
     const m = (opts.meta && opts.meta[id]) || {};
-    const b = el('button', 'cs-chip', m.name || 'Player');
+    const b = el('button', 'ep-chip', m.name || 'Player');
     b.type = 'button';
     b.addEventListener('click', () => {
       const i = picked.indexOf(id);

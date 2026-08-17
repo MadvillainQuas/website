@@ -27,7 +27,7 @@
 // its `detail` says which basis was used, so a reader is never shown a number
 // without being told what it measures.
 // ============================================================================
-import './bpm.js';                    // attaches globalThis.CourtsideBPM
+import './bpm.js';                    // attaches globalThis.EpinoiaBPM
 import { players as seasonPlayers, teams as seasonTeams, attachBPM } from './season.js';
 
 export interface MvpPick {

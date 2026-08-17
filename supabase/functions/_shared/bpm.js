@@ -34,7 +34,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideBPM = api;
+  else root.EpinoiaBPM = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 /* ---------------------------------------------------------- coefficients ---
@@ -319,6 +319,6 @@ return {
    The UMD half above attaches to globalThis; this re-exports the same object
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
-const __api = globalThis.CourtsideBPM;
+const __api = globalThis.EpinoiaBPM;
 export const { forLeague, forTeam, teamInputs, estimatedPossessions, per100, estimatePosition, estimateOffensiveRole, rawBPM, positionConstant, teamAdjustment, lerp } = __api;
 export default __api;

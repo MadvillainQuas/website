@@ -21,7 +21,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideImportUI = api;
+  else root.EpinoiaImportUI = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -33,7 +33,7 @@ const fmtDate = iso => { try { return new Date(iso).toLocaleDateString('en-GB',
 function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const LS = window.CourtsideLiveStats;
+  const LS = window.EpinoiaLiveStats;
   host.textContent = '';
 
   let picked = null, payload = null, prepared = null;
@@ -60,13 +60,13 @@ function mount(opts) {
                  (opts.teams[g.home_team_id] || {}).name || '?';
     const away = (opts.teams[g.away_team_id] || {}).short_name ||
                  (opts.teams[g.away_team_id] || {}).name || '?';
-    const b = el('button', 'cs-chip');
+    const b = el('button', 'ep-chip');
     b.type = 'button';
     b.textContent = home + ' v ' + away + '  ' + fmtDate(g.tipoff_at);
     if (g.status === 'final') b.appendChild(el('span', 'im-final', 'final'));
     b.addEventListener('click', () => {
       picked = g;
-      pick.querySelectorAll('.cs-chip').forEach(c => c.classList.remove('on'));
+      pick.querySelectorAll('.ep-chip').forEach(c => c.classList.remove('on'));
       b.classList.add('on');
       opts.say('');
       if (payload) preview();
@@ -76,7 +76,7 @@ function mount(opts) {
 
   /* ---- 2. the file ---- */
   host.appendChild(el('div', 'im-step', '2 — the play-by-play'));
-  const ta = el('textarea', 'cs-input im-ta');
+  const ta = el('textarea', 'ep-input im-ta');
   ta.rows = 5;
   ta.placeholder = 'Paste the LiveStats JSON here, or choose a file below';
   ta.spellcheck = false;
@@ -85,7 +85,7 @@ function mount(opts) {
   const bar = el('div', 'row im-bar');
   const file = el('input');
   file.type = 'file'; file.accept = '.json,application/json';
-  const readBtn = el('button', 'cs-btn', 'Read the file');
+  const readBtn = el('button', 'ep-btn', 'Read the file');
   readBtn.type = 'button';
   bar.append(file, readBtn);
   host.appendChild(bar);
@@ -199,7 +199,7 @@ function mount(opts) {
 
     prepared = { game: picked, roster, events: conv.events, starters: st.starters, had };
 
-    const go = el('button', 'cs-btn pri',
+    const go = el('button', 'ep-btn pri',
       had ? 'Replace ' + had + ' events with ' + conv.events.length
           : 'Import ' + conv.events.length + ' events');
     go.type = 'button';

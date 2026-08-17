@@ -1,11 +1,11 @@
 'use strict';
-/* Courtside home — what's on now, and every league on the platform.
+/* Epinoia home — what's on now, and every league on the platform.
    Anonymous reads only; RLS decides what comes back. A scheduled fixture is
    readable but its detail is not, which is why this page shows fixtures
    without ever asking for a box score. */
 
-const CFG = window.COURTSIDE_CONFIG;
-const D = window.CourtsideData;      // shared loader + aggregation
+const CFG = window.EPINOIA_CONFIG;
+const D = window.EpinoiaData;      // shared loader + aggregation
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -452,7 +452,7 @@ async function stars() {
 
 /* ------------------------------------------------------ the shop window ---
    Products built here from each club's crest and colours, and the month's star
-   on a print. Courtside sells nothing; the items link out to whatever
+   on a print. Epinoia sells nothing; the items link out to whatever
    storefront the league has set up, and say so when it has not.
 
    The star's PHOTOGRAPH is fetched here rather than in the stars section,
@@ -464,7 +464,7 @@ async function stars() {
    on. */
 async function merch(roster, star) {
   const sec = $('#merchSec');
-  if (!sec || !LEAGUE || !window.CourtsideMerch) return;
+  if (!sec || !LEAGUE || !window.EpinoiaMerch) return;
   const clubs = (roster || []).slice();
   if (!clubs.length) return;
 
@@ -487,7 +487,7 @@ async function merch(roster, star) {
     } catch (_) { /* the printed monogram stands in for a photograph */ }
   }
 
-  const ok = window.CourtsideMerch.render({
+  const ok = window.EpinoiaMerch.render({
     host: '#merch', note: '#merchNote', league: LEAGUE, clubs,
     star: feature, cfg: CFG,
     store: LEAGUE.store_url ? { url: LEAGUE.store_url, name: LEAGUE.store_name } : null
@@ -555,7 +555,7 @@ function renumber() {
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
   $('#mode').textContent = 'transport: ' +
-    (window.courtsideMode ? window.courtsideMode() : 'local');
+    (window.epinoiaMode ? window.epinoiaMode() : 'local');
 
   if (WANT) {
     try {
@@ -567,9 +567,16 @@ function renumber() {
 
   if (LEAGUE) {
     window.__CS_LEAGUE_SLUG = LEAGUE.slug;      // the rail marks it as current
-    document.title = LEAGUE.name + ' · Courtside';
+    document.title = LEAGUE.name + ' · Epinoia';
     const wm = document.querySelector('.wordmark');
-    if (wm) wm.textContent = LEAGUE.name;
+    if (wm) {
+      wm.textContent = LEAGUE.name;
+      /* The logotype face has six glyphs — A E I N O P — which is EPINOIA and
+         nothing else. The moment this heading stops saying EPINOIA it has to
+         stop using it, or a league called anything else renders as a row of
+         missing-glyph boxes. */
+      wm.classList.remove('epinoia-mark');
+    }
     const tag = document.querySelector('.tagline');
     if (tag) {
       tag.textContent = 'Live box scores, standings and season statistics for ' +
@@ -619,7 +626,7 @@ window.addEventListener('message', ev => {
   const f = document.getElementById('strip');
   if (!f || ev.source !== f.contentWindow) return;
   const d = ev.data;
-  if (!d || d.courtsideEmbed !== 'height') return;
+  if (!d || d.epinoiaEmbed !== 'height') return;
   const h = Number(d.height);
   if (!isFinite(h) || h < 60 || h > 400) return;
   f.style.height = Math.ceil(h) + 'px';

@@ -27,7 +27,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideSEO = api;
+  else root.EpinoiaSEO = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 /* one <meta> per property, created once and updated after */
@@ -83,7 +83,12 @@ function game(opts) {
   meta('property', 'og:title', title);
   meta('property', 'og:description', description);
   meta('property', 'og:url', url);
-  meta('property', 'og:site_name', 'Courtside Network');
+  meta('property', 'og:site_name', 'Epinoia Network');
+  /* The mark, so a shared link is not a blank card. An ABSOLUTE url, because a
+     relative one is resolved against the scraper's own host and fetches
+     nothing — which is how an og:image ends up silently doing nothing. */
+  meta('property', 'og:image', new URL('../brand/epinoia-mark-512.png',
+                                       location.href).toString());
   meta('name', 'twitter:card', 'summary');
   meta('name', 'twitter:title', title);
   meta('name', 'twitter:description', description);
@@ -146,7 +151,7 @@ function league(opts) {
   meta('property', 'og:title', name);
   meta('property', 'og:description', description);
   meta('property', 'og:url', url);
-  meta('property', 'og:site_name', 'Courtside Network');
+  meta('property', 'og:site_name', 'Epinoia Network');
 
   jsonld('league', {
     '@context': 'https://schema.org',
@@ -158,7 +163,7 @@ function league(opts) {
 /* JSON-LD goes in a script tag of its own, replaced rather than appended so a
    re-render cannot leave two contradictory blocks in the document */
 function jsonld(id, obj) {
-  const tag = 'courtside-ld-' + id;
+  const tag = 'epinoia-ld-' + id;
   let el = document.getElementById(tag);
   if (!el) {
     el = document.createElement('script');

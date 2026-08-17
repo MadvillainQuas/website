@@ -3,7 +3,7 @@
    MERCHANDISE — a shop window a league gets for free the day it uploads a
    logo.
 
-   WHAT THIS IS. Courtside does not take money, hold stock or ship anything,
+   WHAT THIS IS. Epinoia does not take money, hold stock or ship anything,
    and this deliberately does not pretend to. What it does is CONSTRUCT THE
    PRODUCTS: a shirt, a hoodie, a scarf, a print and a mug, drawn from each
    club's own crest and colours, so a league has something to show and
@@ -30,7 +30,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideMerch = api;
+  else root.EpinoiaMerch = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -178,7 +178,7 @@ function poster(club) {
   const u = add(s, 'text', { x: 100, y: 164, 'text-anchor': 'middle',
     fill: ink, opacity: 0.65,
     'font-family': 'var(--f-micro, monospace)', 'font-size': 7, 'letter-spacing': 2.4 });
-  u.textContent = 'COURTSIDE';
+  u.textContent = 'EPINOIA';
   return s;
 }
 
@@ -344,13 +344,13 @@ function render(opts) {
   };
 
   clubs.forEach(c => {
-    const b = el('button', 'cs-chip' + (c === current ? ' on' : ''),
+    const b = el('button', 'ep-chip' + (c === current ? ' on' : ''),
                  c.short_name || c.name);
     b.type = 'button';
     b.title = c.name;
     b.addEventListener('click', () => {
       current = c;
-      rail.querySelectorAll('.cs-chip').forEach(x => x.classList.remove('on'));
+      rail.querySelectorAll('.ep-chip').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       draw();
     });
@@ -368,7 +368,7 @@ function render(opts) {
     foot.appendChild(a);
     foot.appendChild(el('p', 'merch-note',
       'Every item is built here from the club’s own crest and colours. ' +
-      (store.name || 'The shop') + ' takes the order and ships it — Courtside ' +
+      (store.name || 'The shop') + ' takes the order and ships it — Epinoia ' +
       'handles neither payment nor delivery.'));
   } else {
     foot.appendChild(el('p', 'merch-note',

@@ -51,7 +51,7 @@ const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
 /* ------------------------------------------------------------------- boot --- */
 async function boot() {
-  sb = window.courtsideClient && courtsideClient();
+  sb = window.epinoiaClient && epinoiaClient();
   if (!sb) { say('No Supabase key in config.js — administration needs one.', 'err'); return; }
 
   const { data: { session } } = await sb.auth.getSession();
@@ -80,10 +80,10 @@ async function render() {
 
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
-  window.CourtsideKeys.mount({ host: '#keysPanel', sb, league, say });
-  window.CourtsideWebhook.mount({ host: '#webhookPanel', sb, league, say });
-  window.CourtsideFeeds.mount({ host: '#feedsPanel', sb, league, say,
-                                cfg: window.COURTSIDE_CONFIG });
+  window.EpinoiaKeys.mount({ host: '#keysPanel', sb, league, say });
+  window.EpinoiaWebhook.mount({ host: '#webhookPanel', sb, league, say });
+  window.EpinoiaFeeds.mount({ host: '#feedsPanel', sb, league, say,
+                                cfg: window.EPINOIA_CONFIG });
   await loadLeague();
 }
 
@@ -109,7 +109,7 @@ function renderAccess() {
     const row = el('div', 'item');
     row.append(el('div', 'nm', 'Game to score'), el('div', 'mt', g.status));
     const sp = el('div', 'sp');
-    const go = el('a', 'cs-btn mini pri', 'open scorer');
+    const go = el('a', 'ep-btn mini pri', 'open scorer');
     go.href = '../score/?g=' + encodeURIComponent(g.game_id) + '&mode=supabase';
     sp.appendChild(go); row.appendChild(sp);
     host.appendChild(row);
@@ -119,7 +119,7 @@ function renderAccess() {
 function renderLeaguePick(admin) {
   const host = $('#lgPick'); host.textContent = '';
   admin.forEach(l => {
-    const b = el('button', 'cs-chip' + (league && l.id === league.id ? ' on' : ''), l.name);
+    const b = el('button', 'ep-chip' + (league && l.id === league.id ? ' on' : ''), l.name);
     b.type = 'button';
     b.addEventListener('click', async () => {
       league = l; season = null; comp = null;
@@ -127,7 +127,7 @@ function renderLeaguePick(admin) {
     });
     host.appendChild(b);
   });
-  const view = el('a', 'cs-chip', 'view public page ↗');
+  const view = el('a', 'ep-chip', 'view public page ↗');
   view.href = '../l/?l=' + encodeURIComponent(league.slug);
   view.target = '_blank'; view.rel = 'noopener';
   host.appendChild(view);
@@ -183,7 +183,7 @@ function renderSeasonPick() {
     return;
   }
   seasons.forEach(s => {
-    const b = el('button', 'cs-chip' + (season && s.id === season.id ? ' on' : ''), s.name);
+    const b = el('button', 'ep-chip' + (season && s.id === season.id ? ' on' : ''), s.name);
     b.type = 'button';
     b.addEventListener('click', async () => { season = s; comp = null; renderSeasonPick(); await loadComps(); });
     host.appendChild(b);
@@ -214,7 +214,7 @@ function renderCompPick() {
     return;
   }
   comps.forEach(c => {
-    const b = el('button', 'cs-chip' + (comp && c.id === comp.id ? ' on' : ''), c.name);
+    const b = el('button', 'ep-chip' + (comp && c.id === comp.id ? ' on' : ''), c.name);
     b.type = 'button';
     b.addEventListener('click', async () => { comp = c; renderCompPick(); await loadTeams(); await loadFixtures(); });
     host.appendChild(b);
@@ -257,7 +257,7 @@ async function loadTeams() {
 
     const sp = el('div', 'sp');
     if (comp) {
-      const b = el('button', 'cs-btn mini' + (inComp ? ' dgr' : ''),
+      const b = el('button', 'ep-btn mini' + (inComp ? ' dgr' : ''),
                    inComp ? 'withdraw' : 'enter');
       b.type = 'button';
       b.addEventListener('click', async () => {
@@ -272,7 +272,7 @@ async function loadTeams() {
       });
       sp.appendChild(b);
     }
-    const view = el('a', 'cs-btn mini', 'page ↗');
+    const view = el('a', 'ep-btn mini', 'page ↗');
     view.href = '../t/?t=' + encodeURIComponent(t.slug);
     view.target = '_blank'; view.rel = 'noopener';
     sp.appendChild(view);
@@ -309,9 +309,9 @@ function mountFormats() {
   const byId = {};
   teams.forEach(t => { byId[t.id] = t; });
   $('#fmtNote').textContent = comp ? (comp.format || 'table') : '';
-  window.CourtsideFormats.mount({
+  window.EpinoiaFormats.mount({
     host: '#formatPanel', sb, comp, comps, teams: byId,
-    entered: enteredRows, say, cfg: window.COURTSIDE_CONFIG,
+    entered: enteredRows, say, cfg: window.EPINOIA_CONFIG,
     onDone: () => { loadTeams(); loadFixtures(); }
   });
 }
@@ -349,16 +349,16 @@ async function loadFixtures() {
 
     const ac = el('div', 'ac');
     if (g.status === 'scheduled' || g.status === 'live') {
-      const sc = el('a', 'cs-btn mini pri', 'score');
+      const sc = el('a', 'ep-btn mini pri', 'score');
       sc.href = '../score/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
       sc.target = '_blank'; sc.rel = 'noopener';
       ac.appendChild(sc);
-      const st = el('button', 'cs-btn mini', 'staff');
+      const st = el('button', 'ep-btn mini', 'staff');
       st.type = 'button';
       st.addEventListener('click', () => officials(g, row));
       ac.appendChild(st);
     } else {
-      const v = el('a', 'cs-btn mini', 'box ↗');
+      const v = el('a', 'ep-btn mini', 'box ↗');
       v.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
       v.target = '_blank'; v.rel = 'noopener';
       ac.appendChild(v);
@@ -371,7 +371,7 @@ async function loadFixtures() {
        both tables, so both are rebuilt afterwards. Only offered when there is
        somewhere to move it TO. */
     if (comps.length > 1) {
-      const mv = el('select', 'cs-input mini fxmove');
+      const mv = el('select', 'ep-input mini fxmove');
       comps.forEach(c => {
         const o = el('option', null, c.name + (c.kind === 'cup' ? ' (cup)' : ''));
         o.value = c.id; mv.appendChild(o);
@@ -415,7 +415,7 @@ async function loadFixtures() {
 function mountFixtureGen() {
   const byId = {};
   teams.forEach(t => { byId[t.id] = t; });
-  window.CourtsideFixtureGen.mount({
+  window.EpinoiaFixtureGen.mount({
     host: '#fixtureGen', sb, comp, teams: byId,
     entered: enteredRows, existing: fixtures, say,
     onDone: () => { loadFixtures(); }
@@ -430,7 +430,7 @@ function mountImport() {
   $('#imNote').textContent = fixtures.length
     ? fixtures.length + ' fixture' + (fixtures.length === 1 ? '' : 's') + ' to choose from'
     : '';
-  window.CourtsideImportUI.mount({
+  window.EpinoiaImportUI.mount({
     host: '#importPanel', sb, leagueId: league && league.id,
     games: fixtures, teams: byId, say,
     onDone: loadFixtures
@@ -457,9 +457,9 @@ async function officials(game, afterRow) {
   panel.appendChild(listHost);
 
   const add = el('div', 'row');
-  const email = el('input', 'cs-input grow');
+  const email = el('input', 'ep-input grow');
   email.type = 'email'; email.placeholder = 'statistician@club.org';
-  const go = el('button', 'cs-btn mini pri', 'assign'); go.type = 'button';
+  const go = el('button', 'ep-btn mini pri', 'assign'); go.type = 'button';
   add.append(email, go);
   panel.appendChild(add);
 
@@ -476,7 +476,7 @@ async function officials(game, afterRow) {
       const r = el('div', 'item');
       r.append(el('div', 'nm', o.email), el('div', 'mt', o.role));
       const sp = el('div', 'sp');
-      const rm = el('button', 'cs-btn mini dgr', 'remove'); rm.type = 'button';
+      const rm = el('button', 'ep-btn mini dgr', 'remove'); rm.type = 'button';
       rm.addEventListener('click', async () => {
         rm.disabled = true;
         const { error } = await sb.rpc('remove_official', { p_game: game.id, p_user: o.user_id });
@@ -550,7 +550,7 @@ async function loadMediaQueue() {
     row.appendChild(who);
 
     const ac = el('div', 'ac');
-    const ok = el('button', 'cs-btn mini pri', 'approve'); ok.type = 'button';
+    const ok = el('button', 'ep-btn mini pri', 'approve'); ok.type = 'button';
     ok.addEventListener('click', async () => {
       ok.disabled = true;
       const { data, error } = await sb.rpc('approve_media', { p_media: m.id });
@@ -558,7 +558,7 @@ async function loadMediaQueue() {
       say(data + ' — ' + (m.subject || 'image'), 'ok');
       loadMediaQueue();
     });
-    const no = el('button', 'cs-btn mini dgr', 'reject'); no.type = 'button';
+    const no = el('button', 'ep-btn mini dgr', 'reject'); no.type = 'button';
     no.addEventListener('click', async () => {
       no.disabled = true;
       const { error } = await sb.rpc('reject_media', { p_media: m.id, p_reason: null });
@@ -586,7 +586,7 @@ async function loadMembers() {
     r.append(el('div', 'nm', m.email),
              el('div', 'mt', m.role.replace('_', ' ') + ' · ' + m.scope_type));
     const sp = el('div', 'sp');
-    const rm = el('button', 'cs-btn mini dgr', 'revoke'); rm.type = 'button';
+    const rm = el('button', 'ep-btn mini dgr', 'revoke'); rm.type = 'button';
     rm.addEventListener('click', async () => {
       rm.disabled = true;
       const { data: res, error: e2 } = await sb.rpc('revoke_role', { p_membership: m.membership_id });

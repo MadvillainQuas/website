@@ -22,7 +22,7 @@
    so it is posted out and embed.js applies it.
    ============================================================================ */
 
-const CFG = window.COURTSIDE_CONFIG;
+const CFG = window.EPINOIA_CONFIG;
 const qp = new URLSearchParams(location.search);
 const wantLeague = qp.get('l') || '';
 const limit = Math.min(parseInt(qp.get('n'), 10) || 12, 40);
@@ -46,11 +46,11 @@ const POLL_MS = 60000;
   const a1 = hex(q.get('accent'));
   const a2 = hex(q.get('accent2')) || a1;
   if (a1) {
-    document.body.style.setProperty('--cs-accent', a1);
-    document.body.style.setProperty('--cs-accent-2', a2);
+    document.body.style.setProperty('--ep-accent', a1);
+    document.body.style.setProperty('--ep-accent-2', a2);
   }
   const g = hex(q.get('bg'));
-  if (g) document.body.style.setProperty('--cs-ground', g);
+  if (g) document.body.style.setProperty('--ep-ground', g);
 })();
 
 const $ = s => document.querySelector(s);
@@ -65,7 +65,7 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
    somebody else's page is identified by that key, not by its origin. */
 function postHeight() {
   try {
-    parent.postMessage({ courtsideEmbed: 'height',
+    parent.postMessage({ epinoiaEmbed: 'height',
                          height: document.body.scrollHeight }, '*');
   } catch (_) { /* not framed, or a host that refuses messages */ }
 }
@@ -95,7 +95,7 @@ function fmtTime(iso) {
 function card(g) {
   const live = g.status === 'live', final = g.status === 'final';
   const a = document.createElement('a');
-  a.className = 'cs-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
+  a.className = 'ep-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
   a.target = '_blank'; a.rel = 'noopener';
   a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
                    location.href).href;
@@ -163,7 +163,7 @@ async function load() {
   catch (e) {
     if (!lastKey) {           // keep whatever is on screen if a refresh fails
       $('#rail').textContent = '';
-      $('#rail').appendChild(el('div', 'cs-empty', 'Fixtures unavailable'));
+      $('#rail').appendChild(el('div', 'ep-empty', 'Fixtures unavailable'));
     }
     return;
   }
@@ -187,7 +187,7 @@ async function load() {
   const rail = $('#rail');
   rail.textContent = '';
   if (!gs.length) {
-    rail.appendChild(el('div', 'cs-empty', 'No fixtures'));
+    rail.appendChild(el('div', 'ep-empty', 'No fixtures'));
   } else {
     /* Two copies. The loop wraps at the halfway mark, where the halves are
        pixel-identical, so the seam is invisible. The duplicate is hidden from

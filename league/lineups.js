@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE LINEUPS — units, filters and WOWY.
+   EPINOIA LINEUPS — units, filters and WOWY.
 
    Every stint in lineup_stints carries the five players who were on the floor
    and what happened while they were: an offensive box and a defensive one.
@@ -24,7 +24,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideLineups = api;
+  else root.EpinoiaLineups = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const num = v => (typeof v === 'number' && isFinite(v)) ? v : 0;

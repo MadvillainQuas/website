@@ -1,5 +1,5 @@
 // ============================================================================
-// COURTSIDE NETWORK — read-only JSON API, v1
+// EPINOIA NETWORK — read-only JSON API, v1
 //
 // Everything served here is already public: the pages hand the same data to
 // anonymous visitors. The key is not a gate, it is an IDENTITY — so traffic
@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
 
   if (!parts.length) {
     return json({
-      name: 'Courtside Network API', version: 1,
+      name: 'Epinoia Network API', version: 1,
       docs: '/league/api/',
       endpoints: [
         'GET /v1/leagues',

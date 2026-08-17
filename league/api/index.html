@@ -7,9 +7,11 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>API · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=24">
-<link rel="stylesheet" href="../kit/nav.css?v=24">
+<title>API · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=29">
+<link rel="stylesheet" href="../kit/nav.css?v=29">
 <style>
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -49,10 +51,10 @@
 </style>
 </head>
 <body>
-<div class="cs-frame">
+<div class="ep-frame">
   <div class="topbar">
-    <a href="../" class="plain"><span class="wm">Courtside</span></a>
-    <span class="cs-micro">JSON API · version 1</span>
+    <a href="../" class="plain"><span class="wm epinoia-mark">Epinoia</span></a>
+    <span class="ep-micro">JSON API · version 1</span>
   </div>
 
   <div class="hero">
@@ -75,7 +77,7 @@
       anyone, including us. Lost keys are revoked and replaced, not recovered.
     </p>
     <p>Send it as a header, which is the form that will not end up in a server log or a referrer:</p>
-    <pre>curl -H "X-API-Key: csk_your_key_here" \
+    <pre>curl -H "X-API-Key: epk_your_key_here" \
   https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/api/v1/leagues</pre>
     <p><code>?key=</code> works too, for a browser address bar or a spreadsheet that cannot set headers.</p>
   </div>
@@ -180,10 +182,10 @@
     <div class="tw">
       <table class="ep">
         <tr><th>Header</th><th>What it is</th></tr>
-        <tr><td><code>X-Courtside-Event</code></td><td><code>game.final</code>.</td></tr>
-        <tr><td><code>X-Courtside-Delivery</code></td><td>A stable id for this delivery. A re-finalised game is resent with a new body under the same id — treat it as an update, not a duplicate.</td></tr>
-        <tr><td><code>X-Courtside-Timestamp</code></td><td>Unix seconds at send.</td></tr>
-        <tr><td><code>X-Courtside-Signature</code></td><td><code>sha256=…</code> — HMAC-SHA256 of the <em>exact</em> body bytes, keyed on the shared secret.</td></tr>
+        <tr><td><code>X-Epinoia-Event</code></td><td><code>game.final</code>.</td></tr>
+        <tr><td><code>X-Epinoia-Delivery</code></td><td>A stable id for this delivery. A re-finalised game is resent with a new body under the same id — treat it as an update, not a duplicate.</td></tr>
+        <tr><td><code>X-Epinoia-Timestamp</code></td><td>Unix seconds at send.</td></tr>
+        <tr><td><code>X-Epinoia-Signature</code></td><td><code>sha256=…</code> — HMAC-SHA256 of the <em>exact</em> body bytes, keyed on the shared secret.</td></tr>
       </table>
     </div>
     <p>
@@ -193,7 +195,7 @@
     </p>
     <pre>import hmac, hashlib
 expected = "sha256=" + hmac.new(SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
-if not hmac.compare_digest(expected, request.headers["X-Courtside-Signature"]):
+if not hmac.compare_digest(expected, request.headers["X-Epinoia-Signature"]):
     return 401</pre>
     <p>
       Answer <code>2xx</code> and we mark it delivered. Anything else is
@@ -226,10 +228,10 @@ if not hmac.compare_digest(expected, request.headers["X-Courtside-Signature"]):
   </div>
 
   <footer class="foot">
-    <a href="../">← Courtside</a>
-    <span>Courtside Network · API v1</span>
+    <a href="../">← Epinoia</a>
+    <span>Epinoia Network · API v1</span>
   </footer>
 </div>
-<script src="../nav.js?v=24"></script>
+<script src="../nav.js?v=29"></script>
 </body>
 </html>

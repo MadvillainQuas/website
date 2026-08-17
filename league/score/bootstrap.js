@@ -14,7 +14,7 @@
    ============================================================================ */
 (function () {
   const qp = new URLSearchParams(location.search);
-  const ROOM_KEY = 'courtside.scratchGame';
+  const ROOM_KEY = 'epinoia.scratchGame';
 
   let gameId = qp.get('g');
   let mode = qp.get('mode');
@@ -29,7 +29,7 @@
     }
     mode = 'local';   // no row exists for a scratch id, so never try Supabase
   }
-  mode = mode || (window.courtsideMode ? window.courtsideMode() : 'local');
+  mode = mode || (window.epinoiaMode ? window.epinoiaMode() : 'local');
 
   // the distinctive tail, not the prefix — "scratch-" identifies nothing
   const shortId = gameId.replace(/^scratch-/, '').slice(0, 8);
@@ -42,7 +42,7 @@
   /* Deliberately unobtrusive and out of the way of every control: the scorer's
      buttons reach the screen edges on mobile, and a mis-tap here costs a stat. */
   const bar = document.createElement('div');
-  bar.id = 'cs-livebar';
+  bar.id = 'ep-livebar';
   bar.style.cssText = [
     'position:fixed', 'left:6px', 'bottom:6px', 'z-index:2147483000',
     'display:flex', 'align-items:center', 'gap:7px',
@@ -106,7 +106,7 @@
 
   async function checkPublishing() {
     if (!isFixture) return true;
-    const sb = window.courtsideClient && courtsideClient();
+    const sb = window.epinoiaClient && epinoiaClient();
     if (!sb) { authOk = false; return false; }
     const { data: { session } } = await sb.auth.getSession();
     authOk = !!session;
@@ -115,9 +115,9 @@
       bar.style.borderColor = 'rgba(255,209,102,.7)';
       bar.style.background = 'rgba(40,30,6,.94)';
       /* a link straight to the fix, since the statistician is mid-setup */
-      if (!document.getElementById('cs-signin')) {
+      if (!document.getElementById('ep-signin')) {
         const a = document.createElement('a');
-        a.id = 'cs-signin';
+        a.id = 'ep-signin';
         a.href = '../app/'; a.target = '_blank'; a.rel = 'noopener';
         a.textContent = 'sign in ↗';
         a.style.cssText = 'color:#ffd166;text-decoration:underline;white-space:nowrap;flex:none';
@@ -151,7 +151,7 @@
     claimed = true;                                   // one attempt per load
 
     if (!(await checkPublishing())) { claimed = false; return; }
-    const sb = courtsideClient();
+    const sb = epinoiaClient();
 
     const snapshot = {
       teams: S.teams.map(t => ({
@@ -192,7 +192,7 @@
      even when nothing is actually lost. */
   (function escapeHatch() {
     const lip = document.createElement('div');
-    lip.id = 'cs-exitlip';
+    lip.id = 'ep-exitlip';
     lip.style.cssText = [
       'position:fixed', 'top:0', 'left:0', 'right:0', 'height:4px',
       'z-index:2147482000', 'background:linear-gradient(90deg,#93f2bf,#8ff5ff)',
@@ -228,7 +228,7 @@
     };
 
     bar.append(
-      link('← Courtside', '../', '#93f2bf'),
+      link('← Epinoia', '../', '#93f2bf'),
       link('league', '../l/', '#8ff5ff'),
       link('box scores', '../', '#8ff5ff'),
       link('Prophesy Scouting', '/index.html', 'rgba(230,255,241,.6)')
@@ -267,7 +267,7 @@
 
      Injected into the setup screen rather than built into it, so the scorer
      itself is unchanged and still works standalone. */
-  const CFGx = window.COURTSIDE_CONFIG || {};
+  const CFGx = window.EPINOIA_CONFIG || {};
   const sbApi = async p => {
     const r = await fetch(CFGx.supabaseUrl + '/rest/v1/' + p,
       { cache: 'no-store', headers: { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' } });
@@ -441,7 +441,7 @@
      player columns ends up underneath it. Measuring the element is the only
      way to reserve the right amount, because the height depends on wrapping.
      Its top 96px is a transparent gradient, so only the remainder hides
-     anything. Publishes --cs-legend-h for the stylesheet to use. */
+     anything. Publishes --ep-legend-h for the stylesheet to use. */
   (function trackLegend() {
     const mount = () => {
       const el = document.getElementById('ctrlHelp');
@@ -449,7 +449,7 @@
       const apply = () => {
         const h = el.offsetHeight;                       // 0 when display:none (desktop)
         const opaque = h > 0 ? Math.max(0, h - 96) : 0;  // minus the gradient lead-in
-        document.documentElement.style.setProperty('--cs-legend-h', opaque + 'px');
+        document.documentElement.style.setProperty('--ep-legend-h', opaque + 'px');
 
         /* The slide-up sheet also sits over the bottom of the columns — only
            its 40px handle when closed, but that handle still covers a player
@@ -457,7 +457,7 @@
         const sh = document.getElementById('sheet');
         if (sh) {
           const peek = Math.min(sh.offsetHeight || 40, 40);
-          document.documentElement.style.setProperty('--cs-sheet-h', peek + 'px');
+          document.documentElement.style.setProperty('--ep-sheet-h', peek + 'px');
         }
       };
       apply();
@@ -508,8 +508,8 @@
   const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
 
   async function finaliseGame(btn, note) {
-    const CFG = window.COURTSIDE_CONFIG;
-    const sb = window.courtsideClient && courtsideClient();
+    const CFG = window.EPINOIA_CONFIG;
+    const sb = window.epinoiaClient && epinoiaClient();
     if (!sb) { note('No Supabase client — cannot finalise.', '#ff5f6b'); return; }
 
     const { data: { session } } = await sb.auth.getSession();
@@ -524,7 +524,7 @@
     /* Push whatever the buffer still holds, then give the upserts a moment to
        land. Finalising against a partial log would produce a box score that
        silently disagrees with what was scored. */
-    try { window.CourtsideSync && window.CourtsideSync.flush(); } catch (_) {}
+    try { window.EpinoiaSync && window.EpinoiaSync.flush(); } catch (_) {}
     await new Promise(r => setTimeout(r, 1200));
 
     /* Confirm the server actually has every event before asking it to close
@@ -536,7 +536,7 @@
       const local = (S.events || []).length;
       if (count == null || count < local) {
         note(`server has ${count == null ? '?' : count} of ${local} events — retrying…`, '#ffd166');
-        try { window.CourtsideSync && window.CourtsideSync.flush(); } catch (_) {}
+        try { window.EpinoiaSync && window.EpinoiaSync.flush(); } catch (_) {}
         await new Promise(r => setTimeout(r, 2000));
       }
     } catch (e) {
@@ -564,7 +564,7 @@
       }
       note('final — the box score is public', '#93f2bf');
       btn.textContent = 'finalised ✓';
-      try { window.CourtsideSync && window.CourtsideSync.finalise(); } catch (_) {}
+      try { window.EpinoiaSync && window.EpinoiaSync.finalise(); } catch (_) {}
     } catch (e) {
       btn.disabled = false;
       note('network error: ' + (e.message || e), '#ff5f6b');
@@ -659,15 +659,15 @@
     }
     clearInterval(timer);
 
-    if (!window.CourtsideSync) { say('sync.js missing', '#ff5f6b'); return; }
-    const sb = (mode === 'supabase' && window.courtsideClient) ? window.courtsideClient() : null;
+    if (!window.EpinoiaSync) { say('sync.js missing', '#ff5f6b'); return; }
+    const sb = (mode === 'supabase' && window.epinoiaClient) ? window.epinoiaClient() : null;
     if (mode === 'supabase' && !sb) {
       say('no supabase client — local only', '#ff5f6b');
       mode = 'local';
     }
 
     try {
-      window.CourtsideSync.attach({ gameId, mode, supabase: sb });
+      window.EpinoiaSync.attach({ gameId, mode, supabase: sb });
       say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
     } catch (e) {
       console.error('[bootstrap]', e);
@@ -677,7 +677,7 @@
     /* pending count is the honest health signal: if frames stop draining the
        scorer keeps working but the viewer is behind, and that must be visible */
     setInterval(() => {
-      const st = window.CourtsideSync.status();
+      const st = window.EpinoiaSync.status();
       if (authOk === false) return;                 // already saying the real problem
       if (st.pending > 12) {
         /* a backlog that will not drain is a refused write, not a slow one */

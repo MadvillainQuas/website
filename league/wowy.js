@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   COURTSIDE WOWY — the combination matrix.
+   EPINOIA WOWY — the combination matrix.
 
    Modelled on index_9's WOWY: choose players, and every ON/OFF arrangement of
    them is aggregated separately. Three players gives eight rows — all on, each
@@ -19,7 +19,7 @@
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CourtsideWowy = api;
+  else root.EpinoiaWowy = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -37,7 +37,7 @@ function num(v, signed) {
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
-  const L = window.CourtsideLineups;
+  const L = window.EpinoiaLineups;
   host.textContent = '';
 
   const stints = opts.stints || [];
@@ -70,7 +70,7 @@ function render(opts) {
   host.appendChild(chips);
 
   const bar = el('div', 'wowy-bar');
-  const inp = el('input', 'cs-input');
+  const inp = el('input', 'ep-input');
   inp.type = 'number'; inp.min = '0'; inp.step = '0.5'; inp.value = String(floor);
   inp.style.width = '72px';
   const note = el('span', 'wl');
@@ -85,7 +85,7 @@ function render(opts) {
     roster.forEach(id => {
       const m = (opts.meta && opts.meta[id]) || {};
       const on = picked.indexOf(id) !== -1;
-      const b = el('button', 'cs-chip' + (on ? ' on' : ''), m.name || 'Player');
+      const b = el('button', 'ep-chip' + (on ? ' on' : ''), m.name || 'Player');
       b.type = 'button';
       if (!on && picked.length >= MAX) b.disabled = true;
       b.addEventListener('click', () => {
@@ -172,7 +172,7 @@ function render(opts) {
 
 /* one player against every minute they were not on the floor */
 function onOffTiles(host, stints, playerId) {
-  const L = window.CourtsideLineups;
+  const L = window.EpinoiaLineups;
   const h = typeof host === 'string' ? document.querySelector(host) : host;
   if (!h) return;
   h.textContent = '';

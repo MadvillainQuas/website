@@ -48,10 +48,10 @@ sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
 
 vm.runInContext(read('league/engine.js'), ctx, { filename: 'engine.js' });
-sandbox.derive = () => sandbox.CourtsideEngine.deriveGame(sandbox.S);
+sandbox.derive = () => sandbox.EpinoiaEngine.deriveGame(sandbox.S);
 vm.runInContext(read('league/boxscore.js'), ctx, { filename: 'boxscore.js' });
 
-const B = sandbox.CourtsideBox;
+const B = sandbox.EpinoiaBox;
 if (B && B.rebuildPmap) B.rebuildPmap();   // the viewer does this after setting S
 ok('module exports', !!B && typeof B === 'object', B ? Object.keys(B).length + ' symbols' : 'missing');
 
