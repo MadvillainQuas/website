@@ -54,7 +54,8 @@ async function crestsFor(ids) {
     const { data } = await sb.from('media')
       .select('owner_id,storage_path')
       .eq('owner_type', 'team').eq('kind', 'logo').eq('status', 'approved')
-      .in('owner_id', ids);
+      .in('owner_id', ids)
+      .order('created_at', { ascending: false });   // newest crest wins
     (data || []).forEach(m => {
       if (!out.has(m.owner_id)) {
         out.set(m.owner_id, window.EpinoiaUpload
@@ -150,15 +151,19 @@ async function mountCrest() {
     };
     if (!url) {
       line('Your club crest. ');
-      line('Add one and it replaces the initials on your club card, in the league table and on every fixture. ');
+      line('Add one and it replaces the initials on your club card, in the league table and on every fixture — ');
+      line('it goes live straight away', true);
+      line(', no approval needed. ');
       line('An SVG with a transparent background is best', true);
-      line(' — it stays sharp at every size, from this list to a printed shirt. A transparent PNG works too. The league approves it before it appears publicly.');
+      line(' — it stays sharp at every size, from this list to a printed shirt. A transparent PNG works too.');
     } else if (status === 'approved') {
       line('Your crest is live. ');
-      line('It appears on your club card, in the league table and on every fixture. Click it to replace it.');
+      line('It appears on your club card, in the league table and on every fixture. Click it to replace it — the new one goes live straight away.');
     } else if (status === 'pending') {
-      line('Uploaded and waiting for the league to approve it', true);
-      line(' — your initials show publicly until then. Click the crest to replace it.');
+      /* only reachable if publishing was refused, or for a crest uploaded
+         before this went in */
+      line('Uploaded, but not published yet', true);
+      line(' — your initials show publicly until it is. Click the crest to try again.');
     } else {
       line('That upload was not approved. ');
       line('Click the crest to try another — an SVG with a transparent background works best.');
@@ -190,8 +195,26 @@ async function mountCrest() {
       const up = await window.EpinoiaUpload.upload(sb, {
         file: f, ownerType: 'team', ownerId: team.id, kind: 'logo' });
       if (!up || !up.storage_path) throw new Error('the upload returned no path');
-      paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path), 'pending');
-      say('Crest uploaded — the league approves it before it appears publicly.', 'ok');
+
+      /* A CREST GOES UP WITHOUT REVIEW. Every other image waits for the league,
+         and for a photograph of a person that is right — publishing one is the
+         step that puts a face on the internet. A crest is the club's own mark
+         and contains nobody, so making a league administrator approve it before
+         a club can look like itself is friction with nothing behind it.
+
+         The RPC does the publishing rather than this page: it refuses anything
+         that is not a club crest, so this cannot become a way around the queue
+         for anything else. If it fails the upload still exists as pending and
+         the league can approve it the old way, which is why the message says
+         what actually happened rather than assuming. */
+      const pub = await sb.rpc('publish_team_logo', { p_media: up.id });
+      const live = !pub.error;
+      paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path),
+            live ? 'approved' : 'pending');
+      say(live ? 'Crest updated — it is live now.'
+               : 'Crest uploaded, but publishing it was refused: ' +
+                 (pub.error.message || 'unknown') + ' The league can approve it.',
+          live ? 'ok' : 'warn');
     } catch (e) {
       say('Upload failed: ' + (e.message || e), 'err');
     }

@@ -341,8 +341,14 @@ async function clubs() {
      that decision belongs to the moderation queue, not to this page. */
   const logos = new Map();
   try {
+    /* ORDERED, because "the first row that came back" is not a choice. A club
+       has one crest now — publishing a new one deletes the old — but this
+       query ran with no ORDER BY and took whichever row PostgREST happened to
+       return first, so any club that had ever uploaded twice could have shown
+       either. Newest first makes the answer the same every time. */
     const rows = await api('media?owner_type=eq.team&kind=eq.logo&status=eq.approved' +
-      '&owner_id=in.(' + ts.map(t => t.id).join(',') + ')&select=owner_id,storage_path');
+      '&owner_id=in.(' + ts.map(t => t.id).join(',') + ')' +
+      '&select=owner_id,storage_path&order=created_at.desc');
     rows.forEach(r => {
       if (!logos.has(r.owner_id)) {
         logos.set(r.owner_id, CFG.supabaseUrl + '/storage/v1/object/public/' + r.storage_path);
