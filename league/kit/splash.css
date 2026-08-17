@@ -46,7 +46,7 @@
    resolved to nothing, fell back to the kit's dark-theme tokens, and set the
    title in mint white on white marble. A custom property is only useful to
    what inherits from the element carrying it. */
-body.splash-body{
+.m-splash body{
   --w-shallow:#d3ebf4;
   --w-mid:#a9d6e6;
   --w-deep:#7ebcd4;
@@ -562,7 +562,7 @@ body.splash-body{
 /* The rail is a dark object and this page is a bright one. It keeps its own
    colours — it is the same rail everywhere else on the site — but the page
    must make room for it exactly as every other page does. */
-body.splash-body{ background:#bfe2ee }
+.m-splash body{ background:#bfe2ee }
 
 /* ============================================================================
    THE TRACK, top right.

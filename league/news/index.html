@@ -10,10 +10,11 @@
 <title>News · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<link rel="stylesheet" href="../kit/card.css?v=80">
-<link rel="stylesheet" href="../kit/news.css?v=80">
+<script src="../mode.js?v=77"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=77">
+<link rel="stylesheet" href="../kit/nav.css?v=77">
+<link rel="stylesheet" href="../kit/card.css?v=77">
+<link rel="stylesheet" href="../kit/news.css?v=77">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -29,6 +30,9 @@
   .hero .lg{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
     letter-spacing:.14em;text-transform:uppercase;margin-top:calc(var(--u))}
   .wrap{padding:calc(var(--u)*3)}
+  /* the archive/article switch — see mode.js */
+  .m-list #one{display:none}
+  .m-article #list{display:none}
   .empty{padding:calc(var(--u)*5) 0;text-align:center;color:var(--ink-3);
     font-family:var(--f-micro);font-size:11px}
   .pager{display:flex;gap:10px;align-items:center;justify-content:center;
@@ -50,12 +54,13 @@
     <div class="lg" id="leagueName"></div>
   </div>
 
-  <!-- one article ------------------------------------------------------- -->
-  <article id="one" class="hide"></article>
+  <!-- one article, or the archive: mode.js decided which from ?a= before any
+       of this was painted, so opening an article no longer shows the archive's
+       "Loading..." underneath it first. -->
+  <article id="one"></article>
 
-  <!-- every article ----------------------------------------------------- -->
   <div id="list" class="wrap">
-    <div class="empty">Loading…</div>
+    <div class="empty">Loading&#8230;</div>
   </div>
   <div id="pager" class="pager hide"></div>
 
@@ -66,11 +71,11 @@
   </footer>
 </div>
 
-<script src="../config.js?v=80"></script>
-<script src="../upload.js?v=80"></script>
-<script src="../newsblocks.js?v=80"></script>
-<script src="../news.js?v=80"></script>
-<script src="news-page.js?v=80"></script>
-<script src="../nav.js?v=80"></script>
+<script src="../config.js?v=77" defer></script>
+<script src="../upload.js?v=77" defer></script>
+<script src="../newsblocks.js?v=77" defer></script>
+<script src="../news.js?v=77" defer></script>
+<script src="news-page.js?v=77" defer></script>
+<script src="../nav.js?v=77" defer></script>
 </body>
 </html>

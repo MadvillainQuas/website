@@ -77,6 +77,42 @@ let advSort = {k:'min', dir:-1}, advHidden = new Set();
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+const COLOUR_OK = /^(?:#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl)a?\([0-9eE.,%\/\s+-]+\)|var\(--[a-z0-9-]+\))$/i;
+
+function safeColour(v, fallback){
+  /* NOTHING BUT A COLOUR REACHES A STYLE ATTRIBUTE.
+
+     Names in this file all go through esc(). Club colours did not: they were
+     concatenated straight into style="color:'+c+'" in strings handed to
+     innerHTML. The value comes from teams.colour, and neither the column nor
+     admin_update_team validated it — that function checks the slug against a
+     pattern and writes the colour through untouched. So a league administrator
+     could store
+
+         #fff" onmouseover="...
+
+     and every visitor to any box score in that league would be served the
+     markup, on the public game page.
+
+     The page's CSP is script-src 'self' with no unsafe-inline, so an injected
+     handler would not have run — that lock held. But it was the only lock, and
+     CSP does not stop injected MARKUP: a link, an image, a panel over the
+     score. A policy is the net, not the floor.
+
+     AN ALLOW-LIST, NOT AN ESCAPE. Escaping the quotes would stop the breakout
+     and still allow arbitrary CSS through the property, and CSS in an
+     attacker's hands is its own problem — a background-image is a request to
+     somewhere, with a referer on it. So the value has to LOOK like a colour or
+     it is not used: three, six or eight hex digits, a functional notation with
+     nothing but numbers and separators inside it, or one of our own custom
+     properties. Anything carrying a quote, a bracket or a semicolon falls back.
+
+     Migration 0056 fits the other lock and validates these on the way in. This
+     one is the floor, because it also covers rows written before it. */
+  const c = String(v == null ? '' : v).trim();
+  return COLOUR_OK.test(c) ? c : (fallback || 'var(--lume)');
+}
+
 function perName(p){ return p<=4 ? 'q'+p : 'ot'+(p-4); }
 
 function fmtClock(ms){ const s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
@@ -222,7 +258,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
-  return '<div class="glass bxteam advcard"><h3 style="color:'+(S.teams[t].color||'var(--lume)')+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
@@ -333,7 +369,7 @@ function pbpHTML(d){
 }
 
 function shotChartHTML(d,t){
-  const col = S.teams[t].color || '#93f2bf';
+  const col = safeColour(S.teams[t].color, '#93f2bf');
   const shots = S.events.filter(e=>/^p[23]_/.test(e.t) && e.team===t);
   const withLoc = shots.filter(e=>d.locs[e.id]);
   const dots = withLoc.map(e=>{
@@ -364,7 +400,8 @@ function shotChartHTML(d,t){
 
 function advHTML(d){
   const TA = [teamAdv(d,0), teamAdv(d,1)];
-  const c0 = S.teams[0].color||'#93f2bf', c1 = S.teams[1].color||'#8ff5ff';
+  const c0 = safeColour(S.teams[0].color, '#93f2bf'),
+        c1 = safeColour(S.teams[1].color, '#8ff5ff');
   const f1 = v=>v.toFixed(1), f0 = v=>v.toFixed(0), f2 = v=>v.toFixed(2);
   // 1. four factors — stacked mirrored bars, fixed maxes, winner tagged
   const FF = [
@@ -442,7 +479,7 @@ function lineupsHTML(){
         '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
         '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
-    return '<div class="glass bxteam advcard"><h3 style="color:'+(S.teams[t].color||'var(--lume)')+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
       '<th class="blk-o">ortg</th><th>efg%</th><th>tov%</th><th>orb%</th><th>ft rate</th>'+
       '<th class="blk-d">drtg</th><th>opp efg</th><th>tov frc</th><th>orb alwd</th><th>opp ftr</th>'+
@@ -463,5 +500,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, courtSVG, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, courtSVG, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

@@ -81,9 +81,9 @@ async function one(league) {
   try { a = await rpc('news_article', { p_league: league.id, p_slug: SLUG }); }
   catch (_) { /* below */ }
 
-  $('#list').classList.add('hide');
+  /* No showing or hiding here: ?a= put m-article on the root before the first
+     paint, so the archive was never drawn under this in the first place. */
   const host = $('#one');
-  host.classList.remove('hide');
   host.textContent = '';
 
   if (!a) {

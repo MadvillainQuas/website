@@ -48,21 +48,42 @@ function voterKey() {
   }
 }
 
-/* opts: { host, ballotHost, sec, note, rpc, league, photos } */
+/* ASKING AND DRAWING ARE SEPARATE, and the split is the point rather than
+   tidiness. A league page has to find which of its competitions has a Team of
+   the Year before it can draw one, and when the only way to ask was to call
+   mount() — which fetched and rendered in one go — finding out meant walking the
+   competitions in series, two round trips each, stopping at the first hit. Four
+   competitions with no ballot cost eight serial requests and drew nothing.
+
+   probe() is the question and touches no DOM, so a caller can ask about every
+   competition at once. render() takes what probe() found and does not fetch.
+
+   The two requests inside a probe go together too: a published team and an open
+   ballot are independent, and neither answer changes what the other asks. */
+async function probe(o) {
+  const [team, shortlist] = await Promise.all([
+    o.rpc('toty_public', { p_competition: o.competitionId }).catch(() => []),
+    o.rpc('toty_ballot_public', { p_competition: o.competitionId }).catch(() => [])
+  ]);
+  const named = (team || []).filter(r => r.player_id);
+  const list = shortlist || [];
+  return { named, shortlist: list, any: !!(named.length || list.length) };
+}
+
+/* opts: { host, ballotHost, sec, note, rpc, league, photos, data? }
+   data, when given, is a probe() result and nothing is fetched. */
 async function mount(o) {
   const sec = o.sec;
   if (!sec) return;
+  const found = o.data || await probe(o);
+  if (!found.any) return false;              // no ballot, no section
+  return render(Object.assign({}, o, { data: found }));
+}
 
-  let team = [], shortlist = [];
-  try {
-    team = await o.rpc('toty_public', { p_competition: o.competitionId }) || [];
-  } catch (_) { team = []; }
-  try {
-    shortlist = await o.rpc('toty_ballot_public', { p_competition: o.competitionId }) || [];
-  } catch (_) { shortlist = []; }
-
-  const named = team.filter(r => r.player_id);
-  if (!named.length && !shortlist.length) return false;   // no ballot, no section
+function render(o) {
+  const sec = o.sec;
+  if (!sec) return false;
+  const named = o.data.named, shortlist = o.data.shortlist;
 
   sec.classList.remove('hide');
   const head = o.head, note = o.note;
@@ -191,5 +212,5 @@ function card(r, award, photos) {
   return a;
 }
 
-return { mount, voterKey };
+return { mount, probe, render, voterKey };
 }));

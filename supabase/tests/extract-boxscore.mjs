@@ -30,7 +30,8 @@ const CSS  = path.join(ROOT, 'league', 'boxscore.css');
 const WANTED = [
   // primitives the renderers lean on
   'PLEN', 'PMAP', 'ADV_GROUPS', 'advSort',   // advSort's line also declares advHidden
-  'esc', 'perName', 'fmtClock', 'fmtMin', 'tname', 'pname',
+  'esc', 'COLOUR_OK', 'safeColour',
+  'perName', 'fmtClock', 'fmtMin', 'tname', 'pname',
   'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags', 'courtSVG',
   // calculators
   'teamTotals', 'teamAdv', 'playerAdv', 'playerAdvTable', 'lineupAgg',

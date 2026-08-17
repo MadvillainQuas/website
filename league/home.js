@@ -278,14 +278,33 @@ async function leagues() {
   });
 }
 
-/* which competitions belong to a league, newest season first */
-async function leagueCompetitions(leagueId) {
-  const seasons = await api('seasons?league_id=eq.' + leagueId +
-    '&select=id&order=starts_on.desc');
-  if (!seasons.length) return [];
-  const comps = await api('competitions?season_id=in.(' +
-    seasons.map(s => s.id).join(',') + ')&select=id');
-  return comps.map(c => c.id);
+/* Which competitions belong to a league, newest season first.
+
+   ASKED FOR ONCE PER PAGE, not once per caller. Three sections need this list
+   and each used to fetch it — measured: seasons and competitions were each
+   requested three times on one load of a league's front page, six round trips
+   for one answer that cannot change while the page is open.
+
+   The promise is cached rather than the result, which matters now that the
+   callers run concurrently: caching the result still lets two callers that
+   start together both miss and both fetch. Holding the in-flight promise means
+   the second one waits on the first one's request. */
+const compsCache = new Map();
+function leagueCompetitions(leagueId) {
+  if (compsCache.has(leagueId)) return compsCache.get(leagueId);
+  const p = (async () => {
+    const seasons = await api('seasons?league_id=eq.' + leagueId +
+      '&select=id&order=starts_on.desc');
+    if (!seasons.length) return [];
+    const comps = await api('competitions?season_id=in.(' +
+      seasons.map(s => s.id).join(',') + ')&select=id');
+    return comps.map(c => c.id);
+  })();
+  /* A failure must not be remembered — a section that retries later should get
+     a real attempt, not a cached rejection from a blip. */
+  p.catch(() => compsCache.delete(leagueId));
+  compsCache.set(leagueId, p);
+  return p;
 }
 
 /* ------------------------------------------------------------- the clubs ---
@@ -662,14 +681,31 @@ async function teamOfTheYear() {
   if (!LEAGUE || !window.EpinoiaToty) return;
   const comps = await leagueCompetitions(LEAGUE.id);
   if (!comps.length) return;
-  for (const id of comps) {
-    const drew = await window.EpinoiaToty.mount({
-      sec: $('#totySec'), host: $('#toty'), ballotHost: $('#ballot'),
-      head: $('#totyHead'), note: $('#totyNote'),
-      competitionId: id, rpc
-    });
-    if (drew) return;                 // the first one with a ballot wins
-  }
+
+  /* THE MOST EXPENSIVE THING ON THIS PAGE, and it usually displays nothing.
+
+     This walked the competitions one at a time, and each step was two round
+     trips — the published team, then the ballot — stopping at the first
+     competition that had either. A league with four competitions and no Team of
+     the Year therefore made eight requests, in series, and hid the section at
+     the end of it. Measured on a league's front page: 600ms of a 930ms total,
+     spent to draw nothing.
+
+     Now every competition is asked at once and the first one that answers wins.
+     Same rule, same winner — comps is ordered newest season first and the
+     choice is still the earliest in that order, not the fastest to reply — but
+     the wall-clock cost is one round trip instead of 2N. */
+  const probes = await Promise.all(comps.map(id =>
+    window.EpinoiaToty.probe({ competitionId: id, rpc })
+      .catch(() => null)));
+
+  const i = probes.findIndex(p => p && p.any);
+  if (i < 0) return;                  // no ballot anywhere: the section stays off
+  window.EpinoiaToty.render({
+    sec: $('#totySec'), host: $('#toty'), ballotHost: $('#ballot'),
+    head: $('#totyHead'), note: $('#totyNote'),
+    competitionId: comps[i], rpc, data: probes[i]
+  });
 }
 
 /* The five most recent published articles, above everything else a league
@@ -754,14 +790,31 @@ function renumber() {
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';
 
-    await games();
+    /* THE SECTIONS DO NOT DEPEND ON EACH OTHER, so they no longer wait for
+       each other. This was eight awaits in a row — games, news, clubs, team of
+       the year, stars, merchandise, socials — and every one of them is a
+       separate query against a separate table. Measured before: 28 serial round
+       trips and a 930ms chain on a machine with no network latency at all;
+       across the Atlantic on a phone that is seconds.
+
+       Only merchandise genuinely has inputs: it needs the roster from clubs()
+       and the leading player from stars(), so it waits for exactly those two
+       and nothing else. splash() is synchronous — it only sets iframe sources.
+
+       Promise.all rejects on the first failure, so each section keeps its own
+       error handling and none of them is allowed to take the page down with it;
+       games() and the rest already report their own failures into their own
+       section, which is the behaviour worth preserving here. */
     splash();
-    await news();
-    const roster = await clubs();
-    await teamOfTheYear();
-    const star = await stars();
-    await merch(roster, star);
-    await socials();
+    const [, roster, star] = await Promise.all([
+      games().catch(() => null),
+      clubs().catch(() => null),
+      stars().catch(() => null),
+      news().catch(() => null),
+      teamOfTheYear().catch(() => null),
+      socials().catch(() => null)
+    ]);
+    await merch(roster, star).catch(() => null);
     applySections();
     renumber();
   } else {
@@ -775,7 +828,9 @@ function renumber() {
        a broken link, and saying so beats silently showing something that
        looks like the link worked. */
     if (WANT) {
-      document.querySelector('#hub').classList.remove('hide');
+      /* ?l= was set, so mode.js already put m-league on the root and the hub is
+         showing — a broken link lands on the same layout as a working one, with
+         the reason in it. */
       fail('#leagues', 'No league called "' + WANT + '". Every league is listed below.');
       await games();
       await leagues();
@@ -783,10 +838,11 @@ function renumber() {
       return;
     }
 
-    document.body.classList.add('splash-body');
-    document.querySelector('#hub').classList.add('hide');
-    document.querySelector('#pool').classList.remove('hide');
-    document.querySelector('#splash').classList.remove('hide');
+    /* Nothing is shown or hidden here any more. mode.js settled it from the
+       URL before the first paint, and repeating it in JavaScript at the bottom
+       of the body is exactly the late decision that made the splash flash the
+       league page first. The title is still set here because a document can
+       only have one <title> and this branch is where the answer is known. */
     document.title = 'Epinoia';
     const mode = document.querySelector('#spMode');
     if (mode) mode.textContent = 'transport: ' +

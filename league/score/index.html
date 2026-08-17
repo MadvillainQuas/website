@@ -1051,12 +1051,49 @@ function hexToRgba(h,a){ const m=(h||'').replace('#',''); if(m.length!==6) retur
   return 'rgba('+parseInt(m.slice(0,2),16)+','+parseInt(m.slice(2,4),16)+','+parseInt(m.slice(4,6),16)+','+a+')'; }
 function applyTeamVars(){
   const r = document.documentElement.style;
-  const c0 = (S.teams[0]&&S.teams[0].color)||'#93f2bf', c1 = (S.teams[1]&&S.teams[1].color)||'#8ff5ff';
+  const c0 = safeColour(S.teams[0] && S.teams[0].color, '#93f2bf'),
+        c1 = safeColour(S.teams[1] && S.teams[1].color, '#8ff5ff');
   r.setProperty('--team0',c0); r.setProperty('--team1',c1);
   r.setProperty('--team0-glow',hexToRgba(c0,.4)); r.setProperty('--team1-glow',hexToRgba(c1,.4));
 }
 function vibrate(n){ if(navigator.vibrate) try{ navigator.vibrate(n); }catch(e){} }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* A colour, or the fallback — see the note inside. */
+const COLOUR_OK = /^(?:#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl)a?\([0-9eE.,%\/\s+-]+\)|var\(--[a-z0-9-]+\))$/i;
+function safeColour(v, fallback){
+  /* NOTHING BUT A COLOUR REACHES A STYLE ATTRIBUTE.
+
+     Names in this file all go through esc(). Club colours did not: they were
+     concatenated straight into style="color:'+c+'" in strings handed to
+     innerHTML. The value comes from teams.colour, and neither the column nor
+     admin_update_team validated it — that function checks the slug against a
+     pattern and writes the colour through untouched. So a league administrator
+     could store
+
+         #fff" onmouseover="...
+
+     and every visitor to any box score in that league would be served the
+     markup, on the public game page.
+
+     The page's CSP is script-src 'self' with no unsafe-inline, so an injected
+     handler would not have run — that lock held. But it was the only lock, and
+     CSP does not stop injected MARKUP: a link, an image, a panel over the
+     score. A policy is the net, not the floor.
+
+     AN ALLOW-LIST, NOT AN ESCAPE. Escaping the quotes would stop the breakout
+     and still allow arbitrary CSS through the property, and CSS in an
+     attacker's hands is its own problem — a background-image is a request to
+     somewhere, with a referer on it. So the value has to LOOK like a colour or
+     it is not used: three, six or eight hex digits, a functional notation with
+     nothing but numbers and separators inside it, or one of our own custom
+     properties. Anything carrying a quote, a bracket or a semicolon falls back.
+
+     Migration 0056 fits the other lock and validates these on the way in. This
+     one is the floor, because it also covers rows written before it. */
+  const c = String(v == null ? '' : v).trim();
+  return COLOUR_OK.test(c) ? c : (fallback || 'var(--lume)');
+}
 function tname(t){ return S.teams[t].name || (t? 'team two':'team one'); }
 function pname(pid){ const m = PMAP[pid]; if(!m) return 'team'; return (m.p.num!==''&&m.p.num!=null?('#'+m.p.num+' '):'')+m.p.name; }
 function perName(p){ return p<=4 ? 'q'+p : 'ot'+(p-4); }
@@ -1456,7 +1493,7 @@ function renderCols(){
     const maxTo = S.period<=2?2:(S.period<=4?3:1);
     let dots=''; for(let i=0;i<maxTo;i++) dots += i<left?'●':'○';
     th.classList.toggle('tappable', teamTappable(t));
-    const tcol = S.teams[t].color || 'var(--lume)';
+    const tcol = safeColour(S.teams[t].color);
     th.style.boxShadow = 'inset 0 0 22px '+tcol+'22';
     const idle = !ui.armed && !ui.pending && !ui.subOut;
     th.innerHTML = '<div class="tn" style="color:'+tcol+'">'+(D.poss===t?'<span class="possdot">◉</span>':'')+esc(tname(t))+'</div>'+
@@ -2782,7 +2819,7 @@ function pbpHTML(d){
 }
 /* ---- final: shot charts ---- */
 function shotChartHTML(d,t){
-  const col = S.teams[t].color || '#93f2bf';
+  const col = safeColour(S.teams[t].color, '#93f2bf');
   const shots = S.events.filter(e=>/^p[23]_/.test(e.t) && e.team===t);
   const withLoc = shots.filter(e=>d.locs[e.id]);
   const dots = withLoc.map(e=>{
@@ -2952,7 +2989,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
-  return '<div class="glass bxteam advcard"><h3 style="color:'+(S.teams[t].color||'var(--lume)')+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
@@ -3069,7 +3106,8 @@ function advTeamCalc(d,t){
 }
 function advHTML(d){
   const TA = [teamAdv(d,0), teamAdv(d,1)];
-  const c0 = S.teams[0].color||'#93f2bf', c1 = S.teams[1].color||'#8ff5ff';
+  const c0 = safeColour(S.teams[0].color, '#93f2bf'),
+        c1 = safeColour(S.teams[1].color, '#8ff5ff');
   const f1 = v=>v.toFixed(1), f0 = v=>v.toFixed(0), f2 = v=>v.toFixed(2);
   // 1. four factors — stacked mirrored bars, fixed maxes, winner tagged
   const FF = [
@@ -3136,7 +3174,8 @@ function advHTML_legacy(d){
     ['oreb%', v=>pct(v.orebp)], ['dreb%', v=>pct(v.drebp)], ['ft rate', v=>v.ftr.toFixed(2)],
     ['ast%', v=>pct(v.astp)], ['3pa rate', v=>pct(v.p3rate)], ['possessions', v=>v.poss.toFixed(1)]
   ];
-  const c0 = S.teams[0].color||'#93f2bf', c1 = S.teams[1].color||'#8ff5ff';
+  const c0 = safeColour(S.teams[0].color, '#93f2bf'),
+        c1 = safeColour(S.teams[1].color, '#8ff5ff');
   const teamTbl = '<div class="glass bxteam"><h3>team — four factors & ratings</h3><div class="tblwrap">'+
     '<table class="bx" style="min-width:0"><tr><th></th><th style="text-align:right;color:'+c0+'">'+esc(tname(0))+'</th>'+
     '<th style="text-align:right;color:'+c1+'">'+esc(tname(1))+'</th></tr>'+
@@ -3156,7 +3195,7 @@ function advHTML_legacy(d){
         '<td>'+per40(s.pts)+'</td><td>'+per40(s.or+s.dr)+'</td><td>'+per40(s.ast)+'</td>'+
         '<td>'+(s.to?(s.ast/s.to).toFixed(1):(s.ast?'∞':'–'))+'</td><td>'+(s.pm>0?'+':'')+s.pm+'</td></tr>';
     }).join('');
-    return '<div class="glass bxteam"><h3 style="color:'+(S.teams[t].color||'var(--lume)')+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx"><tr><th>#</th><th>player</th><th>min</th><th>ts%</th><th>efg%</th><th>usg%</th>'+
       '<th>pts/40</th><th>reb/40</th><th>ast/40</th><th>a/to</th><th>+/-</th></tr>'+rowsP+'</table></div></div>';
   };
@@ -3206,7 +3245,7 @@ function lineupsHTML(){
         '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
         '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
-    return '<div class="glass bxteam advcard"><h3 style="color:'+(S.teams[t].color||'var(--lume)')+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
       '<th class="blk-o">ortg</th><th>efg%</th><th>tov%</th><th>orb%</th><th>ft rate</th>'+
       '<th class="blk-d">drtg</th><th>opp efg</th><th>tov frc</th><th>orb alwd</th><th>opp ftr</th>'+
@@ -3628,10 +3667,10 @@ function migrate(s){
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=80"></script>
-<script src="../vendor/supabase.js?v=80"></script>
-<script src="../live.js?v=80"></script>
-<script src="sync.js?v=80"></script>
-<script src="bootstrap.js?v=80"></script>
+<script src="../config.js?v=77" defer></script>
+<script src="../vendor/supabase.js?v=77" defer></script>
+<script src="../live.js?v=77" defer></script>
+<script src="sync.js?v=77" defer></script>
+<script src="bootstrap.js?v=77" defer></script>
 </body>
 </html>

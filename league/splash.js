@@ -277,10 +277,27 @@ async function leagues(api, cfg) {
 
 /* ================================================================== mount === */
 function mount(opts) {
-  const sb = window.epinoiaClient && window.epinoiaClient();
-  signIn(sb, opts.cfg);
-  gate(sb);
+  /* THE LEAGUE LIST FIRST, AND WITHOUT WAITING FOR ANYTHING.
+
+     It is a plain anonymous read, so it needs no SDK — and it is the content of
+     the page, where the sign-in box is a control in the corner. Asking for the
+     207kB auth bundle before drawing the four ways in is the wrong order, and
+     it was the order: the bundle was a blocking script tag, so nothing on this
+     page happened until it landed.
+
+     The sign-in slab fills itself in a moment later. That is the honest
+     trade — a login box that appears a beat after the page it is on, rather
+     than a page that waits for a login box. */
   leagues(opts.api, opts.cfg);
+
+  window.epinoiaClientReady().then(sb => {
+    signIn(sb, opts.cfg);
+    gate(sb);
+  }).catch(() => {
+    /* No SDK, no auth. The rest of the splash is unaffected, which is the point
+       of it not being in the way. */
+    signIn(null, opts.cfg);
+  });
 }
 
 return { mount };
