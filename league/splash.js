@@ -227,51 +227,52 @@ async function gate(sb) {
 }
 
 /* ============================================================ the leagues === */
+/* THE LEAGUES DECK IS ONE DOOR NOW, not a shelf of them.
+
+   It used to list every league on the platform as a slice of the stone, which
+   worked at one league and would not have worked at forty — and it put the
+   whole directory on a landing page whose job is to point at things. So the
+   deck says how many there are and where they are, and the Countries page is
+   where the choosing happens.
+
+   The count is still read live, because "3 countries · 5 leagues" is the one
+   thing that makes the door worth opening, and a door that says nothing about
+   what is behind it is a door people do not try. */
 async function leagues(api, cfg) {
   const host = $('#segLeagues');
   if (!host) return;
   let ls = [];
   try {
-    ls = await api('leagues?select=id,slug,name,colour_a,colour_b,logo_path&order=name');
-  } catch (_) { /* handled below */ }
+    ls = await api('leagues?select=slug,name,country&order=name');
+  } catch (_) { /* the segment still renders, without the count */ }
 
   host.textContent = '';
+  host.className = 'segs';
+  host.style.gridTemplateColumns = '1fr';
+
   if (!ls.length) {
     const s = el('div', 'seg off');
     s.append(el('span', 'k', 'leagues'), el('span', 't', 'None yet'),
              el('span', 'd', 'A league appears here the moment one is created.'));
     host.appendChild(s);
-    host.className = 'segs';
     return;
   }
-  /* however many there are, that is how many slices the stone is cut into —
-     up to four across, because a fifth would be unreadable at this size */
-  host.className = 'segs';
-  host.style.gridTemplateColumns = 'repeat(' + Math.min(ls.length, 4) + ', 1fr)';
 
-  ls.forEach(l => {
-    const a = el('a', 'seg league');
-    a.href = './?l=' + encodeURIComponent(l.slug);
-    a.setAttribute('aria-label', l.name);
-    const crest = el('div', 'crest');
-    if (l.logo_path && cfg && cfg.supabaseUrl) {
-      const img = document.createElement('img');
-      img.src = cfg.supabaseUrl + '/storage/v1/object/public/' + l.logo_path;
-      img.alt = '';
-      img.loading = 'lazy';
-      /* a logo that fails to load falls back to the monogram rather than
-         leaving the segment blank */
-      img.addEventListener('error', () => {
-        img.remove(); crest.appendChild(el('span', 'mono', monogram(l.name)));
-      });
-      crest.appendChild(img);
-    } else {
-      crest.appendChild(el('span', 'mono', monogram(l.name)));
-    }
-    a.append(crest, el('span', 'k', 'league'), el('span', 't', l.name),
-             el('span', 'd', 'Table, fixtures and season statistics.'));
-    host.appendChild(a);
-  });
+  const countries = new Set(ls.map(l => (l.country || '').toUpperCase()));
+  const nC = countries.size;
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+  const a = el('a', 'seg league');
+  a.href = 'countries/';
+  a.setAttribute('aria-label', 'Browse the leagues by country');
+  const crest = el('div', 'crest');
+  crest.appendChild(el('span', 'mono', '◇'));
+  a.append(crest,
+    el('span', 'k', 'by country'),
+    el('span', 't', 'Browse leagues'),
+    el('span', 'd', plural(nC, 'country') + ' · ' + plural(ls.length, 'league') +
+       '. Tables, fixtures and season statistics.'));
+  host.appendChild(a);
 }
 
 /* ================================================================== mount === */

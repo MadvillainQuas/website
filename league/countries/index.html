@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8fd3e5">
+<!-- PUBLIC, and deliberately WITHOUT nav.js. This page is a landing between
+     the splash and a league, and a rail down the side of it would be a second
+     way to do the one thing the page is for. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Countries · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=72">
+<link rel="stylesheet" href="../kit/splash.css?v=72">
+<link rel="stylesheet" href="countries.css?v=72">
+</head>
+<body class="splash-body co-body">
+
+<!-- the same pool, the same layers, so this reads as another room in the same
+     building rather than a different site -->
+<div class="pool" id="pool" aria-hidden="true">
+  <div class="pool-floor"></div>
+  <div class="pool-depth"></div>
+  <div class="pool-caustic a"></div>
+  <div class="pool-caustic b"></div>
+  <div class="pool-tint"></div>
+  <div class="pool-swell a"></div>
+  <div class="pool-swell b"></div>
+  <div class="pool-sheen"></div>
+</div>
+
+<main class="co-main">
+  <header class="co-head">
+    <h1>Countries</h1>
+    <p>Every competition on the platform, by where it is played.</p>
+  </header>
+
+  <div class="co-grid" id="grid">
+    <div class="co-loading">Loading…</div>
+  </div>
+</main>
+
+<!-- bottom left, back to the splash, in the logotype rather than in words -->
+<a class="co-back" href="../" aria-label="Back to Epinoia">
+  <span class="co-back-arrow" aria-hidden="true">‹</span>
+  <span class="epinoia-mark">EPINOIΛ</span>
+</a>
+
+<script src="../config.js?v=72"></script>
+<script src="countries.js?v=72"></script>
+</body>
+</html>

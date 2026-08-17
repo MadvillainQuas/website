@@ -1,0 +1,151 @@
+/* ============================================================================
+   THE COUNTRIES PAGE — big stone cards on the pool, one per country.
+
+   THE FLAG IS ENGRAVED, NOT PRINTED. An emoji flag dropped onto a card is a
+   sticker: it arrives with somebody else's gloss, its own drop shadow and a
+   colour palette from another design. So it is set very large, desaturated
+   almost to grey, held at low opacity behind the words, and given the same
+   pair of shadows the title is cut with — light below, shade above. What
+   survives is the SHAPE of the flag as figure in the stone, which belongs to
+   this page in a way the glyph itself never would.
+
+   The consequence is honest: on a platform where two countries have similar
+   flags, the name is what tells them apart, so the name is the loud thing.
+   ============================================================================ */
+
+.co-body{ min-height:100vh }
+
+.co-main{
+  position:relative; z-index:1;
+  max-width:1240px; margin:0 auto;
+  padding:clamp(28px,7vh,84px) calc(var(--u)*3) 140px;
+}
+
+/* ---------- the heading ---------- */
+.co-head{ margin-bottom:clamp(20px,4vh,46px) }
+.co-head h1{
+  margin:0; font-family:var(--f-score); line-height:.9;
+  font-size:clamp(38px,7vw,74px); text-transform:uppercase;
+  letter-spacing:.02em;
+  /* cut into the water rather than into stone: the light lip goes ABOVE here,
+     because there is no slab under it to catch the sun */
+  color:#2b4c5c;
+  text-shadow:0 1px 0 rgba(255,255,255,.72), 0 -1px 1px rgba(20,50,64,.22);
+}
+.co-head p{
+  margin:calc(var(--u)*1.5) 0 0;
+  font-family:var(--f-micro); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:#3d5f6f;
+  text-shadow:0 1px 0 rgba(255,255,255,.6);
+}
+
+/* ---------- the grid ---------- */
+.co-grid{
+  display:grid; gap:calc(var(--u)*3);
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+}
+.co-loading{
+  font-family:var(--f-micro); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:#3d5f6f;
+}
+
+/* ---------- a card ---------- */
+/* .slab from splash.css supplies the stone, the arris and the shadow; this is
+   only what is different about a card of it. */
+.co-card{
+  position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+  min-height:236px; padding:calc(var(--u)*3);
+}
+
+.co-flag{
+  position:absolute; right:-4%; bottom:-16%;
+  font-size:clamp(150px,17vw,240px); line-height:1;
+  /* the engraving */
+  opacity:.13; filter:grayscale(.86) contrast(.85);
+  text-shadow:0 2px 0 rgba(255,255,255,.9), 0 -2px 2px rgba(30,60,74,.5);
+  pointer-events:none; user-select:none;
+  transition:transform .5s cubic-bezier(.2,.8,.3,1), opacity .5s ease;
+}
+.co-card:hover .co-flag{ transform:scale(1.05) rotate(-1.5deg); opacity:.17 }
+
+.co-name{
+  position:relative;
+  font-family:var(--f-ui); font-weight:800; font-size:clamp(19px,2vw,25px);
+  line-height:1.1; color:var(--ink); text-wrap:balance;
+}
+.co-count{
+  position:relative; margin-top:5px;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+
+/* ---------- the leagues inside it ---------- */
+.co-leagues{
+  position:relative; margin-top:auto; padding-top:calc(var(--u)*2);
+  display:flex; flex-direction:column; gap:1px;
+}
+.co-league{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; text-decoration:none; color:var(--ink);
+  /* A ruled line rather than a button. The card is the object; a league is a
+     line in it, and giving each one its own box would make five buttons where
+     the page wants one card. */
+  border-top:1px solid rgba(120,150,165,.34);
+  transition:background-color .16s ease, padding-left .16s ease;
+}
+.co-league:last-child{ border-bottom:1px solid rgba(120,150,165,.34) }
+.co-league:hover, .co-league:focus-visible{
+  background:rgba(255,255,255,.5); padding-left:17px; outline:none;
+}
+.co-league .nm{
+  flex:1; min-width:0; font-family:var(--f-ui); font-weight:700; font-size:14px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.co-league .go{
+  font-family:var(--f-micro); font-size:11px; color:var(--ink-2);
+  transition:transform .16s ease;
+}
+.co-league:hover .go{ transform:translateX(3px); color:var(--ink) }
+/* the league's own colour, as a bead — the only colour on the card */
+.co-league .dot{
+  width:9px; height:9px; flex:none; border-radius:50%;
+  box-shadow:0 0 0 1px rgba(255,255,255,.8), 0 1px 2px rgba(20,58,74,.35);
+}
+
+.co-empty{
+  font-family:var(--f-micro); font-size:9px; color:var(--ink-2);
+  line-height:1.9; padding-top:calc(var(--u)*2);
+}
+
+/* ---------- back to the splash ---------- */
+.co-back{
+  position:fixed; left:calc(var(--u)*3); bottom:calc(var(--u)*3); z-index:4;
+  display:inline-flex; align-items:center; gap:9px;
+  padding:9px 15px 9px 12px; text-decoration:none;
+  background:rgba(251,251,252,.9);
+  border:1px solid rgba(150,176,188,.55);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -2px 0 rgba(88,120,136,.2),
+    0 2px 4px rgba(20,58,74,.28),
+    0 10px 22px -8px rgba(20,58,74,.3);
+  transition:transform .16s ease, box-shadow .16s ease;
+}
+.co-back:hover{ transform:translateY(-1px) }
+.co-back:active{ transform:translateY(1px) }
+.co-back-arrow{
+  font-family:var(--f-score); font-size:17px; line-height:1; color:var(--ink-2);
+}
+/* THE LOGOTYPE, not the word. .epinoia-mark carries the face, the case and the
+   tracking from the kit, with !important, so this cannot be the one place the
+   brand is set in something else. */
+.co-back .epinoia-mark{
+  font-size:15px; line-height:1; color:var(--ink);
+}
+
+@media (max-width:560px){
+  .co-main{ padding-bottom:120px }
+  .co-card{ min-height:200px }
+  .co-flag{ font-size:130px; right:-6% }
+}

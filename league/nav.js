@@ -228,7 +228,6 @@
      this row up as well — its address is underneath this one. */
   if (/\/league\/admin\/(?!platform\/)/.test(here)) adminRow.classList.add('on');
   adminRow.hidden = true;
-  rootPanel.appendChild(adminRow);
 
   /* THE PLATFORM CONSOLE IS A SEPARATE ROW, not a tab inside the league one,
      because it is a different scope rather than a different page: everything
@@ -242,7 +241,6 @@
   platRow.title = 'platform administration — every league, accounts, settings';
   if (/\/league\/admin\/platform\//.test(here)) platRow.classList.add('on');
   platRow.hidden = true;
-  rootPanel.appendChild(platRow);
 
   /* The way back OUT of a country. The country panel has no back button
      because there is nothing above it; this one sits at the top of the
@@ -300,8 +298,19 @@
   });
   retarget();          // set the initial "you are here" marks
 
-  /* ---- the three that never move ---- */
+  /* ---- the rows that never move ---- */
   nav.appendChild(el('div', 'gap'));
+
+  /* ADMINISTRATION LIVES DOWN HERE NOW, with the account and the contact link,
+     because that is what it is: a thing about YOU rather than a thing about
+     the league on screen. It sat in the leagues panel, which meant the two
+     most powerful destinations on the platform were mixed in with a browse
+     list — and disappeared the moment you drilled into a league, which is
+     exactly when an administrator wants them.
+
+     Both stay hidden until whoami() says otherwise, and hiding them is a
+     courtesy: the consoles refuse everything to somebody without the role. */
+  nav.append(adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
@@ -320,11 +329,20 @@
   contact.title = 'contact';
   nav.appendChild(contact);
 
-  const prophesy = el('a', 'item');
-  prophesy.href = '/index.html';
-  prophesy.append(el('span', 'ic', '←'), el('span', 'tx', 'prophesy'));
-  prophesy.title = 'back to Prophesy';
-  nav.appendChild(prophesy);
+  /* THE WAY OUT IS EPINOIA, not Prophe(s)y. This rail is on the public half
+     of the site, and the row at the bottom of it should be the way back to
+     that half's own front page — the splash. The scouting side is reachable
+     from the splash's first deck, which is a better place for it: a link
+     labelled with the OTHER brand, at the foot of every league page, was
+     pointing most of the people who pressed it at a members-only sign-in.
+
+     In the logotype, so the brand is never set in the rail's own face. */
+  const home = el('a', 'item');
+  home.href = root;
+  const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
+  home.append(el('span', 'ic', '←'), homeTx);
+  home.title = 'back to Epinoia';
+  nav.appendChild(home);
 
   /* ============================================================== views === */
   let leagues = [];
@@ -425,14 +443,19 @@
      is ugly and correct — better than a hard-coded English list that is wrong
      for half the world and out of date for the rest. */
   function flagOf(code) {
-    if (!/^[A-Za-z]{2}$/.test(code || '')) return '\u{1F3F3}';   // a plain flag
+    /* A GLOBE for a league nobody has filed yet, and the same globe the
+       countries page uses. The rail said "Elsewhere" behind a white flag and
+       the page said "Not yet filed" behind a globe — two names and two glyphs
+       for one state, which is the kind of thing a reader notices and cannot
+       account for. */
+    if (!/^[A-Za-z]{2}$/.test(code || '')) return '\u{1F30D}';
     return String.fromCodePoint(...[...code.toUpperCase()]
       .map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
   }
 
   let regionNames = null;
   function countryName(code) {
-    if (!code) return 'Elsewhere';
+    if (!code) return 'Not yet filed';
     if (regionNames === undefined) return code;
     if (!regionNames) {
       try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
@@ -470,9 +493,7 @@
         row.append(el('span', 'ic', flagOf(code)), marquee(name));
         row.addEventListener('click', () => {
           country = code;
-          cname.textContent = '';
-          cname.append(el('span', 'ic', flagOf(code)), marquee(name));
-          cname.title = name;
+          fillCountryHead(code);
           drawLeagues();
           setView('root', true);
           const first = list.querySelector('a[data-league-slug]');
@@ -480,6 +501,18 @@
         });
         clist.appendChild(row);
       });
+  }
+
+  /* THE COUNTRY IS ALWAYS NAMED at the top of the leagues panel. It was only
+     written when somebody CLICKED a country row, so a page that opened drilled
+     into a league — which is most of them — showed an empty header with a back
+     button beside it and nothing saying where you were. */
+  function fillCountryHead(code) {
+    const name = countryName(code);
+    cname.textContent = '';
+    cname.append(el('span', 'ic', flagOf(code)), marquee(name));
+    cname.title = name;
+    cname.href = root + 'countries/';
   }
 
   cback.addEventListener('click', () => {
@@ -511,6 +544,8 @@
     const mine = leagues.find(l => l.slug === (lg || pageLeague));
     if (mine) country = mine.country || '';
     drawCountries();
+    /* named before the leagues are drawn, so the header is never briefly blank */
+    fillCountryHead(country === null ? '' : country);
     drawLeagues();
   }
 

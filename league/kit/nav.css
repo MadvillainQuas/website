@@ -102,6 +102,12 @@ body.has-nav{ padding-left:var(--nav-w) }
 .ep-nav .crow .ic{ font-size:14px }
 .ep-nav .lname .ic{ font-size:13px; margin-right:2px }
 .ep-nav .hide{ display:none !important }
+/* THE LOGOTYPE IN THE RAIL. EpinoiaMark sets about 467px per 100px against the
+   rail's own face at 298 — the same words in it are half again as wide — so
+   the row would run past 174px and the marquee would start scrolling a word
+   that fits perfectly well at the right size. 11px puts EPINOIΛ at roughly the
+   width the label it replaced occupied. */
+.ep-nav .tx.epinoia-mark{ font-size:11px; letter-spacing:.02em !important }
 /* the panel that is off screen is out of the tab order as well as out of
    sight — a keyboard user should never land on a link they cannot see */
 .ep-nav .panel[aria-hidden="true"]{ visibility:hidden }
