@@ -38,6 +38,7 @@ async function renderBracket(opts) {
       'home_from_tie,away_from_tie,' +
       'home:home_team_id(id,name,short_name,colour,slug),' +
       'away:away_team_id(id,name,short_name,colour,slug)' +
+      ',legs,decider,is_bye' +
       '&order=round.asc,slot.asc');
   } catch (e) {
     pane.appendChild(el('div', 'empty', 'Could not load the bracket: ' + e.message));
@@ -68,11 +69,25 @@ async function renderBracket(opts) {
   const board = el('div', 'bracket');
   [...rounds.keys()].sort((a, b) => a - b).forEach(r => {
     const col = el('div', 'brcol');
-    col.appendChild(el('div', 'brlabel', rounds.get(r)[0].label || ('Round ' + r)));
+    /* The round's own name, then how it is decided. A bracket that does not
+       say "best of three" makes a 1-0 look like a finished tie. */
+    const first = rounds.get(r)[0];
+    col.appendChild(el('div', 'brlabel',
+      (first.label || ('Round ' + r)) + (formatWord(first) ? ' · ' + formatWord(first) : '')));
     rounds.get(r).forEach(t => col.appendChild(tieCard(t, byId, gamesByTie)));
     board.appendChild(col);
   });
   pane.appendChild(board);
+}
+
+/* How a tie is decided, in the fewest words that are still unambiguous.
+   Nothing for a one-off game, because "one game" beside every tie in an
+   ordinary cup is noise. */
+function formatWord(t) {
+  if (!t || !t.legs || t.legs === 1) return '';
+  if (t.decider === 'aggregate') return t.legs === 2 ? 'two legs, on aggregate'
+                                                     : t.legs + ' legs, on aggregate';
+  return 'best of ' + t.legs;
 }
 
 function tieCard(t, byId, gamesByTie) {
@@ -97,7 +112,12 @@ function tieCard(t, byId, gamesByTie) {
         src ? 'winner of ' + (src.label || 'round ' + src.round) + ' ' + (src.slot + 1)
             : 'to be decided'));
     }
-    row.appendChild(el('span', 'bragg', agg == null ? '' : String(agg)));
+    /* For a series this number is GAMES WON, not points, which is the one
+       place the two readings could be confused — 2 beside a name in a
+       best-of-three is two wins, not two points. */
+    const n = el('span', 'bragg', agg == null ? '' : String(agg));
+    if (t.decider === 'wins' && t.legs > 1) n.title = 'games won';
+    row.appendChild(n);
     return row;
   };
 

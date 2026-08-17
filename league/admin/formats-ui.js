@@ -145,48 +145,185 @@ function mount(opts) {
     host.appendChild(el('div', 'row')).appendChild(gSave);
   }
 
-  /* ---- seed a bracket ---- */
+  /* ---- design a bracket -------------------------------------------------
+     Replaces the old "pick a power of two and press seed". A real post-season
+     is a SHAPE and a set of SERIES LENGTHS, and both are decisions a league
+     makes once and then wants written down: 1 & 2 bye and 3-6 play in, semis
+     best of three, final over two legs on aggregate.
+
+     The two arithmetic conditions are checked HERE as well as in the database,
+     not because the database needs help but because a designer that only says
+     no after you press the button is a designer you fight. The message is the
+     same either way; this one just arrives while you are still typing. */
   host.appendChild(el('div', 'fmt-h', 'Knockout'));
   host.appendChild(el('div', 'empty',
-    'Seeding builds the whole bracket at once: the top seed plays the lowest ' +
-    'qualifier, so the top two can only meet in the final. Ties fill themselves ' +
-    'in as results arrive — nothing here has to be revisited between rounds.'));
+    'The bracket is built in one go and fills itself in as results arrive - ' +
+    'nothing here has to be revisited between rounds. Seeding is standard: ' +
+    'the top seed meets the lowest qualifier, and the top two can only meet ' +
+    'in the final.'));
 
-  const sRow = el('div', 'row');
-  const nSel = el('select', 'ep-input');
-  nSel.style.flex = '0 0 auto';
-  [2, 4, 8, 16].forEach(n => {
-    const o = el('option', null, n + ' teams'); o.value = String(n); nSel.appendChild(o);
-  });
-  nSel.value = '4';
+  const dRow1 = el('div', 'row');
+  const nIn = el('input', 'ep-input'); nIn.type = 'number'; nIn.min = '2'; nIn.max = '32';
+  nIn.value = '4'; nIn.style.flex = '0 0 92px';
+  const bIn = el('input', 'ep-input'); bIn.type = 'number'; bIn.min = '0'; bIn.max = '16';
+  bIn.value = '0'; bIn.style.flex = '0 0 92px';
+  const lN = el('label', 'f'); lN.style.flex = '0 0 92px';
+  lN.append(el('span', null, 'ENTRANTS'), nIn);
+  const lB = el('label', 'f'); lB.style.flex = '0 0 92px';
+  lB.append(el('span', null, 'BYES'), bIn);
 
-  /* the table the seeds come from — usually the league this playoff belongs
-     to, which is a different competition from the playoff itself */
   const srcSel = el('select', 'ep-input');
-  srcSel.style.flex = '1 1 160px';
+  srcSel.style.flex = '1 1 180px';
   (opts.comps || []).forEach(c => {
     const o = el('option', null, 'seed from ' + c.name); o.value = c.id; srcSel.appendChild(o);
   });
   const table = (opts.comps || []).find(c => c.id !== opts.comp.id && c.format !== 'knockout');
   if (table) srcSel.value = table.id;
+  const lS = el('label', 'f'); lS.style.flex = '1 1 180px';
+  lS.append(el('span', null, 'SEEDS FROM'), srcSel);
 
-  const seed = el('button', 'ep-btn pri', 'seed bracket');
-  seed.type = 'button';
-  seed.addEventListener('click', async () => {
-    const n = parseInt(nSel.value, 10);
-    if (!confirm('Seeding replaces any existing bracket in ' + opts.comp.name +
-                 '. Build a ' + n + '-team bracket?')) return;
-    seed.disabled = true;
-    const { data, error } = await opts.sb.rpc('seed_bracket', {
-      p_competition: opts.comp.id, p_qualifiers: n, p_from_competition: srcSel.value
+  dRow1.append(lN, lB, lS);
+  host.appendChild(dRow1);
+
+  let preset = null;
+  let roundRows = [];
+
+  /* One preset row, because these are what almost every league picks and
+     typing 6 and 2 from scratch each time is how a bye ends up in the wrong
+     place. */
+  const presets = el('div', 'pick');
+  [['1-4 knockout', 4, 0, [{ legs: 1 }, { legs: 1 }]],
+   ['1-8 knockout', 8, 0, [{ legs: 1 }, { legs: 1 }, { legs: 1 }]],
+   ['1 & 2 bye, 3-6 play in', 6, 2,
+     [{ label: 'Play-in', legs: 1 }, { label: 'Semi-final', legs: 3 }, { label: 'Final', legs: 1 }]],
+   ['four teams, all best of three', 4, 0, [{ legs: 3 }, { legs: 3 }]],
+   ['final over two legs', 4, 0,
+     [{ legs: 1 }, { label: 'Final', legs: 2, decider: 'aggregate' }]]
+  ].forEach(entry => {
+    const c = el('button', 'ep-chip', entry[0]); c.type = 'button';
+    c.addEventListener('click', () => {
+      nIn.value = String(entry[1]); bIn.value = String(entry[2]);
+      preset = entry[3]; redrawRounds();
     });
-    seed.disabled = false;
-    if (error) return opts.say(error.message, 'err');
-    opts.say('Bracket seeded — ' + data + ' round' + (data === 1 ? '' : 's') + '.', 'ok');
+    presets.appendChild(c);
+  });
+  host.appendChild(presets);
+
+  const roundsHost = el('div');
+  host.appendChild(roundsHost);
+  const check = el('div', 'empty');
+  check.style.paddingTop = '0';
+  host.appendChild(check);
+
+  /* How many rounds a field of this shape produces, and whether it produces
+     one at all. Mirrors design_bracket exactly - see migration 0046. */
+  function shape() {
+    const n = parseInt(nIn.value, 10) || 0;
+    const b = parseInt(bIn.value, 10) || 0;
+    if (n < 2) return { bad: 'A bracket needs at least two teams.' };
+    if (b < 0 || b >= n) return { bad: 'There have to be fewer byes than entrants.' };
+    if ((n - b) % 2) return { bad: n + ' entrants with ' + b + ' bye' + (b === 1 ? '' : 's') +
+      ' leaves ' + (n - b) + ' teams to pair off, which is odd. Change one of them.' };
+    const k = (n - b) / 2, sv = b + k;
+    if (sv < 1 || (sv & (sv - 1))) return { bad: b + ' bye' + (b === 1 ? '' : 's') + ' plus ' + k +
+      ' first-round winner' + (k === 1 ? '' : 's') + ' is ' + sv +
+      ', which is not a power of two - the bracket would not fill.' };
+    let rounds = 1, x = sv;
+    while (x > 1) { rounds++; x /= 2; }
+    return { n: n, b: b, k: k, s: sv, rounds: rounds };
+  }
+
+  function defaultLabel(r, total, hasByes) {
+    if (r === total) return 'Final';
+    if (r === total - 1) return 'Semi-final';
+    if (r === total - 2) return 'Quarter-final';
+    if (r === 1 && hasByes) return 'Play-in';
+    return 'Round ' + r;
+  }
+
+  function redrawRounds() {
+    const sh = shape();
+    roundsHost.textContent = '';
+    roundRows = [];
+    check.textContent = '';
+    check.style.color = '';
+    if (sh.bad) { check.textContent = sh.bad; check.style.color = 'var(--flare)'; return; }
+
+    check.textContent = sh.rounds + ' round' + (sh.rounds === 1 ? '' : 's') + ': ' +
+      (sh.b ? sh.b + ' straight into round two, ' : '') + sh.k +
+      ' first-round tie' + (sh.k === 1 ? '' : 's') + '.';
+
+    for (let r = 1; r <= sh.rounds; r++) {
+      const p = (preset && preset[r - 1]) || {};
+      const row = el('div', 'row');
+      const lab = el('input', 'ep-input');
+      lab.value = p.label || defaultLabel(r, sh.rounds, sh.b > 0);
+      lab.maxLength = 24; lab.style.flex = '1 1 150px';
+      const fmt = el('select', 'ep-input'); fmt.style.flex = '0 0 auto';
+      [['1|wins', 'one game'],
+       ['2|aggregate', 'two legs, on aggregate'],
+       ['3|wins', 'best of three'],
+       ['5|wins', 'best of five'],
+       ['7|wins', 'best of seven']].forEach(pair => {
+        const o = el('option', null, pair[1]); o.value = pair[0]; fmt.appendChild(o);
+      });
+      fmt.value = (p.legs || 1) + '|' + (p.decider || (p.legs === 2 ? 'aggregate' : 'wins'));
+      if (!Array.prototype.some.call(fmt.options, o => o.value === fmt.value)) fmt.value = '1|wins';
+      row.append(el('span', 'ep-micro', 'Round ' + r), lab, fmt);
+      roundsHost.appendChild(row);
+      roundRows.push({ lab: lab, fmt: fmt });
+    }
+  }
+  nIn.addEventListener('input', () => { preset = null; redrawRounds(); });
+  bIn.addEventListener('input', () => { preset = null; redrawRounds(); });
+  redrawRounds();
+
+  const dRow2 = el('div', 'row');
+  const build = el('button', 'ep-btn pri', 'build bracket'); build.type = 'button';
+  const gen = el('button', 'ep-btn', 'create the games'); gen.type = 'button';
+  gen.title = 'one fixture per leg for every tie whose two sides are known';
+  const startIn = el('input', 'ep-input'); startIn.type = 'date';
+  startIn.style.flex = '0 0 150px';
+  const lStart = el('label', 'f'); lStart.style.flex = '0 0 150px';
+  lStart.append(el('span', null, 'FIRST ROUND ON'), startIn);
+  dRow2.append(build, lStart, gen);
+  host.appendChild(dRow2);
+
+  build.addEventListener('click', async () => {
+    const sh = shape();
+    if (sh.bad) return opts.say(sh.bad, 'err');
+    const spec = {
+      entrants: sh.n, byes: sh.b, source: srcSel.value,
+      rounds: roundRows.map(rr => {
+        const bits = rr.fmt.value.split('|');
+        return { label: rr.lab.value, legs: Number(bits[0]), decider: bits[1] };
+      })
+    };
+    if (!confirm('This replaces any existing bracket in ' + opts.comp.name +
+                 ', and any games already attached to it are left behind.\n\nBuild it?')) return;
+    build.disabled = true;
+    const res = await opts.sb.rpc('design_bracket',
+      { p_competition: opts.comp.id, p_spec: spec });
+    build.disabled = false;
+    if (res.error) return opts.say(res.error.message, 'err');
+    opts.say('Bracket built - ' + res.data + ' ties.', 'ok');
     if (opts.onDone) opts.onDone();
   });
-  sRow.append(nSel, srcSel, seed);
-  host.appendChild(sRow);
+
+  gen.addEventListener('click', async () => {
+    gen.disabled = true;
+    const res = await opts.sb.rpc('generate_tie_games', {
+      p_competition: opts.comp.id,
+      p_start: startIn.value || null, p_gap_days: 7 });
+    gen.disabled = false;
+    if (res.error) return opts.say(res.error.message, 'err');
+    opts.say(res.data
+      ? res.data + ' game' + (res.data === 1 ? '' : 's') + ' created. Run it again ' +
+        'after each round to add the next one.'
+      : 'Nothing to create - every playable tie already has its games.',
+      res.data ? 'ok' : 'warn');
+    if (opts.onDone) opts.onDone();
+  });
 
   /* ---- awards ---- */
   host.appendChild(el('div', 'fmt-h', 'Awards'));
