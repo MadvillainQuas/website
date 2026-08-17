@@ -27,7 +27,8 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 
-let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb = null, lastScorePub = '';
+let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb = null,
+    lastScorePub = '', scoreConfirmedLive = false, onRevoked = null;
 
 /* Only a real fixture has a row to patch — a scratch/training game has no
    uuid and nothing in the games table, so there is nothing to write. */
@@ -104,7 +105,17 @@ function maybeRoster(S) {
    durability for onlookers who are not on the realtime channel, not the
    scorer's own source of truth, so a failed write is logged and dropped
    rather than retried — the next scoring play carries a fresh signature and
-   tries again on its own. */
+   tries again on its own.
+
+   THE UPDATE IS SCOPED TO status='live', and that is deliberate rather than
+   incidental. An admin can revert this exact game out from under a
+   statistician who is still scoring it — the fixture goes back to
+   'scheduled', its score reset to 0-0 — and without the scope, this write
+   would cheerfully win the race and put a live-looking score back onto a
+   fixture that was just taken off the listing. Scoping the WHERE clause to
+   status='live' makes a reverted game simply match no rows instead: nothing
+   is overwritten, and a caller who was matching rows a moment ago and now
+   is not gets told about it through onRevoked, once, not on every tick. */
 function maybeScore(S) {
   if (!sb || !gameId || !GAME_UUID.test(gameId)) return;
   const d = (typeof derive === 'function') ? derive() : null;
@@ -113,8 +124,16 @@ function maybeScore(S) {
   if (sig === lastScorePub) return;
   lastScorePub = sig;
   sb.from('games').update({ home_score: d.score[0], away_score: d.score[1] })
-    .eq('id', gameId)
-    .then(({ error }) => { if (error) console.warn('[sync] score publish refused', error); });
+    .eq('id', gameId).eq('status', 'live').select('id')
+    .then(({ data, error }) => {
+      if (error) { console.warn('[sync] score publish refused', error); return; }
+      if (data && data.length) { scoreConfirmedLive = true; return; }
+      lastScorePub = '';                    // let the next scoring play try again
+      /* Only a warning once we have actually seen this game matched as live —
+         otherwise the very first basket, scored a beat before claimFixture's
+         own status:'live' write has committed, would report a false revert. */
+      if (scoreConfirmedLive && typeof onRevoked === 'function') onRevoked();
+    });
 }
 
 const api = {
@@ -127,6 +146,7 @@ const api = {
     gameId = opts.gameId;
     const mode = opts.mode || (root.epinoiaMode ? root.epinoiaMode() : 'local');
     sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
+    onRevoked = opts.onRevoked || null;
 
     pub = root.EpinoiaLive.publisher({
       gameId, mode, supabase: sb,

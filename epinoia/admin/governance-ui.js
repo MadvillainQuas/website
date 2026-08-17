@@ -92,10 +92,17 @@ function fixtureActions(o) {
         onDone && onDone();
         return;
       }
-      const m = /has (\d+) recorded event/.exec(first.error.message || '');
-      if (!m) { back.disabled = false; return say(first.error.message, 'err'); }
-
-      const n = m[1];
+      /* The event count travels in the exception's DETAIL field — surfaced
+         here as error.details — rather than parsed out of error.message with
+         a regex. The two client call sites for this button (here and the
+         public box score) used to each keep their own copy of that regex
+         against the same SQL prose; a reworded sentence would have broken
+         both silently, with nothing in CI to notice a string literal changed
+         rather than a type. */
+      const n = first.error.details;
+      if (!n || !/^\d+$/.test(String(n))) {
+        back.disabled = false; return say(first.error.message, 'err');
+      }
       const sure = confirm(
         'Put this game back on the fixture list?\n\n' +
         n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +

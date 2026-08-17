@@ -873,8 +873,30 @@
       mode = 'local';
     }
 
+    /* An admin can revert THIS fixture out from under a statistician who is
+       still scoring it — the box score offers that button precisely so a
+       game started by mistake can be undone, and it does not know or care
+       whether a device is still open on the other end. sync.js notices the
+       moment its next score write matches no row (the fixture is no longer
+       'live') and calls this once. A quiet badge alone is too easy to miss
+       mid-game, so this also interrupts with an alert — every tap from here
+       is not being recorded, which is worth stopping for. */
+    let revokedWarned = false;
+    const onRevoked = () => {
+      say('reverted by an admin · nothing is being saved', '#ff5f6b');
+      bar.style.borderColor = 'rgba(255,95,107,.7)';
+      bar.style.background = 'rgba(40,6,8,.94)';
+      if (revokedWarned) return;
+      revokedWarned = true;
+      try {
+        alert('This game was put back on the fixture list by an admin.\n\n' +
+              'Nothing scored from now on is being saved. Close this tab and ' +
+              'reopen the scorer from the fixture list if you meant to keep going.');
+      } catch (_) {}
+    };
+
     try {
-      window.EpinoiaSync.attach({ gameId, mode, supabase: sb });
+      window.EpinoiaSync.attach({ gameId, mode, supabase: sb, onRevoked });
       say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
     } catch (e) {
       console.error('[bootstrap]', e);

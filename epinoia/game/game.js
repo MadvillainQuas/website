@@ -235,30 +235,55 @@ function storedToken() {
   } catch (_) { return null; }
 }
 
-let ctaAsked = false;
+/* A transient failure (a dropped request, a cold function) must not be the
+   difference between a statistician seeing the button and not — three tries
+   with a growing pause, which is cheap because this only runs while the
+   button is still hidden. */
+async function withRetry(fn, tries, delayMs) {
+  tries = tries || 3; delayMs = delayMs || 700;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); }
+    catch (_) { if (i === tries - 1) return null; }
+    await new Promise(res => setTimeout(res, delayMs * (i + 1)));
+  }
+  return null;
+}
+
+async function rpcCall(fn, args, token) {
+  const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + fn, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token,
+               'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(args)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+/* Re-checked whenever a session appears where there was none — signing in on
+   /epinoia/app/ in another tab writes the same localStorage key this page
+   reads, and that write fires a 'storage' event here. Without this, a reader
+   who opened the box score before signing in would never see either button
+   for the rest of the visit, no matter how they signed in afterwards. */
+let scoreChecking = false, scoreShown = false;
 async function offerToScore() {
   const cta = document.getElementById('scoreCta');
-  if (!cta || ctaAsked) return;
+  if (!cta || scoreShown || scoreChecking) return;
   /* A finalised game is not scorable by anyone, so there is nothing to ask
      about — and asking anyway would put a request on the most-visited version
      of this page. */
-  if (!gameId || S.status === 'final') return;
+  if (!gameId || !S || S.status === 'final') return;
   const token = storedToken();
-  if (!token) return;
-  ctaAsked = true;
+  if (!token) return;                          // try again once signed in
+  scoreChecking = true;
   try {
-    const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/can_score', {
-      method: 'POST', cache: 'no-store',
-      headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token,
-                 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ p_game: gameId })
-    });
-    if (!r.ok) return;
-    if ((await r.json()) !== true) return;
-  } catch (_) { return; }
-  cta.href = '../score/?g=' + encodeURIComponent(gameId);
-  cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
-  cta.classList.remove('hide');
+    const ok = await withRetry(() => rpcCall('can_score', { p_game: gameId }, token));
+    if (ok !== true) return;
+    cta.href = '../score/?g=' + encodeURIComponent(gameId);
+    cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
+    cta.classList.remove('hide');
+    scoreShown = true;
+  } finally { scoreChecking = false; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -285,46 +310,58 @@ async function offerToScore() {
    omits the discard flag, the database refuses and answers with the count, and
    that count goes into the question. Nobody agrees to discard a log without
    being told how big it is. */
-let revertAsked = false;
-async function offerToRevert() {
-  const cta = document.getElementById('revertCta');
-  if (!cta || revertAsked) return;
-  /* Only a game that is actually stuck. A scheduled game has nothing to put
-     back, and a final one is refused by the database anyway — offering the
-     button there would be offering a refusal. */
-  if (!gameId || (S.status !== 'live' && S.status !== 'finalising')) return;
-  const token = storedToken();
-  if (!token) return;
-  revertAsked = true;
-
-  const call = (body) => fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + body.fn, {
+/* The raw fetch body on refusal — needed below to read the structured event
+   count off a REJECTED call, which r.json() alone does not give us since
+   rpcCall() throws on a non-2xx status. */
+async function rpcCallRaw(fn, args, token) {
+  const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + fn, {
     method: 'POST', cache: 'no-store',
     headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token,
                'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body.args)
+    body: JSON.stringify(args)
   });
+  const body = await r.json().catch(() => null);
+  return { ok: r.ok, body };
+}
 
+let revertChecking = false, revertShown = false;
+async function offerToRevert() {
+  const cta = document.getElementById('revertCta');
+  if (!cta || revertShown || revertChecking) return;
+  /* Only a game that is actually stuck. A scheduled game has nothing to put
+     back, and a final one is refused by the database anyway — offering the
+     button there would be offering a refusal. */
+  if (!gameId || !S || (S.status !== 'live' && S.status !== 'finalising')) return;
+  const token = storedToken();
+  if (!token) return;                          // try again once signed in
+  revertChecking = true;
   try {
-    const r = await call({ fn: 'can_manage_game', args: { p_game: gameId } });
-    if (!r.ok || (await r.json()) !== true) return;
-  } catch (_) { return; }
+    const ok = await withRetry(() => rpcCall('can_manage_game', { p_game: gameId }, token));
+    if (ok !== true) return;
+    cta.classList.remove('hide');
+    revertShown = true;
+    cta.addEventListener('click', onRevertClick, { once: false });
+  } finally { revertChecking = false; }
 
-  cta.classList.remove('hide');
-  cta.addEventListener('click', async () => {
+  async function onRevertClick() {
     cta.disabled = true;
-    const attempt = async (discard) => {
-      const r = await call({ fn: 'revert_game',
-        args: discard ? { p_game: gameId, p_discard_events: true } : { p_game: gameId } });
-      const body = await r.json().catch(() => null);
-      return { ok: r.ok, body };
-    };
+    const tok = storedToken();
+    if (!tok) { cta.disabled = false; alert('Signed out — sign in again to revert this game.'); return; }
+    const attempt = discard => rpcCallRaw('revert_game',
+      discard ? { p_game: gameId, p_discard_events: true } : { p_game: gameId }, tok);
     try {
       let out = await attempt(false);
       if (!out.ok) {
-        const msg = (out.body && (out.body.message || out.body.hint)) || '';
-        const m = /has (\d+) recorded event/.exec(msg);
-        if (!m) { cta.disabled = false; alert(msg || 'That was refused.'); return; }
-        const n = m[1];
+        /* The event count travels in the exception's DETAIL field, which
+           PostgREST surfaces as body.details — a structured value meant for
+           exactly this, unlike body.message, whose wording is free to change
+           for tone without anyone realising a client was parsing it. */
+        const n = out.body && out.body.details;
+        if (!n || !/^\d+$/.test(String(n))) {
+          cta.disabled = false;
+          alert((out.body && out.body.message) || 'That was refused.');
+          return;
+        }
         const sure = confirm(
           'Put this game back on the fixture list?\n\n' +
           n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
@@ -348,8 +385,15 @@ async function offerToRevert() {
       cta.disabled = false;
       alert('That was refused: ' + (e.message || e));
     }
-  }, { once: false });
+  }
 }
+
+/* Signing in elsewhere writes this page's own auth key, which fires 'storage'
+   here. Retrying costs nothing once a button is already shown — both
+   functions no-op on their own guard. */
+window.addEventListener('storage', e => {
+  if (e.key && /-auth-token$/.test(e.key)) { offerToScore(); offerToRevert(); }
+});
 
 /* cheap: 576 characters, safe to run on every clock tick */
 function renderHead(d) {
@@ -537,7 +581,16 @@ function mergeLive(game, events, removed, full) {
     if (game.status) {
       window.S.status = game.status;
       window.S.phase = game.status === 'final' ? 'final' : 'game';
-      if (game.status === 'final') setStatus('final');
+      if (game.status === 'final') {
+        setStatus('final');
+        /* Neither button is offered to a final game — scoring is refused and
+           reverting is refused, both server-side, so a button left visible
+           from before the game ended would only ever produce an alert. */
+        const scoreCta = document.getElementById('scoreCta');
+        if (scoreCta) scoreCta.classList.add('hide');
+        const revertCta = document.getElementById('revertCta');
+        if (revertCta) revertCta.classList.add('hide');
+      }
     }
   }
   /* Retractions first. A statistician who undoes a basket, or edits one in
