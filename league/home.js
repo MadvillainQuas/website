@@ -792,6 +792,21 @@ function renumber() {
     if (mode) mode.textContent = 'transport: ' +
       (window.epinoiaMode ? window.epinoiaMode() : 'local');
     if (window.EpinoiaSplash) window.EpinoiaSplash.mount({ api, cfg: CFG });
+
+    /* THE TRACK, and only here. This branch is the splash; the league page is
+       the other one and shares the document, so mounting from inside it is
+       what keeps SoundCloud's script off every league's front page rather
+       than trusting a guard inside music.js to be the only line of defence.
+
+       Not on a phone: the slab is hidden under 900px and loading a player
+       nobody can see is somebody's data spent on nothing. */
+    if (window.EpinoiaMusic && window.matchMedia('(min-width:901px)').matches) {
+      const sc = document.querySelector('#sc');
+      if (sc) {
+        sc.classList.remove('hide');
+        window.EpinoiaMusic.mount(sc);
+      }
+    }
   }
 })();
 

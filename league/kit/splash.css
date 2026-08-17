@@ -563,3 +563,36 @@ body.splash-body{
    colours — it is the same rail everywhere else on the site — but the page
    must make room for it exactly as every other page does. */
 body.splash-body{ background:#bfe2ee }
+
+/* ============================================================================
+   THE TRACK, top right.
+
+   The widget is the one element on this page whose insides we do not draw, so
+   it is set into a slab of the same stone as everything else and given the same
+   arris and shadow. Inside it, SoundCloud's own chrome is left alone: restyling
+   somebody else's iframe is not possible from out here, and pretending to by
+   overlaying it would break the play button.
+
+   HIDDEN ON SMALL SCREENS. 300px of player on a 375px phone is the page, and a
+   landing page whose first element is an audio widget is a landing page nobody
+   waits for.
+   ============================================================================ */
+.sc-slab{
+  position:fixed; z-index:3;
+  top:calc(var(--u)*3); right:calc(var(--u)*3);
+  width:clamp(260px, 25vw, 330px);
+  padding:6px;
+  /* the arris and the shadow come from .slab; only the size is local */
+}
+.sc-slab.hide{ display:none }
+.sc-frame{
+  display:block; width:100%; height:120px; border:0;
+  /* the widget paints its own white; without this the stone shows through the
+     rounded corners it draws and reads as a misprint */
+  background:#fbfbfc;
+}
+@media (max-width:900px){ .sc-slab{ display:none !important } }
+@media (prefers-reduced-motion:reduce){
+  /* Motion is stopped elsewhere on this page; sound is not motion and is left
+     to the visitor and their browser, which is already refusing to start it. */
+}
