@@ -106,8 +106,16 @@ async function games() {
   const odd = gs.filter(g => g.status === 'final' && at(g) > now)
                 .sort((a, b) => at(a) - at(b));
 
+  /* ONE DATE ORDER. The four buckets above decide WHICH games are worth
+     showing; they are not four lists to print in sequence. Printed that way a
+     result from Tuesday sat below a fixture next month and above one
+     yesterday, and a reader scanning for a date had to know the buckets
+     existed. Anything LIVE stays pinned at the top — it is the thing somebody
+     opened the page for — and everything else runs strictly by kick-off,
+     earliest first, so results flow into fixtures the way a season does. */
   const CAP = 15;
-  const shown = live.concat(recent, upcoming, odd).slice(0, CAP);
+  const rest = recent.concat(upcoming, odd).sort((a, b) => at(a) - at(b));
+  const shown = live.concat(rest).slice(0, CAP);
   const total = gs.length;
 
   if (!shown.length) {
@@ -587,6 +595,21 @@ async function teamOfTheYear() {
   }
 }
 
+/* The five most recent published articles, above everything else a league
+   page shows. Silent when there are none: a league that does not write news
+   should not carry an empty section explaining that it does not. */
+async function news() {
+  if (!LEAGUE || !window.EpinoiaNews) return;
+  try {
+    await window.EpinoiaNews.mountHeadlines({
+      sec: $('#newsSec'), host: $('#news'), note: $('#newsNote'),
+      leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug, rpc, base: '',
+      url: p => /^https?:\/\//.test(p || '') ? p
+        : (window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, p) : p)
+    });
+  } catch (_) { /* news is not load-bearing for the rest of the page */ }
+}
+
 async function socials() {
   if (!LEAGUE || !window.EpinoiaSocials) return;
   try {
@@ -654,6 +677,7 @@ function renumber() {
 
     await games();
     splash();
+    await news();
     const roster = await clubs();
     await teamOfTheYear();
     const star = await stars();

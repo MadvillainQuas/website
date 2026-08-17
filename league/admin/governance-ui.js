@@ -428,35 +428,93 @@ function mountRecords(o) {
       plist.appendChild(el('div', 'empty', 'Nobody found.'));
       return;
     }
+    /* THE SAME FIELDS THE CLUB PORTAL MAINTAINS. Two editors for one player
+       that disagree about which fields exist is how a club fills in a
+       wingspan that a league administrator then cannot see — so this is the
+       portal's card laid out as rows, writing through the same RPCs, which
+       migration 0052 relaxed to accept a league admin. */
     data.slice(0, 120).forEach(p => {
-      const row = el('div', 'row');
+      const card = el('div', 'gv-player');
+
+      const r1 = el('div', 'row');
       const first = el('input', 'ep-input'); first.value = p.first_name;
-      first.style.flex = '1 1 130px';
+      first.style.flex = '1 1 120px';
       const last = el('input', 'ep-input'); last.value = p.last_name;
-      last.style.flex = '1 1 150px';
+      last.style.flex = '1 1 140px';
       const yr = el('input', 'ep-input'); yr.type = 'number'; yr.min = '1900'; yr.max = '2100';
-      yr.value = p.birth_year || ''; yr.style.flex = '0 0 90px'; yr.placeholder = 'born';
+      yr.value = p.birth_year || ''; yr.style.flex = '0 0 88px'; yr.placeholder = 'born';
+      const who = el('span', 'mt', p.team_name + (p.jersey ? ' #' + p.jersey : '') +
+                                  (p.age != null ? ' · ' + p.age : '') +
+                                  (p.suspended ? ' · BANNED' : ''));
+      who.style.marginLeft = 'auto';
+      r1.append(first, last, yr, who);
+      card.appendChild(r1);
+
+      const r2 = el('div', 'row');
+      const h = el('input', 'ep-input'); h.type = 'number'; h.placeholder = 'ht cm';
+      h.value = p.height_cm || ''; h.style.flex = '0 0 88px';
+      const w = el('input', 'ep-input'); w.type = 'number'; w.placeholder = 'wt kg';
+      w.value = p.weight_kg || ''; w.style.flex = '0 0 88px';
+      const ws = el('input', 'ep-input'); ws.type = 'number'; ws.placeholder = 'wing cm';
+      ws.value = p.wingspan_cm || ''; ws.style.flex = '0 0 96px';
+      const pos = el('input', 'ep-input'); pos.placeholder = 'position';
+      pos.value = p.position || ''; pos.style.flex = '1 1 120px';
+      const prev = el('input', 'ep-input'); prev.placeholder = 'previous club';
+      prev.value = (p.previous_clubs && p.previous_clubs[0] && p.previous_clubs[0].club)
+                   || p.previous_club || '';
+      prev.style.flex = '1 1 150px';
+      r2.append(h, w, ws, pos, prev);
+      card.appendChild(r2);
+
+      const r3 = el('div', 'row');
       const minor = el('label', 'sw');
       const mb = el('input'); mb.type = 'checkbox'; mb.checked = p.is_minor;
-      minor.append(mb, document.createTextNode(' U18'));
+      minor.append(mb, document.createTextNode(' protected'));
       const cons = el('label', 'sw');
       const cb = el('input'); cb.type = 'checkbox'; cb.checked = p.photo_consent;
       cons.append(cb, document.createTextNode(' photo consent'));
-      const who = el('span', 'mt', p.team_name + (p.jersey ? ' #' + p.jersey : '') +
-                                  (p.suspended ? ' · BANNED' : ''));
-      const save = el('button', 'ep-btn mini', 'save'); save.type = 'button';
+      const pubc = el('label', 'sw');
+      const pb = el('input'); pb.type = 'checkbox'; pb.checked = !!p.public_consent;
+      pubc.append(pb, document.createTextNode(' publication consent'));
+      const guard = el('input', 'ep-input'); guard.placeholder = 'who gave consent';
+      guard.value = p.consent_guardian || ''; guard.style.flex = '1 1 170px';
+      const save = el('button', 'ep-btn mini pri', 'save'); save.type = 'button';
+      r3.append(minor, cons, pubc, guard, save);
+      card.appendChild(r3);
+
       save.addEventListener('click', async () => {
+        if (pb.checked && !guard.value.trim()) {
+          return o.say('Record who gave consent before ticking it.', 'err');
+        }
         save.disabled = true;
-        const { error } = await o.sb.rpc('admin_update_player', {
-          p_player: p.player_id, p_first: first.value, p_last: last.value,
-          p_birth_year: yr.value ? Number(yr.value) : null,
-          p_is_minor: mb.checked, p_photo_consent: cb.checked });
+        try {
+          /* TWO CALLS, because they are two different rights. A league may
+             correct a spelling on any player in it; recording a guardian's
+             permission is the narrower one, and keeping them apart means the
+             refusal, when it comes, names which of the two was refused. */
+          let r = await o.sb.rpc('admin_update_player', {
+            p_player: p.player_id, p_first: first.value, p_last: last.value,
+            p_birth_year: yr.value ? Number(yr.value) : null,
+            p_is_minor: mb.checked, p_photo_consent: cb.checked });
+          if (r.error) throw r.error;
+
+          /* 0 clears a measurement, null leaves it alone — an untouched box
+             must not wipe what a club typed in. */
+          const num = v => v.value === '' ? 0 : Number(v.value);
+          r = await o.sb.rpc('set_player_profile', {
+            p_player: p.player_id, p_height: num(h), p_weight: num(w),
+            p_wingspan: num(ws), p_previous_club: prev.value,
+            p_position: pos.value, p_consent: pb.checked, p_guardian: guard.value });
+          if (r.error) throw r.error;
+
+          o.say('Saved ' + first.value + ' ' + last.value + '.', 'ok');
+        } catch (e) {
+          o.say(e.message || 'That was refused.', 'err');
+        }
         save.disabled = false;
-        if (error) return o.say(error.message, 'err');
-        o.say('Saved ' + first.value + ' ' + last.value + '.', 'ok');
       });
-      row.append(first, last, yr, minor, cons, who, save);
-      plist.appendChild(row);
+
+      plist.appendChild(card);
     });
   }
   let t = null;

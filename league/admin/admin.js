@@ -463,6 +463,30 @@ function mountGovernance() {
 
   window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
                                   cfg: window.EPINOIA_CONFIG });
+  window.EpinoiaNewsUI.mount({ host: '#newsPanel', sb, league, say,
+                               cfg: window.EPINOIA_CONFIG });
+  fillGrantTeams();
+}
+
+/* The club picker beside the People form, which only means anything for the
+   club-scoped role. A league admin can now appoint a club's manager
+   (migration 0051) — before that, the one person with a list of who runs each
+   club was the only one who could not hand out the role. */
+function fillGrantTeams() {
+  const sel = $('#grTeam');
+  if (!sel) return;
+  sel.textContent = '';
+  teams.forEach(t => {
+    const o = el('option', null, t.name);
+    o.value = t.id; sel.appendChild(o);
+  });
+  if (!teams.length) sel.appendChild(el('option', null, 'no clubs in this league yet'));
+  syncGrantScope();
+}
+
+function syncGrantScope() {
+  const isTeam = $('#grRole').value === 'team_manager';
+  $('#grTeam').classList.toggle('hide', !isTeam);
 }
 
 /* The generator needs the entered teams and their groups, plus what is already
@@ -762,12 +786,17 @@ $('#fxGo').addEventListener('click', async () => {
   await loadFixtures();
 });
 
+$('#grRole').addEventListener('change', syncGrantScope);
 $('#grGo').addEventListener('click', async () => {
   const v = $('#grEmail').value.trim();
   if (!v) return say('Enter the email address of the account to grant.', 'err');
+  const role = $('#grRole').value;
+  const toTeam = role === 'team_manager';
+  if (toTeam && !$('#grTeam').value) return say('Choose the club.', 'err');
   const { data, error } = await sb.rpc('grant_role', {
-    p_email: v, p_role: $('#grRole').value,
-    p_scope_type: 'league', p_scope_id: league.id
+    p_email: v, p_role: role,
+    p_scope_type: toTeam ? 'team' : 'league',
+    p_scope_id: toTeam ? $('#grTeam').value : league.id
   });
   if (error) return oops(error);
   say(data, /^no account/.test(data) ? 'err' : 'ok');

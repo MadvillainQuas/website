@@ -223,10 +223,15 @@ async function render() {
   if (stateFilter === 'results') list = list.filter(g => g.status === 'final' || g.status === 'live');
   if (stateFilter === 'upcoming') list = list.filter(g => g.status === 'scheduled');
 
-  /* Results newest first, fixtures soonest first. A season list read either
-     way round is wrong for half of it, so it is sorted by what you are
-     looking at rather than by one rule for both. */
-  list.sort((a, b) => stateFilter === 'upcoming' ? at(a) - at(b) : at(b) - at(a));
+  /* EVERY VIEW IS IN DATE ORDER; only the direction changes, and only where
+     the direction is the point. Results alone read newest first, because a
+     results feed is about what just happened. Everything else — the whole
+     season, or the fixtures still to play — runs forwards, so round one is at
+     the top and the reader scrolls towards games that have not happened.
+
+     Showing everything used to use the results direction, which put next
+     May above last September and read as no order at all. */
+  list.sort((a, b) => stateFilter === 'results' ? at(b) - at(a) : at(a) - at(b));
 
   $('#count').textContent = list.length +
     (list.length === 1 ? ' fixture' : ' fixtures') +

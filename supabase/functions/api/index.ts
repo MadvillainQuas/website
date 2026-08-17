@@ -172,8 +172,17 @@ async function route(parts: string[], url: URL, leagueScope: string | null) {
       // table into one — a view has no foreign keys for it to follow. So the
       // names are resolved in a second pass and stitched here, which is what
       // the pages do too.
+      /* EVERY COLUMN THE VIEW COMPUTES, not the dozen the first version
+         picked. A partner republishing a league is doing arithmetic we have
+         already done — offensive and defensive rebounds separately, fouls
+         drawn, plus/minus, the shot splits by zone, and the rates. Making
+         them re-derive eFG% from four counting stats is how two sites end up
+         publishing different numbers for the same player, and the columns
+         cost nothing to send: the view already produced them. */
       const { data, error } = await admin.from('player_season_stats')
-        .select('player_id,team_id,gp,min,pts,reb,ast,stl,blk,tov,fgm,fga,p3m,p3a,ftm,fta')
+        .select('player_id,team_id,gp,min,pts,oreb,dreb,reb,ast,stl,blk,tov,pf,fd,pm,' +
+                'p2m,p2a,p3m,p3a,ftm,fta,fgm,fga,rim_a,rim_m,mid_a,mid_m,' +
+                'ppg,rpg,apg,efg,ts,p3_pct,ft_pct,rim_pct,ast_to')
         .eq('competition_id', comp.id)
         .order('pts', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -196,16 +205,34 @@ async function route(parts: string[], url: URL, leagueScope: string | null) {
         players: (data || []).map((r: any) => ({
           player: player(pById.get(r.player_id)), team: team(tById.get(r.team_id)),
           games: r.gp, minutes: r.min,
-          totals: { points: r.pts, rebounds: r.reb, assists: r.ast,
-                    steals: r.stl, blocks: r.blk, turnovers: r.tov,
-                    fg: { made: r.fgm, attempted: r.fga },
-                    three: { made: r.p3m, attempted: r.p3a },
-                    ft: { made: r.ftm, attempted: r.fta } },
+          totals: {
+            points: r.pts,
+            rebounds: r.reb, offensive_rebounds: r.oreb, defensive_rebounds: r.dreb,
+            assists: r.ast, steals: r.stl, blocks: r.blk, turnovers: r.tov,
+            fouls: r.pf, fouls_drawn: r.fd, plus_minus: r.pm,
+            fg: { made: r.fgm, attempted: r.fga },
+            two: { made: r.p2m, attempted: r.p2a },
+            three: { made: r.p3m, attempted: r.p3a },
+            ft: { made: r.ftm, attempted: r.fta },
+            /* Shot location, which nothing downstream can reconstruct: it
+               comes from the coordinates the scorer recorded, not from the
+               box score. */
+            at_rim: { made: r.rim_m, attempted: r.rim_a },
+            mid_range: { made: r.mid_m, attempted: r.mid_a }
+          },
+          /* PRE-DIVIDED, from the view rather than from JavaScript here. Two
+             places rounding the same average is two places to disagree. */
           per_game: r.gp ? {
-            points: +(r.pts / r.gp).toFixed(1),
-            rebounds: +(r.reb / r.gp).toFixed(1),
-            assists: +(r.ast / r.gp).toFixed(1)
-          } : null
+            points: r.ppg, rebounds: r.rpg, assists: r.apg,
+            steals: +(r.stl / r.gp).toFixed(1),
+            blocks: +(r.blk / r.gp).toFixed(1),
+            turnovers: +(r.tov / r.gp).toFixed(1),
+            minutes: +(r.min / r.gp).toFixed(1)
+          } : null,
+          rates: {
+            efg_pct: r.efg, ts_pct: r.ts, three_pct: r.p3_pct,
+            ft_pct: r.ft_pct, rim_pct: r.rim_pct, assist_to_turnover: r.ast_to
+          }
         }))
       });
     }

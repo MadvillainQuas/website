@@ -319,7 +319,10 @@ async function renderFixtures() {
     `games?competition_id=eq.${comp.id}` +
     `&select=id,tipoff_at,status,home_score,away_score,venue,` +
     `home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)` +
-    `&order=tipoff_at.desc`);
+    /* Ascending: this is a FIXTURE LIST. Newest-first is right for a results
+       feed and wrong for a schedule, where round one belongs at the top and
+       the reader scrolls towards the games that have not happened. */
+    `&order=tipoff_at.asc`);
   const pane = $('#pane-fixtures'); pane.textContent = '';
   if (!gs.length) { pane.appendChild(el('div', 'empty', 'No fixtures scheduled.')); return; }
 

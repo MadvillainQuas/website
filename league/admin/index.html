@@ -11,8 +11,9 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=56">
-<link rel="stylesheet" href="../kit/nav.css?v=56">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=62">
+<link rel="stylesheet" href="../kit/nav.css?v=62">
+<link rel="stylesheet" href="../kit/news.css?v=62">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -67,6 +68,9 @@
   .gv-edit{border-left:2px solid var(--lume);padding:9px 0 3px 11px;
     margin:0 0 9px;background:color-mix(in oklch,var(--lume) 4%,transparent)}
   .gv-edit .row:last-child{margin-bottom:0}
+  .gv-player{border:1px solid var(--rule);padding:calc(var(--u)*1.5);
+    margin-bottom:calc(var(--u)*1.5)}
+  .gv-player .row:last-child{margin-bottom:0}
   @media (max-width:640px){ .fxrow{grid-template-columns:1fr;gap:4px} .fxrow .h{text-align:left} }
   .mq{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;
     padding:10px 0;border-bottom:1px solid var(--rule)}
@@ -412,6 +416,12 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">07g</span><h2>News</h2>
+        <span class="note">writers and articles</span></div>
+      <div class="body"><div id="newsPanel"></div></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h"><span class="idx">08</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
@@ -467,7 +477,11 @@
           <select id="grRole" class="ep-input" style="flex:0 0 auto">
             <option value="league_admin">league admin</option>
             <option value="statistician">statistician</option>
+            <option value="team_manager">club manager — opens the club portal</option>
           </select>
+          <!-- shown only for the club-scoped role; a role picker that always
+               carries a club picker implies the two are always related -->
+          <select id="grTeam" class="ep-input hide" style="flex:1 1 180px"></select>
           <button id="grGo" class="ep-btn" type="button">grant</button>
         </div>
         <div id="grList" class="list"></div>
@@ -484,23 +498,25 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=56"></script>
-<script src="../upload.js?v=56"></script>
-<script src="../vendor/supabase.js?v=56"></script>
-<script src="../livestats.js?v=56"></script>
-<script src="import-ui.js?v=56"></script>
-<script src="schedule.js?v=56"></script>
-<script src="fixtures-ui.js?v=56"></script>
-<script src="formats-ui.js?v=56"></script>
-<script src="keys-ui.js?v=56"></script>
-<script src="feeds-ui.js?v=56"></script>
-<script src="../artwork.js?v=56"></script>
-<script src="merch-ui.js?v=56"></script>
-<script src="webhook-ui.js?v=56"></script>
-<script src="governance-ui.js?v=56"></script>
-<script src="awards-ui.js?v=56"></script>
-<script src="socials-ui.js?v=56"></script>
-<script src="admin.js?v=56"></script>
-<script src="../nav.js?v=56"></script>
+<script src="../config.js?v=62"></script>
+<script src="../upload.js?v=62"></script>
+<script src="../vendor/supabase.js?v=62"></script>
+<script src="../livestats.js?v=62"></script>
+<script src="import-ui.js?v=62"></script>
+<script src="schedule.js?v=62"></script>
+<script src="fixtures-ui.js?v=62"></script>
+<script src="formats-ui.js?v=62"></script>
+<script src="keys-ui.js?v=62"></script>
+<script src="feeds-ui.js?v=62"></script>
+<script src="../artwork.js?v=62"></script>
+<script src="merch-ui.js?v=62"></script>
+<script src="webhook-ui.js?v=62"></script>
+<script src="governance-ui.js?v=62"></script>
+<script src="awards-ui.js?v=62"></script>
+<script src="socials-ui.js?v=62"></script>
+<script src="../newsblocks.js?v=62"></script>
+<script src="news-ui.js?v=62"></script>
+<script src="admin.js?v=62"></script>
+<script src="../nav.js?v=62"></script>
 </body>
 </html>
