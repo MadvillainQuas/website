@@ -277,7 +277,7 @@ function mount(opts) {
             const path = logos.get(club.id);
             if (path) {
               spec.logoDataUri = await dataUri(
-                opts.cfg.supabaseUrl + '/storage/v1/object/public/' + path);
+                opts.cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + path);
               const sz = await imageSize(spec.logoDataUri);
               spec.logoWidth = sz.width; spec.logoHeight = sz.height;
             }

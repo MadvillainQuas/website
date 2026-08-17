@@ -602,7 +602,7 @@ async function merch(roster, star) {
         const md = await api('media?id=eq.' + p.photo_media_id +
           '&status=eq.approved&select=storage_path&limit=1');
         if (md.length) {
-          feature.photo = CFG.supabaseUrl + '/storage/v1/object/public/' + md[0].storage_path;
+          feature.photo = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + md[0].storage_path;
         }
       }
     } catch (_) { /* the printed monogram stands in for a photograph */ }

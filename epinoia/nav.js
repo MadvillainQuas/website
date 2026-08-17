@@ -165,7 +165,7 @@
     const cfg = window.EPINOIA_CONFIG;
     if (l.logo_path && cfg && cfg.supabaseUrl) {
       const img = document.createElement('img');
-      img.src = cfg.supabaseUrl + '/storage/v1/object/public/' + l.logo_path;
+      img.src = cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path;
       img.alt = '';
       /* a logo that fails to load falls back to the monogram rather than
          leaving a blank plate */

@@ -629,7 +629,7 @@ async function render(opts) {
       const rows = await opts.api('media?owner_type=eq.team&kind=eq.venue' +
         '&status=eq.approved&owner_id=eq.' + team.id + '&select=storage_path&limit=1');
       if (rows && rows.length) {
-        photoUrl = opts.cfg.supabaseUrl + '/storage/v1/object/public/' + rows[0].storage_path;
+        photoUrl = opts.cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + rows[0].storage_path;
       }
     } catch (_) { /* the drawing stands in */ }
 

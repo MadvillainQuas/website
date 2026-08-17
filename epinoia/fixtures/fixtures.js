@@ -358,7 +358,7 @@ function watchLive() {
           .forEach(r => {
             if (!LOGOS.has(r.owner_id)) {
               LOGOS.set(r.owner_id, window.EPINOIA_CONFIG.supabaseUrl +
-                '/storage/v1/object/public/' + r.storage_path);
+                '/storage/v1/object/public/media-public/' + r.storage_path);
             }
           });
       }

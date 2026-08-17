@@ -100,6 +100,13 @@ jobs:
       - name: The uploader's columns must exist on public.media
         run: node supabase/tests/media-columns.test.mjs
 
+      # Six files built /object/public/<path> with the bucket left out, so every
+      # one of them asked for a URL that cannot exist and got NoSuchKey. It
+      # survived because each call site falls back quietly to a monogram or a
+      # drawing — nothing looked broken, there was simply never a photograph.
+      - name: A public storage URL must name its bucket
+        run: node supabase/tests/storage-urls.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently
