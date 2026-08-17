@@ -56,7 +56,25 @@ async function boot() {
 
   const { data: { session } } = await sb.auth.getSession();
   me = session && session.user;
-  sb.auth.onAuthStateChange((_e, s) => { me = s && s.user; render(); });
+
+  /* RE-RENDER ONLY WHEN THE PERSON CHANGES.
+
+     This is why typed Instagram links vanished after a couple of seconds. The
+     Supabase client fires onAuthStateChange for INITIAL_SESSION on
+     subscription and again for TOKEN_REFRESHED a moment later — neither of
+     which is a different user — and each one re-ran render(), which rebuilds
+     every panel on the page from the database. Anything half-typed went with
+     them, a second or two after the page settled, with nothing on screen to
+     explain it.
+
+     Comparing the id rather than the object because the client hands back a
+     fresh object each time; the identity is the only thing worth reacting to. */
+  sb.auth.onAuthStateChange((_e, sess) => {
+    const next = sess && sess.user;
+    if ((next && next.id) === (me && me.id)) { me = next; return; }
+    me = next;
+    render();
+  });
   render();
 }
 
@@ -65,14 +83,19 @@ async function render() {
   show('#out', !!me);
   show('#idsec', !!me);
   $('#who').textContent = me ? me.email : '';
-  if (!me) { show('#newlg', false); show('#ws', false); return; }
+  if (!me) { show('#ws', false); return; }
 
   const { data, error } = await sb.rpc('whoami');
   if (error) { show('#ws', false); return oops(error); }
   who = data || {};
 
   renderAccess();
-  show('#newlg', !!who.is_platform_admin);
+  /* CREATING A LEAGUE IS NOT LEAGUE ADMINISTRATION. A league administrator
+     administers one competition; the platform console is where leagues come
+     into existence, and it is where deleting one already lives. Having the
+     form here as well meant the most consequential button on the platform
+     appeared on the page forty people use for fixtures. The RPC has always
+     refused anybody but a platform admin — this is the UI catching up. */
   show('#platLink', !!who.is_platform_admin);
 
   const admin = who.leagues || [];
@@ -449,6 +472,13 @@ async function loadStandingsDependents() {
   await sb.rpc('advance_bracket', { p_competition: comp.id });
 }
 
+/* The league-scoped panels are rebuilt only when the LEAGUE changes.
+   loadTeams() runs on every competition change too, and rebuilding the
+   socials, news and appearance panels from the database each time would throw
+   away whatever was being typed into them for a reason that has nothing to do
+   with them. */
+let mountedFor = null;
+
 function mountGovernance() {
   const G = window.EpinoiaGovernance;
   G.mountDiscipline({ host: '#disciplinePanel', sb, comp, teams: byIdObj(), say,
@@ -461,12 +491,16 @@ function mountGovernance() {
   A.mountOverrides({ host: '#awardsPanel', sb, comp, league, teams: byIdObj(), say });
   A.mountToty({ host: '#totyPanel', sb, comp, league, say });
 
+  fillGrantTeams();
+
+  /* league-scoped: once per league, not once per competition */
+  if (mountedFor === league.id) return;
+  mountedFor = league.id;
   window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
                                   cfg: window.EPINOIA_CONFIG });
   window.EpinoiaNewsUI.mount({ host: '#newsPanel', sb, league, say,
                                cfg: window.EPINOIA_CONFIG });
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
-  fillGrantTeams();
 }
 
 /* The club picker beside the People form, which only means anything for the
@@ -696,31 +730,6 @@ $('#out').addEventListener('click', async () => {
   league = season = comp = null;
   say('');
   render();
-});
-
-$('#lgName').addEventListener('input', () => {
-  // only autofill while the slug is untouched, so a deliberate one is never clobbered
-  const s = $('#lgSlug');
-  if (!s.dataset.touched) s.value = slugify($('#lgName').value);
-});
-$('#lgSlug').addEventListener('input', () => { $('#lgSlug').dataset.touched = '1'; });
-
-$('#lgGo').addEventListener('click', async () => {
-  const name = $('#lgName').value.trim();
-  const s = $('#lgSlug').value.trim() || slugify(name);
-  if (!name) return say('Give the league a name.', 'err');
-  $('#lgGo').disabled = true;
-  const { data, error } = await sb.rpc('create_league', {
-    p_name: name, p_slug: s,
-    p_colour_a: $('#lgCa').value, p_colour_b: $('#lgCb').value,
-    p_public_live: $('#lgLive').checked, p_youth_protected: $('#lgYouth').checked
-  });
-  $('#lgGo').disabled = false;
-  if (error) return oops(error);
-  say('Created ' + name + '. You administer it.', 'ok');
-  $('#lgName').value = ''; $('#lgSlug').value = ''; delete $('#lgSlug').dataset.touched;
-  league = { id: data, slug: s, name };
-  await render();
 });
 
 $('#snGo').addEventListener('click', async () => {

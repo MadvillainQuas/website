@@ -377,9 +377,20 @@ function mountRecords(o) {
   if (!host) return;
   host.textContent = '';
 
-  host.appendChild(el('div', 'fmt-h', 'Clubs'));
+  /* BOTH LISTS FOLD, AND THE LONG ONE STARTS FOLDED.
+
+     A league of twelve clubs has around a hundred and eighty players in it,
+     and each one is a three-row card — so the panel below was some four
+     thousand pixels tall, and everything after it on the page (discipline,
+     bans, awards) sat below all of it. Scrolling past a list you are not
+     using to reach a button you are is not a small annoyance; it is the
+     difference between a page you can work on and one you fight.
+
+     Folded by default, and the count is on the tab, so the shape of the
+     league is legible without opening anything. A search opens it — typing a
+     name is an unambiguous request to see people. */
   const clubs = el('div', 'list');
-  host.appendChild(clubs);
+  host.appendChild(fold('Clubs', clubs, true));
   Object.values(o.teams || {}).forEach(t => {
     const row = el('div', 'row');
     const name = el('input', 'ep-input grow'); name.value = t.name; name.maxLength = 80;
@@ -405,8 +416,8 @@ function mountRecords(o) {
     clubs.appendChild(row);
   });
 
-  host.appendChild(el('div', 'fmt-h', 'Players'));
-  host.appendChild(el('p', 'empty',
+  const pbody = el('div');
+  pbody.appendChild(el('p', 'empty',
     'Birth year is held for eligibility and is never published. Under-18 ' +
     'marks a player as a minor, which withholds their name and photograph ' +
     'from every public page, the API and every partner feed — the database ' +
@@ -415,9 +426,12 @@ function mountRecords(o) {
   const sr = el('div', 'row');
   const search = el('input', 'ep-input grow'); search.placeholder = 'find a player';
   sr.appendChild(search);
-  host.appendChild(sr);
+  pbody.appendChild(sr);
   const plist = el('div', 'list');
-  host.appendChild(plist);
+  pbody.appendChild(plist);
+
+  const pfold = fold('Players', pbody, false);
+  host.appendChild(pfold);
 
   async function load() {
     const { data, error } = await o.sb.rpc('league_players',
@@ -425,9 +439,14 @@ function mountRecords(o) {
     plist.textContent = '';
     if (error) return o.say(error.message, 'err');
     if (!data || !data.length) {
+      pfold.count(search.value ? 'none found' : '0');
       plist.appendChild(el('div', 'empty', 'Nobody found.'));
       return;
     }
+    /* The count says what is being SHOWN when that is not everything, because
+       a bare "180" over a list of 120 cards is a page quietly lying about
+       where the rest went. */
+    pfold.count(data.length > 120 ? '120 of ' + data.length : String(data.length));
     /* THE SAME FIELDS THE CLUB PORTAL MAINTAINS. Two editors for one player
        that disagree about which fields exist is how a club fills in a
        wingspan that a league administrator then cannot see — so this is the
@@ -518,8 +537,44 @@ function mountRecords(o) {
     });
   }
   let t = null;
-  search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(load, 250); });
-  load();
+  search.addEventListener('input', () => {
+    pfold.open(true);                    // typing a name means: show me people
+    clearTimeout(t); t = setTimeout(load, 250);
+  });
+  load();                                // counts the list without unfolding it
+}
+
+/* ---------------------------------------------------------------------------
+   A FOLD. A button that owns a region, standard disclosure semantics so a
+   screen reader announces the state, and hidden with the `hidden` attribute
+   rather than display:none so nothing inside is focusable while it is shut —
+   tabbing into an invisible list of two hundred inputs is the version of this
+   that looks fixed and is not.
+   ------------------------------------------------------------------------- */
+function fold(label, body, openAt) {
+  const wrap = el('div', 'gv-fold');
+  const btn = el('button', 'gv-fold-h'); btn.type = 'button';
+  const tw = el('span', 'tw', '\u25B8');
+  const nm = el('span', 'nm', label);
+  const ct = el('span', 'ct', '');
+  btn.append(tw, nm, ct);
+  wrap.append(btn, body);
+
+  let on = null;
+  function set(v) {
+    if (on === v) return;
+    on = v;
+    body.hidden = !v;
+    btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+    tw.textContent = v ? '\u25BE' : '\u25B8';
+    wrap.classList.toggle('on', v);
+  }
+  btn.addEventListener('click', () => set(!on));
+  set(!!openAt);
+
+  wrap.open = set;
+  wrap.count = v => { ct.textContent = v == null ? '' : String(v); };
+  return wrap;
 }
 
 return { fixtureActions, mountDiscipline, mountSuspensions, mountRecords };

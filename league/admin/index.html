@@ -11,9 +11,9 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=76">
-<link rel="stylesheet" href="../kit/nav.css?v=76">
-<link rel="stylesheet" href="../kit/news.css?v=76">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=77">
+<link rel="stylesheet" href="../kit/nav.css?v=77">
+<link rel="stylesheet" href="../kit/news.css?v=77">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -71,6 +71,17 @@
   .gv-player{border:1px solid var(--rule);padding:calc(var(--u)*1.5);
     margin-bottom:calc(var(--u)*1.5)}
   .gv-player .row:last-child{margin-bottom:0}
+  /* a fold: the whole header is the hit area, so it is a button that looks
+     like the fmt-h rule it replaces rather than a link that happens to work */
+  .gv-fold{margin:calc(var(--u)*3) 0 0}
+  .gv-fold-h{display:flex;align-items:center;gap:8px;width:100%;
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--lume);background:none;border:0;
+    border-bottom:1px solid var(--rule);padding:0 0 5px;margin:0 0 6px;
+    cursor:pointer;text-align:left}
+  .gv-fold-h:hover{border-bottom-color:var(--lume)}
+  .gv-fold-h .tw{font-size:10px;line-height:1;width:9px}
+  .gv-fold-h .ct{margin-left:auto;color:var(--ink-3);letter-spacing:.1em}
   @media (max-width:640px){ .fxrow{grid-template-columns:1fr;gap:4px} .fxrow .h{text-align:left} }
   .mq{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;
     padding:10px 0;border-bottom:1px solid var(--rule)}
@@ -265,41 +276,11 @@
     <div class="body"><div id="access"></div></div>
   </div>
 
-  <!-- create league ----------------------------------------------------- -->
-  <div id="newlg" class="sec hide">
-    <div class="sec-h">
-      <span class="idx">02</span><h2>New league</h2>
-      <span class="note">platform admin only</span>
-    </div>
-    <div class="body">
-      <div class="row">
-        <label class="f grow"><span>NAME</span>
-          <input id="lgName" class="ep-input" placeholder="Northern Premier"></label>
-        <label class="f"><span>URL SLUG</span>
-          <input id="lgSlug" class="ep-input" placeholder="northern-premier"></label>
-      </div>
-      <div class="row">
-        <label class="f" style="flex:0 0 auto"><span>PRIMARY</span>
-          <input id="lgCa" class="ep-input" type="color" value="#93f2bf" style="width:58px;padding:4px"></label>
-        <label class="f" style="flex:0 0 auto"><span>SECONDARY</span>
-          <input id="lgCb" class="ep-input" type="color" value="#8ff5ff" style="width:58px;padding:4px"></label>
-        <label class="sw"><input id="lgLive" type="checkbox" checked> publish live scores</label>
-        <label class="sw"><input id="lgYouth" type="checkbox" checked> under-18 protection</label>
-        <span class="sp" style="margin-left:auto"></span>
-        <button id="lgGo" class="ep-btn pri" type="button">create league</button>
-      </div>
-      <p class="empty" style="padding-bottom:0">
-        Under-18 protection withholds minors' names and photos from every public
-        page. Leave it on unless the league is exclusively adult.
-      </p>
-    </div>
-  </div>
-
   <!-- league workspace -------------------------------------------------- -->
   <div id="ws" class="hide">
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">03</span><h2>League</h2>
+      <div class="sec-h"><span class="idx">02</span><h2>League</h2>
         <span class="note" id="lgNote"></span></div>
       <div class="body">
         <div id="lgPick" class="pick"></div>
@@ -323,7 +304,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">04</span><h2>Seasons &amp; competitions</h2></div>
+      <div class="sec-h"><span class="idx">03</span><h2>Seasons &amp; competitions</h2></div>
       <div class="body">
         <div class="row">
           <input id="snName" class="ep-input" placeholder="2026-27">
@@ -346,7 +327,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">05</span><h2>Teams</h2>
+      <div class="sec-h"><span class="idx">04</span><h2>Teams</h2>
         <span class="note" id="tmNote"></span></div>
       <div class="body">
         <div class="row">
@@ -360,7 +341,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">06</span><h2>Fixtures</h2>
+      <div class="sec-h"><span class="idx">05</span><h2>Fixtures</h2>
         <span class="note" id="fxNote"></span></div>
       <div class="body">
         <div class="row">
@@ -380,93 +361,93 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07</span><h2>Format &amp; knockout</h2>
+      <div class="sec-h"><span class="idx">06</span><h2>Format &amp; knockout</h2>
         <span class="note" id="fmtNote"></span></div>
       <div class="body"><div id="formatPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07a</span><h2>Discipline</h2>
+      <div class="sec-h"><span class="idx">06a</span><h2>Discipline</h2>
         <span class="note">points and wins docked</span></div>
       <div class="body"><div id="disciplinePanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07b</span><h2>Suspensions</h2>
+      <div class="sec-h"><span class="idx">06b</span><h2>Suspensions</h2>
         <span class="note">players unavailable</span></div>
       <div class="body"><div id="suspensionPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07c</span><h2>The record</h2>
+      <div class="sec-h"><span class="idx">06c</span><h2>The record</h2>
         <span class="note">clubs and players</span></div>
       <div class="body"><div id="recordsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07d</span><h2>Awards</h2>
+      <div class="sec-h"><span class="idx">06d</span><h2>Awards</h2>
         <span class="note">chosen, not computed</span></div>
       <div class="body"><div id="awardsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07e</span><h2>Team of the Year</h2>
+      <div class="sec-h"><span class="idx">06e</span><h2>Team of the Year</h2>
         <span class="note">public ballot + official votes</span></div>
       <div class="body"><div id="totyPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07f</span><h2>Socials</h2>
+      <div class="sec-h"><span class="idx">06f</span><h2>Socials</h2>
         <span class="note">Instagram spotlight</span></div>
       <div class="body"><div id="socialsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07g</span><h2>News</h2>
+      <div class="sec-h"><span class="idx">06g</span><h2>News</h2>
         <span class="note">writers and articles</span></div>
       <div class="body"><div id="newsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">07h</span><h2>Appearance</h2>
+      <div class="sec-h"><span class="idx">06h</span><h2>Appearance</h2>
         <span class="note">country, sections, tabs, colours</span></div>
       <div class="body"><div id="appearancePanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">08</span><h2>Import a played game</h2>
+      <div class="sec-h"><span class="idx">07</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">09</span><h2>Announce results</h2>
+      <div class="sec-h"><span class="idx">08</span><h2>Announce results</h2>
         <span class="note">Discord or Slack</span></div>
       <div class="body"><div id="webhookPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">10</span><h2>API keys</h2>
+      <div class="sec-h"><span class="idx">09</span><h2>API keys</h2>
         <span class="note"><a href="../api/" target="_blank" rel="noopener"
           style="color:var(--ink-3)">documentation ↗</a></span></div>
       <div class="body"><div id="keysPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">11</span><h2>Scraper keys</h2>
+      <div class="sec-h"><span class="idx">10</span><h2>Scraper keys</h2>
         <span class="note">automatic feeds to RealGM, Eurobasket and the rest</span></div>
       <div class="body"><div id="feedsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">12</span><h2>Merchandise</h2>
+      <div class="sec-h"><span class="idx">11</span><h2>Merchandise</h2>
         <span class="note">print files, built from each club’s own artwork</span></div>
       <div class="body"><div id="merchPanel"></div></div>
     </div>
 
     <div class="sec">
       <div class="sec-h">
-        <span class="idx">13</span><h2>Photographs</h2>
+        <span class="idx">12</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
       </div>
       <div class="body">
@@ -481,7 +462,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">14</span><h2>People</h2>
+      <div class="sec-h"><span class="idx">13</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -510,26 +491,26 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=76"></script>
-<script src="../upload.js?v=76"></script>
-<script src="../vendor/supabase.js?v=76"></script>
-<script src="../livestats.js?v=76"></script>
-<script src="import-ui.js?v=76"></script>
-<script src="schedule.js?v=76"></script>
-<script src="fixtures-ui.js?v=76"></script>
-<script src="formats-ui.js?v=76"></script>
-<script src="keys-ui.js?v=76"></script>
-<script src="feeds-ui.js?v=76"></script>
-<script src="../artwork.js?v=76"></script>
-<script src="merch-ui.js?v=76"></script>
-<script src="webhook-ui.js?v=76"></script>
-<script src="governance-ui.js?v=76"></script>
-<script src="awards-ui.js?v=76"></script>
-<script src="socials-ui.js?v=76"></script>
-<script src="../newsblocks.js?v=76"></script>
-<script src="news-ui.js?v=76"></script>
-<script src="appearance-ui.js?v=76"></script>
-<script src="admin.js?v=76"></script>
-<script src="../nav.js?v=76"></script>
+<script src="../config.js?v=77"></script>
+<script src="../upload.js?v=77"></script>
+<script src="../vendor/supabase.js?v=77"></script>
+<script src="../livestats.js?v=77"></script>
+<script src="import-ui.js?v=77"></script>
+<script src="schedule.js?v=77"></script>
+<script src="fixtures-ui.js?v=77"></script>
+<script src="formats-ui.js?v=77"></script>
+<script src="keys-ui.js?v=77"></script>
+<script src="feeds-ui.js?v=77"></script>
+<script src="../artwork.js?v=77"></script>
+<script src="merch-ui.js?v=77"></script>
+<script src="webhook-ui.js?v=77"></script>
+<script src="governance-ui.js?v=77"></script>
+<script src="awards-ui.js?v=77"></script>
+<script src="socials-ui.js?v=77"></script>
+<script src="../newsblocks.js?v=77"></script>
+<script src="news-ui.js?v=77"></script>
+<script src="appearance-ui.js?v=77"></script>
+<script src="admin.js?v=77"></script>
+<script src="../nav.js?v=77"></script>
 </body>
 </html>

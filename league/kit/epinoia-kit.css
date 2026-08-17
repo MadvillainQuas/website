@@ -301,3 +301,17 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   .ep-side,.ep-pc{padding:calc(var(--u)*2)}
   .ep-bar{grid-template-columns:76px 1fr 44px;gap:9px}
 }
+
+/* ---------------------------------------------------------------------------
+   .hide — THE ONE UTILITY, AND IT BELONGS HERE.
+
+   Four pages each declared this identically in their own <style> block and two
+   did not, which is not a style question: on the news page #list carried .hide
+   with nothing defining it, so opening an article left the list's "Loading…"
+   sitting under the finished article. The class did nothing and looked like it
+   did something, which is the worst way for a rule to be missing.
+
+   Scoped copies elsewhere (.ep-nav .hide, .sc-slab.hide, .news-ed.hide) say the
+   same thing and can stay; they were the reason a grep for it looked answered.
+   --------------------------------------------------------------------------- */
+.hide{ display:none !important }

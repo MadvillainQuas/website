@@ -433,31 +433,66 @@ function render(opts) {
      coming back does not undo the adjustment. */
   const held = {};
 
+  /* A COLUMN CANNOT BE NARROWER THAN THIS OR WIDER THAN THAT. The floor keeps a
+     column grabbable after it has been squeezed; the ceiling is what stops one
+     slip of the hand turning a table into a horizontal scroll of one column. */
+  const MIN_W = 34, MAX_W = 460;
+
   function addGrip(th, col, table) {
     const grip = document.createElement('span');
     grip.className = 'ft-grip';
     grip.setAttribute('aria-hidden', 'true');
-    let startX = 0, startW = 0, active = false;
+    let startX = 0, startW = 0, startTableW = 0, active = false;
 
     grip.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
       active = true;
       startX = e.clientX;
-      startW = th.getBoundingClientRect().width;
+      /* THE DECLARED WIDTH, NOT THE MEASURED ONE, and this is the whole fix.
+         Under table-layout:fixed the browser reconciles the declared column
+         widths against the table's own width, so what a cell MEASURES is not
+         what it was told to be. The old handler re-summed those measurements
+         on every pointermove and assigned the total back to the table — so each
+         frame's reconciliation fed the next one, and at 60-120 events a second
+         a two-pixel drag became several hundred pixels before the hand moved.
+         It read as "I hold it and it instantly goes massively wide", which is
+         exactly what a feedback loop looks like from the outside.
+
+         Nothing is measured inside the drag now. One snapshot on the way in,
+         one arithmetic delta per move. */
+      startW = held[col.k] != null ? held[col.k]
+             : Math.round(parseFloat(th.style.width) ||
+                          th.getBoundingClientRect().width);
+      startTableW = Math.round(parseFloat(table.style.width) ||
+                               table.getBoundingClientRect().width);
       grip.setPointerCapture(e.pointerId);
       grip.classList.add('on');
     });
+
     grip.addEventListener('pointermove', e => {
       if (!active) return;
-      const w = Math.max(34, Math.round(startW + (e.clientX - startX)));
-      th.style.width = w + 'px';
-      held[col.k] = w;
-      /* the table's own width must follow, or the last column absorbs the
-         change and every other column shifts under the cursor */
-      const total = [...table.tHead.rows[0].cells]
-        .reduce((n, c2) => n + c2.getBoundingClientRect().width, 0);
-      table.style.width = Math.round(total) + 'px';
+      /* WRITTEN STRAIGHT OUT, not deferred to a frame.
+
+         The instinct is to coalesce this into requestAnimationFrame, and it is
+         the wrong instinct here: what makes a resize handler expensive is
+         READING geometry between writes, because each read forces the layout
+         the last write invalidated. There is no read left in this function —
+         two style writes per move only invalidate, and the browser lays out
+         once before it paints whatever the final value was. Chrome also
+         coalesces pointermove to about one per frame already.
+
+         And deferring had a cost. rAF does not run on a page that is not
+         compositing — a hidden tab, a collapsed pane — so a drag begun and
+         finished while hidden would apply nothing at all, the pointerup having
+         cancelled the frame that never came. */
+      const w = Math.min(MAX_W, Math.max(MIN_W, startW + (e.clientX - startX)));
+      th.style.width = Math.round(w) + 'px';
+      held[col.k] = Math.round(w);
+      /* The table grows or shrinks by exactly what the column did, so no other
+         column moves under the cursor and nothing is re-measured. */
+      table.style.width = Math.round(startTableW + (w - startW)) + 'px';
     });
+
     const stop = e => {
       if (!active) return;
       active = false;
