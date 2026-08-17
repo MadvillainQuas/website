@@ -198,10 +198,9 @@ async function games() {
 
   gs.forEach(g => {
     const final = g.status === 'final', live = g.status === 'live';
-    const row = el(final || live ? 'a' : 'div', 'fx');
-    if (final || live) {
-      row.href = 'game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
-    }
+    /* a scheduled fixture is a link too — same reasoning as the fixtures page */
+    const row = el('a', 'fx');
+    row.href = 'game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
 
     const h = el('div', 'tn h', (g.home || {}).name || '—');
     const a = el('div', 'tn', (g.away || {}).name || '—');

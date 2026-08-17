@@ -101,7 +101,7 @@
      tint on top of it. */
   filter:blur(3.2px) saturate(.22) brightness(1.02);
   opacity:.26;
-  animation:pool-floor 220s linear infinite;
+  animation:pool-floor 6660s linear infinite;
 }
 
 /* 1b — DEPTH, the layer that was missing entirely and the reason the first
@@ -115,7 +115,7 @@
   mix-blend-mode:multiply;
   filter:brightness(1.30);
   opacity:.34;
-  animation:pool-depth 300s linear infinite;
+  animation:pool-depth 1500s linear infinite;
 }
 /* 2 — the light reaching it. Softer and slower than the first pass: this is
    sun through a calm surface, not a wave pool. */
@@ -129,12 +129,12 @@
 .pool-caustic.a{
   background-size:700px 700px; opacity:.52;
   filter:blur(0.5px);
-  animation:pool-a 150s linear infinite;
+  animation:pool-a 750s linear infinite;
 }
 .pool-caustic.b{
   background-size:1240px 1240px; opacity:.28;
   filter:blur(2.6px);
-  animation:pool-b 230s linear infinite reverse;
+  animation:pool-b 1380s linear infinite reverse;
 }
 /* 3 — THE SUN, from the top left, which is where it is in every photograph of
    a pool anybody has ever liked. A broad screen rather than a tint: the water
@@ -169,11 +169,11 @@
 }
 .pool-swell.a{
   background-size:1500px 620px; opacity:.12;
-  animation:swell-a 90s linear infinite;
+  animation:swell-a 84s linear infinite;
 }
 .pool-swell.b{
   background-size:2300px 980px; opacity:.09;
-  animation:swell-b 160s linear infinite reverse;
+  animation:swell-b 153s linear infinite reverse;
 }
 /* 5 — one long sheen across the surface */
 .pool-sheen{
@@ -188,15 +188,55 @@
    turbulence; a calm surface flows, so everything travels broadly left with
    the deeper layers lagging behind — parallax, which is what makes it look
    like depth rather than like wallpaper scrolling. */
-@keyframes pool-floor{ to{ transform:translate3d(-3%, 1.5%, 0) } }
+/* ===========================================================================
+   EVERY LOOP TRAVELS A WHOLE NUMBER OF TILES.
+
+   THIS IS THE FIX FOR THE HARD EDGE that swept across the pool about once a
+   minute. Each of these layers is a repeating tile moved by transform, and a
+   repeat only hides its own seam while the tile is exactly where a copy of
+   itself would be. At the end of the animation the transform snaps back to
+   zero — so unless the distance travelled is an exact whole number of tiles in
+   BOTH axes, the texture lands somewhere it does not line up and the join is
+   visible for the instant it takes to jump.
+
+   Measured before this change, in tiles travelled per loop:
+
+       pool-floor   percentage of the element    — never a whole tile, either axis
+       pool-depth   x 1.0000   y 0.4118          — seam every 300s
+       caustic-a    x 1.0000   y 0.2000          — seam every 150s
+       caustic-b    x 1.0000   y 0.1613          — seam every 230s
+       swell-a      x 1.0667   y 0.0645          — seam every 90s, BOTH axes
+       swell-b      x 1.0435   y 0.0612          — seam every 160s, BOTH axes
+
+   swell-a is the one that was actually being seen: the shortest loop on the
+   page and wrong in both directions at once.
+
+   Every distance below is now a whole multiple of that layer's own tile, and
+   the DURATIONS were re-derived from the old ones so the drift keeps the speed
+   and the direction it was designed with — every layer within 3% of the pace
+   it had, most of them exact. Slower layers therefore have very long
+   durations: that is the loop being long, not the water being slow.
+
+   THE FLOOR NO LONGER USES PERCENTAGES. A percentage translate is of the
+   element, which is 160% of the viewport and a different number of pixels on
+   every screen — so it could not be a whole tile anywhere, and the seam moved
+   about depending on the window size.
+
+   THE SWELLS NO LONGER DRIFT VERTICALLY AT ALL. Their vertical component was
+   0.44 and 0.37 px/s against 18 and 15 across — a fortieth of the motion, and
+   the thing forcing an awkward tile count in the other axis. A swell travels
+   across the water rather than down it, so zero is both the honest number and
+   the one that can never seam.
+   =========================================================================== */
+@keyframes pool-floor{ to{ transform:translate3d(-1860px, 620px, 0) } }   /* 3 x 1 tiles */
 /* THE DEPTH DRIFTS SLOWEST OF ALL. It is the body of water, not the light on
    it, and a broad patch of shade that moved at the caustic's speed would read
    as a cloud rather than as depth. */
-@keyframes pool-depth{ to{ transform:translate3d(-1700px, 700px, 0) } }
-@keyframes pool-a{ to{ transform:translate3d(-700px, -140px, 0) } }
-@keyframes pool-b{ to{ transform:translate3d(1240px, 200px, 0) } }
-@keyframes swell-a{ to{ transform:translate3d(-1600px, -40px, 0) } }
-@keyframes swell-b{ to{ transform:translate3d(2400px, 60px, 0) } }
+@keyframes pool-depth{ to{ transform:translate3d(-8500px, 3400px, 0) } }  /* 5 x 2 */
+@keyframes pool-a{ to{ transform:translate3d(-3500px, -700px, 0) } }     /* 5 x 1 */
+@keyframes pool-b{ to{ transform:translate3d(7440px, 1240px, 0) } }      /* 6 x 1 */
+@keyframes swell-a{ to{ transform:translate3d(-1500px, 0, 0) } }         /* 1 x 0 */
+@keyframes swell-b{ to{ transform:translate3d(2300px, 0, 0) } }          /* 1 x 0 */
 @keyframes pool-sheen{
   from{ transform:translate3d(-7%, -3%, 0) }
   to  { transform:translate3d(7%, 3%, 0) }

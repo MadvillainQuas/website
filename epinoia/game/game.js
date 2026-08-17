@@ -162,9 +162,75 @@ function renderShell() {
 
   txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
       S.teams[0].name + ' v ' + S.teams[1].name);
+  offerToScore();
   document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
   document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
   shellBuilt = true;
+}
+
+/* ---------------------------------------------------------------------------
+   THE WAY FROM A FIXTURE INTO SCORING IT.
+
+   Every fixture in every list now links here, including one that has not been
+   played — so this page is where somebody arrives twenty minutes before a tip.
+   For the person who is going to score it, the next thing they need is the
+   scorer, opened on THIS game, and until now the only route was the rail's
+   generic "score a game" and then finding the fixture again in a list.
+
+   WHO SEES IT IS DECIDED BY THE DATABASE, not by this page. can_score() is the
+   same function the row-level policies use, so the button appears exactly when
+   the write would be allowed — an assigned statistician, a league administrator
+   of the owning league, or a platform administrator, and never once the game is
+   final. A page that offered the button on its own guess would eventually offer
+   it to somebody who then got refused by the scorer, which is a worse
+   experience than not offering it.
+
+   NO SDK IS LOADED FOR THIS. The session token is read straight out of storage
+   the way nav.js reads it, and the check is one small POST with a bearer token.
+   This page is public and mostly read by people who are not signed in; pulling
+   200kB of auth library to decide whether to draw one button would be paid for
+   by everybody to benefit the few.
+
+   Signed out, nothing happens at all — not even the request. */
+function storedToken() {
+  try {
+    const ref = (CFG.supabaseUrl.match(/^https?:\/\/([^.]+)\./) || [])[1];
+    if (!ref) return null;
+    const raw = localStorage.getItem('sb-' + ref + '-auth-token');
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    const tok = j && (j.access_token || (j.currentSession && j.currentSession.access_token));
+    if (!tok) return null;
+    const exp = j.expires_at || (j.currentSession && j.currentSession.expires_at);
+    if (exp && Number(exp) * 1000 < Date.now()) return null;   // expired is not signed in
+    return tok;
+  } catch (_) { return null; }
+}
+
+let ctaAsked = false;
+async function offerToScore() {
+  const cta = document.getElementById('scoreCta');
+  if (!cta || ctaAsked) return;
+  /* A finalised game is not scorable by anyone, so there is nothing to ask
+     about — and asking anyway would put a request on the most-visited version
+     of this page. */
+  if (!gameId || S.status === 'final') return;
+  const token = storedToken();
+  if (!token) return;
+  ctaAsked = true;
+  try {
+    const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/can_score', {
+      method: 'POST', cache: 'no-store',
+      headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token,
+                 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ p_game: gameId })
+    });
+    if (!r.ok) return;
+    if ((await r.json()) !== true) return;
+  } catch (_) { return; }
+  cta.href = '../score/?g=' + encodeURIComponent(gameId);
+  cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
+  cta.classList.remove('hide');
 }
 
 /* cheap: 576 characters, safe to run on every clock tick */

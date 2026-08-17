@@ -14,9 +14,18 @@
 <!-- The scorer's own stylesheet, generated from it. The renderers below emit
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../boxscore.css?v=82">
-<link rel="stylesheet" href="../kit/nav.css?v=82">
+<link rel="stylesheet" href="../boxscore.css?v=83">
+<link rel="stylesheet" href="../kit/nav.css?v=83">
 <style>
+  /* The way in for whoever is scoring tonight. Hidden by default and revealed
+     only once the database has said this account may score THIS game, so a
+     visitor is never shown a door that would be shut in their face. */
+  .scorecta{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;text-decoration:none;padding:7px 13px;border-radius:999px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    font-weight:700;margin-left:auto;white-space:nowrap}
+  .scorecta:hover{filter:brightness(1.08)}
+  .scorecta.hide{display:none}
   /* Page chrome only — nothing here restyles the box score itself. */
   body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
   .wrap{max-width:1150px;margin:0 auto;padding:0 12px 60px}
@@ -46,6 +55,7 @@
   <div class="top">
     <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
     <span class="ctx" id="ctx"></span>
+    <a class="scorecta hide" id="scoreCta" href="#">score this game →</a>
     <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
   </div>
 
@@ -57,13 +67,13 @@
   </div>
 </div>
 
-<script src="../config.js?v=82" defer></script>
-<script src="../vendor/supabase.js?v=82" defer></script>
-<script src="../engine.js?v=82" defer></script>
-<script src="../boxscore.js?v=82" defer></script>
-<script src="../live.js?v=82" defer></script>
-<script src="../seo.js?v=82" defer></script>
-<script src="game.js?v=82" defer></script>
-<script src="../nav.js?v=82" defer></script>
+<script src="../config.js?v=83" defer></script>
+<script src="../vendor/supabase.js?v=83" defer></script>
+<script src="../engine.js?v=83" defer></script>
+<script src="../boxscore.js?v=83" defer></script>
+<script src="../live.js?v=83" defer></script>
+<script src="../seo.js?v=83" defer></script>
+<script src="game.js?v=83" defer></script>
+<script src="../nav.js?v=83" defer></script>
 </body>
 </html>

@@ -182,8 +182,16 @@ function venueBlock(g) {
 
 function fixtureRow(g, stats, names) {
   const final = g.status === 'final', live = g.status === 'live';
-  const row = el(final || live ? 'a' : 'div', 'fixture');
-  if (final || live) row.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+  /* EVERY FIXTURE IS A LINK, including one that has not been played.
+
+     A scheduled game used to be an inert div, which made the most useful thing
+     about a fixture list — tap the game you care about — work for two thirds of
+     the rows and silently not for the rest. The game page already renders a
+     scheduled fixture properly: the two clubs, the tip-off, the venue, and an
+     empty box score waiting for it. That is a page worth reaching, and it is
+     also where somebody who is going to score the game now starts from. */
+  const row = el('a', 'fixture');
+  row.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
 
   const home = TEAMS.get(g.home_team_id) || {};
   const away = TEAMS.get(g.away_team_id) || {};
