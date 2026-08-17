@@ -92,17 +92,23 @@
      only the ones their roles justify appear. Hiding a row is a courtesy, not
      a control: pressing one you should not have is refused by the database. */
   const PAGES = [
-    { href: 'fixtures/',   ic: '▥', tx: 'fixtures',   lg: true, match: /\/league\/fixtures\// },
-    { href: 'stats/',      ic: '▦', tx: 'statistics', lg: true, match: /\/league\/stats\/$/ },
-    { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, match: /\/league\/stats\/wowy\// },
-    { href: 'l/',          ic: '▤', tx: 'table',      lg: true, match: /\/league\/l\// },
+    { href: 'fixtures/',   ic: '▥', tx: 'fixtures',   lg: true, key: 'fixtures',
+      match: /\/league\/fixtures\// },
+    { href: 'stats/',      ic: '▦', tx: 'statistics', lg: true, key: 'statistics',
+      match: /\/league\/stats\/$/ },
+    { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, key: 'wowy',
+      match: /\/league\/stats\/wowy\// },
+    { href: 'l/',          ic: '▤', tx: 'table',      lg: true, key: 'table',
+      match: /\/league\/l\// },
+    { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
+      match: /\/league\/news\// },
     { label: 'take part', auth: true },
     { href: 'score/', ic: '●', tx: 'score a game', match: /\/league\/score\//, auth: true,
-      role: w => (w.scoring || []).length || adminsThis(w) },
+      key: 'score', role: w => (w.scoring || []).length || adminsThis(w) },
     { href: 'app/',   ic: '◆', tx: 'club portal',  match: /\/league\/app\//,  auth: true,
-      role: w => (w.teams || []).length || adminsThis(w) },
+      key: 'portal', role: w => (w.teams || []).length || adminsThis(w) },
     { href: 'admin/', ic: '▲', tx: 'league admin', match: /\/league\/admin\//, auth: true,
-      role: w => adminsThis(w) }
+      key: 'admin', role: w => adminsThis(w) }
   ];
 
   /* Scoped to the league on screen where it can be. `leagues` from whoami() is
@@ -172,11 +178,23 @@
 
   const navdeck = el('div', 'navdeck');
   const deck = el('div', 'deck');
+  /* THREE LEVELS: countries, then that country's leagues, then the league's
+     pages. All three live in the document at once so the deck can slide
+     between them; only one is ever in the tab order. */
+  const countryPanel = el('div', 'panel countrypanel');
   const rootPanel = el('div', 'panel rootpanel');
   const leaguePanel = el('div', 'panel leaguepanel');
-  deck.append(rootPanel, leaguePanel);
+  deck.append(countryPanel, rootPanel, leaguePanel);
   navdeck.appendChild(deck);
   nav.appendChild(navdeck);
+
+  /* ---- country panel: every country with a league in it ---- */
+  const ctitle = el('a', 'ptitle', 'Countries');
+  ctitle.href = root;
+  ctitle.title = 'The platform';
+  const clist = el('div', 'leagues');
+  clist.appendChild(el('div', 'gempty', '…'));
+  countryPanel.append(ctitle, clist);
 
   /* ---- root panel: the title, then the leagues ---- */
   const title = el('a', 'ptitle', 'Leagues');
@@ -226,6 +244,21 @@
   platRow.hidden = true;
   rootPanel.appendChild(platRow);
 
+  /* The way back OUT of a country. The country panel has no back button
+     because there is nothing above it; this one sits at the top of the
+     leagues, in the same place the league panel's does, so the gesture is the
+     same at every level. */
+  const chead = el('div', 'phead');
+  const cback = el('button', 'back', '\u2039');
+  cback.type = 'button';
+  cback.title = 'All countries';
+  cback.setAttribute('aria-label', 'Back to all countries');
+  const cname = el('a', 'lname');
+  cname.href = root;
+  chead.append(cback, cname);
+  rootPanel.insertBefore(chead, title);
+  title.classList.add('hide');          // the country's name replaces it
+
   /* ---- league panel: the header, then the pages ---- */
   const phead = el('div', 'phead');
   const back = el('button', 'back', '‹');
@@ -239,6 +272,7 @@
 
   const gated = [];            // [node, predicate] — shown once roles are known
   const carriers = [];         // [anchor, base path] — links that take the league
+  const navKeyed = [];         // [node, key] — rows a league may switch off
 
   /* Anything at all: this row is not about the league on screen, because at
      the top level there is no league on screen. A platform administrator, or
@@ -261,6 +295,7 @@
     a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
     a.title = it.tx;
     if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
+    if (it.key) navKeyed.push([a, it.key]);
     pages.appendChild(a);
   });
   retarget();          // set the initial "you are here" marks
@@ -299,8 +334,14 @@
      document at once so the transform can slide between them, which means the
      taller one would otherwise set the height and leave a hole beneath the
      shorter one. */
+  function panelFor(view) {
+    return view === 'league' ? leaguePanel
+         : view === 'root'   ? rootPanel
+         : countryPanel;
+  }
+
   function sizeDeck(animate) {
-    const active = nav.dataset.view === 'league' ? leaguePanel : rootPanel;
+    const active = panelFor(nav.dataset.view);
     const h = active.offsetHeight;
     if (!h) return;
     if (!animate) {
@@ -323,6 +364,7 @@
        must never land on a link they cannot see. */
     if (changing && animate && !reduced()) {
       navdeck.classList.add('animating');
+      countryPanel.setAttribute('aria-hidden', 'false');
       rootPanel.setAttribute('aria-hidden', 'false');
       leaguePanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
@@ -335,9 +377,10 @@
     sizeDeck(animate && !reduced());
   }
   function applyHidden() {
-    const league = nav.dataset.view === 'league';
-    rootPanel.setAttribute('aria-hidden', String(league));
-    leaguePanel.setAttribute('aria-hidden', String(!league));
+    const v = nav.dataset.view;
+    countryPanel.setAttribute('aria-hidden', String(v !== 'country'));
+    rootPanel.setAttribute('aria-hidden', String(v !== 'root'));
+    leaguePanel.setAttribute('aria-hidden', String(v !== 'league'));
   }
 
   function fillHeader(l) {
@@ -370,6 +413,81 @@
     if (row) row.focus({ preventScroll: true });
   });
 
+  /* ------------------------------------------------------------ countries ---
+     A FLAG IS DERIVED, NEVER STORED. The two letters of an ISO 3166-1 code map
+     directly onto the two regional-indicator code points that a font renders
+     as that flag, so there is nothing to keep up to date and nothing that can
+     disagree with the code beside it. A stored emoji would be a second copy of
+     the same fact, and the one that goes stale.
+
+     The NAME comes from Intl.DisplayNames, which knows every region in the
+     reader's own language. Where it is unavailable the code stands in, which
+     is ugly and correct — better than a hard-coded English list that is wrong
+     for half the world and out of date for the rest. */
+  function flagOf(code) {
+    if (!/^[A-Za-z]{2}$/.test(code || '')) return '\u{1F3F3}';   // a plain flag
+    return String.fromCodePoint(...[...code.toUpperCase()]
+      .map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+  }
+
+  let regionNames = null;
+  function countryName(code) {
+    if (!code) return 'Elsewhere';
+    if (regionNames === undefined) return code;
+    if (!regionNames) {
+      try { regionNames = new Intl.DisplayNames(undefined, { type: 'region' }); }
+      catch (_) { regionNames = undefined; return code; }
+    }
+    try { return regionNames.of(code.toUpperCase()) || code; }
+    catch (_) { return code; }
+  }
+
+  let country = null;                 // the country being browsed, '' = the rest
+
+  function drawCountries() {
+    clist.textContent = '';
+    const groups = new Map();
+    leagues.forEach(l => {
+      const k = l.country || '';
+      if (!groups.has(k)) groups.set(k, 0);
+      groups.set(k, groups.get(k) + 1);
+    });
+    if (!groups.size) {
+      clist.appendChild(el('div', 'gempty', 'none yet'));
+      return;
+    }
+    /* Named countries first, alphabetically by the name a reader sees rather
+       than by the code — sorting by code puts Germany under D. */
+    [...groups.keys()]
+      .sort((a, b) => (a === '') - (b === '') ||
+                      countryName(a).localeCompare(countryName(b)))
+      .forEach(code => {
+        const row = el('button', 'item crow' + (country === code ? ' on' : ''));
+        row.type = 'button';
+        const name = countryName(code);
+        row.title = name + ' \u00b7 ' + groups.get(code) +
+                    (groups.get(code) === 1 ? ' league' : ' leagues');
+        row.append(el('span', 'ic', flagOf(code)), marquee(name));
+        row.addEventListener('click', () => {
+          country = code;
+          cname.textContent = '';
+          cname.append(el('span', 'ic', flagOf(code)), marquee(name));
+          cname.title = name;
+          drawLeagues();
+          setView('root', true);
+          const first = list.querySelector('a[data-league-slug]');
+          if (first) first.focus({ preventScroll: true });
+        });
+        clist.appendChild(row);
+      });
+  }
+
+  cback.addEventListener('click', () => {
+    setView('country', true);
+    const row = clist.querySelector('.crow.on') || clist.querySelector('.crow');
+    if (row) row.focus({ preventScroll: true });
+  });
+
   /* ---------------------------------------------------------- the leagues ---
      Built empty and filled once the list arrives, because the rail must appear
      immediately — navigation that pops in after a network round trip is worse
@@ -379,7 +497,7 @@
     if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
     try {
       const r = await fetch(cfg.supabaseUrl +
-        '/rest/v1/leagues?select=slug,name,colour_a,colour_b,logo_path&order=name',
+        '/rest/v1/leagues?select=slug,name,colour_a,colour_b,logo_path,country,nav&order=name',
         { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
       if (!r.ok) throw new Error(String(r.status));
       leagues = await r.json();
@@ -387,17 +505,26 @@
       holding.textContent = 'unavailable';
       return;
     }
+    /* The country the page's own league is in, so a page that knows its
+       league opens with the right country already chosen rather than in the
+       list of every country. */
+    const mine = leagues.find(l => l.slug === (lg || pageLeague));
+    if (mine) country = mine.country || '';
+    drawCountries();
     drawLeagues();
   }
 
   function drawLeagues() {
     list.textContent = '';
-    if (!leagues.length) {
+    const inCountry = country === null
+      ? leagues
+      : leagues.filter(l => (l.country || '') === country);
+    if (!inCountry.length) {
       list.appendChild(el('div', 'gempty', 'none yet'));
       sizeDeck(false);
       return;
     }
-    leagues.forEach(l => {
+    inCountry.forEach(l => {
       const a = el('a', 'item lrow' + (lg && l.slug === lg ? ' on' : ''));
       a.href = root + '?l=' + encodeURIComponent(l.slug);
       a.dataset.leagueSlug = l.slug;
@@ -429,8 +556,11 @@
     });
     markCurrent();
     const l = bySlug();
-    if (l) { fillHeader(l); setView('league', false); }
-    else { setView('root', false); }
+    /* A page that names a league opens inside it; anything else opens at the
+       top, which is now the countries rather than a flat list of every league
+       on the platform. */
+    if (l) { fillHeader(l); applyNav(l); setView('league', false); }
+    else { setView(country === null ? 'country' : 'root', false); }
     /* one more measure after the marquee pass has run, and only then is the
        rail allowed to animate — everything up to here is the page's opening
        position, not a change somebody made */
@@ -439,6 +569,28 @@
       afterPaint(() => nav.classList.remove('noanim'));
     });
   }
+
+  /* WHICH TABS A LEAGUE SHOWS (0053). Absent means shown, so a league that
+     has never had an opinion gets everything and a tab added later appears
+     for everybody rather than being hidden for every league that predates it.
+     The gated rows are ANDed with this: turning the club portal off in the
+     settings hides it from a manager too, which is the point of the switch. */
+  function applyNav(l) {
+    const want = (l && l.nav) || {};
+    navKeyed.forEach(([node, key]) => {
+      const off = want[key] === false;
+      node.dataset.navOff = off ? '1' : '';
+      /* A ROLE-GATED ROW IS LEFT TO THE GATE, which runs later and would
+         otherwise un-hide what a league has just switched off. It reads
+         navOff and ANDs the two. Everything else is decided here and here
+         only, including turning a row back ON when browsing to a league that
+         has not disabled it — an applyNav that could only hide would leave
+         the previous league's switches on screen. */
+      if (!isGated(node)) node.hidden = off;
+      else if (off) node.hidden = true;
+    });
+  }
+  const isGated = node => gated.some(g => g[0] === node);
 
   function markCurrent() {
     list.querySelectorAll('a[data-league-slug]').forEach(a => {
@@ -532,7 +684,10 @@
     gated.forEach(([node, pred]) => {
       let ok = false;
       try { ok = !!pred(who); } catch (_) { ok = false; }
-      node.hidden = !ok;
+      /* Both have to agree. Holding the role is not enough if the league has
+         switched the page off, and the league switching it on does not hand
+         it to somebody without the role. */
+      node.hidden = !ok || node.dataset.navOff === '1';
     });
     /* If every entry under it is hidden, hide the heading too rather than
        leaving a label with nothing beneath it.

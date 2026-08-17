@@ -11,9 +11,9 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=62">
-<link rel="stylesheet" href="../kit/nav.css?v=62">
-<link rel="stylesheet" href="../kit/news.css?v=62">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=64">
+<link rel="stylesheet" href="../kit/nav.css?v=64">
+<link rel="stylesheet" href="../kit/news.css?v=64">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -216,6 +216,12 @@
   .fg-time{font-family:var(--f-data);font-size:10.5px;color:var(--ink-3)}
   @media (max-width:640px){ .fg-game{grid-template-columns:1fr;gap:2px}
     .fg-home{text-align:left} }
+
+  .app-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:calc(var(--u)*2)}
+  .app-cell{background:var(--ground);padding:calc(var(--u)*1.5)}
+  .app-hint{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
+    line-height:1.7;margin-top:4px}
 </style>
 </head>
 <body>
@@ -422,6 +428,12 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">07h</span><h2>Appearance</h2>
+        <span class="note">country, sections, tabs, colours</span></div>
+      <div class="body"><div id="appearancePanel"></div></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h"><span class="idx">08</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
@@ -498,25 +510,26 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=62"></script>
-<script src="../upload.js?v=62"></script>
-<script src="../vendor/supabase.js?v=62"></script>
-<script src="../livestats.js?v=62"></script>
-<script src="import-ui.js?v=62"></script>
-<script src="schedule.js?v=62"></script>
-<script src="fixtures-ui.js?v=62"></script>
-<script src="formats-ui.js?v=62"></script>
-<script src="keys-ui.js?v=62"></script>
-<script src="feeds-ui.js?v=62"></script>
-<script src="../artwork.js?v=62"></script>
-<script src="merch-ui.js?v=62"></script>
-<script src="webhook-ui.js?v=62"></script>
-<script src="governance-ui.js?v=62"></script>
-<script src="awards-ui.js?v=62"></script>
-<script src="socials-ui.js?v=62"></script>
-<script src="../newsblocks.js?v=62"></script>
-<script src="news-ui.js?v=62"></script>
-<script src="admin.js?v=62"></script>
-<script src="../nav.js?v=62"></script>
+<script src="../config.js?v=64"></script>
+<script src="../upload.js?v=64"></script>
+<script src="../vendor/supabase.js?v=64"></script>
+<script src="../livestats.js?v=64"></script>
+<script src="import-ui.js?v=64"></script>
+<script src="schedule.js?v=64"></script>
+<script src="fixtures-ui.js?v=64"></script>
+<script src="formats-ui.js?v=64"></script>
+<script src="keys-ui.js?v=64"></script>
+<script src="feeds-ui.js?v=64"></script>
+<script src="../artwork.js?v=64"></script>
+<script src="merch-ui.js?v=64"></script>
+<script src="webhook-ui.js?v=64"></script>
+<script src="governance-ui.js?v=64"></script>
+<script src="awards-ui.js?v=64"></script>
+<script src="socials-ui.js?v=64"></script>
+<script src="../newsblocks.js?v=64"></script>
+<script src="news-ui.js?v=64"></script>
+<script src="appearance-ui.js?v=64"></script>
+<script src="admin.js?v=64"></script>
+<script src="../nav.js?v=64"></script>
 </body>
 </html>

@@ -465,6 +465,7 @@ function mountGovernance() {
                                   cfg: window.EPINOIA_CONFIG });
   window.EpinoiaNewsUI.mount({ host: '#newsPanel', sb, league, say,
                                cfg: window.EPINOIA_CONFIG });
+  window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
   fillGrantTeams();
 }
 

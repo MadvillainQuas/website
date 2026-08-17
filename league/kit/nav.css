@@ -19,13 +19,21 @@
    on top of the box score as floating text — which is exactly what it did.
    ============================================================================ */
 
-:root{ --nav-w:174px; }
+/* The rail's own colours as tokens, so a league can set them (0053) without
+   this file knowing anything about leagues. The literals stay as the
+   fallbacks: nav.css is loaded by pages that do not load the kit, and a rail
+   that inherited nothing would be transparent. */
+:root{
+  --nav-w:174px;
+  --nav-bg:#071710;
+  --nav-ink:#e6fff1;
+}
 
 .ep-nav{
   position:fixed; left:0; top:0; bottom:0; width:var(--nav-w);
   z-index:900; display:flex; flex-direction:column; gap:1px;
   padding:14px 0;
-  background:#071710;                       /* literal: no kit on every page */
+  background:var(--nav-bg,#071710);
   border-right:1px solid rgba(147,242,191,.20);
   box-shadow:1px 0 0 rgba(0,0,0,.4);
   overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
@@ -35,13 +43,14 @@
 /* ---- rows ---------------------------------------------------------------- */
 .ep-nav a.item, .ep-nav button.item{
   display:flex; align-items:center; gap:10px; text-decoration:none;
-  padding:9px 10px 9px 14px; color:rgba(230,255,241,.62); white-space:nowrap;
+  padding:9px 10px 9px 14px; white-space:nowrap;
+  color:color-mix(in srgb, var(--nav-ink,#e6fff1) 62%, transparent);
   border-left:2px solid transparent; background:none; border-top:0;
   border-right:0; border-bottom:0; width:100%; text-align:left; font:inherit;
   cursor:pointer;
 }
 .ep-nav a.item:hover, .ep-nav button.item:hover{
-  color:#e6fff1; background:rgba(147,242,191,.08);
+  color:var(--nav-ink,#e6fff1); background:rgba(147,242,191,.08);
 }
 .ep-nav a.item.on{
   color:#93f2bf; border-left-color:#93f2bf; background:rgba(147,242,191,.11);
@@ -73,18 +82,26 @@ body.has-nav{ padding-left:var(--nav-w) }
    lengths and letting the taller one set the height leaves a hole under the
    shorter one. */
 .ep-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
+/* THREE PANELS: countries, leagues, pages. The deck is three screens wide and
+   slides a third at a time, which is why the percentages are thirds rather
+   than the halves this started with. */
 .ep-nav .deck{
-  display:flex; width:200%; align-items:flex-start;
+  display:flex; width:300%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.ep-nav[data-view="league"] .deck{ transform:translateX(-50%) }
+.ep-nav[data-view="root"] .deck{ transform:translateX(-33.3333%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-66.6667%) }
 /* THE FIRST VIEW NEVER SLIDES. A page that knows its league opens drilled in,
    and animating into that on load would be the rail performing a decision the
    reader did not make — as well as leaving the deck mid-travel on any browser
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
 .ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
-.ep-nav .panel{ width:50%; flex:0 0 50%; min-width:0 }
+.ep-nav .panel{ width:33.3333%; flex:0 0 33.3333%; min-width:0 }
+/* a flag sits a shade larger than the geometric glyphs beside it */
+.ep-nav .crow .ic{ font-size:14px }
+.ep-nav .lname .ic{ font-size:13px; margin-right:2px }
+.ep-nav .hide{ display:none !important }
 /* the panel that is off screen is out of the tab order as well as out of
    sight — a keyboard user should never land on a link they cannot see */
 .ep-nav .panel[aria-hidden="true"]{ visibility:hidden }

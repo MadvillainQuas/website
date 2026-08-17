@@ -10,10 +10,10 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=62">
-<link rel="stylesheet" href="kit/nav.css?v=62">
-<link rel="stylesheet" href="kit/news.css?v=62">
-<link rel="stylesheet" href="kit/splash.css?v=62">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=64">
+<link rel="stylesheet" href="kit/nav.css?v=64">
+<link rel="stylesheet" href="kit/news.css?v=64">
+<link rel="stylesheet" href="kit/splash.css?v=64">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -359,6 +359,10 @@
   .so-card{border:1px solid var(--rule);background:var(--panel);overflow:hidden}
   .so-card iframe{display:block;width:100%;height:520px;border:0;background:#fff}
   .so-empty{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.9}
+
+  /* the two links under the season embeds */
+  .seasonmore{display:flex;gap:8px;flex-wrap:wrap;padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .seasonmore .ep-chip{font-family:var(--f-micro);font-size:9.5px}
 </style>
 </head>
 <body>
@@ -528,7 +532,7 @@
   </div>
 
   <!-- live + recent ------------------------------------------------------ -->
-  <div class="sec">
+  <div class="sec" id="gamesSec">
     <div class="sec-h">
       <span class="idx" id="idxGames">02</span><h2>Games</h2>
       <span class="note" id="gamesNote"></span>
@@ -538,7 +542,7 @@
   </div>
 
   <!-- leagues ------------------------------------------------------------ -->
-  <div class="sec">
+  <div class="sec" id="seasonSec">
     <div class="sec-h"><span class="idx" id="idxLeagues">03</span><h2 id="leaguesHead">Leagues</h2></div>
     <div id="leagues"><div class="empty">Loading…</div></div>
   </div>
@@ -570,7 +574,7 @@
   </div>
 
   <!-- entry points ------------------------------------------------------- -->
-  <div class="sec">
+  <div class="sec" id="takepartSec">
     <div class="sec-h">
       <span class="idx" id="idxTake">05</span><h2>Take part</h2>
       <span class="note">sign-in required</span>
@@ -586,11 +590,8 @@
         <span class="t">Score a game</span>
         <span class="d">The statistician's app. Opens a practice game straight away; open a real fixture from the portal.</span>
       </a>
-      <a class="card" href="stats/">
-        <span class="k">Season</span>
-        <span class="t">Full statistics table</span>
-        <span class="d">Every player, sortable, with eFG%, TS% and rim rates. Exports to CSV.</span>
-      </a>
+      <!-- the full statistics table moved into "This season", under the two
+           embeds it is the long version of -->
       <a class="card" href="admin/">
         <span class="k">Admin</span>
         <span class="t">Run a league</span>
@@ -615,21 +616,21 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=62"></script>
-<script src="vendor/supabase.js?v=62"></script>
+<script src="config.js?v=64"></script>
+<script src="vendor/supabase.js?v=64"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=62"></script>
-<script src="bpm.js?v=62"></script>
-<script src="data.js?v=62"></script>
-<script src="merch.js?v=62"></script>
-<script src="upload.js?v=62"></script>
-<script src="newsblocks.js?v=62"></script>
-<script src="news.js?v=62"></script>
-<script src="toty.js?v=62"></script>
-<script src="socials.js?v=62"></script>
-<script src="splash.js?v=62"></script>
-<script src="home.js?v=62"></script>
-<script src="nav.js?v=62"></script>
+<script src="season.js?v=64"></script>
+<script src="bpm.js?v=64"></script>
+<script src="data.js?v=64"></script>
+<script src="merch.js?v=64"></script>
+<script src="upload.js?v=64"></script>
+<script src="newsblocks.js?v=64"></script>
+<script src="news.js?v=64"></script>
+<script src="toty.js?v=64"></script>
+<script src="socials.js?v=64"></script>
+<script src="splash.js?v=64"></script>
+<script src="home.js?v=64"></script>
+<script src="nav.js?v=64"></script>
 </body>
 </html>

@@ -46,6 +46,69 @@ function fail(host, msg) {
   const h = $(host); h.textContent = ''; h.appendChild(el('div', 'empty', msg));
 }
 
+/* ------------------------------------------------------------- appearance ---
+   A league's own colours and its choice of which blocks to show (0053).
+
+   THE COLOURS GO THROUGH setProperty, never into a stylesheet as text. They
+   are typed by a league administrator and rendered by every visitor, and a
+   custom property set through the CSSOM cannot escape its declaration however
+   the value is spelt. The database also refuses anything that is not
+   six-digit hex, so this is the second of two locks rather than the only one.
+
+   ABSENT MEANS SHOWN. A section a league has never had an opinion about is
+   visible, so adding a section later does not silently hide it for every
+   league that existed before it. */
+const THEME_VARS = {
+  bg: '--ground', panel: '--panel', ink: '--ink',
+  rail: '--nav-bg', rail_ink: '--nav-ink', accent: '--lume'
+};
+
+function applyTheme(theme) {
+  const t = theme || {};
+  const root = document.documentElement;
+  Object.keys(THEME_VARS).forEach(k => {
+    const v = t[k];
+    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) {
+      root.style.setProperty(THEME_VARS[k], v);
+    }
+  });
+  /* The ink drives two derived tokens the kit fades from it. Recomputing them
+     here rather than leaving the defaults means a light-on-dark league that
+     switches to dark-on-light does not keep two ghost-grey shades that were
+     mixed against the old colour. */
+  if (t.ink && /^#[0-9a-f]{6}$/i.test(t.ink)) {
+    root.style.setProperty('--ink-2', hexA(t.ink, 0.72));
+    root.style.setProperty('--ink-3', hexA(t.ink, 0.52));
+  }
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+const SECTION_OF = {
+  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', stars: '#starsSec',
+  games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
+  socials: '#socialSec', takepart: '#takepartSec'
+};
+
+function sectionOn(key) {
+  const s = (LEAGUE && LEAGUE.sections) || {};
+  return s[key] !== false;
+}
+
+/* Applied AFTER everything has rendered: a hidden section still loads its
+   data, which costs a request and buys the ability to turn it back on without
+   a reload. The two blocks that hide themselves when empty stay hidden. */
+function applySections() {
+  Object.keys(SECTION_OF).forEach(key => {
+    if (sectionOn(key)) return;
+    const node = document.querySelector(SECTION_OF[key]);
+    if (node) node.classList.add('hide');
+  });
+}
+
 /* ------------------------------------------------------------------ games --- */
 async function games() {
   let gs;
@@ -571,6 +634,20 @@ function splash() {
       grid.appendChild(card);
     });
   host.appendChild(grid);
+
+  /* THE FULL TABLE BELONGS HERE, under the two summaries it is the long
+     version of, rather than in "Take part" among the sign-in cards. A reader
+     who has just looked at a twelve-row table and a top ten is the reader who
+     wants every row and every column; sending them to a different section to
+     find it was an accident of where the entry points were first collected. */
+  const more = el('div', 'seasonmore');
+  const full = el('a', 'ep-chip', 'Full statistics table →');
+  full.href = 'stats/?l=' + slug;
+  full.title = 'Every player, sortable, with eFG%, TS% and rim rates';
+  const tbl = el('a', 'ep-chip', 'Full league table →');
+  tbl.href = table;
+  more.append(full, tbl);
+  host.appendChild(more);
 }
 
 /* The section numbers are a reading aid, so they must count what is actually
@@ -642,7 +719,8 @@ function renumber() {
   if (WANT) {
     try {
       const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) +
-        '&select=id,slug,name,colour_a,colour_b,store_url,store_name&limit=1');
+        '&select=id,slug,name,colour_a,colour_b,store_url,store_name,' +
+        'country,sections,nav,theme&limit=1');
       LEAGUE = ls[0] || null;
     } catch (_) { /* fall through to the hub */ }
   }
@@ -668,6 +746,7 @@ function renumber() {
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
     }
+    applyTheme(LEAGUE.theme);
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
     if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug);
@@ -683,6 +762,7 @@ function renumber() {
     const star = await stars();
     await merch(roster, star);
     await socials();
+    applySections();
     renumber();
   } else {
     /* ------------------------------------------------------ the splash ---
