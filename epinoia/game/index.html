@@ -14,8 +14,8 @@
 <!-- The scorer's own stylesheet, generated from it. The renderers below emit
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../boxscore.css?v=84">
-<link rel="stylesheet" href="../kit/nav.css?v=84">
+<link rel="stylesheet" href="../boxscore.css?v=85">
+<link rel="stylesheet" href="../kit/nav.css?v=85">
 <style>
   /* The way in for whoever is scoring tonight. Hidden by default and revealed
      only once the database has said this account may score THIS game, so a
@@ -26,6 +26,20 @@
     font-weight:700;margin-left:auto;white-space:nowrap}
   .scorecta:hover{filter:brightness(1.08)}
   .scorecta.hide{display:none}
+  /* Quieter than the scoring button beside it, and deliberately so: one of
+     these is what somebody came here to do, and the other is the undo for a
+     mistake. An outline rather than the gradient, and it only warms up on
+     hover — a destructive action should not be the brightest thing on a page
+     somebody is reading a live score on. */
+  .revertcta{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;padding:6px 12px;border-radius:999px;cursor:pointer;
+    background:transparent;color:var(--ink-3,#8aa);border:1px solid var(--rule-2,#345);
+    white-space:nowrap;margin-left:8px}
+  .revertcta:hover{color:var(--flare,#ff5f6b);border-color:var(--flare,#ff5f6b)}
+  .revertcta:disabled{opacity:.5;cursor:default}
+  .revertcta.hide{display:none}
+  /* the scoring button claims the spare room; this one sits next to it */
+  #scoreCta + .revertcta{margin-left:8px}
   /* Page chrome only — nothing here restyles the box score itself. */
   body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
   .wrap{max-width:1150px;margin:0 auto;padding:0 12px 60px}
@@ -56,6 +70,7 @@
     <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
     <span class="ctx" id="ctx"></span>
     <a class="scorecta hide" id="scoreCta" href="#">score this game →</a>
+    <button class="revertcta hide" id="revertCta" type="button">back to listing</button>
     <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
   </div>
 
@@ -67,13 +82,13 @@
   </div>
 </div>
 
-<script src="../config.js?v=84" defer></script>
-<script src="../vendor/supabase.js?v=84" defer></script>
-<script src="../engine.js?v=84" defer></script>
-<script src="../boxscore.js?v=84" defer></script>
-<script src="../live.js?v=84" defer></script>
-<script src="../seo.js?v=84" defer></script>
-<script src="game.js?v=84" defer></script>
-<script src="../nav.js?v=84" defer></script>
+<script src="../config.js?v=85" defer></script>
+<script src="../vendor/supabase.js?v=85" defer></script>
+<script src="../engine.js?v=85" defer></script>
+<script src="../boxscore.js?v=85" defer></script>
+<script src="../live.js?v=85" defer></script>
+<script src="../seo.js?v=85" defer></script>
+<script src="game.js?v=85" defer></script>
+<script src="../nav.js?v=85" defer></script>
 </body>
 </html>

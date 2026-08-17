@@ -163,6 +163,7 @@ function renderShell() {
   txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
       S.teams[0].name + ' v ' + S.teams[1].name);
   offerToScore();
+  offerToRevert();
   document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
   document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
   shellBuilt = true;
@@ -231,6 +232,96 @@ async function offerToScore() {
   cta.href = '../score/?g=' + encodeURIComponent(gameId);
   cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
   cta.classList.remove('hide');
+}
+
+/* ---------------------------------------------------------------------------
+   AND THE UNDO, ON THE SAME PAGE.
+
+   A game left in live limbo is noticed HERE — somebody opens the box score,
+   sees a fixture that has been "in progress" since last Tuesday, and that is
+   the moment they want to put it back. Making them remember which league it
+   belongs to, open the admin console, find the season, find the competition
+   and find the fixture again is a long walk to undo one mis-tap.
+
+   A DIFFERENT PERMISSION FROM SCORING, and the distinction matters. can_score
+   includes a statistician assigned to this game; can_manage_game does not. A
+   statistician should be able to record what happens and should not be able to
+   destroy the record — so this asks can_manage_game, which is a platform
+   admin, a league admin of the owning league, or whoever created an ad-hoc
+   game. The same predicate the admin panel's button is judged by, so the two
+   places can never disagree about who may do this.
+
+   The two checks go out together rather than one after the other: they are
+   independent questions and a live game asks both.
+
+   The confirmation is the same two-step the admin panel uses — the first call
+   omits the discard flag, the database refuses and answers with the count, and
+   that count goes into the question. Nobody agrees to discard a log without
+   being told how big it is. */
+let revertAsked = false;
+async function offerToRevert() {
+  const cta = document.getElementById('revertCta');
+  if (!cta || revertAsked) return;
+  /* Only a game that is actually stuck. A scheduled game has nothing to put
+     back, and a final one is refused by the database anyway — offering the
+     button there would be offering a refusal. */
+  if (!gameId || (S.status !== 'live' && S.status !== 'finalising')) return;
+  const token = storedToken();
+  if (!token) return;
+  revertAsked = true;
+
+  const call = (body) => fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + body.fn, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token,
+               'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body.args)
+  });
+
+  try {
+    const r = await call({ fn: 'can_manage_game', args: { p_game: gameId } });
+    if (!r.ok || (await r.json()) !== true) return;
+  } catch (_) { return; }
+
+  cta.classList.remove('hide');
+  cta.addEventListener('click', async () => {
+    cta.disabled = true;
+    const attempt = async (discard) => {
+      const r = await call({ fn: 'revert_game',
+        args: discard ? { p_game: gameId, p_discard_events: true } : { p_game: gameId } });
+      const body = await r.json().catch(() => null);
+      return { ok: r.ok, body };
+    };
+    try {
+      let out = await attempt(false);
+      if (!out.ok) {
+        const msg = (out.body && (out.body.message || out.body.hint)) || '';
+        const m = /has (\d+) recorded event/.exec(msg);
+        if (!m) { cta.disabled = false; alert(msg || 'That was refused.'); return; }
+        const n = m[1];
+        const sure = confirm(
+          'Put this game back on the fixture list?\n\n' +
+          n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
+          'permanently. The clubs, the date and the venue are kept, so the ' +
+          'fixture can be scored properly when it is played.\n\n' +
+          'Close the scorer on that game first — a device still open on it will ' +
+          'carry on publishing.');
+        if (!sure) { cta.disabled = false; return; }
+        out = await attempt(true);
+        if (!out.ok) {
+          cta.disabled = false;
+          alert((out.body && out.body.message) || 'That was refused.');
+          return;
+        }
+      }
+      /* The page is now showing a game that no longer exists in the state it
+         was drawn from, so it is reloaded rather than patched. Reloading lands
+         on the same fixture, correctly drawn as scheduled. */
+      location.reload();
+    } catch (e) {
+      cta.disabled = false;
+      alert('That was refused: ' + (e.message || e));
+    }
+  }, { once: false });
 }
 
 /* cheap: 576 characters, safe to run on every clock tick */
