@@ -804,7 +804,10 @@ function renumber() {
       const sc = document.querySelector('#sc');
       if (sc) {
         sc.classList.remove('hide');
-        window.EpinoiaMusic.mount(sc);
+        /* THE SPLASH IS THE ONLY PAGE THAT ASKS UNPROMPTED, and the only one
+           that starts on a first click the visitor aimed elsewhere. Every
+           other page resumes or stays silent. */
+        window.EpinoiaMusic.mount(sc, { autoplay: true, kickOnInteraction: true });
       }
     }
   }

@@ -81,7 +81,29 @@ async function api(p) {
     .forEach(code => grid.appendChild(card(code, groups.get(code))));
 
   document.title = 'Countries · Epinoia';
+  music();
 })();
+
+/* THE TRACK ONLY CONTINUES; IT NEVER STARTS HERE.
+
+   A page that begins playing music because somebody followed a link to it is
+   the thing everybody hates, so this asks music.js for no autoplay and lets it
+   decide: it resumes if and only if sessionStorage says the track was playing
+   when the last page was left, which can only be true if the visitor started
+   it on the splash.
+
+   No record means the slab is not even drawn. A silent player sitting in the
+   corner of a page nobody asked for music on is furniture with no purpose. */
+function music() {
+  if (!window.EpinoiaMusic) return;
+  if (!window.matchMedia('(min-width:901px)').matches) return;
+  const prior = window.EpinoiaMusic.readState();
+  if (!prior || !prior.playing) return;
+  const sc = document.querySelector('#sc');
+  if (!sc) return;
+  sc.classList.remove('hide');
+  window.EpinoiaMusic.mount(sc, { autoplay: false, kickOnInteraction: false });
+}
 
 function card(code, leagues) {
   const box = el('article', 'slab co-card');
