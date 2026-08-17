@@ -35,8 +35,9 @@
    title in mint white on white marble. A custom property is only useful to
    what inherits from the element carrying it. */
 body.splash-body{
-  --w-shallow:#d7eef6;
-  --w-deep:#8fc9de;
+  --w-shallow:#d3ebf4;
+  --w-mid:#a9d6e6;
+  --w-deep:#7ebcd4;
   --stone:#f6f7f8;
   --stone-edge:rgba(120,150,165,.34);
   /* THE TEXT IS SLATE, NOT PALE BLUE. The first pass set the title in the
@@ -61,56 +62,90 @@ body.splash-body{
 /* every layer is oversized so a slow translate never runs out of tile */
 .pool > *{ position:absolute; inset:-30% -30%; will-change:transform }
 
-/* 1 — the floor. Blurred, because you are looking at it through water. */
+/* 1 — the floor. Real Carrara, and DEEPER UNDER than it was: more blur, less
+   opacity, more wash on top. You should know there is stone down there
+   without being able to read its veins, which is what a pool with any depth
+   to it actually looks like. */
 .pool-floor{
   background:url('../brand/pool-marble.jpg') repeat;
-  background-size:620px 620px;
-  filter:blur(1.3px) saturate(.5) brightness(1.03);
-  opacity:.9;
-  animation:pool-floor 190s linear infinite;
+  background-size:760px 760px;
+  filter:blur(2.6px) saturate(.4) brightness(1.04);
+  opacity:.70;
+  animation:pool-floor 220s linear infinite;
 }
-/* 2 — the light on it. Two nets, different scales, different directions. */
+/* 2 — the light reaching it. Softer and slower than the first pass: this is
+   sun through a calm surface, not a wave pool. */
 .pool-caustic{
   background:url('../brand/pool-caustics.jpg') repeat;
   mix-blend-mode:screen;
 }
 .pool-caustic.a{
-  background-size:760px 760px; opacity:.62;
-  animation:pool-a 74s linear infinite;
+  background-size:900px 900px; opacity:.44;
+  filter:blur(1.4px);
+  animation:pool-a 150s linear infinite;
 }
 .pool-caustic.b{
-  background-size:1180px 1180px; opacity:.44;
-  filter:blur(2.4px);
-  animation:pool-b 118s linear infinite reverse;
+  background-size:1420px 1420px; opacity:.28;
+  filter:blur(4px);
+  animation:pool-b 230s linear infinite reverse;
 }
-/* 3 — the water itself: a wash, deeper towards the bottom of the frame */
+/* 3 — the body of water. Thicker now, on purpose: the brief moved from "see
+   the marble through it" to "harder to see through", and depth is mostly this
+   number. */
 .pool-tint{
   inset:0;
-  /* THIN. The first pass had this at 58-74% and it drowned the pool: the
-     caustics disappeared and the floor went flat, which is a painted blue
-     rectangle rather than water. Water you can see the bottom through is the
-     entire brief, so the wash only tints. */
   background:linear-gradient(178deg,
-    color-mix(in srgb, var(--w-shallow) 30%, transparent) 0%,
-    color-mix(in srgb, var(--w-deep) 34%, transparent) 66%,
-    color-mix(in srgb, var(--w-deep) 48%, transparent) 100%);
+    color-mix(in srgb, var(--w-shallow) 52%, transparent) 0%,
+    color-mix(in srgb, var(--w-mid) 56%, transparent) 48%,
+    color-mix(in srgb, var(--w-deep) 66%, transparent) 100%);
   pointer-events:none;
 }
-/* 4 — one long sheen across the surface */
+/* 4 — THE SURFACE ITSELF, which is what was missing. Long, low swells rather
+   than a caustic net: one layer drifting slowly across, a second larger and
+   slower beneath it, both barely there. Calm water does not sparkle, it
+   BREATHES — the whole effect is a few per cent of light moving, and it reads
+   as flow precisely because it is almost nothing. */
+/* OVERLAY, not soft-light. Soft-light against a mid-grey tile is very nearly
+   a no-op — the first attempt at this layer was invisible, which is a
+   convincing way to spend two files on nothing. Overlay keeps the mid-tone
+   and swings the ends, which is exactly what a swell does to reflected light.
+
+   THE TILE IS SQUASHED, 1600 across by 520 down. Calm water seen from above
+   does not show round cells; it shows long low ridges lying across the flow,
+   and stretching the tile is what turns one into the other. */
+.pool-swell{
+  background:url('../brand/pool-surface.jpg') repeat;
+  mix-blend-mode:overlay;
+}
+.pool-swell.a{
+  background-size:1600px 520px; opacity:.34;
+  animation:swell-a 90s linear infinite;
+}
+.pool-swell.b{
+  background-size:2400px 820px; opacity:.22;
+  animation:swell-b 160s linear infinite reverse;
+}
+/* 5 — one long sheen across the surface */
 .pool-sheen{
   inset:-40%;
-  background:linear-gradient(104deg, transparent 34%,
-    rgba(255,255,255,.32) 48%, rgba(255,255,255,.06) 56%, transparent 66%);
-  mix-blend-mode:screen; opacity:.5;
-  animation:pool-sheen 46s ease-in-out infinite alternate;
+  background:linear-gradient(104deg, transparent 36%,
+    rgba(255,255,255,.26) 49%, rgba(255,255,255,.05) 57%, transparent 68%);
+  mix-blend-mode:screen; opacity:.42;
+  animation:pool-sheen 62s ease-in-out infinite alternate;
 }
 
-@keyframes pool-floor{ to{ transform:translate3d(-2%, 3%, 0) } }
-@keyframes pool-a{ to{ transform:translate3d(-620px, -380px, 0) } }
-@keyframes pool-b{ to{ transform:translate3d(-1180px, 640px, 0) } }
+/* THE DRIFT IS ALL ONE WAY. Layers moving in opposite directions read as
+   turbulence; a calm surface flows, so everything travels broadly left with
+   the deeper layers lagging behind — parallax, which is what makes it look
+   like depth rather than like wallpaper scrolling. */
+@keyframes pool-floor{ to{ transform:translate3d(-3%, 1.5%, 0) } }
+@keyframes pool-a{ to{ transform:translate3d(-900px, -120px, 0) } }
+@keyframes pool-b{ to{ transform:translate3d(1420px, 180px, 0) } }
+@keyframes swell-a{ to{ transform:translate3d(-1600px, -40px, 0) } }
+@keyframes swell-b{ to{ transform:translate3d(2400px, 60px, 0) } }
 @keyframes pool-sheen{
-  from{ transform:translate3d(-9%, -4%, 0) }
-  to  { transform:translate3d(9%, 4%, 0) }
+  from{ transform:translate3d(-7%, -3%, 0) }
+  to  { transform:translate3d(7%, 3%, 0) }
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -137,7 +172,10 @@ body.splash-body{
 .slab{
   position:relative;
   background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
-  background-size:520px 520px;
+  /* larger than the slabs themselves, so the tile's seam almost never falls
+     inside one — cheaper than making a real photograph seamless, and it does
+     not put an axis of symmetry through the stone the way mirroring would */
+  background-size:760px 760px;
   border:1px solid var(--stone-edge);
   box-shadow:
     /* bevel */
@@ -189,11 +227,22 @@ body.splash-body{
   padding:calc(var(--u)*5) calc(var(--u)*4) calc(var(--u)*4);
 }
 .sp-title h1{
-  margin:0; line-height:.9; color:var(--ink-title);
+  margin:0; line-height:.9;
   font-size:clamp(44px, 9vw, 92px);
-  /* one hairline of white beneath the letters, the way cut stone catches
-     light on its lower edge — not a glow */
-  text-shadow:0 1px 0 rgba(255,255,255,.9);
+  /* CUT INTO THE STONE, not printed on it. Type that sits ON marble always
+     looks like a sticker; engraved type belongs to the surface, which is what
+     "integrated" means here.
+
+     The illusion is two shadows and nothing else. The light is overhead, so
+     the inside of a cut catches shade at the TOP and the lower lip of the
+     groove catches light at the BOTTOM — invert that pair and the letters pop
+     out instead. The fill is the stone itself, a shade darker, so the letter
+     is a hollow in the marble rather than a colour laid over it. */
+  color:#7f8f97;
+  text-shadow:
+    0 -1px 1px rgba(28,48,58,.55),
+    0 1px 0 rgba(255,255,255,.95),
+    0 2px 3px rgba(255,255,255,.6);
 }
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
@@ -202,9 +251,13 @@ body.splash-body{
   text-transform:uppercase; color:var(--ink-2);
 }
 /* the mark is supplied as white-on-alpha, so it is tinted rather than
-   recoloured — one file works on the marble and on the water */
+   recoloured — one file works on the marble and on the water. Engraved with
+   the same two shadows as the title, in filter form, so it is cut into the
+   slab rather than stuck to it. */
 .sp-by img{ height:26px; width:auto; display:block;
-  filter:brightness(0) opacity(.72) }
+  filter:brightness(0) opacity(.44)
+         drop-shadow(0 1px 0 rgba(255,255,255,.9)) }
+.sp-by span{ text-shadow:0 1px 0 rgba(255,255,255,.85) }
 
 /* --------------------------------------------------------------- sign in --- */
 .sp-login{ width:min(560px, 92vw); padding:calc(var(--u)*2.5) calc(var(--u)*3) }
@@ -280,11 +333,17 @@ body.splash-body{
    segments a pixel below the other two. A one-pixel step across a grid is
    exactly the kind of thing that reads as "not quite right" without ever
    being noticed. */
+/* THIS TYPE IS ON THE WATER, not on the stone, so it gets the opposite
+   treatment: no groove — a groove needs a solid to be cut into — but a soft
+   pale halo, the way lettering on a pool wall reads through moving water.
+   Slightly darker than the slab type too, because the water behind it is
+   darker than marble. */
 .deck-h{
   font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em;
-  text-transform:uppercase; color:var(--ink-2);
+  text-transform:uppercase; color:var(--ink);
   height:20px; line-height:13px; padding:0 0 7px 2px;
   display:flex; align-items:flex-end; gap:5px;
+  text-shadow:0 0 10px rgba(255,255,255,.75), 0 1px 0 rgba(255,255,255,.5);
 }
 .deck-h .epinoia-mark{ font-size:11px; line-height:1 }
 .segs{ display:grid; gap:1px; background:var(--stone-edge); overflow:hidden;
@@ -299,7 +358,7 @@ body.splash-body{
   position:relative; display:flex; flex-direction:column; gap:5px;
   min-height:118px; padding:calc(var(--u)*2);
   background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
-  background-size:520px 520px;
+  background-size:760px 760px;
   text-decoration:none; color:var(--ink); cursor:pointer;
   transition:background-color .18s ease, transform .18s ease;
   overflow:hidden;
@@ -324,7 +383,11 @@ body.splash-body{
 .seg .t{
   font-family:var(--f-ui); font-weight:800; font-size:15px;
   text-transform:uppercase; letter-spacing:.02em; line-height:1.15;
+  /* the same cut, shallower — a segment's title is small, and a deep groove
+     at 15px turns into mud */
+  text-shadow:0 1px 0 rgba(255,255,255,.85);
 }
+.seg .k, .seg .d{ text-shadow:0 1px 0 rgba(255,255,255,.6) }
 .seg .d{
   font-family:var(--f-micro); font-size:8.5px; line-height:1.85;
   color:var(--ink-2); margin-top:auto;
@@ -361,9 +424,10 @@ body.splash-body{
   display:flex; gap:16px; flex-wrap:wrap; align-items:center;
   padding:calc(var(--u)*2) 2px 0;
   font-family:var(--f-micro); font-size:8.5px; letter-spacing:.1em;
-  color:var(--ink-2);
+  color:var(--ink);
+  text-shadow:0 0 9px rgba(255,255,255,.7), 0 1px 0 rgba(255,255,255,.45);
 }
-.sp-foot a{ color:var(--ink-2); text-decoration:none }
+.sp-foot a{ color:var(--ink); text-decoration:none }
 .sp-foot a:hover{ color:var(--ink); text-decoration:underline }
 
 /* The rail is a dark object and this page is a bright one. It keeps its own
