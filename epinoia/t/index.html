@@ -10,14 +10,25 @@
 <title>Team · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=100">
-<link rel="stylesheet" href="../kit/table.css?v=100">
-<link rel="stylesheet" href="../kit/nav.css?v=100">
-<link rel="stylesheet" href="../kit/card.css?v=100">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=101">
+<link rel="stylesheet" href="../kit/table.css?v=101">
+<link rel="stylesheet" href="../kit/nav.css?v=101">
+<link rel="stylesheet" href="../kit/card.css?v=101">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
-    font-size:24px;color:#04100b;flex:none}
+    font-size:24px;color:#04100b;flex:none;position:relative;overflow:hidden}
+  /* WITH A CREST, THE BADGE IS THE CREST. The coloured square with initials on
+     it is a stand-in for a mark the club had not given us; once they have, the
+     square is in the way. So the background goes and the crest sits on the page
+     — most are drawn on a transparent ground and a block of club colour behind
+     one is a second, competing badge.
+
+     contain rather than cover: a crest is artwork and cropping it to fill a
+     square is not ours to do. A wide wordmark letterboxes and stays legible. */
+  .badge.has-crest{background:transparent !important}
+  .badge img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    display:block}
   .hname{font-family:var(--f-score);font-size:clamp(24px,5vw,40px);text-transform:uppercase;line-height:1}
   .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
   .rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));border-bottom:1px solid var(--rule)}
@@ -300,18 +311,18 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=100" defer></script>
-<script src="../config.js?v=100" defer></script>
-<script src="../bpm.js?v=100" defer></script>
-<script src="../season.js?v=100" defer></script>
-<script src="../data.js?v=100" defer></script>
-<script src="../lineups.js?v=100" defer></script>
-<script src="../wowy.js?v=100" defer></script>
-<script src="lineupui.js?v=100" defer></script>
-<script src="../fulltable.js?v=100" defer></script>
-<script src="../igtile.js?v=100" defer></script>
-<script src="venue.js?v=100" defer></script>
-<script src="team.js?v=100" defer></script>
-<script src="../nav.js?v=100" defer></script>
+<script src="../vendor/supabase.js?v=101" defer></script>
+<script src="../config.js?v=101" defer></script>
+<script src="../bpm.js?v=101" defer></script>
+<script src="../season.js?v=101" defer></script>
+<script src="../data.js?v=101" defer></script>
+<script src="../lineups.js?v=101" defer></script>
+<script src="../wowy.js?v=101" defer></script>
+<script src="lineupui.js?v=101" defer></script>
+<script src="../fulltable.js?v=101" defer></script>
+<script src="../igtile.js?v=101" defer></script>
+<script src="venue.js?v=101" defer></script>
+<script src="team.js?v=101" defer></script>
+<script src="../nav.js?v=101" defer></script>
 </body>
 </html>

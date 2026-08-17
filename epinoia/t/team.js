@@ -40,8 +40,37 @@ function oops(msg) {
     const colour = team.colour || '#93f2bf';
     document.documentElement.style.setProperty('--team-a', colour);
 
-    $('#badge').style.background = colour;
-    $('#badge').textContent = team.short_name || (team.name || '?').slice(0, 2).toUpperCase();
+    /* THE CLUB'S CREST WHERE ITS INITIALS WERE.
+
+       teams.logo_path is the right source rather than a query against media:
+       it is set only when a crest is actually published and cleared when one is
+       removed, so a non-null value already means "live", and it arrives with
+       the team row that has just been fetched — no second request to decide
+       whether to draw a badge.
+
+       The initials stay as the fallback, and stay in the DOM until the image
+       has actually loaded: a crest that 404s must leave a badge behind rather
+       than an empty square where the club should be. */
+    const badge = $('#badge');
+    badge.style.background = colour;
+    badge.textContent = team.short_name || (team.name || '?').slice(0, 2).toUpperCase();
+    if (team.logo_path) {
+      const crest = document.createElement('img');
+      /* The bucket is written in rather than borrowed from EpinoiaUpload: this
+         page is a public read and does not load the upload pipeline — a whole
+         image resizer pulled in to build one URL. The storage-urls test is what
+         keeps this literal honest. */
+      crest.src = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' +
+                  team.logo_path;
+      crest.alt = '';
+      crest.addEventListener('load', () => {
+        /* the initials are only cleared once the crest is actually on screen */
+        [...badge.childNodes].forEach(n => { if (n !== crest) n.remove(); });
+        badge.classList.add('has-crest');
+      });
+      crest.addEventListener('error', () => crest.remove());
+      badge.appendChild(crest);
+    }
     $('#tname').textContent = team.name;
     $('#tname').style.color = colour;
     const lg = team.leagues || {};
