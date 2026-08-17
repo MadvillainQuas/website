@@ -103,6 +103,39 @@
   color-scheme:dark;
 }
 
+/* ---------- 2b. scale --------------------------------------------------------
+   EVERY PAGE THAT LOADS THIS KIT RENDERS AT 150%, which is what these screens
+   were designed at and, until now, what everybody had to set by hand.
+
+   `zoom` rather than a root font-size, because this kit sizes in px
+   throughout — hairlines, table cells, the ruled grid — and rem would have
+   scaled the type and left the structure behind. zoom scales the lot,
+   including borders, and keeps layout intact where transform:scale would
+   break fixed positioning and leave the page the wrong width.
+
+   ZOOM DIVIDES THE LAYOUT WIDTH, which is the whole catch. At 1.5 a 1000px
+   window lays out as 657px, and the sidebar rail plus a season table does not
+   fit in 657px — measured, 58px of horizontal overflow. It holds at 790px and
+   above. So the full 150% starts at 1200, an intermediate step covers the
+   1000–1200 laptops (1.25 of 1000 is 800, the width that was proven fine),
+   and below 1000 the page renders at its own size.
+
+   MEDIA QUERIES DO NOT SEE THE ZOOM — `@media (max-width:560px)` still tests
+   the real window — which is the other reason not to push this further down.
+   Past a point the page would be laying out at phone widths while every
+   breakpoint in the file still believed it was on a desktop.
+
+   PAGES THAT OPT OUT. The scorer and the four embeds load neither this file
+   nor anything importing it: the scorer is one self-contained document sized
+   for a phone at a scorer's table, and an embed renders inside somebody
+   else's page at a size they chose, so scaling it would be rude. (The embed
+   GALLERY at /league/embed/ is an ordinary page of ours and does scale — it
+   is the four documents under it that must not.) The splash does load the kit
+   and opts out here: it fills a viewport rather than being read. */
+@media (min-width:1000px){ body{ zoom:1.25 } }
+@media (min-width:1200px){ body{ zoom:1.5 } }
+body.splash-body{ zoom:1 }
+
 /* ---------- 3. base ---------- */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}

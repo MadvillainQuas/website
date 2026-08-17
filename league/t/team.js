@@ -351,7 +351,16 @@ async function staff(team, canEdit, sb) {
       const i = el('input', cls);
       i.value = value == null ? '' : String(value);
       i.placeholder = ph;
-      Object.assign(i, attrs || {});
+      /* `list` is a READ-ONLY property on HTMLInputElement — it returns the
+         datalist element, it does not set one. Object.assign onto it throws
+         in strict mode, which took the whole roster down and, through the
+         boot catch, printed "cannot set property list" where the fixtures
+         should have been. Anything that is only ever an attribute goes
+         through setAttribute; the rest can be assigned. */
+      Object.entries(attrs || {}).forEach(([k, v]) => {
+        if (k === 'list' || k === 'min' || k === 'max') i.setAttribute(k, v);
+        else i[k] = v;
+      });
       let last = i.value;
       const save = async () => {
         if (i.value === last) return;

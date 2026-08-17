@@ -69,8 +69,8 @@ body.splash-body{
 .pool-floor{
   background:url('../brand/pool-marble.jpg') repeat;
   background-size:760px 760px;
-  filter:blur(2.6px) saturate(.4) brightness(1.04);
-  opacity:.70;
+  filter:blur(2.0px) saturate(.4) brightness(1.05);
+  opacity:.80;
   animation:pool-floor 220s linear infinite;
 }
 /* 2 — the light reaching it. Softer and slower than the first pass: this is
@@ -85,19 +85,21 @@ body.splash-body{
   animation:pool-a 150s linear infinite;
 }
 .pool-caustic.b{
-  background-size:1420px 1420px; opacity:.28;
+  background-size:1420px 1420px; opacity:.26;
   filter:blur(4px);
   animation:pool-b 230s linear infinite reverse;
 }
-/* 3 — the body of water. Thicker now, on purpose: the brief moved from "see
-   the marble through it" to "harder to see through", and depth is mostly this
-   number. */
+/* 3 — the body of water. SHALLOW: enough to tint and to soften, not enough to
+   hide the floor. This number has moved twice, in both directions, because
+   "see the marble through it", "harder to see through" and "a shallow pool
+   with some of the marble coming through" are three different depths, and
+   depth is almost entirely this one value. */
 .pool-tint{
   inset:0;
   background:linear-gradient(178deg,
-    color-mix(in srgb, var(--w-shallow) 52%, transparent) 0%,
-    color-mix(in srgb, var(--w-mid) 56%, transparent) 48%,
-    color-mix(in srgb, var(--w-deep) 66%, transparent) 100%);
+    color-mix(in srgb, var(--w-shallow) 44%, transparent) 0%,
+    color-mix(in srgb, var(--w-mid) 48%, transparent) 48%,
+    color-mix(in srgb, var(--w-deep) 58%, transparent) 100%);
   pointer-events:none;
 }
 /* 4 — THE SURFACE ITSELF, which is what was missing. Long, low swells rather
@@ -118,11 +120,11 @@ body.splash-body{
   mix-blend-mode:overlay;
 }
 .pool-swell.a{
-  background-size:1600px 520px; opacity:.34;
+  background-size:1600px 520px; opacity:.30;
   animation:swell-a 90s linear infinite;
 }
 .pool-swell.b{
-  background-size:2400px 820px; opacity:.22;
+  background-size:2400px 820px; opacity:.20;
   animation:swell-b 160s linear infinite reverse;
 }
 /* 5 — one long sheen across the surface */
