@@ -103,7 +103,14 @@ const ALIASES = {
             'dateofbirth', 'birthdate'],
   position:['position', 'pos', 'role'],
   minor:   ['minor', 'isminor', 'u18', 'under18', 'junior', 'youth'],
-  height:  ['height', 'ht', 'cm', 'heightcm']
+  /* Measurements. `cm` on its own is ambiguous between height and wingspan and
+     is left on height, because a sheet with one bare "cm" column has always
+     meant height and never wingspan. */
+  height:  ['height', 'ht', 'cm', 'heightcm', 'heightincm'],
+  weight:  ['weight', 'wt', 'kg', 'weightkg', 'mass'],
+  wingspan:['wingspan', 'span', 'reach', 'ws', 'wingspancm', 'armspan'],
+  prev:    ['previousclub', 'prevclub', 'previous', 'formerclub', 'former',
+            'lastclub', 'from', 'fromclub', 'club']
 };
 
 function mapHeaders(header) {
@@ -187,6 +194,55 @@ function birthYear(raw, thisYear) {
   function within(y) { return (y >= 1900 && y <= now) ? y : NaN; }
 }
 
+/* ---------------------------------------------------------- measurements ---
+   Sheets carry heights in three notations and the wrong one silently becomes
+   a two-metre typo:
+
+     198        centimetres, the stored unit
+     1.98       metres, which a spreadsheet writes when the column is numeric
+     6'6" 6-6   feet and inches, which is what an American export looks like
+
+   Anything outside the sane range comes back null rather than being clamped —
+   a clamp turns a misread into a plausible-looking wrong number, which is the
+   one outcome worth avoiding here. */
+function centimetres(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return null;
+
+  let m = s.match(/^(\d+)\s*(?:'|’|ft|feet)\s*(\d{1,2})?\s*(?:"|”|in|inch|inches)?$/i);
+  if (m) {
+    const cm = Math.round((+m[1] * 12 + (+m[2] || 0)) * 2.54);
+    return within(cm, 100, 260);
+  }
+  m = s.match(/^(\d+)\s*-\s*(\d{1,2})$/);            // 6-6
+  if (m) return within(Math.round((+m[1] * 12 + +m[2]) * 2.54), 100, 260);
+
+  const n = parseFloat(s.replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  if (n > 0 && n < 3) return within(Math.round(n * 100), 100, 260);   // metres
+  return within(Math.round(n), 100, 260);
+
+  function within(v, lo, hi) { return (v >= lo && v <= hi) ? v : null; }
+}
+
+/* A wingspan is measured the same way as a height and lives in a different
+   range — the column's constraint is 120-280, so a value that parsed as a
+   plausible HEIGHT can still be an impossible span. */
+function clampSpan(cm) { return (cm != null && cm >= 120 && cm <= 280) ? cm : null; }
+
+/* Kilograms, or pounds when the cell says so. Nothing is guessed from the
+   magnitude: 180 is a plausible weight in either unit, and picking one by
+   size is how a 180 lb guard becomes a 180 kg one. */
+function kilograms(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return null;
+  const lb = /\blbs?\b|\bpounds?\b/i.test(s);
+  const n = parseFloat(s.replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  const kg = Math.round(lb ? n * 0.45359237 : n);
+  return (kg >= 30 && kg <= 250) ? kg : null;
+}
+
 const TRUE = ['1', 'y', 'yes', 'true', 't', 'minor', 'u18', 'junior'];
 const truthy = v => TRUE.indexOf(String(v == null ? '' : v).trim().toLowerCase()) !== -1;
 
@@ -248,6 +304,10 @@ function build(opts) {
       first, last, jersey,
       position: cell('position') || null,
       birth_year: (year && !Number.isNaN(year)) ? year : null,
+      height_cm: centimetres(cell('height')),
+      weight_kg: kilograms(cell('weight')),
+      wingspan_cm: cell('wingspan') ? clampSpan(centimetres(cell('wingspan'))) : null,
+      previous_club: cell('prev') || null,
       errors: [], warnings: [],
       action: 'add', match: null
     };
@@ -272,6 +332,14 @@ function build(opts) {
 
     if (yearRaw && Number.isNaN(year)) r.warnings.push('birth year "' + yearRaw + '" not understood — left blank');
     if (jersey && !/^\d{1,2}$/.test(jersey)) r.warnings.push('jersey "' + jersey + '" is not 0–99');
+
+    [['height', 'height_cm'], ['weight', 'weight_kg'], ['wingspan', 'wingspan_cm']]
+      .forEach(pair => {
+        const raw = cell(pair[0]);
+        if (raw && r[pair[1]] == null) {
+          r.warnings.push(pair[0] + ' "' + raw + '" not understood — left blank');
+        }
+      });
 
     const key = nameKey(first, last);
 

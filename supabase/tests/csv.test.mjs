@@ -257,5 +257,50 @@ console.log('\nthe import as a whole');
   eq('and from the jersey', r.rows[0].jersey, '4');
 }
 
+
+console.log('\nmeasurements');
+
+/* ---- measurements, added with the team-sheet columns (0049) --------------- */
+{
+  const r = C.build({ text:
+    'No,Name,Height,Weight,Wingspan,Previous club\n' +
+    '7,Jo Bloggs,198,92,208,Old Town\n' +
+    '8,Sam Smith,1.98,203 lb,2.05,Second City\n' +
+    "9,Alex Roe,6'6\",,6-9,\n" +
+    '10,Pat Fry,nonsense,,,\n' });
+
+  eq('centimetres pass through', r.rows[0].height_cm, 198);
+  eq('kilograms pass through', r.rows[0].weight_kg, 92);
+  eq('wingspan in cm', r.rows[0].wingspan_cm, 208);
+  eq('previous club is read', r.rows[0].previous_club, 'Old Town');
+
+  eq('metres become centimetres', r.rows[1].height_cm, 198);
+  eq('pounds become kilograms', r.rows[1].weight_kg, 92);
+  eq('a wingspan in metres converts', r.rows[1].wingspan_cm, 205);
+
+  eq('feet and inches convert', r.rows[2].height_cm, 198);
+  eq('the 6-9 notation converts', r.rows[2].wingspan_cm, 206);
+  eq('a blank weight stays null', r.rows[2].weight_kg, null);
+
+  eq('an unreadable height is null, not a guess', r.rows[3].height_cm, null);
+  ok('and it says so', r.rows[3].warnings.some(w => /height/.test(w)),
+     'expected a warning about the height');
+}
+
+{
+  /* A weight of 180 is plausible in either unit, so nothing is inferred from
+     the size of the number — only from the unit written beside it. */
+  const r = C.build({ text: 'No,Name,Weight\n7,A B,180\n8,C D,180 lbs\n' });
+  eq('a bare 180 is kilograms', r.rows[0].weight_kg, 180);
+  eq('180 lbs is 82 kg', r.rows[1].weight_kg, 82);
+}
+
+{
+  /* A wingspan is bounded differently from a height: 110cm is a possible
+     child's height reading and an impossible span. */
+  const r = C.build({ text: 'No,Name,Wingspan\n7,A B,110\n' });
+  eq('an out-of-range wingspan is refused', r.rows[0].wingspan_cm, null);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

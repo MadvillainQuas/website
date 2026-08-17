@@ -31,7 +31,7 @@ async function boot() {
 async function render() {
   show('#signin', !me); show('#out', !!me);
   $('#who').textContent = me ? me.email : '';
-  show('#teams', false); show('#roster', false); show('#setup', false);
+  show('#teams', false); show('#roster', false); show('#setup', false); show('#club', false);
   if (!me) return;
   if (team) return renderRoster();
   await renderTeams();
@@ -78,6 +78,15 @@ async function renderRoster() {
 
   /* The importer needs to know who is already here, so a re-imported sheet
      updates people rather than creating a second copy of each of them. */
+  /* Everything a club maintains about itself, below the roster. Mounted from
+     here rather than at boot because it needs the team, and re-mounted after
+     every roster change so a newly added player has a profile card without a
+     reload. */
+  show('#club', true);
+  window.EpinoiaClubUI.mount({
+    host: '#club', sb, team, say, onDone: renderRoster
+  });
+
   window.EpinoiaRosterCSV.mount({
     host: '#csvpanel', sb, team, me, say,
     existing: data.map(r => ({

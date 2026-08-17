@@ -12,8 +12,8 @@
 <title>Team portal · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=51">
-<link rel="stylesheet" href="../kit/nav.css?v=51">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=55">
+<link rel="stylesheet" href="../kit/nav.css?v=55">
 <style>
   .pad3{padding:calc(var(--u)*3)}
   .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
@@ -81,6 +81,24 @@
   .setup{font-family:var(--f-data);font-size:11.5px;line-height:1.7;color:var(--ink-2);
     background:var(--panel);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
   .setup b{color:var(--lume);font-weight:400}
+
+  /* ---- the club panels ---- */
+  .venue-prev{margin:calc(var(--u)) 0}
+  .venue-prev img{max-width:min(100%,420px);border:1px solid var(--rule-2);display:block}
+  .fmt-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--lume);margin:calc(var(--u)*2) 0 6px}
+  .note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.95;
+    max-width:76ch;margin:0 0 calc(var(--u))}
+  .stafflist .row, .prevlist .row{margin-bottom:6px}
+  .pcard{border:1px solid var(--rule);padding:calc(var(--u)*2);margin-bottom:calc(var(--u)*2)}
+  .pcard-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    margin-bottom:calc(var(--u))}
+  .pcard-n{font-family:var(--f-score);font-size:20px;color:var(--lume);min-width:26px}
+  .pcard-name{font-family:var(--f-ui);font-weight:800;font-size:15px}
+  .tag{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;
+    border:1px solid var(--rule-2);padding:2px 7px}
+  .tag.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
+  .tag.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
 </style>
 </head>
 <body>
@@ -155,6 +173,9 @@
     <div class="ep-band stack" id="csvpanel"></div>
   </section>
 
+  <!-- ---------------- the club's own page ---------------- -->
+  <section id="club" class="hide"></section>
+
   <!-- ---------------- setup needed ---------------- -->
   <section id="setup" class="hide">
     <div class="ep-hdr"><span class="idx">!</span><h2>Database not set up yet</h2></div>
@@ -175,12 +196,13 @@
   </footer>
 </div>
 
-<script src="../vendor/supabase.js?v=51"></script>
-<script src="../config.js?v=51"></script>
-<script src="../upload.js?v=51"></script>
-<script src="csv.js?v=51"></script>
-<script src="roster-csv.js?v=51"></script>
-<script src="app.js?v=51"></script>
-<script src="../nav.js?v=51"></script>
+<script src="../vendor/supabase.js?v=55"></script>
+<script src="../config.js?v=55"></script>
+<script src="../upload.js?v=55"></script>
+<script src="csv.js?v=55"></script>
+<script src="roster-csv.js?v=55"></script>
+<script src="club-ui.js?v=55"></script>
+<script src="app.js?v=55"></script>
+<script src="../nav.js?v=55"></script>
 </body>
 </html>

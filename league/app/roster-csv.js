@@ -48,6 +48,8 @@ function mount(opts) {
   const lead = el('p', 'ep-micro csv-lead');
   lead.textContent = 'Paste a team sheet, or choose a file. Columns are worked out from the ' +
     'headings — jersey, first and last name, birth year — and a single "Name" column is fine. ' +
+    'Height, weight, wingspan and previous club are read too when the sheet has them: '  +
+    'heights in centimetres, metres or feet and inches, weights in kilograms or pounds. ' +
     'Nothing is saved until you have seen what it will do.';
   host.appendChild(lead);
 
@@ -209,6 +211,8 @@ function mount(opts) {
           slug: slugify((r.first + '-' + r.last).trim() || 'player'),
           first_name: r.first, last_name: r.last,
           birth_year: r.birth_year, is_minor: r.is_minor,
+          height_cm: r.height_cm, weight_kg: r.weight_kg,
+          wingspan_cm: r.wingspan_cm, previous_club: r.previous_club,
           created_by: opts.me.id
         }));
         const { data, error } = await opts.sb.from('players').insert(payload).select('id');
@@ -228,6 +232,23 @@ function mount(opts) {
           throw new Error('Roster entries were refused (' + rErr.message +
                           '), so the new player records were removed again.');
         }
+      }
+
+      /* 3b. measurements for people already here. A sheet that carries a
+         height for somebody already on the roster is a correction, and
+         ignoring it would make the importer useful once and useless after
+         that. Nothing is CLEARED from a blank cell — an export that omits a
+         column must not wipe what the club typed in by hand. */
+      for (const r of parsed.rows.filter(x => x.action === 'existing' && x.match)) {
+        const patch = {};
+        if (r.height_cm != null)    patch.height_cm = r.height_cm;
+        if (r.weight_kg != null)    patch.weight_kg = r.weight_kg;
+        if (r.wingspan_cm != null)  patch.wingspan_cm = r.wingspan_cm;
+        if (r.previous_club)        patch.previous_club = r.previous_club;
+        if (!Object.keys(patch).length) continue;
+        const { error } = await opts.sb.from('players')
+          .update(patch).eq('id', r.match.playerId);
+        if (error) throw error;
       }
 
       /* 3. jersey changes for people already here */

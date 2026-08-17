@@ -213,6 +213,69 @@ function drawnPane(team) {
   return pane;
 }
 
+/* ---------------------------------------------------------------- socials ---
+   The club's own accounts, and up to four posts, directly under the venue
+   image — which is where a supporter looking at "where do I go on Saturday"
+   is most likely to also want "what are this lot like".
+
+   IFRAMES rather than Instagram's script, for the same reason as the league
+   section: their embed.js is a third-party script on a public page that sets
+   cookies and can change under us, and the sandboxed frame renders the same
+   post. A shortcode is re-validated here even though the database already
+   reduced it, because this value goes into a src. */
+const IG_CODE = /^[A-Za-z0-9_-]{4,32}$/;
+
+async function socialBlock(team, opts, wrap) {
+  let s = null;
+  try {
+    const rows = await opts.api('team_socials?team_id=eq.' + team.id +
+      '&select=instagram,x_handle,facebook,website,pinned&limit=1');
+    s = rows && rows[0];
+  } catch (_) { return; }
+  if (!s) return;
+
+  const links = [];
+  if (s.instagram) links.push(['Instagram', 'https://www.instagram.com/' +
+    encodeURIComponent(s.instagram) + '/', '@' + s.instagram]);
+  if (s.x_handle)  links.push(['X', 'https://x.com/' +
+    encodeURIComponent(s.x_handle) + '', '@' + s.x_handle]);
+  if (s.facebook)  links.push(['Facebook', 'https://www.facebook.com/' +
+    encodeURIComponent(s.facebook) + '/', s.facebook]);
+  if (s.website)   links.push(['Website', s.website, s.website.replace(/^https?:\/\//, '')]);
+
+  const posts = (s.pinned || []).filter(c => IG_CODE.test(c)).slice(0, 4);
+  if (!links.length && !posts.length) return;
+
+  const box = el('div', 'vsocial');
+  const head = el('div', 'vsocial-h');
+  head.appendChild(el('span', 'vsocial-t', 'Follow the club'));
+  links.forEach(l => {
+    const a = el('a', 'vsocial-l', l[2]);
+    a.href = l[1]; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.title = l[0];
+    head.appendChild(a);
+  });
+  box.appendChild(head);
+
+  if (posts.length) {
+    const grid = el('div', 'vsocial-g');
+    posts.forEach(code => {
+      const cell = el('div', 'vsocial-c');
+      const f = document.createElement('iframe');
+      f.src = 'https://www.instagram.com/p/' + code + '/embed';
+      f.loading = 'lazy';
+      f.title = 'Instagram post';
+      f.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+      f.setAttribute('referrerpolicy', 'no-referrer');
+      f.setAttribute('scrolling', 'no');
+      cell.appendChild(f);
+      grid.appendChild(cell);
+    });
+    box.appendChild(grid);
+  }
+  wrap.appendChild(box);
+}
+
 function photoPane(team, url) {
   const pane = el('div', 'vpane');
   const img = document.createElement('img');
@@ -579,6 +642,15 @@ async function render(opts) {
       }
     } catch (_) { /* the drawing stands in */ }
 
+    /* A club may also have supplied its own address for a photograph rather
+       than uploading one (0049). The approved upload wins, because it has been
+       through moderation; this is the fallback, and only over https — a http
+       image on an https page is blocked by the browser and would read as a
+       club that uploaded something broken. */
+    if (!photoUrl && /^https:\/\//.test(team.home_venue_image || '')) {
+      photoUrl = team.home_venue_image;
+    }
+
     const head = el('div', 'vhead');
     head.appendChild(el('div', 'vname', name || 'Home venue'));
     if (addr) {
@@ -604,6 +676,7 @@ async function render(opts) {
 
   host.appendChild(wrap);
   wrap.appendChild(await contactBlock(team, opts));
+  await socialBlock(team, opts, wrap);
 
   return { photo: wrap.dataset.photo === '1' };
 }
