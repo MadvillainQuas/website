@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<meta name="robots" content="noindex,nofollow">
+<!-- Platform administration. No gate.js, no topnav.js — auth is Supabase + RLS. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Platform · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=47">
+<link rel="stylesheet" href="../../kit/nav.css?v=47">
+<style>
+  .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .bar .sp{margin-left:auto}
+  .wm{font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    color:#04100b;padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  /* The one visual difference from the league console, and it is load-bearing:
+     every control on this page reaches across every league, and it should not
+     look like the page that reaches into one. */
+  .bar .scope{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:#04100b;background:var(--amber);padding:3px 8px}
+
+  .msg{font-family:var(--f-micro);font-size:10px;padding:9px 11px;border-radius:4px;
+    margin:calc(var(--u)*2) calc(var(--u)*3) 0;line-height:1.7}
+  .msg.ok{color:var(--lume);border:1px solid color-mix(in oklch,var(--lume) 40%,transparent);
+    background:color-mix(in oklch,var(--lume) 9%,transparent)}
+  .msg.err{color:var(--flare);border:1px solid color-mix(in oklch,var(--flare) 45%,transparent);
+    background:color-mix(in oklch,var(--flare) 9%,transparent)}
+  .hide{display:none !important}
+
+  .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule);
+    position:sticky;top:0;z-index:5;background:var(--ground)}
+  /* NINE TABS DO NOT FIT. The kit's .ep-tabs is an inline-flex strip with no
+     wrap, which is right for the two- and three-tab rows it was written for
+     and pushed 395px of horizontal scroll onto the whole document here.
+     Wrapping rather than scrolling because a tab a reader has to discover by
+     dragging is a tab they will not find, and the segmented look survives a
+     second line — the padding below keeps the rows from touching. */
+  .tabs-wrap .ep-tabs{display:flex;flex-wrap:wrap}
+  .tabs-wrap .ep-tab{border-bottom:1px solid var(--rule-2)}
+  .tabs-wrap .ep-tab.on{border-bottom-color:var(--lume)}
+  .pane{display:none;padding:calc(var(--u)*3)} .pane.on{display:block}
+  .pane h3{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--lume);margin:calc(var(--u)*3) 0 calc(var(--u));}
+  .pane h3:first-child{margin-top:0}
+  .lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.95;
+    max-width:78ch;margin:0 0 calc(var(--u)*2)}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .row > .ep-input{flex:1 1 160px;min-width:0}
+  .row > .grow{flex:3 1 240px}
+  label.f{display:flex;flex-direction:column;gap:4px;flex:1 1 150px;min-width:0}
+  label.f > span{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);letter-spacing:.1em}
+  label.f > .ep-input{width:100%}
+  .sw{display:flex;align-items:center;gap:7px;font-family:var(--f-micro);font-size:9px;color:var(--ink-2)}
+  .mini{font-size:9px;padding:6px 9px}
+  .danger{border-color:color-mix(in oklch,var(--flare) 60%,transparent) !important;color:var(--flare)}
+  .danger:hover{background:var(--flare);color:#04100b}
+
+  /* ---- overview tiles ---- */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin-bottom:calc(var(--u)*3)}
+  .tile{background:var(--ground);padding:calc(var(--u)*2)}
+  .tile .n{font-family:var(--f-score);font-size:28px;line-height:1;color:var(--lume)}
+  .tile .n.dim{color:var(--ink-2)}
+  .tile .n.warn{color:var(--amber)}
+  .tile .k{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-3);margin-top:6px}
+  .tile .sub{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);margin-top:3px}
+
+  /* ---- generic listing ---- */
+  .tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .tbl th{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-3);text-align:left;padding:7px 9px;border-bottom:1px solid var(--rule-2);
+    white-space:nowrap}
+  .tbl td{padding:8px 9px;border-bottom:1px solid var(--rule);vertical-align:top}
+  .tbl tr:hover td{background:color-mix(in oklch,var(--lume) 4%,transparent)}
+  .tbl .num{font-family:var(--f-data);font-size:11px;text-align:right;white-space:nowrap}
+  .tbl .nm{font-family:var(--f-ui);font-weight:700}
+  .tbl .mt{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+  .tbl .ac{text-align:right;white-space:nowrap}
+  .tbl .ac .ep-btn{margin-left:5px}
+  .scroll{overflow-x:auto;border:1px solid var(--rule)}
+  .pager{display:flex;gap:8px;align-items:center;margin-top:calc(var(--u)*2);
+    font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+  .empty{padding:calc(var(--u)*3) 0;color:var(--ink-3);font-family:var(--f-micro);
+    font-size:10px;line-height:1.9}
+
+  .pill{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid var(--rule-2);padding:2px 6px;margin:2px 4px 2px 0;display:inline-block;
+    color:var(--ink-2);white-space:nowrap}
+  .pill.pa{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
+  .pill.la{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 55%,transparent)}
+  .pill.tm{color:var(--aqua);border-color:color-mix(in oklch,var(--aqua) 55%,transparent)}
+  .pill.st{color:var(--violet);border-color:color-mix(in oklch,var(--violet) 55%,transparent)}
+  .pill.off{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 55%,transparent)}
+  .pill.x{cursor:pointer}
+  .pill.x:hover{background:var(--flare);color:#04100b;border-color:var(--flare)}
+
+  .sw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  .sw-cell{background:var(--ground);padding:calc(var(--u)*2);display:flex;flex-direction:column;gap:6px}
+  .sw-cell .k{font-family:var(--f-ui);font-weight:700;font-size:12.5px}
+  .sw-cell .d{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);line-height:1.8}
+
+  .det{font-family:var(--f-data);font-size:10px;color:var(--ink-3);word-break:break-word;
+    max-width:44ch;white-space:pre-wrap}
+  .body-x{font-family:var(--f-micro);font-size:9.5px;line-height:1.85;color:var(--ink-2);
+    max-width:70ch;white-space:pre-wrap}
+  .note{border-left:2px solid var(--amber);padding:9px 13px;
+    background:color-mix(in oklch,var(--amber) 7%,transparent);
+    font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
+    max-width:78ch;margin:calc(var(--u)*2) 0}
+  .note.bad{border-left-color:var(--flare);background:color-mix(in oklch,var(--flare) 7%,transparent)}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+
+  <div class="bar">
+    <a href="../../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
+    <span class="scope">platform</span>
+    <span class="ep-micro">everything, every league</span>
+    <span class="sp"></span>
+    <a href="../" class="ep-btn mini">league admin</a>
+    <span id="who" class="ep-micro"></span>
+    <button id="out" class="ep-btn mini hide" type="button">sign out</button>
+  </div>
+
+  <div id="msg" class="msg hide"></div>
+
+  <!-- not signed in / not an admin ---------------------------------------- -->
+  <div id="locked" class="pane on">
+    <h3>Platform administration</h3>
+    <p class="lead" id="lockedWhy">Checking your access…</p>
+    <div class="row" id="signinRow" style="display:none">
+      <input id="email" class="ep-input grow" type="email" autocomplete="email"
+             placeholder="you@example.org" inputmode="email">
+      <button id="send" class="ep-btn pri" type="button">email me a link</button>
+    </div>
+  </div>
+
+  <!-- the console --------------------------------------------------------- -->
+  <div id="console" class="hide">
+    <div class="tabs-wrap">
+      <div class="ep-tabs" role="tablist">
+        <button class="ep-tab on" data-p="over" role="tab">Overview</button>
+        <button class="ep-tab" data-p="acct" role="tab">Accounts</button>
+        <button class="ep-tab" data-p="lgs"  role="tab">Leagues</button>
+        <button class="ep-tab" data-p="clubs" role="tab">Clubs</button>
+        <button class="ep-tab" data-p="mod"  role="tab">Moderation</button>
+        <button class="ep-tab" data-p="keys" role="tab">Keys &amp; feeds</button>
+        <button class="ep-tab" data-p="audit" role="tab">Audit</button>
+        <button class="ep-tab" data-p="set"  role="tab">Settings</button>
+        <button class="ep-tab" data-p="maint" role="tab">Maintenance</button>
+      </div>
+    </div>
+
+    <div class="pane on" id="pane-over">
+      <p class="lead">
+        Every number here counts the whole platform, not one league. They are
+        live counts rather than estimates &mdash; at this size that costs
+        nothing and there is nothing on this page worth being approximately
+        right about.
+      </p>
+      <div id="tiles" class="tiles"></div>
+      <div id="attention"></div>
+    </div>
+
+    <div class="pane" id="pane-acct">
+      <p class="lead">
+        Every account on the platform, whatever roles it holds. This is the
+        only page that can see them: <code>auth.users</code> is not reachable
+        from a browser, so nothing else on this site can answer &ldquo;who has
+        an account here&rdquo;.
+      </p>
+      <div class="row">
+        <input id="acctQ" class="ep-input grow" placeholder="search by email" autocomplete="off">
+        <button id="acctGo" class="ep-btn" type="button">search</button>
+        <span class="sp" style="margin-left:auto"></span>
+        <span id="acctCount" class="ep-micro"></span>
+      </div>
+      <div class="scroll"><table class="tbl"><thead><tr>
+        <th>Account</th><th>Roles</th><th>Joined</th><th>Last seen</th><th></th>
+      </tr></thead><tbody id="acctBody"></tbody></table></div>
+      <div class="pager">
+        <button id="acctPrev" class="ep-btn mini" type="button">previous</button>
+        <span id="acctPage"></span>
+        <button id="acctNext" class="ep-btn mini" type="button">next</button>
+      </div>
+
+      <h3>Grant a role</h3>
+      <p class="lead">
+        The account must already exist &mdash; ask them to sign in once first.
+        A role granted here takes effect on their next request; nothing needs
+        restarting and no email is sent.
+      </p>
+      <div class="row">
+        <input id="grEmail" class="ep-input grow" type="email" placeholder="them@club.org">
+        <select id="grRole" class="ep-input" style="flex:0 0 auto">
+          <option value="platform_admin">platform admin</option>
+          <option value="league_admin">league admin</option>
+          <option value="team_manager">team manager</option>
+          <option value="statistician">statistician</option>
+        </select>
+        <select id="grScope" class="ep-input" style="flex:1 1 200px"></select>
+        <button id="grGo" class="ep-btn pri" type="button">grant</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-lgs">
+      <p class="lead">
+        Renaming, re-colouring and removing leagues, which until now could only
+        be created. Changing a slug changes the league&rsquo;s public address
+        and breaks saved links &mdash; it is allowed because leagues genuinely
+        get renamed, not because it is safe.
+      </p>
+      <div id="lgList"></div>
+
+      <h3>New league</h3>
+      <div class="row">
+        <input id="nlName" class="ep-input grow" placeholder="Northern Premier">
+        <input id="nlSlug" class="ep-input" placeholder="northern-premier">
+        <label class="sw"><input id="nlLive" type="checkbox" checked> live scores</label>
+        <label class="sw"><input id="nlYouth" type="checkbox" checked> U18 protection</label>
+        <button id="nlGo" class="ep-btn pri" type="button">create</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-clubs">
+      <p class="lead">
+        Every club on the platform, including any left without a league. A club
+        is a real organisation: deleting a league does not delete its clubs, it
+        orphans them, and they are moved back into a competition from here.
+      </p>
+      <div class="row">
+        <input id="clubQ" class="ep-input grow" placeholder="search clubs" autocomplete="off">
+        <button id="clubGo" class="ep-btn" type="button">search</button>
+        <span class="sp" style="margin-left:auto"></span>
+        <span id="clubCount" class="ep-micro"></span>
+      </div>
+      <div class="scroll"><table class="tbl"><thead><tr>
+        <th>Club</th><th>League</th><th class="num">Players</th><th class="num">Games</th>
+        <th class="num">Managers</th><th></th>
+      </tr></thead><tbody id="clubBody"></tbody></table></div>
+    </div>
+
+    <div class="pane" id="pane-mod">
+      <h3>Photographs awaiting approval</h3>
+      <p class="lead">
+        Across every league. An under-18 photograph cannot be approved without
+        recorded guardian consent &mdash; the database refuses it, so this queue
+        cannot be used to get around the check.
+      </p>
+      <div id="mediaList"></div>
+
+      <h3>Messages</h3>
+      <div class="row">
+        <label class="sw"><input id="msgOpen" type="checkbox" checked> unhandled only</label>
+        <button id="msgGo" class="ep-btn mini" type="button">refresh</button>
+      </div>
+      <div id="msgList"></div>
+    </div>
+
+    <div class="pane" id="pane-keys">
+      <h3>API keys</h3>
+      <p class="lead">
+        Every key issued for the read-only JSON API, in every league. The key
+        itself was shown once at issue and is not stored &mdash; only its hash,
+        so a key cannot be recovered from here, only revoked.
+      </p>
+      <div class="scroll"><table class="tbl"><thead><tr>
+        <th>Key</th><th>League</th><th class="num">Limit/h</th><th class="num">24h</th>
+        <th>Last used</th><th></th>
+      </tr></thead><tbody id="keyBody"></tbody></table></div>
+    </div>
+
+    <div class="pane" id="pane-audit">
+      <p class="lead">
+        Written by every privileged action on the platform since the first
+        migration, and until now readable from nowhere. Kept two years.
+      </p>
+      <div class="row">
+        <select id="auAction" class="ep-input" style="flex:1 1 220px"></select>
+        <button id="auGo" class="ep-btn mini" type="button">refresh</button>
+        <span class="sp" style="margin-left:auto"></span>
+        <span id="auCount" class="ep-micro"></span>
+      </div>
+      <div class="scroll"><table class="tbl"><thead><tr>
+        <th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Detail</th>
+      </tr></thead><tbody id="auBody"></tbody></table></div>
+      <div class="pager">
+        <button id="auPrev" class="ep-btn mini" type="button">previous</button>
+        <span id="auPage"></span>
+        <button id="auNext" class="ep-btn mini" type="button">next</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-set">
+      <p class="lead">
+        Site-wide switches. The ones marked public are read by the front end
+        without anybody being signed in &mdash; a maintenance banner nobody can
+        see is not a maintenance banner.
+      </p>
+      <div id="setGrid" class="sw-grid"></div>
+    </div>
+
+    <div class="pane" id="pane-maint">
+      <h3>Rebuild derived data</h3>
+      <p class="lead">
+        Standings, awards and every season figure are derived from the event
+        log rather than stored independently, so rebuilding them is always safe
+        and always gives the same answer. This is the first thing to try when a
+        table disagrees with a box score.
+      </p>
+      <div class="row"><button id="recompute" class="ep-btn pri" type="button">recompute every competition</button></div>
+
+      <h3>Prune the audit log</h3>
+      <p class="lead">Entries older than the retention window are removed. The floor is 30 days.</p>
+      <div class="row">
+        <label class="f" style="flex:0 0 130px"><span>KEEP DAYS</span>
+          <input id="pruneDays" class="ep-input" type="number" min="30" max="3650" value="730"></label>
+        <button id="pruneGo" class="ep-btn" type="button">prune</button>
+      </div>
+
+      <h3>What this console cannot do</h3>
+      <div class="note">
+        It never sends email. Disabling an account, granting a role and
+        deleting a league all happen silently, because every transactional
+        email on this project comes out of the same small allowance the
+        magic-link logins use &mdash; a console that quietly spent it would
+        lock you out of your own site for an hour.
+      </div>
+      <div class="note">
+        It cannot switch on a sign-in provider. Google, Apple and the rest are
+        GoTrue configuration rather than data, and live in the Supabase
+        dashboard under Authentication → Providers. The splash offers Google
+        whether or not it is enabled; if it is not, the button says so instead
+        of navigating somewhere with no way back.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../../config.js?v=47"></script>
+<script src="../../vendor/supabase.js?v=47"></script>
+<script src="platform.js?v=47"></script>
+<script src="../../nav.js?v=47"></script>
+</body>
+</html>

@@ -206,9 +206,25 @@
   adminRow.href = root + 'admin/';
   adminRow.append(el('span', 'ic', '▲'), el('span', 'tx', 'admin controls'));
   adminRow.title = 'league administration';
-  if (/\/league\/admin\//.test(here)) adminRow.classList.add('on');
+  /* Not `/league/admin/` loosely, or the platform console below would light
+     this row up as well — its address is underneath this one. */
+  if (/\/league\/admin\/(?!platform\/)/.test(here)) adminRow.classList.add('on');
   adminRow.hidden = true;
   rootPanel.appendChild(adminRow);
+
+  /* THE PLATFORM CONSOLE IS A SEPARATE ROW, not a tab inside the league one,
+     because it is a different scope rather than a different page: everything
+     in there reaches across every league at once. Somebody who administers
+     two leagues should not find "delete any league" one tab away from their
+     fixture list. Platform admins only, and again that is a courtesy — the
+     page itself is gated by the database. */
+  const platRow = el('a', 'item admin-row');
+  platRow.href = root + 'admin/platform/';
+  platRow.append(el('span', 'ic', '◆'), el('span', 'tx', 'platform'));
+  platRow.title = 'platform administration — every league, accounts, settings';
+  if (/\/league\/admin\/platform\//.test(here)) platRow.classList.add('on');
+  platRow.hidden = true;
+  rootPanel.appendChild(platRow);
 
   /* ---- league panel: the header, then the pages ---- */
   const phead = el('div', 'phead');
@@ -229,6 +245,7 @@
      anybody who administers so much as one league, gets the console — and the
      console asks which one. */
   gated.push([adminRow, w => !!w.is_platform_admin || (w.leagues || []).length > 0]);
+  gated.push([platRow,  w => !!w.is_platform_admin]);
 
   PAGES.forEach(it => {
     if (it.label) {

@@ -293,6 +293,9 @@ body.splash-body{
 .sp-msg{ font-family:var(--f-micro); font-size:9px; line-height:1.85;
   margin-top:9px; color:var(--ink-2) }
 .sp-msg.err{ color:#b1364a } .sp-msg.ok{ color:#1d6a53 }
+/* warn is not err: "Google is not switched on yet" is information, and in the
+   red used for a rejected address it would read as the visitor's mistake */
+.sp-msg.warn{ color:#8a6320 }
 .sp-who{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
 .sp-who .em{ font-family:var(--f-ui); font-weight:700; font-size:13.5px }
 

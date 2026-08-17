@@ -73,6 +73,7 @@ async function render() {
 
   renderAccess();
   show('#newlg', !!who.is_platform_admin);
+  show('#platLink', !!who.is_platform_admin);
 
   const admin = who.leagues || [];
   show('#ws', admin.length > 0);

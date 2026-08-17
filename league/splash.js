@@ -96,16 +96,23 @@ function signIn(sb, cfg) {
 
     host.appendChild(el('h2', null, 'Sign in'));
 
-    /* Google first, and only if it is actually enabled. signInWithOAuth does
-       not error for a disabled provider — it navigates, and Supabase answers
-       with a raw JSON page saying so, from which there is no way back. */
+    /* GOOGLE IS ALWAYS HERE. It used to hide itself until a probe confirmed
+       the provider was switched on, which is defensible and was wrong: on a
+       splash screen the two ways in are part of the composition, and one of
+       them appearing a beat later — or not at all — reads as a broken page
+       rather than as a considered absence.
+
+       The probe still runs, but it now decides what a CLICK does rather than
+       whether the button exists. That matters because signInWithOAuth does
+       NOT return an error for a disabled provider: it navigates, and Supabase
+       answers with a raw JSON page there is no way back from. So a click
+       while the provider is off says so, in place, and the visitor still has
+       the email field. */
     const g = el('button', 'sp-btn ghost', 'Continue with Google');
-    g.type = 'button'; g.hidden = true;
+    g.type = 'button';
     g.style.width = '100%';
     host.appendChild(g);
-    const or = el('div', 'sp-or', 'or');
-    or.hidden = true;
-    host.appendChild(or);
+    host.appendChild(el('div', 'sp-or', 'or'));
 
     const row = el('div', 'sp-row');
     const email = el('input', 'sp-in');
@@ -123,24 +130,31 @@ function signIn(sb, cfg) {
       if (e.key === 'Enter') sendLink(sb, email, send, msg);
     });
 
-    if (await googleEnabled(cfg)) {
-      if (stale()) return;
-      g.hidden = false; or.hidden = false;
-      g.addEventListener('click', async () => {
-        g.disabled = true; msg('');
-        const { error } = await sb.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: location.origin + location.pathname,
-            /* ask which account every time: a shared scorer's laptop must not
-               sign the next person in as the last one */
-            queryParams: { prompt: 'select_account' }
-          }
-        });
-        g.disabled = false;
-        if (error) msg(error.message, 'err');
+    /* Resolved once, in the background, and read at click time. `null` means
+       the probe has not answered yet — treated as "go", because the common
+       case is that it IS enabled and a visitor who clicks the instant the
+       page paints should not be told no. */
+    let googleOn = null;
+    googleEnabled(cfg).then(v => { if (!stale()) googleOn = v; });
+
+    g.addEventListener('click', async () => {
+      if (googleOn === false) {
+        return msg('Google sign-in is not switched on for this site yet — ' +
+                   'use the email link below.', 'warn');
+      }
+      g.disabled = true; msg('');
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: location.origin + location.pathname,
+          /* ask which account every time: a shared scorer's laptop must not
+             sign the next person in as the last one */
+          queryParams: { prompt: 'select_account' }
+        }
       });
-    }
+      g.disabled = false;
+      if (error) msg(error.message, 'err');
+    });
   }
 
   async function googleEnabled(cfg) {
