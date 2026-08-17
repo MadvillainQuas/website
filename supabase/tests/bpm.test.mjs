@@ -13,7 +13,7 @@
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const B = require('../../league/bpm.js');
+const B = require('../../epinoia/bpm.js');
 
 let pass = 0, fail = 0;
 const near = (name, got, want, tol = 0.001) => {

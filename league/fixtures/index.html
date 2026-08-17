@@ -2,156 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04100b">
-<!-- PUBLIC. No gate.js, no topnav.js. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Fixtures · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<style>
-  a.plain{color:inherit;text-decoration:none}
-  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:19px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
-    padding:3px 11px 1px;text-transform:uppercase}
-  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,54px);line-height:.88;margin:0;
-    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:2;
-    max-width:74ch;margin:calc(var(--u)*2) 0 0}
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/fixtures/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/fixtures/
 
-  /* the filters: clubs as a rail, plus the state of play */
-  .filters{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule);
-    display:flex;flex-direction:column;gap:9px}
-  .frow{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-  .frow .flabel{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.13em;
-    text-transform:uppercase;color:var(--ink-3);margin-right:4px}
-  .teamchip .sw{display:inline-block;width:8px;height:8px;border-radius:50%;
-    margin-right:6px;vertical-align:middle}
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
 
-  .fxcount{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
 
-  /* ---- a fixture, with room to breathe ---- */
-  .day{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--lume);padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u));
-    border-bottom:1px solid var(--rule)}
-  .fixture{display:block;text-decoration:none;color:inherit;
-    border-bottom:1px solid var(--rule);padding:calc(var(--u)*3);
-    transition:background .15s ease}
-  a.fixture:hover{background:color-mix(in oklch,var(--lume) 5%,transparent)}
-
-  .fxtop{display:grid;grid-template-columns:1fr auto 1fr;gap:calc(var(--u)*2);
-    align-items:center}
-  .side{display:flex;align-items:center;gap:12px;min-width:0}
-  .side.away{flex-direction:row-reverse;text-align:right}
-  /* the badge: the club plate in miniature, same ink and halftone as the
-     screenprint cards so a club looks like itself everywhere */
-  .badge{position:relative;width:54px;height:54px;flex:none;display:grid;place-items:center;
-    background:#07130d;border:1px solid var(--rule-2);overflow:hidden}
-  .badge .bflood{position:absolute;inset:0;background:var(--ink-c);opacity:.16}
-  .badge .btone{position:absolute;inset:-25%;
-    background-image:radial-gradient(circle,var(--ink-c) .9px,transparent 1.2px);
-    background-size:5px 5px;opacity:.45;transform:rotate(-12deg)}
-  .badge .bmono{position:relative;font-family:var(--f-score);font-size:20px;line-height:1;
-    color:var(--ink);z-index:1}
-  .badge img{position:relative;z-index:1;width:70%;height:70%;object-fit:contain}
-  .sname{font-family:var(--f-ui);font-weight:800;font-size:15px;text-transform:uppercase;
-    letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .srec{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);margin-top:3px}
-
-  /* the scoreboard in the middle */
-  .board{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:120px}
-  .bscore{font-family:var(--f-score);font-size:clamp(26px,5vw,38px);line-height:1;
-    display:flex;align-items:baseline;gap:10px}
-  .bscore .win{color:var(--lume)}
-  .bscore .lose{color:var(--ink-3)}
-  .bdash{color:var(--ink-3);font-size:.7em}
-  .bstate{font-family:var(--f-micro);font-size:8px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--ink-3)}
-  .bstate.live{color:var(--flare)}
-  .bstate.final{color:var(--lume)}
-  .btime{font-family:var(--f-score);font-size:26px;line-height:1;color:var(--ink)}
-  .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--flare);
-    margin-right:6px;vertical-align:1px;animation:p 1.6s ease-in-out infinite}
-  @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
-  @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
-
-  /* quarters, for a game that has been played */
-  .qs{display:flex;gap:1px;margin-top:4px;background:var(--rule)}
-  .q{background:var(--ground);padding:2px 6px;font-family:var(--f-data);font-size:9px;
-    color:var(--ink-3);text-align:center;min-width:26px}
-  .q b{display:block;font-family:var(--f-micro);font-size:7px;color:var(--ink-3);
-    letter-spacing:.1em}
-
-  /* leaders and venue below the board */
-  .fxfoot{display:flex;gap:calc(var(--u)*3);flex-wrap:wrap;align-items:flex-start;
-    margin-top:calc(var(--u)*2);padding-top:calc(var(--u)*2);border-top:1px solid var(--rule)}
-  .leaders{display:flex;gap:calc(var(--u)*2);flex-wrap:wrap;flex:1;min-width:0}
-  .ldr{min-width:96px}
-  .ldr .lk{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--ink-3)}
-  .ldr .ln{font-family:var(--f-ui);font-weight:700;font-size:11.5px;color:var(--ink);
-    margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ldr .lv{font-family:var(--f-score);font-size:17px;color:var(--lume);line-height:1;margin-top:2px}
-  .venue{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
-    text-align:right;margin-left:auto;max-width:34ch}
-  .venue .vn{color:var(--ink-2);font-size:9.5px;display:block}
-  .venue .vt{color:var(--lume);display:block;margin-top:2px}
-
-  .empty{padding:calc(var(--u)*6) calc(var(--u)*3);text-align:center;color:var(--ink-3);
-    font-family:var(--f-micro);font-size:10.5px;line-height:2}
-  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
-    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
-  footer.foot a{color:var(--ink-3);text-decoration:none}
-
-  @media (max-width:700px){
-    .fxtop{grid-template-columns:1fr;gap:calc(var(--u)*2)}
-    .side.away{flex-direction:row;text-align:left}
-    .board{align-items:flex-start}
-    .venue{text-align:left;margin-left:0}
-  }
-</style>
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/fixtures/">
+<script>
+  (function () {
+    location.replace('/epinoia/fixtures/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="ep-frame">
-  <div class="topbar">
-    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span id="ctx" class="ep-micro"></span>
-  </div>
-
-  <div class="hero">
-    <h1>Fixtures</h1>
-    <p>
-      Every game in the season — played, playing and to come — with the score,
-      who led it, and where to find it. Pick a club to follow just theirs.
-    </p>
-  </div>
-
-  <div class="filters">
-    <div class="frow"><span class="flabel">Club</span><span id="teamPick"></span></div>
-    <div class="frow"><span class="flabel">Show</span><span id="statePick"></span></div>
-  </div>
-
-  <div class="fxcount" id="count"></div>
-  <div id="list"><div class="empty">Loading…</div></div>
-
-  <footer class="foot">
-    <a href="../">← Epinoia</a>
-    <span id="foot">Epinoia Network</span>
-  </footer>
-</div>
-<script src="../config.js?v=80" defer></script>
-<script src="../season.js?v=80" defer></script>
-<script src="../bpm.js?v=80" defer></script>
-<script src="../data.js?v=80" defer></script>
-<script src="fixtures.js?v=80" defer></script>
-<script src="../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/fixtures/">/epinoia/fixtures/</a>.</p>
 </body>
 </html>

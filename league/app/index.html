@@ -2,207 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04100b">
-<!-- PORTAL. Login required. No invite gate here either — auth is the database's job.
-     frame-ancestors cannot be delivered via <meta>, and GitHub Pages cannot set headers,
-     so app.js busts out of frames instead. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Team portal · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<style>
-  .pad3{padding:calc(var(--u)*3)}
-  .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
-  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-  label.f{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
-  label.f span{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);text-transform:uppercase}
-  .sw{display:flex;gap:7px;flex-wrap:wrap}
-  .swatch{width:26px;height:26px;border:2px solid transparent;cursor:pointer}
-  .swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 12px currentColor}
-  .teamcard{border-bottom:1px solid var(--rule);padding:calc(var(--u)*2) calc(var(--u)*3);
-    display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .2s}
-  .teamcard:hover{background:color-mix(in oklch,var(--lume) 7%,transparent)}
-  .teamcard .dot{width:26px;height:26px;flex:none}
-  .teamcard .nm{font-family:var(--f-ui);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em}
-  .teamcard .sub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3)}
-  .msg{padding:calc(var(--u)*2) calc(var(--u)*3);font-family:var(--f-micro);font-size:11px;
-    border-bottom:1px solid var(--rule)}
-  .msg.err{color:var(--flare)} .msg.ok{color:var(--lume)} .msg.warn{color:var(--amber)}
-  .hide{display:none}
-  .plist{width:100%}
-  .plist td{padding:7px 11px;border-bottom:1px solid var(--rule);font-family:var(--f-data);font-size:12px}
-  .plist td:nth-child(2){font-family:var(--f-ui);font-weight:600;font-size:13px;text-align:left}
-  .plist td:first-child{font-family:var(--f-score);font-size:16px;color:var(--lume);width:44px}
-  .plist td:last-child{width:44px;text-align:right}
-  .mini{font-family:var(--f-micro);font-size:10px;padding:5px 9px;border:1px solid var(--rule-2);
-    background:transparent;color:var(--ink-2);cursor:pointer;text-transform:uppercase}
-  .mini:hover{background:var(--flare);color:#150406;border-color:var(--flare)}
-  .minor{font-family:var(--f-micro);font-size:9px;color:var(--amber);border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);padding:1px 5px;margin-left:7px}
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/app/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/app/
 
-  /* ---- team-sheet import ---- */
-  .csv-lead{color:var(--ink-3);max-width:70ch;line-height:1.85;margin:0}
-  .csv-ta{width:100%;font-family:var(--f-data);font-size:12px;line-height:1.6;
-    white-space:pre;overflow-x:auto;resize:vertical;min-height:96px}
-  .csv-bar{align-items:center;gap:10px;flex-wrap:wrap}
-  .csv-file{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);max-width:230px}
-  .csv-sum{display:flex;flex-direction:column;gap:7px}
-  .csv-chips{display:flex;flex-wrap:wrap;gap:6px}
-  .csv-chip{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.06em;
-    padding:3px 9px;border:1px solid var(--rule-2);border-radius:2px;color:var(--ink-2)}
-  .csv-chip b{font-family:var(--f-score);font-size:13px;margin-right:4px}
-  .csv-chip.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
-  .csv-chip.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 50%,transparent)}
-  .csv-chip.err{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 50%,transparent)}
-  .csv-chip.muted{color:var(--ink-3)}
-  .csv-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.85}
-  .csv-tw{max-height:340px;overflow:auto}
-  .csv-tbl th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--ink-3);text-align:left;padding:6px 11px;
-    border-bottom:1px solid var(--rule-2);position:sticky;top:0;background:var(--panel)}
-  /* the shared .plist rules assume a roster row; a preview row has its own shape */
-  .csv-tbl td:first-child{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);width:34px}
-  .csv-tbl td:nth-child(2){font-family:var(--f-score);font-size:15px;color:var(--lume);
-    width:40px;font-weight:400}
-  .csv-tbl td:nth-child(3){font-family:var(--f-ui);font-weight:600;font-size:12.5px}
-  .csv-tbl td:last-child{width:auto;text-align:left}
-  .csv-msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.7}
-  .csv-badge{font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;
-    text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule-2);white-space:nowrap}
-  .csv-badge.ok{color:#04100b;background:var(--lume);border-color:var(--lume)}
-  .csv-badge.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 50%,transparent)}
-  .csv-badge.err{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 50%,transparent)}
-  .csv-badge.muted{color:var(--ink-3)}
-  .csv-tbl tr.csv-bad td{opacity:.55}
-  .csv-commit{align-items:center;gap:12px;flex-wrap:wrap}
-  .setup{font-family:var(--f-data);font-size:11.5px;line-height:1.7;color:var(--ink-2);
-    background:var(--panel);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
-  .setup b{color:var(--lume);font-weight:400}
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
 
-  /* ---- the club panels ---- */
-  .venue-prev{margin:calc(var(--u)) 0}
-  .venue-prev img{max-width:min(100%,420px);border:1px solid var(--rule-2);display:block}
-  .fmt-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
-    color:var(--lume);margin:calc(var(--u)*2) 0 6px}
-  .note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.95;
-    max-width:76ch;margin:0 0 calc(var(--u))}
-  .stafflist .row, .prevlist .row{margin-bottom:6px}
-  .pcard{border:1px solid var(--rule);padding:calc(var(--u)*2);margin-bottom:calc(var(--u)*2)}
-  .pcard-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
-    margin-bottom:calc(var(--u))}
-  .pcard-n{font-family:var(--f-score);font-size:20px;color:var(--lume);min-width:26px}
-  .pcard-name{font-family:var(--f-ui);font-weight:800;font-size:15px}
-  .tag{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;
-    border:1px solid var(--rule-2);padding:2px 7px}
-  .tag.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
-  .tag.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
-</style>
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
+
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/app/">
+<script>
+  (function () {
+    location.replace('/epinoia/app/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="ep-frame">
-
-  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
-    <a href="../" style="text-decoration:none"><span style="font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase" class="epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span class="ep-micro">team portal</span>
-    <span id="who" class="ep-micro" style="margin-left:auto"></span>
-    <button id="out" class="mini hide">Sign out</button>
-  </div>
-
-  <div id="msg" class="msg hide"></div>
-
-  <!-- ---------------- sign in ---------------- -->
-  <section id="signin" class="hide">
-    <div class="ep-hdr"><span class="idx">01</span><h2>Sign in</h2></div>
-    <div class="ep-band stack">
-      <p style="max-width:56ch">A one-time link goes to your email. There is no password to set,
-        forget, or have stolen — which is the point.</p>
-      <div class="row">
-        <label class="f" style="max-width:320px"><span>Email</span>
-          <input class="ep-input" id="email" type="email" autocomplete="email" placeholder="you@club.co.uk"></label>
-      </div>
-      <div class="row"><button class="ep-btn pri" id="send">Send the link</button></div>
-    </div>
-  </section>
-
-  <!-- ---------------- my teams ---------------- -->
-  <section id="teams" class="hide">
-    <div class="ep-hdr"><span class="idx">01</span><h2>My teams</h2></div>
-    <div id="teamlist"></div>
-    <div class="ep-hdr"><span class="idx">02</span><h2>New team</h2></div>
-    <div class="ep-band stack">
-      <div class="row">
-        <label class="f"><span>Team name</span><input class="ep-input" id="tname" placeholder="Neon City"></label>
-        <label class="f" style="max-width:130px"><span>Short</span><input class="ep-input" id="tshort" maxlength="4" placeholder="NC"></label>
-      </div>
-      <div>
-        <div class="ep-micro" style="margin-bottom:7px">Kit colour</div>
-        <div class="sw" id="sw"></div>
-      </div>
-      <div class="row"><button class="ep-btn pri" id="mkteam">Create team</button></div>
-    </div>
-  </section>
-
-  <!-- ---------------- roster ---------------- -->
-  <section id="roster" class="hide">
-    <div class="ep-hdr"><span class="idx">01</span><h2 id="rtitle">Roster</h2>
-      <button class="mini" id="back" style="margin-left:auto">← my teams</button></div>
-    <div class="ep-tw"><table class="plist" id="rlist"></table></div>
-    <div class="ep-hdr"><span class="idx">02</span><h2>Add a player</h2></div>
-    <div class="ep-band stack">
-      <div class="row">
-        <label class="f" style="max-width:90px"><span>Jersey</span><input class="ep-input" id="pnum" inputmode="numeric" maxlength="2"></label>
-        <label class="f"><span>First name</span><input class="ep-input" id="pfirst"></label>
-        <label class="f"><span>Last name</span><input class="ep-input" id="plast"></label>
-        <label class="f" style="max-width:120px"><span>Birth year</span><input class="ep-input" id="pyear" inputmode="numeric" maxlength="4" placeholder="2007"></label>
-      </div>
-      <div class="row">
-        <label class="row" style="gap:8px;cursor:pointer">
-          <input type="checkbox" id="pminor" style="width:17px;height:17px;accent-color:var(--amber)">
-          <span class="ep-micro" style="color:var(--ink-2)">Under 18 — profile stays private, photo needs guardian consent</span>
-        </label>
-      </div>
-      <div class="row"><button class="ep-btn pri" id="addp">Add player</button></div>
-      <p class="ep-micro" style="color:var(--ink-3);max-width:64ch;line-height:1.8">
-        Birth year only — never a full date of birth. It is used for eligibility and is never published.</p>
-    </div>
-
-    <div class="ep-hdr"><span class="idx">03</span><h2>Import a team sheet</h2></div>
-    <div class="ep-band stack" id="csvpanel"></div>
-  </section>
-
-  <!-- ---------------- the club's own page ---------------- -->
-  <section id="club" class="hide"></section>
-
-  <!-- ---------------- setup needed ---------------- -->
-  <section id="setup" class="hide">
-    <div class="ep-hdr"><span class="idx">!</span><h2>Database not set up yet</h2></div>
-    <div class="ep-band stack">
-      <p>The key works and the project is reachable, but the tables do not exist. Apply the
-        migration once, then reload this page.</p>
-      <div class="setup">1. open <b>supabase.com/dashboard</b> → your project → <b>SQL Editor</b>
-2. paste the whole of <b>supabase/migrations/0001_init.sql</b>
-3. press <b>Run</b>
-4. reload this page</div>
-      <p class="ep-micro" style="color:var(--ink-3)">Creating the tables needs privileges the
-        browser deliberately does not have, so this step is yours.</p>
-    </div>
-  </section>
-
-  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">
-    Epinoia Network · portal
-  </footer>
-</div>
-
-<script src="../vendor/supabase.js?v=80" defer></script>
-<script src="../config.js?v=80" defer></script>
-<script src="../upload.js?v=80" defer></script>
-<script src="csv.js?v=80" defer></script>
-<script src="roster-csv.js?v=80" defer></script>
-<script src="club-ui.js?v=80" defer></script>
-<script src="app.js?v=80" defer></script>
-<script src="../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/app/">/epinoia/app/</a>.</p>
 </body>
 </html>

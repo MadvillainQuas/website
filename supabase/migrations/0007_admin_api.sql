@@ -183,7 +183,7 @@ begin
   if uid is null then
     -- deliberately explicit: the caller is an authenticated administrator who
     -- needs to know the invitation has not been accepted yet
-    return 'no account for ' || p_email || ' yet — ask them to sign in once at /league/app/, then grant again';
+    return 'no account for ' || p_email || ' yet — ask them to sign in once at /epinoia/app/, then grant again';
   end if;
 
   insert into memberships (user_id, role, scope_type, scope_id)
@@ -262,7 +262,7 @@ begin
 
   select id into uid from auth.users where lower(email) = lower(trim(p_email)) limit 1;
   if uid is null then
-    return 'no account for ' || p_email || ' yet — ask them to sign in once at /league/app/, then assign again';
+    return 'no account for ' || p_email || ' yet — ask them to sign in once at /epinoia/app/, then assign again';
   end if;
 
   insert into game_officials (game_id, user_id, role)

@@ -2,129 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04100b">
-<meta name="robots" content="noindex,nofollow">
-<!-- No gate.js, no topnav.js — identity is Supabase's job, not the invite gate's. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Sign in · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<style>
-  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule)}
-  .wm{font-family:var(--f-score);font-size:19px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
-    padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
-  .pane{max-width:520px;margin:0 auto;padding:calc(var(--u)*6) calc(var(--u)*3)}
-  h1{font-family:var(--f-score);font-size:clamp(28px,6vw,46px);line-height:.9;margin:0 0 calc(var(--u)*2);
-    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  p.lead{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:2;
-    margin:0 0 calc(var(--u)*3)}
-  label.f{display:flex;flex-direction:column;gap:6px;margin-bottom:calc(var(--u)*2)}
-  label.f span{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--ink-3)}
-  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:10px 13px;
-    margin:calc(var(--u)*2) 0;border-left:2px solid var(--rule-2);color:var(--ink-2)}
-  .msg.ok{border-left-color:var(--lume);color:var(--lume);
-    background:color-mix(in oklch,var(--lume) 8%,transparent)}
-  .msg.err{border-left-color:var(--flare);color:var(--flare);
-    background:color-mix(in oklch,var(--flare) 8%,transparent)}
-  .msg.warn{border-left-color:var(--amber);color:var(--amber);
-    background:color-mix(in oklch,var(--amber) 8%,transparent)}
-  .hide{display:none}
-  .who{font-family:var(--f-ui);font-weight:700;font-size:16px;margin-bottom:6px}
-  .roles{display:flex;flex-wrap:wrap;gap:6px;margin:calc(var(--u)*2) 0}
-  .role{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
-    padding:3px 9px;border:1px solid var(--rule-2);color:var(--ink-2)}
-  .role.on{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
-  .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
-    margin-top:calc(var(--u)*3)}
-  /* Google's own guidance: their mark, unmodified, on a plain surface, with
-     the wording they specify. Restyling it to match the site would be both
-     against their terms and less recognisable, which defeats the point. */
-  .gbtn{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;
-    padding:11px 16px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;
-    border-radius:4px;cursor:pointer;font-family:'Roboto',var(--f-ui),system-ui,sans-serif;
-    font-size:14px;font-weight:500;letter-spacing:.01em;transition:box-shadow .15s ease,background .15s ease}
-  .gbtn:hover{background:#f7f8f8;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-  .gbtn:disabled{opacity:.6;cursor:default}
-  .gmark{display:flex;align-items:center}
-  .or{display:flex;align-items:center;gap:12px;margin:calc(var(--u)*3) 0}
-  .or::before,.or::after{content:'';flex:1;height:1px;background:var(--rule)}
-  .or span{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--ink-3)}
-</style>
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/signin/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/signin/
+
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
+
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
+
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/signin/">
+<script>
+  (function () {
+    location.replace('/epinoia/signin/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="ep-frame">
-  <div class="topbar">
-    <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
-    <span class="ep-micro">account</span>
-  </div>
-
-  <div class="pane">
-    <!-- signed out -->
-    <div id="out">
-      <h1>Sign in</h1>
-      <p class="lead">
-        Two ways in, and no password either way — nothing to choose badly,
-        forget, or have stolen. Google is one click; the email link signs you
-        in on this device and expires shortly after.
-      </p>
-      <!-- Google first: for most people it is one click and no inbox trip,
-           and it costs nothing from the email allowance the magic link draws on. -->
-      <button class="gbtn" id="google" type="button" hidden>
-        <span class="gmark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" width="18" height="18" focusable="false">
-            <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"/>
-            <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41.1 15.4 46 24 46z"/>
-            <path fill="#FBBC05" d="M11.8 28.2c-.4-1.3-.7-2.7-.7-4.2s.2-2.9.7-4.2v-5.7H4.5A22 22 0 0 0 2 24c0 3.6.9 6.9 2.5 9.9l7.3-5.7z"/>
-            <path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.4 2 8.1 6.9 4.5 14.1l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/>
-          </svg>
-        </span>
-        <span>Continue with Google</span>
-      </button>
-
-      <div class="or" hidden><span>or</span></div>
-
-      <label class="f">
-        <span>Email</span>
-        <input class="ep-input" id="email" type="email" autocomplete="email"
-               inputmode="email" placeholder="you@club.co.uk">
-      </label>
-      <button class="ep-btn pri" id="send" type="button">Send the link</button>
-      <p class="note">
-        Signing in is only needed to score a game, manage a club, or administer
-        a league. Everything a spectator reads — tables, box scores, statistics
-        — is public and needs no account.
-      </p>
-    </div>
-
-    <!-- signed in -->
-    <div id="in" class="hide">
-      <h1>Signed in</h1>
-      <div class="who" id="email2"></div>
-      <p class="lead">What this account can do, as the database sees it:</p>
-      <div class="roles" id="roles"></div>
-      <button class="ep-btn" id="signout" type="button">Sign out</button>
-      <p class="note">
-        Roles are granted by a league administrator against your email address.
-        If something you expect is missing here, it has not been granted yet —
-        the buttons in the sidebar follow this list exactly.
-      </p>
-    </div>
-
-    <div id="msg" class="msg hide"></div>
-  </div>
-</div>
-<script src="../vendor/supabase.js?v=80" defer></script>
-<script src="../config.js?v=80" defer></script>
-<script src="signin.js?v=80" defer></script>
-<script src="../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/signin/">/epinoia/signin/</a>.</p>
 </body>
 </html>

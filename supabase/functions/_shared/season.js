@@ -1,4 +1,4 @@
-/* GENERATED from league/season.js by supabase/tests/extract-shared.mjs — do not edit. */
+/* GENERATED from epinoia/season.js by supabase/tests/extract-shared.mjs — do not edit. */
 'use strict';
 /* ============================================================================
    EPINOIA SEASON — the statistics intermediary.

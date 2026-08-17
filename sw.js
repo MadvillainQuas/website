@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
     // cache would show a stale score confidently, with no way for the viewer to
     // tell. Same reasoning as the FIBA bypass below. Enforced by CI so it can't
     // be dropped by accident (.github/workflows/guard.yml).
-    if (url.origin === self.location.origin && url.pathname.startsWith('/league/')) {
+    if (url.origin === self.location.origin && url.pathname.startsWith('/epinoia/')) {
         return; // let the browser handle it normally
     }
 

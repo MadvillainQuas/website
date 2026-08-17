@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const src = readFileSync(new URL('../../league/admin/awards-ui.js', import.meta.url), 'utf8');
+const src = readFileSync(new URL('../../epinoia/admin/awards-ui.js', import.meta.url), 'utf8');
 const mod = { exports: {} };
 new Function('module', 'exports', src)(mod, mod.exports);
 const { splitCsv, norm } = mod.exports;

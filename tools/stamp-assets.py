@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stamp every local script and stylesheet under league/ with a version query.
+Stamp every local script and stylesheet under epinoia/ with a version query.
 
 A browser told nothing about freshness invents its own, and once it has decided
 a file is fresh it will not even ASK the server again — so fixing the server's
@@ -8,7 +8,7 @@ headers does nothing for anybody who already loaded the page. The only reliable
 cure is to change the URL, because a URL the browser has never seen cannot be
 in its cache.
 
-That is what this does: league/version.txt holds a number, and every
+That is what this does: epinoia/version.txt holds a number, and every
     src="nav.js"   ->   src="nav.js?v=<number>"
 Bump the number whenever a shipped asset changes and every visitor gets the new
 file on their next page load, with no clearing, no hard refresh, and no
@@ -24,7 +24,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LEAGUE = os.path.join(ROOT, 'league')
+LEAGUE = os.path.join(ROOT, 'epinoia')
 VERSION_FILE = os.path.join(LEAGUE, 'version.txt')
 
 # local assets only. A vendored bundle is versioned by its own filename, and an

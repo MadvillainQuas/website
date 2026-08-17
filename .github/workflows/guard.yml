@@ -1,12 +1,12 @@
 name: guard
 
-# The carve-out in /league/ is defined by OMISSION — no gate.js, no topnav.js.
+# The carve-out in /epinoia/ is defined by OMISSION — no gate.js, no topnav.js.
 # Omissions are exactly what gets undone by accident, so they are enforced here:
 # a paste of the standard <head> block becomes a failed build, not a silent outage.
 
 on:
   push:
-    paths: ['league/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
+    paths: ['epinoia/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
   pull_request:
   workflow_dispatch:
 
@@ -20,11 +20,11 @@ jobs:
       # must not fail the build, or the guard gets deleted out of annoyance.
       - name: The public section must never load the invite gate
         run: |
-          if grep -rnE --exclude-dir=vendor '<script[^>]+src=["'"'"'][^"'"'"']*(gate|topnav)\.js|import[^;]+["'"'"'][^"'"'"']*(gate|topnav)\.js' league/; then
-            echo "::error::gate.js / topnav.js is LOADED under league/ — the public section would be hidden from visitors."
+          if grep -rnE --exclude-dir=vendor '<script[^>]+src=["'"'"'][^"'"'"']*(gate|topnav)\.js|import[^;]+["'"'"'][^"'"'"']*(gate|topnav)\.js' epinoia/; then
+            echo "::error::gate.js / topnav.js is LOADED under epinoia/ — the public section would be hidden from visitors."
             exit 1
           fi
-          echo "ok — no gate references under league/"
+          echo "ok — no gate references under epinoia/"
 
       - name: No service-role key may ship to a browser
         run: |
@@ -32,8 +32,8 @@ jobs:
           # sb_publishable_* is meant to be public. sb_secret_* and service_role are not.
           # A real key appears inside a string literal. Prose that merely NAMES these
           # (this README does) must not fail the build — third time that bit me.
-          if grep -rnE --exclude-dir=vendor --include='*.js' --include='*.html' --include='*.ts'              '(service_role|SERVICE_ROLE[A-Z_]*)\s*[:=]|["'"'"'`]sb_secret_|["'"'"']eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.' league/; then
-            echo "::error::a service-role key or raw JWT appears under league/. Only the anon key belongs in client code."
+          if grep -rnE --exclude-dir=vendor --include='*.js' --include='*.html' --include='*.ts'              '(service_role|SERVICE_ROLE[A-Z_]*)\s*[:=]|["'"'"'`]sb_secret_|["'"'"']eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.' epinoia/; then
+            echo "::error::a service-role key or raw JWT appears under epinoia/. Only the anon key belongs in client code."
             exit 1
           fi
           echo "ok — no privileged credentials in client code"
@@ -41,7 +41,7 @@ jobs:
       - name: User text must never be interpolated as HTML
         run: |
           # innerHTML fed directly from a player/team name is the XSS the plan calls out.
-          if grep -rnE --exclude-dir=vendor 'innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b' league/; then
+          if grep -rnE --exclude-dir=vendor 'innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b' epinoia/; then
             echo "::error::user-supplied text interpolated into innerHTML without escaping."
             exit 1
           fi
@@ -56,7 +56,7 @@ jobs:
         # the contact recipient lives in an Edge Function secret; a personal
         # address in a public repo is a spam list entry with extra steps
         run: |
-          if grep -rniE --exclude-dir=vendor '[a-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|icloud)\.[a-z.]+' league/ supabase/; then
+          if grep -rniE --exclude-dir=vendor '[a-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|icloud)\.[a-z.]+' epinoia/ supabase/; then
             echo "::error::a personal email address appears in the repository."
             exit 1
           fi
@@ -64,11 +64,11 @@ jobs:
 
       - name: The service worker must not cache the public section
         run: |
-          if [ -f sw.js ] && ! grep -q "startsWith('/league/')" sw.js; then
-            echo "::error::sw.js is missing the /league/ bypass — live pages would be served stale."
+          if [ -f sw.js ] && ! grep -q "startsWith('/epinoia/')" sw.js; then
+            echo "::error::sw.js is missing the /epinoia/ bypass — live pages would be served stale."
             exit 1
           fi
-          echo "ok — service worker bypasses /league/"
+          echo "ok — service worker bypasses /epinoia/"
 
   engine-parity:
     runs-on: ubuntu-latest
@@ -79,12 +79,12 @@ jobs:
 
       - name: The Edge Function and the browser must run the same engine
         run: |
-          # supabase/functions/_shared/engine.js is league/engine.js plus an ESM tail.
+          # supabase/functions/_shared/engine.js is epinoia/engine.js plus an ESM tail.
           # If they drift, the server and the public page can disagree about a score.
-          head -c $(wc -c < league/engine.js) supabase/functions/_shared/engine.js > /tmp/shared_head.js
-          if ! diff -q league/engine.js /tmp/shared_head.js > /dev/null; then
-            echo "::error::supabase/functions/_shared/engine.js has drifted from league/engine.js."
-            echo "Re-sync with:  cp league/engine.js supabase/functions/_shared/engine.js && (re-append the ESM tail)"
+          head -c $(wc -c < epinoia/engine.js) supabase/functions/_shared/engine.js > /tmp/shared_head.js
+          if ! diff -q epinoia/engine.js /tmp/shared_head.js > /dev/null; then
+            echo "::error::supabase/functions/_shared/engine.js has drifted from epinoia/engine.js."
+            echo "Re-sync with:  cp epinoia/engine.js supabase/functions/_shared/engine.js && (re-append the ESM tail)"
             exit 1
           fi
           echo "ok — engines identical"

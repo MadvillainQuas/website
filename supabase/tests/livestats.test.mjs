@@ -5,12 +5,12 @@
    downstream from a scored one, so the test that matters is not "did it emit
    events" but "does the ENGINE derive the right box score from them". Most of
    what follows builds a small game by hand, converts it, replays it through
-   league/engine.js, and checks the numbers a scoresheet would show.
+   epinoia/engine.js, and checks the numbers a scoresheet would show.
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const L = require('../../league/livestats.js');
-const E = require('../../league/engine.js');
+const L = require('../../epinoia/livestats.js');
+const E = require('../../epinoia/engine.js');
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {

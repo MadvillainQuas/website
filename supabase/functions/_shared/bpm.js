@@ -1,4 +1,4 @@
-/* GENERATED from league/bpm.js by supabase/tests/extract-shared.mjs — do not edit. */
+/* GENERATED from epinoia/bpm.js by supabase/tests/extract-shared.mjs — do not edit. */
 'use strict';
 /* ============================================================================
    BOX PLUS/MINUS 2.0

@@ -23,8 +23,8 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.misc.transform import Transform
 import sys
 
-SRC = 'league/kit/fonts/archivo.woff2'   # run from the repository root
-OUT = 'league/brand/epinoia-mark'
+SRC = 'epinoia/kit/fonts/archivo.woff2'   # run from the repository root
+OUT = 'epinoia/brand/epinoia-mark'
 WGHT, WDTH = 620, 112          # a touch heavy, a touch wide — logotype weight
 
 f = TTFont(SRC)

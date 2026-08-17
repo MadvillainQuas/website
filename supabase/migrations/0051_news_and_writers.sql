@@ -72,7 +72,7 @@ begin
   select id into uid from auth.users where lower(email) = lower(trim(p_email)) limit 1;
   if uid is null then
     return 'no account for ' || p_email ||
-           ' yet — ask them to sign in once at /league/app/, then grant again';
+           ' yet — ask them to sign in once at /epinoia/app/, then grant again';
   end if;
 
   insert into league_writers (league_id, user_id, created_by)
@@ -409,7 +409,7 @@ begin
 
   select id into uid from auth.users where lower(email) = lower(trim(p_email)) limit 1;
   if uid is null then
-    return 'no account for ' || p_email || ' yet — ask them to sign in once at /league/app/, then grant again';
+    return 'no account for ' || p_email || ' yet — ask them to sign in once at /epinoia/app/, then grant again';
   end if;
 
   insert into memberships (user_id, role, scope_type, scope_id)

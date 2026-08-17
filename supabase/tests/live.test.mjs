@@ -14,8 +14,8 @@
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const L = require('../../league/live.js');
-const E = require('../../league/engine.js');
+const L = require('../../epinoia/live.js');
+const E = require('../../epinoia/engine.js');
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {

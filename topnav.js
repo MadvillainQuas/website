@@ -153,11 +153,11 @@
               owns: (p) => p.endsWith('player_stats_viewer_pro.html') },
             { id: 'allstats',  label: '🌍 All-League Stats', href: 'allstats.html',
               owns: (p) => p.endsWith('allstats.html') },
-            // Epinoia lives under /league/ and deliberately does not load this
+            // Epinoia lives under /epinoia/ and deliberately does not load this
             // nav (it is public and must not depend on the gate), so it only ever
             // appears here as a link out.
-            { id: 'epinoia', label: '🏟️ Epinoia', href: 'league/',
-              owns: (p) => p.startsWith('/league/') }
+            { id: 'epinoia', label: '🏟️ Epinoia', href: 'epinoia/',
+              owns: (p) => p.startsWith('/epinoia/') }
         ];
         const currentApp = APPS.find(a => a.owns(path));
         const otherApps  = APPS.filter(a => a !== currentApp);

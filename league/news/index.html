@@ -2,80 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04100b">
-<!-- PUBLIC. No gate.js, no topnav.js. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>News · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<script src="../mode.js?v=80"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<link rel="stylesheet" href="../kit/card.css?v=80">
-<link rel="stylesheet" href="../kit/news.css?v=80">
-<style>
-  a.plain{color:inherit;text-decoration:none}
-  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:13px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
-    padding:3px 9px 1px;text-transform:uppercase}
-  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule)}
-  .hero h1{font-family:var(--f-score);font-size:clamp(30px,7vw,58px);line-height:.88;margin:0;
-    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero .lg{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    letter-spacing:.14em;text-transform:uppercase;margin-top:calc(var(--u))}
-  .wrap{padding:calc(var(--u)*3)}
-  /* the archive/article switch — see mode.js */
-  .m-list #one{display:none}
-  .m-article #list{display:none}
-  .empty{padding:calc(var(--u)*5) 0;text-align:center;color:var(--ink-3);
-    font-family:var(--f-micro);font-size:11px}
-  .pager{display:flex;gap:10px;align-items:center;justify-content:center;
-    padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
-  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
-    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
-  footer.foot a{color:var(--ink-3);text-decoration:none}
-</style>
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/news/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/news/
+
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
+
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
+
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/news/">
+<script>
+  (function () {
+    location.replace('/epinoia/news/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="ep-frame">
-  <div class="topbar">
-    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <a href="#" id="backLeague" class="ep-micro plain">← league</a>
-  </div>
-
-  <div class="hero">
-    <h1 id="head">News</h1>
-    <div class="lg" id="leagueName"></div>
-  </div>
-
-  <!-- one article, or the archive: mode.js decided which from ?a= before any
-       of this was painted, so opening an article no longer shows the archive's
-       "Loading..." underneath it first. -->
-  <article id="one"></article>
-
-  <div id="list" class="wrap">
-    <div class="empty">Loading&#8230;</div>
-  </div>
-  <div id="pager" class="pager hide"></div>
-
-  <footer class="foot">
-    <a href="../">← Epinoia</a>
-    <a href="#" id="footLeague">League</a>
-    <span>Epinoia Network</span>
-  </footer>
-</div>
-
-<script src="../config.js?v=80" defer></script>
-<script src="../upload.js?v=80" defer></script>
-<script src="../newsblocks.js?v=80" defer></script>
-<script src="../news.js?v=80" defer></script>
-<script src="news-page.js?v=80" defer></script>
-<script src="../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/news/">/epinoia/news/</a>.</p>
 </body>
 </html>

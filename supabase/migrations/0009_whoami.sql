@@ -70,7 +70,7 @@ begin
   select id into uid from auth.users where lower(email) = lower(target) limit 1;
 
   if uid is null then
-    raise exception E'\n\n  % has never signed in, so there is no account to make an admin.\n  Open /league/app/, sign in with that address once, then re-run:\n      npx supabase db push\n', target
+    raise exception E'\n\n  % has never signed in, so there is no account to make an admin.\n  Open /epinoia/app/, sign in with that address once, then re-run:\n      npx supabase db push\n', target
       using errcode = 'P0002';
   end if;
 

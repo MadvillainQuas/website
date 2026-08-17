@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dev feed · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=81">
+<style>
+  .wrap{padding:calc(var(--u)*3);display:flex;flex-direction:column;gap:14px}
+  .log{font-family:var(--f-data);font-size:11px;color:var(--ink-2);max-height:280px;overflow:auto;
+    border:1px solid var(--rule);padding:10px;background:var(--panel)}
+  .log div{padding:1px 0}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-family:var(--f-data);font-size:12px}
+  .kv dt{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);text-transform:uppercase}
+  .kv dd{margin:0}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <span class="logo" style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase">Dev feed</span>
+    <span class="ep-micro">simulated scorer — publishes frames exactly as Epinoia will</span>
+  </div>
+
+  <div class="wrap">
+    <div class="ep-row" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+      <button class="ep-btn pri" id="start">Start live game</button>
+      <button class="ep-btn" id="pause">Pause clock</button>
+      <button class="ep-btn" id="burst">Burst 10 plays</button>
+      <button class="ep-btn" id="finalise">Finalise</button>
+      <button class="ep-btn dgr" id="reset">Reset</button>
+      <span class="ep-micro" id="mode"></span>
+    </div>
+    <dl class="kv">
+      <dt>Game id</dt><dd id="gid">—</dd>
+      <dt>Events</dt><dd id="nev">0</dd>
+      <dt>Score</dt><dd id="sc">0 – 0</dd>
+      <dt>Frames sent</dt><dd id="nfr">0</dd>
+      <dt>Watch</dt><dd><a id="watch" href="#" target="_blank" style="color:var(--lume)">open the public page →</a></dd>
+    </dl>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script src="config.js?v=81" defer></script>
+<script src="engine.js?v=81" defer></script>
+<script src="live.js?v=81" defer></script>
+<script>
+'use strict';
+const E = window.EpinoiaEngine, L = window.EpinoiaLive;
+const gameId = new URLSearchParams(location.search).get('g') || 'demo';
+const mode = epinoiaMode();
+document.getElementById('mode').textContent = 'transport: ' + mode;
+document.getElementById('gid').textContent = gameId;
+document.getElementById('watch').href = 'game/?g=' + encodeURIComponent(gameId) + '&mode=' + mode;
+
+const HOME = ['ada lovelace','grace hopper','katherine johnson','hedy lamarr','radia perlman','annie easley','mary jackson','dorothy vaughan'];
+const AWAY = ['miles davis','john coltrane','bill evans','paul chambers','jimmy cobb','wynton kelly','lee morgan','art blakey'];
+const mkTeam = (name, colour, names, t) => ({
+  name, color: colour,
+  players: names.map((n, i) => ({ id: 'p' + t + '_' + i, name: n, num: String(i + 4) }))
+});
+
+let game, seq = 0, frames = 0, running = false, clockMs = 600000, period = 1, timer = null, rng = 7;
+const rand = () => { rng = (rng * 16807) % 2147483647; return rng / 2147483647; };
+const pick = a => a[Math.floor(rand() * a.length)];
+const log = m => { const d = document.createElement('div'); d.textContent = m;
+  const l = document.getElementById('log'); l.prepend(d); while (l.children.length > 120) l.lastChild.remove(); };
+
+let pub = null;
+
+function newGame() {
+  game = {
+    competition: 'Epinoia Invitational',
+    teams: [mkTeam('neon city', '#93f2bf', HOME, 0), mkTeam('soft club', '#8ff5ff', AWAY, 1)],
+    starters: [HOME.slice(0, 5).map((_, i) => 'p0_' + i), AWAY.slice(0, 5).map((_, i) => 'p1_' + i)],
+    period: 1, clockMs: 600000, tipWinner: 0, arrowInit: 1, status: 'live'
+  };
+  seq = 0; frames = 0; period = 1; clockMs = 600000; running = false;
+  // stateProvider => every coalesced frame carries the authoritative clock,
+  // so viewers self-correct and a heartbeat covers quiet stretches
+  pub = L.publisher({ gameId, mode, supabase: window.epinoiaClient ? epinoiaClient() : null,
+                      stateProvider: () => stateNow() });
+  // one metadata frame so late joiners get the rosters
+  pub.pushState(stateNow());
+  send([], { game });
+  log('new game published (' + pub.transport + ')');
+}
+
+const stateNow = () => ({ period, clock_ms: clockMs, running, updated_at: new Date().toISOString(),
+                          score_home: cur().score[0], score_away: cur().score[1] });
+
+let evs = [];
+const cur = () => E.deriveGame(Object.assign({}, game, { events: evs, period, clockMs }));
+
+function send(newEvents, extra) {
+  frames++;
+  const frame = Object.assign({ gameId, events: newEvents, state: stateNow(), seq: frames, at: Date.now() }, extra || {});
+  // publisher.pushState sends immediately; for events we let it coalesce
+  if (newEvents.length) pub.pushEvents(newEvents);
+  if (extra && extra.game) pub.pushState(Object.assign(stateNow(), {}));
+  // local transport also needs the game blob stored for late joiners
+  if (extra && extra.game && mode === 'local') {
+    const KEY = 'eplive:' + gameId;
+    const cur0 = JSON.parse(localStorage.getItem(KEY) || '{"events":[],"state":null,"game":null}');
+    cur0.game = extra.game; localStorage.setItem(KEY, JSON.stringify(cur0));
+    if ('BroadcastChannel' in window) new BroadcastChannel(KEY).postMessage({ gameId, game: extra.game, events: [], seq: frames });
+  }
+  document.getElementById('nfr').textContent = frames;
+}
+
+function add(o) {
+  seq++;
+  const ev = Object.assign({ id: seq, seq, period, clock: clockMs }, o);
+  evs.push(ev);
+  return ev;
+}
+
+/* one possession, published as a single coalesced frame */
+function possession() {
+  const t = Math.round(rand());
+  const on = game.starters[t], off = game.starters[1 - t];
+  const sh = pick(on);
+  const batch = [];
+  const push = o => batch.push(add(o));
+  clockMs = Math.max(0, clockMs - Math.round(8000 + rand() * 14000));
+
+  const r = rand();
+  if (r < 0.14) {
+    push({ t: 'to', team: t, pid: sh });
+    if (rand() < 0.6) push({ t: 'stl', team: 1 - t, pid: pick(off) });
+  } else {
+    const three = rand() < 0.35, made = rand() < (three ? 0.35 : 0.5);
+    const kind = three ? 'p3' : 'p2';
+    if (made) {
+      const s = push({ t: kind + '_made', team: t, pid: sh });
+      push({ t: 'loc', ref: s.id, x: three ? (rand() < .5 ? .1 : .9) : .35 + rand() * .3, y: three ? .15 : .05 + rand() * .3 });
+      if (rand() < 0.6) push({ t: 'ast', team: t, pid: pick(on.filter(p => p !== sh)) });
+    } else {
+      const s = push({ t: kind + '_miss', team: t, pid: sh });
+      push({ t: 'loc', ref: s.id, x: .35 + rand() * .3, y: .05 + rand() * .3 });
+      if (rand() < 0.1) push({ t: 'blk', team: 1 - t, pid: pick(off) });
+      const oreb = rand() < 0.27;
+      push({ t: 'reb', team: oreb ? t : 1 - t, pid: pick(oreb ? on : off), off: oreb });
+    }
+  }
+  send(batch);
+  const d = cur();
+  document.getElementById('nev').textContent = evs.length;
+  document.getElementById('sc').textContent = d.score[0] + ' – ' + d.score[1];
+  log('frame ' + frames + ': ' + batch.map(e => e.t).join(' + ') + '  →  ' + d.score.join('-'));
+  if (clockMs <= 0) endPeriod();
+}
+
+function endPeriod() {
+  running = false; clearInterval(timer); timer = null;
+  if (period >= 4) { log('regulation over'); pub.pushState(stateNow()); return; }
+  period++; clockMs = 600000;
+  send([add({ t: 'period_start' })]);
+  log('— ' + E.perName(period) + ' —');
+  startClock();
+}
+
+function startClock() {
+  running = true;
+  pub.pushState(stateNow());               // transition only; viewers tick locally
+  clearInterval(timer);
+  timer = setInterval(possession, 1600);   // a possession every 1.6s of wall time
+}
+
+document.getElementById('start').onclick = () => { if (!game) newGame(); startClock(); log('clock running'); };
+document.getElementById('pause').onclick = () => {
+  running = !running; if (running) startClock(); else { clearInterval(timer); timer = null; pub.pushState(stateNow()); }
+  log(running ? 'clock running' : 'clock stopped');
+};
+document.getElementById('burst').onclick = () => { if (!game) newGame(); for (let i = 0; i < 10; i++) possession(); };
+document.getElementById('finalise').onclick = () => {
+  running = false; clearInterval(timer); timer = null;
+  game.status = 'final';
+  send([add({ t: 'game_end' })], { game });
+  pub.pushState(stateNow()); pub.flushNow();
+  log('FINAL — ' + cur().score.join('-'));
+};
+document.getElementById('reset').onclick = () => {
+  clearInterval(timer); timer = null; evs = []; game = null; running = false;
+  localStorage.removeItem('eplive:' + gameId);
+  if ('BroadcastChannel' in window) new BroadcastChannel('eplive:' + gameId).postMessage({ reset: true });
+  document.getElementById('nev').textContent = '0';
+  document.getElementById('sc').textContent = '0 – 0';
+  log('reset');
+};
+</script>
+</body>
+</html>

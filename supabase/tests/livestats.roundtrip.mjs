@@ -17,8 +17,8 @@
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const L = require('../../league/livestats.js');
-const E = require('../../league/engine.js');
+const L = require('../../epinoia/livestats.js');
+const E = require('../../epinoia/engine.js');
 
 const URL_ = 'https://hhvofgqqadtyvcjudhjx.supabase.co';
 const KEY = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';

@@ -349,7 +349,7 @@ Deno.serve(async (req) => {
   if (!parts.length) {
     return json({
       name: 'Epinoia Network API', version: 1,
-      docs: '/league/api/',
+      docs: '/epinoia/api/',
       endpoints: [
         'GET /v1/leagues',
         'GET /v1/leagues/{slug}',

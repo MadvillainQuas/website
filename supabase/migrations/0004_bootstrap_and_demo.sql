@@ -18,7 +18,7 @@ begin
 
   select id into uid from auth.users where lower(email) = lower(p_email) limit 1;
   if uid is null then
-    return 'no such user: sign in once at /league/app/ with ' || p_email || ', then run this again';
+    return 'no such user: sign in once at /epinoia/app/ with ' || p_email || ', then run this again';
   end if;
 
   insert into memberships (user_id, role, scope_type, scope_id)

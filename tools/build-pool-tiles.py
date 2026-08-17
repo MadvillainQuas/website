@@ -32,7 +32,7 @@ import os
 import numpy as np
 from PIL import Image, ImageFilter
 
-OUT = 'league/brand/'
+OUT = 'epinoia/brand/'
 MARBLE_SRC = 'D:/Download/img-b1d58051-ed3b-40e8-af1f-147aa8dfee0c-1783309775030-0_1783309775030_vnabdwdl.jpg'
 N = 1024
 

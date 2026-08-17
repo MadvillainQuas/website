@@ -2,59 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#8fd3e5">
-<!-- PUBLIC, and deliberately WITHOUT nav.js. This page is a landing between
-     the splash and a league, and a rail down the side of it would be a second
-     way to do the one thing the page is for. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://w.soundcloud.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://w.soundcloud.com">
-<title>Countries · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../kit/splash.css?v=80">
-<link rel="stylesheet" href="countries.css?v=80">
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/countries/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/countries/
+
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
+
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
+
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/countries/">
+<script>
+  (function () {
+    location.replace('/epinoia/countries/' + location.search + location.hash);
+  }());
+</script>
 </head>
-<body class="splash-body co-body">
-
-<!-- the same pool, the same layers, so this reads as another room in the same
-     building rather than a different site -->
-<div class="pool" id="pool" aria-hidden="true">
-  <div class="pool-floor"></div>
-  <div class="pool-depth"></div>
-  <div class="pool-caustic a"></div>
-  <div class="pool-caustic b"></div>
-  <div class="pool-tint"></div>
-  <div class="pool-swell a"></div>
-  <div class="pool-swell b"></div>
-  <div class="pool-sheen"></div>
-</div>
-
-<main class="co-main">
-  <header class="co-head">
-    <h1>Countries</h1>
-    <p>Every competition on the platform, by where it is played.</p>
-  </header>
-
-  <div class="co-grid" id="grid">
-    <div class="co-loading">Loading…</div>
-  </div>
-</main>
-
-<!-- The same slab in the same corner as the splash's. It is only filled in if
-     the track was already playing when the visitor left the splash: arriving
-     here from a link starts nothing. -->
-<aside class="slab sc-slab hide" id="sc" aria-label="Now playing"></aside>
-
-<!-- bottom left, back to the splash, in the logotype rather than in words -->
-<a class="co-back" href="../" aria-label="Back to Epinoia">
-  <span class="co-back-arrow" aria-hidden="true">‹</span>
-  <span class="epinoia-mark">EPINOIΛ</span>
-</a>
-
-<script src="../config.js?v=80" defer></script>
-<script src="../music.js?v=80" defer></script>
-<script src="countries.js?v=80" defer></script>
+<body>
+<p>This page has moved to <a href="/epinoia/countries/">/epinoia/countries/</a>.</p>
 </body>
 </html>

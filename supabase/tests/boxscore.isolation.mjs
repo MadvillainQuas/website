@@ -47,9 +47,9 @@ sandbox.self = sandbox;
 sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
 
-vm.runInContext(read('league/engine.js'), ctx, { filename: 'engine.js' });
+vm.runInContext(read('epinoia/engine.js'), ctx, { filename: 'engine.js' });
 sandbox.derive = () => sandbox.EpinoiaEngine.deriveGame(sandbox.S);
-vm.runInContext(read('league/boxscore.js'), ctx, { filename: 'boxscore.js' });
+vm.runInContext(read('epinoia/boxscore.js'), ctx, { filename: 'boxscore.js' });
 
 const B = sandbox.EpinoiaBox;
 if (B && B.rebuildPmap) B.rebuildPmap();   // the viewer does this after setting S

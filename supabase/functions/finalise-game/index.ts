@@ -330,7 +330,7 @@ async function notify(admin: any, gameId: string, competitionId: string | null,
   const slug = (chain as any)?.seasons?.leagues?.slug || '';
 
   const base = Deno.env.get('PUBLIC_SITE_URL') || 'https://prophesyscouting.co.uk';
-  const url = `${base}/league/game/?g=${gameId}&mode=supabase`;
+  const url = `${base}/epinoia/game/?g=${gameId}&mode=supabase`;
 
   // the winner first reads like a result rather than a fixture list
   const headline = hs === as_

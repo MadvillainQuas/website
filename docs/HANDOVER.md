@@ -40,7 +40,7 @@ Functions are deployed. So the backend is ahead of the front end.
 ## 2. What this is
 
 A multi-league basketball platform carved into the existing scouting site at
-`/league/`. GitHub Pages serves **code only**; Supabase serves **the game**.
+`/epinoia/`. GitHub Pages serves **code only**; Supabase serves **the game**.
 Pages cannot do live scoring — ~10 builds/hour, no headers, no SSR — so no part
 of the live path touches a git commit.
 
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **38**).
+  under `epinoia/`, from `epinoia/version.txt` (currently **38**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -125,7 +125,7 @@ Error 42P16. Drop first.
   HTTP 429). Test auth by impersonating JWT claims in a migration — see `0031`.
 - **Only the anon key ships to browsers.** `service_role` in client code fails
   CI. This is safe because RLS is default-deny.
-- **`/league/` must never load `gate.js` or `topnav.js`.** The public carve-out
+- **`/epinoia/` must never load `gate.js` or `topnav.js`.** The public carve-out
   is defined by omission; CI enforces it.
 - **No personal email addresses in the repo.** CI guard added after finding
   Louie's address hardcoded in `0008`/`0009` (since redacted). The contact
@@ -202,7 +202,7 @@ All green as of handover. Ones needing the live project skip cleanly without
 it. `api.test.mjs` reads a key from the session scratchpad or
 `EPINOIA_API_KEY`.
 
-**The box score is extracted, not reimplemented.** `league/boxscore.js` is
+**The box score is extracted, not reimplemented.** `epinoia/boxscore.js` is
 lifted verbatim from the scorer by `extract-boxscore.mjs`. Edit the scorer,
 then re-run the extractor. CI fails if they drift.
 
@@ -229,7 +229,7 @@ sections below it can never name different players. The award's `detail` always
 says which basis was used, so a failed BPM pass degrades to a labelled
 efficiency award rather than to a wrong one.
 
-**`league/bpm.js` and `league/season.js` now run in two places.**
+**`epinoia/bpm.js` and `epinoia/season.js` now run in two places.**
 `supabase/tests/extract-shared.mjs` copies them into `supabase/functions/_shared/`
 with an ESM tail; **run it after editing either, CI runs `--check`**. This is the
 same arrangement `_shared/engine.js` uses, and it exists so there is never a
@@ -256,7 +256,7 @@ touched and what it deliberately did not:
   never looks at the prefix, and a partner's key must not die in a rename. New
   keys mint as `epk_`. The demo key is still `csk_tjtCi98Q`.
 - **The scorer's saved game reads the old localStorage key once** and carries it
-  over (`league/score/index.html`, `loadSaved`). Delete that fallback after a
+  over (`epinoia/score/index.html`, `loadSaved`). Delete that fallback after a
   season. Renaming a storage key without it is silent data loss.
 - **The logotype has SIX GLYPHS: A E I N O P.** It is bound to `.epinoia-mark`,
   which may only go on an element whose whole content is the word EPINOIA.
@@ -264,14 +264,14 @@ touched and what it deliberately did not:
   because anything else renders as missing-glyph boxes. The face is also twice
   as wide as Jersey25 at the same size, so `.wordmark.epinoia-mark` and
   `.wm.epinoia-mark` set their own smaller sizes.
-- Brand assets are in `league/brand/`, built from the two supplied PNGs: white
+- Brand assets are in `epinoia/brand/`, built from the two supplied PNGs: white
   keyed to transparency, the icon cropped off its shadow. Every page now has a
   favicon, which it did not before.
 
 **THE MERCHANDISE PIPELINE** (migration 0043) turns the drawn mockups into
 things that exist. Three places on purpose:
 
-- `league/artwork.js` builds the PRINT file — the design alone, on
+- `epinoia/artwork.js` builds the PRINT file — the design alone, on
   transparency, at the real physical size, 300 DPI. Not the mockup; confusing
   the two gives you a t-shirt with a picture of a t-shirt on it.
 - **The artwork is rasterised in the ADMIN CONSOLE**, because that needs a
@@ -294,14 +294,14 @@ sentences and `action:'dryrun'` shows the exact requests with the key redacted.
 **The live store call is unverified** — it needs a real account, and creating a
 product is not undoable from our side.
 
-`/league/embed/merch/` is the shop window for other people's sites
+`/epinoia/embed/merch/` is the shop window for other people's sites
 (`data-epinoia="shop"`), and only ever shows `status='published'` rows, which is
 structural rather than a filter: RLS hides everything earlier from anonymous
 readers.
 
-**THE SPLASH.** `/league/` with no `?l=` is now the platform's front page: a
+**THE SPLASH.** `/epinoia/` with no `?l=` is now the platform's front page: a
 shallow pool over marble, a centred title, inline sign-in and three segmented
-decks. `/league/?l=slug` is untouched and must stay that way — the two are
+decks. `/epinoia/?l=slug` is untouched and must stay that way — the two are
 different pages sharing a document because they share a URL, and `home.js`
 picks between them.
 
@@ -323,7 +323,7 @@ picks between them.
   outstanding. **OG images and the publish-queue consumer are blocked on this**
   — they need a server-side GitHub credential.
 - **Enable Google auth** in Supabase → Authentication → Providers. The button
-  on `/league/signin/` hides itself until then and appears automatically after;
+  on `/epinoia/signin/` hides itself until then and appears automatically after;
   no code change needed.
 - **Set contact secrets** or the form stores without sending:
   `npx supabase secrets set CONTACT_TO=… RESEND_API_KEY=…`
@@ -344,7 +344,7 @@ picks between them.
 
 ## 8. The BPM finding
 
-`league/bpm.js` is ported from `BPMCalculator` in
+`epinoia/bpm.js` is ported from `BPMCalculator` in
 `C:\Users\Admin\Documents\scraper files\bcb_scraper.py`. **Two deliberate
 differences:**
 

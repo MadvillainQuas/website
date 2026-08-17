@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<!-- EMBED. Runs inside someone else's page: no gate, no nav, no third-party
+     scripts, and every style literal so it cannot inherit theirs. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Epinoia fixtures</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../../kit/fonts.css?v=81">
+<link rel="stylesheet" href="../../kit/embed.css?v=81">
+<style>
+  html,body{height:auto;overflow:hidden}
+</style>
+</head>
+<body class="cse">
+  <div class="ep-strip">
+    <a class="ep-plate" id="plate" href="../../" target="_blank" rel="noopener"
+       title="Epinoia">
+      <span class="disc"><span class="mk epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></span>
+    </a>
+    <div class="ep-rail" id="rail"><div class="ep-empty">Loading fixtures…</div></div></div>
+    <button class="ep-arrow" id="right" hidden aria-label="scroll right">›</button>
+  </div>
+<script src="../../config.js?v=81" defer></script>
+<script src="strip.js?v=81" defer></script>
+</body>
+</html>

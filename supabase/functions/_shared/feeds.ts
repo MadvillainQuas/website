@@ -92,7 +92,7 @@ export async function post(feed: Feed, body: string, contentType: string,
                           deliveryId: string): Promise<{ status: number; error: string | null }> {
   const headers: Record<string, string> = {
     'Content-Type': contentType,
-    'User-Agent': 'Epinoia-Network/1 (+https://prophesyscouting.co.uk/league/api/)',
+    'User-Agent': 'Epinoia-Network/1 (+https://prophesyscouting.co.uk/epinoia/api/)',
     'X-Epinoia-Event': 'game.final',
     'X-Epinoia-Delivery': deliveryId,
     'X-Epinoia-Timestamp': String(Math.floor(Date.now() / 1000))

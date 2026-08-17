@@ -2,68 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04170f">
-<!-- PUBLIC. No gate.js, no topnav.js. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>Box score · Epinoia</title>
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/game/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/game/
 
-<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<!-- The scorer's own stylesheet, generated from it. The renderers below emit
-     the scorer's class names, so this is what makes the public box score look
-     like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../boxscore.css?v=80">
-<link rel="stylesheet" href="../kit/nav.css?v=80">
-<style>
-  /* Page chrome only — nothing here restyles the box score itself. */
-  body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
-  .wrap{max-width:1150px;margin:0 auto;padding:0 12px 60px}
-  .top{display:flex;align-items:center;gap:12px;padding:12px 2px;flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,#93f2bf,#8ff5ff);
-    color:#04100b;padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
-  .ctx{font-family:var(--f-micro);font-size:9px;color:var(--text-muted);letter-spacing:.1em;
-    text-transform:uppercase}
-  .status{margin-left:auto;display:flex;align-items:center;gap:7px;font-family:var(--f-micro);
-    font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
-  .status i{width:7px;height:7px;border-radius:50%;background:#5d7f70;display:block}
-  .status.live i{background:#ff5f6b;animation:pl 1.6s ease-in-out infinite}
-  .status.delayed i{background:#ffd166}
-  .status.final i{background:#93f2bf}
-  .status.offline i{background:#5d7f70}
-  @keyframes pl{0%,100%{opacity:1}50%{opacity:.25}}
-  @media (prefers-reduced-motion:reduce){.status.live i{animation:none}}
-  .msg{padding:40px 14px;text-align:center;font-family:var(--f-micro);font-size:11px;
-    color:var(--text-muted);line-height:2}
-  .foot{padding:24px 2px;font-family:var(--f-micro);font-size:9px;color:var(--text-muted);
-    display:flex;gap:14px;flex-wrap:wrap}
-  .foot a{color:var(--text-muted)}
-</style>
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
+
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
+
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/game/">
+<script>
+  (function () {
+    location.replace('/epinoia/game/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
-    <span class="ctx" id="ctx"></span>
-    <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
-  </div>
-
-  <div id="view"><div class="msg">Loading the game…</div></div>
-
-  <div class="foot">
-    <a href="../">← all games</a>
-    <span id="foot"></span>
-  </div>
-</div>
-
-<script src="../config.js?v=80" defer></script>
-<script src="../vendor/supabase.js?v=80" defer></script>
-<script src="../engine.js?v=80" defer></script>
-<script src="../boxscore.js?v=80" defer></script>
-<script src="../live.js?v=80" defer></script>
-<script src="../seo.js?v=80" defer></script>
-<script src="game.js?v=80" defer></script>
-<script src="../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/game/">/epinoia/game/</a>.</p>
 </body>
 </html>

@@ -34,7 +34,7 @@ begin
   select id into uid from auth.users where lower(email) = lower(target) limit 1;
 
   if uid is null then
-    raise notice 'NO ACCOUNT for % — sign in once at /league/app/, then re-run this migration', target;
+    raise notice 'NO ACCOUNT for % — sign in once at /epinoia/app/, then re-run this migration', target;
     return;
   end if;
 

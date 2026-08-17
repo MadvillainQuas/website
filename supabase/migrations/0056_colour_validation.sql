@@ -13,7 +13,7 @@
 --
 -- and have the markup served to every visitor of every box score in their
 -- league. The page's CSP (script-src 'self', no unsafe-inline) stops an
--- injected handler running, and league/boxscore.js now refuses to emit anything
+-- injected handler running, and epinoia/boxscore.js now refuses to emit anything
 -- that is not a colour — but both of those are downstream. A text column that
 -- accepts a quotation mark where a colour belongs is the actual defect, and it
 -- is the one place a fix covers every reader: this page, the API, the embeds,

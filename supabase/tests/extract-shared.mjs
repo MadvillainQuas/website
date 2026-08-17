@@ -17,7 +17,7 @@
      node supabase/tests/extract-shared.mjs           # regenerate
      node supabase/tests/extract-shared.mjs --check   # fail if they have drifted
 
-   Run the plain form after editing league/bpm.js or league/season.js. CI runs
+   Run the plain form after editing epinoia/bpm.js or epinoia/season.js. CI runs
    --check, so a drift is a failed build rather than a wrong MVP six weeks from
    now.
    ============================================================================ */
@@ -30,7 +30,7 @@ const repo = join(here, '..', '..');
 
 const FILES = [
   {
-    src: join(repo, 'league', 'bpm.js'),
+    src: join(repo, 'epinoia', 'bpm.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'bpm.js'),
     global: 'EpinoiaBPM',
     names: ['forLeague', 'forTeam', 'teamInputs', 'estimatedPossessions', 'per100',
@@ -38,7 +38,7 @@ const FILES = [
             'positionConstant', 'teamAdjustment', 'lerp']
   },
   {
-    src: join(repo, 'league', 'season.js'),
+    src: join(repo, 'epinoia', 'season.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),
     global: 'EpinoiaSeason',
     names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS']
@@ -59,7 +59,7 @@ export default __api;
 `;
 
 const banner = (name) =>
-  `/* GENERATED from league/${name} by supabase/tests/extract-shared.mjs — do not edit. */\n`;
+  `/* GENERATED from epinoia/${name} by supabase/tests/extract-shared.mjs — do not edit. */\n`;
 
 const build = (f) => banner(f.src.split(/[\\/]/).pop()) + readFileSync(f.src, 'utf8') + tail(f);
 
@@ -83,7 +83,7 @@ for (const f of FILES) {
 }
 
 if (check && drifted) {
-  console.error(`\n${drifted} shared file(s) out of date with league/.`);
+  console.error(`\n${drifted} shared file(s) out of date with epinoia/.`);
   process.exit(1);
 }
 console.log(check ? '\nshared modules match the browser copies'

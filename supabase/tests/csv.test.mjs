@@ -9,7 +9,7 @@
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const C = require('../../league/app/csv.js');
+const C = require('../../epinoia/app/csv.js');
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {

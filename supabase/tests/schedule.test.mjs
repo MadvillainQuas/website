@@ -11,7 +11,7 @@
    ============================================================================ */
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const S = require('../../league/admin/schedule.js');
+const S = require('../../epinoia/admin/schedule.js');
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {

@@ -15,7 +15,7 @@
 
    Run: node supabase/tests/artwork.test.mjs
    ============================================================================ */
-import A from '../../league/artwork.js';
+import A from '../../epinoia/artwork.js';
 
 let pass = 0, fail = 0;
 const eq = (got, want, what) => {

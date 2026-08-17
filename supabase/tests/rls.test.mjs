@@ -11,7 +11,7 @@
    ============================================================================ */
 import fs from 'node:fs';
 
-const cfg  = fs.readFileSync(new URL('../../league/config.js', import.meta.url), 'utf8');
+const cfg  = fs.readFileSync(new URL('../../epinoia/config.js', import.meta.url), 'utf8');
 const BASE = /supabaseUrl:\s*'([^']+)'/.exec(cfg)?.[1];
 const KEY  = /supabaseAnonKey:\s*'([^']*)'/.exec(cfg)?.[1];
 

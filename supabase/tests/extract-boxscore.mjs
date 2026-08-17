@@ -1,6 +1,6 @@
 /* ============================================================================
-   Generates league/boxscore.js by lifting the scorer's own render functions
-   out of league/score/index.html, verbatim.
+   Generates epinoia/boxscore.js by lifting the scorer's own render functions
+   out of epinoia/score/index.html, verbatim.
 
      node supabase/tests/extract-boxscore.mjs          # write
      node supabase/tests/extract-boxscore.mjs --check  # fail if out of date
@@ -21,9 +21,9 @@ import path from 'node:path';
 import vm from 'node:vm';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const SRC  = path.join(ROOT, 'league', 'score', 'index.html');
-const DEST = path.join(ROOT, 'league', 'boxscore.js');
-const CSS  = path.join(ROOT, 'league', 'boxscore.css');
+const SRC  = path.join(ROOT, 'epinoia', 'score', 'index.html');
+const DEST = path.join(ROOT, 'epinoia', 'boxscore.js');
+const CSS  = path.join(ROOT, 'epinoia', 'boxscore.css');
 
 /* Pure helpers and pure HTML builders. Everything here takes data and returns
    a string or a number — nothing touches the DOM or the scorer's UI state. */
@@ -72,7 +72,7 @@ const bodies = WANTED.map(extractLines);
 const out = `/* ============================================================================
    EPINOIA BOX SCORE — GENERATED FILE, DO NOT EDIT.
 
-   Lifted verbatim from league/score/index.html by
+   Lifted verbatim from epinoia/score/index.html by
    supabase/tests/extract-boxscore.mjs. Edit the scorer, then re-run:
 
        node supabase/tests/extract-boxscore.mjs
@@ -85,7 +85,7 @@ const out = `/* ================================================================
 
    Callers must supply two globals the scorer provides for itself:
      S        the game state  {teams, starters, period, clockMs, events, …}
-     derive() the replayed game, in the shape league/engine.js returns
+     derive() the replayed game, in the shape epinoia/engine.js returns
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -123,7 +123,7 @@ return { ${WANTED.join(', ')}, rebuildPmap };
 const styleStart = src.indexOf('<style>');
 const styleEnd   = src.indexOf('</style>', styleStart);
 if (styleStart < 0 || styleEnd < 0) { console.error('no <style> block in the scorer'); process.exit(1); }
-const css = `/* GENERATED from league/score/index.html by supabase/tests/extract-boxscore.mjs.
+const css = `/* GENERATED from epinoia/score/index.html by supabase/tests/extract-boxscore.mjs.
    DO NOT EDIT — edit the scorer's <style> block and re-run the extractor.
    These are the scorer's own rules, so the public box score is drawn by the
    same CSS as the statistician's final screen. */
@@ -162,13 +162,13 @@ catch (e) { console.error('extraction produced unparseable output:', e.message);
 if (process.argv.includes('--check')) {
   const have = fs.existsSync(DEST) ? fs.readFileSync(DEST, 'utf8') : '';
   if (have !== out) {
-    console.error('league/boxscore.js is out of date with the scorer.');
+    console.error('epinoia/boxscore.js is out of date with the scorer.');
     console.error('Run: node supabase/tests/extract-boxscore.mjs');
     process.exitCode = 1;
   } else {
     const haveCss = fs.existsSync(CSS) ? fs.readFileSync(CSS, 'utf8') : '';
     if (haveCss !== css) {
-      console.error('league/boxscore.css is out of date with the scorer.');
+      console.error('epinoia/boxscore.css is out of date with the scorer.');
       console.error('Run: node supabase/tests/extract-boxscore.mjs');
       process.exitCode = 1;
     } else {

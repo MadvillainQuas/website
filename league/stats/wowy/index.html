@@ -2,141 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04100b">
-<!-- PUBLIC. No gate.js, no topnav.js. -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>WOWY · Epinoia</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
-<link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=80">
-<link rel="stylesheet" href="../../kit/table.css?v=80">
-<link rel="stylesheet" href="../../kit/nav.css?v=80">
-<style>
-  a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
-  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:19px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
-    padding:3px 11px 1px;text-transform:uppercase}
-  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
-  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,58px);line-height:.88;margin:0;
-    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);letter-spacing:.06em;
-    line-height:2;max-width:76ch;margin:calc(var(--u)*2) 0 0}
+<title>Moved to /epinoia/</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/epinoia/stats/wowy/">
+<!-- ==========================================================================
+     THIS ADDRESS MOVED TO /epinoia/stats/wowy/
 
-  .ep-hdr{display:flex;align-items:baseline;gap:12px}
-  .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto;
-    padding-right:calc(var(--u)*3)}
+     It is kept because it is not ours to break. The embeds are lines of markup
+     sitting in other people's websites — a club pastes one in once and never
+     touches it again — and links to fixtures and box scores have been shared
+     into group chats and posted on club pages. Renaming the section was a
+     decision made here; a dead fixture strip on somebody's homepage would be a
+     consequence they never agreed to.
 
-  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);
-    font-family:var(--f-micro);font-size:11px;line-height:1.9}
-  .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
-  .lu-lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
-    line-height:1.9;margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);max-width:74ch}
-  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
-    letter-spacing:.1em;text-transform:uppercase}
+     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
+     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
+     intact or the strip lands with no league and shows nothing.
 
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
-    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-  .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
-  .tile .v{font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
-  .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
-    letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
-  .tile.hi .v{color:var(--lume)}
-
-  /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
-  .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
-    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
-  .wb.on{background:var(--lume);color:#04100b;font-weight:700}
-  .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
-  table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
-    background:var(--ground);text-align:center}
-  table.ft thead th.stick.c0w{z-index:4;background:#0c1f16}
-  table.ft th:not(.stick),table.ft td:not(.stick){text-align:right}
-  table.ft td .wb{margin:0 auto}
-  table.ft tbody tr.thin td{opacity:.45}
-  table.ft tbody tr.none td{opacity:.3}
-  table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
-    color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
-
-  /* team picker: a scrolling rail rather than a select, so every team in the
-     league is one click away and the current one is visibly current */
-  .teamrail{display:flex;gap:7px;overflow-x:auto;padding:calc(var(--u)*2) calc(var(--u)*3);
-    border-bottom:1px solid var(--rule);scrollbar-width:thin}
-  .teamrail button{flex:none}
-  .teamrail .swatch{display:inline-block;width:8px;height:8px;border-radius:50%;
-    margin-right:6px;vertical-align:middle}
-
-  /* the subject of the individual split is chosen separately from his mates,
-     because they are different roles and one chip list cannot say which is which */
-  .subjbar{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
-  .subjbar .ep-chip.on{outline:1px solid var(--aqua)}
-  /* the comparison table has no rank column, so its sticky label column
-     belongs at the left edge rather than at c1's usual 36px offset */
-  table.ft.with-tbl th.c1,table.ft.with-tbl td.c1{left:0;text-align:left}
-
-  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
-    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
-  footer.foot a{color:var(--ink-3);text-decoration:none}
-  footer.foot a:hover{color:var(--lume)}
-</style>
+     Both a script and a meta refresh, deliberately. The script is instant and
+     uses replace() so Back does not bounce between the two addresses; the meta
+     refresh is the fallback for anything that will not run it.
+     ========================================================================== -->
+<meta http-equiv="refresh" content="0; url=/epinoia/stats/wowy/">
+<script>
+  (function () {
+    location.replace('/epinoia/stats/wowy/' + location.search + location.hash);
+  }());
+</script>
 </head>
 <body>
-<div class="ep-frame">
-  <div class="topbar">
-    <a href="../../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span id="ctx" class="ep-micro"></span>
-  </div>
-
-  <div class="hero">
-    <h1>WOWY</h1>
-    <p>
-      With or without. Pick a team, then a player, and see what he does when he
-      shares the floor with the teammates you choose — his own shooting, his own
-      creation, his own mistakes — against the minutes none of them are out
-      there with him. Below that, the team's side of the same question: every
-      arrangement of up to five players being on or off, each worked out
-      separately, with ratings and the four factors at both ends. Arrangements
-      that never happened are shown as such rather than quietly left out.
-    </p>
-  </div>
-
-  <div id="teamrail" class="teamrail"></div>
-
-  <div class="ep-hdr"><span class="idx">01</span><h2>On the floor with</h2>
-    <span id="subjNote" class="hnote"></span></div>
-  <div id="subjbar" class="subjbar"></div>
-  <div id="withpanel"></div>
-
-  <div class="ep-hdr"><span class="idx">02</span><h2>On / off</h2></div>
-  <div id="onoff"></div>
-
-  <div class="ep-hdr"><span class="idx">03</span><h2>Combinations</h2>
-    <span id="comboNote" class="hnote"></span></div>
-  <div id="wowy"></div>
-
-  <footer class="foot">
-    <a href="../">← season statistics</a>
-    <a href="../../">← Epinoia</a>
-    <span>Epinoia Network</span>
-  </footer>
-</div>
-<script src="../../config.js?v=80" defer></script>
-<script src="../../bpm.js?v=80" defer></script>
-<script src="../../season.js?v=80" defer></script>
-<script src="../../data.js?v=80" defer></script>
-<script src="../../lineups.js?v=80" defer></script>
-<script src="../../withstats.js?v=80" defer></script>
-<script src="../../wowy.js?v=80" defer></script>
-<script src="../../p/withui.js?v=80" defer></script>
-<script src="wowy.js?v=80" defer></script>
-<script src="../../nav.js?v=80" defer></script>
+<p>This page has moved to <a href="/epinoia/stats/wowy/">/epinoia/stats/wowy/</a>.</p>
 </body>
 </html>
