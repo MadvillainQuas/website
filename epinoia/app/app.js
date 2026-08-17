@@ -162,7 +162,22 @@ async function mountCrest() {
           .order('created_at', { ascending: false }).limit(1);
         const m = rows && rows[0];
         if (!m) { say('Nothing waiting to be published.', 'warn'); pubBtn.disabled = false; return; }
-        await moveToPublic(m.storage_path);
+        /* A crest uploaded before crests went straight to the public bucket is
+           still in the private one and has to be moved first.
+
+           IF THAT MOVE FAILS, NOTHING IS PUBLISHED. Marking the row live while
+           the file sits in the private bucket is precisely the broken state
+           this whole sequence has been unpicking — a record that says published
+           over an image that 404s. Better to say so and let the crest be
+           uploaded again, which now writes straight to the public bucket and
+           cannot land in that state at all. */
+        try {
+          await moveToPublic(m.storage_path);
+        } catch (e) {
+          throw new Error('could not move the file into public storage (' +
+            (e.message || 'refused') + '). Remove the crest and upload it ' +
+            'again — a new upload goes straight to public storage.');
+        }
         const pub = await sb.rpc('publish_team_logo', { p_media: m.id });
         if (pub.error) throw new Error(pub.error.message);
         const orphans = (pub.data && pub.data.orphans) || [];
@@ -256,8 +271,16 @@ async function mountCrest() {
     if (!window.EpinoiaUpload) return say('The uploader did not load.', 'err');
     slot.disabled = true;
     try {
+      /* STRAIGHT INTO THE PUBLIC BUCKET. A crest is published on arrival, so
+         there is nothing for the private bucket to hold it for — and the
+         cross-bucket move that used to follow is the step that failed with
+         "new row violates row-level security policy". Writing it where it is
+         going to live removes the operation rather than debugging it: no copy,
+         no delete, no second set of permissions, and no window in which the row
+         and the file disagree about which bucket they are in. */
       const up = await window.EpinoiaUpload.upload(sb, {
-        file: f, ownerType: 'team', ownerId: team.id, kind: 'logo' });
+        file: f, ownerType: 'team', ownerId: team.id, kind: 'logo',
+        bucket: 'media-public' });
       if (!up || !up.storage_path) throw new Error('the upload returned no path');
 
       /* A CREST GOES UP WITHOUT REVIEW. Every other image waits for the league,
@@ -271,13 +294,7 @@ async function mountCrest() {
          for anything else. If it fails the upload still exists as pending and
          the league can approve it the old way, which is why the message says
          what actually happened rather than assuming. */
-      /* the file first — if this throws, nothing is marked published */
-      let moveErr = null;
-      try { await moveToPublic(up.storage_path); }
-      catch (e) { moveErr = e; }
-
-      const pub = moveErr ? { error: moveErr }
-                          : await sb.rpc('publish_team_logo', { p_media: up.id });
+      const pub = await sb.rpc('publish_team_logo', { p_media: up.id });
       const live = !pub.error;
 
       /* THE OLD FILE IS REMOVED THROUGH THE STORAGE API, because SQL may not
@@ -296,8 +313,9 @@ async function mountCrest() {
       paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path),
             live ? 'approved' : 'pending');
       say(live ? 'Crest updated — it is live now.'
-               : 'Crest uploaded, but publishing it was refused: ' +
-                 (pub.error.message || 'unknown') + ' The league can approve it.',
+               : 'Crest uploaded, but marking it live was refused: ' +
+                 (pub.error.message || 'unknown') +
+                 ' Use publish beside the crest to try again.',
           live ? 'ok' : 'warn');
     } catch (e) {
       say('Upload failed: ' + (e.message || e), 'err');
@@ -330,9 +348,13 @@ async function mountCrest() {
 async function moveToPublic(path) {
   const { error } = await sb.storage.from('media-pending')
     .move(path, path, { destinationBucket: 'media-public' });
-  if (error && !/exists/i.test(error.message || '')) {
-    throw new Error(error.message || 'could not move the file to public storage');
-  }
+  if (!error) return;
+  /* "already exists" means the file is where it needs to be, which is the whole
+     objective — a retry after a half-finished move is not a failure. Anything
+     else is, and is raised rather than swallowed: a move that quietly did
+     nothing is how a row comes to claim a file it has not got. */
+  if (/exists/i.test(error.message || '')) return;
+  throw new Error(error.message || 'could not move the file to public storage');
 }
 
 async function removeImage(ownerType, ownerId, kind) {

@@ -145,9 +145,28 @@ async function prepare(file, kind) {
            originalBytes: file.size };
 }
 
-/* upload(sb, {ownerType, ownerId, kind, file}) -> the media row              */
+/* upload(sb, {ownerType, ownerId, kind, file, bucket}) -> the media row
+
+   bucket: which bucket to write into, defaulting to the private one.
+
+   ANYTHING THAT NEEDS APPROVING GOES TO media-pending, waits there, and is
+   moved when a league administrator approves it. That is the whole point of the
+   queue and every player photograph still takes that route.
+
+   A CLUB CREST DOES NOT. It publishes the moment it is uploaded, so staging it
+   in a private bucket and then moving it across is work done only to be undone
+   — and the cross-bucket move is exactly what was failing with "new row
+   violates row-level security policy" after a crest had been removed and
+   another uploaded. Writing it where it is going to live deletes the operation
+   rather than debugging it: no copy, no delete, no second set of permissions to
+   satisfy, and no window in which the row and the file disagree about which
+   bucket they are in — which is the fault this whole sequence started with.
+
+   The destination policy is the same one the move needed, so nothing is
+   loosened by arriving directly. */
 async function upload(sb, opts) {
   const { ownerType, ownerId, kind } = opts;
+  const bucket = opts.bucket || 'media-pending';
   const out = await prepare(opts.file, kind);
   const ext = out.type === 'image/svg+xml' ? 'svg'
             : out.type === 'image/webp' ? 'webp'
@@ -161,7 +180,7 @@ async function upload(sb, opts) {
   const thumbPath = `${base}/${kind}-${stamp}-thumb.${ext}`;
 
   const up = async (p, blob) => {
-    const { error } = await sb.storage.from('media-pending')
+    const { error } = await sb.storage.from(bucket)
       .upload(p, blob, { contentType: out.type, upsert: false });
     if (error) throw new Error(error.message || 'upload refused');
   };
@@ -190,6 +209,7 @@ async function upload(sb, opts) {
   return Object.assign({}, data, {
     thumbPath: out.vector ? path : thumbPath,
     vector: !!out.vector,
+    bucket,
     saved: out.originalBytes - out.main.size
   });
 }
