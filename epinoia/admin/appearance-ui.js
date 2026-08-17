@@ -105,7 +105,30 @@ function mount(o) {
   lgPick.type = 'button';
   lgPick.addEventListener('click', () => lgFile.click());
   const lgPrev = el('span', 'mt');
-  lgRow.append(lgPick, lgFile, lgPrev);
+  /* the same pairing as everywhere else: add, and take down */
+  const lgRm = el('button', 'ep-btn mini', 'remove logo');
+  lgRm.type = 'button';
+  lgRm.hidden = true;
+  lgRm.title = 'take the league logo down — the name shows on its own';
+  lgRm.addEventListener('click', async () => {
+    if (!confirm('Remove the league logo?\n\nThe league name shows on its own ' +
+                 'until another is uploaded.')) return;
+    lgRm.disabled = true;
+    const { data, error } = await o.sb.rpc('remove_media', {
+      p_owner_type: 'league', p_owner_id: o.league.id, p_kind: 'logo' });
+    lgRm.disabled = false;
+    if (error) return o.say(error.message, 'err');
+    const orphans = (data && data.orphans) || [];
+    if (orphans.length) {
+      o.sb.storage.from('media-public').remove(orphans).catch(() => {});
+      o.sb.storage.from('media-pending').remove(orphans).catch(() => {});
+    }
+    lgPrev.textContent = 'no logo yet';
+    lgRm.hidden = true;
+    o.say('Logo removed.', 'ok');
+  });
+
+  lgRow.append(lgPick, lgFile, lgRm, lgPrev);
   host.appendChild(lgRow);
 
   /* whatever is already approved, so an administrator can see what is live */
@@ -117,6 +140,7 @@ function mount(o) {
         .order('created_at', { ascending: false }).limit(1);
       const m = data && data[0];
       if (!m) { lgPrev.textContent = 'no logo yet'; return; }
+      lgRm.hidden = false;
       lgPrev.textContent = '';
       const img = document.createElement('img');
       img.src = window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path);
@@ -137,6 +161,7 @@ function mount(o) {
         file: f, ownerType: 'league', ownerId: o.league.id, kind: 'logo' });
       if (!up || !up.storage_path) throw new Error('the upload returned no path');
       lgPrev.textContent = 'uploaded — approve it in Photographs';
+      lgRm.hidden = false;
       o.say('Logo uploaded and queued for approval.', 'ok');
     } catch (e) {
       o.say('Upload failed: ' + (e.message || e), 'err');

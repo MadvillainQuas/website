@@ -130,8 +130,33 @@ async function mountCrest() {
   const slot = $('#crestSlot'), help = $('#crestHelp'), file = $('#crestFile');
   if (!slot || !team) return;
 
+  /* REMOVE SITS BESIDE ADD, not inside a menu. A club that has uploaded the
+     wrong crest wants it gone now, and hunting for how is the worst minute of
+     that. Hidden while there is nothing to remove. */
+  let rm = document.getElementById('crestRemove');
+  if (!rm) {
+    rm = document.createElement('button');
+    rm.id = 'crestRemove'; rm.type = 'button'; rm.className = 'mini';
+    rm.textContent = 'remove crest';
+    rm.title = 'take this crest down — your initials come back';
+    slot.parentNode.insertBefore(rm, document.getElementById('back'));
+    rm.addEventListener('click', async () => {
+      if (!confirm('Remove your club crest?\n\nYour initials come back on your ' +
+                   'club card, in the league table and on every fixture. You can ' +
+                   'upload another at any time.')) return;
+      rm.disabled = true;
+      try {
+        await removeImage('team', team.id, 'logo');
+        paint(null, null);
+        say('Crest removed — your initials are showing again.', 'ok');
+      } catch (e) { say(e.message, 'err'); }
+      rm.disabled = false;
+    });
+  }
+
   const paint = (url, status) => {
     slot.textContent = '';
+    if (rm) rm.hidden = !url;
     slot.classList.toggle('has', !!url);
     slot.classList.toggle('pending', status === 'pending');
     if (url) {
@@ -236,6 +261,43 @@ async function mountCrest() {
   });
 }
 
+/* TAKING AN IMAGE DOWN, in one place.
+
+   The RPC removes the rows and the pointers and hands back the storage paths,
+   because SQL is not allowed to delete the files (0062). Clearing them is
+   best-effort for the same reason it is on publish: an orphaned file is a few
+   kilobytes nobody points at, and failing a removal because a tidy-up failed
+   would be the wrong way round. What matters is that the row is gone — that is
+   what every reader looks at. */
+async function removeImage(ownerType, ownerId, kind) {
+  const { data, error } = await sb.rpc('remove_media', {
+    p_owner_type: ownerType, p_owner_id: ownerId, p_kind: kind || null });
+  if (error) throw new Error(error.message || 'that removal was refused');
+  const orphans = (data && data.orphans) || [];
+  if (orphans.length) {
+    /* it could be in either bucket — published or still waiting — and trying
+       both is cheaper than asking which */
+    sb.storage.from('media-public').remove(orphans).catch(() => {});
+    sb.storage.from('media-pending').remove(orphans).catch(() => {});
+  }
+  return (data && data.removed) || 0;
+}
+
+/* Which players already have a photograph, so the row can offer to remove one
+   rather than only to add another. One query for the whole roster. */
+async function photosFor(ids) {
+  const out = new Map();
+  if (!ids.length) return out;
+  try {
+    const { data } = await sb.from('media')
+      .select('owner_id,status,created_at')
+      .eq('owner_type', 'player').eq('kind', 'photo').in('owner_id', ids)
+      .order('created_at', { ascending: false });
+    (data || []).forEach(m => { if (!out.has(m.owner_id)) out.set(m.owner_id, m.status); });
+  } catch (_) { /* the add path still works without knowing */ }
+  return out;
+}
+
 async function renderRoster() {
   show('#roster', true);
   $('#rtitle').textContent = team.name;
@@ -244,6 +306,7 @@ async function renderRoster() {
   const { data, error } = await sb.from('roster_entries')
     .select('id,jersey,active,players(id,first_name,last_name,is_minor)')
     .eq('team_id', team.id).order('jersey');
+  const photos = await photosFor((data || []).map(r => r.players && r.players.id).filter(Boolean));
   const tbl = $('#rlist'); tbl.textContent = '';
   if (error) { say(error.message, 'err'); return; }
   say('');
@@ -316,8 +379,34 @@ async function renderRoster() {
     });
     act.append(upl, pic);
 
+    /* A PHOTOGRAPH CAN BE TAKEN DOWN, and this is the only way to do it that is
+       not anonymising the whole player — which is a safeguarding action, not a
+       way to change a picture. Shown only when there is one, and labelled for
+       the photograph specifically because the button below it removes the
+       PLAYER and two things called "remove" on one row is a trap. */
+    const has = photos.get(p.id);
+    if (has) {
+      upl.textContent = has === 'approved' ? 'replace photo' : 'pending';
+      const rmPic = document.createElement('button');
+      rmPic.className = 'mini'; rmPic.textContent = 'remove photo';
+      rmPic.title = 'take this player\'s photograph down — the player stays on the roster';
+      rmPic.addEventListener('click', async () => {
+        if (!confirm('Remove the photograph of ' + nameCell.textContent +
+                     '?\n\nThey stay on the roster. A new one can be uploaded ' +
+                     'at any time.')) return;
+        rmPic.disabled = true;
+        try {
+          await removeImage('player', p.id, 'photo');
+          say('Photograph removed.', 'ok');
+          renderRoster();
+        } catch (e) { say(e.message, 'err'); rmPic.disabled = false; }
+      });
+      act.appendChild(rmPic);
+    }
+
     const del = document.createElement('button');
-    del.className = 'mini'; del.textContent = 'remove';
+    del.className = 'mini'; del.textContent = 'remove player';
+    del.title = 'take this player off the roster entirely';
     del.addEventListener('click', async () => {
       if (!confirm('Remove ' + nameCell.textContent + ' from this roster?')) return;
       const { error } = await sb.from('roster_entries').delete().eq('id', r.id);
