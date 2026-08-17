@@ -8,16 +8,28 @@
    `transform` on oversized layers, which the compositor does on the GPU and
    which costs the main thread nothing at all.
 
+   WHAT WAS WRONG WITH THE FIRST TWO ATTEMPTS, because the fix is the whole
+   design. The water was a translucent WASH OVER STONE, which can only ever
+   look like stone you can see through; the caustic layer was a ridged fractal
+   noise, which gives streaks rather than cells; and the anisotropic surface
+   layer was pushed hard to make it visible, which turned the streaks into
+   brushed metal. Composited and looked at, it read as a blurred photograph.
+
    THE DEPTH IS THE STACK, in this order from the bottom:
 
-     1. the marble floor, dimmed and slightly blurred, because it is under
-        water and water is not glass
-     2. two caustic layers, screen-blended, drifting at different speeds and
-        in different directions — one net over another is what stops a
-        repeating tile reading as a repeating tile
-     3. a pale blue wash with a vertical gradient: shallower and brighter at
-        the top, deeper towards the bottom
-     4. the surface sheen, one very slow diagonal sweep
+     1. THE WATER'S OWN COLOUR, opaque, as .pool's background — bright and
+        shallow at the top, deeper and greener at the bottom
+     2. the marble floor, heavily blurred and desaturated at 26% — a
+        suggestion of stone, not a floor you could read
+     3. DEPTH: broad soft patches of lighter and darker water, multiplied,
+        an order of magnitude larger than any ripple. This is the layer that
+        was missing, and without it the eye reads a texture rather than a
+        volume however good the caustic is
+     4. two caustic layers, screen-blended, drifting at different speeds and
+        in different directions — a WORLEY net, because refracted light
+        converges onto interlocking cells and not onto parallel lines
+     5. the sun, a broad radial screen from the top left
+     6. two barely-there surface swells, and one very slow diagonal sheen
 
    THE PANELS ARE THE SAME MARBLE, lifted out of the water: full brightness, a
    hard edge, and a shadow that reads as thickness rather than as a drop
@@ -56,7 +68,10 @@ body.splash-body{
 
 .pool{
   position:fixed; inset:0; overflow:hidden; z-index:0;
-  background:#bfe2ee;                    /* the water, before anything loads */
+  /* Shallow and bright at the top, deeper and greener towards the bottom.
+     178deg rather than 180 so the band edges are never perfectly horizontal,
+     which is what makes a two-stop gradient read as a gradient. */
+  background:linear-gradient(178deg, #d6f1f6 0%, #8fd3e5 50%, #4ea6c6 100%);
 }
 
 /* every layer is oversized so a slow translate never runs out of tile */
@@ -68,10 +83,29 @@ body.splash-body{
    to it actually looks like. */
 .pool-floor{
   background:url('../brand/pool-marble.jpg') repeat;
-  background-size:760px 760px;
-  filter:blur(2.0px) saturate(.4) brightness(1.05);
-  opacity:.80;
+  background-size:620px 620px;
+  /* A LONG WAY DOWN. Nearly all the saturation goes, because colour is the
+     first thing water takes out of what is under it, and the opacity is low
+     enough that the stone is a suggestion rather than a floor you could read.
+     At .80 — where this was — the marble WAS the page and the water was a
+     tint on top of it. */
+  filter:blur(3.2px) saturate(.22) brightness(1.02);
+  opacity:.26;
   animation:pool-floor 220s linear infinite;
+}
+
+/* 1b — DEPTH, the layer that was missing entirely and the reason the first
+   version read as a texture rather than as a volume. Broad, soft patches of
+   lighter and darker water, an order of magnitude larger than the ripples.
+   Real water is never uniform across a whole pool; without this every square
+   metre looks the same however good the caustic is. */
+.pool-depth{
+  background:url('../brand/pool-depth.jpg') repeat;
+  background-size:1700px 1700px;
+  mix-blend-mode:multiply;
+  filter:brightness(1.30);
+  opacity:.34;
+  animation:pool-depth 300s linear infinite;
 }
 /* 2 — the light reaching it. Softer and slower than the first pass: this is
    sun through a calm surface, not a wave pool. */
@@ -79,27 +113,28 @@ body.splash-body{
   background:url('../brand/pool-caustics.jpg') repeat;
   mix-blend-mode:screen;
 }
+/* CRISP, not soft. A caustic is a line of focused light; blurring it into a
+   haze is what made the first version look like a photograph of water rather
+   than water. The near layer is barely blurred at all. */
 .pool-caustic.a{
-  background-size:900px 900px; opacity:.44;
-  filter:blur(1.4px);
+  background-size:700px 700px; opacity:.52;
+  filter:blur(0.5px);
   animation:pool-a 150s linear infinite;
 }
 .pool-caustic.b{
-  background-size:1420px 1420px; opacity:.26;
-  filter:blur(4px);
+  background-size:1240px 1240px; opacity:.28;
+  filter:blur(2.6px);
   animation:pool-b 230s linear infinite reverse;
 }
-/* 3 — the body of water. SHALLOW: enough to tint and to soften, not enough to
-   hide the floor. This number has moved twice, in both directions, because
-   "see the marble through it", "harder to see through" and "a shallow pool
-   with some of the marble coming through" are three different depths, and
-   depth is almost entirely this one value. */
+/* 3 — THE SUN, from the top left, which is where it is in every photograph of
+   a pool anybody has ever liked. A broad screen rather than a tint: the water
+   already has its colour from .pool's own gradient, and what was missing was
+   somewhere for the light to be coming from. */
 .pool-tint{
   inset:0;
-  background:linear-gradient(178deg,
-    color-mix(in srgb, var(--w-shallow) 44%, transparent) 0%,
-    color-mix(in srgb, var(--w-mid) 48%, transparent) 48%,
-    color-mix(in srgb, var(--w-deep) 58%, transparent) 100%);
+  background:radial-gradient(120% 100% at 12% 0%,
+    rgba(255,255,255,.42) 0%, rgba(255,255,255,.16) 38%, transparent 72%);
+  mix-blend-mode:screen;
   pointer-events:none;
 }
 /* 4 — THE SURFACE ITSELF, which is what was missing. Long, low swells rather
@@ -112,19 +147,22 @@ body.splash-body{
    convincing way to spend two files on nothing. Overlay keeps the mid-tone
    and swings the ends, which is exactly what a swell does to reflected light.
 
-   THE TILE IS SQUASHED, 1600 across by 520 down. Calm water seen from above
-   does not show round cells; it shows long low ridges lying across the flow,
-   and stretching the tile is what turns one into the other. */
+   THE TILE IS SQUASHED, and less than it was: 1500 across by 620 down rather
+   than 1600 by 520. At the sharper ratio, and over a crisp caustic net, two
+   regular patterns at right angles read as a WEAVE — visible horizontal
+   banding across the whole page. The opacities came down with it, from .30
+   and .20 to .12 and .09, because this layer was only ever meant to be a few
+   per cent of moving light and had been pushed hard to make it visible. */
 .pool-swell{
   background:url('../brand/pool-surface.jpg') repeat;
   mix-blend-mode:overlay;
 }
 .pool-swell.a{
-  background-size:1600px 520px; opacity:.30;
+  background-size:1500px 620px; opacity:.12;
   animation:swell-a 90s linear infinite;
 }
 .pool-swell.b{
-  background-size:2400px 820px; opacity:.20;
+  background-size:2300px 980px; opacity:.09;
   animation:swell-b 160s linear infinite reverse;
 }
 /* 5 — one long sheen across the surface */
@@ -141,8 +179,12 @@ body.splash-body{
    the deeper layers lagging behind — parallax, which is what makes it look
    like depth rather than like wallpaper scrolling. */
 @keyframes pool-floor{ to{ transform:translate3d(-3%, 1.5%, 0) } }
-@keyframes pool-a{ to{ transform:translate3d(-900px, -120px, 0) } }
-@keyframes pool-b{ to{ transform:translate3d(1420px, 180px, 0) } }
+/* THE DEPTH DRIFTS SLOWEST OF ALL. It is the body of water, not the light on
+   it, and a broad patch of shade that moved at the caustic's speed would read
+   as a cloud rather than as depth. */
+@keyframes pool-depth{ to{ transform:translate3d(-1700px, 700px, 0) } }
+@keyframes pool-a{ to{ transform:translate3d(-700px, -140px, 0) } }
+@keyframes pool-b{ to{ transform:translate3d(1240px, 200px, 0) } }
 @keyframes swell-a{ to{ transform:translate3d(-1600px, -40px, 0) } }
 @keyframes swell-b{ to{ transform:translate3d(2400px, 60px, 0) } }
 @keyframes pool-sheen{
@@ -173,24 +215,35 @@ body.splash-body{
    step and no extra nodes. */
 .slab{
   position:relative;
-  background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
-  /* larger than the slabs themselves, so the tile's seam almost never falls
-     inside one — cheaper than making a real photograph seamless, and it does
-     not put an axis of symmetry through the stone the way mirroring would */
-  background-size:760px 760px;
-  border:1px solid var(--stone-edge);
+  /* The light from above, over the stone: a slab lit from the top is brighter
+     at the top, and that one gradient does more for the illusion of thickness
+     than any amount of shadow underneath it. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.50) 0%, rgba(255,255,255,0) 44%,
+      rgba(150,182,198,.13) 100%),
+    #fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:auto, 520px 520px;
+  border:1px solid rgba(150,176,188,.55);
   box-shadow:
-    /* bevel */
-    inset 0 1px 0 rgba(255,255,255,.95),
-    inset 0 -1px 0 rgba(70,110,130,.22),
-    inset 0 -6px 12px -6px rgba(40,90,110,.20),
-    /* displaced light, hugging the edge */
+    /* THE ARRIS — two pixels of catch-light on the top and left, and a darker
+       return on the bottom and right. A slab of cut stone has an edge, not a
+       moulding, so this is 2px and not 10. */
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 2px 0 0 rgba(255,255,255,.70),
+    inset 0 -3px 0 rgba(88,120,136,.20),
+    inset -3px 0 0 rgba(88,120,136,.13),
+    /* LIGHT BOUNCING UP off the water onto the bottom lip. Cool, because it
+       has been in the pool on the way. This is the detail that stops a white
+       rectangle reading as a cut-out. */
+    inset 0 -7px 6px -5px rgba(120,200,225,.40),
+    /* displaced light, hugging the edge, where the water piles against stone */
     0 0 0 1px rgba(255,255,255,.55),
-    /* waterline */
-    0 2px 3px rgba(30,70,90,.30),
-    /* depth */
-    0 16px 30px -8px rgba(22,62,82,.34),
-    0 42px 60px -30px rgba(22,62,82,.46);
+    /* the contact shadow — tight, so the slab is ON something */
+    0 2px 4px rgba(20,58,74,.30),
+    /* and the depth beneath it */
+    0 12px 26px -6px rgba(20,58,74,.26),
+    0 34px 54px -26px rgba(20,58,74,.40);
 }
 /* the stone breaks the surface, so the water is momentarily brighter along
    its top edge and darker where it is pressed down at the foot */
@@ -240,11 +293,18 @@ body.splash-body{
      groove catches light at the BOTTOM — invert that pair and the letters pop
      out instead. The fill is the stone itself, a shade darker, so the letter
      is a hollow in the marble rather than a colour laid over it. */
-  color:#7f8f97;
+  /* AND DARK ENOUGH TO BE A HEADLINE. #7f8f97 measured 3.18:1 against the new
+     brighter stone — technically past AA for large type and visibly washed
+     out, which is most of why the page read as weak. #3c5260 is 7.77:1 and
+     still cool enough to belong to a pool. The incision comes from the
+     shadows, not from making the letters pale. */
+  color:#3c5260;
   text-shadow:
-    0 -1px 1px rgba(28,48,58,.55),
-    0 1px 0 rgba(255,255,255,.95),
-    0 2px 3px rgba(255,255,255,.6);
+    /* shade inside the top of the cut… */
+    0 -1px 1px rgba(20,38,48,.42),
+    /* …and the lit lower lip of the groove, which is what sells it */
+    0 1px 0 rgba(255,255,255,.92),
+    0 2px 4px rgba(255,255,255,.55);
 }
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
@@ -362,8 +422,12 @@ body.splash-body{
 .seg{
   position:relative; display:flex; flex-direction:column; gap:5px;
   min-height:118px; padding:calc(var(--u)*2);
-  background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
-  background-size:760px 760px;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 52%,
+      rgba(150,182,198,.11) 100%),
+    #fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:auto, 520px 520px;
   text-decoration:none; color:var(--ink); cursor:pointer;
   transition:background-color .18s ease, transform .18s ease;
   overflow:hidden;
