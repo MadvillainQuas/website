@@ -12,8 +12,8 @@
 <title>Team portal · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=101">
-<link rel="stylesheet" href="../kit/nav.css?v=101">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
 <style>
   .pad3{padding:calc(var(--u)*3)}
   .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
@@ -57,6 +57,11 @@
     font-family:var(--f-micro);font-size:10px;line-height:1.8;color:var(--ink-3);
     max-width:78ch}
   .cresthelp b{color:var(--ink-2);font-weight:700}
+  /* the club colour, next to the crest it is taken from */
+  .clubcolour{width:26px;height:26px;flex:none;padding:0;border-radius:5px;
+    border:1px solid var(--rule-2);cursor:pointer;background:none}
+  .clubcolour::-webkit-color-swatch-wrapper{padding:2px}
+  .clubcolour::-webkit-color-swatch{border:none;border-radius:3px}
   .msg{padding:calc(var(--u)*2) calc(var(--u)*3);font-family:var(--f-micro);font-size:11px;
     border-bottom:1px solid var(--rule)}
   .msg.err{color:var(--flare)} .msg.ok{color:var(--lume)} .msg.warn{color:var(--amber)}
@@ -182,6 +187,7 @@
       <input type="file" id="crestFile" accept="image/svg+xml,image/png,image/webp,image/*" hidden>
       <button class="mini" id="back" style="margin-left:auto">← my teams</button></div>
     <p class="cresthelp" id="crestHelp"></p>
+    <p class="cresthelp" id="colourHelp"></p>
     <div class="ep-tw"><table class="plist" id="rlist"></table></div>
     <div class="ep-hdr"><span class="idx">02</span><h2>Add a player</h2></div>
     <div class="ep-band stack">
@@ -229,13 +235,13 @@
   </footer>
 </div>
 
-<script src="../vendor/supabase.js?v=101" defer></script>
-<script src="../config.js?v=101" defer></script>
-<script src="../upload.js?v=101" defer></script>
-<script src="csv.js?v=101" defer></script>
-<script src="roster-csv.js?v=101" defer></script>
-<script src="club-ui.js?v=101" defer></script>
-<script src="app.js?v=101" defer></script>
-<script src="../nav.js?v=101" defer></script>
+<script src="../vendor/supabase.js?v=104" defer></script>
+<script src="../config.js?v=104" defer></script>
+<script src="../upload.js?v=104" defer></script>
+<script src="csv.js?v=104" defer></script>
+<script src="roster-csv.js?v=104" defer></script>
+<script src="club-ui.js?v=104" defer></script>
+<script src="app.js?v=104" defer></script>
+<script src="../nav.js?v=104" defer></script>
 </body>
 </html>

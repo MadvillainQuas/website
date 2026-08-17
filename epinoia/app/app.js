@@ -143,12 +143,27 @@ async function mountCrest() {
     pubBtn.hidden = true;
   }
 
+  /* THE CLUB COLOUR, BESIDE THE CREST IT COMES FROM.
+
+     A crest suggests a colour and the club has to be able to overrule it — an
+     automatic choice nobody can change is worse than no automatic choice,
+     because the club is then stuck with whatever a routine made of their
+     artwork. Until now the colour was picked once when the club was created
+     and could never be changed by the club again. */
+  let swatch = document.getElementById('clubColour');
+  if (!swatch) {
+    swatch = document.createElement('input');
+    swatch.type = 'color'; swatch.id = 'clubColour'; swatch.className = 'clubcolour';
+    swatch.title = 'the club colour — used on your card, the table and the box score';
+  }
+
   let rm = document.getElementById('crestRemove');
   if (!rm) {
     rm = document.createElement('button');
     rm.id = 'crestRemove'; rm.type = 'button'; rm.className = 'mini';
     rm.textContent = 'remove crest';
     rm.title = 'take this crest down — your initials come back';
+    slot.parentNode.insertBefore(swatch, document.getElementById('back'));
     slot.parentNode.insertBefore(pubBtn, document.getElementById('back'));
     slot.parentNode.insertBefore(rm, document.getElementById('back'));
 
@@ -204,6 +219,31 @@ async function mountCrest() {
     });
   }
 
+  const saveColour = async (hex, why) => {
+    const { error } = await sb.rpc('set_team_colour',
+      { p_team: team.id, p_colour: hex });
+    if (error) { say(error.message, 'err'); return false; }
+    team.colour = hex;
+    swatch.value = hex;
+    document.documentElement.style.setProperty('--team-a', hex);
+    colourHelp(hex, why);
+    return true;
+  };
+
+  const colourHelp = (hex, why) => {
+    const h = document.getElementById('colourHelp');
+    if (!h) return;
+    h.textContent = '';
+    const b = document.createElement('b'); b.textContent = 'Club colour ' + hex + '. ';
+    h.appendChild(b);
+    h.appendChild(document.createTextNode(
+      (why === 'crest'
+        ? 'Taken from your crest and lightened enough to read on a dark page. '
+        : '') +
+      'It colours your club card, your name in the league table and your side ' +
+      'of every box score. Change it with the swatch.'));
+  };
+
   const paint = (url, status) => {
     slot.textContent = '';
     if (rm) rm.hidden = !url;
@@ -248,6 +288,17 @@ async function mountCrest() {
       line('Click the crest to try another — an SVG with a transparent background works best.');
     }
   };
+
+  swatch.value = /^#[0-9a-fA-F]{6}$/.test(team.colour || '') ? team.colour : '#93f2bf';
+  colourHelp(swatch.value, null);
+  if (!swatch.dataset.wired) {
+    swatch.dataset.wired = '1';
+    /* on change rather than on input: a colour picker fires continuously while
+       somebody drags around it, and each one of those would be a write */
+    swatch.addEventListener('change', async () => {
+      if (await saveColour(swatch.value, 'manual')) say('Club colour saved.', 'ok');
+    });
+  }
 
   paint(null, null);
   try {
@@ -312,7 +363,19 @@ async function mountCrest() {
 
       paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path),
             live ? 'approved' : 'pending');
-      say(live ? 'Crest updated — it is live now.'
+      /* THE COLOUR COMES WITH THE CREST. Read off the artwork during the
+         resize, so it costs no extra work and no extra request. Only when the
+         crest actually went live — a colour matching a crest nobody can see
+         would be a change the club did not ask for and cannot explain.
+
+         A vector gives none (nothing is decoded to read), and a monochrome
+         crest gives none either, and in both cases the existing colour is left
+         exactly as it was. */
+      let colourNote = '';
+      if (live && up.colour && up.colour.toLowerCase() !== (team.colour || '').toLowerCase()) {
+        if (await saveColour(up.colour, 'crest')) colourNote = ' Club colour set to ' + up.colour + '.';
+      }
+      say(live ? 'Crest updated — it is live now.' + colourNote
                : 'Crest uploaded, but marking it live was refused: ' +
                  (pub.error.message || 'unknown') +
                  ' Use publish beside the crest to try again.',

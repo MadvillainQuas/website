@@ -164,8 +164,35 @@ function renderShell() {
       S.teams[0].name + ' v ' + S.teams[1].name);
   offerToScore();
   offerToRevert();
-  document.documentElement.style.setProperty('--team0', S.teams[0].color || '#93f2bf');
-  document.documentElement.style.setProperty('--team1', S.teams[1].color || '#8ff5ff');
+  /* THE GLOWS COME FROM THE CLUB COLOURS TOO.
+
+     boxscore.css colours 27 things from --team0/--team1 — the score, the tab
+     buttons, the hero stripe, hover states — and several of them glow with
+     --team0-glow / --team1-glow. This page set the two colours and never the
+     two glows, so every score on the public box score glowed the default mint
+     and cyan whatever the two clubs actually wear. The scorer has always set
+     all four; this is the public page catching up with it.
+
+     Through safeColour for the same reason everything else on this page is: the
+     value is a club's, and it is going into a style. */
+  /* B is the module's own EpinoiaBox, declared at the top of this file.
+     Re-declaring it here put the use of B thirty lines above into the temporal
+     dead zone of the inner binding, so renderShell threw before it drew
+     anything — the box score fell back to the stylesheet's default colours and
+     looked almost right, which is how it survived a first glance. */
+  const c0 = B.safeColour(S.teams[0].color, '#93f2bf');
+  const c1 = B.safeColour(S.teams[1].color, '#8ff5ff');
+  const glow = (h, a) => {
+    const m = String(h).replace('#', '');
+    if (m.length !== 6) return 'rgba(147,242,191,' + a + ')';
+    return 'rgba(' + parseInt(m.slice(0, 2), 16) + ',' + parseInt(m.slice(2, 4), 16) +
+           ',' + parseInt(m.slice(4, 6), 16) + ',' + a + ')';
+  };
+  const r = document.documentElement.style;
+  r.setProperty('--team0', c0);
+  r.setProperty('--team1', c1);
+  r.setProperty('--team0-glow', glow(c0, .4));
+  r.setProperty('--team1-glow', glow(c1, .4));
   shellBuilt = true;
 }
 

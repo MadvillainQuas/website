@@ -103,6 +103,142 @@ function scaleTo(bitmap, edge, type, quality) {
    vector is not a crest, it is a traced photograph. */
 const SVG_MAX = 256 * 1024;
 
+/* ----------------------------------------------------------------------------
+   THE COLOUR OF A CREST.
+
+   A club uploads its badge and then has to go and find a colour picker to make
+   the rest of the site match it. The badge already knows: this reads it out.
+
+   WHAT IT IS LOOKING FOR is the colour a person would name if you held the
+   crest up and asked. That is not the most common pixel — for most badges that
+   is the background, or the black of an outline — so:
+
+     * fully and mostly transparent pixels are skipped entirely. On the
+       transparent-background crests we ask for, those ARE the background, and
+       counting them would return the page behind the badge.
+     * near-white, near-black and near-grey are skipped. They are almost always
+       outline, shadow or paper rather than identity, and a club whose crest is
+       genuinely monochrome falls through to the fallback rather than getting a
+       muddy near-grey.
+     * what is left is bucketed by hue and weighted by saturation, so a small
+       area of strong club colour beats a large wash of pale tint. Weighting by
+       area alone picks the biggest thing; a badge's identity is usually the
+       most VIVID thing.
+
+   THEN IT IS MADE READABLE. The platform draws these on a near-black page and
+   uses them for text, so the winner is lifted into a band of lightness that can
+   actually be read there — a navy that is right on a shirt is invisible as
+   type on this background. Hue and saturation are kept; only lightness moves.
+
+   Sampled on a grid rather than every pixel: a 512px crest is a quarter of a
+   million pixels and the answer does not get better for looking at all of them.
+   ---------------------------------------------------------------------------- */
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  const l = (mx + mn) / 2;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  return [h, sat, l];
+}
+
+function hslToHex(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const to = v => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return '#' + to(r) + to(g) + to(b);
+}
+
+function dominantColour(bitmap) {
+  try {
+    const N = 96;                       // the grid the crest is sampled on
+    const c = document.createElement('canvas');
+    c.width = c.height = N;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0, N, N);
+    const px = ctx.getImageData(0, 0, N, N).data;
+
+    const bins = new Array(36).fill(0);       // 10 degrees of hue each
+    let counted = 0;
+
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 200) continue;                       // transparent
+      const [h, sat, l] = rgbToHsl(px[i], px[i + 1], px[i + 2]);
+      if (sat < 0.18) continue;                            // grey, white, black
+      if (l < 0.10 || l > 0.93) continue;                  // outline or paper
+      /* weight by saturation, so vividness beats area */
+      bins[Math.min(35, Math.floor(h / 10))] += sat;
+      counted++;
+    }
+    if (!counted) return null;                             // monochrome crest
+
+    let best = 0;
+    for (let i = 1; i < 36; i++) if (bins[i] > bins[best]) best = i;
+    if (!bins[best]) return null;
+
+    const hue = best * 10 + 5;
+    /* the mean saturation and lightness OF THE WINNING HUE, not of everything */
+    let ws = 0, wl = 0, wn = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 200) continue;
+      const [h, sat, l] = rgbToHsl(px[i], px[i + 1], px[i + 2]);
+      if (sat < 0.18 || l < 0.10 || l > 0.93) continue;
+      if (Math.min(35, Math.floor(h / 10)) !== best) continue;
+      ws += sat; wl += l; wn++;
+    }
+    if (!wn) return null;
+    let sat = ws / wn, lit = wl / wn;
+
+    /* READABLE ON A NEAR-BLACK PAGE, MEASURED RATHER THAN ESTIMATED.
+
+       The first version clamped lightness into a band and called it readable.
+       It is not the same thing: blue carries about a fifteenth of green's
+       luminance, so the same lightness that puts a green at 12:1 against this
+       page leaves a royal blue at 4.16 — under the 4.5 that body text needs.
+       Measured across six test crests, only the blues failed, which is exactly
+       the shape of the error you get from guessing at luminance.
+
+       So the lightness is raised until the contrast is actually there. Hue and
+       saturation are untouched — they are what makes the colour the club's —
+       and it stops at 0.86 so a colour is never bleached to near-white chasing
+       a ratio it cannot reach. */
+    sat = Math.max(0.45, Math.min(0.92, sat));
+    lit = Math.max(0.52, Math.min(0.78, lit));
+
+    const lumOf = (hex) => {
+      const ch = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+      return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+    };
+    /* the page these are drawn on */
+    const bgLum = lumOf('#04100b');
+    const contrast = (hex) => (lumOf(hex) + 0.05) / (bgLum + 0.05);
+
+    let out = hslToHex(hue, sat, lit);
+    while (contrast(out) < 4.5 && lit < 0.86) {
+      lit = Math.min(0.86, lit + 0.02);
+      out = hslToHex(hue, sat, lit);
+    }
+    return out;
+  } catch (_) {
+    return null;                        // a colour is a bonus, never a blocker
+  }
+}
+
 /* ------------------------------------------------------------------ public ---
    prepare(file, kind)  ->  { main, thumb, type, w, h }                        */
 async function prepare(file, kind) {
@@ -119,8 +255,10 @@ async function prepare(file, kind) {
        anything reading the column later. */
     /* null rather than 0: a vector has no intrinsic pixel size, and 0 would be
        a measurement rather than the absence of one. */
+    /* an SVG is never decoded here, so there is no bitmap to read a colour
+       from; the caller simply gets none and leaves the colour alone */
     return { main: file, thumb: file, type: 'image/svg+xml', w: null, h: null,
-             originalBytes: file.size, vector: true };
+             originalBytes: file.size, vector: true, colour: null };
   }
 
   const edge = SIZES[kind] || SIZES.photo;
@@ -140,9 +278,11 @@ async function prepare(file, kind) {
     throw new Error('that image is too detailed to compress — try a smaller one');
   }
   const thumb = await scaleTo(bmp, SIZES.thumb, type, 0.8);
+  /* read the colour before the bitmap is released */
+  const colour = kind === 'logo' ? dominantColour(bmp) : null;
   if (bmp.close) bmp.close();
   return { main: main.blob, thumb: thumb.blob, type, w: main.w, h: main.h,
-           originalBytes: file.size };
+           originalBytes: file.size, colour };
 }
 
 /* upload(sb, {ownerType, ownerId, kind, file, bucket}) -> the media row
@@ -210,6 +350,7 @@ async function upload(sb, opts) {
     thumbPath: out.vector ? path : thumbPath,
     vector: !!out.vector,
     bucket,
+    colour: out.colour || null,
     saved: out.originalBytes - out.main.size
   });
 }
@@ -220,5 +361,5 @@ function publicUrl(cfg, path) {
   return `${cfg.supabaseUrl}/storage/v1/object/public/media-public/${path}`;
 }
 
-return { prepare, upload, publicUrl, SIZES, MAX_BYTES };
+return { prepare, upload, publicUrl, dominantColour, SIZES, MAX_BYTES };
 }));
