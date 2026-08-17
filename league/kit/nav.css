@@ -104,6 +104,22 @@ body.has-nav{ padding-left:var(--nav-w) }
   color:rgba(230,255,241,.4); padding:8px 0 8px 14px;
 }
 
+/* Administration, at the top level, under the leagues. A hairline above it so
+   it reads as a different kind of thing from the list it follows: the list is
+   places to read, this is a place to change things. Hidden entirely unless the
+   account actually administers something. */
+.ep-nav a.admin-row{
+  margin-top:8px; border-top:1px solid rgba(147,242,191,.16); padding-top:11px;
+}
+@media (max-width:820px){
+  /* on the bottom bar there is no "under" — the hairline becomes a divider
+     between the leagues and the console */
+  .ep-nav a.admin-row{
+    margin-top:0; padding-top:8px;
+    border-top:2px solid transparent; border-left:1px solid rgba(147,242,191,.16);
+  }
+}
+
 /* a league: its plate, then its name */
 .ep-nav .lrow{ gap:9px; padding-right:6px }
 .ep-nav .lrow.on{ color:#93f2bf; border-left-color:#93f2bf;

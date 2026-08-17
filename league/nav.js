@@ -180,6 +180,27 @@
   list.appendChild(holding);
   rootPanel.append(title, list);
 
+  /* ADMINISTRATION, AT THE TOP LEVEL.
+
+     The role-gated rows live inside a league, which is right for scoring a
+     game and for the club portal — both of those are things you do TO a
+     league. Administration is not: the console picks its own league from the
+     account's memberships, so making somebody drill into one first was asking
+     them to answer a question the destination was about to ask again.
+
+     It sits under the leagues rather than above them because the list is what
+     the rail is for. Hidden entirely for everybody else — and hiding it is a
+     courtesy, not a control: pressing it without the rights gets a console
+     that shows nothing, because every action in there is refused by the
+     database. */
+  const adminRow = el('a', 'item admin-row');
+  adminRow.href = root + 'admin/';
+  adminRow.append(el('span', 'ic', '▲'), el('span', 'tx', 'admin controls'));
+  adminRow.title = 'league administration';
+  if (/\/league\/admin\//.test(here)) adminRow.classList.add('on');
+  adminRow.hidden = true;
+  rootPanel.appendChild(adminRow);
+
   /* ---- league panel: the header, then the pages ---- */
   const phead = el('div', 'phead');
   const back = el('button', 'back', '‹');
@@ -193,6 +214,12 @@
 
   const gated = [];            // [node, predicate] — shown once roles are known
   const carriers = [];         // [anchor, base path] — links that take the league
+
+  /* Anything at all: this row is not about the league on screen, because at
+     the top level there is no league on screen. A platform administrator, or
+     anybody who administers so much as one league, gets the console — and the
+     console asks which one. */
+  gated.push([adminRow, w => !!w.is_platform_admin || (w.leagues || []).length > 0]);
 
   PAGES.forEach(it => {
     if (it.label) {
@@ -481,9 +508,14 @@
       try { ok = !!pred(who); } catch (_) { ok = false; }
       node.hidden = !ok;
     });
-    /* if every entry under it is hidden, hide the heading too rather than
-       leaving a label with nothing beneath it */
-    const anyShown = gated.some(([n]) => n.tagName === 'A' && !n.hidden);
+    /* If every entry under it is hidden, hide the heading too rather than
+       leaving a label with nothing beneath it.
+
+       Counted WITHIN THE LEAGUE PANEL, not across the whole rail. The admin
+       row at the top level is gated as well now, and a rail-wide count would
+       let it hold up a "take part" heading in a panel where nothing is
+       actually shown. */
+    const anyShown = [...pages.querySelectorAll('a.item')].some(a => !a.hidden);
     gated.forEach(([n]) => { if (n.tagName !== 'A') n.hidden = !anyShown; });
     sizeDeck(false);
   }
