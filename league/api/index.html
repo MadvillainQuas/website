@@ -8,8 +8,8 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>API · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=14">
-<link rel="stylesheet" href="../kit/nav.css?v=14">
+<link rel="stylesheet" href="../kit/courtside-kit.css?v=21">
+<link rel="stylesheet" href="../kit/nav.css?v=21">
 <style>
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -152,6 +152,65 @@
   </div>
 
   <div class="sec">
+    <h2>Scraper keys — being sent games instead of asking for them</h2>
+    <p>
+      Everything above is a pull. If you republish results — RealGM,
+      Eurobasket, a club site — you probably do not want to poll a fixture list
+      at 2am on the off-chance. Ask the league for a <strong>scraper key</strong>
+      and we post each game to you the moment it is finalised, in the shape your
+      importer already reads.
+    </p>
+    <p>
+      A league administrator sets this up per partner and chooses:
+      <strong>format</strong> (JSON, CSV or XML), <strong>which sections</strong>
+      to include (the fixture, team totals, the box score, the table, and
+      optionally full play-by-play), how <strong>names</strong> are written
+      (<code>Ada Shaw</code>, <code>Shaw, Ada</code>, <code>Shaw Ada</code>,
+      <code>Ada SHAW</code>), how <strong>dates</strong> are written (ISO,
+      dd/mm/yyyy, mm/dd/yyyy or Unix seconds), and a <strong>field map</strong>
+      that renames our keys to yours — <code>{"reb":"TRB","fg3a":"3PA"}</code>
+      applies to JSON keys, CSV headers and XML element names alike.
+    </p>
+    <p>
+      Our own spelling is stable and deliberately conventional:
+      <code>pts fgm fga fg2m fg2a fg3m fg3a ftm fta oreb dreb reb ast stl blk
+      tov pf plus_minus minutes</code>. It does not follow our engine's
+      internals, so it will not change when they do.
+    </p>
+    <div class="tw">
+      <table class="ep">
+        <tr><th>Header</th><th>What it is</th></tr>
+        <tr><td><code>X-Courtside-Event</code></td><td><code>game.final</code>.</td></tr>
+        <tr><td><code>X-Courtside-Delivery</code></td><td>A stable id for this delivery. A re-finalised game is resent with a new body under the same id — treat it as an update, not a duplicate.</td></tr>
+        <tr><td><code>X-Courtside-Timestamp</code></td><td>Unix seconds at send.</td></tr>
+        <tr><td><code>X-Courtside-Signature</code></td><td><code>sha256=…</code> — HMAC-SHA256 of the <em>exact</em> body bytes, keyed on the shared secret.</td></tr>
+      </table>
+    </div>
+    <p>
+      Verify the signature before you trust a delivery. These numbers get
+      republished as fact, and anyone who learns your endpoint could otherwise
+      post to it:
+    </p>
+    <pre>import hmac, hashlib
+expected = "sha256=" + hmac.new(SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+if not hmac.compare_digest(expected, request.headers["X-Courtside-Signature"]):
+    return 401</pre>
+    <p>
+      Answer <code>2xx</code> and we mark it delivered. Anything else is
+      recorded as failed and can be resent from the league's console without
+      replaying the game, so a night when your endpoint was down is a button
+      rather than a support thread. We follow no redirects and we give up after
+      ten seconds.
+    </p>
+    <div class="note">
+      <strong>Under-18 players are withheld from every feed</strong>, whatever
+      is configured. Team totals still include their contribution, so the lines
+      will not sum to the totals — the payload carries a <code>notice</code>
+      saying so rather than leaving you to find the discrepancy.
+    </div>
+  </div>
+
+  <div class="sec">
     <h2>Errors</h2>
     <div class="tw">
       <table class="ep">
@@ -171,6 +230,6 @@
     <span>Courtside Network · API v1</span>
   </footer>
 </div>
-<script src="../nav.js?v=14"></script>
+<script src="../nav.js?v=21"></script>
 </body>
 </html>

@@ -1,26 +1,31 @@
 'use strict';
 /* ============================================================================
-   HOME VENUE — where the club plays, how to get there, and what it looks like.
+   HOME VENUE + CONTACT — where the club plays, and how to reach it.
 
-   Three things, in the order somebody needs them: the name, the address laid
-   out to be read and copied, and then a picture and a map side by side.
+   Four things, in the order somebody needs them: the name, the address laid
+   out to be read and copied, a picture and a map side by side, and then the
+   way to get hold of a human.
 
    THE MAP LOADS ITSELF, from the venue's own address — a club records an
-   address once and gets a working map with nothing else to configure.
-
-   It is a third-party embed on a site used by under-18s, so two mitigations
-   stay even though the map is no longer gated behind a click: loading="lazy",
-   so nothing is fetched until the panel is actually scrolled to and most
-   visitors never reach it, and referrerPolicy="no-referrer", so the page
-   somebody is reading stays out of Google's logs. The address is also printed
-   in full above, and links out to Maps and directions sit over the corner,
-   because the embed cannot give a route.
+   address once and gets a working map with nothing else to configure. It is a
+   third-party embed on a site used by under-18s, so two mitigations stay:
+   loading="lazy", so nothing is fetched until the panel is actually scrolled
+   to, and referrerPolicy="no-referrer", so the page somebody is reading stays
+   out of Google's logs. The address is also printed in full, and links out to
+   Maps and directions sit over the corner, because the embed cannot give a
+   route.
 
    WHERE THERE IS NO PHOTOGRAPH THE ARENA IS DRAWN. That is every club right
    now. A placeholder that looks like a missing image makes a club look
    neglected, so this is built in the same screenprint language as the club
    cards — one ink, a halftone, paper grain — and reads as a deliberate
    illustration rather than an absence.
+
+   THE CONTACT FORM NEVER LEARNS THE ADDRESS. It posts a team id; the Edge
+   Function resolves the recipient from a table no browser can read. A club may
+   publish its email and telephone or keep them private, and either way the
+   form still works — which is the only kind of contact form worth putting on a
+   page a scraper will visit.
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -32,9 +37,24 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 
 /* ------------------------------------------------------------- the arena ---
-   The bowl in section: tiered seating, the floor lit from trusses above.
-   Flat shapes only — this is a print, not a render, and a gradient here would
-   put it in a different visual language from everything around it. */
+   A BASKETBALL arena, which is a specific building and not a generic bowl.
+
+   The previous drawing was an ellipse of tiered seating around a lit oval,
+   which is a football ground — the shape says "pitch" before anything else
+   does. What makes an arena read as basketball is a short list, and all of it
+   is here: a RECTANGULAR floor in perspective with the markings anyone would
+   recognise (keys, three-point arcs, centre circle), a BACKBOARD AND RIM at
+   each end on its stanchion, and a CENTRE-HUNG SCOREBOARD, which no other
+   sport puts over the middle of the playing surface.
+
+   The court markings are not drawn by eye. A perspective map takes real court
+   coordinates — FIBA's 28m by 15m — and puts them on the picture, so the keys
+   are the right proportion of the floor and the arcs meet the sidelines where
+   they should. Drawing them freehand is what makes an illustration look almost
+   right, which is worse than looking stylised.
+
+   Flat shapes only. This is a print, not a render, and a gradient would put it
+   in a different visual language from everything around it. */
 function arenaSVG(ink) {
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
@@ -48,46 +68,138 @@ function arenaSVG(ink) {
     svg.appendChild(n);
     return n;
   };
+  const stroke = (d, opacity, width) => add('path',
+    { d, fill: 'none', stroke: ink, 'stroke-width': width || 1,
+      opacity, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
 
-  /* roof trusses */
-  const truss = { stroke: ink, 'stroke-width': 1.4, opacity: 0.45, fill: 'none' };
-  add('path', Object.assign({ d: 'M24 62 L160 26 L296 62' }, truss));
-  add('path', Object.assign({ d: 'M52 56 L160 38 L268 56' }, truss));
-  add('path', Object.assign({ d: 'M160 26 L160 44' }, truss));
-  add('path', Object.assign({ d: 'M96 48 L96 58 M224 48 L224 58' }, truss));
+  /* ---- the perspective map -------------------------------------------------
+     u runs baseline to baseline (0 → 1), v runs far sideline to near (0 → 1).
+     Straight-line interpolation between a narrow far edge and a wide near one
+     is not true perspective, but at this size the difference is invisible and
+     the maths stays readable. */
+  const P = (u, v) => {
+    const xFar = 62 + u * 196, xNear = 22 + u * 276;
+    return [xFar + (xNear - xFar) * v, 118 + 60 * v];
+  };
+  const at = (u, v) => { const p = P(u, v); return p[0].toFixed(1) + ' ' + p[1].toFixed(1); };
+  const path = (pairs, close) =>
+    pairs.map(([u, v], i) => (i ? 'L' : 'M') + at(u, v)).join(' ') + (close ? ' Z' : '');
+  const arc = (cu, cv, ru, rv, a0, a1, n) => {
+    const out = [];
+    for (let i = 0; i <= n; i++) {
+      const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
+      out.push([cu + ru * Math.cos(a), cv + rv * Math.sin(a)]);
+    }
+    return out;
+  };
 
-  /* floodlights, and the light they throw */
-  add('rect', { x: 86, y: 40, width: 20, height: 7, rx: 1, fill: ink, opacity: 0.9 });
-  add('rect', { x: 214, y: 40, width: 20, height: 7, rx: 1, fill: ink, opacity: 0.9 });
-  add('path', { d: 'M86 47 L106 47 L150 118 L60 118 Z', fill: ink, opacity: 0.12 });
-  add('path', { d: 'M214 47 L234 47 L260 118 L170 118 Z', fill: ink, opacity: 0.12 });
+  /* FIBA dimensions as fractions of the floor: 28m long, 15m wide. */
+  const L = 28, W = 15;
+  const KEY_D = 5.8 / L, KEY_HW = 2.45 / W;          // paint: 5.8m deep, 4.9m wide
+  const CIRC_U = 1.8 / L, CIRC_V = 1.8 / W;          // 1.8m radius circles
+  const BASKET_U = 1.575 / L;                        // rim centre from baseline
+  const ARC_U = 6.75 / L, ARC_V = 6.75 / W;          // three-point radius
+  const CORNER_V = 0.9 / W;                          // corner lines, 0.9m in
+  const CORNER_A = Math.asin((0.5 - CORNER_V) / ARC_V) * 180 / Math.PI;
 
-  /* the bowl: three rings, tightening towards the floor */
-  add('ellipse', { cx: 160, cy: 132, rx: 140, ry: 56, fill: 'none', stroke: ink,
-                   'stroke-width': 1.6, opacity: 0.55 });
-  add('ellipse', { cx: 160, cy: 132, rx: 112, ry: 44, fill: 'none', stroke: ink,
-                   'stroke-width': 1.3, opacity: 0.45 });
-  add('ellipse', { cx: 160, cy: 132, rx: 86, ry: 33, fill: 'none', stroke: ink,
-                   'stroke-width': 1.1, opacity: 0.38 });
+  /* ---- roof and rig --------------------------------------------------------
+     Two trusses and a lattice between them. An arena roof is flat and gridded,
+     not the pitched span a stadium has. */
+  stroke('M14 30 H306', 0.34, 1.4);
+  stroke('M26 44 H294', 0.28, 1.2);
+  let lattice = '';
+  for (let x = 26; x <= 294; x += 22) lattice += `M${x} 30 L${x + 11} 44 L${x + 22} 30 `;
+  stroke(lattice, 0.18, 0.9);
 
-  /* radial ticks between the rings — the thing that reads as a crowd */
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * Math.PI * 2;
-    const x1 = 160 + Math.cos(a) * 92,  y1 = 132 + Math.sin(a) * 35;
-    const x2 = 160 + Math.cos(a) * 136, y2 = 132 + Math.sin(a) * 54;
-    add('path', { d: 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
-                     ' L' + x2.toFixed(1) + ' ' + y2.toFixed(1),
-                  stroke: ink, 'stroke-width': 1, opacity: 0.28, fill: 'none' });
+  /* ---- the centre-hung scoreboard -----------------------------------------
+     The single object that says basketball before the floor is even read. Four
+     faces, hung on two cables over the middle of the court. */
+  stroke('M141 44 V57 M179 44 V57', 0.4, 1);
+  add('path', { d: 'M132 57 H188 L182 79 H138 Z', fill: ink, opacity: 0.22 });
+  stroke('M132 57 H188 L182 79 H138 Z', 0.75, 1.3);
+  stroke('M152 57 V79 M168 57 V79', 0.3, 0.9);              // the corner edges
+  // two score panels on the near face, unreadable and unmistakable
+  add('rect', { x: 137, y: 62, width: 12, height: 8, fill: ink, opacity: 0.6 });
+  add('rect', { x: 171, y: 62, width: 12, height: 8, fill: ink, opacity: 0.6 });
+  stroke('M138 79 H182', 0.5, 1);
+  stroke('M146 79 V83 M160 79 V84 M174 79 V83', 0.3, 0.9);  // the light ring beneath
+
+  /* ---- the bowl ------------------------------------------------------------
+     Rectangular and steep, converging on the floor. The ticks are the crowd;
+     the gaps in them are vomitories, which is what stops a stand reading as a
+     fence. */
+  const inner = s => [52 + s * 216, 116];
+  const outer = s => [4 + s * 312, 84];
+  add('path', {
+    d: `M${outer(0).join(' ')} L${outer(1).join(' ')} L${inner(1).join(' ')} L${inner(0).join(' ')} Z`,
+    fill: ink, opacity: 0.07
+  });
+  const VOMS = [[0.16, 0.20], [0.475, 0.525], [0.80, 0.84]];
+  let seats = '';
+  for (let i = 0; i <= 46; i++) {
+    const s = i / 46;
+    if (VOMS.some(([a, b]) => s > a && s < b)) continue;
+    const [x1, y1] = inner(s), [x2, y2] = outer(s);
+    seats += `M${x1.toFixed(1)} ${y1} L${x2.toFixed(1)} ${y2} `;
   }
+  stroke(seats, 0.3, 1);
+  [0.34, 0.67].forEach(f => {                                 // the tier walkways
+    const a = inner(0), b = outer(0), c = inner(1), d = outer(1);
+    stroke(`M${(a[0] + (b[0] - a[0]) * f).toFixed(1)} ${(a[1] + (b[1] - a[1]) * f).toFixed(1)}` +
+           ` L${(c[0] + (d[0] - c[0]) * f).toFixed(1)} ${(c[1] + (d[1] - c[1]) * f).toFixed(1)}`,
+           0.24, 1);
+  });
+  // the near stand, cropped — we are sitting in it
+  stroke('M0 186 H320', 0.24, 1.2);
+  let near = '';
+  for (let x = 4; x <= 316; x += 9) near += `M${x} 186 V200 `;
+  stroke(near, 0.22, 1);
 
-  /* the floor, lit, with just enough court marking to be unmistakable */
-  add('ellipse', { cx: 160, cy: 132, rx: 64, ry: 24, fill: ink, opacity: 0.2 });
-  const court = { fill: 'none', stroke: ink, 'stroke-width': 1.2, opacity: 0.75 };
-  add('rect', Object.assign({ x: 106, y: 116, width: 108, height: 32, rx: 2 }, court));
-  add('circle', Object.assign({ cx: 160, cy: 132, r: 9 }, court));
-  add('path', Object.assign({ d: 'M106 122 h14 v20 h-14' }, court));
-  add('path', Object.assign({ d: 'M214 122 h-14 v20 h14' }, court));
-  add('path', Object.assign({ d: 'M160 116 v32' }, court));
+  /* ---- the floor -----------------------------------------------------------
+     Lit, and marked. Every line below is a real court line placed by the
+     perspective map rather than by eye. */
+  add('path', { d: path([[0, 0], [1, 0], [1, 1], [0, 1]], true), fill: ink, opacity: 0.14 });
+  stroke(path([[0, 0], [1, 0], [1, 1], [0, 1]], true), 0.8, 1.4);       // sidelines
+  stroke(path([[0.5, 0], [0.5, 1]]), 0.6, 1.1);                          // halfway
+  stroke(path(arc(0.5, 0.5, CIRC_U, CIRC_V, 0, 360, 40), true), 0.6, 1.1); // centre circle
+
+  [0, 1].forEach(end => {
+    const flip = u => end ? 1 - u : u;                 // the far end is a mirror
+    const dir = end ? -1 : 1;
+
+    // the key, and the free-throw circle on top of it
+    stroke(path([[flip(0), 0.5 - KEY_HW], [flip(KEY_D), 0.5 - KEY_HW],
+                 [flip(KEY_D), 0.5 + KEY_HW], [flip(0), 0.5 + KEY_HW]]), 0.65, 1.1);
+    stroke(path(arc(flip(KEY_D), 0.5, CIRC_U, CIRC_V, 0, 360, 32), true), 0.55, 1);
+
+    /* the three-point line: two corner runs and the arc between them.
+       `dir` alone mirrors the arc — flipping the ANGLES as well would mirror it
+       twice and swing it back outside the court, which is exactly what it did
+       the first time round. */
+    const corner = ARC_U * Math.cos(CORNER_A * Math.PI / 180);
+    stroke(path([[flip(0), CORNER_V], [flip(BASKET_U + corner), CORNER_V]]), 0.6, 1.1);
+    stroke(path([[flip(0), 1 - CORNER_V], [flip(BASKET_U + corner), 1 - CORNER_V]]), 0.6, 1.1);
+    stroke(path(arc(flip(BASKET_U), 0.5, ARC_U * dir, ARC_V, -CORNER_A, CORNER_A, 30)), 0.6, 1.1);
+
+    /* the basket. Stanchion behind the baseline, arm over the floor, backboard,
+       rim, net — the silhouette that no other sport has. */
+    const base = P(flip(-0.075), 0.5);
+    const bb = P(flip(-0.012), 0.5);
+    stroke(`M${base[0].toFixed(1)} ${base[1].toFixed(1)} V${(base[1] - 34).toFixed(1)}`, 0.85, 2);
+    stroke(`M${base[0].toFixed(1)} ${(base[1] - 31).toFixed(1)} ` +
+           `L${bb[0].toFixed(1)} ${(base[1] - 31).toFixed(1)}`, 0.85, 1.6);
+    add('rect', { x: (bb[0] - (end ? 1.5 : 0)).toFixed(1), y: (base[1] - 39).toFixed(1),
+                  width: 1.8, height: 17, fill: ink, opacity: 0.5 });
+    stroke(`M${bb[0].toFixed(1)} ${(base[1] - 39).toFixed(1)} V${(base[1] - 22).toFixed(1)}`, 0.9, 2.2);
+    const rim = [bb[0] + dir * 7, base[1] - 25];
+    add('ellipse', { cx: rim[0].toFixed(1), cy: rim[1].toFixed(1), rx: 6.5, ry: 2.2,
+                     fill: 'none', stroke: ink, 'stroke-width': 1.5, opacity: 0.95 });
+    stroke(`M${(rim[0] - 6.5).toFixed(1)} ${rim[1].toFixed(1)} L${(rim[0] - 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} ` +
+           `M${rim[0].toFixed(1)} ${(rim[1] + 2.2).toFixed(1)} V${(rim[1] + 8).toFixed(1)} ` +
+           `M${(rim[0] + 6.5).toFixed(1)} ${rim[1].toFixed(1)} L${(rim[0] + 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} ` +
+           `M${(rim[0] - 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} L${(rim[0] + 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)}`,
+           0.55, 0.9);
+  });
 
   return svg;
 }
@@ -128,10 +240,6 @@ function mapPane(team, query) {
      /maps/embed/v1/place?key=KEY&q=… and only this line changes. */
   const f = document.createElement('iframe');
   f.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&z=15&output=embed';
-  /* lazy, so the map is only fetched once it is actually scrolled to — it sits
-     well below the fold, and this is a third-party request on a site used by
-     under-18s, so not making it until it is wanted is worth the one attribute.
-     no-referrer keeps the page somebody is reading out of Google's logs. */
   f.loading = 'lazy';
   f.referrerPolicy = 'no-referrer';
   f.title = (team.home_venue || 'Venue') + ' on a map';
@@ -151,6 +259,296 @@ function mapPane(team, query) {
   return pane;
 }
 
+/* ================================================================ contact ===
+   What a visitor can see, and what a manager can change.
+
+   `team_contact()` decides both: it returns the details only when the club has
+   published them, and tells us separately whether an address exists at all, so
+   a private club reads as private rather than as absent.
+   ========================================================================== */
+
+function detail(label, value, href) {
+  const d = el('div', 'vcitem');
+  d.appendChild(el('div', 'k', label));
+  if (href) {
+    const a = el('a', 'v', value);
+    a.href = href;
+    /* An address written into the DOM by script is not in the served HTML and
+       is not in the repository, so the cheap scrapers never see it. This is a
+       speed bump, not a wall — anyone running a real browser reads it fine —
+       and the form below is the route that gives nothing away at all. */
+    a.rel = 'nofollow';
+    d.appendChild(a);
+  } else {
+    d.appendChild(el('div', 'v', value));
+  }
+  return d;
+}
+
+/* The pop-up. A native <dialog>: Escape closes it, focus is trapped, and the
+   backdrop comes free — all of which would otherwise be a hundred lines of
+   keyboard handling that some browser eventually disagrees with. */
+function messageDialog(team, cfg) {
+  const dlg = document.createElement('dialog');
+  dlg.className = 'vdlg';
+
+  const form = el('form', 'vform');
+  form.method = 'dialog';
+
+  const head = el('div', 'vdhead');
+  head.appendChild(el('div', 'vdtitle', 'Message ' + (team.name || 'the club')));
+  head.appendChild(el('div', 'vdsub',
+    'This goes straight to the club. They see your email address so they can ' +
+    'reply; nobody else does, and the club\'s own address is never shown to you.'));
+  form.appendChild(head);
+
+  const field = (id, label, type, attrs) => {
+    const wrap = el('label', 'vfield');
+    wrap.htmlFor = 'vc-' + id;
+    wrap.appendChild(el('span', 'vflabel', label));
+    const input = type === 'textarea'
+      ? document.createElement('textarea') : document.createElement('input');
+    input.id = 'vc-' + id;
+    input.name = id;
+    if (type !== 'textarea') input.type = type;
+    Object.assign(input, attrs || {});
+    wrap.appendChild(input);
+    form.appendChild(wrap);
+    return input;
+  };
+
+  const yourName = field('name', 'Your name', 'text', { maxLength: 120, required: true });
+  const yourMail = field('email', 'Your email', 'email', { maxLength: 200, required: true });
+  const subject  = field('subject', 'Subject', 'text', { maxLength: 160 });
+  const bodyText = field('body', 'Message', 'textarea', { maxLength: 5000, rows: 6, required: true });
+
+  /* the honeypot: no human sees it, and bots fill everything in */
+  const hp = el('div', 'vhp');
+  hp.setAttribute('aria-hidden', 'true');
+  const hpi = document.createElement('input');
+  hpi.type = 'text'; hpi.name = 'website'; hpi.tabIndex = -1; hpi.autocomplete = 'off';
+  hp.appendChild(hpi);
+  form.appendChild(hp);
+
+  const note = el('div', 'vnote');
+  form.appendChild(note);
+
+  const row = el('div', 'vdactions');
+  const cancel = el('button', 'cs-chip', 'Close');
+  cancel.type = 'button';
+  const send = el('button', 'cs-chip on', 'Send');
+  send.type = 'submit';
+  row.append(cancel, send);
+  form.appendChild(row);
+
+  cancel.addEventListener('click', () => dlg.close());
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    note.className = 'vnote';
+    const payload = {
+      team_id: team.id,
+      name: yourName.value.trim(),
+      email: yourMail.value.trim(),
+      subject: subject.value.trim(),
+      body: bodyText.value.trim(),
+      website: hpi.value
+    };
+    if (!payload.name) { note.textContent = 'A name, so a reply knows who it is to.';
+                         note.className = 'vnote err'; return yourName.focus(); }
+    if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(payload.email)) {
+      note.textContent = 'That email address does not look right — a reply would bounce.';
+      note.className = 'vnote err'; return yourMail.focus();
+    }
+    if (payload.body.length < 10) {
+      note.textContent = 'Say a little more than that.';
+      note.className = 'vnote err'; return bodyText.focus();
+    }
+
+    send.disabled = true;
+    const label = send.textContent;
+    send.textContent = 'sending…';
+    try {
+      const r = await fetch(cfg.supabaseUrl + '/functions/v1/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey },
+        body: JSON.stringify(payload)
+      });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        send.disabled = false; send.textContent = label;
+        note.textContent = out.error || ('That was refused (' + r.status + ').');
+        note.className = 'vnote err';
+        return;
+      }
+      /* Whether the email left the building is not the sender's problem — the
+         message is recorded either way, and saying "not delivered" would only
+         invite them to send it twice. */
+      form.querySelectorAll('input,textarea').forEach(i => { i.value = ''; });
+      send.textContent = 'sent';
+      note.textContent = 'Sent. If you asked for a reply it will come to ' +
+                         payload.email + '.';
+      note.className = 'vnote ok';
+    } catch (err) {
+      send.disabled = false; send.textContent = label;
+      note.textContent = 'Could not reach the server: ' + (err.message || err) +
+                         '. Nothing was lost, but it needs sending again.';
+      note.className = 'vnote err';
+    }
+  });
+
+  dlg.appendChild(form);
+  return dlg;
+}
+
+/* The manager's editor. Inline, because a separate screen for four fields is a
+   screen nobody opens. Nothing here decides who may edit — the database was
+   asked, and a save that should not happen is refused whatever this believes. */
+function editor(team, c, sb, onSaved) {
+  const box = el('details', 'vcedit');
+  box.appendChild(el('summary', null, 'Edit the club\'s contact details'));
+
+  const grid = el('div', 'vegrid');
+  const mk = (key, label, type, value, ph) => {
+    const w = el('label', 'vfield');
+    w.appendChild(el('span', 'vflabel', label));
+    const i = document.createElement('input');
+    i.type = type; i.value = value || ''; i.placeholder = ph || '';
+    i.maxLength = type === 'email' ? 200 : 120;
+    w.appendChild(i);
+    grid.appendChild(w);
+    return i;
+  };
+  const nameIn  = mk('contact_name', 'Contact', 'text', c.contact_name, 'Club Secretary');
+  const mailIn  = mk('email', 'Email', 'email', c.email, 'someone@club.example');
+  const phoneIn = mk('phone', 'Telephone', 'tel', c.phone, '01234 567890');
+  box.appendChild(grid);
+
+  const opts = el('div', 'veopts');
+  const toggle = (label, on, hint) => {
+    const w = el('label', 'vetoggle');
+    const i = document.createElement('input');
+    i.type = 'checkbox'; i.checked = !!on;
+    w.append(i, el('span', 'vetx', label));
+    if (hint) w.appendChild(el('span', 'vehint', hint));
+    opts.appendChild(w);
+    return i;
+  };
+  const pubIn = toggle('Show these publicly', c.is_public !== false,
+    'Off keeps them for league officials only. The form below still works.');
+  const formIn = toggle('Accept messages through the site', c.accepts_form !== false,
+    'Off removes the button entirely.');
+  box.appendChild(opts);
+
+  const note = el('div', 'vnote');
+  const save = el('button', 'cs-chip on', 'Save');
+  save.type = 'button';
+  const row = el('div', 'vdactions');
+  row.append(save);
+  box.append(row, note);
+
+  save.addEventListener('click', async () => {
+    save.disabled = true; save.textContent = 'saving…';
+    note.className = 'vnote';
+    const { error } = await sb.rpc('set_team_contact', {
+      p_team: team.id,
+      p_contact_name: nameIn.value.trim(),
+      p_email: mailIn.value.trim(),
+      p_phone: phoneIn.value.trim(),
+      p_is_public: pubIn.checked,
+      p_accepts_form: formIn.checked
+    });
+    save.disabled = false; save.textContent = 'Save';
+    if (error) {
+      note.textContent = error.message;
+      note.className = 'vnote err';
+      return;
+    }
+    note.textContent = 'Saved.';
+    note.className = 'vnote ok';
+    onSaved();
+  });
+
+  return box;
+}
+
+/* team_contact() answers differently depending on who is asking — a manager
+   sees their own club's details even when they are unpublished, and is told
+   they may edit. So it has to be called WITH the session where there is one.
+   The SDK client carries the token; the bare fetch is the signed-out path and
+   the fallback for a page that never loaded the SDK. */
+async function readContact(team, cfg) {
+  const sb = window.courtsideClient && window.courtsideClient();
+  if (sb) {
+    const { data, error } = await sb.rpc('team_contact', { p_team: team.id });
+    if (error) throw new Error(error.message);
+    return (data && data[0]) || {};
+  }
+  const r = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/team_contact', {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_team: team.id })
+  });
+  if (!r.ok) throw new Error(String(r.status));
+  const rows = await r.json();
+  return (rows && rows[0]) || {};
+}
+
+async function contactBlock(team, opts) {
+  const wrap = el('div', 'vcontact');
+  wrap.appendChild(el('div', 'vclabel', 'Contact'));
+
+  let c = {};
+  try { c = await readContact(team, opts.cfg); } catch (_) { c = {}; }
+
+  const body = el('div', 'vcbody');
+  wrap.appendChild(body);
+
+  const draw = () => {
+    body.textContent = '';
+    const row = el('div', 'vcrow');
+
+    if (c.contact_name) row.appendChild(detail('Club contact', c.contact_name));
+    if (c.email)  row.appendChild(detail('Email', c.email, 'mailto:' + c.email));
+    else if (c.has_email) row.appendChild(detail('Email', 'Held, not published'));
+    if (c.phone)  row.appendChild(detail('Telephone', c.phone,
+      'tel:' + c.phone.replace(/[^\d+]/g, '')));
+    else if (c.has_phone) row.appendChild(detail('Telephone', 'Held, not published'));
+
+    if (c.accepts_form) {
+      const btn = el('button', 'cs-chip on vcbtn', 'Message the club');
+      btn.type = 'button';
+      const dlg = messageDialog(team, opts.cfg);
+      document.body.appendChild(dlg);
+      btn.addEventListener('click', () => dlg.showModal());
+      row.appendChild(btn);
+    }
+
+    if (!row.children.length) {
+      body.appendChild(el('div', 'empty',
+        'No contact details for this club yet. Whoever manages the club can add ' +
+        'them, and they appear here.'));
+    } else {
+      body.appendChild(row);
+    }
+  };
+  draw();
+
+  /* the editor, for whoever runs the club */
+  if (c.can_edit) {
+    const sb = window.courtsideClient && window.courtsideClient();
+    if (sb) {
+      wrap.appendChild(editor(team, c, sb, async () => {
+        try { c = await readContact(team, opts.cfg); }
+        catch (_) { /* keep what is on screen */ }
+        draw();
+      }));
+    }
+  }
+
+  return wrap;
+}
+
 /* opts: { host, team, api, cfg } */
 async function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
@@ -159,50 +557,55 @@ async function render(opts) {
   host.textContent = '';
 
   const name = team.home_venue, addr = team.home_venue_address;
-  if (!name && !addr) {
-    host.appendChild(el('div', 'empty',
-      'No home venue recorded for this club yet. A league administrator can add ' +
-      'one, and every home fixture inherits it.'));
-    return { photo: false };
-  }
-
-  /* an approved venue photograph, if one exists. Nothing unapproved is shown —
-     that decision belongs to the moderation queue. */
-  let photoUrl = null;
-  try {
-    const rows = await opts.api('media?owner_type=eq.team&kind=eq.venue' +
-      '&status=eq.approved&owner_id=eq.' + team.id + '&select=storage_path&limit=1');
-    if (rows && rows.length) {
-      photoUrl = opts.cfg.supabaseUrl + '/storage/v1/object/public/' + rows[0].storage_path;
-    }
-  } catch (_) { /* the drawing stands in */ }
-
   const wrap = el('div', 'vwrap');
   wrap.style.setProperty('--ink-c', team.colour || '#93f2bf');
 
-  const head = el('div', 'vhead');
-  head.appendChild(el('div', 'vname', name || 'Home venue'));
-  if (addr) {
-    /* Each line of the address on its own line, as it would be written on an
-       envelope. A comma-separated run is harder to read and harder to copy. */
-    const a = el('div', 'vaddr');
-    const parts = String(addr).split(',').map(x => x.trim()).filter(Boolean);
-    parts.forEach((part, i) => {
-      a.appendChild(document.createTextNode(part + (i < parts.length - 1 ? ',' : '')));
-      if (i < parts.length - 1) a.appendChild(document.createElement('br'));
-    });
-    head.appendChild(a);
+  if (!name && !addr) {
+    /* No venue is not the same as no page. The contact panel still belongs
+       here — a club with no registered hall is exactly the one somebody needs
+       to ring. */
+    wrap.appendChild(el('div', 'empty',
+      'No home venue recorded for this club yet. A league administrator can add ' +
+      'one, and every home fixture inherits it.'));
+  } else {
+    /* an approved venue photograph, if one exists. Nothing unapproved is
+       shown — that decision belongs to the moderation queue. */
+    let photoUrl = null;
+    try {
+      const rows = await opts.api('media?owner_type=eq.team&kind=eq.venue' +
+        '&status=eq.approved&owner_id=eq.' + team.id + '&select=storage_path&limit=1');
+      if (rows && rows.length) {
+        photoUrl = opts.cfg.supabaseUrl + '/storage/v1/object/public/' + rows[0].storage_path;
+      }
+    } catch (_) { /* the drawing stands in */ }
+
+    const head = el('div', 'vhead');
+    head.appendChild(el('div', 'vname', name || 'Home venue'));
+    if (addr) {
+      /* Each line of the address on its own line, as it would be written on an
+         envelope. A comma-separated run is harder to read and harder to copy. */
+      const a = el('div', 'vaddr');
+      const parts = String(addr).split(',').map(x => x.trim()).filter(Boolean);
+      parts.forEach((part, i) => {
+        a.appendChild(document.createTextNode(part + (i < parts.length - 1 ? ',' : '')));
+        if (i < parts.length - 1) a.appendChild(document.createElement('br'));
+      });
+      head.appendChild(a);
+    }
+    wrap.appendChild(head);
+
+    const query = [name, addr].filter(Boolean).join(', ');
+    const grid = el('div', 'vgrid');
+    grid.append(photoUrl ? photoPane(team, photoUrl) : drawnPane(team),
+                mapPane(team, query));
+    wrap.appendChild(grid);
+    wrap.dataset.photo = photoUrl ? '1' : '';
   }
-  wrap.appendChild(head);
 
-  const query = [name, addr].filter(Boolean).join(', ');
-  const grid = el('div', 'vgrid');
-  grid.append(photoUrl ? photoPane(team, photoUrl) : drawnPane(team),
-              mapPane(team, query));
-  wrap.appendChild(grid);
   host.appendChild(wrap);
+  wrap.appendChild(await contactBlock(team, opts));
 
-  return { photo: !!photoUrl };
+  return { photo: wrap.dataset.photo === '1' };
 }
 
 return { render, arenaSVG };

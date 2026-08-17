@@ -12,7 +12,7 @@ Branch: **`courtside-network`** — not merged to `main`, so nothing here is liv
 
 ## 1. THE BLOCKER — read this first
 
-**21 commits are local-only.** `git push` needs an interactive credential
+**46 commits are local-only.** `git push` needs an interactive credential
 prompt that a headless session cannot satisfy:
 
 ```
@@ -78,7 +78,7 @@ anyone who already loaded the page. Two fixes are in place:
 - `tools/devserver.py` — the preview server, sends `no-store`. Wired into
   `.claude/launch.json` as `website-repo`.
 - `tools/stamp-assets.py` — puts `?v=N` on every local script and stylesheet
-  under `league/`, from `league/version.txt` (currently **11**).
+  under `league/`, from `league/version.txt` (currently **21**).
   **Run `python tools/stamp-assets.py --bump` after changing any shipped
   asset.** CI checks stamping is current.
 
@@ -96,6 +96,15 @@ query once reported a player scoring 17 points in a season where he scored 98.
 ### PostgREST cannot embed a related table into a VIEW
 No foreign keys on a view. `player_season_stats` needs a second query and a
 client-side stitch. The JSON API does this.
+
+### A CSS transition on a non-compositing tab never finishes
+Cost an hour. The rail's slide is `transform`, which runs on the compositor; in
+a browser pane that is not painting, the transition sits in `running` for ever
+and `getComputedStyle` keeps returning the START value — so the CSS looks
+broken when it is not. `!important` bypasses it (important beats animations),
+which is how to tell the two apart. `requestAnimationFrame` never fires there
+either, so anything that must happen "after layout" needs a timeout fallback:
+see `afterPaint()` in nav.js.
 
 ### `CREATE OR REPLACE VIEW` cannot reorder or rename columns
 Error 42P16. Drop first.
@@ -145,8 +154,18 @@ league/
   data.js         shared loader (paged) + season/window aggregation
   fulltable.js    the index_9-style table, 70+ columns
   live.js         publisher/subscriber, 250ms frames, corrections
-  nav.js          the sidebar (self-injecting, auth-aware)
+  nav.js          the sidebar (self-injecting, auth-aware, TWO VIEWS — see below)
+  t/venue.js      home venue + club contact: drawn arena, map, pop-up form
 ```
+
+**The rail has two views.** At rest it lists LEAGUES and nothing else; pick one
+and it slides to that league's own pages (fixtures / statistics / wowy / table,
+then the role-gated three) with a back button. A page that knows its league
+opens drilled in — `window.__CS_LEAGUE_SLUG = slug` both retargets the links and
+switches the view. The first view never animates (`.noanim`, removed after the
+first paint), because animating into a state nobody asked for is wrong and
+because a tab that is not compositing would otherwise leave the deck stranded
+mid-slide.
 
 **Key invariant in `season.js`:** rates are computed from summed components.
 A two-possession stint at 200 ORtg must never outvote a twenty-possession one.
@@ -183,6 +202,18 @@ then re-run the extractor. CI fails if they drift.
 ---
 
 ## 7. Open items
+
+**Scraper keys (partner feeds).** `data_feeds` + `feed_deliveries` (0037), the
+shared builder in `supabase/functions/_shared/feeds.js` (pure, unit-tested) and
+`feeds.ts` (the IO half), the `feeds` Edge Function (preview / test send /
+retry) and section 11 of the admin console. finalise-game queues and posts on
+publish. The endpoint and signing secret live on a table with no SELECT policy,
+exactly like `league_webhooks`. **The authenticated path — preview, test send,
+retry — has not been exercised end to end**, because doing so needs a signed-in
+league admin and this session must never create an account. Everything under it
+is proven: the SQL functions and every SSRF guard by 0037's self-test on the
+live project, the payloads by 75 unit tests, and the function refuses
+unauthenticated callers.
 
 **Blocked on Louie:**
 - Push the branch (§1).

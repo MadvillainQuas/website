@@ -1,18 +1,25 @@
 /* ============================================================================
    COURTSIDE NAV — the rail on every public page.
 
+   TWO VIEWS, ONE RAIL. At rest it is a list of leagues and nothing else.
+   Pick one and the rail slides sideways to that league's own pages, with the
+   league's name in the header and a way back. A platform that will hold a
+   dozen leagues cannot show a dozen leagues' worth of pages at once, and a
+   flat list of "fixtures / statistics / wowy" is a lie when it is really
+   "fixtures OF WHICH LEAGUE".
+
+   Three rows never move, because they are how somebody gets out: sign in,
+   contact, and back to Prophesy. They live below the deck and are untouched by
+   either view.
+
    SELF-SUFFICIENT ON PURPOSE. Every custom property below carries a literal
    fallback, because this loads on pages that do not load the kit: the public
    box score is drawn by boxscore.css, which defines its own token names. With
    bare var(--panel) the rail rendered with no background and no border and sat
    on top of the box score as floating text — which is exactly what it did.
-
-   Labels are always visible. A rail that expands on hover looked tidy and told
-   you nothing at rest: an icon alone is a guess, and half these destinations
-   (stats, portal, admin) are not guessable from a glyph.
    ============================================================================ */
 
-:root{ --nav-w:158px; }
+:root{ --nav-w:174px; }
 
 .cs-nav{
   position:fixed; left:0; top:0; bottom:0; width:var(--nav-w);
@@ -25,37 +32,25 @@
 }
 .cs-nav::-webkit-scrollbar{ display:none }
 
-.cs-nav .brand{
-  display:flex; align-items:center; gap:9px; text-decoration:none;
-  padding:2px 0 13px 14px; margin-bottom:8px;
-  border-bottom:1px solid rgba(147,242,191,.18);
-}
-.cs-nav .brand .mark{
-  flex:none; width:26px; height:26px; display:grid; place-items:center;
-  border-radius:4px; background:linear-gradient(120deg,#93f2bf,#8ff5ff);
-  color:#04100b; font-family:var(--f-score,ui-monospace,monospace);
-  font-size:15px; line-height:1; font-weight:700;
-}
-.cs-nav .brand .word{
-  font-family:var(--f-score,ui-monospace,monospace);
-  font-size:16px; color:#e6fff1; text-transform:uppercase;
-  letter-spacing:.04em; white-space:nowrap;
-}
-
-.cs-nav a.item{
+/* ---- rows ---------------------------------------------------------------- */
+.cs-nav a.item, .cs-nav button.item{
   display:flex; align-items:center; gap:10px; text-decoration:none;
   padding:9px 10px 9px 14px; color:rgba(230,255,241,.62); white-space:nowrap;
-  border-left:2px solid transparent;
+  border-left:2px solid transparent; background:none; border-top:0;
+  border-right:0; border-bottom:0; width:100%; text-align:left; font:inherit;
+  cursor:pointer;
 }
-.cs-nav a.item:hover{ color:#e6fff1; background:rgba(147,242,191,.08) }
+.cs-nav a.item:hover, .cs-nav button.item:hover{
+  color:#e6fff1; background:rgba(147,242,191,.08);
+}
 .cs-nav a.item.on{
   color:#93f2bf; border-left-color:#93f2bf; background:rgba(147,242,191,.11);
 }
-.cs-nav a.item .ic{
+.cs-nav .ic{
   flex:none; width:16px; text-align:center; font-size:12px; line-height:1;
   opacity:.85;
 }
-.cs-nav a.item .tx{
+.cs-nav .tx{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
 }
@@ -71,76 +66,176 @@
 /* the page moves over rather than sitting underneath */
 body.has-nav{ padding-left:var(--nav-w) }
 
-/* ---- phones: a bottom bar. A 158px rail on a 375px screen is most of the
+/* ============================================================== the deck ===
+   Two panels side by side in a window one panel wide. Sliding is a transform,
+   which the compositor can do without touching layout; the HEIGHT is animated
+   separately from a measured value, because the two panels are different
+   lengths and letting the taller one set the height leaves a hole under the
+   shorter one. */
+.cs-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
+.cs-nav .deck{
+  display:flex; width:200%; align-items:flex-start;
+  transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
+}
+.cs-nav[data-view="league"] .deck{ transform:translateX(-50%) }
+/* THE FIRST VIEW NEVER SLIDES. A page that knows its league opens drilled in,
+   and animating into that on load would be the rail performing a decision the
+   reader did not make — as well as leaving the deck mid-travel on any browser
+   or tab that is not compositing at the time. The class comes off after the
+   first paint, so every LATER change animates. */
+.cs-nav.noanim .deck, .cs-nav.noanim .navdeck{ transition:none }
+.cs-nav .panel{ width:50%; flex:0 0 50%; min-width:0 }
+/* the panel that is off screen is out of the tab order as well as out of
+   sight — a keyboard user should never land on a link they cannot see */
+.cs-nav .panel[aria-hidden="true"]{ visibility:hidden }
+.cs-nav .navdeck.animating .panel{ visibility:visible }
+
+/* ---- the root panel ------------------------------------------------------ */
+.cs-nav .ptitle{
+  display:block; text-decoration:none;
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:15px; letter-spacing:.10em; text-transform:uppercase;
+  color:#e6fff1; padding:2px 14px 12px; margin-bottom:6px;
+  border-bottom:1px solid rgba(147,242,191,.18);
+}
+.cs-nav .ptitle:hover{ color:#93f2bf }
+.cs-nav .gempty{
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
+  color:rgba(230,255,241,.4); padding:8px 0 8px 14px;
+}
+
+/* a league: its plate, then its name */
+.cs-nav .lrow{ gap:9px; padding-right:6px }
+.cs-nav .lrow.on{ color:#93f2bf; border-left-color:#93f2bf;
+  background:rgba(147,242,191,.11) }
+
+/* THE PLATE. A league with a logo shows it; one without gets a screenprint
+   monogram in its own two colours — the same language the club cards use, so
+   a league looks like itself here and on its splash page. A grey box saying
+   "no logo" would make a new league look broken on its first day. */
+.cs-nav .crest{
+  position:relative; flex:none; width:24px; height:24px; overflow:hidden;
+  display:grid; place-items:center; border-radius:3px;
+  background:linear-gradient(120deg,var(--ca,#93f2bf),var(--cb,#8ff5ff));
+}
+.cs-nav .crest .mono{
+  position:relative; z-index:1;
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:11px; line-height:1; color:#04100b; font-weight:700;
+}
+.cs-nav .crest .halftone{
+  position:absolute; inset:-30%;
+  background-image:radial-gradient(circle,rgba(4,16,11,.55) .8px,transparent 1.1px);
+  background-size:4px 4px; transform:rotate(-14deg); opacity:.7;
+}
+.cs-nav .crest img{ position:relative; z-index:1; width:100%; height:100%;
+  object-fit:contain; background:#04100b }
+
+/* THE SCROLLING TITLE. League names are long — "Basketball England Division
+   One (South)" is not going to fit a 174px rail at any size worth reading.
+   Rather than run every row constantly, which would turn the rail into a
+   fairground, a row that overflows scrolls WHILE IT IS HOVERED OR FOCUSED,
+   and the drilled-in league's header scrolls on its own because there is only
+   one of it and it is the thing you most need to be able to read. Everything
+   also carries a title attribute, so the full name is one hover away even
+   with animation off entirely. */
+.cs-nav .marq{ overflow:hidden; min-width:0; flex:1 }
+.cs-nav .marq > span{
+  display:inline-block; white-space:nowrap;
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:10px; letter-spacing:.06em; text-transform:none;
+  will-change:transform;
+}
+.cs-nav .marq:not(.scrolls) > span{
+  display:block; overflow:hidden; text-overflow:ellipsis;
+}
+@keyframes cs-marq{
+  0%,14%   { transform:translateX(0) }
+  86%,100% { transform:translateX(var(--shift,0)) }
+}
+.cs-nav .lrow:hover .marq.scrolls > span,
+.cs-nav .lrow:focus-visible .marq.scrolls > span,
+.cs-nav .phead .marq.scrolls > span{
+  animation:cs-marq 7s ease-in-out infinite alternate;
+}
+
+/* ---- the league panel ---------------------------------------------------- */
+.cs-nav .phead{
+  display:flex; align-items:center; gap:8px;
+  padding:0 8px 11px 8px; margin-bottom:6px;
+  border-bottom:1px solid rgba(147,242,191,.18);
+}
+.cs-nav button.back{
+  flex:none; width:22px; height:22px; display:grid; place-items:center;
+  background:none; border:1px solid rgba(147,242,191,.28); border-radius:3px;
+  color:rgba(230,255,241,.7); font-size:13px; line-height:1; cursor:pointer;
+  padding:0 2px 2px 0;
+}
+.cs-nav button.back:hover{ color:#04100b; background:#93f2bf; border-color:#93f2bf }
+.cs-nav .phead .lname{
+  min-width:0; flex:1; text-decoration:none; overflow:hidden;
+}
+.cs-nav .phead .lname .marq > span{
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:12.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:#e6fff1;
+}
+.cs-nav .phead .lname:hover .marq > span{ color:#93f2bf }
+
+/* ---- account ------------------------------------------------------------- */
+.cs-nav .acct{ display:flex; flex-direction:column }
+
+/* ---- motion off ---------------------------------------------------------- */
+@media (prefers-reduced-motion:reduce){
+  .cs-nav .deck, .cs-nav .navdeck{ transition:none }
+  .cs-nav .marq.scrolls > span{ animation:none !important;
+    display:block; overflow:hidden; text-overflow:ellipsis }
+}
+
+/* ---- phones: a bottom bar. A 174px rail on a 375px screen is most of the
        screen, and these pages are wide tables. ---------------------------- */
 @media (max-width:820px){
   :root{ --nav-w:0px }
   .cs-nav{
     left:0; right:0; top:auto; bottom:0; width:auto;
-    flex-direction:row; gap:0; padding:0;
+    flex-direction:row; gap:0; padding:0; align-items:stretch;
     border-right:0; border-top:1px solid rgba(147,242,191,.22);
     box-shadow:0 -2px 10px rgba(0,0,0,.45);
     overflow-x:auto; overflow-y:hidden;
     padding-bottom:env(safe-area-inset-bottom);
   }
-  .cs-nav .brand, .cs-nav .gap, .cs-nav .sep, .cs-nav .grouplbl{ display:none }
-  .cs-nav a.item{
+  .cs-nav .gap, .cs-nav .sep, .cs-nav .grouplbl, .cs-nav .ptitle{ display:none }
+  .cs-nav a.item, .cs-nav button.item{
     flex:1 0 auto; flex-direction:column; gap:3px; justify-content:center;
     padding:8px 14px; border-left:0; border-top:2px solid transparent;
+    width:auto;
   }
-  .cs-nav a.item.on{ border-left-color:transparent; border-top-color:#93f2bf }
-  .cs-nav a.item .tx{ font-size:7.5px; letter-spacing:.06em }
+  .cs-nav a.item.on, .cs-nav .lrow.on{
+    border-left-color:transparent; border-top-color:#93f2bf;
+  }
+  .cs-nav .tx{ font-size:7.5px; letter-spacing:.06em }
   body.has-nav{ padding-left:0; padding-bottom:58px }
-}
 
-/* ---- the leagues group -----------------------------------------------------
-   A collapsible header with the leagues beneath it. The header is a <button>
-   rather than a link, because it goes nowhere — making it an anchor would put
-   a destination in the tab order that does not exist, and would promise a page
-   that is not there. It therefore has to be given the row styling by hand,
-   since the rest of the rail is anchors. */
-.cs-nav .lgroup{ display:flex; flex-direction:column }
-.cs-nav button.ghead{
-  display:flex; align-items:center; gap:10px;
-  padding:9px 10px 9px 14px; width:100%; text-align:left;
-  background:none; border:none; border-left:2px solid transparent;
-  color:rgba(230,255,241,.62); white-space:nowrap; cursor:pointer;
-  font:inherit;
-}
-.cs-nav button.ghead:hover{ color:#e6fff1; background:rgba(147,242,191,.08) }
-.cs-nav button.ghead .ic{
-  flex:none; width:16px; text-align:center; font-size:12px; line-height:1; opacity:.85;
-}
-.cs-nav button.ghead .tx{
-  font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
-}
-.cs-nav button.ghead .caret{
-  margin-left:auto; font-size:13px; line-height:1; color:rgba(230,255,241,.45);
-  transform:rotate(90deg); transition:transform .16s ease;
-}
-.cs-nav .lgroup.closed button.ghead .caret{ transform:rotate(0deg) }
-
-/* collapsing by max-height keeps it animatable; a generous ceiling never
-   clips a long league list */
-.cs-nav .glist{ overflow:hidden; max-height:60vh; transition:max-height .18s ease }
-.cs-nav .lgroup.closed .glist{ max-height:0 }
-
-/* a league sits one step in from its group header */
-.cs-nav a.item.sub{ padding-left:26px }
-.cs-nav a.item.sub .tx{ font-size:10px; letter-spacing:.08em; text-transform:none }
-.cs-nav a.item.sub .ic.dot{
-  width:8px; height:8px; border-radius:50%; font-size:0; opacity:1;
-}
-.cs-nav .gempty{
-  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
-  color:rgba(230,255,241,.4); padding:6px 0 6px 26px;
-}
-
-/* On the collapsed rail the labels are hidden with all the others, so the
-   caret and the placeholder would be floating text. Centre what remains. */
-@media (max-width:900px){
-  .cs-nav button.ghead .caret{ display:none }
-  .cs-nav a.item.sub{ padding-left:14px }
-  .cs-nav .gempty{ padding-left:0; text-align:center }
+  /* The deck still slides; it just runs along the bar instead of down it.
+     Every container between the rail and a row has to become a row as well —
+     .pages and .leagues are block boxes on the desktop rail, and leaving them
+     that way stacks the whole menu vertically and turns a 58px bar into a
+     313px one. */
+  .cs-nav .navdeck{ flex:1 1 auto; min-width:0; height:auto !important }
+  .cs-nav .deck{ align-items:stretch }
+  .cs-nav .panel{ display:flex; flex-direction:row; align-items:stretch;
+    overflow-x:auto; scrollbar-width:none }
+  .cs-nav .pages, .cs-nav .leagues{
+    display:flex; flex-direction:row; align-items:stretch; min-width:0;
+  }
+  .cs-nav .panel::-webkit-scrollbar{ display:none }
+  .cs-nav .lrow{ flex-direction:column; padding:6px 12px }
+  .cs-nav .marq{ flex:none; max-width:78px }
+  .cs-nav .marq > span{ font-size:8px }
+  .cs-nav .phead{ flex-direction:row; align-items:center; gap:6px;
+    padding:0 8px; margin:0; border-bottom:0;
+    border-right:1px solid rgba(147,242,191,.18) }
+  .cs-nav .phead .lname{ max-width:96px }
+  .cs-nav .phead .lname .marq > span{ font-size:9.5px }
+  .cs-nav .acct{ flex-direction:row }
 }

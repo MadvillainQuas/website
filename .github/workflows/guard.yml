@@ -120,6 +120,14 @@ jobs:
         # debugged later
         run: node supabase/tests/bpm.test.mjs
 
+      - name: Partner feed payloads
+        # these are the bytes RealGM and Eurobasket republish as fact. The
+        # thing worth guarding is not that it works but that it stays right
+        # QUIETLY wrong: a minor slipping into a feed, team totals drifting
+        # from the lines above them, or a field map that renames a key in the
+        # JSON but not in the CSV header.
+        run: node supabase/tests/feeds.test.mjs
+
       - name: Roster CSV parsing
         # the one path where a manager hands us a whole squad at once, so a
         # quiet misparse is twenty wrong rows rather than one

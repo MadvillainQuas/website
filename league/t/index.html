@@ -8,9 +8,9 @@
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.google.com https://maps.google.com">
 <title>Team · Courtside</title>
-<link rel="stylesheet" href="../kit/courtside-kit.css?v=14">
-<link rel="stylesheet" href="../kit/table.css?v=14">
-<link rel="stylesheet" href="../kit/nav.css?v=14">
+<link rel="stylesheet" href="../kit/courtside-kit.css?v=21">
+<link rel="stylesheet" href="../kit/table.css?v=21">
+<link rel="stylesheet" href="../kit/nav.css?v=21">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
@@ -141,6 +141,98 @@
   .vlinks a{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--ink-3);text-decoration:none}
   .vlinks a:hover{color:var(--lume)}
+
+  /* ---- club contact, under the venue -------------------------------- */
+  .vcontact{margin-top:calc(var(--u)*3);padding-top:calc(var(--u)*2.5);
+    border-top:1px solid var(--rule)}
+  .vclabel{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--lume);margin-bottom:calc(var(--u)*2)}
+  .vcrow{display:flex;gap:calc(var(--u)*4);flex-wrap:wrap;align-items:flex-end}
+  .vcitem .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .vcitem .v{font-family:var(--f-ui);font-weight:600;font-size:13.5px;color:var(--ink);
+    margin-top:4px;display:block;text-decoration:none}
+  a.v:hover{color:var(--lume);text-decoration:underline}
+  .vcbtn{margin-left:auto}
+  .vcontact .empty{padding:0;text-align:left}
+
+  /* the manager's editor */
+  .vcedit{margin-top:calc(var(--u)*3);border:1px solid var(--rule);padding:calc(var(--u)*2)}
+  .vcedit summary{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3);cursor:pointer}
+  .vcedit summary:hover{color:var(--lume)}
+  .vegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:calc(var(--u)*2);margin-top:calc(var(--u)*2)}
+  .veopts{display:flex;flex-direction:column;gap:9px;margin-top:calc(var(--u)*2)}
+  .vetoggle{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;cursor:pointer}
+  .vetx{font-family:var(--f-ui);font-size:12.5px;color:var(--ink)}
+  .vehint{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    flex-basis:100%;padding-left:23px;line-height:1.8}
+
+  /* shared by the editor and the pop-up */
+  .vfield{display:block}
+  .vflabel{display:block;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+  .vfield input,.vfield textarea{width:100%;box-sizing:border-box;background:var(--panel-2);
+    border:1px solid var(--rule-2);color:var(--ink);font-family:var(--f-ui);font-size:13px;
+    padding:8px 10px;border-radius:2px}
+  .vfield textarea{font-family:var(--f-ui);line-height:1.6;resize:vertical}
+  .vfield input:focus,.vfield textarea:focus{outline:none;border-color:var(--lume)}
+  .vnote{font-family:var(--f-micro);font-size:9px;line-height:1.9;margin-top:9px;
+    color:var(--ink-3)}
+  .vnote.err{color:var(--flare)} .vnote.ok{color:var(--lume)}
+  .vdactions{display:flex;gap:9px;justify-content:flex-end;margin-top:calc(var(--u)*2)}
+  .vhp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+  /* the pop-up itself */
+  dialog.vdlg{border:1px solid var(--rule-2);background:var(--ground);color:var(--ink);
+    padding:0;width:min(520px,92vw);max-height:88vh}
+  dialog.vdlg::backdrop{background:rgba(4,16,11,.78)}
+  .vform{display:flex;flex-direction:column;gap:calc(var(--u)*2);
+    padding:calc(var(--u)*3);max-height:88vh;overflow-y:auto}
+  .vdtitle{font-family:var(--f-score);font-size:clamp(20px,4vw,28px);line-height:1;
+    text-transform:uppercase;color:var(--lume)}
+  .vdsub{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.95;
+    margin-top:9px;max-width:52ch}
+
+  /* ---- staff, above the players ------------------------------------- */
+  .staffhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .staffhead .sh{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--lume)}
+  .staffhead .sn{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+  .staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+    margin:calc(var(--u)*1.5) 0 calc(var(--u)*3)}
+  .staffcard{background:var(--ground);padding:calc(var(--u)*2)}
+  .staffrole{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .staffname{font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink);
+    margin-top:6px;line-height:1.25}
+  .staffage{font-family:var(--f-score);font-size:15px;color:var(--lume);margin-top:6px}
+  .staffage span{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
+    letter-spacing:.14em;margin-left:5px}
+  /* editing, for whoever runs the club */
+  .staffcard.edit{display:flex;flex-direction:column;gap:7px}
+  .staffcard input{width:100%;box-sizing:border-box;background:transparent;
+    border:1px solid transparent;color:var(--ink);font-family:var(--f-ui);font-size:13px;
+    padding:3px 5px;border-radius:2px}
+  .staffcard input.role{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .staffcard input.yr{font-family:var(--f-data);font-size:12px;color:var(--lume);width:76px}
+  .staffcard input:hover{border-color:var(--rule-2)}
+  .staffcard input:focus{outline:none;border-color:var(--lume);background:var(--panel-2)}
+  .staffcard input.bad{border-color:var(--flare);color:var(--flare)}
+  .staffcard .srow{display:flex;align-items:center;gap:8px}
+  .staffdel{background:none;border:1px solid var(--rule-2);color:var(--ink-3);
+    font-family:var(--f-micro);font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 7px;cursor:pointer;margin-left:auto}
+  .staffdel:hover{border-color:var(--flare);color:var(--flare)}
+  .staffcard.add{display:grid;place-items:center;background:var(--panel);
+    border:1px dashed var(--rule-2)}
+  .staffcard.add button{background:none;border:none;color:var(--ink-3);cursor:pointer;
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+  .staffcard.add button:hover{color:var(--lume)}
 </style>
 </head>
 <body>
@@ -160,7 +252,7 @@
   <div class="cs-hdr"><span class="idx">01</span><h2>Team statistics</h2></div>
   <div id="teamstats"></div>
 
-  <div class="cs-hdr"><span class="idx">02</span><h2>Home venue</h2>
+  <div class="cs-hdr"><span class="idx">02</span><h2>Home venue &amp; contact</h2>
     <span class="note" id="venueNote"></span></div>
   <div id="venue"></div>
 
@@ -192,17 +284,17 @@
     <span>Courtside Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=14"></script>
-<script src="../config.js?v=14"></script>
-<script src="../bpm.js?v=14"></script>
-<script src="../season.js?v=14"></script>
-<script src="../data.js?v=14"></script>
-<script src="../lineups.js?v=14"></script>
-<script src="../wowy.js?v=14"></script>
-<script src="lineupui.js?v=14"></script>
-<script src="../fulltable.js?v=14"></script>
-<script src="venue.js?v=14"></script>
-<script src="team.js?v=14"></script>
-<script src="../nav.js?v=14"></script>
+<script src="../vendor/supabase.js?v=21"></script>
+<script src="../config.js?v=21"></script>
+<script src="../bpm.js?v=21"></script>
+<script src="../season.js?v=21"></script>
+<script src="../data.js?v=21"></script>
+<script src="../lineups.js?v=21"></script>
+<script src="../wowy.js?v=21"></script>
+<script src="lineupui.js?v=21"></script>
+<script src="../fulltable.js?v=21"></script>
+<script src="venue.js?v=21"></script>
+<script src="team.js?v=21"></script>
+<script src="../nav.js?v=21"></script>
 </body>
 </html>

@@ -75,24 +75,50 @@ Deno.serve(async (req) => {
     }
   } catch (_) { /* if the check itself fails, accept rather than lose the message */ }
 
+  /* Addressed to a CLUB rather than to the platform?
+     The browser sends a team id, never an address. The recipient is resolved
+     here, from a table no browser can read, which is the same rule the
+     platform's own address follows: a form that works without publishing an
+     address is the only kind worth having on a page a scraper will visit.
+     A club that has switched the form off simply is not a recipient. */
+  const teamId = clip(payload.team_id, 40) || null;
+  let clubTo: string | null = null;
+  let clubName: string | null = null;
+  if (teamId) {
+    const { data: t } = await admin.from('teams').select('id,name').eq('id', teamId).maybeSingle();
+    if (!t) return json({ error: 'That club is not on file.' }, 404);
+    clubName = t.name;
+    const { data: c } = await admin.from('team_contacts')
+      .select('email,accepts_form').eq('team_id', teamId).maybeSingle();
+    if (!c?.accepts_form) {
+      return json({ error: 'This club is not taking messages through the site.' }, 400);
+    }
+    clubTo = c.email || null;
+  }
+
   // ---- store first, always ----
   const { data: row, error: insErr } = await admin.from('contact_messages').insert({
     name, email, subject, body,
     league_id: payload.league_id ?? null,
+    team_id: teamId,
     user_agent: clip(req.headers.get('user-agent'), 300),
     source_ip: clip(req.headers.get('x-forwarded-for'), 60)
   }).select('id').single();
 
   if (insErr) return json({ error: 'Could not record that message: ' + insErr.message }, 500);
 
-  // ---- then try to deliver ----
-  const to = Deno.env.get('CONTACT_TO');
+  /* A club message goes to the club. If the club has no address on file it
+     still lands in the table, where the club can read it from their portal —
+     which is why storage happens first and unconditionally. */
+  const to = teamId ? clubTo : Deno.env.get('CONTACT_TO');
   const key = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('CONTACT_FROM') ?? 'Courtside <onboarding@resend.dev>';
 
   if (!to || !key) {
     await admin.from('contact_messages')
-      .update({ delivery_note: !to ? 'CONTACT_TO not set' : 'RESEND_API_KEY not set' })
+      .update({ delivery_note: !to
+        ? (teamId ? 'club has no address on file' : 'CONTACT_TO not set')
+        : 'RESEND_API_KEY not set' })
       .eq('id', row.id);
     return json({
       ok: true, stored: true, delivered: false,
@@ -110,15 +136,20 @@ Deno.serve(async (req) => {
         to: [to],
         // replying to the notification reaches the person who wrote in
         reply_to: email,
-        subject: '[Courtside] ' + (subject || 'Message from ' + name),
+        subject: (clubName ? '[' + clubName + '] ' : '[Courtside] ') +
+                 (subject || 'Message from ' + name),
         text: [
           'From: ' + name + ' <' + email + '>',
           subject ? 'Subject: ' + subject : null,
+          clubName ? 'For: ' + clubName : null,
           '',
           body,
           '',
           '—',
-          'Sent from the Courtside contact form.',
+          clubName
+            ? 'Sent from ' + clubName + "'s page on Courtside. Reply to this email " +
+              'and it reaches the sender directly.'
+            : 'Sent from the Courtside contact form.',
           'Recorded as ' + row.id
         ].filter(Boolean).join('\n')
       })

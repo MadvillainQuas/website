@@ -272,12 +272,182 @@ const feetInches = cm => {
   return Math.floor(total / 12) + "'" + String(total % 12) + '"';
 };
 
+/* ------------------------------------------------------------------ staff ---
+   The bench, above the squad — head coach first, then whatever order a
+   programme would print.
+
+   AGE, NOT DATE OF BIRTH. `team_staff_public` computes it from a year of
+   birth, which is all that is stored: the same rule `players` follows, and an
+   age derived from a year cannot go stale the way a typed-in age does. The
+   cost is that it is right to within a year, which is what a staff list means
+   anyway.
+
+   Ordering comes from the database's `sort`, seeded from the role, so a club
+   that adds a physio before an assistant coach still gets a list that reads
+   correctly without anybody having to reorder it. */
+const ROLE_SUGGESTIONS = [
+  'Head Coach', 'Assistant Coach', 'Associate Head Coach', 'Player Development',
+  'General Manager', 'Team Manager', 'Strength and Conditioning', 'Physiotherapist',
+  'Doctor', 'Video Analyst', 'Analyst', 'Scout', 'Equipment Manager', 'Statistician'
+];
+
+/* The same ordering the database seeds a new row with (staff_rank in 0036),
+   repeated here so an EDITED role re-sorts too. Two copies of a rule is one
+   too many, but the alternative is a round trip on every keystroke; if this
+   list grows it should become an RPC. */
+const ROLE_RANK = {
+  'head coach': 10, 'manager': 10, 'associate head coach': 15,
+  'assistant coach': 20, 'player development': 25, 'general manager': 30,
+  'team manager': 35, 'strength and conditioning': 40, 's&c': 40,
+  'physiotherapist': 50, 'physio': 50, 'doctor': 55,
+  'analyst': 60, 'video analyst': 60, 'scout': 65,
+  'equipment manager': 70, 'statistician': 75
+};
+const roleRank = r => ROLE_RANK[String(r || '').trim().toLowerCase()] ?? 100;
+
+async function staff(team, canEdit, sb) {
+  const host = $('#roster');
+
+  /* A manager needs the year of birth to edit it; everyone else gets the view,
+     which carries an age and nothing else. Two reads because they are two
+     different things, not one read with a flag. */
+  let rows = [];
+  try {
+    rows = canEdit
+      ? (await sb.from('team_staff').select('id,name,role,born_year,sort,active')
+           .eq('team_id', team.id).eq('active', true).order('sort').order('role')).data || []
+      : await api(`team_staff_public?team_id=eq.${team.id}&select=id,name,role,age,sort` +
+                  `&order=sort,role`);
+  } catch (_) { rows = []; }
+
+  if (!rows.length && !canEdit) return;      // no staff on file, nothing to say
+
+  const head = el('div', 'staffhead');
+  head.appendChild(el('div', 'sh', 'Coaching & support staff'));
+  if (rows.length) head.appendChild(el('div', 'sn', rows.length + ' listed'));
+  host.appendChild(head);
+
+  const grid = el('div', 'staffgrid');
+  host.appendChild(grid);
+
+  const thisYear = new Date().getFullYear();
+
+  const readOnlyCard = (s) => {
+    const c = el('div', 'staffcard');
+    c.appendChild(el('div', 'staffrole', s.role || 'Staff'));
+    c.appendChild(el('div', 'staffname', s.name || '—'));
+    if (s.age != null) {
+      const a = el('div', 'staffage', String(s.age));
+      a.appendChild(el('span', null, 'years'));
+      c.appendChild(a);
+    }
+    return c;
+  };
+
+  const editCard = (s) => {
+    const c = el('div', 'staffcard edit');
+
+    const mk = (cls, value, ph, onSave, attrs) => {
+      const i = el('input', cls);
+      i.value = value == null ? '' : String(value);
+      i.placeholder = ph;
+      Object.assign(i, attrs || {});
+      let last = i.value;
+      const save = async () => {
+        if (i.value === last) return;
+        const out = onSave(i.value.trim());
+        if (out === false) { i.classList.add('bad'); return; }
+        i.classList.remove('bad');
+        const patch = out;
+        /* A row that has never been saved has no id yet — the first edit
+           creates it, so a half-typed card is never left in the database. */
+        if (s.id) {
+          const { error } = await sb.from('team_staff').update(patch).eq('id', s.id);
+          if (error) { i.classList.add('bad'); i.title = error.message; i.value = last; return; }
+        } else {
+          const seed = { team_id: team.id, name: s.name || 'New name',
+                         role: s.role || 'Staff', ...patch };
+          seed.sort = roleRank(seed.role);
+          const { data, error } = await sb.from('team_staff')
+            .insert(seed).select('id').single();
+          if (error) { i.classList.add('bad'); i.title = error.message; i.value = last; return; }
+          s.id = data.id;
+        }
+        Object.assign(s, patch);
+        last = i.value;
+      };
+      i.addEventListener('blur', save);
+      i.addEventListener('keydown', e => { if (e.key === 'Enter') i.blur(); });
+      return i;
+    };
+
+    /* Changing the role also moves the card, because "Head Coach" belongs at
+       the top wherever it was typed. The new position takes effect on the next
+       load rather than jumping the card out from under the cursor. */
+    c.appendChild(mk('role', s.role, 'ROLE', v =>
+      v ? { role: v, sort: roleRank(v) } : false, { maxLength: 60, list: 'staffroles' }));
+
+    c.appendChild(mk('nm', s.name, 'Full name', v =>
+      v ? { name: v } : false, { maxLength: 90 }));
+
+    const row = el('div', 'srow');
+    row.appendChild(mk('yr', s.born_year, 'Born', v => {
+      if (v === '') return { born_year: null };
+      const y = parseInt(v, 10);
+      if (!isFinite(y) || y < 1900 || y > thisYear) return false;
+      return { born_year: y };
+    }, { type: 'number', min: '1900', max: String(thisYear) }));
+
+    const del = el('button', 'staffdel', 'remove');
+    del.type = 'button';
+    del.addEventListener('click', async () => {
+      if (!s.id) { c.remove(); return; }
+      del.disabled = true;
+      /* Deactivated, not deleted. A club that removes the wrong person can be
+         put back, and a hard delete of a named individual is not something to
+         hang on a single mis-click. */
+      const { error } = await sb.from('team_staff').update({ active: false }).eq('id', s.id);
+      del.disabled = false;
+      if (error) { del.title = error.message; del.classList.add('bad'); return; }
+      c.remove();
+    });
+    row.appendChild(del);
+    c.appendChild(row);
+    return c;
+  };
+
+  rows.forEach(s => grid.appendChild(canEdit ? editCard(s) : readOnlyCard(s)));
+
+  if (canEdit) {
+    /* the role suggestions, shared by every card */
+    if (!document.getElementById('staffroles')) {
+      const dl = el('datalist'); dl.id = 'staffroles';
+      ROLE_SUGGESTIONS.forEach(r => { const o = el('option'); o.value = r; dl.appendChild(o); });
+      document.body.appendChild(dl);
+    }
+    const add = el('div', 'staffcard add');
+    const btn = el('button', null, '+ add somebody');
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      const blank = { id: null, name: '', role: '', born_year: null };
+      grid.insertBefore(editCard(blank), add);
+    });
+    add.appendChild(btn);
+    grid.appendChild(add);
+
+    if (!rows.length) {
+      host.appendChild(el('div', 'empty',
+        'No staff listed yet. Add the head coach and anyone else who should be ' +
+        'on the club\'s page — the list orders itself by role.'));
+    }
+  }
+}
+
 async function roster(team) {
   const rows = await api(`roster_entries?team_id=eq.${team.id}&active=eq.true` +
     `&select=jersey,position,players(id,first_name,last_name,slug,is_minor,` +
     `height_cm,weight_kg,wingspan_cm,previous_club)&order=jersey`);
   const host = $('#roster'); host.textContent = '';
-  if (!rows.length) { host.appendChild(el('div', 'empty', 'No players listed yet.')); return; }
 
   /* May this viewer edit? The database is asked, not assumed — and a viewer
      who is not signed in never even makes the request. */
@@ -292,6 +462,11 @@ async function roster(team) {
       }
     } catch (_) { canEdit = false; }
   }
+
+  /* Staff first — a squad list starts with who picks it. */
+  await staff(team, canEdit, sb);
+
+  if (!rows.length) { host.appendChild(el('div', 'empty', 'No players listed yet.')); return; }
 
   const wrap = el('div', 'ft-wrap');
   const t = el('table', 'ft');

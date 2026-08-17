@@ -82,6 +82,8 @@ async function render() {
   renderLeaguePick(admin);
   window.CourtsideKeys.mount({ host: '#keysPanel', sb, league, say });
   window.CourtsideWebhook.mount({ host: '#webhookPanel', sb, league, say });
+  window.CourtsideFeeds.mount({ host: '#feedsPanel', sb, league, say,
+                                cfg: window.COURTSIDE_CONFIG });
   await loadLeague();
 }
 

@@ -6,179 +6,377 @@
    markup to keep in sync — the last thing this site needs is nine copies of a
    menu drifting apart.
 
-   The current league is carried through the links where a page knows it, so
-   moving from a team page to the season table does not silently drop you into
-   a different competition.
+   ---------------------------------------------------------------------------
+   TWO VIEWS, ONE RAIL
 
-   Not loaded by the scorer: see the note in kit/nav.css.
+   At rest the rail is a list of LEAGUES and nothing else. Pick one and it
+   slides sideways to that league's own pages, with the league in the header
+   and a way back. The reason is not decoration: "fixtures" is not a
+   destination on a platform with a dozen leagues, it is half a destination,
+   and a flat rail has to smuggle the other half in through a query string that
+   nobody can see. Making the league the FIRST choice means every row beneath
+   it means exactly one thing.
+
+   Three rows never move — sign in, contact, and back to Prophesy — because
+   they are how somebody gets out, and a way out that relocates is not one.
+
+   WHICH VIEW IT OPENS IN is decided by the page, not remembered: a page that
+   knows its league opens drilled in, because showing "all leagues" while
+   somebody is reading a league's table would be the rail disagreeing with the
+   screen. Backing out is a view change and nothing more; it does not navigate,
+   and it is not persisted, so the next page decides again.
    ============================================================================ */
 (function () {
   if (document.querySelector('.cs-nav')) return;
 
   const here = location.pathname.replace(/\/index\.html$/, '/');
   /* Climb back to /league/ by counting the directories below it, rather than
-     assuming one. Subpages exist now (stats/wowy/), and a hard-coded '../'
+     assuming one. Subpages exist (stats/wowy/), and a hard-coded '../'
      silently pointed them at their parent, which resolved to a real URL and so
      failed as a wrong destination rather than a broken link. */
   const seg = here.split('/league/')[1] || '';
   const parts = seg.split('/').filter(Boolean);
-  /* a trailing filename is not a directory to climb out of */
   if (parts.length && parts[parts.length - 1].indexOf('.') !== -1) parts.pop();
   const root = parts.length ? '../'.repeat(parts.length) : './';
 
   /* Keep the league in hand when we know it.
 
-     The catch is WHEN we know it. A page that was opened without ?l= resolves
-     its league from the network, which lands well after this script has built
-     the rail — so the links were being written league-less and moving from a
-     team page to the season table quietly dropped you into the default
-     competition. Rather than make every page call a refresh hook, the slug is
-     defined as a property here: the assignment those pages already make
-     (`window.__CS_LEAGUE_SLUG = league.slug`) rewrites the links itself. */
+     The catch is WHEN we know it. A page opened without ?l= resolves its
+     league from the network, which lands well after this script has built the
+     rail. Rather than make every page call a refresh hook, the slug is defined
+     as a property below: the assignment those pages already make
+     (`window.__CS_LEAGUE_SLUG = league.slug`) rebuilds the rail itself. */
   const qp = new URLSearchParams(location.search);
   let lg = qp.get('l') || (window.__CS_LEAGUE_SLUG || '');
-  const withLeague = path => lg ? path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(lg) : path;
-  const carriers = [];   // [anchor, base path] for links that take the league
+  const withLeague = (path, slug) => (slug || lg)
+    ? path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(slug || lg)
+    : path;
 
-  /* Named, grouped and labelled. Glyphs are decoration only — several of
-     these destinations are not guessable from an icon, and a couple of the
-     symbols used before did not render in the self-hosted faces at all,
-     which is how the rail ended up as a logo followed by nothing. */
-  const ITEMS = [
-    { label: 'watch' },
-    /* The leagues themselves go here, injected once they have been fetched —
-       see fillLeagues below. A platform with one league should not make you
-       navigate a directory to reach it, and one with nine should not hide them
-       behind a page called "all games". */
-    { leagues: true },
-    { href: root + 'fixtures/',    lg: true, ic: '▥', tx: 'fixtures',     match: /\/league\/fixtures\// },
-    { href: root + 'stats/',       lg: true, ic: '▦', tx: 'statistics',   match: /\/league\/stats\/$/ },
-    { href: root + 'stats/wowy/',  lg: true, ic: '◫', tx: 'wowy',    match: /\/league\/stats\/wowy\// },
-    /* Everything below needs an account, and each entry needs a DIFFERENT
-       account — a team manager has no business being shown "league admin".
-       The group is hidden entirely until somebody signs in, and then only the
-       entries their roles justify appear. Hiding a button is a courtesy, not a
-       control: pressing one you should not have is refused by the database. */
+  const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
+    if (x != null) n.textContent = x; return n; };
+  const reduced = () => window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Run once, after the browser has had a chance to lay out.
+     requestAnimationFrame alone is not enough: a tab that is not compositing
+     — backgrounded, or hidden behind another window — never fires one, and
+     the rail would sit for ever with its titles unmeasured and its animation
+     still suppressed. The timeout is the floor, and whichever lands first
+     wins. */
+  function afterPaint(fn) {
+    let done = false;
+    const once = () => { if (!done) { done = true; fn(); } };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(once);
+    setTimeout(once, 60);
+  }
+
+  /* ------------------------------------------------------- league pages ---
+     What a league HAS. Order is the order somebody wants them: what is on,
+     how it is going, then the deep end. The last three need an account, and
+     each needs a DIFFERENT account — a team manager has no business being
+     shown "league admin". They stay hidden until somebody signs in and then
+     only the ones their roles justify appear. Hiding a row is a courtesy, not
+     a control: pressing one you should not have is refused by the database. */
+  const PAGES = [
+    { href: 'fixtures/',   ic: '▥', tx: 'fixtures',   lg: true, match: /\/league\/fixtures\// },
+    { href: 'stats/',      ic: '▦', tx: 'statistics', lg: true, match: /\/league\/stats\/$/ },
+    { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, match: /\/league\/stats\/wowy\// },
+    { href: 'l/',          ic: '▤', tx: 'table',      lg: true, match: /\/league\/l\// },
     { label: 'take part', auth: true },
-    { href: root + 'score/', ic: '●', tx: 'score a game', match: /\/league\/score\//,
-      auth: true, role: w => (w.scoring || []).length || (w.leagues || []).length },
-    { href: root + 'app/',   ic: '◆', tx: 'club portal',  match: /\/league\/app\//,
-      auth: true, role: () => true },
-    { href: root + 'admin/', ic: '▲', tx: 'league admin', match: /\/league\/admin\//,
-      auth: true, role: w => (w.leagues || []).length || w.is_platform_admin },
-    { gap: true },
-    { account: true },
-    { href: root + 'contact/', ic: '✉', tx: 'contact', match: /\/league\/contact\// },
-    { href: '/index.html',     ic: '←', tx: 'prophesy' }
+    { href: 'score/', ic: '●', tx: 'score a game', match: /\/league\/score\//, auth: true,
+      role: w => (w.scoring || []).length || adminsThis(w) },
+    { href: 'app/',   ic: '◆', tx: 'club portal',  match: /\/league\/app\//,  auth: true,
+      role: w => (w.teams || []).length || adminsThis(w) },
+    { href: 'admin/', ic: '▲', tx: 'league admin', match: /\/league\/admin\//, auth: true,
+      role: w => adminsThis(w) }
   ];
 
-  /* ------------------------------------------------------------- leagues ---
-     A collapsible group holding the leagues themselves.
-
-     It is built empty and filled once the list arrives, because the rail must
-     appear immediately — a navigation that pops in after a network round trip
-     is worse than one that shows a placeholder. The open/closed state is
-     remembered, since somebody who collapsed it does not want it reopening on
-     every page.
-
-     Each league points at its OWN splash page rather than at the table
-     directly: the splash is where a reader finds out what happened last night,
-     and the table is one click on from it. */
-  const LS_KEY = 'cs-nav-leagues-open';
-  function buildLeagueGroup() {
-    const wrap = document.createElement('div');
-    wrap.className = 'lgroup';
-
-    const head = document.createElement('button');
-    head.type = 'button';
-    head.className = 'item ghead';
-    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = '▤';
-    const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = 'leagues';
-    const car = document.createElement('span'); car.className = 'caret'; car.textContent = '›';
-    head.append(ic, tx, car);
-    head.title = 'leagues';
-
-    const list = document.createElement('div');
-    list.className = 'glist';
-    const holding = document.createElement('div');
-    holding.className = 'gempty';
-    holding.textContent = '…';
-    list.appendChild(holding);
-
-    let open = true;
-    try { open = localStorage.getItem(LS_KEY) !== '0'; } catch (_) {}
-    const apply = () => {
-      wrap.classList.toggle('closed', !open);
-      head.setAttribute('aria-expanded', String(open));
-    };
-    head.addEventListener('click', () => {
-      open = !open;
-      try { localStorage.setItem(LS_KEY, open ? '1' : '0'); } catch (_) {}
-      apply();
-    });
-    apply();
-
-    wrap.append(head, list);
-    return { root: wrap, list, holding };
+  /* Scoped to the league on screen where it can be. `leagues` from whoami() is
+     the list of leagues this account administers, so matching on slug answers
+     "may they administer THIS one" rather than "any one at all". */
+  function adminsThis(w) {
+    if (w.is_platform_admin) return true;
+    const mine = w.leagues || [];
+    if (!lg) return mine.length;
+    return mine.some(l => l.slug === lg);
   }
 
-  /* The rail is on public pages that already carry config.js. Where it is not
-     — or where the request fails — the group simply says so rather than
-     sitting on an ellipsis for ever. */
-  async function fillLeagues() {
-    if (!leagueGroup) return;
+  /* --------------------------------------------------------------- marquee ---
+     A row scrolls only if its text does not fit. Measuring is the whole trick:
+     animating everything would move rows that had no need to move, and a rail
+     where six names slide at once is unreadable in a different way from one
+     where they are cut off. */
+  function marquee(text) {
+    const box = el('span', 'marq');
+    const inner = el('span', null, text);
+    box.appendChild(inner);
+    /* after layout, not during it */
+    afterPaint(() => {
+      const over = inner.scrollWidth - box.clientWidth;
+      if (over > 2) {
+        box.classList.add('scrolls');
+        box.style.setProperty('--shift', (-over - 4) + 'px');
+      }
+    });
+    return box;
+  }
+
+  function crest(l) {
+    const c = el('span', 'crest');
+    c.style.setProperty('--ca', l.colour_a || '#93f2bf');
+    c.style.setProperty('--cb', l.colour_b || l.colour_a || '#8ff5ff');
     const cfg = window.COURTSIDE_CONFIG;
-    if (!cfg || !cfg.supabaseUrl) { leagueGroup.holding.textContent = ''; return; }
-    let rows = [];
+    if (l.logo_path && cfg && cfg.supabaseUrl) {
+      const img = document.createElement('img');
+      img.src = cfg.supabaseUrl + '/storage/v1/object/public/' + l.logo_path;
+      img.alt = '';
+      /* a logo that fails to load falls back to the monogram rather than
+         leaving a blank plate */
+      img.addEventListener('error', () => { img.remove(); c.append(halftone(), mono(l)); });
+      c.appendChild(img);
+      return c;
+    }
+    c.append(halftone(), mono(l));
+    return c;
+  }
+  const halftone = () => el('span', 'halftone');
+  const mono = (l) => el('span', 'mono',
+    (l.name || '?').replace(/[^A-Za-z0-9 ]/g, '').trim().charAt(0).toUpperCase() || '?');
+
+  /* =============================================================== build === */
+  const nav = document.createElement('nav');
+  nav.className = 'cs-nav';
+  nav.setAttribute('aria-label', 'Courtside');
+  nav.dataset.view = 'root';
+  /* No sliding until the rail has settled into the view this page belongs in.
+     Removed once the leagues have arrived and the first view is chosen. */
+  nav.classList.add('noanim');
+
+  const navdeck = el('div', 'navdeck');
+  const deck = el('div', 'deck');
+  const rootPanel = el('div', 'panel rootpanel');
+  const leaguePanel = el('div', 'panel leaguepanel');
+  deck.append(rootPanel, leaguePanel);
+  navdeck.appendChild(deck);
+  nav.appendChild(navdeck);
+
+  /* ---- root panel: the title, then the leagues ---- */
+  const title = el('a', 'ptitle', 'Leagues');
+  title.href = root;
+  /* The heading is also the way to the hub. It costs no row and it keeps a
+     destination that would otherwise be unreachable now the wordmark is gone. */
+  title.title = 'All leagues';
+  const list = el('div', 'leagues');
+  const holding = el('div', 'gempty', '…');
+  list.appendChild(holding);
+  rootPanel.append(title, list);
+
+  /* ---- league panel: the header, then the pages ---- */
+  const phead = el('div', 'phead');
+  const back = el('button', 'back', '‹');
+  back.type = 'button';
+  back.title = 'All leagues';
+  back.setAttribute('aria-label', 'Back to all leagues');
+  const lnameLink = el('a', 'lname');
+  phead.append(back, lnameLink);
+  const pages = el('div', 'pages');
+  leaguePanel.append(phead, pages);
+
+  const gated = [];            // [node, predicate] — shown once roles are known
+  const carriers = [];         // [anchor, base path] — links that take the league
+
+  PAGES.forEach(it => {
+    if (it.label) {
+      const d = el('div', 'grouplbl', it.label);
+      if (it.auth) { d.hidden = true; gated.push([d, () => true]); }
+      pages.appendChild(d);
+      return;
+    }
+    const a = el('a', 'item' + (it.match && it.match.test(here) ? ' on' : ''));
+    a.href = it.lg ? withLeague(root + it.href) : root + it.href;
+    if (it.lg) carriers.push([a, root + it.href]);
+    a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
+    a.title = it.tx;
+    if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
+    pages.appendChild(a);
+  });
+
+  /* ---- the three that never move ---- */
+  nav.appendChild(el('div', 'gap'));
+
+  const acct = el('div', 'acct');
+  const acctLink = el('a', 'item');
+  const acctIc = el('span', 'ic', '◐');
+  const acctTx = el('span', 'tx', 'sign in');
+  acctLink.append(acctIc, acctTx);
+  acctLink.href = root + 'signin/?next=' +
+    encodeURIComponent(location.pathname + location.search);
+  acctLink.title = 'sign in';
+  acct.appendChild(acctLink);
+  nav.appendChild(acct);
+
+  const contact = el('a', 'item' + (/\/league\/contact\//.test(here) ? ' on' : ''));
+  contact.href = root + 'contact/';
+  contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
+  contact.title = 'contact';
+  nav.appendChild(contact);
+
+  const prophesy = el('a', 'item');
+  prophesy.href = '/index.html';
+  prophesy.append(el('span', 'ic', '←'), el('span', 'tx', 'prophesy'));
+  prophesy.title = 'back to Prophesy';
+  nav.appendChild(prophesy);
+
+  /* ============================================================== views === */
+  let leagues = [];
+  const bySlug = () => leagues.find(l => l.slug === lg) || null;
+
+  /* The deck's height is measured rather than assumed. Both panels are in the
+     document at once so the transform can slide between them, which means the
+     taller one would otherwise set the height and leave a hole beneath the
+     shorter one. */
+  function sizeDeck(animate) {
+    const active = nav.dataset.view === 'league' ? leaguePanel : rootPanel;
+    const h = active.offsetHeight;
+    if (!h) return;
+    if (!animate) {
+      const t = navdeck.style.transition;
+      navdeck.style.transition = 'none';
+      navdeck.style.height = h + 'px';
+      void navdeck.offsetHeight;              // commit before restoring
+      navdeck.style.transition = t;
+    } else {
+      navdeck.style.height = h + 'px';
+    }
+  }
+
+  function setView(view, animate) {
+    const changing = nav.dataset.view !== view;
+    nav.dataset.view = view;
+    /* Both panels stay visible FOR THE DURATION of the slide — hiding the one
+       being left would make it vanish mid-travel — and the one that ends up
+       off screen is then taken out of the tab order, because a keyboard user
+       must never land on a link they cannot see. */
+    if (changing && animate && !reduced()) {
+      navdeck.classList.add('animating');
+      rootPanel.setAttribute('aria-hidden', 'false');
+      leaguePanel.setAttribute('aria-hidden', 'false');
+      setTimeout(() => {
+        navdeck.classList.remove('animating');
+        applyHidden();
+      }, 360);
+    } else {
+      applyHidden();
+    }
+    sizeDeck(animate && !reduced());
+  }
+  function applyHidden() {
+    const league = nav.dataset.view === 'league';
+    rootPanel.setAttribute('aria-hidden', String(league));
+    leaguePanel.setAttribute('aria-hidden', String(!league));
+  }
+
+  function fillHeader(l) {
+    lnameLink.textContent = '';
+    lnameLink.append(crest(l), marquee(l.name));
+    lnameLink.href = root + '?l=' + encodeURIComponent(l.slug);
+    lnameLink.title = l.name + ' — league home';
+  }
+
+  back.addEventListener('click', () => {
+    setView('root', true);
+    /* focus follows the eye: the row you came from is where you are now */
+    const row = list.querySelector('a[data-league-slug="' + (lg || '') + '"]');
+    if (row) row.focus({ preventScroll: true });
+  });
+
+  /* ---------------------------------------------------------- the leagues ---
+     Built empty and filled once the list arrives, because the rail must appear
+     immediately — navigation that pops in after a network round trip is worse
+     than navigation that shows a placeholder. */
+  async function fillLeagues() {
+    const cfg = window.COURTSIDE_CONFIG;
+    if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
     try {
-      const r = await fetch(cfg.supabaseUrl + '/rest/v1/leagues?select=slug,name,colour_a&order=name',
+      const r = await fetch(cfg.supabaseUrl +
+        '/rest/v1/leagues?select=slug,name,colour_a,colour_b,logo_path&order=name',
         { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
       if (!r.ok) throw new Error(String(r.status));
-      rows = await r.json();
+      leagues = await r.json();
     } catch (_) {
-      leagueGroup.holding.textContent = 'unavailable';
+      holding.textContent = 'unavailable';
       return;
     }
+    drawLeagues();
+  }
 
-    leagueGroup.list.textContent = '';
-    if (!rows.length) {
-      const d = document.createElement('div');
-      d.className = 'gempty'; d.textContent = 'none yet';
-      leagueGroup.list.appendChild(d);
+  function drawLeagues() {
+    list.textContent = '';
+    if (!leagues.length) {
+      list.appendChild(el('div', 'gempty', 'none yet'));
+      sizeDeck(false);
       return;
     }
-    rows.forEach(l => {
-      const a = document.createElement('a');
-      a.className = 'item sub';
+    leagues.forEach(l => {
+      const a = el('a', 'item lrow' + (lg && l.slug === lg ? ' on' : ''));
       a.href = root + '?l=' + encodeURIComponent(l.slug);
-      /* the current league is marked whether you arrived via ?l= or the page
-         resolved it for itself */
-      if (lg && l.slug === lg) a.classList.add('on');
-      const dot = document.createElement('span');
-      dot.className = 'ic dot';
-      dot.style.background = l.colour_a || 'var(--lume)';
-      const t = document.createElement('span');
-      t.className = 'tx'; t.textContent = l.name;
-      a.append(dot, t);
-      a.title = l.name;
       a.dataset.leagueSlug = l.slug;
-      leagueGroup.list.appendChild(a);
+      a.title = l.name;
+      a.append(crest(l), marquee(l.name));
+
+      a.addEventListener('click', (e) => {
+        /* Let a middle click, a modified click or a right click do what the
+           browser would do — this is a real link to a real page and hijacking
+           every activation of it would break opening a league in a new tab. */
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
+            e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        lg = l.slug;
+        markCurrent();
+        fillHeader(l);
+        retarget();
+        setView('league', true);
+        /* The slide is allowed to finish before the page changes, so the
+           transition is something somebody sees rather than something that is
+           thrown away by a navigation a frame later. With motion turned off
+           there is nothing to wait for. */
+        const go = () => { location.href = a.href; };
+        if (reduced()) go(); else setTimeout(go, 300);
+      });
+
+      list.appendChild(a);
+    });
+    markCurrent();
+    const l = bySlug();
+    if (l) { fillHeader(l); setView('league', false); }
+    else { setView('root', false); }
+    /* one more measure after the marquee pass has run, and only then is the
+       rail allowed to animate — everything up to here is the page's opening
+       position, not a change somebody made */
+    afterPaint(() => {
+      sizeDeck(false);
+      afterPaint(() => nav.classList.remove('noanim'));
     });
   }
 
-  /* ------------------------------------------------------------- account ---
-     Who is signed in, and the way in or out.
+  function markCurrent() {
+    list.querySelectorAll('a[data-league-slug]').forEach(a => {
+      a.classList.toggle('on', !!lg && a.dataset.leagueSlug === lg);
+    });
+  }
+  function retarget() {
+    carriers.forEach(([a, base]) => { a.href = withLeague(base); });
+  }
 
+  /* --------------------------------------------------------------- account ---
      The rail does NOT load the Supabase SDK. It is on every public page and
-     the SDK is a large dependency to add to a page that only needs to know
-     whether somebody is signed in — so the stored session is read directly,
-     and the actual sign-in flow lives on its own page which does load it.
+     the SDK is a large dependency for a page that only needs to know whether
+     somebody is signed in — so the stored session is read directly, and the
+     sign-in flow lives on its own page, which does load it.
 
      The session key is the SDK's own convention: sb-<project-ref>-auth-token,
      with the ref taken from the configured URL so this keeps working if the
      project ever moves. */
-  let accountSlot = null;
-
   function projectRef() {
     const c = window.COURTSIDE_CONFIG;
     if (!c || !c.supabaseUrl) return null;
@@ -204,28 +402,13 @@
     return { token: tok, email: user.email || '' };
   }
 
-  function buildAccount() {
-    const wrap = document.createElement('div');
-    wrap.className = 'acct';
-    const link = document.createElement('a');
-    link.className = 'item';
-    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = '◐';
-    const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = 'sign in';
-    link.append(ic, tx);
-    link.href = root + 'signin/?next=' + encodeURIComponent(location.pathname + location.search);
-    link.title = 'sign in';
-    wrap.appendChild(link);
-    return { root: wrap, link, ic, tx };
-  }
-
   /* Ask the database what this account may actually do. whoami() is the same
      RPC the admin console uses, so the rail and the console can never disagree
      about somebody's roles. */
   async function whoami(token) {
     const c = window.COURTSIDE_CONFIG;
     const r = await fetch(c.supabaseUrl + '/rest/v1/rpc/whoami', {
-      method: 'POST',
-      cache: 'no-store',
+      method: 'POST', cache: 'no-store',
       headers: {
         apikey: c.supabaseAnonKey,
         Authorization: 'Bearer ' + token,
@@ -239,23 +422,22 @@
 
   async function applyAuth() {
     const sess = storedSession();
-    if (!accountSlot) return;
 
     if (!sess) {
-      /* signed out: the take-part group stays hidden entirely */
       gated.forEach(([node]) => { node.hidden = true; });
-      accountSlot.tx.textContent = 'sign in';
-      accountSlot.ic.textContent = '◐';
-      accountSlot.link.href = root + 'signin/?next=' +
+      acctTx.textContent = 'sign in';
+      acctIc.textContent = '◐';
+      acctLink.href = root + 'signin/?next=' +
         encodeURIComponent(location.pathname + location.search);
-      accountSlot.link.title = 'sign in';
+      acctLink.title = 'sign in';
+      sizeDeck(false);
       return;
     }
 
-    accountSlot.tx.textContent = sess.email || 'account';
-    accountSlot.ic.textContent = '◉';
-    accountSlot.link.href = root + 'signin/';
-    accountSlot.link.title = sess.email ? sess.email + ' — manage or sign out' : 'account';
+    acctTx.textContent = sess.email || 'account';
+    acctIc.textContent = '◉';
+    acctLink.href = root + 'signin/';
+    acctLink.title = sess.email ? sess.email + ' — manage or sign out' : 'account';
 
     let who = {};
     try { who = await whoami(sess.token) || {}; } catch (_) { who = {}; }
@@ -268,80 +450,46 @@
        leaving a label with nothing beneath it */
     const anyShown = gated.some(([n]) => n.tagName === 'A' && !n.hidden);
     gated.forEach(([n]) => { if (n.tagName !== 'A') n.hidden = !anyShown; });
+    sizeDeck(false);
   }
 
-  const nav = document.createElement('nav');
-  nav.className = 'cs-nav';
-  nav.setAttribute('aria-label', 'Courtside');
-
-  const brand = document.createElement('a');
-  brand.className = 'brand';
-  brand.href = root;
-  const mark = document.createElement('span');
-  mark.className = 'mark'; mark.textContent = 'C';
-  const word = document.createElement('span');
-  word.className = 'word'; word.textContent = 'Courtside';
-  brand.append(mark, word);
-  nav.appendChild(brand);
-
-  let leagueGroup = null;      // filled asynchronously
-
-  const gated = [];            // [node, predicate] — shown once roles are known
-
-  ITEMS.forEach(it => {
-    if (it.leagues) { leagueGroup = buildLeagueGroup(); nav.appendChild(leagueGroup.root); return; }
-    if (it.account) { accountSlot = buildAccount(); nav.appendChild(accountSlot.root); return; }
-    if (it.gap) { const d = document.createElement('div'); d.className = 'gap'; nav.appendChild(d); return; }
-    if (it.sep) { const d = document.createElement('div'); d.className = 'sep'; nav.appendChild(d); return; }
-    if (it.label) {
-      const d = document.createElement('div');
-      d.className = 'grouplbl'; d.textContent = it.label;
-      /* signed out, the heading goes with the things it heads */
-      if (it.auth) { d.hidden = true; gated.push([d, () => true]); }
-      nav.appendChild(d); return;
-    }
-    const a = document.createElement('a');
-    a.className = 'item' + (it.match && it.match.test(here) ? ' on' : '');
-    a.href = it.lg ? withLeague(it.href) : it.href;
-    if (it.lg) carriers.push([a, it.href]);
-    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = it.ic;
-    const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = it.tx;
-    a.append(ic, tx);
-    a.title = it.tx;
-    if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
-    nav.appendChild(a);
-  });
-
+  /* ================================================================ mount === */
   const mount = () => {
     document.body.appendChild(nav);
     document.body.classList.add('has-nav');
+    applyHidden();
+    sizeDeck(false);
   };
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);
 
-  fillLeagues().then(apply);
+  fillLeagues();
   applyAuth();
-  /* signing out in another tab should not leave this one showing an
-     admin link that no longer works */
+
+  /* signing out in another tab should not leave this one showing an admin
+     link that no longer works */
   window.addEventListener('storage', e => {
     if (e.key && e.key.indexOf('-auth-token') !== -1) applyAuth();
   });
+  /* the rail is a fixed column; a resize changes what fits in it */
+  window.addEventListener('resize', () => sizeDeck(false));
 
-  /* the assignment pages already make now repoints the rail, with no page edit */
-  const apply = () => {
-    carriers.forEach(([a, base]) => { a.href = withLeague(base); });
-    /* and the league that is being viewed becomes the highlighted one */
-    if (leagueGroup) {
-      leagueGroup.list.querySelectorAll('a[data-league-slug]').forEach(a => {
-        a.classList.toggle('on', !!lg && a.dataset.leagueSlug === lg);
-      });
-    }
-  };
+  /* The assignment pages already make repoints the rail and drills it in, with
+     no page edit. This is how a page that resolved its league from the network
+     rather than from ?l= ends up on the right view. */
   try {
     Object.defineProperty(window, '__CS_LEAGUE_SLUG', {
       configurable: true,
       get() { return lg; },
-      set(v) { lg = v || ''; apply(); }
+      set(v) {
+        lg = v || '';
+        markCurrent();
+        retarget();
+        const l = bySlug();
+        if (l) { fillHeader(l); setView('league', false); }
+        else { setView('root', false); }
+        applyAuth();                 // role gating is league-scoped
+      }
     });
-  } catch (e) { /* a page that froze the global keeps the links it was built with */ }
+  } catch (e) { /* a page that froze the global keeps the rail it was built with */ }
 })();

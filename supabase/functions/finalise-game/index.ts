@@ -15,6 +15,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 // the very same file the scorer and the public page run — one source of truth
 import { deriveGame, teamAdv, playerAdv, lineupAgg } from '../_shared/engine.js';
+// the partner feeds — built and posted by the same code the console tests with
+import { dispatchGame } from '../_shared/feeds.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -179,12 +181,30 @@ Deno.serve(async (req) => {
     // webhook does, and a Discord outage must not fail a finalise or reopen a
     // game. The outcome is recorded so an admin can see why nothing arrived.
     await notify(admin, gameId, g.competition_id, d, game.teams).catch(() => {});
+
+    // And tell the sites that carry our results — RealGM, Eurobasket, anyone
+    // else holding a scraper key. Queued first so a delivery survives this
+    // function falling over mid-post, then attempted immediately because a
+    // result is worth most on the night. Same rule as the webhook above: a
+    // partner being down is not a reason to fail a finalise, so failures are
+    // recorded and reported, never thrown.
+    let feeds: any[] = [];
+    try {
+      await admin.rpc('queue_feed_deliveries', { p_game: gameId });
+      feeds = await dispatchGame(admin, gameId);
+      feeds.filter((f) => !f.ok).forEach((f) =>
+        warnings.push(`feed "${f.feed}" did not accept the result: ` +
+                      (f.error || 'HTTP ' + f.status) + ' — it can be resent from the console'));
+    } catch (e) {
+      console.error('[finalise] feed dispatch failed:', String(e));
+    }
+
     await admin.from('audit_log').insert({
       actor: user.id, action: 'finalise', subject: 'game', subject_id: gameId,
-      detail: { score: d.score, warnings }
+      detail: { score: d.score, warnings, feeds: feeds.map((f) => ({ feed: f.feed, ok: f.ok })) }
     });
 
-    return json({ ok: true, status: 'final', score: d.score, warnings });
+    return json({ ok: true, status: 'final', score: d.score, warnings, feeds });
   } catch (err) {
     // never strand a game in 'finalising'
     await admin.from('games').update({ status: 'live' }).eq('id', gameId);
