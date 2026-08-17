@@ -33,9 +33,22 @@
      platform's front page — a full-bleed pool with its own way into
      everything — and a dark fixed column down the side of it is a navigation
      bar arguing with a landing page. Every other page keeps the rail,
-     including /epinoia/?l=slug, which is a different page at the same path. */
-  const atSplash = /\/league\/$/.test(location.pathname.replace(/index\.html$/, ''))
-                   && !new URLSearchParams(location.search).has('l');
+     including /epinoia/?l=slug, which is a different page at the same path.
+
+     ASKED OF THE PAGE, NOT OF THE URL. This used to match the path against
+     /league/$, and renaming the section to /epinoia/ broke it silently: the
+     regex stopped matching and the rail came back on the one page that must
+     not have one, pushing the whole pool 174px to the right. A folder name is
+     not a fact about a page, and a rename should not be able to change what a
+     page is.
+
+     So it asks the document instead. mode.js settles m-splash from the URL
+     before the first paint, and #splash exists in this one file only — the two
+     together identify the splash exactly. Neither depends on where the folder
+     lives. The second half matters: the news archive also carries m-splash
+     when no league is named, and that page does want its rail. */
+  const atSplash = document.documentElement.classList.contains('m-splash')
+                   && !!document.getElementById('splash');
   if (atSplash) return;
 
   const here = location.pathname.replace(/\/index\.html$/, '/');
@@ -93,21 +106,21 @@
      a control: pressing one you should not have is refused by the database. */
   const PAGES = [
     { href: 'fixtures/',   ic: '▥', tx: 'fixtures',   lg: true, key: 'fixtures',
-      match: /\/league\/fixtures\// },
+      match: /\/epinoia\/fixtures\// },
     { href: 'stats/',      ic: '▦', tx: 'statistics', lg: true, key: 'statistics',
-      match: /\/league\/stats\/$/ },
+      match: /\/epinoia\/stats\/$/ },
     { href: 'stats/wowy/', ic: '◫', tx: 'wowy',       lg: true, key: 'wowy',
-      match: /\/league\/stats\/wowy\// },
+      match: /\/epinoia\/stats\/wowy\// },
     { href: 'l/',          ic: '▤', tx: 'table',      lg: true, key: 'table',
-      match: /\/league\/l\// },
+      match: /\/epinoia\/l\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
-      match: /\/league\/news\// },
+      match: /\/epinoia\/news\// },
     { label: 'take part', auth: true },
-    { href: 'score/', ic: '●', tx: 'score a game', match: /\/league\/score\//, auth: true,
+    { href: 'score/', ic: '●', tx: 'score a game', match: /\/epinoia\/score\//, auth: true,
       key: 'score', role: w => (w.scoring || []).length || adminsThis(w) },
-    { href: 'app/',   ic: '◆', tx: 'club portal',  match: /\/league\/app\//,  auth: true,
+    { href: 'app/',   ic: '◆', tx: 'club portal',  match: /\/epinoia\/app\//,  auth: true,
       key: 'portal', role: w => (w.teams || []).length || adminsThis(w) },
-    { href: 'admin/', ic: '▲', tx: 'league admin', match: /\/league\/admin\//, auth: true,
+    { href: 'admin/', ic: '▲', tx: 'league admin', match: /\/epinoia\/admin\//, auth: true,
       key: 'admin', role: w => adminsThis(w) }
   ];
 
@@ -231,7 +244,7 @@
   adminRow.title = 'league administration';
   /* Not `/epinoia/admin/` loosely, or the platform console below would light
      this row up as well — its address is underneath this one. */
-  if (/\/league\/admin\/(?!platform\/)/.test(here)) adminRow.classList.add('on');
+  if (/\/epinoia\/admin\/(?!platform\/)/.test(here)) adminRow.classList.add('on');
   adminRow.hidden = true;
 
   /* THE PLATFORM CONSOLE IS A SEPARATE ROW, not a tab inside the league one,
@@ -244,7 +257,7 @@
   platRow.href = root + 'admin/platform/';
   platRow.append(el('span', 'ic', '◆'), el('span', 'tx', 'platform'));
   platRow.title = 'platform administration — every league, accounts, settings';
-  if (/\/league\/admin\/platform\//.test(here)) platRow.classList.add('on');
+  if (/\/epinoia\/admin\/platform\//.test(here)) platRow.classList.add('on');
   platRow.hidden = true;
 
   /* The way back OUT of a country. The country panel has no back button
@@ -328,7 +341,7 @@
   acct.appendChild(acctLink);
   nav.appendChild(acct);
 
-  const contact = el('a', 'item' + (/\/league\/contact\//.test(here) ? ' on' : ''));
+  const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
   contact.href = root + 'contact/';
   contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
   contact.title = 'contact';
