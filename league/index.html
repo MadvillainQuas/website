@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#04100b">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.instagram.com">
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=49">
-<link rel="stylesheet" href="kit/nav.css?v=49">
-<link rel="stylesheet" href="kit/splash.css?v=49">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=51">
+<link rel="stylesheet" href="kit/nav.css?v=51">
+<link rel="stylesheet" href="kit/splash.css?v=51">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -306,6 +306,58 @@
   @media (max-width:620px){
     .kana{font-size:11px;top:calc(var(--u)*2);right:calc(var(--u)*2);opacity:.75}
   }
+
+  /* ---- team of the year ------------------------------------------------
+     The same card as a star, with the rank plate replaced by the award and a
+     ribbon across the shoulder. Anything more would compete with the badge
+     the club already has on it. */
+  .toty-grid{display:grid;gap:calc(var(--u)*2);padding:0 calc(var(--u)*3) calc(var(--u)*2);
+    grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
+  @media (min-width:1100px){ .toty-grid{grid-template-columns:repeat(5,minmax(150px,220px));
+    justify-content:start} }
+  .toty .club-plate{aspect-ratio:4/3}
+  .toty-ribbon{position:absolute;top:9px;left:-30px;transform:rotate(-38deg);
+    background:var(--amber);color:#04100b;font-family:var(--f-micro);font-size:7px;
+    letter-spacing:.14em;text-transform:uppercase;padding:3px 34px;z-index:3;
+    box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .toty-mark{font-family:var(--f-score);font-size:13px;letter-spacing:.04em}
+  .toty-lead{padding:0 calc(var(--u)*3) calc(var(--u)*2);font-family:var(--f-micro);
+    font-size:9.5px;color:var(--ink-3);line-height:1.95;max-width:78ch}
+
+  /* ---- the ballot ---- */
+  .bl{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .bl-h{font-family:var(--f-score);font-size:clamp(20px,3.4vw,30px);line-height:1;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent;margin:0 0 6px}
+  .bl-s{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:1.9;
+    margin-bottom:calc(var(--u)*2);max-width:74ch}
+  .bl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin-bottom:calc(var(--u)*2)}
+  .bl-pick{background:var(--ground);padding:9px 11px;display:flex;align-items:center;gap:9px;
+    cursor:pointer;font-family:var(--f-ui);font-size:12.5px;text-align:left;border:none;
+    color:var(--ink);width:100%}
+  .bl-pick:hover{background:color-mix(in oklch,var(--lume) 8%,transparent)}
+  .bl-pick.on{background:color-mix(in oklch,var(--lume) 16%,transparent);
+    box-shadow:inset 3px 0 0 var(--lume)}
+  .bl-dot{width:9px;height:9px;flex:none;border-radius:50%}
+  .bl-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bl-tm{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
+  .bl-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .bl-count{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+  .bl-msg{font-family:var(--f-micro);font-size:9.5px;margin-top:9px;line-height:1.8}
+  .bl-msg.ok{color:var(--lume)} .bl-msg.err{color:var(--flare)}
+
+  /* ---- socials ---- */
+  .so-wrap{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .so-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:calc(var(--u)*2)}
+  .so-handle{font-family:var(--f-ui);font-weight:800;font-size:14px}
+  .so-handle a{color:var(--ink);text-decoration:none}
+  .so-handle a:hover{color:var(--lume)}
+  .so-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:calc(var(--u)*2)}
+  .so-card{border:1px solid var(--rule);background:var(--panel);overflow:hidden}
+  .so-card iframe{display:block;width:100%;height:520px;border:0;background:#fff}
+  .so-empty{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.9}
 </style>
 </head>
 <body>
@@ -444,6 +496,18 @@
     <div id="clubs"></div>
   </div>
 
+  <!-- team of the year (league splash only) ------------------------------
+       ABOVE the stars, and drawn with the same cards on purpose: a reader who
+       has learnt what a star card means should not have to learn a second
+       thing to read the team of the year. The difference is the plate, which
+       carries the award rather than a rank. -->
+  <div class="sec hide" id="totySec">
+    <div class="sec-h"><span class="idx">01</span><h2 id="totyHead">Team of the Year</h2>
+      <span class="note" id="totyNote"></span></div>
+    <div id="toty"></div>
+    <div id="ballot"></div>
+  </div>
+
   <!-- stars (league splash only) ----------------------------------------- -->
   <div class="sec hide" id="starsSec">
     <div class="sec-h"><span class="idx">01</span><h2>Stars</h2>
@@ -472,6 +536,18 @@
     <div class="sec-h"><span class="idx">04</span><h2>Merchandise</h2>
       <span class="note" id="merchNote"></span></div>
     <div id="merch"></div>
+  </div>
+
+  <!-- socials -------------------------------------------------------------
+       Instagram, embedded as IFRAMES rather than through their script. Their
+       embed.js would need script-src to allow instagram.com, which is a
+       third-party script on every league page for the sake of four
+       photographs. The iframe embed is the same content, sandboxed, and only
+       costs a frame-src entry. -->
+  <div class="sec hide" id="socialSec">
+    <div class="sec-h"><span class="idx">05</span><h2>Socials</h2>
+      <span class="note" id="socialNote"></span></div>
+    <div id="social"></div>
   </div>
 
   <!-- entry points ------------------------------------------------------- -->
@@ -520,16 +596,18 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=49"></script>
-<script src="vendor/supabase.js?v=49"></script>
+<script src="config.js?v=51"></script>
+<script src="vendor/supabase.js?v=51"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=49"></script>
-<script src="bpm.js?v=49"></script>
-<script src="data.js?v=49"></script>
-<script src="merch.js?v=49"></script>
-<script src="splash.js?v=49"></script>
-<script src="home.js?v=49"></script>
-<script src="nav.js?v=49"></script>
+<script src="season.js?v=51"></script>
+<script src="bpm.js?v=51"></script>
+<script src="data.js?v=51"></script>
+<script src="merch.js?v=51"></script>
+<script src="toty.js?v=51"></script>
+<script src="socials.js?v=51"></script>
+<script src="splash.js?v=51"></script>
+<script src="home.js?v=51"></script>
+<script src="nav.js?v=51"></script>
 </body>
 </html>

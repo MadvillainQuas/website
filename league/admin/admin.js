@@ -446,6 +446,13 @@ function mountGovernance() {
   G.mountSuspensions({ host: '#suspensionPanel', sb, league, comps, say });
   G.mountRecords({ host: '#recordsPanel', sb, league, teams: byIdObj(), say,
                    onDone: () => loadTeams() });
+
+  const A = window.EpinoiaAwards;
+  A.mountOverrides({ host: '#awardsPanel', sb, comp, league, teams: byIdObj(), say });
+  A.mountToty({ host: '#totyPanel', sb, comp, league, say });
+
+  window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
+                                  cfg: window.EPINOIA_CONFIG });
 }
 
 /* The generator needs the entered teams and their groups, plus what is already

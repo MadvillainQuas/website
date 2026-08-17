@@ -25,6 +25,23 @@ async function api(p) {
   return r.json();
 }
 
+/* POST to a function rather than GET a table. The anonymous reads on this
+   page all go through PostgREST's table endpoints; the ballot and the socials
+   go through SECURITY DEFINER functions instead, because both have to return
+   something narrower than the row they read — a shortlist without the minors
+   on it, a socials row without the access token. */
+async function rpc(fn, args) {
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
+               Accept: 'application/json' },
+    body: JSON.stringify(args || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));
+  return j;
+}
+
 function fail(host, msg) {
   const h = $(host); h.textContent = ''; h.appendChild(el('div', 'empty', msg));
 }
@@ -551,6 +568,35 @@ function splash() {
 /* The section numbers are a reading aid, so they must count what is actually
    on the page. The hub hides Clubs and Stars — both need a league — and a hub
    whose first heading is "02" looks like something failed to load. */
+/* ------------------------------------------------- team of the year --------
+   Above the stars, sharing their cards. The competition is the league's most
+   recent one, because a ballot belongs to a season rather than to a league —
+   an old team of the year hanging around on next season's front page would be
+   worse than none. */
+async function teamOfTheYear() {
+  if (!LEAGUE || !window.EpinoiaToty) return;
+  const comps = await leagueCompetitions(LEAGUE.id);
+  if (!comps.length) return;
+  for (const id of comps) {
+    const drew = await window.EpinoiaToty.mount({
+      sec: $('#totySec'), host: $('#toty'), ballotHost: $('#ballot'),
+      head: $('#totyHead'), note: $('#totyNote'),
+      competitionId: id, rpc
+    });
+    if (drew) return;                 // the first one with a ballot wins
+  }
+}
+
+async function socials() {
+  if (!LEAGUE || !window.EpinoiaSocials) return;
+  try {
+    await window.EpinoiaSocials.mount({
+      sec: $('#socialSec'), host: $('#social'), note: $('#socialNote'),
+      leagueId: LEAGUE.id, rpc
+    });
+  } catch (_) { /* a missing Instagram is not an error worth a red box */ }
+}
+
 function renumber() {
   let n = 0;
   document.querySelectorAll('.sec').forEach(sec => {
@@ -609,8 +655,10 @@ function renumber() {
     await games();
     splash();
     const roster = await clubs();
+    await teamOfTheYear();
     const star = await stars();
     await merch(roster, star);
+    await socials();
     renumber();
   } else {
     /* ------------------------------------------------------ the splash ---

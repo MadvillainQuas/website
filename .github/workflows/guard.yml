@@ -151,6 +151,12 @@ jobs:
         # JSON but not in the CSV header.
         run: node supabase/tests/feeds.test.mjs
 
+      - name: Official-vote CSV parsing and name folding
+        # the two places a pasted spreadsheet breaks a naive parser: a club
+        # with a comma in its name, and a surname carrying accents in one
+        # system and not in another
+        run: node supabase/tests/csvvotes.test.mjs
+
       - name: Roster CSV parsing
         # the one path where a manager hands us a whole squad at once, so a
         # quiet misparse is twenty wrong rows rather than one
