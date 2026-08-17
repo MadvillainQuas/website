@@ -29,6 +29,15 @@
 (function () {
   if (document.querySelector('.ep-nav')) return;
 
+  /* THE SPLASH HAS NO RAIL. /league/ with no league asked for is the
+     platform's front page — a full-bleed pool with its own way into
+     everything — and a dark fixed column down the side of it is a navigation
+     bar arguing with a landing page. Every other page keeps the rail,
+     including /league/?l=slug, which is a different page at the same path. */
+  const atSplash = /\/league\/$/.test(location.pathname.replace(/index\.html$/, ''))
+                   && !new URLSearchParams(location.search).has('l');
+  if (atSplash) return;
+
   const here = location.pathname.replace(/\/index\.html$/, '/');
   /* Climb back to /league/ by counting the directories below it, rather than
      assuming one. Subpages exist (stats/wowy/), and a hard-coded '../'

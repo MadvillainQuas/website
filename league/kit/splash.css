@@ -29,16 +29,33 @@
    no motion, not for less of it.
    ============================================================================ */
 
-.pool{
-  position:fixed; inset:0; overflow:hidden; z-index:0;
-  background:#bfe2ee;                    /* the water, before anything loads */
-  /* colours of the pool, in one place */
+/* THE PALETTE LIVES ON THE BODY, not on the pool. It was declared on .pool
+   first, which is a SIBLING of the content — so every var() in the splash
+   resolved to nothing, fell back to the kit's dark-theme tokens, and set the
+   title in mint white on white marble. A custom property is only useful to
+   what inherits from the element carrying it. */
+body.splash-body{
   --w-shallow:#d7eef6;
   --w-deep:#8fc9de;
   --stone:#f6f7f8;
   --stone-edge:rgba(120,150,165,.34);
-  --ink:#2b4a58;
-  --ink-2:#517184;
+  /* THE TEXT IS SLATE, NOT PALE BLUE. The first pass set the title in the
+     water colour — pale blue on near-white marble, measured at 1.68:1, which
+     is not text, it is a watermark. These are measured against the stone
+     rather than chosen by eye: 12.1:1 for the ink, 5.6:1 for the secondary
+     (which carries 8.5px type, so comfortably past AA rather than level with
+     it), and 7.1:1 for the title. All three stay cool enough to belong to a
+     pool instead of arriving from somebody else's palette. */
+  --ink:#22333c;
+  --ink-2:#4e6674;
+  --ink-title:#31586b;
+  background:#bfe2ee;
+  color:var(--ink);
+}
+
+.pool{
+  position:fixed; inset:0; overflow:hidden; z-index:0;
+  background:#bfe2ee;                    /* the water, before anything loads */
 }
 
 /* every layer is oversized so a slow translate never runs out of tile */
@@ -102,17 +119,52 @@
 
 /* ============================================================ the marble ===
    The stone the pool is lined with, cut and set above the waterline. */
+/* A SLAB IS IN THE WATER, NOT ON TOP OF A PAGE. What makes something look
+   submerged rather than pasted is not a bigger drop shadow; it is four
+   separate things, and the first pass had only the last one:
+
+     the WATERLINE      a dark band where the stone enters the water, tight to
+                        the edge, which is the shadow the surface casts on it
+     the DISPLACED LIGHT a bright hairline just outside that, where the water
+                        piles up against the stone and catches the sun
+     the DEPTH SHADOW   a wide, soft, cool pool underneath, offset downward,
+                        because the light is overhead
+     the BEVEL          light on the top edge and dark on the bottom, so the
+                        stone has thickness rather than being a rectangle
+
+   All four are box-shadows on one element, so there is nothing to keep in
+   step and no extra nodes. */
 .slab{
   position:relative;
   background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
   background-size:520px 520px;
   border:1px solid var(--stone-edge);
-  /* a thin light top edge and a shadow beneath: thickness, not a card */
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.9),
-    inset 0 -1px 0 rgba(120,150,165,.18),
-    0 14px 34px rgba(30,70,90,.20),
-    0 2px 6px rgba(30,70,90,.14);
+    /* bevel */
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -1px 0 rgba(70,110,130,.22),
+    inset 0 -6px 12px -6px rgba(40,90,110,.20),
+    /* displaced light, hugging the edge */
+    0 0 0 1px rgba(255,255,255,.55),
+    /* waterline */
+    0 2px 3px rgba(30,70,90,.30),
+    /* depth */
+    0 16px 30px -8px rgba(22,62,82,.34),
+    0 42px 60px -30px rgba(22,62,82,.46);
+}
+/* the stone breaks the surface, so the water is momentarily brighter along
+   its top edge and darker where it is pressed down at the foot */
+.slab::before{
+  content:''; position:absolute; left:-10px; right:-10px; top:-9px; height:16px;
+  background:radial-gradient(60% 100% at 50% 100%,
+    rgba(255,255,255,.55), transparent 70%);
+  pointer-events:none; z-index:-1;
+}
+.slab::after{
+  content:''; position:absolute; left:-14px; right:-14px; bottom:-16px; height:28px;
+  background:radial-gradient(60% 100% at 50% 0%,
+    rgba(24,66,88,.30), transparent 72%);
+  pointer-events:none; z-index:-1; filter:blur(2px);
 }
 .slab.sunk{ box-shadow:inset 0 2px 7px rgba(30,70,90,.22) }
 
@@ -124,30 +176,24 @@
   color:var(--ink);
 }
 
-/* THE CENTRE COLUMN IS CENTRED ON THE VIEWPORT, not on what is left after the
-   rail. The pool runs full bleed underneath the rail, so centring in the
-   content box would put the title visibly off to the right of the water it
-   sits in — half the rail's width, which is exactly the sort of wrongness
-   nobody can name but everybody sees.
-
-   Only where there is room for it: the negative margin is cancelled below
-   960px, and below 820px the rail becomes a bottom bar and --nav-w is 0
-   anyway, so this becomes a no-op on its own. */
+/* Dead centre, and nothing to correct for: this page has no rail. It carried
+   a negative margin to cancel the rail's padding for a while, which then
+   pushed the title 174px LEFT once the rail was removed — a correction
+   outliving the thing it corrected. */
 .sp-mid{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:0; padding:calc(var(--u)*6) 0 calc(var(--u)*4);
-}
-@media (min-width:960px){
-  .sp-mid{ margin-left:calc(var(--nav-w) * -1) }
 }
 .sp-title{
   width:min(560px, 92vw); text-align:center;
   padding:calc(var(--u)*5) calc(var(--u)*4) calc(var(--u)*4);
 }
 .sp-title h1{
-  margin:0; line-height:.9; color:var(--w-deep);
+  margin:0; line-height:.9; color:var(--ink-title);
   font-size:clamp(44px, 9vw, 92px);
-  text-shadow:0 1px 0 rgba(255,255,255,.85);
+  /* one hairline of white beneath the letters, the way cut stone catches
+     light on its lower edge — not a glow */
+  text-shadow:0 1px 0 rgba(255,255,255,.9);
 }
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
@@ -197,21 +243,52 @@
 
 /* ============================================================== the three ===
    Left, centre and right, on one row, each cut into its own segments. */
+/* ONE GRID, NOT THREE PILES. The decks hold two, three and however-many
+   segments, so sizing each independently left three blocks of different
+   heights sitting on different baselines — which is what "not properly
+   gridded" looks like.
+
+   So the whole row is a single 12-column grid: 3 / 5 / 4, which gives the
+   scorer the middle and the width its three segments need. Every deck is
+   stretched to the same height, every segment inside is stretched to the same
+   height, and the gutters are identical throughout, so the tops and the
+   bottoms of all nine segments line up across the screen. */
 .sp-decks{
   display:grid; gap:calc(var(--u)*3);
-  grid-template-columns:1fr 1.25fr 1fr;
-  align-items:end;
+  grid-template-columns:repeat(12, 1fr);
+  align-items:stretch;
   padding-bottom:calc(var(--u)*2);
+  max-width:1360px; margin:0 auto; width:100%;
 }
-@media (max-width:900px){
-  .sp-decks{ grid-template-columns:1fr; align-items:stretch }
+.sp-deck{ display:flex; flex-direction:column; min-width:0 }
+.sp-deck.left{ grid-column:span 3 }
+.sp-deck.mid{ grid-column:span 5 }
+.sp-deck.right{ grid-column:span 4 }
+.sp-deck .segs{ flex:1 }
+@media (max-width:1080px){
+  .sp-decks{ grid-template-columns:repeat(6, 1fr) }
+  .sp-deck.left{ grid-column:span 3 }
+  .sp-deck.right{ grid-column:span 3 }
+  .sp-deck.mid{ grid-column:span 6; order:-1 }
 }
+@media (max-width:640px){
+  .sp-decks{ grid-template-columns:1fr }
+  .sp-deck.left, .sp-deck.mid, .sp-deck.right{ grid-column:1 / -1 }
+}
+/* A FIXED HEIGHT, because one of these headings contains the logotype and a
+   different face is a different line box — which put the middle deck's
+   segments a pixel below the other two. A one-pixel step across a grid is
+   exactly the kind of thing that reads as "not quite right" without ever
+   being noticed. */
 .deck-h{
   font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em;
   text-transform:uppercase; color:var(--ink-2);
-  padding:0 0 7px 2px;
+  height:20px; line-height:13px; padding:0 0 7px 2px;
+  display:flex; align-items:flex-end; gap:5px;
 }
-.segs{ display:grid; gap:1px; background:var(--stone-edge); overflow:hidden }
+.deck-h .epinoia-mark{ font-size:11px; line-height:1 }
+.segs{ display:grid; gap:1px; background:var(--stone-edge); overflow:hidden;
+  align-items:stretch; grid-auto-rows:1fr }
 .segs.three{ grid-template-columns:repeat(3,1fr) }
 .segs.two{ grid-template-columns:repeat(2,1fr) }
 @media (max-width:560px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
@@ -220,7 +297,7 @@
    runs across all of them, so the divisions read as cuts in one stone. */
 .seg{
   position:relative; display:flex; flex-direction:column; gap:5px;
-  min-height:104px; padding:calc(var(--u)*2);
+  min-height:118px; padding:calc(var(--u)*2);
   background:#fbfbfc url('../brand/pool-marble.jpg') repeat;
   background-size:520px 520px;
   text-decoration:none; color:var(--ink); cursor:pointer;
@@ -251,6 +328,12 @@
 .seg .d{
   font-family:var(--f-micro); font-size:8.5px; line-height:1.85;
   color:var(--ink-2); margin-top:auto;
+}
+/* the water rising over the stone darkens it, so the type has to come up with
+   it or the segment becomes unreadable at exactly the moment somebody is
+   looking at it */
+.seg:hover .k, .seg:hover .d, .seg:focus-visible .k, .seg:focus-visible .d{
+  color:var(--ink);
 }
 .seg.off{ cursor:not-allowed }
 .seg.off .t, .seg.off .k{ opacity:.5 }

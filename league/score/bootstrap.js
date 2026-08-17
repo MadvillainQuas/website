@@ -716,25 +716,49 @@
   if (TRAINING) setUpTraining();
 
   function setUpTraining() {
+    /* TEN A SIDE. Five is a starting five and nothing else — a training game
+       with six players cannot be substituted, which is half of what somebody
+       is here to try. */
     const HOME = ['Ada Shaw', 'Kit Brand', 'Sol Maddox', 'Rae Fenwick', 'Ivo Marsh',
-                  'Bea Okoro'];
+                  'Bea Okoro', 'Tam Sowerby', 'Niamh Blackwood', 'Rafe Underhill',
+                  'Cleo Danforth'];
     const AWAY = ['Cass Vernon', 'Dane Hollis', 'Eli Barrow', 'Wren Castell',
-                  'Otto Lynch', 'Juno Pike'];
+                  'Otto Lynch', 'Juno Pike', 'Milo Ferrers', 'Sasha Quill',
+                  'Bram Ashdown', 'Vita Crowe'];
     const NAMES = [HOME, AWAY];
     const LABELS = ['harbour blues', 'marble whites'];
 
-    const start = () => {
+    /* THE SETUP IS NOT A PLACE THIS MODE CAN GO. Training exists so somebody
+       can see the scoring screen without an account; leaving a route back to
+       the rosters turns it into a general-purpose scoring app with no fixture
+       behind it, which is the branch that has to stay closed. So the back
+       button on the starter picker is removed as it appears, and the setup
+       screen is never shown again once the game has started. */
+    const seal = () => {
+      const back = document.getElementById('spBack');
+      if (back) back.remove();
+    };
+
+    const fill = () => {
       const cards = document.querySelectorAll('.team-card');
       if (cards.length < 2) return false;
       cards.forEach((card, t) => {
         const nameIn = card.querySelector('.tname');
         if (!nameIn) return;
         nameIn.value = LABELS[t];
+        /* The card opens with five empty rows. Filling those first and only
+           then adding more leaves exactly ten — the earlier version added ten
+           on top and left five blanks behind, which startGame() skips but
+           which are still five rows of nothing sitting in the sheet. */
         const add = card.querySelector('.addP');
         NAMES[t].forEach((who, i) => {
-          add && add.click();
-          const rows = card.querySelectorAll('.rrow');
-          const row = rows[rows.length - 1];
+          let rows = card.querySelectorAll('.rrow');
+          let row = rows[i];
+          if (!row) {
+            add && add.click();
+            rows = card.querySelectorAll('.rrow');
+            row = rows[rows.length - 1];
+          }
           if (!row) return;
           const n = row.querySelector('.rname'), num = row.querySelector('.rnum');
           if (n) { n.value = who; n.dispatchEvent(new Event('input', { bubbles: true })); }
@@ -742,30 +766,52 @@
         });
       });
       const go = document.getElementById('goGame');
-      if (go) go.click();
+      if (!go) return false;
+      go.click();
       return true;
     };
 
-    /* the setup screen is built by the page's own script, which may not have
-       run yet; try until it is there, then give up rather than spin */
-    let tries = 0;
-    const tick = () => {
-      if (start() || ++tries > 40) return;
-      setTimeout(tick, 100);
+    /* STRAIGHT TO THE GAME. Pressing "go into game" lands on the starting-five
+       picker, which is a screen about a decision somebody has not been asked
+       to make yet. The first five of ten are already selected by the picker
+       itself, so the sensible default is one more click — and this makes it,
+       rather than leaving a stranger on a screen whose purpose they have to
+       work out. Driven through the real buttons, so training cannot drift
+       away from the live app the way a second code path would. */
+    const enter = () => {
+      seal();
+      const go = document.getElementById('spGo');
+      if (!go) return false;
+      go.click();
+      return !document.getElementById('startersview') ||
+             document.getElementById('startersview').classList.contains('hidden');
     };
-    tick();
 
-    const flag = document.createElement('div');
-    flag.textContent = 'TRAINING — nothing is saved';
-    flag.style.cssText = [
-      'position:fixed', 'top:6px', 'left:50%', 'transform:translateX(-50%)',
-      'z-index:2147483000', 'pointer-events:none',
-      'padding:4px 12px', 'border-radius:99px',
-      'background:rgba(4,16,11,.86)', 'border:1px solid rgba(147,242,191,.34)',
-      'color:#93f2bf', 'font:11px/1 ui-monospace,monospace',
-      'letter-spacing:.14em', 'text-transform:uppercase'
-    ].join(';');
-    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(flag));
-    if (document.body) document.body.appendChild(flag);
+    /* The setup screen is built by the page's own script, which may not have
+       run yet. Poll briefly for each step, then stop rather than spin. */
+    let tries = 0;
+    const step = (fn, next) => {
+      const tick = () => {
+        if (fn()) { if (next) next(); return; }
+        if (++tries > 60) return;
+        setTimeout(tick, 80);
+      };
+      tick();
+    };
+    step(fill, () => { tries = 0; step(enter, seal); });
+
+    /* and if anything ever puts the setup screen back, it does not stay */
+    const guard = new MutationObserver(() => {
+      seal();
+      const setup = document.getElementById('setup');
+      if (setup && !setup.classList.contains('hidden') &&
+          document.getElementById('game') &&
+          !document.getElementById('game').classList.contains('hidden')) {
+        setup.classList.add('hidden');
+      }
+    });
+    if (document.body) guard.observe(document.body, { childList: true, subtree: true });
+    else document.addEventListener('DOMContentLoaded',
+      () => guard.observe(document.body, { childList: true, subtree: true }));
   }
 })();
