@@ -17,19 +17,21 @@
    else's page falls back to the scoreboard face while the same mark on ours
    uses the logotype, which is the kind of drift nobody notices for months.
 
-   SIX GLYPHS: A E I N O P. `.epinoia-mark` may only ever go on an element
-   whose whole content is the word EPINOIA. Never on #title, which the table
-   embed replaces with a league's name.
+   The lambda is a real glyph in this face — see the kit for how it got there.
+
+   `.epinoia-mark` may only ever go on an element whose whole content is the
+   brand. Never on #title, which the table embed replaces with a league's
+   name — a league set in the logotype is a league claiming to be us.
    --------------------------------------------------------------------------- */
-@font-face{font-family:'EpinoiaLogo';src:url('../brand/epinoia-logo.ttf') format('truetype');
+@font-face{font-family:'EpinoiaMark';
+  src:url('../brand/epinoia-mark.woff2') format('woff2'),
+      url('../brand/epinoia-mark.ttf') format('truetype');
   font-weight:400;font-style:normal;font-display:swap}
 .epinoia-mark{
-  font-family:'EpinoiaLogo','Jersey25',ui-monospace,monospace !important;
-  text-transform:uppercase; letter-spacing:.02em;
+  font-family:'EpinoiaMark','Archivo',system-ui,sans-serif !important;
+  text-transform:uppercase !important; letter-spacing:.005em !important;
 }
-/* the logotype is about twice as wide as Jersey25 at the same size, so the
-   plate's mark comes down to fit the disc it sits in */
-.ep-plate .mk.epinoia-mark{ font-size:8px; letter-spacing:.04em }
+.ep-plate .mk.epinoia-mark{ font-size:10px; letter-spacing:.02em }
 
 .cse{
   /* THE PALETTE IS A VARIABLE SET.

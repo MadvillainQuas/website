@@ -571,11 +571,12 @@ function renumber() {
     const wm = document.querySelector('.wordmark');
     if (wm) {
       wm.textContent = LEAGUE.name;
-      /* The logotype face has six glyphs — A E I N O P — which is EPINOIA and
-         nothing else. The moment this heading stops saying EPINOIA it has to
-         stop using it, or a league called anything else renders as a row of
-         missing-glyph boxes. */
+      /* The logotype is the platform's, not a league's. The moment this
+         heading carries a league name it stops being the brand, so the face
+         and the brand's accessible name both come off — otherwise the page
+         announces a league as "Epinoia" and sets its name in our logotype. */
       wm.classList.remove('epinoia-mark');
+      wm.removeAttribute('aria-label');
     }
     const tag = document.querySelector('.tagline');
     if (tag) {

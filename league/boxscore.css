@@ -19,6 +19,30 @@
   font-weight:100 900;font-stretch:62% 125%;font-style:normal;font-display:swap}
 @font-face{font-family:'MartianMono';src:url('kit/fonts/martian.woff2') format('woff2');
   font-weight:100 800;font-stretch:75% 112.5%;font-style:normal;font-display:swap}
+
+/* ---- the logotype ------------------------------------------------------
+   The scorer is a single self-contained file — it loads no stylesheet at all,
+   by design, because it has to work in a sports hall with no signal. So the
+   mark's face is declared here as well as in the kit and in embed.css. Three
+   copies of six lines is the price of a page that does not depend on anything.
+
+   The lambda is a real glyph in this face: the V outline flipped about the cap
+   height, which in a grotesque is exactly the crossbar-less A the logo draws.
+
+   !important on all three properties because .logo below sets lowercase at
+   .42em tracking — which is where "too much space between characters" came
+   from — and lowercased, Λ has no lower case to fall to, so it would sit as a
+   lone capital in the middle of the word. */
+@font-face{font-family:'EpinoiaMark';
+  src:url('../brand/epinoia-mark.woff2') format('woff2'),
+      url('../brand/epinoia-mark.ttf') format('truetype');
+  font-weight:400;font-style:normal;font-display:swap}
+.epinoia-mark{
+  font-family:'EpinoiaMark','Archivo',system-ui,sans-serif !important;
+  text-transform:uppercase !important;
+  letter-spacing:.02em !important;
+  font-weight:400 !important;
+}
 :root{
   --bg0:#02100b; --bg1:#062018;
   --glass-hi:rgba(190,255,224,.11); --glass-lo:rgba(110,220,180,.035);

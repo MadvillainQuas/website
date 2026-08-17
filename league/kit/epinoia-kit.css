@@ -27,22 +27,30 @@
   font-weight:100 800;font-stretch:75% 112.5%;font-style:normal;font-display:swap}
 
 /* ---------- 1b. the logotype ----------------------------------------------
-   EPINOIA'S OWN FACE. Read this before using it anywhere.
+   EPINOIA'S OWN FACE, and it is not the one that was supplied.
 
-   IT CONTAINS SIX GLYPHS: A E I N O P. That is enough to set the word EPINOIA
-   and nothing else at all. Every other character — a space, a digit, an S —
-   renders as a missing-glyph box.
+   Epinoia_Logo.ttf carries six glyphs (A E I N O P) set very loose — enough
+   for the word and nothing else, with gaps you could park in. This replaces it
+   with a small face derived from Archivo, which is already self-hosted here
+   and is SIL OFL, pinned to one weight and width so it is static, and subset
+   to the alphabet.
 
-   So it is bound to `.epinoia-mark`, and that class goes on an element whose
-   entire content is the literal string EPINOIA. Never on a heading that might
-   carry a league's name, never on a sentence that happens to mention the
-   platform, never as a fallback in a font stack that other text can reach.
-   The hub's wordmark is swapped for a league name when one is selected, and
-   home.js takes the class off at the same moment for exactly this reason.
+   THE LAMBDA IS REAL, not a substitution at the markup level. None of the four
+   faces this site hosts carries U+039B — they are Latin-only subsets — so
+   writing EPINOIΛ in any of them would drop the last letter into a system
+   fallback matching nothing around it. So the face was given one: the V
+   outline, flipped about the cap height. In a grotesque the A and the V are
+   the same triangle, which makes an inverted V exactly the crossbar-less A the
+   logo draws, at the same stroke weight and with the same terminals as the
+   letters beside it. Built by scratchpad/buildmark.py; the recipe is in the
+   font's own copyright string.
 
-   A local fallback is listed after it so that if the file fails to load the
-   word still reads, in the scoreboard face, rather than vanishing. */
-@font-face{font-family:'EpinoiaLogo';src:url('../brand/epinoia-logo.ttf') format('truetype');
+   It has the whole alphabet now, so SCORING sets in it too — but the class
+   still belongs only on the brand. A league's name in the logotype would be a
+   league claiming to be the platform. */
+@font-face{font-family:'EpinoiaMark';
+  src:url('../brand/epinoia-mark.woff2') format('woff2'),
+      url('../brand/epinoia-mark.ttf') format('truetype');
   font-weight:400;font-style:normal;font-display:swap}
 
 /* !important, which is not a habit worth having and is right here. Every page
@@ -52,18 +60,23 @@
    the element and the logotype never rendered. A logotype that a local rule
    can quietly override is not a logotype. */
 .epinoia-mark{
-  font-family:'EpinoiaLogo','Jersey25',ui-monospace,monospace !important;
-  text-transform:uppercase;      /* the six glyphs are capitals */
-  letter-spacing:.02em;
+  font-family:'EpinoiaMark','Archivo',system-ui,sans-serif !important;
+  /* case and tracking are part of the logotype, not decoration a page may
+     restyle. The scorer's own .logo sets lowercase at .42em, which is where
+     the "too much space" came from — and lowercased, the lambda has no lower
+     case to fall to, so it would sit as a capital in the middle of a word. */
+  text-transform:uppercase !important;
+  letter-spacing:.005em !important;
+  font-weight:400;
 }
-/* THE LOGOTYPE IS TWICE AS WIDE as the scoreboard face at the same size —
-   EPINOIA measures 608px at 100px against Jersey25's 298px, because the
-   letterforms are wide geometric monoline capitals. So a size tuned for the
-   old wordmark reads as a much bigger object in this one, and the sizes below
-   are set to a similar optical WIDTH rather than a similar point size: 54px
-   here puts the word at 336px, against the 220px it used to occupy. Prominent,
-   which a logotype should be, without becoming the whole band. */
-.wordmark.epinoia-mark{ font-size:clamp(28px,5.4vw,54px) }
+
+/* SIZED BY WIDTH, NOT BY POINTS. The logotype sets at 467px per 100px against
+   the scoreboard face's 298px, so a size that suited the old wordmark reads as
+   a much bigger object in this one. 60px puts EPINOIΛ at about 280px, against
+   the 220px the word used to occupy — prominent, which a logotype should be,
+   without becoming the whole band. (The supplied face was wider still, 608px
+   per 100, which is why these numbers have moved twice.) */
+.wordmark.epinoia-mark{ font-size:clamp(30px,5.8vw,60px) }
 .wm.epinoia-mark{ font-size:13px; padding-left:9px; padding-right:9px }
 
 @property --ring{syntax:'<angle>';inherits:false;initial-value:0deg}
