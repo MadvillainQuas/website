@@ -209,6 +209,20 @@ async function mountCrest() {
          what actually happened rather than assuming. */
       const pub = await sb.rpc('publish_team_logo', { p_media: up.id });
       const live = !pub.error;
+
+      /* THE OLD FILE IS REMOVED THROUGH THE STORAGE API, because SQL may not
+         touch it — Supabase refuses a direct delete from storage.objects and
+         says to come through the API instead. The function hands back the
+         paths whose rows it removed and this clears the files.
+
+         Best-effort on purpose, and after the publish rather than before it: an
+         orphaned crest is a few kilobytes nobody points at, and failing a
+         publish because a tidy-up failed would be the wrong way round. */
+      const orphans = (pub.data && pub.data.orphans) || [];
+      if (live && orphans.length) {
+        sb.storage.from('media-public').remove(orphans).catch(() => {});
+      }
+
       paint(window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, up.storage_path),
             live ? 'approved' : 'pending');
       say(live ? 'Crest updated — it is live now.'
