@@ -66,6 +66,55 @@ function fixtureActions(o) {
     out.push(del);
   }
 
+  /* ---- a false start goes back on the listing ----
+     A fixture opened by mistake becomes 'live' and stays there: nothing
+     finalises it, because no game was played. It then sits in every list as
+     permanently in progress, the strip pins it to the front as a live game,
+     and when the fixture is actually played there is no clean game to score —
+     the roster, the starters and the tip are already set from the false start.
+
+     DELIBERATELY A TWO-STEP. The first call does not confirm the discard, so
+     the database refuses it and answers with how many events would be
+     destroyed. That number goes into the question asked here, which means
+     nobody ever agrees to "discard the events" without having been told how
+     many there are. When there is nothing to lose the first call simply
+     succeeds and no question is asked at all. */
+  if (game.status === 'live' || game.status === 'finalising') {
+    const back = el('button', 'ep-btn mini', 'back to listing');
+    back.type = 'button';
+    back.title = 'this game was started by mistake — return it to the fixture list';
+    back.addEventListener('click', async () => {
+      back.disabled = true;
+      const first = await sb.rpc('revert_game', { p_game: game.id });
+      if (!first.error) {
+        back.disabled = false;
+        say(first.data, 'ok');
+        onDone && onDone();
+        return;
+      }
+      const m = /has (\d+) recorded event/.exec(first.error.message || '');
+      if (!m) { back.disabled = false; return say(first.error.message, 'err'); }
+
+      const n = m[1];
+      const sure = confirm(
+        'Put this game back on the fixture list?\n\n' +
+        n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
+        'permanently. The clubs, the date and the venue are kept, so the ' +
+        'fixture can be scored properly when it is played.\n\n' +
+        'Close the scorer on that game first — a device still open on it will ' +
+        'carry on publishing.');
+      if (!sure) { back.disabled = false; return; }
+
+      const { data, error } = await sb.rpc('revert_game',
+        { p_game: game.id, p_discard_events: true });
+      back.disabled = false;
+      if (error) return say(error.message, 'err');
+      say(data, 'ok');
+      onDone && onDone();
+    });
+    out.push(back);
+  }
+
   if (game.status === 'final' || game.status === 'void') {
     const isVoid = game.status === 'void';
     const v = el('button', 'ep-btn mini', isVoid ? 'reinstate' : 'void');
