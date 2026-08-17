@@ -10,10 +10,11 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=77">
-<link rel="stylesheet" href="kit/nav.css?v=77">
-<link rel="stylesheet" href="kit/news.css?v=77">
-<link rel="stylesheet" href="kit/splash.css?v=77">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=80">
+<link rel="stylesheet" href="kit/nav.css?v=80">
+<link rel="stylesheet" href="kit/card.css?v=80">
+<link rel="stylesheet" href="kit/news.css?v=80">
+<link rel="stylesheet" href="kit/splash.css?v=80">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -89,83 +90,17 @@
   .embedhit:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
   @media (max-width:640px){ .embedframe{height:280px} }
   /* ---- clubs: each one a screenprint -----------------------------------
-     The brief was an underground art-movement piece, so the cards are built
-     like a riso/screenprint pull rather than a UI component: one ink per club
-     over black, a halftone bitten into the plate, deliberate misregistration
-     on a second pass, registration crosses at the corners and an edition mark.
-     Everything is CSS — no images to load, nothing to go missing, and the
-     monogram scales to whatever the club is called.
-
-     It has to survive being the ONLY thing on screen for a club with no logo,
-     because right now none of them have one. So the monogram is the artwork,
-     not a placeholder for it. */
+     The plate itself — the ink flood, the halftone, the registration crosses,
+     the misregistered monogram, the caption band — is in kit/card.css, because
+     the news page draws the same card and had been drawing it with none of the
+     paint. What stays here is the layout of the clubs grid, and further down
+     the variants that turn one plate into a star, a Team of the Year or a shop
+     window: aspect ratios and monogram sizes, nothing structural. */
   .clubgrid{display:grid;gap:calc(var(--u)*2);padding:calc(var(--u)*3);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
   /* a four-club league should not stretch four cards across a 2000px screen */
   @media (min-width:1100px){ .clubgrid{grid-template-columns:repeat(auto-fit,minmax(178px,240px));justify-content:start} }
 
-  .club{position:relative;display:block;text-decoration:none;color:inherit;
-    isolation:isolate}
-  .club-plate{position:relative;aspect-ratio:1;overflow:hidden;
-    background:#07130d;border:1px solid var(--rule);
-    display:grid;place-items:center;
-    transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s ease}
-  .club:hover .club-plate{border-color:var(--ink-c);transform:translate(-2px,-2px)}
-
-  /* the ink block: a hard flood that the halftone eats into */
-  .club-flood{position:absolute;inset:0;background:var(--ink-c);opacity:.14}
-  /* halftone, bitten coarse so it reads as print rather than texture */
-  .club-tone{position:absolute;inset:-20%;
-    background-image:radial-gradient(circle,var(--ink-c) 1.1px,transparent 1.4px);
-    background-size:7px 7px;opacity:.5;
-    transform:rotate(-12deg)}
-  /* the grain of the paper */
-  .club-grain{position:absolute;inset:0;pointer-events:none;opacity:.18;
-    mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.55'/></svg>")}
-
-  /* registration crosses, as a printer would leave them */
-  .club-reg{position:absolute;width:11px;height:11px;opacity:.5;
-    background:
-      linear-gradient(var(--ink-c),var(--ink-c)) center/1px 100% no-repeat,
-      linear-gradient(var(--ink-c),var(--ink-c)) center/100% 1px no-repeat}
-  .club-reg.tl{top:8px;left:8px} .club-reg.tr{top:8px;right:8px}
-  .club-reg.bl{bottom:8px;left:8px} .club-reg.br{bottom:8px;right:8px}
-
-  /* the mark. Two passes, the under-pass offset — misregistration is the
-     whole visual argument, so it is exaggerated slightly on hover. */
-  .club-mark{position:relative;display:grid;place-items:center;z-index:1}
-  .club-mono{font-family:var(--f-score);font-size:clamp(40px,8vw,64px);
-    line-height:.8;letter-spacing:-.02em;text-transform:uppercase;
-    grid-area:1/1;color:var(--ink)}
-  .club-mono.ghost{color:var(--ink-c);
-    transform:translate(3px,3px);mix-blend-mode:screen;opacity:.85;
-    transition:transform .18s cubic-bezier(.2,.8,.3,1)}
-  .club:hover .club-mono.ghost{transform:translate(6px,5px)}
-  .club-logo{grid-area:1/1;width:62%;height:62%;object-fit:contain;z-index:1;
-    filter:drop-shadow(3px 3px 0 var(--ink-c))}
-
-  /* a stencilled band across the plate, like a stamped crate */
-  .club-band{position:absolute;left:-10%;right:-10%;top:64%;height:15px;
-    background:var(--ink-c);opacity:.9;transform:rotate(-4deg);
-    display:grid;place-items:center;overflow:hidden}
-  .club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.42em;
-    text-transform:uppercase;color:#07130d;white-space:nowrap;font-weight:700}
-
-  .club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
-  .club-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;
-    text-transform:uppercase;letter-spacing:.02em;color:var(--ink);
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .club:hover .club-name{color:var(--ink-c)}
-  .club-ed{margin-left:auto;font-family:var(--f-micro);font-size:8px;
-    color:var(--ink-3);letter-spacing:.1em;white-space:nowrap}
-
-  @media (prefers-reduced-motion:reduce){
-    .club-plate,.club-mono.ghost{transition:none}
-    .club:hover .club-plate{transform:none}
-    .club:hover .club-mono.ghost{transform:translate(3px,3px)}
-  }
-  .hide{display:none !important}
   /* ---- stars: the club plate, with a rank where the monogram goes ---- */
   .starrow-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
     padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u))}
@@ -354,10 +289,8 @@
   .so-handle{font-family:var(--f-ui);font-weight:800;font-size:14px}
   .so-handle a{color:var(--ink);text-decoration:none}
   .so-handle a:hover{color:var(--lume)}
-  .so-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-    gap:calc(var(--u)*2)}
-  .so-card{border:1px solid var(--rule);background:var(--panel);overflow:hidden}
-  .so-card iframe{display:block;width:100%;height:520px;border:0;background:#fff}
+  /* the tiles are .ig-grid / .ig-tile in kit/card.css, shared with the club
+     strip on a team profile */
   .so-empty{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.9}
 
   /* the two links under the season embeds */
@@ -624,22 +557,23 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=77"></script>
-<script src="vendor/supabase.js?v=77"></script>
+<script src="config.js?v=80"></script>
+<script src="vendor/supabase.js?v=80"></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=77"></script>
-<script src="bpm.js?v=77"></script>
-<script src="data.js?v=77"></script>
-<script src="merch.js?v=77"></script>
-<script src="upload.js?v=77"></script>
-<script src="newsblocks.js?v=77"></script>
-<script src="news.js?v=77"></script>
-<script src="toty.js?v=77"></script>
-<script src="socials.js?v=77"></script>
-<script src="music.js?v=77"></script>
-<script src="splash.js?v=77"></script>
-<script src="home.js?v=77"></script>
-<script src="nav.js?v=77"></script>
+<script src="season.js?v=80"></script>
+<script src="bpm.js?v=80"></script>
+<script src="data.js?v=80"></script>
+<script src="merch.js?v=80"></script>
+<script src="upload.js?v=80"></script>
+<script src="newsblocks.js?v=80"></script>
+<script src="news.js?v=80"></script>
+<script src="toty.js?v=80"></script>
+<script src="igtile.js?v=80"></script>
+<script src="socials.js?v=80"></script>
+<script src="music.js?v=80"></script>
+<script src="splash.js?v=80"></script>
+<script src="home.js?v=80"></script>
+<script src="nav.js?v=80"></script>
 </body>
 </html>

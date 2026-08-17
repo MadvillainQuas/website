@@ -257,21 +257,12 @@ async function socialBlock(team, opts, wrap) {
   });
   box.appendChild(head);
 
+  /* Tiles from igtile.js, which is also what the league's Socials section uses.
+     This built its own before, at minmax(250px,1fr) — so a club with one pinned
+     post got it at the full width of the column. */
   if (posts.length) {
-    const grid = el('div', 'vsocial-g');
-    posts.forEach(code => {
-      const cell = el('div', 'vsocial-c');
-      const f = document.createElement('iframe');
-      f.src = 'https://www.instagram.com/p/' + code + '/embed';
-      f.loading = 'lazy';
-      f.title = 'Instagram post';
-      f.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
-      f.setAttribute('referrerpolicy', 'no-referrer');
-      f.setAttribute('scrolling', 'no');
-      cell.appendChild(f);
-      grid.appendChild(cell);
-    });
-    box.appendChild(grid);
+    const grid = window.EpinoiaIgTile && window.EpinoiaIgTile.grid(posts, 4);
+    if (grid) box.appendChild(grid);
   }
   wrap.appendChild(box);
 }

@@ -10,9 +10,10 @@
 <title>Team · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=77">
-<link rel="stylesheet" href="../kit/table.css?v=77">
-<link rel="stylesheet" href="../kit/nav.css?v=77">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=80">
+<link rel="stylesheet" href="../kit/table.css?v=80">
+<link rel="stylesheet" href="../kit/nav.css?v=80">
+<link rel="stylesheet" href="../kit/card.css?v=80">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
@@ -246,10 +247,8 @@
   .vsocial-l{font-family:var(--f-ui);font-weight:700;font-size:12.5px;
     color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule-2)}
   .vsocial-l:hover{color:var(--lume);border-bottom-color:var(--lume)}
-  .vsocial-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-    gap:calc(var(--u)*2)}
-  .vsocial-c{border:1px solid var(--rule);background:var(--panel);overflow:hidden}
-  .vsocial-c iframe{display:block;width:100%;height:500px;border:0;background:#fff}
+  /* the tiles are .ig-grid / .ig-tile in kit/card.css, shared with the
+     league's Socials section */
 </style>
 </head>
 <body>
@@ -301,17 +300,18 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=77"></script>
-<script src="../config.js?v=77"></script>
-<script src="../bpm.js?v=77"></script>
-<script src="../season.js?v=77"></script>
-<script src="../data.js?v=77"></script>
-<script src="../lineups.js?v=77"></script>
-<script src="../wowy.js?v=77"></script>
-<script src="lineupui.js?v=77"></script>
-<script src="../fulltable.js?v=77"></script>
-<script src="venue.js?v=77"></script>
-<script src="team.js?v=77"></script>
-<script src="../nav.js?v=77"></script>
+<script src="../vendor/supabase.js?v=80"></script>
+<script src="../config.js?v=80"></script>
+<script src="../bpm.js?v=80"></script>
+<script src="../season.js?v=80"></script>
+<script src="../data.js?v=80"></script>
+<script src="../lineups.js?v=80"></script>
+<script src="../wowy.js?v=80"></script>
+<script src="lineupui.js?v=80"></script>
+<script src="../fulltable.js?v=80"></script>
+<script src="../igtile.js?v=80"></script>
+<script src="venue.js?v=80"></script>
+<script src="team.js?v=80"></script>
+<script src="../nav.js?v=80"></script>
 </body>
 </html>

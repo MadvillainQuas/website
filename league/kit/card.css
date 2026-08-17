@@ -1,0 +1,121 @@
+/* ============================================================================
+   THE CARD — one screenprinted plate, wherever a card appears.
+
+   Lifted verbatim out of league/index.html's <style> block, which is where it
+   was written and where it stayed. news.css has said "the card itself is the
+   club plate from the kit" since the day it was written, and it was not true:
+   the plate lived on one page, so the news page drew the same markup with none
+   of the paint. Measured there before this move — no border, a transparent
+   plate instead of #07130d, the registration crosses unpainted, the ink flood
+   at full opacity instead of .14, and the caption band laid out as a block
+   instead of a row. The card was not a different design; it was the same design
+   with the stylesheet missing.
+
+   THE BRIEF WAS AN UNDERGROUND ART-MOVEMENT PIECE, so these are built like a
+   riso/screenprint pull rather than a UI component: one ink per card over
+   black, a halftone bitten into the plate, deliberate misregistration on a
+   second pass, registration crosses at the corners and an edition mark.
+   Everything is CSS — no images to load, nothing to go missing, and the
+   monogram scales to whatever the thing is called.
+
+   It has to survive being the ONLY thing on screen for a club with no logo,
+   because right now none of them have one. So the monogram is the artwork, not
+   a placeholder for it.
+
+   --ink-c IS THE ONE INPUT. Every layer here reads it, and each caller sets it
+   inline: the club's own colour for a club, a colour derived from the headline
+   for an article. Nothing in this file picks a colour.
+
+   What sits ON the plate belongs to whoever is using it — news.css for an
+   article's headline and scrim, league/index.html for the aspect-ratio and
+   monogram-size variants that make a star or a Team of the Year card.
+   ============================================================================ */
+
+.club{position:relative;display:block;text-decoration:none;color:inherit;
+  isolation:isolate}
+.club-plate{position:relative;aspect-ratio:1;overflow:hidden;
+  background:#07130d;border:1px solid var(--rule);
+  display:grid;place-items:center;
+  transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s ease}
+.club:hover .club-plate{border-color:var(--ink-c);transform:translate(-2px,-2px)}
+
+/* the ink block: a hard flood that the halftone eats into */
+.club-flood{position:absolute;inset:0;background:var(--ink-c);opacity:.14}
+/* halftone, bitten coarse so it reads as print rather than texture */
+.club-tone{position:absolute;inset:-20%;
+  background-image:radial-gradient(circle,var(--ink-c) 1.1px,transparent 1.4px);
+  background-size:7px 7px;opacity:.5;
+  transform:rotate(-12deg)}
+/* the grain of the paper */
+.club-grain{position:absolute;inset:0;pointer-events:none;opacity:.18;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.55'/></svg>")}
+
+/* registration crosses, as a printer would leave them */
+.club-reg{position:absolute;width:11px;height:11px;opacity:.5;
+  background:
+    linear-gradient(var(--ink-c),var(--ink-c)) center/1px 100% no-repeat,
+    linear-gradient(var(--ink-c),var(--ink-c)) center/100% 1px no-repeat}
+.club-reg.tl{top:8px;left:8px} .club-reg.tr{top:8px;right:8px}
+.club-reg.bl{bottom:8px;left:8px} .club-reg.br{bottom:8px;right:8px}
+
+/* the mark. Two passes, the under-pass offset — misregistration is the
+   whole visual argument, so it is exaggerated slightly on hover. */
+.club-mark{position:relative;display:grid;place-items:center;z-index:1}
+.club-mono{font-family:var(--f-score);font-size:clamp(40px,8vw,64px);
+  line-height:.8;letter-spacing:-.02em;text-transform:uppercase;
+  grid-area:1/1;color:var(--ink)}
+.club-mono.ghost{color:var(--ink-c);
+  transform:translate(3px,3px);mix-blend-mode:screen;opacity:.85;
+  transition:transform .18s cubic-bezier(.2,.8,.3,1)}
+.club:hover .club-mono.ghost{transform:translate(6px,5px)}
+.club-logo{grid-area:1/1;width:62%;height:62%;object-fit:contain;z-index:1;
+  filter:drop-shadow(3px 3px 0 var(--ink-c))}
+
+/* a stencilled band across the plate, like a stamped crate */
+.club-band{position:absolute;left:-10%;right:-10%;top:64%;height:15px;
+  background:var(--ink-c);opacity:.9;transform:rotate(-4deg);
+  display:grid;place-items:center;overflow:hidden}
+.club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.42em;
+  text-transform:uppercase;color:#07130d;white-space:nowrap;font-weight:700}
+
+.club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
+.club-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;
+  text-transform:uppercase;letter-spacing:.02em;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.club:hover .club-name{color:var(--ink-c)}
+.club-ed{margin-left:auto;font-family:var(--f-micro);font-size:8px;
+  color:var(--ink-3);letter-spacing:.1em;white-space:nowrap}
+
+@media (prefers-reduced-motion:reduce){
+  .club-plate,.club-mono.ghost{transition:none}
+  .club:hover .club-plate{transform:none}
+  .club:hover .club-mono.ghost{transform:translate(3px,3px)}
+}
+
+/* ---------------------------------------------------------------------------
+   INSTAGRAM TILES — the same track sizing as the clubs grid above.
+
+   minmax(178px, 1fr) while there is not much room, then a CAPPED track with
+   justify-content:start once there is. The cap is the whole point: auto-fit
+   collapses the tracks nothing occupies and 1fr then gives the entire row to
+   whatever remains, so one spotlit post used to arrive at the full width of the
+   page. Four posts stay four tiles; one post is one tile the same size.
+
+   The frame inside is always laid out at 326x470 and scaled by --ig-s, which
+   igtile.js keeps equal to tileWidth/326. Instagram's embed does not reflow
+   below about 326px — it clips — so narrowing the frame is not an option and
+   scaling it is. These two numbers are mirrored from igtile.js's W and H and
+   have to move together with them.
+   --------------------------------------------------------------------------- */
+.ig-grid{display:grid;gap:calc(var(--u)*2);
+  grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
+@media (min-width:1100px){
+  .ig-grid{grid-template-columns:repeat(auto-fit,minmax(178px,240px));
+    justify-content:start}
+}
+.ig-tile{position:relative;overflow:hidden;aspect-ratio:326/470;
+  border:1px solid var(--rule);background:#fff}
+.ig-tile iframe{position:absolute;top:0;left:0;width:326px;height:470px;
+  border:0;background:#fff;
+  transform:scale(var(--ig-s,1));transform-origin:top left}

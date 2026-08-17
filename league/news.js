@@ -72,8 +72,13 @@ function card(a, opts) {
   plate.appendChild(over);
   plate.appendChild(el('div', 'club-grain'));
 
+  /* club-name, not club-nm. The band under a club plate is .club-name and
+     always was; this said club-nm, so the date under every news card fell back
+     to body type — 400-weight Archivo where the clubs beside it are 800-weight
+     and letterspaced. Invisible as a bug and obvious as a difference, which is
+     the worst combination. */
   const foot = el('div', 'club-foot');
-  foot.append(el('span', 'club-nm', when(a.published_at)),
+  foot.append(el('span', 'club-name', when(a.published_at)),
               el('span', 'club-ed', a.author_name || ''));
 
   link.append(plate, foot);

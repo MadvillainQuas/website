@@ -5,17 +5,16 @@
    A league's Instagram, under the merchandise section: the page itself, and
    up to four posts.
 
-   IFRAMES, NOT THEIR SCRIPT. The official embed is a blockquote plus
-   //www.instagram.com/embed.js, which would mean allowing a third-party
-   script on every league page for the sake of four photographs — and that
-   script sets cookies, reads the page and can be changed by somebody else at
-   any time. instagram.com/p/CODE/embed is the same content in a sandboxed
-   frame and costs one frame-src entry in the policy.
+   THE TILES THEMSELVES ARE IN igtile.js, shared with a club's own strip under
+   its venue photograph. That is where the reasoning about iframes-not-scripts
+   and about scaling the frame to the tile lives, because both places need it
+   and both used to get the size wrong the same way.
 
-   The trade is that a frame cannot tell us it failed. A post that has been
-   deleted, or an account that has gone private, renders as a blank white
-   panel and there is no event to catch — so the section says where the four
-   came from and when, which is the only honest thing available.
+   What stays here is the section: whose account it is, whether the four were
+   chosen or taken automatically, and when they were last looked at. A frame
+   cannot tell us it failed — a deleted post renders as a blank white panel with
+   no event to catch — so saying where the four came from and when is the only
+   honest thing available.
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -26,10 +25,11 @@
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-/* Shortcodes come out of the database already reduced to [A-Za-z0-9_-], which
-   is checked again here rather than trusted: this value goes into an iframe
-   src, and one place doing the validating is one place to get it wrong. */
-const CODE_OK = /^[A-Za-z0-9_-]{4,32}$/;
+/* Validation belongs with the thing that builds the src, so the shortcode
+   pattern is igtile.js's. This only needs to know which posts will survive it,
+   to decide whether there is a row to draw at all. */
+const CODE_OK = window.EpinoiaIgTile ? window.EpinoiaIgTile.CODE_OK
+                                     : /^[A-Za-z0-9_-]{4,32}$/;
 
 /* opts: { sec, host, note, rpc, leagueId } */
 async function mount(o) {
@@ -72,22 +72,8 @@ async function mount(o) {
     return true;
   }
 
-  const grid = el('div', 'so-grid');
-  posts.forEach(p => {
-    const cardEl = el('div', 'so-card');
-    const f = document.createElement('iframe');
-    f.src = 'https://www.instagram.com/p/' + p.code + '/embed';
-    f.loading = 'lazy';
-    f.title = 'Instagram post';
-    /* No allow-same-origin: the frame has no business reading anything of
-       ours, and the embed does not need it to render. */
-    f.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
-    f.setAttribute('referrerpolicy', 'no-referrer');
-    f.setAttribute('scrolling', 'no');
-    cardEl.appendChild(f);
-    grid.appendChild(cardEl);
-  });
-  wrap.appendChild(grid);
+  const grid = window.EpinoiaIgTile.grid(posts.map(p => p.code), 4);
+  if (grid) wrap.appendChild(grid);
   host.appendChild(wrap);
   if (o.note) o.note.textContent = '@' + s.instagram;
   return true;
