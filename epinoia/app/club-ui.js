@@ -100,17 +100,59 @@ function clubPanel(host, o) {
      point of the queue. The monogram keeps showing until it is approved. */
   const r0 = el('div', 'row');
   const crestFile = el('input');
-  crestFile.type = 'file'; crestFile.accept = 'image/*'; crestFile.style.display = 'none';
+  /* SVG first in the accept list, so the file dialog opens showing vector
+     files rather than burying them among photographs. */
+  crestFile.type = 'file';
+  crestFile.accept = 'image/svg+xml,image/png,image/webp,image/*';
+  crestFile.style.display = 'none';
   const crestPick = el('button', 'mini', 'upload the club crest');
   crestPick.type = 'button';
   crestPick.addEventListener('click', () => crestFile.click());
   const crestNote = el('span', 'mt');
-  crestNote.textContent = 'PNG or SVG with a transparent background works best.';
+  /* SAID PLAINLY, AND IN THE ORDER THAT MATTERS. A crest is drawn at 26px in
+     the portal, 72% of a card on the league page and several thousand pixels
+     on a print sheet — one vector file does all three, and a raster cannot.
+     The transparent background is the other half: these sit on a coloured
+     plate, and a crest on a white rectangle looks like a sticker on it. */
+  crestNote.textContent =
+    'An SVG with a transparent background is best — it stays sharp at every ' +
+    'size, from the roster list to a printed shirt. A transparent PNG works ' +
+    'too. Avoid a crest on a white square.';
   r0.append(crestPick, crestFile, crestNote);
   band.appendChild(r0);
 
   const crestPrev = el('div', 'venue-prev');
   band.appendChild(crestPrev);
+
+  /* WHAT IS ALREADY THERE, before anybody uploads anything. Without this the
+     panel looked identical whether a club had a crest live, one waiting in the
+     queue, or none at all — so the only way to find out was to upload another
+     one. It reports the status too, because "uploaded" and "showing on the
+     website" are different things and the difference is the league's approval. */
+  (async () => {
+    try {
+      const { data } = await o.sb.from('media')
+        .select('storage_path,status,created_at')
+        .eq('owner_type', 'team').eq('owner_id', o.team.id).eq('kind', 'logo')
+        .order('created_at', { ascending: false }).limit(1);
+      const m = data && data[0];
+      if (!m) {
+        crestPrev.appendChild(el('p', 'note',
+          'No crest yet — your club shows as its initials over its colour.'));
+        return;
+      }
+      const img = el('img'); img.alt = '';
+      img.src = window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path);
+      crestPrev.appendChild(img);
+      crestPrev.appendChild(el('p', 'note',
+        m.status === 'approved'
+          ? 'This is your crest as it appears on the website.'
+          : m.status === 'pending'
+            ? 'Uploaded and waiting for the league to approve it — your ' +
+              'initials show until then.'
+            : 'That upload was not approved. You can upload another.'));
+    } catch (_) { /* the uploader still works without the preview */ }
+  })();
 
   crestFile.addEventListener('change', async () => {
     const f = crestFile.files && crestFile.files[0];

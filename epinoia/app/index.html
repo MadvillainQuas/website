@@ -12,8 +12,8 @@
 <title>Team portal · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=86">
-<link rel="stylesheet" href="../kit/nav.css?v=86">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=91">
+<link rel="stylesheet" href="../kit/nav.css?v=91">
 <style>
   .pad3{padding:calc(var(--u)*3)}
   .stack{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
@@ -26,7 +26,10 @@
   .teamcard{border-bottom:1px solid var(--rule);padding:calc(var(--u)*2) calc(var(--u)*3);
     display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .2s}
   .teamcard:hover{background:color-mix(in oklch,var(--lume) 7%,transparent)}
-  .teamcard .dot{width:26px;height:26px;flex:none}
+  .teamcard .dot{width:26px;height:26px;flex:none;position:relative;overflow:hidden}
+  /* the crest sits IN the square rather than replacing it, so the row keeps its
+     rhythm whether a club has uploaded one or not */
+  .dot-crest{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
   .teamcard .nm{font-family:var(--f-ui);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em}
   .teamcard .sub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3)}
   .msg{padding:calc(var(--u)*2) calc(var(--u)*3);font-family:var(--f-micro);font-size:11px;
@@ -196,13 +199,13 @@
   </footer>
 </div>
 
-<script src="../vendor/supabase.js?v=86" defer></script>
-<script src="../config.js?v=86" defer></script>
-<script src="../upload.js?v=86" defer></script>
-<script src="csv.js?v=86" defer></script>
-<script src="roster-csv.js?v=86" defer></script>
-<script src="club-ui.js?v=86" defer></script>
-<script src="app.js?v=86" defer></script>
-<script src="../nav.js?v=86" defer></script>
+<script src="../vendor/supabase.js?v=91" defer></script>
+<script src="../config.js?v=91" defer></script>
+<script src="../upload.js?v=91" defer></script>
+<script src="csv.js?v=91" defer></script>
+<script src="roster-csv.js?v=91" defer></script>
+<script src="club-ui.js?v=91" defer></script>
+<script src="app.js?v=91" defer></script>
+<script src="../nav.js?v=91" defer></script>
 </body>
 </html>

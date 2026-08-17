@@ -61,7 +61,8 @@
 
 /* the mark. Two passes, the under-pass offset — misregistration is the
    whole visual argument, so it is exaggerated slightly on hover. */
-.club-mark{position:relative;display:grid;place-items:center;z-index:1}
+.club-mark{position:relative;display:grid;place-items:center;z-index:1;
+  width:100%;height:100%}
 .club-mono{font-family:var(--f-score);font-size:clamp(40px,8vw,64px);
   line-height:.8;letter-spacing:-.02em;text-transform:uppercase;
   grid-area:1/1;color:var(--ink)}
@@ -69,10 +70,57 @@
   transform:translate(3px,3px);mix-blend-mode:screen;opacity:.85;
   transition:transform .18s cubic-bezier(.2,.8,.3,1)}
 .club:hover .club-mono.ghost{transform:translate(6px,5px)}
-.club-logo{grid-area:1/1;width:62%;height:62%;object-fit:contain;z-index:1;
-  filter:drop-shadow(3px 3px 0 var(--ink-c))}
+/* THE CREST, TREATED AS PART OF THE PRINT rather than pasted on top of it.
 
-/* a stencilled band across the plate, like a stamped crate */
+   The monogram it replaces is two passes of type, the under-pass offset in the
+   club's ink — misregistration is the whole visual argument of these cards. A
+   crest cannot be printed twice like that (it is somebody's artwork, not our
+   type), so it borrows the idea at a fraction of the strength: a soft shadow in
+   the club's own ink, close in, which lifts it off the halftone without reading
+   as a registration fault.
+
+   SIZED AGAINST THE PLATE, WHICH TOOK A CORRECTION. The obvious rule —
+   width:72% on the image — resolves against .club-mark, and .club-mark is
+   content-sized, so the percentage was of a box whose size the image itself was
+   deciding. Measured: it produced 168px on a 360px plate, not the 259 the
+   number implied. So the mark is given the plate's own size and the crest is
+   sized against that.
+
+   IN ABSOLUTE UNITS, WHICH TOOK A SECOND CORRECTION. Percentages did not work
+   either: the image is a grid item whose track is sized by the image, so a
+   percentage max-height is indefinite and the browser drops it. Measured, a
+   tall crest capped at "26%" rendered at 78% of the plate — the cap silently
+   did nothing.
+
+   So it is sized the way the monogram beside it is sized, with the same
+   clamp() against the viewport: up to 160px wide so a wordmark has somewhere
+   to go, and at most 64px tall.
+
+   64 RATHER THAN THE MONOGRAM'S 76, and the difference is the stencil band. The
+   band crosses the plate at 64% of its height; centred content therefore has
+   half the plate's height minus that to play with. Measured on a 360px plate:
+   at 76px the square and tall crests ran 7px into the band, while the monogram
+   — shorter, and with the type's own internal leading — cleared it by 11. At 64
+   a crest of any shape clears it too, which is the point: the card should look
+   the same whether a club has a crest or two letters.
+
+   Height is the tighter of the two on purpose. object-fit:contain letterboxes
+   inside whatever box it is given, so a round badge, a tall shield and a wide
+   wordmark all end up the same optical WEIGHT rather than the same width. */
+.club-logo{grid-area:1/1;z-index:1;
+  max-width:clamp(96px,20vw,160px);max-height:clamp(46px,7.6vw,64px);
+  width:auto;height:auto;object-fit:contain;
+  filter:drop-shadow(2px 2px 0 color-mix(in oklch,var(--ink-c) 55%,transparent))
+         drop-shadow(0 1px 6px rgba(0,0,0,.28));
+  transition:transform .18s cubic-bezier(.2,.8,.3,1)}
+/* the plate lifts on hover and the crest goes with it, a shade further — the
+   same parallax the ghost monogram has */
+.club:hover .club-logo{transform:translate(2px,2px) scale(1.03)}
+@media (prefers-reduced-motion:reduce){
+  .club-logo{transition:none}
+  .club:hover .club-logo{transform:none}
+}
+
 .club-band{position:absolute;left:-10%;right:-10%;top:64%;height:15px;
   background:var(--ink-c);opacity:.9;transform:rotate(-4deg);
   display:grid;place-items:center;overflow:hidden}

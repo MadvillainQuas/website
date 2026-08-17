@@ -37,6 +37,35 @@ async function render() {
   await renderTeams();
 }
 
+/* A CLUB'S CREST WHERE ITS COLOUR SWATCH WAS.
+
+   The list of clubs somebody manages showed a 26px square of the club colour.
+   That was fine when nothing better existed; now that a club can upload a
+   crest, the square is exactly where the crest belongs — it is the one place
+   in the portal a club looks at itself.
+
+   Approved crests only, and the colour swatch stays as the fallback: a club
+   that has not uploaded one, or whose upload is still in the queue, still gets
+   a square rather than a gap. */
+async function crestsFor(ids) {
+  const out = new Map();
+  if (!ids.length) return out;
+  try {
+    const { data } = await sb.from('media')
+      .select('owner_id,storage_path')
+      .eq('owner_type', 'team').eq('kind', 'logo').eq('status', 'approved')
+      .in('owner_id', ids);
+    (data || []).forEach(m => {
+      if (!out.has(m.owner_id)) {
+        out.set(m.owner_id, window.EpinoiaUpload
+          ? window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path)
+          : null);
+      }
+    });
+  } catch (_) { /* swatches all round */ }
+  return out;
+}
+
 async function renderTeams() {
   const { data, error } = await sb.from('teams').select('id,name,short_name,colour,slug').order('name');
   if (error) {
@@ -50,10 +79,23 @@ async function renderTeams() {
     d.className = 'msg'; d.textContent = 'No teams yet — create one below.';
     list.appendChild(d);
   }
+  const crests = await crestsFor(data.map(t => t.id));
+
   data.forEach(t => {
     const row = document.createElement('div');
     row.className = 'teamcard'; row.tabIndex = 0; row.setAttribute('role','button');
     const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = t.colour || '#93f2bf';
+    const crest = crests.get(t.id);
+    if (crest) {
+      const img = document.createElement('img');
+      img.className = 'dot-crest';
+      img.src = crest; img.alt = ''; img.loading = 'lazy';
+      /* a crest that will not load leaves the colour square behind rather than
+         a broken frame where the club's identity should be */
+      img.addEventListener('error', () => img.remove());
+      dot.appendChild(img);
+      dot.style.background = 'transparent';
+    }
     const box = document.createElement('div');
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = t.name;   // textContent: never innerHTML
     const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = (t.short_name || '') + ' · manage roster';

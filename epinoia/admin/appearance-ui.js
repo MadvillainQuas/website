@@ -92,12 +92,15 @@ function mount(o) {
      beats two with an exception in it. */
   host.appendChild(el('div', 'fmt-h', 'League logo'));
   host.appendChild(el('p', 'empty',
-    'Sits next to the league name on the front page. A transparent PNG or an ' +
-    'SVG reads best against the page. It appears once it is approved in ' +
-    'Photographs below.'));
+    'Sits next to the league name on the front page. An SVG with a ' +
+    'transparent background is best — it stays sharp at every size and on ' +
+    'every screen; a transparent PNG works too. It appears once it is ' +
+    'approved in Photographs below.'));
   const lgRow = el('div', 'row');
   const lgFile = el('input');
-  lgFile.type = 'file'; lgFile.accept = 'image/*'; lgFile.style.display = 'none';
+  lgFile.type = 'file';
+  lgFile.accept = 'image/svg+xml,image/png,image/webp,image/*';
+  lgFile.style.display = 'none';
   const lgPick = el('button', 'ep-btn mini', 'upload a logo');
   lgPick.type = 'button';
   lgPick.addEventListener('click', () => lgFile.click());

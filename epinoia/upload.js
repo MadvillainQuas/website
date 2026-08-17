@@ -33,11 +33,18 @@ const MAX_BYTES = 2 * 1024 * 1024;   // matches the bucket limit in 0017
 
 /* WebP where the browser has it, JPEG where it does not. Not PNG: a photograph
    as PNG is several times the size for no visible gain. */
-function bestType() {
+function bestType(kind) {
   const c = document.createElement('canvas');
   c.width = c.height = 1;
-  return c.toDataURL('image/webp').startsWith('data:image/webp')
-    ? 'image/webp' : 'image/jpeg';
+  const webp = c.toDataURL('image/webp').startsWith('data:image/webp');
+  if (webp) return 'image/webp';
+  /* JPEG HAS NO ALPHA, and a crest is the one thing here that needs it. On a
+     browser too old for WebP encoding, a logo with a transparent background
+     came out on a flat black rectangle — the club would have uploaded exactly
+     what we asked for and got exactly what we said they would not. PNG is
+     several times the size of a JPEG for a photograph, which is why that is
+     still the photo fallback, but a 512px crest is small either way. */
+  return kind === 'logo' ? 'image/png' : 'image/jpeg';
 }
 
 async function decode(file) {
@@ -70,12 +77,52 @@ function scaleTo(bitmap, edge, type, quality) {
   return new Promise(res => c.toBlob(b => res({ blob: b, w: cw, h: ch }), type, quality));
 }
 
+/* An SVG that we rasterise is not an SVG. A crest is the one upload where the
+   file is artwork rather than a photograph — it goes on a card at 240px, a
+   plate at 620px and a print sheet at several thousand, and the whole reason to
+   ask for vector is that one file serves all of them. Putting it through a
+   512px canvas would have thrown that away silently, while the panel was
+   telling clubs that vector was preferred.
+
+   SO IT IS STORED UNTOUCHED, and only for a logo. There is no resizing to do
+   and no thumbnail worth making: the same file is the thumbnail.
+
+   ON SAFETY, because an SVG is a document and not just pixels. It can carry
+   script, so it is worth being exact about where it is allowed to be one:
+
+     · every place on this site renders a crest in an <img>, and an <img> does
+       not run script in an SVG — that is the specification, not a hopeful
+       reading of it
+     · a crest is served from the storage origin, which is a different origin
+       from the site, so a document opened directly there cannot reach the
+       session on prophesyscouting.co.uk
+     · and it goes through the same approval queue as every other upload, so a
+       league admin sees it before the public does
+
+   The cap is deliberately tight. A club crest that will not fit in 256kB of
+   vector is not a crest, it is a traced photograph. */
+const SVG_MAX = 256 * 1024;
+
 /* ------------------------------------------------------------------ public ---
    prepare(file, kind)  ->  { main, thumb, type, w, h }                        */
 async function prepare(file, kind) {
   if (!file || !/^image\//.test(file.type)) throw new Error('choose an image file');
+
+  if (kind === 'logo' && /^image\/svg\+xml$/i.test(file.type)) {
+    if (file.size > SVG_MAX) {
+      throw new Error('that SVG is ' + Math.round(file.size / 1024) +
+        'kB — crests should be under ' + (SVG_MAX / 1024) + 'kB. ' +
+        'Flatten any embedded images out of it.');
+    }
+    /* w/h are recorded as 0: an SVG has no single pixel size, and writing a
+       viewBox in as though it did would be a number that means nothing to
+       anything reading the column later. */
+    return { main: file, thumb: file, type: 'image/svg+xml', w: 0, h: 0,
+             originalBytes: file.size, vector: true };
+  }
+
   const edge = SIZES[kind] || SIZES.photo;
-  const type = bestType();
+  const type = bestType(kind);
   const bmp = await decode(file);
 
   let main = await scaleTo(bmp, edge, type, 0.82);
@@ -100,7 +147,9 @@ async function prepare(file, kind) {
 async function upload(sb, opts) {
   const { ownerType, ownerId, kind } = opts;
   const out = await prepare(opts.file, kind);
-  const ext = out.type === 'image/webp' ? 'webp' : 'jpg';
+  const ext = out.type === 'image/svg+xml' ? 'svg'
+            : out.type === 'image/webp' ? 'webp'
+            : out.type === 'image/png' ? 'png' : 'jpg';
   const stamp = Date.now().toString(36);
 
   /* the path encodes the owner, which is what the storage policy reads to
@@ -115,7 +164,8 @@ async function upload(sb, opts) {
     if (error) throw new Error(error.message || 'upload refused');
   };
   await up(path, out.main);
-  await up(thumbPath, out.thumb);
+  /* one file is every size for a vector, so there is no thumbnail to write */
+  if (!out.vector) await up(thumbPath, out.thumb);
 
   const { data, error } = await sb.from('media').insert({
     owner_type: ownerType, owner_id: ownerId, kind,
@@ -125,7 +175,8 @@ async function upload(sb, opts) {
   if (error) throw new Error(error.message || 'could not record the upload');
 
   return Object.assign({}, data, {
-    thumbPath,
+    thumbPath: out.vector ? path : thumbPath,
+    vector: !!out.vector,
     saved: out.originalBytes - out.main.size
   });
 }
