@@ -117,7 +117,9 @@ async function prepare(file, kind) {
     /* w/h are recorded as 0: an SVG has no single pixel size, and writing a
        viewBox in as though it did would be a number that means nothing to
        anything reading the column later. */
-    return { main: file, thumb: file, type: 'image/svg+xml', w: 0, h: 0,
+    /* null rather than 0: a vector has no intrinsic pixel size, and 0 would be
+       a measurement rather than the absence of one. */
+    return { main: file, thumb: file, type: 'image/svg+xml', w: null, h: null,
              originalBytes: file.size, vector: true };
   }
 
@@ -167,9 +169,20 @@ async function upload(sb, opts) {
   /* one file is every size for a vector, so there is no thumbnail to write */
   if (!out.vector) await up(thumbPath, out.thumb);
 
+  /* THE COLUMNS ARE width AND height, and they always have been. This insert
+     said w and h, so PostgREST rejected every upload the platform has ever
+     attempted with "Could not find the 'h' column of 'media' in the schema
+     cache" — a player photograph, a venue picture, a club crest, a league
+     logo, every one of them, since the pipeline was written. The media table
+     had nought rows in it, which is what that looks like from the outside.
+
+     It survived because the failure is at the LAST step: the images resize,
+     both files upload to storage successfully, and only the row that records
+     them is refused. Everything looks like it is working until the error
+     appears, and nothing that reads media ever had anything to read. */
   const { data, error } = await sb.from('media').insert({
     owner_type: ownerType, owner_id: ownerId, kind,
-    storage_path: path, w: out.w, h: out.h, bytes: out.main.size,
+    storage_path: path, width: out.w, height: out.h, bytes: out.main.size,
     status: 'pending'
   }).select('*').single();
   if (error) throw new Error(error.message || 'could not record the upload');

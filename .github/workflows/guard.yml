@@ -92,6 +92,14 @@ jobs:
       - name: Engine smoke test
         run: node supabase/tests/engine.smoke.mjs
 
+      # The uploader inserted `w` and `h` into a table whose columns are
+      # `width` and `height`, so PostgREST refused every upload the platform
+      # ever attempted and the media table stood at nought rows. The failure is
+      # at the last step — the files reach storage fine — so nothing looked
+      # broken until somebody read the error.
+      - name: The uploader's columns must exist on public.media
+        run: node supabase/tests/media-columns.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently
