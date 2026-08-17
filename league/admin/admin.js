@@ -404,12 +404,48 @@ async function loadFixtures() {
       ac.appendChild(mv);
     }
 
+    /* Edit, delete, void — the surgery a secretary does all season. Supplied
+       by governance-ui rather than built here so the rules about what a
+       PLAYED game will accept live in one place beside the RPC that
+       enforces them. */
+    window.EpinoiaGovernance.fixtureActions({
+      sb, game: g, comp, teams: byIdObj(), say, row,
+      onDone: () => { loadFixtures(); loadStandingsDependents(); }
+    }).forEach(n => ac.appendChild(n));
+
     row.appendChild(ac);
     host.appendChild(row);
   });
 
   mountImport();
   mountFixtureGen();
+  mountGovernance();
+}
+
+/* teams is an array here and the governance module wants a lookup; one place
+   to convert rather than four. */
+function byIdObj() {
+  const o = {};
+  teams.forEach(t => { o[t.id] = t; });
+  return o;
+}
+
+/* Standings, awards and the bracket all follow from the games, so anything
+   that changes a result rebuilds all three rather than leaving two of them
+   quietly disagreeing with the third. */
+async function loadStandingsDependents() {
+  if (!comp) return;
+  await sb.rpc('compute_season_awards', { p_competition: comp.id });
+  await sb.rpc('advance_bracket', { p_competition: comp.id });
+}
+
+function mountGovernance() {
+  const G = window.EpinoiaGovernance;
+  G.mountDiscipline({ host: '#disciplinePanel', sb, comp, teams: byIdObj(), say,
+                      onDone: loadStandingsDependents });
+  G.mountSuspensions({ host: '#suspensionPanel', sb, league, comps, say });
+  G.mountRecords({ host: '#recordsPanel', sb, league, teams: byIdObj(), say,
+                   onDone: () => loadTeams() });
 }
 
 /* The generator needs the entered teams and their groups, plus what is already

@@ -236,7 +236,7 @@ async function renderTable() {
 async function renderStandingsInto(pane, competition) {
   const rows = await api(
     `standings?competition_id=eq.${competition.id}` +
-    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,streak,group_name,teams(name,short_name,colour,slug)` +
+    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(name,short_name,colour,slug)` +
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
 
@@ -281,7 +281,16 @@ function groupTable(rows) {
     const d = el('td', null, (r.diff > 0 ? '+' : '') + r.diff);
     d.style.color = r.diff > 0 ? 'var(--good)' : (r.diff < 0 ? 'var(--bad)' : '');
     tr.appendChild(d);
-    const pts = el('td', null, r.league_points); pts.style.color = 'var(--ink)'; tr.appendChild(pts);
+    /* A DOCKED TOTAL HAS TO SAY SO. Without the marker the points column
+       simply does not follow from the W-L beside it, and the first thing
+       anybody does with a table that does not add up is assume it is broken. */
+    const pts = el('td', null, r.league_points); pts.style.color = 'var(--ink)';
+    if (r.deducted_points) {
+      const d = el('span', 'dock', ' −' + r.deducted_points);
+      d.title = r.deducted_points + ' points deducted';
+      pts.appendChild(d);
+    }
+    tr.appendChild(pts);
     const st = el('td', null, r.streak || '');
     st.style.color = (r.streak || '').startsWith('W') ? 'var(--good)' : 'var(--bad)';
     tr.appendChild(st);

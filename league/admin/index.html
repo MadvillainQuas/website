@@ -11,8 +11,8 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=47">
-<link rel="stylesheet" href="../kit/nav.css?v=47">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=48">
+<link rel="stylesheet" href="../kit/nav.css?v=48">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -63,6 +63,10 @@
   .fxrow .v{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);text-align:center}
   .fxrow .ac{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
   .mini{font-size:9px;padding:6px 9px}
+  /* the inline fixture editor, opened under the row it belongs to */
+  .gv-edit{border-left:2px solid var(--lume);padding:9px 0 3px 11px;
+    margin:0 0 9px;background:color-mix(in oklch,var(--lume) 4%,transparent)}
+  .gv-edit .row:last-child{margin-bottom:0}
   @media (max-width:640px){ .fxrow{grid-template-columns:1fr;gap:4px} .fxrow .h{text-align:left} }
   .mq{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;
     padding:10px 0;border-bottom:1px solid var(--rule)}
@@ -372,6 +376,24 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">07a</span><h2>Discipline</h2>
+        <span class="note">points and wins docked</span></div>
+      <div class="body"><div id="disciplinePanel"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">07b</span><h2>Suspensions</h2>
+        <span class="note">players unavailable</span></div>
+      <div class="body"><div id="suspensionPanel"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">07c</span><h2>The record</h2>
+        <span class="note">clubs and players</span></div>
+      <div class="body"><div id="recordsPanel"></div></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h"><span class="idx">08</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
@@ -444,20 +466,21 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=47"></script>
-<script src="../upload.js?v=47"></script>
-<script src="../vendor/supabase.js?v=47"></script>
-<script src="../livestats.js?v=47"></script>
-<script src="import-ui.js?v=47"></script>
-<script src="schedule.js?v=47"></script>
-<script src="fixtures-ui.js?v=47"></script>
-<script src="formats-ui.js?v=47"></script>
-<script src="keys-ui.js?v=47"></script>
-<script src="feeds-ui.js?v=47"></script>
-<script src="../artwork.js?v=47"></script>
-<script src="merch-ui.js?v=47"></script>
-<script src="webhook-ui.js?v=47"></script>
-<script src="admin.js?v=47"></script>
-<script src="../nav.js?v=47"></script>
+<script src="../config.js?v=48"></script>
+<script src="../upload.js?v=48"></script>
+<script src="../vendor/supabase.js?v=48"></script>
+<script src="../livestats.js?v=48"></script>
+<script src="import-ui.js?v=48"></script>
+<script src="schedule.js?v=48"></script>
+<script src="fixtures-ui.js?v=48"></script>
+<script src="formats-ui.js?v=48"></script>
+<script src="keys-ui.js?v=48"></script>
+<script src="feeds-ui.js?v=48"></script>
+<script src="../artwork.js?v=48"></script>
+<script src="merch-ui.js?v=48"></script>
+<script src="webhook-ui.js?v=48"></script>
+<script src="governance-ui.js?v=48"></script>
+<script src="admin.js?v=48"></script>
+<script src="../nav.js?v=48"></script>
 </body>
 </html>
