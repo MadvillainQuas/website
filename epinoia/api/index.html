@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>API · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
+<style>
+  a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:19px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    padding:3px 11px 1px;text-transform:uppercase}
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,58px);line-height:.88;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);letter-spacing:.06em;
+    line-height:2;max-width:76ch;margin:calc(var(--u)*2) 0 0}
+  .sec{border-bottom:1px solid var(--rule);padding:calc(var(--u)*3)}
+  .sec h2{font-family:var(--f-ui);font-weight:800;font-size:13px;text-transform:uppercase;
+    letter-spacing:.05em;margin:0 0 calc(var(--u)*2)}
+  .sec p{font-family:var(--f-micro);font-size:10px;color:var(--ink-2);line-height:2;
+    max-width:76ch;margin:0 0 calc(var(--u)*1.5)}
+  pre{background:var(--panel-2);border:1px solid var(--rule-2);padding:calc(var(--u)*2);
+    overflow-x:auto;font-family:var(--f-data);font-size:11.5px;line-height:1.7;margin:0 0 14px}
+  code{font-family:var(--f-data);font-size:.94em;color:var(--lume)}
+  table.ep{width:100%;border-collapse:collapse;font-size:11px}
+  table.ep th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-3);text-align:left;padding:7px 10px;
+    border-bottom:1px solid var(--rule-2)}
+  table.ep td{padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+  table.ep td:first-child{font-family:var(--f-data);color:var(--lume);white-space:nowrap}
+  table.ep td:last-child{font-family:var(--f-micro);color:var(--ink-3);line-height:1.8}
+  .tw{overflow-x:auto}
+  .note{border-left:2px solid var(--amber);padding:9px 13px;
+    background:color-mix(in oklch,var(--amber) 7%,transparent);
+    font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);
+    max-width:76ch;margin:0 0 14px}
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">JSON API · version 1</span>
+  </div>
+
+  <div class="hero">
+    <h1>The API</h1>
+    <p>
+      Every league's table, fixtures, season statistics, box scores, bracket and
+      awards, as JSON. All of it is public already — these are the same numbers
+      the pages show anyone who visits. The key is not a gate; it is an identity,
+      so a league can see who is pulling what and stop one runaway script without
+      taking the API down for everybody else.
+    </p>
+  </div>
+
+  <div class="sec">
+    <h2>Getting a key</h2>
+    <p>
+      A league administrator issues keys from the admin console. A key belongs to
+      one league and reads only that league. It is shown once, at the moment it
+      is created — only a hash is stored, so it cannot be looked up afterwards by
+      anyone, including us. Lost keys are revoked and replaced, not recovered.
+    </p>
+    <p>Send it as a header, which is the form that will not end up in a server log or a referrer:</p>
+    <pre>curl -H "X-API-Key: epk_your_key_here" \
+  https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/api/v1/leagues</pre>
+    <p><code>?key=</code> works too, for a browser address bar or a spreadsheet that cannot set headers.</p>
+  </div>
+
+  <div class="sec">
+    <h2>Endpoints</h2>
+    <div class="tw">
+      <table class="ep">
+        <tr><th>Path</th><th>What it returns</th></tr>
+        <tr><td>GET /v1/leagues</td>
+            <td>The leagues your key can read.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}</td>
+            <td>The current season and its competitions, with the ids you pass to <code>?competition=</code>.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}/standings</td>
+            <td>The table. Grouped competitions carry a <code>group</code> on every row.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}/games</td>
+            <td>Fixtures and results, newest first. <code>?status=final|live|scheduled</code>.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}/players</td>
+            <td>Season statistics, totals and per game, ordered by points.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}/awards</td>
+            <td>Season awards, each with the basis it was decided on.</td></tr>
+        <tr><td>GET /v1/leagues/{slug}/bracket</td>
+            <td>Knockout ties, seeds, aggregates and winners.</td></tr>
+        <tr><td>GET /v1/games/{id}</td>
+            <td>A full box score, both sides, once the game is final.</td></tr>
+      </table>
+    </div>
+    <p>
+      Every collection takes <code>?limit=</code> (up to 200, 50 by default) and
+      <code>?offset=</code>, and echoes both back beside the data so a short page
+      can be told from the end of a list. Anything scoped to a competition takes
+      <code>?competition=</code>; without one you get the current season's first.
+    </p>
+  </div>
+
+  <div class="sec">
+    <h2>Rate limits</h2>
+    <p>
+      Every response carries <code>X-RateLimit-Limit</code>,
+      <code>X-RateLimit-Remaining</code> and <code>X-RateLimit-Reset</code>
+      (a Unix timestamp). Over the limit you get <code>429</code> with a
+      <code>Retry-After</code>. The window is one hour and it is counted per key.
+    </p>
+    <div class="note">
+      Finished games do not change, so responses may be cached for a minute.
+      If you are polling a live game, the public game page's websocket feed is
+      the right tool — it is under a second behind the whistle, where polling
+      this API is a minute behind at best.
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>What a response looks like</h2>
+    <pre>{
+  "competition": { "id": "…", "name": "Division One" },
+  "standings": [
+    {
+      "rank": 1,
+      "group": null,
+      "team": { "name": "East Dock", "short_name": "ED",
+                "slug": "east-dock", "colour": "#ffd166" },
+      "played": 6, "won": 4, "lost": 2,
+      "points_for": 506, "points_against": 527,
+      "difference": -21, "league_points": 10, "streak": "W2"
+    }
+  ]
+}</pre>
+    <p>
+      A team is an object with a name and a slug rather than a bare id you would
+      have to resolve with a second request, and internal identifiers stay
+      internal. Slugs are what the public pages use, so
+      <code>/epinoia/t/?t=east-dock</code> is the human page for that row.
+    </p>
+  </div>
+
+  <div class="sec">
+    <h2>Scraper keys — being sent games instead of asking for them</h2>
+    <p>
+      Everything above is a pull. If you republish results — RealGM,
+      Eurobasket, a club site — you probably do not want to poll a fixture list
+      at 2am on the off-chance. Ask the league for a <strong>scraper key</strong>
+      and we post each game to you the moment it is finalised, in the shape your
+      importer already reads.
+    </p>
+    <p>
+      A league administrator sets this up per partner and chooses:
+      <strong>format</strong> (JSON, CSV or XML), <strong>which sections</strong>
+      to include (the fixture, team totals, the box score, the table, and
+      optionally full play-by-play), how <strong>names</strong> are written
+      (<code>Ada Shaw</code>, <code>Shaw, Ada</code>, <code>Shaw Ada</code>,
+      <code>Ada SHAW</code>), how <strong>dates</strong> are written (ISO,
+      dd/mm/yyyy, mm/dd/yyyy or Unix seconds), and a <strong>field map</strong>
+      that renames our keys to yours — <code>{"reb":"TRB","fg3a":"3PA"}</code>
+      applies to JSON keys, CSV headers and XML element names alike.
+    </p>
+    <p>
+      Our own spelling is stable and deliberately conventional:
+      <code>pts fgm fga fg2m fg2a fg3m fg3a ftm fta oreb dreb reb ast stl blk
+      tov pf plus_minus minutes</code>. It does not follow our engine's
+      internals, so it will not change when they do.
+    </p>
+    <div class="tw">
+      <table class="ep">
+        <tr><th>Header</th><th>What it is</th></tr>
+        <tr><td><code>X-Epinoia-Event</code></td><td><code>game.final</code>.</td></tr>
+        <tr><td><code>X-Epinoia-Delivery</code></td><td>A stable id for this delivery. A re-finalised game is resent with a new body under the same id — treat it as an update, not a duplicate.</td></tr>
+        <tr><td><code>X-Epinoia-Timestamp</code></td><td>Unix seconds at send.</td></tr>
+        <tr><td><code>X-Epinoia-Signature</code></td><td><code>sha256=…</code> — HMAC-SHA256 of the <em>exact</em> body bytes, keyed on the shared secret.</td></tr>
+      </table>
+    </div>
+    <p>
+      Verify the signature before you trust a delivery. These numbers get
+      republished as fact, and anyone who learns your endpoint could otherwise
+      post to it:
+    </p>
+    <pre>import hmac, hashlib
+expected = "sha256=" + hmac.new(SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+if not hmac.compare_digest(expected, request.headers["X-Epinoia-Signature"]):
+    return 401</pre>
+    <p>
+      Answer <code>2xx</code> and we mark it delivered. Anything else is
+      recorded as failed and can be resent from the league's console without
+      replaying the game, so a night when your endpoint was down is a button
+      rather than a support thread. We follow no redirects and we give up after
+      ten seconds.
+    </p>
+    <div class="note">
+      <strong>Under-18 players are withheld from every feed</strong>, whatever
+      is configured. Team totals still include their contribution, so the lines
+      will not sum to the totals — the payload carries a <code>notice</code>
+      saying so rather than leaving you to find the discrepancy.
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Errors</h2>
+    <div class="tw">
+      <table class="ep">
+        <tr><th>Status</th><th>Meaning</th></tr>
+        <tr><td>401</td><td>No key, an unknown key, or a revoked one. The message does not distinguish an unknown key from a revoked one on purpose.</td></tr>
+        <tr><td>403</td><td>A valid key, for a different league.</td></tr>
+        <tr><td>404</td><td>No such league, game or collection. The body names what does exist.</td></tr>
+        <tr><td>405</td><td>The API is read-only.</td></tr>
+        <tr><td>429</td><td>Over the hourly limit. <code>Retry-After</code> says how long.</td></tr>
+      </table>
+    </div>
+    <p>Errors are always JSON, with an <code>error</code> and usually a <code>hint</code>.</p>
+  </div>
+
+  <footer class="foot">
+    <a href="../">← Epinoia</a>
+    <span>Epinoia Network · API v1</span>
+  </footer>
+</div>
+<script src="../nav.js?v=104" defer></script>
+</body>
+</html>

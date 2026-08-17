@@ -18,7 +18,7 @@
  * Versioned cache name → bump CACHE_VERSION to invalidate the old
  * cache after a deploy. Old caches are pruned on activate.
  * ============================================================ */
-const CACHE_VERSION = 'prophesy-v27-2026-07-09';
+const CACHE_VERSION = 'prophesy-v28-2026-08-16';
 const APP_SHELL = [
     './',
     './index.html',
@@ -63,6 +63,14 @@ self.addEventListener('fetch', (event) => {
 
     let url;
     try { url = new URL(req.url); } catch (_) { return; }
+
+    // The public league section is never cached. A live box score served from
+    // cache would show a stale score confidently, with no way for the viewer to
+    // tell. Same reasoning as the FIBA bypass below. Enforced by CI so it can't
+    // be dropped by accident (.github/workflows/guard.yml).
+    if (url.origin === self.location.origin && url.pathname.startsWith('/epinoia/')) {
+        return; // let the browser handle it normally
+    }
 
     // Never cache live game data — always go to network so live mode shows
     // fresh scores. If the network is down we don't fall back to a stale

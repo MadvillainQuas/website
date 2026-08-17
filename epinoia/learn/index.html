@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>The scoring app · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    padding:3px 9px 1px;text-transform:uppercase}
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,54px);line-height:.88;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:2;
+    max-width:74ch;margin:calc(var(--u)*2) 0 0}
+  .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .pane{display:none;padding:calc(var(--u)*3)} .pane.on{display:block}
+  .pane h2{font-family:var(--f-ui);font-weight:800;font-size:13px;text-transform:uppercase;
+    letter-spacing:.05em;margin:calc(var(--u)*3) 0 calc(var(--u));color:var(--lume)}
+  .pane h2:first-child{margin-top:0}
+  .pane p, .pane li{font-family:var(--f-micro);font-size:10px;color:var(--ink-2);
+    line-height:2;max-width:76ch}
+  .pane ul{padding-left:18px;margin:0 0 calc(var(--u)*2)}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+    margin:calc(var(--u)*2) 0}
+  .step{background:var(--ground);padding:calc(var(--u)*2)}
+  .step .n{font-family:var(--f-score);font-size:22px;color:var(--lume);line-height:1}
+  .step .t{font-family:var(--f-ui);font-weight:700;font-size:13px;margin:7px 0 5px}
+  .step .d{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9}
+  .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:calc(var(--u)*3)}
+  .cta a{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    text-decoration:none;padding:10px 18px;border:1px solid var(--lume);color:var(--lume)}
+  .cta a.pri{background:var(--lume);color:#04100b}
+  .cta a:hover{background:transparent;color:var(--lume)}
+  .note{border-left:2px solid var(--amber);padding:9px 13px;
+    background:color-mix(in oklch,var(--amber) 7%,transparent);
+    font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
+    max-width:76ch;margin:calc(var(--u)*2) 0}
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">the scoring app</span>
+  </div>
+
+  <div class="hero">
+    <h1>Scoring</h1>
+    <p>
+      A statistician&rsquo;s app that writes an append-only log of what happened
+      and derives everything else from it &mdash; box score, play-by-play,
+      lineups, advanced numbers. Nothing on a page is a figure somebody typed
+      twice.
+    </p>
+  </div>
+
+  <div class="tabs-wrap">
+    <div class="ep-tabs" role="tablist">
+      <button class="ep-tab on" data-p="use" role="tab">Use it for your competition</button>
+      <button class="ep-tab" data-p="how" role="tab">How the app works</button>
+    </div>
+  </div>
+
+  <!-- The sales tab is FIRST and is what somebody lands on, because a reader
+       arriving from the splash is deciding whether this is for them, not
+       learning to drive it. -->
+  <div class="pane on" id="pane-use">
+    <h2>What a league gets</h2>
+    <p>
+      Live scoring, a public table that rebuilds itself from the games, player
+      and team profiles, lineup and with-or-without analysis, embeddable
+      widgets for club websites, a read-only JSON API, and an automatic feed to
+      the sites that republish results.
+    </p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="t">Live from the whistle</div>
+        <div class="d">The public box score is under a second behind the scorer&rsquo;s table, and corrections reach it too &mdash; an undo is not something a viewer has to refresh to see.</div></div>
+      <div class="step"><div class="n">02</div><div class="t">One source of truth</div>
+        <div class="d">Standings, awards, brackets and season statistics all derive from the same event log. Delete them and re-run, and the same answers come back.</div></div>
+      <div class="step"><div class="n">03</div><div class="t">Your clubs, your pages</div>
+        <div class="d">Each club gets a profile, a roster it maintains itself, a home venue with a map, and merchandise built from its own crest.</div></div>
+      <div class="step"><div class="n">04</div><div class="t">Safeguarding built in</div>
+        <div class="d">Under-18 players are withheld from public pages, from the API and from every partner feed &mdash; by the database, not by somebody remembering to filter.</div></div>
+    </div>
+
+    <h2>What it costs to try</h2>
+    <p>
+      Nothing. Open the training game and score a few possessions: no account,
+      no setup, nothing saved. If it suits the way your competition works, get
+      in touch and we will set your league up properly.
+    </p>
+    <div class="note">
+      There is deliberately no pricing table here. What a competition needs
+      varies enormously between a four-team midweek league and a national
+      division, so tell us the shape of yours and you get a straight answer
+      rather than a tier you have to interpret.
+    </div>
+
+    <h2>Get in touch</h2>
+    <p>
+      The contact form reaches the person who builds this. Say roughly how many
+      clubs and how many games a week, and whether you already record stats.
+    </p>
+    <div class="cta">
+      <a class="pri" href="../contact/">Contact us</a>
+      <a href="../score/?train=1">Try the training game</a>
+      <a href="../api/">Read the API docs</a>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-how">
+    <h2>The idea</h2>
+    <p>
+      Everything is an event. A made two, a defensive rebound, a substitution
+      &mdash; each is a row appended to a log that is never edited in place. The
+      box score, the play-by-play, the lineup stints and every advanced figure
+      are computed from that log by one shared engine, which is the same file
+      the scorer, the public page and the server all run.
+    </p>
+    <p>
+      That is why a correction works: an undo appends a retraction, the log is
+      replayed, and every derived number changes together. It is also why two
+      pages cannot disagree &mdash; there is only one place a number is worked
+      out.
+    </p>
+
+    <h2>Scoring a game</h2>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="t">Set up</div>
+        <div class="d">Two squads and their numbers &mdash; or a real fixture opened from the club portal, which brings both rosters with it.</div></div>
+      <div class="step"><div class="n">02</div><div class="t">Starting fives</div>
+        <div class="d">Pick five a side. Minutes and plus/minus follow from the substitutions after that; nothing needs a stopwatch.</div></div>
+      <div class="step"><div class="n">03</div><div class="t">Score</div>
+        <div class="d">Tap the player, then the action. Fouls, timeouts, the bonus and the possession arrow keep themselves.</div></div>
+      <div class="step"><div class="n">04</div><div class="t">Finalise</div>
+        <div class="d">A sanity check runs first &mdash; periods played, minutes adding up, nobody on court with six fouls &mdash; and then the result publishes.</div></div>
+    </div>
+
+    <h2>Things worth knowing</h2>
+    <ul>
+      <li>It works with no signal. The scorer keeps its own copy and publishes when it can.</li>
+      <li>Nothing is lost on a refresh: the game in progress is saved on the device as you go.</li>
+      <li>A game imported from FIBA LiveStats is indistinguishable downstream from one scored here.</li>
+      <li>The training game is this same app with the saving switched off.</li>
+    </ul>
+    <div class="cta">
+      <a class="pri" href="../score/?train=1">Open the training game</a>
+      <a href="../contact/">Ask a question</a>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <a href="../">&larr; Epinoia</a>
+    <a href="../contact/">Contact</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=104" defer></script>
+<script src="learn.js?v=104" defer></script>
+<script src="../nav.js?v=104" defer></script>
+</body>
+</html>

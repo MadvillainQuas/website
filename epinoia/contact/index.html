@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co">
+<title>Contact · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
+<style>
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule)}
+  .wm{font-family:var(--f-score);font-size:19px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  .pane{max-width:620px;margin:0 auto;padding:calc(var(--u)*6) calc(var(--u)*3)}
+  h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,52px);line-height:.9;margin:0 0 calc(var(--u)*2);
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  p.lead{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:2;
+    margin:0 0 calc(var(--u)*3);max-width:66ch}
+  label.f{display:flex;flex-direction:column;gap:6px;margin-bottom:calc(var(--u)*2)}
+  label.f span{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3)}
+  textarea.ep-input{min-height:170px;resize:vertical;line-height:1.7}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2)}
+  @media (max-width:560px){ .two{grid-template-columns:1fr} }
+  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:11px 14px;
+    margin:calc(var(--u)*2) 0;border-left:2px solid var(--rule-2);color:var(--ink-2)}
+  .msg.ok{border-left-color:var(--lume);color:var(--lume);
+    background:color-mix(in oklch,var(--lume) 8%,transparent)}
+  .msg.err{border-left-color:var(--flare);color:var(--flare);
+    background:color-mix(in oklch,var(--flare) 8%,transparent)}
+  .msg.warn{border-left-color:var(--amber);color:var(--amber);
+    background:color-mix(in oklch,var(--amber) 8%,transparent)}
+  .hide{display:none}
+  /* Not display:none — some bots fill anything that is display:none on the
+     assumption that it is a trap. Off-screen and unfocusable is quieter. */
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
+    margin-top:calc(var(--u)*3)}
+  .count{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);text-align:right}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
+    <span class="ep-micro">contact</span>
+  </div>
+
+  <div class="pane">
+    <h1>Get in touch</h1>
+    <p class="lead">
+      About a league, a fixture, a wrong number in a box score, or using this
+      for your own competition. Messages are read by a person, not a queue.
+    </p>
+
+    <form id="form" novalidate>
+      <div class="two">
+        <label class="f"><span>Your name</span>
+          <input class="ep-input" id="name" autocomplete="name" maxlength="120"></label>
+        <label class="f"><span>Your email</span>
+          <input class="ep-input" id="email" type="email" autocomplete="email"
+                 inputmode="email" maxlength="200"></label>
+      </div>
+      <label class="f"><span>Subject</span>
+        <input class="ep-input" id="subject" maxlength="160"
+               placeholder="optional, but it helps"></label>
+      <label class="f"><span>Message</span>
+        <textarea class="ep-input" id="body" maxlength="5000"></textarea></label>
+      <div class="count"><span id="count">0</span> / 5000</div>
+
+      <!-- for the bots. A person never sees or focuses this. -->
+      <div class="hp" aria-hidden="true">
+        <label>Website<input id="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <button class="ep-btn pri" id="send" type="submit">Send</button>
+    </form>
+
+    <div id="msg" class="msg hide"></div>
+
+    <p class="note">
+      Your address is used to reply and nothing else — no list, no forwarding.
+      Messages are kept so they can be answered and are not published anywhere.
+    </p>
+  </div>
+</div>
+<script src="../config.js?v=104" defer></script>
+<script src="contact.js?v=104" defer></script>
+<script src="../nav.js?v=104" defer></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<!-- EMBED. Runs inside someone else's page. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co">
+<title>Epinoia table</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../../kit/fonts.css?v=104">
+<link rel="stylesheet" href="../../kit/embed.css?v=104">
+<style>
+  /* A standings or leaders table small enough to sit in an article. Not the
+     full table — that is a link. Eight columns at most, and it says so. */
+  .ep-tbl{ width:100%; border-collapse:separate; border-spacing:0;
+    font-variant-numeric:tabular-nums lining-nums }
+  .ep-tbl th{
+    font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+    letter-spacing:.11em; text-transform:uppercase; font-weight:400;
+    color:rgba(230,255,241,.5); text-align:right; padding:8px 8px;
+    background:#0c1f16; border-bottom:1px solid rgba(147,242,191,.3);
+  }
+  .ep-tbl th.l, .ep-tbl td.l{ text-align:left }
+  .ep-tbl td{
+    padding:0 8px; height:29px; text-align:right; font-size:12px;
+    color:rgba(230,255,241,.82); border-bottom:1px solid rgba(147,242,191,.1);
+    white-space:nowrap;
+  }
+  .ep-tbl tbody tr:nth-child(even) td{ background:rgba(147,242,191,.03) }
+  .ep-tbl .nm{ display:flex; align-items:center; gap:8px; min-width:0 }
+  .ep-tbl .nm span.c{
+    flex:none; width:18px; height:18px; border-radius:2px; display:grid;
+    place-items:center; color:#04100b;
+    font-family:'Jersey25',ui-monospace,monospace; font-size:9px;
+  }
+  .ep-tbl .nm b{ font-weight:700; font-size:12.5px; color:#e6fff1;
+    overflow:hidden; text-overflow:ellipsis }
+  .ep-hd{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:9px 12px; border-bottom:1px solid rgba(147,242,191,.18);
+    font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+    letter-spacing:.13em; text-transform:uppercase; color:rgba(230,255,241,.6);
+  }
+  html,body{height:auto;overflow:hidden}
+</style>
+</head>
+<body class="cse">
+  <div class="ep-hd"><span id="title">Epinoia</span><span id="sub"></span></div>
+  <div id="host"><div class="ep-empty">Loading…</div></div>
+  <div class="ep-foot">
+    <a id="more" href="../../" target="_blank" rel="noopener">full table ↗</a>
+    <span class="epinoia-mark" aria-label="Epinoia">EPINOIΛ</span>
+  </div>
+<script src="../../config.js?v=104" defer></script>
+<script src="../../season.js?v=104" defer></script>
+<script src="../../data.js?v=104" defer></script>
+<script src="table.js?v=104" defer></script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.google.com https://maps.google.com https://www.instagram.com">
+<title>Team · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/table.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
+<link rel="stylesheet" href="../kit/card.css?v=104">
+<style>
+  .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
+    font-size:24px;color:#04100b;flex:none;position:relative;overflow:hidden}
+  /* WITH A CREST, THE BADGE IS THE CREST. The coloured square with initials on
+     it is a stand-in for a mark the club had not given us; once they have, the
+     square is in the way. So the background goes and the crest sits on the page
+     — most are drawn on a transparent ground and a block of club colour behind
+     one is a second, competing badge.
+
+     contain rather than cover: a crest is artwork and cropping it to fill a
+     square is not ours to do. A wide wordmark letterboxes and stays legible. */
+  .badge.has-crest{background:transparent !important}
+  .badge img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    display:block}
+  .hname{font-family:var(--f-score);font-size:clamp(24px,5vw,40px);text-transform:uppercase;line-height:1}
+  .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
+  .rec{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));border-bottom:1px solid var(--rule)}
+  .rec div{padding:13px 10px;text-align:center;border-right:1px solid var(--rule)}
+  .rec div:last-child{border-right:none}
+  .rec .v{font-family:var(--f-score);font-size:24px}
+  .rec .l{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:5px}
+  .fx{display:grid;grid-template-columns:80px 1fr auto 70px;gap:10px;align-items:center;
+    padding:10px calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .fx .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
+  .fx .o{font-family:var(--f-ui);font-weight:600;font-size:13px}
+  .fx .s{font-family:var(--f-score);font-size:19px}
+  .fx .r{font-family:var(--f-micro);font-size:10px;text-align:right}
+  .fx .w{color:var(--good)} .fx .ls{color:var(--bad)}
+  .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
+  a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
+  .tile .v{font-family:var(--f-score);font-size:24px;line-height:1;color:var(--ink)}
+  .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
+    letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+  .tile.hi .v{color:var(--lume)}
+  .ffhead{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em;
+    text-transform:uppercase;padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .ffgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);margin-top:calc(var(--u))}
+  .ffcard{background:var(--ground);padding:calc(var(--u)*2)}
+  .ffl{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);letter-spacing:.12em;
+    text-transform:uppercase;margin-bottom:8px}
+  .ffpair{display:flex;gap:10px}
+  .ffside{flex:1;text-align:center;padding:6px 4px;border:1px solid var(--rule);border-radius:4px}
+  .ffside.win{border-color:var(--lume);background:color-mix(in oklch,var(--lume) 10%,transparent)}
+  .ffside.lose{border-color:color-mix(in oklch,var(--flare) 55%,transparent);
+    background:color-mix(in oklch,var(--flare) 9%,transparent)}
+  .ffside.lose .ffv{color:var(--flare)}
+  .ffside .ffv{font-family:var(--f-score);font-size:21px;line-height:1;color:var(--ink)}
+  .ffside.win .ffv{color:var(--lume)}
+  .ffside .ffk{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
+    letter-spacing:.12em;text-transform:uppercase;margin-top:5px}
+  .lu-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .lu-note{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    line-height:1.9;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+  .lu-lead{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    line-height:1.9;margin:0;padding:0 calc(var(--u)*3) calc(var(--u)*2);max-width:72ch}
+  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    letter-spacing:.1em;text-transform:uppercase}
+  .hnote{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-left:auto}
+  .ep-hdr{display:flex;align-items:baseline;gap:12px}
+  /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
+  .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
+    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
+  .wb.on{background:var(--lume);color:#04100b;font-weight:700}
+  .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
+  table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
+    background:var(--ground);text-align:center}
+  table.ft thead th.stick.c0w{z-index:4;background:#0c1f16}
+  table.ft th:not(.stick),table.ft td:not(.stick){text-align:right}
+  table.ft td .wb{margin:0 auto}
+  /* a thin sample is dimmed rather than dropped — dropping it would hide that
+     the arrangement happened at all */
+  table.ft tbody tr.thin td{opacity:.45}
+  table.ft tbody tr.none td{opacity:.3}
+  table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
+    color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+  /* editable measurements in the roster */
+  td.meas{white-space:nowrap}
+  .meas-none{color:var(--ink-3)}
+  .meas-alt{display:block;font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
+    margin-top:2px}
+  .meas-in{width:100%;min-width:52px;background:transparent;border:1px solid transparent;
+    color:var(--ink);font-family:var(--f-data);font-size:11.5px;padding:3px 5px;
+    text-align:right;border-radius:2px}
+  .meas-in:hover{border-color:var(--rule-2)}
+  .meas-in:focus{outline:none;border-color:var(--lume);background:var(--panel-2)}
+  .meas-in.saving{opacity:.55}
+  .meas-in.saved{border-color:var(--lume);background:color-mix(in oklch,var(--lume) 14%,transparent)}
+  .meas-in.bad{border-color:var(--flare);color:var(--flare)}
+  /* ---- home venue ----------------------------------------------------- */
+  .vwrap{padding:calc(var(--u)*3)}
+  .vhead{margin-bottom:calc(var(--u)*2)}
+  .vname{font-family:var(--f-score);font-size:clamp(22px,4vw,34px);line-height:1;
+    text-transform:uppercase;color:var(--ink)}
+  .vaddr{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.95;
+    margin-top:7px;letter-spacing:.05em;max-width:44ch}
+  .vaddr a{color:var(--lume);text-decoration:none}
+  .vaddr a:hover{text-decoration:underline}
+
+  .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2)}
+  @media (max-width:760px){ .vgrid{grid-template-columns:1fr} }
+  .vpane{position:relative;border:1px solid var(--rule);background:#07130d;
+    overflow:hidden;aspect-ratio:16/10}
+  .vpane img.vphoto{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* the arena, drawn rather than photographed — the same screenprint language
+     as the club cards, so a club with no photograph still looks deliberate */
+  .arena{position:absolute;inset:0}
+  .arena svg{width:100%;height:100%;display:block}
+  .vtone{position:absolute;inset:-20%;pointer-events:none;
+    background-image:radial-gradient(circle,var(--ink-c) 1px,transparent 1.3px);
+    background-size:7px 7px;opacity:.3;transform:rotate(-12deg)}
+  .vgrain{position:absolute;inset:0;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.55'/></svg>")}
+  .vcap{position:absolute;left:0;right:0;bottom:0;padding:8px 11px;
+    background:linear-gradient(transparent,rgba(4,16,11,.92));
+    font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+
+  /* the map pane: nothing loads until asked */
+  .vmap{padding:0}
+  .vmap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;
+    filter:saturate(.75) contrast(1.05)}
+  /* the links float over the map's corner rather than taking space from it */
+  .vlinks.over{position:absolute;right:8px;bottom:8px;z-index:2;
+    background:rgba(4,16,11,.82);border:1px solid var(--rule-2);
+    padding:5px 9px;backdrop-filter:blur(3px)}
+  .vmap-ask{position:relative;z-index:1;display:flex;flex-direction:column;
+    align-items:center;gap:11px;max-width:34ch}
+  .vmap-pin{font-family:var(--f-score);font-size:34px;color:var(--ink-c);line-height:1}
+  .vmap-why{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);line-height:1.95}
+  .vlinks{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .vlinks a{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);text-decoration:none}
+  .vlinks a:hover{color:var(--lume)}
+
+  /* ---- club contact, under the venue -------------------------------- */
+  .vcontact{margin-top:calc(var(--u)*3);padding-top:calc(var(--u)*2.5);
+    border-top:1px solid var(--rule)}
+  .vclabel{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--lume);margin-bottom:calc(var(--u)*2)}
+  .vcrow{display:flex;gap:calc(var(--u)*4);flex-wrap:wrap;align-items:flex-end}
+  .vcitem .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .vcitem .v{font-family:var(--f-ui);font-weight:600;font-size:13.5px;color:var(--ink);
+    margin-top:4px;display:block;text-decoration:none}
+  a.v:hover{color:var(--lume);text-decoration:underline}
+  .vcbtn{margin-left:auto}
+  .vcontact .empty{padding:0;text-align:left}
+
+  /* the manager's editor */
+  .vcedit{margin-top:calc(var(--u)*3);border:1px solid var(--rule);padding:calc(var(--u)*2)}
+  .vcedit summary{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3);cursor:pointer}
+  .vcedit summary:hover{color:var(--lume)}
+  .vegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:calc(var(--u)*2);margin-top:calc(var(--u)*2)}
+  .veopts{display:flex;flex-direction:column;gap:9px;margin-top:calc(var(--u)*2)}
+  .vetoggle{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;cursor:pointer}
+  .vetx{font-family:var(--f-ui);font-size:12.5px;color:var(--ink)}
+  .vehint{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    flex-basis:100%;padding-left:23px;line-height:1.8}
+
+  /* shared by the editor and the pop-up */
+  .vfield{display:block}
+  .vflabel{display:block;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+  .vfield input,.vfield textarea{width:100%;box-sizing:border-box;background:var(--panel-2);
+    border:1px solid var(--rule-2);color:var(--ink);font-family:var(--f-ui);font-size:13px;
+    padding:8px 10px;border-radius:2px}
+  .vfield textarea{font-family:var(--f-ui);line-height:1.6;resize:vertical}
+  .vfield input:focus,.vfield textarea:focus{outline:none;border-color:var(--lume)}
+  .vnote{font-family:var(--f-micro);font-size:9px;line-height:1.9;margin-top:9px;
+    color:var(--ink-3)}
+  .vnote.err{color:var(--flare)} .vnote.ok{color:var(--lume)}
+  .vdactions{display:flex;gap:9px;justify-content:flex-end;margin-top:calc(var(--u)*2)}
+  .vhp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+  /* the pop-up itself */
+  dialog.vdlg{border:1px solid var(--rule-2);background:var(--ground);color:var(--ink);
+    padding:0;width:min(520px,92vw);max-height:88vh}
+  dialog.vdlg::backdrop{background:rgba(4,16,11,.78)}
+  .vform{display:flex;flex-direction:column;gap:calc(var(--u)*2);
+    padding:calc(var(--u)*3);max-height:88vh;overflow-y:auto}
+  .vdtitle{font-family:var(--f-score);font-size:clamp(20px,4vw,28px);line-height:1;
+    text-transform:uppercase;color:var(--lume)}
+  .vdsub{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.95;
+    margin-top:9px;max-width:52ch}
+
+  /* ---- staff, above the players ------------------------------------- */
+  .staffhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .staffhead .sh{font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--lume)}
+  .staffhead .sn{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+  .staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;
+    background:var(--rule);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+    margin:calc(var(--u)*1.5) 0 calc(var(--u)*3)}
+  .staffcard{background:var(--ground);padding:calc(var(--u)*2)}
+  .staffrole{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .staffname{font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink);
+    margin-top:6px;line-height:1.25}
+  .staffage{font-family:var(--f-score);font-size:15px;color:var(--lume);margin-top:6px}
+  .staffage span{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);
+    letter-spacing:.14em;margin-left:5px}
+  /* editing, for whoever runs the club */
+  .staffcard.edit{display:flex;flex-direction:column;gap:7px}
+  .staffcard input{width:100%;box-sizing:border-box;background:transparent;
+    border:1px solid transparent;color:var(--ink);font-family:var(--f-ui);font-size:13px;
+    padding:3px 5px;border-radius:2px}
+  .staffcard input.role{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .staffcard input.yr{font-family:var(--f-data);font-size:12px;color:var(--lume);width:76px}
+  .staffcard input:hover{border-color:var(--rule-2)}
+  .staffcard input:focus{outline:none;border-color:var(--lume);background:var(--panel-2)}
+  .staffcard input.bad{border-color:var(--flare);color:var(--flare)}
+  .staffcard .srow{display:flex;align-items:center;gap:8px}
+  .staffdel{background:none;border:1px solid var(--rule-2);color:var(--ink-3);
+    font-family:var(--f-micro);font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 7px;cursor:pointer;margin-left:auto}
+  .staffdel:hover{border-color:var(--flare);color:var(--flare)}
+  .staffcard.add{display:grid;place-items:center;background:var(--panel);
+    border:1px dashed var(--rule-2)}
+  .staffcard.add button{background:none;border:none;color:var(--ink-3);cursor:pointer;
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+  .staffcard.add button:hover{color:var(--lume)}
+
+  /* ---- the club's socials, under the venue ---- */
+  .vsocial{border-top:1px solid var(--rule);padding-top:calc(var(--u)*2);
+    margin-top:calc(var(--u)*2)}
+  .vsocial-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    margin-bottom:calc(var(--u)*2)}
+  .vsocial-t{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .vsocial-l{font-family:var(--f-ui);font-weight:700;font-size:12.5px;
+    color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule-2)}
+  .vsocial-l:hover{color:var(--lume);border-bottom-color:var(--lume)}
+  /* the tiles are .ig-grid / .ig-tile in kit/card.css, shared with the
+     league's Socials section */
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)">
+    <a href="../" class="plain"><span style="font-family:var(--f-score);font-size:13px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase" class="epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro"></span>
+  </div>
+
+  <div class="hero">
+    <div class="badge" id="badge"></div>
+    <div><div class="hname" id="tname">—</div><div class="hsub" id="tsub"></div></div>
+  </div>
+
+  <div class="rec" id="rec"></div>
+
+  <div class="ep-hdr"><span class="idx">01</span><h2>Team statistics</h2></div>
+  <div id="teamstats"></div>
+
+  <div class="ep-hdr"><span class="idx">02</span><h2>Home venue &amp; contact</h2>
+    <span class="note" id="venueNote"></span></div>
+  <div id="venue"></div>
+
+  <div class="ep-hdr"><span class="idx">03</span><h2>Roster</h2></div>
+  <div id="roster"></div>
+
+  <div class="ep-hdr"><span class="idx">04</span><h2>Results &amp; fixtures</h2></div>
+  <div id="games"></div>
+
+  <div class="ep-hdr"><span class="idx">05</span><h2>With or without</h2>
+    <span class="hnote" id="wowyNote"></span></div>
+  <div id="wowyPick" class="lu-chips"></div>
+  <div id="onoff"></div>
+  <div id="wowy"></div>
+
+  <div class="ep-hdr"><span class="idx">06</span><h2>Lineup filter</h2></div>
+  <p class="lu-lead">
+    Pick any players and see how the team does with all of them on the floor
+    together. Two or three pools every unit containing them, which is a sample
+    worth reading; five narrows it to that exact unit.
+  </p>
+  <div id="lufilter"></div>
+
+  <div class="ep-hdr"><span class="idx">07</span><h2>Every lineup</h2></div>
+  <div id="lulist"></div>
+
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
+    <a id="leagueLink" href="../l/" style="color:var(--ink-3)">← league</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../vendor/supabase.js?v=104" defer></script>
+<script src="../config.js?v=104" defer></script>
+<script src="../bpm.js?v=104" defer></script>
+<script src="../season.js?v=104" defer></script>
+<script src="../data.js?v=104" defer></script>
+<script src="../lineups.js?v=104" defer></script>
+<script src="../wowy.js?v=104" defer></script>
+<script src="lineupui.js?v=104" defer></script>
+<script src="../fulltable.js?v=104" defer></script>
+<script src="../igtile.js?v=104" defer></script>
+<script src="venue.js?v=104" defer></script>
+<script src="team.js?v=104" defer></script>
+<script src="../nav.js?v=104" defer></script>
+</body>
+</html>

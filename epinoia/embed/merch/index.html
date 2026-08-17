@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<!-- EMBED. Runs inside someone else's page. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co">
+<title>Epinoia shop</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../../kit/fonts.css?v=104">
+<link rel="stylesheet" href="../../kit/embed.css?v=104">
+<style>
+  /* A shop window, not a shop. Cards a club can put on their own site, each
+     one a link out to wherever the product is actually sold — this widget
+     never takes money and never pretends to. */
+  .shop{ display:grid; gap:10px; padding:12px;
+    grid-template-columns:repeat(auto-fill,minmax(128px,1fr)) }
+  .it{ display:block; text-decoration:none; color:inherit }
+  .art{ position:relative; aspect-ratio:1; overflow:hidden; background:#07130d;
+    border:1px solid rgba(147,242,191,.28); display:grid; place-items:center;
+    transition:border-color .16s ease, transform .16s ease }
+  .it:hover .art{ border-color:var(--ep-accent,#93f2bf); transform:translate(-2px,-2px) }
+  /* the print file itself, shown on the garment's ground rather than on the
+     white it was drawn for */
+  .art img{ width:78%; height:78%; object-fit:contain; display:block }
+  .ft{ display:flex; align-items:baseline; gap:8px; padding:7px 2px 0 }
+  .nm{ font-family:'Archivo',system-ui,sans-serif; font-weight:700; font-size:11px;
+    text-transform:uppercase; letter-spacing:.03em; color:rgba(230,255,241,.9) }
+  .it:hover .nm{ color:var(--ep-accent,#93f2bf) }
+  .pr{ margin-left:auto; font-family:'Silkscreen',ui-monospace,monospace;
+    font-size:9px; color:var(--ep-accent,#93f2bf) }
+  .cl{ font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+    letter-spacing:.12em; color:rgba(230,255,241,.45); padding:0 2px }
+  @media (prefers-reduced-motion:reduce){
+    .art{ transition:none } .it:hover .art{ transform:none }
+  }
+</style>
+</head>
+<body class="cse">
+  <div class="ep-hd"><span id="title">Shop</span><span id="sub"></span></div>
+  <div id="host"><div class="ep-empty">Loading…</div></div>
+  <div class="ep-foot">
+    <a id="more" href="../../" target="_blank" rel="noopener">more ↗</a>
+    <span class="epinoia-mark" aria-label="Epinoia">EPINOIΛ</span>
+  </div>
+<script src="../../config.js?v=104" defer></script>
+<script src="merch.js?v=104" defer></script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+/* ============================================================================
+   EPINOIA NAV — the rail on every public page.
+
+   TWO VIEWS, ONE RAIL. At rest it is a list of leagues and nothing else.
+   Pick one and the rail slides sideways to that league's own pages, with the
+   league's name in the header and a way back. A platform that will hold a
+   dozen leagues cannot show a dozen leagues' worth of pages at once, and a
+   flat list of "fixtures / statistics / wowy" is a lie when it is really
+   "fixtures OF WHICH LEAGUE".
+
+   Three rows never move, because they are how somebody gets out: sign in,
+   contact, and back to Prophesy. They live below the deck and are untouched by
+   either view.
+
+   SELF-SUFFICIENT ON PURPOSE. Every custom property below carries a literal
+   fallback, because this loads on pages that do not load the kit: the public
+   box score is drawn by boxscore.css, which defines its own token names. With
+   bare var(--panel) the rail rendered with no background and no border and sat
+   on top of the box score as floating text — which is exactly what it did.
+   ============================================================================ */
+
+/* The rail's own colours as tokens, so a league can set them (0053) without
+   this file knowing anything about leagues. The literals stay as the
+   fallbacks: nav.css is loaded by pages that do not load the kit, and a rail
+   that inherited nothing would be transparent. */
+:root{
+  --nav-w:174px;
+  --nav-bg:#071710;
+  --nav-ink:#e6fff1;
+}
+
+.ep-nav{
+  position:fixed; left:0; top:0; bottom:0; width:var(--nav-w);
+  z-index:900; display:flex; flex-direction:column; gap:1px;
+  padding:14px 0;
+  background:var(--nav-bg,#071710);
+  border-right:1px solid rgba(147,242,191,.20);
+  box-shadow:1px 0 0 rgba(0,0,0,.4);
+  overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
+}
+.ep-nav::-webkit-scrollbar{ display:none }
+
+/* ---- rows ---------------------------------------------------------------- */
+.ep-nav a.item, .ep-nav button.item{
+  display:flex; align-items:center; gap:10px; text-decoration:none;
+  padding:9px 10px 9px 14px; white-space:nowrap;
+  color:color-mix(in srgb, var(--nav-ink,#e6fff1) 62%, transparent);
+  border-left:2px solid transparent; background:none; border-top:0;
+  border-right:0; border-bottom:0; width:100%; text-align:left; font:inherit;
+  cursor:pointer;
+}
+.ep-nav a.item:hover, .ep-nav button.item:hover{
+  color:var(--nav-ink,#e6fff1); background:rgba(147,242,191,.08);
+}
+.ep-nav a.item.on{
+  color:#93f2bf; border-left-color:#93f2bf; background:rgba(147,242,191,.11);
+}
+.ep-nav .ic{
+  flex:none; width:16px; text-align:center; font-size:12px; line-height:1;
+  opacity:.85;
+}
+.ep-nav .tx{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
+}
+
+.ep-nav .gap{ flex:1; min-height:12px }
+.ep-nav .sep{ height:1px; background:rgba(147,242,191,.16); margin:8px 12px }
+.ep-nav .grouplbl{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(230,255,241,.3); padding:10px 0 4px 16px;
+}
+
+/* the page moves over rather than sitting underneath */
+body.has-nav{ padding-left:var(--nav-w) }
+
+/* ============================================================== the deck ===
+   Two panels side by side in a window one panel wide. Sliding is a transform,
+   which the compositor can do without touching layout; the HEIGHT is animated
+   separately from a measured value, because the two panels are different
+   lengths and letting the taller one set the height leaves a hole under the
+   shorter one. */
+.ep-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
+/* THREE PANELS: countries, leagues, pages. The deck is three screens wide and
+   slides a third at a time, which is why the percentages are thirds rather
+   than the halves this started with. */
+.ep-nav .deck{
+  display:flex; width:300%; align-items:flex-start;
+  transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
+}
+.ep-nav[data-view="root"] .deck{ transform:translateX(-33.3333%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-66.6667%) }
+/* THE FIRST VIEW NEVER SLIDES. A page that knows its league opens drilled in,
+   and animating into that on load would be the rail performing a decision the
+   reader did not make — as well as leaving the deck mid-travel on any browser
+   or tab that is not compositing at the time. The class comes off after the
+   first paint, so every LATER change animates. */
+.ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
+.ep-nav .panel{ width:33.3333%; flex:0 0 33.3333%; min-width:0 }
+/* a flag sits a shade larger than the geometric glyphs beside it */
+.ep-nav .crow .ic{ font-size:14px }
+.ep-nav .lname .ic{ font-size:13px; margin-right:2px }
+.ep-nav .hide{ display:none !important }
+/* THE LOGOTYPE IN THE RAIL. EpinoiaMark sets about 467px per 100px against the
+   rail's own face at 298 — the same words in it are half again as wide — so
+   the row would run past 174px and the marquee would start scrolling a word
+   that fits perfectly well at the right size. 11px puts EPINOIΛ at roughly the
+   width the label it replaced occupied. */
+.ep-nav .tx.epinoia-mark{ font-size:11px; letter-spacing:.02em !important }
+/* the panel that is off screen is out of the tab order as well as out of
+   sight — a keyboard user should never land on a link they cannot see */
+.ep-nav .panel[aria-hidden="true"]{ visibility:hidden }
+.ep-nav .navdeck.animating .panel{ visibility:visible }
+
+/* ---- the root panel ------------------------------------------------------ */
+.ep-nav .ptitle{
+  display:block; text-decoration:none;
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:15px; letter-spacing:.10em; text-transform:uppercase;
+  color:#e6fff1; padding:2px 14px 12px; margin-bottom:6px;
+  border-bottom:1px solid rgba(147,242,191,.18);
+}
+.ep-nav .ptitle:hover{ color:#93f2bf }
+.ep-nav .gempty{
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
+  color:rgba(230,255,241,.4); padding:8px 0 8px 14px;
+}
+
+/* Administration, at the top level, under the leagues. A hairline above it so
+   it reads as a different kind of thing from the list it follows: the list is
+   places to read, this is a place to change things. Hidden entirely unless the
+   account actually administers something. */
+.ep-nav a.admin-row{
+  margin-top:8px; border-top:1px solid rgba(147,242,191,.16); padding-top:11px;
+}
+@media (max-width:820px){
+  /* on the bottom bar there is no "under" — the hairline becomes a divider
+     between the leagues and the console */
+  .ep-nav a.admin-row{
+    margin-top:0; padding-top:8px;
+    border-top:2px solid transparent; border-left:1px solid rgba(147,242,191,.16);
+  }
+}
+
+/* a league: its plate, then its name */
+.ep-nav .lrow{ gap:9px; padding-right:6px }
+.ep-nav .lrow.on{ color:#93f2bf; border-left-color:#93f2bf;
+  background:rgba(147,242,191,.11) }
+
+/* THE PLATE. A league with a logo shows it; one without gets a screenprint
+   monogram in its own two colours — the same language the club cards use, so
+   a league looks like itself here and on its splash page. A grey box saying
+   "no logo" would make a new league look broken on its first day. */
+.ep-nav .crest{
+  position:relative; flex:none; width:24px; height:24px; overflow:hidden;
+  display:grid; place-items:center; border-radius:3px;
+  background:linear-gradient(120deg,var(--ca,#93f2bf),var(--cb,#8ff5ff));
+}
+.ep-nav .crest .mono{
+  position:relative; z-index:1;
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:11px; line-height:1; color:#04100b; font-weight:700;
+}
+.ep-nav .crest .halftone{
+  position:absolute; inset:-30%;
+  background-image:radial-gradient(circle,rgba(4,16,11,.55) .8px,transparent 1.1px);
+  background-size:4px 4px; transform:rotate(-14deg); opacity:.7;
+}
+.ep-nav .crest img{ position:relative; z-index:1; width:100%; height:100%;
+  object-fit:contain; background:#04100b }
+
+/* THE SCROLLING TITLE. League names are long — "Basketball England Division
+   One (South)" is not going to fit a 174px rail at any size worth reading, and
+   an ellipsis on a rail full of leagues that all begin "Basketball England"
+   tells a reader nothing at all.
+
+   So a title that overflows scrolls, in the list and in the drilled-in header
+   alike. Rows that FIT do not move: measuring first is what keeps this from
+   becoming a fairground. Each pass dwells at both ends, so the beginning of a
+   name — the part that identifies it — is what is on screen most of the time.
+   Everything also carries a title attribute, and under prefers-reduced-motion
+   nothing moves and the name clips instead. */
+.ep-nav .marq{ overflow:hidden; min-width:0; flex:1 }
+.ep-nav .marq > span{
+  display:inline-block; white-space:nowrap;
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:10px; letter-spacing:.06em; text-transform:none;
+  will-change:transform;
+}
+.ep-nav .marq:not(.scrolls) > span{
+  display:block; overflow:hidden; text-overflow:ellipsis;
+}
+@keyframes ep-marq{
+  0%,14%   { transform:translateX(0) }
+  86%,100% { transform:translateX(var(--shift,0)) }
+}
+/* --stag is a small per-row offset set in JS, so a rail full of long names
+   does not slide in lockstep like a departures board */
+.ep-nav .marq.scrolls > span{
+  animation:ep-marq 7s ease-in-out infinite alternate;
+  animation-delay:var(--stag,0s);
+}
+/* pointing at one holds it still, so a name can be read at your own pace */
+.ep-nav .lrow:hover .marq.scrolls > span{ animation-play-state:paused }
+
+/* ---- the league panel ---------------------------------------------------- */
+.ep-nav .phead{
+  display:flex; align-items:center; gap:8px;
+  padding:0 8px 11px 8px; margin-bottom:6px;
+  border-bottom:1px solid rgba(147,242,191,.18);
+}
+.ep-nav button.back{
+  flex:none; width:22px; height:22px; display:grid; place-items:center;
+  background:none; border:1px solid rgba(147,242,191,.28); border-radius:3px;
+  color:rgba(230,255,241,.7); font-size:13px; line-height:1; cursor:pointer;
+  padding:0 2px 2px 0;
+}
+.ep-nav button.back:hover{ color:#04100b; background:#93f2bf; border-color:#93f2bf }
+.ep-nav .phead .lname{
+  min-width:0; flex:1; text-decoration:none; overflow:hidden;
+}
+.ep-nav .phead .lname .marq > span{
+  font-family:var(--f-score,ui-monospace,monospace);
+  font-size:12.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:#e6fff1;
+}
+.ep-nav .phead .lname{ display:flex; align-items:center; gap:6px }
+.ep-nav .phead .lname:hover .marq > span{ color:#93f2bf }
+/* says the heading is a destination. It is the only route from the rail to the
+   league's front page now that picking one in the list does not navigate. */
+.ep-nav .lgo{
+  flex:none; font-size:14px; line-height:1; color:rgba(230,255,241,.45);
+  transition:transform .16s ease, color .16s ease;
+}
+.ep-nav .phead .lname:hover .lgo{ color:#93f2bf; transform:translateX(2px) }
+
+/* ---- account ------------------------------------------------------------- */
+.ep-nav .acct{ display:flex; flex-direction:column }
+
+/* ---- motion off ---------------------------------------------------------- */
+@media (prefers-reduced-motion:reduce){
+  .ep-nav .deck, .ep-nav .navdeck{ transition:none }
+  .ep-nav .marq.scrolls > span{ animation:none !important;
+    display:block; overflow:hidden; text-overflow:ellipsis }
+}
+
+/* ---- phones: a bottom bar. A 174px rail on a 375px screen is most of the
+       screen, and these pages are wide tables. ---------------------------- */
+@media (max-width:820px){
+  :root{ --nav-w:0px }
+  .ep-nav{
+    left:0; right:0; top:auto; bottom:0; width:auto;
+    flex-direction:row; gap:0; padding:0; align-items:stretch;
+    border-right:0; border-top:1px solid rgba(147,242,191,.22);
+    box-shadow:0 -2px 10px rgba(0,0,0,.45);
+    overflow-x:auto; overflow-y:hidden;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .ep-nav .gap, .ep-nav .sep, .ep-nav .grouplbl, .ep-nav .ptitle{ display:none }
+  .ep-nav a.item, .ep-nav button.item{
+    flex:1 0 auto; flex-direction:column; gap:3px; justify-content:center;
+    padding:8px 14px; border-left:0; border-top:2px solid transparent;
+    width:auto;
+  }
+  .ep-nav a.item.on, .ep-nav .lrow.on{
+    border-left-color:transparent; border-top-color:#93f2bf;
+  }
+  .ep-nav .tx{ font-size:7.5px; letter-spacing:.06em }
+  body.has-nav{ padding-left:0; padding-bottom:58px }
+
+  /* The deck still slides; it just runs along the bar instead of down it.
+     Every container between the rail and a row has to become a row as well —
+     .pages and .leagues are block boxes on the desktop rail, and leaving them
+     that way stacks the whole menu vertically and turns a 58px bar into a
+     313px one. */
+  .ep-nav .navdeck{ flex:1 1 auto; min-width:0; height:auto !important }
+  .ep-nav .deck{ align-items:stretch }
+  .ep-nav .panel{ display:flex; flex-direction:row; align-items:stretch;
+    overflow-x:auto; scrollbar-width:none }
+  .ep-nav .pages, .ep-nav .leagues{
+    display:flex; flex-direction:row; align-items:stretch; min-width:0;
+  }
+  .ep-nav .panel::-webkit-scrollbar{ display:none }
+  .ep-nav .lrow{ flex-direction:column; padding:6px 12px }
+  .ep-nav .marq{ flex:none; max-width:78px }
+  .ep-nav .marq > span{ font-size:8px }
+  .ep-nav .phead{ flex-direction:row; align-items:center; gap:6px;
+    padding:0 8px; margin:0; border-bottom:0;
+    border-right:1px solid rgba(147,242,191,.18) }
+  .ep-nav .phead .lname{ max-width:96px }
+  .ep-nav .phead .lname .marq > span{ font-size:9.5px }
+  .ep-nav .acct{ flex-direction:row }
+}

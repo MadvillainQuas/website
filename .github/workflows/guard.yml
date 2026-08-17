@@ -1,0 +1,207 @@
+name: guard
+
+# The carve-out in /epinoia/ is defined by OMISSION — no gate.js, no topnav.js.
+# Omissions are exactly what gets undone by accident, so they are enforced here:
+# a paste of the standard <head> block becomes a failed build, not a silent outage.
+
+on:
+  push:
+    paths: ['epinoia/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  carve-out:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Patterns match USAGE, not mentions — a comment warning against gate.js
+      # must not fail the build, or the guard gets deleted out of annoyance.
+      - name: The public section must never load the invite gate
+        run: |
+          if grep -rnE --exclude-dir=vendor '<script[^>]+src=["'"'"'][^"'"'"']*(gate|topnav)\.js|import[^;]+["'"'"'][^"'"'"']*(gate|topnav)\.js' epinoia/; then
+            echo "::error::gate.js / topnav.js is LOADED under epinoia/ — the public section would be hidden from visitors."
+            exit 1
+          fi
+          echo "ok — no gate references under epinoia/"
+
+      - name: No service-role key may ship to a browser
+        run: |
+          # an actual assignment, or a raw JWT literal — not prose about them
+          # sb_publishable_* is meant to be public. sb_secret_* and service_role are not.
+          # A real key appears inside a string literal. Prose that merely NAMES these
+          # (this README does) must not fail the build — third time that bit me.
+          if grep -rnE --exclude-dir=vendor --include='*.js' --include='*.html' --include='*.ts'              '(service_role|SERVICE_ROLE[A-Z_]*)\s*[:=]|["'"'"'`]sb_secret_|["'"'"']eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.' epinoia/; then
+            echo "::error::a service-role key or raw JWT appears under epinoia/. Only the anon key belongs in client code."
+            exit 1
+          fi
+          echo "ok — no privileged credentials in client code"
+
+      - name: User text must never be interpolated as HTML
+        run: |
+          # innerHTML fed directly from a player/team name is the XSS the plan calls out.
+          if grep -rnE --exclude-dir=vendor 'innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b' epinoia/; then
+            echo "::error::user-supplied text interpolated into innerHTML without escaping."
+            exit 1
+          fi
+          echo "ok — no unescaped user text in innerHTML"
+
+      - name: Assets must be version-stamped
+        # a browser that has decided a file is fresh will not ask again, so the
+        # only reliable cache-bust is a URL it has never seen
+        run: python tools/stamp-assets.py --check
+
+      - name: No personal address may be committed
+        # the contact recipient lives in an Edge Function secret; a personal
+        # address in a public repo is a spam list entry with extra steps
+        run: |
+          if grep -rniE --exclude-dir=vendor '[a-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|icloud)\.[a-z.]+' epinoia/ supabase/; then
+            echo "::error::a personal email address appears in the repository."
+            exit 1
+          fi
+          echo "ok — no personal addresses committed"
+
+      - name: The service worker must not cache the public section
+        run: |
+          if [ -f sw.js ] && ! grep -q "startsWith('/epinoia/')" sw.js; then
+            echo "::error::sw.js is missing the /epinoia/ bypass — live pages would be served stale."
+            exit 1
+          fi
+          echo "ok — service worker bypasses /epinoia/"
+
+  engine-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: The Edge Function and the browser must run the same engine
+        run: |
+          # supabase/functions/_shared/engine.js is epinoia/engine.js plus an ESM tail.
+          # If they drift, the server and the public page can disagree about a score.
+          head -c $(wc -c < epinoia/engine.js) supabase/functions/_shared/engine.js > /tmp/shared_head.js
+          if ! diff -q epinoia/engine.js /tmp/shared_head.js > /dev/null; then
+            echo "::error::supabase/functions/_shared/engine.js has drifted from epinoia/engine.js."
+            echo "Re-sync with:  cp epinoia/engine.js supabase/functions/_shared/engine.js && (re-append the ESM tail)"
+            exit 1
+          fi
+          echo "ok — engines identical"
+
+      - name: Engine smoke test
+        run: node supabase/tests/engine.smoke.mjs
+
+      # The uploader inserted `w` and `h` into a table whose columns are
+      # `width` and `height`, so PostgREST refused every upload the platform
+      # ever attempted and the media table stood at nought rows. The failure is
+      # at the last step — the files reach storage fine — so nothing looked
+      # broken until somebody read the error.
+      - name: The uploader's columns must exist on public.media
+        run: node supabase/tests/media-columns.test.mjs
+
+      # Six files built /object/public/<path> with the bucket left out, so every
+      # one of them asked for a URL that cannot exist and got NoSuchKey. It
+      # survived because each call site falls back quietly to a monogram or a
+      # drawing — nothing looked broken, there was simply never a photograph.
+      - name: A public storage URL must name its bucket
+        run: node supabase/tests/storage-urls.test.mjs
+
+      - name: The public box score must be the scorer's own code
+        # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
+        # changes and the extractor is not re-run, the public page silently
+        # renders yesterday's numbers.
+        run: node supabase/tests/extract-boxscore.mjs --check
+
+      - name: Box score renders with nothing but S and derive()
+        # catches a helper left behind by the extraction, which otherwise only
+        # shows up as a blank public page
+        run: node supabase/tests/boxscore.isolation.mjs
+
+      - name: The live path publishes corrections, not just additions
+        # undo, redo and a mid-log edit must reach the viewer AND the durable
+        # log; a length-based high-water mark could see none of them
+        run: node supabase/tests/live.test.mjs
+
+      - name: Round-robin scheduling
+        # a fixture list is the artefact everybody plans around: everybody
+        # plays everybody once, nobody twice in a round, and the home/away
+        # split is within one game for an even team count
+        run: node supabase/tests/schedule.test.mjs
+
+      - name: Box plus/minus
+        # the port checks intermediate values, not just the final number — a
+        # BPM that is right in aggregate but wrong per component cannot be
+        # debugged later
+        run: node supabase/tests/bpm.test.mjs
+
+      - name: Shared modules match the browser copies
+        # bpm.js and season.js run in BOTH the browser and the finalise Edge
+        # Function, which is what stops the MVP award and the leaderboard from
+        # naming different players. A drift here would let them.
+        run: node supabase/tests/extract-shared.mjs --check
+
+      - name: MVP by BPM
+        # the appearance gate, the gate relaxing on a young season, and a
+        # non-UUID player id being declined rather than failing a finalise
+        run: node --experimental-strip-types supabase/tests/awards.test.mjs
+
+      - name: Print files
+        # these become physical objects. A sheet at the wrong DPI, a background
+        # that prints as a white slab on a black shirt, or a design past the
+        # trim line is a refund rather than a bug report.
+        run: node supabase/tests/artwork.test.mjs
+
+      - name: Print-on-demand requests
+        # a wrong request creates a REAL product in a REAL shop, on sale. The
+        # shapes are asserted rather than discovered: Printify's two-step
+        # upload, pennies against pounds, and a 200 with no product id in it.
+        run: node supabase/tests/merchstore.test.mjs
+
+      - name: Partner feed payloads
+        # these are the bytes RealGM and Eurobasket republish as fact. The
+        # thing worth guarding is not that it works but that it stays right
+        # QUIETLY wrong: a minor slipping into a feed, team totals drifting
+        # from the lines above them, or a field map that renames a key in the
+        # JSON but not in the CSV header.
+        run: node supabase/tests/feeds.test.mjs
+
+      - name: Official-vote CSV parsing and name folding
+        # the two places a pasted spreadsheet breaks a naive parser: a club
+        # with a comma in its name, and a surname carrying accents in one
+        # system and not in another
+        run: node supabase/tests/csvvotes.test.mjs
+
+      - name: Roster CSV parsing
+        # the one path where a manager hands us a whole squad at once, so a
+        # quiet misparse is twenty wrong rows rather than one
+        run: node supabase/tests/csv.test.mjs
+
+      - name: LiveStats conversion
+        # an imported game must be indistinguishable downstream from a scored
+        # one, so this checks the ENGINE's box score, not just the event shapes
+        run: node supabase/tests/livestats.test.mjs
+
+      - name: LiveStats round trip on real games
+        # takes real scored games, re-expresses them in FIBA's vocabulary,
+        # imports them back and compares every player's line.
+        # Skips cleanly when the project is unreachable.
+        run: node supabase/tests/livestats.roundtrip.mjs
+
+      - name: JSON API
+        # exercises the deployed function over HTTP with a real key.
+        # Skips cleanly when EPINOIA_API_KEY is not set, so a fork without
+        # one still gets a green build.
+        run: node supabase/tests/api.test.mjs
+        env:
+          EPINOIA_API_KEY: ${{ secrets.EPINOIA_API_KEY }}
+
+      - name: RLS policy tests
+        # skips cleanly until the migration is applied; then it asserts the refusals
+        run: node supabase/tests/rls.test.mjs
+
+      - name: Privilege tests (signed in, no roles)
+        # Covers the attacker anon cannot model: someone with an account.
+        # Never signs up — a signup sends email from the same allowance the
+        # magic-link logins use. Skips cleanly until the probe account exists.
+        run: node supabase/tests/authed.test.mjs

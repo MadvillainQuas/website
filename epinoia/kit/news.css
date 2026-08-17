@@ -1,0 +1,128 @@
+/* ============================================================================
+   NEWS — the cards, the editor and the article.
+
+   Loaded by the league page, the news page and the admin console, because all
+   three draw the same card and an article body has to look the same wherever
+   it is being written or read. The card itself is the club plate from the kit;
+   everything here is what sits ON it.
+   ============================================================================ */
+
+/* ---------- the cards ---------- */
+.news-grid{
+  display:grid; gap:calc(var(--u)*2);
+  grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+  padding:0 calc(var(--u)*3) calc(var(--u)*2);
+}
+/* The lead card is wider where there is room. A news strip in which every
+   item is the same size has no front page, and the first article is the one
+   the league chose to lead with. */
+@media (min-width:1000px){
+  .news-grid{grid-template-columns:repeat(6,1fr)}
+  .news-grid > .news-card{grid-column:span 2}
+  .news-grid > .news-card:first-child{grid-column:span 3}
+}
+@media (min-width:1400px){
+  .news-grid > .news-card:first-child{grid-column:span 2}
+}
+
+.news-card{position:relative; text-decoration:none; color:inherit}
+.news-card .club-plate{aspect-ratio:16/10; position:relative; overflow:hidden}
+.news-card:first-child .club-plate{aspect-ratio:16/9}
+
+/* the cover floods the plate, under the words and over the generated field */
+.news-cover-img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; z-index:1;
+}
+
+/* A scrim, because a headline over a photograph is unreadable without one and
+   a photograph under a solid panel may as well not be there. */
+.news-over{
+  position:absolute; inset:auto 0 0 0; z-index:2;
+  padding:calc(var(--u)*2);
+  background:linear-gradient(to top,
+    rgba(4,16,11,.94) 0%, rgba(4,16,11,.78) 46%, rgba(4,16,11,0) 100%);
+}
+.news-title{
+  font-family:var(--f-ui); font-weight:800; font-size:15px; line-height:1.22;
+  color:#eafff4; text-wrap:balance;
+}
+.news-card:first-child .news-title{font-size:19px}
+.news-stand{
+  font-family:var(--f-micro); font-size:9px; line-height:1.8; color:rgba(234,255,244,.72);
+  margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.news-card:hover .news-title{color:var(--ink-c,var(--lume))}
+
+.news-flag{
+  position:absolute; top:10px; left:10px; z-index:3;
+  font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
+  background:var(--amber); color:#04100b; padding:3px 8px;
+}
+.news-more{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+
+/* ---------- the article ---------- */
+.art-cover{padding:0 calc(var(--u)*3)}
+.art-cover img{
+  display:block; width:100%; max-height:min(58vh,520px); object-fit:cover;
+  border:1px solid var(--rule);
+}
+.art-body{
+  padding:calc(var(--u)*3); max-width:74ch;
+  font-family:var(--f-ui); font-size:15.5px; line-height:1.75; color:var(--ink-2);
+}
+.art-stand{
+  font-family:var(--f-ui); font-weight:700; font-size:17px; line-height:1.55;
+  color:var(--ink); margin:0 0 calc(var(--u)*3);
+}
+.art-body p{margin:0 0 calc(var(--u)*2)}
+.art-body h2{font-family:var(--f-ui);font-weight:800;font-size:19px;
+  margin:calc(var(--u)*4) 0 calc(var(--u)); color:var(--ink)}
+.art-body h3{font-family:var(--f-ui);font-weight:800;font-size:15.5px;
+  margin:calc(var(--u)*3) 0 calc(var(--u)); color:var(--ink)}
+.art-body blockquote{
+  margin:calc(var(--u)*3) 0; padding:calc(var(--u)) 0 calc(var(--u)) calc(var(--u)*2);
+  border-left:2px solid var(--lume); font-size:17px; line-height:1.7; color:var(--ink);
+}
+.art-body ul, .art-body ol{margin:0 0 calc(var(--u)*2); padding-left:22px}
+.art-body li{margin-bottom:6px}
+.art-body a{color:var(--lume)}
+.art-body hr{border:none;border-top:1px solid var(--rule);margin:calc(var(--u)*4) 0}
+.art-body figure{margin:calc(var(--u)*3) 0}
+.art-body figure img{display:block;width:100%;border:1px solid var(--rule)}
+.art-body figcaption{
+  font-family:var(--f-micro); font-size:9px; color:var(--ink-3);
+  margin-top:7px; line-height:1.8;
+}
+.art-foot{padding:0 calc(var(--u)*3) calc(var(--u)*5)}
+
+/* ---------- the editor ---------- */
+.news-ed{border:1px solid var(--rule-2);padding:calc(var(--u)*2);margin-top:calc(var(--u)*2)}
+.news-ed.hide{display:none}
+.news-bar{
+  display:flex; flex-wrap:wrap; gap:5px;
+  padding:calc(var(--u)) 0; border-bottom:1px solid var(--rule);
+  position:sticky; top:0; background:var(--ground); z-index:2;
+}
+.news-bar .ep-btn{min-width:30px}
+.news-body{
+  min-height:280px; padding:calc(var(--u)*2) 0;
+  font-family:var(--f-ui); font-size:15px; line-height:1.75; color:var(--ink);
+  outline:none;
+}
+.news-body:focus{outline:none}
+.news-body p{margin:0 0 calc(var(--u)*1.5)}
+.news-body h2{font-size:19px;font-weight:800;margin:calc(var(--u)*2) 0 calc(var(--u))}
+.news-body h3{font-size:15.5px;font-weight:800;margin:calc(var(--u)*2) 0 calc(var(--u))}
+.news-body blockquote{border-left:2px solid var(--lume);padding-left:calc(var(--u)*2);
+  margin:calc(var(--u)*2) 0;color:var(--ink-2)}
+.news-body ul, .news-body ol{padding-left:22px;margin:0 0 calc(var(--u)*1.5)}
+.news-body figure{margin:calc(var(--u)*2) 0;border:1px solid var(--rule);padding:6px}
+.news-body figure img{display:block;width:100%;max-height:320px;object-fit:cover}
+.news-body figcaption{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+  margin-top:6px;outline:none}
+.news-body hr{border:none;border-top:1px solid var(--rule);margin:calc(var(--u)*2) 0}
+.news-body a{color:var(--lume)}
+.news-cover{margin:calc(var(--u)) 0}
+.news-cover img{display:block;max-width:min(100%,420px);border:1px solid var(--rule-2)}

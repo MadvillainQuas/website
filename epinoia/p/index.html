@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Player · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=104">
+<link rel="stylesheet" href="../kit/table.css?v=104">
+<link rel="stylesheet" href="../kit/nav.css?v=104">
+<style>
+  /* ---- identity band: photo top-left, name beside it ---- */
+  .idband{display:flex;gap:16px;align-items:flex-start;
+    padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .photo{position:relative;width:96px;height:96px;flex:none;border-radius:6px;
+    overflow:hidden;background:var(--panel-2);border:1px solid var(--rule-2);
+    display:grid;place-items:center}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .ini{font-family:var(--f-score);font-size:34px;color:var(--ink-3);line-height:1}
+  .photo .num{position:absolute;left:0;bottom:0;padding:2px 6px 0;
+    font-family:var(--f-score);font-size:15px;color:#04100b;background:var(--team-a,var(--lume))}
+  .idmeta{min-width:0;flex:1}
+  .idmeta h1{font-family:var(--f-ui);font-weight:800;font-size:clamp(22px,4.6vw,34px);
+    margin:0;letter-spacing:-.01em;line-height:1.05}
+  .idmeta .sub{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);
+    letter-spacing:.12em;text-transform:uppercase;margin-top:7px;display:flex;
+    gap:8px;flex-wrap:wrap;align-items:center}
+  .idmeta .sub a{color:var(--ink-2);text-decoration:none}
+  .idmeta .sub a:hover{color:var(--lume)}
+  .pos-chip{border:1px solid var(--rule-2);border-radius:999px;padding:3px 9px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:1px;
+    background:var(--rule);border-bottom:1px solid var(--rule)}
+  .tile{background:var(--ground);padding:calc(var(--u)*2) calc(var(--u)*1.5);text-align:center}
+  .tile .v{font-family:var(--f-score);font-size:26px;line-height:1;color:var(--ink)}
+  .tile .l{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
+    letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+  .tile.hi .v{color:var(--lume)}
+
+  .sec{border-bottom:1px solid var(--rule)}
+  .sec-h{display:flex;align-items:baseline;gap:12px;
+    padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*1.5)}
+  .sec-h .idx{font-family:var(--f-micro);font-size:9px;color:var(--lume);letter-spacing:.14em}
+  .sec-h h2{font-family:var(--f-ui);font-weight:800;font-size:13px;text-transform:uppercase;
+    letter-spacing:.05em;margin:0}
+  .sec-h .note{margin-left:auto;font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+
+  .empty{padding:calc(var(--u)*4) calc(var(--u)*3);text-align:center;color:var(--ink-3);
+    font-family:var(--f-micro);font-size:10px;line-height:1.9}
+  .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:19px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  .foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap}
+  .foot a{color:var(--ink-3)}
+  @media (max-width:520px){ .photo{width:74px;height:74px} }
+  /* index_9's percentile bars: where this player sits against everyone else
+     in the competition, which is the fastest way to read a stat line. */
+  .bars{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  .barrow{display:grid;grid-template-columns:104px 1fr 56px;gap:10px;align-items:center;
+    padding:5px 0}
+  .barrow .bl{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);
+    letter-spacing:.11em;text-transform:uppercase;text-align:right}
+  .barrow .bt{height:9px;border-radius:2px;background:var(--panel-2);overflow:hidden;position:relative}
+  .barrow .bt i{display:block;height:100%;border-radius:2px}
+  .barrow .bv{font-family:var(--f-data);font-size:11.5px;text-align:right;color:var(--ink)}
+  .barrow .bp{font-family:var(--f-micro);font-size:8px;color:var(--ink-3)}
+  /* A volume row is a statistic in its own right — ranked like every other —
+     but it belongs to the rate above it, so it is indented and quieter. The
+     group should still read as four shot types, not eight unrelated bars. */
+  .barrow.volrow{margin-top:-4px}
+  .barrow.volrow .bl{color:var(--ink-3);opacity:.85;padding-left:10px}
+  .barrow.volrow .bt{height:6px;opacity:.8}
+  .barrow.volrow .bv{font-size:10.5px;color:var(--ink-2)}
+  .barrow{align-items:start}
+  .barrow .bl{padding-top:1px}
+  .bargroup{font-family:var(--f-micro);font-size:8.5px;color:var(--lume);
+    letter-spacing:.14em;text-transform:uppercase;padding:12px 0 4px}
+  .wowy-bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+  .wowy-bar .wl{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    letter-spacing:.1em;text-transform:uppercase}
+  /* the ON/OFF badge — the thing that makes a WOWY table readable at a glance */
+  .wb{display:inline-block;min-width:34px;text-align:center;padding:3px 7px 2px;
+    border-radius:2px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em}
+  .wb.on{background:var(--lume);color:#04100b;font-weight:700}
+  .wb.off{background:transparent;color:var(--ink-3);border:1px solid var(--rule-2)}
+  table.ft td.stick.c0w,table.ft th.stick.c0w{position:sticky;left:0;z-index:2;
+    background:var(--ground);text-align:center}
+  table.ft thead th.stick.c0w{z-index:4;background:#0c1f16}
+  table.ft th:not(.stick),table.ft td:not(.stick){text-align:right}
+  table.ft td .wb{margin:0 auto}
+  /* a thin sample is dimmed rather than dropped — dropping it would hide that
+     the arrangement happened at all */
+  table.ft tbody tr.thin td{opacity:.45}
+  table.ft tbody tr.none td{opacity:.3}
+  table.ft td.novalue{text-align:left;font-family:var(--f-micro);font-size:8.5px;
+    color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+  .with-tbl td.stick.c1{text-align:left}
+  .with-tbl .ft-name{font-family:var(--f-micro);font-size:9px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="bar">
+    <a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
+    <span id="ctx" class="ep-micro"></span>
+  </div>
+
+  <div class="idband">
+    <div class="photo" id="photo"><span class="ini" id="ini">—</span></div>
+    <div class="idmeta">
+      <h1 id="name">—</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="idx">01</span><h2>League percentile</h2>
+      <span class="note" id="barNote"></span></div>
+    <div id="bars"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="idx">02</span><h2>Season</h2>
+      <span class="note" id="seasonNote"></span></div>
+    <div id="seasons"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="idx">03</span><h2>Game log</h2>
+      <span class="note" id="logNote"></span></div>
+    <div id="log"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="idx">04</span><h2>On the floor with</h2>
+      <span class="note" id="wowyNote"></span></div>
+    <div id="onoff"></div>
+    <div id="withpanel"></div>
+  </div>
+
+  <div class="foot">
+    <a href="../">← all games</a>
+    <a id="teamLink" href="#">team page</a>
+    <span>Epinoia Network</span>
+  </div>
+</div>
+<script src="../config.js?v=104" defer></script>
+<script src="../bpm.js?v=104" defer></script>
+<script src="../season.js?v=104" defer></script>
+<script src="../data.js?v=104" defer></script>
+<script src="../upload.js?v=104" defer></script>
+<script src="../lineups.js?v=104" defer></script>
+<script src="../wowy.js?v=104" defer></script>
+<script src="../withstats.js?v=104" defer></script>
+<script src="withui.js?v=104" defer></script>
+<script src="../fulltable.js?v=104" defer></script>
+<script src="player.js?v=104" defer></script>
+<script src="../nav.js?v=104" defer></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# The public section is meant to be found. The portal, the scorer and the
+# admin console are not — they are behind Supabase auth regardless, but there
+# is no reason to spend a crawler's budget discovering that.
+User-agent: *
+Allow: /epinoia/
+Disallow: /epinoia/app/
+Disallow: /epinoia/score/
+Disallow: /epinoia/admin/
+Disallow: /epinoia/devfeed.html
+
+Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml

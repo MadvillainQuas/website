@@ -1,0 +1,648 @@
+/* ============================================================================
+   THE EPINOIA SPLASH — a shallow pool, seen from directly above.
+
+   THE WATER IS NOT A FILTER. An animated feTurbulence recomputes its noise
+   every frame across the whole viewport, which is how a landing page ends up
+   making a laptop fan audible. Instead there are two pre-rendered seamless
+   tiles — a marble floor and a caustic net — and the movement is nothing but
+   `transform` on oversized layers, which the compositor does on the GPU and
+   which costs the main thread nothing at all.
+
+   WHAT WAS WRONG WITH THE FIRST TWO ATTEMPTS, because the fix is the whole
+   design. The water was a translucent WASH OVER STONE, which can only ever
+   look like stone you can see through; the caustic layer was a ridged fractal
+   noise, which gives streaks rather than cells; and the anisotropic surface
+   layer was pushed hard to make it visible, which turned the streaks into
+   brushed metal. Composited and looked at, it read as a blurred photograph.
+
+   THE DEPTH IS THE STACK, in this order from the bottom:
+
+     1. THE WATER'S OWN COLOUR, opaque, as .pool's background — bright and
+        shallow at the top, deeper and greener at the bottom
+     2. the marble floor, heavily blurred and desaturated at 26% — a
+        suggestion of stone, not a floor you could read
+     3. DEPTH: broad soft patches of lighter and darker water, multiplied,
+        an order of magnitude larger than any ripple. This is the layer that
+        was missing, and without it the eye reads a texture rather than a
+        volume however good the caustic is
+     4. two caustic layers, screen-blended, drifting at different speeds and
+        in different directions — a WORLEY net, because refracted light
+        converges onto interlocking cells and not onto parallel lines
+     5. the sun, a broad radial screen from the top left
+     6. two barely-there surface swells, and one very slow diagonal sheen
+
+   THE PANELS ARE THE SAME MARBLE, lifted out of the water: full brightness, a
+   hard edge, and a shadow that reads as thickness rather than as a drop
+   shadow. They are the stone the pool is lined with, cut and set above the
+   waterline.
+
+   REDUCED MOTION STOPS THE WATER. All of it. A still pool is a perfectly good
+   photograph of a pool, and somebody who has asked for no motion has asked for
+   no motion, not for less of it.
+   ============================================================================ */
+
+/* THE PALETTE LIVES ON THE BODY, not on the pool. It was declared on .pool
+   first, which is a SIBLING of the content — so every var() in the splash
+   resolved to nothing, fell back to the kit's dark-theme tokens, and set the
+   title in mint white on white marble. A custom property is only useful to
+   what inherits from the element carrying it.
+
+   TWO SELECTORS, because there are two ways to be this page. The splash gets
+   m-splash from mode.js before the first paint. The countries page is a
+   different document with no mode.js, and opts in by carrying the class — it
+   is the same stone, the same water and the same slate text, so it wants the
+   same tokens rather than a second copy of them.
+
+   Losing the second selector is what broke the countries page: its cards fell
+   back to the kit's dark-theme ink, which is #e6fff1 — near-white type on a
+   near-white slab. */
+.m-splash body, body.splash-body{
+  --w-shallow:#d3ebf4;
+  --w-mid:#a9d6e6;
+  --w-deep:#7ebcd4;
+  --stone:#f6f7f8;
+  --stone-edge:rgba(120,150,165,.34);
+  /* THE TEXT IS SLATE, NOT PALE BLUE. The first pass set the title in the
+     water colour — pale blue on near-white marble, measured at 1.68:1, which
+     is not text, it is a watermark. These are measured against the stone
+     rather than chosen by eye: 12.1:1 for the ink, 5.6:1 for the secondary
+     (which carries 8.5px type, so comfortably past AA rather than level with
+     it), and 7.1:1 for the title. All three stay cool enough to belong to a
+     pool instead of arriving from somebody else's palette. */
+  --ink:#22333c;
+  --ink-2:#4e6674;
+  --ink-title:#31586b;
+  background:#bfe2ee;
+  color:var(--ink);
+}
+
+.pool{
+  position:fixed; inset:0; overflow:hidden; z-index:0;
+  /* Shallow and bright at the top, deeper and greener towards the bottom.
+     178deg rather than 180 so the band edges are never perfectly horizontal,
+     which is what makes a two-stop gradient read as a gradient. */
+  background:linear-gradient(178deg, #d6f1f6 0%, #8fd3e5 50%, #4ea6c6 100%);
+}
+
+/* every layer is oversized so a slow translate never runs out of tile */
+.pool > *{ position:absolute; inset:-30% -30%; will-change:transform }
+
+/* 1 — the floor. Real Carrara, and DEEPER UNDER than it was: more blur, less
+   opacity, more wash on top. You should know there is stone down there
+   without being able to read its veins, which is what a pool with any depth
+   to it actually looks like. */
+.pool-floor{
+  background:url('../brand/pool-marble.jpg') repeat;
+  background-size:620px 620px;
+  /* A LONG WAY DOWN. Nearly all the saturation goes, because colour is the
+     first thing water takes out of what is under it, and the opacity is low
+     enough that the stone is a suggestion rather than a floor you could read.
+     At .80 — where this was — the marble WAS the page and the water was a
+     tint on top of it. */
+  filter:blur(3.2px) saturate(.22) brightness(1.02);
+  opacity:.26;
+  animation:pool-floor 6660s linear infinite;
+}
+
+/* 1b — DEPTH, the layer that was missing entirely and the reason the first
+   version read as a texture rather than as a volume. Broad, soft patches of
+   lighter and darker water, an order of magnitude larger than the ripples.
+   Real water is never uniform across a whole pool; without this every square
+   metre looks the same however good the caustic is. */
+.pool-depth{
+  background:url('../brand/pool-depth.jpg') repeat;
+  background-size:1700px 1700px;
+  mix-blend-mode:multiply;
+  filter:brightness(1.30);
+  opacity:.34;
+  animation:pool-depth 1500s linear infinite;
+}
+/* 2 — the light reaching it. Softer and slower than the first pass: this is
+   sun through a calm surface, not a wave pool. */
+.pool-caustic{
+  background:url('../brand/pool-caustics.jpg') repeat;
+  mix-blend-mode:screen;
+}
+/* CRISP, not soft. A caustic is a line of focused light; blurring it into a
+   haze is what made the first version look like a photograph of water rather
+   than water. The near layer is barely blurred at all. */
+.pool-caustic.a{
+  background-size:700px 700px; opacity:.52;
+  filter:blur(0.5px);
+  animation:pool-a 750s linear infinite;
+}
+.pool-caustic.b{
+  background-size:1240px 1240px; opacity:.28;
+  filter:blur(2.6px);
+  animation:pool-b 1380s linear infinite reverse;
+}
+/* 3 — THE SUN, from the top left, which is where it is in every photograph of
+   a pool anybody has ever liked. A broad screen rather than a tint: the water
+   already has its colour from .pool's own gradient, and what was missing was
+   somewhere for the light to be coming from. */
+.pool-tint{
+  inset:0;
+  background:radial-gradient(120% 100% at 12% 0%,
+    rgba(255,255,255,.42) 0%, rgba(255,255,255,.16) 38%, transparent 72%);
+  mix-blend-mode:screen;
+  pointer-events:none;
+}
+/* 4 — THE SURFACE ITSELF, which is what was missing. Long, low swells rather
+   than a caustic net: one layer drifting slowly across, a second larger and
+   slower beneath it, both barely there. Calm water does not sparkle, it
+   BREATHES — the whole effect is a few per cent of light moving, and it reads
+   as flow precisely because it is almost nothing. */
+/* OVERLAY, not soft-light. Soft-light against a mid-grey tile is very nearly
+   a no-op — the first attempt at this layer was invisible, which is a
+   convincing way to spend two files on nothing. Overlay keeps the mid-tone
+   and swings the ends, which is exactly what a swell does to reflected light.
+
+   THE TILE IS SQUASHED, and less than it was: 1500 across by 620 down rather
+   than 1600 by 520. At the sharper ratio, and over a crisp caustic net, two
+   regular patterns at right angles read as a WEAVE — visible horizontal
+   banding across the whole page. The opacities came down with it, from .30
+   and .20 to .12 and .09, because this layer was only ever meant to be a few
+   per cent of moving light and had been pushed hard to make it visible. */
+.pool-swell{
+  background:url('../brand/pool-surface.jpg') repeat;
+  mix-blend-mode:overlay;
+}
+.pool-swell.a{
+  background-size:1500px 620px; opacity:.12;
+  animation:swell-a 84s linear infinite;
+}
+.pool-swell.b{
+  background-size:2300px 980px; opacity:.09;
+  animation:swell-b 153s linear infinite reverse;
+}
+/* 5 — one long sheen across the surface */
+.pool-sheen{
+  inset:-40%;
+  background:linear-gradient(104deg, transparent 36%,
+    rgba(255,255,255,.26) 49%, rgba(255,255,255,.05) 57%, transparent 68%);
+  mix-blend-mode:screen; opacity:.42;
+  animation:pool-sheen 62s ease-in-out infinite alternate;
+}
+
+/* THE DRIFT IS ALL ONE WAY. Layers moving in opposite directions read as
+   turbulence; a calm surface flows, so everything travels broadly left with
+   the deeper layers lagging behind — parallax, which is what makes it look
+   like depth rather than like wallpaper scrolling. */
+/* ===========================================================================
+   EVERY LOOP TRAVELS A WHOLE NUMBER OF TILES.
+
+   THIS IS THE FIX FOR THE HARD EDGE that swept across the pool about once a
+   minute. Each of these layers is a repeating tile moved by transform, and a
+   repeat only hides its own seam while the tile is exactly where a copy of
+   itself would be. At the end of the animation the transform snaps back to
+   zero — so unless the distance travelled is an exact whole number of tiles in
+   BOTH axes, the texture lands somewhere it does not line up and the join is
+   visible for the instant it takes to jump.
+
+   Measured before this change, in tiles travelled per loop:
+
+       pool-floor   percentage of the element    — never a whole tile, either axis
+       pool-depth   x 1.0000   y 0.4118          — seam every 300s
+       caustic-a    x 1.0000   y 0.2000          — seam every 150s
+       caustic-b    x 1.0000   y 0.1613          — seam every 230s
+       swell-a      x 1.0667   y 0.0645          — seam every 90s, BOTH axes
+       swell-b      x 1.0435   y 0.0612          — seam every 160s, BOTH axes
+
+   swell-a is the one that was actually being seen: the shortest loop on the
+   page and wrong in both directions at once.
+
+   Every distance below is now a whole multiple of that layer's own tile, and
+   the DURATIONS were re-derived from the old ones so the drift keeps the speed
+   and the direction it was designed with — every layer within 3% of the pace
+   it had, most of them exact. Slower layers therefore have very long
+   durations: that is the loop being long, not the water being slow.
+
+   THE FLOOR NO LONGER USES PERCENTAGES. A percentage translate is of the
+   element, which is 160% of the viewport and a different number of pixels on
+   every screen — so it could not be a whole tile anywhere, and the seam moved
+   about depending on the window size.
+
+   THE SWELLS NO LONGER DRIFT VERTICALLY AT ALL. Their vertical component was
+   0.44 and 0.37 px/s against 18 and 15 across — a fortieth of the motion, and
+   the thing forcing an awkward tile count in the other axis. A swell travels
+   across the water rather than down it, so zero is both the honest number and
+   the one that can never seam.
+   =========================================================================== */
+@keyframes pool-floor{ to{ transform:translate3d(-1860px, 620px, 0) } }   /* 3 x 1 tiles */
+/* THE DEPTH DRIFTS SLOWEST OF ALL. It is the body of water, not the light on
+   it, and a broad patch of shade that moved at the caustic's speed would read
+   as a cloud rather than as depth. */
+@keyframes pool-depth{ to{ transform:translate3d(-8500px, 3400px, 0) } }  /* 5 x 2 */
+@keyframes pool-a{ to{ transform:translate3d(-3500px, -700px, 0) } }     /* 5 x 1 */
+@keyframes pool-b{ to{ transform:translate3d(7440px, 1240px, 0) } }      /* 6 x 1 */
+@keyframes swell-a{ to{ transform:translate3d(-1500px, 0, 0) } }         /* 1 x 0 */
+@keyframes swell-b{ to{ transform:translate3d(2300px, 0, 0) } }          /* 1 x 0 */
+@keyframes pool-sheen{
+  from{ transform:translate3d(-7%, -3%, 0) }
+  to  { transform:translate3d(7%, 3%, 0) }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .pool > *{ animation:none !important; will-change:auto }
+}
+
+/* ============================================================ the marble ===
+   The stone the pool is lined with, cut and set above the waterline. */
+/* A SLAB IS IN THE WATER, NOT ON TOP OF A PAGE. What makes something look
+   submerged rather than pasted is not a bigger drop shadow; it is four
+   separate things, and the first pass had only the last one:
+
+     the WATERLINE      a dark band where the stone enters the water, tight to
+                        the edge, which is the shadow the surface casts on it
+     the DISPLACED LIGHT a bright hairline just outside that, where the water
+                        piles up against the stone and catches the sun
+     the DEPTH SHADOW   a wide, soft, cool pool underneath, offset downward,
+                        because the light is overhead
+     the BEVEL          light on the top edge and dark on the bottom, so the
+                        stone has thickness rather than being a rectangle
+
+   All four are box-shadows on one element, so there is nothing to keep in
+   step and no extra nodes. */
+.slab{
+  position:relative;
+  /* The light from above, over the stone: a slab lit from the top is brighter
+     at the top, and that one gradient does more for the illusion of thickness
+     than any amount of shadow underneath it. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.50) 0%, rgba(255,255,255,0) 44%,
+      rgba(150,182,198,.13) 100%),
+    #fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:auto, 520px 520px;
+  border:1px solid rgba(150,176,188,.55);
+  box-shadow:
+    /* THE ARRIS — two pixels of catch-light on the top and left, and a darker
+       return on the bottom and right. A slab of cut stone has an edge, not a
+       moulding, so this is 2px and not 10. */
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 2px 0 0 rgba(255,255,255,.70),
+    inset 0 -3px 0 rgba(88,120,136,.20),
+    inset -3px 0 0 rgba(88,120,136,.13),
+    /* LIGHT BOUNCING UP off the water onto the bottom lip. Cool, because it
+       has been in the pool on the way. This is the detail that stops a white
+       rectangle reading as a cut-out. */
+    inset 0 -7px 6px -5px rgba(120,200,225,.40),
+    /* displaced light, hugging the edge, where the water piles against stone */
+    0 0 0 1px rgba(255,255,255,.55),
+    /* the contact shadow — tight, so the slab is ON something */
+    0 2px 4px rgba(20,58,74,.30),
+    /* and the depth beneath it */
+    0 12px 26px -6px rgba(20,58,74,.26),
+    0 34px 54px -26px rgba(20,58,74,.40);
+}
+/* the stone breaks the surface, so the water is momentarily brighter along
+   its top edge and darker where it is pressed down at the foot */
+.slab::before{
+  content:''; position:absolute; left:-10px; right:-10px; top:-9px; height:16px;
+  background:radial-gradient(60% 100% at 50% 100%,
+    rgba(255,255,255,.55), transparent 70%);
+  pointer-events:none; z-index:-1;
+}
+.slab::after{
+  content:''; position:absolute; left:-14px; right:-14px; bottom:-16px; height:28px;
+  background:radial-gradient(60% 100% at 50% 0%,
+    rgba(24,66,88,.30), transparent 72%);
+  pointer-events:none; z-index:-1; filter:blur(2px);
+}
+.slab.sunk{ box-shadow:inset 0 2px 7px rgba(30,70,90,.22) }
+
+/* ============================================================== the page === */
+.splash{
+  position:relative; z-index:1; min-height:100svh;
+  display:grid; grid-template-rows:1fr auto;
+  padding:calc(var(--u)*3);
+  color:var(--ink);
+}
+
+/* Dead centre, and nothing to correct for: this page has no rail. It carried
+   a negative margin to cancel the rail's padding for a while, which then
+   pushed the title 174px LEFT once the rail was removed — a correction
+   outliving the thing it corrected. */
+.sp-mid{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:0; padding:calc(var(--u)*6) 0 calc(var(--u)*4);
+}
+.sp-title{
+  width:min(560px, 92vw); text-align:center;
+  padding:calc(var(--u)*5) calc(var(--u)*4) calc(var(--u)*4);
+}
+.sp-title h1{
+  margin:0; line-height:.9;
+  font-size:clamp(44px, 9vw, 92px);
+  /* CUT INTO THE STONE, not printed on it. Type that sits ON marble always
+     looks like a sticker; engraved type belongs to the surface, which is what
+     "integrated" means here.
+
+     The illusion is two shadows and nothing else. The light is overhead, so
+     the inside of a cut catches shade at the TOP and the lower lip of the
+     groove catches light at the BOTTOM — invert that pair and the letters pop
+     out instead. The fill is the stone itself, a shade darker, so the letter
+     is a hollow in the marble rather than a colour laid over it. */
+  /* AND DARK ENOUGH TO BE A HEADLINE. #7f8f97 measured 3.18:1 against the new
+     brighter stone — technically past AA for large type and visibly washed
+     out, which is most of why the page read as weak. #3c5260 is 7.77:1 and
+     still cool enough to belong to a pool. The incision comes from the
+     shadows, not from making the letters pale. */
+  color:#3c5260;
+  text-shadow:
+    /* shade inside the top of the cut… */
+    0 -1px 1px rgba(20,38,48,.42),
+    /* …and the lit lower lip of the groove, which is what sells it */
+    0 1px 0 rgba(255,255,255,.92),
+    0 2px 4px rgba(255,255,255,.55);
+}
+.sp-by{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:calc(var(--u)*2);
+  font-family:var(--f-micro); font-size:10px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+/* the mark is supplied as white-on-alpha, so it is tinted rather than
+   recoloured — one file works on the marble and on the water. Engraved with
+   the same two shadows as the title, in filter form, so it is cut into the
+   slab rather than stuck to it. */
+.sp-by img{ height:26px; width:auto; display:block;
+  filter:brightness(0) opacity(.44)
+         drop-shadow(0 1px 0 rgba(255,255,255,.9)) }
+.sp-by span{ text-shadow:0 1px 0 rgba(255,255,255,.85) }
+
+/* --------------------------------------------------------------- sign in --- */
+.sp-login{ width:min(560px, 92vw); padding:calc(var(--u)*2.5) calc(var(--u)*3) }
+.sp-login h2{
+  margin:0 0 calc(var(--u)*1.5); font-family:var(--f-micro); font-size:9px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2); font-weight:400;
+}
+.sp-row{ display:flex; gap:8px; flex-wrap:wrap }
+.sp-in{
+  flex:1 1 200px; min-width:0; background:rgba(255,255,255,.72);
+  border:1px solid var(--stone-edge); color:var(--ink);
+  font-family:var(--f-ui); font-size:14px; padding:9px 12px; border-radius:2px;
+}
+.sp-in:focus{ outline:none; border-color:var(--w-deep);
+  background:#fff; box-shadow:0 0 0 3px rgba(143,201,222,.28) }
+.sp-btn{
+  flex:0 0 auto; cursor:pointer; border:1px solid var(--ink);
+  background:var(--ink); color:#f2fbff;
+  font-family:var(--f-micro); font-size:9px; letter-spacing:.16em;
+  text-transform:uppercase; padding:10px 18px; border-radius:2px;
+}
+.sp-btn:hover{ background:transparent; color:var(--ink) }
+.sp-btn.ghost{ background:transparent; color:var(--ink) }
+.sp-btn.ghost:hover{ background:var(--ink); color:#f2fbff }
+.sp-btn[disabled]{ opacity:.5; cursor:default }
+.sp-or{
+  text-align:center; font-family:var(--f-micro); font-size:8px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ink-2);
+  margin:calc(var(--u)*1.5) 0;
+}
+.sp-msg{ font-family:var(--f-micro); font-size:9px; line-height:1.85;
+  margin-top:9px; color:var(--ink-2) }
+.sp-msg.err{ color:#b1364a } .sp-msg.ok{ color:#1d6a53 }
+/* warn is not err: "Google is not switched on yet" is information, and in the
+   red used for a rejected address it would read as the visitor's mistake */
+.sp-msg.warn{ color:#8a6320 }
+.sp-who{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.sp-who .em{ font-family:var(--f-ui); font-weight:700; font-size:13.5px }
+
+/* ============================================================== the three ===
+   Left, centre and right, on one row, each cut into its own segments. */
+/* ONE GRID, NOT THREE PILES. The decks hold two, three and however-many
+   segments, so sizing each independently left three blocks of different
+   heights sitting on different baselines — which is what "not properly
+   gridded" looks like.
+
+   So the whole row is a single 12-column grid: 3 / 5 / 4, which gives the
+   scorer the middle and the width its three segments need. Every deck is
+   stretched to the same height, every segment inside is stretched to the same
+   height, and the gutters are identical throughout, so the tops and the
+   bottoms of all nine segments line up across the screen. */
+.sp-decks{
+  display:grid; gap:calc(var(--u)*3);
+  grid-template-columns:repeat(12, 1fr);
+  align-items:stretch;
+  padding-bottom:calc(var(--u)*2);
+  max-width:1360px; margin:0 auto; width:100%;
+}
+.sp-deck{ display:flex; flex-direction:column; min-width:0 }
+.sp-deck.left{ grid-column:span 3 }
+.sp-deck.mid{ grid-column:span 5 }
+.sp-deck.right{ grid-column:span 4 }
+.sp-deck .segs{ flex:1 }
+@media (max-width:1080px){
+  .sp-decks{ grid-template-columns:repeat(6, 1fr) }
+  .sp-deck.left{ grid-column:span 3 }
+  .sp-deck.right{ grid-column:span 3 }
+  .sp-deck.mid{ grid-column:span 6; order:-1 }
+}
+@media (max-width:640px){
+  .sp-decks{ grid-template-columns:1fr }
+  .sp-deck.left, .sp-deck.mid, .sp-deck.right{ grid-column:1 / -1 }
+}
+/* A FIXED HEIGHT, because one of these headings contains the logotype and a
+   different face is a different line box — which put the middle deck's
+   segments a pixel below the other two. A one-pixel step across a grid is
+   exactly the kind of thing that reads as "not quite right" without ever
+   being noticed. */
+/* THIS TYPE IS ON THE WATER, not on the stone, so it gets the opposite
+   treatment: no groove — a groove needs a solid to be cut into — but a soft
+   pale halo, the way lettering on a pool wall reads through moving water.
+   Slightly darker than the slab type too, because the water behind it is
+   darker than marble. */
+.deck-h{
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--ink);
+  height:20px; line-height:13px; padding:0 0 7px 2px;
+  display:flex; align-items:flex-end; gap:5px;
+  text-shadow:0 0 10px rgba(255,255,255,.75), 0 1px 0 rgba(255,255,255,.5);
+}
+.deck-h .epinoia-mark{ font-size:11px; line-height:1 }
+/* THE DECK IS ONE SLAB, and it needs the same depth the title slab has. It had
+   none: a bare grid with a hairline background, so three flat white rectangles
+   sat on the water with nothing holding them there.
+
+   The outer depth belongs to the CONTAINER, because the deck is one piece of
+   stone — a shadow per segment would read as three separate cards, which is
+   the opposite of what the cuts are for. overflow:hidden clips the children,
+   not the element's own shadow, so this works where an outer shadow on each
+   segment would not. */
+.segs{
+  display:grid; gap:2px; overflow:hidden;
+  align-items:stretch; grid-auto-rows:1fr;
+  /* the groove between segments: what shows through the 2px gap */
+  background:rgba(96,128,144,.44);
+  border:1px solid rgba(150,176,188,.55);
+  box-shadow:
+    /* displaced light, where the water piles up against the stone */
+    0 0 0 1px rgba(255,255,255,.5),
+    /* the contact shadow — tight, so the slab is ON something */
+    0 2px 4px rgba(20,58,74,.28),
+    /* and the depth beneath it */
+    0 14px 26px -6px rgba(20,58,74,.26),
+    0 36px 56px -26px rgba(20,58,74,.42);
+}
+.segs.three{ grid-template-columns:repeat(3,1fr) }
+.segs.two{ grid-template-columns:repeat(2,1fr) }
+@media (max-width:560px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
+
+/* A SEGMENT IS A SLICE OF THE SAME SLAB, not a card of its own: the marble
+   runs across all of them, so the divisions read as cuts in one stone. */
+.seg{
+  position:relative; display:flex; flex-direction:column; gap:5px;
+  min-height:118px; padding:calc(var(--u)*2);
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 52%,
+      rgba(150,182,198,.11) 100%),
+    #fbfbfc url('../brand/pool-marble.jpg') repeat;
+  background-size:auto, 520px 520px;
+  text-decoration:none; color:var(--ink); cursor:pointer;
+  transition:box-shadow .18s ease, transform .18s ease;
+  overflow:hidden;
+  /* EACH FACE IS SEPARATELY LIT, which is what turns a divided rectangle into
+     cut stone. The light is overhead and slightly left, so:
+
+       a catch-light along the top and the left of every segment
+       a darker return on the bottom and the right, which is the far wall of
+         the saw cut beside it
+       and the cool bounce off the water along the bottom lip, the same detail
+         that stops the title slab reading as a cut-out
+
+     Two pixels each. A slab has an arris, not a moulding — the first version
+     of the title slab used 1px and read as a hairline rather than as an edge,
+     and ten would read as a picture frame. */
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.92),
+    inset 2px 0 0 rgba(255,255,255,.62),
+    inset 0 -2px 0 rgba(88,120,136,.24),
+    inset -2px 0 0 rgba(88,120,136,.18),
+    inset 0 -7px 6px -5px rgba(120,200,225,.34),
+    /* and a little shade gathering at the edges, so the face is not flat.
+       Spread wide and kept light on purpose: at 22px it read as a frame drawn
+       inside the wide single-segment deck rather than as the face falling
+       away, which is the difference between shading and outlining. */
+    inset 0 0 34px -14px rgba(70,105,122,.16);
+}
+.seg::after{
+  /* the water rising up the stone on hover — the interaction is the pool
+     reaching the surface, not a rectangle changing colour */
+  content:''; position:absolute; left:0; right:0; bottom:0; height:0;
+  background:linear-gradient(0deg,
+    color-mix(in srgb, var(--w-deep) 62%, transparent),
+    color-mix(in srgb, var(--w-shallow) 12%, transparent));
+  transition:height .26s cubic-bezier(.2,.8,.3,1);
+  pointer-events:none;
+}
+.seg:hover::after, .seg:focus-visible::after{ height:100% }
+
+/* PRESSED IN, not lifted. The segment is stone in a deck of stone: it cannot
+   float, so the interaction takes the catch-light off the top edge and puts a
+   shadow there instead, which reads as the face going a millimetre below its
+   neighbours. One pixel of travel is plenty when the lighting moves with it. */
+.seg:hover, .seg:focus-visible{
+  transform:translateY(1px);
+  box-shadow:
+    inset 0 2px 3px rgba(30,66,84,.28),
+    inset 2px 0 2px rgba(30,66,84,.14),
+    inset 0 -2px 0 rgba(255,255,255,.42),
+    inset 0 -7px 6px -5px rgba(120,200,225,.30),
+    inset 0 0 34px -14px rgba(70,105,122,.18);
+}
+.seg:active{ transform:translateY(2px) }
+.seg:focus-visible{ outline:2px solid var(--ink); outline-offset:-3px }
+.seg > *{ position:relative; z-index:1 }
+.seg .k{
+  font-family:var(--f-micro); font-size:8px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--ink-2);
+}
+.seg .t{
+  font-family:var(--f-ui); font-weight:800; font-size:15px;
+  text-transform:uppercase; letter-spacing:.02em; line-height:1.15;
+  /* the same cut, shallower — a segment's title is small, and a deep groove
+     at 15px turns into mud */
+  text-shadow:0 1px 0 rgba(255,255,255,.85);
+}
+.seg .k, .seg .d{ text-shadow:0 1px 0 rgba(255,255,255,.6) }
+.seg .d{
+  font-family:var(--f-micro); font-size:8.5px; line-height:1.85;
+  color:var(--ink-2); margin-top:auto;
+}
+/* the water rising over the stone darkens it, so the type has to come up with
+   it or the segment becomes unreadable at exactly the moment somebody is
+   looking at it */
+.seg:hover .k, .seg:hover .d, .seg:focus-visible .k, .seg:focus-visible .d{
+  color:var(--ink);
+}
+.seg.off{ cursor:not-allowed }
+.seg.off .t, .seg.off .k{ opacity:.5 }
+.seg.off::after{ background:linear-gradient(0deg,
+  rgba(150,120,120,.32), rgba(150,120,120,.06)) }
+
+/* a league segment wears its own crest, washed back behind the name */
+.seg.league .crest{
+  position:absolute; inset:0; z-index:0; display:grid; place-items:center;
+  opacity:.16; filter:saturate(.5);
+}
+.seg.league .crest img{ width:64%; height:64%; object-fit:contain }
+.seg.league .mono{
+  font-family:var(--f-score); font-size:clamp(38px,7vw,64px); line-height:1;
+  color:var(--ink);
+}
+.seg.league .t{ font-size:13.5px }
+
+@media (prefers-reduced-motion:reduce){
+  .seg, .seg::after{ transition:none }
+}
+
+/* ------------------------------------------------------------------ foot --- */
+.sp-foot{
+  display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+  padding:calc(var(--u)*2) 2px 0;
+  font-family:var(--f-micro); font-size:8.5px; letter-spacing:.1em;
+  color:var(--ink);
+  text-shadow:0 0 9px rgba(255,255,255,.7), 0 1px 0 rgba(255,255,255,.45);
+}
+.sp-foot a{ color:var(--ink); text-decoration:none }
+.sp-foot a:hover{ color:var(--ink); text-decoration:underline }
+
+/* The rail is a dark object and this page is a bright one. It keeps its own
+   colours — it is the same rail everywhere else on the site — but the page
+   must make room for it exactly as every other page does. */
+.m-splash body, body.splash-body{ background:#bfe2ee }
+
+/* ============================================================================
+   THE TRACK, top right.
+
+   The widget is the one element on this page whose insides we do not draw, so
+   it is set into a slab of the same stone as everything else and given the same
+   arris and shadow. Inside it, SoundCloud's own chrome is left alone: restyling
+   somebody else's iframe is not possible from out here, and pretending to by
+   overlaying it would break the play button.
+
+   HIDDEN ON SMALL SCREENS. 300px of player on a 375px phone is the page, and a
+   landing page whose first element is an audio widget is a landing page nobody
+   waits for.
+   ============================================================================ */
+.sc-slab{
+  position:fixed; z-index:3;
+  top:calc(var(--u)*3); right:calc(var(--u)*3);
+  width:clamp(260px, 25vw, 330px);
+  padding:6px;
+  /* the arris and the shadow come from .slab; only the size is local */
+}
+.sc-slab.hide{ display:none }
+.sc-frame{
+  display:block; width:100%; height:120px; border:0;
+  /* the widget paints its own white; without this the stone shows through the
+     rounded corners it draws and reads as a misprint */
+  background:#fbfbfc;
+}
+@media (max-width:900px){ .sc-slab{ display:none !important } }
+@media (prefers-reduced-motion:reduce){
+  /* Motion is stopped elsewhere on this page; sound is not motion and is left
+     to the visitor and their browser, which is already refusing to start it. */
+}
