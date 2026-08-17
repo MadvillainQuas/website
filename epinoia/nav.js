@@ -189,6 +189,20 @@
      Removed once the leagues have arrived and the first view is chosen. */
   nav.classList.add('noanim');
 
+  /* EVERYTHING THAT SCROLLS, IN ITS OWN BOX. On the phone bar this is what
+     actually gets overflow-x:auto; the menu toggle appended at the very end
+     of this function is a sibling of it, not a child, so it can never be
+     something you have to swipe the bar to reach. An earlier version pinned
+     the toggle with position:sticky INSIDE the scrolling element instead —
+     the same element supplying both the containing block and the scroll
+     context for its own sticky child, which is exactly the combination
+     Safari has never reliably supported. A real sibling outside the
+     scroller needs no browser-specific fix because it was never inside the
+     thing that scrolls. Invisible to desktop layout (display:contents,
+     defined in kit/nav.css) — only the mobile media query gives it a shape
+     of its own. */
+  const navScroll = el('div', 'ep-nav-scroll');
+
   const navdeck = el('div', 'navdeck');
   const deck = el('div', 'deck');
   /* THREE LEVELS: countries, then that country's leagues, then the league's
@@ -199,7 +213,7 @@
   const leaguePanel = el('div', 'panel leaguepanel');
   deck.append(countryPanel, rootPanel, leaguePanel);
   navdeck.appendChild(deck);
-  nav.appendChild(navdeck);
+  navScroll.appendChild(navdeck);
 
   /* ---- country panel: every country with a league in it ---- */
   const ctitle = el('a', 'ptitle', 'Countries');
@@ -317,7 +331,7 @@
   retarget();          // set the initial "you are here" marks
 
   /* ---- the rows that never move ---- */
-  nav.appendChild(el('div', 'gap'));
+  navScroll.appendChild(el('div', 'gap'));
 
   /* ADMINISTRATION LIVES DOWN HERE NOW, with the account and the contact link,
      because that is what it is: a thing about YOU rather than a thing about
@@ -328,7 +342,7 @@
 
      Both stay hidden until whoami() says otherwise, and hiding them is a
      courtesy: the consoles refuse everything to somebody without the role. */
-  nav.append(adminRow, platRow);
+  navScroll.append(adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
@@ -339,13 +353,13 @@
     encodeURIComponent(location.pathname + location.search);
   acctLink.title = 'sign in';
   acct.appendChild(acctLink);
-  nav.appendChild(acct);
+  navScroll.appendChild(acct);
 
   const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
   contact.href = root + 'contact/';
   contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
   contact.title = 'contact';
-  nav.appendChild(contact);
+  navScroll.appendChild(contact);
 
   /* THE WAY OUT IS EPINOIA, not Prophe(s)y. This rail is on the public half
      of the site, and the row at the bottom of it should be the way back to
@@ -360,7 +374,8 @@
   const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
   home.append(el('span', 'ic', '←'), homeTx);
   home.title = 'back to Epinoia';
-  nav.appendChild(home);
+  navScroll.appendChild(home);
+  nav.appendChild(navScroll);
 
   /* THE WAY IN, ON A PHONE.
      The bar below 820px is every one of these same rows, reflowed into a
@@ -371,18 +386,25 @@
      the identical rail a desktop visitor sees, full labels included, as a
      sheet over the page — the honest route to everything the bar itself
      already links to. Hidden by CSS above 820px, where the rail needs no
-     toggle because it is simply always on screen. */
+     toggle because it is simply always on screen.
+
+     A DIRECT CHILD OF nav, NOT OF navScroll — that is the whole fix. It sits
+     outside the element that scrolls, so it can never be scrolled away from,
+     with no positioning trick required to keep it in view. */
   const navToggle = el('button', 'item navtoggle');
   navToggle.type = 'button';
   navToggle.setAttribute('aria-label', 'Menu');
   navToggle.setAttribute('aria-expanded', 'false');
   const navToggleIc = el('span', 'ic', '☰');
-  navToggle.append(navToggleIc, el('span', 'tx', 'menu'));
+  const navToggleTx = el('span', 'tx', 'menu');
+  navToggle.append(navToggleIc, navToggleTx);
   navToggle.addEventListener('click', () => {
     const open = nav.classList.toggle('drawer-open');
     document.body.classList.toggle('nav-drawer-open', open);
     navToggle.setAttribute('aria-expanded', String(open));
+    navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Menu');
     navToggleIc.textContent = open ? '×' : '☰';
+    navToggleTx.textContent = open ? 'close' : 'menu';
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && nav.classList.contains('drawer-open')) navToggle.click();

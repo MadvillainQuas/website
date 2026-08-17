@@ -483,7 +483,14 @@ body.pregame .plist{opacity:.72}
 .statchip b{color:var(--lume);font-weight:400;margin-left:5px;font-variant-numeric:tabular-nums;}
 .bxteam{padding:12px 8px 8px;}
 .bxteam h3{font-size:12px;letter-spacing:.26em;font-weight:400;text-transform:lowercase;padding:0 6px 10px;color:var(--lume);}
-.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+/* overflow-x alone was never really "one axis only" — the CSS Overflow spec
+   computes an unset/visible overflow-y as auto the moment its sibling axis
+   isn't visible, so this was quietly overflow:auto on BOTH axes the entire
+   time. Exactly the trap fixed in kit/table.css's .ft-wrap: a touch starting
+   over the table gets claimed by the box's own vertical scroll instead of
+   reaching the page, on every table this wraps — the box score, the
+   four-factors card, and the full table / advanced tab alike. */
+.tblwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;}
 table.bx{border-collapse:collapse;width:100%;min-width:700px;font-variant-numeric:tabular-nums;}
 table.bx th{font-size:9px;font-weight:400;letter-spacing:.14em;color:var(--faint);text-transform:lowercase;
   padding:6px 7px;text-align:right;border-bottom:1px solid var(--line);}
