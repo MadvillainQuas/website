@@ -471,6 +471,147 @@
     }
   };
 
+  /* =========================================================== squad picker ===
+     A CLUB PER SIDE, ON THE CARD ITSELF.
+
+     The fixture picker above handles the common case: a scheduled game, both
+     squads, straight into it. This is for everything that is not that — a
+     friendly, a pre-season game, a tournament nobody has entered into the
+     schedule, a cup tie between two clubs from different leagues. The names
+     were typed in by hand, every time, for clubs whose rosters the platform
+     was already holding.
+
+     TWO INDEPENDENT PICKERS, one per card, and that is the point rather than a
+     convenience: the two sides do not have to come from the same league. A
+     card picks a league, then a club, and takes that club's published roster,
+     its name and its colour. The other card can do something completely
+     different, or nothing at all.
+
+     MANUAL ENTRY IS UNTOUCHED. The name field stays editable after a pick, the
+     + player button still works, the scan still works, and rows can still be
+     deleted. Picking a club fills the card in; it does not take it over. A
+     club with two players registered and nine turning up is an ordinary
+     Saturday, and the card has to survive it.
+
+     WHY THE ROWS ARE CLEARED FIRST. Filling over the top of what is already
+     there is how you end up with the last club's ninth player still in the
+     sheet when the new one has eight. Picking a club replaces that card's
+     roster outright — which is also what somebody means when they change their
+     mind about which club is playing.
+
+     Minors are absent by RLS rather than by anything here: rosterOfTeam drops
+     the rows the database returned as null, which is what a withheld player
+     looks like from out here. A youth club will come back short, and that is
+     the protection working rather than a fault to route around. */
+  const teamsOfLeague = (leagueId) =>
+    sbApi('teams?league_id=eq.' + encodeURIComponent(leagueId) +
+          '&select=id,name,slug,colour&order=name');
+
+  function injectSquadPickers() {
+    if (!CFGx.supabaseUrl || !CFGx.supabaseAnonKey) return;     // standalone use
+    const cards = document.querySelectorAll('#setup .team-card');
+    if (cards.length < 2) return;
+    if (document.querySelector('.csSquadPick')) return;         // already mounted
+
+    const SEL = 'flex:1 1 120px;min-width:0;background:var(--bg-elevated);color:var(--txt);' +
+                'border:1px solid var(--line);border-radius:9px;padding:7px 8px;' +
+                'font-family:var(--f-mono);font-size:11px';
+
+    let leagues = null;                       // fetched once, shared by both cards
+
+    cards.forEach((card) => {
+      const bar = document.createElement('div');
+      bar.className = 'csSquadPick';
+      bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;' +
+                          'margin:0 0 9px';
+
+      const lg = document.createElement('select'); lg.style.cssText = SEL;
+      const tm = document.createElement('select'); tm.style.cssText = SEL;
+      tm.disabled = true;
+      const note = document.createElement('div');
+      note.style.cssText = 'flex:1 1 100%;font-family:var(--f-mono);font-size:10px;' +
+                           'color:var(--dim);line-height:1.6';
+      note.textContent = 'or just type the names below';
+
+      lg.append(new Option('league…', ''));
+      tm.append(new Option('club…', ''));
+      bar.append(lg, tm, note);
+
+      /* above the name field, because it is the thing that fills the name
+         field — reading downwards it goes league, club, name, roster */
+      card.insertBefore(bar, card.firstChild);
+
+      const fillClubs = async (leagueId) => {
+        tm.innerHTML = ''; tm.disabled = true;
+        tm.append(new Option('club…', ''));
+        if (!leagueId) return;
+        try {
+          const ts = await teamsOfLeague(leagueId);
+          if (!ts.length) { note.textContent = 'no clubs in that league yet'; return; }
+          ts.forEach(t => {
+            const o = new Option(t.name, t.id);
+            o.dataset.colour = t.colour || '';
+            o.dataset.name = t.name;
+            tm.append(o);
+          });
+          tm.disabled = false;
+          note.textContent = 'or just type the names below';
+        } catch (e) {
+          note.textContent = 'could not load the clubs: ' + e.message;
+        }
+      };
+
+      const applySquad = async (teamId, label, colour) => {
+        note.textContent = 'loading the squad…';
+        let roster;
+        try { roster = await rosterOfTeam(teamId); }
+        catch (e) { note.textContent = 'could not load that squad: ' + e.message; return; }
+
+        const nameIn = card.querySelector('.tname');
+        if (nameIn) {
+          nameIn.value = label;
+          nameIn.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (colour) card.dataset.color = colour;   // startGame reads this
+
+        /* out with whatever was there, in with this club's squad */
+        card.querySelectorAll('.rrow').forEach(r => r.remove());
+        const add = card.querySelector('.addP');
+        roster.forEach((pl) => {
+          add && add.click();
+          const rows = card.querySelectorAll('.rrow');
+          const row = rows[rows.length - 1];
+          if (!row) return;
+          const n = row.querySelector('.rname'), num = row.querySelector('.rnum');
+          if (n) { n.value = pl.name; n.dispatchEvent(new Event('input', { bubbles: true })); }
+          if (num) { num.value = pl.num || ''; num.dispatchEvent(new Event('input', { bubbles: true })); }
+        });
+
+        note.textContent = roster.length
+          ? roster.length + ' registered — add or remove anybody below'
+          : 'that club has nobody registered yet — type the names below';
+      };
+
+      lg.addEventListener('change', () => fillClubs(lg.value));
+      tm.addEventListener('change', () => {
+        const o = tm.selectedOptions[0];
+        if (!tm.value || !o) return;
+        applySquad(tm.value, o.dataset.name || o.textContent, o.dataset.colour);
+      });
+
+      /* the league list is fetched once and reused by the second card */
+      (async () => {
+        try {
+          if (!leagues) leagues = await sbApi('leagues?select=id,name&order=name');
+          if (!leagues.length) { note.textContent = 'no leagues on the platform yet'; return; }
+          leagues.forEach(l => lg.append(new Option(l.name, l.id)));
+        } catch (e) {
+          note.textContent = 'could not reach the leagues: ' + e.message;
+        }
+      })();
+    });
+  }
+
   /* ------------------------------------------------------ legend clearance --- */
   /* #cols reserves a flat 52px for the fixed gesture legend, but the legend is
      150px tall on a narrow phone once its text wraps — so the bottom of the
@@ -729,6 +870,7 @@
      picker only needs the DOM, the auto-load needs showStarterPick(). */
   function start() {
     try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
+    try { injectSquadPickers(); } catch (e) { console.warn('[squads]', e); }
     try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
