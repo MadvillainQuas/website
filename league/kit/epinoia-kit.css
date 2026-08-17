@@ -134,7 +134,12 @@
    and opts out here: it fills a viewport rather than being read. */
 @media (min-width:1000px){ body{ zoom:1.25 } }
 @media (min-width:1200px){ body{ zoom:1.5 } }
-body.splash-body{ zoom:1 }
+/* THE SPLASH IS NOT ZOOMED. It is a fixed composition — a pool, a title and
+   four slabs sized to the viewport — not a page of type and tables that gets
+   easier to read when everything grows. At 1.5 the slabs ran past the bottom
+   of the screen. Both selectors for the same reason as splash.css: the splash
+   is told by mode.js, the countries page opts in by class. */
+.m-splash body, body.splash-body{ zoom:1 }
 
 /* ---------- 3. base ---------- */
 *{box-sizing:border-box}

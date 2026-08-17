@@ -207,6 +207,46 @@ input{font:inherit;color:var(--txt);}
 #scorebox.collapsed .clk{font-size:14px;}
 #scorebox.collapsed .per{font-size:9px;}
 #scorebox.collapsed .rundot{display:none;}
+/* ---- the pre-game hold ----
+   The game screen, complete, with the clock stopped and one decision on it.
+   Everything else is dimmed rather than hidden: a statistician checking the
+   squads needs to see the columns they are checking, and a screen that hides
+   what it is about in order to ask a question is harder to answer. */
+#mpPregame{border-color:var(--lume);box-shadow:0 0 0 1px rgba(147,242,191,.25) inset}
+.pgtitle{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--lume);margin-bottom:6px}
+.pgsub{font-size:11px;line-height:1.7;color:var(--faint);margin-bottom:11px}
+.pgbtns{display:flex;flex-direction:column;gap:8px}
+.pgbtn{font-size:14px;font-weight:800;letter-spacing:.02em;padding:13px 14px;
+  border-radius:11px;border:1px solid var(--line-hi);background:rgba(255,255,255,.05);
+  color:inherit;cursor:pointer;text-transform:lowercase}
+.pgbtn.go{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;border-color:transparent}
+.pgbtn:active{transform:translateY(1px)}
+body.pregame #topbar,body.pregame #subbar{opacity:.4;pointer-events:none}
+body.pregame .plist{opacity:.72}
+
+/* ---- the squad editor ---- */
+.sqgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px}
+@media (max-width:760px){ .sqgrid{grid-template-columns:1fr} }
+.sqcol .sqhead{display:flex;align-items:baseline;gap:9px;padding:9px 11px;margin-bottom:8px}
+.sqcol .tn{font-weight:800;font-size:14px;text-transform:uppercase}
+.sqcol .tsub{font-size:10px;color:var(--faint);margin-left:auto}
+.sqrow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line)}
+.sqrow .sqnum{font-family:var(--f-mono,monospace);font-size:11px;color:var(--faint);width:26px}
+.sqrow .sqname{flex:1;font-size:13px;text-transform:capitalize}
+.sqpill{font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;
+  border-radius:20px;border:1px solid var(--line-hi);cursor:pointer;background:none;color:var(--faint)}
+.sqpill.on{background:var(--lume);color:#04100b;border-color:transparent;font-weight:700}
+.sqx{border:none;background:none;color:var(--faint);font-size:15px;cursor:pointer;padding:0 4px}
+.sqx:hover{color:var(--bad,#ff5f6b)}
+.sqadd{display:flex;gap:6px;padding:9px 9px 0;flex-wrap:wrap}
+.sqadd input{flex:1 1 110px;min-width:0;font-size:13px;padding:8px 9px;border-radius:8px;
+  border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:inherit}
+.sqadd input.num{flex:0 0 62px}
+.sqadd button{font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--line-hi);
+  background:rgba(255,255,255,.05);color:inherit;cursor:pointer}
+.sqnote{font-size:10.5px;line-height:1.7;color:var(--faint);padding:8px 11px 0}
+
 .clocktap{cursor:pointer;border-radius:12px;padding:4px 18px !important;transition:background .15s;}
 .clocktap:active{background:rgba(170,255,215,.12);}
 .runword{font-size:8px;letter-spacing:.2em;color:var(--faint);}

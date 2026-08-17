@@ -302,6 +302,11 @@
       .sort((a, b) => (+a.num || 99) - (+b.num || 99));
   };
 
+  /* The two clubs in this fixture, remembered when it loads. The pre-game
+     screen lets a statistician pull a late arrival off the club's published
+     roster, and it can only do that if it knows which clubs are playing. */
+  let sides = null;
+
   /* ?g=<uuid> means "score this fixture": pull both squads and go straight to
      the starting-five picker, which is the first decision that is actually the
      statistician's to make. */
@@ -312,6 +317,8 @@
     if (!gs.length) throw new Error('that fixture is not visible to you');
     const g = gs[0];
     if (g.status === 'final') throw new Error('that game is already final');
+
+    sides = [g.home_team_id, g.away_team_id];
 
     /* a resumed game keeps the squad frozen at tip, so a roster edited
        mid-game never rewrites who was available */
@@ -448,6 +455,21 @@
       console.warn('[fixture]', e);
     }
   }
+
+  /* WHAT THE PRE-GAME SCREEN NEEDS FROM HERE.
+
+     Squad editing lives in the scorer, where the game state is; the club's
+     published roster lives out here, where the fixture and the credentials
+     are. This is the seam between them, and it is deliberately two functions
+     and no state: available() says whether there is a club to ask about, and
+     roster() answers for one side. Nothing about the game crosses it. */
+  window.EpinoiaSquads = {
+    available: () => !!(sides && sides[0] && sides[1]),
+    roster: (t) => {
+      if (!sides || !sides[t]) return Promise.reject(new Error('no club for that side'));
+      return rosterOfTeam(sides[t]);
+    }
+  };
 
   /* ------------------------------------------------------ legend clearance --- */
   /* #cols reserves a flat 52px for the fixed gesture legend, but the legend is

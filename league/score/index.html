@@ -215,6 +215,46 @@ input{font:inherit;color:var(--txt);}
 #scorebox.collapsed .clk{font-size:14px;}
 #scorebox.collapsed .per{font-size:9px;}
 #scorebox.collapsed .rundot{display:none;}
+/* ---- the pre-game hold ----
+   The game screen, complete, with the clock stopped and one decision on it.
+   Everything else is dimmed rather than hidden: a statistician checking the
+   squads needs to see the columns they are checking, and a screen that hides
+   what it is about in order to ask a question is harder to answer. */
+#mpPregame{border-color:var(--lume);box-shadow:0 0 0 1px rgba(147,242,191,.25) inset}
+.pgtitle{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--lume);margin-bottom:6px}
+.pgsub{font-size:11px;line-height:1.7;color:var(--faint);margin-bottom:11px}
+.pgbtns{display:flex;flex-direction:column;gap:8px}
+.pgbtn{font-size:14px;font-weight:800;letter-spacing:.02em;padding:13px 14px;
+  border-radius:11px;border:1px solid var(--line-hi);background:rgba(255,255,255,.05);
+  color:inherit;cursor:pointer;text-transform:lowercase}
+.pgbtn.go{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;border-color:transparent}
+.pgbtn:active{transform:translateY(1px)}
+body.pregame #topbar,body.pregame #subbar{opacity:.4;pointer-events:none}
+body.pregame .plist{opacity:.72}
+
+/* ---- the squad editor ---- */
+.sqgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px}
+@media (max-width:760px){ .sqgrid{grid-template-columns:1fr} }
+.sqcol .sqhead{display:flex;align-items:baseline;gap:9px;padding:9px 11px;margin-bottom:8px}
+.sqcol .tn{font-weight:800;font-size:14px;text-transform:uppercase}
+.sqcol .tsub{font-size:10px;color:var(--faint);margin-left:auto}
+.sqrow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line)}
+.sqrow .sqnum{font-family:var(--f-mono,monospace);font-size:11px;color:var(--faint);width:26px}
+.sqrow .sqname{flex:1;font-size:13px;text-transform:capitalize}
+.sqpill{font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;
+  border-radius:20px;border:1px solid var(--line-hi);cursor:pointer;background:none;color:var(--faint)}
+.sqpill.on{background:var(--lume);color:#04100b;border-color:transparent;font-weight:700}
+.sqx{border:none;background:none;color:var(--faint);font-size:15px;cursor:pointer;padding:0 4px}
+.sqx:hover{color:var(--bad,#ff5f6b)}
+.sqadd{display:flex;gap:6px;padding:9px 9px 0;flex-wrap:wrap}
+.sqadd input{flex:1 1 110px;min-width:0;font-size:13px;padding:8px 9px;border-radius:8px;
+  border:1px solid var(--line-hi);background:rgba(255,255,255,.04);color:inherit}
+.sqadd input.num{flex:0 0 62px}
+.sqadd button{font-size:11px;padding:8px 12px;border-radius:8px;border:1px solid var(--line-hi);
+  background:rgba(255,255,255,.05);color:inherit;cursor:pointer}
+.sqnote{font-size:10.5px;line-height:1.7;color:var(--faint);padding:8px 11px 0}
+
 .clocktap{cursor:pointer;border-radius:12px;padding:4px 18px !important;transition:background .15s;}
 .clocktap:active{background:rgba(170,255,215,.12);}
 .runword{font-size:8px;letter-spacing:.2em;color:var(--faint);}
@@ -943,6 +983,7 @@ html, body{ height:100dvh; }
       <div class="plist" data-team="0"></div>
     </div>
     <div id="midpanel">
+      <div class="glass mpcard hidden" id="mpPregame"></div>
       <div class="glass mpcard" id="mpCourt"></div>
       <div class="glass mpcard" id="mpChips"></div>
       <div class="glass mpcard hidden" id="mpHelp"></div>
@@ -973,6 +1014,7 @@ html, body{ height:100dvh; }
 
 <!-- ================= overlay stat views ================= -->
 <section id="startersview" class="screen overlayview hidden"></section>
+<section id="squadsview" class="screen overlayview hidden"></section>
 <section id="logview" class="screen overlayview hidden"></section>
 <section id="boxview" class="screen overlayview hidden"></section>
 <section id="advview" class="screen overlayview hidden"></section>
@@ -1454,8 +1496,34 @@ function renderAll(){
   if(!S || S.phase==='setup') return;
   D = derive();
   if(S.phase==='final'){ refreshOpenViews(); return; }
+  document.body.classList.toggle('pregame', S.phase==='pregame');
   renderTopbar(); renderSubbar(); renderScore(); renderCols(); renderX(); renderHelp(); renderMid(); renderCmd();
+  renderPregame();
   refreshOpenViews();
+}
+
+function renderPregame(){
+  const box = document.getElementById('mpPregame');
+  if(!box) return;
+  const on = S.phase === 'pregame';
+  box.classList.toggle('hidden', !on);
+  /* the shot chart and the chips are meaningless before a shot exists, and the
+     log is empty — so the middle column is the pre-game card and nothing else */
+  ['mpCourt','mpChips','mpLog'].forEach(id=>{
+    const n = document.getElementById(id); if(n) n.classList.toggle('hidden', on);
+  });
+  if(!on) return;
+  const five = t => S.starters[t].length;
+  box.innerHTML =
+    '<div class="pgtitle">ready to start</div>'+
+    '<div class="pgsub">'+esc(tname(0))+' '+five(0)+' starters · '+
+      esc(tname(1))+' '+five(1)+' starters.<br>The clock starts when the tip is awarded.</div>'+
+    '<div class="pgbtns">'+
+      '<button class="pgbtn go" id="pgGo">begin game</button>'+
+      '<button class="pgbtn" id="pgSquads">edit squads</button>'+
+    '</div>';
+  document.getElementById('pgGo').onclick = beginGame;
+  document.getElementById('pgSquads').onclick = openSquads;
 }
 
 function renderTopbar(){
@@ -1477,7 +1545,9 @@ function renderScore(){
     '<div class="snum'+(ui.bumpTeam===1?' bump':'')+'">'+D.score[1]+'</div>'+
     '<button class="collapsebtn" title="collapse">'+(S.collapsed?'▾':'▴')+'</button>';
   ui.bumpTeam = null;
-  sb.querySelector('.clocktap').onclick = e=>{ e.stopPropagation(); S.running ? pauseClock() : resumeClock(); vibrate(8); };
+  sb.querySelector('.clocktap').onclick = e=>{ e.stopPropagation();
+    if(pregameHold()) return;
+    S.running ? pauseClock() : resumeClock(); vibrate(8); };
   sb.querySelector('.collapsebtn').onclick = e=>{ e.stopPropagation(); S.collapsed=!S.collapsed; save(); renderScore(); };
 }
 
@@ -2051,8 +2121,14 @@ function jumpTap(){
   if(S.tipWinner==null){
     askChoice('who controls the opening tip?', tname(0), tname(1), w=>{
       S.tipWinner = w; S.arrowInit = 1-w;
+      /* THE CLOCK STARTS ITSELF HERE. The tip has been won, which means the
+         ball is live and the clock is already running in the hall — so making
+         the statistician find and tap the clock next was asking them to do
+         something the game had already done. Every second between the two was
+         a second of play recorded at the wrong time. */
+      S.running = true;
       save(); renderAll();
-      toast('possession '+tname(w)+' — arrow to '+tname(1-w), 3200);
+      toast('possession '+tname(w)+' — arrow to '+tname(1-w)+' — clock running', 3600);
     });
   } else {
     addEvent({t:'jump'});
@@ -2435,6 +2511,7 @@ function wireGame(){
   });
 
   $$('#topbar .act').forEach(b=>b.addEventListener('click', ()=>{
+    if(pregameHold()) return;
     const a = b.dataset.act;
     const p = ui.pending;
     // ft inside a live shot window = and-one / shooting-foul free throws:
@@ -2698,7 +2775,7 @@ function wireConfirm(){
 }
 /* ==================== shared view pieces ==================== */
 function showScreen(n){
-  ['setup','startersview','game','boxview','advview','finalview','logview'].forEach(id=>
+  ['setup','startersview','squadsview','game','boxview','advview','finalview','logview'].forEach(id=>
     document.getElementById(id).classList.toggle('hidden', id!==n));
 }
 function scoreHeadHTML(d){
@@ -3577,14 +3654,223 @@ function renderStarterPick(){
     launchGame(teams, starters);
   };
 }
+/* ==================== the pre-game hold ====================
+   THE GAME SCREEN BEFORE THE GAME. Same columns, same score box, same
+   everything — the clock simply has not started and there are two buttons in
+   the middle of it.
+
+   It exists because the minute before a tip is the minute the squad changes.
+   Somebody is late, somebody is injured in the warm-up, a coach names a
+   different five than the team sheet said. The old flow went from the starter
+   picker straight into a live game and immediately asked who won the tip, so
+   the only way to fix a squad was to abandon the game and set it up again.
+
+   NOTHING IS RECORDED YET. No period_start, so the event log begins when the
+   game does; and bootstrap.js only claims the fixture and publishes the roster
+   snapshot once the phase is 'game', so the squad written to the public page is
+   the one after these edits rather than the one from the team sheet. */
 function launchGame(teams, starters){
   S = newState();
-  S.teams = teams; S.phase = 'game'; S.starters = starters;
+  S.teams = teams; S.phase = 'pregame'; S.starters = starters;
   buildPmap();
+  save();
   showScreen('game');
+  renderAll();
+  toast('check the squads, then begin the game', 4200);
+}
+
+/* Refuse anything that would record a fact about a game that has not started.
+   One helper rather than a disabled attribute on each control, because the
+   keyboard shortcuts reach the same actions without going near the buttons. */
+function pregameHold(){
+  if(S && S.phase === 'pregame'){ toast('begin the game first'); return true; }
+  return false;
+}
+
+function beginGame(){
+  if(!S || S.phase !== 'pregame') return;
+  S.phase = 'game';
   addEvent({t:'period_start'});
-  toast('tap the clock to start it · tap a team name for subs', 4200);
-  jumpTap(); // opening tip -> possession + alternating arrow
+  /* showScreen again on purpose: bootstrap.js claims the fixture on a screen
+     change and skips it unless the phase is 'game'. This is the moment both
+     are true, and it is when the public page should start showing the game. */
+  showScreen('game');
+  renderAll();
+  jumpTap();               // who won the tip -> possession, arrow, and the clock
+}
+
+/* ==================== the squad editor ====================
+   Reached from the pre-game hold, and only from there: once a game is under
+   way its roster is frozen by design, because a name added at half time would
+   silently rewrite who was available in the first half.
+
+   Three ways a player arrives, because there are three ways it happens in a
+   hall. Somebody on the club's published roster who was left off the team
+   sheet is pulled from the club. Somebody who is not on it at all — a late
+   registration, a call-up — is typed in. And somebody who is not playing is
+   taken off. Starters are chosen here too, so the one screen answers the whole
+   question rather than sending anybody back to the picker.
+
+   THE EDITS ARE TO THE GAME, NOT TO THE CLUB. Nothing here writes to the
+   database: a club's roster is the club's to maintain, and a statistician
+   fixing tonight's line-up must not silently re-register anybody. What is
+   written is the game's own roster snapshot, and only when the game begins. */
+let SQ = null;
+
+function openSquads(){
+  if(!S || S.phase !== 'pregame') return;
+  /* hasClub distinguishes "the club roster is exhausted" from "there is no club
+     behind this game" — a training game and a friendly have no published
+     roster to pull from, and telling somebody everybody is already on the sheet
+     when nothing was ever looked up is a small lie the screen does not need. */
+  const hasClub = !!(window.EpinoiaSquads && window.EpinoiaSquads.available());
+  SQ = { pool:[null,null], hasClub };
+  renderSquads();
+  showScreen('squadsview');
+  /* the club rosters are fetched in the background — the screen is usable
+     without them, and a friendly with no fixture behind it never has them */
+  if(hasClub){
+    [0,1].forEach(t=>{
+      window.EpinoiaSquads.roster(t)
+        .then(list=>{ if(SQ){ SQ.pool[t] = list; renderSquads(); } })
+        .catch(()=>{ if(SQ){ SQ.pool[t] = []; renderSquads(); } });
+    });
+  } else {
+    SQ.pool = [[],[]];
+  }
+}
+
+function squadColHTML(t){
+  const players = S.teams[t].players;
+  const starters = new Set(S.starters[t]);
+  const need = Math.min(5, players.length);
+  const rows = players.map(p=>{
+    const on = starters.has(p.id);
+    return '<div class="sqrow" data-team="'+t+'" data-pid="'+esc(p.id)+'">'+
+      '<span class="sqnum">'+esc(p.num||'')+'</span>'+
+      '<span class="sqname">'+esc(p.name)+'</span>'+
+      '<button class="sqpill'+(on?' on':'')+'" data-role="start">'+(on?'starter':'bench')+'</button>'+
+      '<button class="sqx" data-role="drop" title="not playing tonight">✕</button>'+
+    '</div>';
+  }).join('') || '<div class="sqnote">nobody in this squad yet.</div>';
+
+  /* only the ones NOT already in the squad — offering a name that is already
+     on the sheet is how a player ends up in it twice */
+  const have = new Set(players.map(p=>String(p.name).toLowerCase()));
+  const pool = (SQ.pool[t] || []).filter(p=>!have.has(String(p.name).toLowerCase()));
+  const poolHTML = !SQ.hasClub
+    ? '<div class="sqnote">No club roster behind this game — add anybody by name above.</div>'
+    : SQ.pool[t] == null
+    ? '<div class="sqnote">loading the club roster…</div>'
+    : (pool.length
+        ? '<div class="sqnote">on the club roster, not on tonight\'s sheet:</div>'+
+          pool.map(p=>'<div class="sqrow" data-team="'+t+'" data-pid="'+esc(p.id)+'">'+
+            '<span class="sqnum">'+esc(p.num||'')+'</span>'+
+            '<span class="sqname">'+esc(p.name)+'</span>'+
+            '<button class="sqpill" data-role="add">add</button></div>').join('')
+        : '<div class="sqnote">everybody on the club roster is on the sheet.</div>');
+
+  return '<div class="sqcol"><div class="glass sqhead"><span class="tn">'+esc(tname(t))+'</span>'+
+    '<span class="tsub">'+starters.size+' / '+need+' starters · '+players.length+' available</span></div>'+
+    rows +
+    '<div class="sqadd" data-team="'+t+'">'+
+      '<input class="num" data-role="num" placeholder="#" maxlength="3" inputmode="numeric">'+
+      '<input data-role="name" placeholder="add a player by name" maxlength="40">'+
+      '<button data-role="manual">add</button></div>'+
+    poolHTML + '</div>';
+}
+
+function renderSquads(){
+  if(!SQ) return;
+  const need = t => Math.min(5, S.teams[t].players.length);
+  const ok = S.starters[0].length===need(0) && S.starters[1].length===need(1);
+  $('#squadsview').innerHTML =
+    '<div class="ovhead"><button class="backbtn" id="sqBack">← pre-game</button>'+
+    '<div class="ovtitle">edit squads</div></div>'+
+    '<div class="sqgrid">'+squadColHTML(0)+squadColHTML(1)+'</div>'+
+    '<button id="sqDone" class="bigcta" style="margin:4px auto 18px;'+(ok?'':'opacity:.35;')+'">done</button>';
+
+  $('#sqBack').onclick = closeSquads;
+  $('#sqDone').onclick = ()=>{
+    if(!ok){ toast('pick five per team'); return; }
+    closeSquads();
+  };
+
+  /* onclick, not addEventListener: renderSquads runs again after every toggle,
+     and a listener added each time would fire once per render — the second tap
+     on a starter pill would toggle it twice and leave it where it started. */
+  $('#squadsview').onclick = e=>{
+    const btn = e.target.closest('button[data-role]');
+    if(!btn) return;
+    const role = btn.dataset.role;
+    if(role==='manual'){ addManual(+btn.closest('.sqadd').dataset.team); return; }
+    const row = btn.closest('.sqrow'); if(!row) return;
+    const t = +row.dataset.team, pid = row.dataset.pid;
+    if(role==='start') toggleStarter(t, pid);
+    else if(role==='drop') dropPlayer(t, pid);
+    else if(role==='add') addFromPool(t, pid);
+  };
+}
+
+function closeSquads(){
+  SQ = null;
+  buildPmap();
+  save();
+  showScreen('game');
+  renderAll();
+}
+
+function toggleStarter(t, pid){
+  const list = S.starters[t];
+  const i = list.indexOf(pid);
+  if(i>=0) list.splice(i,1);
+  else {
+    const need = Math.min(5, S.teams[t].players.length);
+    if(list.length>=need){ toast('five already picked — take one off first'); return; }
+    list.push(pid);
+  }
+  save(); renderSquads();
+}
+
+function dropPlayer(t, pid){
+  const players = S.teams[t].players;
+  const i = players.findIndex(p=>p.id===pid);
+  if(i<0) return;
+  players.splice(i,1);
+  const si = S.starters[t].indexOf(pid);
+  if(si>=0) S.starters[t].splice(si,1);
+  save(); renderSquads();
+}
+
+function addPlayerTo(t, player){
+  const players = S.teams[t].players;
+  if(players.some(p=>String(p.name).toLowerCase()===String(player.name).toLowerCase())){
+    toast('already on the sheet'); return false;
+  }
+  players.push(player);
+  save(); renderSquads();
+  return true;
+}
+
+function addFromPool(t, pid){
+  const p = (SQ.pool[t]||[]).find(x=>x.id===pid);
+  if(!p) return;
+  addPlayerTo(t, {id:p.id, name:p.name, num:p.num});
+}
+
+function addManual(t){
+  const wrap = $('#squadsview .sqadd[data-team="'+t+'"]');
+  const nameEl = wrap.querySelector('[data-role="name"]');
+  const numEl = wrap.querySelector('[data-role="num"]');
+  const name = nameEl.value.trim().toLowerCase();
+  if(!name){ toast('type a name first'); return; }
+  /* A local id, distinct from the club roster's UUIDs, so a manually added
+     player is never mistaken for a registered one when the snapshot is read
+     back. Nothing downstream needs it to be a UUID — the snapshot carries the
+     name and number, which is what a box score shows. */
+  addPlayerTo(t, {id:'x'+t+'_'+Date.now().toString(36), name, num:numEl.value.trim()});
+  nameEl.value = ''; numEl.value = '';
+  nameEl.focus();
 }
 
 /* ==================== roster scan (ocr) ==================== */
@@ -3667,10 +3953,10 @@ function migrate(s){
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=77" defer></script>
-<script src="../vendor/supabase.js?v=77" defer></script>
-<script src="../live.js?v=77" defer></script>
-<script src="sync.js?v=77" defer></script>
-<script src="bootstrap.js?v=77" defer></script>
+<script src="../config.js?v=80" defer></script>
+<script src="../vendor/supabase.js?v=80" defer></script>
+<script src="../live.js?v=80" defer></script>
+<script src="sync.js?v=80" defer></script>
+<script src="bootstrap.js?v=80" defer></script>
 </body>
 </html>

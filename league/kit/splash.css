@@ -45,8 +45,18 @@
    first, which is a SIBLING of the content — so every var() in the splash
    resolved to nothing, fell back to the kit's dark-theme tokens, and set the
    title in mint white on white marble. A custom property is only useful to
-   what inherits from the element carrying it. */
-.m-splash body{
+   what inherits from the element carrying it.
+
+   TWO SELECTORS, because there are two ways to be this page. The splash gets
+   m-splash from mode.js before the first paint. The countries page is a
+   different document with no mode.js, and opts in by carrying the class — it
+   is the same stone, the same water and the same slate text, so it wants the
+   same tokens rather than a second copy of them.
+
+   Losing the second selector is what broke the countries page: its cards fell
+   back to the kit's dark-theme ink, which is #e6fff1 — near-white type on a
+   near-white slab. */
+.m-splash body, body.splash-body{
   --w-shallow:#d3ebf4;
   --w-mid:#a9d6e6;
   --w-deep:#7ebcd4;
@@ -562,7 +572,7 @@
 /* The rail is a dark object and this page is a bright one. It keeps its own
    colours — it is the same rail everywhere else on the site — but the page
    must make room for it exactly as every other page does. */
-.m-splash body{ background:#bfe2ee }
+.m-splash body, body.splash-body{ background:#bfe2ee }
 
 /* ============================================================================
    THE TRACK, top right.
