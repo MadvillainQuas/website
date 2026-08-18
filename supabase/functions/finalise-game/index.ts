@@ -19,12 +19,24 @@ import { deriveGame, teamAdv, playerAdv, lineupAgg } from '../_shared/engine.js'
 import { dispatchGame } from '../_shared/feeds.ts';
 // the MVP, decided by the same BPM the pages show
 import { bpmMvp } from '../_shared/awards.ts';
+// the match-report writer. story.js FIRST and for its side effect: report.js
+// finds the fact engine on globalThis, which story.js is what puts there.
+import '../_shared/story.js';
+import { report as buildReport } from '../_shared/report.js';
+import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+/* The report's headline and standfirst are escaped for HTML, because that is
+   what the page wants. A news title is a text column and gets the plain form. */
+const stripTags = (s: string) => String(s)
+  .replace(/<[^>]*>/g, '')
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
@@ -253,6 +265,46 @@ Deno.serve(async (req) => {
         console.error('[finalise] BPM MVP failed:', String(e));
         warnings.push('the MVP award is still on efficiency — BPM could not be computed');
       }
+    }
+
+    /* ------------------------------------------------- the match report ---
+       Written from the replay that has just produced every table above, by
+       the same story.js/report.js the public page renders with, so the
+       article and the page it links to cannot describe the game differently.
+
+       NON-FATAL, like everything after the status flip. The game is final and
+       its box score is correct whatever happens here; a failed report is a
+       missing article, not a broken result, and it is reported rather than
+       swallowed so nobody has to guess why the news page is empty.
+
+       Idempotent by slug, which is derived from the game id: re-finalising a
+       reopened game rewrites its own report instead of leaving two. Reopening
+       to fix a scoring mistake is normal, and the report must follow the
+       correction rather than accumulate. */
+    try {
+      const { data: tgt } = await admin.rpc('game_report_target', { p_game: gameId });
+      const target = Array.isArray(tgt) ? tgt[0] : tgt;
+      if (target?.league_id && target.auto_reports) {
+        const brief = gameBrief(game, d, TA, lineupAgg);
+        const rep = buildReport(brief);
+        const slug = reportSlug(gameId);
+        const { error } = await admin.from('news_articles').upsert({
+          league_id: target.league_id,
+          slug,
+          title: stripTags(rep.headline),
+          standfirst: stripTags(rep.standfirst),
+          body: articleBody(rep, gameId),
+          status: 'published',
+          published_at: new Date().toISOString(),
+          author_id: null,
+          author_name: 'Epinoia match report',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'league_id,slug' });
+        if (error) warnings.push('the match report was not filed: ' + error.message);
+      }
+    } catch (e) {
+      console.error('[finalise] match report failed:', String(e));
+      warnings.push('the match report could not be written');
     }
 
     // queue the static page + OG image; a scheduled job commits these in batches

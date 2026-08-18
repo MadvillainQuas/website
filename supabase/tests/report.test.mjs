@@ -152,5 +152,58 @@ const txt = Report.plain(g);
 ok('plain text carries no markup', !/[<>]/.test(txt));
 ok('...and leads with the headline', txt.split('\n')[0] === rep.headline);
 
+/* ---- the article the finaliser files ------------------------------------- */
+/* matchreport.ts is the server side of this: it builds the same brief the
+   browser builds, then converts the report into news blocks. Two things there
+   can go quietly wrong and both ship a visibly broken article — HTML escaping
+   surviving into a text column, and a slug that is not stable across a
+   re-finalise (which would leave two reports for one game). */
+const MR = await import(
+  new URL('../functions/_shared/matchreport.ts', import.meta.url).href);
+
+const body = MR.articleBody(rep, '6271d4ed-023d-4792-b65d-8bcf632f1b3f');
+ok('the body is an array of blocks, as the column requires',
+   Array.isArray(body) && body.length > 0);
+ok('every block is a type the news renderer knows',
+   body.every(b => ['p', 'h2', 'rule'].indexOf(b.type) >= 0),
+   [...new Set(body.map(b => b.type))].join(','));
+ok('each section becomes a heading',
+   body.filter(b => b.type === 'h2').length === rep.sections.length);
+
+const btext = JSON.stringify(body.filter(b => b.spans).map(b => b.spans[0].t));
+ok('no HTML entity survives into the article text',
+   !/&(amp|lt|gt|quot|#\d+);/.test(btext), btext.slice(0, 120));
+ok('no markup survives either', !/[<>]/.test(btext));
+
+const ampRep = Report.report(game({ names: ['a & b', 'c'] }));
+const ampBody = MR.articleBody(ampRep, 'x');
+const ampText = JSON.stringify(ampBody.filter(b => b.spans).map(b => b.spans[0].t));
+ok('an ampersand in a club name arrives as itself, not as an entity',
+   ampText.includes('A & B') && !ampText.includes('&amp;'), ampText.slice(0, 140));
+
+ok('the slug is stable, so a re-finalise rewrites one article rather than adding one',
+   MR.reportSlug('6271d4ed-023d-4792-b65d-8bcf632f1b3f') ===
+   MR.reportSlug('6271d4ed-023d-4792-b65d-8bcf632f1b3f'));
+ok('...and two different games do not collide',
+   MR.reportSlug('6271d4ed-0000-0000-0000-000000000000') !==
+   MR.reportSlug('aaaaaaaa-0000-0000-0000-000000000000'));
+ok('the slug is URL-safe', /^[a-z0-9-]+$/.test(MR.reportSlug('6271d4ed-02-3d')));
+
+const brief = MR.gameBrief(
+  { teams: [{ name: 'a', players: [{ id: 'a1', name: 'one', num: '4' }] },
+            { name: 'b', players: [{ id: 'b1', name: 'two', num: '5' }] }],
+    events: [{ id: 0, t: 'p2_made', team: 0, period: 3 }] },
+  { score: [2, 0], stats: { a1: { pts: 2, p2m: 1, p2a: 1 }, b1: { pts: 0 } },
+    team: [{}, {}], perQ: [[0, 0, 0, 2], [0, 0, 0, 0]], lineups: [[], []] },
+  [{ efg: 50 }, { efg: 40 }],
+  () => []);
+ok('the server brief carries every field the fact engine reads',
+   ['names', 'score', 'players', 'byId', 'team', 'adv', 'lineups', 'stints',
+    'perQ', 'periods', 'events'].every(k => k in brief),
+   Object.keys(brief).join(','));
+ok('...reads the period count off the log', brief.periods === 3, String(brief.periods));
+ok('...and drives the same engine the browser does',
+   !!Report.report(brief).headline);
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

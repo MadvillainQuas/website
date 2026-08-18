@@ -42,6 +42,23 @@ const FILES = [
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),
     global: 'EpinoiaSeason',
     names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS']
+  },
+  /* The match-report writer, so the Edge Function that finalises a game can
+     write the report with the SAME code the public page renders it with. If
+     these two ever diverged, a published article and the page it links to
+     would describe the same game differently — which is the one failure a
+     generated report cannot survive. */
+  {
+    src: join(repo, 'epinoia', 'game', 'story.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'story.js'),
+    global: 'EpinoiaStory',
+    names: ['facts', 'F', 'esc', 'num', 'one', 'pct1', 'mins', 'ordinal', 'plural']
+  },
+  {
+    src: join(repo, 'epinoia', 'game', 'report.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'report.js'),
+    global: 'EpinoiaReport',
+    names: ['report', 'plain', 'headline', 'standfirst', 'five']
   }
 ];
 
