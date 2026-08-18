@@ -315,6 +315,14 @@ begin
   delete from game_officials where game_id = g_id;
   delete from games where id = g_id;
   delete from teams where id in (home, away);
+  /* revert_game writes an audit_log row stamped with whoever called it, and
+     audit_log.actor is a foreign key onto auth.users — so the test account
+     cannot be removed while the row it wrote still points at it. The audit
+     trail is deliberately not cascaded from users (an action should survive
+     the account that took it), which is right for real rows and means a test
+     has to clear up after itself. Matched on the game as well as the actor,
+     so nothing from this block is left behind either way. */
+  delete from audit_log where actor = admin_ or subject_id = g_id::text;
   delete from auth.users where id = admin_;
 
   if array_length(failed, 1) > 0 then

@@ -216,6 +216,12 @@ begin
 
   delete from games where id = g_id;
   delete from teams where id in (home, away);
+  /* audit_log.actor references auth.users with no cascade — deliberately, an
+     action should outlive the account that took it — so the row revert_game
+     wrote has to go before the test account can. Superseded by 0068, which
+     carries the same teardown; fixed here so this file is not left in the
+     repository as a migration that cannot run. */
+  delete from audit_log where actor in (admin_, out_) or subject_id = g_id::text;
   delete from auth.users where id in (admin_, out_);
 
   if array_length(failed, 1) > 0 then
