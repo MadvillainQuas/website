@@ -95,7 +95,30 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 .act.armed .kcap,.sub.on .kcap{color:#02150c;border-color:rgba(2,21,12,.35);}
 .sub{position:relative;}
 .ur{position:relative;}
-@media (max-width:899px){.kcap{display:none;}}
+@media (max-width:899px){
+  .kcap{display:none;}
+  /* THE ACCESSIBILITY FLOOR IS ALSO THE PRACTICAL ONE. The collapse chevron
+     was 21px square — a target a thumb misses more often than it hits, on a
+     screen where a mis-tap during a live game costs a possession. The box
+     grows without the glyph growing, so nothing about the look changes. */
+  .collapsebtn{min-width:40px;min-height:40px;display:inline-flex;
+    align-items:center;justify-content:center;}
+
+  /* THE PLAYER ROW IS THE MOST-TAPPED THING IN THE APP, and it was 28px tall.
+
+     Every shot, foul, turnover and rebound ends with a thumb landing on one of
+     these, twenty of them stacked in two columns, and 28px is under two-thirds
+     of the accessibility floor — on a screen where a mis-tap puts a basket
+     against the wrong player and has to be undone mid-possession. It also has
+     to hold a press for half a second without sliding off, which a short row
+     makes harder than the timing does.
+
+     40px rather than 44: ten rows a column at 44 is 440px and pushes the
+     bench off the screen, which trades one mis-tap for another. The type is
+     unchanged — the row grows around it. */
+  .prow{min-height:40px;}
+  .prow.bench{min-height:38px;}
+}
 input{font:inherit;color:var(--txt);}
 .hidden{display:none !important;}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -1740,16 +1763,16 @@ function helpSpec(){
       k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
     } else if(p.kind==='foul'){
       k('tap opponent','free throw — missed','red');
-      k('hold opponent 1.5s','free throw — made','grn');
+      k(IS_MOBILE?'press opponent':'hold opponent 1.5s','free throw — made','grn');
       k('✕','no free throws','x');
     }
     return L;
   }
   const T = (key,txt)=>{ if(!IS_MOBILE) k(key,txt); };   // typed-command lines never show on mobile
   switch(ui.armed){
-    case 'ft': k('tap player','missed ft','red'); k('hold 1.5s','made ft','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7r rebound'); break;
-    case 'p2': k('tap player','missed 2pt','red'); k('hold 1.5s','made 2pt','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7b block  ,2;10r rebound  ,1;4a assist'); break;
-    case 'p3': k('tap player','missed 3pt','red'); k('hold 1.5s','made 3pt','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7b block  ,2;10r rebound  ,1;4a assist'); break;
+    case 'ft': k('tap player','missed ft','red'); k(HOLD_HINT,'made ft','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7r rebound'); break;
+    case 'p2': k('tap player','missed 2pt','red'); k(HOLD_HINT,'made 2pt','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7b block  ,2;10r rebound  ,1;4a assist'); break;
+    case 'p3': k('tap player','missed 3pt','red'); k(HOLD_HINT,'made 3pt','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7b block  ,2;10r rebound  ,1;4a assist'); break;
     case 'to': k('tap player','turnover'); k('tap team name','team turnover'); T('type 1;10 ⏎','team 1 · #10  ·  1;t = team  ·  ,2;7s steal'); break;
     case 'pf': k('tap player','foul — type above'); k('tap team name','bench / coach foul'); T('type 1;10 ⏎','team 1 · #10  ·  1;t = bench'); break;
     case 'timeout': k('tap team name','timeout'); T('type 1 ⏎','team 1'); break;
@@ -2356,7 +2379,7 @@ function startGesture(e,team,pid,row){
   G.holdT = setTimeout(()=>{
     if(!G || G.done) return;
     G.active = true; row.classList.add('lift'); showGuides(); vibrate(8);
-  }, 280);
+  }, LIFT_MS);
   if(canHoldMake(team,pid)){
     row.classList.add('charging');
     G.makeT = setTimeout(()=>{
@@ -2364,7 +2387,7 @@ function startGesture(e,team,pid,row){
       if(Math.hypot(G.dx,G.dy)>14) return;
       G.done = true; row.classList.remove('charging');
       holdMade(team,pid); endGesture();
-    }, 1500);
+    }, MAKE_MS);
   }
 }
 function cancelGTimers(){ if(!G) return; clearTimeout(G.holdT); if(G.makeT) clearTimeout(G.makeT); }
@@ -2762,6 +2785,30 @@ function wireGame(){
 /* ==================== typed command bar ==================== */
 const IS_TOUCH = matchMedia('(hover:none) and (pointer:coarse)').matches;
 const IS_MOBILE = IS_TOUCH && !matchMedia('(min-width:900px)').matches;   // phones/tablets: no typed command layer
+
+/* ---------------------------------------------------------------------------
+   A MADE BASKET IS NOT A LONG PRESS.
+
+   The hold-to-make gesture was written for a desktop where the real input is
+   the keyboard — you type 1;10+ and move on — so a 1.5 second hold was the
+   rarely-used fallback. On a phone it is the ONLY way to record a made shot,
+   and a made shot is somewhere near half of everything that happens in a
+   game. At 1.5s each, a statistician spends over a minute of a 40-minute game
+   holding their thumb still, and cannot keep up with a fast break.
+
+   So on touch it becomes a firm press rather than a hold, and the lift that
+   confirms the press has begun comes sooner, so there is still clear feedback
+   between "I am pressing" and "it went in". Half a second rather than a third:
+   a deliberate tap runs 60-120ms and a sloppy one perhaps 250ms, so 500 keeps
+   real headroom against a slow tap that meant "missed" — the error that would
+   put points on the board that were never scored.
+
+   The desktop timing is untouched:
+   nobody scores a real game on a mouse, and lengthening the gesture there is
+   what keeps an accidental drag from registering a basket. */
+const LIFT_MS = IS_MOBILE ? 150 : 280;
+const MAKE_MS = IS_MOBILE ? 500 : 1500;
+const HOLD_HINT = IS_MOBILE ? 'press & hold' : 'hold 1.5s';
 function findByNum(t,num){ return S.teams[t].players.find(p=>String(p.num).trim()===String(num).trim()) || null; }
 function cmdVisible(){ return !IS_MOBILE && !!(ui.armed || ui.pending); }
 function renderCmd(){
@@ -4169,10 +4216,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=113" defer></script>
-<script src="../vendor/supabase.js?v=113" defer></script>
-<script src="../live.js?v=113" defer></script>
-<script src="sync.js?v=113" defer></script>
-<script src="bootstrap.js?v=113" defer></script>
+<script src="../config.js?v=116" defer></script>
+<script src="../vendor/supabase.js?v=116" defer></script>
+<script src="../live.js?v=116" defer></script>
+<script src="sync.js?v=116" defer></script>
+<script src="bootstrap.js?v=116" defer></script>
 </body>
 </html>
