@@ -4088,18 +4088,72 @@ function migrate(s){
   }
   return s;
 }
+/* THE SAVED GAME AND THE FIXTURE IN THE URL ARE TWO DIFFERENT INTENTIONS,
+   and until now the second one lost.
+
+   Opening the scorer from a box score puts ?g=<fixture> in the URL: the
+   statistician has said, unambiguously, which game they mean to score. If any
+   game was left saved in this browser — a practice run, an abandoned setup,
+   last week's fixture — this asked "resume the saved game?" and, on `no`,
+   reset to a blank setup screen.
+
+   Meanwhile bootstrap.js had ALREADY loaded the requested fixture behind the
+   modal, because S is still null while the question is open and its "a game is
+   in progress" guard therefore saw nothing to stop for. So `no` threw away the
+   very fixture that had just been asked for and left an empty sheet, with the
+   real game one navigation away. The answer arrived after the work it was
+   meant to govern.
+
+   Two fixes, and they are separate concerns:
+
+   THE HANDSHAKE. The question is settled BEFORE the fixture loads rather than
+   alongside it — bootstrap waits on window.__epResume — so nothing is built
+   behind the dialog and declining the saved game falls through to loading the
+   fixture instead of to a blank screen.
+
+   WHICH GAME IS SAVED. A saved game carries no fixture id of its own, so
+   "resume" could quietly reopen last week's game while the URL — and with it
+   the live transport and the finalise button — still pointed at tonight's,
+   publishing one game's events into another fixture. bootstrap now stamps the
+   fixture a saved game belongs to, and when that disagrees with the URL the
+   question says so rather than pretending the two are the same thing. */
+window.__epResume = { pending:false, resumed:false, done:null };
 (function boot(){
   const saved = migrate(loadSaved());
+  const urlGame = new URLSearchParams(location.search).get('g') || '';
+  const fixtureUrl = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(urlGame);
+  let savedFor = ''; try{ savedFor = localStorage.getItem('epinoia_v1_game') || ''; }catch(e){}
+
   if(saved && saved.phase && saved.phase!=='setup' && saved.teams){
     showScreen('setup');
-    askConfirm('resume the saved game?', ()=>{
+    const R = window.__epResume;
+    R.pending = true;
+    const settle = (resumed)=>{ R.pending=false; R.resumed=resumed;
+      if(R.done){ const f=R.done; R.done=null; try{ f(resumed); }catch(e){} } };
+
+    const resume = ()=>{
       S = saved; S.running = false; buildPmap();
       if(S.phase==='final'){ renderFinal(); showScreen('finalview'); }
       else { showScreen('game'); renderAll(); }
-    }, ()=>{
-      localStorage.removeItem('epinoia_v1');
+      settle(true);
+    };
+    const discard = ()=>{
+      try{ localStorage.removeItem('epinoia_v1'); localStorage.removeItem('epinoia_v1_game'); }catch(e){}
       S = newState(); showScreen('setup');
-    });
+      settle(false);          // bootstrap now loads the fixture that was asked for
+    };
+
+    if(fixtureUrl){
+      /* Named buttons, because "yes" and "no" cannot carry this: both answers
+         do something, and the destructive one is not the one being declined. */
+      askChoice(savedFor && savedFor !== urlGame
+          ? 'a different game is saved — resume that, or score the fixture you opened?'
+          : 'a game is saved — resume it, or score the fixture you opened?',
+        'resume saved', 'score the fixture',
+        (pick)=>{ pick ? discard() : resume(); });
+    } else {
+      askConfirm('resume the saved game?', resume, discard);
+    }
   } else showScreen('setup');
 })();
 </script>

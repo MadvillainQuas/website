@@ -345,6 +345,7 @@
              scoring a fixture that no longer exists. */
           try {
             localStorage.removeItem('epinoia_v1');
+            localStorage.removeItem('epinoia_v1_game');
             sessionStorage.removeItem(ROOM_KEY);
           } catch (_) {}
           location.href = '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase';
@@ -542,11 +543,31 @@
   async function autoLoadFixture() {
     if (!isFixture) return;
     if (typeof showStarterPick !== 'function') return;
+
+    /* SETTLE THE RESUME QUESTION FIRST.
+
+       The scorer asks "resume the saved game?" from its own boot(), and while
+       that modal is open S is still null — so the guard below, which exists to
+       stop this trampling a game in progress, could not see the game being
+       decided about and let the fixture load behind the dialog. Declining then
+       reset the state and took the freshly-loaded fixture with it, which is
+       exactly the "no cancels the game I clicked" fault. Waiting means the
+       answer governs the work rather than racing it. */
+    const R = window.__epResume;
+    if (R && R.pending) {
+      const resumed = await new Promise(res => { R.done = res; });
+      if (resumed) return;          // they went back to the saved game; leave it alone
+    }
+
     if (S && S.phase && S.phase !== 'setup') return;    // a game is already in progress
 
     say('loading the fixture…', '#ffd166');
     try {
       const teams = await loadFixture(gameId);
+      /* Which fixture the saved game belongs to. Without this a later session
+         cannot tell last week's saved game from tonight's, and "resume" would
+         reopen the wrong one against this URL's transport and finalise button. */
+      try { localStorage.setItem('epinoia_v1_game', gameId); } catch (_) {}
       const thin = teams.filter(t => t.players.length < 5);
       showStarterPick(teams);
       if (thin.length) {
