@@ -211,6 +211,19 @@
 }
 .ep-card .when .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
+/* THE GAME CLOCK, on a live card only.
+
+   It takes the venue's slot, because a venue is worth reading the week before
+   and worth nothing in the third quarter, when the one thing a glance wants is
+   how long is left. Given the live red so the eye finds it, and TABULAR so the
+   card does not jiggle four times a second as digit widths change — a clock
+   that shifts the layout under itself is worse than no clock. */
+.ep-card .when .vn.clock{
+  color:#ff5f6b; font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1; letter-spacing:.05em;
+}
+.cse[data-theme="light"] .ep-card .when .vn.clock{ color:#c8324a }
+
 /* the right edge fades rather than cuts, so a card leaving the bar looks like
    it is leaving rather than being sliced by the frame */
 .ep-strip::after{

@@ -13,10 +13,21 @@
    LIVE GAMES COME FIRST, then upcoming, then finished. A strip is glanced at,
    not read, and the thing worth glancing at is what is happening now.
 
-   IT REFRESHES ITSELF. An embed is left on a page for hours. Scores are polled
-   rather than socketed — one small query a minute costs nothing and needs no
-   connection held open per visitor, which matters when the widget is on a page
-   with more traffic than this platform has.
+   IT REFRESHES ITSELF, AND WHILE A GAME IS ON IT IS A TICKER. This used to be
+   polling alone — a minute apart when nothing was known to be live, four
+   seconds once something was — and that made it the slowest surface on the
+   platform and the one most people see. A game that had just tipped could sit
+   "upcoming" on a club's homepage for a full minute, and the score behind it
+   by as much again; you had to reload the page to find out a game had started.
+
+   So the polling has been demoted to a safety net and the live path is the
+   scorer's own broadcast, the same one the box score has always used: score,
+   period and clock arrive in about a quarter of a second, the clock then ticks
+   locally at no bandwidth at all, and a fixture flips to LIVE the instant the
+   first frame lands rather than whenever the next poll happens to run. rt.js
+   speaks the protocol directly so no third-party script is added to a page we
+   do not control. When there is nothing live there is no socket traffic and
+   the poll drops back to its slow beat.
 
    IT REPORTS ITS HEIGHT. The host page cannot know how tall this wants to be,
    so it is posted out and embed.js applies it.
@@ -74,19 +85,21 @@ async function siteConfig() {
   if (c.max_items && !limitFromUrl) limit = Math.min(c.max_items, 40);
   if (c.theme === 'light') document.body.setAttribute('data-theme', 'light');
 }
-const POLL_MS = 60000;
-/* While something is live, a minute is too long. A strip on a club's homepage
-   is the only thing telling somebody a game has started, and a score that is a
-   minute old during a fourth quarter is a score that is wrong.
+/* THE POLL IS NOW THE SAFETY NET, NOT THE LIVE PATH.
 
-   FOUR SECONDS, not fifteen. This is the slowest surface on the platform and
-   it is the one most people see: the box score reaches its viewers over a
-   broadcast in about a quarter of a second, while this waited up to fifteen
-   for the same basket — and up to fifteen more to notice a game had been
-   finalised or put back on the listing. The request is one indexed row per
-   game with no joins it does not already make, and it only runs at this rate
-   while a game is actually being played, so the cost is a handful of small
-   reads during the two hours a week a league is on court. */
+   Scores and the clock come over the broadcast, and a fixture flips to LIVE on
+   the frame that says so. What the poll is still for is everything a socket
+   cannot tell us: a fixture added or rescheduled, a game finalised by an
+   administrator rather than by the scorer, a fixture put back on the listing,
+   and the case where the socket never connected at all — a corporate network
+   that blocks websockets must still show a strip that works, just not one that
+   ticks.
+
+   Twenty seconds rather than a minute when nothing is live, because that is
+   also how long a game takes to appear if the socket is blocked. Four seconds
+   while something is live, unchanged: cheap, and it corrects anything the
+   broadcast missed. */
+const POLL_MS = 20000;
 const POLL_LIVE_MS = 4000;
 
 /* Appearance from the query string.
@@ -142,6 +155,267 @@ async function api(p) {
   return r.json();
 }
 
+/* ============================================================================
+   THE LIVE PATH.
+
+   Everything below is what turns the strip from a thing that reloads into a
+   thing that ticks. Three sources, in order of how quickly they answer:
+
+     1. the broadcast    game:<uuid>, the scorer's own frames. Score, period,
+                         clock and running-state, about a quarter of a second
+                         after the statistician's thumb. This is the hot path.
+     2. game_state       the durable mirror of exactly the same fields, read
+                         once on load so somebody arriving mid-game sees a
+                         clock immediately instead of waiting up to five
+                         seconds for the next heartbeat frame.
+     3. the games row    home_score / away_score, mirrored by the scorer. The
+                         safety net, and all a finished game ever needs.
+
+   THE CLOCK IS NOT STREAMED, IT IS TICKED. A frame carries clock_ms and
+   whether it is running; between frames the strip counts down locally from the
+   moment the frame arrived. That is zero bandwidth for a smooth clock, and
+   because a frame lands every couple of seconds while play is on, local drift
+   is corrected before anyone could see it. Measuring from arrival rather than
+   from the frame's own timestamp also means a viewer whose device clock is
+   wrong still sees the right time — there is no skew to get wrong.
+   ========================================================================== */
+
+/* Latest known live state per game id, plus the local instant it arrived. */
+const LIVE = new Map();
+/* Latest polled row per game id — what render() drew from. */
+const ROWS = new Map();
+
+let rt = null;
+function realtime() {
+  if (rt !== null) return rt;
+  rt = (window.EpinoiaRT && CFG && CFG.supabaseUrl && CFG.supabaseAnonKey)
+    ? window.EpinoiaRT.create({ url: CFG.supabaseUrl, key: CFG.supabaseAnonKey })
+    : false;                                  // false = tried and unavailable
+  return rt;
+}
+
+function noteState(id, state, status) {
+  if (!id || !state) return false;
+  const was = LIVE.get(id);
+  /* A stale frame must never overwrite a newer one. Frames are chained by the
+     publisher so they arrive in order, but a resync can deliver an older
+     snapshot behind a newer delta. */
+  if (was && state.last_seq != null && was.last_seq != null && state.last_seq < was.last_seq)
+    return false;
+  LIVE.set(id, {
+    period: state.period, clock_ms: state.clock_ms, running: !!state.running,
+    home: state.score_home, away: state.score_away, last_seq: state.last_seq,
+    status: status || (was && was.status) || null,
+    at: Date.now(), elapsedBase: 0
+  });
+  return true;
+}
+
+/* How much of the clock has run down since the frame we are holding. */
+function clockNow(s) {
+  if (!s || s.clock_ms == null) return null;
+  if (!s.running) return s.clock_ms;
+  return Math.max(0, s.clock_ms - (Date.now() - s.at) - (s.elapsedBase || 0));
+}
+
+/* Q1–Q4, then overtime. A league playing halves would want two labels here;
+   nothing on the platform does yet, and inventing the second one now would be
+   inventing a rule nobody has asked for. */
+function periodLabel(p) {
+  if (!p) return '';
+  return p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4);
+}
+
+/* Broadcast convention: minutes and seconds until the last minute, then
+   seconds and tenths, which is what a scoreboard does and what makes the end
+   of a close quarter readable. */
+function fmtClock(ms) {
+  if (ms == null) return '';
+  if (ms >= 60000) {
+    const t = Math.ceil(ms / 1000);
+    return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+  }
+  return (Math.floor(ms / 100) / 10).toFixed(1);
+}
+
+/* The effective status: the database says what a fixture IS, a frame says what
+   it is DOING. A frame wins only when it says something has started, because
+   that is the transition the poll is too slow for — never the other way, or a
+   scorer closing their laptop would un-finish a game. */
+function statusOf(g) {
+  const s = LIVE.get(g.id);
+  if (g.status === 'scheduled' && s && s.status === 'live') return 'live';
+  return g.status;
+}
+
+function scoreOf(g) {
+  const s = LIVE.get(g.id);
+  if (s && s.home != null && statusOf(g) === 'live') return [s.home, s.away];
+  return [g.home_score == null ? 0 : g.home_score, g.away_score == null ? 0 : g.away_score];
+}
+
+/* ---- painting, without rebuilding ------------------------------------------
+   The rail holds two copies of every card so the loop can wrap invisibly, and
+   it is dragged and animated continuously. Rebuilding it to change a digit
+   would fight the scroll, drop the drag and flicker on somebody's homepage —
+   so a score, a clock or a status flip is written straight onto the nodes that
+   are already there. Only a change in WHICH games are shown, or their order,
+   rebuilds anything. */
+function paint() {
+  document.querySelectorAll('[data-game]').forEach(node => {
+    const g = ROWS.get(node.getAttribute('data-game'));
+    if (!g) return;
+    const st = statusOf(g), live = st === 'live', final = st === 'final';
+    const cls = 'ep-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
+    if (node.className !== cls) node.className = cls;
+
+    const label = node.querySelector('.st');
+    if (label) {
+      if (live) {
+        if (!label.querySelector('.dot')) {
+          label.textContent = '';
+          label.appendChild(el('span', 'dot'));
+          label.appendChild(document.createTextNode('LIVE'));
+        }
+      } else {
+        const want = final ? 'FT' : 'PREVIEW & INFO';
+        if (label.textContent !== want) label.textContent = want;
+      }
+    }
+
+    const sc = node.querySelector('.sc');
+    const mid = node.querySelector('.mid');
+    if ((live || final) && mid) {
+      const [h, a] = scoreOf(g);
+      if (!sc) { mid.textContent = ''; mid.appendChild(scoreEl(h, a)); }
+      else {
+        const vs = sc.querySelectorAll('.v');
+        if (vs[0] && vs[0].textContent !== String(h)) vs[0].textContent = String(h);
+        if (vs[1] && vs[1].textContent !== String(a)) vs[1].textContent = String(a);
+      }
+    }
+
+    /* The clock replaces the venue on a live card. A venue is worth reading
+       before tip-off and worth nothing during the third quarter, when the one
+       thing a glance wants is how long is left. */
+    const vn = node.querySelector('.vn');
+    if (vn) {
+      const s = LIVE.get(g.id);
+      const ms = live ? clockNow(s) : null;
+      const want = live
+        ? (ms == null ? (g.venue || 'in progress')
+                      : (periodLabel(s.period) + ' · ' + fmtClock(ms)))
+        : fmtDate(g.tipoff_at);
+      if (vn.textContent !== want) vn.textContent = want;
+      vn.classList.toggle('clock', live && ms != null);
+    }
+  });
+  tickCadence();
+}
+
+function scoreEl(h, a) {
+  const sc = el('div', 'sc');
+  sc.append(el('span', 'v', String(h)), el('span', 'd', '–'), el('span', 'v', String(a)));
+  return sc;
+}
+
+/* The repaint beat only exists while a clock is actually running: a stopped
+   clock during a dead ball, or a strip with nothing live on it, costs nothing.
+   Four times a second is enough for tenths to look continuous without being a
+   timer that matters on somebody else's page. */
+let tickTimer = null;
+function tickCadence() {
+  const running = Array.from(LIVE.values()).some(s => s.running);
+  const anyLiveCard = Array.from(ROWS.values()).some(g => statusOf(g) === 'live');
+  if (running && anyLiveCard) {
+    if (!tickTimer) tickTimer = setInterval(paint, 250);
+  } else if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+}
+
+/* ---- which games are worth a socket ----------------------------------------
+   Every live game, plus anything scheduled close enough to its tip-off that it
+   could start while somebody is looking. The second half is what makes the
+   flip to LIVE instant: the scorer starts broadcasting the moment it claims a
+   fixture, so if the strip is already listening the card changes on the same
+   frame the statistician presses start. Without it the flip waits for a poll.
+
+   Capped, because this runs on other people's pages and a league with thirty
+   fixtures in one evening should not open thirty channels on a visitor's
+   browser. Live games are never cut — they are the reason for the file. */
+const NEAR_TIP_MS = 4 * 3600 * 1000;
+const MAX_CHANNELS = 8;
+
+function watchable(gs) {
+  const now = Date.now();
+  /* statusOf, NOT g.status. The scorer broadcasts its first live frame around
+     the same moment it writes status='live', and the reload that frame triggers
+     can easily read the row a beat before the write lands. Judging on the table
+     alone therefore dropped the channel at the precise instant the game went
+     live, and the strip went deaf until a poll put it back — the one failure
+     this whole file exists to prevent. A frame that says live keeps its socket. */
+  const live = gs.filter(g => statusOf(g) === 'live');
+  const near = gs.filter(g => statusOf(g) === 'scheduled' && g.tipoff_at &&
+    Math.abs(new Date(g.tipoff_at).getTime() - now) < NEAR_TIP_MS);
+  return live.concat(near).slice(0, MAX_CHANNELS).map(g => 'game:' + g.id);
+}
+
+function onFrame(frame) {
+  if (!frame || !frame.gameId) return;
+  const status = frame.game && frame.game.status;
+  const changed = noteState(frame.gameId, frame.state, status);
+  if (!changed && !status) return;
+  const row = ROWS.get(frame.gameId);
+  /* A fixture that has just started, or just finished, changes the ORDER of
+     the strip as well as one card — live games sort to the front. Repaint now
+     so it looks right within the frame, and reload so it is right. */
+  if (row && status && status !== row.status && (status === 'live' || status === 'final')) {
+    paint();
+    load().catch(() => {});
+    return;
+  }
+  paint();
+}
+
+function syncWatch(gs) {
+  const client = realtime();
+  if (!client) return;
+  client.only(watchable(gs), onFrame);
+}
+
+/* ---- the durable mirror, read once per structural change -------------------
+   A viewer opening a page in the middle of a quarter should not stare at a
+   card with no clock on it until the scorer's next heartbeat. game_state holds
+   the same fields the broadcast carries, so one small read fills the gap.
+
+   THE ELAPSED TIME IS MEASURED IN SERVER TIME. updated_at is the server's
+   clock and the response's own Date header is the same clock a moment later,
+   so the difference is how long ago the state was written regardless of what
+   the viewer's device believes the time is. Getting this wrong shows a clock
+   several minutes out on any machine with a lazy NTP. */
+async function loadState(ids) {
+  if (!ids.length) return;
+  const q = 'game_state?select=game_id,period,clock_ms,running,score_home,score_away,' +
+            'last_seq,updated_at&game_id=in.(' + ids.join(',') + ')';
+  let rows, serverNow;
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${q}`,
+      { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+    if (!r.ok) return;
+    serverNow = Date.parse(r.headers.get('date') || '') || Date.now();
+    rows = await r.json();
+  } catch (_) { return; }
+
+  rows.forEach(row => {
+    const held = LIVE.get(row.game_id);
+    /* A frame already heard is fresher than anything a table can offer. */
+    if (held && held.last_seq != null && row.last_seq != null && row.last_seq <= held.last_seq) return;
+    if (!noteState(row.game_id, row, held && held.status)) return;
+    const s = LIVE.get(row.game_id);
+    s.elapsedBase = Math.max(0, serverNow - Date.parse(row.updated_at || '') || 0);
+  });
+  paint();
+}
+
 function fmtDate(iso) {
   if (!iso) return 'TBC';
   const d = new Date(iso);
@@ -154,9 +428,13 @@ function fmtTime(iso) {
 }
 
 function card(g) {
-  const live = g.status === 'live', final = g.status === 'final';
+  const phase = statusOf(g);
+  const live = phase === 'live', final = phase === 'final';
   const a = document.createElement('a');
   a.className = 'ep-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
+  /* paint() finds its cards by this, and finds BOTH copies of each — the rail
+     holds the list twice so the scroll can wrap invisibly. */
+  a.setAttribute('data-game', g.id);
   a.target = '_blank'; a.rel = 'noopener';
   a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
                    location.href).href;
@@ -187,11 +465,8 @@ function card(g) {
 
   const mid = el('div', 'mid');
   if (live || final) {
-    const sc = el('div', 'sc');
-    sc.append(el('span', 'v', String(g.home_score == null ? 0 : g.home_score)),
-              el('span', 'd', '–'),
-              el('span', 'v', String(g.away_score == null ? 0 : g.away_score)));
-    mid.appendChild(sc);
+    const [h, aw] = scoreOf(g);
+    mid.appendChild(scoreEl(h, aw));
   } else {
     mid.appendChild(el('div', 'vs', 'v'));
   }
@@ -199,8 +474,18 @@ function card(g) {
   row.appendChild(side(g.away, g.away_score, g.home_score));
   a.appendChild(row);
 
+  /* On a live card the left slot is the game clock, which paint() then keeps
+     ticking. Until a frame arrives it holds the venue, so a game being scored
+     by somebody who is offline still reads sensibly rather than showing an
+     empty gap where a clock should be. */
+  const s = live ? LIVE.get(g.id) : null;
+  const ms = live ? clockNow(s) : null;
   const when = el('div', 'when');
-  when.appendChild(el('span', 'vn', live ? (g.venue || 'in progress') : fmtDate(g.tipoff_at)));
+  const vn = el('span', 'vn', live
+    ? (ms == null ? (g.venue || 'in progress') : periodLabel(s.period) + ' · ' + fmtClock(ms))
+    : fmtDate(g.tipoff_at));
+  if (live && ms != null) vn.classList.add('clock');
+  when.appendChild(vn);
   when.appendChild(el('span', null,
     live ? 'watch ↗' : final ? fmtTime(g.tipoff_at) : fmtTime(g.tipoff_at) + ' · preview ↗'));
   a.appendChild(when);
@@ -292,15 +577,24 @@ async function load() {
      five. Cutting a live game to honour ?n= would be honouring the wrong
      number: n is how much of the schedule to show, not a reason to hide a game
      that is being played. */
-  const liveCount = gs.filter(g => g.status === 'live').length;
+  const liveCount = gs.filter(g => statusOf(g) === 'live').length;
   liveNow = liveCount > 0;
   gs = gs.slice(0, Math.max(limit, liveCount));
 
-  /* only touch the DOM when something actually changed — this repaints every
-     minute, and a strip that flickers on someone's homepage is worse than one
-     that is a few seconds stale */
-  const key = gs.map(g => g.id + ':' + g.status + ':' + g.home_score + '-' + g.away_score).join('|');
-  if (key === lastKey) return;
+  /* Rows first: paint() and statusOf() both read through this, and a frame can
+     arrive between here and the render below. */
+  ROWS.clear();
+  gs.forEach(g => ROWS.set(g.id, g));
+  syncWatch(gs);
+  loadState(gs.filter(g => statusOf(g) === 'live').map(g => g.id)).catch(() => {});
+
+  /* REBUILD ONLY WHEN THE SET OF CARDS CHANGES — which games, in which order,
+     in which state. A score is deliberately NOT part of this fingerprint any
+     more: paint() writes digits onto the cards that are already there, so a
+     basket no longer tears down a rail that is mid-drag, and a poll returning
+     a score a few seconds behind the broadcast can no longer stomp on it. */
+  const key = gs.map(g => g.id + ':' + statusOf(g)).join('|');
+  if (key === lastKey) { paint(); return; }
   lastKey = key;
 
   const rail = $('#rail');
@@ -319,6 +613,7 @@ async function load() {
     gs.forEach(g => { const c = card(g); c.tabIndex = -1; dup.appendChild(c); });
     rail.appendChild(dup);
   }
+  paint();
   postHeight();
   startMotion();
 }
