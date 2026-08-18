@@ -959,6 +959,36 @@ html, body{ height:100dvh; }
 }
 
 /* ===========================================================================
+   A TOUCH TABLET KEEPS THE WIDE LAYOUT AND GETS THUMB-SIZED CONTROLS.
+
+   Everything above 900px is written for a mouse, because until now everything
+   above 900px WAS a mouse. A statistician's tablet in landscape is 1024 or
+   1180 wide, so it takes the desktop three-column layout — which is the right
+   call, that is where the mid panel and its persistent shot chart live, and a
+   court you can tap at any point in a possession is the whole reason to score
+   on a tablet rather than a phone.
+
+   What it should not inherit is desktop SIZING. A 28px row and a 44px court
+   are fine under a cursor and wrong under a thumb, and the gap is worse here
+   than on a phone because nothing about the screen warns you: it looks roomy
+   and then misses.
+
+   Only sizes below. The layout, the mid panel and the typed-command layer are
+   left exactly as the width earned them.
+   =========================================================================== */
+@media (min-width:900px) and (pointer:coarse){
+  .prow{min-height:44px;}
+  .act,.sub,.sheetbtn{min-height:44px;}
+  .chip,.mpchip{min-height:40px; padding:8px 12px;}
+  #xCancel,#doneB{width:52px; height:52px;}
+  /* the court is the reason to be on a tablet — give it the room the mid
+     panel has rather than the height a cursor needs */
+  #mpCourt svg{min-height:200px;}
+  /* a thumb covers a 9px label; the mid panel has width to spare for these */
+  .mptitle{font-size:10px;}
+}
+
+/* ===========================================================================
    LANDSCAPE ON A PHONE IS A DIFFERENT SHAPE, NOT A SHORTER PORTRAIT.
 
    Turned sideways, the scorer kept its portrait structure: one column of
@@ -2733,7 +2763,7 @@ function tap(team,pid){
      It only fires on a row the renderer has already marked as a legal target
      (subtarget: same team, not on court), so a mis-tap during a sub cannot
      substitute the wrong player. */
-  if(IS_MOBILE && ui.subOut && !ui.pending && !ui.armed){
+  if(IS_TOUCH && ui.subOut && !ui.pending && !ui.armed){
     if(ui.subOut.team===team && !onCourtHas(team,pid) && ui.subOut.pid!==pid){
       fireOption({act:'subin'},team,pid);
       return;
@@ -3061,9 +3091,22 @@ const IS_MOBILE = IS_TOUCH && !matchMedia('(min-width:900px)').matches;   // pho
    The desktop timing is untouched:
    nobody scores a real game on a mouse, and lengthening the gesture there is
    what keeps an accidental drag from registering a basket. */
-const LIFT_MS = IS_MOBILE ? 150 : 280;
-const MAKE_MS = IS_MOBILE ? 500 : 1500;
-const HOLD_HINT = IS_MOBILE ? 'press & hold' : 'hold 1.5s';
+/* A TABLET IN LANDSCAPE IS A TOUCH DEVICE THAT HAPPENS TO BE WIDE.
+
+   IS_MOBILE is deliberately narrow — touch AND under 900px — because that is
+   the width at which the typed-command layer and the three-column mid panel
+   stop fitting. It was then used for the GESTURE timings too, and those have
+   nothing to do with width. So a 1024 tablet, held in landscape by a
+   statistician with a thumb, got the desktop 1.5-second hold for every made
+   basket: the exact fault fixed on phones, on the device most likely to be
+   used for a real game.
+
+   The timings key off touch alone now. A tablet keeps everything width earned
+   it — the mid panel, the persistent court, the typed commands — and scores
+   with a thumb like a phone does. */
+const LIFT_MS = IS_TOUCH ? 150 : 280;
+const MAKE_MS = IS_TOUCH ? 500 : 1500;
+const HOLD_HINT = IS_TOUCH ? 'press & hold' : 'hold 1.5s';
 function findByNum(t,num){ return S.teams[t].players.find(p=>String(p.num).trim()===String(num).trim()) || null; }
 function cmdVisible(){ return !IS_MOBILE && !!(ui.armed || ui.pending); }
 function renderCmd(){
@@ -4471,10 +4514,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=132" defer></script>
-<script src="../vendor/supabase.js?v=132" defer></script>
-<script src="../live.js?v=132" defer></script>
-<script src="sync.js?v=132" defer></script>
-<script src="bootstrap.js?v=132" defer></script>
+<script src="../config.js?v=133" defer></script>
+<script src="../vendor/supabase.js?v=133" defer></script>
+<script src="../live.js?v=133" defer></script>
+<script src="sync.js?v=133" defer></script>
+<script src="bootstrap.js?v=133" defer></script>
 </body>
 </html>
