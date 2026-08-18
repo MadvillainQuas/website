@@ -136,6 +136,15 @@ jobs:
       - name: The fixture preview must say true things
         run: node supabase/tests/preview.test.mjs
 
+      # The match report is generated prose sitting directly above the box score
+      # it describes, so a sentence disagreeing with the table under it is worse
+      # than no sentence. Holds the claims — which side won what, whether a run
+      # happened, whether a lineup swung it — plus the three faults found by
+      # reading real output: lowercase names, per-100 rates quoted off
+      # three-minute samples, and the same passage of play retold three times.
+      - name: The match report must say true things
+        run: node supabase/tests/report.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

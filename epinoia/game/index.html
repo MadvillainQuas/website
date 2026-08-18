@@ -15,6 +15,7 @@
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
 <link rel="stylesheet" href="../boxscore.css?v=104">
+<link rel="stylesheet" href="report.css?v=104">
 <link rel="stylesheet" href="preview.css?v=104">
 <link rel="stylesheet" href="../kit/nav.css?v=104">
 <style>
@@ -95,6 +96,13 @@
 <script src="../season.js?v=104" defer></script>
 <script src="../bpm.js?v=104" defer></script>
 <script src="../data.js?v=104" defer></script>
+<!-- the match report: facts, then prose, then the page. Split on purpose —
+     story.js decides what is TRUE and is testable, report.js decides how it
+     READS, and a language model would slot in at that seam. -->
+<script src="story.js?v=104" defer></script>
+<script src="report.js?v=104" defer></script>
+<script src="reportview.js?v=104" defer></script>
+<script src="gamefacts.js?v=104" defer></script>
 <script src="preview.js?v=104" defer></script>
 <script src="game.js?v=104" defer></script>
 <script src="../nav.js?v=104" defer></script>

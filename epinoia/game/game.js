@@ -123,6 +123,16 @@ async function loadStored() {
 
 /* ------------------------------------------------------------------ render --- */
 const BODIES = {
+  /* Built from the same derive() every other tab reads, so the prose and the
+     tables are two views of one replay rather than two sources that have to be
+     kept in agreement. */
+  report:  d => {
+    if (!window.EpinoiaStory || !window.EpinoiaReport || !window.EpinoiaGameFacts) {
+      return '<div class="msg">The match report could not be loaded.</div>';
+    }
+    const g = window.EpinoiaGameFacts.brief(window.S, d, B);
+    return window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
+  },
   box:     d => B.qstripHTML(d) + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
   pbp:     d => B.pbpHTML(d),
   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
@@ -132,6 +142,17 @@ const BODIES = {
 /* the same five, in the same order, with the same labels as renderFinal() */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full table / advanced'], ['lineups', 'lineups']];
+
+/* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
+   A box score answers "what were the numbers"; the report answers "what
+   happened", which is the question most people arrive with. It is only offered
+   once a game is final — there is nothing to report on a game still being
+   played, and the facts it reads assume a complete log. */
+function tabsFor(status) {
+  return status === 'final'
+    ? [['report', 'match report']].concat(TABS)
+    : TABS;
+}
 
 /* Rendering is split three ways on purpose.
 
@@ -149,7 +170,7 @@ function renderShell() {
   $('#view').innerHTML =
     '<div class="ovhead"><div class="ovtitle" id="csHeading"></div></div>' +
     '<div id="csHead"></div>' +
-    '<div class="tabrow" style="flex-wrap:wrap">' + TABS.map(t =>
+    '<div class="tabrow" style="flex-wrap:wrap">' + tabsFor(S.status).map(t =>
       '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
       B.esc(t[1]) + '</button>').join('') + '</div>' +
     '<div id="csBody"></div>';
@@ -889,6 +910,11 @@ async function renderPreview() {
 
   if (stored.status === 'final') {
     setStatus('final');
+    /* A finished game opens on the report rather than the box score: the
+       numbers are still one tap away, and "what happened" is the question
+       most people arrive with. A live game keeps opening on the box score,
+       where the numbers ARE the story as it happens. */
+    if (window.EpinoiaReport) fTab = 'report';
     render();
     return;                       // finished: nothing left to listen for
   }

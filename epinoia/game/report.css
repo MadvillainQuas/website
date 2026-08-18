@@ -1,0 +1,188 @@
+/* ============================================================================
+   THE MATCH REPORT.
+
+   Long-form text with its evidence beside it. Two rules run through all of it:
+
+   THE PROSE IS THE PRIMARY OBJECT. It gets a reading measure (~62 characters),
+   a real line height and a size that does not apologise. Every other page on
+   this platform is a table with some labels; this one is an article, and it
+   should feel like one the moment it loads.
+
+   A CARD IS EVIDENCE, NOT DECORATION. Each sits immediately under the
+   paragraph that made the claim, indented no further and styled quieter than
+   the text, so the eye goes prose → proof → prose rather than bouncing.
+
+   Tokens come from boxscore.css with literal fallbacks, because this file is
+   loaded alongside it and must not assume which arrived first.
+   ============================================================================ */
+
+.rep{ max-width:940px; margin:0 auto; padding:0 0 40px }
+
+/* ------------------------------------------------------------------ head --- */
+.rep-head{ padding:6px 0 22px; border-bottom:1px solid var(--line,rgba(147,242,191,.18)); margin-bottom:24px }
+.rep-kicker{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8.5px; letter-spacing:.26em; text-transform:uppercase;
+  color:var(--lume,#93f2bf); margin-bottom:12px;
+}
+.rep-hl{
+  margin:0 0 12px; font-size:clamp(24px,4.6vw,40px); line-height:1.12;
+  font-weight:600; letter-spacing:-.01em; color:var(--txt,#e6fff1);
+  overflow-wrap:anywhere;
+}
+.rep-stand{
+  margin:0; font-size:clamp(15px,2vw,17.5px); line-height:1.6;
+  color:var(--dim,rgba(230,255,241,.72)); max-width:64ch;
+}
+
+/* --------------------------------------------------------------- section --- */
+.rsec{ margin:0 0 30px }
+.rsec h2{
+  margin:0 0 12px; font-size:10px; font-weight:400;
+  font-family:var(--f-micro,ui-monospace,monospace);
+  letter-spacing:.26em; text-transform:uppercase; color:var(--lume,#93f2bf);
+}
+.rprose p{
+  margin:0 0 14px; font-size:15.5px; line-height:1.78;
+  color:var(--dim,rgba(230,255,241,.86)); max-width:62ch;
+}
+.rprose p:last-child{ margin-bottom:0 }
+
+/* ------------------------------------------------------------------ card --- */
+.rcard{
+  margin-top:16px; padding:15px 16px; border-radius:12px;
+  border:1px solid var(--line,rgba(147,242,191,.16));
+  background:linear-gradient(180deg,rgba(190,255,224,.035),rgba(110,220,180,.012));
+}
+.rcard-h{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8px; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--faint,rgba(230,255,241,.45)); margin-bottom:12px;
+}
+.rlegend{
+  display:flex; gap:16px; margin-top:12px;
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--faint,rgba(230,255,241,.5));
+}
+.rlegend span{ display:inline-flex; align-items:center; gap:6px }
+.rlegend i{ width:9px; height:9px; border-radius:2px; flex:none }
+.rlegend .sw-a{ background:var(--team0,#93f2bf) }
+.rlegend .sw-b{ background:var(--team1,#8ff5ff) }
+
+/* ---- scoring by period --------------------------------------------------- */
+.rq{ display:flex; gap:10px; align-items:flex-end }
+.rq-col{ flex:1; min-width:0; text-align:center }
+.rq-pair{ display:flex; gap:3px; align-items:flex-end; height:88px; justify-content:center }
+.rq-pair span{ width:14px; border-radius:3px 3px 0 0; min-height:2px; display:block }
+.rq-a{ background:var(--team0,#93f2bf) }
+.rq-b{ background:var(--team1,#8ff5ff) }
+.rq-n{
+  display:flex; gap:3px; justify-content:center; margin-top:6px;
+  font-family:var(--f-score,ui-monospace,monospace); font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+.rq-n b{ width:14px; font-weight:400; color:var(--dim,rgba(230,255,241,.75)) }
+.rq-p{
+  margin-top:4px; font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:8px; letter-spacing:.14em; color:var(--faint,rgba(230,255,241,.42));
+}
+
+/* ---- four factors -------------------------------------------------------- */
+.rf{ display:grid; gap:11px }
+.rf-row{ display:grid; grid-template-columns:104px 1fr 104px; gap:10px; align-items:center }
+.rf-lab{ font-size:11.5px; color:var(--dim,rgba(230,255,241,.8)) }
+.rf-lab i{
+  display:block; font-style:normal; font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--faint,rgba(230,255,241,.4)); margin-top:2px;
+}
+.rf-bar{ display:flex; height:8px; border-radius:4px; overflow:hidden; background:rgba(4,16,11,.5) }
+.rf-bar span{ display:block; height:100% }
+.rf-a{ background:color-mix(in oklch, var(--team0,#93f2bf) 38%, transparent) }
+.rf-b{ background:color-mix(in oklch, var(--team1,#8ff5ff) 38%, transparent) }
+.rf-a.win{ background:var(--team0,#93f2bf) }
+.rf-b.win{ background:var(--team1,#8ff5ff) }
+.rf-v{
+  display:flex; justify-content:space-between; gap:8px;
+  font-family:var(--f-score,ui-monospace,monospace); font-size:11.5px;
+  font-variant-numeric:tabular-nums; color:var(--faint,rgba(230,255,241,.5));
+}
+.rf-v b{ font-weight:400 }
+.rf-v b.win{ color:var(--txt,#e6fff1) }
+
+/* ---- lineups ------------------------------------------------------------- */
+.rl{ display:grid; gap:10px }
+.rl-row{
+  padding:11px 12px; border-radius:10px; background:rgba(4,16,11,.4);
+  border-left:3px solid var(--team0,#93f2bf);
+}
+.rl-row.t1{ border-left-color:var(--team1,#8ff5ff) }
+.rl-what{
+  font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:7.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--faint,rgba(230,255,241,.5)); margin-bottom:7px;
+}
+.rl-five{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px }
+.rl-p{
+  display:inline-flex; align-items:baseline; gap:4px;
+  font-size:11.5px; color:var(--dim,rgba(230,255,241,.85));
+}
+.rl-p i{
+  font-style:normal; font-family:var(--f-score,ui-monospace,monospace);
+  font-size:9px; color:var(--faint,rgba(230,255,241,.4));
+}
+.rl-nums{
+  display:flex; gap:12px; align-items:baseline;
+  font-family:var(--f-score,ui-monospace,monospace); font-size:11px;
+  font-variant-numeric:tabular-nums; color:var(--faint,rgba(230,255,241,.5));
+}
+.rl-pm{ font-size:15px }
+.rl-pm.pos{ color:var(--green,#63ffa0) }
+.rl-pm.neg{ color:var(--red,#ff5f6b) }
+
+/* ---- performances -------------------------------------------------------- */
+.rps{ display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:10px }
+.rp{
+  padding:12px; border-radius:10px; background:rgba(4,16,11,.4);
+  border-top:2px solid var(--team0,#93f2bf);
+}
+.rp.t1{ border-top-color:var(--team1,#8ff5ff) }
+.rp-n{ font-size:14px; font-weight:600; color:var(--txt,#e6fff1); overflow-wrap:anywhere }
+.rp-n a{ color:inherit; text-decoration:none }
+.rp-n a:hover{ text-decoration:underline }
+.rp-t{
+  margin-top:2px; font-family:var(--f-micro,ui-monospace,monospace);
+  font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--faint,rgba(230,255,241,.42));
+}
+.rp-line{
+  margin-top:9px; font-family:var(--f-score,ui-monospace,monospace);
+  font-size:11px; color:var(--faint,rgba(230,255,241,.55));
+  font-variant-numeric:tabular-nums;
+}
+.rp-line b{ font-size:16px; color:var(--txt,#e6fff1); font-weight:400; margin-right:2px }
+.rp-adv{
+  margin-top:7px; font-family:var(--f-score,ui-monospace,monospace);
+  font-size:10px; color:var(--faint,rgba(230,255,241,.45));
+}
+
+/* ------------------------------------------------------------------ foot --- */
+.rep-foot{
+  margin-top:8px; padding-top:16px;
+  border-top:1px solid var(--line,rgba(147,242,191,.14));
+  font-size:11.5px; line-height:1.6; color:var(--faint,rgba(230,255,241,.42));
+  max-width:62ch;
+}
+
+/* ---------------------------------------------------------------- phones --- */
+@media (max-width:640px){
+  .rprose p{ font-size:14.5px; line-height:1.7 }
+  .rcard{ padding:13px }
+  /* the label column is the first thing to go: the bar and the two numbers
+     carry the comparison, and the short code under the label is enough */
+  .rf-row{ grid-template-columns:74px 1fr 88px; gap:8px }
+  .rf-lab{ font-size:10.5px }
+  .rq-pair{ height:66px }
+  .rq-pair span{ width:11px }
+}
