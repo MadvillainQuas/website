@@ -67,20 +67,84 @@ async function crestsFor(ids) {
   return out;
 }
 
+/* Two renders can be in flight at once — boot() calls this, and so does the
+   onAuthStateChange handler that fires moments later with the restored
+   session. Both used to clear the list and then await, so both cleared before
+   either appended and every club was drawn twice. A token means only the
+   newest render is allowed to write, and the clear happens after the awaits
+   rather than before them. */
+let teamsRenderToken = 0;
+
 async function renderTeams() {
-  const { data, error } = await sb.from('teams').select('id,name,short_name,colour,slug').order('name');
-  if (error) {
-    if (schemaMissing(error)) { show('#setup', true); say(''); return; }
-    say(error.message, 'err'); return;
+  const token = ++teamsRenderToken;
+
+  /* WHOSE CLUBS THESE ARE.
+
+     This asked the teams table for every club on the platform and put the
+     answer under a heading reading MY TEAMS. teams is readable by anyone —
+     it has to be, league tables and fixture lists are public — so a brand new
+     account with no roles at all was shown every club on the site, each one
+     offering to manage its roster.
+
+     Nothing could actually be CHANGED through it: is_team_manager() guards
+     every write, and the roster editor behind the row refuses to save for
+     somebody who does not manage the club. But a portal that lists four clubs
+     under "my teams" is telling the account it holds four clubs, and being
+     refused later is not the same as never being offered.
+
+     whoami() is the authority, and it is the same answer the rail and both
+     consoles read, so they cannot disagree about who somebody is. It returns
+     the clubs held through a team_manager membership — and every club on the
+     platform for a platform administrator, which is correct rather than a
+     leak: that account really does manage all of them. */
+  let mine = [], who = null;
+  try {
+    const { data, error: whoErr } = await sb.rpc('whoami');
+    if (whoErr) throw whoErr;
+    who = data || {};
+    mine = who.teams || [];
+  } catch (e) {
+    if (token !== teamsRenderToken) return;
+    say('Could not check what this account manages: ' + (e.message || e), 'err');
+    return;
   }
+
+  let data = [];
+  if (mine.length) {
+    const ids = mine.map(t => t.id);
+    const { data: rows, error } = await sb.from('teams')
+      .select('id,name,short_name,colour,slug').in('id', ids).order('name');
+    if (error) {
+      if (schemaMissing(error)) { show('#setup', true); say(''); return; }
+      say(error.message, 'err'); return;
+    }
+    data = rows || [];
+  }
+
+  if (token !== teamsRenderToken) return;          // a newer render won
   show('#teams', true); say('');
+  const crests = await crestsFor(data.map(t => t.id));
+  if (token !== teamsRenderToken) return;
+
   const list = $('#teamlist'); list.textContent = '';
   if (!data.length) {
     const d = document.createElement('div');
-    d.className = 'msg'; d.textContent = 'No teams yet — create one below.';
+    d.className = 'msg';
+    /* Two different empty states that need two different things doing. An
+       administrator seeing nothing means the platform has no clubs yet and
+       they should make one; anybody else seeing nothing means they hold no
+       club and somebody has to grant them one. Telling a league administrator
+       to go and ask a league administrator is the kind of dead end that makes
+       a working page look broken. */
+    const isAdmin = !!(who && (who.is_platform_admin || (who.leagues || []).length));
+    d.textContent = isAdmin
+      ? 'No clubs exist yet. Create one in the league console and it will ' +
+        'appear here for whoever you assign to it.'
+      : 'No clubs are assigned to this account yet. A league administrator ' +
+        'grants club access against your email address — until then there is ' +
+        'nothing here to manage.';
     list.appendChild(d);
   }
-  const crests = await crestsFor(data.map(t => t.id));
 
   data.forEach(t => {
     const row = document.createElement('div');

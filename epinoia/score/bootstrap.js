@@ -130,8 +130,13 @@
      amber until it is fixed. */
   let authOk = null;
 
+  /* Set once the fixture gate has refused. Everything that would otherwise
+     keep talking about publishing has to stop, or the badge cheerfully
+     contradicts the notice covering the screen. */
+  let refused = false;
+
   async function checkPublishing() {
-    if (!isFixture) return true;
+    if (!isFixture || refused) return false;
     const sb = window.epinoiaClient && epinoiaClient();
     if (!sb) { authOk = false; return false; }
     const { data: { session } } = await sb.auth.getSession();
@@ -976,6 +981,10 @@
   let tries = 0;
   const timer = setInterval(() => {
     tries++;
+    /* Refused fixtures never attach and never report progress towards it —
+       "waiting for tip-off" under a notice saying the game is not yours is
+       the badge arguing with the page. */
+    if (refused) { clearInterval(timer); return; }
     /* Not just "is there state" — the scorer builds S as soon as the setup
        screen opens, and the bridge publishes status 'live' for anything that
        is not final. Attaching here would put an empty 0–0 phantom game on the
@@ -1041,7 +1050,96 @@
   /* ------------------------------------------------------------- wire up --- */
   /* Both run after the scorer's own script has defined its globals — the
      picker only needs the DOM, the auto-load needs showStarterPick(). */
-  function start() {
+  /* ===================== THE DOOR ON A REAL FIXTURE =====================
+
+     The scorer opened for anybody who knew a game id. Signed out it warned
+     that nothing was being saved and carried on regardless; signed in with no
+     roles it did the same. Every WRITE was refused — can_score guards the
+     event log, the claim and the finalise — so no stranger ever changed a
+     game. What they got instead was a scoring app running against a real
+     fixture's identity, broadcasting a fabricated score to anyone watching
+     that game's public page over a transport that needs no credentials at
+     all. Refused writes were never the whole story: the live view was the
+     hole, and it was open to anyone with the link.
+
+     So the fixture is checked before the app is usable, with the same
+     can_score() the row-level policies use — one question, one answer, no
+     second implementation to drift. Signed out is refused for the same reason
+     as signed in without the role: neither may score this game.
+
+     THE DEMO IS THE WAY THROUGH. Nobody is turned away at a dead end — the
+     refusal offers the practice game, which is the thing a curious visitor
+     actually wanted and which writes nothing anywhere. ?train=1 and a scratch
+     room never reach this code at all: isFixture is false for both. */
+  async function gateFixture() {
+    if (!isFixture) return true;
+
+    const sb = window.epinoiaClient && epinoiaClient();
+    let allowed = false;
+    if (sb) {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          const { data, error } = await sb.rpc('can_score', { p_game: gameId });
+          allowed = !error && data === true;
+        }
+      } catch (_) { allowed = false; }
+    }
+    if (allowed) return true;
+
+    /* Nothing of the scorer is left running underneath the notice: a paused
+       app behind a panel is still an app, and its timers still publish. */
+    try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+    refused = true;
+    say('not your fixture', '#ff5f6b');
+    bar.style.borderColor = 'rgba(255,95,107,.7)';
+    bar.style.background = 'rgba(40,6,8,.94)';
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:2147483600', 'display:flex',
+      'align-items:center', 'justify-content:center', 'padding:24px',
+      'background:rgba(2,16,11,.97)',
+      'font:400 14px/1.6 ui-sans-serif,system-ui,sans-serif', 'color:#e6fff1'
+    ].join(';');
+    const card = document.createElement('div');
+    card.style.cssText = [
+      'max-width:440px', 'width:100%', 'text-align:center',
+      'border:1px solid rgba(147,242,191,.3)', 'border-radius:14px',
+      'padding:26px 22px', 'background:rgba(4,16,11,.9)'
+    ].join(';');
+    const h = document.createElement('div');
+    h.textContent = 'This fixture is not yours to score';
+    h.style.cssText = 'font-size:17px;font-weight:600;margin-bottom:10px;color:#93f2bf';
+    const p = document.createElement('div');
+    p.textContent = 'Scoring a real fixture needs a statistician assigned to ' +
+      'it, or an administrator of its league. If that should be you, ask the ' +
+      'league to add your email address to the game.';
+    p.style.cssText = 'color:rgba(230,255,241,.72);margin-bottom:18px';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap';
+    const mk = (label, href, primary) => {
+      const a = document.createElement('a');
+      a.href = href; a.textContent = label;
+      a.style.cssText = 'text-decoration:none;border-radius:8px;padding:10px 15px;' +
+        'font-size:13px;font-weight:600;' + (primary
+          ? 'background:#93f2bf;color:#04100b'
+          : 'border:1px solid rgba(147,242,191,.4);color:#93f2bf');
+      return a;
+    };
+    row.append(
+      mk('try the demo instead', '?train=1', true),
+      mk('watch this game', '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase', false),
+      mk('sign in', '../signin/?next=' + encodeURIComponent(location.pathname + location.search), false)
+    );
+    card.append(h, p, row);
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+    return false;
+  }
+
+  async function start() {
+    if (!(await gateFixture())) return;      // refused: nothing else is wired up
     try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
     try { injectSquadPickers(); } catch (e) { console.warn('[squads]', e); }
     try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }

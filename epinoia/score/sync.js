@@ -202,6 +202,13 @@ function halt() {
 const api = {
   attach(opts) {
     if (attached) return api;
+    /* halt() can be called BEFORE anything attaches — the fixture gate in
+       bootstrap.js halts the moment it refuses, which is well before the
+       attach timer notices a game. Without this, a refused session that then
+       restored a saved game from localStorage would sail past the halt and
+       start publishing a fabricated score to a real fixture's public page.
+       Halted means halted, whenever it was asked for. */
+    if (halted) { console.warn('[sync] halted — not attaching'); return api; }
     const S0 = (typeof S !== 'undefined') ? S : null;
     if (!S0) { console.warn('[sync] no scorer state on the page — not attaching'); return api; }
     if (!root.EpinoiaLive) { console.warn('[sync] live.js missing'); return api; }

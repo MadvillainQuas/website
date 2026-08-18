@@ -116,8 +116,25 @@
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
     { label: 'take part', auth: true },
+    /* SCORING IS THE ONE ROW THAT DOES NOT DISAPPEAR.
+
+       Every other gated row is hidden from an account that cannot use it,
+       because there is nothing behind it for them. The scorer is different:
+       it has a real, complete demo — two invented squads, nothing written
+       anywhere — and hiding the row hid that as well, so the one thing a
+       curious visitor SHOULD be able to press was the thing they could not
+       find. Hidden, it also read as "this platform has no scoring app".
+
+       So the row stays and changes what it IS. With the role it opens the
+       fixture list and says "score a game"; without it, it opens the practice
+       game and says so plainly. The two are different destinations with
+       different labels, so nobody presses "demo score" expecting to record a
+       real fixture — and nobody without the role reaches one, because the
+       scorer refuses a real fixture id independently of anything here. */
     { href: 'score/', ic: '●', tx: 'score a game', match: /\/epinoia\/score\//, auth: true,
-      key: 'score', role: w => (w.scoring || []).length || adminsThis(w) },
+      key: 'score', role: w => (w.scoring || []).length || adminsThis(w),
+      demo: { href: 'score/?train=1', tx: 'demo score',
+              title: 'a practice game with two invented squads — nothing is saved' } },
     { href: 'app/',   ic: '◆', tx: 'club portal',  match: /\/epinoia\/app\//,  auth: true,
       key: 'portal', role: w => (w.teams || []).length || adminsThis(w) },
     { href: 'admin/', ic: '▲', tx: 'league admin', match: /\/epinoia\/admin\//, auth: true,
@@ -301,6 +318,7 @@
   leaguePanel.append(phead, pages);
 
   const gated = [];            // [node, predicate] — shown once roles are known
+  const demoRows = [];         // [node, spec, demoHref] — rows that downgrade rather than hide
   const carriers = [];         // [anchor, base path] — links that take the league
   const navKeyed = [];         // [node, key] — rows a league may switch off
 
@@ -321,6 +339,7 @@
     const a = el('a', 'item');
     if (it.match && it.match.test(here)) a.dataset.hereIs = '1';
     a.href = it.lg ? withLeague(root + it.href) : root + it.href;
+    if (it.demo) demoRows.push([a, it, root + it.demo.href]);
     if (it.lg) carriers.push([a, root + it.href]);
     a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
     a.title = it.tx;
@@ -762,11 +781,33 @@
     return r.json();
   }
 
+  /* Swap a row between its real destination and its demo. Both states are
+     spelled out rather than one being "the default", so repeated calls — and
+     applyAuth runs again whenever the session changes — always land on the
+     right one instead of drifting. */
+  function applyDemo(node, spec, demoHref, toDemo) {
+    if (node.dataset.navOff === '1') { node.hidden = true; return; }
+    node.hidden = false;
+    const tx = node.querySelector('.tx');
+    if (toDemo) {
+      node.href = demoHref;
+      if (tx) tx.textContent = spec.demo.tx;
+      node.title = spec.demo.title;
+      node.dataset.demo = '1';
+    } else {
+      node.href = spec.lg ? withLeague(root + spec.href) : root + spec.href;
+      if (tx) tx.textContent = spec.tx;
+      node.title = spec.tx;
+      delete node.dataset.demo;
+    }
+  }
+
   async function applyAuth() {
     const sess = storedSession();
 
     if (!sess) {
       gated.forEach(([node]) => { node.hidden = true; });
+      demoRows.forEach(([node, spec, demoHref]) => applyDemo(node, spec, demoHref, true));
       acctTx.textContent = 'sign in';
       acctIc.textContent = '◐';
       acctLink.href = root + 'signin/?next=' +
@@ -790,6 +831,11 @@
          switched the page off, and the league switching it on does not hand
          it to somebody without the role. */
       node.hidden = !ok || node.dataset.navOff === '1';
+      /* A row with a demo behind it never simply disappears: without the role
+         it becomes the practice game instead. Still respects the league
+         switching the page off entirely — navOff wins over both. */
+      const demo = demoRows.find(d => d[0] === node);
+      if (demo) applyDemo(node, demo[1], demo[2], !ok);
     });
     /* If every entry under it is hidden, hide the heading too rather than
        leaving a label with nothing beneath it.
