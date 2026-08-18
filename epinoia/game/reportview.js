@@ -152,7 +152,16 @@ function cardPlayers(g, facts) {
         ((p.p3a || 0) ? ' · ' + (p.p3m || 0) + '/' + p.p3a + ' 3pt' : '') +
       '</div></div>';
   }).join('');
-  return '<div class="rcard"><div class="rcard-h">The performances</div>' +
+  /* "Leading lines", not "The performances" — that is the SECTION heading
+     directly above this card, and printing it twice made the card read as a
+     second section.
+
+     The comment sits ABOVE the return rather than after it: a `return`
+     followed by a multi-line comment puts a line terminator between the
+     keyword and the value, automatic semicolon insertion fires, and the
+     function quietly returns undefined. It did exactly that here, and the
+     players card vanished from every report until the test caught it. */
+  return '<div class="rcard"><div class="rcard-h">Leading lines</div>' +
     '<div class="rps">' + cards + '</div></div>';
 }
 

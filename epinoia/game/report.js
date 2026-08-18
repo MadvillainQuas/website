@@ -154,6 +154,24 @@ function seedOf(str) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
+/* The template used for the previous sentence in the current paragraph, so a
+   neighbour can avoid it. Reset by each section that cares. */
+let lastPick = null;
+function pickVaried(seed, options) {
+  if (options.length < 2) return pick(seed, options);
+  let i = seedOf(seed) % options.length;
+  /* Compare the TEMPLATE, not the rendered sentence. The first version tested
+     the finished strings, which differ by name and number for every player, so
+     it never matched and two men were still "chipped in 21 … well up on his
+     usual" and "chipped in 19 … well up on his usual" in consecutive lines.
+     The option set is identified by its length, which is enough: consecutive
+     sentences of the same kind draw from the same array. */
+  const key = options.length + ':' + i;
+  if (key === lastPick) i = (i + 1) % options.length;
+  lastPick = options.length + ':' + i;
+  return options[i];
+}
+
 function pick(seed, options) {
   /* Options must be plain values. Anything that names a club has to be
      resolved BEFORE the array is built — every element of an array literal is
@@ -205,10 +223,17 @@ function standfirst(g, fs) {
   }
   const factor = fs.find(f => f.kind === 'factor');
   if (factor) {
+    /* Said the way the game says it, and never as a bare percentage for
+       free-throw rate, which is attempts per field-goal attempt rather than a
+       percentage of anything. */
     const mine = factor.side === 0 ? factor.data.a : factor.data.b;
     const theirs = factor.side === 0 ? factor.data.b : factor.data.a;
-    bits.push(nm(g, factor.side) + ' won ' + factor.data.label + ', ' +
-      pct1(mine) + ' to ' + pct1(theirs));
+    const who = nm(g, factor.side);
+    bits.push(
+      factor.data.factor === 'efg'  ? who + ' shot it better, ' + pct1(mine) + ' eFG to ' + pct1(theirs)
+    : factor.data.factor === 'tov'  ? who + ' took better care of the ball, ' + pct1(mine) + ' turnover rate to ' + pct1(theirs)
+    : factor.data.factor === 'oreb' ? who + ' controlled the offensive glass, ' + pct1(mine) + ' to ' + pct1(theirs)
+    : who + ' got to the line far more often');
   }
   if (!bits.length) {
     const r = fs.find(f => f.kind === 'result');
@@ -372,23 +397,62 @@ function sectionNumbers(g, fs, R) {
   const out = [];
   const factors = fs.filter(f => f.kind === 'factor').slice(0, 3);
   if (factors.length) {
-    /* ONE FACTOR CARRIES THE FIGURES. Printing the gap and both percentages
-       for every factor, then joining two of them, put six numbers in one
-       sentence — the single densest thing the writer produced. The decisive
-       factor gets its numbers; the others are named, because knowing WHICH
-       four factors a side won is the point and the reader can see the values
-       on the card directly underneath. */
+    /* EACH FACTOR IS A DIFFERENT SENTENCE, because each is a different thing.
+       "The winners won this at shooting, 55.7% against 49.3%" is not something
+       anybody says about basketball, and free-throw rate is not a percentage
+       at all — ftr is free-throw attempts per field-goal attempt, so printing
+       it as "44.4%" and calling it "winning free throws" described nothing
+       real. One figure carries the clause; the card underneath has the rest. */
     const lead = factors[0];
     const mine = lead.side === 0 ? lead.data.a : lead.data.b;
     const theirs = lead.side === 0 ? lead.data.b : lead.data.a;
     const who = R.subj(lead.side, { allowRole: true });
-    let sentence = pick('ff' + lead.data.factor + lead.side, [
-      who + ' won this at ' + lead.data.label + ', ' + pct1(mine) + ' against ' + pct1(theirs),
-      who + ' were the better side on ' + lead.data.label + ' — ' + pct1(mine) + ' to ' + pct1(theirs),
-      'The difference was ' + lead.data.label + ': ' + who + ' at ' + pct1(mine) + ', their opponents ' + pct1(theirs)
-    ]);
-    const also = factors.slice(1).filter(f => f.side === lead.side).map(f => f.data.label);
-    if (also.length === 1) sentence += ', and had the better of ' + also[0] + '' + ' too';
+    const sd = 'ff' + lead.data.factor + lead.side;
+
+    let sentence;
+    if (lead.data.factor === 'efg') {
+      sentence = pick(sd, [
+        who + ' shot it better, ' + pct1(mine) + ' effective field goal ' +
+          'against ' + pct1(theirs),
+        who + ' were the sharper side from the floor \u2014 ' + pct1(mine) +
+          ' eFG to ' + pct1(theirs),
+        'The shooting decided it: ' + who + ' at ' + pct1(mine) + ' eFG, their ' +
+          'opponents at ' + pct1(theirs)
+      ]);
+    } else if (lead.data.factor === 'tov') {
+      sentence = pick(sd, [
+        who + ' looked after the ball, giving it up on ' + pct1(mine) +
+          ' of their possessions against ' + pct1(theirs),
+        who + ' were far the more careful side, a ' + pct1(mine) +
+          ' turnover rate to ' + pct1(theirs),
+        'Possessions were the difference \u2014 ' + who + ' turned it over on ' +
+          pct1(mine) + ' of theirs, their opponents on ' + pct1(theirs)
+      ]);
+    } else if (lead.data.factor === 'oreb') {
+      sentence = pick(sd, [
+        who + ' owned the offensive glass, rebounding ' + pct1(mine) +
+          ' of their own misses to ' + pct1(theirs),
+        who + ' kept possessions alive \u2014 ' + pct1(mine) + ' of their misses ' +
+          'came back to them, against ' + pct1(theirs),
+        'The second shots went one way: ' + who + ' recovered ' + pct1(mine) +
+          ' of their own misses to ' + pct1(theirs)
+      ]);
+    } else {
+      /* ftr = fta / fga. Said as the ratio it is, never as a percentage. */
+      const per = n => Math.round(num(n) || 0);
+      sentence = pick(sd, [
+        who + ' got to the line far more often \u2014 ' + per(mine) +
+          ' free throws for every hundred shots, against ' + per(theirs),
+        who + ' lived at the line, drawing ' + per(mine) +
+          ' free-throw attempts per hundred field goals to ' + per(theirs),
+        'The whistle paid ' + who + ': ' + per(mine) + ' free throws per hundred ' +
+          'shots, their opponents ' + per(theirs)
+      ]);
+    }
+
+    const also = factors.slice(1).filter(f => f.side === lead.side)
+      .map(f => f.data.label);
+    if (also.length === 1) sentence += ', and had the better of ' + also[0] + ' too';
     else if (also.length > 1) sentence += ', with ' + also.slice(0, -1).join(', ') +
       ' and ' + also[also.length - 1] + ' going the same way';
     out.push(sentence + '.');
@@ -399,12 +463,17 @@ function sectionNumbers(g, fs, R) {
   const share = fs.find(f => f.kind === 'sharing');
   const shapeBits = [];
   if (zone) {
+    /* SHARE OF ATTEMPTS, which is what rimr/p3r measure — the accuracy is a
+       different number (rimp/p3p) and gets its own clause when it is worth
+       one. The previous version printed the accuracy and called it the share. */
+    const acc = num(zone.data.acc) != null
+      ? ', and made ' + pct1(zone.data.acc) + ' of them' : '';
     shapeBits.push(R.subj(zone.side, { allowRole: true }) +
       (zone.kind === 'fromRange'
-        ? ' played from distance \u2014 ' + pct1(zone.data.share) +
-          ' of their attempts were threes against ' + pct1(zone.data.theirs)
-        : ' lived at the rim, ' + pct1(zone.data.share) +
-          ' of their shots from close against ' + pct1(zone.data.theirs)));
+        ? ' took the game outside \u2014 ' + pct1(zone.data.share) +
+          ' of their shots came from three, against ' + pct1(zone.data.theirs) + acc
+        : ' went inside \u2014 ' + pct1(zone.data.share) +
+          ' of their attempts came at the rim, against ' + pct1(zone.data.theirs) + acc));
   }
   if (share) {
     shapeBits.push(R.subj(share.side) + ' moved it well, assisting on ' +
@@ -540,6 +609,19 @@ function sectionPlayers(g, fs, R) {
     return S.players.find(x => x.id === id) || null;
   };
 
+  /* SALIENCE ORDERS THE FACTS; THE PARAGRAPH ORDERS THE PEOPLE.
+     Ranking purely by salience put "Cline added 17" above "Bankole led Harbour
+     Bay with 19" — a season-context fact outscoring the team's actual leading
+     scorer — which reads as though the writer had lost track of the game. A
+     side's leader is introduced before their team-mates; after that, points. */
+  lastPick = null;
+  picked.sort((x, y) => {
+    const px = x.data.p, py = y.data.p;
+    const lx = isLeader(px) ? 1 : 0, ly = isLeader(py) ? 1 : 0;
+    if (lx !== ly) return ly - lx;
+    return (py.pts || 0) - (px.pts || 0);
+  });
+
   picked.slice(0, 6).forEach(f => {
     const p = f.data.p;
     const nme = esc(tc(p.name));
@@ -549,98 +631,109 @@ function sectionPlayers(g, fs, R) {
     const fgm = (p.p2m || 0) + (p.p3m || 0), fga = (p.p2a || 0) + (p.p3a || 0);
     const sp = seasonOf(p.id);
     const gap = (sp && num(sp.ppg) != null) ? pts - sp.ppg : null;
+    const big = gap != null && gap >= 6;
+    /* A player is only ever introduced with their side named. "Behind him,
+       Boateng contributed 21" put a Soft Club player behind an East Dock one:
+       the referring expression was doing work across a team boundary it could
+       not see. Every sentence here names the club or nothing at all. */
+    const side = R.obj(f.side);
 
-    /* ONE FIGURE CARRIES THE CLAUSE. Where a second earns its place it goes in
-       a subordinate clause rather than a comma-separated list, and everything
-       else the engine knows is dropped. */
     if (f.kind === 'tripleDouble') {
-      out.push(pick(sd, [
-        nme + ' was everywhere for ' + R.obj(f.side) + ', filling every column on the sheet.',
-        'There was a triple-double in it too, ' + nme + ' touching every part of the game.'
+      out.push(pickVaried(sd, [
+        nme + ' filled the sheet for ' + side + ' \u2014 ' + pts + ' points, ' +
+          spell(reb) + ' rebounds and ' + spell(p.ast || 0) + ' assists.',
+        'A triple-double for ' + nme + ', who had a hand in everything ' + side +
+          ' did.'
       ]));
 
     } else if (f.kind === 'doubleDouble') {
-      out.push(pick(sd, [
-        nme + ' worked the glass for a double-double, ' + spell(reb) + ' rebounds to go with his ' + pts + '.',
-        nme + ' had ' + pts + ' and ' + spell(reb) + ' boards, the kind of night that does not need explaining.',
-        'A double-double for ' + nme + ', who finished with ' + pts + ' and ' + spell(reb) + ' off the glass.'
+      out.push(pickVaried(sd, [
+        nme + ' went for ' + pts + ' and ' + spell(reb) + ' on the glass for ' + side + '.',
+        nme + ' had a double-double for ' + side + ', ' + pts + ' points and ' +
+          spell(reb) + ' rebounds.',
+        'It was a double-double for ' + nme + ' \u2014 ' + pts + ' and ' +
+          spell(reb) + ' boards.'
       ]));
 
     } else if (f.kind === 'bigScore' || f.kind === 'aboveSelf') {
-      const big = gap != null && gap >= 6;
       if (isLeader(p)) {
-        out.push(pick(sd, [
-          nme + ' carried ' + R.obj(f.side) + ' with ' + pts +
-            (big ? ', comfortably his best of the season.' : '.'),
-          nme + ' top-scored with ' + pts +
-            (big ? ' — well clear of what he usually manages.' : ', and looked the most likely all night.'),
-          'It was ' + nme + ' who led the way, his ' + pts +
-            (big ? ' a season high.' : ' the highest on either side.')
+        out.push(pickVaried(sd, [
+          nme + ' led ' + side + ' with ' + pts +
+            (big ? ', a season high.' : '.'),
+          nme + ' top-scored for ' + side + ' with ' + pts +
+            (big ? ', well up on his average.' : '.'),
+          pts + ' points from ' + nme + ' carried ' + side + '.'
         ]));
       } else {
-        out.push(pick(sd, [
-          nme + ' chipped in with ' + pts + (big ? ', well up on his usual return.' : '.'),
-          nme + ' added ' + pts + ' from ' + spell(fga) + ' attempts.',
-          'Behind him, ' + nme + ' contributed ' + pts + '.'
+        out.push(pickVaried(sd, [
+          nme + ' added ' + pts + ' for ' + side + '.',
+          nme + ' chipped in ' + pts + ' for ' + side +
+            (big ? ', well up on his usual.' : '.'),
+          'There were ' + pts + ' more from ' + nme + '.'
         ]));
       }
 
     } else if (f.kind === 'creator') {
-      out.push(pick(sd, [
-        nme + ' ran the offence, ' + spell(p.ast || 0) + ' assists and rarely a wasted pass.',
-        'Most of it came through ' + nme + ', who finished with ' + spell(p.ast || 0) + ' assists.',
-        nme + ' set the table all evening — ' + spell(p.ast || 0) + ' assists.'
+      out.push(pickVaried(sd, [
+        nme + ' ran the offence for ' + side + ', ' + spell(p.ast || 0) + ' assists.',
+        'Most of what ' + side + ' got came through ' + nme + ' \u2014 ' +
+          spell(p.ast || 0) + ' assists.',
+        nme + ' had ' + spell(p.ast || 0) + ' assists for ' + side + '.'
       ]));
 
     } else if (f.kind === 'shooter') {
-      out.push(pick(sd, [
-        nme + ' found his range from three, ' + spell(p.p3m || 0) + ' of them by the end.',
-        'From distance it was ' + nme + ', who knocked down ' + spell(p.p3m || 0) + '.',
-        nme + ' was the one stretching the floor, ' + spell(p.p3m || 0) + ' from the arc.'
+      out.push(pickVaried(sd, [
+        nme + ' hit ' + spell(p.p3m || 0) + ' from three for ' + side + '.',
+        nme + ' was ' + spell(p.p3m || 0) + ' of ' + spell(p.p3a || 0) +
+          ' from beyond the arc.',
+        'From deep it was ' + nme + ', ' + spell(p.p3m || 0) + ' of ' +
+          spell(p.p3a || 0) + '.'
       ]));
 
     } else if (f.kind === 'defender') {
-      const what = (p.blk || 0) >= (p.stl || 0)
-        ? spell(p.blk || 0) + ' blocks' : spell(p.stl || 0) + ' steals';
-      out.push(pick(sd, [
-        nme + ' was a nuisance at the other end, ' + what + ' among the damage.',
-        'Defensively ' + nme + ' caused problems all night, ' + what + ' to show for it.',
-        nme + ' made the other end hard work — ' + what + '.'
+      const bits = [];
+      if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
+      if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
+      const what = bits.join(' and ') || 'a busy night defensively';
+      out.push(pickVaried(sd, [
+        nme + ' was the problem at the defensive end \u2014 ' + what + '.',
+        nme + ' had ' + what + ' for ' + side + '.',
+        'Defensively, ' + nme + ' finished with ' + what + '.'
       ]));
 
     } else if (f.kind === 'efficient') {
-      out.push(pick(sd, [
-        nme + ' barely missed, ' + spell(fgm) + ' of ' + spell(fga) + ' from the field.',
-        'Nothing was forced from ' + nme + ', who went ' + spell(fgm) + ' of ' + spell(fga) + '.',
-        nme + ' took what came and made almost all of it.'
+      out.push(pickVaried(sd, [
+        nme + ' was ' + spell(fgm) + ' of ' + spell(fga) + ' from the field.',
+        nme + ' shot it cleanly, ' + spell(fgm) + ' of ' + spell(fga) + '.',
+        'Nothing was forced from ' + nme + ' \u2014 ' + spell(fgm) + ' of ' +
+          spell(fga) + '.'
       ]));
 
     } else if (f.kind === 'belowSelf') {
-      out.push(pick(sd, [
-        nme + (pts === 0 ? ' never got on the board at all.'
-                         : ' never got going, held to ' + spell(pts) + '.'),
-        'It was a quiet night for ' + nme + (pts === 0 ? ', who never scored.'
-                                                       : ', who managed ' + spell(pts) + '.'),
-        nme + ' could not find it, well short of his usual.'
+      out.push(pickVaried(sd, [
+        nme + (pts === 0 ? ' did not score.' : ' was held to ' + spell(pts) + '.'),
+        nme + ' never got going for ' + side +
+          (pts === 0 ? ', scoreless.' : ', ' + spell(pts) + ' points.'),
+        'It was a quiet night for ' + nme + '.'
       ]));
 
     } else if (f.kind === 'fouledOut') {
-      out.push(pick(sd, [
-        nme + ' fouled out with time still on the clock.',
-        nme + ' was gone before the end, five fouls and an early seat.',
-        'Trouble found ' + nme + ', who fouled out.'
+      out.push(pickVaried(sd, [
+        nme + ' fouled out.',
+        nme + ' fouled out for ' + side + '.',
+        nme + ' picked up his fifth and was done.'
       ]));
 
     } else if (f.kind === 'drawsFouls') {
-      out.push(pick(sd, [
-        nme + ' spent much of the night at the line.',
+      out.push(pickVaried(sd, [
+        nme + ' drew ' + spell(p.fd || 0) + ' fouls.',
         'Nobody drew more contact than ' + nme + '.'
       ]));
 
     } else {
-      out.push(pick(sd, [
-        nme + ' had one of those nights, ' + spell(fgm) + ' from ' + spell(fga) + '.',
-        'Little went down for ' + nme + '.'
+      out.push(pickVaried(sd, [
+        nme + ' could not find it, ' + spell(fgm) + ' of ' + spell(fga) + '.',
+        nme + ' shot ' + spell(fgm) + ' of ' + spell(fga) + ' for ' + side + '.'
       ]));
     }
   });

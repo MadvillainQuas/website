@@ -349,7 +349,10 @@ function factDefence(g) {
 function factFouls(g) {
   const out = [];
   g.players.forEach(p => {
-    if ((p.pf || 0) >= 5) {
+    /* dq is the engine's own disqualification flag, set when a player is
+       actually sent off; counting to five fouls guesses at the same thing
+       and gets it wrong wherever the rule differs. */
+    if (p.dq || (p.pf || 0) >= 5) {
       out.push(F('fouledOut', p.team, 75, { p },
         p.name + ' fouled out'));
     } else if ((p.pf || 0) === 4 && (p.min || 0) > 900000) {
@@ -399,14 +402,28 @@ function factZones(g) {
   const out = [];
   for (const t of [0, 1]) {
     const A = g.adv[t], O = g.adv[1 - t];
-    if (!A) continue;
-    if (num(A.p3p) != null && num(O && O.p3p) != null && A.p3p - O.p3p >= 15) {
-      out.push(F('fromRange', t, 63, { share: A.p3p, theirs: O.p3p },
-        g.names[t] + ' shot from distance'));
+    if (!A || !O) continue;
+
+    /* Rim and mid-range attempts only exist for shots the statistician
+       LOCATED (engine.js isRim reads locs[ev.id]); a game scored without shot
+       positions has rimA at zero, which would read as a side that never went
+       inside. Only speak about shot diet when most of the two-pointers can
+       actually be placed. */
+    const twos = num(A.fga) - num(A.fg3a);
+    const placed = num(A.rimA) + num(A.midA);
+    const trusted = twos > 0 && placed / twos >= 0.6;
+
+    if (trusted && num(A.rimr) != null && num(O.rimr) != null &&
+        A.rimr - O.rimr >= 12) {
+      out.push(F('atRim', t, 63,
+        { share: A.rimr, theirs: O.rimr, acc: num(A.rimp) },
+        g.names[t] + ' worked inside'));
     }
-    if (num(A.rimp) != null && num(O && O.rimp) != null && A.rimp - O.rimp >= 15) {
-      out.push(F('atRim', t, 63, { share: A.rimp, theirs: O.rimp },
-        g.names[t] + ' attacked the rim'));
+    if (num(A.p3r) != null && num(O.p3r) != null && A.p3r - O.p3r >= 12) {
+      /* three-point attempts need no location, so this one is always safe */
+      out.push(F('fromRange', t, 63,
+        { share: A.p3r, theirs: O.p3r, acc: num(A.p3p) },
+        g.names[t] + ' shot from distance'));
     }
   }
   return out;

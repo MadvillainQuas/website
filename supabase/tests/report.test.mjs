@@ -303,5 +303,91 @@ ok('...and drives the same engine the browser does',
   } else ok('players in one report are not given the same sentence with names swapped', true);
 }
 
+/* ---- the statistics must mean what the prose says they mean --------------
+   Three claims in the writer were not clumsy phrasing, they were wrong, and
+   the only way to catch that class of fault is to assert against the DEFINITION
+   in engine.js rather than against the field name:
+
+     rimp = rimM / rimA   FG% AT THE RIM        (accuracy)
+     rimr = rimA / fga    SHARE OF ATTEMPTS     (diet)
+     p3p  = fg3m / fg3a   3PT%                  (accuracy)
+     p3r  = fg3a / fga    share of attempts     (diet)
+     ftr  = fta / fga     FREE THROWS PER FIELD-GOAL ATTEMPT — a ratio, not a
+                          percentage of anything made.
+
+   The report was reading the ACCURACIES and describing them as shot
+   distribution ("57.7% of their shots from close"), and printing free-throw
+   rate as a percentage. */
+{
+  /* a side that takes few shots at the rim but makes nearly all of them: the
+     accuracy is high, the share is low, and a writer that confuses the two
+     says the opposite of the truth */
+  const sharp = game({
+    adv: [{ efg: 50, tovp: 14, orebp: 28, ftr: 20,
+            fga: 60, fg3a: 10, rimA: 8, rimM: 7, midA: 42,
+            rimr: 13.3, rimp: 87.5, p3r: 16.7, p3p: 30 },
+          { efg: 50, tovp: 14, orebp: 28, ftr: 20,
+            fga: 60, fg3a: 10, rimA: 40, rimM: 20, midA: 10,
+            rimr: 66.7, rimp: 50, p3r: 16.7, p3p: 30 }]
+  });
+  const facts = Story.facts(sharp);
+  const rim = facts.find(f => f.kind === 'atRim');
+  ok('the side that ATTEMPTS more at the rim is the one said to go inside',
+     !rim || rim.side === 1, rim && JSON.stringify({ side: rim.side, data: rim.data }));
+  ok('...and the figure quoted is the share, not the accuracy',
+     !rim || Math.abs(rim.data.share - 66.7) < 0.5, rim && String(rim.data.share));
+}
+
+/* shot diet needs the shots to have been LOCATED — engine.js isRim() reads
+   locs[ev.id], so a game scored without shot positions has rimA at zero and
+   would otherwise be described as never going inside */
+{
+  const unlocated = game({
+    adv: [{ efg: 50, tovp: 14, orebp: 28, ftr: 20,
+            fga: 60, fg3a: 10, rimA: 1, rimM: 1, midA: 1, rimr: 1.7, rimp: 100 },
+          { efg: 50, tovp: 14, orebp: 28, ftr: 20,
+            fga: 60, fg3a: 10, rimA: 0, rimM: 0, midA: 0, rimr: 0, rimp: 0 }]
+  });
+  const rim = Story.facts(unlocated).find(f => f.kind === 'atRim');
+  ok('no claim about shot diet when the shots were never located', !rim,
+     rim && JSON.stringify(rim.data));
+}
+
+/* free-throw rate is attempts per field-goal attempt, so it is never rendered
+   as a percentage in prose */
+{
+  const line = Report.report(game({
+    adv: [{ efg: 50, tovp: 14, orebp: 28, ftr: 44.4 },
+          { efg: 50, tovp: 14, orebp: 28, ftr: 17.9 }]
+  }));
+  const prose = [line.standfirst].concat(line.sections.flatMap(x => x.paras)).join(' ');
+  const badFtr = /free throw[s]?[^.]*\d+\.\d+%/i.test(prose) ||
+                 /won free throws/i.test(prose);
+  ok('free-throw rate is never printed as a percentage or "won free throws"',
+     !badFtr, (prose.match(/[^.]*free throw[^.]*\./i) || [''])[0]);
+}
+
+/* a foul-out uses the engine's own disqualification flag */
+{
+  const dq = Story.facts(game({
+    players: [mk('a1', 'sent off', 0, { pts: 6, pf: 4, dq: true, min: 900000 }),
+              mk('b1', 'beta one', 1, { pts: 20, p2m: 8, p2a: 14 })],
+    byId: {}
+  })).find(f => f.kind === 'fouledOut');
+  ok('a disqualification is read from the engine flag, not guessed from five fouls',
+     !!dq, 'dq fact missing');
+}
+
+/* the card that follows the performances must not repeat its heading, and must
+   actually render — a return followed by a multi-line comment silently
+   returned undefined and the card disappeared from every report */
+{
+  const html = View.render(g, rep);
+  ok('the players card renders', /rps/.test(html));
+  ok('...and does not repeat the section heading',
+     (html.match(/The performances/g) || []).length <= 1,
+     String((html.match(/The performances/g) || []).length));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
