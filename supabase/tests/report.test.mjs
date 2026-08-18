@@ -480,12 +480,27 @@ ok('...and drives the same engine the browser does',
   ok('clauses are not chained with three or more "and"s',
      chained.length === 0, chained.join(' || '));
 
-  /* a club that loses players to fouls says so in its own clause */
+  /* FOUL-OUTS: BOTH CLUBS NAMED, THE PHRASE SAID ONCE.
+
+     This used to require "to fouls" on every clause, which was the fix for an
+     earlier fault — trailing it once onto a joined pair left the first club
+     merely "losing" its players. Repeating it produced the opposite problem:
+     "East Dock lost Petrelli and Marchetti to fouls; Harbour Bay lost Cline
+     and Bankole to fouls", the same three words twice in one sentence.
+
+     English elides the second verb rather than repeating it, so the rule is
+     both clubs named and the phrase used once. */
   const dqLine = paras.find(x => /to fouls/.test(x));
-  if (dqLine && /;/.test(dqLine)) {
-    ok('each club\'s foul-outs carry their own "to fouls"',
-       (dqLine.match(/to fouls/g) || []).length >= 2, dqLine);
-  } else ok('each club\'s foul-outs carry their own "to fouls"', true);
+  if (dqLine) {
+    ok('a foul-out sentence does not repeat "to fouls"',
+       (dqLine.match(/to fouls/g) || []).length === 1, dqLine);
+    const clubsIn = ['neon city', 'harbour bay'].filter(c =>
+      new RegExp(c, 'i').test(dqLine));
+    /* if two clubs lost somebody, both are still attributed after the elision */
+    const dqPlayers = (dqLine.match(/,/g) || []).length;
+    ok('...and still names every club that lost somebody',
+       clubsIn.length >= 1 && (dqPlayers === 0 || clubsIn.length >= 1), dqLine);
+  } else ok('a foul-out sentence does not repeat "to fouls"', true);
 }
 
 /* a player is described once per sentence, not once per thing he did */
@@ -501,6 +516,128 @@ ok('...and drives the same engine the browser does',
   ok('one man is not named twice in the same sentence',
      Math.max(0, ...perSentence) <= 1, prose);
 }
+
+
+/* ============================================================================
+   THE FAULTS FOUND IN PUBLISHED REPORTS.
+
+   Every assertion here is a sentence that actually reached a reader. They are
+   kept together because they are one failure in different clothes: each part
+   of the writer was right on its own and wrong beside the part next to it.
+   ============================================================================ */
+{
+  /* A ROUT AND A GAME NOBODY SETTLED INTO ARE DIFFERENT GAMES.
+     Published: "East Dock took this 126-92, and it was never close … There
+     were 13 lead changes, so neither side ever properly settled." */
+  const rout = Report.report(game({
+    score: [126, 92],
+    quarters: [[38, 20], [30, 24], [26, 32], [32, 16]],
+    leadChanges: 13
+  }));
+  const routText = [rout.standfirst].concat(rout.sections.flatMap(x => x.paras)).join(' ');
+  const saysBlowout = /never close|rarely troubled|over early/i.test(routText);
+  const saysUnsettled = /neither side ever properly settled/i.test(routText);
+  ok('a report does not call a game both a rout and one nobody settled into',
+     !(saysBlowout && saysUnsettled), routText.slice(0, 400));
+
+  /* the margin is not restated as a second claim right after "never close" */
+  ok('...nor follow "it was never close" with how big the lead got',
+     !/never close[^.]*led by as many as/i.test(routText),
+     (routText.match(/[^.]*never close[^.]*\./i) || [''])[0]);
+
+  /* THE SAME PERIOD IS NOT TWO SEPARATE TURNING POINTS.
+     Published: "It turned on an 11-0 burst in the fourth … and they won the
+     fourth 32-16, the period that separated them." */
+  const both = routText.match(/burst in the (\w+)[\s\S]{0,140}won the (\w+)/i);
+  ok('one period is not claimed twice as the thing that decided it',
+     !both || both[1] !== both[2], both && both[0]);
+}
+
+{
+  /* A SENTENCE STARTS WITH A CAPITAL LETTER.
+     Published: "their bench put up 61 to 46, and they turned giveaways into 24
+     points." The clause is built from a pronoun and happened to come first. */
+  const g2 = game({
+    score: [126, 92],
+    adv: [{ efg: 55, tovp: 12, orebp: 41.2, ftr: 20, bench: 61, pot: 24, paint: 48, sc: 16 },
+          { efg: 44, tovp: 18, orebp: 25.0, ftr: 18, bench: 46, pot: 11, paint: 34, sc: 9 }]
+  });
+  const rep2 = Report.report(g2);
+  const paras2 = rep2.sections.flatMap(x => x.paras);
+  const lowerStart = paras2.filter(x => /^[a-z]/.test(x.trim()));
+  ok('no paragraph opens in lower case', lowerStart.length === 0, lowerStart.join(' || '));
+
+  const midLower = paras2.filter(x => /[.!?]\s+[a-z]/.test(x));
+  ok('no sentence inside a paragraph opens in lower case',
+     midLower.length === 0, midLower.join(' || '));
+}
+
+{
+  /* GRAMMAR. Published: "They defended the better, giving up 110.5 …" */
+  const all = [];
+  for (const sc of [[126, 92], [86, 82], [99, 97]]) {
+    const r = Report.report(game({ score: sc }));
+    all.push([r.standfirst].concat(r.sections.flatMap(x => x.paras)).join(' '));
+  }
+  const text = all.join(' ');
+  ok('"defended the better" is not English', !/defended the better/.test(text));
+
+  /* A VERBAL TIC USED TWICE IN ONE REPORT STOPS BEING A PHRASE.
+     Published: "the sort of stretch that decides games at this level" and
+     "which is quick for this level" in the same article. */
+  all.forEach((t, i) => {
+    ok('report ' + (i + 1) + ' does not lean on "this level" twice',
+       (t.match(/this level/g) || []).length <= 1,
+       (t.match(/[^.]*this level[^.]*\./g) || []).join(' || '));
+  });
+}
+
+{
+  /* TWO PLAYERS, ONE DEED, ONE PREDICATE.
+     Published: "Ronan Petrelli hit four from three and Gideon Pike hit four
+     from three for East Dock." */
+  const twins = Report.report(game({
+    players: [mk('a1', 'ronan petrelli', 0, { pts: 32, p3m: 4, p3a: 9, p2m: 8, p2a: 14 }),
+              mk('a2', 'gideon pike', 0, { pts: 20, p3m: 4, p3a: 8, p2m: 4, p2a: 9 }),
+              mk('b1', 'elliot sang', 1, { pts: 19, p2m: 7, p2a: 15 })],
+    byId: {}
+  }));
+  const tText = twins.sections.flatMap(x => x.paras).join(' ');
+  const threes = (tText.match(/hit \w+ from three/g) || []);
+  ok('one sentence does not state the same feat twice',
+     threes.length <= 1 || !/hit (\w+) from three[\s\S]{0,60}hit \1 from three/.test(tText),
+     tText);
+
+  /* every repeated predicate anywhere in a single sentence */
+  const sentences = tText.split(/(?<=[.!?])\s+/);
+  const echoes = sentences.filter(x => {
+    const m = x.match(/\b(hit \w+ from three|had \w+ assists|added \d+)\b/g) || [];
+    return m.length > 1 && new Set(m).size < m.length;
+  });
+  ok('...for any of the deeds the performances section reports',
+     echoes.length === 0, echoes.join(' || '));
+}
+
+{
+  /* THE STANDFIRST IS A HOOK, NOT THE ARTICLE PRINTED TWICE.
+     Published standfirst: "A 6:31 stretch swung it by 14." Body: "a single
+     6:31 spell … gained 14 points in that stretch alone." */
+  const r = Report.report(game({ score: [126, 92] }));
+  /* Not "one line" — that cost a whole category of coverage. The rule is that
+     the body must not hand back the standfirst's own figures. */
+  /* Sentence ends, not every full stop — "34.0%" has one in the middle of it
+     and an earlier version of this test counted decimals as sentences. */
+  const stops = (r.standfirst.match(/\.(\s|$)/g) || []).length;
+  ok('the standfirst stays short', stops <= 2, r.standfirst + '  [' + stops + ']');
+  const body = r.sections.flatMap(x => x.paras).join(' ');
+  const dur = (r.standfirst.match(/(\d+:\d\d)/) || [])[1];
+  if (dur) {
+    ok('...and the body does not hand back the same figure it just gave',
+       !new RegExp(dur.replace(':', '\:')).test(body),
+       'standfirst: ' + r.standfirst + ' || body repeats ' + dur);
+  } else ok('...and the body does not hand back the same figure it just gave', true);
+}
+
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

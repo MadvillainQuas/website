@@ -214,9 +214,29 @@ function headline(g, fs) {
   return nm(g, w) + ' beat ' + nm(g, l) + ' ' + sc;
 }
 
+/* Which facts the standfirst has already spent, so the body does not hand the
+   reader the same two numbers again eight lines later. Set by standfirst(),
+   read by the sections. */
+let SPENT = new Set();
+
+/* ---------------------------------------------------------------------------
+   THE STANDFIRST IS A HOOK, NOT A SUMMARY.
+
+   It carried two facts and the body then restated both, in the same figures:
+
+     "A 6:31 stretch swung it by 14. East Dock controlled the offensive glass,
+      41.2% to 25.0%."
+     … "41.2% of their misses came back to them, against 25.0%"
+     … "they gained 14 points in that stretch alone"
+
+   A standfirst previewing the story is normal; a standfirst that IS the story,
+   printed twice, is not. So it takes the single sharpest fact available and
+   records it, and the section that would otherwise repeat the same figures
+   says something else about it instead. */
 function standfirst(g, fs) {
   const bits = [];
   const decisive = fs.find(f => f.kind === 'stretch' || f.kind === 'run');
+  if (decisive) SPENT.add(decisive.kind);
   if (decisive) {
     bits.push(decisive.kind === 'run'
       ? anFor(decisive.data.n).toUpperCase().slice(0,1) + anFor(decisive.data.n).slice(1) + ' ' + decisive.data.n + '–0 run in the ' + ordinal(decisive.data.period) + ' settled it'
@@ -230,11 +250,19 @@ function standfirst(g, fs) {
     const mine = factor.side === 0 ? factor.data.a : factor.data.b;
     const theirs = factor.side === 0 ? factor.data.b : factor.data.a;
     const who = nm(g, factor.side);
+    /* THE CLUB NAME DOES NOT LEAD THIS LINE.
+
+       It used to — "East Dock controlled the offensive glass, 41.2% to 25.0%"
+       — and the body then opened sentences with the same club, which is the
+       single most reliable smell of generated prose and measurably the worst
+       repetition in these reports. The fact is unchanged; the club is named
+       inside the clause rather than in front of it, so the standfirst and the
+       first body sentence no longer start the same way. */
     bits.push(
-      factor.data.factor === 'efg'  ? who + ' shot it better, ' + pct1(mine) + ' eFG to ' + pct1(theirs)
-    : factor.data.factor === 'tov'  ? who + ' took better care of the ball, ' + pct1(mine) + ' turnover rate to ' + pct1(theirs)
-    : factor.data.factor === 'oreb' ? who + ' controlled the offensive glass, ' + pct1(mine) + ' to ' + pct1(theirs)
-    : who + ' got to the line far more often');
+      factor.data.factor === 'efg'  ? 'The shooting went ' + who + '\u2019s way, ' + pct1(mine) + ' eFG to ' + pct1(theirs)
+    : factor.data.factor === 'tov'  ? 'Possessions decided it: ' + pct1(mine) + ' turnover rate for ' + who + ', ' + pct1(theirs) + ' against'
+    : factor.data.factor === 'oreb' ? 'The offensive glass belonged to ' + who + ', ' + pct1(mine) + ' to ' + pct1(theirs)
+    : 'The whistle sent ' + who + ' to the line far more often');
   }
   if (!bits.length) {
     const r = fs.find(f => f.kind === 'result');
@@ -242,6 +270,14 @@ function standfirst(g, fs) {
                                           : 'A ' + r.data.margin + '-point margin')
                 : 'Full time');
   }
+  /* TWO FACTS, BUT NOT THE SAME TWO THE BODY LEADS WITH.
+
+     Cutting this to one line removed a real duplication and took a whole
+     category of coverage with it — the second bit is usually the only place a
+     shooting or rebounding edge gets named at all, and reports measurably
+     stopped mentioning individuals. A standfirst previewing the story is
+     normal journalism; what is not is handing back the SAME figures in the
+     same framing eight lines later, and that is what SPENT prevents. */
   return bits.join('. ') + '.';
 }
 
@@ -336,9 +372,39 @@ function sectionFlow(g, fs, R) {
     ? R.subj(r.data.winner) + ' had trailed by ' + cb.data.deficit +
       ', which makes this the sort of result that says more about the second ' +
       'half than the first.'
-    : bl ? R.subj(bl.side, { allowRole: true }) + ' led by as many as ' + bl.data.by + '.'
+    /* Not after "it was never close" or "were rarely troubled" — the margin is
+       the same observation a second time, and the two joined with "and" is the
+       writer agreeing with itself: "took this 126–92, and it was never close,
+       and they led by as many as 38". */
+    : (bl && !/never close|rarely troubled|over early/.test(opening))
+      ? R.subj(bl.side, { allowRole: true }) + ' led by as many as ' + bl.data.by + '.'
     : null;
   out.push(joinSentences([opening, second], 'plain'));
+
+  /* ---------------------------------------------------------------------------
+     THE SECTION MUST NOT ARGUE WITH ITSELF.
+
+     Four facts wanted to speak here and each was true on its own, so all four
+     were printed and the paragraph contradicted itself in public:
+
+       "East Dock took this 126–92, and it was never close … There were 13 lead
+        changes, so neither side ever properly settled."
+
+     A 34-point win is not a game where neither side settled, and a reader does
+     not have to be told twice to notice. Lead changes are an EARLY-GAME fact
+     in a rout — the sides traded the lead before one of them left — so in that
+     game it is said that way, and the "neither side settled" reading is kept
+     for the games where it is actually true.
+
+     THE SAME PERIOD, CLAIMED TWICE. A decisive run and the quarter that
+     separated the sides are usually the same event seen twice, and printing
+     both gave "it turned on an 11–0 burst in the fourth … and they won the
+     fourth 32–16, the period that separated them". When the periods match, the
+     run is the sharper fact and the quarter becomes its score rather than a
+     second claim. */
+  const routish = r.data.how === 'rout' ||
+                  Math.abs(g.score[0] - g.score[1]) >= 20;
+  const sameSpell = run && q && run.data.period === q.data.period;
 
   const mid = [];
   if (run) {
@@ -352,8 +418,7 @@ function sectionFlow(g, fs, R) {
         '\u20130 run in the ' + ordinal(run.data.period) + ', long enough to turn a ' +
         'close game into a lead that held.',
       'It turned on ' + anFor(run.data.n) + ' ' + run.data.n + '\u20130 burst in the ' +
-        ordinal(run.data.period) + ' \u2014 the sort of stretch that decides games ' +
-        'at this level.',
+        ordinal(run.data.period) + ', and the game did not come back.',
       anFor(run.data.n).charAt(0).toUpperCase() + anFor(run.data.n).slice(1) + ' ' +
         run.data.n + '\u20130 run in the ' + ordinal(run.data.period) +
         ' did the damage, and the game never really came back.',
@@ -361,14 +426,39 @@ function sectionFlow(g, fs, R) {
         '\u20130 run in the ' + ordinal(run.data.period) + '.'
     ]));
   }
-  if (q) {
-    mid.push(R.subj(q.side, { allowRole: true }) + ' won the ' + ordinal(q.data.period) +
-      ' ' + Math.max(q.data.pf, q.data.pa) + '\u2013' + Math.min(q.data.pf, q.data.pa) +
-      ', the period that separated them.');
+  if (q && sameSpell) {
+    /* One event, one sentence: the run is the detail, the quarter score is the
+       size of it. Two sentences about the same ten minutes read as two
+       different turning points. */
+    mid.push(R.subj(q.side, { allowRole: true }) + ' took the period ' +
+      Math.max(q.data.pf, q.data.pa) + '\u2013' + Math.min(q.data.pf, q.data.pa) + '.');
+  } else if (q) {
+    /* ONLY ONE THING CAN BE THE THING THAT DECIDED IT.
+
+       With a decisive run already named in another period, calling this "the
+       period that separated them" gives the reader two answers to the same
+       question: "the decisive spell was an 11\u20130 run in the third \u2026 and they
+       won the first 24\u201316, the period that separated them." When a run has
+       already been claimed, the quarter is context for it \u2014 what the run was
+       built on, or what it overturned \u2014 and is said as a plain fact. */
+    const sep = run ? '.' : ', the period that separated them.';
+    mid.push(R.subj(q.side, { allowRole: true }) +
+      (run && q.data.period < run.data.period ? ' had already taken the ' : ' won the ') +
+      ordinal(q.data.period) + ' ' +
+      Math.max(q.data.pf, q.data.pa) + '\u2013' + Math.min(q.data.pf, q.data.pa) + sep);
   }
-  if (sw) mid.push(R.subj(sw.side) + ' were in front in every period.');
-  if (lc) { R.neutral(); mid.push('There were ' + plural(lc.data.changes, 'lead change') +
-    ', so neither side ever properly settled.'); }
+  /* In front at every break and a game nobody settled into are different
+     games. The sweep is the harder fact, so it wins and the other is dropped. */
+  if (sw) mid.push(R.subj(sw.side) + ' were in front at every break.');
+  if (lc) {
+    R.neutral();
+    mid.push(routish
+      /* the lead changed hands, and then it stopped: that is the story of the
+         first half of a rout, not of the game */
+      ? 'The lead had changed ' + plural(lc.data.changes, 'time') + ' before that.'
+      : 'There were ' + plural(lc.data.changes, 'lead change') +
+        ', so neither side ever properly settled.');
+  }
   if (mid.length) out.push(joinSentences(mid, 'plain'));
 
   /* tempo and season context close the section, because they are the frame
@@ -378,7 +468,7 @@ function sectionFlow(g, fs, R) {
     R.neutral();
     frame.push(tempo.kind === 'fast'
       ? 'It was played at speed \u2014 ' + one(tempo.data.pace) +
-        ' possessions per 40, which is quick for this level'
+        ' possessions per 40'
       : 'It was a slow, half-court game at ' + one(tempo.data.pace) +
         ' possessions per 40');
   }
@@ -488,7 +578,7 @@ function sectionNumbers(g, fs, R) {
   const disrupt = fs.find(f => f.kind === 'disruption');
   const defBits = [];
   if (dr) {
-    defBits.push(R.subj(dr.side, { allowRole: true }) + ' defended the better, ' +
+    defBits.push(R.subj(dr.side, { allowRole: true }) + ' defended better, ' +
       'giving up ' + one(dr.data.drtg) + ' points per 100 possessions to ' +
       one(dr.data.theirs));
   }
@@ -552,11 +642,24 @@ function sectionLineups(g, fs, R) {
   if (stretch) {
     told.add(key(stretch));
     const owner = stretch.data.owner, gained = owner === stretch.side;
-    out.push('The game turned inside a single ' + mins(stretch.data.dur) +
-      ' spell with ' + five(g, stretch.data.ids) + ' on the floor for ' +
-      R.obj(owner) + ': ' + (gained ? 'they gained ' : 'they were outscored by ') +
-      stretch.data.swing + ' points in that stretch alone. Nothing else in the ' +
-      'game moved the scoreboard as far in as little time.');
+    /* WHEN THE STANDFIRST HAS ALREADY SPENT THIS, say the part it could not.
+
+       The headline line is "A 6:31 stretch swung it by 14" — a duration and a
+       swing. Repeating both eight lines later ("a single 6:31 spell … gained
+       14 points in that stretch alone") hands the reader the same two numbers
+       twice and tells them nothing new. What the standfirst had no room for is
+       WHO was on the floor, which is the only reason this section exists. */
+    if (SPENT.has('stretch')) {
+      out.push('The five who did it: ' + five(g, stretch.data.ids) + ' for ' +
+        R.obj(owner) + ', ' + (gained ? 'together for the whole of that swing.'
+                                      : 'on the floor for all of it.'));
+    } else {
+      out.push('The game turned inside a single ' + mins(stretch.data.dur) +
+        ' spell with ' + five(g, stretch.data.ids) + ' on the floor for ' +
+        R.obj(owner) + ': ' + (gained ? 'they gained ' : 'they were outscored by ') +
+        stretch.data.swing + ' points in that stretch alone. Nothing else in the ' +
+        'game moved the scoreboard as far in as little time.');
+    }
   }
   bests.slice(0, 2).forEach(f => {
     if (told.has(key(f))) return;
@@ -576,7 +679,10 @@ function sectionLineups(g, fs, R) {
       mins(f.data.dur) + rate + '.');
   });
   if (worst && !told.has(key(worst))) {
-    out.push('At the other end of it, ' + R.subj(worst.side) + ' lost ' +
+    out.push(pick('worst' + worst.data.pm + worst.data.dur, [
+      'At the other end of it, ', 'It went the other way for ',
+      'The reverse was true at the other end: '
+    ]) + R.subj(worst.side) + ' lost ' +
       Math.abs(worst.data.pm) + ' points in ' + mins(worst.data.dur) + ' with ' +
       five(g, worst.data.ids) + ' out there \u2014 the combination that cost ' +
       'them most.');
@@ -728,13 +834,17 @@ function sectionPlayers(g, fs, R) {
     const p = f.data.p;
     if (specialSeen.has(p.id)) return;
     specialSeen.add(p.id);
-    specials.push({ side: p.team, txt: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists' });
+    specials.push({ side: p.team, who: nameOf(p),
+                    did: 'had ' + spell(p.ast || 0) + ' assists',
+                    txt: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists' });
   });
   byKind('shooter').slice(0, 2).forEach(f => {
     const p = f.data.p;
     if (specialSeen.has(p.id)) return;
     specialSeen.add(p.id);
-    specials.push({ side: p.team, txt: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three' });
+    specials.push({ side: p.team, who: nameOf(p),
+                    did: 'hit ' + spell(p.p3m || 0) + ' from three',
+                    txt: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three' });
   });
   byKind('defender').slice(0, 2).forEach(f => {
     const p = f.data.p;
@@ -743,12 +853,33 @@ function sectionPlayers(g, fs, R) {
     const bits = [];
     if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
     if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
-    if (bits.length) specials.push({ side: p.team,
+    if (bits.length) specials.push({ side: p.team, who: nameOf(p),
+      did: 'finished with ' + bits.join(' and '),
       txt: nameOf(p) + ' finished with ' + bits.join(' and ') });
   });
   if (specials.length) {
+    /* TWO PLAYERS WHO DID THE SAME THING GET ONE PREDICATE.
+
+       Listing each in full produced "Ronan Petrelli hit four from three and
+       Gideon Pike hit four from three for East Dock" — a sentence that states
+       its own verb twice, which no one writing this would do. When the deed is
+       identical the names are collected in front of it and "each" carries the
+       repetition, exactly as it does in speech. */
+    const merge = items => {
+      const order = [], by = new Map();
+      items.forEach(it => {
+        const k = it.did || it.txt;
+        if (!by.has(k)) { by.set(k, []); order.push(k); }
+        by.get(k).push(it);
+      });
+      return order.map(k => {
+        const group = by.get(k);
+        if (group.length === 1 || !group[0].did) return group[0].txt;
+        return list(group.map(x => x.who)) + ' each ' + group[0].did;
+      });
+    };
     out.push(joinClauses(sides(specials.slice(0, 4)).map(grp =>
-      list(grp.items.map(x => x.txt)) + ' for ' + club(grp.t))) + '.');
+      list(merge(grp.items)) + ' for ' + club(grp.t))) + '.');
   }
 
   /* ---- who struggled ---------------------------------------------------- */
@@ -775,11 +906,23 @@ function sectionPlayers(g, fs, R) {
   /* ---- who fouled out --------------------------------------------------- */
   const dq = byKind('fouledOut').map(f => ({ side: f.data.p.team, txt: nameOf(f.data.p) }));
   if (dq.length) {
-    /* "to fouls" belongs to each clause: trailing it once onto a joined pair
-       left the first club merely "losing" its players. */
-    const clauses = sides(dq).map(grp =>
-      club(grp.t) + ' lost ' + list(grp.items.map(x => x.txt)) + ' to fouls');
-    out.push(joinClauses(clauses) + '.');
+    /* "to fouls" once, at the end, where it governs both halves.
+
+       It used to be trailed onto every clause, which gave "East Dock lost
+       Petrelli and Marchetti to fouls; Harbour Bay lost Cline and Bankole to
+       fouls" — the same three words twice in one sentence. Putting the verb
+       and its object on the first club and eliding both on the second is what
+       English does here: "East Dock lost Petrelli and Marchetti to fouls,
+       Harbour Bay Cline and Bankole." */
+    const grps = sides(dq);
+    if (grps.length === 2) {
+      out.push(club(grps[0].t) + ' lost ' + list(grps[0].items.map(x => x.txt)) +
+        ' to fouls, ' + club(grps[1].t) + ' ' +
+        list(grps[1].items.map(x => x.txt)) + '.');
+    } else {
+      out.push(club(grps[0].t) + ' lost ' + list(grps[0].items.map(x => x.txt)) +
+        ' to fouls.');
+    }
   }
 
   return out;
@@ -788,6 +931,26 @@ function sectionPlayers(g, fs, R) {
 function fmtMinShort(ms) { return Math.round((ms || 0) / 60000) + ' minutes'; }
 
 /* ------------------------------------------------------------- assemble --- */
+/* ---------------------------------------------------------------------------
+   A SENTENCE STARTS WITH A CAPITAL LETTER.
+
+   Most clauses here are written to be JOINED — "they turned giveaways into 24
+   points", "their bench put up 61 to 46" — so they begin in lower case on
+   purpose, and lower() exists to put a capitalised one back down when it stops
+   starting a sentence. Nothing ever did the opposite: when a clause built from
+   a pronoun happened to come FIRST, it led the sentence in lower case, and
+   published reports opened with "their bench put up 61 to 46".
+
+   Doing it here, once, on finished text is deliberate. Every section assembles
+   clauses in an order that depends on which facts exist, so no individual
+   builder knows whether its clause will lead — only the finished sentence
+   knows. */
+function capitalise(text) {
+  return String(text || '').replace(
+    /(^|[.!?]\s+)([a-z])/g,
+    function (_, lead, ch) { return lead + ch.toUpperCase(); });
+}
+
 function report(g) {
   const st = S();
   const fs = st.facts(g);
@@ -796,15 +959,22 @@ function report(g) {
   const R = makeRef(g, fs);
   /* first word of each club name, so the joiner never lower-cases one */
   PROPER = new Set(g.names.map(n => tc(String(n)).split(" ")[0]));
+  /* standfirst() fills this; the sections read it. Built before them, and
+     cleared per report so one game cannot silence the next. */
+  SPENT = new Set();
+  const stand = standfirst(g, fs);
   const secs = [];
   const add = (heading, paras, card) => {
     if (paras && paras.length) secs.push({ heading, paras, card });
   };
-  add('How it was won', sectionFlow(g, fs, R), 'quarters');
-  add('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
-  add('On the floor', sectionLineups(g, fs, R), 'lineups');
-  add('The performances', sectionPlayers(g, fs, R), 'players');
-  return { headline: headline(g, fs), standfirst: standfirst(g, fs),
+  const addCapped = function (heading, paras, card) {
+    add(heading, (paras || []).map(capitalise), card);
+  };
+  addCapped('How it was won', sectionFlow(g, fs, R), 'quarters');
+  addCapped('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
+  addCapped('On the floor', sectionLineups(g, fs, R), 'lineups');
+  addCapped('The performances', sectionPlayers(g, fs, R), 'players');
+  return { headline: headline(g, fs), standfirst: stand,
            sections: secs, facts: fs };
 }
 
