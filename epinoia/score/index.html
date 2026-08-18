@@ -976,6 +976,28 @@ html, body{ height:100dvh; }
    Only sizes below. The layout, the mid panel and the typed-command layer are
    left exactly as the width earned them.
    =========================================================================== */
+/* ===========================================================================
+   HOLD AND DRAG IS THE SUBSTITUTION, AND THE ROW HAS TO OWN THE TOUCH.
+
+   .plist declares touch-action:pan-y so the roster can be scrolled. The moment
+   the list has anywhere to scroll, the browser claims any vertical drag that
+   starts on it — and both halves of a substitution ARE vertical drags: a
+   starter down to come off, a bench player up to go on. The gesture never
+   reached the handler, so the drag stopped working and only the tap path was
+   left, which is not what this app is.
+
+   touch-action:none on the ROW, not the list. A touch that begins on a player
+   is always a gesture — tap, press, or drag — because there is nothing else it
+   could sensibly mean. The list still scrolls from its padding, its gaps and
+   the bench rule, and in portrait it barely needs to.
+
+   This is the only way round it: touch-action is read when the gesture begins,
+   so it cannot be switched off once a finger is down.
+   =========================================================================== */
+@media (pointer:coarse){
+  .prow{touch-action:none;}
+}
+
 @media (min-width:900px) and (pointer:coarse){
   .prow{min-height:44px;}
   .act,.sub,.sheetbtn{min-height:44px;}
@@ -1101,7 +1123,23 @@ html, body{ height:100dvh; }
   #scorebox .clockbig{font-size:22px;}
   .thead{padding:3px 8px;}
 
+  /* THE SHEET'S CLOSED POSITION IS TIED TO ITS HANDLE HEIGHT, and I broke that
+     link. #sheet parks itself at translateY(calc(100% - 40px)) so exactly the
+     40px handle shows; shrinking the handle to 24 without changing the 40 left
+     16px of the button row permanently peeking above the fold — six buttons
+     showing a tenth of themselves, which is both unreadable and a tap you
+     cannot aim. That is the unworkable bottom bar.
+
+     The two numbers move together now. Closed shows the handle and nothing
+     else; tapping it lifts the whole row clear of the screen, which is the
+     right behaviour in landscape — you are reading a box score, not scoring,
+     so covering the roster for a moment costs nothing. */
   #sheetHandle{height:24px; min-height:24px;}
+  #sheet{transform:translateY(calc(100% - 24px));}
+  #sheet.open{transform:translateY(0);}
+  /* the row itself stays thumb-sized when it is up */
+  #sheetBody{padding:5px 0;}
+  .sheetbtn{min-height:44px;}
   #cols{padding-bottom:10px !important;}
   /* The rows measure 51px here, not the 40 the portrait rule sets — a landscape
      row is wider so its content lays out shorter, and the base height wins.
@@ -4572,10 +4610,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=135" defer></script>
-<script src="../vendor/supabase.js?v=135" defer></script>
-<script src="../live.js?v=135" defer></script>
-<script src="sync.js?v=135" defer></script>
-<script src="bootstrap.js?v=135" defer></script>
+<script src="../config.js?v=136" defer></script>
+<script src="../vendor/supabase.js?v=136" defer></script>
+<script src="../live.js?v=136" defer></script>
+<script src="sync.js?v=136" defer></script>
+<script src="bootstrap.js?v=136" defer></script>
 </body>
 </html>
