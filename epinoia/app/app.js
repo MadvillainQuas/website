@@ -646,21 +646,9 @@ $('#send').addEventListener('click', async () => {
 $('#out').addEventListener('click', async () => { await sb.auth.signOut(); team = null; render(); });
 $('#back').addEventListener('click', () => { team = null; render(); });
 
-$('#mkteam').addEventListener('click', async () => {
-  const name = $('#tname').value.trim();
-  if (!name) return say('The team needs a name.', 'warn');
-  const short = ($('#tshort').value.trim() || name.slice(0, 3)).toUpperCase();
-  const { data, error } = await sb.from('teams')
-    .insert({ name, short_name: short, colour, slug: slug(name), created_by: me.id })
-    .select().single();
-  if (error) return say(error.message, 'err');
-  // creating a team makes you its manager — otherwise RLS would lock you out of it
-  const { error: mErr } = await sb.from('memberships')
-    .insert({ user_id: me.id, role: 'team_manager', scope_type: 'team', scope_id: data.id });
-  if (mErr) say('Team made, but the manager grant failed: ' + mErr.message, 'warn');
-  $('#tname').value = ''; $('#tshort').value = '';
-  team = data; render();
-});
+/* The create-team handler lived here. Clubs are created in the league console
+   now, by somebody who administers the league they belong to — see the note in
+   index.html where the form used to be, and migration 0070. */
 
 $('#addp').addEventListener('click', async () => {
   const first = $('#pfirst').value.trim(), last = $('#plast').value.trim();
@@ -680,19 +668,9 @@ $('#addp').addEventListener('click', async () => {
   renderRoster();
 });
 
-/* colour swatches */
-const swWrap = $('#sw');
-TEAMCOLORS.forEach((c, i) => {
-  const b = document.createElement('button');
-  b.className = 'swatch'; b.style.background = c; b.style.color = c;
-  b.setAttribute('aria-pressed', String(i === 0));
-  b.setAttribute('aria-label', 'kit colour ' + (i + 1));
-  b.addEventListener('click', () => {
-    colour = c;
-    swWrap.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', 'false'));
-    b.setAttribute('aria-pressed', 'true');
-  });
-  swWrap.appendChild(b);
-});
+/* The kit-colour swatches belonged to the create-team form and were bound to
+   #sw, which no longer exists — leaving them would throw on every load of the
+   portal and take the whole page with it. A club's colour is set in the league
+   console alongside the club itself. */
 
 boot();

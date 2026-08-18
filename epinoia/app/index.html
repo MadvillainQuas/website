@@ -164,18 +164,17 @@
   <section id="teams" class="hide">
     <div class="ep-hdr"><span class="idx">01</span><h2>My teams</h2></div>
     <div id="teamlist"></div>
-    <div class="ep-hdr"><span class="idx">02</span><h2>New team</h2></div>
-    <div class="ep-band stack">
-      <div class="row">
-        <label class="f"><span>Team name</span><input class="ep-input" id="tname" placeholder="Neon City"></label>
-        <label class="f" style="max-width:130px"><span>Short</span><input class="ep-input" id="tshort" maxlength="4" placeholder="NC"></label>
-      </div>
-      <div>
-        <div class="ep-micro" style="margin-bottom:7px">Kit colour</div>
-        <div class="sw" id="sw"></div>
-      </div>
-      <div class="row"><button class="ep-btn pri" id="mkteam">Create team</button></div>
-    </div>
+    <!-- THE CLUB PORTAL DOES NOT CREATE CLUBS.
+
+         It offered a "New team" form to anybody signed in, next to a heading
+         saying no clubs were assigned to them — so an account with no roles
+         was told it managed nothing and invited to make something in the same
+         breath. A club belongs to a league; one made here belonged to none,
+         existed in no table, appeared in no fixture list, and made its creator
+         its manager. That is not a club, it is a stray row.
+
+         Clubs are created in the league console, by somebody who administers
+         the league they go into. Migration 0070 makes the database agree. -->
   </section>
 
   <!-- ---------------- roster ---------------- -->

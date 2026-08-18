@@ -1071,27 +1071,57 @@
      refusal offers the practice game, which is the thing a curious visitor
      actually wanted and which writes nothing anywhere. ?train=1 and a scratch
      room never reach this code at all: isFixture is false for both. */
-  async function gateFixture() {
-    if (!isFixture) return true;
+  /* ================== THE DOOR ON THE SCORER ITSELF ==================
 
-    const sb = window.epinoiaClient && epinoiaClient();
-    let allowed = false;
-    if (sb) {
-      try {
-        const { data: { session } } = await sb.auth.getSession();
-        if (session) {
-          const { data, error } = await sb.rpc('can_score', { p_game: gameId });
-          allowed = !error && data === true;
-        }
-      } catch (_) { allowed = false; }
-    }
-    if (allowed) return true;
+     The previous gate asked one question — "may you score THIS fixture?" — and
+     only when a fixture id was in the URL. Opening /epinoia/score/ with no id
+     was therefore ungated: it drew the fixture picker, listed the league's
+     games, and let anybody pick one and press load. The load was refused a
+     moment later, which is the right outcome reached the wrong way round: an
+     account with no credentials should never have been shown the machinery,
+     and being told "no" after choosing is worse than not being offered.
 
+     So the page now asks a question about the ACCOUNT before it asks one about
+     a game:
+
+       ?train=1        the practice game. Always allowed, for anybody, signed
+                       in or not — it invents two squads, writes nothing
+                       anywhere and touches no fixture. This is the thing a
+                       curious visitor should be able to reach, and gating it
+                       would be gating the demo.
+       ?g=<fixture>    can_score() for that game, exactly as before, since the
+                       row-level policies ask the same function.
+       neither         may this account score ANYTHING? Assigned to a game, or
+                       an administrator of a league, or a platform admin. The
+                       same predicate the rail uses to decide whether to show
+                       "score a game" at all, so the two cannot disagree.
+
+     WHY NOT A SEPARATE DEMO PAGE, which was the other way to do this. Copying
+     the scorer would leave two four-thousand-line files to keep in step, and
+     they would drift — the demo is valuable precisely because it is the real
+     app. One file with one gate at the front leaks nothing that a second copy
+     would not, and there is only ever one scorer to fix. */
+
+  /* Whether this account may score anything at all. Deliberately the same
+     shape as nav.js's predicate for the "score a game" row. */
+  async function mayScoreSomething(sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return false;
+      const { data, error } = await sb.rpc('whoami');
+      if (error || !data) return false;
+      return !!(data.is_platform_admin ||
+                (data.leagues || []).length ||
+                (data.scoring || []).length);
+    } catch (_) { return false; }
+  }
+
+  function refuse(title, body) {
     /* Nothing of the scorer is left running underneath the notice: a paused
        app behind a panel is still an app, and its timers still publish. */
     try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
     refused = true;
-    say('not your fixture', '#ff5f6b');
+    say('not your game', '#ff5f6b');
     bar.style.borderColor = 'rgba(255,95,107,.7)';
     bar.style.background = 'rgba(40,6,8,.94)';
 
@@ -1104,17 +1134,15 @@
     ].join(';');
     const card = document.createElement('div');
     card.style.cssText = [
-      'max-width:440px', 'width:100%', 'text-align:center',
+      'max-width:460px', 'width:100%', 'text-align:center',
       'border:1px solid rgba(147,242,191,.3)', 'border-radius:14px',
       'padding:26px 22px', 'background:rgba(4,16,11,.9)'
     ].join(';');
     const h = document.createElement('div');
-    h.textContent = 'This fixture is not yours to score';
+    h.textContent = title;
     h.style.cssText = 'font-size:17px;font-weight:600;margin-bottom:10px;color:#93f2bf';
     const p = document.createElement('div');
-    p.textContent = 'Scoring a real fixture needs a statistician assigned to ' +
-      'it, or an administrator of its league. If that should be you, ask the ' +
-      'league to add your email address to the game.';
+    p.textContent = body;
     p.style.cssText = 'color:rgba(230,255,241,.72);margin-bottom:18px';
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap';
@@ -1127,19 +1155,59 @@
           : 'border:1px solid rgba(147,242,191,.4);color:#93f2bf');
       return a;
     };
-    row.append(
-      mk('try the demo instead', '?train=1', true),
-      mk('watch this game', '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase', false),
-      mk('sign in', '../signin/?next=' + encodeURIComponent(location.pathname + location.search), false)
-    );
+    row.appendChild(mk('open the demo instead', '?train=1', true));
+    if (isFixture) {
+      row.appendChild(mk('watch this game',
+        '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase', false));
+    }
+    row.appendChild(mk('sign in', '../signin/?next=' +
+      encodeURIComponent(location.pathname + location.search), false));
     card.append(h, p, row);
     wrap.appendChild(card);
-    document.body.appendChild(wrap);
+    const mount = () => document.body.appendChild(wrap);
+    if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
     return false;
   }
 
+  async function gateScorer() {
+    /* The practice game is the one thing that needs no credentials at all. */
+    if (TRAINING) return true;
+
+    const sb = window.epinoiaClient && epinoiaClient();
+    if (!sb) {
+      return refuse('Scoring needs an account',
+        'The scorer could not reach the sign-in service. The practice game ' +
+        'works without one and writes nothing anywhere.');
+    }
+
+    if (isFixture) {
+      let allowed = false;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          const { data, error } = await sb.rpc('can_score', { p_game: gameId });
+          allowed = !error && data === true;
+        }
+      } catch (_) { allowed = false; }
+      if (allowed) return true;
+      return refuse('This fixture is not yours to score',
+        'Scoring a real fixture needs a statistician assigned to it, or an ' +
+        'administrator of its league. If that should be you, ask the league to ' +
+        'add your email address to the game.');
+    }
+
+    /* No fixture named: this is the picker. It lists a league's games and
+       loads one, so it needs the same standing the rail requires before it
+       will even show the row. */
+    if (await mayScoreSomething(sb)) return true;
+    return refuse('Scoring is for assigned statisticians',
+      'This account is not assigned to any fixture and does not administer a ' +
+      'league, so there is nothing here for it to score. The practice game is ' +
+      'open to everybody and writes nothing anywhere.');
+  }
+
   async function start() {
-    if (!(await gateFixture())) return;      // refused: nothing else is wired up
+    if (!(await gateScorer())) return;       // refused: nothing else is wired up
     try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
     try { injectSquadPickers(); } catch (e) { console.warn('[squads]', e); }
     try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }
