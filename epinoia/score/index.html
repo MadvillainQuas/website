@@ -1105,7 +1105,13 @@ function newState(){
     period:1, clockMs:PLEN(1), running:false, collapsed:false,
     tipWinner:null, arrowInit:null};
 }
-function save(){ try{ localStorage.setItem('epinoia_v1', JSON.stringify(S)); }catch(e){} }
+/* Which slot this page saves into. The practice game gets its own, so
+   opening the demo can never overwrite a real game in progress — see the note
+   in the commit. */
+const EP_TRAIN = new URLSearchParams(location.search).get('train') === '1';
+const EP_KEY = EP_TRAIN ? 'epinoia_v1_demo' : 'epinoia_v1';
+window.EP_KEY = EP_KEY;
+function save(){ try{ localStorage.setItem(EP_KEY, JSON.stringify(S)); }catch(e){} }
 /* The saved game moved key when Courtside became Epinoia. A statistician with a
    game open at that moment must not lose it, so the old key is read through
    once and carried over — renaming a storage key is a silent data loss unless
@@ -1113,11 +1119,11 @@ function save(){ try{ localStorage.setItem('epinoia_v1', JSON.stringify(S)); }ca
    still be holding a pre-rename game (a season is plenty). */
 function loadSaved(){
   try{
-    let r = localStorage.getItem('epinoia_v1');
+    let r = localStorage.getItem(EP_KEY);
     if (r == null) {
       r = localStorage.getItem('courtside_v1');
       if (r != null) {
-        localStorage.setItem('epinoia_v1', r);
+        localStorage.setItem(EP_KEY, r);
         localStorage.removeItem('courtside_v1');
       }
     }
@@ -3514,7 +3520,7 @@ function renderFinal(){
   $('#editPbp').onclick = openLog;
   $('#expJson').onclick = downloadJSON;
   $('#newGame').onclick = ()=>askConfirm('start a new game? this clears the finished one', ()=>{
-    localStorage.removeItem('epinoia_v1'); location.reload();
+    localStorage.removeItem(EP_KEY); location.reload();
   });
 }
 
@@ -4117,45 +4123,47 @@ function migrate(s){
    publishing one game's events into another fixture. bootstrap now stamps the
    fixture a saved game belongs to, and when that disagrees with the URL the
    question says so rather than pretending the two are the same thing. */
+/* THE SCORER OPENS ON THE SETUP SCREEN, ALWAYS.
+
+   There used to be a modal here — "resume the saved game?" — asked before the
+   page had drawn and before anybody had said what they came for. Every answer
+   it offered was wrong for somebody. "Yes" reopened whatever was in storage
+   against whatever fixture the URL named, which published one game's events
+   into another. "No" destroyed a game's work on a single tap, with no undo.
+   And on the demo, "no" reset the state and dropped the visitor into the
+   league fixture picker — a screen they had no business seeing.
+
+   All three are downstream of asking at all. The saved game is now KEPT,
+   untouched, and offered from the bar at the foot of the screen alongside the
+   other ways out (see bootstrap.js). Nothing is restored without being asked
+   for, nothing is discarded without being asked for, and the page opens the
+   same way every time. window.__epResume stays, permanently settled, because
+   bootstrap.js waits on it before loading a fixture. */
 window.__epResume = { pending:false, resumed:false, done:null };
-(function boot(){
-  const saved = migrate(loadSaved());
-  const urlGame = new URLSearchParams(location.search).get('g') || '';
-  const fixtureUrl = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(urlGame);
-  let savedFor = ''; try{ savedFor = localStorage.getItem('epinoia_v1_game') || ''; }catch(e){}
 
-  if(saved && saved.phase && saved.phase!=='setup' && saved.teams){
-    showScreen('setup');
-    const R = window.__epResume;
-    R.pending = true;
-    const settle = (resumed)=>{ R.pending=false; R.resumed=resumed;
-      if(R.done){ const f=R.done; R.done=null; try{ f(resumed); }catch(e){} } };
+/* Exposed for the load control in the bar. Both were already global by virtue
+   of being top-level declarations in a classic script; naming them here is a
+   statement that bootstrap.js is allowed to use them. */
+window.loadSaved = loadSaved;
+window.migrateSaved = migrate;
+window.applySaved = function (saved) {
+  S = saved; S.running = false; buildPmap();
+  if (S.phase === 'final') { renderFinal(); showScreen('finalview'); }
+  else { showScreen('game'); renderAll(); }
+};
+window.describeSaved = function (saved) {
+  if (!saved || !saved.teams) return null;
+  const names = saved.teams.map(t => t && t.name ? t.name : 'team');
+  let a = 0, b = 0;
+  (saved.events || []).forEach(e => {
+    const v = e.t === 'p3_made' ? 3 : e.t === 'p2_made' ? 2 : e.t === 'ft_made' ? 1 : 0;
+    if (v && e.team === 0) a += v; else if (v) b += v;
+  });
+  return { names: names, score: [a, b], phase: saved.phase,
+           period: saved.period || 1, events: (saved.events || []).length };
+};
 
-    const resume = ()=>{
-      S = saved; S.running = false; buildPmap();
-      if(S.phase==='final'){ renderFinal(); showScreen('finalview'); }
-      else { showScreen('game'); renderAll(); }
-      settle(true);
-    };
-    const discard = ()=>{
-      try{ localStorage.removeItem('epinoia_v1'); localStorage.removeItem('epinoia_v1_game'); }catch(e){}
-      S = newState(); showScreen('setup');
-      settle(false);          // bootstrap now loads the fixture that was asked for
-    };
-
-    if(fixtureUrl){
-      /* Named buttons, because "yes" and "no" cannot carry this: both answers
-         do something, and the destructive one is not the one being declined. */
-      askChoice(savedFor && savedFor !== urlGame
-          ? 'a different game is saved — resume that, or score the fixture you opened?'
-          : 'a game is saved — resume it, or score the fixture you opened?',
-        'resume saved', 'score the fixture',
-        (pick)=>{ pick ? discard() : resume(); });
-    } else {
-      askConfirm('resume the saved game?', resume, discard);
-    }
-  } else showScreen('setup');
-})();
+(function boot(){ showScreen('setup'); })();
 </script>
 <!-- ── live publishing ────────────────────────────────────────────────────────
      Loaded after the scorer's own script so the bridge can wrap addEvent,

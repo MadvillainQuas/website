@@ -265,6 +265,74 @@
       link('Prophesy Scouting', '/index.html', 'rgba(230,255,241,.6)')
     );
 
+    /* ------------------------------------------------ the saved game ---
+       Where the resume modal used to be. A game in progress is written to
+       localStorage on every change, and this is how it comes back: on request,
+       from the bar, described well enough to know WHICH game it is before
+       loading it — the two clubs, the score and how far through it got.
+
+       Deliberately not a modal and deliberately not automatic. The old prompt
+       fired before the page had drawn, offered "yes" or "no" to a question
+       nobody had asked, and destroyed the game on "no". This does nothing
+       until pressed, says what it is about to do, and asks again before
+       discarding anything. */
+    function injectSavedGame() {
+      if (typeof window.loadSaved !== 'function') return;
+      let saved = null;
+      try { saved = window.migrateSaved(window.loadSaved()); } catch (_) { saved = null; }
+      if (!saved || !saved.teams || saved.phase === 'setup') return;
+
+      const d = window.describeSaved(saved);
+      if (!d) return;
+
+      const wrap = document.createElement('span');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:8px;flex:none';
+
+      const label = document.createElement('span');
+      label.textContent = 'saved: ' + d.names.join(' v ') + ' ' +
+        d.score[0] + '\u2013' + d.score[1];
+      label.style.cssText = 'color:rgba(230,255,241,.55);white-space:nowrap';
+
+      const mk = (text, colour) => {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.textContent = text;
+        btn.style.cssText = 'all:unset;cursor:pointer;white-space:nowrap;flex:none;' +
+          'color:' + colour + ';border:1px solid ' + colour + '55;border-radius:5px;' +
+          'padding:4px 8px;font:inherit';
+        return btn;
+      };
+
+      const load = mk('resume', '#93f2bf');
+      load.title = 'pick this game back up where it was left';
+      load.addEventListener('click', () => {
+        /* Loading a saved game over a NAMED fixture is how one game's events
+           end up published into another, so it is refused rather than
+           explained away. */
+        if (isFixture) {
+          alert('This page is open on a specific fixture. Open the scorer ' +
+                'without a fixture in the address to pick up a saved game.');
+          return;
+        }
+        try { window.applySaved(saved); wrap.remove(); }
+        catch (e) { alert('That game could not be restored: ' + (e.message || e)); }
+      });
+
+      const drop = mk('discard', '#ff5f6b');
+      drop.title = 'delete the saved game';
+      drop.addEventListener('click', () => {
+        const ok = confirm('Discard the saved game?\n\n' +
+          d.names.join(' v ') + ', ' + d.score[0] + '\u2013' + d.score[1] +
+          ', ' + d.events + ' recorded actions.\n\nThis cannot be undone.');
+        if (!ok) return;
+        try { localStorage.removeItem(window.EP_KEY || 'epinoia_v1');
+              localStorage.removeItem('epinoia_v1_game'); } catch (_) {}
+        wrap.remove();
+      });
+
+      wrap.append(label, load, drop);
+      bar.insertBefore(wrap, note);
+    }
+
     const note = document.createElement('span');
     note.textContent = 'the game is saved as you score';
     note.style.cssText = 'margin-left:auto;color:rgba(230,255,241,.4);white-space:nowrap';
@@ -349,7 +417,7 @@
              leaving it behind means reopening the scorer offers to carry on
              scoring a fixture that no longer exists. */
           try {
-            localStorage.removeItem('epinoia_v1');
+            localStorage.removeItem(window.EP_KEY || 'epinoia_v1');
             localStorage.removeItem('epinoia_v1_game');
             sessionStorage.removeItem(ROOM_KEY);
           } catch (_) {}
@@ -375,6 +443,14 @@
     ['touchend', 'touchcancel', 'touchmove'].forEach(e =>
       lip.addEventListener(e, () => { clearTimeout(hold); }, { passive: true }));
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) show(false); });
+
+    /* Called here rather than from start(), which is outside this closure and
+       could not see it — the first version threw a ReferenceError on every
+       load and the control simply never appeared. It needs the bar to exist,
+       which it now does, and no gating of its own: a saved game is the
+       operator's own local data, and a refused page has the entire bar behind
+       its overlay regardless. */
+    try { injectSavedGame(); } catch (e) { console.warn('[saved]', e); }
 
     const mountNav = () => { document.body.append(lip, bar); };
     if (document.body) mountNav(); else document.addEventListener('DOMContentLoaded', mountNav);
@@ -1208,6 +1284,14 @@
 
   async function start() {
     if (!(await gateScorer())) return;       // refused: nothing else is wired up
+
+    /* THE DEMO GETS NO LEAGUE MACHINERY. ?train=1 is a practice game with two
+       invented squads and nothing behind it, and it was still being handed the
+       fixture picker — a dropdown of a real league's real games, on the one
+       page explicitly open to anybody. The pickers also pull club rosters,
+       which is a second thing the demo has no business fetching. */
+    if (TRAINING) return;
+
     try { injectFixturePicker(); } catch (e) { console.warn('[picker]', e); }
     try { injectSquadPickers(); } catch (e) { console.warn('[squads]', e); }
     try { autoLoadFixture(); } catch (e) { console.warn('[fixture]', e); }

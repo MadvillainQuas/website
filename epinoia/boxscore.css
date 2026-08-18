@@ -34,8 +34,8 @@
    from — and lowercased, Λ has no lower case to fall to, so it would sit as a
    lone capital in the middle of the word. */
 @font-face{font-family:'EpinoiaMark';
-  src:url('../brand/epinoia-mark.woff2') format('woff2'),
-      url('../brand/epinoia-mark.ttf') format('truetype');
+  src:url('brand/epinoia-mark.woff2') format('woff2'),
+      url('brand/epinoia-mark.ttf') format('truetype');
   font-weight:400;font-style:normal;font-display:swap}
 .epinoia-mark{
   font-family:'EpinoiaMark','Archivo',system-ui,sans-serif !important;

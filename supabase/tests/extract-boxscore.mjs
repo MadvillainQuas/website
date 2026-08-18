@@ -121,6 +121,33 @@ return { ${WANTED.join(', ')}, rebuildPmap };
    them — anything less and "identical box score" would mean identical numbers
    in different clothes. Paths are rewritten because the viewer sits one
    directory deeper than the scorer does. */
+/* THE STYLESHEET MOVES UP A DIRECTORY, SO ITS RELATIVE PATHS MUST TOO.
+
+   The scorer's CSS is inline at epinoia/score/index.html, where `../brand/`
+   correctly means epinoia/brand/. The extracted file lands at
+   epinoia/boxscore.css — one level higher — where the very same string means
+   /brand/, which does not exist. The public box score was therefore asking for
+   /brand/epinoia-mark.woff2 on every load, getting a 404, and rendering the
+   EPINOIA wordmark in the fallback face. Nothing looked broken: a font that
+   fails to load is a font you do not notice.
+
+   `../kit/fonts/` was already rewritten here, one asset at a time, which is
+   how `../brand/` came to be missed when it was added later. This rebases
+   every one-level-up reference instead, and then REFUSES to write a file that
+   still contains one — so the next asset the scorer adds cannot silently 404.
+   ---------------------------------------------------------------------------- */
+function rebase(css) {
+  const out = css.replace(/url\((['"]?)\.\.\//g, 'url($1');
+  const left = out.match(/url\([^)]*\.\.[^)]*\)/g);
+  if (left) {
+    console.error('extract-boxscore: ' + left.length + ' path(s) still point above ' +
+      'epinoia/ after rebasing, and would 404 from boxscore.css:');
+    left.forEach(u => console.error('  ' + u));
+    process.exit(1);
+  }
+  return out;
+}
+
 const styleStart = src.indexOf('<style>');
 const styleEnd   = src.indexOf('</style>', styleStart);
 if (styleStart < 0 || styleEnd < 0) { console.error('no <style> block in the scorer'); process.exit(1); }
@@ -128,7 +155,7 @@ const css = `/* GENERATED from epinoia/score/index.html by supabase/tests/extrac
    DO NOT EDIT — edit the scorer's <style> block and re-run the extractor.
    These are the scorer's own rules, so the public box score is drawn by the
    same CSS as the statistician's final screen. */
-` + src.slice(styleStart + 7, styleEnd).replace(/\.\.\/kit\/fonts\//g, 'kit/fonts/') + `
+` + rebase(src.slice(styleStart + 7, styleEnd)) + `
 
 /* ==========================================================================
    APPENDED BY THE EXTRACTOR — undo the scorer's application shell.
