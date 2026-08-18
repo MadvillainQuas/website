@@ -978,13 +978,31 @@ html, body{ height:100dvh; }
    silly with five-player columns.
    =========================================================================== */
 @media (orientation:landscape) and (max-height:560px) and (pointer:coarse){
+  /* A GRID, NOT MULTI-COLUMN — and this one is worth writing down.
+
+     column-count:2 reads as "lay this out in two columns" and does not mean
+     that. It means "make columns this wide and keep making them", so in a
+     container only 66px tall it produced TWELVE columns running 2013px off to
+     the right: measured scrollWidth 2369 against a 356px client width, with
+     two rows actually visible. Strictly worse than the single stacked column it
+     replaced, and invisible to a check that only looked at vertical overflow —
+     which mine did, and reported all twenty rows visible.
+
+     An explicit two-track grid cannot do that. Ten players become five rows
+     instead of ten, the overflow stays vertical where the scroller can reach
+     it, and nothing runs off the side. */
   .plist{
-    column-count:2; column-gap:10px;
-    display:block;            /* multi-column needs a block container, not flex */
-    padding-bottom:8px;       /* the portrait strip is not needed: see below */
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    grid-auto-rows:min-content;
+    align-content:start;
+    gap:4px 8px;
+    padding-bottom:8px;
   }
-  .prow{break-inside:avoid; margin-bottom:4px;}
-  .benchsep{break-inside:avoid; break-after:avoid;}
+  /* the bench rule spanned the width to separate two stacked groups; in a
+     two-up grid the dimmer .bench rows already read as the bench, and a
+     full-width rule mid-grid just costs a row */
+  .benchsep{display:none;}
 
   /* THE LEFTOVER HEIGHT GOES TO THE ROSTER, WHICH NOTHING WAS DOING.
 
@@ -1012,6 +1030,30 @@ html, body{ height:100dvh; }
      stood at its content height — 98px inside a 148px parent — and the 50px
      difference was simply empty. Stretching them is what finally lets the
      scroller grow. */
+  /* THE 50px WAS A RESERVED GUTTER, NOT A FLEX FAILURE.
+
+     #cols carries padding-bottom: --ep-legend-h + --ep-sheet-h + 10, which at
+     0 + 40 + 10 is fifty pixels of the hundred and forty-eight it has. Its
+     content box is therefore 98px and .col fills that exactly — which is why
+     three rounds of flex properties changed nothing. align-items was never the
+     problem; the box was already the size it was being told to be.
+
+     The gutter protects #sheetHandle, the drag strip for the bottom sheet. A
+     full-width 40px strip is a portrait idiom: in landscape it costs a ninth of
+     the screen to say "there is a sheet here". Twenty-four is still a
+     comfortable drag target on a short screen, and the ten of slack is not
+     needed when the legend is 28px rather than 98.
+
+     The honest arithmetic at 740x360: 46 of action bar, 59 of sub bar, 67 of
+     scoreboard and 50 of gutter is 222px of chrome against 138 of roster. This
+     wins back roughly 45 — enough to matter, not enough to show all twenty
+     players, which at 40px a row would need the chrome under 120px total. */
+  #sheetHandle{height:24px; min-height:24px;}
+  #cols{padding-bottom:34px !important;}
+  #scorebox{padding:4px 10px;}
+  #subbar{padding:3px 0; gap:4px;}
+  #subbar .sub{min-height:42px; padding:4px 7px;}
+
   /* #cols WRAPS, which is why align-items could not help: in a wrapping flex
      container the lines are sized to their content and align-items stretches
      children within a LINE, not to the container. align-content is the one
@@ -4399,10 +4441,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=128" defer></script>
-<script src="../vendor/supabase.js?v=128" defer></script>
-<script src="../live.js?v=128" defer></script>
-<script src="sync.js?v=128" defer></script>
-<script src="bootstrap.js?v=128" defer></script>
+<script src="../config.js?v=130" defer></script>
+<script src="../vendor/supabase.js?v=130" defer></script>
+<script src="../live.js?v=130" defer></script>
+<script src="sync.js?v=130" defer></script>
+<script src="bootstrap.js?v=130" defer></script>
 </body>
 </html>
