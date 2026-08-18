@@ -44,8 +44,18 @@ function say(text, kind) {
 function oops(e, fallback) {
   if (!e) return say(fallback || 'Something went wrong.', 'err');
   const msg = e.message || String(e);
-  if (e.code === '42501' || /permission denied|administrators only/i.test(msg))
-    return say('Refused: platform administrators only.', 'err');
+  /* THE DATABASE ALREADY SAID WHY. This turned every permission error into
+     "Refused: platform administrators only", which is actively misleading
+     when the person reading it IS a platform admin — and it hid which of the
+     dozen calls on the page had failed. Half of these refusals are not about
+     platform rights at all: approving an image needs the file moved first,
+     granting a role needs the league, publishing needs consent recorded.
+
+     The server's own sentence is the useful one, so it is shown, with the
+     code beside it because that is what makes it searchable. */
+  if (e.code === '42501' || /permission denied|administrators only/i.test(msg)) {
+    return say('Refused: ' + msg + (e.code ? ' [' + e.code + ']' : ''), 'err');
+  }
   if (e.code === 'PGRST202' || /schema cache/i.test(msg))
     return say('That function is not on the server yet — run `npx supabase db push`.', 'err');
   say(msg, 'err');
@@ -341,13 +351,22 @@ function fillScopePicker() {
     return;
   }
   sel.disabled = false;
-  if (role === 'league_admin') {
+  /* A LEAGUE APPOINTS ITS OWN OFFICIALS AND ITS OWN WRITERS.
+
+     league_admin, news_writer and a league-wide statistician all scope to a
+     league. The statistician is the one that changed: it was offered as a CLUB
+     role only, which does not describe the job — a league sends a table
+     official to whichever fixture needs covering, and tying one to a single
+     club meant a second grant for every other ground. The club-scoped variant
+     is still available below for a club's own scorer. */
+  if (role === 'league_admin' || role === 'news_writer' ||
+      role === 'statistician_league') {
     leagues.forEach(l => sel.appendChild(new Option(l.name, l.id)));
     if (!leagues.length) sel.appendChild(new Option('no leagues yet', ''));
     return;
   }
-  /* team_manager and statistician are both team-scoped in the schema. The club
-     list can be long, so it is loaded lazily rather than on every boot. */
+  /* team_manager and a club's own statistician are team-scoped. The club list
+     can be long, so it is loaded lazily rather than on every boot. */
   sel.appendChild(new Option('loading clubs…', ''));
   rpc('platform_teams', { p_search: '' }).then(rows => {
     sel.textContent = '';
@@ -359,11 +378,30 @@ function fillScopePicker() {
 
 async function grant() {
   const email = ($('#grEmail').value || '').trim();
-  const role = $('#grRole').value;
+  const picked = $('#grRole').value;
   const scopeId = $('#grScope').value || null;
   if (!email) return say('Enter the address of the account to grant.', 'err');
+
+  /* THE NEWS WRITER IS NOT A MEMBERSHIP. It lives in league_writers with its
+     own grant function, because writing for a league is not a degree of
+     administering one — a club's press officer should be able to publish a
+     match report without also being able to reschedule fixtures. It was
+     therefore missing from this page entirely and could only be granted from
+     inside a league's own console. */
+  if (picked === 'news_writer') {
+    if (!scopeId) return say('Choose the league they write for.', 'err');
+    const out = await rpc('grant_league_writer', { p_league: scopeId, p_email: email });
+    if (out) { say(out, /^no account/.test(out) ? 'err' : 'ok');
+               $('#grEmail').value = ''; loadAccounts(); }
+    return;
+  }
+
+  /* Two statistician entries, one role: the picker distinguishes the SCOPE,
+     which is the only thing that differs. */
+  const role = picked === 'statistician_league' ? 'statistician' : picked;
   const scopeType = role === 'platform_admin' ? 'platform'
-                  : role === 'league_admin' ? 'league' : 'team';
+                  : (picked === 'league_admin' || picked === 'statistician_league')
+                    ? 'league' : 'team';
   if (scopeType !== 'platform' && !scopeId)
     return say('Choose what that role applies to.', 'err');
   if (role === 'platform_admin' &&
@@ -537,7 +575,23 @@ async function loadModeration() {
       const sp = el('span'); sp.style.marginLeft = 'auto';
       const ok = el('button', 'ep-btn mini pri', 'approve'); ok.type = 'button';
       ok.addEventListener('click', async () => {
+        ok.disabled = true;
+        /* THE FILE MOVES FIRST. approve_media stopped moving it two migrations
+           ago — only the Storage API can move an object, a SQL update of
+           storage.objects left the bytes behind — so the league console does
+           this and this console never learned to. Approving here marked the
+           row approved and left the image in the pending bucket, so every
+           crest approved from the platform page 404'd on the public site.
+
+           "already exists" counts as done: the file is where it needs to be. */
+        const mv = await sb.storage.from('media-pending')
+          .move(m.storage_path, m.storage_path, { destinationBucket: 'media-public' });
+        if (mv.error && !/exists/i.test(mv.error.message || '')) {
+          ok.disabled = false;
+          return say('Could not publish the file: ' + mv.error.message, 'err');
+        }
         const r = await rpc('approve_media', { p_media: m.id });
+        ok.disabled = false;
         if (r !== null) { say('Approved.', 'ok'); loadModeration(); loadOverview(); }
       });
       const no = el('button', 'ep-btn mini danger', 'reject'); no.type = 'button';
