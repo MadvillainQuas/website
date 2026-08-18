@@ -540,6 +540,43 @@ function goLive() {
   }, 500);
 }
 
+/* THE STATUS WATCH — how this page learns the game has been taken away.
+
+   Everything else here rides the broadcast: an event reaches a viewer in about
+   a quarter of a second, and a game finalised BY A SCORER STILL PUBLISHING
+   arrives the same way, because sync.finalise() republishes the roster with
+   status 'final' on its way out.
+
+   Neither of those covers the two ways a game changes with nobody publishing:
+
+     REVERTED — an administrator puts the fixture back on the listing from the
+       admin console or from this very page. Nothing broadcasts it. A viewer
+       sat on a live box score kept the score, the clock and the play-by-play
+       of a game that no longer exists, indefinitely, until they reloaded.
+     FINALISED ELSEWHERE — the importer, or a scorer whose tab was already
+       closed when the edge function ran.
+
+   So the game row itself is asked, on a short beat, and any change of status
+   reloads the page rather than trying to patch a view that was drawn from the
+   old one. Reloading is the honest move: a reverted fixture is drawn as
+   scheduled, a finalised one as final, both by the code that already knows
+   how. One indexed row every four seconds, and only while the game is not
+   already final — a finished game has nothing left to change. */
+const STATUS_POLL_MS = 4000;
+function watchGameStatus() {
+  if (mode !== 'supabase' || !gameId) return;
+  setInterval(async () => {
+    if (!window.S || window.S.status === 'final') return;
+    let rows;
+    try { rows = await api('games?id=eq.' + encodeURIComponent(gameId) + '&select=status&limit=1'); }
+    catch (_) { return; }                 // a blip is not a verdict
+    const now = rows && rows[0] && rows[0].status;
+    if (!now || now === window.S.status) return;
+    console.log('[status] ' + window.S.status + ' -> ' + now + ', reloading');
+    location.reload();
+  }, STATUS_POLL_MS);
+}
+
 /* THE BACKFILL.
 
    A frame carries only the events published since the last one — that is the
@@ -681,6 +718,13 @@ function mergeLive(game, events, removed, full) {
     render();
     return;                       // finished: nothing left to listen for
   }
+
+  /* A scheduled fixture has no socket to open and nothing to replay, but it
+     very much can CHANGE — this is the page somebody sits on waiting for a
+     tip-off, and the moment the scorer claims the fixture it should stop
+     saying "scheduled". So the status watch runs for it too, and it is the
+     only thing that does. */
+  watchGameStatus();
 
   render();
   goLive();

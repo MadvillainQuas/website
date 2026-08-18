@@ -32,7 +32,8 @@ const WANTED = [
   'PLEN', 'PMAP', 'ADV_GROUPS', 'advSort',   // advSort's line also declares advHidden
   'esc', 'COLOUR_OK', 'safeColour',
   'perName', 'fmtClock', 'fmtMin', 'tname', 'pname',
-  'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags', 'courtSVG',
+  'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags',
+  'COURT', 'courtSVG',                       // COURT must come before courtSVG
   // calculators
   'teamTotals', 'teamAdv', 'playerAdv', 'playerAdvTable', 'lineupAgg',
   // HTML builders

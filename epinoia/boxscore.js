@@ -141,17 +141,78 @@ function activeTags(id){
   return s;
 }
 
-function courtSVG(loc){
-  const mark = loc ? '<circle cx="'+(loc.x*100)+'" cy="'+(loc.y*94)+'" r="3" fill="var(--amber)" '+
-    'stroke="rgba(255,220,150,.5)" stroke-width="2"/>' : '';
-  return '<svg viewBox="0 0 100 94" xmlns="http://www.w3.org/2000/svg">'+
-    '<rect x="1" y="1" width="98" height="92" rx="4" fill="rgba(140,255,200,.04)" stroke="var(--line-hi)" stroke-width="1"/>'+
-    '<line x1="1" y1="62" x2="99" y2="62" stroke="var(--line)" stroke-width=".6" stroke-dasharray="2 2"/>'+
-    '<rect x="33" y="1" width="34" height="38" fill="rgba(140,255,200,.06)" stroke="var(--line-hi)" stroke-width="1"/>'+
-    '<circle cx="50" cy="39" r="12" fill="none" stroke="var(--line-hi)" stroke-width="1"/>'+
-    '<path d="M8 1 V12 A45 45 0 0 0 92 12 V1" fill="none" stroke="var(--line-hi)" stroke-width="1"/>'+
-    '<circle cx="50" cy="10" r="2.4" fill="none" stroke="var(--lume)" stroke-width="1.4"/>'+
-    '<line x1="44" y1="6.5" x2="56" y2="6.5" stroke="var(--lume)" stroke-width="1.4"/>'+
+const COURT = (function(){
+  const C = {
+    W:1500, H:1400,            // half of 28 x 15 m, in centimetres
+    RIM_X:750, RIM_Y:157.5,    // centre of the ring
+    RIM_R:22.5,                // 45 cm diameter
+    BOARD_Y:120, BOARD_HALF:90,// backboard face, 1.80 m wide
+    KEY_HALF:245, KEY_LEN:580, // 4.90 m x 5.80 m
+    FT_R:180, RA_R:125, ARC_R:675, CORNER_X:90, CENTRE_R:180
+  };
+  /* where the corner straight meets the arc — solved, not eyeballed */
+  C.CORNER_Y = C.RIM_Y + Math.sqrt(C.ARC_R*C.ARC_R - Math.pow(C.RIM_X - C.CORNER_X, 2));
+  return C;
+}());
+
+function courtSVG(loc, opts){
+  const C = COURT, o = opts || {};
+  const kL = C.RIM_X - C.KEY_HALF, kR = C.RIM_X + C.KEY_HALF;     // 505 / 995
+  const cy = +C.CORNER_Y.toFixed(2);                              // 299.01
+  const arcR = C.ARC_R;
+  const line = 'var(--line-hi)';
+
+  /* Lane space marks, outside the lane lines, at the FIBA distances from the
+     baseline. Dropped on the small chart, where four ticks a side become a
+     smudge rather than information. */
+  const ticks = o.plain ? '' : [175, 215, 300, 385].map(y =>
+    '<path d="M '+kL+' '+y+' h -22 M '+kR+' '+y+' h 22" stroke="'+line+'" stroke-width="6"/>'
+  ).join('');
+
+  const mark = loc
+    ? '<circle cx="'+(loc.x*C.W)+'" cy="'+(loc.y*C.H)+'" r="38" fill="var(--amber)" '+
+      'stroke="rgba(255,220,150,.5)" stroke-width="18"/>'
+    : '';
+
+  return '<svg viewBox="0 0 '+C.W+' '+C.H+'" xmlns="http://www.w3.org/2000/svg" '+
+      'preserveAspectRatio="xMidYMid meet">'+
+    '<rect x="0" y="0" width="'+C.W+'" height="'+C.H+'" fill="rgba(140,255,200,.04)"/>'+
+    /* the boundary, stroked so its INNER edge is the playing area */
+    '<rect x="3" y="3" width="'+(C.W-6)+'" height="'+(C.H-6)+'" fill="none" '+
+      'stroke="'+line+'" stroke-width="6"/>'+
+
+    /* three point: 0.90 m in from each sideline, then 6.75 m about the ring */
+    '<path d="M '+C.CORNER_X+' 0 V '+cy+' A '+arcR+' '+arcR+' 0 0 0 '+(C.W-C.CORNER_X)+' '+cy+
+      ' V 0" fill="none" stroke="'+line+'" stroke-width="6"/>'+
+
+    /* the key */
+    '<rect x="'+kL+'" y="0" width="'+(C.KEY_HALF*2)+'" height="'+C.KEY_LEN+'" '+
+      'fill="rgba(140,255,200,.06)" stroke="'+line+'" stroke-width="6"/>'+
+    ticks+
+
+    /* free-throw circle: solid away from the basket, dashed within the key */
+    '<path d="M '+(C.RIM_X-C.FT_R)+' '+C.KEY_LEN+' A '+C.FT_R+' '+C.FT_R+' 0 0 0 '+
+      (C.RIM_X+C.FT_R)+' '+C.KEY_LEN+'" fill="none" stroke="'+line+'" stroke-width="6"/>'+
+    '<path d="M '+(C.RIM_X-C.FT_R)+' '+C.KEY_LEN+' A '+C.FT_R+' '+C.FT_R+' 0 0 1 '+
+      (C.RIM_X+C.FT_R)+' '+C.KEY_LEN+'" fill="none" stroke="'+line+'" stroke-width="5" '+
+      'stroke-dasharray="34 26"/>'+
+
+    /* restricted area, closed back to the backboard as the rule book draws it */
+    '<path d="M '+(C.RIM_X-C.RA_R)+' '+C.BOARD_Y+' V '+C.RIM_Y+
+      ' A '+C.RA_R+' '+C.RA_R+' 0 0 0 '+(C.RIM_X+C.RA_R)+' '+C.RIM_Y+
+      ' V '+C.BOARD_Y+'" fill="none" stroke="'+line+'" stroke-width="5"/>'+
+
+    /* centre circle — only the half inside this end of the floor exists here */
+    '<path d="M '+(C.RIM_X-C.CENTRE_R)+' '+C.H+' A '+C.CENTRE_R+' '+C.CENTRE_R+
+      ' 0 0 1 '+(C.RIM_X+C.CENTRE_R)+' '+C.H+'" fill="none" stroke="'+line+'" stroke-width="6"/>'+
+
+    /* backboard, its arm, and the ring */
+    '<line x1="'+(C.RIM_X-C.BOARD_HALF)+'" y1="'+C.BOARD_Y+'" x2="'+(C.RIM_X+C.BOARD_HALF)+
+      '" y2="'+C.BOARD_Y+'" stroke="var(--lume)" stroke-width="11" stroke-linecap="round"/>'+
+    '<line x1="'+C.RIM_X+'" y1="'+C.BOARD_Y+'" x2="'+C.RIM_X+'" y2="'+(C.RIM_Y-C.RIM_R)+
+      '" stroke="var(--lume)" stroke-width="6"/>'+
+    '<circle cx="'+C.RIM_X+'" cy="'+C.RIM_Y+'" r="'+C.RIM_R+'" fill="none" '+
+      'stroke="var(--lume)" stroke-width="7"/>'+
     mark+'</svg>';
 }
 
@@ -372,18 +433,29 @@ function shotChartHTML(d,t){
   const col = safeColour(S.teams[t].color, '#93f2bf');
   const shots = S.events.filter(e=>/^p[23]_/.test(e.t) && e.team===t);
   const withLoc = shots.filter(e=>d.locs[e.id]);
+  /* Locations are stored NORMALISED (0..1 across the court's own box), which
+     is what lets the court be redrawn to real FIBA dimensions without
+     rewriting a single stored shot — the fractions still mean the same place
+     on the floor. They are scaled to centimetres here, at the point of use. */
+  const CW = COURT.W, CH = COURT.H;
   const dots = withLoc.map(e=>{
     const l = d.locs[e.id], made = e.t.endsWith('made');
+    const x = l.x*CW, y = l.y*CH, a = 26;
     return made
-      ? '<circle cx="'+(l.x*100)+'" cy="'+(l.y*94)+'" r="2.4" fill="'+col+'" opacity=".95"/>'
-      : '<g stroke="'+col+'" stroke-width="1.1" opacity=".75"><line x1="'+(l.x*100-2)+'" y1="'+(l.y*94-2)+'" x2="'+(l.x*100+2)+'" y2="'+(l.y*94+2)+'"/>'+
-        '<line x1="'+(l.x*100-2)+'" y1="'+(l.y*94+2)+'" x2="'+(l.x*100+2)+'" y2="'+(l.y*94-2)+'"/></g>';
+      ? '<circle cx="'+x+'" cy="'+y+'" r="30" fill="'+col+'" opacity=".95"/>'
+      : '<g stroke="'+col+'" stroke-width="14" stroke-linecap="round" opacity=".8">'+
+        '<line x1="'+(x-a)+'" y1="'+(y-a)+'" x2="'+(x+a)+'" y2="'+(y+a)+'"/>'+
+        '<line x1="'+(x-a)+'" y1="'+(y+a)+'" x2="'+(x+a)+'" y2="'+(y-a)+'"/></g>';
   }).join('');
   const zone = (name, pred) => {
     const z = shots.filter(pred); const m = z.filter(e=>e.t.endsWith('made')).length;
     return '<span class="statchip">'+name+'<b>'+m+'/'+z.length+(z.length?' · '+Math.round(100*m/z.length)+'%':'')+'</b></span>';
   };
-  const inKey = e => { const l=d.locs[e.id]; return l && l.x>0.33 && l.x<0.67 && l.y<0.42; };
+  /* the paint, taken from the court's own measurements rather than from three
+     round numbers that happened to sit near them */
+  const KX0 = (COURT.RIM_X-COURT.KEY_HALF)/COURT.W, KX1 = (COURT.RIM_X+COURT.KEY_HALF)/COURT.W;
+  const KY  = COURT.KEY_LEN/COURT.H;
+  const inKey = e => { const l=d.locs[e.id]; return l && l.x>KX0 && l.x<KX1 && l.y<KY; };
   const chips = '<div class="chiprow">'+
     zone('paint', e=>e.t.startsWith('p2') && (inKey(e) || activeTags(e.id).has('paint')))+
     zone('mid-range', e=>e.t.startsWith('p2') && !(inKey(e) || activeTags(e.id).has('paint')))+
@@ -391,7 +463,13 @@ function shotChartHTML(d,t){
     zone('left side', e=>{ const l=d.locs[e.id]; return l && l.x<0.4; })+
     zone('right side', e=>{ const l=d.locs[e.id]; return l && l.x>0.6; })+
     '</div>';
-  const svg = courtSVG(null).replace('</svg>', dots+'</svg>').replace('viewBox="0 0 100 94"','viewBox="0 0 100 62"');
+  /* No crop. The old chart rewrote the viewBox to cut the floor off at 66% of
+     its depth, which on a real half court would slice through the top of the
+     three-point arc and leave the centre circle hanging. A half court is the
+     shape a shot chart is read in — the empty metres past the arc are part of
+     knowing where a shot came from. `plain` drops the lane ticks, which are
+     detail this size cannot carry. */
+  const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
   return '<div class="glass bxteam"><h3 style="color:'+col+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located</div>'+
@@ -500,5 +578,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, courtSVG, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

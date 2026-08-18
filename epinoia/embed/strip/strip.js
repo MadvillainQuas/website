@@ -77,8 +77,17 @@ async function siteConfig() {
 const POLL_MS = 60000;
 /* While something is live, a minute is too long. A strip on a club's homepage
    is the only thing telling somebody a game has started, and a score that is a
-   minute old during a fourth quarter is a score that is wrong. */
-const POLL_LIVE_MS = 15000;
+   minute old during a fourth quarter is a score that is wrong.
+
+   FOUR SECONDS, not fifteen. This is the slowest surface on the platform and
+   it is the one most people see: the box score reaches its viewers over a
+   broadcast in about a quarter of a second, while this waited up to fifteen
+   for the same basket — and up to fifteen more to notice a game had been
+   finalised or put back on the listing. The request is one indexed row per
+   game with no joins it does not already make, and it only runs at this rate
+   while a game is actually being played, so the cost is a handful of small
+   reads during the two hours a week a league is on court. */
+const POLL_LIVE_MS = 4000;
 
 /* Appearance from the query string.
 

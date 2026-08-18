@@ -48,6 +48,18 @@
   // the distinctive tail, not the prefix — "scratch-" identifies nothing
   const shortId = gameId.replace(/^scratch-/, '').slice(0, 8);
 
+  /* A real fixture has a uuid; a scratch room does not, and there is nothing
+     on the server to claim, cancel or finalise for one.
+
+     DECLARED HERE, AT THE TOP, rather than beside the finalise code that used
+     to own it. Everything in this file that talks to the database is gated on
+     it, including the escape hatch's cancel button — and that hatch is an
+     immediately-invoked function that runs long before the old declaration
+     was reached, so reading it there was a temporal-dead-zone ReferenceError
+     that would have taken the whole bar down with it. A const used by code
+     that runs on load belongs above that code. */
+  const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
+
   const viewerUrl = new URL('../game/', location.href);
   viewerUrl.searchParams.set('g', gameId);
   viewerUrl.searchParams.set('mode', mode);
@@ -252,6 +264,96 @@
     note.textContent = 'the game is saved as you score';
     note.style.cssText = 'margin-left:auto;color:rgba(230,255,241,.4);white-space:nowrap';
     bar.appendChild(note);
+
+    /* ------------------------------------------------- cancel this game ---
+       A game started by mistake is discovered HERE, by the person holding the
+       tablet, in the first minute — not later by an administrator finding a
+       fixture that has been "in progress" since Tuesday. Until now the only
+       way out was to leave it live, go and find the fixture in the admin
+       console or on its box score, and revert it from there; the one screen
+       that knows for certain the game should not be running was the one
+       screen that could not stop it.
+
+       WHO SEES IT IS THE DATABASE'S ANSWER, not this page's guess. It asks
+       can_manage_game — a platform administrator, an administrator of the
+       owning league, or whoever created an ad-hoc game — which is a
+       DIFFERENT and narrower question than can_score. A statistician assigned
+       to a fixture may record what happens; deciding the game never happened
+       is not theirs to make, and the button simply does not appear for them.
+
+       The two-step confirmation is the same one both other call sites use:
+       the first call omits the discard flag, the database refuses and reports
+       how many events would be destroyed, and that number goes into the
+       question. Nobody agrees to discard a log without being told its size. */
+    if (isFixture) (async function cancelControl() {
+      const sb = window.epinoiaClient && epinoiaClient();
+      if (!sb) return;
+      let mayManage = false;
+      try {
+        const { data, error } = await sb.rpc('can_manage_game', { p_game: gameId });
+        if (error || data !== true) return;
+        mayManage = true;
+      } catch (_) { return; }
+      if (!mayManage) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'cancel game';
+      btn.title = 'this game should not be running — put the fixture back on the listing';
+      btn.style.cssText = [
+        'all:unset', 'cursor:pointer', 'white-space:nowrap', 'flex:none',
+        'color:#ff5f6b', 'border:1px solid rgba(255,95,107,.45)',
+        'border-radius:5px', 'padding:5px 9px', 'font:inherit'
+      ].join(';');
+      bar.insertBefore(btn, note);
+
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const attempt = discard => sb.rpc('revert_game',
+          discard ? { p_game: gameId, p_discard_events: true } : { p_game: gameId });
+        try {
+          let r = await attempt(false);
+          if (r.error) {
+            /* DETAIL first, then the sentence — the same two-step the box
+               score and the admin console use, so a database that predates
+               migration 0067/0068 still opens the confirmation rather than
+               dropping a raw error on the statistician mid-game. */
+            const e = r.error;
+            const d = e.details;
+            const n = (d != null && /^\s*\d+\s*$/.test(String(d))) ? String(d).trim()
+                    : (/has (\d+) recorded event/.exec(e.message || '') || [])[1] || null;
+            if (n == null) { btn.disabled = false; alert(e.message || 'That was refused.'); return; }
+            const sure = confirm(
+              'Cancel this game and put the fixture back on the listing?\n\n' +
+              n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
+              'permanently. The clubs, the date and the venue are kept, so the ' +
+              'fixture can be scored properly when it is played.\n\n' +
+              'This device stops publishing immediately.');
+            if (!sure) { btn.disabled = false; return; }
+            r = await attempt(true);
+            if (r.error) { btn.disabled = false; alert(r.error.message || 'That was refused.'); return; }
+          }
+          /* Stop publishing BEFORE going anywhere. The scorer's own watchdog
+             would catch this within eight seconds, but this tab already knows
+             — and pagehide fires a last flush on the way out, which is exactly
+             the write that would put events back on the fixture just cancelled. */
+          try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+          say('cancelled · back on the listing', '#ff5f6b');
+          /* The scorer keeps the whole game in localStorage under this key
+             (see save() in score/index.html) and restores it on load, so
+             leaving it behind means reopening the scorer offers to carry on
+             scoring a fixture that no longer exists. */
+          try {
+            localStorage.removeItem('epinoia_v1');
+            sessionStorage.removeItem(ROOM_KEY);
+          } catch (_) {}
+          location.href = '../game/?g=' + encodeURIComponent(gameId) + '&mode=supabase';
+        } catch (err) {
+          btn.disabled = false;
+          alert('That was refused: ' + (err.message || err));
+        }
+      });
+    }());
 
     let open = false, hold = null;
     const show = v => {
@@ -680,9 +782,7 @@
   })();
 
   /* ------------------------------------------------------------ finalise --- */
-  /* A real fixture has a uuid; a scratch room does not, and there is nothing
-     on the server to finalise for one. */
-  const isFixture = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId);
+  /* isFixture is declared at the top of this file — see the note there. */
 
   /* --------------------------------------------------------- claim retry ---
      claimFixture() is only ever called again from a screen transition —
