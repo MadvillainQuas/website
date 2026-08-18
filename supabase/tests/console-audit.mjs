@@ -56,9 +56,9 @@ for (const [file, t] of migSrc) {
      — which an earlier version of this file could not see, so it reported
      forty-four reachable functions as unreachable. A detector that cries wolf
      is worse than none: it is what stops the real one being noticed. */
-  const gr = /grant execute on function public\.([a-z0-9_]+)/g;
+  const gr = /grant\s+execute\s+on\s+function\s+public\.([a-z0-9_]+)/g;
   while ((m = gr.exec(t))) granted.add(m[1]);
-  if (/grant execute on function public\.%s/.test(t)) {
+  if (/grant\s+execute\s+on\s+function\s+public\.%s/.test(t)) {
     const list = /'([a-z0-9_]+)\s*\(/g;
     while ((m = list.exec(t))) granted.add(m[1]);
   }
@@ -118,9 +118,9 @@ ok('the consoles were read and call something', uniq.length > 10, String(uniq.le
   const revoked = new Set();
   for (const [, t] of migSrc) {
     let m;
-    const rv = /revoke all on function public\.([a-z0-9_]+)/g;
-    while ((m = rv.exec(t))) revoked.add(m[1]);
-    if (/revoke all on function public\.%s from public, anon/.test(t)) {
+    const rv = /revoke\s+(all|execute)\s+on\s+function\s+public\.([a-z0-9_]+)/g;
+    while ((m = rv.exec(t))) revoked.add(m[2]);
+    if (/revoke\s+all\s+on\s+function\s+public\.%s/.test(t)) {
       const list = /'([a-z0-9_]+)\s*\(/g;
       while ((m = list.exec(t))) revoked.add(m[1]);
     }
@@ -229,10 +229,25 @@ ok('the consoles were read and call something', uniq.length > 10, String(uniq.le
     if (!d || !/security definer/i.test(d.body)) continue;
     const writes = /(delete\s+from|insert\s+into|update)\s+(?!storage\.)[a-z_]/i.test(d.body);
     if (!writes) continue;
-    const gated = /(is_platform_admin|is_league_admin|is_team_manager|is_league_writer|may_score_game|can_score|auth\.uid\(\)\s*is\s+null|_guard)/i.test(d.body);
+    /* 0074 and 0075 wrap three of these at runtime — they read the shipped
+       body out of pg_proc and prepend the check, so the guard never appears in
+       the function's own CREATE statement. A migration that names the function
+       beside the guard helper is the record of that. */
+    const wrapped = migSrc.some(([, t]) => {
+      /* The name must sit in the loop that DOES the wrapping — an `execute src`
+         block — not merely somewhere in a migration that also mentions the
+         guard. A first version accepted the latter, so removing a function from
+         the wrapping list and leaving it in the proof block still passed. */
+      const loops = t.match(/foreach fn in array array\[[^\]]*\][\s\S]*?execute src;/g) || [];
+      return loops.some(b => new RegExp("'" + fn + "'").test(b)) ||
+        (/recompute_standings_guard/.test(t) && /execute src;/.test(t) &&
+         new RegExp("proname = '" + fn + "'").test(t));
+    });
+    if (wrapped) continue;
+    const gated = /(is_platform_admin|is_league_admin|is_team_manager|is_league_writer|may_score_game|can_score|auth\.uid\(\)\s*is\s+null|_guard|you do not administer|you do not manage|you may not change|only the league)/i.test(d.body);
     if (!gated) naked.push(fn + '  (' + d.file + ')');
   }
-  ok('CANDIDATES: writing SECURITY DEFINER functions with no caller check found by pattern (verify each before acting — only recompute_standings has been confirmed against the live database)',
+  ok('every writing SECURITY DEFINER function the consoles call checks its caller',
      naked.length === 0, naked.join('  |  '));
 }
 
