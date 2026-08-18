@@ -623,10 +623,26 @@ function fromField(fgm, fga) {
    player may appear twice where that is natural, because leading the scoring
    and fouling out are two different things worth knowing about the same man.
    --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   THE PERFORMANCES.
+
+   Composed rather than listed — players are grouped by what they did, and each
+   group is one sentence that can carry several people. A man may appear twice
+   where that is natural: leading the scoring and fouling out are two different
+   things worth knowing about him.
+
+   EVERY PLAYER CARRIES HIS CLUB. A name on its own is no use to a reader who
+   does not already know the squads, and "Leo Nakamura, Beck Sandoval and Tomas
+   Iwu never got going" asks them to know which of the three was on which side
+   — in a report whose entire subject is two teams. Names are therefore grouped
+   by side and the club is named once for the group, which attributes everybody
+   without repeating a club name after every surname.
+   --------------------------------------------------------------------------- */
 function sectionPlayers(g, fs, R) {
   const out = [];
   const byKind = k => fs.filter(f => f.kind === k);
   const nameOf = p => esc(tc(p.name));
+  const club = t => nm(g, t);
 
   const topScorer = [0, 1].map(t => g.players
     .filter(p => p.team === t)
@@ -643,108 +659,126 @@ function sectionPlayers(g, fs, R) {
     return sp && num(sp.ppg) != null && (p.pts || 0) - sp.ppg >= 6;
   };
 
-  /* an English list: "A", "A and B", "A, B and C" */
-  const list = xs => xs.length === 1 ? xs[0]
+  const list = xs => !xs.length ? '' : xs.length === 1 ? xs[0]
     : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
 
-  /* The same list with the VERB ELIDED after the first item, which is how
-     English does this and the writer was not: "Boateng added 21 and Kowalski
-     added 19" repeats a word the reader has already been given. Each entry
-     supplies both forms and the first keeps its verb. */
-  const elide = xs => xs.length === 1 ? xs[0].full
-    : xs[0].full + (xs.length === 2 ? ' and ' + xs[1].short
-        : ', ' + xs.slice(1, -1).map(x => x.short).join(', ') +
-          ' and ' + xs[xs.length - 1].short);
+  /* Joining the per-club clauses. Each already contains an "and" of its own
+     once a club has two men in it, so joining THOSE with "and" produced
+     "East Dock's Sandoval and Iwu and Harbour Bay's Nakamura and Diallo" —
+     four ands and no way to see where one club ends. A semicolon separates
+     them cleanly the moment either side is carrying more than one name. */
+  const joinClauses = cs => cs.length === 1 ? cs[0]
+    : cs.some(c => / and /.test(c)) ? cs.join('; ') : cs.join(' and ');
+
+  /* Split a set of players by side, keeping each side's own order, and drop
+     the empty side. The caller renders one clause per group with the club in
+     it, so nobody is ever named without a team. */
+  const sides = entries => [0, 1]
+    .map(t => ({ t: t, items: entries.filter(e => e.side === t) }))
+    .filter(x => x.items.length);
 
   /* ---- who scored it -------------------------------------------------- */
-  /* Highest first. Listing "led by Sandoval with 27 and Moreau with 29" puts
-     the bigger number second under a phrase that claims the first led. */
   const leaders = [0, 1].map(t => topScorer[t])
     .filter(p => p && (p.pts || 0) >= 10)
     .sort((a, b) => (b.pts || 0) - (a.pts || 0));
   if (leaders.length === 2) {
     const [a, b] = leaders;
     out.push(pickVaried('lead' + a.id + b.id, [
-      nameOf(a) + ' led ' + R.obj(a.team) + ' with ' + a.pts + ', and ' +
-        nameOf(b) + ' had ' + b.pts + ' for ' + R.obj(b.team) + '.',
-      nameOf(a) + ' top-scored for ' + R.obj(a.team) + ' with ' + a.pts +
-        ', while ' + nameOf(b) + ' had ' + b.pts + ' for ' + R.obj(b.team) + '.',
-      'The scoring was led by ' + nameOf(a) + ' with ' + a.pts + ' and ' +
-        nameOf(b) + ' with ' + b.pts + '.'
+      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ', and ' +
+        nameOf(b) + ' had ' + b.pts + ' for ' + club(b.team) + '.',
+      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts +
+        ', while ' + nameOf(b) + ' managed ' + b.pts + ' for ' + club(b.team) + '.',
+      club(a.team) + ' had ' + nameOf(a) + ' for ' + a.pts + '; ' +
+        club(b.team) + ' had ' + nameOf(b) + ' for ' + b.pts + '.'
     ]));
   } else if (leaders.length === 1) {
     const a = leaders[0];
-    out.push(nameOf(a) + ' led ' + R.obj(a.team) + ' with ' + a.pts +
+    out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts +
       (aboveAverage(a) ? ', a season high.' : '.'));
   }
 
-  /* ---- who else contributed ------------------------------------------- */
-  const support = [];
+  /* ---- who else contributed -------------------------------------------- */
   const seen = new Set(leaders.map(p => p.id));
+  const support = [];
   byKind('bigScore').concat(byKind('aboveSelf')).forEach(f => {
     const p = f.data.p;
     if (seen.has(p.id) || isLeader(p)) return;
     seen.add(p.id);
-    support.push({ p: p, full: nameOf(p) + ' added ' + p.pts,
+    support.push({ side: p.team, p: p, txt: nameOf(p) + ' added ' + p.pts,
                    short: nameOf(p) + ' ' + p.pts });
   });
   if (support.length) {
-    const tail = (support.length === 1 && aboveAverage(support[0].p))
-      ? ', well up on his usual.' : '.';
-    out.push(elide(support.slice(0, 3)) + tail);
+    const clauses = sides(support.slice(0, 4)).map(grp => {
+      const first = grp.items[0].txt;
+      const rest = grp.items.slice(1).map(x => x.short);
+      return (rest.length ? first + ' and ' + list(rest) : first) + ' for ' + club(grp.t);
+    });
+    const solo = support.length === 1 && aboveAverage(support[0].p);
+    out.push(joinClauses(clauses) + (solo ? ', well up on his usual.' : '.'));
   }
 
-  /* ---- the specialists ------------------------------------------------- */
+  /* ---- the specialists -------------------------------------------------- */
   const specials = [];
+  /* One line per man. Somebody with seven assists AND five threes was being
+     listed twice in the same sentence — "Beck Sandoval had seven assists and
+     Beck Sandoval hit five from three". */
+  const specialSeen = new Set();
   byKind('creator').slice(0, 2).forEach(f => {
     const p = f.data.p;
-    specials.push({ full: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists',
-                    short: nameOf(p) + ' ' + spell(p.ast || 0) });
+    if (specialSeen.has(p.id)) return;
+    specialSeen.add(p.id);
+    specials.push({ side: p.team, txt: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists' });
   });
   byKind('shooter').slice(0, 2).forEach(f => {
     const p = f.data.p;
-    if (seen.has(p.id)) return;
-    specials.push({ full: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three',
-                    short: nameOf(p) + ' ' + spell(p.p3m || 0) });
+    if (specialSeen.has(p.id)) return;
+    specialSeen.add(p.id);
+    specials.push({ side: p.team, txt: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three' });
   });
   byKind('defender').slice(0, 2).forEach(f => {
     const p = f.data.p;
+    if (specialSeen.has(p.id)) return;
+    specialSeen.add(p.id);
     const bits = [];
     if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
     if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
-    if (bits.length) specials.push({ full: nameOf(p) + ' finished with ' + bits.join(' and '),
-                                     short: nameOf(p) + ' ' + bits.join(' and ') });
+    if (bits.length) specials.push({ side: p.team,
+      txt: nameOf(p) + ' finished with ' + bits.join(' and ') });
   });
-  if (specials.length) out.push(elide(specials.slice(0, 3)) + '.');
+  if (specials.length) {
+    out.push(joinClauses(sides(specials.slice(0, 4)).map(grp =>
+      list(grp.items.map(x => x.txt)) + ' for ' + club(grp.t))) + '.');
+  }
 
-  /* ---- who struggled --------------------------------------------------- */
+  /* ---- who struggled ---------------------------------------------------- */
   const rough = [];
   byKind('belowSelf').concat(byKind('inefficient')).forEach(f => {
     const p = f.data.p;
     if (rough.some(r => r.id === p.id)) return;
-    /* A name alone in a list of shooting lines reads as an omission. Somebody
-       who never got a shot away is described, not left bare. */
     const shot = fromField((p.p2m || 0) + (p.p3m || 0), (p.p2a || 0) + (p.p3a || 0));
     const note = shot ? ' (' + shot + ')' : ((p.pts || 0) === 0 ? ' (scoreless)' : '');
-    rough.push({ id: p.id, txt: nameOf(p) + note });
+    rough.push({ id: p.id, side: p.team, txt: nameOf(p) + note });
   });
   if (rough.length) {
-    const who = list(rough.slice(0, 3).map(r => r.txt));
+    /* the possessive puts the club in front of its own men, which reads more
+       naturally here than trailing "for X" onto a list of shooting lines */
+    const clauses = sides(rough.slice(0, 4)).map(grp =>
+      club(grp.t) + '\u2019s ' + list(grp.items.map(x => x.txt)));
     out.push(pickVaried('rough' + rough.length, [
-      'It was a long night for ' + who + '.',
-      who + ' never got going.',
-      'Little went right for ' + who + '.'
+      'It was a long night for ' + joinClauses(clauses) + '.',
+      'Little went right for ' + joinClauses(clauses) + '.',
+      joinClauses(clauses) + ' never got going.'
     ]));
   }
 
   /* ---- who fouled out --------------------------------------------------- */
-  /* One sentence however many there are. Three foul-outs given three sentences
-     was the clearest symptom of the old shape. */
-  const dq = byKind('fouledOut').map(f => nameOf(f.data.p));
+  const dq = byKind('fouledOut').map(f => ({ side: f.data.p.team, txt: nameOf(f.data.p) }));
   if (dq.length) {
-    out.push(dq.length === 1
-      ? dq[0] + ' fouled out.'
-      : list(dq) + (dq.length === 2 ? ' both fouled out.' : ' all fouled out.'));
+    /* "to fouls" belongs to each clause: trailing it once onto a joined pair
+       left the first club merely "losing" its players. */
+    const clauses = sides(dq).map(grp =>
+      club(grp.t) + ' lost ' + list(grp.items.map(x => x.txt)) + ' to fouls');
+    out.push(joinClauses(clauses) + '.');
   }
 
   return out;

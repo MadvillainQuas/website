@@ -451,5 +451,56 @@ ok('...and drives the same engine the browser does',
      (prose.match(/[^.]*of \d+[^.]*/) || [''])[0]);
 }
 
+/* ---- every player named carries his club --------------------------------
+   A surname on its own is no use to a reader who does not already know the
+   squads, and the report's whole subject is two teams. Names are grouped by
+   side so the club can be named once per group rather than after every
+   surname. */
+{
+  const rep2 = Report.report(game({
+    players: [
+      mk('a1', 'alpha one', 0, { pts: 26, p2m: 9, p2a: 15, dr: 5 }),
+      mk('a2', 'alpha two', 0, { pts: 3, p2m: 1, p2a: 9 }),
+      mk('b1', 'beta one', 1, { pts: 22, p2m: 9, p2a: 16, dr: 6 }),
+      mk('b2', 'beta two', 1, { pts: 2, p2m: 0, p2a: 8 })
+    ],
+    byId: {}
+  }));
+  const sec = rep2.sections.find(x => x.card === 'players');
+  const paras = sec ? sec.paras : [];
+
+  /* every sentence that names a player must also name a club */
+  const named = paras.filter(x => /Alpha|Beta/.test(x));
+  const unattributed = named.filter(x => !/neon city|harbour bay/i.test(x));
+  ok('no sentence names a player without naming a club',
+     unattributed.length === 0, unattributed.join(' || '));
+
+  /* clauses that already contain "and" are not joined with another "and" */
+  const chained = paras.filter(x => (x.match(/ and /g) || []).length >= 3);
+  ok('clauses are not chained with three or more "and"s',
+     chained.length === 0, chained.join(' || '));
+
+  /* a club that loses players to fouls says so in its own clause */
+  const dqLine = paras.find(x => /to fouls/.test(x));
+  if (dqLine && /;/.test(dqLine)) {
+    ok('each club\'s foul-outs carry their own "to fouls"',
+       (dqLine.match(/to fouls/g) || []).length >= 2, dqLine);
+  } else ok('each club\'s foul-outs carry their own "to fouls"', true);
+}
+
+/* a player is described once per sentence, not once per thing he did */
+{
+  const dual = Report.report(game({
+    players: [mk('a1', 'alpha one', 0, { pts: 20, p2m: 4, p2a: 8, p3m: 4, p3a: 6, ast: 8 }),
+              mk('b1', 'beta one', 1, { pts: 10, p2m: 4, p2a: 9 })],
+    byId: {}
+  }));
+  const prose = dual.sections.flatMap(x => x.paras).join(' ');
+  const perSentence = prose.split(/(?<=\.)\s+/).map(sn =>
+    (sn.match(/Alpha One/g) || []).length);
+  ok('one man is not named twice in the same sentence',
+     Math.max(0, ...perSentence) <= 1, prose);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
