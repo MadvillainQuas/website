@@ -115,6 +115,17 @@ jobs:
       - name: Both revert dialogs must read the event count the same way
         run: node supabase/tests/revert-count.test.mjs
 
+      # The rail hides its role-gated rows with node.hidden = true, which the
+      # browser honours through [hidden]{display:none} at specificity (0,1,0).
+      # nav.css then styled the same rows at (0,2,1) with display:flex, so the
+      # stylesheet outranked the attribute and every gated console — score a
+      # game, club portal, league admin, admin controls, platform — was painted
+      # for everybody, signed out included. Nothing was actionable through them
+      # (RLS refuses every write behind them), but the rail was telling accounts
+      # they held rights they did not hold.
+      - name: A hidden nav row must actually be hidden
+        run: node supabase/tests/nav-gating.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

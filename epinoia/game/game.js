@@ -77,8 +77,8 @@ async function fetchLog() {
 async function loadStored() {
   const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
     `&select=id,status,period,home_score,away_score,tipoff_at,venue,roster_snapshot,starters,` +
-    `tip_winner,arrow_init,home:home_team_id(name,short_name,colour),` +
-    `away:away_team_id(name,short_name,colour),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
+    `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,logo_path),` +
+    `away:away_team_id(slug,name,short_name,colour,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
 
@@ -423,7 +423,7 @@ function renderHead(d) {
   const S = window.S;
   d = d || window.derive();
   const el = $('#csHead');
-  if (el) el.innerHTML = B.scoreHeadHTML(d);
+  if (el) { el.innerHTML = B.scoreHeadHTML(d); decorateTeams(el); }
   txt($('#csHeading'), S.status === 'final' ? 'final'
                      : S.status === 'live' ? 'live' : 'scheduled');
   document.title = d.score[0] + '–' + d.score[1] + ' ' +
@@ -452,7 +452,7 @@ function renderBody(d) {
   if (key === lastBodyKey) return;
   lastBodyKey = key;
   const el = $('#csBody');
-  if (el) { el.innerHTML = (BODIES[fTab] || BODIES.box)(d); linkifyPlayers(el); }
+  if (el) { el.innerHTML = (BODIES[fTab] || BODIES.box)(d); linkifyPlayers(el); decorateTeams(el); }
 }
 
 /* Turn every player row in the box score into a link to that player's profile.
@@ -484,6 +484,77 @@ function linkifyPlayers(scope) {
     a.addEventListener('mouseleave', () => { a.style.textDecoration = 'none'; });
     nameCell.textContent = '';
     nameCell.appendChild(a);
+  });
+}
+
+/* ---------------------------------------------------------------------------
+   THE TWO CLUBS, AS DESTINATIONS.
+
+   Done out here rather than inside bxTeamHTML for exactly the reason
+   linkifyPlayers is: those renderers are lifted verbatim from the scorer, and
+   inside the scorer a club name is a heading on a statistician's screen, not a
+   navigation. Decorating afterwards keeps the two copies identical and leaves
+   the scorer untouched.
+
+   THE CREST IS SHOWN ONLY IF THERE IS ONE. teams.logo_path is null until a club
+   publishes a crest, and a placeholder box in its place would make every club
+   that has not uploaded one look broken. Nothing renders in that case — no
+   monogram, no grey square, no gap. The image also removes itself if the file
+   404s, so a crest whose row survived its object cannot leave a broken-image
+   glyph next to a club's name on a public page.
+
+   Names come from the frozen roster snapshot, so they read as they did at
+   tip-off; the LINK comes from the fixture's own club rows, which is the only
+   place a slug lives. A club with no slug is not a link, just a name. */
+/* Sized in em so it tracks whatever it sits beside — 16px on the scoreboard,
+   13px on a table heading — rather than being one pixel height that is bold in
+   one place and lost in the other. 1.45em reads as a crest next to a club name
+   without out-shouting it; max-width holds a wide, letterbox badge to the same
+   optical weight as a tall shield, since object-fit:contain would otherwise let
+   it run away horizontally. */
+const TEAM_CREST_CSS =
+  'height:1.45em;width:auto;max-width:2.4em;object-fit:contain;' +
+  'vertical-align:-.30em;margin-right:.4em;flex:none';
+
+function clubOf(t) {
+  const m = window.S && window.S.meta;
+  if (!m) return null;
+  return (t === 0 ? m.home : m.away) || null;
+}
+
+function decorateTeams(scope) {
+  scope.querySelectorAll('[data-team-slot]').forEach(node => {
+    if (node.dataset.teamDone === '1') return;
+    const t = +node.dataset.teamSlot;
+    const club = clubOf(t);
+    if (!club) return;
+    node.dataset.teamDone = '1';
+
+    const label = node.textContent;
+    node.textContent = '';
+
+    /* the crest, when the club actually has one */
+    if (club.logo_path) {
+      const img = document.createElement('img');
+      img.src = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' +
+                club.logo_path.split('/').map(encodeURIComponent).join('/');
+      img.alt = '';
+      img.style.cssText = TEAM_CREST_CSS;
+      img.addEventListener('error', () => img.remove());
+      node.appendChild(img);
+    }
+
+    if (club.slug) {
+      const a = document.createElement('a');
+      a.href = '../t/?t=' + encodeURIComponent(club.slug);
+      a.textContent = label;
+      a.style.cssText = 'color:inherit;text-decoration:none';
+      a.addEventListener('mouseenter', () => { a.style.textDecoration = 'underline'; });
+      a.addEventListener('mouseleave', () => { a.style.textDecoration = 'none'; });
+      node.appendChild(a);
+    } else {
+      node.appendChild(document.createTextNode(label));
+    }
   });
 }
 

@@ -52,6 +52,38 @@
 .ep-nav a.item:hover, .ep-nav button.item:hover{
   color:var(--nav-ink,#e6fff1); background:rgba(147,242,191,.08);
 }
+
+/* THE HIDDEN ATTRIBUTE HAS TO OUTRANK THE LAYOUT.
+
+   Every role-gated row in this rail is hidden the only way a script can hide
+   one — node.hidden = true — which the browser expresses through the UA rule
+   [hidden]{display:none}. That rule carries a specificity of (0,1,0). The
+   rule directly above, .ep-nav a.item, carries (0,2,1) and sets display:flex.
+
+   So the layout won, every time. "score a game", "club portal", "league
+   admin", "admin controls" and "platform" were painted for everybody who
+   opened the site — signed out, or signed in with no roles at all — no matter
+   what whoami() answered. applyAuth() was setting .hidden correctly and
+   failing closed on an error, exactly as written; the attribute simply had no
+   effect on this element, so nothing downstream of it could work either. On a
+   phone, where the rail is the bar across the bottom, that is the row of
+   consoles reported as clickable at the foot of a league page.
+
+   Nothing was ever ACTIONABLE through them: every write behind those links is
+   refused by row-level security, and each console renders empty for an
+   account without the role. This disclosed that the doors exist, not what is
+   behind them. But a rail that offers an account five consoles it cannot open
+   is telling that account it holds rights it does not hold, and a gate the
+   stylesheet can walk through is not a gate.
+
+   !important, rather than a specificity bump: the row's display is set again
+   for the phone bar and a third time inside the open drawer, so a bump would
+   have to beat whichever of those is in play — and the next breakpoint anyone
+   adds would quietly reopen the hole. This way the attribute means what it
+   says at every width, for every element in the rail.
+
+   supabase/tests/nav-gating.test.mjs holds this invariant. */
+.ep-nav [hidden]{ display:none !important }
 .ep-nav a.item.on{
   color:#93f2bf; border-left-color:#93f2bf; background:rgba(147,242,191,.11);
 }

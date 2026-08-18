@@ -319,7 +319,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
-  return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
@@ -349,14 +349,14 @@ function lineupAgg(d,t){
 function scoreHeadHTML(d){
   const TA = teamAdv(d,0);
   return '<div class="glass bx-scorehead hero-stripe">'+
-    '<div class="bteam">'+esc(tname(0))+'</div>'+
+    '<div class="bteam" data-team-slot="0">'+esc(tname(0))+'</div>'+
     '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">'+
     '<div style="display:flex;align-items:center;gap:14px;">'+
     '<div class="bscore">'+d.score[0]+'</div>'+
     '<div class="bmid" style="width:3px;height:44px;border-radius:2px;opacity:.6;background:linear-gradient(180deg,var(--team0),var(--team1))"></div>'+
     '<div class="bscore">'+d.score[1]+'</div></div>'+
     '<div class="pacepill">'+(S.phase==='final'?'final':perName(S.period)+' · '+fmtClock(S.clockMs))+' <span style="opacity:.4">|</span> pace <b>'+TA.pace.toFixed(1)+'</b> / 40</div></div>'+
-    '<div class="bteam" style="text-align:right">'+esc(tname(1))+'</div></div>';
+    '<div class="bteam" data-team-slot="1" style="text-align:right">'+esc(tname(1))+'</div></div>';
 }
 
 function qstripHTML(d){
@@ -414,7 +414,7 @@ function bxTeamHTML(d,t){
     '<td>'+(tot.or+tot.dr+T.teamRebO+T.teamRebD)+'</td>'+
     '<td>'+tot.ast+'</td><td>'+T.toTot+'</td><td>'+tot.stl+'</td><td>'+tot.blk+'</td><td>'+T.foulTot+'</td>'+
     '<td>'+tot.fd+'</td><td></td></tr>';
-  return '<div class="glass bxteam"><h3>'+esc(tname(t))+'</h3>'+teamChipsHTML(d,t)+
+  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+teamChipsHTML(d,t)+
     '<div class="tblwrap"><table class="bx"><tr><th>#</th><th>player</th>'+
     cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>'+rows+'</table></div></div>';
 }
@@ -470,7 +470,7 @@ function shotChartHTML(d,t){
      knowing where a shot came from. `plain` drops the lane ticks, which are
      detail this size cannot carry. */
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
-  return '<div class="glass bxteam"><h3 style="color:'+col+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'" style="color:'+col+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located</div>'+
     chips+'</div>';
@@ -557,7 +557,7 @@ function lineupsHTML(){
         '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
         '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
-    return '<div class="glass bxteam advcard"><h3 style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
       '<th class="blk-o">ortg</th><th>efg%</th><th>tov%</th><th>orb%</th><th>ft rate</th>'+
       '<th class="blk-d">drtg</th><th>opp efg</th><th>tov frc</th><th>orb alwd</th><th>opp ftr</th>'+
