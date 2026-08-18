@@ -2018,12 +2018,12 @@ function helpSpec(){
       k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
     } else if(p.kind==='foul'){
       k('tap opponent','free throw — missed','red');
-      k(IS_MOBILE?'press opponent':'hold opponent 1.5s','free throw — made','grn');
+      k(IS_TOUCH?'press opponent':'hold opponent 1.5s','free throw — made','grn');
       k('✕','no free throws','x');
     }
     return L;
   }
-  const T = (key,txt)=>{ if(!IS_MOBILE) k(key,txt); };   // typed-command lines never show on mobile
+  const T = (key,txt)=>{ if(!IS_TOUCH) k(key,txt); };   // never on a touch device — see cmdVisible
   switch(ui.armed){
     case 'ft': k('tap player','missed ft','red'); k(HOLD_HINT,'made ft','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7r rebound'); break;
     case 'p2': k('tap player','missed 2pt','red'); k(HOLD_HINT,'made 2pt','grn'); T('type 1;10 ⏎','team 1 · #10 missed  ·  1;10+ = made  ·  ,2;7b block  ,2;10r rebound  ,1;4a assist'); break;
@@ -2037,8 +2037,9 @@ function helpSpec(){
   return L;
 }
 function helpTyped(p){
-  // one legend line describing the typed follow-ups available in the live window (desktop only)
-  if(IS_MOBILE) return null;
+  // one legend line describing the typed follow-ups available in the live window
+  // (keyboard only — IS_TOUCH, not IS_MOBILE, so a tablet is excluded too)
+  if(IS_TOUCH) return null;
   if(p.kind==='miss' && p.shot!=='ft') return ['type 2;7b · 2;10r ⏎','block by team 2 #7 · rebound by team 2 #10 · 2;tr team reb'];
   if(p.kind==='miss' && p.shot==='ft') return ['type 2;10r ⏎','rebound by team 2 #10 · 2;tr team reb'];
   if(p.kind==='made') return ['type 1;4a ⏎','assist by team 1 #4'];
@@ -3069,7 +3070,18 @@ function wireGame(){
 
 /* ==================== typed command bar ==================== */
 const IS_TOUCH = matchMedia('(hover:none) and (pointer:coarse)').matches;
-const IS_MOBILE = IS_TOUCH && !matchMedia('(min-width:900px)').matches;   // phones/tablets: no typed command layer
+/* IS_MOBILE — touch AND under 900px — used to live here and is deliberately
+   gone. It answered a LAYOUT question (900 is where the three-column mid panel
+   stops fitting) and was then used to decide questions about INPUT, which have
+   nothing to do with width. That single confusion produced two separate faults
+   on tablets: the 1.5-second hold for a made basket, and a typed command bar
+   on a device with no keyboard.
+
+   Nothing reads it now. Deleting it rather than leaving it unused is the point
+   — a flag named IS_MOBILE is exactly what the next person reaches for when
+   they mean "is this a thumb", and it would give them the wrong answer on the
+   device a statistician is most likely to be holding. IS_TOUCH answers that;
+   a media query answers the layout. */
 
 /* ---------------------------------------------------------------------------
    A MADE BASKET IS NOT A LONG PRESS.
@@ -3108,7 +3120,19 @@ const LIFT_MS = IS_TOUCH ? 150 : 280;
 const MAKE_MS = IS_TOUCH ? 500 : 1500;
 const HOLD_HINT = IS_TOUCH ? 'press & hold' : 'hold 1.5s';
 function findByNum(t,num){ return S.teams[t].players.find(p=>String(p.num).trim()===String(num).trim()) || null; }
-function cmdVisible(){ return !IS_MOBILE && !!(ui.armed || ui.pending); }
+/* THE TYPED COMMAND LAYER IS FOR A KEYBOARD, AND A TABLET HAS NONE.
+
+   This was gated on IS_MOBILE, which is touch AND under 900px — so a tablet in
+   landscape got the command bar, an input it cannot use without summoning the
+   on-screen keyboard over the roster it is trying to tap. The gate had nothing
+   to do with width in the first place: the question is whether there is a
+   keyboard, not how wide the screen is.
+
+   IS_TOUCH now, so it is absent on every phone and every tablet. A tablet with
+   a keyboard case is the one case this gives up, and the trade is right: a
+   command bar nobody can use costs every touch scorer a strip of screen and a
+   keyboard that covers half the players. */
+function cmdVisible(){ return !IS_TOUCH && !!(ui.armed || ui.pending); }
 function renderCmd(){
   const bar = $('#cmdbar'); if(!bar) return;
   const vis = cmdVisible() && S.phase==='game';
@@ -4514,10 +4538,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=133" defer></script>
-<script src="../vendor/supabase.js?v=133" defer></script>
-<script src="../live.js?v=133" defer></script>
-<script src="sync.js?v=133" defer></script>
-<script src="bootstrap.js?v=133" defer></script>
+<script src="../config.js?v=134" defer></script>
+<script src="../vendor/supabase.js?v=134" defer></script>
+<script src="../live.js?v=134" defer></script>
+<script src="sync.js?v=134" defer></script>
+<script src="bootstrap.js?v=134" defer></script>
 </body>
 </html>
