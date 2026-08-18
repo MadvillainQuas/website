@@ -2557,6 +2557,36 @@ function fireOption(o,team,pid){
 /* ==================== tap semantics ==================== */
 function tap(team,pid){
   if(!S || S.phase!=='game') return;
+
+  /* A SUBSTITUTION BY TAP, ON TOUCH.
+
+     Both halves of a sub are drag gestures — drag a starter DOWN to take them
+     off, drag a bench player UP to bring them on. That is a fine desktop
+     idiom and it collides with a phone in two ways.
+
+     .plist carries touch-action:pan-y, so the browser claims a vertical drag
+     the moment the list has anywhere to scroll — and giving the roster the
+     bottom padding that keeps the confirm and cancel buttons off the last row
+     is what gave it somewhere to scroll. A drag that starts on a row is now as
+     likely to scroll the list as to move a player, and touch-action is fixed
+     when the gesture begins, so it cannot be turned off once a finger is down.
+
+     So on touch the second half is also a tap: press a starter to lift them
+     out — that gesture still works, it is a press rather than a drag — then
+     TAP the bench player coming on. The drag still works everywhere it worked
+     before; this is an additional route, not a replacement, and desktop is
+     untouched.
+
+     It only fires on a row the renderer has already marked as a legal target
+     (subtarget: same team, not on court), so a mis-tap during a sub cannot
+     substitute the wrong player. */
+  if(IS_MOBILE && ui.subOut && !ui.pending && !ui.armed){
+    if(ui.subOut.team===team && !onCourtHas(team,pid) && ui.subOut.pid!==pid){
+      fireOption({act:'subin'},team,pid);
+      return;
+    }
+  }
+
   const p = ui.pending;
   if(p && p.pick){
     if(pickAllowed(p.pick,team,pid)){
@@ -4288,10 +4318,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=122" defer></script>
-<script src="../vendor/supabase.js?v=122" defer></script>
-<script src="../live.js?v=122" defer></script>
-<script src="sync.js?v=122" defer></script>
-<script src="bootstrap.js?v=122" defer></script>
+<script src="../config.js?v=123" defer></script>
+<script src="../vendor/supabase.js?v=123" defer></script>
+<script src="../live.js?v=123" defer></script>
+<script src="sync.js?v=123" defer></script>
+<script src="bootstrap.js?v=123" defer></script>
 </body>
 </html>
