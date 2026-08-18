@@ -3069,7 +3069,41 @@ function wireGame(){
 }
 
 /* ==================== typed command bar ==================== */
-const IS_TOUCH = matchMedia('(hover:none) and (pointer:coarse)').matches;
+/* WHAT COUNTS AS A TOUCH DEVICE, and why the obvious test is wrong.
+
+   This was `(hover:none) and (pointer:coarse)`, and the hover clause is what
+   broke it: a Samsung phone with S-Pen support reports hover:hover, because
+   the pen CAN hover. So the whole query came back false on a real phone, and
+   with it every gate that depends on it — the typed command bar appeared over
+   the roster with the keyboard up, and a made basket still wanted a
+   1.5-second hold. Every touch fix in the last several passes was correct and
+   inert on that handset.
+
+   Hovering is not the question. The question is what the primary pointer is:
+
+     pointer:coarse   the primary input is a finger — every phone and tablet,
+                      whatever else the device can also do
+     maxTouchPoints   there is a touchscreen at all, which alone is not enough:
+                      a touchscreen laptop has one and is still driven by a
+                      keyboard and a trackpad, and should keep the command bar
+     pointer:fine     a mouse, pen or trackpad is primary
+
+   So: coarse primary, OR a touchscreen with no fine pointer at all. A phone
+   with a stylus passes on the first clause; a Surface with a trackpad fails
+   both and keeps the desktop behaviour it wants. */
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches ||
+  ((navigator.maxTouchPoints || 0) > 0 && !matchMedia('(pointer:fine)').matches);
+
+/* So a device that still gets this wrong can say so out loud rather than
+   leaving somebody guessing at a keyboard they cannot dismiss. */
+window.epinoiaPointerReport = () => ({
+  IS_TOUCH,
+  coarse: matchMedia('(pointer:coarse)').matches,
+  fine: matchMedia('(pointer:fine)').matches,
+  anyCoarse: matchMedia('(any-pointer:coarse)').matches,
+  hoverNone: matchMedia('(hover:none)').matches,
+  maxTouchPoints: navigator.maxTouchPoints || 0
+});
 /* IS_MOBILE — touch AND under 900px — used to live here and is deliberately
    gone. It answered a LAYOUT question (900 is where the three-column mid panel
    stops fitting) and was then used to decide questions about INPUT, which have
@@ -4538,10 +4572,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=134" defer></script>
-<script src="../vendor/supabase.js?v=134" defer></script>
-<script src="../live.js?v=134" defer></script>
-<script src="sync.js?v=134" defer></script>
-<script src="bootstrap.js?v=134" defer></script>
+<script src="../config.js?v=135" defer></script>
+<script src="../vendor/supabase.js?v=135" defer></script>
+<script src="../live.js?v=135" defer></script>
+<script src="sync.js?v=135" defer></script>
+<script src="bootstrap.js?v=135" defer></script>
 </body>
 </html>
