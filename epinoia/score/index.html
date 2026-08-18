@@ -959,6 +959,87 @@ html, body{ height:100dvh; }
 }
 
 /* ===========================================================================
+   LANDSCAPE ON A PHONE IS A DIFFERENT SHAPE, NOT A SHORTER PORTRAIT.
+
+   Turned sideways, the scorer kept its portrait structure: one column of
+   players per team, stacked. At 844x390 that gives each team a column 408px
+   WIDE holding rows that need 40px of HEIGHT — so a name and a number sit in
+   the middle of 400px of nothing, while .plist crushes to 60px tall and hides
+   462px of its 522px of content. Twenty players, three visible.
+
+   The space is there, it is just the wrong way round. Multi-column flow turns
+   the height problem into the width the layout already has: eleven items — five
+   starters, the bench rule, five substitutes — fall naturally into two columns
+   of six and five, which is the starters/bench split the separator was drawing
+   anyway. No markup changes, and portrait is untouched.
+
+   The breakpoint is orientation AND a short viewport, not width alone: a 1024
+   tablet in landscape has the height to keep the stacked list, and would look
+   silly with five-player columns.
+   =========================================================================== */
+@media (orientation:landscape) and (max-height:560px) and (pointer:coarse){
+  .plist{
+    column-count:2; column-gap:10px;
+    display:block;            /* multi-column needs a block container, not flex */
+    padding-bottom:8px;       /* the portrait strip is not needed: see below */
+  }
+  .prow{break-inside:avoid; margin-bottom:4px;}
+  .benchsep{break-inside:avoid; break-after:avoid;}
+
+  /* THE LEFTOVER HEIGHT GOES TO THE ROSTER, WHICH NOTHING WAS DOING.
+
+     At 740x360 the vertical budget read: 46px of action bar, 61px of sub bar,
+     75px of scoreboard, and 138px left for twenty players — with .plist itself
+     pinned at 58px and hiding 285px of content even after the column flow.
+
+     A first attempt moved both bars into a 112px rail down the left. The grid
+     applied cleanly and the result was worse: seven action buttons wrap to four
+     rows in a 112px column, so the rail stood 182px tall, and because it shared
+     a grid row with the scoreboard the scoreboard stretched to match it. The
+     rail is a good idea at tablet width and the wrong one at 740, where there
+     is not enough width to spend 112px of it on buttons that are already
+     compact.
+
+     So: the column keeps its stacking, the chrome is trimmed, and — the part
+     that actually mattered — #cols takes flex:1 with min-height:0 so every
+     pixel the bars give back lands in the roster instead of in a gap. Without
+     min-height:0 a flex child refuses to shrink below its content and the
+     scroller never grows at all, which is why it sat at 58px through two
+     rounds of trimming. */
+  #game{display:flex; flex-direction:column; min-height:0;}
+  #topbar,#subbar,#scorebox{flex:0 0 auto;}
+  /* #cols is a flex ROW that was not stretching its children, so each .col
+     stood at its content height — 98px inside a 148px parent — and the 50px
+     difference was simply empty. Stretching them is what finally lets the
+     scroller grow. */
+  /* #cols WRAPS, which is why align-items could not help: in a wrapping flex
+     container the lines are sized to their content and align-items stretches
+     children within a LINE, not to the container. align-content is the one
+     that distributes the lines — and with the hidden placeholder children in
+     there, the single real line was sitting at 98px inside 148px. */
+  #cols{flex:1 1 auto; min-height:0; align-items:stretch; align-content:stretch;}
+  .col{min-height:0; display:flex; flex-direction:column;}
+  /* the team header carries a name, a timeout count and a foul count; at 51px
+     it was costing a third of the roster's height to say them */
+  .thead{flex:0 0 auto; padding:4px 8px;}
+  .thead .tname{font-size:11px;}
+  .plist{max-height:none; flex:1 1 auto;}
+
+  /* trimmed, not restructured: the scoreboard keeps its clock and score, at
+     the size a glance needs rather than the size a desk affords */
+  #scorebox{padding:6px 10px;}
+  #subbar{padding:4px 0;}
+  #subbar .sub{min-height:44px; padding:5px 8px;}
+
+  /* The controls move to the side in landscape rather than the bottom, so the
+     roster does not need the 58px the portrait strip reserves. */
+  #ctrlHelp{padding:8px 10px calc(env(safe-area-inset-bottom) + 6px);}
+  #xCancel{bottom:calc(env(safe-area-inset-bottom) + 6px); left:10px;}
+  #doneB{bottom:calc(env(safe-area-inset-bottom) + 6px); right:10px;}
+  #delayB{bottom:calc(env(safe-area-inset-bottom) + 62px); right:10px;}
+}
+
+/* ===========================================================================
    PHONE OVERRIDES LIVE AT THE END OF THIS STYLESHEET, and that is load-bearing.
 
    These are id and single-class selectors matching the base rules exactly, so
@@ -4318,10 +4399,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=123" defer></script>
-<script src="../vendor/supabase.js?v=123" defer></script>
-<script src="../live.js?v=123" defer></script>
-<script src="sync.js?v=123" defer></script>
-<script src="bootstrap.js?v=123" defer></script>
+<script src="../config.js?v=128" defer></script>
+<script src="../vendor/supabase.js?v=128" defer></script>
+<script src="../live.js?v=128" defer></script>
+<script src="sync.js?v=128" defer></script>
+<script src="bootstrap.js?v=128" defer></script>
 </body>
 </html>
