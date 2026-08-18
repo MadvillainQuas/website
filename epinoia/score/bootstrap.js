@@ -946,7 +946,24 @@
       if (count == null || count < local) {
         note(`server has ${count == null ? '?' : count} of ${local} events — retrying…`, '#ffd166');
         try { window.EpinoiaSync && window.EpinoiaSync.flush(); } catch (_) {}
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 2500));
+
+        /* AND THEN CHECK AGAIN, AND REFUSE. This retried and carried on
+           regardless, so a game whose log had not been saved went to the
+           server anyway and came back "sanity gate failed" — which is true but
+           tells you nothing about the real problem, which is that the events
+           are not there. Say that instead, and do not send a request that
+           cannot succeed. */
+        const again = await sb.from('game_events')
+          .select('seq', { count: 'exact', head: true }).eq('game_id', gameId);
+        const now = again.count;
+        if (now == null || now < local) {
+          btn.disabled = false;
+          note(`the league has ${now == null ? 'no' : now} of ${local} events — not finalising ` +
+               `an incomplete game. Keep this tab open; export the play-by-play if it persists.`,
+               '#ff5f6b');
+          return;
+        }
       }
     } catch (e) {
       btn.disabled = false;
@@ -979,7 +996,14 @@
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         btn.disabled = false;
-        note('refused: ' + (j.error || r.status), '#ff5f6b');
+        /* The gate already sends back exactly what it objected to; this showed
+           only the headline, so "sanity gate failed" was all anybody ever saw
+           and there was nothing to act on. The reasons are the useful part —
+           "only 1 periods played", "scores are level" — and they name the real
+           problem far better than the headline does. */
+        const why = Array.isArray(j.blocking) && j.blocking.length
+          ? j.blocking.join(' · ') : (j.error || r.status);
+        note('refused: ' + why, '#ff5f6b');
         return;
       }
       note('final — the box score is public', '#93f2bf');
@@ -1112,8 +1136,35 @@
       } catch (_) {}
     };
 
+    /* THE SAME TREATMENT FOR A LOG THAT IS NOT BEING WRITTEN.
+
+       A revoked game and a refused write are the same thing from where the
+       statistician sits: taps that are not being kept. The second used to be
+       silent — the broadcast still went out, so the public page looked healthy
+       while the table behind it took nothing, and a whole game was lost before
+       anyone found out at the final whistle.
+
+       The first failure says so quietly, because one refused frame is usually
+       a blip that the backlog retries and clears. If they are still stacking
+       up, it interrupts: at that point something is wrong that scoring on will
+       not fix. */
+    let writeWarned = false;
+    const onWriteFail = (err, count) => {
+      say('not saving · ' + (err && err.code ? err.code : 'write refused'), '#ff5f6b');
+      bar.style.borderColor = 'rgba(255,95,107,.7)';
+      if (count < 5 || writeWarned) return;
+      writeWarned = true;
+      try {
+        alert('The league database is refusing to save this game.\n\n' +
+              (err && err.message ? err.message + '\n\n' : '') +
+              'Scoring still works and nothing on this screen is lost, but the ' +
+              'game is not being written to the league. Do not close this tab — ' +
+              'export the play-by-play from the final screen if this does not clear.');
+      } catch (_) {}
+    };
+
     try {
-      window.EpinoiaSync.attach({ gameId, mode, supabase: sb, onRevoked });
+      window.EpinoiaSync.attach({ gameId, mode, supabase: sb, onRevoked, onWriteFail });
       say((mode === 'local' ? 'local · ' : 'live · ') + shortId, '#93f2bf');
     } catch (e) {
       console.error('[bootstrap]', e);

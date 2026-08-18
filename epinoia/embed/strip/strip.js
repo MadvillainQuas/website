@@ -359,7 +359,36 @@ function watchable(gs) {
   return live.concat(near).slice(0, MAX_CHANNELS).map(g => 'game:' + g.id);
 }
 
-function onFrame(frame) {
+/* ---- the announcement -------------------------------------------------------
+   A strip cannot listen to a game it does not know is being played, and it only
+   holds channels for live fixtures and ones near their tip-off. A fixture
+   scheduled for next Sunday that tips this morning was therefore found only by
+   the fallback poll, and took half a minute to show as live.
+
+   The scorer announces every status change on one fixed topic, which this joins
+   for as long as it is on the page. Hearing one is a reason to LOOK, not a fact
+   to display: the fixtures table is re-read and that decides what is shown, so
+   a forged message costs one query and can change nothing. The optimistic flip
+   below is the single exception, and it only ever runs for a game already on
+   this strip whose row we are re-reading in the same breath. */
+const ANNOUNCE_TOPIC = 'epinoia:live';
+let announceTimer = null;
+function onAnnounce(msg) {
+  if (!msg || !msg.gameId || !msg.status) return;
+  if (msg.status === 'live' && ROWS.has(msg.gameId)) {
+    const held = LIVE.get(msg.gameId);
+    if (held) held.status = 'live';
+    else LIVE.set(msg.gameId, { status: 'live', at: Date.now(), clock_ms: null, running: false });
+    paint();                                   // looks right within the frame
+  }
+  /* Coalesced: finalising publishes a roster change and a status in the same
+     breath, and two reloads a millisecond apart would be one wasted query. */
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => load().catch(() => {}), 60);
+}
+
+function onFrame(frame, event) {
+  if (event === 'status') return onAnnounce(frame);
   if (!frame || !frame.gameId) return;
   const status = frame.game && frame.game.status;
   const changed = noteState(frame.gameId, frame.state, status);
@@ -379,7 +408,9 @@ function onFrame(frame) {
 function syncWatch(gs) {
   const client = realtime();
   if (!client) return;
-  client.only(watchable(gs), onFrame);
+  /* The announce topic is never dropped. It is how a game nobody is watching
+     yet gets noticed at all, so it has to outlive every change to the list. */
+  client.only([ANNOUNCE_TOPIC].concat(watchable(gs)), onFrame);
 }
 
 /* ---- the durable mirror, read once per structural change -------------------

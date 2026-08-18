@@ -32,6 +32,8 @@ let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb 
 
 /* Publishing stops dead when this is set, and never restarts. See halt(). */
 let halted = false;
+let onWriteFail = null;
+let writeFails = 0;
 const timers = [];      // every interval this module owns, so halt() can end them all
 
 /* Only a real fixture has a row to patch — a scratch/training game has no
@@ -102,6 +104,40 @@ function maybeRoster(S) {
   if (sig === lastPub) return;
   lastPub = sig;
   pub.pushState(stateOf(S), { game: r });
+  announce(r.status);
+}
+
+/* ============================================================================
+   TELLING THE WHOLE PLATFORM A GAME HAS STARTED.
+
+   A strip on a club's homepage cannot listen to a game it does not yet know
+   is being played. It watches the channels of live fixtures and of anything
+   near its tip-off, which covers a game that starts when it was meant to — and
+   misses one played early, late, or rearranged. A fixture scheduled for next
+   Sunday that tips this morning was found only by the fallback poll, so it took
+   half a minute to appear as live, and the whole point of the socket is that it
+   should not.
+
+   One fixed topic solves it. This is the only message that has to reach a page
+   that is not already listening to this game, so it is the only thing on it:
+   an id and a status, a few times a game. Every strip anywhere joins it and
+   reloads the moment it hears one.
+
+   IT IS NOT AUTHORITATIVE AND DOES NOT NEED TO BE. A listener re-reads the
+   fixtures table when it hears this; the announcement only tells it WHEN to
+   look. Anything forged on this topic can therefore cause an extra query and
+   nothing else — no state on any page comes from it. */
+const ANNOUNCE_TOPIC = 'epinoia:live';
+let announced = null;
+let announceCh = null;
+function announce(status) {
+  if (!sb || halted || !gameId || status === announced) return;
+  announced = status;
+  try {
+    announceCh = announceCh || sb.channel(ANNOUNCE_TOPIC);
+    announceCh.send({ type: 'broadcast', event: 'status',
+                      payload: { gameId: gameId, status: status, at: Date.now() } });
+  } catch (_) { /* the poll still covers this; never break scoring for it */ }
 }
 
 /* ============================================================================
@@ -229,9 +265,29 @@ const api = {
     sb = opts.supabase || (root.epinoiaClient ? root.epinoiaClient() : null);
     onRevoked = opts.onRevoked || null;
 
+    onWriteFail = opts.onWriteFail || null;
+
     pub = root.EpinoiaLive.publisher({
       gameId, mode, supabase: sb,
-      stateProvider: () => stateOf(S)      // every frame carries the real clock
+      stateProvider: () => stateOf(S),     // every frame carries the real clock
+      /* THE DURABLE LOG FAILING IS NOT A DETAIL TO LOG AND MOVE ON FROM.
+
+         A refused write used to be invisible: the broadcast still went out, so
+         the public box score looked perfect and kept updating, while the table
+         behind it took nothing. A full game was scored that way and the loss
+         was only discovered at the final whistle, when finalise refused to
+         close a game the server could not reproduce — by which point the only
+         copy of the game was in one browser tab.
+
+         So the scorer is told the first time it happens, and told again if it
+         is still failing a while later. The frame itself is retried from the
+         backlog regardless; this is about the statistician knowing. */
+      onError: (err) => {
+        writeFails++;
+        if (typeof onWriteFail === 'function') {
+          try { onWriteFail(err, writeFails); } catch (_) {}
+        }
+      }
     });
 
     /* --- wrap addEvent: the single funnel every stat passes through --- */

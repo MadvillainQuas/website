@@ -109,8 +109,29 @@ function localTransport(gameId) {
   };
 }
 
+/* ---------------------------------------------------------------------------
+   A WHOLE NUMBER, BECAUSE THE COLUMN IS AN INTEGER.
+
+   game_events.clock, .period, .team and .seq are all `int`. The scorer's clock
+   is a float — it is real elapsed milliseconds, and the simulator advances it
+   by fractions — so a row could carry clock 580270.8394733587, which Postgres
+   refuses outright: "invalid input syntax for type integer".
+
+   An upsert is ONE statement, so one such row fails the whole batch. A game
+   scored to the last whistle therefore wrote a single event — the opening
+   period_start, whose clock happened to be exactly 600000 — and lost the other
+   753. Nothing said so, because of the two faults below.
+
+   Rounding here rather than at the scorer is deliberate: this is the boundary
+   where the shape stops being JavaScript's and starts being the table's, and
+   every producer (scorer, simulator, importer) crosses it. A millisecond
+   rounded off a clock display is not a fact anybody can perceive; a lost
+   quarter of basketball is. */
+const whole = v => (v == null || v === '' ? null
+  : (Number.isFinite(+v) ? Math.round(+v) : null));
+
 /* supabase: broadcast for speed, table insert for durability */
-function supabaseTransport(gameId, sb) {
+function supabaseTransport(gameId, sb, onError) {
   let channel = null;
   return {
     kind: 'supabase',
@@ -137,7 +158,8 @@ function supabaseTransport(gameId, sb) {
       if (frame.events && frame.events.length) {
         jobs.push(sb.from('game_events').upsert(frame.events.map(e => {
           const { id, seq, t, team, pid, period, clock, ...rest } = e;
-          return { game_id: gameId, seq: seq != null ? seq : id, t, team, pid, period, clock, payload: rest };
+          return { game_id: gameId, seq: whole(seq != null ? seq : id), t, team: whole(team),
+                   pid, period: whole(period), clock: whole(clock), payload: rest };
         }), { onConflict: 'game_id,seq', ignoreDuplicates: true }));
       }
       /* A retracted event must leave the durable log too, or finalise would
@@ -149,11 +171,40 @@ function supabaseTransport(gameId, sb) {
         jobs.push(sb.from('game_events').delete()
           .eq('game_id', gameId).in('seq', frame.removed));
       }
+      /* game_state's clock_ms, period, score and last_seq are all `int` too, so
+         a fractional clock refused this write for exactly the same reason —
+         which is why the durable state was only ever correct at moments the
+         clock happened to be whole, such as a stopped clock at 0:00. */
       if (frame.state) {
-        jobs.push(sb.from('game_state').upsert(Object.assign({ game_id: gameId }, frame.state)));
+        const st = Object.assign({ game_id: gameId }, frame.state);
+        ['period', 'clock_ms', 'score_home', 'score_away', 'possession', 'arrow', 'last_seq']
+          .forEach(k => { if (k in st) st[k] = whole(st[k]); });
+        jobs.push(sb.from('game_state').upsert(st));
       }
+      /* A REFUSED WRITE IS NOT A FULFILLED PROMISE'S PROBLEM — it is ours.
+
+         supabase-js resolves with { data, error }; it does not reject. So
+         `every(r => r.status === 'fulfilled')` was true whether the rows went
+         in or Postgres threw them out, send() reported success, the frame was
+         never put on the backlog, and buf.splice(0) had already emptied the
+         buffer. Every event was discarded the instant it failed, silently, for
+         the whole game — and the first anyone knew was the finalise gate
+         refusing to close a game the server could not reproduce.
+
+         The error is read now. A failed frame returns false, which puts it on
+         the backlog to be retried in order, and onError is told so a scorer
+         can say out loud that nothing is being saved. */
       const res = await Promise.allSettled(jobs);
-      return res.every(r => r.status === 'fulfilled');
+      const bad = res.map(r => r.status === 'rejected' ? (r.reason || new Error('send failed'))
+                              : (r.value && r.value.error) || null)
+                     .filter(Boolean);
+      if (bad.length) {
+        const first = bad[0];
+        try { onError && onError(first, frame); } catch (_) {}
+        console.warn('[live] durable write refused:', first.message || first, first.details || '');
+        return false;
+      }
+      return true;
     },
     listen(onFrame, onStatus) {
       channel = sb.channel('game:' + gameId);
@@ -174,8 +225,8 @@ function supabaseTransport(gameId, sb) {
   };
 }
 
-const makeTransport = (gameId, mode, sb) =>
-  (mode === 'supabase' && sb) ? supabaseTransport(gameId, sb) : localTransport(gameId);
+const makeTransport = (gameId, mode, sb, onError) =>
+  (mode === 'supabase' && sb) ? supabaseTransport(gameId, sb, onError) : localTransport(gameId);
 
 /* ---------------------------------------------------------------- publisher */
 
@@ -183,7 +234,7 @@ const HEARTBEAT_MS = 5000;    // quiet-period resync; MUST stay well under STALE
 
 function publisher(opts) {
   const { gameId, mode, supabase } = opts;
-  const tx = makeTransport(gameId, mode, supabase);
+  const tx = makeTransport(gameId, mode, supabase, opts.onError);
   let buf = [], retract = [], timer = null, seqHigh = 0;
   let chain = Promise.resolve();        // sends run strictly in order
   const backlog = [];                       // frames that failed to send
@@ -212,17 +263,40 @@ function publisher(opts) {
                     state: opts.stateProvider ? opts.stateProvider() : null,
                     seq: ++seqHigh, at: Date.now() };
 
-    chain = chain.then(async () => {
-      try {
-        const ok = await tx.send(frame);
-        if (!ok) { backlog.push(frame); return; }
-        while (backlog.length) {                     // drain in order
-          const f = backlog[0];
-          if (await tx.send(f)) backlog.shift(); else break;
-        }
-      } catch (_) { backlog.push(frame); }
-    });
+    chain = chain.then(() => deliver(frame));
     return chain;
+  }
+
+  /* ---------------------------------------------------------------------------
+     ONE ORDERED WAY OUT, FOR EVERY KIND OF FRAME.
+
+     There were three, and two of them lost data.
+
+     THE BACKLOG WENT SECOND. A new frame was sent first and only then was the
+     backlog drained, so a frame held back by a failure was written AFTER
+     frames created later. For an event log keyed by seq that is merely untidy;
+     for a retraction it is corruption, because the delete of event 5 could
+     land after the insert of its replacement and take the replacement with it.
+     Held frames therefore go first, and a new frame joins the end of the queue
+     rather than jumping it.
+
+     pushState DID NOT BACKLOG AT ALL. Its .catch() only caught a THROWN error,
+     and a refused write does not throw — but a state frame carries whatever
+     events are buffered, and buf.splice(0) has already emptied them. So every
+     event that happened to ride out on a state frame was dropped on the floor
+     with no retry and no trace. That was the same silent loss as the swallowed
+     error, in a second place, and it is why this is now one function. */
+  async function deliver(frame) {
+    try {
+      while (backlog.length) {                       // held frames go FIRST
+        if (await tx.send(backlog[0])) backlog.shift();
+        else break;
+      }
+      if (backlog.length) { backlog.push(frame); return false; }
+      if (await tx.send(frame)) return true;
+      backlog.push(frame);
+      return false;
+    } catch (_) { backlog.push(frame); return false; }
   }
 
   /* A state frame carries whatever events are buffered, so it must not
@@ -232,7 +306,7 @@ function publisher(opts) {
     const frame = Object.assign({ gameId, events: buf.splice(0), removed: retract.splice(0),
                                   state, seq: ++seqHigh, at: Date.now() }, extra || {});
     if (timer) { clearTimeout(timer); timer = null; }
-    chain = chain.then(() => tx.send(frame)).catch(() => { backlog.push(frame); });
+    chain = chain.then(() => deliver(frame));
     return chain;
   }
 
@@ -292,7 +366,16 @@ function publisher(opts) {
       lastSend = Date.now();
       const frame = { gameId, events: allEvents || [], state, game,
                       full: true, seq: ++seqHigh, at: Date.now() };
-      chain = chain.then(() => tx.send(frame)).catch(() => {});  // next one repeats it
+      /* A snapshot is the one frame that may be dropped rather than held: it
+         is a whole-game replacement and the next one supersedes it entirely,
+         so a stale copy queued behind a failure is worse than none. It still
+         goes through deliver() so it cannot overtake the backlog. */
+      chain = chain.then(async () => {
+        while (backlog.length) {
+          if (await tx.send(backlog[0])) backlog.shift(); else return false;
+        }
+        try { return await tx.send(frame); } catch (_) { return false; }
+      });
       return chain;
     },
 
@@ -309,7 +392,7 @@ function publisher(opts) {
 
 function subscriber(opts) {
   const { gameId, mode, supabase, onSnapshot, onFrame, onStatus } = opts;
-  const tx = makeTransport(gameId, mode, supabase);
+  const tx = makeTransport(gameId, mode, supabase);   // a reader writes nothing
 
   let state = null;          // last known clock state
   let offset = 0;            // serverNow - Date.now()
