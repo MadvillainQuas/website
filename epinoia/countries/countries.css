@@ -144,8 +144,60 @@
   font-size:15px; line-height:1; color:var(--ink);
 }
 
-@media (max-width:560px){
-  .co-main{ padding-bottom:120px }
-  .co-card{ min-height:200px }
-  .co-flag{ font-size:130px; right:-6% }
+/* ==========================================================================
+   THE PHONE.
+
+   Matched to the splash's 640 breakpoint — this page shares that page's
+   stone-in-water design and had been adapting at 560, so between 561 and 640
+   the two halves of one look disagreed about what a phone is.
+
+   THE GRID COULD ACTUALLY OVERFLOW. repeat(auto-fill,minmax(300px,1fr)) in a
+   container of 100vw − 48px needs a 348px viewport to fit its own minimum. At
+   390px it just clears it; at 320px — an SE, a split screen, a large-font
+   reflow — the track is 28px wider than the box it is in. Stacked explicitly
+   below 640 there is no minimum left to breach.
+
+   THE HEADINGS WERE STUCK AT THEIR FLOOR. clamp(38px,7vw,74px) only clears
+   38px above a 543px viewport, so every phone rendered the identical 38px
+   heading and the clamp was doing nothing at all. This is the same bug that
+   was found and documented on the splash title and fixed only there;
+   .co-name had it too — clamp(19px,2vw,25px) needs a 950px viewport to leave
+   its floor, so it was 19px on every phone AND every tablet.
+
+   AND THE PAGE ENDED IN A SCREENFUL OF WATER: 140px of bottom padding held
+   clear for a fixed button ~36px tall, which after a two-country list is a
+   third of the screen of nothing.
+   ========================================================================== */
+@media (max-width:640px){
+  .co-main{ padding:clamp(22px,4vh,44px) calc(var(--u)*2) 104px }
+
+  .co-head{ margin-bottom:clamp(16px,3vh,30px) }
+  .co-head h1{ font-size:clamp(40px,12.5vw,74px) }
+  .co-head p{ font-size:11px; letter-spacing:.1em; line-height:1.55 }
+
+  .co-grid{ grid-template-columns:1fr; gap:calc(var(--u)*2) }
+
+  /* the cards size to what is in them; a country with one league was being
+     floored to 236px and spending most of it on empty stone */
+  .co-card{ min-height:0; padding:calc(var(--u)*2.25) calc(var(--u)*2) }
+  .co-name{ font-size:clamp(21px,6vw,26px) }
+  .co-count{ font-size:10px; letter-spacing:.13em; margin-top:6px }
+  .co-flag{ font-size:118px; right:-5%; bottom:-13% }
+
+  .co-leagues{ padding-top:calc(var(--u)*1.75) }
+  /* ~39px, and the hover affordance that says these are links never fires on
+     a touch device — so they get the height instead */
+  .co-league{ padding:13px 12px; gap:11px }
+  .co-league .nm{ font-size:15px }
+  .co-league .go{ font-size:13px }
+
+  /* bottom:24px sits under the browser chrome on a phone, and this page asks
+     for viewport-fit=cover without ever reading the inset back out */
+  .co-back{
+    left:calc(var(--u)*1.5);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + var(--u)*1.5);
+    padding:11px 17px 11px 13px;
+  }
+  .co-back .epinoia-mark{ font-size:16px }
+  .co-back-arrow{ font-size:18px }
 }

@@ -371,11 +371,6 @@
    padding is trimmed to match — .sp-title's desktop 32px side padding was
    sized for a 92px headline with room to spare, and left a 52px title
    fighting for the same width a 44px one had. */
-@media (max-width:640px){
-  .sp-title{ padding:calc(var(--u)*4) 18px calc(var(--u)*3); }
-  .sp-title h1{ font-size:clamp(46px, 14vw, 92px); }
-  .sp-title h1.epinoia-mark{ letter-spacing:.015em !important }
-}
 .sp-by{
   display:flex; align-items:center; justify-content:center; gap:10px;
   margin-top:calc(var(--u)*2);
@@ -507,7 +502,12 @@
 }
 .segs.three{ grid-template-columns:repeat(3,1fr) }
 .segs.two{ grid-template-columns:repeat(2,1fr) }
-@media (max-width:560px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
+/* 640, matching where .sp-decks itself goes single-column. These were 560 and
+   640, which left a 561–640px band — large phones in landscape, small tablets
+   — where the decks were stacked full-width but the mid deck was still THREE
+   columns inside that width: about 68px of content each, holding a 15px
+   uppercase title. Two numbers describing one decision have to be one number. */
+@media (max-width:640px){ .segs.three, .segs.two{ grid-template-columns:1fr } }
 
 /* A SEGMENT IS A SLICE OF THE SAME SLAB, not a card of its own: the marble
    runs across all of them, so the divisions read as cuts in one stone. */
@@ -665,4 +665,122 @@
 @media (prefers-reduced-motion:reduce){
   /* Motion is stopped elsewhere on this page; sound is not motion and is left
      to the visitor and their browser, which is already refusing to start it. */
+}
+
+/* ==========================================================================
+   THE PHONE.
+
+   This page was composed for a wide screen and then simply allowed to stack.
+   Four things made it read as a grey column rather than as stone in water:
+
+   IT OVERFLOWED. .sp-title and .sp-login are width:min(560px,92vw) inside a
+   .splash padded 24px a side. 92vw is only the smaller of the two above a
+   600px viewport — at 390px it is 359px inside a 342px box, so the slabs hung
+   ~17px past their own container and the page rubber-banded sideways. Add the
+   ±10/14px bleed of .slab's waterline pseudo-elements and it is worse. Fixed
+   by measuring against the container (100%) rather than the viewport, and by
+   clipping the decorative bleed rather than letting it scroll the page.
+
+   THE TYPE WAS LITERALLY 8px. The rest of the platform renders these labels
+   through body{zoom:1.25/1.5}; the splash deliberately opts out of that
+   (epinoia-kit.css), so 8px Silkscreen with .18em tracking is the real
+   rendered size on a phone. Every micro label is raised here, and its
+   tracking eased in proportion — tracking that flatters a label at 11px
+   shreds it at 8px.
+
+   THE CARDS WERE MOSTLY AIR. .seg is min-height:118px with .d pushed to the
+   bottom by margin-top:auto — sound on a desktop where three sit side by side
+   and need a common height, and on a phone it makes six stacked cards each
+   holding two words and a sentence, floor-lit to 118px. That alone was most
+   of the ~1400px scroll. Stacked, they size to their content instead.
+
+   AND NOTHING WAS HOVERABLE. .seg's label and description sit at --ink-2 and
+   only reach full ink on :hover, which no touch device will ever deliver — so
+   the phone permanently saw the dimmed state of a two-state design.
+   ========================================================================== */
+@media (max-width:640px){
+  /* --- the frame ------------------------------------------------------- */
+  .splash{
+    padding:calc(var(--u)*2);          /* 16px, from 24 */
+    overflow-x:clip;                   /* the slab waterline bleed, contained */
+  }
+
+  /* THE STONE HAD STOPPED READING AS STONE. The marble is tiled at 520px; a
+     slab on a 390px phone is ~359px wide and a segment barely half that, so
+     each one showed less than a single tile — a flat interior patch with no
+     vein crossing it, which is why the slabs photographed as muddy grey card
+     rather than as cut marble. Tightening the tile puts a whole figure of
+     veining inside every panel again at the size a phone actually renders it.
+
+     Safe to change here in a way the POOL's background-size is not: these two
+     are static, while every .pool layer's translate distance is derived from
+     its own tile size to keep the loop seamless (see the keyframes above), so
+     resizing one of those without re-deriving its keyframe reopens the seam. */
+  .slab, .seg{ background-size:auto, 330px 330px }
+  .sp-mid{ padding:calc(var(--u)*3) 0 calc(var(--u)*2); }   /* 24/16, from 48/32 */
+
+  /* measured against the container, not the viewport — this is the overflow */
+  .sp-title, .sp-login{ width:min(560px, 100%); }
+
+  /* --- the title plinth ------------------------------------------------ */
+  .sp-title{ padding:calc(var(--u)*3.5) 18px calc(var(--u)*2.5); }
+  .sp-title h1{ font-size:clamp(46px, 14vw, 92px); }
+  .sp-title h1.epinoia-mark{ letter-spacing:.015em !important }
+  /* the byline was engraved so faintly it read as a smudge at this size */
+  .sp-by{ margin-top:calc(var(--u)*1.5); font-size:10px; letter-spacing:.16em }
+  .sp-by img{ height:21px; filter:brightness(0) opacity(.6)
+              drop-shadow(0 1px 0 rgba(255,255,255,.9)) }
+
+  /* --- the sign-in card ------------------------------------------------ */
+  .sp-login{ padding:calc(var(--u)*2) calc(var(--u)*2); }
+  .sp-login h2{ font-size:10px; letter-spacing:.16em;
+                margin-bottom:calc(var(--u)*1.5) }
+  /* 16px is the threshold below which iOS zooms the page on focus — a phone
+     lurching in and out of a zoom to type an email address is the single
+     worst moment on this page, and it is one number */
+  /* min-height rather than padding arithmetic: these two sit on one row and
+     have different fonts and line-boxes, so padding alone leaves them a few
+     pixels apart and neither reliably clears 44 */
+  .sp-in{ font-size:16px; padding:12px 13px; min-height:44px }
+  .sp-btn{ padding:13px 18px; font-size:10px; letter-spacing:.14em;
+           min-height:44px; display:inline-flex; align-items:center;
+           justify-content:center }
+  .sp-or{ font-size:9px; margin:calc(var(--u)*1.5) 0 }
+  .sp-msg{ font-size:10px; line-height:1.7 }
+  .sp-who .em{ font-size:14px }
+
+  /* --- the decks ------------------------------------------------------- */
+  .sp-decks{ gap:calc(var(--u)*2); padding-bottom:calc(var(--u)*1.5) }
+  /* height:20px is a hard clip, and a heading one pixel taller than its box
+     loses its descenders rather than pushing the card down */
+  .deck-h{
+    height:auto; line-height:1.25; padding:0 0 7px 2px;
+    font-size:10px; letter-spacing:.16em;
+  }
+  .deck-h .epinoia-mark{ font-size:12.5px }
+
+  /* --- the segments ---------------------------------------------------- */
+  /* a slightly wider joint: stacked, a 2px seam between same-coloured stone
+     read as one undivided slab rather than as cut pieces */
+  .segs{ gap:3px }
+  .seg{
+    min-height:0;                    /* content sets the height when stacked */
+    padding:calc(var(--u)*1.75) calc(var(--u)*2);
+    gap:3px;
+  }
+  .seg .k{ font-size:9.5px; letter-spacing:.14em }
+  .seg .t{ font-size:16px }
+  /* margin-top:auto is what floors these cards at 118px of mostly nothing */
+  .seg .d{ margin-top:3px; font-size:10px; line-height:1.62 }
+  /* the resting state IS the state, so it carries the resting contrast */
+  .seg .k, .seg .d{ color:#41596a }
+  .seg.league .t{ font-size:15px }
+
+  /* --- the footer ------------------------------------------------------ */
+  .sp-foot{
+    gap:10px 18px; padding-top:calc(var(--u)*2);
+    font-size:10px; letter-spacing:.08em;
+  }
+  /* 8.5px text with no padding is an ~11px tap target */
+  .sp-foot a{ display:inline-block; padding:5px 0 }
 }
