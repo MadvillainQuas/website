@@ -1017,9 +1017,38 @@ html, body{ height:100dvh; }
      up it still covered three rows, because twenty players at 40px reach to
      within 70px of the bottom. Slightly smaller too, which buys the clearance
      without taking it below the 44px tap floor. */
-  #xCancel{top:auto; left:auto; right:10px; transform:none;
+  /* THREE discs are pinned to the middle of the screen — xCancel at top:44%,
+     delayB just above it and doneB just below — which is the centre of a
+     desktop court view and the centre of a phone's player list. Each has its
+     own pointer events, so the rows underneath were not merely veiled but
+     unreachable. Moving only two of them left doneB sitting on the roster
+     through the whole pending flow, which is exactly when a scorer is reading
+     those rows.
+
+     Only about 70px of this screen is clear of players — the strip beside the
+     legend — so they cannot stack. Confirm takes the right corner where a
+     right thumb rests, cancel takes the left, and putting the two furthest
+     apart is worth doing on its own: they are the two you least want to
+     confuse at speed. */
+  /* THE ROSTER SCROLLS, so the control strip costs it nothing to make room.
+
+     .plist is overflow-y:auto, and in a pending step the columns run to within
+     20px of the bottom — there is no clear strip left for the discs to sit in,
+     and each was covering the last row. Padding the scroller rather than
+     shrinking it means no row is lost: the last one simply scrolls up above
+     the buttons instead of hiding behind them. */
+  .plist{padding-bottom:58px; scroll-padding-bottom:58px;}
+
+  #doneB{top:auto; left:auto; right:10px; transform:none;
     bottom:calc(env(safe-area-inset-bottom) + 6px);
     width:50px; height:50px;}
+  #xCancel{top:auto; right:auto; left:10px; transform:none;
+    bottom:calc(env(safe-area-inset-bottom) + 6px);
+    width:50px; height:50px;}
+  /* delayB (+10s) shows whenever there is a pending step or a substitution in
+     progress, so it IS beside a full roster. It is a small pill rather than a
+     disc, and it sits above confirm on the right; measured below to confirm it
+     clears the last row. */
   #delayB{top:auto; left:auto; right:10px; transform:none;
     bottom:calc(env(safe-area-inset-bottom) + 62px);}
 }
@@ -4259,10 +4288,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=119" defer></script>
-<script src="../vendor/supabase.js?v=119" defer></script>
-<script src="../live.js?v=119" defer></script>
-<script src="sync.js?v=119" defer></script>
-<script src="bootstrap.js?v=119" defer></script>
+<script src="../config.js?v=122" defer></script>
+<script src="../vendor/supabase.js?v=122" defer></script>
+<script src="../live.js?v=122" defer></script>
+<script src="sync.js?v=122" defer></script>
+<script src="bootstrap.js?v=122" defer></script>
 </body>
 </html>
