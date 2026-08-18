@@ -1048,8 +1048,38 @@ html, body{ height:100dvh; }
      scoreboard and 50 of gutter is 222px of chrome against 138 of roster. This
      wins back roughly 45 — enough to matter, not enough to show all twenty
      players, which at 40px a row would need the chrome under 120px total. */
+  /* THE CHROME COMES DOWN TO ABOUT 120px, WHICH IS WHAT THE ROSTER NEEDS.
+
+     Of the three ways to find that space — icons here, the sub bar hidden
+     behind the sheet handle, or the bench dropped to a scroll — this is the
+     only one that costs nothing mid-game. A control you have to open a sheet
+     to reach is a control you do not use while a possession is live, and the
+     bench is exactly what a substitution needs to see.
+
+     The labels go, the icons stay. font-size:0 on the button with the icon
+     restored is the way to drop a bare text node that has no element of its
+     own to hide — "pause" and "resume" sit loose inside the button, after the
+     icon span. The key caps are already suppressed below 900px. */
+  #subbar .sub{font-size:0; min-height:36px; padding:4px 6px; gap:0;}
+  #subbar .sub .ic{font-size:15px; margin:0;}
+  #subbar .sub .cap{display:none;}
+  #topbar .act{padding:6px 9px;}
+
+  /* the scoreboard keeps the clock, the score and the period — at a glance
+     size rather than a desk size */
+  #scorebox{padding:3px 8px;}
+  #scorebox .clockbig{font-size:22px;}
+  .thead{padding:3px 8px;}
+
   #sheetHandle{height:24px; min-height:24px;}
-  #cols{padding-bottom:34px !important;}
+  #cols{padding-bottom:10px !important;}
+  /* The rows measure 51px here, not the 40 the portrait rule sets — a landscape
+     row is wider so its content lays out shorter, and the base height wins.
+     Five rows a column at 51 needs 255px against the 91 available, so this is
+     the difference between three rows visible and one. 36 keeps the tap target
+     at the accessibility floor. */
+  .plist .prow{min-height:36px; padding:3px 8px;}
+  .thead{padding:2px 8px;}
   #scorebox{padding:4px 10px;}
   #subbar{padding:3px 0; gap:4px;}
   #subbar .sub{min-height:42px; padding:4px 7px;}
@@ -4441,10 +4471,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=130" defer></script>
-<script src="../vendor/supabase.js?v=130" defer></script>
-<script src="../live.js?v=130" defer></script>
-<script src="sync.js?v=130" defer></script>
-<script src="bootstrap.js?v=130" defer></script>
+<script src="../config.js?v=132" defer></script>
+<script src="../vendor/supabase.js?v=132" defer></script>
+<script src="../live.js?v=132" defer></script>
+<script src="sync.js?v=132" defer></script>
+<script src="bootstrap.js?v=132" defer></script>
 </body>
 </html>
