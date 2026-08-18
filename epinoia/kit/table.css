@@ -171,14 +171,22 @@ table.ft td.neg{ color:var(--bad,#ff5f6b) }
      that started mid-table: the browser had to decide which axis the gesture
      belonged to, and it decided in the table's favour, so a vertical swipe
      over the middle of a wide table never reached the page underneath.
-     overflow-y:hidden removes the ambiguity (there is nothing to clip once
-     the height cap above is gone) and touch-action:pan-x tells the browser
-     outright, before the first pixel of movement, that this box only pans
-     sideways — a vertical touch is the page's scroll from the start. */
+
+     overflow-y:hidden plus touch-action:pan-x was the textbook fix for that
+     — and reported back broken twice, on a real phone, after CSS alone
+     said it should work. Rather than tune touch-action a third time, this
+     removes the thing being tuned: overflow-x is hidden here too, so the
+     browser's native touch-scroll machinery has NO scrollable surface on
+     this box at all, in either direction — nothing left for it to
+     ambiguously claim. Horizontal panning is reimplemented by hand in
+     fulltable.js's wireHorizontalDrag(), the same "do not capture the
+     pointer until a drag has clearly gone sideways" rule the fixture strip
+     already uses, so a vertical touch is released untouched at the first
+     sign it is vertical and the page's own scroll takes it from there. */
   .ft-wrap{
     max-height:none;          /* the page scroll is enough on a phone */
-    overflow-y:hidden;
-    touch-action:pan-x;
+    overflow:hidden;
+    touch-action:pan-y;
   }
   table.ft thead th{ position:static } /* and a sticky header eats too much of it */
 }
