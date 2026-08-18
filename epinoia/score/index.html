@@ -95,30 +95,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 .act.armed .kcap,.sub.on .kcap{color:#02150c;border-color:rgba(2,21,12,.35);}
 .sub{position:relative;}
 .ur{position:relative;}
-@media (max-width:899px){
-  .kcap{display:none;}
-  /* THE ACCESSIBILITY FLOOR IS ALSO THE PRACTICAL ONE. The collapse chevron
-     was 21px square — a target a thumb misses more often than it hits, on a
-     screen where a mis-tap during a live game costs a possession. The box
-     grows without the glyph growing, so nothing about the look changes. */
-  .collapsebtn{min-width:40px;min-height:40px;display:inline-flex;
-    align-items:center;justify-content:center;}
 
-  /* THE PLAYER ROW IS THE MOST-TAPPED THING IN THE APP, and it was 28px tall.
-
-     Every shot, foul, turnover and rebound ends with a thumb landing on one of
-     these, twenty of them stacked in two columns, and 28px is under two-thirds
-     of the accessibility floor — on a screen where a mis-tap puts a basket
-     against the wrong player and has to be undone mid-possession. It also has
-     to hold a press for half a second without sliding off, which a short row
-     makes harder than the timing does.
-
-     40px rather than 44: ten rows a column at 44 is 440px and pushes the
-     bench off the screen, which trades one mis-tap for another. The type is
-     unchanged — the row grows around it. */
-  .prow{min-height:40px;}
-  .prow.bench{min-height:38px;}
-}
 input{font:inherit;color:var(--txt);}
 .hidden{display:none !important;}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -979,6 +956,72 @@ html, body{ height:100dvh; }
   overflow-y:auto;
   overscroll-behavior:contain;
   padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
+}
+
+/* ===========================================================================
+   PHONE OVERRIDES LIVE AT THE END OF THIS STYLESHEET, and that is load-bearing.
+
+   These are id and single-class selectors matching the base rules exactly, so
+   the cascade decides on ORDER alone. Written further up — next to the rules
+   they modify, which is where they naturally belong — #ctrlHelp's padding and
+   #xCancel's position both lost to their own base declarations lower down, and
+   the legend kept taking 29% of the screen while the cancel disc kept sitting
+   on four player rows. Nothing about the rules said so; only measuring did.
+   =========================================================================== */
+@media (max-width:899px){
+  .kcap{display:none;}
+  /* THE ACCESSIBILITY FLOOR IS ALSO THE PRACTICAL ONE. The collapse chevron
+     was 21px square — a target a thumb misses more often than it hits, on a
+     screen where a mis-tap during a live game costs a possession. The box
+     grows without the glyph growing, so nothing about the look changes. */
+  .collapsebtn{min-width:40px;min-height:40px;display:inline-flex;
+    align-items:center;justify-content:center;}
+
+  /* THE PLAYER ROW IS THE MOST-TAPPED THING IN THE APP, and it was 28px tall.
+
+     Every shot, foul, turnover and rebound ends with a thumb landing on one of
+     these, twenty of them stacked in two columns, and 28px is under two-thirds
+     of the accessibility floor — on a screen where a mis-tap puts a basket
+     against the wrong player and has to be undone mid-possession. It also has
+     to hold a press for half a second without sliding off, which a short row
+     makes harder than the timing does.
+
+     40px rather than 44: ten rows a column at 44 is 440px and pushes the
+     bench off the screen, which trades one mis-tap for another. The type is
+     unchanged — the row grows around it. */
+  .prow{min-height:40px;}
+  .prow.bench{min-height:38px;}
+
+  /* THE LEGEND WAS TAKING 232px OF AN 812px SCREEN — nearly a third of it, to
+     say three short things. Almost all of that is a 96px top padding whose job
+     is to fade the scrim in over a roomy desktop layout; on a phone it draws a
+     dark veil across the bottom third of the roster, which is where the bench
+     is. The lines themselves are 22px each.
+
+     A thin bar instead. The scrim still separates the legend from the court —
+     it just stops halfway up the players. */
+  #ctrlHelp{padding:18px 10px calc(env(safe-area-inset-bottom) + 10px); gap:5px;}
+  .hline{font-size:10px; gap:7px;}
+  .hkey{padding:4px 9px; font-size:9px;}
+
+  /* AND THE CANCEL BUTTON SAT IN THE MIDDLE OF THE ROSTER. top:44% is the
+     centre of a desktop court view and the centre of a phone's player list —
+     a 58px disc over two of the rows a scorer is trying to hit. It has
+     pointer-events of its own, so those rows were not merely veiled, they were
+     unreachable.
+
+     Bottom-right, above the legend, where a right thumb already rests and
+     nothing else lives. */
+  /* Right thumb, ON the legend bar — the only strip of this screen that is
+     not roster. Anywhere higher and it lands on the bench: measured at 96px
+     up it still covered three rows, because twenty players at 40px reach to
+     within 70px of the bottom. Slightly smaller too, which buys the clearance
+     without taking it below the 44px tap floor. */
+  #xCancel{top:auto; left:auto; right:10px; transform:none;
+    bottom:calc(env(safe-area-inset-bottom) + 6px);
+    width:50px; height:50px;}
+  #delayB{top:auto; left:auto; right:10px; transform:none;
+    bottom:calc(env(safe-area-inset-bottom) + 62px);}
 }
 </style>
 </head>
@@ -4216,10 +4259,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=116" defer></script>
-<script src="../vendor/supabase.js?v=116" defer></script>
-<script src="../live.js?v=116" defer></script>
-<script src="sync.js?v=116" defer></script>
-<script src="bootstrap.js?v=116" defer></script>
+<script src="../config.js?v=119" defer></script>
+<script src="../vendor/supabase.js?v=119" defer></script>
+<script src="../live.js?v=119" defer></script>
+<script src="sync.js?v=119" defer></script>
+<script src="bootstrap.js?v=119" defer></script>
 </body>
 </html>
