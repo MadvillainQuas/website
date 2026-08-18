@@ -1165,8 +1165,13 @@
                        anywhere and touches no fixture. This is the thing a
                        curious visitor should be able to reach, and gating it
                        would be gating the demo.
-       ?g=<fixture>    can_score() for that game, exactly as before, since the
-                       row-level policies ask the same function.
+       ?g=<fixture>    may_score_game() for that game — WHO may score it, not
+                       whether it is open to writes this second. can_score()
+                       is the narrower write gate and refuses a fixture that
+                       has been reverted, which is precisely the fixture a
+                       scorer is arriving to re-claim; asking it here locked
+                       people out of the reopen they came to do. The write
+                       itself is still gated by can_score at the row level.
        neither         may this account score ANYTHING? Assigned to a game, or
                        an administrator of a league, or a platform admin. The
                        same predicate the rail uses to decide whether to show
@@ -1261,7 +1266,7 @@
       try {
         const { data: { session } } = await sb.auth.getSession();
         if (session) {
-          const { data, error } = await sb.rpc('can_score', { p_game: gameId });
+          const { data, error } = await sb.rpc('may_score_game', { p_game: gameId });
           allowed = !error && data === true;
         }
       } catch (_) { allowed = false; }

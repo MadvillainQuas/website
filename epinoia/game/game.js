@@ -230,13 +230,27 @@ function renderShell() {
    scorer, opened on THIS game, and until now the only route was the rail's
    generic "score a game" and then finding the fixture again in a list.
 
-   WHO SEES IT IS DECIDED BY THE DATABASE, not by this page. can_score() is the
-   same function the row-level policies use, so the button appears exactly when
-   the write would be allowed — an assigned statistician, a league administrator
-   of the owning league, or a platform administrator, and never once the game is
-   final. A page that offered the button on its own guess would eventually offer
-   it to somebody who then got refused by the scorer, which is a worse
-   experience than not offering it.
+   WHO SEES IT IS DECIDED BY THE DATABASE, not by this page — but by the right
+   question, which took a second go. 0068 split the old permission in two:
+
+     may_score_game(g)  WHO. An assigned statistician, a league administrator
+                        of the owning league, or a platform administrator.
+     can_score(g)       WHO **and** whether the game is currently open to
+                        event writes.
+
+   This button asked can_score, on the reasoning that it should appear exactly
+   when the write would be allowed. That is wrong for a REVERTED fixture.
+   can_score deliberately refuses a scheduled game carrying reverted_at, so
+   that a scorer left open on a fixture someone just put back cannot rebuild
+   the log that was discarded — and the button vanished from the one page where
+   the fixture needs re-claiming, leaving the admin console as the only route
+   back. 0068 says as much itself about the games_update policy: re-claiming is
+   judged on WHO, not on the state the row is in.
+
+   So the button asks WHO. Clicking it opens the scorer, which claims the
+   fixture by taking it live; the trigger clears reverted_at on the way, and
+   can_score is true again by the time the first event is written. The write
+   gate is untouched and still strictly narrower than the button.
 
    NO SDK IS LOADED FOR THIS. The session token is read straight out of storage
    the way nav.js reads it, and the check is one small POST with a bearer token.
@@ -325,11 +339,11 @@ async function offerToScore() {
   if (!token) return;                          // try again once signed in
   scoreChecking = true;
   try {
-    const ok = await withRetry(() => rpcCall('can_score', { p_game: gameId }, token));
+    const ok = await withRetry(() => rpcCall('may_score_game', { p_game: gameId }, token));
     if (ok !== true) {
       /* Silence here meant a missing button with no way to tell whether the
          account was refused, the request failed, or the code never ran. */
-      console.info('[epinoia] "score this game" hidden: can_score returned',
+      console.info('[epinoia] "score this game" hidden: may_score_game returned',
                    ok, '— signed in as', (storedToken() ? 'yes' : 'no'));
       return;
     }

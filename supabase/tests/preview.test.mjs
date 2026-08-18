@@ -197,5 +197,46 @@ ok('no map is drawn when there is nowhere to point at',
 }
 
 
+
+/* ---- the button asks WHO, and the write gate asks WHEN --------------------
+   A reverted fixture is scheduled with reverted_at set, and 0068 makes
+   can_score() refuse it on purpose: a scorer left open on a game somebody just
+   put back must not rebuild the log that was discarded. The "score this game"
+   button was asking can_score, so it disappeared from the one page where a
+   reverted fixture gets re-claimed - the admin console became the only way
+   back. 0068 already draws this distinction for its own games_update policy:
+   re-claiming is judged on WHO, never on the state the row is in.
+
+   Both client checks therefore ask may_score_game(). The write gate is
+   untouched, still narrower, and still enforced by the database rather than
+   by anything asserted here. */
+{
+  const fs = require('node:fs');
+  const gameSrc = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');
+  const bootSrc = fs.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+  const calls = src => (src.match(/rpcCall\('(\w+)'|rpc\('(\w+)'/g) || []).join(' ');
+
+  ok('the game page reveals the CTA on may_score_game',
+     /rpcCall\('may_score_game'/.test(gameSrc));
+  ok('...and no longer on can_score, which a reverted fixture fails by design',
+     !/can_score/.test(calls(gameSrc)), calls(gameSrc));
+  ok('the scorer gate for ?g= asks may_score_game too',
+     /rpc\('may_score_game'/.test(bootSrc));
+  ok('...so clicking through is not refused by the gate the button just passed',
+     !/can_score/.test(calls(bootSrc)), calls(bootSrc));
+  ok('the revert CTA still asks the management permission, not the scoring one',
+     /rpcCall\('can_manage_game'/.test(gameSrc));
+
+  /* The migration this depends on has to actually grant the function, or every
+     signed-in user gets a silent false and the button never appears. */
+  const mig = fs.readFileSync(
+    path.join(ROOT, 'supabase', 'migrations', '0068_revert_is_final.sql'), 'utf8');
+  ok('may_score_game is executable by signed-in users',
+     /grant execute on function public\.may_score_game\(uuid\) to authenticated/i.test(mig));
+  ok('and can_score is still the stricter of the two',
+     /create or replace function public\.can_score[\s\S]{0,700}reverted_at is not null/.test(mig));
+}
+
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
