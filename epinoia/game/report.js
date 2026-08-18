@@ -583,21 +583,51 @@ function sectionLineups(g, fs, R) {
   return out;
 }
 
+/* A shooting line in words. spell(0) is "no", which is right for counting
+   ("no assists") and wrong the moment it lands in "shot no of eight" — a
+   scoreless line is missed, not counted. */
+function fromField(fgm, fga) {
+  if (!fga) return null;
+  /* Both figures in the same register. spell() only spells to twelve, so a
+     line of thirteen attempts came out as "two of 13" — half word, half
+     numeral, which is the kind of seam that makes prose look machine-set.
+     Past twelve, both go to digits. */
+  const big = fgm > 12 || fga > 12;
+  const n = v => big ? String(v) : spell(v);
+  if (!fgm) return 'missed all ' + n(fga);
+  return n(fgm) + ' of ' + n(fga);
+}
+
+/* ---------------------------------------------------------------------------
+   THE PERFORMANCES, AS A PARAGRAPH.
+
+   This emitted one sentence per player, in salience order, and it read exactly
+   like what it was — a list with full stops in it:
+
+       Ronan Petrelli top-scored for East Dock with 22.
+       Ade Bankole picked up his fifth and was done.
+       Harvey Cline fouled out for Harbour Bay.
+       Rasheed Marchetti fouled out.
+       Tomas Iwu could not find it, one of nine.
+       Julien Diallo shot no of eight for Harbour Bay.
+
+   Three separate foul-outs, each phrased differently for variety's sake, is
+   not variety — it is the same fact three times, and a person writing this
+   would say "Bankole, Cline and Marchetti all fouled out" and move on. The
+   problem was never the phrasing of any one line; it was that every fact got
+   a sentence of its own regardless of whether it deserved one.
+
+   So the section is composed rather than listed. Players are grouped by what
+   they did — who scored it, who else contributed, who struggled, who fouled
+   out — and each group becomes one sentence that can name several people. A
+   player may appear twice where that is natural, because leading the scoring
+   and fouling out are two different things worth knowing about the same man.
+   --------------------------------------------------------------------------- */
 function sectionPlayers(g, fs, R) {
   const out = [];
-  const kinds = ['tripleDouble', 'doubleDouble', 'bigScore', 'aboveSelf', 'creator',
-                 'shooter', 'defender', 'efficient', 'belowSelf', 'fouledOut',
-                 'drawsFouls', 'inefficient'];
-  const seen = new Set(), picked = [];
-  fs.filter(f => kinds.indexOf(f.kind) >= 0).forEach(f => {
-    const id = f.data.p && f.data.p.id;
-    if (!id || seen.has(id)) return;
-    seen.add(id); picked.push(f);
-  });
+  const byKind = k => fs.filter(f => f.kind === k);
+  const nameOf = p => esc(tc(p.name));
 
-  /* "led" is a claim about the whole team, not about the player it is attached
-     to. Firing it per-fact produced two different players leading the same side
-     in one report. */
   const topScorer = [0, 1].map(t => g.players
     .filter(p => p.team === t)
     .reduce((best, p) => (!best || (p.pts || 0) > (best.pts || 0) ? p : best), null));
@@ -608,135 +638,115 @@ function sectionPlayers(g, fs, R) {
     if (!S || !S.players) return null;
     return S.players.find(x => x.id === id) || null;
   };
-
-  /* SALIENCE ORDERS THE FACTS; THE PARAGRAPH ORDERS THE PEOPLE.
-     Ranking purely by salience put "Cline added 17" above "Bankole led Harbour
-     Bay with 19" — a season-context fact outscoring the team's actual leading
-     scorer — which reads as though the writer had lost track of the game. A
-     side's leader is introduced before their team-mates; after that, points. */
-  lastPick = null;
-  picked.sort((x, y) => {
-    const px = x.data.p, py = y.data.p;
-    const lx = isLeader(px) ? 1 : 0, ly = isLeader(py) ? 1 : 0;
-    if (lx !== ly) return ly - lx;
-    return (py.pts || 0) - (px.pts || 0);
-  });
-
-  picked.slice(0, 6).forEach(f => {
-    const p = f.data.p;
-    const nme = esc(tc(p.name));
-    const sd = p.id + f.kind;
-    const pts = p.pts || 0;
-    const reb = (p.or || 0) + (p.dr || 0);
-    const fgm = (p.p2m || 0) + (p.p3m || 0), fga = (p.p2a || 0) + (p.p3a || 0);
+  const aboveAverage = p => {
     const sp = seasonOf(p.id);
-    const gap = (sp && num(sp.ppg) != null) ? pts - sp.ppg : null;
-    const big = gap != null && gap >= 6;
-    /* A player is only ever introduced with their side named. "Behind him,
-       Boateng contributed 21" put a Soft Club player behind an East Dock one:
-       the referring expression was doing work across a team boundary it could
-       not see. Every sentence here names the club or nothing at all. */
-    const side = R.obj(f.side);
+    return sp && num(sp.ppg) != null && (p.pts || 0) - sp.ppg >= 6;
+  };
 
-    if (f.kind === 'tripleDouble') {
-      out.push(pickVaried(sd, [
-        nme + ' filled the sheet for ' + side + ' \u2014 ' + pts + ' points, ' +
-          spell(reb) + ' rebounds and ' + spell(p.ast || 0) + ' assists.',
-        'A triple-double for ' + nme + ', who had a hand in everything ' + side +
-          ' did.'
-      ]));
+  /* an English list: "A", "A and B", "A, B and C" */
+  const list = xs => xs.length === 1 ? xs[0]
+    : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
 
-    } else if (f.kind === 'doubleDouble') {
-      out.push(pickVaried(sd, [
-        nme + ' went for ' + pts + ' and ' + spell(reb) + ' on the glass for ' + side + '.',
-        nme + ' had a double-double for ' + side + ', ' + pts + ' points and ' +
-          spell(reb) + ' rebounds.',
-        'It was a double-double for ' + nme + ' \u2014 ' + pts + ' and ' +
-          spell(reb) + ' boards.'
-      ]));
+  /* The same list with the VERB ELIDED after the first item, which is how
+     English does this and the writer was not: "Boateng added 21 and Kowalski
+     added 19" repeats a word the reader has already been given. Each entry
+     supplies both forms and the first keeps its verb. */
+  const elide = xs => xs.length === 1 ? xs[0].full
+    : xs[0].full + (xs.length === 2 ? ' and ' + xs[1].short
+        : ', ' + xs.slice(1, -1).map(x => x.short).join(', ') +
+          ' and ' + xs[xs.length - 1].short);
 
-    } else if (f.kind === 'bigScore' || f.kind === 'aboveSelf') {
-      if (isLeader(p)) {
-        out.push(pickVaried(sd, [
-          nme + ' led ' + side + ' with ' + pts +
-            (big ? ', a season high.' : '.'),
-          nme + ' top-scored for ' + side + ' with ' + pts +
-            (big ? ', well up on his average.' : '.'),
-          pts + ' points from ' + nme + ' carried ' + side + '.'
-        ]));
-      } else {
-        out.push(pickVaried(sd, [
-          nme + ' added ' + pts + ' for ' + side + '.',
-          nme + ' chipped in ' + pts + ' for ' + side +
-            (big ? ', well up on his usual.' : '.'),
-          'There were ' + pts + ' more from ' + nme + '.'
-        ]));
-      }
+  /* ---- who scored it -------------------------------------------------- */
+  /* Highest first. Listing "led by Sandoval with 27 and Moreau with 29" puts
+     the bigger number second under a phrase that claims the first led. */
+  const leaders = [0, 1].map(t => topScorer[t])
+    .filter(p => p && (p.pts || 0) >= 10)
+    .sort((a, b) => (b.pts || 0) - (a.pts || 0));
+  if (leaders.length === 2) {
+    const [a, b] = leaders;
+    out.push(pickVaried('lead' + a.id + b.id, [
+      nameOf(a) + ' led ' + R.obj(a.team) + ' with ' + a.pts + ', and ' +
+        nameOf(b) + ' had ' + b.pts + ' for ' + R.obj(b.team) + '.',
+      nameOf(a) + ' top-scored for ' + R.obj(a.team) + ' with ' + a.pts +
+        ', while ' + nameOf(b) + ' had ' + b.pts + ' for ' + R.obj(b.team) + '.',
+      'The scoring was led by ' + nameOf(a) + ' with ' + a.pts + ' and ' +
+        nameOf(b) + ' with ' + b.pts + '.'
+    ]));
+  } else if (leaders.length === 1) {
+    const a = leaders[0];
+    out.push(nameOf(a) + ' led ' + R.obj(a.team) + ' with ' + a.pts +
+      (aboveAverage(a) ? ', a season high.' : '.'));
+  }
 
-    } else if (f.kind === 'creator') {
-      out.push(pickVaried(sd, [
-        nme + ' ran the offence for ' + side + ', ' + spell(p.ast || 0) + ' assists.',
-        'Most of what ' + side + ' got came through ' + nme + ' \u2014 ' +
-          spell(p.ast || 0) + ' assists.',
-        nme + ' had ' + spell(p.ast || 0) + ' assists for ' + side + '.'
-      ]));
-
-    } else if (f.kind === 'shooter') {
-      out.push(pickVaried(sd, [
-        nme + ' hit ' + spell(p.p3m || 0) + ' from three for ' + side + '.',
-        nme + ' was ' + spell(p.p3m || 0) + ' of ' + spell(p.p3a || 0) +
-          ' from beyond the arc.',
-        'From deep it was ' + nme + ', ' + spell(p.p3m || 0) + ' of ' +
-          spell(p.p3a || 0) + '.'
-      ]));
-
-    } else if (f.kind === 'defender') {
-      const bits = [];
-      if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
-      if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
-      const what = bits.join(' and ') || 'a busy night defensively';
-      out.push(pickVaried(sd, [
-        nme + ' was the problem at the defensive end \u2014 ' + what + '.',
-        nme + ' had ' + what + ' for ' + side + '.',
-        'Defensively, ' + nme + ' finished with ' + what + '.'
-      ]));
-
-    } else if (f.kind === 'efficient') {
-      out.push(pickVaried(sd, [
-        nme + ' was ' + spell(fgm) + ' of ' + spell(fga) + ' from the field.',
-        nme + ' shot it cleanly, ' + spell(fgm) + ' of ' + spell(fga) + '.',
-        'Nothing was forced from ' + nme + ' \u2014 ' + spell(fgm) + ' of ' +
-          spell(fga) + '.'
-      ]));
-
-    } else if (f.kind === 'belowSelf') {
-      out.push(pickVaried(sd, [
-        nme + (pts === 0 ? ' did not score.' : ' was held to ' + spell(pts) + '.'),
-        nme + ' never got going for ' + side +
-          (pts === 0 ? ', scoreless.' : ', ' + spell(pts) + ' points.'),
-        'It was a quiet night for ' + nme + '.'
-      ]));
-
-    } else if (f.kind === 'fouledOut') {
-      out.push(pickVaried(sd, [
-        nme + ' fouled out.',
-        nme + ' fouled out for ' + side + '.',
-        nme + ' picked up his fifth and was done.'
-      ]));
-
-    } else if (f.kind === 'drawsFouls') {
-      out.push(pickVaried(sd, [
-        nme + ' drew ' + spell(p.fd || 0) + ' fouls.',
-        'Nobody drew more contact than ' + nme + '.'
-      ]));
-
-    } else {
-      out.push(pickVaried(sd, [
-        nme + ' could not find it, ' + spell(fgm) + ' of ' + spell(fga) + '.',
-        nme + ' shot ' + spell(fgm) + ' of ' + spell(fga) + ' for ' + side + '.'
-      ]));
-    }
+  /* ---- who else contributed ------------------------------------------- */
+  const support = [];
+  const seen = new Set(leaders.map(p => p.id));
+  byKind('bigScore').concat(byKind('aboveSelf')).forEach(f => {
+    const p = f.data.p;
+    if (seen.has(p.id) || isLeader(p)) return;
+    seen.add(p.id);
+    support.push({ p: p, full: nameOf(p) + ' added ' + p.pts,
+                   short: nameOf(p) + ' ' + p.pts });
   });
+  if (support.length) {
+    const tail = (support.length === 1 && aboveAverage(support[0].p))
+      ? ', well up on his usual.' : '.';
+    out.push(elide(support.slice(0, 3)) + tail);
+  }
+
+  /* ---- the specialists ------------------------------------------------- */
+  const specials = [];
+  byKind('creator').slice(0, 2).forEach(f => {
+    const p = f.data.p;
+    specials.push({ full: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists',
+                    short: nameOf(p) + ' ' + spell(p.ast || 0) });
+  });
+  byKind('shooter').slice(0, 2).forEach(f => {
+    const p = f.data.p;
+    if (seen.has(p.id)) return;
+    specials.push({ full: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three',
+                    short: nameOf(p) + ' ' + spell(p.p3m || 0) });
+  });
+  byKind('defender').slice(0, 2).forEach(f => {
+    const p = f.data.p;
+    const bits = [];
+    if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
+    if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
+    if (bits.length) specials.push({ full: nameOf(p) + ' finished with ' + bits.join(' and '),
+                                     short: nameOf(p) + ' ' + bits.join(' and ') });
+  });
+  if (specials.length) out.push(elide(specials.slice(0, 3)) + '.');
+
+  /* ---- who struggled --------------------------------------------------- */
+  const rough = [];
+  byKind('belowSelf').concat(byKind('inefficient')).forEach(f => {
+    const p = f.data.p;
+    if (rough.some(r => r.id === p.id)) return;
+    /* A name alone in a list of shooting lines reads as an omission. Somebody
+       who never got a shot away is described, not left bare. */
+    const shot = fromField((p.p2m || 0) + (p.p3m || 0), (p.p2a || 0) + (p.p3a || 0));
+    const note = shot ? ' (' + shot + ')' : ((p.pts || 0) === 0 ? ' (scoreless)' : '');
+    rough.push({ id: p.id, txt: nameOf(p) + note });
+  });
+  if (rough.length) {
+    const who = list(rough.slice(0, 3).map(r => r.txt));
+    out.push(pickVaried('rough' + rough.length, [
+      'It was a long night for ' + who + '.',
+      who + ' never got going.',
+      'Little went right for ' + who + '.'
+    ]));
+  }
+
+  /* ---- who fouled out --------------------------------------------------- */
+  /* One sentence however many there are. Three foul-outs given three sentences
+     was the clearest symptom of the old shape. */
+  const dq = byKind('fouledOut').map(f => nameOf(f.data.p));
+  if (dq.length) {
+    out.push(dq.length === 1
+      ? dq[0] + ' fouled out.'
+      : list(dq) + (dq.length === 2 ? ' both fouled out.' : ' all fouled out.'));
+  }
+
   return out;
 }
 

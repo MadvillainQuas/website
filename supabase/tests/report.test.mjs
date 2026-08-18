@@ -389,5 +389,67 @@ ok('...and drives the same engine the browser does',
      String((html.match(/The performances/g) || []).length));
 }
 
+/* ---- the performances must read as a paragraph, not a list --------------
+   This section emitted one sentence per fact in salience order, which put
+   three separate foul-outs on three separate lines and a bare "shot no of
+   eight" among them. The faults are structural, so the tests are too. */
+{
+  const many = Report.report(game({
+    players: [
+      mk('a1', 'alpha one', 0, { pts: 26, p2m: 9, p2a: 15, dr: 5 }),
+      mk('a2', 'alpha two', 0, { pts: 21, p2m: 8, p2a: 14 }),
+      mk('a3', 'alpha three', 0, { pts: 4, p2m: 0, p2a: 8, pf: 5, dq: true, min: 900000 }),
+      mk('b1', 'beta one', 1, { pts: 22, p2m: 9, p2a: 16, dr: 6 }),
+      mk('b2', 'beta two', 1, { pts: 2, p2m: 0, p2a: 9, pf: 5, dq: true, min: 900000 }),
+      mk('b3', 'beta three', 1, { pts: 5, p2m: 1, p2a: 7, pf: 5, dq: true, min: 900000 })
+    ],
+    byId: {}
+  }));
+  const sec = many.sections.find(x => x.card === 'players');
+  const prose = sec ? sec.paras.join(' ') : '';
+
+  /* three foul-outs are one sentence, not three */
+  const dqLines = (sec ? sec.paras : []).filter(x => /fouled out/.test(x));
+  ok('however many foul out, it is one sentence', dqLines.length <= 1,
+     dqLines.join(' || '));
+  ok('...and it names them together',
+     !dqLines.length || /all fouled out|both fouled out/.test(dqLines[0]),
+     dqLines[0]);
+
+  /* the zero-word bug, in every branch that prints a shooting line */
+  ok('a scoreless line is never "no of eight"',
+     !/\bno of \w+/.test(prose) && !/shot no\b/.test(prose), prose);
+  ok('...it is phrased as missing them', !/\(no\b/.test(prose), prose);
+
+  /* the section is composed: fewer paragraphs than players mentioned */
+  const named = (prose.match(/Alpha|Beta/g) || []).length;
+  ok('players are grouped rather than given a sentence each',
+     !sec || sec.paras.length < named, (sec ? sec.paras.length : 0) + ' paras, ' + named + ' mentions');
+
+  /* a verb is not repeated across an elided list */
+  ok('a list does not repeat its verb',
+     !/added \d+ and \w+ \w+ added \d+/.test(prose), prose);
+
+  /* the higher scorer is named first where both leaders appear */
+  const lead = (sec ? sec.paras[0] : '') || '';
+  const nums = (lead.match(/\b\d+\b/g) || []).map(Number);
+  ok('the leading scorer is named before the other side\'s',
+     nums.length < 2 || nums[0] >= nums[1], lead);
+}
+
+/* a shooting line keeps one register — spell() stops at twelve, so a
+   thirteen-attempt night must not come out as "two of 13" */
+{
+  const wide = Report.report(game({
+    players: [mk('a1', 'alpha one', 0, { pts: 30, p2m: 12, p2a: 20 }),
+              mk('b1', 'beta one', 1, { pts: 4, p2m: 2, p2a: 13 })],
+    byId: {}
+  }));
+  const prose = wide.sections.flatMap(x => x.paras).join(' ');
+  ok('a shooting line does not mix a spelled word with a numeral',
+     !/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) of \d+/.test(prose),
+     (prose.match(/[^.]*of \d+[^.]*/) || [''])[0]);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
