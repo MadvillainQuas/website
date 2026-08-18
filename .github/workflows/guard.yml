@@ -126,6 +126,16 @@ jobs:
       - name: A hidden nav row must actually be hidden
         run: node supabase/tests/nav-gating.test.mjs
 
+      # The preview writes prose from season aggregates, so it can be
+      # confidently wrong in a way a table cannot. edge() is signed so positive
+      # always means the attacking side is ahead, whichever way the factor runs
+      # — and the first draft read a negative edge as a defensive strength,
+      # describing a defence that was generous on that factor as shutting the
+      # matchup down. These hold the sign convention, the small-sample refusal
+      # and the escaping of club names and venues.
+      - name: The fixture preview must say true things
+        run: node supabase/tests/preview.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

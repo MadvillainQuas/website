@@ -94,6 +94,14 @@
   .fxfoot{display:flex;gap:calc(var(--u)*3);flex-wrap:wrap;align-items:flex-start;
     margin-top:calc(var(--u)*2);padding-top:calc(var(--u)*2);border-top:1px solid var(--rule)}
   .leaders{display:flex;gap:calc(var(--u)*2);flex-wrap:wrap;flex:1;min-width:0}
+  /* An unplayed fixture's footer carries this where a played one carries its
+     leaders — same slot, same weight, so the row does not change shape. */
+  .fxpreview{display:inline-flex;align-items:center;gap:6px;flex:1;
+    font-family:var(--f-micro);font-size:8px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--aqua);opacity:.9}
+  .fxpvdot{width:5px;height:5px;border-radius:50%;background:var(--aqua);
+    box-shadow:0 0 8px var(--aqua);flex:none}
+  .fixture:hover .fxpreview{opacity:1}
   .ldr{min-width:96px}
   .ldr .lk{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--ink-3)}

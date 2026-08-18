@@ -214,6 +214,15 @@ function fixtureRow(g, stats, names) {
   const foot = el('div', 'fxfoot');
   if (final) foot.appendChild(leaders(stats, names));
   foot.appendChild(venueBlock(g));
+  /* A played game's footer carries its leaders; an unplayed one carried only
+     the venue and gave no sign that the row led anywhere worth going. It now
+     does — the preview behind it has the map, the tip-off and a written read
+     on the two clubs — so the row says so. */
+  if (!final && !live) {
+    const flag = el('div', 'fxpreview');
+    flag.append(el('span', 'fxpvdot'), document.createTextNode('preview & info'));
+    foot.appendChild(flag);
+  }
   row.appendChild(foot);
   return row;
 }

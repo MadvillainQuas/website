@@ -58,6 +58,11 @@
   .fx .sc{font-family:var(--f-score);font-size:20px;padding:0 8px;white-space:nowrap}
   .fx .st{font-family:var(--f-micro);font-size:9px;text-align:right}
   .fx .st.live{color:var(--flare)} .fx .st.final{color:var(--ink-3)} .fx .st.sched{color:var(--aqua)}
+  /* the row leads to a preview — said quietly, under the date, so the date
+     stays the thing the eye lands on when scanning a list of fixtures */
+  .fx .st .pv-flag{display:block;margin-top:3px;font-size:7px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-3);opacity:.85}
+  .fx:hover .st .pv-flag{color:var(--aqua);opacity:1}
 
   .empty{padding:calc(var(--u)*4) calc(var(--u)*3);text-align:center;color:var(--ink-3);
     font-family:var(--f-micro);font-size:10px;line-height:1.9}

@@ -166,7 +166,11 @@ function card(g) {
   meta.appendChild(el('span', 'comp', (g.competitions && g.competitions.name) || 'Fixture'));
   const st = el('span', 'st');
   if (live) { st.appendChild(el('span', 'dot')); st.appendChild(document.createTextNode('LIVE')); }
-  else st.textContent = final ? 'FT' : 'UPCOMING';
+  /* A scheduled fixture is not a placeholder any more — it has a page with the
+     venue, a map and a written preview behind it, and "UPCOMING" said nothing
+     about that. Saying so is the difference between a card people ignore until
+     tip-off and one worth pressing the week before. */
+  else st.textContent = final ? 'FT' : 'PREVIEW & INFO';
   meta.appendChild(st);
   a.appendChild(meta);
 
@@ -197,7 +201,8 @@ function card(g) {
 
   const when = el('div', 'when');
   when.appendChild(el('span', 'vn', live ? (g.venue || 'in progress') : fmtDate(g.tipoff_at)));
-  when.appendChild(el('span', null, live ? 'watch ↗' : fmtTime(g.tipoff_at)));
+  when.appendChild(el('span', null,
+    live ? 'watch ↗' : final ? fmtTime(g.tipoff_at) : fmtTime(g.tipoff_at) + ' · preview ↗'));
   a.appendChild(when);
   return a;
 }

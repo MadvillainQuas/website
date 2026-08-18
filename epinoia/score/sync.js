@@ -48,7 +48,18 @@ function rosterOf(S) {
     starters: S.starters,
     tipWinner: S.tipWinner, arrowInit: S.arrowInit,
     period: S.period, clockMs: S.clockMs,
-    status: S.phase === 'final' ? 'final' : 'live'
+    /* A GAME IS NOT LIVE UNTIL IT HAS TIPPED.
+
+       This said "anything that is not final is live", so a scorer sitting on
+       the pre-game screen — squads picked, clock untouched, nobody on court —
+       broadcast status 'live' to every watching page. The public box score
+       took it at face value and showed a live game with a running clock for a
+       fixture that had not started, which is the scheduled-bleeding-into-live
+       people kept seeing. The scorer's own phases already carry the answer:
+       'pregame' means exactly the state where the game has not begun. */
+    status: S.phase === 'final' ? 'final'
+          : S.phase === 'pregame' ? 'scheduled'
+          : 'live'
   };
 }
 

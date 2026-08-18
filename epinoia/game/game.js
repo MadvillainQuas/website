@@ -76,7 +76,8 @@ async function fetchLog() {
 
 async function loadStored() {
   const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
-    `&select=id,status,period,home_score,away_score,tipoff_at,venue,roster_snapshot,starters,` +
+    `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,` +
+    `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,logo_path),` +
     `away:away_team_id(slug,name,short_name,colour,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
   if (!gs.length) return null;
@@ -110,8 +111,11 @@ async function loadStored() {
        fixture's own facts rather than the replayed game's */
     meta: {
       tipoff_at: g.tipoff_at, status: g.status, venue: g.venue,
+      venue_address: g.venue_address,
       home_score: g.home_score, away_score: g.away_score,
       home: g.home, away: g.away,
+      homeTeamId: g.home_team_id, awayTeamId: g.away_team_id,
+      competitionId: g.competition_id,
       leagueName: league.name || null, competitionName: comp.name || null
     }
   };
@@ -764,6 +768,105 @@ function mergeLive(game, events, removed, full) {
   }
 }
 
+/* --------------------------------------------------------------- preview ---
+   Everything the preview needs that the game row does not carry: the two
+   clubs' season aggregates and their leading players, from the same
+   EpinoiaData.season() the statistics pages read, so a number here and a
+   number there cannot disagree.
+
+   A fixture with no competition — an ad-hoc friendly — still gets the page,
+   just without the statistics half. That is the honest result rather than an
+   error: the venue, the time and the map are the part somebody actually came
+   for. */
+async function renderPreview() {
+  const S = window.S, m = S.meta || {};
+  let season = { players: [], teams: [], teamOfPlayer: new Map() };
+
+  /* THE WHOLE SEASON, NOT THIS COMPETITION.
+
+     EpinoiaData.season() aggregates one competition, which is right for a
+     league table and wrong here. A cup tie or a playoff fixture belongs to a
+     competition with few finished games or none at all, so scoping to it gave
+     a preview reading "no games yet" for two clubs who have played each other
+     twice already this season. "The story so far" means the season, so the
+     fixture's competition is resolved to its season and every competition
+     under that season is aggregated together. */
+  if (m.competitionId && window.EpinoiaData) {
+    try {
+      const comps = await window.EpinoiaData.all(
+        'competitions?id=eq.' + encodeURIComponent(m.competitionId) + '&select=season_id');
+      const seasonId = comps && comps[0] && comps[0].season_id;
+      let games = [];
+      if (seasonId) {
+        const sibling = await window.EpinoiaData.all(
+          'competitions?season_id=eq.' + encodeURIComponent(seasonId) + '&select=id');
+        const ids = (sibling || []).map(c => c.id);
+        if (ids.length) {
+          games = await window.EpinoiaData.all(
+            'games?competition_id=in.(' + ids.join(',') + ')&status=eq.final' +
+            '&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at');
+        }
+      }
+      if (games.length) season = await window.EpinoiaData.statsForGames(games);
+    } catch (e) { console.warn('[preview] season stats unavailable', e); }
+  }
+
+  /* Season rows carry ids and numbers; the names live on the players table.
+     Without this the key-player cards read "Player". */
+  if ((season.players || []).length && window.EpinoiaData) {
+    try {
+      const meta = await window.EpinoiaData.playerMeta(season.players.map(p => p.id));
+      season.players.forEach(p => Object.assign(p, meta[p.id] || {}));
+    } catch (e) { console.warn('[preview] player names unavailable', e); }
+  }
+
+  const teamRow = id => (season.teams || []).find(t => t.id === id) || null;
+
+  /* Two per side, ranked by production rather than by one counting stat, so a
+     rebounder or a creator can make the card and it is not four scorers. */
+  const starsOf = id => {
+    const tp = season.teamOfPlayer || new Map();
+    const mine = (season.players || []).filter(p => tp.get(p.id) === id && p.gp);
+    const rank = (a, b) => ((b.ppg || 0) + (b.rpg || 0) + (b.apg || 0)) -
+                           ((a.ppg || 0) + (a.rpg || 0) + (a.apg || 0));
+    /* A REAL SAMPLE FIRST. Ranking on per-game production alone put a player
+       with two appearances and a 7/7/3 line ahead of a regular, which is what
+       two games of noise looks like when it is averaged. Anybody at or past
+       the preview's own minimum is preferred; the short-sample players are
+       kept only as a fallback so a club early in its season still gets cards
+       rather than an empty section. */
+    const MIN = (window.EpinoiaPreview && window.EpinoiaPreview.MIN_GP) || 3;
+    const solid = mine.filter(p => p.gp >= MIN).sort(rank);
+    if (solid.length >= 2) return solid.slice(0, 2);
+    return solid.concat(mine.filter(p => p.gp < MIN).sort(rank)).slice(0, 2);
+  };
+
+  /* Names come from the club rows, not the roster snapshot — a scheduled game
+     has no snapshot, because nothing has been frozen yet. */
+  const home = m.home || {}, away = m.away || {};
+
+  $('#view').innerHTML = window.EpinoiaPreview.render({
+    nameA: home.name || S.teams[0].name, nameB: away.name || S.teams[1].name,
+    colourA: B.safeColour(home.colour, '#93f2bf'),
+    colourB: B.safeColour(away.colour, '#8ff5ff'),
+    slugA: home.slug || null, slugB: away.slug || null,
+    teamA: teamRow(m.homeTeamId), teamB: teamRow(m.awayTeamId),
+    starsA: starsOf(m.homeTeamId), starsB: starsOf(m.awayTeamId),
+    tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
+    competition: S.competition, leagueSlug: S.leagueSlug
+  });
+
+  txt($('#ctx'), (S.competition || 'Fixture') + ' · ' +
+      (home.name || S.teams[0].name) + ' v ' + (away.name || S.teams[1].name));
+  document.title = (home.name || 'home') + ' v ' + (away.name || 'away') +
+      ' · preview · Epinoia';
+
+  /* The two consoles that belong on a fixture that has not started: whoever
+     may score it, and whoever may take it back off the listing. */
+  offerToScore();
+  offerToRevert();
+}
+
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
   if (!gameId) return fail('No game specified.');
@@ -790,11 +893,28 @@ function mergeLive(game, events, removed, full) {
     return;                       // finished: nothing left to listen for
   }
 
-  /* A scheduled fixture has no socket to open and nothing to replay, but it
-     very much can CHANGE — this is the page somebody sits on waiting for a
-     tip-off, and the moment the scorer claims the fixture it should stop
-     saying "scheduled". So the status watch runs for it too, and it is the
-     only thing that does. */
+  /* A SCHEDULED FIXTURE IS A PREVIEW, NOT AN EMPTY BOX SCORE.
+
+     Drawing the tabbed box score for a game nobody has played gave five tabs
+     of zeroes, a play-by-play with nothing in it and a clock — and the clock
+     is most of why these read as live. A fixture that has not happened has a
+     different job: say when it is, how to get there, and what the season so
+     far suggests about the two clubs. No socket is opened, because there is
+     nothing publishing and a connected socket is itself a claim that
+     something is happening.
+
+     The status watch still runs, and is the only thing that does: the moment
+     a scorer claims this fixture the page reloads into the live box score. */
+  if (stored.status === 'scheduled') {
+    setStatus('scheduled');
+    renderPreview().catch(e => {
+      console.warn('[preview]', e);
+      fail('Could not build the preview: ' + (e.message || e));
+    });
+    watchGameStatus();
+    return;
+  }
+
   watchGameStatus();
 
   render();

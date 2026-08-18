@@ -213,9 +213,16 @@ async function games() {
     const st = el('div', 'st ' + (live ? 'live' : final ? 'final' : 'sched'));
     if (live) { st.appendChild(el('span', 'pulse')); st.appendChild(document.createTextNode('LIVE')); }
     else if (final) st.textContent = 'FINAL';
-    else st.textContent = when
-      ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-      : 'TBC';
+    else {
+      /* The date stays the headline — it is what somebody scans a fixture list
+         for — with a quiet second line saying the row leads somewhere. A
+         scheduled fixture now has a venue, a map and a written preview behind
+         it, and nothing on the row said so. */
+      st.textContent = when
+        ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+        : 'TBC';
+      st.appendChild(el('span', 'pv-flag', 'preview'));
+    }
 
     row.append(h, el('div', 'sc', final || live ? `${g.home_score}–${g.away_score}` : 'v'), a, st);
 
