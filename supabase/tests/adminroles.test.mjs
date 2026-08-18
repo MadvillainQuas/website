@@ -22,7 +22,7 @@
      node supabase/tests/adminroles.test.mjs
    ============================================================================ */
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -101,6 +101,69 @@ ok('a role that needs a scope will not be granted without one',
    /Choose what that role applies to|Choose the league they write for/.test(js));
 ok('granting platform admin still warns first',
    /can do everything on this page[\s\S]{0,120}confirm|confirm\([\s\S]{0,160}removing you/.test(js));
+
+
+/* ---- storage is not a table you may write to ------------------------------
+   Supabase refuses a SQL delete on storage.objects from ANY role, including a
+   SECURITY DEFINER function owned by the superuser:
+
+     Direct deletion from storage tables is not allowed. [42501]
+
+   0062 fixed this for publishing a crest. reject_media, written in 0017 and
+   never re-run, kept its delete and so every rejection failed — invisibly,
+   because the console reported the 42501 as "platform administrators only".
+   Two functions have now had the same fault; this makes it the third that
+   fails a test rather than a moderator. */
+{
+  const migs = readdirSync(path.join(ROOT, 'supabase', 'migrations'))
+    .filter(f => f.endsWith('.sql')).sort();
+
+  /* the LAST definition of each media function is the one that runs */
+  const lastDefOf = (fn) => {
+    let src = null;
+    for (const f of migs) {
+      const t = read('supabase', 'migrations', f);
+      const at = t.indexOf('create or replace function public.' + fn);
+      if (at < 0) continue;
+      const end = t.indexOf('$$;', at);
+      src = t.slice(at, end < 0 ? undefined : end);
+    }
+    return src;
+  };
+
+  for (const fn of ['reject_media', 'approve_media', 'publish_team_logo']) {
+    const src = lastDefOf(fn);
+    if (!src) { ok(fn + ' exists', true); continue; }
+    ok(fn + ' does not delete from storage.objects',
+       !/delete\s+from\s+storage\.objects/i.test(src),
+       'Supabase refuses this from any role');
+    ok(fn + ' does not insert into storage.objects either',
+       !/insert\s+into\s+storage\.objects/i.test(src));
+  }
+
+  /* and the callers do the half the database cannot */
+  const admin = read('epinoia', 'admin', 'admin.js');
+  for (const [name, src] of [['platform console', js], ['league console', admin]]) {
+    ok(name + ' removes the object through the Storage API when rejecting',
+       /reject_media[\s\S]{0,700}storage\.from\('media-pending'\)\.remove/.test(src),
+       'the function no longer does it');
+    ok(name + ' records the rejection before touching the bytes',
+       src.indexOf("rpc('reject_media'") < src.indexOf("'media-pending').remove"),
+       'a storage failure must not leave a photograph un-rejected');
+    ok(name + ' treats a missing file as already gone',
+       /not found\|does not exist/i.test(src));
+  }
+
+  const mig73 = read('supabase', 'migrations', '0073_reject_no_sql_delete.sql');
+  ok('a rejected crest stops being the club crest',
+     /update teams set logo_path = null/.test(mig73));
+  ok('...and a rejected photograph stops being the player photograph',
+     /update players set photo_media_id = null/.test(mig73));
+  ok('the migration checks the shipped function body, not its own text',
+     /pg_get_functiondef[\s\S]{0,200}delete\s\+from\s\+storage\.objects/.test(mig73) ||
+     /src ~\* 'delete/.test(mig73));
+}
+
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -598,8 +598,33 @@ async function loadModeration() {
       no.addEventListener('click', async () => {
         const why = prompt('Why is it rejected? (optional, shown to the uploader)') ;
         if (why === null) return;
+        no.disabled = true;
+        /* THE DECISION IS RECORDED FIRST, THE BYTES GO AFTER.
+
+           reject_media used to delete the object itself, which Supabase now
+           refuses from any role — "Direct deletion from storage tables is not
+           allowed" — so every rejection failed, and the console reported it as
+           a permission problem with the ACCOUNT rather than with the
+           statement. Removing an object is the Storage API's job, so it
+           happens here.
+
+           This order is deliberate. A rejected image sits in media-pending,
+           which is private and served to nobody, so the row is the urgent
+           half: a storage hiccup must not be able to leave a photograph
+           un-rejected. Cleanup failing is worth saying, not worth undoing. */
         const r = await rpc('reject_media', { p_media: m.id, p_reason: why });
-        if (r !== null) { say('Rejected.', 'ok'); loadModeration(); loadOverview(); }
+        if (r === null) { no.disabled = false; return; }
+        const gone = await Promise.all([
+          sb.storage.from('media-pending').remove([m.storage_path]),
+          sb.storage.from('media-public').remove([m.storage_path])
+        ]);
+        const stuck = gone.map(x => x && x.error)
+          .filter(e => e && !/not found|does not exist/i.test(e.message || ''));
+        no.disabled = false;
+        say(stuck.length
+          ? 'Rejected, but the file could not be removed: ' + stuck[0].message
+          : 'Rejected.', stuck.length ? 'err' : 'ok');
+        loadModeration(); loadOverview();
       });
       row.append(t, sp, ok, no);
       host.appendChild(row);

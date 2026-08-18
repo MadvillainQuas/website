@@ -692,9 +692,22 @@ async function loadMediaQueue() {
     const no = el('button', 'ep-btn mini dgr', 'reject'); no.type = 'button';
     no.addEventListener('click', async () => {
       no.disabled = true;
+      /* The row first, the bytes after — see the note in the platform console.
+         reject_media no longer deletes the object, because Supabase refuses a
+         SQL delete on storage tables from any role, and that was failing every
+         rejection on both consoles. */
       const { error } = await sb.rpc('reject_media', { p_media: m.id, p_reason: null });
       if (error) { no.disabled = false; return oops(error); }
-      say('rejected — ' + (m.subject || 'image'), 'ok');
+      const gone = await Promise.all([
+        sb.storage.from('media-pending').remove([m.storage_path]),
+        sb.storage.from('media-public').remove([m.storage_path])
+      ]);
+      const stuck = gone.map(x => x && x.error)
+        .filter(e => e && !/not found|does not exist/i.test(e.message || ''));
+      no.disabled = false;
+      say(stuck.length
+        ? 'rejected, but the file is still there: ' + stuck[0].message
+        : 'rejected — ' + (m.subject || 'image'), stuck.length ? 'err' : 'ok');
       loadMediaQueue();
     });
     ac.append(ok, no);
