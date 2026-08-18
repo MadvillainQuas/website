@@ -113,6 +113,39 @@ function mount(o) {
       if (a.author_name) bits.push('by ' + a.author_name);
       row.append(el('div', 'nm', a.title), el('div', 'mt', bits.join(' · ')));
       const sp = el('div', 'sp');
+
+      /* PINNING IS ONE CLICK, not a trip through the editor.
+
+         It used to be a checkbox inside the article form, so releasing a pin
+         meant opening a piece you did not want to change and saving the whole
+         of it back — which also overwrites whatever a co-writer edited while
+         you had it open. This flips the one field.
+
+         Only a published article can lead the page, so a draft does not offer
+         it; and pinning is exclusive, so the label says what will happen to
+         whatever is pinned now. */
+      if (a.status === 'published') {
+        const pinBtn = el('button', 'ep-btn mini', a.pinned ? 'unpin' : 'pin');
+        pinBtn.type = 'button';
+        pinBtn.title = a.pinned
+          ? 'Stop holding this at the front — the newest article leads again'
+          : 'Hold this at the front of the news, ahead of newer articles';
+        if (a.pinned) pinBtn.classList.add('on');
+        pinBtn.addEventListener('click', async () => {
+          pinBtn.disabled = true;
+          const r2 = await o.sb.rpc('set_article_pinned',
+                                    { p_id: a.id, p_pinned: !a.pinned });
+          pinBtn.disabled = false;
+          if (r2.error) return o.say(r2.error.message, 'err');
+          o.say(a.pinned
+            ? 'Released — the newest article leads again.'
+            : 'Pinned — it leads the news until you release it. Anything else ' +
+              'that was pinned has been released.', 'ok');
+          loadArticles();
+        });
+        sp.appendChild(pinBtn);
+      }
+
       const ed = el('button', 'ep-btn mini', 'edit'); ed.type = 'button';
       ed.addEventListener('click', () => openEditor(a));
       const del = el('button', 'ep-btn mini', '×'); del.type = 'button';
@@ -262,7 +295,9 @@ function mount(o) {
     status.value = a ? a.status : 'draft';
     const pin = el('input'); pin.type = 'checkbox'; pin.checked = a ? !!a.pinned : false;
     const pinLab = el('label', 'sw');
-    pinLab.append(pin, document.createTextNode(' pin to the front of the cards'));
+    /* Says what it costs: pinning is exclusive, so this releases whatever the
+       league is currently leading with. */
+    pinLab.append(pin, document.createTextNode(' lead the news with this (releases any other pin)'));
     const save = el('button', 'ep-btn pri', 'save'); save.type = 'button';
     const cancel = el('button', 'ep-btn mini', 'close'); cancel.type = 'button';
     cancel.addEventListener('click', () => { edWrap.classList.add('hide'); editing = null; });

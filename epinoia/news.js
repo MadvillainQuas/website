@@ -61,7 +61,20 @@ function card(a, opts) {
     plate.appendChild(img);
   }
 
-  if (a.pinned) plate.appendChild(el('div', 'news-flag', 'Latest'));
+  /* THE FLAG SAYS WHICH THING THIS IS, and it used to say the wrong one.
+
+     "Latest" was printed on any PINNED article, which is a different claim
+     entirely: pinning holds a piece at the front deliberately — a fixture
+     announcement, a ticket link — and the newest article is whatever was
+     published most recently. A match report filed minutes ago therefore sat
+     second, behind a week-old piece wearing the word "Latest", which reads as
+     the report being older than something published days before it.
+
+     So the two are separated. Pinned says pinned. Latest is decided by the
+     caller, which is the only place that knows the whole list — a card cannot
+     see the article next to it. */
+  if (a.pinned) plate.appendChild(el('div', 'news-flag pin', 'Pinned'));
+  else if (opts && opts.latest) plate.appendChild(el('div', 'news-flag', 'Latest'));
 
   /* THE HEADLINE IS ON THE PLATE, not under it. A news card whose words sit
      below the picture reads as a picture with a caption; the point here is
@@ -99,8 +112,15 @@ async function mountHeadlines(o) {
   const host = o.host;
   host.textContent = '';
 
+  /* Which of these is actually the newest — the pin decides what LEADS, and
+     that is a separate question from what is most recent. Only this level can
+     answer it, because a card cannot see the ones beside it. */
+  const newest = rows.reduce((best, a) =>
+    (!best || new Date(a.published_at || 0) > new Date(best.published_at || 0)) ? a : best, null);
+
   const grid = el('div', 'news-grid');
-  rows.slice(0, 5).forEach(a => grid.appendChild(card(a, o)));
+  rows.slice(0, 5).forEach(a => grid.appendChild(
+    card(a, Object.assign({ latest: newest && a.id === newest.id }, o))));
   host.appendChild(grid);
 
   const total = Number(rows[0].total || rows.length);

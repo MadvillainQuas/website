@@ -134,6 +134,19 @@ async function games() {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
 
+  /* NOTHING CHANGED, NOTHING REDRAWN.
+
+     This is now re-run on a timer and whenever a scorer announces a status
+     change, so it has to be cheap to call when the answer is the same as last
+     time. Rebuilding fifteen rows every half minute would throw away focus,
+     restart the crest animations and flash the section for no reason. The
+     fingerprint is what a reader would notice: which games, in what state, at
+     what score. */
+  const key = gs.map(g => g.id + ':' + g.status + ':' +
+                     g.home_score + '-' + g.away_score).join('|');
+  if (key === gamesKey && $('#games').childElementCount) return;
+  gamesKey = key;
+
   const host = $('#games'); host.textContent = '';
   if (!gs.length) {
     host.appendChild(el('div', 'empty',
@@ -237,6 +250,52 @@ async function games() {
     if (bits.length) row.appendChild(el('div', 'fxwhere', bits.join('  ·  ')));
 
     host.appendChild(row);
+  });
+}
+
+/* ---------------------------------------------------------------------------
+   THE LIST KEEPS ITSELF HONEST.
+
+   The fixtures page has re-read its games on a timer for a while; this one
+   never did, so a league's own front page could sit showing a game as upcoming
+   while it was being played, or as live an hour after it finished, until
+   somebody reloaded. It is the page most likely to be left open on a second
+   monitor through an evening, which makes it the worst one to be stale.
+
+   Two mechanisms, same as the strip and the fixtures page. The announcement is
+   the fast path: the scorer publishes a status change on one fixed topic and
+   this re-reads within a moment of hearing it. The timer is the floor, and
+   covers everything a scorer cannot announce — a fixture added or moved in the
+   admin console, a game finalised by an administrator, or a network that will
+   not open a websocket at all. */
+const GAMES_LIVE_MS = 15000, GAMES_IDLE_MS = 30000;
+let gamesKey = '';
+let gamesTimer = null;
+let gamesRt = null;
+
+function anyLiveShown() {
+  return !!document.querySelector('#games .fxrow.live, #games .live');
+}
+
+function watchGames(delay) {
+  clearTimeout(gamesTimer);
+  gamesTimer = setTimeout(async () => {
+    try { await games(); } catch (_) { /* a blip must not stop the watch */ }
+    watchGames();
+  }, delay != null ? delay : (anyLiveShown() ? GAMES_LIVE_MS : GAMES_IDLE_MS));
+}
+
+/* The message is a nudge to look, never a fact to show: the games table still
+   decides what is rendered, so anything forged on the topic costs one query. */
+function watchGameAnnouncements() {
+  if (gamesRt || !window.EpinoiaRT || !window.EPINOIA_CONFIG) return;
+  gamesRt = window.EpinoiaRT.create({ url: window.EPINOIA_CONFIG.supabaseUrl,
+                                      key: window.EPINOIA_CONFIG.supabaseAnonKey });
+  if (!gamesRt) return;
+  let soon = null;
+  gamesRt.watch('epinoia:live', () => {
+    clearTimeout(soon);
+    soon = setTimeout(() => watchGames(0), 80);
   });
 }
 
@@ -872,6 +931,10 @@ function renumber() {
     await merch(roster, star).catch(() => null);
     applySections();
     renumber();
+    /* The games list keeps itself current from here on: the announcement for
+       the moment a game starts or finishes, the timer for everything else. */
+    watchGames();
+    watchGameAnnouncements();
   } else {
     /* ------------------------------------------------------ the splash ---
        No league asked for, so this document is the platform's front page
@@ -890,6 +953,8 @@ function renumber() {
       await games();
       await leagues();
       renumber();
+      watchGames();
+      watchGameAnnouncements();
       return;
     }
 

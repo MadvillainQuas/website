@@ -154,8 +154,11 @@ async function all(league, offset) {
   const grid = el('div', 'news-grid');
   rows.slice()
       .sort((x, y) => new Date(y.published_at || 0) - new Date(x.published_at || 0))
-      .forEach(a => grid.appendChild(N.card(a, {
-        leagueSlug: league.slug, url: imgUrl, base: '../'
+      .forEach((a, i) => grid.appendChild(N.card(a, {
+        leagueSlug: league.slug, url: imgUrl, base: '../',
+        /* first after the sort IS the newest here, since this list is ordered
+           by date rather than by the pin */
+        latest: i === 0
       })));
   /* the cards link back into this page, not out of it */
   grid.querySelectorAll('a.news-card').forEach(a => {

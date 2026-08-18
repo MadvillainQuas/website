@@ -60,6 +60,16 @@
   font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
   background:var(--amber); color:#04100b; padding:3px 8px;
 }
+
+/* PINNED IS NOT LATEST, so it does not look like it. Amber is the "this just
+   happened" colour and it belongs to the newest article; a pin is an editorial
+   decision that holds a piece at the front for as long as somebody wants it
+   there, which is a quieter thing. Same shape, so the two read as one family
+   of flag rather than two unrelated badges. */
+.news-flag.pin{
+  background:transparent; color:var(--text-primary,#e6fff1);
+  box-shadow:inset 0 0 0 1px currentColor; padding:2px 7px;
+}
 .news-more{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
 
 /* ---------- the article ---------- */

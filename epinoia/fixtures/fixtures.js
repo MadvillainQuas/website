@@ -316,10 +316,41 @@ async function render() {
    Tight while something is live, relaxed otherwise, for the same reason the
    strip does it. setTimeout rather than setInterval so a slow response cannot
    queue a second request behind the first. */
-const LIVE_MS = 20000, IDLE_MS = 90000;
+/* Ninety seconds was too long for a page somebody leaves open through an
+   evening: a game could finish, or start, and the list carry on showing the
+   old state for a minute and a half. Thirty is the outside case now, and the
+   usual case is not a timer at all — see the announcement below. */
+const LIVE_MS = 15000, IDLE_MS = 30000;
 let liveTimer = null;
 
-function watchLive() {
+/* ---------------------------------------------------------------------------
+   THE ANNOUNCEMENT, so a game starting does not wait for the next beat.
+
+   The scorer publishes every status change on one fixed topic. This joins it
+   for as long as the page is open and re-reads when it hears one, which turns
+   "within thirty seconds" into "as it happens" for the transition people
+   actually care about. The timer stays as the floor: it covers a blocked
+   websocket, a fixture added or rescheduled from the admin console, and a game
+   finalised by somebody other than the scorer.
+
+   NOTHING ON THE PAGE COMES FROM THE MESSAGE. It is a nudge to look; the
+   fixtures table still decides what is shown, so anything forged on the topic
+   costs one query and changes nothing. */
+const ANNOUNCE_TOPIC = 'epinoia:live';
+let rt = null;
+function watchAnnouncements() {
+  if (rt || !window.EpinoiaRT || !window.EPINOIA_CONFIG) return;
+  rt = window.EpinoiaRT.create({ url: window.EPINOIA_CONFIG.supabaseUrl,
+                                 key: window.EPINOIA_CONFIG.supabaseAnonKey });
+  if (!rt) return;
+  let soon = null;
+  rt.watch(ANNOUNCE_TOPIC, () => {
+    clearTimeout(soon);
+    soon = setTimeout(() => { clearTimeout(liveTimer); watchLive(0); }, 80);
+  });
+}
+
+function watchLive(delay) {
   clearTimeout(liveTimer);
   const anyLive = GAMES.some(g => g.status === 'live');
   liveTimer = setTimeout(async () => {
@@ -343,7 +374,7 @@ function watchLive() {
       }
     } catch (_) { /* a blip must not stop the watch */ }
     watchLive();
-  }, anyLive ? LIVE_MS : IDLE_MS);
+  }, delay != null ? delay : (anyLive ? LIVE_MS : IDLE_MS));
 }
 
 (async function boot() {
@@ -386,6 +417,7 @@ function watchLive() {
     renderFilters();
     await render();
     watchLive();
+    watchAnnouncements();
   } catch (e) {
     $('#list').textContent = '';
     $('#list').appendChild(el('div', 'empty', 'Could not load the fixtures: ' + (e.message || e)));
