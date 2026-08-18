@@ -148,5 +148,54 @@ ok('no map is drawn when there is nowhere to point at',
    !/<iframe/.test(P.render({ nameA: 'A', nameB: 'B', teamA: shape({}), teamB: shape({}),
      colourA: '#93f2bf', colourB: '#8ff5ff' })));
 
+
+/* ---- the preview page keeps the scorer's two buttons ----------------------
+   The preview replaced what used to be a plain "scheduled" placeholder, and a
+   credentialed user lost the two controls that lived there: "score this game"
+   and "back to listing". The first was only ever hidden by a permission check;
+   the second was hidden by a status guard that returned early for anything not
+   live or finalising - which is every fixture a preview is ever drawn for.
+
+   The distinction that matters is not scheduled-versus-live, it is whether
+   there is anything to put back. A fixture reverted or abandoned mid-game sits
+   as 'scheduled' with its event log still behind it, and that is precisely
+   where somebody needs the button. A clean fixture has nothing to undo and
+   correctly gets none. The guard is lifted out of the real source rather than
+   copied here, so editing it in game.js without thinking fails this file. */
+{
+  const fs = require('node:fs');
+  const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');
+  const body = (src.match(/const stuck = S &&[^;]+;\s*const dirty =[^;]+;\s*if \(!gameId[^;]+;/) || [])[0];
+  ok('the revert guard is still where this test looks for it', !!body);
+
+  const shows = (S, gameId = 'g1') =>
+    new Function('S', 'gameId', body.replace('return;', 'return false;') + '\nreturn true;')(S, gameId);
+
+  ok('a live game offers "back to listing"', shows({ status: 'live', events: [] }));
+  ok('a finalising game offers it too',      shows({ status: 'finalising', events: [] }));
+  ok('a scheduled fixture still carrying events offers it',
+     shows({ status: 'scheduled', events: [{ t: 'shot' }] }));
+  ok('a clean scheduled fixture does not - there is nothing to put back',
+     !shows({ status: 'scheduled', events: [] }));
+  ok('a finished game is not reverted from here',
+     !shows({ status: 'final', events: [{ t: 'shot' }] }));
+  ok('no game id, no button', !shows({ status: 'live', events: [] }, null));
+
+  /* Both controls sit outside #view, which renderPreview() empties. Move them
+     inside and they vanish the moment a preview is drawn. */
+  const html = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'index.html'), 'utf8');
+  const view = html.indexOf('id="view"');
+  const shut = html.indexOf('</main>', view);
+  const score = html.indexOf('id="scoreCta"');
+  const revert = html.indexOf('id="revertCta"');
+  ok('the score CTA is not inside the element the preview replaces',
+     score > -1 && !(score > view && score < shut));
+  ok('nor is the revert CTA',
+     revert > -1 && !(revert > view && revert < shut));
+  ok('and drawing a preview asks for both of them',
+     /function renderPreview[\s\S]{0,6000}offerToScore\(\)[\s\S]{0,300}offerToRevert\(\)/.test(src));
+}
+
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

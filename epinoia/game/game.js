@@ -326,7 +326,13 @@ async function offerToScore() {
   scoreChecking = true;
   try {
     const ok = await withRetry(() => rpcCall('can_score', { p_game: gameId }, token));
-    if (ok !== true) return;
+    if (ok !== true) {
+      /* Silence here meant a missing button with no way to tell whether the
+         account was refused, the request failed, or the code never ran. */
+      console.info('[epinoia] "score this game" hidden: can_score returned',
+                   ok, '— signed in as', (storedToken() ? 'yes' : 'no'));
+      return;
+    }
     cta.href = '../score/?g=' + encodeURIComponent(gameId);
     cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
     cta.classList.remove('hide');
@@ -376,16 +382,26 @@ let revertChecking = false, revertShown = false;
 async function offerToRevert() {
   const cta = document.getElementById('revertCta');
   if (!cta || revertShown || revertChecking) return;
-  /* Only a game that is actually stuck. A scheduled game has nothing to put
-     back, and a final one is refused by the database anyway — offering the
-     button there would be offering a refusal. */
-  if (!gameId || !S || (S.status !== 'live' && S.status !== 'finalising')) return;
+  /* A game that is actually stuck, OR a scheduled one still carrying events.
+
+     The second case is the one this missed. A fixture put back on the listing
+     while a scorer was mid-game, or reopened and abandoned, sits as
+     'scheduled' with a log behind it — and the preview page is exactly where
+     somebody notices. Offering nothing there left the only route to clearing
+     it the admin console. A clean scheduled fixture still gets no button,
+     because there is genuinely nothing to put back. */
+  const stuck = S && (S.status === 'live' || S.status === 'finalising');
+  const dirty = S && S.status === 'scheduled' && (S.events || []).length > 0;
+  if (!gameId || !S || (!stuck && !dirty)) return;
   const token = storedToken();
   if (!token) return;                          // try again once signed in
   revertChecking = true;
   try {
     const ok = await withRetry(() => rpcCall('can_manage_game', { p_game: gameId }, token));
-    if (ok !== true) return;
+    if (ok !== true) {
+      console.info('[epinoia] "back to listing" hidden: can_manage_game returned', ok);
+      return;
+    }
     cta.classList.remove('hide');
     revertShown = true;
     cta.addEventListener('click', onRevertClick, { once: false });
