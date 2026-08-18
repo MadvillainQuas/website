@@ -107,6 +107,14 @@ jobs:
       - name: A public storage URL must name its bucket
         run: node supabase/tests/storage-urls.test.mjs
 
+      # "Back to listing" reads the discarded-event count out of the refusal to
+      # put it in the confirmation dialog. It was changed to read only the
+      # exception's DETAIL field — correct, and it shipped before the migration
+      # that populates DETAIL, which turned the button dead on the live site.
+      # Both call sites must therefore also read the sentence, and must agree.
+      - name: Both revert dialogs must read the event count the same way
+        run: node supabase/tests/revert-count.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

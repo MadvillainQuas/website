@@ -30,6 +30,10 @@
 let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb = null,
     lastScorePub = '', scoreConfirmedLive = false, onRevoked = null;
 
+/* Publishing stops dead when this is set, and never restarts. See halt(). */
+let halted = false;
+const timers = [];      // every interval this module owns, so halt() can end them all
+
 /* Only a real fixture has a row to patch — a scratch/training game has no
    uuid and nothing in the games table, so there is nothing to write. */
 const GAME_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,7 +75,7 @@ function stateOf(S) {
    EpinoiaLive.diffLog compares identities instead, so append, undo, redo and
    a mid-log edit are all one code path. */
 function drain(S) {
-  if (!pub) return;
+  if (!pub || halted) return;
   const d = root.EpinoiaLive.diffLog(sentIds, S.events || []);
   if (!d.added.length && !d.removed.length) return;
   pub.pushEvents(d.added.map(e => Object.assign({ seq: e.id }, e)), d.removed);
@@ -81,6 +85,7 @@ function drain(S) {
 /* the roster can change (a sub-in of a player added mid-game), so re-publish
    it only when it actually differs — cheap, and keeps late joiners correct */
 function maybeRoster(S) {
+  if (!pub || halted) return;
   const r = rosterOf(S);
   const sig = JSON.stringify(r);
   if (sig === lastPub) return;
@@ -117,7 +122,7 @@ function maybeRoster(S) {
    is overwritten, and a caller who was matching rows a moment ago and now
    is not gets told about it through onRevoked, once, not on every tick. */
 function maybeScore(S) {
-  if (!sb || !gameId || !GAME_UUID.test(gameId)) return;
+  if (!sb || !gameId || halted || !GAME_UUID.test(gameId)) return;
   const d = (typeof derive === 'function') ? derive() : null;
   if (!d) return;
   const sig = d.score[0] + '-' + d.score[1];
@@ -134,6 +139,64 @@ function maybeScore(S) {
          own status:'live' write has committed, would report a false revert. */
       if (scoreConfirmedLive && typeof onRevoked === 'function') onRevoked();
     });
+}
+
+/* ============================================================================
+   THE WATCHDOG — noticing that this game was taken away.
+
+   maybeScore above detects a revert, but only as a side effect of a SCORE
+   CHANGING: it is deduplicated by score signature, so a game sitting at 0-0
+   — which is exactly what a mis-started fixture in live limbo looks like —
+   never reaches the write that would notice, and the tab publishes into the
+   void indefinitely. The one case the detection existed for was the one case
+   it could not see.
+
+   So the status is asked for directly, on a slow beat. One indexed row every
+   eight seconds is nothing next to the 2-second publish loop already running
+   beside it.
+
+   ONLY AFTER THE GAME HAS BEEN SEEN LIVE. Before tip-off a fixture is legitimately
+   'scheduled' — treating that as a revert would halt the scorer before the
+   game had started, which is the opposite of the point. So the watchdog arms
+   itself the first time it sees 'live' and only then can it fire.
+
+   A DELETED FIXTURE COUNTS TOO. If the row cannot be read at all any more the
+   game is gone rather than reverted, and publishing into it is equally
+   pointless — but a failed REQUEST is not a deleted row, so only a successful
+   read that returns nothing halts anything. A phone that loses signal mid-game
+   must never be told its game was cancelled. */
+function watchStatus() {
+  if (!sb || !gameId || !GAME_UUID.test(gameId)) return;
+  let armed = false;
+  timers.push(setInterval(() => {
+    if (halted) return;
+    sb.from('games').select('id,status').eq('id', gameId).maybeSingle()
+      .then(({ data, error }) => {
+        if (error) return;                 // a blip is not a verdict
+        if (data && data.status === 'live') { armed = true; return; }
+        if (!armed) return;                // never been live: still pre-tip
+        if (data && (data.status === 'final' || data.status === 'void')) {
+          halt();                          // finalised elsewhere; stop, quietly
+          return;
+        }
+        halt();
+        if (typeof onRevoked === 'function') onRevoked();
+      });
+  }, 8000));
+}
+
+/* Stop publishing, for good. Called when the game is no longer this tab's to
+   write to. Every interval this module owns is cleared and the publisher's own
+   heartbeat is stopped, so nothing here touches the database again — the
+   statistician's screen keeps working exactly as it did, because the scorer's
+   state is local and this only ever mirrored it outward. */
+function halt() {
+  if (halted) return;
+  halted = true;
+  timers.forEach(t => clearInterval(t));
+  timers.length = 0;
+  try { if (pub && pub.stop) pub.stop(); } catch (_) {}
+  console.warn('[sync] halted — this game is no longer live; nothing further is being saved');
 }
 
 const api = {
@@ -169,6 +232,7 @@ const api = {
       const inner = root[fn];
       root[fn] = function () {
         const r = inner.apply(this, arguments);
+        if (halted) return r;
         try { pub.pushState(stateOf(S)); } catch (e) { console.warn('[sync]', e); }
         return r;
       };
@@ -176,13 +240,14 @@ const api = {
 
     /* --- a clock adjustment or an edit does not go through addEvent, so poll
            cheaply for divergence; this is a safety net, not the main path --- */
-    setInterval(() => {
+    timers.push(setInterval(() => {
+      if (halted) return;
       try {
         drain(S);
         maybeRoster(S);
         maybeScore(S);
       } catch (e) { /* never let sync break scoring */ }
-    }, 2000);
+    }, 2000));
 
     /* A full snapshot on a slow beat, so anyone watching has the whole game
        whether or not they were watching when it happened — and whether or not
@@ -191,13 +256,16 @@ const api = {
        opened the page. Ten seconds is chosen to be cheap: an 800-event game
        is ~80 KB, and the delta frames in between keep the page live to the
        quarter-second regardless. */
-    setInterval(() => {
+    timers.push(setInterval(() => {
+      if (halted) return;
       try {
         if (!S || !S.events || !S.events.length) return;
         pub.pushSnapshot(S.events.map(e => Object.assign({ seq: e.id }, e)),
                          stateOf(S), rosterOf(S));
       } catch (e) { /* never let sync break scoring */ }
-    }, 10000);
+    }, 10000));
+
+    watchStatus();
 
     maybeRoster(S);
     drain(S);
@@ -207,12 +275,15 @@ const api = {
     return api;
   },
 
-  /* flush before the tab closes so nothing is stranded in the 250 ms buffer */
-  flush() { if (pub) pub.flushNow(); },
+  /* flush before the tab closes so nothing is stranded in the 250 ms buffer.
+     A halted tab has nothing legitimate left to flush — the game is not this
+     tab's any more, and pagehide firing a last write into it is exactly the
+     resurrection halt() exists to prevent. */
+  flush() { if (pub && !halted) pub.flushNow(); },
 
   /* mark the game final and push a last frame */
   finalise() {
-    if (!pub) return;
+    if (!pub || halted) return;
     try {
       lastPub = '';                          // force a roster republish with status:final
       maybeRoster(S);
@@ -220,7 +291,11 @@ const api = {
     } catch (e) { console.warn('[sync]', e); }
   },
 
-  status() { return { gameId, sent: sentIds.length,
+  /* the scorer's own escape hatch, and what the watchdog calls */
+  halt,
+  get halted() { return halted; },
+
+  status() { return { gameId, sent: sentIds.length, halted,
                       pending: pub ? pub.pending() : 0, transport: pub && pub.transport }; }
 };
 

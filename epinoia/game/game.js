@@ -260,6 +260,29 @@ async function rpcCall(fn, args, token) {
   return r.json();
 }
 
+/* HOW MANY EVENTS WOULD THIS REVERT DESTROY — read from wherever it is.
+   Shared with epinoia/admin/governance-ui.js, which asks the same question of
+   the same refusal and must never disagree with this page about the answer.
+
+   Migration 0067 puts the count in the exception's DETAIL field, which is the
+   right place for a machine-readable number. It is read FIRST and it is the
+   only source that cannot be broken by rewording.
+
+   But a client and a database are deployed separately and can be out of step
+   in either direction, and reading DETAIL alone turned "back to listing" into
+   a dead button against a database that had not had 0067 applied yet — the
+   refusal arrives, the count is not in the field this looks in, and the
+   confirmation never opens. So the sentence is still parsed, as a fallback
+   only. Neither half depends on the other having shipped, which is the
+   property that matters: whichever is older, the button still works. */
+function eventCountFromRefusal(body) {
+  if (!body) return null;
+  const d = body.details;
+  if (d != null && /^\s*\d+\s*$/.test(String(d))) return String(d).trim();
+  const m = /has (\d+) recorded event/.exec(body.message || '');
+  return m ? m[1] : null;
+}
+
 /* Re-checked whenever a session appears where there was none — signing in on
    /epinoia/app/ in another tab writes the same localStorage key this page
    reads, and that write fires a 'storage' event here. Without this, a reader
@@ -352,12 +375,12 @@ async function offerToRevert() {
     try {
       let out = await attempt(false);
       if (!out.ok) {
-        /* The event count travels in the exception's DETAIL field, which
-           PostgREST surfaces as body.details — a structured value meant for
-           exactly this, unlike body.message, whose wording is free to change
-           for tone without anyone realising a client was parsing it. */
-        const n = out.body && out.body.details;
-        if (!n || !/^\d+$/.test(String(n))) {
+        const n = eventCountFromRefusal(out.body);
+        /* No count anywhere means this was NOT the "confirm the discard"
+           refusal — it is a real one (not signed in, not an administrator of
+           this game, the game is already final), and those are reported, not
+           retried behind a confirmation. */
+        if (n == null) {
           cta.disabled = false;
           alert((out.body && out.body.message) || 'That was refused.');
           return;
@@ -367,8 +390,8 @@ async function offerToRevert() {
           n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
           'permanently. The clubs, the date and the venue are kept, so the ' +
           'fixture can be scored properly when it is played.\n\n' +
-          'Close the scorer on that game first — a device still open on it will ' +
-          'carry on publishing.');
+          'Any device still open on this game in the scorer will be told to ' +
+          'stop within a few seconds.');
         if (!sure) { cta.disabled = false; return; }
         out = await attempt(true);
         if (!out.ok) {

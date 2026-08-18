@@ -92,15 +92,21 @@ function fixtureActions(o) {
         onDone && onDone();
         return;
       }
-      /* The event count travels in the exception's DETAIL field — surfaced
-         here as error.details — rather than parsed out of error.message with
-         a regex. The two client call sites for this button (here and the
-         public box score) used to each keep their own copy of that regex
-         against the same SQL prose; a reworded sentence would have broken
-         both silently, with nothing in CI to notice a string literal changed
-         rather than a type. */
-      const n = first.error.details;
-      if (!n || !/^\d+$/.test(String(n))) {
+      /* The count is read from the exception's DETAIL field, which is where a
+         machine should read it from, and falls back to parsing the sentence.
+         The fallback is not belt-and-braces pedantry: a client and a database
+         deploy separately, and reading DETAIL alone made this a dead button
+         against any database that had not had migration 0067/0068 applied yet
+         — the refusal arrives, the count is not in the field this looks in,
+         and the confirmation never opens. The public box score does the same
+         two-step in eventCountFromRefusal(); the two must agree. */
+      const n = (function (e) {
+        const d = e.details;
+        if (d != null && /^\s*\d+\s*$/.test(String(d))) return String(d).trim();
+        const m = /has (\d+) recorded event/.exec(e.message || '');
+        return m ? m[1] : null;
+      }(first.error));
+      if (n == null) {
         back.disabled = false; return say(first.error.message, 'err');
       }
       const sure = confirm(
@@ -108,8 +114,8 @@ function fixtureActions(o) {
         n + ' recorded event' + (n === '1' ? '' : 's') + ' will be discarded ' +
         'permanently. The clubs, the date and the venue are kept, so the ' +
         'fixture can be scored properly when it is played.\n\n' +
-        'Close the scorer on that game first — a device still open on it will ' +
-        'carry on publishing.');
+        'Any device still open on this game in the scorer will be told to ' +
+        'stop within a few seconds.');
       if (!sure) { back.disabled = false; return; }
 
       const { data, error } = await sb.rpc('revert_game',
