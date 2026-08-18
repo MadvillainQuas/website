@@ -10,12 +10,12 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<script src="mode.js?v=111"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=111">
-<link rel="stylesheet" href="kit/nav.css?v=111">
-<link rel="stylesheet" href="kit/card.css?v=111">
-<link rel="stylesheet" href="kit/news.css?v=111">
-<link rel="stylesheet" href="kit/splash.css?v=111">
+<script src="mode.js?v=113"></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=113">
+<link rel="stylesheet" href="kit/nav.css?v=113">
+<link rel="stylesheet" href="kit/card.css?v=113">
+<link rel="stylesheet" href="kit/news.css?v=113">
+<link rel="stylesheet" href="kit/splash.css?v=113">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -137,6 +137,54 @@
   .stargrid{display:grid;gap:calc(var(--u)*2);padding:0 calc(var(--u)*3) calc(var(--u)*2);
     grid-template-columns:repeat(auto-fit,minmax(178px,1fr))}
   @media (min-width:1100px){ .stargrid{grid-template-columns:repeat(3,minmax(178px,240px));justify-content:start} }
+
+  /* -------------------------------------------------------------------------
+     PHONE: THE DIRECTORY IS A DIRECTORY, AND A ROW OF STARS IS A ROW.
+
+     Both grids ask for a 178px minimum, which on a 390px screen resolves to a
+     single column — so twelve clubs became twelve full-width cards and the
+     three monthly stars sat above the three weekly ones in a column six long.
+     Neither reads as the thing it is: a directory you scan, and two rows you
+     compare.
+
+     Four clubs across and three stars across, with the plate square and the
+     furniture scaled to match. The crest monogram is already clamped against
+     the viewport (8vw), so it comes down on its own; what needs saying is the
+     name underneath, which would otherwise ellipsis to two letters. */
+  @media (max-width:720px){
+    .clubgrid{
+      grid-template-columns:repeat(4,1fr);
+      gap:calc(var(--u));
+      padding:calc(var(--u)*2);
+    }
+    .stargrid{
+      grid-template-columns:repeat(3,1fr);
+      gap:calc(var(--u));
+      padding:0 calc(var(--u)*2) calc(var(--u)*1.5);
+    }
+    /* the two star rows sit directly under one another, so the heading
+       between them loses the air it needs at full size */
+    .starrow-h{padding:calc(var(--u)*1.5) calc(var(--u)*2) calc(var(--u)*.5)}
+    .starrow-t{font-size:9.5px}
+    .starrow-s{font-size:7.5px}
+
+    .clubgrid .club-plate,
+    .stargrid .club-plate{aspect-ratio:1}
+    .clubgrid .club-foot,
+    .stargrid .club-foot{padding:5px 1px 0; gap:4px}
+    .clubgrid .club-name,
+    .stargrid .club-name{font-size:8px; letter-spacing:0}
+    .clubgrid .club-ed,
+    .stargrid .club-ed{display:none}
+    /* A star card names a player and their club, not a club — .star-name and
+       .star-team, which is what the earlier .club-name rule above never
+       reached. At 108px a full name has to come down or it ellipsises. */
+    .stargrid .star-who{gap:1px}
+    .stargrid .star-name{font-size:9px; letter-spacing:0}
+    .stargrid .star-team{font-size:7px}
+    .stargrid .club-mono{font-size:clamp(22px,7vw,34px)}
+    .clubgrid .club-mono{font-size:clamp(20px,6.5vw,30px)}
+  }
   .star .club-plate{aspect-ratio:4/3}
   .star-foot{align-items:flex-start}
   .star-who{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -583,23 +631,23 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=111" defer></script>
-<script src="rt.js?v=111" defer></script>
+<script src="config.js?v=113" defer></script>
+<script src="rt.js?v=113" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=111" defer></script>
-<script src="bpm.js?v=111" defer></script>
-<script src="data.js?v=111" defer></script>
-<script src="merch.js?v=111" defer></script>
-<script src="upload.js?v=111" defer></script>
-<script src="newsblocks.js?v=111" defer></script>
-<script src="news.js?v=111" defer></script>
-<script src="toty.js?v=111" defer></script>
-<script src="igtile.js?v=111" defer></script>
-<script src="socials.js?v=111" defer></script>
-<script src="music.js?v=111" defer></script>
-<script src="splash.js?v=111" defer></script>
-<script src="home.js?v=111" defer></script>
-<script src="nav.js?v=111" defer></script>
+<script src="season.js?v=113" defer></script>
+<script src="bpm.js?v=113" defer></script>
+<script src="data.js?v=113" defer></script>
+<script src="merch.js?v=113" defer></script>
+<script src="upload.js?v=113" defer></script>
+<script src="newsblocks.js?v=113" defer></script>
+<script src="news.js?v=113" defer></script>
+<script src="toty.js?v=113" defer></script>
+<script src="igtile.js?v=113" defer></script>
+<script src="socials.js?v=113" defer></script>
+<script src="music.js?v=113" defer></script>
+<script src="splash.js?v=113" defer></script>
+<script src="home.js?v=113" defer></script>
+<script src="nav.js?v=113" defer></script>
 </body>
 </html>

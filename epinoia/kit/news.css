@@ -25,6 +25,8 @@
   .news-grid > .news-card:first-child{grid-column:span 2}
 }
 
+
+
 .news-card{position:relative; text-decoration:none; color:inherit}
 .news-card .club-plate{aspect-ratio:16/10; position:relative; overflow:hidden}
 .news-card:first-child .club-plate{aspect-ratio:16/9}
@@ -136,3 +138,48 @@
 .news-body a{color:var(--lume)}
 .news-cover{margin:calc(var(--u)) 0}
 .news-cover img{display:block;max-width:min(100%,420px);border:1px solid var(--rule-2)}
+
+/* ---------------------------------------------------------------------------
+   ON A PHONE, ALL FIVE FIT — TWO THEN THREE.
+
+   auto-fill with a 230px minimum gives ONE column on a 390px screen, so the
+   five articles became five full-width plates and the section ran the length
+   of the page. A reader scrolling past five identical rectangles is not being
+   shown a front page; they are being shown a list with pictures.
+
+   Six columns divides both ways: the lead pair take three each, the remaining
+   three take two each. That is the same editorial shape as the desktop layout
+   — something leads, the rest follow — at a size a thumb can take in at once.
+
+   The type has to come down with the card or the headline wins an argument
+   with its own plate. It is set in ch-independent steps rather than a scale
+   factor so the second row, which is narrowest, stays readable.
+
+   THIS BLOCK LIVES AT THE END OF THE FILE ON PURPOSE. The base .news-title is
+   declared further down, at the same specificity, so an override written above
+   it loses the cascade and the three cards in the second row kept their
+   full-size headline — measured at 15px in a 166px card.  */
+@media (max-width:720px){
+  .news-grid{
+    grid-template-columns:repeat(6,1fr);
+    gap:calc(var(--u)*1.25);
+    padding:0 calc(var(--u)*2) calc(var(--u)*2);
+  }
+  .news-grid > .news-card{grid-column:span 2}
+  .news-grid > .news-card:nth-child(-n+2){grid-column:span 3}
+
+  /* squarer, because a 16/9 plate two-fifths of a phone wide is a stripe */
+  .news-card .club-plate{aspect-ratio:1}
+  .news-card:first-child .club-plate{aspect-ratio:4/3}
+  .news-grid > .news-card:nth-child(-n+2) .club-plate{aspect-ratio:4/3}
+
+  .news-title{font-size:11px; line-height:1.2}
+  .news-card:first-child .news-title{font-size:12.5px}
+  .news-grid > .news-card:nth-child(-n+2) .news-title{font-size:12.5px}
+  /* the standfirst is the first thing to go: at this width it is two words a
+     line and the headline already carries the story */
+  .news-grid > .news-card:nth-child(n+3) .news-stand{display:none}
+  .news-stand{font-size:8px; -webkit-line-clamp:2}
+  .news-over{padding:8px}
+  .news-flag{font-size:6.5px; padding:2px 5px; top:6px; left:6px}
+}
