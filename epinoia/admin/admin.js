@@ -741,7 +741,7 @@ $('#send').addEventListener('click', async () => {
 });
 
 $('#out').addEventListener('click', async () => {
-  await sb.auth.signOut();
+  await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());
   league = season = comp = null;
   say('');
   render();

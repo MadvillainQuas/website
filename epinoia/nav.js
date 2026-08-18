@@ -802,7 +802,15 @@
     }
   }
 
+  /* Which run of applyAuth is the current one. Switching accounts fires this
+     twice in quick succession — once for the sign-out, once for the sign-in —
+     and whoami() is a round trip, so without this the FIRST answer can land
+     after the second and repaint the rail with the previous account's roles.
+     A signed-out answer arriving late is the same hazard in reverse. */
+  let authRun = 0;
+
   async function applyAuth() {
+    const run = ++authRun;
     const sess = storedSession();
 
     if (!sess) {
@@ -824,6 +832,7 @@
 
     let who = {};
     try { who = await whoami(sess.token) || {}; } catch (_) { who = {}; }
+    if (run !== authRun) return;          // a newer sign-in overtook this one
     gated.forEach(([node, pred]) => {
       let ok = false;
       try { ok = !!pred(who); } catch (_) { ok = false; }
@@ -862,11 +871,71 @@
   fillLeagues();
   applyAuth();
 
-  /* signing out in another tab should not leave this one showing an admin
-     link that no longer works */
+  /* ===================== WATCHING WHO IS SIGNED IN =====================
+
+     The rail read the token once, at load, and then only listened for the
+     browser's `storage` event — which by specification does NOT fire in the
+     tab that made the change. Every ordinary sign-in and sign-out happens in
+     the tab you are looking at, so the rail was told about none of them: sign
+     out of one account, sign into another, and it went on showing the first
+     account's email and, worse, the first account's gated rows until
+     something happened to reload the page.
+
+     Four sources now, because no single one covers every case:
+
+       the SDK        instant and authoritative, but only on pages that load
+                      it — the rail deliberately does not, being on every
+                      public page where 200kB of auth library would be paid
+                      for by everybody to benefit the few;
+       storage event  the other tabs, which the SDK in this tab cannot see;
+       focus/visible  coming back to a tab after signing in elsewhere;
+       a slow poll    the backstop that catches everything else, including a
+                      token that expired while the page sat open.
+
+     The poll is a localStorage read and a JSON parse against a cached
+     signature — nothing happens unless the answer actually changed, so the
+     cost of the common case is one string comparison every two seconds. */
+  let authSig = null;
+  function currentSig() {
+    const sess = storedSession();
+    return sess ? (sess.email || '?') + '|' + sess.token.slice(-24) : 'signed-out';
+  }
+  function checkAuth() {
+    const sig = currentSig();
+    if (sig === authSig) return;
+    authSig = sig;
+    applyAuth();
+  }
+  authSig = currentSig();          // applyAuth() above already drew this one
+
   window.addEventListener('storage', e => {
-    if (e.key && e.key.indexOf('-auth-token') !== -1) applyAuth();
+    if (e.key && e.key.indexOf('-auth-token') !== -1) checkAuth();
   });
+  /* fired by epinoiaSignOut in this same tab, where a storage event cannot
+     reach — the difference between the rail updating now and in two seconds */
+  window.addEventListener('epinoia:auth', checkAuth);
+  window.addEventListener('focus', checkAuth);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkAuth();
+  });
+  setInterval(checkAuth, 2000);
+
+  /* When the page does carry the SDK, take the authoritative signal too: it
+     fires the instant a session changes rather than up to two seconds later. */
+  (function subscribeSdk() {
+    const attach = () => {
+      const sb = window.__sb || (window.epinoiaClient && window.supabase && window.epinoiaClient());
+      if (!sb || !sb.auth || subscribeSdk.done) return false;
+      subscribeSdk.done = true;
+      try { sb.auth.onAuthStateChange(() => checkAuth()); } catch (_) {}
+      return true;
+    };
+    if (attach()) return;
+    /* the SDK is loaded with defer on most pages, and lazily on some, so try
+       again a few times rather than assuming it was there at first paint */
+    let n = 0;
+    const t = setInterval(() => { if (attach() || ++n > 20) clearInterval(t); }, 250);
+  })();
   /* the rail is a fixed column; a resize changes what fits in it */
   window.addEventListener('resize', () => sizeDeck(false));
 

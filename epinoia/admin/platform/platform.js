@@ -135,7 +135,9 @@ function wire() {
 
   $('#send').addEventListener('click', sendLink);
   $('#email').addEventListener('keydown', e => { if (e.key === 'Enter') sendLink(); });
-  $('#out').addEventListener('click', async () => { await sb.auth.signOut(); });
+  $('#out').addEventListener('click', async () => {
+    await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());
+  });
 
   $('#acctGo').addEventListener('click', () => { acctOffset = 0; loadAccounts(); });
   $('#acctQ').addEventListener('keydown', e => {

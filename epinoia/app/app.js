@@ -643,7 +643,10 @@ $('#send').addEventListener('click', async () => {
   say(error ? error.message : 'Link sent — check your inbox, then come back here.', error ? 'err' : 'ok');
 });
 
-$('#out').addEventListener('click', async () => { await sb.auth.signOut(); team = null; render(); });
+$('#out').addEventListener('click', async () => {
+  await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());
+  team = null; render();
+});
 $('#back').addEventListener('click', () => { team = null; render(); });
 
 /* The create-team handler lived here. Clubs are created in the league console

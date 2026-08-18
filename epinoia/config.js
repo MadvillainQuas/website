@@ -37,6 +37,45 @@ window.epinoiaClient = function () {
   return window.__sb;
 };
 
+/* ============================================================================
+   SIGNING OUT, PROPERLY.
+
+   sb.auth.signOut() posts to the server and then clears local storage, and it
+   is the SERVER call that can fail — offline, a dead token, a 5xx. When it
+   does, some versions leave the stored session behind and the page still holds
+   a token for an account the user believes they have left. Signing in as
+   somebody else then lands on top of a half-cleared state, which is how
+   "logged out, logged in as another account, still shows the first one"
+   happens.
+
+   So the local half is done unconditionally afterwards, whatever the server
+   said. Being signed out locally when the server disagrees is recoverable —
+   the next request 401s and the page asks for a sign-in. The reverse, holding
+   a session the user thinks they dropped, is not.
+
+   scope:'local' is deliberate: this signs out THIS browser and leaves other
+   devices alone, which is what a sign-out button on a shared laptop should do.
+   ============================================================================ */
+window.epinoiaSignOut = async function (sb) {
+  const client = sb || (window.epinoiaClient && window.epinoiaClient());
+  try { if (client) await client.auth.signOut({ scope: 'local' }); }
+  catch (e) { console.warn('[signout] server call failed, clearing locally', e); }
+
+  /* Whatever happened above, leave nothing behind that looks like a session. */
+  try {
+    const ref = (window.EPINOIA_CONFIG.supabaseUrl.match(/^https?:\/\/([^.]+)\./) || [])[1];
+    if (ref) localStorage.removeItem('sb-' + ref + '-auth-token');
+    Object.keys(localStorage)
+      .filter(k => /^sb-.*-auth-token/.test(k))
+      .forEach(k => localStorage.removeItem(k));
+  } catch (_) { /* storage unavailable is not a reason to fail a sign-out */ }
+
+  /* Tell this tab. The browser's storage event only reaches OTHER tabs, so
+     without this the rail in this one would wait for its next poll. */
+  try { window.dispatchEvent(new Event('epinoia:auth')); } catch (_) {}
+  return true;
+};
+
 /* ----------------------------------------------------------------------------
    THE SDK, FETCHED ONLY WHEN SOMETHING NEEDS IT.
 

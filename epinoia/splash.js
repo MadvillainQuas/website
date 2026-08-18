@@ -82,7 +82,7 @@ function signIn(sb, cfg) {
       const out = el('button', 'sp-btn ghost', 'sign out');
       out.type = 'button';
       out.addEventListener('click', async () => {
-        await sb.auth.signOut();
+        await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());
         msg('Signed out.', 'ok');
         draw(); gate(sb);
       });

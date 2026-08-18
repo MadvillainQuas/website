@@ -211,7 +211,7 @@ async function googleAvailable() {
 })();
 
 $('#signout').addEventListener('click', async () => {
-  await sb.auth.signOut();
+  await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());
   say('Signed out.', 'ok');
   render();
 });
