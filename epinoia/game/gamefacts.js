@@ -59,7 +59,10 @@ function brief(S, d, B) {
   return {
     names, score: d.score.slice(), players, byId,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
-    perQ: d.perQ, periods, events: S.events || []
+    perQ: d.perQ, periods, events: S.events || [],
+    /* set by game.js once the season aggregates land; the fact engine
+       simply omits its season sentences when it is absent */
+    season: S.season || null
   };
 }
 

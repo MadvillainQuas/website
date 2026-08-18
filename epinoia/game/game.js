@@ -799,6 +799,56 @@ function mergeLive(game, events, removed, full) {
    just without the statistics half. That is the honest result rather than an
    error: the venue, the time and the map are the part somebody actually came
    for. */
+/* THE SEASON, FOR CONTEXT.
+
+   Shared by the preview (which is entirely about the season) and the match
+   report (which uses it to say whether a performance was normal). "24 points"
+   is a fact; "24 points, nine clear of his average" is the sentence somebody
+   reads — and the evaluator found the report mentioning season context in
+   exactly none of twelve games, because nothing ever handed it any.
+
+   Scoped to the SEASON rather than the competition: a cup tie belongs to a
+   competition with few finished games, and scoping to it leaves a player with
+   no average to be measured against. */
+async function loadSeason(competitionId) {
+  if (!competitionId || !window.EpinoiaData) return null;
+  try {
+    const comps = await window.EpinoiaData.all(
+      'competitions?id=eq.' + encodeURIComponent(competitionId) + '&select=season_id');
+    const seasonId = comps && comps[0] && comps[0].season_id;
+    if (!seasonId) return null;
+    const sibling = await window.EpinoiaData.all(
+      'competitions?season_id=eq.' + encodeURIComponent(seasonId) + '&select=id');
+    const ids = (sibling || []).map(c => c.id);
+    if (!ids.length) return null;
+    const games = await window.EpinoiaData.all(
+      'games?competition_id=in.(' + ids.join(',') + ')&status=eq.final' +
+      '&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at');
+    if (!games.length) return null;
+    const S = await window.EpinoiaData.statsForGames(games);
+    try {
+      const meta = await window.EpinoiaData.playerMeta((S.players || []).map(p => p.id));
+      (S.players || []).forEach(p => Object.assign(p, meta[p.id] || {}));
+    } catch (_) { /* names are a nicety here; the numbers are the point */ }
+    return S;
+  } catch (e) { console.warn('[season]', e); return null; }
+}
+
+/* The report reads season context off S.season. Fetched AFTER the first paint
+   and the body redrawn when it lands: the report is worth reading without it,
+   and making the page wait on a second round trip to add one clause to two
+   sentences is the wrong trade. */
+async function addSeasonContext() {
+  const m = (window.S && window.S.meta) || {};
+  const S = await loadSeason(m.competitionId);
+  if (!S || !window.S) return;
+  const idx = {};
+  if (m.homeTeamId) idx[m.homeTeamId] = 0;
+  if (m.awayTeamId) idx[m.awayTeamId] = 1;
+  window.S.season = { players: S.players || [], teams: S.teams || [], teamIndex: idx };
+  if (fTab === 'report') { lastBodyKey = ''; renderBody(); }
+}
+
 async function renderPreview() {
   const S = window.S, m = S.meta || {};
   let season = { players: [], teams: [], teamOfPlayer: new Map() };

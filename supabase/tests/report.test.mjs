@@ -205,5 +205,103 @@ ok('...reads the period count off the log', brief.periods === 3, String(brief.pe
 ok('...and drives the same engine the browser does',
    !!Report.report(brief).headline);
 
+/* ---- prose faults found by reading twelve real reports -------------------
+   None of these were visible in the source. Each was obvious the moment the
+   output was read, and each is the kind of thing that makes generated writing
+   announce itself. */
+
+/* A club opened eight sentences in one report before the referrer existed.
+   Nothing should open more than a few. */
+{
+  const all = [rep.headline, rep.standfirst]
+    .concat(rep.sections.flatMap(s => s.paras)).join(' ');
+  const sentences = all.split(/(?<=[.!?])\s+/).filter(x => x.trim().length > 4);
+  const opens = {};
+  sentences.forEach(x => {
+    const k = x.trim().split(/\s+/).slice(0, 2).join(' ').toLowerCase();
+    opens[k] = (opens[k] || 0) + 1;
+  });
+  const worst = Math.max(...Object.values(opens));
+  ok('no opener is used more than four times in one report', worst <= 4, 'worst ' + worst);
+
+  /* a pronoun can never be the first thing in the article — there is nothing
+     for it to refer back to */
+  /* Only ANAPHORIC pronouns. "It finished 42-38 to Neon City" is a dummy
+     subject and ordinary English; "They won it" as the first words of an
+     article has nothing to refer back to and is the referrer misfiring. */
+  ok('the report does not open on a pronoun with nothing to refer to',
+     !/^(They|Them|Their)\b/.test(rep.sections[0].paras[0]),
+     rep.sections[0].paras[0].slice(0, 60));
+
+  /* the joiner lower-cases a clause it welds on, and must not do it to a name */
+  ok('a club name is never lower-cased mid-sentence',
+     !/\band (east|soft|neon|harbour) [A-Z]/.test(all), all.slice(0, 200));
+  ok('a pronoun IS lower-cased when a clause is joined onto another',
+     !/, and (They|There|It)\b/.test(all), all);
+
+  /* the number budget */
+  const dense = sentences.filter(x => (x.match(/\b\d+(?:\.\d+)?%?\b/g) || []).length >= 5);
+  ok('no sentence carries five or more figures', dense.length === 0,
+     (dense[0] || '').slice(0, 120));
+}
+
+/* Only one player can lead a team. Two bigScore facts on the same side used to
+   produce two players "leading" it. */
+{
+  const two = Report.report(game({
+    players: (() => {
+      const a = mk('a1', 'alpha one', 0, { pts: 24, p2m: 9, p2a: 17, dr: 4 });
+      const b = mk('a2', 'alpha two', 0, { pts: 22, p2m: 8, p2a: 16, dr: 3 });
+      const c = mk('b1', 'beta one', 1, { pts: 10, p2m: 4, p2a: 9 });
+      return [a, b, c];
+    })(),
+    byId: {}
+  }));
+  const prose = two.sections.flatMap(s => s.paras).join(' ');
+  const leads = (prose.match(/ (led|carried|top-scored)/g) || []).length;
+  ok('at most one player leads each side', leads <= 2, prose);
+}
+
+/* "held to no" — the word for zero in a counting phrase is not the word for a
+   scoreless night */
+{
+  const zero = Report.report(game({
+    players: [mk('a1', 'quiet man', 0, { pts: 0, p2m: 0, p2a: 6, min: 1500000 }),
+              mk('b1', 'beta one', 1, { pts: 20, p2m: 8, p2a: 14 })],
+    season: { players: [{ id: 'a1', gp: 6, ppg: 14.2 }], teams: [], teamIndex: {} }
+  }));
+  const prose = zero.sections.flatMap(s => s.paras).join(' ');
+  ok('a scoreless night is not described as "held to no"',
+     !/held to no\b/.test(prose) && !/managed no\b/.test(prose), prose);
+}
+
+/* the indefinite article follows the sound of the numeral after it */
+{
+  const eight = Report.report(game({}));
+  const all = eight.headline + ' ' + eight.standfirst + ' ' +
+    eight.sections.flatMap(s => s.paras).join(' ');
+  ok('the article agrees with the numeral it precedes',
+     !/\ba (8|11|18)\b/.test(all), (all.match(/\ba (8|11|18)\b.{0,30}/) || [''])[0]);
+}
+
+/* variation: two players in the same report must not get the same sentence
+   shape with the nouns swapped */
+{
+  const many = Report.report(game({
+    players: [mk('a1', 'alpha one', 0, { pts: 21, p2m: 8, p2a: 14, dr: 5 }),
+              mk('a2', 'alpha two', 0, { pts: 20, p2m: 8, p2a: 15, dr: 4 }),
+              mk('b1', 'beta one', 1, { pts: 22, p2m: 9, p2a: 16, dr: 6 }),
+              mk('b2', 'beta two', 1, { pts: 20, p2m: 7, p2a: 13, dr: 3 })]
+  }));
+  const sec = many.sections.find(s => s.card === 'players');
+  if (sec && sec.paras.length >= 3) {
+    const shapes = sec.paras.map(x => x.replace(/[A-Z][a-z]+ [A-Z][a-z]+/g, 'NAME')
+                                       .replace(/\d+(\.\d+)?/g, 'N'));
+    const uniq = new Set(shapes);
+    ok('players in one report are not given the same sentence with names swapped',
+       uniq.size > 1, shapes.join(' || '));
+  } else ok('players in one report are not given the same sentence with names swapped', true);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

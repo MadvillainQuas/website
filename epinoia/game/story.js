@@ -298,6 +298,182 @@ function factTeamShape(g) {
   return out;
 }
 
+/* ---- defence: the half of the game the report never mentioned ------------
+   Measured 0 of 12 games talking about a steal, a block or a defensive rating,
+   which is a report describing one team's night twice rather than two teams'
+   once. Forced turnovers are the honest version of "they defended well": a
+   turnover is credited to whoever gave it away, so the defence's share of it
+   only exists as the opponent's turnover rate. */
+function factDefence(g) {
+  const out = [];
+  for (const t of [0, 1]) {
+    const A = g.adv[t], O = g.adv[1 - t];
+    if (!A || !O) continue;
+
+    /* a defensive rating well clear of the other end of the floor */
+    if (num(A.drtg) != null && num(O.drtg) != null) {
+      const gap = num(O.drtg) - num(A.drtg);
+      if (gap >= 12) {
+        out.push(F('defRating', t, 73, { drtg: A.drtg, theirs: O.drtg, gap },
+          g.names[t] + ' defended far better'));
+      }
+    }
+    /* turnovers forced, read off the opponent's rate */
+    if (num(O.tovp) != null && O.tovp >= 18) {
+      out.push(F('forcedTurnovers', t, 69, { rate: O.tovp, tov: (g.team[1 - t] || {}).toTot },
+        g.names[t] + ' forced the ball loose'));
+    }
+    /* the disruptive individuals, taken together rather than one at a time */
+    const mine = g.players.filter(p => p.team === t);
+    const stl = mine.reduce((a, p) => a + (p.stl || 0), 0);
+    const blk = mine.reduce((a, p) => a + (p.blk || 0), 0);
+    if (stl + blk >= 12) {
+      const topS = mine.slice().sort((a, b) => (b.stl || 0) - (a.stl || 0))[0];
+      const topB = mine.slice().sort((a, b) => (b.blk || 0) - (a.blk || 0))[0];
+      out.push(F('disruption', t, 64, { stl, blk, topS, topB },
+        g.names[t] + ' were busy defensively'));
+    }
+  }
+  /* a single defensive performance worth naming */
+  g.players.forEach(p => {
+    if ((p.stl || 0) >= 4 || (p.blk || 0) >= 4) {
+      out.push(F('defender', p.team, 67, { p },
+        p.name + ' was a problem defensively'));
+    }
+  });
+  return out;
+}
+
+/* ---- fouls: trouble, disqualification, and who lived at the line --------- */
+function factFouls(g) {
+  const out = [];
+  g.players.forEach(p => {
+    if ((p.pf || 0) >= 5) {
+      out.push(F('fouledOut', p.team, 75, { p },
+        p.name + ' fouled out'));
+    } else if ((p.pf || 0) === 4 && (p.min || 0) > 900000) {
+      out.push(F('foulTrouble', p.team, 48, { p },
+        p.name + ' played the closing stretch on four'));
+    }
+    if ((p.fd || 0) >= 7) {
+      out.push(F('drawsFouls', p.team, 58, { p },
+        p.name + ' kept getting to the line'));
+    }
+  });
+  /* a whistle that fell one way all night is part of how a game felt */
+  const fa = (g.team[0] || {}).foulTot, fb = (g.team[1] || {}).foulTot;
+  if (num(fa) != null && num(fb) != null && Math.abs(fa - fb) >= 8) {
+    const side = fa < fb ? 0 : 1;
+    out.push(F('whistle', side, 54, { mine: Math.min(fa, fb), theirs: Math.max(fa, fb) },
+      'the whistle favoured ' + g.names[side]));
+  }
+  return out;
+}
+
+/* ---- ball movement ------------------------------------------------------- */
+function factPassing(g) {
+  const out = [];
+  for (const t of [0, 1]) {
+    const A = g.adv[t];
+    if (!A) continue;
+    if (num(A.astp) != null && A.astp >= 60) {
+      out.push(F('sharing', t, 61, { astp: A.astp },
+        g.names[t] + ' shared it'));
+    }
+  }
+  g.players.forEach(p => {
+    if ((p.ast || 0) >= 7) {
+      out.push(F('creator', p.team, 72, { p, ratio: (p.to || 0) ? (p.ast / p.to) : null },
+        p.name + ' set the table'));
+    }
+  });
+  return out;
+}
+
+/* ---- where the shots came from ------------------------------------------- */
+/* The engine already splits attempts by zone. A side that won by living at the
+   rim and one that won from the arc played different games, and a report that
+   only gives a shooting percentage cannot tell them apart. */
+function factZones(g) {
+  const out = [];
+  for (const t of [0, 1]) {
+    const A = g.adv[t], O = g.adv[1 - t];
+    if (!A) continue;
+    if (num(A.p3p) != null && num(O && O.p3p) != null && A.p3p - O.p3p >= 15) {
+      out.push(F('fromRange', t, 63, { share: A.p3p, theirs: O.p3p },
+        g.names[t] + ' shot from distance'));
+    }
+    if (num(A.rimp) != null && num(O && O.rimp) != null && A.rimp - O.rimp >= 15) {
+      out.push(F('atRim', t, 63, { share: A.rimp, theirs: O.rimp },
+        g.names[t] + ' attacked the rim'));
+    }
+  }
+  return out;
+}
+
+/* ---- tempo and efficiency ------------------------------------------------ */
+function factTempo(g) {
+  const out = [];
+  const A = g.adv[0], B = g.adv[1];
+  if (!A || !B) return out;
+  if (num(A.pace) != null && A.pace >= 78) {
+    out.push(F('fast', null, 50, { pace: A.pace }, 'it was played at pace'));
+  } else if (num(A.pace) != null && A.pace > 0 && A.pace <= 62) {
+    out.push(F('slow', null, 50, { pace: A.pace }, 'it was a slow game'));
+  }
+  for (const t of [0, 1]) {
+    const T = g.adv[t];
+    if (num(T.ortg) != null && T.ortg >= 120) {
+      out.push(F('efficientTeam', t, 66, { ortg: T.ortg },
+        g.names[t] + ' scored at will'));
+    }
+  }
+  return out;
+}
+
+/* ---- SEASON CONTEXT: is this normal for them? ----------------------------
+   The single largest gap the evaluator found. "24 points" is a fact; "24
+   points, nine clear of his average" is the sentence somebody reads. Only runs
+   when the caller supplied season aggregates — the game page has them because
+   the preview already fetches them, and a report without them simply omits
+   these sentences rather than guessing. */
+function factSeasonContext(g) {
+  const out = [];
+  const S = g.season;
+  if (!S) return out;
+
+  (S.players || []).forEach(sp => {
+    const p = g.byId[sp.id];
+    if (!p || !p.min || !sp.gp || sp.gp < 3) return;
+    const avg = num(sp.ppg);
+    if (avg == null) return;
+    const diff = (p.pts || 0) - avg;
+    if (diff >= Math.max(8, avg * 0.5)) {
+      out.push(F('aboveSelf', p.team, 82, { p, avg, diff },
+        p.name + ' went well past his average'));
+    } else if (avg >= 12 && diff <= -Math.max(8, avg * 0.5)) {
+      out.push(F('belowSelf', p.team, 59, { p, avg, diff },
+        p.name + ' was kept quiet'));
+    }
+  });
+
+  (S.teams || []).forEach(st => {
+    const t = (S.teamIndex || {})[st.id];
+    if (t !== 0 && t !== 1) return;
+    if (!st.gp || st.gp < 3) return;
+    const scored = g.score[t], avg = num(st.ppg);
+    if (avg == null) return;
+    if (scored - avg >= 12) {
+      out.push(F('teamAbove', t, 70, { scored, avg },
+        g.names[t] + ' scored well above their season rate'));
+    } else if (avg - scored >= 12) {
+      out.push(F('teamBelow', t, 65, { scored, avg },
+        g.names[t] + ' were held below their season rate'));
+    }
+  });
+  return out;
+}
+
 function ordinal(n) {
   return n === 1 ? 'first' : n === 2 ? 'second' : n === 3 ? 'third'
        : n === 4 ? 'fourth' : n + 'th';
@@ -309,7 +485,9 @@ function ordinal(n) {
 function facts(g) {
   return [].concat(
     factResult(g), factQuarters(g), factFlow(g), factFactors(g),
-    factLineups(g), factPlayers(g), factTeamShape(g)
+    factLineups(g), factPlayers(g), factTeamShape(g),
+    factDefence(g), factFouls(g), factPassing(g), factZones(g),
+    factTempo(g), factSeasonContext(g)
   ).filter(Boolean).sort((a, b) => b.salience - a.salience);
 }
 
@@ -319,5 +497,7 @@ function facts(g) {
    where a language model would be handed the brief. */
 return { facts, F, esc, num, one, pct1, mins, ordinal, plural,
          __x: { factResult, factQuarters, factFlow, factFactors,
-                factLineups, factPlayers, factTeamShape } };
+                factLineups, factPlayers, factTeamShape,
+                factDefence, factFouls, factPassing, factZones,
+                factTempo, factSeasonContext } };
 }));
