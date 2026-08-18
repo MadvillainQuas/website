@@ -956,11 +956,22 @@
 
     note('finalising…', '#ffd166');
     try {
+      /* NO apikey HEADER. An edge function authenticates on the bearer token
+         alone — the apikey header is a PostgREST convention that this endpoint
+         never read — and sending it made the browser ask permission for a
+         header the function's CORS policy did not grant. The preflight was
+         refused, the fetch rejected before the request was ever made, and the
+         scorer reported "network error: Failed to fetch", which looks exactly
+         like being offline. Finalising therefore failed from a browser every
+         time while working perfectly from curl.
+
+         The function now allows the header too, but this stays removed so the
+         fix does not depend on a redeploy — and because it was never doing
+         anything. */
       const r = await fetch(CFG.supabaseUrl + '/functions/v1/finalise-game', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: CFG.supabaseAnonKey,
           Authorization: 'Bearer ' + session.access_token
         },
         body: JSON.stringify({ gameId })

@@ -344,11 +344,13 @@ function mount(opts) {
        would quietly leave the MVP on the efficiency formula. */
     try {
       const { data: { session } } = await opts.sb.auth.getSession();
+      /* No apikey header — see the note in score/bootstrap.js. It is not read
+         by the function, and asking permission for it is what made the browser
+         refuse the preflight and reject the fetch before it was ever sent. */
       const r = await fetch(opts.cfg.supabaseUrl + '/functions/v1/finalise-game', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: opts.cfg.supabaseAnonKey,
           Authorization: 'Bearer ' + (session ? session.access_token : '')
         },
         body: JSON.stringify({ competitionId: opts.comp.id, awards: 1 })

@@ -25,9 +25,23 @@ import '../_shared/story.js';
 import { report as buildReport } from '../_shared/report.js';
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
 
+/* EVERY HEADER A BROWSER ACTUALLY SENDS HAS TO BE NAMED HERE.
+
+   This said 'authorization, content-type', and the scorer — like every other
+   caller on the platform — sends apikey alongside them. A preflight that does
+   not clear every requested header is refused by the browser before the real
+   request is ever made, and the fetch rejects with a bare "Failed to fetch"
+   that is indistinguishable from being offline. So finalising a game failed
+   from the browser every single time, while curl and every server-side call
+   worked perfectly, because only a browser enforces this.
+
+   contact, feeds, merch and socials all list apikey already; this function was
+   the one that did not. x-client-info is added too — supabase-js attaches it
+   to its own requests, so anything later routed through the SDK rather than a
+   hand-written fetch does not reintroduce the same failure. */
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 /* The report's headline and standfirst are escaped for HTML, because that is
