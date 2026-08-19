@@ -245,7 +245,19 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
    a pseudo-element so it moves with the scroll and disappears at the end. */
 .ep-xscroll{
   overflow-x:auto; overflow-y:hidden;
-  touch-action:pan-x; -webkit-overflow-scrolling:touch;
+  /* PAN-X ALONE STRANDS THE READER. touch-action:pan-x tells the browser this
+     element handles horizontal panning AND NOTHING ELSE, so a vertical drag
+     that begins on the table is discarded rather than passed up to the page.
+     On a full-height stats table that means a finger anywhere over the numbers
+     cannot scroll the page at all — you reach the middle of the leaders table
+     and stop. It is the same trap the full statistics table had.
+
+     Both axes named: the element takes horizontal drags, the page keeps
+     vertical ones, and the browser decides by direction on the first few
+     pixels. The reason to name them at all rather than leave it auto is that
+     it still rules out pinch-zoom and double-tap-zoom on a data grid, which
+     are the gestures that make a table jump about while you are reading it. */
+  touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
   scrollbar-width:thin;
   background:
@@ -264,7 +276,9 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-xtabs{
   display:flex !important; flex-wrap:nowrap !important;
   overflow-x:auto; max-width:100%;
-  touch-action:pan-x; -webkit-overflow-scrolling:touch;
+  /* both axes, for the reason above: a tab bar spans the page and a vertical
+     drag that happens to start on it must still scroll the page */
+  touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
   scrollbar-width:none;
 }

@@ -498,7 +498,10 @@ body.pregame .plist{opacity:.72}
    over the table gets claimed by the box's own vertical scroll instead of
    reaching the page, on every table this wraps — the box score, the
    four-factors card, and the full table / advanced tab alike. */
-.tblwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;}
+/* pan-x pan-y, not pan-x: naming only the horizontal axis makes the element
+   swallow vertical drags rather than passing them to the page, so a finger on
+   the box score could not scroll it. Both named still rules out pinch-zoom. */
+.tblwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
 table.bx{border-collapse:collapse;width:100%;min-width:700px;font-variant-numeric:tabular-nums;}
 table.bx th{font-size:9px;font-weight:400;letter-spacing:.14em;color:var(--faint);text-transform:lowercase;
   padding:6px 7px;text-align:right;border-bottom:1px solid var(--line);}
@@ -4782,10 +4785,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=144" defer></script>
-<script src="../vendor/supabase.js?v=144" defer></script>
-<script src="../live.js?v=144" defer></script>
-<script src="sync.js?v=144" defer></script>
-<script src="bootstrap.js?v=144" defer></script>
+<script src="../config.js?v=146" defer></script>
+<script src="../vendor/supabase.js?v=146" defer></script>
+<script src="../live.js?v=146" defer></script>
+<script src="sync.js?v=146" defer></script>
+<script src="bootstrap.js?v=146" defer></script>
 </body>
 </html>
