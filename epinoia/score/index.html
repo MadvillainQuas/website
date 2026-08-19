@@ -1934,8 +1934,16 @@ function renderAll(){
   D = derive();
   if(S.phase==='final'){ refreshOpenViews(); return; }
   document.body.classList.toggle('pregame', S.phase==='pregame');
-  renderTopbar(); renderSubbar(); renderScore(); renderCols(); renderX(); renderHelp(); renderMid(); renderCmd();
-  renderPregame();
+  /* EACH ON ITS OWN. These were one statement, so the first to throw took
+     every one after it with it — a one-word mistake in the legend left the
+     shot chart with no click handler and no error anybody would connect to
+     it. A renderer that fails should cost its own panel and nothing else,
+     and it should say so out loud rather than leaving a screen half drawn. */
+  [renderTopbar, renderSubbar, renderScore, renderCols, renderX,
+   renderHelp, renderMid, renderCmd, renderPregame].forEach(fn=>{
+    try{ fn(); }
+    catch(err){ console.error('render failed: '+fn.name, err); }
+  });
   refreshOpenViews();
 }
 
@@ -2115,8 +2123,14 @@ function finishWindow(){
    is declared further down the file: a const here would evaluate at load and
    die in the temporal dead zone, while a function body runs when the legend is
    drawn, long after. */
-const DONEK = () => IS_TOUCH ? '✓ done' : DONEK();
-const CANCK = () => IS_TOUCH ? '✕ back' : CANCK();
+/* THE NON-TOUCH BRANCH IS THE KEY, NOT A CALL TO ITSELF. Written as
+   DONEK() / CANCK() first time out, which on a phone returned the string and
+   on a PC recursed until the stack gave out. helpSpec() is called by
+   renderHelp(), which renderAll() runs BEFORE renderMid() — so the throw took
+   the shot chart's click handler with it, and a statistician on a desktop
+   could not place a shot at all. A legend typo, presenting as a dead court. */
+const DONEK = () => IS_TOUCH ? '✓ done' : '✓ done · enter';
+const CANCK = () => IS_TOUCH ? '✕ back' : '✕ · esc';
 
 function helpSpec(){
   const p = ui.pending, L = [];
@@ -2418,6 +2432,7 @@ function renderMid(){
   const svg = court.querySelector('svg');
   if(a) svg.addEventListener('click', e=>{
     const r = svg.getBoundingClientRect();
+    if(!r.width || !r.height) return;
     recordLoc((e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height);
   });
   const st = a && D.stypes ? D.stypes[a.id] : null;
@@ -2642,6 +2657,7 @@ function renderSubbar(){
   const fc = $('#flowCourt svg');
   if(fc) fc.addEventListener('click', e=>{
     const r = fc.getBoundingClientRect();
+    if(!r.width || !r.height) return;          // a court with no box has no spot
     recordLoc((e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height);
   });
 }
@@ -2667,6 +2683,16 @@ function flowAdvance(){
 function recordLoc(nx, ny){
   const p = ui.pending; if(!p) return;
   const id = p.anchorIdx, ev = evById(id); if(!ev) return;
+
+  /* A COURT WITH NO LAYOUT BOX DIVIDES BY ZERO. Both callers work out where
+     the tap landed as a fraction of the SVG's bounding box, and a hidden or
+     not-yet-laid-out court has a box 0 wide — so the fraction comes back
+     Infinity or NaN and this wrote a location of `null` into the log rather
+     than doing nothing. Refusing is right: a shot with no position is
+     recoverable, a shot at a nonsense position is not. */
+  if(!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+  nx = Math.max(0, Math.min(1, nx));
+  ny = Math.max(0, Math.min(1, ny));
 
   /* A shot's value is deliberate; its location is a thumb. Where they
      disagree the thumb loses — silently would be wrong, so it says so. */
