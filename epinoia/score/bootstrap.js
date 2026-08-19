@@ -829,8 +829,27 @@
       if (!el) return false;
       const apply = () => {
         const h = el.offsetHeight;                       // 0 when display:none (desktop)
-        const opaque = h > 0 ? Math.max(0, h - 96) : 0;  // minus the gradient lead-in
+        /* MEASURE THE LEAD-IN, DO NOT ASSUME IT. This subtracted a flat 96px —
+           the desktop padding-top — which stopped being true the moment the
+           phone layout dropped that scrim to 18. The legend then under-reported
+           its own opaque height by nearly eighty pixels and #cols reserved too
+           little, which is how player rows ended up underneath it. */
+        const lead = parseFloat(getComputedStyle(el).paddingTop) || 0;
+        const opaque = h > 0 ? Math.max(0, h - lead) : 0;
         document.documentElement.style.setProperty('--ep-legend-h', opaque + 'px');
+
+        /* WHERE THE PLAYING FIVE END. The legend is allowed to cover the bench
+           — those rows are only touched to give a technical to somebody sitting
+           down — and must never cover the five on court, which are read on
+           every possession. Publishing the boundary lets the stylesheet cap the
+           legend instead of guessing at a fraction of the viewport. */
+        const starters = [...document.querySelectorAll('#cols .prow:not(.bench)')]
+          .filter(r => r.offsetParent);
+        if (starters.length) {
+          const low = Math.max(...starters.map(r => r.getBoundingClientRect().bottom));
+          const room = Math.max(72, Math.round(window.innerHeight - low - 4));
+          document.documentElement.style.setProperty('--ep-help-max', room + 'px');
+        }
 
         /* The slide-up sheet also sits over the bottom of the columns — only
            its 40px handle when closed, but that handle still covers a player

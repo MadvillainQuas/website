@@ -1136,6 +1136,9 @@ html, body{ height:100dvh; }
      so covering the roster for a moment costs nothing. */
   #sheetHandle{height:24px; min-height:24px;}
   #sheet{transform:translateY(calc(100% - 24px));}
+  /* dimmed while a window is open, so it reads as unavailable rather than
+     broken when a thumb lands on it */
+  #sheet.locked #sheetHandle{opacity:.35;}
   #sheet.open{transform:translateY(0);}
   /* the row itself stays thumb-sized when it is up */
   #sheetBody{padding:5px 0;}
@@ -1221,7 +1224,27 @@ html, body{ height:100dvh; }
 
      A thin bar instead. The scrim still separates the legend from the court —
      it just stops halfway up the players. */
-  #ctrlHelp{padding:18px 10px calc(env(safe-area-inset-bottom) + 10px); gap:5px;}
+  /* THE LEGEND MAY COVER THE BENCH AND MUST NOT COVER THE FIVE ON COURT.
+
+     Reserving legend height inside #cols pushed every row up to make space,
+     which is the wrong trade on a phone: it shrinks the roster to protect a
+     panel of hints. The bench is the right place to spend — those rows are
+     touched only to give a technical to somebody sitting down — so the legend
+     overlays them instead, and is capped at the gap below the last starter,
+     measured live in bootstrap.js. It scrolls inside that cap rather than
+     dropping lines, so every gesture stays listed.
+
+     #cols therefore reserves only the sheet handle now. */
+  #cols{padding-bottom:calc(var(--ep-sheet-h, 24px) + 8px) !important;}
+  #ctrlHelp{
+    padding:10px 10px calc(env(safe-area-inset-bottom) + 8px); gap:4px;
+    max-height:var(--ep-help-max, 42vh);
+    overflow-y:auto; overscroll-behavior:contain;
+    /* opaque from the top edge: a gradient over player rows made both the
+       rows and the hints harder to read than either alone */
+    background:linear-gradient(180deg, rgba(2,16,11,.92) 0, #02100b 22%);
+    pointer-events:auto;
+  }
   .hline{font-size:10px; gap:7px;}
   .hkey{padding:4px 9px; font-size:9px;}
 
@@ -1260,12 +1283,23 @@ html, body{ height:100dvh; }
      the buttons instead of hiding behind them. */
   .plist{padding-bottom:58px; scroll-padding-bottom:58px;}
 
+  /* CANCEL AND CONFIRM WERE NEARLY INVISIBLE. Both sat on a translucent disc
+     over a dark roster at the size a cursor needs, and a scorer looking for
+     "how do I get out of this" could not find either. Solid ground, a lit
+     ring, and a shadow that lifts them off the rows behind. */
+  #doneB,#xCancel{
+    background:#04150e;
+    box-shadow:0 0 0 2px var(--lume), 0 6px 18px rgba(0,0,0,.55);
+    opacity:1;
+  }
+  #doneB .xin,#xCancel .xin{background:#04150e; font-size:22px; font-weight:500;}
+  #xCancel{box-shadow:0 0 0 2px var(--flare, #ff5f6b), 0 6px 18px rgba(0,0,0,.55);}
   #doneB{top:auto; left:auto; right:10px; transform:none;
     bottom:calc(env(safe-area-inset-bottom) + 6px);
-    width:50px; height:50px;}
+    width:56px; height:56px;}
   #xCancel{top:auto; right:auto; left:10px; transform:none;
     bottom:calc(env(safe-area-inset-bottom) + 6px);
-    width:50px; height:50px;}
+    width:56px; height:56px;}
   /* delayB (+10s) shows whenever there is a pending step or a substitution in
      progress, so it IS beside a full roster. It is a small pill rather than a
      disc, and it sits above confirm on the right; measured below to confirm it
@@ -1851,6 +1885,13 @@ function clearTransient(){ ui.armed=null; ui.pending=null; ui.subOut=null; ui.fo
 
 /* ==================== game screen render ==================== */
 function renderAll(){
+  /* A window opening while the sheet is up would leave the roster covered by
+     a panel the scorer can no longer dismiss, so it closes itself. */
+  try{
+    const sh = document.getElementById('sheet');
+    if(sh && (ui.armed || ui.pending || ui.subOut)) sh.classList.remove('open');
+    if(sh) sh.classList.toggle('locked', !!(ui.armed || ui.pending || ui.subOut));
+  }catch(_){}
   if(!S || S.phase==='setup') return;
   D = derive();
   if(S.phase==='final'){ refreshOpenViews(); return; }
@@ -2011,6 +2052,16 @@ function finishWindow(){
 }
 
 /* ==================== touch-control legend ==================== */
+/* A LEGEND MUST NAME THINGS THE READER HAS.
+
+   Seven lines offered "✓ done · enter" and "✕ · esc" on a phone with no enter
+   and no escape. Written as functions rather than constants because IS_TOUCH
+   is declared further down the file: a const here would evaluate at load and
+   die in the temporal dead zone, while a function body runs when the legend is
+   drawn, long after. */
+const DONEK = () => IS_TOUCH ? '✓ done' : DONEK();
+const CANCK = () => IS_TOUCH ? '✕ back' : CANCK();
+
 function helpSpec(){
   const p = ui.pending, L = [];
   const k = (key,txt,cls)=>L.push({key,txt,cls});
@@ -2024,17 +2075,17 @@ function helpSpec(){
       k('tap player','ft missed','red');
       k('hold player 1.5s','ft made','grn');
       k('tap opponent','the fouler (type above)');
-      k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
+      k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
       return L;
     }
     if(p.flow){
       const step = flowSteps(p)[p.step], ht = helpTyped(p);
-      if(step==='type'){ k('tap a chip','shot type (or skip)'); if(ht) k(ht[0],ht[1]); k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x'); return L; }
-      if(step==='location'){ k('tap the court','where the shot came from (or skip)'); if(ht) k(ht[0],ht[1]); k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x'); return L; }
+      if(step==='type'){ k('tap a chip','shot type (or skip)'); if(ht) k(ht[0],ht[1]); k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x'); return L; }
+      if(step==='location'){ k('tap the court','where the shot came from (or skip)'); if(ht) k(ht[0],ht[1]); k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x'); return L; }
     }
     if(p.pick){
       k('tap a highlighted player', {reb:'rebound',blk:'block',ast:'assist',stl:'steal'}[p.pick]);
-      k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x'); return L;
+      k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x'); return L;
     }
     { const ht = helpTyped(p); if(ht && !p.ftArmed) k(ht[0], ht[1]); }
     if(p.kind==='miss'){
@@ -2044,16 +2095,16 @@ function helpSpec(){
       k('tap team name','team rebound');
       if(p.shot!=='ft') k('drag outward','defender — block (or chip → tap)');
       if(p.shot==='ft') k('tap opponent','the fouler (type above)');
-      k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
+      k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='made'){
       if(!p.assistDone) k('drag teammate','assist (or chip → tap)');
       if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k('hold shooter 1.5s','next ft — made','grn');
         k('tap opponent','the fouler'); }
       else { k('tap ft above','and-one — free throws'); k('paint / transition','tag the basket'); }
-      k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
+      k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='to'){
       k('drag opponent','steal (or chip → tap)');
-      k('✓ done · enter','confirm all','grn'); k('✕ · esc','cancel the last step','x');
+      k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='foul'){
       k('tap opponent','free throw — missed','red');
       k(IS_TOUCH?'press opponent':'hold opponent 1.5s','free throw — made','grn');
@@ -3042,7 +3093,23 @@ function wireGame(){
   });
   $('#doneB').addEventListener('click', finishWindow);
 
-  $('#sheetHandle').addEventListener('click', ()=>$('#sheet').classList.toggle('open'));
+  /* THE SHEET IS LOCKED WHILE A SELECT WINDOW IS OPEN.
+
+     Mid-gesture the only two things that make sense are finish it or abandon
+     it. Opening the box score there leaves a half-recorded event behind a
+     panel covering the roster, and on a phone the sheet handle sits directly
+     under the thumb that has just pressed a player — so it is opened by
+     accident more often than on purpose.
+
+     Closed and inert for the duration, and it says why rather than ignoring
+     the tap, which would read as the app having frozen. */
+  $('#sheetHandle').addEventListener('click', ()=>{
+    if(ui.armed || ui.pending || ui.subOut){
+      toast('finish or cancel first');
+      return;
+    }
+    $('#sheet').classList.toggle('open');
+  });
   $('#btnBox').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openBox(); });
   $('#btnAdv').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openAdv(); });
   $('#btnLog').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openLog(); });
@@ -4610,10 +4677,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=136" defer></script>
-<script src="../vendor/supabase.js?v=136" defer></script>
-<script src="../live.js?v=136" defer></script>
-<script src="sync.js?v=136" defer></script>
-<script src="bootstrap.js?v=136" defer></script>
+<script src="../config.js?v=138" defer></script>
+<script src="../vendor/supabase.js?v=138" defer></script>
+<script src="../live.js?v=138" defer></script>
+<script src="sync.js?v=138" defer></script>
+<script src="bootstrap.js?v=138" defer></script>
 </body>
 </html>
