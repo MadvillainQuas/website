@@ -1237,7 +1237,10 @@ html, body{ height:100dvh; }
      #cols therefore reserves only the sheet handle now. */
   #cols{padding-bottom:calc(var(--ep-sheet-h, 24px) + 8px) !important;}
   #ctrlHelp{
-    padding:10px 10px calc(env(safe-area-inset-bottom) + 8px); gap:4px;
+    /* the sync strip is fixed at bottom-left and outranks everything, so the
+       legend keeps its text clear of it rather than fighting a z-index it
+       cannot win */
+    padding:10px 10px calc(env(safe-area-inset-bottom) + 46px); gap:4px;
     max-height:var(--ep-help-max, 42vh);
     overflow-y:auto; overscroll-behavior:contain;
     /* opaque from the top edge: a gradient over player rows made both the
@@ -1294,18 +1297,30 @@ html, body{ height:100dvh; }
   }
   #doneB .xin,#xCancel .xin{background:#04150e; font-size:22px; font-weight:500;}
   #xCancel{box-shadow:0 0 0 2px var(--flare, #ff5f6b), 0 6px 18px rgba(0,0,0,.55);}
+  /* THEY WERE BEHIND THE LEGEND, AND THEN UNDER THE SYNC BAR.
+
+     #ctrlHelp is z-index 45 and both discs are 30, so the legend has always
+     been in front of them — invisible the moment I made its background opaque
+     last commit, where before it was merely faint. And the sync strip
+     ("local · WATCH · COPY") is fixed at left:6 bottom:6 with a z-index in the
+     billions, which is precisely where cancel sat.
+
+     So they move ABOVE the legend rather than under it, raised by its measured
+     height, and take a z-index that clears it. That puts them over the bench,
+     which is the space this screen can afford to spend. */
+  #doneB,#xCancel{z-index:60;}
   #doneB{top:auto; left:auto; right:10px; transform:none;
-    bottom:calc(env(safe-area-inset-bottom) + 6px);
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 16px);
     width:56px; height:56px;}
   #xCancel{top:auto; right:auto; left:10px; transform:none;
-    bottom:calc(env(safe-area-inset-bottom) + 6px);
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 16px);
     width:56px; height:56px;}
   /* delayB (+10s) shows whenever there is a pending step or a substitution in
      progress, so it IS beside a full roster. It is a small pill rather than a
      disc, and it sits above confirm on the right; measured below to confirm it
      clears the last row. */
-  #delayB{top:auto; left:auto; right:10px; transform:none;
-    bottom:calc(env(safe-area-inset-bottom) + 62px);}
+  #delayB{top:auto; left:auto; right:10px; transform:none; z-index:60;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 80px);}
 }
 </style>
 </head>
@@ -4677,10 +4692,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=138" defer></script>
-<script src="../vendor/supabase.js?v=138" defer></script>
-<script src="../live.js?v=138" defer></script>
-<script src="sync.js?v=138" defer></script>
-<script src="bootstrap.js?v=138" defer></script>
+<script src="../config.js?v=139" defer></script>
+<script src="../vendor/supabase.js?v=139" defer></script>
+<script src="../live.js?v=139" defer></script>
+<script src="sync.js?v=139" defer></script>
+<script src="bootstrap.js?v=139" defer></script>
 </body>
 </html>
