@@ -223,6 +223,53 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 
 /* ---------- 8. tables ---------- */
 .ep-tw{overflow-x:auto}
+
+/* ---------------------------------------------------------------------------
+   SIDEWAYS SCROLLING FOR THINGS THAT ARE WIDER THAN A PHONE.
+
+   .ep-tbl is min-width:580px on purpose — a WOWY row or a lineup row is a
+   dozen numbers and squeezing them into 375px makes them unreadable rather
+   than smaller. What was missing is somewhere for that width to go, so on a
+   phone the columns past the fifth were simply unreachable.
+
+   touch-action:pan-x is what makes the drag feel like a drag: without it the
+   browser spends the first few pixels deciding whether the gesture belongs to
+   the page's vertical scroll, and a sideways flick on a table reads as a
+   stutter. overscroll-behavior stops a flick that reaches the end of a table
+   from turning into a back-navigation, which on a phone is how you lose the
+   page you were reading.
+
+   The fade on the right edge is the only affordance a scroller like this gets
+   — no scrollbar exists on touch — so it does the work of saying "there is
+   more this way". It is painted with a background-attachment trick rather than
+   a pseudo-element so it moves with the scroll and disappears at the end. */
+.ep-xscroll{
+  overflow-x:auto; overflow-y:hidden;
+  touch-action:pan-x; -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  background:
+    linear-gradient(90deg, var(--ground) 30%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(90deg, transparent, var(--ground) 70%) right / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.45), transparent) left / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.45), transparent) right / 14px 100% no-repeat scroll;
+}
+.ep-xscroll::-webkit-scrollbar{height:6px}
+.ep-xscroll::-webkit-scrollbar-thumb{background:var(--rule-2);border-radius:3px}
+
+/* A tab strip scrolls in place rather than being boxed: it is already a flex
+   row and a border round it would read as a panel. Wrapping onto two lines was
+   the other option and is worse — the bar changes height when you switch tabs
+   and the content below it jumps. */
+.ep-xtabs{
+  display:flex !important; flex-wrap:nowrap !important;
+  overflow-x:auto; max-width:100%;
+  touch-action:pan-x; -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;
+}
+.ep-xtabs::-webkit-scrollbar{display:none}
+.ep-xtabs > *{flex:0 0 auto; white-space:nowrap}
 .ep-tbl{border-collapse:collapse;width:100%;min-width:580px}
 .ep-tbl thead th{font-family:var(--f-micro);font-size:10px;text-align:right;padding:9px 11px;color:var(--ink-3);
   background:var(--panel);border-bottom:1px solid var(--rule-2);position:sticky;top:0}

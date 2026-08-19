@@ -2723,10 +2723,20 @@ function scrubRate(held, dir){
   const s = held/1000;
   const back = dir > 0;                      // dir>0 rewinds — see onGMove
   const base = back ? 2 : 1;
-  if(s<5) return base;
+  if(s<5)  return base;
   if(s<10) return base + 1 + (s-5)*(3/5);
   if(s<15) return base + 4 + (s-10)*(5/5);
-  return back ? 11 : 10;
+  /* PAST FIFTEEN SECONDS IT KEEPS CLIMBING TO 20.
+
+     The ramp stopped at 10 and 11, which is a minute of holding to move four
+     minutes of clock. The case that needs it is a period started on the wrong
+     time or a clock left running through a dead ball — both of which are
+     minutes out, not seconds — and at 10x that correction is a wait rather
+     than an adjustment. Twenty is a second of thumb per twenty of game, so
+     even a full quarter is half a minute. Still ramped rather than jumped, so
+     a short hold is as fine-grained as it ever was. */
+  if(s<25) return base + 9 + (s-15)*(9/10);
+  return back ? 20 : 19;
 }
 function scrubStep(){
   if(!SC) return;
@@ -4772,10 +4782,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=143" defer></script>
-<script src="../vendor/supabase.js?v=143" defer></script>
-<script src="../live.js?v=143" defer></script>
-<script src="sync.js?v=143" defer></script>
-<script src="bootstrap.js?v=143" defer></script>
+<script src="../config.js?v=144" defer></script>
+<script src="../vendor/supabase.js?v=144" defer></script>
+<script src="../live.js?v=144" defer></script>
+<script src="sync.js?v=144" defer></script>
+<script src="bootstrap.js?v=144" defer></script>
 </body>
 </html>
