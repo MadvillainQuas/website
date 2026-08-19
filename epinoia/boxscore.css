@@ -87,7 +87,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 .act.armed .kcap,.sub.on .kcap{color:#02150c;border-color:rgba(2,21,12,.35);}
 .sub{position:relative;}
 .ur{position:relative;}
-@media (max-width:899px){.kcap{display:none;}}
+
 input{font:inherit;color:var(--txt);}
 .hidden{display:none !important;}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -490,7 +490,10 @@ body.pregame .plist{opacity:.72}
    over the table gets claimed by the box's own vertical scroll instead of
    reaching the page, on every table this wraps — the box score, the
    four-factors card, and the full table / advanced tab alike. */
-.tblwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;}
+/* pan-x pan-y, not pan-x: naming only the horizontal axis makes the element
+   swallow vertical drags rather than passing them to the page, so a finger on
+   the box score could not scroll it. Both named still rules out pinch-zoom. */
+.tblwrap{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;}
 table.bx{border-collapse:collapse;width:100%;min-width:700px;font-variant-numeric:tabular-nums;}
 table.bx th{font-size:9px;font-weight:400;letter-spacing:.14em;color:var(--faint);text-transform:lowercase;
   padding:6px 7px;text-align:right;border-bottom:1px solid var(--line);}
@@ -948,6 +951,391 @@ html, body{ height:100dvh; }
   overflow-y:auto;
   overscroll-behavior:contain;
   padding-bottom:calc(env(safe-area-inset-bottom) + 24px);
+}
+
+/* ===========================================================================
+   A TOUCH TABLET KEEPS THE WIDE LAYOUT AND GETS THUMB-SIZED CONTROLS.
+
+   Everything above 900px is written for a mouse, because until now everything
+   above 900px WAS a mouse. A statistician's tablet in landscape is 1024 or
+   1180 wide, so it takes the desktop three-column layout — which is the right
+   call, that is where the mid panel and its persistent shot chart live, and a
+   court you can tap at any point in a possession is the whole reason to score
+   on a tablet rather than a phone.
+
+   What it should not inherit is desktop SIZING. A 28px row and a 44px court
+   are fine under a cursor and wrong under a thumb, and the gap is worse here
+   than on a phone because nothing about the screen warns you: it looks roomy
+   and then misses.
+
+   Only sizes below. The layout, the mid panel and the typed-command layer are
+   left exactly as the width earned them.
+   =========================================================================== */
+/* ===========================================================================
+   HOLD AND DRAG IS THE SUBSTITUTION, AND THE ROW HAS TO OWN THE TOUCH.
+
+   .plist declares touch-action:pan-y so the roster can be scrolled. The moment
+   the list has anywhere to scroll, the browser claims any vertical drag that
+   starts on it — and both halves of a substitution ARE vertical drags: a
+   starter down to come off, a bench player up to go on. The gesture never
+   reached the handler, so the drag stopped working and only the tap path was
+   left, which is not what this app is.
+
+   touch-action:none on the ROW, not the list. A touch that begins on a player
+   is always a gesture — tap, press, or drag — because there is nothing else it
+   could sensibly mean. The list still scrolls from its padding, its gaps and
+   the bench rule, and in portrait it barely needs to.
+
+   This is the only way round it: touch-action is read when the gesture begins,
+   so it cannot be switched off once a finger is down.
+   =========================================================================== */
+@media (pointer:coarse){
+  .prow{touch-action:none;}
+}
+
+@media (min-width:900px) and (pointer:coarse){
+  .prow{min-height:44px;}
+  .act,.sub,.sheetbtn{min-height:44px;}
+  .chip,.mpchip{min-height:40px; padding:8px 12px;}
+  #xCancel,#doneB{width:52px; height:52px;}
+  /* the court is the reason to be on a tablet — give it the room the mid
+     panel has rather than the height a cursor needs */
+  #mpCourt svg{min-height:200px;}
+  /* a thumb covers a 9px label; the mid panel has width to spare for these */
+  .mptitle{font-size:10px;}
+}
+
+/* ===========================================================================
+   LANDSCAPE ON A PHONE IS A DIFFERENT SHAPE, NOT A SHORTER PORTRAIT.
+
+   Turned sideways, the scorer kept its portrait structure: one column of
+   players per team, stacked. At 844x390 that gives each team a column 408px
+   WIDE holding rows that need 40px of HEIGHT — so a name and a number sit in
+   the middle of 400px of nothing, while .plist crushes to 60px tall and hides
+   462px of its 522px of content. Twenty players, three visible.
+
+   The space is there, it is just the wrong way round. Multi-column flow turns
+   the height problem into the width the layout already has: eleven items — five
+   starters, the bench rule, five substitutes — fall naturally into two columns
+   of six and five, which is the starters/bench split the separator was drawing
+   anyway. No markup changes, and portrait is untouched.
+
+   The breakpoint is orientation AND a short viewport, not width alone: a 1024
+   tablet in landscape has the height to keep the stacked list, and would look
+   silly with five-player columns.
+   =========================================================================== */
+@media (orientation:landscape) and (max-height:560px) and (pointer:coarse){
+  /* A GRID, NOT MULTI-COLUMN — and this one is worth writing down.
+
+     column-count:2 reads as "lay this out in two columns" and does not mean
+     that. It means "make columns this wide and keep making them", so in a
+     container only 66px tall it produced TWELVE columns running 2013px off to
+     the right: measured scrollWidth 2369 against a 356px client width, with
+     two rows actually visible. Strictly worse than the single stacked column it
+     replaced, and invisible to a check that only looked at vertical overflow —
+     which mine did, and reported all twenty rows visible.
+
+     An explicit two-track grid cannot do that. Ten players become five rows
+     instead of ten, the overflow stays vertical where the scroller can reach
+     it, and nothing runs off the side. */
+  .plist{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+    grid-auto-rows:min-content;
+    align-content:start;
+    gap:4px 8px;
+    padding-bottom:8px;
+  }
+  /* the bench rule spanned the width to separate two stacked groups; in a
+     two-up grid the dimmer .bench rows already read as the bench, and a
+     full-width rule mid-grid just costs a row */
+  .benchsep{display:none;}
+
+  /* THE LEFTOVER HEIGHT GOES TO THE ROSTER, WHICH NOTHING WAS DOING.
+
+     At 740x360 the vertical budget read: 46px of action bar, 61px of sub bar,
+     75px of scoreboard, and 138px left for twenty players — with .plist itself
+     pinned at 58px and hiding 285px of content even after the column flow.
+
+     A first attempt moved both bars into a 112px rail down the left. The grid
+     applied cleanly and the result was worse: seven action buttons wrap to four
+     rows in a 112px column, so the rail stood 182px tall, and because it shared
+     a grid row with the scoreboard the scoreboard stretched to match it. The
+     rail is a good idea at tablet width and the wrong one at 740, where there
+     is not enough width to spend 112px of it on buttons that are already
+     compact.
+
+     So: the column keeps its stacking, the chrome is trimmed, and — the part
+     that actually mattered — #cols takes flex:1 with min-height:0 so every
+     pixel the bars give back lands in the roster instead of in a gap. Without
+     min-height:0 a flex child refuses to shrink below its content and the
+     scroller never grows at all, which is why it sat at 58px through two
+     rounds of trimming. */
+  #game{display:flex; flex-direction:column; min-height:0;}
+  #topbar,#subbar,#scorebox{flex:0 0 auto;}
+  /* #cols is a flex ROW that was not stretching its children, so each .col
+     stood at its content height — 98px inside a 148px parent — and the 50px
+     difference was simply empty. Stretching them is what finally lets the
+     scroller grow. */
+  /* THE 50px WAS A RESERVED GUTTER, NOT A FLEX FAILURE.
+
+     #cols carries padding-bottom: --ep-legend-h + --ep-sheet-h + 10, which at
+     0 + 40 + 10 is fifty pixels of the hundred and forty-eight it has. Its
+     content box is therefore 98px and .col fills that exactly — which is why
+     three rounds of flex properties changed nothing. align-items was never the
+     problem; the box was already the size it was being told to be.
+
+     The gutter protects #sheetHandle, the drag strip for the bottom sheet. A
+     full-width 40px strip is a portrait idiom: in landscape it costs a ninth of
+     the screen to say "there is a sheet here". Twenty-four is still a
+     comfortable drag target on a short screen, and the ten of slack is not
+     needed when the legend is 28px rather than 98.
+
+     The honest arithmetic at 740x360: 46 of action bar, 59 of sub bar, 67 of
+     scoreboard and 50 of gutter is 222px of chrome against 138 of roster. This
+     wins back roughly 45 — enough to matter, not enough to show all twenty
+     players, which at 40px a row would need the chrome under 120px total. */
+  /* THE CHROME COMES DOWN TO ABOUT 120px, WHICH IS WHAT THE ROSTER NEEDS.
+
+     Of the three ways to find that space — icons here, the sub bar hidden
+     behind the sheet handle, or the bench dropped to a scroll — this is the
+     only one that costs nothing mid-game. A control you have to open a sheet
+     to reach is a control you do not use while a possession is live, and the
+     bench is exactly what a substitution needs to see.
+
+     The labels go, the icons stay. font-size:0 on the button with the icon
+     restored is the way to drop a bare text node that has no element of its
+     own to hide — "pause" and "resume" sit loose inside the button, after the
+     icon span. The key caps are already suppressed below 900px. */
+  #subbar .sub{font-size:0; min-height:36px; padding:4px 6px; gap:0;}
+  #subbar .sub .ic{font-size:15px; margin:0;}
+  #subbar .sub .cap{display:none;}
+  #topbar .act{padding:6px 9px;}
+
+  /* the scoreboard keeps the clock, the score and the period — at a glance
+     size rather than a desk size */
+  #scorebox{padding:3px 8px;}
+  #scorebox .clockbig{font-size:22px;}
+  .thead{padding:3px 8px;}
+
+  /* THE SHEET'S CLOSED POSITION IS TIED TO ITS HANDLE HEIGHT, and I broke that
+     link. #sheet parks itself at translateY(calc(100% - 40px)) so exactly the
+     40px handle shows; shrinking the handle to 24 without changing the 40 left
+     16px of the button row permanently peeking above the fold — six buttons
+     showing a tenth of themselves, which is both unreadable and a tap you
+     cannot aim. That is the unworkable bottom bar.
+
+     The two numbers move together now. Closed shows the handle and nothing
+     else; tapping it lifts the whole row clear of the screen, which is the
+     right behaviour in landscape — you are reading a box score, not scoring,
+     so covering the roster for a moment costs nothing. */
+  #sheetHandle{height:24px; min-height:24px;}
+  #sheet{transform:translateY(calc(100% - 24px));}
+  /* dimmed while a window is open, so it reads as unavailable rather than
+     broken when a thumb lands on it */
+  #sheet.locked #sheetHandle{opacity:.35;}
+  #sheet.open{transform:translateY(0);}
+  /* the row itself stays thumb-sized when it is up */
+  #sheetBody{padding:5px 0;}
+  .sheetbtn{min-height:44px;}
+  #cols{padding-bottom:10px !important;}
+  /* The rows measure 51px here, not the 40 the portrait rule sets — a landscape
+     row is wider so its content lays out shorter, and the base height wins.
+     Five rows a column at 51 needs 255px against the 91 available, so this is
+     the difference between three rows visible and one. 36 keeps the tap target
+     at the accessibility floor. */
+  .plist .prow{min-height:36px; padding:3px 8px;}
+  .thead{padding:2px 8px;}
+  #scorebox{padding:4px 10px;}
+  #subbar{padding:3px 0; gap:4px;}
+  #subbar .sub{min-height:42px; padding:4px 7px;}
+
+  /* #cols WRAPS, which is why align-items could not help: in a wrapping flex
+     container the lines are sized to their content and align-items stretches
+     children within a LINE, not to the container. align-content is the one
+     that distributes the lines — and with the hidden placeholder children in
+     there, the single real line was sitting at 98px inside 148px. */
+  #cols{flex:1 1 auto; min-height:0; align-items:stretch; align-content:stretch;}
+  .col{min-height:0; display:flex; flex-direction:column;}
+  /* the team header carries a name, a timeout count and a foul count; at 51px
+     it was costing a third of the roster's height to say them */
+  .thead{flex:0 0 auto; padding:4px 8px;}
+  .thead .tname{font-size:11px;}
+  .plist{max-height:none; flex:1 1 auto;}
+
+  /* trimmed, not restructured: the scoreboard keeps its clock and score, at
+     the size a glance needs rather than the size a desk affords */
+  #scorebox{padding:6px 10px;}
+  #subbar{padding:4px 0;}
+  #subbar .sub{min-height:44px; padding:5px 8px;}
+
+  /* The controls move to the side in landscape rather than the bottom, so the
+     roster does not need the 58px the portrait strip reserves. */
+  #ctrlHelp{padding:8px 10px calc(env(safe-area-inset-bottom) + 6px);}
+  #xCancel{bottom:calc(env(safe-area-inset-bottom) + 6px); left:10px;}
+  #doneB{bottom:calc(env(safe-area-inset-bottom) + 6px); right:10px;}
+  #delayB{bottom:calc(env(safe-area-inset-bottom) + 62px); right:10px;}
+}
+
+/* ===========================================================================
+   PHONE OVERRIDES LIVE AT THE END OF THIS STYLESHEET, and that is load-bearing.
+
+   These are id and single-class selectors matching the base rules exactly, so
+   the cascade decides on ORDER alone. Written further up — next to the rules
+   they modify, which is where they naturally belong — #ctrlHelp's padding and
+   #xCancel's position both lost to their own base declarations lower down, and
+   the legend kept taking 29% of the screen while the cancel disc kept sitting
+   on four player rows. Nothing about the rules said so; only measuring did.
+   =========================================================================== */
+@media (max-width:899px){
+  .kcap{display:none;}
+  /* THE ACCESSIBILITY FLOOR IS ALSO THE PRACTICAL ONE. The collapse chevron
+     was 21px square — a target a thumb misses more often than it hits, on a
+     screen where a mis-tap during a live game costs a possession. The box
+     grows without the glyph growing, so nothing about the look changes. */
+  .collapsebtn{min-width:40px;min-height:40px;display:inline-flex;
+    align-items:center;justify-content:center;}
+
+  /* THE PLAYER ROW IS THE MOST-TAPPED THING IN THE APP, and it was 28px tall.
+
+     Every shot, foul, turnover and rebound ends with a thumb landing on one of
+     these, twenty of them stacked in two columns, and 28px is under two-thirds
+     of the accessibility floor — on a screen where a mis-tap puts a basket
+     against the wrong player and has to be undone mid-possession. It also has
+     to hold a press for half a second without sliding off, which a short row
+     makes harder than the timing does.
+
+     40px rather than 44: ten rows a column at 44 is 440px and pushes the
+     bench off the screen, which trades one mis-tap for another. The type is
+     unchanged — the row grows around it. */
+  .prow{min-height:40px;}
+  .prow.bench{min-height:38px;}
+
+  /* THE LEGEND WAS TAKING 232px OF AN 812px SCREEN — nearly a third of it, to
+     say three short things. Almost all of that is a 96px top padding whose job
+     is to fade the scrim in over a roomy desktop layout; on a phone it draws a
+     dark veil across the bottom third of the roster, which is where the bench
+     is. The lines themselves are 22px each.
+
+     A thin bar instead. The scrim still separates the legend from the court —
+     it just stops halfway up the players. */
+  /* THE LEGEND MAY COVER THE BENCH AND MUST NOT COVER THE FIVE ON COURT.
+
+     Reserving legend height inside #cols pushed every row up to make space,
+     which is the wrong trade on a phone: it shrinks the roster to protect a
+     panel of hints. The bench is the right place to spend — those rows are
+     touched only to give a technical to somebody sitting down — so the legend
+     overlays them instead, and is capped at the gap below the last starter,
+     measured live in bootstrap.js. It scrolls inside that cap rather than
+     dropping lines, so every gesture stays listed.
+
+     #cols therefore reserves only the sheet handle now. */
+  #cols{padding-bottom:calc(var(--ep-sheet-h, 24px) + 8px) !important;}
+  #ctrlHelp{
+    /* the sync strip is fixed at bottom-left and outranks everything, so the
+       legend keeps its text clear of it rather than fighting a z-index it
+       cannot win */
+    padding:10px 10px calc(env(safe-area-inset-bottom) + 46px); gap:4px;
+    max-height:var(--ep-help-max, 42vh);
+    overflow-y:auto; overscroll-behavior:contain;
+    /* opaque from the top edge: a gradient over player rows made both the
+       rows and the hints harder to read than either alone */
+    background:linear-gradient(180deg, rgba(2,16,11,.92) 0, #02100b 22%);
+    pointer-events:auto;
+  }
+  .hline{font-size:10px; gap:7px;}
+  .hkey{padding:4px 9px; font-size:9px;}
+
+  /* AND THE CANCEL BUTTON SAT IN THE MIDDLE OF THE ROSTER. top:44% is the
+     centre of a desktop court view and the centre of a phone's player list —
+     a 58px disc over two of the rows a scorer is trying to hit. It has
+     pointer-events of its own, so those rows were not merely veiled, they were
+     unreachable.
+
+     Bottom-right, above the legend, where a right thumb already rests and
+     nothing else lives. */
+  /* Right thumb, ON the legend bar — the only strip of this screen that is
+     not roster. Anywhere higher and it lands on the bench: measured at 96px
+     up it still covered three rows, because twenty players at 40px reach to
+     within 70px of the bottom. Slightly smaller too, which buys the clearance
+     without taking it below the 44px tap floor. */
+  /* THREE discs are pinned to the middle of the screen — xCancel at top:44%,
+     delayB just above it and doneB just below — which is the centre of a
+     desktop court view and the centre of a phone's player list. Each has its
+     own pointer events, so the rows underneath were not merely veiled but
+     unreachable. Moving only two of them left doneB sitting on the roster
+     through the whole pending flow, which is exactly when a scorer is reading
+     those rows.
+
+     Only about 70px of this screen is clear of players — the strip beside the
+     legend — so they cannot stack. Confirm takes the right corner where a
+     right thumb rests, cancel takes the left, and putting the two furthest
+     apart is worth doing on its own: they are the two you least want to
+     confuse at speed. */
+  /* THE ROSTER SCROLLS, so the control strip costs it nothing to make room.
+
+     .plist is overflow-y:auto, and in a pending step the columns run to within
+     20px of the bottom — there is no clear strip left for the discs to sit in,
+     and each was covering the last row. Padding the scroller rather than
+     shrinking it means no row is lost: the last one simply scrolls up above
+     the buttons instead of hiding behind them. */
+  .plist{padding-bottom:58px; scroll-padding-bottom:58px;}
+
+  /* CANCEL AND CONFIRM WERE NEARLY INVISIBLE. Both sat on a translucent disc
+     over a dark roster at the size a cursor needs, and a scorer looking for
+     "how do I get out of this" could not find either. Solid ground, a lit
+     ring, and a shadow that lifts them off the rows behind. */
+  #doneB,#xCancel{
+    background:#04150e;
+    box-shadow:0 0 0 2px var(--lume), 0 6px 18px rgba(0,0,0,.55);
+    opacity:1;
+  }
+  #doneB .xin,#xCancel .xin{background:#04150e; font-size:22px; font-weight:500;}
+  #xCancel{box-shadow:0 0 0 2px var(--flare, #ff5f6b), 0 6px 18px rgba(0,0,0,.55);}
+  /* THEY WERE BEHIND THE LEGEND, AND THEN UNDER THE SYNC BAR.
+
+     #ctrlHelp is z-index 45 and both discs are 30, so the legend has always
+     been in front of them — invisible the moment I made its background opaque
+     last commit, where before it was merely faint. And the sync strip
+     ("local · WATCH · COPY") is fixed at left:6 bottom:6 with a z-index in the
+     billions, which is precisely where cancel sat.
+
+     So they move ABOVE the legend rather than under it, raised by its measured
+     height, and take a z-index that clears it. That puts them over the bench,
+     which is the space this screen can afford to spend. */
+  #doneB,#xCancel{z-index:60;}
+
+  /* THE DONE BUTTON SAT OFF CENTRE. It was a bare tick and the word "done"
+     as loose text inside a round button, so the glyph rode high and the word
+     pushed the pair to one side of a circle. Both are stacked in the same
+     centred column now — tick over label, one optical centre. */
+  #doneB .xin{flex-direction:column; gap:0; line-height:1;}
+  #doneB .dlab{font-family:var(--f-micro); font-size:7px; letter-spacing:.1em;
+    text-transform:uppercase; margin-top:1px; opacity:.85;}
+  #doneB .kcap{display:none;}
+
+  /* THE COURT IS THE STEP, so give it the screen. It was 118px tall in a
+     sub-bar strip — a half-court drawn two inches wide, on which a thumb is
+     asked to place a shot to within a couple of feet. Every rim/mid/three
+     split downstream rests on that tap, and rim accuracy is a headline number.
+
+     The bench is the right thing to cover for it: those rows are not read
+     while a shot is being placed. */
+  #flowCourt{padding:6px 8px 4px;}
+  #flowCourt svg{height:auto; width:100%; max-height:46vh; min-height:210px;}
+  #flowCourt .mptitle{font-size:9px; margin-bottom:3px;}
+  #doneB{top:auto; left:auto; right:10px; transform:none;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 16px);
+    width:56px; height:56px;}
+  #xCancel{top:auto; right:auto; left:10px; transform:none;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 16px);
+    width:56px; height:56px;}
+  /* delayB (+10s) shows whenever there is a pending step or a substitution in
+     progress, so it IS beside a full roster. It is a small pill rather than a
+     disc, and it sits above confirm on the right; measured below to confirm it
+     clears the last row. */
+  #delayB{top:auto; left:auto; right:10px; transform:none; z-index:60;
+    bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 80px);}
 }
 
 

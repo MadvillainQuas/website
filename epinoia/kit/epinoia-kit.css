@@ -306,6 +306,32 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 }
 .ep-xtabs::-webkit-scrollbar{display:none}
 .ep-xtabs > *{flex:0 0 auto; white-space:nowrap}
+
+/* ---------------------------------------------------------------------------
+   ON A PHONE, NEITHER OF THESE IS A NATIVE SCROLLER.
+
+   pan-x pan-y above reads correctly and does not behave: naming both axes
+   leaves the browser arbitrating which one a touch belongs to, and a box with
+   overflow-x:auto wins that arbitration often enough that a vertical swipe
+   starting over a table strands the reader mid-table. Three attempts at
+   wording touch-action, three reports back from a real phone.
+
+   So below 640px there is nothing to arbitrate: overflow hidden on both axes
+   means no scrollable surface, pan-y hands vertical to the page in as many
+   words, and xscroll.js pans these sideways from pointer events — claiming
+   the gesture only once it has clearly gone horizontal, and releasing it
+   untouched the instant it has not.
+
+   AFTER the base rules, not before: same specificity, so file order decides.
+   --------------------------------------------------------------------------- */
+@media (max-width:640px){
+  .ep-xscroll, .ep-xtabs{
+    overflow:hidden;
+    touch-action:pan-y;
+  }
+  /* the edge fades are the only remaining hint that there is more sideways,
+     so they stay — but the 'local' ones track scrollLeft and still work */
+}
 .ep-tbl{border-collapse:collapse;width:100%;min-width:580px}
 .ep-tbl thead th{font-family:var(--f-micro);font-size:10px;text-align:right;padding:9px 11px;color:var(--ink-3);
   background:var(--panel);border-bottom:1px solid var(--rule-2);position:sticky;top:0}

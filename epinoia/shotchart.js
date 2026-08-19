@@ -107,7 +107,13 @@
     const cells = bin(o.shots || [], o.cellCm);
     const B = (typeof window !== 'undefined') && window.EpinoiaBox;
 
-    const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '';
+    /* THE FULL COURT, NOT THE PLAIN ONE. courtSVG's `plain` flag drops the lane
+       space marks, which is right for the thumbnail in a box-score row where
+       four ticks a side become a smudge — and wrong here, where the chart is
+       the whole card and a reader is judging distance from the basket by the
+       markings around it. Same drawing as the scorer and the box score, which
+       is the point of borrowing it rather than drawing a second court. */
+    const court = (B && B.courtSVG) ? B.courtSVG(null) : '';
     /* the court comes back as a whole <svg>; the cells go inside it, before
        the closing tag, so they sit in the same coordinate space as the lines */
     const marks = cells.map(c => {

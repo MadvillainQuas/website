@@ -213,9 +213,18 @@ table.ft td.neg{ color:var(--bad,#ff5f6b) }
        takes horizontal drags, the page keeps vertical ones, and the browser
        decides by direction on the first few pixels — so the table scrolls and
        the page still scrolls through it. */
-    overflow-x:auto; overflow-y:hidden;
-    touch-action:pan-x pan-y;
-    -webkit-overflow-scrolling:touch;
+    /* NOT overflow-x:auto. That is the version this comment block spent
+       twenty lines arguing against and it is the version that shipped: the
+       hand-written drag landed in fulltable.js while the CSS kept its native
+       scroller, so the box went on winning the arbitration for a vertical
+       touch on every table that was not the full statistics table — which is
+       every table the bug was re-reported against.
+
+       Hidden on both axes. The browser has no scrollable surface here to
+       claim, pan-y says vertical belongs to the page, and scrollLeft still
+       moves under script, which is all xscroll.js's drag needs. */
+    overflow:hidden;
+    touch-action:pan-y;
     overscroll-behavior-x:contain;
   }
   table.ft thead th{ position:static } /* and a sticky header eats too much of it */

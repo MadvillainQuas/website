@@ -160,7 +160,14 @@ function courtSVG(loc, opts){
   const kL = C.RIM_X - C.KEY_HALF, kR = C.RIM_X + C.KEY_HALF;     // 505 / 995
   const cy = +C.CORNER_Y.toFixed(2);                              // 299.01
   const arcR = C.ARC_R;
-  const line = 'var(--line-hi)';
+  /* THE FALLBACK IS NOT DECORATION. This court is drawn on three surfaces now
+     — the scorer, the public box score and the season shot chart on a player
+     profile — and only the first two load a stylesheet that defines --line-hi.
+     On the player page every line resolved to `stroke: none`, so the court was
+     not faint, it was absent: bins floating on an empty rectangle. A var()
+     fallback makes the drawing portable to whatever page it is dropped on,
+     which is what a shared component has to be. Same value as the token. */
+  const line = 'var(--line-hi, rgba(190,255,225,.38))';
 
   /* Lane space marks, outside the lane lines, at the FIBA distances from the
      baseline. Dropped on the small chart, where four ticks a side become a

@@ -260,59 +260,13 @@ function heatStyle(p) {
 }
 
 /* ------------------------------------------------------------ mobile drag --- */
-/* HORIZONTAL DRAG, DRIVEN ENTIRELY BY HAND — not by touch-action.
-
-   .ft-wrap tried touch-action:pan-x on top of overflow:auto: "I scroll
-   sideways myself; a vertical touch is the page's." That is the textbook
-   fix, and it kept not reliably handing a mostly-vertical touch back to the
-   page on a real phone — the report came back twice after two different
-   attempts at tuning it. Rather than tune it a third time, this removes the
-   thing being tuned: kit/table.css now sets overflow:hidden on BOTH axes
-   for .ft-wrap below 640px, so the browser's native touch-scroll machinery
-   has no scrollable surface on this box to arbitrate over in the first
-   place — there is nothing left for it to ambiguously claim.
-
-   Horizontal panning is reimplemented here, by hand, with the same
-   "pointer not captured until a drag has clearly gone sideways" rule
-   embed/strip/strip.js already uses for its own drag: nothing is claimed
-   until movement clears a small slop AND is more horizontal than vertical.
-   A touch that turns out to be vertical is released at that exact instant
-   with nothing ever having called preventDefault or captured the pointer —
-   so the browser's own scroll takes it from there, untouched, because this
-   code never had any claim on it to begin with. */
-function wireHorizontalDrag(wrap) {
-  const SLOP = 6;
-  let startX = 0, startY = 0, startScroll = 0, pointerId = null, dragging = false, armed = false;
-
-  wrap.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    pointerId = e.pointerId;
-    startX = e.clientX; startY = e.clientY;
-    startScroll = wrap.scrollLeft;
-    armed = true; dragging = false;
-  });
-
-  wrap.addEventListener('pointermove', e => {
-    if (!armed || e.pointerId !== pointerId) return;
-    const dx = e.clientX - startX, dy = e.clientY - startY;
-    if (!dragging) {
-      if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
-      if (Math.abs(dy) >= Math.abs(dx)) { armed = false; return; }   // vertical — leave it for the page, untouched
-      dragging = true;
-      try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
-    }
-    wrap.scrollLeft = startScroll - (e.clientX - startX);
-    e.preventDefault();
-  });
-
-  const release = e => {
-    if (e && e.pointerId !== pointerId) return;
-    if (dragging) { try { wrap.releasePointerCapture(pointerId); } catch (_) {} }
-    armed = false; dragging = false; pointerId = null;
-  };
-  wrap.addEventListener('pointerup', release);
-  wrap.addEventListener('pointercancel', release);
-}
+/* The hand-written horizontal drag that used to live here now lives in
+   xscroll.js, because it was needed by every wide table on the platform and
+   reachable by this one. The leaders board, the WOWY grids, the lineup tables
+   and the fixture lists all build their own .ft-wrap and none of them could
+   see this function — which is why the exact bug it fixes kept being reported
+   against them after it was fixed here. xscroll.js sweeps for them all,
+   including this wrap, and re-sweeps after a render. */
 
 /* ------------------------------------------------------------- component --- */
 function render(opts) {
@@ -422,7 +376,9 @@ function render(opts) {
 
   const wrap = el('div', 'ft-wrap');
   host.appendChild(wrap);
-  wireHorizontalDrag(wrap);
+  /* the sweep catches this too, on its next pass; wiring it here as well means
+     the first touch after a render does not depend on that pass having run */
+  if (window.epinoiaDragScroll) window.epinoiaDragScroll(wrap);
 
   const sortVal = (c, r) => (c.sort ? c.sort(r) : r[c.k]);
 
