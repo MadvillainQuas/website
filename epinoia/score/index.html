@@ -2339,6 +2339,75 @@ function courtSVG(loc, opts){
       'stroke="var(--lume)" stroke-width="7"/>'+
     mark+'</svg>';
 }
+/* ============================================================================
+   WHERE A SHOT WAS TAKEN AND WHAT IT WAS WORTH HAVE TO AGREE.
+
+   These are two separate facts in the log — the p2_/p3_ event says what it was
+   worth, a later `loc` event says where it came from — and nothing made them
+   consistent. recordLoc took whatever was tapped. So a three could be recorded
+   in the paint, and on the demo season 615 of 709 three-point attempts plot
+   INSIDE the arc while not one of 1,249 twos plots outside it.
+
+   THE VALUE IS THE FACT THAT MATTERS AND THE ONE TO TRUST. It decides the
+   score, it is chosen deliberately by tapping 3PT, and it is checked against
+   the scoreboard all night. The location is a thumb on a court three inches
+   wide, entered in a hurry, and nobody proofreads it. So where they disagree
+   the location moves, never the value.
+
+   arcSide() is the geometry, and the corner is why it is not one line: the
+   three-point line is two straights 90cm in from each sideline, and only above
+   where they meet the arc is distance-from-the-ring the test. Below that the
+   arc runs OUTSIDE the straights, so a distance test alone calls a genuine
+   corner three a two.
+   ============================================================================ */
+function arcSide(nx, ny){
+  const C = COURT, px = nx*C.W, py = ny*C.H;
+  if(px <= C.CORNER_X || px >= C.W - C.CORNER_X) return true;      // outside a straight
+  return Math.hypot(px - C.RIM_X, py - C.RIM_Y) > C.ARC_R;
+}
+
+/* The nearest point on the correct side of the line, stepped a little past it
+   so a snapped shot reads as clearly beyond (or clearly within) rather than
+   sitting on the paint. Three candidate boundaries — the arc and the two
+   straights — nearest one wins, which is what keeps a corner shot in the
+   corner instead of flinging it radially out through the baseline. */
+function snapToValue(nx, ny, wantThree){
+  if(arcSide(nx, ny) === !!wantThree) return {x:nx, y:ny, moved:false};
+  const C = COURT, STEP = 25;                                      // 25cm past the line
+  const px = nx*C.W, py = ny*C.H;
+  const cand = [];
+
+  /* on the arc, radially from the ring — valid only where the arc is the
+     boundary, i.e. beyond where it meets the straights */
+  const dx = px - C.RIM_X, dy = py - C.RIM_Y;
+  const d  = Math.hypot(dx, dy) || 1;
+  const r  = C.ARC_R + (wantThree ? STEP : -STEP);
+  const ax = C.RIM_X + dx/d*r, ay = C.RIM_Y + dy/d*r;
+  if(ay >= C.CORNER_Y) cand.push({x:ax, y:ay});
+
+  /* On either straight, at this shot's own depth. NEAR SIDE FIRST, because
+     the two are equidistant from anything down the middle and a tie that
+     always resolves left would invent a left-corner hot spot out of the
+     shots whose location was nonsense to begin with — a three logged under
+     the ring has no right answer, but it should at least stay on the half of
+     the floor it was taken on. */
+  const depth = Math.max(STEP, Math.min(C.CORNER_Y, py));
+  const inset = wantThree ? -STEP : STEP;
+  const near  = {x:C.CORNER_X + inset,       y:depth};
+  const far   = {x:C.W - C.CORNER_X - inset, y:depth};
+  cand.push(px < C.RIM_X ? near : far);
+  cand.push(px < C.RIM_X ? far  : near);
+
+  const best = cand.reduce((a,b)=>
+    Math.hypot(b.x-px, b.y-py) < Math.hypot(a.x-px, a.y-py) ? b : a);
+  return {
+    x: +Math.max(0.01, Math.min(0.99, best.x/C.W)).toFixed(3),
+    y: +Math.max(0.01, Math.min(0.99, best.y/C.H)).toFixed(3),
+    moved: true
+  };
+}
+
+
 function renderMid(){
   if(!document.getElementById('midpanel')) return;
   const a = shotAnchor();
@@ -2598,8 +2667,20 @@ function flowAdvance(){
 function recordLoc(nx, ny){
   const p = ui.pending; if(!p) return;
   const id = p.anchorIdx, ev = evById(id); if(!ev) return;
-  addEvent({t:'loc', ref:id, x:+nx.toFixed(3), y:+ny.toFixed(3)});
-  if(ev.t.startsWith('p2') && nx>0.33 && nx<0.67 && ny<0.42 && !activeTags(id).has('paint'))
+
+  /* A shot's value is deliberate; its location is a thumb. Where they
+     disagree the thumb loses — silently would be wrong, so it says so. */
+  let x = nx, y = ny;
+  if(/^p[23]_/.test(ev.t)){
+    const fix = snapToValue(nx, ny, ev.t[1]==='3');
+    if(fix.moved){
+      x = fix.x; y = fix.y;
+      toast(ev.t[1]==='3' ? 'moved behind the arc — recorded as a 3PT attempt'
+                          : 'moved inside the arc — recorded as a 2PT attempt');
+    }
+  }
+  addEvent({t:'loc', ref:id, x:+(+x).toFixed(3), y:+(+y).toFixed(3)});
+  if(ev.t.startsWith('p2') && x>0.33 && x<0.67 && y<0.42 && !activeTags(id).has('paint'))
     addEvent({t:'tag', ref:id, tag:'paint'});
   if(p.flow) flowAdvance(); else resetPend();
 }
@@ -3668,8 +3749,19 @@ function shotChartHTML(d,t){
      rewriting a single stored shot — the fractions still mean the same place
      on the floor. They are scaled to centimetres here, at the point of use. */
   const CW = COURT.W, CH = COURT.H;
+  /* Games scored before recordLoc enforced it — and anything arriving through
+     the CSV or LiveStats importers, which set locations of their own — can
+     still carry a three in the paint. The chart is read for where points come
+     from, so it draws each shot on the side of the line it was worth. */
+  let moved = 0;
+  const at = e => {
+    const l = d.locs[e.id];
+    const fix = snapToValue(l.x, l.y, e.t[1]==='3');
+    if(fix.moved) moved++;
+    return fix;
+  };
   const dots = withLoc.map(e=>{
-    const l = d.locs[e.id], made = e.t.endsWith('made');
+    const l = at(e), made = e.t.endsWith('made');
     const x = l.x*CW, y = l.y*CH, a = 26;
     return made
       ? '<circle cx="'+x+'" cy="'+y+'" r="30" fill="'+col+'" opacity=".95"/>'
@@ -3702,7 +3794,8 @@ function shotChartHTML(d,t){
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
   return '<div class="glass bxteam"><h3 data-team-slot="'+t+'" style="color:'+col+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
-    '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located</div>'+
+    '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
+      (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+
     chips+'</div>';
 }
 /* ---- final: advanced stats (structure + formulas after GAMEVIS team box scores) ---- */
@@ -4792,10 +4885,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=155" defer></script>
-<script src="../vendor/supabase.js?v=155" defer></script>
-<script src="../live.js?v=155" defer></script>
-<script src="sync.js?v=155" defer></script>
-<script src="bootstrap.js?v=155" defer></script>
+<script src="../config.js?v=156" defer></script>
+<script src="../vendor/supabase.js?v=156" defer></script>
+<script src="../live.js?v=156" defer></script>
+<script src="sync.js?v=156" defer></script>
+<script src="bootstrap.js?v=156" defer></script>
 </body>
 </html>

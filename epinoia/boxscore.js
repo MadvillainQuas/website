@@ -223,6 +223,48 @@ function courtSVG(loc, opts){
     mark+'</svg>';
 }
 
+function arcSide(nx, ny){
+  const C = COURT, px = nx*C.W, py = ny*C.H;
+  if(px <= C.CORNER_X || px >= C.W - C.CORNER_X) return true;      // outside a straight
+  return Math.hypot(px - C.RIM_X, py - C.RIM_Y) > C.ARC_R;
+}
+
+function snapToValue(nx, ny, wantThree){
+  if(arcSide(nx, ny) === !!wantThree) return {x:nx, y:ny, moved:false};
+  const C = COURT, STEP = 25;                                      // 25cm past the line
+  const px = nx*C.W, py = ny*C.H;
+  const cand = [];
+
+  /* on the arc, radially from the ring — valid only where the arc is the
+     boundary, i.e. beyond where it meets the straights */
+  const dx = px - C.RIM_X, dy = py - C.RIM_Y;
+  const d  = Math.hypot(dx, dy) || 1;
+  const r  = C.ARC_R + (wantThree ? STEP : -STEP);
+  const ax = C.RIM_X + dx/d*r, ay = C.RIM_Y + dy/d*r;
+  if(ay >= C.CORNER_Y) cand.push({x:ax, y:ay});
+
+  /* On either straight, at this shot's own depth. NEAR SIDE FIRST, because
+     the two are equidistant from anything down the middle and a tie that
+     always resolves left would invent a left-corner hot spot out of the
+     shots whose location was nonsense to begin with — a three logged under
+     the ring has no right answer, but it should at least stay on the half of
+     the floor it was taken on. */
+  const depth = Math.max(STEP, Math.min(C.CORNER_Y, py));
+  const inset = wantThree ? -STEP : STEP;
+  const near  = {x:C.CORNER_X + inset,       y:depth};
+  const far   = {x:C.W - C.CORNER_X - inset, y:depth};
+  cand.push(px < C.RIM_X ? near : far);
+  cand.push(px < C.RIM_X ? far  : near);
+
+  const best = cand.reduce((a,b)=>
+    Math.hypot(b.x-px, b.y-py) < Math.hypot(a.x-px, a.y-py) ? b : a);
+  return {
+    x: +Math.max(0.01, Math.min(0.99, best.x/C.W)).toFixed(3),
+    y: +Math.max(0.01, Math.min(0.99, best.y/C.H)).toFixed(3),
+    moved: true
+  };
+}
+
 function teamTotals(d,t){
   const T = d.team[t];
   const P = S.teams[t].players.map(p=>d.stats[p.id]);
@@ -445,8 +487,19 @@ function shotChartHTML(d,t){
      rewriting a single stored shot — the fractions still mean the same place
      on the floor. They are scaled to centimetres here, at the point of use. */
   const CW = COURT.W, CH = COURT.H;
+  /* Games scored before recordLoc enforced it — and anything arriving through
+     the CSV or LiveStats importers, which set locations of their own — can
+     still carry a three in the paint. The chart is read for where points come
+     from, so it draws each shot on the side of the line it was worth. */
+  let moved = 0;
+  const at = e => {
+    const l = d.locs[e.id];
+    const fix = snapToValue(l.x, l.y, e.t[1]==='3');
+    if(fix.moved) moved++;
+    return fix;
+  };
   const dots = withLoc.map(e=>{
-    const l = d.locs[e.id], made = e.t.endsWith('made');
+    const l = at(e), made = e.t.endsWith('made');
     const x = l.x*CW, y = l.y*CH, a = 26;
     return made
       ? '<circle cx="'+x+'" cy="'+y+'" r="30" fill="'+col+'" opacity=".95"/>'
@@ -479,7 +532,8 @@ function shotChartHTML(d,t){
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
   return '<div class="glass bxteam"><h3 data-team-slot="'+t+'" style="color:'+col+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
-    '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located</div>'+
+    '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
+      (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+
     chips+'</div>';
 }
 
@@ -585,5 +639,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

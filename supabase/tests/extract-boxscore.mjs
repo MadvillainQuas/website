@@ -34,6 +34,7 @@ const WANTED = [
   'perName', 'fmtClock', 'fmtMin', 'tname', 'pname',
   'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags',
   'COURT', 'courtSVG',                       // COURT must come before courtSVG
+  'arcSide', 'snapToValue',                  // where a shot was vs what it was worth
   // calculators
   'teamTotals', 'teamAdv', 'playerAdv', 'playerAdvTable', 'lineupAgg',
   // HTML builders

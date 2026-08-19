@@ -56,7 +56,18 @@
         if (String(e.pid) !== String(playerId)) return;
         const l = locs[e.id != null ? e.id : e.seq];
         if (!l) return;                        // unlocated shots cannot be drawn
-        out.push({ x: +l.x, y: +l.y, made: /_made$/.test(e.t), three: e.t[1] === '3' });
+        const three = e.t[1] === '3';
+        /* A shot's value and its position are two separate events and nothing
+           used to make them agree, so a three could be logged in the paint —
+           on the demo season, 615 of 709 of them were, while not one of 1,249
+           twos sat outside the arc. The value is the deliberate fact and the
+           position is a thumb, so the position moves. snapToValue is the
+           scorer's own geometry, borrowed like the court itself. */
+        const B = (typeof window !== 'undefined') && window.EpinoiaBox;
+        const fix = (B && B.snapToValue) ? B.snapToValue(+l.x, +l.y, three)
+                                         : { x: +l.x, y: +l.y, moved: false };
+        out.push({ x: fix.x, y: fix.y, moved: fix.moved,
+                   made: /_made$/.test(e.t), three });
       });
     }
     return out;
@@ -75,8 +86,8 @@
       const cy = Math.floor((s.y * C.H) / cell);
       const k = cx + ':' + cy;
       let c = cells.get(k);
-      if (!c) { c = { cx, cy, att: 0, made: 0, three: 0 }; cells.set(k, c); }
-      c.att++; if (s.made) c.made++; if (s.three) c.three++;
+      if (!c) { c = { cx, cy, att: 0, made: 0, three: 0, moved: 0 }; cells.set(k, c); }
+      c.att++; if (s.made) c.made++; if (s.three) c.three++; if (s.moved) c.moved++;
     });
     return [...cells.values()].map(c => Object.assign(c, {
       pct: c.att ? (c.made / c.att) * 100 : 0,
@@ -131,12 +142,14 @@
 
     const shown = cells.filter(c => c.att >= floor);
     const att = cells.reduce((a, c) => a + c.att, 0);
+    const moved = cells.reduce((a, c) => a + (c.moved || 0), 0);
     host.innerHTML =
       '<div class="sc-wrap">' + svg + '</div>' +
       '<div class="sc-note">' +
         (att
           ? shown.length + ' area' + (shown.length === 1 ? '' : 's') + ' with ' + floor +
-            '+ attempts, from ' + att + ' located shot' + (att === 1 ? '' : 's')
+            '+ attempts, from ' + att + ' located shot' + (att === 1 ? '' : 's') +
+            (moved ? ' · ' + moved + ' moved to the side of the arc they were worth' : '')
           : 'No located shots yet — a shot is placed on the court in the scorer, ' +
             'and the ones taken without a location cannot be charted.') +
       '</div>';

@@ -104,18 +104,57 @@
      ========================================================================== */
   const PHONE = () => window.matchMedia('(max-width:640px)').matches;
 
+  /* MOMENTUM, BECAUSE 1:1 TRACKING ALONE READS AS SLOW.
+
+     A hand-driven scrollLeft follows the finger exactly and then stops dead on
+     release. That is not what a native scroller does and it is not what a
+     thumb expects: the flick — throw it and let it coast — is how you cross a
+     wide table in one gesture. Without it a 1023px table in a 373px window
+     takes two full swipes of the screen instead of one, which is precisely the
+     "very slow" this was reported as. The tracking was never slow; the coast
+     was missing.
+
+     Velocity is smoothed over the last few moves rather than taken from the
+     final pair, because the last sample before a lift is often a near-zero
+     one — the thumb slows as it leaves the glass — and reading only that gives
+     a flick no throw at all. */
+  const DECAY = 0.94;        // per 16ms frame; ~0.5s of coast from a firm flick
+  const MIN_V = 0.02;        // px/ms — below this the coast is invisible, stop
+
   function drag(box) {
     if (!box || box.dataset.dragscroll === '1') return;
     box.dataset.dragscroll = '1';
     const SLOP = 6;
     let startX = 0, startY = 0, startScroll = 0, pointerId = null,
         dragging = false, armed = false;
+    let vel = 0, lastX = 0, lastT = 0, glide = null;
+
+    const stopGlide = () => { if (glide) { cancelAnimationFrame(glide); glide = null; } };
+
+    function coast() {
+      let prev = performance.now();
+      const step = now => {
+        const dt = Math.min(32, now - prev); prev = now;
+        const max = box.scrollWidth - box.clientWidth;
+        const next = box.scrollLeft + vel * dt;
+        box.scrollLeft = Math.max(0, Math.min(max, next));
+        vel *= Math.pow(DECAY, dt / 16);
+        /* stop at the ends rather than grinding against them */
+        if (Math.abs(vel) < MIN_V || box.scrollLeft <= 0 || box.scrollLeft >= max) {
+          glide = null; return;
+        }
+        glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
+    }
 
     box.addEventListener('pointerdown', e => {
+      stopGlide();                       // a touch down catches a moving table
       if (!PHONE()) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       pointerId = e.pointerId;
       startX = e.clientX; startY = e.clientY;
+      lastX = e.clientX; lastT = performance.now(); vel = 0;
       startScroll = box.scrollLeft;
       armed = true; dragging = false;
     });
@@ -130,14 +169,25 @@
         dragging = true;
         try { box.setPointerCapture(e.pointerId); } catch (_) {}
       }
+      /* scrollLeft moves opposite the finger, so velocity does too */
+      const now = performance.now(), dt = now - lastT;
+      if (dt > 0) {
+        const v = -(e.clientX - lastX) / dt;
+        vel = vel ? vel * 0.3 + v * 0.7 : v;
+        lastX = e.clientX; lastT = now;
+      }
       box.scrollLeft = startScroll - (e.clientX - startX);
       e.preventDefault();
     });
 
     const release = e => {
       if (e && e.pointerId !== pointerId) return;
+      const threw = dragging;
       if (dragging) { try { box.releasePointerCapture(pointerId); } catch (_) {} }
       armed = false; dragging = false; pointerId = null;
+      /* a finger resting still before the lift is not a throw */
+      if (threw && Math.abs(vel) > MIN_V * 4 && performance.now() - lastT < 120) coast();
+      else vel = 0;
     };
     box.addEventListener('pointerup', release);
     box.addEventListener('pointercancel', release);

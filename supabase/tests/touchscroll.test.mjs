@@ -100,6 +100,16 @@ console.log('\nthe axis rule releases a vertical gesture untouched');
 /* Load xscroll.js against a DOM small enough to reason about. Only the parts
    drag() touches are implemented — everything else is a stub that returns
    nothing, and the sweep is harmless against it. */
+/* A clock and a frame queue under test control, so the coast can be pumped
+   frame by frame instead of waited on. */
+let CLOCK = 1000;
+const FRAMES = [];
+const pump = (ms = 16) => {
+  const q = FRAMES.splice(0, FRAMES.length);
+  CLOCK += ms;
+  q.forEach(fn => fn(CLOCK));
+};
+
 function harness() {
   const listeners = new Map();
   const box = {
@@ -111,8 +121,11 @@ function harness() {
     },
     setPointerCapture (id) { this.captured = id; },
     releasePointerCapture () { this.captured = null; },
+    /* a real track to coast along */
+    scrollWidth: 1023, clientWidth: 373,
   };
-  const fire = (t, x, y) => {
+  const fire = (t, x, y, dt) => {
+    if (dt) CLOCK += dt;
     const e = { pointerId: 1, pointerType: 'touch', clientX: x, clientY: y,
                 button: 0, prevented: false,
                 preventDefault () { this.prevented = true; } };
@@ -132,11 +145,16 @@ const g = {
   document: stubDoc,
   getComputedStyle: () => ({ overflowX: 'hidden' }),
   setTimeout, clearTimeout,
+  performance: { now: () => CLOCK },
+  requestAnimationFrame: fn => { FRAMES.push(fn); return FRAMES.length; },
+  cancelAnimationFrame: () => { FRAMES.length = 0; },
 };
 g.window = g; g.globalThis = g;
 new Function('window', 'document', 'getComputedStyle', 'matchMedia',
-             'MutationObserver', 'globalThis', src)
-  (g, stubDoc, g.getComputedStyle, g.matchMedia, null, g);
+             'MutationObserver', 'globalThis', 'performance',
+             'requestAnimationFrame', 'cancelAnimationFrame', src)
+  (g, stubDoc, g.getComputedStyle, g.matchMedia, null, g,
+   g.performance, g.requestAnimationFrame, g.cancelAnimationFrame);
 const drag = g.__drag;
 ok('drag() loaded out of xscroll.js', typeof drag === 'function');
 
@@ -176,6 +194,103 @@ if (typeof drag === 'function') {
   ok('wiring the same box twice does not double its panning',
      d.box.scrollLeft === 100, `got ${d.box.scrollLeft}`);
 }
+
+/* ---- 3b. the flick coasts ------------------------------------------------- */
+console.log('\na flick carries on after the finger leaves');
+
+if (typeof drag === 'function') {
+  /* 1:1 TRACKING ALONE READS AS SLOW. A hand-driven scrollLeft stops dead on
+     release, so crossing a 1023px table in a 373px window took two full swipes
+     where a native scroller took one throw. That is what "very slow" was. */
+  const f = harness(); drag(f.box);
+  f.fire('pointerdown', 330, 400);
+  for (let i = 1; i <= 5; i++) f.fire('pointermove', 330 - i * 40, 401, 16);
+  const atRelease = f.box.scrollLeft;
+  f.fire('pointerup', 130, 401);
+  for (let i = 0; i < 60 && FRAMES.length; i++) pump();
+  ok('a 200px flick carries most of a 653px track', 
+     atRelease === 200 && f.box.scrollLeft > 550,
+     `released at ${atRelease}, settled at ${f.box.scrollLeft}`);
+  ok('...and stops at the end rather than running past it',
+     f.box.scrollLeft <= f.box.scrollWidth - f.box.clientWidth);
+
+  /* A finger that comes to rest before lifting is placing the table, not
+     throwing it — coasting there would fight the person doing the placing. */
+  const r = harness(); drag(r.box);
+  r.fire('pointerdown', 330, 400);
+  for (let i = 1; i <= 4; i++) r.fire('pointermove', 330 - i * 20, 401, 60);
+  CLOCK += 200;                                   // the finger rests
+  const rest = r.box.scrollLeft;
+  r.fire('pointerup', 250, 401);
+  for (let i = 0; i < 30 && FRAMES.length; i++) pump();
+  ok('a drag that ends stationary does not coast',
+     r.box.scrollLeft === rest, `${rest} -> ${r.box.scrollLeft}`);
+
+  /* And a touch down on a moving table must catch it, not fight it. */
+  const c = harness(); drag(c.box);
+  c.fire('pointerdown', 330, 400);
+  for (let i = 1; i <= 5; i++) c.fire('pointermove', 330 - i * 40, 401, 16);
+  c.fire('pointerup', 130, 401);
+  pump(); pump();
+  const moving = c.box.scrollLeft;
+  c.fire('pointerdown', 200, 400);                // grab it mid-glide
+  for (let i = 0; i < 20; i++) pump();
+  ok('touching a coasting table stops it dead',
+     c.box.scrollLeft === moving, `${moving} -> ${c.box.scrollLeft}`);
+}
+
+/* ---- 5. a shot sits on the side of the arc it was worth ------------------- */
+console.log('\nwhere a shot was taken agrees with what it was worth');
+
+/* Two separate events say these two things and nothing used to reconcile them,
+   so the demo season carried 615 threes plotted inside the arc out of 709 —
+   and not one of 1,249 twos outside it. The value is deliberate and checked
+   against the scoreboard all night; the location is a thumb on a court three
+   inches wide. So the location moves. */
+const { createRequire } = await import('node:module');
+const B = createRequire(import.meta.url)(path.join(ROOT, 'epinoia', 'boxscore.js'));
+const C = B.COURT;
+
+ok('a corner shot outside the straight is a three',
+   B.arcSide(40 / C.W, 60 / C.H) === true);
+ok('...and one just inside the straight is not',
+   B.arcSide(120 / C.W, 60 / C.H) === false,
+   'the arc runs OUTSIDE the straights near the baseline — a distance test ' +
+   'alone calls a genuine corner three a two');
+ok('a shot beyond the arc up top is a three',
+   B.arcSide(0.5, (C.RIM_Y + C.ARC_R + 40) / C.H) === true);
+ok('...and one inside it is not',
+   B.arcSide(0.5, (C.RIM_Y + C.ARC_R - 40) / C.H) === false);
+
+const topKey = B.snapToValue(0.488, 0.500, true);      // the exact demo case
+ok('a three logged inside the arc moves out past it',
+   topKey.moved && B.arcSide(topKey.x, topKey.y) === true);
+const two = B.snapToValue(0.5, 0.9, false);
+ok('a two logged beyond half court moves inside the arc',
+   two.moved && B.arcSide(two.x, two.y) === false);
+const fine = B.snapToValue(0.5, 0.95, true);
+ok('a shot already on the right side is left alone',
+   !fine.moved && fine.x === 0.5 && fine.y === 0.95);
+
+/* A three logged under the ring has no right answer — the nearest legal spots
+   are both corners, equidistant. Always resolving left would invent a
+   left-corner hot spot out of exactly the shots whose data was nonsense. */
+const left  = B.snapToValue(0.42, 0.10, true);
+const right = B.snapToValue(0.58, 0.10, true);
+ok('a nonsense three stays on the half of the floor it was taken on',
+   left.x < 0.5 && right.x > 0.5, `left->${left.x} right->${right.x}`);
+
+/* Nothing may be pushed off the floor. */
+let offCourt = 0;
+for (let i = 0; i <= 20; i++) for (let j = 0; j <= 20; j++) {
+  for (const want of [true, false]) {
+    const f = B.snapToValue(i / 20, j / 20, want);
+    if (f.x < 0 || f.x > 1 || f.y < 0 || f.y > 1) offCourt++;
+    if (B.arcSide(f.x, f.y) !== want) offCourt++;
+  }
+}
+ok('every point on a 21x21 grid snaps in bounds and to the right side',
+   offCourt === 0, `${offCourt} failures`);
 
 /* ---- 4. the court carries its own colours -------------------------------- */
 console.log('\nthe court is visible on a page that does not load boxscore.css');
