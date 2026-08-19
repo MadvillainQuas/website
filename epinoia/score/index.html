@@ -1309,6 +1309,26 @@ html, body{ height:100dvh; }
      height, and take a z-index that clears it. That puts them over the bench,
      which is the space this screen can afford to spend. */
   #doneB,#xCancel{z-index:60;}
+
+  /* THE DONE BUTTON SAT OFF CENTRE. It was a bare tick and the word "done"
+     as loose text inside a round button, so the glyph rode high and the word
+     pushed the pair to one side of a circle. Both are stacked in the same
+     centred column now — tick over label, one optical centre. */
+  #doneB .xin{flex-direction:column; gap:0; line-height:1;}
+  #doneB .dlab{font-family:var(--f-micro); font-size:7px; letter-spacing:.1em;
+    text-transform:uppercase; margin-top:1px; opacity:.85;}
+  #doneB .kcap{display:none;}
+
+  /* THE COURT IS THE STEP, so give it the screen. It was 118px tall in a
+     sub-bar strip — a half-court drawn two inches wide, on which a thumb is
+     asked to place a shot to within a couple of feet. Every rim/mid/three
+     split downstream rests on that tap, and rim accuracy is a headline number.
+
+     The bench is the right thing to cover for it: those rows are not read
+     while a shot is being placed. */
+  #flowCourt{padding:6px 8px 4px;}
+  #flowCourt svg{height:auto; width:100%; max-height:46vh; min-height:210px;}
+  #flowCourt .mptitle{font-size:9px; margin-bottom:3px;}
   #doneB{top:auto; left:auto; right:10px; transform:none;
     bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 16px);
     width:56px; height:56px;}
@@ -1396,7 +1416,7 @@ html, body{ height:100dvh; }
     </div>
     <button id="xCancel" class="hidden"><span class="xin">✕</span><span class="kcap" style="top:auto;bottom:-14px;right:auto;left:50%;transform:translateX(-50%)">esc</span></button>
     <button id="delayB" class="hidden">+10s <span class="kcap" style="position:static;margin-left:4px">d</span></button>
-    <button id="doneB" class="hidden">✓ done <span class="kcap" style="position:static;margin-left:4px">enter</span></button>
+    <button id="doneB" class="hidden"><span class="xin">✓<span class="dlab">done</span></span><span class="kcap" style="position:static;margin-left:4px">enter</span></button>
   </div>
   <div id="guide" class="hidden"></div>
   <div id="ctrlHelp" class="gone"></div>
@@ -2051,7 +2071,25 @@ function cancelStep(){
       if(ev && ev.t==='ast') p.assistDone=false;
       resetPend(); save(); renderAll(); toast('cancelled: '+evLabel(ev)); return;
     }
-    // only the originating event is left → cancel it entirely
+    /* NOTHING LEFT TO TAKE BACK, BUT THERE IS SOMEWHERE TO GO BACK TO.
+
+       Pressing ✕ on the location step threw the whole play away — the shot,
+       the type already chosen, all of it — because the only event in the
+       window was the shot itself. What a scorer means there is "not that, let
+       me redo the last bit": they are three taps into a play and want the step
+       before, not a blank scoresheet.
+
+       So a flow with a step behind it walks back one instead. The play is
+       still recorded, the type it had is still recorded, and ✕ from the FIRST
+       step falls through and cancels for real, which is the only place that
+       reading is unambiguous. */
+    if(p.flow && p.step > 0){
+      p.step--;
+      resetPend(); save(); renderAll();
+      toast('back to ' + flowSteps(p)[p.step]);
+      return;
+    }
+    // the first step of the flow, or no flow at all → cancel it entirely
     const id = steps[0]; const ev = id!=null ? evById(id) : null;
     ui.pending=null; ui.foulType=null;
     if(id!=null) removeEventKeep(id);
@@ -2669,20 +2707,33 @@ function sbTimeout(){ return {label:'timeout', ic:'t', key:'o', on:ui.armed==='t
 /* ==================== gesture engine ==================== */
 let SC = null; // adjust-button time-scrub gesture
 
-function scrubRate(held){
-  // gentle ramp: 1 s/s until 5s held, 2 s/s at 5s -> 5 s/s at 10s -> 10 s/s at 15s
+function scrubRate(held, dir){
+  /* REWINDING HAS TO OUTPACE THE CLOCK.
+
+     The ramp starts at 1 second per second, which going FORWARD is a gentle
+     nudge and going BACKWARD is standing still: the clock is also running down
+     at one second per second, so a rewind at 1x holds the time where it is and
+     the scorer watches nothing happen for five seconds before the ramp bites.
+     A correction is nearly always backwards — you notice the clock is wrong
+     after the play — so the direction that matters was the one that did not
+     move.
+
+     Backwards therefore starts at 2x, which nets one second of real rewind per
+     second held. Forwards is unchanged; there is nothing to outrun. */
   const s = held/1000;
-  if(s<5) return 1;
-  if(s<10) return 2 + (s-5)*(3/5);
-  if(s<15) return 5 + (s-10)*(5/5);
-  return 10;
+  const back = dir > 0;                      // dir>0 rewinds — see onGMove
+  const base = back ? 2 : 1;
+  if(s<5) return base;
+  if(s<10) return base + 1 + (s-5)*(3/5);
+  if(s<15) return base + 4 + (s-10)*(5/5);
+  return back ? 11 : 10;
 }
 function scrubStep(){
   if(!SC) return;
   const now = Date.now();
   const dt = now-(SC.lastStep||now); SC.lastStep = now;
   if(!SC.dir) return;
-  const rate = scrubRate(now-SC.dirStart);
+  const rate = scrubRate(now-SC.dirStart, SC.dir);
   S.clockMs = Math.max(0, Math.min(PLEN(S.period), S.clockMs + SC.dir*rate*dt));
   const el = $('#clkTxt'); if(el) el.textContent = fmtClock(S.clockMs);
   SC.btn.classList.add('scrubbing');
@@ -2756,7 +2807,16 @@ function endGesture(){
   if(G && G.row){ G.row.classList.remove('lift','charging'); G.row.style.transform=''; }
   hideGuides();
 }
+/* A drag that yielded, carrying the list with it. Held outside G because G is
+   released the moment the yield happens — the gesture is over, the scroll is
+   not. */
+let SCROLLG = null;
+
 function onGMove(e){
+  if(SCROLLG){
+    SCROLLG.el.scrollTop = SCROLLG.top0 - (e.clientY - SCROLLG.y0);
+    return;
+  }
   if(SC){
     const dy = e.clientY-SC.y0;
     const nd = dy>14 ? 1 : (dy<-14 ? -1 : 0); // down = rewind, up = forward
@@ -2777,7 +2837,26 @@ function onGMove(e){
         if(G.makeT){ clearTimeout(G.makeT); G.makeT=null; }
         G.row.classList.remove('charging');
         G.active = true; G.row.classList.add('lift'); showGuides();
-      } else { cancelGTimers(); G.row.classList.remove('charging'); G=null; return; }
+      } else {
+        /* AN EARLY VERTICAL DRAG YIELDS TO SCROLLING — and now has to DO the
+           scrolling itself.
+
+           This branch abandoned the gesture and let touch-action:pan-y hand the
+           drag to the browser. Rows carry touch-action:none now, so the drag
+           could reach the handler at all for a substitution — which means the
+           browser no longer scrolls, and this branch was releasing the gesture
+           into nothing. A finger dragged down the roster and the list simply
+           sat there.
+
+           So the same yield, with the scroll carried out here. The division is
+           unchanged and is the one the app has always meant: drag straight away
+           and you are scrolling; hold first, then drag, and you are moving a
+           player. */
+        cancelGTimers(); G.row.classList.remove('charging');
+        const list = G.row.closest('.plist');
+        if(list) SCROLLG = { el:list, y0:e.clientY, top0:list.scrollTop };
+        G=null; return;
+      }
     } else return;
   }
   if(dist>14 && G.makeT){ clearTimeout(G.makeT); G.makeT=null; G.row.classList.remove('charging'); }
@@ -2791,6 +2870,7 @@ function onGMove(e){
   if(fired){ G.done=true; endGesture(); fireOption(fired,G.team,G.pid); }
 }
 function onGUp(){
+  if(SCROLLG){ SCROLLG = null; return; }
   if(SC){ endScrub(); return; }
   if(!G) return;
   if(G.done){ G=null; return; }
@@ -2799,7 +2879,7 @@ function onGUp(){
   const {team,pid} = G; G=null;
   if(dist<12) tap(team,pid);
 }
-function onGCancel(){ if(SC){ endScrub(); } if(!G) return; endGesture(); G=null; }
+function onGCancel(){ SCROLLG=null; if(SC){ endScrub(); } if(!G) return; endGesture(); G=null; }
 
 function showGuides(){
   if(!G) return;
@@ -3055,7 +3135,7 @@ function wireGame(){
   document.addEventListener('pointermove', onGMove, {passive:true});
   document.addEventListener('pointerup', onGUp);
   document.addEventListener('pointercancel', onGCancel);
-  document.addEventListener('touchmove', e=>{ if((G && G.active) || SC) e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchmove', e=>{ if((G && G.active) || SC || SCROLLG) e.preventDefault(); }, {passive:false});
 
   $('#subbar').addEventListener('pointerdown', e=>{
     const b = e.target.closest('.sub'); if(!b || b.disabled) return;
@@ -4692,10 +4772,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=139" defer></script>
-<script src="../vendor/supabase.js?v=139" defer></script>
-<script src="../live.js?v=139" defer></script>
-<script src="sync.js?v=139" defer></script>
-<script src="bootstrap.js?v=139" defer></script>
+<script src="../config.js?v=142" defer></script>
+<script src="../vendor/supabase.js?v=142" defer></script>
+<script src="../live.js?v=142" defer></script>
+<script src="sync.js?v=142" defer></script>
+<script src="bootstrap.js?v=142" defer></script>
 </body>
 </html>

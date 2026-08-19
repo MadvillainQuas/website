@@ -118,6 +118,29 @@ function deriveGame(game) {
   };
   let arw = (game.arrowInit != null) ? game.arrowInit : null;   // alternating-possession arrow
   const flag = { sc: [false, false], pot: [false, false] };     // live 2nd-chance / points-off-TO windows
+
+  /* TRANSITION, WORKED OUT RATHER THAN TAGGED.
+
+     Second chance and points-off-turnovers have always been derived — an
+     offensive rebound opens one window, a turnover opens the other — while
+     fast-break points alone waited for somebody to tag the shot 'transition'
+     during a live game, which is the one moment nobody has a spare hand. So
+     the column read 2 in a game with twenty fast breaks in it.
+
+     A break is a shot that arrives quickly after the ball changes hands, so
+     that is what is measured: the clock at the moment possession turned over
+     to this side, and any score within eight seconds of it. Eight is the usual
+     cut in public play-by-play work and it matches what a viewer would call a
+     break — long enough for a rebound, an outlet and two dribbles, short
+     enough to exclude a set offence.
+
+     Opened by a DEFENSIVE rebound or a steal, both of which start a break.
+     Not by an offensive rebound, which is a second chance in the same
+     half-court, and not by a made basket, where the other side inbounds and
+     nothing about it is fast. A manual 'transition' tag still counts, so a
+     scorer can mark one the clock would miss. */
+  const TRANSITION_MS = 8000;
+  const breakAt = [null, null];       // cumulative ms when this side got the ball running
   let lastFoulKind = null;
 
   game.teams.forEach(tm => tm.players.forEach(p => { d.stats[p.id] = mkP(); }));
@@ -139,8 +162,32 @@ function deriveGame(game) {
   });
   d.stypes = stypes; d.locs = locs;
 
-  /* a 2pt counts as a rim attempt if it was located inside the key, or tagged paint */
+  /* WHAT COUNTS AS A SHOT AT THE RIM.
+
+     Location alone answered this, which throws away the surer signal: a
+     statistician who picks "dunk" has told you exactly where the shot was, and
+     more reliably than a thumb landing on a court drawn two inches wide. A
+     layup that was tapped slightly outside the key measured as a mid-range
+     attempt, and a fadeaway taken with a heel on the paint line measured as a
+     shot at the rim. Both are wrong in the direction that matters, because rim
+     rate and rim accuracy are read as a claim about how a team scores.
+
+     So the TYPE decides when it is decisive, and location fills the gaps:
+
+       layup, dunk, tip-in, putback   at the rim, wherever the tap landed
+       jump shot, fadeaway, step-back not at the rim, ditto
+       floater, hook, everything else no opinion — fall through to location
+
+     Floater and hook are deliberately left to the location. Both are taken
+     anywhere from two feet to fifteen, and asserting either way would be
+     inventing a fact the scorer did not give. */
+  const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
+  const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
+                            'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
   const isRim = ev => {
+    const ty = (stypes[ev.id] || '').toLowerCase();
+    if (ty && RIM_TYPE.has(ty)) return true;
+    if (ty && FAR_TYPE.has(ty)) return false;
     const l = locs[ev.id];
     return (l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'));
   };
@@ -171,7 +218,12 @@ function deriveGame(game) {
     d.onCourt[1 - ev.team].forEach(id => { if (d.stats[id]) d.stats[id].pm -= v; });
     cur[ev.team].pf += v; cur[1 - ev.team].pa += v;
     const tg = tags[ev.id];
-    if (tg) { if (tg.has('paint')) d.team[ev.team].paint += v; if (tg.has('transition')) d.team[ev.team].fast += v; }
+    if (tg && tg.has('paint')) d.team[ev.team].paint += v;
+    /* tagged by hand, or inside the window a change of possession opened */
+    const gotItAt = breakAt[ev.team];
+    const quick = gotItAt != null &&
+      (cumEl(ev.period, ev.clock) - gotItAt) <= TRANSITION_MS;
+    if ((tg && tg.has('transition')) || quick) d.team[ev.team].fast += v;
     if (flag.sc[ev.team])  d.team[ev.team].sc  += v;
     if (flag.pot[ev.team]) d.team[ev.team].pot += v;
     if (ev.pid && !game.starters[ev.team].includes(ev.pid)) d.team[ev.team].bench += v;
@@ -261,15 +313,23 @@ function deriveGame(game) {
       case 'reb':
         d.poss = ev.team;
         if (ev.off) flag.sc[ev.team] = true;
-        else { flag.sc = [false, false]; flag.pot = [false, false]; }
+        else {
+          flag.sc = [false, false]; flag.pot = [false, false];
+          breakAt[ev.team] = cumEl(ev.period, ev.clock);
+        }
         break;
-      case 'stl': d.poss = ev.team; break;
+      case 'stl':
+        d.poss = ev.team;
+        breakAt[ev.team] = cumEl(ev.period, ev.clock);
+        break;
       case 'to':
         d.poss = 1 - ev.team;
         flag.sc[ev.team] = false; flag.pot[ev.team] = false;
         flag.sc[1 - ev.team] = false; flag.pot[1 - ev.team] = true; break;
       case 'foul': lastFoulKind = ev.kind || 'personal'; break;
-      case 'period_start': flag.sc = [false, false]; flag.pot = [false, false]; break;
+      case 'period_start':
+        flag.sc = [false, false]; flag.pot = [false, false];
+        breakAt[0] = breakAt[1] = null; break;
     }
 
     const line = pbpLine(ev, ev.id, tags, stypes, nm);
