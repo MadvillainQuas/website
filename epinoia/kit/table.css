@@ -118,6 +118,24 @@ table.ft td.stick{ background:var(--ground,#04100b) }
 table.ft thead th.stick{ z-index:4 }
 table.ft th.c0, table.ft td.c0{ left:0;    width:36px;  text-align:right }
 table.ft th.c1, table.ft td.c1{ left:36px; width:170px; text-align:left }
+
+/* THE NAME COLUMN CAN BE FOLDED AWAY.
+
+   Five surnames is the widest thing in the table by a distance, and on a phone
+   it takes most of the screen to say something the reader has usually just
+   read — they are comparing units, and after the first glance the numbers are
+   the point. Folding it to a stub gives the numbers the width instead, without
+   losing the row: the stub keeps the rank, and the full names come back on the
+   next tap.
+
+   The header is the control, because that is the thing whose width you want to
+   change, and it carries the arrows so it does not look like a sort. */
+table.ft th.c1{ cursor:pointer; user-select:none; white-space:nowrap }
+table.ft th.c1 .fold{ opacity:.55; margin-left:5px; font-size:9px }
+table.ft th.c1:hover .fold{ opacity:1 }
+table.ft.lu-fold th.c1, table.ft.lu-fold td.c1{ width:44px; max-width:44px }
+table.ft.lu-fold td.c1{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--ink-3) }
 table.ft th.c1, table.ft td.c1{ box-shadow:inset -1px 0 0 var(--rule-2,rgba(147,242,191,.35)) }
 table.ft thead th.c0, table.ft thead th.c1{ background:#0c1f16 }
 
@@ -185,8 +203,20 @@ table.ft td.neg{ color:var(--bad,#ff5f6b) }
      sign it is vertical and the page's own scroll takes it from there. */
   .ft-wrap{
     max-height:none;          /* the page scroll is enough on a phone */
-    overflow:hidden;
-    touch-action:pan-y;
+    /* overflow:hidden with touch-action:pan-y was the old compromise: it let a
+       vertical touch reach the page, at the price of the table not scrolling
+       sideways AT ALL. On a lineup table fourteen columns wide that means
+       everything past NET is unreachable on a phone — the columns are not
+       clipped with a hint, they are gone.
+
+       Naming both axes is what that compromise was reaching for. The element
+       takes horizontal drags, the page keeps vertical ones, and the browser
+       decides by direction on the first few pixels — so the table scrolls and
+       the page still scrolls through it. */
+    overflow-x:auto; overflow-y:hidden;
+    touch-action:pan-x pan-y;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
   }
   table.ft thead th{ position:static } /* and a sticky header eats too much of it */
 }

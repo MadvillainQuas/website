@@ -192,6 +192,26 @@ function listPanel(opts) {
         if (!c) th.style.width = w + 'px';
         hr.appendChild(th);
       });
+    /* THE NAME COLUMN FOLDS ON A TAP, and says so.
+
+       Five surnames is the widest thing here by a distance and on a phone it
+       takes most of the screen to repeat something the reader has just read —
+       they are comparing units, and after the first glance the numbers are the
+       point. The header is the control because it is the column whose width
+       changes, and the arrows mark it as a fold rather than a sort. */
+    const nameTh = hr.querySelector('th.c1');
+    if (nameTh) {
+      const fold = el('span', 'fold', '⇤⇥');
+      nameTh.appendChild(fold);
+      nameTh.title = 'tap to fold the lineup names away and give the numbers the room';
+      nameTh.addEventListener('click', () => {
+        const on = t.classList.toggle('lu-fold');
+        fold.textContent = on ? '⇥⇤' : '⇤⇥';
+        nameTh.title = on
+          ? 'tap to show the lineup names again'
+          : 'tap to fold the lineup names away and give the numbers the room';
+      });
+    }
     thead.appendChild(hr); t.appendChild(thead);
 
     const tb = el('tbody');
