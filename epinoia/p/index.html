@@ -10,9 +10,9 @@
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=148">
-<link rel="stylesheet" href="../kit/table.css?v=148">
-<link rel="stylesheet" href="../kit/nav.css?v=148">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=150">
+<link rel="stylesheet" href="../kit/table.css?v=150">
+<link rel="stylesheet" href="../kit/nav.css?v=150">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -148,6 +148,32 @@
       <span class="note" id="wowyNote"></span></div>
     <div id="onoff"></div>
     <div id="withpanel"></div>
+  </section>
+
+  <!-- the season's shooting, binned so a spot on the floor means something -->
+  <section class="card">
+    <div class="cardhead">
+      <h2>Shot chart</h2>
+      <div class="sc-controls">
+        <label class="sc-ctl"><span>area</span>
+          <select id="scCell" class="ep-input">
+            <option value="80">80 cm</option>
+            <option value="120" selected>120 cm</option>
+            <option value="180">180 cm</option>
+            <option value="240">240 cm</option>
+          </select>
+        </label>
+        <label class="sc-ctl"><span>min attempts</span>
+          <select id="scMin" class="ep-input">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id="shotchart"></div>
   </div>
 
   <div class="foot">
@@ -156,18 +182,20 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=148" defer></script>
-<script src="../bpm.js?v=148" defer></script>
-<script src="../season.js?v=148" defer></script>
-<script src="../data.js?v=148" defer></script>
-<script src="../upload.js?v=148" defer></script>
-<script src="../lineups.js?v=148" defer></script>
-<script src="../wowy.js?v=148" defer></script>
-<script src="../withstats.js?v=148" defer></script>
-<script src="withui.js?v=148" defer></script>
-<script src="../fulltable.js?v=148" defer></script>
-<script src="player.js?v=148" defer></script>
-<script src="../nav.js?v=148" defer></script>
-<script src="../xscroll.js?v=148" defer></script>
+<script src="../config.js?v=150" defer></script>
+<script src="../bpm.js?v=150" defer></script>
+<script src="../season.js?v=150" defer></script>
+<script src="../data.js?v=150" defer></script>
+<script src="../boxscore.js?v=150" defer></script>
+<script src="../shotchart.js?v=150" defer></script>
+<script src="../upload.js?v=150" defer></script>
+<script src="../lineups.js?v=150" defer></script>
+<script src="../wowy.js?v=150" defer></script>
+<script src="../withstats.js?v=150" defer></script>
+<script src="withui.js?v=150" defer></script>
+<script src="../fulltable.js?v=150" defer></script>
+<script src="player.js?v=150" defer></script>
+<script src="../nav.js?v=150" defer></script>
+<script src="../xscroll.js?v=150" defer></script>
 </body>
 </html>

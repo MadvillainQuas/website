@@ -246,6 +246,18 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 /* The competition filter above the leaders and team-stats boards. Quiet on
    purpose: it is a lens, and a control that shouts competes with the numbers
    it is there to qualify. */
+/* The shot chart and its two controls. The court keeps its aspect ratio and
+   is capped so it does not swallow a phone screen on its own. */
+.sc-wrap{max-width:520px;margin:0 auto}
+.sc-wrap svg{width:100%;height:auto;display:block;border-radius:10px}
+.sc-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);
+  text-align:center;padding:calc(var(--u)*1.5) 0 0;line-height:1.8}
+.sc-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.sc-ctl{display:flex;flex-direction:column;gap:3px}
+.sc-ctl > span{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3)}
+.sc-ctl .ep-input{font-size:12px;padding:4px 7px;min-height:34px}
+
 .scopebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:0 0 calc(var(--u)*1.5)}
 .scopelab{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;

@@ -12,23 +12,57 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
 (async function boot() {
   try {
     const D = window.EpinoiaData;
-    const { league, comp } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
+    const { league, comp, comps } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
     $('#ctx').textContent = league.name;
     $('#title').textContent = league.name + ' — season statistics';
     if (!comp) return fail('This league has no competitions yet.');
 
-    const S = await D.season(comp.id);
-    if (!S.players.length) {
-      return fail('No season statistics yet — these fill in as games are finalised in the scorer.');
-    }
-    const meta = await D.playerMeta(S.players.map(p => p.id));
-    S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
+    /* THE SAME SCOPE THE LEAGUE PAGE USES, for the same reason: this table was
+       reading one competition, so a page titled "season statistics" showed a
+       single phase and disagreed with itself depending on which phase that was.
+       A season is the league, its cup and its playoffs together. */
+    let scope = 'all';
+    const scopeIds = () => scope === 'all'
+      ? (comps || []).map(c => c.id).filter(Boolean)
+      : [scope];
 
-    window.EpinoiaTable.render({
-      host: '#tbl', kind: 'player', sortKey: 'ppg', minGames: 1,
-      filename: league.slug + '-season-stats',
-      rows: S.players,
-      playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
-    });
+    /* The table's renderer empties whatever host it is given, so the filter
+       gets a host of its own — appending both to #tbl wiped the control. */
+    const host = $('#tbl');
+    host.textContent = '';
+    const bar = el('div', 'scopebar');
+    const board = el('div', 'boardhost');
+    host.append(bar, board);
+
+    async function draw() {
+      board.textContent = '';
+      const S = await D.season(scopeIds());
+      if (!S.players.length) {
+        board.appendChild(el('div', 'ft-empty',
+          'No statistics for that selection yet — these fill in as games are finalised.'));
+        return;
+      }
+      const meta = await D.playerMeta(S.players.map(p => p.id));
+      S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
+      window.EpinoiaTable.render({
+        host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
+        filename: league.slug + '-season-stats',
+        rows: S.players,
+        playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
+      });
+    }
+
+    bar.appendChild(el('span', 'scopelab', 'covering'));
+    const sel = document.createElement('select');
+    sel.className = 'ep-input scopesel';
+    const add = (v, label) => { const o = document.createElement('option');
+      o.value = v; o.textContent = label; sel.appendChild(o); };
+    add('all', 'the whole season · ' + (comps || []).length + ' competitions');
+    (comps || []).forEach(c => add(c.id,
+      c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
+    sel.addEventListener('change', () => { scope = sel.value; draw(); });
+    bar.appendChild(sel);
+
+    await draw();
   } catch (e) { fail('Could not load: ' + e.message); }
 })();

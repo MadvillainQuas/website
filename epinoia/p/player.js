@@ -390,7 +390,30 @@ function paintLog(rows) {
        a profile ends up disagreeing with the leaders board it links to. */
     await paintCareer(pl, mine, team);
 
-    /* ---- on the floor with ----
+    /* ---------------------------------------------------------------------------
+   THE SHOT CHART, AND THE TWO NUMBERS THAT MAKE IT READABLE.
+
+   Cell size and the attempt floor are exposed because the right values depend
+   on how much a player has played: a season of eighteen games supports smaller
+   cells and a higher floor than a run of three. The defaults are a stride and
+   a bit (120cm) and two attempts, which is the point at which a cell stops
+   being one shot somebody happened to take.
+   --------------------------------------------------------------------------- */
+let SHOTS = [];
+/* redraw on either control, and only bind once */
+document.addEventListener('change', e => {
+  if (e.target && (e.target.id === 'scCell' || e.target.id === 'scMin')) drawShotChart();
+});
+function drawShotChart(shots) {
+  if (shots) SHOTS = shots;
+  const host = document.querySelector('#shotchart');
+  if (!host || !window.EpinoiaShotChart) return;
+  const cell = +(document.querySelector('#scCell') || {}).value || 120;
+  const floor = +(document.querySelector('#scMin') || {}).value || 2;
+  window.EpinoiaShotChart.render({ host, shots: SHOTS, cellCm: cell, minAttempts: floor });
+}
+
+/* ---- on the floor with ----
        The team's on/off as tiles, then this player's OWN numbers split by who
        was beside him. The second is derived by replaying the event log — no
        table stores an individual box broken down by teammate — so it needs the
@@ -417,6 +440,23 @@ function paintLog(rows) {
             events: evs.filter(e => e.gameId === g.id)
           }));
           const recs = window.EpinoiaWith.index(games);
+
+          /* ---- the season shot chart ----
+             Built from the events already in hand rather than a second trip:
+             locations live in the log, not in the season aggregates, and this
+             block has just fetched the whole log for every game the club
+             played. Grouped by game because a 'loc' event references its shot
+             by an id that only means anything within its own game. */
+          try {
+            const byG = {};
+            evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+            const shots = await window.EpinoiaShotChart.gather({
+              fetchEvents: async () => Object.values(byG),
+              gameIds: gs.map(g => g.id),
+              playerId: pl.id
+            });
+            drawShotChart(shots);
+          } catch (e) { /* a chart is not worth breaking the page for */ }
 
           /* teammates are whoever actually shared a stint with him */
           const mates = new Set();
