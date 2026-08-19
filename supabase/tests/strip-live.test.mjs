@@ -60,7 +60,7 @@ function lift(names) {
   return new Function(body)();
 }
 
-const M = lift(['noteState', 'clockNow', 'periodLabel', 'fmtClock', 'statusOf',
+const M = lift(['DONE', 'noteState', 'clockNow', 'periodLabel', 'fmtClock', 'statusOf',
                 'scoreOf', 'watchable', 'NEAR_TIP_MS', 'MAX_CHANNELS']);
 
 const state = (o) => Object.assign({
@@ -238,6 +238,36 @@ const state = (o) => Object.assign({
   ok('the clock is tabular, so a ticking card does not jiggle',
      /\.vn\.clock\{[\s\S]{0,200}tabular-nums/.test(readFileSync(
        path.join(ROOT, 'epinoia', 'kit', 'embed.css'), 'utf8')));
+}
+
+/* ---- a game being written up is a finished game ---------------------------
+   finalise-game holds status at 'finalising' while it rebuilds the derived
+   tables, the standings, the feeds and the match report. Every list read that
+   as neither live nor final and drew a completed game as an upcoming fixture,
+   while tapping it opened the finished box score — because that reads events
+   rather than status. The strip's query did not even ask for the row. */
+{
+  M.LIVE.clear(); M.ROWS.clear();
+  const fin = { id: 'f1', status: 'finalising', home_score: 88, away_score: 84 };
+  M.ROWS.set('f1', fin);
+  ok('a finalising game reads as final, not as an upcoming fixture',
+     M.statusOf(fin) === 'final', M.statusOf(fin));
+  ok('...and shows the score it finished on',
+     M.scoreOf(fin).join('-') === '88-84', M.scoreOf(fin).join('-'));
+
+  const stripSrc = readFileSync(path.join(ROOT, 'epinoia', 'embed', 'strip', 'strip.js'), 'utf8');
+  ok('the strip asks the database for those rows',
+     /status=in\.\([^)]*finalising/.test(stripSrc));
+
+  const homeSrc = readFileSync(path.join(ROOT, 'epinoia', 'home.js'), 'utf8');
+  ok('so does the league front page', /status=in\.\([^)]*finalising/.test(homeSrc));
+  ok('...and counts one as a result rather than a fixture',
+     /DONE\(g\.status\) && at\(g\) >= weekAgo/.test(homeSrc));
+
+  const fxSrc = readFileSync(path.join(ROOT, 'epinoia', 'fixtures', 'fixtures.js'), 'utf8');
+  ok('and the fixtures page draws it as finished',
+     /const final = DONE\(g\.status\)/.test(fxSrc));
+  M.LIVE.clear(); M.ROWS.clear();
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

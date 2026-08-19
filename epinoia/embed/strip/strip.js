@@ -242,10 +242,25 @@ function fmtClock(ms) {
    it is DOING. A frame wins only when it says something has started, because
    that is the transition the poll is too slow for — never the other way, or a
    scorer closing their laptop would un-finish a game. */
+/* A GAME BEING WRITTEN UP IS A FINISHED GAME.
+
+   finalise-game sets status='finalising' as a lock, then rebuilds the derived
+   tables, the standings, the feeds and the match report before setting
+   'final'. That is not instant, and for the whole of it every list on the
+   platform read the game as neither live nor final and drew it as an upcoming
+   fixture — a completed game showing as not played, while tapping it opened
+   the finished box score, because that reads the events rather than the
+   status. Worse, the list queries filtered `status=in.(live,scheduled,final)`,
+   so the row was not even returned and the card showed whatever it had before.
+
+   Scoring is closed the moment that lock is taken and the score cannot change
+   again, so the reader is told what is true: it is finished. */
+const DONE = st => st === 'final' || st === 'finalising';
+
 function statusOf(g) {
   const s = LIVE.get(g.id);
   if (g.status === 'scheduled' && s && s.status === 'live') return 'live';
-  return g.status;
+  return DONE(g.status) ? 'final' : g.status;
 }
 
 function scoreOf(g) {
@@ -554,7 +569,7 @@ async function load() {
   let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,' +
     'home:home_team_id(slug,name,short_name,colour),away:away_team_id(slug,name,short_name,colour),' +
     'competitions(name,seasons(leagues(slug,name)))' +
-    '&status=in.(live,scheduled,final)&order=tipoff_at.desc&limit=60';
+    '&status=in.(live,scheduled,final,finalising)&order=tipoff_at.desc&limit=60';
 
   /* LIVE GAMES ARE FETCHED SEPARATELY, AND ALWAYS.
 

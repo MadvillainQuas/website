@@ -116,7 +116,7 @@ function renderFilters() {
 /* ----------------------------------------------------------------- rows --- */
 function scoreboard(g) {
   const board = el('div', 'board');
-  const final = g.status === 'final', live = g.status === 'live';
+  const final = DONE(g.status), live = g.status === 'live';
 
   if (final || live) {
     const sc = el('div', 'bscore');
@@ -180,8 +180,15 @@ function venueBlock(g) {
   return v;
 }
 
+/* A GAME BEING WRITTEN UP IS A FINISHED GAME. finalise-game holds status at
+   'finalising' while it rebuilds the derived tables, the standings and the
+   match report, and every list treated that as neither live nor final and drew
+   a completed game as an upcoming fixture. Scoring is closed the moment that
+   lock is taken and the score cannot change again. */
+const DONE = st => st === 'final' || st === 'finalising';
+
 function fixtureRow(g, stats, names) {
-  const final = g.status === 'final', live = g.status === 'live';
+  const final = DONE(g.status), live = g.status === 'live';
   /* EVERY FIXTURE IS A LINK, including one that has not been played.
 
      A scheduled game used to be an inert div, which made the most useful thing
@@ -237,7 +244,7 @@ async function render() {
     const t = [...TEAMS.values()].find(x => x.slug === teamFilter);
     if (t) list = list.filter(g => g.home_team_id === t.id || g.away_team_id === t.id);
   }
-  if (stateFilter === 'results') list = list.filter(g => g.status === 'final' || g.status === 'live');
+  if (stateFilter === 'results') list = list.filter(g => DONE(g.status) || g.status === 'live');
   if (stateFilter === 'upcoming') list = list.filter(g => g.status === 'scheduled');
 
   /* EVERY VIEW IS IN DATE ORDER; only the direction changes, and only where
@@ -352,7 +359,7 @@ function watchAnnouncements() {
 
 function watchLive(delay) {
   clearTimeout(liveTimer);
-  const anyLive = GAMES.some(g => g.status === 'live');
+  const anyLive = GAMES.some(g => g.status === 'live' || g.status === 'finalising');
   liveTimer = setTimeout(async () => {
     try {
       const ids = GAMES.map(g => g.id);

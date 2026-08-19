@@ -110,6 +110,21 @@ function applySections() {
 }
 
 /* ------------------------------------------------------------------ games --- */
+/* A GAME BEING WRITTEN UP IS A FINISHED GAME.
+
+   finalise-game sets status='finalising' as a lock, then rebuilds the derived
+   tables, the standings, the feeds and the match report before setting
+   'final'. That is not instant, and for the whole of it every list on the
+   platform read the game as neither live nor final and drew it as an upcoming
+   fixture — a completed game showing as not played, while tapping it opened
+   the finished box score, because that reads the events rather than the
+   status. Worse, the list queries filtered `status=in.(live,scheduled,final)`,
+   so the row was not even returned and the card showed whatever it had before.
+
+   Scoring is closed the moment that lock is taken and the score cannot change
+   again, so the reader is told what is true: it is finished. */
+const DONE = st => st === 'final' || st === 'finalising';
+
 async function games() {
   let gs;
   try {
@@ -129,7 +144,7 @@ async function games() {
     }
     gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,' +
       'home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)' +
-      '&status=in.(live,final,scheduled)' + scope + '&order=tipoff_at.desc&limit=120');
+      '&status=in.(live,final,finalising,scheduled)' + scope + '&order=tipoff_at.desc&limit=120');
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
@@ -170,7 +185,7 @@ async function games() {
   /* Both ends matter. Without the upper bound a finalised game dated in the
      future counts as "this week" — which is not hypothetical: the demo season
      carries finals dated months ahead, and they filled the recent list. */
-  const recent = gs.filter(g => g.status === 'final' && at(g) >= weekAgo && at(g) <= now)
+  const recent = gs.filter(g => DONE(g.status) && at(g) >= weekAgo && at(g) <= now)
                    .sort((a, b) => at(b) - at(a));
   const upcoming = gs.filter(g => g.status === 'scheduled' && at(g) >= now)
                      .sort((a, b) => at(a) - at(b));
@@ -179,7 +194,7 @@ async function games() {
      Rather than drop it silently it rides after the rest, so a mis-dated
      fixture is visible on the page it belongs to instead of only in the
      database. */
-  const odd = gs.filter(g => g.status === 'final' && at(g) > now)
+  const odd = gs.filter(g => DONE(g.status) && at(g) > now)
                 .sort((a, b) => at(a) - at(b));
 
   /* ONE DATE ORDER. The four buckets above decide WHICH games are worth
@@ -210,7 +225,7 @@ async function games() {
   gs = shown;
 
   gs.forEach(g => {
-    const final = g.status === 'final', live = g.status === 'live';
+    const final = DONE(g.status), live = g.status === 'live';
     /* a scheduled fixture is a link too — same reasoning as the fixtures page */
     const row = el('a', 'fx');
     row.href = 'game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
