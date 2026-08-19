@@ -49,9 +49,26 @@ async function all(path, page = 1000) {
 
 /* ------------------------------------------------------------- a season ---- */
 /* Returns everything the pages need for one competition, aggregated once. */
+/* ONE COMPETITION OR SEVERAL — a season is a scope, not a statistic.
+
+   This took a single competition id, so every stats surface on the league page
+   showed one phase at a time and a reader looking at "team stats" after a
+   playoff had been played saw two teams and one game. A league season is
+   normally the league phase PLUS its cup PLUS its playoffs, and that is what
+   somebody means by the season's numbers.
+
+   Passing a list rather than adding a second function keeps one aggregation
+   path: statsForGames below already sums an arbitrary set of games, and the
+   note there is the reason — the same code has to decide what a rebound is
+   whoever asks, or two pages disagree. */
 async function season(competitionId) {
-  const games = await all(`games?competition_id=eq.${competitionId}` +
-    `&status=eq.final&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
+  const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
+  if (!list.length) return { games: [], players: [], teams: [], byId: {} };
+  const scope = list.length === 1
+    ? `competition_id=eq.${list[0]}`
+    : `competition_id=in.(${list.join(',')})`;
+  const games = await all(`games?${scope}` +
+    `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
   if (!games.length) return { games: [], players: [], teams: [], byId: {} };
 
   const ids = games.map(g => g.id);

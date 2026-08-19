@@ -243,6 +243,16 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
    — no scrollbar exists on touch — so it does the work of saying "there is
    more this way". It is painted with a background-attachment trick rather than
    a pseudo-element so it moves with the scroll and disappears at the end. */
+/* The competition filter above the leaders and team-stats boards. Quiet on
+   purpose: it is a lens, and a control that shouts competes with the numbers
+   it is there to qualify. */
+.scopebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:0 0 calc(var(--u)*1.5)}
+.scopelab{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3)}
+.scopesel{font-size:12px;padding:5px 8px;max-width:100%;min-height:36px}
+@media (max-width:640px){ .scopesel{flex:1 1 auto;min-width:0} }
+
 .ep-xscroll{
   overflow-x:auto; overflow-y:hidden;
   /* PAN-X ALONE STRANDS THE READER. touch-action:pan-x tells the browser this

@@ -363,10 +363,32 @@ async function renderFixtures() {
    number here and a number on the player's own page cannot disagree. */
 let SEASON = null;
 
+/* WHICH COMPETITIONS THE NUMBERS COVER.
+
+   Every stats surface was scoped to one competition — whichever phase the
+   Table tab happened to be showing — so after a single playoff game the team
+   stats read two teams and one game, and the leaders board with them. Nobody
+   means that by "the season's statistics": they mean the league phase and its
+   cup and its playoffs together, which is what a season is.
+
+   So the default is everything in the season, and the filter narrows rather
+   than being the only way to see anything. Held here rather than in the URL
+   because it is a lens on a page, not a place — a link somebody sends should
+   open on the whole season, not on whatever phase the sender was inspecting. */
+let statScope = 'all';                 // 'all' | a competition id
+
+function scopeIds() {
+  if (statScope !== 'all') return [statScope];
+  const ids = comps.map(c => c.id).filter(Boolean);
+  return ids.length ? ids : (comp ? [comp.id] : []);
+}
+
 async function loadSeason() {
-  if (SEASON && SEASON.__comp === comp.id) return SEASON;
-  SEASON = await window.EpinoiaData.season(comp.id);
-  SEASON.__comp = comp.id;
+  const ids = scopeIds();
+  const key = ids.slice().sort().join(',');
+  if (SEASON && SEASON.__comp === key) return SEASON;
+  SEASON = await window.EpinoiaData.season(ids);
+  SEASON.__comp = key;
   const [pmeta, tmeta] = await Promise.all([
     window.EpinoiaData.playerMeta(SEASON.players.map(p => p.id)),
     window.EpinoiaData.teamMeta(league.id)
@@ -376,8 +398,36 @@ async function loadSeason() {
   return SEASON;
 }
 
+/* One control, drawn into each stats pane. Two panes rather than one shared
+   bar because they are separate tabs and a filter that lives above the tabs
+   would look like it governs the Table and the fixtures too, which it does
+   not — those are per-competition by their nature. */
+function scopePicker(onChange) {
+  const wrap = el('div', 'scopebar');
+  wrap.appendChild(el('span', 'scopelab', 'covering'));
+  const sel = document.createElement('select');
+  sel.className = 'ep-input scopesel';
+  const add = (v, label) => { const o = document.createElement('option');
+    o.value = v; o.textContent = label; sel.appendChild(o); };
+  add('all', 'the whole season · ' + comps.length + ' competitions');
+  comps.forEach(c => add(c.id, c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
+  sel.value = statScope;
+  sel.addEventListener('change', () => {
+    statScope = sel.value;
+    SEASON = null;                     // the scope changed, so the numbers did
+    onChange();
+  });
+  wrap.appendChild(sel);
+  return wrap;
+}
+
 async function renderLeaders() {
   const pane = $('#pane-leaders'); pane.textContent = '';
+  pane.appendChild(scopePicker(renderLeaders));
+  /* EpinoiaTable.render empties whatever host it is given, so the filter needs
+     a host of its own — passing the pane wiped the control that had just been
+     put there, which is why it appeared to do nothing. */
+  const board = el('div', 'boardhost'); pane.appendChild(board);
   let S;
   try { S = await loadSeason(); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
@@ -388,7 +438,7 @@ async function renderLeaders() {
     return;
   }
   window.EpinoiaTable.render({
-    host: pane, kind: 'player', sortKey: 'ppg', minGames: 1,
+    host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
     filename: (league.slug || 'league') + '-leaders',
     rows: S.players,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
@@ -398,6 +448,8 @@ async function renderLeaders() {
 /* ----------------------------------------------------------- team stats --- */
 async function renderTeamStats() {
   const pane = $('#pane-teams'); pane.textContent = '';
+  pane.appendChild(scopePicker(renderTeamStats));
+  const board = el('div', 'boardhost'); pane.appendChild(board);
   let S;
   try { S = await loadSeason(); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
@@ -408,7 +460,7 @@ async function renderTeamStats() {
     return;
   }
   window.EpinoiaTable.render({
-    host: pane, kind: 'team', sortKey: 'ppg',
+    host: board, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',
     rows: S.teams,
     teamHref: r => r.slug ? '../t/?t=' + encodeURIComponent(r.slug) : null
