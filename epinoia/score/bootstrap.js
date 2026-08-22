@@ -1569,9 +1569,30 @@
       bar.style.borderColor = 'rgba(255,95,107,.7)';
       if (count < 5 || writeWarned) return;
       writeWarned = true;
+      /* A REFUSAL THE STATISTICIAN CAN ACT ON.
+
+         Postgres says "new row violates row-level security policy for table
+         game_state", which is true, unreadable, and gives no clue what to do.
+         It has one overwhelmingly likely cause in practice: this fixture was
+         reverted and has not been re-claimed yet, and starting the game clears
+         that by itself. Saying so turns a frightening dead end into one tap.
+
+         The raw text still goes in, at the bottom, because when the cause is
+         something rarer it is the only thing that will identify it. */
+      const code = (err && err.code) || '';
+      const msg = (err && err.message) || '';
+      const isPolicy = code === '42501' || /row-level security|violates row/i.test(msg);
       try {
         alert('The league database is refusing to save this game.\n\n' +
-              (err && err.message ? err.message + '\n\n' : '') +
+              (isPolicy
+                ? 'This is a permissions refusal, and the usual cause is a ' +
+                  'fixture that was reverted and not yet re-claimed. Starting ' +
+                  'the game re-claims it — press the jump ball and it should ' +
+                  'clear by itself.\n\nIf it does not, you may not be listed as ' +
+                  'an official on this fixture, or it has already been ' +
+                  'finalised.\n\n'
+                : '') +
+              (msg ? msg + '\n\n' : '') +
               'Scoring still works and nothing on this screen is lost, but the ' +
               'game is not being written to the league. Do not close this tab — ' +
               'export the play-by-play from the final screen if this does not clear.');

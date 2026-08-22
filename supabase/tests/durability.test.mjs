@@ -178,8 +178,26 @@ const frameOf = (events, state) => ({
     path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
   ok('sync passes a write-failure hook to the publisher', /onError:\s*\(err\)/.test(src));
   ok('...and the scorer shows it on the bar', /not saving/.test(boot));
+  /* Asserted as a PROPERTY of the handler, not as a distance in the source.
+
+     This used to be /writeWarned[\s\S]{0,400}alert\(/ — a bet that the flag and
+     the alert would stay within 400 characters of each other. Adding a comment
+     between them broke it, which is a test failing for a reason that has nothing
+     to do with whether the scorer warns anybody. So the handler is sliced out
+     and asked the two questions that matter: does it warn once rather than
+     every frame, and does it actually interrupt. */
+  const handler = boot.slice(boot.indexOf('const onWriteFail'),
+                             boot.indexOf('window.EpinoiaSync.attach'));
   ok('...and interrupts if failures keep stacking up',
-     /writeWarned[\s\S]{0,400}alert\(/.test(boot));
+     handler.length > 0 &&
+     /writeWarned\s*=\s*true/.test(handler) &&      // only once
+     /if\s*\(count\s*<\s*5\s*\|\|\s*writeWarned\)\s*return/.test(handler) &&
+     /alert\(/.test(handler));
+  /* And that the interruption says something the statistician can act on: a
+     policy refusal is nearly always a fixture awaiting re-claim, which starting
+     the game fixes by itself. */
+  ok('...and a permissions refusal explains itself rather than quoting Postgres',
+     /42501|row-level security/i.test(handler) && /re-claim/i.test(handler));
 }
 
 /* ---- the announcement that makes a live game appear at once ----------------- */

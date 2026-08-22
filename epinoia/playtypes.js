@@ -40,11 +40,34 @@
    looks like a modest difference of opinion and is in fact a different
    statistic wearing the same column headings.
 
+   THE ONE DOCUMENTED EXCEPTION: A DOUBLE TEAM ON THE ROOT ACTION.
+
+   When the player running an Isolation, a Post-up or a Pick and Roll is
+   DOUBLE TEAMED and gives the ball up because of it, the chance stays with him
+   and with his action — it does not become a spot-up. The vendor whose taxonomy
+   this mirrors carries two player fields for exactly this case, a root player
+   and the player who finished, and says they differ precisely when a double team
+   on one of those three actions forced the ball out.
+
+   The reasoning is sound and worth understanding rather than memorising: the
+   defence chose to send two, so the shot that resulted is a consequence of the
+   root action working, not of the shooter standing in a corner. Charging it to
+   the spot-up would credit the offence's best action to whoever it happened to
+   free up.
+
+   Note the boundary carefully. It is a DOUBLE TEAM, not ordinary help, and it
+   applies to THREE actions only. A handler who draws one defender a step across
+   and kicks out has produced a spot-up, exactly as rule above says.
+
    Two consequences worth stating out loud:
 
      - A tracker built this way UNDERCOUNTS pick-and-roll relative to how often
-       teams actually run it. That is a known and accepted property of the
-       convention, not a defect to be fixed.
+       teams actually run it, and the size of that gap is not small. Geometric
+       screen detectors find roughly 47 ball screens per team per game; a
+       possession-ending tracker logs something like 15 to 20 pick-and-roll
+       ball-handler plays in the same game. Both numbers are right. They are
+       answers to different questions, and anybody comparing them without
+       knowing that will conclude the tracker is broken.
      - It also means the type answers "how did this chance finish", which is the
        question points-per-play is an answer to. That coherence is the reason
        the convention is what it is.
@@ -91,8 +114,22 @@ const TYPES = [
     hint: 'A second chance finished off an offensive rebound.' },
   { key: 'transition',  label: 'Transition', family: 'transition',
     hint: 'Before the defence is set — a break, a leak-out, an early drag.' },
+  /* MISC IS A BASKETBALL JUDGEMENT, NOT A CONFESSION.
+
+     It means the play really was none of the above — a scramble, a broken
+     set, an end-of-clock heave, an illegal screen. It is a genuine category
+     with a genuine and famously poor points-per-play, which is exactly why a
+     chance nobody could READ must never be filed here. That is a footage
+     problem, and mixing footage problems into misc quietly turns a statement
+     about bad offence into a statement about bad camera work.
+
+     A chance that cannot be read is left UNTAGGED. Coverage then reads 94%
+     instead of 100%, which is the honest thing for it to say. (The commercial
+     API this taxonomy mirrors carries both values for the same reason — a
+     "no play type" distinct from an "unknown".) */
   { key: 'misc',        label: 'Miscellaneous', family: 'misc',
-    hint: 'A play that is genuinely none of the above. Rare, and worth reading.' }
+    hint: 'A play that is genuinely none of the above. Not "I could not tell" — ' +
+          'that is left untagged.' }
 ];
 
 const BY_KEY = {};

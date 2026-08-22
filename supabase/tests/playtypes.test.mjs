@@ -137,8 +137,34 @@ ok('human and model labels are counted apart',
 ok('...and can be filtered to one or the other',
    T.report(tagged, { source: 'human' }).total === 4 &&
    T.report(tagged, { source: 'model' }).total === 1);
+/* THE TWO THRESHOLDS, AND WHY THERE ARE TWO.
+
+   This assertion used to read `isThin({plays: 40}) === false`, which encoded
+   THIN = 15 as a fact about basketball. It is not one. Points per play has a
+   standard deviation near 1.05, so the 95% half-width is about +/-0.33 at 40
+   plays and +/-0.10 at 400, against an elite-to-poor gap of 0.15 to 0.25. Forty
+   plays cannot say the thing the number is read for, and the old test asserted
+   that it could.
+
+   So the properties are checked instead of the numbers: a row must be hidden
+   below one bar, and must not be RANKED below a much higher one, with a real
+   gap between the two where a row may be shown with its interval and nothing
+   more. If the thresholds are ever retuned, this test still means something. */
 ok('a thin sample is flagged rather than reported as a strength',
-   T.isThin(handler) === true && T.isThin({ plays: 40 }) === false);
+   T.isThin(handler) === true &&
+   T.isThin({ plays: T.THIN - 1 }) === true &&
+   T.isThin({ plays: T.THIN }) === false);
+ok('...and a sample too small to RANK is separated from one too small to show',
+   T.RESOLVABLE > T.THIN &&
+   T.isResolvable({ plays: T.RESOLVABLE }) === true &&
+   T.isResolvable({ plays: T.RESOLVABLE - 1 }) === false &&
+   /* the interesting middle: shown, but never ranked */
+   T.isThin({ plays: T.THIN + 10 }) === false &&
+   T.isResolvable({ plays: T.THIN + 10 }) === false);
+ok('...and the bar for ranking is high enough to resolve a real difference',
+   /* half-width ~= 1.96 * 1.05 / sqrt(n) must be under the ~0.25 gap between a
+      good and a poor play type, or ranking is ranking noise */
+   1.96 * 1.05 / Math.sqrt(T.RESOLVABLE) < 0.25);
 
 /* ---- 5. the taxonomy is a contract --------------------------------------- */
 console.log('\nthe taxonomy everything else has to agree on');
