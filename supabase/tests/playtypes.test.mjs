@@ -90,8 +90,28 @@ ok('total points across chances equal the box score',
 /* ---- 3. what the log can and cannot label -------------------------------- */
 console.log('\nthe log labels what it knows, and never guesses at the rest');
 
-ok('a second chance is suggested as a putback with no doubt',
-   T.suggest(second).type === 'putback' && T.suggest(second).confidence === 1);
+/* THIS ASSERTION USED TO ENCODE A BUG.
+
+   It read "a second chance is suggested as a putback with no doubt", and the
+   code obliged — any chance beginning with an offensive rebound came back as a
+   putback at confidence 1. That is not what the type means. The rebounder has
+   to go back up with it BEFORE passing or settling into another action; an
+   offensive rebound kicked back out to the arc is a spot-up, and roughly as
+   often as not that is what happens.
+
+   So the log can settle it in exactly one case — the man who rebounded is the
+   man who finished — and must decline in the other. Both directions are tested,
+   because only testing the first would let the old behaviour back in. */
+ok('a second chance finished by the rebounder is suggested as a putback',
+   (() => {
+     const s = T.suggest(Object.assign({}, second,
+       { rebounder: 'p9', finisher: 'p9' }));
+     return s && s.type === 'putback' && s.confidence >= 0.9 && s.confidence < 1;
+   })());
+ok('...but one the rebounder gave up is NOT — the log cannot say what it became',
+   T.suggest(Object.assign({}, second, { rebounder: 'p9', finisher: 'p4' })) === null);
+ok('...and neither is one where the log never saw who rebounded',
+   T.suggest(Object.assign({}, second, { rebounder: null, finisher: 'p4' })) === null);
 ok('a chance off a live-ball turnover is suggested as transition',
    (() => {
      const prev = { team: 1, outcome: 'turnover', endWall: 1000 };

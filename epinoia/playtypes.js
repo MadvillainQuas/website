@@ -193,8 +193,28 @@ const TRANSITION_WINDOW_MS = 7000;
 
 function suggest(chance, prevChance) {
   if (!chance) return null;
+  /* A SECOND CHANCE IS NOT AUTOMATICALLY A PUTBACK.
+
+     This used to return putback at confidence 1 for any chance that began with
+     an offensive rebound, and that is not what the type means. The convention
+     requires the rebounder to go back up with it BEFORE passing the ball or
+     settling into another action. An offensive rebound kicked back out to the
+     arc is a spot-up, or whatever else the reset produced — and roughly as
+     often as not, that is what happens.
+
+     So the log can only settle this when the man who rebounded is the man who
+     finished. Then the ball never left him and it is a putback with very little
+     doubt — though not none, which is why it is 0.95 rather than 1: he could
+     have given it up and got it straight back.
+
+     When somebody else finished it, the ball moved, and the log records no
+     passes. That chance needs an eye like any other. */
   if (chance.secondChance) {
-    return { type: 'putback', confidence: 1, why: 'began with an offensive rebound' };
+    if (chance.rebounder && chance.finisher && chance.rebounder === chance.finisher) {
+      return { type: 'putback', confidence: 0.95,
+               why: 'the player who took the offensive rebound also finished it' };
+    }
+    return null;
   }
   if (prevChance && prevChance.team !== chance.team &&
       prevChance.outcome === 'turnover' &&
@@ -215,10 +235,26 @@ function report(tagged, opts) {
   const rows = {};
   let total = 0;
 
+  let dropped = 0;
   for (const t of tagged) {
     if (!t || !isType(t.type)) continue;
     if (o.source && t.source !== o.source) continue;
     if (o.minConfidence != null && (t.confidence || 0) < o.minConfidence) continue;
+
+    /* THE DENOMINATOR IS NOT "EVERY CHANCE". IT IS EVERY CHANCE THAT ENDED.
+
+       A play counts when it ends in a field-goal attempt, a turnover, or a foul
+       that sends someone to the line. A chance that simply ran out of clock
+       ended in none of those — the offence was interrupted, not completed — and
+       counting it adds a guaranteed nought to the numerator and a one to the
+       denominator. Every play type it touches is dragged down, and the types it
+       touches most are the ones run late in a period, so the bias is not even
+       spread evenly.
+
+       Left in the tag list rather than filtered by the caller, because a caller
+       that forgets is a caller that quietly under-reports. `endedPlays` says how
+       many were actually counted so the difference is visible. */
+    if (t.outcome === 'period_end') { dropped++; continue; }
 
     const r = rows[t.type] || (rows[t.type] = {
       type: t.type, label: BY_KEY[t.type].label, family: BY_KEY[t.type].family,
@@ -245,7 +281,11 @@ function report(tagged, opts) {
   }));
 
   list.sort((a, b) => b.plays - a.plays);
-  return { version: VERSION, total: total, types: list };
+  return { version: VERSION, total: total, types: list,
+           /* Chances that were tagged but did not end in a shot, a turnover or
+              a foul — clock-outs at the end of a period. Reported so nobody has
+              to wonder why the counts do not add up to the tag list. */
+           notEnded: dropped };
 }
 
 /* A row is only worth reading at a sample it can support. Six plays at 1.50

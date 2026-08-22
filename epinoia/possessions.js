@@ -134,9 +134,22 @@ function enumerate(game) {
       startEventId: ev ? (ev.seq != null ? ev.seq : ev.id) : null,
       startWall: ev && typeof ev.wall === 'number' ? ev.wall : null,
       endWall: null,
-      /* A chance that began with an offensive rebound. Synergy calls the shot
-         that follows a putback, and it is the reason chances exist. */
+      /* A chance that began with an offensive rebound. It is the reason chances
+         exist at all — a missed shot ends a play, and the rebound starts a new
+         one inside the same possession. */
       secondChance: !!secondChance,
+      /* WHO GOT THE REBOUND, AND WHY IT IS NOT THE SAME QUESTION AS "PUTBACK".
+
+         A second chance is NOT automatically a putback. The convention is that
+         the rebounder must go back up with it BEFORE passing or resetting into
+         something else; an offensive rebound kicked out for a fresh possession
+         is whatever that possession then produced, and typically a spot-up.
+
+         Keeping the rebounder here is what lets that distinction be drawn: if
+         the man who rebounded is also the man who finished, it is a putback with
+         very little doubt. If it is somebody else, the ball moved, and only the
+         footage can say what it moved into. */
+      rebounder: secondChance && ev ? (ev.pid || null) : null,
       points: 0,
       finisher: null,
       outcome: null
