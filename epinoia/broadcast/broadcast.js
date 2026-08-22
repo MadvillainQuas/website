@@ -165,7 +165,9 @@ function buildState() {
       attendance: game.attendance != null ? game.attendance : null,
       capacity: game.capacity != null ? game.capacity : null,
       officials: game.officials || {},
-      tipoff: tipoffLabel()
+      tipoff: tipoffLabel(),
+      leagueLogo: leagueLogo(),
+      leagueShort: leagueShort()
     },
     clock: {
       period,
@@ -285,6 +287,20 @@ function lastPlay(d) {
   return { text: e.txt || '', period: e.period, clock: mmss(e.clock) };
 }
 
+/* The competition's own mark, where a football lineup card puts the league
+   badge. Falls back to the wordmark, which is why the rail never has a hole in
+   it for a league that has not uploaded one. */
+function leagueLogo() {
+  const l = ((game.competitions || {}).seasons || {}).leagues || {};
+  return (l.logo_path && CFG.supabaseUrl)
+    ? CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path
+    : null;
+}
+function leagueShort() {
+  const l = ((game.competitions || {}).seasons || {}).leagues || {};
+  return l.name || '';
+}
+
 const shortOf = t => {
   const src = t === 0 ? game.home : game.away;
   return (src && (src.short_name || src.name)) ||
@@ -392,9 +408,100 @@ function faceHTML(p, colour) {
     .map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
   return '<span class="face" style="--tc:' + esc(colour) + '">' +
     '<span class="ini">' + esc(ini) + '</span>' +
-    (url ? '<img src="' + esc(url) + '" alt="" ' +
-           'onload="this.parentNode.classList.add(\'hasface\')">' : '') +
+    (url ? '<img src="' + esc(url) + '" alt=""  data-fade="hasface">' : '') +
     '</span>';
+}
+
+/* ---- the cut-out, and what stands in for one ----------------------------
+   A BROADCAST IMAGE IS NOT A PROFILE PHOTOGRAPH. One is a full-body cut-out
+   with the background removed; the other is a head-and-shoulders portrait in a
+   circle. Stretching a head shot to the height of a lineup card looks like a
+   mistake, so this asks only for kind='broadcast' and falls back to a drawing
+   rather than to the wrong picture.
+
+   THE SILHOUETTE IS DELIBERATE AND IT IS DRAWN, NOT AN IMAGE FILE. A lineup
+   card where two of the five are missing has to still look like a lineup card:
+   a gap reads as a fault, and a grey box reads as a fault that somebody noticed
+   and did not fix. A figure in the club's colour reads as a player whose
+   photograph has not been taken, which is what it is — and it costs no request,
+   so it is already on screen while the real ones are still loading.
+
+   Proportioned as a standing figure rather than the usual head-and-shoulders
+   icon, because it stands where a standing figure will stand. */
+function silhouetteSVG() {
+  /* PRIMITIVES, NOT A HAND-WRITTEN PATH. The first version of this was one
+     path through the torso, both arms and both legs, and it came out with a
+     single tapering wedge where the legs should be — a figure that reads as a
+     mistake, five times, across the front of a lineup card. Six rounded
+     rectangles and a circle cannot be got wrong, cost nothing, and are legible
+     at the size this is actually seen. */
+  return '<svg class="sil" viewBox="0 0 120 300" xmlns="http://www.w3.org/2000/svg" ' +
+    'preserveAspectRatio="xMidYMax meet" aria-hidden="true">' +
+    '<circle cx="60" cy="30" r="22"/>' +
+    '<rect x="37" y="56" width="46" height="116" rx="19"/>' +   /* torso   */
+    '<rect x="19" y="64" width="15" height="94" rx="7.5"/>' +   /* arm     */
+    '<rect x="86" y="64" width="15" height="94" rx="7.5"/>' +   /* arm     */
+    '<rect x="41" y="158" width="17" height="142" rx="8.5"/>' + /* leg     */
+    '<rect x="62" y="158" width="17" height="142" rx="8.5"/>' + /* leg     */
+    '</svg>';
+}
+
+/* The cut-out if one has been approved, the figure if not. Same rule as the
+   crest and the face: the fallback is painted first and the photograph fades in
+   over it, so there is never a frame with nothing in it. */
+function cutoutHTML(p, colour) {
+  const url = CUTOUTS[p.id];
+  return '<span class="cut" style="--tc:' + esc(colour) + '">' +
+    silhouetteSVG() +
+    (url ? '<img src="' + esc(url) + '" alt=""  data-fade="hascut">' : '') +
+    '</span>';
+}
+
+/* First name for the light line, surname for the heavy one — the two are
+   already separated by shortName(), which returns the last word. */
+function firstName(n) {
+  const parts = String(n || '').trim().split(/\s+/);
+  return parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+}
+
+/* The five to draw: the recorded starters once a statistician has picked them,
+   otherwise the first five of the squad — and the caller is told which, so the
+   graphic can label itself honestly rather than claiming a starting five it
+   has invented. */
+function fiveOf(st, t) {
+  const T = t === 0 ? st.home : st.away;
+  const ids = st.starters[t] || [];
+  const pool = T.roster.length ? T.roster : T.squad;
+  if (ids.length >= 5) {
+    const byId = {};
+    pool.forEach(p => { byId[p.id] = p; });
+    const picked = ids.map(id => byId[id]).filter(Boolean);
+    if (picked.length >= 5) return picked.slice(0, 5);
+  }
+  return pool.slice(0, 5);
+}
+
+let CUTOUTS = {};      // player id -> approved broadcast image
+
+async function loadCutouts() {
+  if (!CFG.supabaseUrl) return;
+  try {
+    /* One request for both squads — twenty-four round trips before the picture
+       appears is the difference between a graphic ready at 19:25 and one ready
+       at 19:31, on a laptop in a sports hall. */
+    const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/broadcast_images', {
+      method: 'POST', cache: 'no-store',
+      headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_game: gameId })
+    });
+    if (!r.ok) return;                       // an older database has no such function
+    (await r.json() || []).forEach(row => {
+      if (row.storage_path) {
+        CUTOUTS[row.player_id] =
+          CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + row.storage_path;
+      }
+    });
+  } catch (_) { /* silhouettes all round, which is a working graphic */ }
 }
 
 /* ---- the crest --------------------------------------------------------- */
@@ -406,8 +513,7 @@ function faceHTML(p, colour) {
 function crestHTML(T, cls) {
   const mono = '<span class="mono">' + esc(T.short) + '</span>';
   const img = T.logo
-    ? '<img class="crest" src="' + esc(T.logo) + '" alt="" ' +
-      'onload="this.parentNode.classList.add(\'hascrest\')">'
+    ? '<img class="crest" src="' + esc(T.logo) + '" alt=""  data-fade="hascrest">'
     : '';
   return '<span class="badge ' + (cls || '') + '" style="--tc:' + esc(T.colour) + '">' +
          mono + img + '</span>';
@@ -424,6 +530,60 @@ function squadPool(st) {
 }
 
 const SCENES = {
+  /* ---- THE STARTING FIVE, FULL FRAME ------------------------------------
+     A different kind of graphic from everything else here. The scorebug and
+     the ranked cards are overlays: small, cornered, sat on top of live video.
+     This one IS the picture — it fills the frame while the teams are warming
+     up and there is nothing to cut to yet.
+
+     So it does not use the plate treatment at all. It is laid out like the
+     league's own pages: a ruled left rail carrying the competition and the
+     club, then the five, standing.
+
+     WHY THE RAIL. The reference for this is every football lineup card ever
+     broadcast, and they all do the same thing — the identity goes in a
+     vertical band down one side so the horizontal space belongs entirely to
+     the players. Putting a crest above the players instead costs a fifth of
+     the height of the tallest thing on screen.
+
+     NUMBERS ABOVE, NAMES BELOW, and the surname carries the weight: it is what
+     the commentator says and what is on the back of the shirt. */
+  five(st) {
+    const T = side === 0 ? st.home : st.away;
+    const men = fiveOf(st, side === 0 ? 0 : 1);
+    if (!men.length) return '';
+    const picked = (st.starters[side === 0 ? 0 : 1] || []).length >= 5;
+
+    return '<div class="fivecard" style="--tc:' + esc(T.colour) + '">' +
+      '<div class="rail">' +
+        '<div class="railtop">' +
+          (st.game.leagueLogo
+            ? '<img class="lgmark" src="' + esc(st.game.leagueLogo) + '" alt="">'
+            : '<span class="lgword">' + esc(st.game.leagueShort || 'EPINOIΛ') + '</span>') +
+          '<span class="railrule"></span>' +
+          crestHTML(T, 'lg') +
+        '</div>' +
+        '<div class="railname">' + esc(T.name) + '</div>' +
+        '<div class="raillabel">' + (picked ? 'starting five' : 'squad') + '</div>' +
+      '</div>' +
+
+      '<div class="fivebody">' +
+        '<div class="fivehead">' +
+          '<span class="comp">' + esc(st.game.competition || '') + '</span>' +
+          (st.game.tipoff ? '<span class="when">' + esc(st.game.tipoff) + '</span>' : '') +
+        '</div>' +
+        '<div class="fiverow">' + men.map(p =>
+          '<div class="fp">' +
+            '<div class="fpnum">' + esc(p.number || '') + '</div>' +
+            '<div class="fpcut">' + cutoutHTML(p, T.colour) + '</div>' +
+            '<div class="fpname">' +
+              '<span class="first">' + esc(firstName(p.name)) + '</span>' +
+              '<span class="last">' + esc(shortName(p.name)) + '</span>' +
+            '</div>' +
+          '</div>').join('') + '</div>' +
+      '</div></div>';
+  },
+
   /* ---- pre-game ----------------------------------------------------------
      ONE TEAM'S SQUAD, WITH FACES. Two of these — side=0 and side=1 — are the
      twenty minutes before tip. Numbers in shirt order, because that is how a
@@ -687,6 +847,7 @@ function render() {
     } catch (_) { /* a mixer's embedded engine may not have CustomEvent */ }
     const fn = SCENES[scene] || SCENES.scorebug;
     stage.innerHTML = fn(st);
+    wireFades();
     stage.dataset.ready = '1';
   }
   if (document.body.classList.contains('debug')) {
@@ -726,6 +887,27 @@ function listenForScenes() {
   } catch (_) { /* the layer keeps showing whatever it had */ }
 }
 
+/* THE FADE-IN IS WIRED HERE, NOT IN AN onload ATTRIBUTE.
+
+   It was an inline handler, and this page sets script-src 'self' — so the
+   browser refused to run it and every crest, every face and every cut-out
+   stayed at opacity 0 behind its fallback. NOTHING LOOKED BROKEN: the monogram
+   and the silhouette are the fallbacks, so each graphic rendered perfectly and
+   simply never showed a photograph. It survived testing because the way to
+   check the CSS is to add the class by hand, which is exactly what hides this.
+
+   Doing it in script also fixes a second fault the attribute always had: a
+   cached image is already complete before a handler can attach, so its load
+   event never fires at all. Both cases are covered below. */
+function wireFades() {
+  stage.querySelectorAll('img[data-fade]').forEach(img => {
+    const mark = () => { if (img.parentNode) img.parentNode.classList.add(img.dataset.fade); };
+    if (img.complete && img.naturalWidth) mark();
+    else img.addEventListener('load', mark, { once: true });
+    /* a picture that 404s never marks, so the fallback stays — the point */
+  });
+}
+
 /* ---- boot ------------------------------------------------------------- */
 window.EpinoiaBroadcast = {
   VERSION: '1.0.0',
@@ -755,7 +937,7 @@ window.EpinoiaBroadcast = {
       'home_team_id,away_team_id,roster_snapshot,starters,tip_winner,arrow_init,' +
       'home:home_team_id(name,short_name,colour,logo_path),' +
       'away:away_team_id(name,short_name,colour,logo_path),' +
-      'competitions(name,seasons(name,leagues(name)))';
+      'competitions(name,seasons(name,leagues(name,logo_path)))';
     const gs = await api('games?id=eq.' + encodeURIComponent(gameId) +
       '&select=' + CORE + '&limit=1');
     if (!gs.length) return;
@@ -792,7 +974,7 @@ window.EpinoiaBroadcast = {
        the layer repaints when they arrive. A stream that is already on air
        gets its scorebug immediately either way. */
     loadRosters()
-      .then(() => { lastJSON = ''; render(); return loadPhotos(); })
+      .then(() => { lastJSON = ''; render(); return Promise.all([loadPhotos(), loadCutouts()]); })
       .then(() => { lastJSON = ''; render(); });
 
     if (game.status !== 'final') {

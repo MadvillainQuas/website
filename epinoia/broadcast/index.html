@@ -27,17 +27,147 @@
    stream — a layout in px silently changes proportion, a layout that scales
    does not.
    ========================================================================= */
+/* ============================================================================
+   THE SITE'S OWN FACES, ON AIR.
+
+   These graphics were set in the system UI font, which is fine and is nobody's
+   brand. The platform has four faces and uses them for specific jobs — Jersey
+   for scores and headings, Silkscreen for the small ruled labels, Archivo for
+   names, Martian Mono for figures in a table — and a scorebug set in Segoe UI
+   over a page set in those is a graphic that plainly came from somewhere else.
+
+   Self-hosted, and loaded here rather than by importing the whole kit: the kit
+   carries page chrome, a nav and a grid this page has no use for, and a
+   browser source should download four fonts and nothing else.
+   ========================================================================= */
+@font-face{font-family:'Jersey25';src:url('../kit/fonts/jersey25.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Silkscreen';src:url('../kit/fonts/silkscreen.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Archivo';src:url('../kit/fonts/archivo.woff2') format('woff2');
+  font-weight:100 900;font-stretch:62% 125%;font-style:normal;font-display:block}
+@font-face{font-family:'MartianMono';src:url('../kit/fonts/martian.woff2') format('woff2');
+  font-weight:100 800;font-stretch:75% 112.5%;font-style:normal;font-display:block}
+@font-face{font-family:'EpinoiaMark';src:url('../brand/epinoia-mark.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:block}
+
+/* font-display:block, not swap, and that is the opposite of the right answer
+   on a web page. A swap means the graphic appears in a fallback face and then
+   reflows into the real one — on a page nobody minds, on air it is a caption
+   that visibly changes shape while somebody is reading it. Blocking briefly is
+   the lesser fault when the alternative happens in front of an audience. */
+
 :root{
-  --home:#93f2bf; --away:#8ff5ff;
-  --ink:#ffffff; --dim:rgba(255,255,255,.62);
-  --panel:rgba(8,14,12,.86); --edge:rgba(255,255,255,.14);
-  --lume:#93f2bf;
+  /* the platform's own palette, not a second one invented for broadcast */
+  --ground:#04100b; --panel:#0a1a13;
+  --ink:#e6fff1; --dim:rgba(230,255,241,.62); --faint:rgba(230,255,241,.42);
+  --lume:#93f2bf; --aqua:#8ff5ff; --amber:#ffd166; --flare:#ff5f6b;
+  --rule:rgba(147,242,191,.20); --rule-2:rgba(147,242,191,.44);
+  --f-score:'Jersey25',ui-monospace,monospace;
+  --f-micro:'Silkscreen',ui-monospace,monospace;
+  --f-ui:'Archivo',system-ui,sans-serif;
+  --f-data:'MartianMono',ui-monospace,monospace;
   --u:1vmin;
 }
+body{font-family:var(--f-ui);color:var(--ink)}
+
+/* Every label on the platform is Silkscreen, uppercase, widely tracked. That
+   one rule is most of why a page looks like this platform, so it is one class
+   here rather than repeated into a dozen. */
+.lbl,.bug .per,.bug .fl,.rank .hd i,.cmp .hd i,.offs .hd i,.five .hd i,
+.l3 .tm,.l3 .st i,.lu .mins,.rr .num,.fin .lbl,.fin .comp,.fixcard .lbl,
+.fixcard .meta,.sq .sqhd .lbl,.ogrp .ot,.orow .r,.raillabel,.fivehead .comp,
+.fivehead .when{
+  font-family:var(--f-micro);text-transform:uppercase;letter-spacing:.18em}
+
+/* and every figure is Martian Mono, which is what the tables use */
+.bug .sc,.bug .clk,.rr .v,.lu .net,.l3 .st b,.cmp .r b,.fin .fs .s,
+.fpnum,.periods td{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+
+/* headings and team marks are Jersey, as they are on every page */
+.bug .tag,.sq .sqhd .nm,.five .hd span,.rank .hd span,.cmp .hd span,
+.offs .hd span,.fin .fs .t,.fx1 .t,.railname,.badge .mono{
+  font-family:var(--f-score);letter-spacing:.02em}
+
+/* ============================================================================
+   THE STARTING FIVE — full frame, not an overlay.
+   ========================================================================= */
+.fivecard{
+  position:absolute;inset:0;display:flex;
+  background:
+    /* the ruled diagonal the platform uses behind its own headers, which is
+       what stops a large dark area reading as a hole rather than a design */
+    repeating-linear-gradient(115deg,
+      rgba(147,242,191,.035) 0 1px, transparent 1px 46px),
+    radial-gradient(120% 90% at 78% 8%,
+      color-mix(in oklch, var(--tc) 14%, transparent), transparent 62%),
+    linear-gradient(180deg, var(--panel), var(--ground) 72%);
+}
+
+.fivecard .rail{
+  flex:0 0 15vmin;display:flex;flex-direction:column;align-items:center;
+  padding:3vmin 1vmin 3vmin;
+  background:linear-gradient(180deg, rgba(4,16,11,.92), rgba(4,16,11,.72));
+  border-right:.35vmin solid var(--tc)}
+.railtop{display:flex;flex-direction:column;align-items:center;gap:1.6vmin}
+.lgmark{width:7vmin;height:7vmin;object-fit:contain}
+.lgword{font-family:'EpinoiaMark','Jersey25',monospace;font-size:2.4vmin;
+  color:var(--lume);letter-spacing:.04em}
+.railrule{display:block;width:5vmin;height:1px;background:var(--rule-2)}
+/* The club name runs up the rail, which is what every lineup card does — it
+   buys the players the whole width instead of a band across the top. */
+.railname{margin-top:auto;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:4.2vmin;text-transform:uppercase;color:var(--ink);line-height:1}
+.raillabel{margin-top:2vmin;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:1.15vmin;color:var(--lume)}
+
+.fivebody{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;
+  padding:2.4vmin 3vmin 2.6vmin}
+.fivehead{display:flex;align-items:baseline;gap:1.6vmin;
+  padding-bottom:1.1vmin;border-bottom:1px solid var(--rule)}
+.fivehead .comp{font-size:1.3vmin;color:var(--lume)}
+.fivehead .when{margin-left:auto;font-size:1.2vmin;color:var(--faint)}
+
+.fiverow{flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);
+  gap:1.4vmin;align-items:end;min-height:0;padding-top:1.4vmin}
+.fp{display:flex;flex-direction:column;align-items:center;height:100%;min-height:0}
+.fpnum{font-size:5vmin;font-weight:800;line-height:1;color:var(--ink);
+  text-shadow:0 0 3vmin color-mix(in oklch, var(--tc) 55%, transparent)}
+/* the figure takes whatever height is left, so five of them always line up on
+   the floor whatever the frame is */
+.fpcut{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:flex-end;
+  justify-content:center;margin:.8vmin 0 1vmin}
+.cut{position:relative;display:block;height:100%;width:100%;
+  display:flex;align-items:flex-end;justify-content:center}
+.cut .sil{height:100%;width:auto;max-width:100%;fill:color-mix(in oklch, var(--tc) 34%, #0d1a15);
+  opacity:.9;transition:opacity .2s ease}
+.cut img{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  height:100%;width:auto;max-width:100%;object-fit:contain;object-position:50% 100%;
+  opacity:0;transition:opacity .25s ease;
+  /* a cut-out with a hard edge sits better on the ground with a shadow under
+     it than floating; this is the same trick a real lineup card uses */
+  filter:drop-shadow(0 1.4vmin 1.6vmin rgba(0,0,0,.55))}
+.cut.hascut img{opacity:1}
+.cut.hascut .sil{opacity:0}
+
+.fpname{text-align:center;line-height:1.1}
+.fpname .first{display:block;font-family:var(--f-ui);font-weight:400;
+  font-size:1.6vmin;color:var(--dim);letter-spacing:.02em}
+.fpname .last{display:block;font-family:var(--f-ui);font-weight:800;
+  font-size:2.6vmin;color:var(--ink);text-transform:capitalize;letter-spacing:-.01em}
+
+/* A five-wide grid stops working long before a 16:9 frame does; below this the
+   graphic is being previewed rather than broadcast, and two rows beats five
+   unreadable columns. */
+@media (max-aspect-ratio:1/1){
+  .fiverow{grid-template-columns:repeat(3,1fr);gap:1vmin}
+  .fivecard .rail{flex-basis:11vmin}
+  .railname{font-size:3vmin}
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;background:transparent;overflow:hidden}
-body{font-family:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
-  color:var(--ink);-webkit-font-smoothing:antialiased}
+body{-webkit-font-smoothing:antialiased}
 body.chroma{background:var(--chroma)}
 
 /* Safe area: broadcast graphics sit inside the title-safe box, not against the
@@ -301,11 +431,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=176" defer></script>
-<script src="../vendor/supabase.js?v=176" defer></script>
-<script src="../engine.js?v=176" defer></script>
-<script src="../rt.js?v=176" defer></script>
-<script src="../live.js?v=176" defer></script>
-<script src="broadcast.js?v=176" defer></script>
+<script src="../config.js?v=181" defer></script>
+<script src="../vendor/supabase.js?v=181" defer></script>
+<script src="../engine.js?v=181" defer></script>
+<script src="../rt.js?v=181" defer></script>
+<script src="../live.js?v=181" defer></script>
+<script src="broadcast.js?v=181" defer></script>
 </body>
 </html>

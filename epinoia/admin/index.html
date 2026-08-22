@@ -11,9 +11,9 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=176">
-<link rel="stylesheet" href="../kit/nav.css?v=176">
-<link rel="stylesheet" href="../kit/news.css?v=176">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=181">
+<link rel="stylesheet" href="../kit/nav.css?v=181">
+<link rel="stylesheet" href="../kit/news.css?v=181">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -439,33 +439,39 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">10</span><h2>Export the season</h2>
+      <div class="sec-h"><span class="idx">10</span><h2>Broadcast images</h2>
+        <span class="note">cut-outs for the lineup graphics</span></div>
+      <div class="body"><div id="bcastImgPanel"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h"><span class="idx">11</span><h2>Export the season</h2>
         <span class="note">every stat, as CSV, in one archive</span></div>
       <div class="body"><div id="exportPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">11</span><h2>API keys</h2>
+      <div class="sec-h"><span class="idx">12</span><h2>API keys</h2>
         <span class="note"><a href="../api/" target="_blank" rel="noopener"
           style="color:var(--ink-3)">documentation ↗</a></span></div>
       <div class="body"><div id="keysPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">12</span><h2>Scraper keys</h2>
+      <div class="sec-h"><span class="idx">13</span><h2>Scraper keys</h2>
         <span class="note">automatic feeds to RealGM, Eurobasket and the rest</span></div>
       <div class="body"><div id="feedsPanel"></div></div>
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">13</span><h2>Merchandise</h2>
+      <div class="sec-h"><span class="idx">14</span><h2>Merchandise</h2>
         <span class="note">print files, built from each club’s own artwork</span></div>
       <div class="body"><div id="merchPanel"></div></div>
     </div>
 
     <div class="sec">
       <div class="sec-h">
-        <span class="idx">14</span><h2>Photographs</h2>
+        <span class="idx">15</span><h2>Photographs</h2>
         <span class="note" id="mqNote"></span>
       </div>
       <div class="body">
@@ -480,7 +486,7 @@
     </div>
 
     <div class="sec">
-      <div class="sec-h"><span class="idx">15</span><h2>People</h2>
+      <div class="sec-h"><span class="idx">16</span><h2>People</h2>
         <span class="note">roles are granted by email address</span></div>
       <div class="body">
         <div class="row">
@@ -509,29 +515,30 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=176" defer></script>
-<script src="../upload.js?v=176" defer></script>
-<script src="../vendor/supabase.js?v=176" defer></script>
-<script src="../livestats.js?v=176" defer></script>
-<script src="import-ui.js?v=176" defer></script>
-<script src="schedule.js?v=176" defer></script>
-<script src="fixtures-ui.js?v=176" defer></script>
-<script src="formats-ui.js?v=176" defer></script>
-<script src="officials-ui.js?v=176" defer></script>
-<script src="export-ui.js?v=176" defer></script>
-<script src="keys-ui.js?v=176" defer></script>
-<script src="feeds-ui.js?v=176" defer></script>
-<script src="../artwork.js?v=176" defer></script>
-<script src="merch-ui.js?v=176" defer></script>
-<script src="webhook-ui.js?v=176" defer></script>
-<script src="governance-ui.js?v=176" defer></script>
-<script src="awards-ui.js?v=176" defer></script>
-<script src="socials-ui.js?v=176" defer></script>
-<script src="../newsblocks.js?v=176" defer></script>
-<script src="news-ui.js?v=176" defer></script>
-<script src="appearance-ui.js?v=176" defer></script>
-<script src="embeds-ui.js?v=176" defer></script>
-<script src="admin.js?v=176" defer></script>
-<script src="../nav.js?v=176" defer></script>
+<script src="../config.js?v=181" defer></script>
+<script src="../upload.js?v=181" defer></script>
+<script src="../vendor/supabase.js?v=181" defer></script>
+<script src="../livestats.js?v=181" defer></script>
+<script src="import-ui.js?v=181" defer></script>
+<script src="schedule.js?v=181" defer></script>
+<script src="fixtures-ui.js?v=181" defer></script>
+<script src="formats-ui.js?v=181" defer></script>
+<script src="bcastimg-ui.js?v=181" defer></script>
+<script src="officials-ui.js?v=181" defer></script>
+<script src="export-ui.js?v=181" defer></script>
+<script src="keys-ui.js?v=181" defer></script>
+<script src="feeds-ui.js?v=181" defer></script>
+<script src="../artwork.js?v=181" defer></script>
+<script src="merch-ui.js?v=181" defer></script>
+<script src="webhook-ui.js?v=181" defer></script>
+<script src="governance-ui.js?v=181" defer></script>
+<script src="awards-ui.js?v=181" defer></script>
+<script src="socials-ui.js?v=181" defer></script>
+<script src="../newsblocks.js?v=181" defer></script>
+<script src="news-ui.js?v=181" defer></script>
+<script src="appearance-ui.js?v=181" defer></script>
+<script src="embeds-ui.js?v=181" defer></script>
+<script src="admin.js?v=181" defer></script>
+<script src="../nav.js?v=181" defer></script>
 </body>
 </html>

@@ -27,6 +27,10 @@
 const SIZES = {
   photo: 800,     // player photograph, long edge
   logo:  512,     // club logo
+  /* A BROADCAST CUT-OUT IS TALLER AND IS SEEN BIGGER. It stands nearly the
+     full height of a 1080-line frame, so 800 — fine for a profile thumbnail —
+     is visibly soft the moment it is composited over video. */
+  broadcast: 1200,
   thumb:  96      // roster and table use
 };
 const MAX_BYTES = 2 * 1024 * 1024;   // matches the bucket limit in 0017
@@ -44,7 +48,12 @@ function bestType(kind) {
      what we asked for and got exactly what we said they would not. PNG is
      several times the size of a JPEG for a photograph, which is why that is
      still the photo fallback, but a 512px crest is small either way. */
-  return kind === 'logo' ? 'image/png' : 'image/jpeg';
+  /* A BROADCAST CUT-OUT NEEDS ALPHA FOR THE SAME REASON A CREST DOES, and more
+     obviously: the whole point of one is a player with the background removed,
+     standing on the graphic. Encoded as JPEG it arrives on a flat black
+     rectangle — the operator would have cut it out exactly as asked and got
+     back the one thing they were told they would not. */
+  return (kind === 'logo' || kind === 'broadcast') ? 'image/png' : 'image/jpeg';
 }
 
 async function decode(file) {

@@ -36,6 +36,8 @@ const SCENES = [
      actually looking for something to show, and it is the half the platform
      was not serving at all. */
   ['fixture',   'pre',  'Fixture card',      'Who, where and when. What a stream sits on while people arrive.'],
+  ['five',      'pre',  'Starting five — home', 'Full frame. The five, standing, with the club on the rail.', { side: '0' }],
+  ['five',      'pre',  'Starting five — away', 'The other club, same treatment.', { side: '1' }],
   ['starters',  'pre',  'Starting fives',    'Both fives with faces — or both squads, until the fives are picked.'],
   ['lineup',    'pre',  'Squad — home',      'One club’s full squad, in shirt order, with faces.', { side: '0' }],
   ['lineup',    'pre',  'Squad — away',      'The other club’s squad.', { side: '1' }],

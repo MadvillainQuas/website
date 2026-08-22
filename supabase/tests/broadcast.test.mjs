@@ -117,7 +117,8 @@ console.log('\na crest that 404s leaves the initials, not a gap');
 
 ok('the monogram is painted first', /<span class="mono">/.test(layer));
 ok('...and the crest only replaces it once it has loaded',
-   /onload=[^>]*hascrest/.test(layer));
+   /data-fade="hascrest"/.test(layer),
+   "an inline onload here was refused by the page's own CSP — see section 14");
 ok('...which is what the stylesheet keys off',
    /\.badge\.hascrest \.crest\{[^}]*opacity:1/.test(layerH) &&
    /\.badge\.hascrest \.mono\{opacity:0\}/.test(layerH));
@@ -209,7 +210,7 @@ ok('...and the platform decides who may be shown, not this file',
    'filtering minors on the client would be a second implementation of ' +
    'something the database already enforces');
 ok('initials are painted first and the photo loads on top',
-   /<span class="ini">/.test(layer) && /onload=[^>]*hasface/.test(layer));
+   /<span class="ini">/.test(layer) && /data-fade="hasface"/.test(layer));
 ok('...which the stylesheet keys off',
    /\.face\.hasface img\{opacity:1\}/.test(layerH) &&
    /\.face\.hasface \.ini\{opacity:0\}/.test(layerH));
@@ -263,6 +264,80 @@ ok('...describing inputs only',
    /would overwrite the cameras/.test(ctl),
    'a preset describing the whole production is a thing you do to somebody once');
 ok('and a plain URL list, for everything else', /function urlList\(\)/.test(ctl));
+
+/* ---- 14. nothing on this page may rely on an inline handler -------------- */
+console.log('\nthe CSP forbids inline handlers, so nothing may use one');
+
+/* THE BUG THIS CATCHES SHIPPED AND WAS INVISIBLE. The crest, the face and the
+   cut-out all revealed themselves from onload="..." attributes, and this page
+   sets script-src 'self' — so the browser refused every one of them and each
+   image stayed at opacity 0 behind its fallback. Nothing looked wrong: the
+   monogram and the silhouette ARE the fallbacks, so every graphic rendered
+   perfectly and simply never showed a photograph. */
+ok('the layer sets script-src self', /script-src 'self'/.test(layerH));
+ok('...and emits no inline event handler at all',
+   !/\son[a-z]+=["']/.test(layer),
+   (layer.match(/\son[a-z]+=["'][^"']{0,40}/) || [''])[0]);
+ok('images ask for their reveal with a data attribute instead',
+   (layer.match(/data-fade="/g) || []).length === 3);
+ok('...wired in script after every render', /function wireFades\(\)/.test(layer) &&
+   /wireFades\(\);/.test(layer));
+ok('...and a cached image, already complete, is handled too',
+   /if \(img\.complete && img\.naturalWidth\) mark\(\);/.test(layer),
+   'a cached image never fires load, so an onload attribute would miss it twice over');
+
+/* ---- 15. the starting five, full frame ----------------------------------- */
+console.log('\nthe five card is a picture, not an overlay');
+
+ok('there is a full-frame five card', layerScenes.includes('five'));
+ok('...offered for both clubs',
+   (control.match(/\['five',\s*'pre'/g) || []).length === 2);
+ok('...and it fills the frame rather than sitting in a corner',
+   /\.fivecard\{[\s\S]{0,80}position:absolute;inset:0/.test(layerH));
+ok('the club runs up a rail, leaving the width to the players',
+   /writing-mode:vertical-rl/.test(layerH));
+ok('the league mark sits on the rail, with the wordmark as a fallback',
+   /leagueLogo\(\)/.test(layer) && /lgword/.test(layer));
+ok('a squad shown before the fives are picked says so',
+   /picked \? 'starting five' : 'squad'/.test(layer));
+
+ok('a missing cut-out is a drawn figure, not a gap',
+   /function silhouetteSVG\(\)/.test(layer));
+ok('...built from primitives after a hand-written path came out wrong',
+   /PRIMITIVES, NOT A HAND-WRITTEN PATH/.test(layer));
+ok('...in the club colour rather than grey',
+   /fill:color-mix\(in oklch, var\(--tc\)/.test(layerH));
+ok('cut-outs are their own media kind, not the profile photograph',
+   /kind = 'broadcast'/.test(rd('supabase', 'migrations', '0079_broadcast_media.sql')));
+ok('...and only approved ones reach a graphic',
+   /m\.status = 'approved'/.test(rd('supabase', 'migrations', '0079_broadcast_media.sql')));
+ok('...fetched in one request rather than one per player',
+   /rpc\/broadcast_images/.test(layer));
+
+/* A cut-out is transparent by definition; JPEG has no alpha. */
+const up = rd('epinoia', 'upload.js');
+ok('a broadcast image keeps its alpha channel',
+   /kind === 'logo' \|\| kind === 'broadcast'/.test(up),
+   'encoded as JPEG a cut-out arrives on a flat black rectangle');
+ok('...and is stored large enough to stand full height', /broadcast: 1200/.test(up));
+ok('the admin panel refuses a JPEG before uploading it',
+   /A JPEG cannot hold a transparent background/.test(rd('epinoia', 'admin', 'bcastimg-ui.js')));
+
+/* ---- 16. the graphics are set in the platform's own faces ---------------- */
+console.log('\nthe graphics look like the rest of the platform');
+
+['Jersey25', 'Silkscreen', 'Archivo', 'MartianMono'].forEach(f =>
+  ok(`  ${f} is loaded`, new RegExp("font-family:'" + f + "'").test(layerH)));
+ok('...from the kit rather than a second copy',
+   /url\('\.\.\/kit\/fonts\//.test(layerH));
+ok('faces block rather than swap',
+   /font-display:block/.test(layerH),
+   'a swap reflows the caption while somebody is reading it, on air');
+ok("the palette is the platform's own tokens", /--lume:#93f2bf/.test(layerH));
+ok('labels are Silkscreen, uppercase and tracked, as everywhere else',
+   /font-family:var\(--f-micro\);text-transform:uppercase;letter-spacing:\.18em/.test(layerH));
+ok('figures are Martian Mono, as the tables are',
+   /font-family:var\(--f-data\);font-variant-numeric:tabular-nums/.test(layerH));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
