@@ -58,69 +58,148 @@ body.chroma{background:var(--chroma)}
 #stage[data-ready="0"]{opacity:0}
 #stage{opacity:1;transition:opacity .25s ease}
 
+/* ---------------- crests ---------------- */
+/* The monogram is painted first and the crest loads on top of it, so there is
+   no frame where the mark is missing — and a 404 leaves the initials rather
+   than a hole. */
+.badge{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:4.4vmin;height:4.4vmin;border-radius:.6vmin;flex:0 0 auto;overflow:hidden;
+  background:color-mix(in oklch, var(--tc) 22%, #0b1310);
+  border:1px solid color-mix(in oklch, var(--tc) 55%, transparent)}
+.badge .mono{font-weight:800;font-size:1.7vmin;letter-spacing:.02em;color:var(--tc);
+  line-height:1}
+.badge .crest{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;transition:opacity .18s ease;background:rgba(0,0,0,.25)}
+.badge.hascrest .crest{opacity:1}
+.badge.hascrest .mono{opacity:0}
+.badge.sm{width:3.2vmin;height:3.2vmin;border-radius:.45vmin}
+.badge.sm .mono{font-size:1.25vmin}
+.badge.lg{width:7.4vmin;height:7.4vmin;border-radius:.9vmin}
+.badge.lg .mono{font-size:2.9vmin}
+
+/* ---------------- the plate every card sits on ---------------- */
+.card,.bug{
+  background:linear-gradient(180deg, rgba(9,17,14,.93), rgba(5,11,9,.96));
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:1vmin;
+  box-shadow:0 .8vmin 3vmin rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter:blur(8px);
+  overflow:hidden}
+
 /* ---------------- scorebug ---------------- */
-.bug{display:flex;align-items:stretch;background:var(--panel);
-  border:1px solid var(--edge);border-radius:.8vmin;overflow:hidden;
-  box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45);backdrop-filter:blur(6px)}
-.bug .side{display:flex;align-items:center;gap:1.4vmin;padding:1.1vmin 1.8vmin}
-.bug .tag{font-weight:800;font-size:2.6vmin;letter-spacing:.06em;line-height:1}
-.bug .sc{font-weight:800;font-size:4.2vmin;line-height:1;font-variant-numeric:tabular-nums}
-.bug .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:.7vmin 2vmin;background:rgba(0,0,0,.34);border-left:1px solid var(--edge);
-  border-right:1px solid var(--edge);min-width:11vmin}
-.bug .clk{font-weight:800;font-size:3.2vmin;line-height:1.05;font-variant-numeric:tabular-nums}
-.bug .per{font-size:1.5vmin;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;
+.bug{display:flex;align-items:stretch}
+.bug .side{display:flex;align-items:center;gap:1.2vmin;padding:1.1vmin 1.6vmin;
+  position:relative}
+/* the club colour as an edge, never as a fill — see the note above */
+.bug .side.home{border-left:.55vmin solid var(--tc)}
+.bug .side.away{border-right:.55vmin solid var(--tc);flex-direction:row-reverse}
+.bug .tag{font-weight:800;font-size:2.5vmin;letter-spacing:.05em;line-height:1;
+  min-width:5.4vmin;text-align:center}
+.bug .sc{font-weight:800;font-size:4.4vmin;line-height:.95;min-width:6vmin;
+  text-align:center;font-variant-numeric:tabular-nums}
+.bug .mid{position:relative;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:.8vmin 2.2vmin;min-width:12vmin;
+  background:rgba(0,0,0,.42);
+  border-left:1px solid rgba(255,255,255,.1);border-right:1px solid rgba(255,255,255,.1)}
+.bug .clk{font-weight:800;font-size:3.1vmin;line-height:1.05;font-variant-numeric:tabular-nums}
+/* a running clock is a shade brighter than a stopped one, which tells a viewer
+   whether play is live without a word */
+.bug .clk.run{color:#fff}
+.bug .clk:not(.run){color:rgba(255,255,255,.72)}
+.bug .per{font-size:1.35vmin;letter-spacing:.26em;color:var(--dim);text-transform:uppercase;
   margin-top:.4vmin}
-.bug .rail{display:flex;flex-direction:column;justify-content:center;gap:.5vmin;
-  padding:0 1.2vmin;font-size:1.3vmin;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--dim)}
-.bug .bonus{color:#ffd98a;font-weight:700}
-.bug .arrow{opacity:.9}
-.dots{display:flex;gap:.45vmin;margin-top:.5vmin}
-.dot{width:.9vmin;height:.9vmin;border-radius:50%;background:rgba(255,255,255,.22)}
-.dot.on{background:#ff5f6b}
-.tos{display:flex;gap:.45vmin;margin-top:.5vmin}
-.to{width:1.6vmin;height:.45vmin;border-radius:.3vmin;background:rgba(255,255,255,.22)}
-.to.on{background:var(--lume)}
+.bug .arw{position:absolute;top:.5vmin;width:0;height:0;
+  border-top:.7vmin solid transparent;border-bottom:.7vmin solid transparent}
+.bug .arw.l{left:.7vmin;border-right:.9vmin solid rgba(255,255,255,.75)}
+.bug .arw.r{right:.7vmin;border-left:.9vmin solid rgba(255,255,255,.75)}
+.bug .rail{display:flex;flex-direction:column;justify-content:center;gap:.6vmin;
+  padding:0 1.4vmin;background:rgba(0,0,0,.22);
+  border-left:1px solid rgba(255,255,255,.08)}
+.bug .fl{display:flex;align-items:center;gap:.6vmin;font-size:1.2vmin;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.bug .fl b{font-size:1vmin;letter-spacing:.16em;color:#ffd98a;font-weight:700}
+.bug .fl.bonus{color:#ffd98a}
+.dots{display:inline-flex;gap:.4vmin}
+.dot{width:.85vmin;height:.85vmin;border-radius:50%;background:rgba(255,255,255,.2);
+  display:inline-block}
+.dot.on{background:#ff5f6b;box-shadow:0 0 .8vmin rgba(255,95,107,.5)}
 
 /* ---------------- lower third ---------------- */
-.l3{min-width:46vmin;max-width:70vmin;background:var(--panel);border:1px solid var(--edge);
-  border-radius:.8vmin;overflow:hidden;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
-.l3 .bar{height:.7vmin}
-.l3 .who{display:flex;align-items:baseline;gap:1.4vmin;padding:1.6vmin 2.2vmin .8vmin}
-.l3 .num{font-weight:800;font-size:2.4vmin;color:var(--dim)}
-.l3 .nm{font-weight:800;font-size:3.4vmin;letter-spacing:.01em;text-transform:capitalize}
-.l3 .tm{margin-left:auto;font-size:1.5vmin;letter-spacing:.2em;text-transform:uppercase;
-  color:var(--dim)}
-.l3 .line{display:flex;gap:2.6vmin;padding:0 2.2vmin 1.8vmin}
+.l3{min-width:48vmin;max-width:72vmin}
+.l3 .bar{height:.6vmin;background:var(--tc)}
+.l3 .who{display:flex;align-items:center;gap:1.3vmin;padding:1.5vmin 2vmin .7vmin}
+.l3 .num{font-weight:800;font-size:2.2vmin;color:var(--tc);min-width:3vmin}
+.l3 .nm{font-weight:800;font-size:3.3vmin;text-transform:capitalize;letter-spacing:.01em}
+.l3 .tm{margin-left:auto;font-size:1.35vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);text-align:right;text-transform:uppercase}
+.l3 .line{display:flex;gap:2.4vmin;padding:0 2vmin 1.7vmin}
 .l3 .st{display:flex;flex-direction:column}
-.l3 .st b{font-weight:800;font-size:2.8vmin;line-height:1;font-variant-numeric:tabular-nums}
-.l3 .st i{font-style:normal;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
-  color:var(--dim);margin-top:.5vmin}
+.l3 .st b{font-weight:800;font-size:2.7vmin;line-height:1;font-variant-numeric:tabular-nums}
+.l3 .st i{font-style:normal;font-size:1.2vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);margin-top:.45vmin}
 
-/* ---------------- team comparison ---------------- */
-.cmp{min-width:52vmin;background:var(--panel);border:1px solid var(--edge);
-  border-radius:.8vmin;padding:1.8vmin 2.2vmin;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
-.cmp .hd{display:flex;justify-content:space-between;font-weight:800;font-size:2.2vmin;
-  margin-bottom:1.4vmin}
-.cmp .r{display:grid;grid-template-columns:6vmin 1fr 6vmin;align-items:center;
-  gap:1.4vmin;margin-bottom:1vmin;font-variant-numeric:tabular-nums}
-.cmp .r b{font-weight:800;font-size:2vmin}
-.cmp .r .lab{text-align:center;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
+/* ---------------- ranked graphics ---------------- */
+.rank{min-width:46vmin;max-width:64vmin;padding:1.5vmin 1.8vmin 1.2vmin}
+.rank.wide{min-width:58vmin;max-width:78vmin}
+.rank .hd{display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:1.1vmin;padding-bottom:.8vmin;border-bottom:1px solid rgba(255,255,255,.12)}
+.rank .hd span{font-weight:800;font-size:1.9vmin;letter-spacing:.06em;text-transform:uppercase}
+.rank .hd i{font-style:normal;font-size:1.2vmin;letter-spacing:.2em;text-transform:uppercase;
   color:var(--dim)}
-.cmp .r .v{text-align:right}
-.cmp .r .v2{text-align:left}
-.cmp .track{grid-column:1/-1;height:.6vmin;background:rgba(255,255,255,.12);
+.rr{display:grid;grid-template-columns:auto auto 1fr 10vmin auto;align-items:center;
+  gap:1vmin;padding:.5vmin 0}
+.rr .num{font-size:1.4vmin;color:var(--dim);min-width:2.4vmin;text-align:right;
+  font-variant-numeric:tabular-nums}
+.rr .nm{font-weight:700;font-size:1.9vmin;text-transform:capitalize;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+/* The bar is the graphic. A column of numbers has to be read; a row of bars is
+   ranked before anybody has finished reading the first name. */
+.rr .bar{height:.7vmin;background:rgba(255,255,255,.1);border-radius:.35vmin;overflow:hidden}
+.rr .bar i{display:block;height:100%;background:var(--tc);border-radius:.35vmin}
+.rr .v{font-weight:800;font-size:2.2vmin;min-width:4.6vmin;text-align:right;
+  font-variant-numeric:tabular-nums}
+.rr .v.down{color:#ff8a92}
+
+/* ---------------- lineups ---------------- */
+.lu{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:1.4vmin;
+  padding:.7vmin 0;border-left:.4vmin solid var(--tc);padding-left:1vmin;margin-bottom:.4vmin}
+.lu .who{display:flex;flex-wrap:wrap;gap:.5vmin}
+.lu .p{font-size:1.5vmin;font-weight:600;text-transform:capitalize;
+  background:rgba(255,255,255,.07);border-radius:.35vmin;padding:.25vmin .6vmin}
+.lu .mins{font-size:1.4vmin;color:var(--dim);font-variant-numeric:tabular-nums}
+.lu .net{font-weight:800;font-size:2.1vmin;min-width:5vmin;text-align:right;
+  font-variant-numeric:tabular-nums}
+.lu .net.up{color:#63ffa0} .lu .net.down{color:#ff8a92}
+
+/* ---------------- comparison ---------------- */
+.cmp{min-width:52vmin;max-width:70vmin;padding:1.6vmin 2vmin 1.2vmin}
+.cmp .hd{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:1.3vmin;padding-bottom:.8vmin;border-bottom:1px solid rgba(255,255,255,.12)}
+.cmp .hd span{display:flex;align-items:center;gap:.9vmin;font-weight:800;font-size:2vmin;
+  letter-spacing:.04em}
+.cmp .hd i{font-style:normal;font-size:1.2vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim)}
+.cmp .r{display:grid;grid-template-columns:6vmin 1fr 6vmin;align-items:center;
+  gap:1.2vmin;margin-bottom:.9vmin;font-variant-numeric:tabular-nums}
+.cmp .r b{font-weight:800;font-size:2vmin}
+.cmp .r .lab{text-align:center;font-size:1.2vmin;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--dim)}
+.cmp .r .v{text-align:right} .cmp .r .v2{text-align:left}
+.cmp .track{grid-column:1/-1;height:.55vmin;background:rgba(255,255,255,.1);
   border-radius:.3vmin;overflow:hidden;display:flex}
 .cmp .track span{display:block;height:100%}
 
 /* ---------------- final ---------------- */
-.fin{text-align:center;background:var(--panel);border:1px solid var(--edge);
-  border-radius:.8vmin;padding:2.6vmin 4vmin;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
-.fin .lbl{font-size:1.5vmin;letter-spacing:.34em;text-transform:uppercase;color:var(--dim)}
-.fin .row{display:flex;align-items:center;gap:2.6vmin;margin-top:1.2vmin}
-.fin .t{font-weight:800;font-size:3vmin;text-transform:uppercase;letter-spacing:.04em}
-.fin .s{font-weight:800;font-size:5.4vmin;font-variant-numeric:tabular-nums}
+.fin{padding:2.2vmin 3.4vmin;text-align:center}
+.fin .lbl{font-size:1.4vmin;letter-spacing:.34em;text-transform:uppercase;color:var(--dim)}
+.fin .row{display:flex;align-items:center;justify-content:center;gap:2.2vmin;margin-top:1.2vmin}
+.fin .fs{display:flex;align-items:center;gap:1.2vmin;opacity:.72}
+.fin .fs.won{opacity:1}
+.fin .fs .t{font-weight:800;font-size:2.4vmin;text-transform:uppercase;letter-spacing:.03em}
+.fin .fs .s{font-weight:800;font-size:5vmin;line-height:1;font-variant-numeric:tabular-nums}
+.fin .vs{font-size:1.5vmin;color:var(--dim);text-transform:uppercase;letter-spacing:.2em}
+.fin .comp{margin-top:1vmin;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim)}
 
 /* Everything below only exists when the page is opened by a person rather than
    by a mixer, which is the only time a diagnostic is welcome on screen. */
@@ -133,10 +212,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=162" defer></script>
-<script src="../vendor/supabase.js?v=162" defer></script>
-<script src="../engine.js?v=162" defer></script>
-<script src="../live.js?v=162" defer></script>
-<script src="broadcast.js?v=162" defer></script>
+<script src="../config.js?v=170" defer></script>
+<script src="../vendor/supabase.js?v=170" defer></script>
+<script src="../engine.js?v=170" defer></script>
+<script src="../rt.js?v=170" defer></script>
+<script src="../live.js?v=170" defer></script>
+<script src="broadcast.js?v=170" defer></script>
 </body>
 </html>

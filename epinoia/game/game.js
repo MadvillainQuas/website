@@ -77,12 +77,24 @@ async function fetchLog() {
 async function loadStored() {
   const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
     `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,` +
-    `capacity,attendance,officials,` +
+
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,logo_path),` +
     `away:away_team_id(slug,name,short_name,colour,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
+
+  /* THE OPTIONAL COLUMNS ARE A SECOND QUESTION, AND A REFUSAL IS AN ANSWER.
+     capacity, attendance and officials arrived in migration 0076. Asking for
+     them in the main select made the whole request 400 on any database that
+     had not run it yet — which took out the entire game page, including the
+     box score, over three fields that decorate a header. A page that cannot
+     show the attendance is fine; a page that cannot show the game is not. */
+  try {
+    const extra = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
+      `&select=capacity,attendance,officials&limit=1`);
+    if (extra.length) Object.assign(g, extra[0]);
+  } catch (_) { /* an older database simply has none of these */ }
 
   const events = await fetchLog();
 
@@ -369,9 +381,65 @@ async function offerToScore() {
     }
     cta.href = '../score/?g=' + encodeURIComponent(gameId);
     cta.textContent = S.status === 'live' ? 'continue scoring →' : 'score this game →';
-    cta.classList.remove('hide');
+    const wrap = document.getElementById('ctaWrap');
+    if (wrap) wrap.classList.remove('hide'); else cta.classList.remove('hide');
+    buildCtaMenu();
     scoreShown = true;
   } finally { scoreChecking = false; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   PRIMING A FIXTURE FOR BROADCAST.
+
+   Whoever streams a game is almost always the same person who scores it, and
+   they need to do their setting up BEFORE the hall fills — lay the scorebug
+   out in OBS, check the crests loaded, confirm the colours read over the floor
+   they are actually playing on. All of that is possible from a scheduled
+   fixture, because the graphics draw the teams, the crests and a 0-0 scorebug
+   from the fixture row alone; none of it needs a ball to have been thrown.
+
+   That is what "prime for broadcast" means here, and it is worth being plain
+   that it is not a switch that turns something on: there is nothing to enable.
+   The graphics read the same live feed as the public box score, so a layer
+   pointed at this fixture is already correct and starts moving by itself the
+   moment the statistician taps the first basket. The button opens the control
+   room, and the control room is where the setting up happens.
+
+   IT IS A CARET, NOT A SECOND BUTTON. Scoring is what nearly everybody who
+   sees this is here to do; broadcasting is a minority of a minority, and it
+   must not cost the majority a decision on the way past.
+   --------------------------------------------------------------------------- */
+function buildCtaMenu() {
+  const menu = document.getElementById('ctaMenu');
+  const more = document.getElementById('ctaMore');
+  if (!menu || !more || menu.dataset.built === '1') return;
+  menu.dataset.built = '1';
+
+  const g = encodeURIComponent(gameId);
+  const items = [
+    ['../broadcast/control/?g=' + g, 'Prime for broadcast',
+     'Lay out the graphics before tip — they draw the real teams and crests now, ' +
+     'and start moving on the first basket.'],
+    ['../broadcast/?g=' + g + '&live=1&pos=bl', 'Open the graphics layer',
+     'The transparent page to add as a browser source in OBS or vMix.'],
+    ['../score/?g=' + g, S.status === 'live' ? 'Continue scoring' : 'Open the scoring app',
+     'The statistician’s screen.']
+  ];
+  menu.innerHTML = items.map(([href, title, note]) =>
+    '<a href="' + href + '" target="_blank" rel="noopener">' + B.esc(title) +
+    '<small>' + B.esc(note) + '</small></a>').join('');
+
+  const close = () => { menu.classList.add('hide'); more.setAttribute('aria-expanded', 'false'); };
+  more.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    const open = menu.classList.toggle('hide') === false;
+    more.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  /* Anywhere else closes it, including inside the menu — a link that has been
+     followed into a new tab should not leave the menu hanging open behind it. */
+  document.addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 }
 
 /* ---------------------------------------------------------------------------

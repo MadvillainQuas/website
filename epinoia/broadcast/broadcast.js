@@ -56,7 +56,12 @@ const qp = new URLSearchParams(location.search);
 const CFG = window.EPINOIA_CONFIG || {};
 
 const gameId = (qp.get('g') || qp.get('game') || '').trim();
-const scene  = (qp.get('scene') || 'scorebug').toLowerCase();
+let scene    = (qp.get('scene') || 'scorebug').toLowerCase();
+/* ?live=1 hands the choice of graphic to the control room. Without it the
+   layer shows one scene for ever, which is the right behaviour for a
+   production that would rather have one OBS source per graphic and never
+   depend on a web page being open. */
+const LIVE_SCENE = qp.get('live') === '1';
 const side   = qp.get('side') === '1' ? 1 : 0;
 const wantPid = qp.get('pid') || null;
 const scale  = Math.max(0.4, Math.min(2.5, parseFloat(qp.get('scale') || '1') || 1));
@@ -111,8 +116,15 @@ const esc = s => String(s == null ? '' : s)
 function buildState() {
   if (!S || !game) return null;
   const d = S.events.length ? E.deriveGame(S) : null;
-  const clockMs = sub ? sub.clockMs() : (S.clockMs || 0);
   const period  = (sub && sub.state && sub.state.period) || S.period || 1;
+  /* BEFORE TIP THE CLOCK IS FULL, NOT ZERO. A fixture with no game_state row
+     yet has clock_ms of nothing, and a scorebug laid out an hour before the
+     game reading "0.0" looks broken to the person laying it out — which is
+     exactly who is looking at it then. A period that has not started shows its
+     own length, which is what the board in the hall shows. */
+  let clockMs = sub ? sub.clockMs() : (S.clockMs || 0);
+  const started = !!(sub && sub.state) || S.events.length > 0;
+  if (!started && !clockMs && E.PLEN) clockMs = E.PLEN(period);
 
   const teamOf = t => {
     const T = d ? d.team[t] : null;
@@ -125,7 +137,14 @@ function buildState() {
       periodFouls: fouls,
       bonus: fouls >= 5,
       timeoutsLeft: (d && E.timeoutsLeft) ? E.timeoutsLeft(S, d, t) : null,
-      onCourt: d ? d.onCourt[t].map(pid => playerCard(t, pid, d)) : []
+      logo: logoOf(t),
+      /* EVERY player, not only the five on the floor. A "top scorers" graphic
+         that silently excluded whoever had just been substituted would be
+         wrong in the exact moment a director reaches for it. onCourt keeps its
+         name and its meaning; squad is the whole bench. */
+      onCourt: d ? d.onCourt[t].map(pid => playerCard(t, pid, d)) : [],
+      squad: d ? (S.teams[t].players || []).map(p => playerCard(t, p.id, d)) : [],
+      totals: teamTotals(t, d)
     };
   };
 
@@ -150,8 +169,76 @@ function buildState() {
       ? sub.state.arrow : (S.arrowInit != null ? S.arrowInit : null),
     home: teamOf(0),
     away: teamOf(1),
+    lineups: bestLineups(d),
     lastPlay: lastPlay(d)
   };
+}
+
+/* The club's published crest, if there is one. teams.logo_path is set only when
+   a crest is live and cleared when it is removed, so a non-null value already
+   means "approved" — no second request to find out. */
+function logoOf(t) {
+  const src = t === 0 ? game.home : game.away;
+  if (!src || !src.logo_path || !CFG.supabaseUrl) return null;
+  return CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + src.logo_path;
+}
+
+function teamTotals(t, d) {
+  const z = { pts: 0, reb: 0, ast: 0, to: 0, stl: 0, blk: 0 };
+  if (!d) return z;
+  (S.teams[t].players || []).forEach(p => {
+    const s = d.stats[p.id]; if (!s) return;
+    z.pts += s.pts || 0; z.reb += (s.or || 0) + (s.dr || 0); z.ast += s.ast || 0;
+    z.to += s.to || 0; z.stl += s.stl || 0; z.blk += s.blk || 0;
+  });
+  z.to += (d.team[t].teamTo || 0);
+  z.reb += (d.team[t].teamRebO || 0) + (d.team[t].teamRebD || 0);
+  return z;
+}
+
+/* A MINUTES FLOOR, NOT A TOP FOUR. A lineup that has played forty seconds and
+   happens to be +6 is noise with a big number on it, and putting that on air is
+   how a graphic loses the people who know the game. Below the floor there is
+   simply nothing to show, which is the honest outcome in the first quarter. */
+const LINEUP_MIN = 4;
+
+/* PLUS/MINUS, NOT NET RATING, AND THAT IS A BROADCAST DECISION RATHER THAN AN
+   ANALYTICAL ONE. Net rating is per hundred possessions, so a unit that has
+   played four minutes and gone +6 comes out at +139 — true, and unreadable as
+   anything but a mistake to a viewer who has been watching the same game. Raw
+   plus/minus is the number a commentator says out loud, it cannot be inflated
+   by a small sample, and it is on the same scale as the scoreboard beside it.
+
+   Net rating is still carried in the document for anyone binding their own
+   template against it; it is simply not what this graphic leads with. */
+function bestLineups(d) {
+  if (!d || !E.lineupAgg) return [];
+  const out = [];
+  [0, 1].forEach(t => {
+    let rows = [];
+    try { rows = E.lineupAgg(d, t) || []; } catch (_) { return; }
+    rows.forEach(l => {
+      const min = (l.dur || 0) / 60000;
+      if (min < LINEUP_MIN) return;
+      out.push({
+        team: t, colour: colourOf(t), min: Math.round(min),
+        pm: (l.pf || 0) - (l.pa || 0),
+        net: (l.ortg || 0) - (l.drtg || 0),
+        names: (l.ids || []).map(pid => {
+          const p = (S.teams[t].players || []).find(x => x.id === pid);
+          return p ? (p.num ? p.num + ' ' : '') + shortName(p.name) : '?';
+        })
+      });
+    });
+  });
+  return out.sort((a, b) => b.pm - a.pm || b.min - a.min);
+}
+
+/* Five full names will not fit on one row of a lower third, and a surname is
+   what a commentator says anyway. */
+function shortName(n) {
+  const parts = String(n || '').trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : (parts[0] || '');
 }
 
 function playerCard(t, pid, d) {
@@ -160,7 +247,7 @@ function playerCard(t, pid, d) {
   return {
     id: pid, number: p.num || '', name: p.name || '',
     pts: s.pts || 0, reb: (s.or || 0) + (s.dr || 0), ast: s.ast || 0,
-    stl: s.stl || 0, blk: s.blk || 0, pf: s.pf || 0,
+    stl: s.stl || 0, blk: s.blk || 0, pf: s.pf || 0, pm: s.pm || 0,
     fg: (s.p2m || 0) + (s.p3m || 0) + '-' + ((s.p2a || 0) + (s.p3a || 0)),
     tp: (s.p3m || 0) + '-' + (s.p3a || 0),
     ft: (s.ftm || 0) + '-' + (s.fta || 0),
@@ -205,31 +292,63 @@ function mmss(ms) {
 }
 
 /* ---- scenes ----------------------------------------------------------- */
+/* ---- the crest --------------------------------------------------------- */
+/* THE CLUB'S OWN BADGE WHERE ITS INITIALS WERE, and the initials underneath it
+   the whole time. A crest that 404s in a gallery must leave a badge behind
+   rather than an empty square — on a results page that is untidy, on air it is
+   a hole in the graphic. The monogram is painted first and the image loads on
+   top of it, so there is no moment where the mark is missing. */
+function crestHTML(T, cls) {
+  const mono = '<span class="mono">' + esc(T.short) + '</span>';
+  const img = T.logo
+    ? '<img class="crest" src="' + esc(T.logo) + '" alt="" ' +
+      'onload="this.parentNode.classList.add(\'hascrest\')">'
+    : '';
+  return '<span class="badge ' + (cls || '') + '" style="--tc:' + esc(T.colour) + '">' +
+         mono + img + '</span>';
+}
+
+/* Everyone who has played, both sides. A ranked graphic drawn from the five on
+   the floor would omit whoever had just been substituted — which is exactly the
+   moment a director reaches for "top scorers". */
+function squadPool(st) {
+  return [].concat(
+    st.home.squad.map(p => Object.assign({ T: st.home }, p)),
+    st.away.squad.map(p => Object.assign({ T: st.away }, p))
+  ).filter(p => p.min > 0 || p.pts || p.reb || p.ast);
+}
+
 const SCENES = {
   scorebug(st) {
-    const dots = n => '<div class="dots">' +
-      [1,2,3,4,5].map(i => '<span class="dot' + (i <= n ? ' on' : '') + '"></span>').join('') +
-      '</div>';
-    const tos = n => n == null ? '' : '<div class="tos">' +
-      [1,2,3].map(i => '<span class="to' + (i <= n ? ' on' : '') + '"></span>').join('') + '</div>';
+    const dots = n => '<span class="dots">' +
+      [1,2,3,4,5].map(i => '<i class="dot' + (i <= n ? ' on' : '') + '"></i>').join('') +
+      '</span>';
     const sideHTML = (T, t) =>
-      '<div class="side" style="border-' + (t === 0 ? 'left' : 'right') +
-        ':.5vmin solid ' + esc(T.colour) + '">' +
-        (t === 0 ? '' : '<span class="sc">' + T.score + '</span>') +
+      '<div class="side ' + (t === 0 ? 'home' : 'away') + '" style="--tc:' + esc(T.colour) + '">' +
+        crestHTML(T) +
         '<span class="tag">' + esc(T.short) + '</span>' +
-        (t === 0 ? '<span class="sc">' + T.score + '</span>' : '') +
+        '<span class="sc">' + T.score + '</span>' +
       '</div>';
+
+    /* The possession arrow points at the team who has it. A triangle beside the
+       clock is what every scoreboard in a hall does, and a viewer reads it
+       without being told. */
+    const arrow = st.possessionArrow === 0 ? '<i class="arw l"></i>'
+                : st.possessionArrow === 1 ? '<i class="arw r"></i>' : '';
 
     return '<div class="bug">' +
       sideHTML(st.home, 0) +
-      '<div class="mid"><span class="clk">' + st.clock.display + '</span>' +
+      '<div class="mid">' + arrow +
+        '<span class="clk' + (st.clock.running ? ' run' : '') + '">' + st.clock.display + '</span>' +
         '<span class="per">' + st.clock.periodLabel + '</span></div>' +
       sideHTML(st.away, 1) +
       '<div class="rail">' +
-        '<span' + (st.home.bonus ? ' class="bonus"' : '') + '>' +
-          esc(st.home.short) + ' ' + st.home.periodFouls + dots(st.home.periodFouls) + '</span>' +
-        '<span' + (st.away.bonus ? ' class="bonus"' : '') + '>' +
-          esc(st.away.short) + ' ' + st.away.periodFouls + dots(st.away.periodFouls) + '</span>' +
+        '<span class="fl' + (st.home.bonus ? ' bonus' : '') + '">' +
+          esc(st.home.short) + dots(st.home.periodFouls) +
+          (st.home.bonus ? '<b>bonus</b>' : '') + '</span>' +
+        '<span class="fl' + (st.away.bonus ? ' bonus' : '') + '">' +
+          esc(st.away.short) + dots(st.away.periodFouls) +
+          (st.away.bonus ? '<b>bonus</b>' : '') + '</span>' +
       '</div></div>';
   },
 
@@ -239,8 +358,10 @@ const SCENES = {
       ? T.onCourt.find(p => p.id === wantPid)
       : T.onCourt.slice().sort((a, b) => b.pts - a.pts)[0];
     if (!pick) return '';
-    return '<div class="l3"><div class="bar" style="background:' + esc(T.colour) + '"></div>' +
-      '<div class="who"><span class="num">' + esc(pick.number) + '</span>' +
+    return '<div class="card l3" style="--tc:' + esc(T.colour) + '">' +
+      '<div class="bar"></div>' +
+      '<div class="who">' + crestHTML(T, 'sm') +
+        '<span class="num">' + esc(pick.number) + '</span>' +
         '<span class="nm">' + esc(pick.name) + '</span>' +
         '<span class="tm">' + esc(T.name) + '</span></div>' +
       '<div class="line">' +
@@ -251,14 +372,67 @@ const SCENES = {
       '</div></div>';
   },
 
+  /* ---- the ones a director actually calls for ------------------------------
+     A scorebug lives on screen all game. These are the graphics somebody takes
+     during a stoppage, so each answers ONE question and answers it in the four
+     seconds it will be on air. Five rows, never more: a table of twelve is a
+     web page somebody pointed a camera at. */
+  scorers(st) {
+    const all = squadPool(st);
+    return rankCard('top scorers', all.sort((a, b) => b.pts - a.pts).slice(0, 5),
+      p => p.pts, 'pts');
+  },
+
+  plusminus(st) {
+    const all = squadPool(st);
+    return rankCard('plus / minus', all.sort((a, b) => b.pm - a.pm).slice(0, 5),
+      p => (p.pm > 0 ? '+' : '') + p.pm, '+/-', true);
+  },
+
+  rebounds(st) {
+    const all = squadPool(st);
+    return rankCard('rebounds', all.sort((a, b) => b.reb - a.reb).slice(0, 5),
+      p => p.reb, 'reb');
+  },
+
+  assists(st) {
+    const all = squadPool(st);
+    return rankCard('assists', all.sort((a, b) => b.ast - a.ast).slice(0, 5),
+      p => p.ast, 'ast');
+  },
+
+  /* The best five-man units, by net rating over the minutes they have played.
+     Filtered by minutes on purpose: a lineup that has been on the floor for
+     forty seconds and happens to be +6 is not a story, it is noise with a big
+     number attached, and putting it on air is how a graphic loses its
+     credibility with the people who know the game. */
+  lineups(st) {
+    const rows = st.lineups.slice(0, 4);
+    if (!rows.length) return '';
+    return '<div class="card rank wide"><div class="hd"><span>best lineups</span>' +
+      '<i>' + LINEUP_MIN + '+ minutes together</i></div>' +
+      rows.map(l =>
+        '<div class="lu" style="--tc:' + esc(l.colour) + '">' +
+          '<span class="who">' + l.names.map(n =>
+            '<span class="p">' + esc(n) + '</span>').join('') + '</span>' +
+          '<span class="mins">' + l.min + " min" + '</span>' +
+          '<span class="net' + (l.pm >= 0 ? ' up' : ' down') + '">' +
+            (l.pm > 0 ? '+' : '') + l.pm + '</span>' +
+        '</div>').join('') + '</div>';
+  },
+
   compare(st) {
     const rows = [
-      ['points', st.home.score, st.away.score],
-      ['fouls',  st.home.periodFouls, st.away.periodFouls]
+      ['points',   st.home.score,       st.away.score],
+      ['rebounds', st.home.totals.reb,  st.away.totals.reb],
+      ['assists',  st.home.totals.ast,  st.away.totals.ast],
+      ['turnovers',st.home.totals.to,   st.away.totals.to],
+      ['fouls',    st.home.periodFouls, st.away.periodFouls]
     ];
-    return '<div class="cmp">' +
-      '<div class="hd"><span>' + esc(st.home.short) + '</span>' +
-        '<span>' + esc(st.away.short) + '</span></div>' +
+    return '<div class="card cmp">' +
+      '<div class="hd"><span>' + crestHTML(st.home, 'sm') + esc(st.home.short) + '</span>' +
+        '<i>team comparison</i>' +
+        '<span>' + esc(st.away.short) + crestHTML(st.away, 'sm') + '</span></div>' +
       rows.map(([lab, a, b]) => {
         const tot = (a + b) || 1;
         return '<div class="r"><b class="v">' + a + '</b>' +
@@ -271,14 +445,40 @@ const SCENES = {
   },
 
   final(st) {
-    return '<div class="fin"><div class="lbl">Final</div><div class="row">' +
-      '<span class="t" style="color:' + esc(st.home.colour) + '">' + esc(st.home.short) + '</span>' +
-      '<span class="s">' + st.home.score + '</span>' +
-      '<span class="s">' + st.away.score + '</span>' +
-      '<span class="t" style="color:' + esc(st.away.colour) + '">' + esc(st.away.short) + '</span>' +
-      '</div></div>';
+    const won = st.home.score === st.away.score ? null
+              : (st.home.score > st.away.score ? 0 : 1);
+    const sideHTML = (T, t) => '<div class="fs' + (won === t ? ' won' : '') +
+      '" style="--tc:' + esc(T.colour) + '">' + crestHTML(T, 'lg') +
+      '<span class="t">' + esc(T.name) + '</span>' +
+      '<span class="s">' + T.score + '</span></div>';
+    return '<div class="card fin"><div class="lbl">' +
+      (st.game.status === 'final' ? 'Final' : st.clock.periodLabel) + '</div>' +
+      '<div class="row">' + sideHTML(st.home, 0) +
+        '<span class="vs">v</span>' + sideHTML(st.away, 1) + '</div>' +
+      (st.game.competition ? '<div class="comp">' + esc(st.game.competition) + '</div>' : '') +
+      '</div>';
   }
 };
+
+/* One shape for every ranked graphic: crest, number, name, value. Written once
+   because five near-identical scenes are five places for the design to drift. */
+function rankCard(title, rows, val, unit, signed) {
+  if (!rows.length) return '';
+  const top = Math.max(1, Math.abs(Number(val(rows[0]))) || 1);
+  return '<div class="card rank"><div class="hd"><span>' + title + '</span>' +
+    '<i>' + unit + '</i></div>' +
+    rows.map(p => {
+      const v = val(p);
+      const n = Math.abs(parseFloat(String(v))) || 0;
+      return '<div class="rr" style="--tc:' + esc(p.T.colour) + '">' +
+        crestHTML(p.T, 'sm') +
+        '<span class="num">' + esc(p.number) + '</span>' +
+        '<span class="nm">' + esc(p.name) + '</span>' +
+        '<span class="bar"><i style="width:' + Math.round(100 * n / top) + '%"></i></span>' +
+        '<span class="v' + (signed && parseFloat(String(v)) < 0 ? ' down' : '') + '">' +
+          v + '</span></div>';
+    }).join('') + '</div>';
+}
 
 /* ---- render ----------------------------------------------------------- */
 function render() {
@@ -308,6 +508,34 @@ function render() {
   }
 }
 
+/* ---- the control room ---------------------------------------------------- */
+/* rt.js, not the SDK: this is a receiver and rt.js is 4kB against 212. The
+   control page is the only end that speaks.
+
+   A scene change repaints immediately rather than waiting for the next state
+   tick, because the gap between a director pressing take and the graphic
+   appearing is the gap between it landing on the replay and landing after it. */
+function listenForScenes() {
+  if (!LIVE_SCENE || !CFG.supabaseUrl || !window.EpinoiaRT) return;
+  try {
+    const rt = window.EpinoiaRT.create({
+      url: CFG.supabaseUrl.replace(/^http/, 'ws') + '/realtime/v1/websocket',
+      key: CFG.supabaseAnonKey,
+      WebSocket: window.WebSocket
+    });
+    rt.watch('bcast:' + gameId, (frame, event) => {
+      if (event !== 'scene' || !frame || !frame.scene) return;
+      if (!SCENES[frame.scene]) return;        // an unknown name leaves air alone
+      scene = frame.scene;
+      if (frame.pos && POSITIONS.includes(frame.pos)) {
+        stage.className = 'pos-' + frame.pos + (qp.get('safe') === '0' ? ' nosafe' : '');
+      }
+      lastJSON = '';                           // force the repaint
+      render();
+    });
+  } catch (_) { /* the layer keeps showing whatever it had */ }
+}
+
 /* ---- boot ------------------------------------------------------------- */
 window.EpinoiaBroadcast = {
   VERSION: '1.0.0',
@@ -335,7 +563,8 @@ window.EpinoiaBroadcast = {
        Score, clock and fouls are the graphic; everything else is garnish. */
     const CORE = 'id,status,period,home_score,away_score,venue,' +
       'roster_snapshot,starters,tip_winner,arrow_init,' +
-      'home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour),' +
+      'home:home_team_id(name,short_name,colour,logo_path),' +
+      'away:away_team_id(name,short_name,colour,logo_path),' +
       'competitions(name,seasons(name,leagues(name)))';
     const gs = await api('games?id=eq.' + encodeURIComponent(gameId) +
       '&select=' + CORE + '&limit=1');
@@ -366,6 +595,7 @@ window.EpinoiaBroadcast = {
       phase: game.status === 'final' ? 'final' : 'game'
     };
     render();
+    listenForScenes();
 
     if (game.status !== 'final') {
       sub = L.subscriber({

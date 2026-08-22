@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Broadcast control · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=170">
+<style>
+/* ============================================================================
+   THE CONTROL ROOM.
+
+   A director does not want to edit a URL between plays. They want a row of
+   buttons, each of which puts a graphic on air, and they want to see what is on
+   air right now without looking at the programme feed.
+
+   THE LAYER LISTENS; THIS PAGE CALLS. A browser source opened with ?live=1
+   subscribes to a channel and renders whatever scene this page last published.
+   The alternative — one OBS source per graphic, toggled by hand — is what
+   everybody does first, and it means eight sources to arrange, eight to keep in
+   sync when a colour changes, and a director hunting a checkbox mid-play.
+
+   IT MUST ALSO WORK WITHOUT ANY OF THAT. Every scene has a plain URL underneath
+   it, copyable, for a production that would rather point eight sources at eight
+   addresses and never depend on this page being open. The clever path is the
+   default and the dumb path is always available, because the dumb path is the
+   one that still works when the wifi in the hall does not.
+   ========================================================================= */
+  body{background:var(--ground);min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:calc(var(--u)*3)}
+  .hd{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    border-bottom:1px solid var(--rule);padding-bottom:calc(var(--u)*2);
+    margin-bottom:calc(var(--u)*3)}
+  .hd h1{font-family:var(--f-score);font-size:clamp(20px,3vw,30px);margin:0;
+    text-transform:uppercase;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hd .fx{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);letter-spacing:.1em}
+  .hd .live{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;
+    text-transform:uppercase;padding:5px 10px;border:1px solid var(--rule-2);color:var(--ink-3)}
+  .hd .live.on{color:#04100b;background:var(--lume);border-color:var(--lume)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;
+    margin-bottom:calc(var(--u)*3)}
+  .tile{border:1px solid var(--rule);background:var(--panel);padding:11px 12px;
+    display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left}
+  .tile:hover{border-color:var(--lume)}
+  .tile.on{border-color:var(--lume);box-shadow:inset 0 0 0 1px var(--lume)}
+  .tile .t{font-family:var(--f-ui);font-weight:800;font-size:13px}
+  .tile .d{font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3)}
+  .tile .u{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);opacity:.7;
+    word-break:break-all;border-top:1px solid var(--rule);padding-top:6px}
+  .tile .row{display:flex;gap:6px;margin-top:auto}
+  .tile .row button{flex:1;font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;
+    text-transform:uppercase;padding:6px 4px;border:1px solid var(--rule-2);
+    background:transparent;color:var(--ink-2);cursor:pointer}
+  .tile .row button:hover{border-color:var(--lume);color:var(--lume)}
+
+  .prev{border:1px solid var(--rule);background:#0a0f0d;position:relative;
+    aspect-ratio:16/9;overflow:hidden;margin-bottom:calc(var(--u)*2)}
+  .prev iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  /* A checkerboard behind the preview, because the layer is transparent and a
+     graphic previewed on a flat colour hides exactly the contrast problem the
+     preview exists to catch. */
+  .prev::before{content:'';position:absolute;inset:0;
+    background-image:linear-gradient(45deg,#151a18 25%,transparent 25%),
+      linear-gradient(-45deg,#151a18 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#151a18 75%),
+      linear-gradient(-45deg,transparent 75%,#151a18 75%);
+    background-size:22px 22px;
+    background-position:0 0,0 11px,11px -11px,-11px 0}
+
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:calc(var(--u)*2)}
+  .bar label{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+  .bar select,.bar input{font-family:var(--f-micro);font-size:10px;padding:6px 8px;
+    background:var(--panel);border:1px solid var(--rule);color:var(--ink)}
+  .msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
+    border-left:2px solid var(--rule-2);padding-left:11px;margin:calc(var(--u)*2) 0}
+  code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
+</style>
+</head>
+<body>
+<div class="ep-frame wrap">
+  <div class="hd">
+    <h1>Broadcast control</h1>
+    <span class="fx" id="fx">—</span>
+    <span class="live" id="liveTag">layer not connected</span>
+  </div>
+
+  <div class="bar">
+    <label>position
+      <select id="pos">
+        <option value="bl">bottom left</option><option value="bc">bottom centre</option>
+        <option value="br">bottom right</option><option value="tl">top left</option>
+        <option value="tc">top centre</option><option value="tr">top right</option>
+        <option value="c">centre</option>
+      </select></label>
+    <label>scale <input id="scale" type="number" min="0.5" max="2" step="0.1" value="1" style="width:64px"></label>
+    <label>chroma <input id="chroma" type="text" placeholder="off" style="width:88px"></label>
+    <label><input id="safe" type="checkbox" checked> title-safe</label>
+  </div>
+
+  <div class="prev"><iframe id="prev" title="Preview of the graphic on air"></iframe></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="msg" id="how"></div>
+</div>
+
+<script src="../../config.js?v=170" defer></script>
+<script src="../../vendor/supabase.js?v=170" defer></script>
+<script src="control.js?v=170" defer></script>
+</body>
+</html>

@@ -211,10 +211,20 @@ function mount(opts) {
       const inComps = q => compIds.length ? q.in('competition_id', compIds) : q.eq('competition_id', '~none~');
 
       step('fixtures…');
-      const games = compIds.length ? await pageAll(sb, 'games',
-        'id,competition_id,home_team_id,away_team_id,tipoff_at,venue,venue_address,' +
-        'capacity,attendance,officials,status,home_score,away_score,period,finalised_at',
-        inComps, ['tipoff_at', 'id']) : [];
+      /* The match-details columns are asked for, and dropped if the database
+         has not run 0076 — an export that refuses entirely because it cannot
+         have the attendance is worse than one that omits three columns. */
+      const GCORE = 'id,competition_id,home_team_id,away_team_id,tipoff_at,venue,' +
+        'venue_address,status,home_score,away_score,period,finalised_at';
+      let games = [];
+      if (compIds.length) {
+        try {
+          games = await pageAll(sb, 'games',
+            GCORE + ',capacity,attendance,officials', inComps, ['tipoff_at', 'id']);
+        } catch (_) {
+          games = await pageAll(sb, 'games', GCORE, inComps, ['tipoff_at', 'id']);
+        }
+      }
       const gameIds = games.map(g => g.id);
       const inGames = q => gameIds.length ? q.in('game_id', gameIds) : q.eq('game_id', '~none~');
 

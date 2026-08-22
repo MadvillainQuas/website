@@ -439,9 +439,18 @@ body.pregame .plist{opacity:.72}
 .swatch.on{border-color:#fff;box-shadow:0 0 12px currentColor;}
 
 /* ============ bottom sheet ============ */
+/* A SOLID BACKING. The sheet had none: it slid up as a row of translucent
+   buttons over the roster, so the names underneath read THROUGH the menu and
+   "box score" sat on top of a player called Blackwood. A menu has to be opaque
+   enough to be a menu — this is the one surface in the app that is deliberately
+   in front of the game rather than part of it. */
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;
   transform:translateY(calc(100% - 40px));transition:transform .28s var(--ease);
-  padding:0 10px calc(env(safe-area-inset-bottom) + 10px);}
+  padding:0 10px calc(env(safe-area-inset-bottom) + 10px);
+  background:linear-gradient(180deg, rgba(4,16,11,.94), rgba(4,16,11,.99) 38%);
+  border-top:1px solid var(--line-hi);
+  box-shadow:0 -14px 34px rgba(0,0,0,.55);
+  backdrop-filter:blur(10px);}
 #sheet.open{transform:translateY(0);}
 #sheetHandle{height:40px;display:flex;align-items:center;justify-content:center;touch-action:none;}
 #sheetHandle span{width:52px;height:5px;border-radius:99px;background:rgba(170,255,215,.4);
@@ -1412,6 +1421,38 @@ html, body{ height:100dvh; }
   .mdrow{grid-template-columns:1fr;gap:2px}
   .detin{width:min(200px,52%)}
 }
+/* ---- match officials: pick, or type ---- */
+.detpick{display:flex;align-items:center;gap:7px;width:min(240px,58%);justify-content:flex-end}
+.detsel{background:rgba(200,255,230,.06);border:1px solid var(--line);border-radius:10px;
+  padding:9px 8px;color:var(--txt);font-family:var(--f-ui);font-size:12.5px;
+  min-height:40px;flex:1 1 auto;min-width:0;max-width:100%}
+.detsel:focus{border-color:var(--line-hi);outline:none}
+.detpick .detin{width:100%;flex:1 1 auto}
+.detpick .detin.narrow{flex:1 1 auto}
+.detpick .detin[hidden],.detsel[hidden]{display:none}
+@media (max-width:640px){ .detpick{width:min(210px,54%)} }
+
+/* ---- the bottom sheet scrolls sideways rather than crushing its buttons ----
+   Seven options across a 375px phone gave each of them 45px, which is a label
+   of two letters and a tap target that hits the wrong one. They keep a readable
+   width and the row scrolls instead.
+
+   pan-x alone is right HERE and nowhere else in this codebase: the platform's
+   rule is that a horizontal scroller must not swallow a vertical drag, and that
+   rule exists because those scrollers sit in a page that scrolls. This one does
+   not — the sheet is a fixed overlay, and a vertical gesture inside it has
+   nothing to reach. */
+#sheetBody{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  scrollbar-width:none}
+#sheetBody::-webkit-scrollbar{display:none}
+@media (max-width:760px){
+  .sheetbtn{flex:0 0 auto;min-width:96px;padding-left:12px;padding-right:12px}
+  /* a hint that the row continues, which a scrollbar-free strip otherwise
+     hides completely */
+  #sheetBody{mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
+}
 </style>
 </head>
 <body>
@@ -1532,14 +1573,14 @@ html, body{ height:100dvh; }
       <div class="mrow"><label>attendance</label>
         <input id="detAtt" class="detin num" type="number" inputmode="numeric" min="0" max="200000"></div>
       <div class="detsplit">officials</div>
-      <div class="mrow"><label>referee</label><input id="det_referee" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>umpire 1</label><input id="det_umpire1" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>umpire 2</label><input id="det_umpire2" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>commissioner</label><input id="det_commissioner" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>scorer</label><input id="det_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>assistant scorer</label><input id="det_assistant_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>timekeeper</label><input id="det_timekeeper" class="detin" type="text" autocomplete="off" maxlength="60"></div>
-      <div class="mrow"><label>shot clock</label><input id="det_shot_clock" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>referee</label><span class="detpick"><select id="sel_referee" class="detsel" data-role="referee"></select><input id="det_referee" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>umpire 1</label><span class="detpick"><select id="sel_umpire1" class="detsel" data-role="umpire1"></select><input id="det_umpire1" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>umpire 2</label><span class="detpick"><select id="sel_umpire2" class="detsel" data-role="umpire2"></select><input id="det_umpire2" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>commissioner</label><span class="detpick"><select id="sel_commissioner" class="detsel" data-role="commissioner"></select><input id="det_commissioner" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>scorer</label><span class="detpick"><select id="sel_scorer" class="detsel" data-role="scorer"></select><input id="det_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>assistant scorer</label><span class="detpick"><select id="sel_assistant_scorer" class="detsel" data-role="assistant_scorer"></select><input id="det_assistant_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>timekeeper</label><span class="detpick"><select id="sel_timekeeper" class="detsel" data-role="timekeeper"></select><input id="det_timekeeper" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
+      <div class="mrow"><label>shot clock</label><span class="detpick"><select id="sel_shot_clock" class="detsel" data-role="shot_clock"></select><input id="det_shot_clock" class="detin" type="text" autocomplete="off" maxlength="60"></span></div>
     </div>
     <div class="detnote" id="detNote"></div>
     <div class="mbtns"><button id="detCancel">cancel</button><button id="detOk" class="yes">save</button></div>
@@ -4206,6 +4247,76 @@ function matchDetailsHTML(){
    somebody has time at 19:25, and the attendance is not known until the game
    has started while the commissioner's name is the sort of thing corrected on
    Monday. In between, the statistician has a game to score. */
+/* The league's own list, fetched once per game and cached. A dropdown of the
+   thirty people who actually officiate this competition is the difference
+   between counting a referee's appearances and having "A Shaw", "Shaw, A." and
+   "Adam Shaw" in the same season. */
+let OFFICIALS = null;          // null = not asked yet, [] = asked and empty
+
+async function loadOfficials(){
+  if(OFFICIALS) return OFFICIALS;
+  OFFICIALS = [];
+  const st = window.EpinoiaSync && EpinoiaSync.status ? EpinoiaSync.status() : null;
+  const gid = st && st.gameId;
+  if(EP_TRAIN || !gid || !window.epinoiaClient) return OFFICIALS;
+  try{
+    const sb = await window.epinoiaClient();
+    if(!sb) return OFFICIALS;
+    const { data, error } = await sb.rpc('officials_for_game', { p_game: gid });
+    if(error) throw error;
+    OFFICIALS = data || [];
+  }catch(err){
+    /* A list that will not load must not stop a game being scored: every field
+       stays typeable, which is what it was before the list existed. */
+    console.warn('[details] officials list unavailable', err);
+  }
+  return OFFICIALS;
+}
+
+/* One control per chair: a dropdown of the people who can fill it, plus the
+   option to type. TYPING IS NEVER TAKEN AWAY — a late replacement who is not on
+   the list is exactly the night somebody needs to write a name, and a system
+   that made the dropdown compulsory would be one a statistician has to fight. */
+function fillOfficialPickers(list){
+  OFFICIAL_ROLES.forEach(([key]) => {
+    const sel = $('#sel_' + key), input = $('#det_' + key);
+    if(!sel || !input) return;
+
+    const able = (list || []).filter(o => (o.roles || []).includes(key));
+    if(!able.length){
+      /* nothing to choose from: the field is what it always was */
+      sel.hidden = true; input.hidden = false; input.classList.remove('narrow');
+      return;
+    }
+
+    sel.hidden = false;
+    sel.innerHTML = '<option value="">—</option>' +
+      able.map(o => '<option value="' + esc(o.name) + '">' + esc(o.name) +
+        (o.licence ? ' · ' + esc(o.licence) : '') + '</option>').join('') +
+      '<option value="__type__">type a name…</option>';
+
+    const current = input.value.trim();
+    const known = able.some(o => o.name === current);
+    if(current && !known){
+      /* a name already recorded that is not on the list stays visible and
+         editable rather than being silently dropped by the dropdown */
+      sel.value = '__type__'; input.hidden = false; input.classList.add('narrow');
+    } else {
+      sel.value = current; input.hidden = true;
+    }
+
+    sel.onchange = () => {
+      if(sel.value === '__type__'){
+        input.hidden = false; input.classList.add('narrow');
+        input.value = ''; input.focus();
+      } else {
+        input.value = sel.value;
+        input.hidden = true; input.classList.remove('narrow');
+      }
+    };
+  });
+}
+
 function openDetails(){
   const D0 = details(), off = D0.officials || {};
   $('#detVenue').value  = D0.venue   || '';
@@ -4218,6 +4329,10 @@ function openDetails(){
     : (window.EpinoiaSync && EpinoiaSync.status && EpinoiaSync.status().gameId
         ? 'Saved to the fixture, and shown on the public box score and the scoresheet.'
         : 'Kept on this device — there is no fixture to save it to.');
+  fillOfficialPickers(OFFICIALS || []);
+  /* asked once, then the modal repaints itself when the answer lands — the
+     alternative is a spinner in front of a form somebody could be filling in */
+  loadOfficials().then(list => { if(list && list.length) fillOfficialPickers(list); });
   $('#detModal').classList.remove('hidden');
   setTimeout(()=>{ try{ $('#detVenue').focus(); }catch(_){} }, 30);
 }
@@ -5699,10 +5814,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=162" defer></script>
-<script src="../vendor/supabase.js?v=162" defer></script>
-<script src="../live.js?v=162" defer></script>
-<script src="sync.js?v=162" defer></script>
-<script src="bootstrap.js?v=162" defer></script>
+<script src="../config.js?v=170" defer></script>
+<script src="../vendor/supabase.js?v=170" defer></script>
+<script src="../live.js?v=170" defer></script>
+<script src="sync.js?v=170" defer></script>
+<script src="bootstrap.js?v=170" defer></script>
 </body>
 </html>

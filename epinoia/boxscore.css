@@ -431,9 +431,18 @@ body.pregame .plist{opacity:.72}
 .swatch.on{border-color:#fff;box-shadow:0 0 12px currentColor;}
 
 /* ============ bottom sheet ============ */
+/* A SOLID BACKING. The sheet had none: it slid up as a row of translucent
+   buttons over the roster, so the names underneath read THROUGH the menu and
+   "box score" sat on top of a player called Blackwood. A menu has to be opaque
+   enough to be a menu — this is the one surface in the app that is deliberately
+   in front of the game rather than part of it. */
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;
   transform:translateY(calc(100% - 40px));transition:transform .28s var(--ease);
-  padding:0 10px calc(env(safe-area-inset-bottom) + 10px);}
+  padding:0 10px calc(env(safe-area-inset-bottom) + 10px);
+  background:linear-gradient(180deg, rgba(4,16,11,.94), rgba(4,16,11,.99) 38%);
+  border-top:1px solid var(--line-hi);
+  box-shadow:0 -14px 34px rgba(0,0,0,.55);
+  backdrop-filter:blur(10px);}
 #sheet.open{transform:translateY(0);}
 #sheetHandle{height:40px;display:flex;align-items:center;justify-content:center;touch-action:none;}
 #sheetHandle span{width:52px;height:5px;border-radius:99px;background:rgba(170,255,215,.4);
@@ -1403,6 +1412,38 @@ html, body{ height:100dvh; }
 @media (max-width:640px){
   .mdrow{grid-template-columns:1fr;gap:2px}
   .detin{width:min(200px,52%)}
+}
+/* ---- match officials: pick, or type ---- */
+.detpick{display:flex;align-items:center;gap:7px;width:min(240px,58%);justify-content:flex-end}
+.detsel{background:rgba(200,255,230,.06);border:1px solid var(--line);border-radius:10px;
+  padding:9px 8px;color:var(--txt);font-family:var(--f-ui);font-size:12.5px;
+  min-height:40px;flex:1 1 auto;min-width:0;max-width:100%}
+.detsel:focus{border-color:var(--line-hi);outline:none}
+.detpick .detin{width:100%;flex:1 1 auto}
+.detpick .detin.narrow{flex:1 1 auto}
+.detpick .detin[hidden],.detsel[hidden]{display:none}
+@media (max-width:640px){ .detpick{width:min(210px,54%)} }
+
+/* ---- the bottom sheet scrolls sideways rather than crushing its buttons ----
+   Seven options across a 375px phone gave each of them 45px, which is a label
+   of two letters and a tap target that hits the wrong one. They keep a readable
+   width and the row scrolls instead.
+
+   pan-x alone is right HERE and nowhere else in this codebase: the platform's
+   rule is that a horizontal scroller must not swallow a vertical drag, and that
+   rule exists because those scrollers sit in a page that scrolls. This one does
+   not — the sheet is a fixed overlay, and a vertical gesture inside it has
+   nothing to reach. */
+#sheetBody{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  scrollbar-width:none}
+#sheetBody::-webkit-scrollbar{display:none}
+@media (max-width:760px){
+  .sheetbtn{flex:0 0 auto;min-width:96px;padding-left:12px;padding-right:12px}
+  /* a hint that the row continues, which a scrollbar-free strip otherwise
+     hides completely */
+  #sheetBody{mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
 }
 
 
