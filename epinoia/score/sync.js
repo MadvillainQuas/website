@@ -69,6 +69,13 @@ function stateOf(S) {
   const d = (typeof derive === 'function') ? derive() : null;
   return {
     period: S.period, clock_ms: S.clockMs, running: !!S.running,
+    /* THE INTERVAL IS STATE A VIEWER NEEDS TOO. Half-time is fifteen minutes
+       of a stream, a ticker and a club's homepage all showing 0:00 in the
+       second quarter and no indication that anything is coming back. Sent as
+       a plain remainder so every consumer can render it however it likes —
+       the scorebug counts it down, a fixture strip can just say "half-time". */
+    break_ms: (S.breakMs > 0 && S.period === 2 && S.clockMs === 0) ? S.breakMs : 0,
+    break_running: !!S.breakRunning,
     score_home: d ? d.score[0] : 0, score_away: d ? d.score[1] : 0,
     possession: d ? d.poss : null, arrow: d ? d.arrow : null,
     last_seq: S.evSeq || 0,
@@ -130,13 +137,53 @@ function maybeRoster(S) {
 const ANNOUNCE_TOPIC = 'epinoia:live';
 let announced = null;
 let announceCh = null;
+
+/* WHOSE GAME THIS IS, so that everybody else can ignore it.
+
+   One fixed topic is the right shape — it is the only way to reach a page that
+   does not yet know this game exists — but it means every listener on the
+   platform hears every announcement. Until now each of them responded by
+   re-reading its own fixture list, so ONE game going live made EVERY embedded
+   strip on EVERY club website run a query. At sixty games on a Saturday and a
+   few hundred embeds that is tens of thousands of queries, almost all of them
+   for a game the asker does not show. It is the textbook thundering herd, and
+   it gets linearly worse as the platform grows — which is to say it is a
+   problem that only appears once the thing is succeeding.
+
+   The cure is to say who it is about. Slugs rather than ids, because slugs are
+   what an embed is configured with (?l=demo-league&t=east-dock) and a
+   listener that has to resolve an id first would need the query we are trying
+   to avoid.
+
+   READ ONCE PER GAME, not per announcement, and never in the path of a tap. */
+let scope = null, scopeAsked = false;
+
+async function loadScope() {
+  if (scopeAsked || !sb || !GAME_UUID.test(gameId || '')) return;
+  scopeAsked = true;
+  try {
+    const { data } = await sb.from('games')
+      .select('home:home_team_id(slug),away:away_team_id(slug),' +
+              'competitions(seasons(leagues(slug)))')
+      .eq('id', gameId).maybeSingle();
+    if (!data) return;
+    const lg = ((data.competitions || {}).seasons || {}).leagues || {};
+    scope = { league: lg.slug || null,
+              home: (data.home || {}).slug || null,
+              away: (data.away || {}).slug || null };
+  } catch (_) { /* without it every listener falls back to reloading, as before */ }
+}
+
 function announce(status) {
   if (!sb || halted || !gameId || status === announced) return;
   announced = status;
+  loadScope();                       // fire and forget; the next one carries it
   try {
     announceCh = announceCh || sb.channel(ANNOUNCE_TOPIC);
     announceCh.send({ type: 'broadcast', event: 'status',
-                      payload: { gameId: gameId, status: status, at: Date.now() } });
+                      payload: Object.assign(
+                        { gameId: gameId, status: status, at: Date.now() },
+                        scope || {}) });
   } catch (_) { /* the poll still covers this; never break scoring for it */ }
 }
 

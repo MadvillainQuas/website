@@ -309,8 +309,12 @@ function watchGameAnnouncements() {
   if (!gamesRt) return;
   let soon = null;
   gamesRt.watch('epinoia:live', () => {
+    /* This page shows live games across the whole platform, so unlike an
+       embedded strip it genuinely wants every announcement. What it does not
+       want is to ask at the same instant as everybody else who heard the same
+       message — hence the scatter. */
     clearTimeout(soon);
-    soon = setTimeout(() => watchGames(0), 80);
+    soon = setTimeout(() => watchGames(0), 80 + Math.random() * 1200);
   });
 }
 

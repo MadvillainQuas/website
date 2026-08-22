@@ -62,7 +62,15 @@ let scene    = (qp.get('scene') || 'scorebug').toLowerCase();
    production that would rather have one OBS source per graphic and never
    depend on a web page being open. */
 const LIVE_SCENE = qp.get('live') === '1';
-const side   = qp.get('side') === '1' ? 1 : 0;
+/* NOT const, because a single browser source has to be able to switch teams.
+
+   A production with twelve sources picks the away five by making the away
+   source visible. A production with ONE — which is the whole Wirecast path,
+   and the recommended one for everything without a control API — has to be
+   told, and the control room has always sent `side` on the wire. This layer
+   simply never read it, so the one-source path could show the home five and
+   nothing else and there was no way to tell from here. */
+let side   = qp.get('side') === '1' ? 1 : 0;
 const wantPid = qp.get('pid') || null;
 const scale  = Math.max(0.4, Math.min(2.5, parseFloat(qp.get('scale') || '1') || 1));
 
@@ -75,7 +83,17 @@ const diag  = document.getElementById('diag');
    at module level, so the whole file died and window.EpinoiaBroadcast never
    existed. On air that is a blank layer with no clue why. */
 const POSITIONS = ['bl','br','tl','tr','bc','tc','c'];
-const pos = String(qp.get('pos') || 'bl').toLowerCase();
+/* BOTTOM CENTRE, because that is where a scoreboard goes.
+
+   Bottom-left was the safe default for a lower third, and the scorebug is not
+   one: it is the fixed furniture of the broadcast, and every hall board, every
+   television graphic and every viewer's expectation puts it in the middle at
+   the foot of the frame. A corner reads as an overlay somebody added; the
+   centre reads as the score.
+
+   Still overridable per source — a production with a permanent sponsor strip
+   along the bottom wants it somewhere else, and ?pos= is how they say so. */
+const pos = String(qp.get('pos') || 'bc').toLowerCase();
 stage.className = 'pos-' + (POSITIONS.includes(pos) ? pos : 'bl');
 if (qp.get('safe') === '0') stage.classList.add('nosafe');
 if (qp.get('debug') === '1') document.body.classList.add('debug');
@@ -168,13 +186,24 @@ function buildState() {
       officials: game.officials || {},
       tipoff: tipoffLabel(),
       leagueLogo: leagueLogo(),
-      leagueShort: leagueShort()
+      leagueShort: leagueShort(),
+      leagueInitials: leagueInitials()
     },
     clock: {
       period,
-      periodLabel: periodLabel(period),
+      /* A FINISHED GAME HAS NO CLOCK, and showing one stopped at zero is the
+         worst of both answers: 0.0 in the fourth reads as a live game about to
+         restart, and a viewer joining a rerun cannot tell it from one about to
+         go to overtime. The hall's own board says FINAL at the buzzer and so
+         does this.
+
+         Kept short — the bug's clock slot is sized for 10:00, and "FINAL"
+         across it would crowd the possession arrows either side. FIN is what
+         the shorthand on a paper scoresheet says. */
+      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period),
       ms: clockMs,
-      display: mmss(clockMs),
+      display: game.status === 'final' ? 'FIN' : mmss(clockMs),
+      final: game.status === 'final',
       running: !!(sub && sub.state && sub.state.running)
     },
     possessionArrow: (sub && sub.state && sub.state.arrow != null)
@@ -275,11 +304,53 @@ function playerCard(t, pid, d) {
     id: pid, number: p.num || '', name: p.name || '', photo: PHOTOS[pid] || null,
     pts: s.pts || 0, reb: (s.or || 0) + (s.dr || 0), ast: s.ast || 0,
     stl: s.stl || 0, blk: s.blk || 0, pf: s.pf || 0, pm: s.pm || 0,
+    fd: s.fd || 0, to: s.to || 0,
     fg: (s.p2m || 0) + (s.p3m || 0) + '-' + ((s.p2a || 0) + (s.p3a || 0)),
     tp: (s.p3m || 0) + '-' + (s.p3a || 0),
     ft: (s.ftm || 0) + '-' + (s.fta || 0),
-    min: Math.round((s.min || 0))
+    min: Math.round((s.min || 0)),
+    index: pir(s)
   };
+}
+
+/* THE INDEX — what a European scoreboard leads with.
+
+   FIBA's valuation, the same arithmetic EuroLeague prints as PIR and the
+   national federations print as "Index". Everything that helped, minus
+   everything that did not:
+
+     (pts + reb + ast + stl + blk + fouls drawn)
+   − (missed field goals + missed free throws + turnovers + fouls committed)
+
+   It is worth having on air precisely because it disagrees with the points
+   column. A guard with 22 points on 9-of-24 and four turnovers is behind a
+   centre with 12, 11 rebounds and two blocks, and that is the graphic doing
+   its job — the whole reason to show a second ranking is that it says
+   something the first one does not.
+
+   Fouls DRAWN is the part people forget, and leaving it out would quietly
+   punish the player who spent the night getting hit. The scorer records it,
+   so it is used. */
+function pir(s) {
+  if (!s) return 0;
+  const fga = (s.p2a || 0) + (s.p3a || 0);
+  const fgm = (s.p2m || 0) + (s.p3m || 0);
+  const good = (s.pts || 0) + (s.or || 0) + (s.dr || 0) + (s.ast || 0) +
+               (s.stl || 0) + (s.blk || 0) + (s.fd || 0);
+  const bad  = (fga - fgm) + ((s.fta || 0) - (s.ftm || 0)) +
+               (s.to || 0) + (s.pf || 0);
+  return good - bad;
+}
+
+/* A letter per line once there are three, so the badge is filled rather than
+   underlined. Two or fewer stay on one line: "EL" stacked is a column of two
+   characters with air above and below it, which reads as a mistake. */
+function initialsHTML(txt) {
+  const s = String(txt || '');
+  if (!s) return '';
+  if (s.length < 3) return '<i class="ini2">' + esc(s) + '</i>';
+  return '<i class="ini3">' +
+    s.split('').map(ch => '<b>' + esc(ch) + '</b>').join('') + '</i>';
 }
 
 function lastPlay(d) {
@@ -300,6 +371,51 @@ function leagueLogo() {
 function leagueShort() {
   const l = ((game.competitions || {}).seasons || {}).leagues || {};
   return l.name || '';
+}
+
+/* INITIALS, FOR WHERE A BADGE GOES.
+
+   leagueShort is the league's NAME and is drawn as a wordmark; a scorebug has
+   room for a badge and not for "Northern Counties Basketball League". So the
+   name is reduced to letters the way a person would say it — first letter of
+   each real word, three at most. Small words are dropped, because "NCBL" is
+   what people call it and "NCBOTL" is not.
+
+   THE LEAGUE'S OWN LETTERS WIN. leagues.initials (migration 0087) is checked
+   first and used as given. Real competitions have acronyms their names do not
+   produce, and a derived one is a guess.
+
+   AND A DERIVED ACRONYM IS NEVER ALLOWED TO LAND ON ONE OF THESE.
+
+   Three letters off the front of ordinary English words reach acronyms that
+   belong to political organisations, and a scoreboard at a schools game is the
+   last place any of them should appear. "Epinoia Demo League" derived EDL,
+   which in Britain names a far-right street movement — nobody chose it, no
+   reviewer would have caught it in a diff, and it would have gone out on every
+   stream the league ever produced.
+
+   The fallback is two letters, which is always harmless and always still a
+   badge. A league that wants three sets them itself, deliberately, which is
+   the difference between a name and an accident. */
+const LEAGUE_NOISE = /^(of|the|and|for|a|an|de|du|la|le|el|des)$/i;
+const NEVER_DERIVE = ['EDL', 'BNP', 'KKK', 'NSDAP', 'C18', 'SS', 'NF', 'BUF'];
+
+function leagueInitials() {
+  const l = ((game.competitions || {}).seasons || {}).leagues || {};
+  /* Set by the league, used as set — including a three-letter one this would
+     otherwise refuse to invent. Saying it on purpose is not the same act. */
+  if (l.initials) return String(l.initials).toUpperCase().slice(0, 4);
+
+  const name = leagueShort();
+  if (!name) return '';
+  const words = name.split(/[\s\-–—_/]+/).filter(w => w && !LEAGUE_NOISE.test(w));
+  if (!words.length) return '';
+  /* A name that is already an acronym — "NBL", "BBL" — is used as it stands
+     rather than reduced to its own first letter. */
+  const raw = words.length === 1
+    ? words[0].slice(0, 3).toUpperCase()
+    : words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+  return NEVER_DERIVE.includes(raw) ? raw.slice(0, 2) : raw;
 }
 
 const shortOf = t => {
@@ -660,10 +776,26 @@ function squadPool(st) {
   return [].concat(
     st.home.squad.map(p => Object.assign({ T: st.home }, p)),
     st.away.squad.map(p => Object.assign({ T: st.away }, p))
-  ).filter(p => p.min > 0 || p.pts || p.reb || p.ast);
+  /* Anybody who has been on the floor, or done anything at all. min > 0 covers
+     almost everyone; the rest of the test catches a player subbed on and off
+     inside the same minute who still managed a rebound. */
+  ).filter(p => p.min > 0 || p.pts || p.reb || p.ast || p.index);
 }
 
 const SCENES = {
+  /* ---- OFF AIR ----------------------------------------------------------
+     A production with twelve browser sources goes clean by hiding all of them.
+     A production with ONE cannot: there is no source to hide, only a page to
+     change. Without this, the single-source path — the one recommended for
+     Wirecast and for every mixer without a control API — could put a graphic
+     up and never take it down, which makes it unusable for anything except a
+     scorebug that lives on screen all game.
+
+     It renders nothing at all rather than an empty box: a transparent frame
+     with a plate in it is still a plate over somebody's camera. */
+  blank: () => '',
+
+
   /* ---- THE STARTING FIVE, FULL FRAME ------------------------------------
      A different kind of graphic from everything else here. The scorebug and
      the ranked cards are overlays: small, cornered, sat on top of live video.
@@ -805,6 +937,30 @@ const SCENES = {
   },
 
   scorebug(st) {
+    /* THE LEAGUE'S OWN MARK, ON THE LEFT OF THE BOARD.
+
+       Where a televised game puts the competition badge, and the thing that
+       stops a scorebug looking like a generic overlay: this is the Something
+       League, not a scoreboard. The logo the league uploaded when it was set
+       up, and when there is none, its initials — never a hole, and never a
+       placeholder graphic, because a monogram in the right typeface reads as a
+       deliberate mark and a broken image reads as a fault.
+
+       Kept OUT of the plate's border rules so it sits against the frame rather
+       than inside a box of its own — a badge with a panel behind it is a
+       second graphic, and the whole point of this pass is that there is less
+       of it. */
+    /* Three letters stack into the square; one or two sit across it. A badge
+       is a block of letters, not a line of them — "EBL" written along the
+       bottom of a 5.4vmin square wastes most of the square and comes out
+       smaller than it needs to be. */
+    const mark = st.game.leagueLogo
+      ? '<span class="lgm"><img src="' + esc(st.game.leagueLogo) + '" alt="" ' +
+        'data-fade="haslgm">' + initialsHTML(st.game.leagueInitials) + '</span>'
+      : (st.game.leagueInitials
+          ? '<span class="lgm">' + initialsHTML(st.game.leagueInitials) + '</span>'
+          : '');
+
     const dots = n => '<span class="dots">' +
       [1,2,3,4,5].map(i => '<i class="dot' + (i <= n ? ' on' : '') + '"></i>').join('') +
       '</span>';
@@ -812,7 +968,7 @@ const SCENES = {
       '<div class="side ' + (t === 0 ? 'home' : 'away') + '" style="--tc:' + esc(T.colour) + '">' +
         crestHTML(T) +
         '<span class="tag">' + esc(T.short) + '</span>' +
-        '<span class="sc">' + T.score + '</span>' +
+        '<span class="sc">' + figures(T.score) + '</span>' +
       '</div>';
 
     /* The possession arrow points at the team who has it. A triangle beside the
@@ -821,11 +977,16 @@ const SCENES = {
     const arrow = st.possessionArrow === 0 ? '<i class="arw l"></i>'
                 : st.possessionArrow === 1 ? '<i class="arw r"></i>' : '';
 
-    return '<div class="bug">' +
+    return '<div class="bug">' + mark +
       sideHTML(st.home, 0) +
       '<div class="mid">' + arrow +
-        '<span class="clk' + (st.clock.running ? ' run' : '') + '">' + st.clock.display + '</span>' +
-        '<span class="per">' + st.clock.periodLabel + '</span></div>' +
+        '<span class="clk' + (st.clock.running && !st.clock.final ? ' run' : '') +
+          (st.clock.final ? ' fin' : '') + '">' +
+          /* FIN is a word, not a readout — the per-character cells exist to
+             stop digits shuffling and would only space letters out oddly. */
+          (st.clock.final ? 'FIN' : figures(st.clock.display)) + '</span>' +
+        '<span class="per' + (st.clock.final ? ' fin' : '') + '">' +
+          st.clock.periodLabel + '</span></div>' +
       sideHTML(st.away, 1) +
       '<div class="rail">' +
         '<span class="fl' + (st.home.bonus ? ' bonus' : '') + '">' +
@@ -884,6 +1045,15 @@ const SCENES = {
     const all = squadPool(st);
     return rankCard('assists', all.sort((a, b) => b.ast - a.ast).slice(0, 5),
       p => p.ast, 'ast');
+  },
+
+  /* Signed, because an Index can be negative and hiding that would be the one
+     dishonest thing this graphic could do — a bad night is exactly what the
+     number is for. */
+  index(st) {
+    const all = squadPool(st);
+    return rankCard('index', all.sort((a, b) => b.index - a.index).slice(0, 5),
+      p => (p.index > 0 ? '+' : '') + p.index, 'idx', true);
   },
 
   /* The best five-man units, by net rating over the minutes they have played.
@@ -965,6 +1135,57 @@ function rankCard(title, rows, val, unit, signed) {
     }).join('') + '</div>';
 }
 
+/* ---- ONE ENTRANCE, NOT SEVERAL -------------------------------------------
+   The graphic used to appear the moment the fixture row landed and then fill
+   in: text first, then the squad, then the crests, then the portraits, each
+   fading in as its request came back. On a web page that reads as loading. On
+   air it reads as a fault — a caption assembling itself in front of an
+   audience — and it is the sort of thing a director will not use twice.
+
+   So nothing is shown until every request a scene depends on has come back.
+   The page still RENDERS throughout, so the layout is settled and the fonts
+   are resolved before anybody sees it; it is only revealed at the end.
+
+   AND IT IS REVEALED REGARDLESS after a moment. A graphic that waits for ever
+   on a slow photograph is worse than one that shows initials: the deadline is
+   what turns "nothing appeared" into "one face is a monogram". */
+let settled = false;
+const REVEAL_MAX_MS = 2500;
+
+function reveal() {
+  if (settled) return;
+  settled = true;
+  lastJSON = '';                 // force one final paint, then show it
+  render();
+  stage.dataset.ready = '1';
+}
+
+/* ---- FIGURES THAT DO NOT MOVE ------------------------------------------
+   The scorebug is set in Jersey, the face this platform uses for scores and
+   headings everywhere else. It is a jersey-numeral face, which is exactly
+   right for a scoreboard and carries one problem measured rather than assumed:
+   ITS DIGITS ARE NOT THE SAME WIDTH. At 100px its "1" advances 31.7 and its
+   "2" advances 48.8 — a third narrower.
+
+   On a score that is fine; it changes every couple of minutes and sits in a
+   centred box. On a CLOCK it is not: 8:31 to 8:30 would rewrap the whole
+   readout, and a clock that shakes once a second is the first thing a director
+   notices and the last thing they forgive. font-variant-numeric cannot help,
+   because a face without tabular figures has none to switch to.
+
+   So each character gets its own fixed box and is centred in it. That is what
+   a real scoreboard does — every digit occupies a cell — and it means the
+   readout is rigid whatever is in it.
+
+   The separators get a narrower cell of their own: a colon given a digit's
+   width leaves a visible hole either side of it. */
+function figures(text) {
+  return String(text == null ? '' : text).split('').map(ch =>
+    /[0-9]/.test(ch)
+      ? '<span class="fg">' + ch + '</span>'
+      : '<span class="fg sep">' + esc(ch) + '</span>').join('');
+}
+
 /* ---- render ----------------------------------------------------------- */
 function render() {
   const st = buildState();
@@ -983,7 +1204,7 @@ function render() {
     const fn = SCENES[scene] || SCENES.scorebug;
     stage.innerHTML = fn(st);
     wireFades();
-    stage.dataset.ready = '1';
+    if (settled) stage.dataset.ready = '1';
   }
   if (document.body.classList.contains('debug')) {
     diag.textContent = [
@@ -1013,8 +1234,17 @@ function listenForScenes() {
       if (event !== 'scene' || !frame || !frame.scene) return;
       if (!SCENES[frame.scene]) return;        // an unknown name leaves air alone
       scene = frame.scene;
+      /* WHICH TEAM, which this never read. The control room has always sent it
+         — two squad tiles are one scene with a different side — so a single
+         source could be switched to the away five and would draw the home one.
+         With twelve sources the mixer chose; with one, this is the only
+         place the choice can land. */
+      if (frame.side != null) side = String(frame.side) === '1' ? 1 : 0;
       if (frame.pos && POSITIONS.includes(frame.pos)) {
         stage.className = 'pos-' + frame.pos + (qp.get('safe') === '0' ? ' nosafe' : '');
+      }
+      if (frame.scale && isFinite(+frame.scale) && +frame.scale > 0) {
+        document.documentElement.style.setProperty('--u', (+frame.scale) + 'vmin');
       }
       lastJSON = '';                           // force the repaint
       render();
@@ -1134,7 +1364,7 @@ window.EpinoiaBroadcast = {
   if (!gameId) {
     stage.innerHTML = '<div class="fin"><div class="lbl">no game</div>' +
       '<div class="row"><span class="t">add ?g=&lt;game-id&gt;</span></div></div>';
-    stage.dataset.ready = '1';
+    settled = true; stage.dataset.ready = '1';
     return;
   }
   if (!CFG.supabaseUrl) return;
@@ -1161,6 +1391,21 @@ window.EpinoiaBroadcast = {
       if (extra.length) Object.assign(game, extra[0]);
     } catch (_) { /* an older database simply has none of these */ }
 
+    /* THE LEAGUE'S OWN BADGE LETTERS — asked for separately, and for exactly
+       the reason written above CORE. leagues.initials arrives in migration
+       0087, and a graphics layer that goes black on a database one migration
+       behind is the worst possible way to find that out. Without it the badge
+       derives its letters from the name, which is what it did before. */
+    try {
+      const lg = await api('games?id=eq.' + encodeURIComponent(gameId) +
+        '&select=competitions(seasons(leagues(initials)))&limit=1');
+      const got = (((lg[0] || {}).competitions || {}).seasons || {}).leagues || {};
+      if (got.initials && game.competitions && game.competitions.seasons &&
+          game.competitions.seasons.leagues) {
+        game.competitions.seasons.leagues.initials = got.initials;
+      }
+    } catch (_) { /* pre-0087: the name still gives us letters */ }
+
     let rows = [];
     try {
       rows = await api('game_events?game_id=eq.' + encodeURIComponent(gameId) +
@@ -1186,9 +1431,15 @@ window.EpinoiaBroadcast = {
        is needed to draw a scorebug — so they load after the first paint and
        the layer repaints when they arrive. A stream that is already on air
        gets its scorebug immediately either way. */
-    loadRosters()
+    /* Everything a pre-game scene needs, then one entrance. render() is called
+       throughout so the layout and the fonts are settled before the reveal —
+       what is deferred is only the moment it becomes visible. */
+    const ready = loadRosters()
       .then(() => { lastJSON = ''; render(); return Promise.all([loadPhotos(), loadCutouts()]); })
-      .then(() => { lastJSON = ''; render(); });
+      .then(() => { lastJSON = ''; render(); })
+      .catch(() => {});
+    /* whichever comes first: everything, or the deadline */
+    Promise.race([ready, new Promise(r => setTimeout(r, REVEAL_MAX_MS))]).then(reveal);
 
     if (game.status !== 'final') {
       sub = L.subscriber({
@@ -1207,7 +1458,7 @@ window.EpinoiaBroadcast = {
        ?debug=1, which is the only time anybody can act on it. */
     if (document.body.classList.contains('debug')) {
       diag.textContent = 'boot failed: ' + ((err && err.message) || err);
-      stage.dataset.ready = '1';
+      settled = true; stage.dataset.ready = '1';
     }
   }
 })();

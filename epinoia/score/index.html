@@ -462,6 +462,24 @@ body.pregame .plist{opacity:.72}
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
 .sheetbtn:active{background:rgba(170,255,215,.16);}
 .sheetbtn.endy{color:var(--red);border-color:rgba(255,95,107,.4);}
+/* ============ the interval, and the other clock ============ */
+/* Half-time is amber rather than mint on purpose: at a glance across a table
+   it has to be impossible to mistake for a game clock that is running. */
+.clk.brk{color:var(--amber);}
+.vidline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;
+  border-bottom:1px solid var(--line);}
+.vidlab{flex:0 0 100%;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.07em;
+  color:var(--dim);}
+.vidval{flex:1 1 90px;min-width:0;font-family:var(--f-micro);font-size:11px;
+  color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vidbtn{flex:0 0 auto;padding:8px 12px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(170,255,215,.09);color:var(--txt);font-family:var(--f-micro);font-size:9.5px;
+  white-space:nowrap;}
+.vidbtn:active{background:rgba(170,255,215,.18);}
+.vidnudge{display:flex;gap:5px;margin:8px 0 2px;}
+.vidnudge button{flex:1;padding:9px 2px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(170,255,215,.06);color:var(--ink-2);font-family:var(--f-micro);font-size:10px;}
+.vidnudge button:active{background:rgba(170,255,215,.2);color:var(--ink);}
 
 /* ============ starters picker ============ */
 .spgrid{display:flex;gap:8px;flex:1;min-height:0;}
@@ -1538,6 +1556,7 @@ html, body{ height:100dvh; }
       <button class="sheetbtn" id="btnAdv">lineups</button>
       <button class="sheetbtn" id="btnLog">log</button>
       <button class="sheetbtn" id="btnExp">export</button>
+      <button class="sheetbtn" id="btnVid" title="line the stream up with the game clock">video sync</button>
       <button class="sheetbtn" id="btnDetails" title="officials, venue, attendance">match details</button>
       <button class="sheetbtn" id="btnHelp" title="every control, with diagrams">controls</button>
       <button class="sheetbtn" id="btnSim" title="test data">simulate</button>
@@ -1554,6 +1573,7 @@ html, body{ height:100dvh; }
 <section id="advview" class="screen overlayview hidden"></section>
 <section id="finalview" class="screen overlayview hidden"></section>
 <section id="helpview" class="screen overlayview hidden"></section>
+<section id="videoview" class="screen overlayview hidden"></section>
 
 <!-- ================= modals ================= -->
 <!-- Match details. Two moments need this and neither of them is mid-game: the
@@ -1587,6 +1607,50 @@ html, body{ height:100dvh; }
   </div>
 </div>
 
+<!-- Video sync. ONE NUMBER lines the whole play-by-play up with the footage:
+     the dead air at the front of the stream, before the ball goes up. Set it
+     here and every event in the log gains a position in the video — see
+     epinoia/video.js for the arithmetic and migration 0082 for where the two
+     instants come from. Both of them are normally stamped automatically; this
+     screen exists for the times they are not, and to show what was stamped. -->
+<div id="vidModal" class="modalwrap hidden">
+  <div class="glass modal detmodal">
+    <div class="mtitle">video sync</div>
+    <div class="detscroll">
+      <div class="mrow"><label>stream link</label>
+        <input id="vidUrl" class="detin" type="url" autocomplete="off"
+               placeholder="paste the YouTube / Twitch link"></div>
+      <div class="detnote" id="vidWhat"></div>
+
+      <div class="detsplit">lining it up</div>
+      <div class="detnote" id="vidNote"></div>
+
+      <!-- Not .mrow/.detpick: those were built for a label, a select and an
+           input, and a row of label + value + button does not fit that grid on
+           a phone — the button ran off the right edge. The label takes its own
+           line so the value and the button get the full width. -->
+      <div class="vidline"><span class="vidlab">stream started</span>
+        <span class="vidval" id="vidStart">—</span>
+        <button class="vidbtn" id="vidNow">starting now</button></div>
+      <div class="vidline"><span class="vidlab">tip-off</span>
+        <span class="vidval" id="vidTip">—</span>
+        <button class="vidbtn" id="vidTipNow">ball is up</button></div>
+
+      <div class="mrow"><label>tip-off is at</label>
+        <div class="timein"><input id="vidMin" type="number" inputmode="numeric" min="0" max="180">
+        <span>:</span><input id="vidSec" type="number" inputmode="numeric" min="0" max="59"></div>
+      </div>
+      <div class="vidnudge">
+        <button data-nudge="-30000">−30s</button><button data-nudge="-5000">−5s</button>
+        <button data-nudge="-1000">−1s</button><button data-nudge="1000">+1s</button>
+        <button data-nudge="5000">+5s</button><button data-nudge="30000">+30s</button>
+      </div>
+      <div class="detnote" id="vidWhere"></div>
+    </div>
+    <div class="mbtns"><button id="vidCancel">close</button><button id="vidWatch">watch</button><button id="vidOk" class="yes">save</button></div>
+  </div>
+</div>
+
 <div id="adjModal" class="modalwrap hidden">
   <div class="glass modal">
     <div class="mtitle">adjust clock</div>
@@ -1596,6 +1660,20 @@ html, body{ height:100dvh; }
     <div class="mrow"><label>time</label>
       <div class="timein"><input id="adjMin" type="number" inputmode="numeric" min="0" max="20"> <span>:</span>
       <input id="adjSec" type="number" inputmode="numeric" min="0" max="59"></div>
+    </div>
+    <!-- THE OTHER CLOCK. Once a stream is attached there are two timelines
+         running, and a statistician who has just noticed the replays are two
+         seconds early should be able to fix it from the screen that already
+         says "adjust clock" rather than hunting for a second one. Hidden
+         entirely until there is a video to adjust. -->
+    <div id="adjVidWrap" class="hidden">
+      <div class="detsplit">video clock</div>
+      <div class="detnote" id="adjVidNote"></div>
+      <div class="vidnudge">
+        <button data-vnudge="-5000">−5s</button><button data-vnudge="-1000">−1s</button>
+        <button data-vnudge="-250">−¼s</button><button data-vnudge="250">+¼s</button>
+        <button data-vnudge="1000">+1s</button><button data-vnudge="5000">+5s</button>
+      </div>
     </div>
     <div class="mbtns"><button id="adjCancel">cancel</button><button id="adjOk" class="yes">set</button></div>
   </div>
@@ -1633,6 +1711,10 @@ function newState(){
     teams:[{name:'team one',players:[]},{name:'team two',players:[]}],
     starters:[[],[]], events:[], redo:[], evSeq:0,
     period:1, clockMs:PLEN(1), running:false, collapsed:false,
+    /* the interval between halves — see startBreak() */
+    breakMs:0, breakRunning:false,
+    /* where the footage of this game is, and how it lines up with it */
+    video:{url:'', provider:'', ref:'', streamStartedAt:null, tipAt:null, trimMs:0},
     tipWinner:null, arrowInit:null,
     /* officials, hall and attendance — context a scoresheet needs and the
        event log has no way to hold; see matchDetailsHTML below */
@@ -1734,6 +1816,47 @@ function addEvent(ev){
   if(ev.id==null){ S.evSeq = (S.evSeq||0)+1; ev.id = S.evSeq; }
   if(ev.period==null) ev.period = S.period;
   if(ev.clock==null) ev.clock = S.clockMs;
+  /* THE MOMENT OF THE TAP, ON THIS DEVICE'S CLOCK.
+
+     It rides along in the payload and never leaves it. The database already
+     stamps created_at, but created_at is when the ROW ARRIVED — after the
+     250 ms publish frame, after the network, after any retry, and after the
+     whole of a wifi outage. A quarter scored through a dropout lands in one
+     batch, so every clip from it would point at the moment the signal came
+     back rather than at the play.
+
+     This number is fixed before any of that can happen, and it is subtracted
+     from a tip-off stamped by the SAME clock, so a device whose time is nine
+     seconds out cancels itself. See epinoia/video.js. */
+  if(ev.wall==null) ev.wall = Date.now();
+  /* THE BALL GOING UP IS THE ANCHOR FOR THE FOOTAGE, and it happens exactly
+     here, once, whichever route the game reached its first period from. So it
+     is stamped here rather than in the tip-off screen — a stamp attached to
+     one of several routes into the same state is a stamp that is sometimes
+     missing, and a missing one is a video that lines up with nothing.
+
+     TWO STAMPS, FOR TWO DIFFERENT SUBTRACTIONS. tipWall is this device's
+     clock, and pairs with ev.wall above. p_tip_now asks the DATABASE to stamp
+     its own clock, which is what the gap is measured against — because the
+     other end of the gap comes from the streaming PC, and two machines can
+     only be compared through a third they both talk to. */
+  if(ev.t==='period_start' && (ev.period||1)===1 && !vid().tipAt){
+    vid().tipAt = new Date().toISOString();
+    vid().tipWall = ev.wall;
+    /* A tip position typed before the ball went up becomes real here: the tip
+       has just happened, so "tip-off is at 4:12 in the video" now fixes where
+       the video began. */
+    if(vid().plannedGapMs != null){
+      vid().streamStartedAt = new Date(ev.wall - vid().plannedGapMs).toISOString();
+      vid().trimMs = 0;
+      vid().plannedGapMs = null;
+    }
+    /* Elapsed rather than "now", because this write RETRIES — see the note in
+       migration 0083. The elapsed value is recomputed at each attempt from the
+       device clock, so a request that finally lands four minutes later still
+       anchors the video to the moment the ball actually went up. */
+    pushVideo({ __tipFrom: ev.wall, p_tip_wall: ev.wall });
+  }
   S.events.push(ev); S.redo = [];
   if(ui.pending && ui.pending.steps && !ui.pending.steps.includes(ev.id)) ui.pending.steps.push(ev.id);
   // FIBA: clock stops after a made basket in the final 2:00 of q4 and overtimes
@@ -1954,6 +2077,37 @@ function pbpLine(ev,i,tags,stypes){
   return null;
 }
 
+/* ==================== the interval between halves ====================
+   FIBA plays a fifteen-minute interval between the second and third quarters,
+   and until now the app simply sat at 0:00 through it. That is not a cosmetic
+   gap: the interval is when the teams are due back on court, when the officials
+   expect the game to restart, and — since a stream is running through all of it
+   — when a broadcast has fifteen minutes of air to fill and needs to know how
+   much is left. A countdown nobody can see is a countdown somebody is guessing.
+
+   IT IS ADVISORY, NEVER A GATE. Nothing waits for it: the third quarter starts
+   whenever the statistician starts it, exactly as before, and running the
+   interval out changes nothing on its own. A clock that could stop a game from
+   restarting would be a worse bug than not having one.
+
+   It is also stoppable, because real intervals are — a delay to a hoop, an
+   injury, a presentation at half-time — and a countdown that carries on
+   through a stoppage stops being the thing the hall is going by. */
+const BREAK_MS = 900000;                       // FIBA: fifteen minutes
+function breakActive(){ return !!(S && S.breakMs > 0 && S.period === 2 && S.clockMs === 0); }
+function startBreak(){
+  if(!S) return;
+  S.breakMs = BREAK_MS; S.breakRunning = true;
+  save(); renderAll();
+}
+function endBreak(){
+  if(!S || !S.breakMs) return;
+  S.breakMs = 0; S.breakRunning = false;
+}
+/* breakMsWas exists for one toast and is then dead weight in a saved game that
+   gets written to localStorage on every tap for the rest of the night. */
+function clearBreakMemo(){ if(S) delete S.breakMsWas; }
+
 function timeoutsLeft(d,t){
   const T = d.team[t].tos;
   if(S.period<=2) return Math.max(0, 2-T.h1);
@@ -1979,6 +2133,16 @@ function tick(){
         if(++saveCo%25===0) save();
       }
     }
+    /* the interval runs on the same tick as everything else, so a phone that
+       sleeps and wakes catches up in one step rather than drifting */
+    if(S.breakRunning && S.breakMs > 0){
+      S.breakMs = Math.max(0, S.breakMs - dt);
+      const bel = $('#clkTxt'); if(bel && breakActive()) bel.textContent = fmtClock(S.breakMs);
+      if(S.breakMs === 0){
+        S.breakRunning = false; save(); renderAll();
+        toast('interval over — start the 3rd when the teams are ready', 5000);
+      } else if(++saveCo % 25 === 0) save();
+    }
     // windows only count down while the game clock runs — at a dead ball (fouls, free throws,
     // timeouts) the statistician has as long as they need, as in livestats
     if(ui.pending && (ui.pending.hold || !S.running)) ui.pending.expires = Math.max(ui.pending.expires, now+WIN_MS);
@@ -2003,6 +2167,9 @@ function onPeriodEnd(){
   if(S.period>=4){
     if(d.score[0]===d.score[1]) toast('tied — resume starts overtime', 4000);
     else toast('game over — end game from the menu', 4000);
+  } else if(S.period === 2){
+    startBreak();
+    toast('half-time — 15:00 interval · resume starts the 3rd whenever you are ready', 5000);
   } else toast('end of '+perName(S.period)+' — resume starts '+perName(S.period+1), 4000);
   // a play may still be live at the buzzer (rebound off a miss, a sub) — let it
   // finish with a fresh window before asking to confirm the score
@@ -2032,9 +2199,14 @@ function resumeClock(){
   if(S.clockMs>0){ S.running=true; save(); renderAll(); return; }
   const d = derive();
   if(S.period>=4 && d.score[0]!==d.score[1]){ toast('game over — end game from the menu'); return; }
+  const skipped = breakActive() && S.breakMs > 1000;
+  S.breakMsWas = S.breakMs;
+  endBreak();
   S.period++; S.clockMs=PLEN(S.period); S.running=true;
   addEvent({t:'period_start'});
-  toast(perName(S.period)+' underway');
+  toast(perName(S.period)+' underway' +
+    (skipped ? ' — ' + fmtClock(S.breakMsWas || 0) + ' of the interval skipped' : ''));
+  clearBreakMemo();
 }
 
 /* ==================== pending helpers ==================== */
@@ -2153,15 +2325,27 @@ function renderScore(){
   sb.classList.toggle('collapsed', S.collapsed);
   sb.innerHTML =
     '<div class="snum'+(ui.bumpTeam===0?' bump':'')+'">'+D.score[0]+'</div>'+
-    '<div class="mid clocktap" title="tap to start / stop the clock"><div class="clk" id="clkTxt">'+fmtClock(S.clockMs)+'</div>'+
-    '<div class="per">'+(D.arrow===0?'‹ ':'')+perName(S.period)+(D.arrow===1?' ›':'')+
-    ' <span class="runword">'+(S.running?'running':'stopped')+'</span></div>'+
-    '<div class="rundot'+(S.running?' live':'')+'" id="runDot"></div></div>'+
+    (breakActive()
+      ? '<div class="mid clocktap" title="tap to hold or restart the interval">'+
+        '<div class="clk brk" id="clkTxt">'+fmtClock(S.breakMs)+'</div>'+
+        '<div class="per">half-time'+
+        ' <span class="runword">'+(S.breakRunning?'interval':'held')+'</span></div>'+
+        '<div class="rundot'+(S.breakRunning?' live':'')+'" id="runDot"></div></div>'
+      : '<div class="mid clocktap" title="tap to start / stop the clock"><div class="clk" id="clkTxt">'+fmtClock(S.clockMs)+'</div>'+
+        '<div class="per">'+(D.arrow===0?'‹ ':'')+perName(S.period)+(D.arrow===1?' ›':'')+
+        ' <span class="runword">'+(S.running?'running':'stopped')+'</span></div>'+
+        '<div class="rundot'+(S.running?' live':'')+'" id="runDot"></div></div>')+
     '<div class="snum'+(ui.bumpTeam===1?' bump':'')+'">'+D.score[1]+'</div>'+
     '<button class="collapsebtn" title="collapse">'+(S.collapsed?'▾':'▴')+'</button>';
   ui.bumpTeam = null;
   sb.querySelector('.clocktap').onclick = e=>{ e.stopPropagation();
     if(pregameHold()) return;
+    /* During the interval this taps the INTERVAL, not the game clock. Tapping
+       it to start the third quarter by accident — which is what the old
+       handler would have done — puts a period_start in the log at half-time
+       and there is no gesture to take that back. Starting the third is the
+       resume button, deliberately, once. */
+    if(breakActive()){ S.breakRunning = !S.breakRunning; save(); renderScore(); vibrate(8); return; }
     S.running ? pauseClock() : resumeClock(); vibrate(8); };
   sb.querySelector('.collapsebtn').onclick = e=>{ e.stopPropagation(); S.collapsed=!S.collapsed; save(); renderScore(); };
 }
@@ -2879,6 +3063,10 @@ function renderControls(){
     ['+10s'+(T?'':'  ·  d'), 'Ten more seconds on the open follow-up window.'],
     ['jump'+(T?'':'  ·  j'), 'Held ball — awards possession by the arrow.'],
     ['timeout'+(T?'':'  ·  o'), 'Arm a timeout, then '+POINT+' a team name.'],
+    ['half-time', 'When the second quarter ends a <b>fifteen-minute interval</b> starts counting '+
+     'down where the clock was. '+POINT+' it to hold it — a delay, an injury, a presentation. '+
+     'It never holds the game up: <b>resume starts the third quarter whenever you are ready</b>, '+
+     'and it says how much of the interval you skipped.'],
   ]));
 
   out.push(sec('7 · fixing a mistake', [
@@ -2906,6 +3094,10 @@ function renderControls(){
     ['lineups', 'Every combination that has been on the floor, and how it did.'],
     ['log'+(T?'':'  ·  l'), 'The play-by-play.'],
     ['controls', 'This page.'],
+    ['video sync', 'Lines a stream or recording up with the game, so every line of the '+
+     'play-by-play becomes a clip. Usually there is nothing to do — going live from the '+
+     'broadcast screen records the start, and the first quarter records the tip. Open it to '+
+     'paste the link, or to nudge the sync if replays are a second early.'],
     ['export', 'Downloads the whole game as JSON.'],
     ['simulate', 'Fills the game with plausible test data — for trying the app out, never for a '+
                  'real fixture.', 'warn'],
@@ -3006,6 +3198,30 @@ function renderEvModal(){
     '<div class="stepper"><button data-k="pm">−</button><span>'+perName(EM.period)+'</span><button data-k="pp">+</button></div>'+
     '<div class="timein"><input id="evMin" type="number" inputmode="numeric" min="0" max="10" value="'+EM.min+'"> <span>:</span> '+
     '<input id="evSec" type="number" inputmode="numeric" min="0" max="59" value="'+EM.sec+'"></div></div></div>';
+  /* ---- WHERE THIS ACTION LANDS IN THE VIDEO ----------------------------
+     The row above sets the GAME clock, which is what the box score reads. It
+     says nothing about the footage: the game clock stops and the video does
+     not, so one cannot be derived from the other.
+
+     Until now the video position came only from the moment the button was
+     pressed. That is right for a play scored live and useless for one added
+     afterwards, and it left no way at all to say "I have found it, it is at
+     34:12" — which is exactly what somebody reviewing the recording knows.
+
+     Shown only when a video is actually lined up. An empty pair of boxes on
+     every edit, for a league with no camera, is a control that teaches people
+     to ignore this dialog. */
+  if(vidGap() != null){
+    const at = evVideoMs(EM.mode==='edit' ? evById(EM.id) : null);
+    EM.vmin = at==null ? '' : Math.floor(at/60000);
+    EM.vsec = at==null ? '' : Math.floor(at/1000)%60;
+    html += '<div class="mrow"><label>in the video</label>'+
+      '<div class="timein"><input id="evVMin" type="number" inputmode="numeric" min="0" max="600" '+
+        'placeholder="—" value="'+EM.vmin+'"> <span>:</span> '+
+      '<input id="evVSec" type="number" inputmode="numeric" min="0" max="59" '+
+        'placeholder="—" value="'+EM.vsec+'"></div></div>';
+    html += '<div class="detnote" id="evVNote">'+evVideoNote(EM.mode==='edit' ? evById(EM.id) : null)+'</div>';
+  }
   html += '<div class="mbtns"><button data-k="cancel">cancel</button>'+
     (EM.mode==='edit'?'<button data-k="del" style="color:var(--red);border-color:rgba(255,95,107,.4)">delete</button>':'')+
     '<button class="yes" data-k="save">save</button></div>';
@@ -3029,6 +3245,12 @@ function renderEvModal(){
 }
 function saveEvModal(){
   EM.min = +($('#evMin').value)||0; EM.sec = Math.min(59,+($('#evSec').value)||0);
+  /* Blank means "leave it to the neighbours", which is a different instruction
+     from zero — zero is the very start of the stream. */
+  const vRaw = $('#evVMin') && ($('#evVMin').value !== '' || $('#evVSec').value !== '')
+    ? (Math.max(0,+$('#evVMin').value||0)*60 + Math.min(59,Math.max(0,+$('#evVSec').value||0)))*1000
+    : null;
+  const vWall = vRaw == null ? null : evWallFromVideo(vRaw);
   if(EV_NEED_PID.includes(EM.type) && !EM.pid){ toast('pick a player'); return; }
   const clock = Math.min(PLEN(EM.period), (EM.min*60+EM.sec)*1000);
   const base = typeToFields(EM.type, EM.kind);
@@ -3038,6 +3260,12 @@ function saveEvModal(){
   if(EM.mode==='add'){
     S.evSeq = (S.evSeq||0)+1;
     const ev = Object.assign({id:S.evSeq, team, pid, period:EM.period, clock}, base);
+    /* NO wall UNLESS SOMEBODY SUPPLIED ONE. An added action deliberately does
+       not get Date.now(): it did not happen when it was typed, and video.js
+       places it from its neighbours instead. A position typed in from the
+       recording is the exception — that IS a statement about when it
+       happened, and it is a better one than an interpolation. */
+    if(vWall != null) ev.wall = vWall;
     S.events.splice(insertPos(cumEl(EM.period, clock)), 0, ev);
   } else {
     const ev = evById(EM.id); if(!ev) return;
@@ -3045,13 +3273,75 @@ function saveEvModal(){
     delete ev.off; delete ev.kind;
     Object.assign(ev, {team, pid, period:EM.period, clock}, base);
     if(moved){
+      /* THE TAP TIME IS NO LONGER TRUE OF THIS PLAY.
+
+         ev.wall is the moment somebody pressed a button, and it is what the
+         footage is lined up with. Moving an action to a different game clock
+         means it did not happen then — usually because it was logged late, so
+         the tap is minutes after the play. Keeping the stamp would put its
+         clip minutes late with nothing to say so.
+
+         Dropped rather than guessed at. video.js interpolates a position from
+         the plays either side of it, which is the only honest answer available
+         and a far better one than the moment the correction was typed. */
+      delete ev.wall;
       S.events.splice(S.events.indexOf(ev), 1);
       S.events.splice(insertPos(cumEl(EM.period, clock)), 0, ev);
     }
+    /* Applied after the move, so an operator who corrects both the game clock
+       and the video position in one pass keeps the position. Without this the
+       move would throw away the value they had just typed. */
+    if(vWall != null) ev.wall = vWall;
   }
   S.redo = []; EM = null;
   $('#evModal').classList.add('hidden');
   save(); renderAll(); toast('saved');
+}
+
+/* ---- the video clock, per action ---------------------------------------
+   The inverse of what epinoia/video.js does when it reads the log:
+
+       video position = gap + (this tap - the tip tap)
+   so   this tap      = the tip tap + (video position - gap)
+
+   Setting a position therefore writes a tap time, and a tap time is exactly
+   what the rest of the platform already knows how to use. Nothing new is
+   stored and nothing has to be kept in agreement — a play placed by hand from
+   the footage becomes indistinguishable from one tapped live, which is right,
+   because in both cases somebody has told us when it happened. */
+function evVideoMs(ev){
+  const V = window.EpinoiaVideo;
+  if(!V) return null;
+  const gap = vidGap();
+  if(gap == null) return null;
+  if(!ev){
+    /* An action being ADDED has no stamp yet. Offer the position that the
+       game clock currently implies through its neighbours, so the common case
+       — "I missed one, it was about here" — needs no arithmetic from anybody. */
+    return null;
+  }
+  return V.videoMsOf(ev, vidRow());
+}
+function evVideoNote(ev){
+  const V = window.EpinoiaVideo;
+  const gap = vidGap();
+  if(gap == null || !V) return '';
+  const w = ev && typeof ev.wall === 'number';
+  if(!ev) return 'Leave this blank and the position is worked out from the '+
+    'actions either side of it. Fill it in if you have found the play in the '+
+    'recording — it will be exact.';
+  if(w) return 'Timed from the tap, so this should already be right. Change it '+
+    'only if the clip starts in the wrong place.';
+  return 'This action was added or moved by hand, so its position is worked out '+
+    'from the actions either side. Type the time you see in the recording to '+
+    'make it exact.';
+}
+/* Turn a position in the footage back into a tap time on this device's clock. */
+function evWallFromVideo(ms){
+  const gap = vidGap();
+  const tw = vid().tipWall;
+  if(gap == null || tw == null || ms == null) return null;
+  return Math.round(tw + (ms - gap));
 }
 
 /* ==================== sub-button bar ==================== */
@@ -3764,6 +4054,7 @@ function wireGame(){
   $('#btnAdv').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openAdv(); });
   $('#btnLog').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openLog(); });
   $('#btnExp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); downloadJSON(); });
+  $('#btnVid').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openVideo(); });
   $('#btnDetails').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openDetails(); });
   $('#btnHelp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openHelp(); });
   $('#btnSim').addEventListener('click', ()=>{ $('#sheet').classList.remove('open');
@@ -3833,7 +4124,7 @@ function wireGame(){
   $('#detOk').addEventListener('click', saveDetails);
   $('#detModal').addEventListener('click', e=>{ if(e.target.id==='detModal') closeDetails(); });
 
-  wireAdjust(); wireCmd();
+  wireAdjust(); wireCmd(); wireVideo();
 }
 
 /* ==================== typed command bar ==================== */
@@ -4046,12 +4337,28 @@ function wireCmd(){
 let adjP = 1;
 function openAdjust(){
   adjP = S.period;
+  paintAdjVideo();
   $('#adjPv').textContent = perName(adjP);
   $('#adjMin').value = Math.floor(S.clockMs/60000);
   $('#adjSec').value = Math.floor(S.clockMs/1000)%60;
   $('#adjModal').classList.remove('hidden');
 }
+/* The second clock, on the screen that already adjusts one. Hidden outright
+   when there is no video, because an empty knob invites a press. */
+function paintAdjVideo(){
+  const wrap = $('#adjVidWrap'); if(!wrap) return;
+  const v = vid(), gap = vidGap();
+  wrap.classList.toggle('hidden', !v.url);
+  if(!v.url) return;
+  const now = vidNowMs();
+  $('#adjVidNote').textContent = gap == null
+    ? 'Not lined up yet — open “video sync” from the bottom menu.'
+    : 'Now = ' + vidStamp(now||0) + ' into the video · ' + vidStamp(Math.max(0,gap)) +
+      ' of stream before tip' + (v.trimMs ? ' · trimmed ' + (v.trimMs>0?'+':'') + (v.trimMs/1000).toFixed(2) + 's' : '');
+}
 function wireAdjust(){
+  $$('#adjVidWrap .vidnudge button').forEach(b=>
+    b.addEventListener('click', ()=>vidNudge(+b.dataset.vnudge)));
   $('#adjPm').addEventListener('click', ()=>{ adjP=Math.max(1,adjP-1); $('#adjPv').textContent=perName(adjP); });
   $('#adjPp').addEventListener('click', ()=>{ adjP=Math.min(8,adjP+1); $('#adjPv').textContent=perName(adjP); });
   $('#adjCancel').addEventListener('click', ()=>$('#adjModal').classList.add('hidden'));
@@ -4062,6 +4369,314 @@ function wireAdjust(){
     S.clockMs = Math.min(PLEN(adjP), (m*60+s)*1000);
     $('#adjModal').classList.add('hidden');
     save(); renderAll(); toast('clock set — '+perName(S.period)+' '+fmtClock(S.clockMs));
+  });
+}
+
+/* ==================== video sync ====================
+   Two timelines are running: the game, and the footage of it. This screen
+   lines them up, and the whole of "lining up" is ONE NUMBER — the dead air at
+   the front of the stream, before the ball goes up.
+
+   Almost nobody should ever have to touch it. The control room stamps the
+   moment it starts the stream; addEvent above stamps the moment the ball goes
+   up; the gap between them is the answer, computed rather than typed. This
+   screen exists for the two cases where that does not happen: a stream started
+   from something other than our own control room, and a recording attached
+   afterwards. And for the case where the automatic answer is a second or two
+   out, which is what the nudges are.
+
+   See epinoia/video.js for the arithmetic and migration 0082 for the storage.
+   ==================== */
+function vid(){
+  if(!S.video) S.video = {url:'',provider:'',ref:'',streamStartedAt:null,
+                          tipAt:null,tipWall:null,trimMs:0};
+  return S.video;
+}
+/* The shape video.js reads — database column names, so one module serves the
+   scorer, the box score and the player profile without a translation layer in
+   any of them. */
+function vidRow(){
+  const v = vid();
+  return { provider:v.provider||'youtube', video_ref:v.ref||'', url:v.url||'',
+           stream_started_at:v.streamStartedAt, tip_at:v.tipAt,
+           tip_wall:v.tipWall, trim_ms:v.trimMs||0 };
+}
+function pushVideo(patch){
+  try{ if(window.EpinoiaGameVideo) window.EpinoiaGameVideo.push(patch); }catch(e){}
+}
+function vidGap(){
+  const V = window.EpinoiaVideo;
+  return V ? V.gapMs(vidRow()) : null;
+}
+/* Where the current moment sits in the footage — the number that tells an
+   operator at a glance whether the sync is believable. */
+function vidNowMs(){
+  const V = window.EpinoiaVideo;
+  return V ? V.videoMsOf(Date.now(), vidRow()) : null;
+}
+function vidStamp(ms){
+  const V = window.EpinoiaVideo;
+  return V ? V.stamp(ms) : Math.round((ms||0)/1000)+'s';
+}
+function whenText(iso){
+  if(!iso) return 'not recorded';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return 'not recorded';
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+function openVideo(){
+  const v = vid();
+  $('#vidUrl').value = v.url || '';
+  $('#vidModal').classList.remove('hidden');
+  paintVideo();
+}
+function paintVideo(){
+  const V = window.EpinoiaVideo, v = vid();
+  const parsed = V ? V.parse($('#vidUrl').value || v.url || '') : {ok:false};
+  $('#vidWhat').textContent = !($('#vidUrl').value || v.url)
+    ? 'Paste the link to the live stream or, afterwards, to the recording. YouTube, Twitch, Vimeo, Facebook, or a video file on your own server.'
+    : parsed.ok
+      ? 'Recognised: ' + parsed.provider + (parsed.ref ? ' · ' + parsed.ref : '') +
+        '. Every play in the log will link into it.'
+      : 'That link is not one this recognises. It will still be stored and shown as a plain link, but plays will not be able to seek into it.';
+
+  $('#vidStart').textContent = whenText(v.streamStartedAt);
+  $('#vidTip').textContent   = v.tipAt ? whenText(v.tipAt) : 'not yet — the ball has not gone up';
+
+  const gap = vidGap();
+  const canGap = !!v.tipAt && !!v.streamStartedAt;
+  /* NEVER DISABLED ANY MORE.
+
+     This was locked until tip-off, which is right for a stream the platform is
+     producing — the gap is measured from a tip that has not happened yet — and
+     exactly wrong for the case this screen turns out to be most useful for:
+     scoring along with a recording somebody else made. There the number is
+     known BEFORE anything starts, because it is simply where the jump ball is
+     on the scrub bar, and it is the first thing anyone would want to type.
+
+     Set early it is held as an intention and applied the moment the clock
+     starts; set late it is applied at once. Same field, same meaning. */
+  $('#vidMin').disabled = $('#vidSec').disabled = false;
+  const shown = gap != null ? gap : (v.plannedGapMs != null ? v.plannedGapMs : null);
+  if(shown != null && document.activeElement !== $('#vidMin') && document.activeElement !== $('#vidSec')){
+    const a = Math.max(0, shown);
+    $('#vidMin').value = Math.floor(a/60000);
+    $('#vidSec').value = Math.floor(a/1000)%60;
+  }
+
+  $('#vidNote').textContent = canGap
+    ? 'Lined up. Tip-off is at ' + vidStamp(Math.max(0,gap)) + ' in the video, so a play tapped now sits at ' + vidStamp(vidNowMs()||0) + '.'
+    : v.plannedGapMs != null
+      ? 'Tip-off will be taken as ' + vidStamp(v.plannedGapMs) + ' into the video. Start the clock when the ball goes up on screen and everything lines up from there.'
+      : !v.streamStartedAt
+        ? 'Scoring along with a recording? Find the jump ball on the scrub bar and type where it is below. Producing the stream yourself? Press "it is starting now" as you go live, or let the broadcast screen do it.'
+        : 'The stream start is recorded. The gap fills in by itself the moment the ball goes up.';
+
+  const now = vidNowMs();
+  $('#vidWhere').textContent = now == null
+    ? 'Nothing to check yet.'
+    : 'Right now = ' + vidStamp(now) + ' into the video. If a replay of the last basket is early, nudge minus; if it is late, nudge plus.';
+}
+function vidNudge(ms){
+  const v = vid();
+  if(!v.tipAt || !v.streamStartedAt){ toast('nothing to nudge until the stream start and the tip are both known'); return; }
+  v.trimMs = Math.max(-7200000, Math.min(7200000, (v.trimMs||0) + ms));
+  save();
+  pushVideo({ p_trim_ms: v.trimMs });
+  paintVideo(); paintAdjVideo();
+}
+/* ==================== watching it back ====================
+   THE WHOLE PIPELINE, IN ONE SCREEN, WITHOUT A DATABASE.
+
+   The public box score already does this — embed, filters, click a play, seek
+   — but it reads a game that has been published, which is no use for the way
+   somebody actually tries this out: open the app, put a recording of a game on
+   YouTube next to it, score along, and see whether the clips land.
+
+   So the same module draws the same list here, over the scorer's own event
+   log, with no fixture and no writes. A practice game works. A real one works
+   too, and shows exactly what the public page will show.
+
+   It is a VIEW rather than a modal because it wants the whole screen and it is
+   somewhere you stay for a while — which is the difference between a dialog
+   and a screen. */
+function openWatch(){
+  const V = window.EpinoiaVideo;
+  const el = $('#videoview');
+  if(!V){ toast('the video module has not loaded'); return; }
+  const v = vid();
+  if(!v.url){ toast('paste the link first'); return; }
+
+  el.innerHTML =
+    '<div class="ovhead"><button class="backbtn" id="wvBack">← back</button>'+
+    '<div class="ovtitle">the game on video</div>'+
+    '<button class="backbtn" id="wvSync" style="margin-left:auto">video sync</button></div>'+
+    '<div id="wvHost"></div>';
+  showScreen('videoview');
+  $('#wvBack').onclick = ()=>{ WV.stop(); showScreen('game'); };
+  $('#wvSync').onclick = ()=>{ WV.stop(); showScreen('game'); openVideo(); };
+  paintWatch();
+}
+
+/* Kept out of paintWatch so a redraw does not restart the player — the same
+   rule the box score's tab follows, and for the same reason: reloading an
+   iframe mid-clip is an interruption, not a repaint. */
+const WV = {
+  filter: 'all', pid: '', seekMs: 0, current: null, sig: '',
+  stop(){ this.current = null; this.seekMs = 0; this.sig = ''; }
+};
+
+function watchPlays(){
+  const V = window.EpinoiaVideo;
+  /* The scorer's own log, in the shape the module reads: seq is the event id,
+     and wall is already on every event addEvent has stamped. */
+  const rows = S.events.map(e => Object.assign({ seq: e.id }, e));
+  const byId = {};
+  (D && D.pbp ? D.pbp : []).forEach(p => { byId[p.id] = p; });
+  return V.index(rows, vidRow(), {
+    skipStructural: true,
+    label: e => { const p = byId[e.seq]; return p ? p.txt : e.t; }
+  }).filter(p => p.label && p.label !== p.t);
+}
+
+function paintWatch(){
+  const V = window.EpinoiaVideo, v = vid();
+  const host = $('#wvHost');
+  const lined = V.hasAnchor(vidRow());
+  const all = lined ? watchPlays() : [];
+  const fn = V.filterBy(WV.filter);
+  const list = all.filter(p => fn(p) && (!WV.pid || p.pid === WV.pid));
+
+  const src = V.embedSrc(vidRow(), { ms: WV.seekMs, autoplay: WV.current != null });
+  if(!host.querySelector('.vidbody')){
+    host.innerHTML = '<div class="vidwrap"><div class="vidstage"></div>'+
+                     '<div class="vidbody"></div></div>';
+  }
+  const stage = host.querySelector('.vidstage');
+  if(stage.dataset.sig !== src){
+    stage.dataset.sig = src;
+    stage.innerHTML = src
+      ? '<iframe class="vidframe" src="'+esc(src)+'" allow="autoplay; encrypted-media; '+
+        'picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" '+
+        'allowfullscreen title="game video"></iframe>'
+      : '<div class="vidwarn">That link cannot be played here.</div>';
+  }
+
+  const players = [];
+  S.teams.forEach(tm => tm.players.forEach(p => players.push(p)));
+
+  host.querySelector('.vidbody').innerHTML =
+    (lined ? '' :
+      '<div class="vidwarn">Not lined up yet. Open <b>video sync</b> and say where '+
+      'tip-off is in this recording — then start the clock as the ball goes up.</div>')+
+    '<div class="vidbar"><div class="vidchips">'+
+      V.FILTERS.map(f=>'<button class="vidchip'+(WV.filter===f.key?' on':'')+
+        '" data-f="'+f.key+'">'+esc(f.label)+'</button>').join('')+'</div>'+
+      '<div class="vidpick"><select id="wvWho" class="ep-in">'+
+        '<option value="">anybody</option>'+
+        players.map(p=>'<option value="'+esc(p.id)+'"'+(WV.pid===p.id?' selected':'')+'>'+
+          esc(p.num!==''?('#'+p.num+' '):'')+esc(p.name)+'</option>').join('')+
+      '</select></div></div>'+
+    '<div class="vidcount">'+list.length+' '+(list.length===1?'play':'plays')+
+      (lined?' · tap one to jump to it':'')+'</div>'+
+    '<ol class="vidlist">'+(list.length
+      ? list.slice(0,200).map(p=>'<li class="viditem'+(WV.current===p.id?' on':'')+
+          '" data-id="'+p.id+'" role="button" tabindex="0">'+
+          '<span class="vidt">'+esc(V.stamp(p.start))+
+            (p.approx?'<i class="vidapx">~</i>':'')+'</span>'+
+          '<span class="vidq">'+esc(perName(p.period))+' '+esc(fmtClock(p.clock))+'</span>'+
+          '<span class="vidtxt">'+esc(p.label)+'</span></li>').join('')
+      : '<li class="viditem empty">'+(lined?'Nothing matches that filter.':'Nothing to show yet.')+'</li>')+
+    '</ol>';
+
+  host.querySelectorAll('.vidchip').forEach(b=>{
+    b.onclick = ()=>{ WV.filter = b.dataset.f; paintWatch(); };
+  });
+  const who = host.querySelector('#wvWho');
+  if(who) who.onchange = ()=>{ WV.pid = who.value; paintWatch(); };
+  host.querySelectorAll('.viditem[data-id]').forEach(li=>{
+    const go = ()=>{
+      const p = list.find(x=>String(x.id)===li.dataset.id);
+      if(!p) return;
+      WV.current = p.id; WV.seekMs = p.start;
+      paintWatch();
+      const on = host.querySelector('.viditem.on');
+      if(on && on.scrollIntoView) on.scrollIntoView({block:'nearest'});
+    };
+    li.onclick = go;
+    li.onkeydown = e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } };
+  });
+}
+
+function wireVideo(){
+  $('#vidWatch').addEventListener('click', ()=>{
+    $('#vidModal').classList.add('hidden');
+    openWatch();
+  });
+  $('#vidUrl').addEventListener('input', paintVideo);
+  $('#vidCancel').addEventListener('click', ()=>$('#vidModal').classList.add('hidden'));
+  $('#vidNow').addEventListener('click', ()=>{
+    vid().streamStartedAt = new Date().toISOString();
+    /* Elapsed, so the DATABASE stamps it rather than this phone — the other
+       end of this subtraction is a tip-off the database also stamped, and two
+       ends of one subtraction have to be on one clock. Recomputed on retry for
+       the same reason the tip is. */
+    save(); pushVideo({ __streamFrom: Date.now() });
+    toast('stream start recorded'); paintVideo();
+  });
+  $('#vidTipNow').addEventListener('click', ()=>{
+    /* Deliberately allowed even after an automatic stamp: the automatic one is
+       the moment the clock started, and on a restart or a mis-start that is not
+       the moment the ball went up. The person in the hall wins. */
+    vid().tipAt = new Date().toISOString();
+    vid().tipWall = Date.now();
+    save(); pushVideo({ __tipFrom: vid().tipWall, p_tip_wall: vid().tipWall });
+    toast('tip-off recorded'); paintVideo();
+  });
+  $$('#vidModal .vidnudge button').forEach(b=>
+    b.addEventListener('click', ()=>vidNudge(+b.dataset.nudge)));
+  $('#vidOk').addEventListener('click', ()=>{
+    const V = window.EpinoiaVideo, v = vid();
+    const raw = $('#vidUrl').value.trim();
+    const patch = {};
+    if(raw && raw !== v.url){
+      const p = V ? V.parse(raw) : {provider:'other', ref:''};
+      v.url = raw; v.provider = p.provider || 'other'; v.ref = p.ref || '';
+      patch.p_url = raw; patch.p_provider = v.provider; patch.p_ref = v.ref;
+    }
+    /* A TYPED GAP IS A STATEMENT ABOUT THE STREAM START, not a fourth stored
+       number. tip-off is a fact from the log; the gap is what the person can
+       see; so the thing that moves is the one nobody observed directly. Keeping
+       a typed gap as its own field is how it ends up disagreeing with a
+       corrected tip time and nothing says which is right. */
+    const typed = ($('#vidMin').value !== '' || $('#vidSec').value !== '')
+      ? (Math.max(0,+$('#vidMin').value||0)*60 + Math.max(0,Math.min(59,+$('#vidSec').value||0)))*1000
+      : null;
+    if(typed != null && v.tipAt){
+      if(vidGap() == null || Math.abs(typed - vidGap()) >= 500){
+        v.trimMs = 0;
+        v.streamStartedAt = new Date(new Date(v.tipAt).getTime() - typed).toISOString();
+        /* Sent as an explicit instant rather than as "n ms ago": a typed gap is
+           a statement about a moment in the past, and elapsed-since-now would
+           drift by however long the modal stayed open. */
+        patch.p_stream_start = v.streamStartedAt; patch.p_trim_ms = 0;
+      }
+      v.plannedGapMs = null;
+    } else if(typed != null){
+      /* NO TIP YET, SO IT IS AN INTENTION RATHER THAN A MEASUREMENT. Held on
+         the game and applied by addEvent the instant the first period starts —
+         see the stamp there. Typing it early is the natural order for somebody
+         watching a recording: find the jump ball, note the time, then press
+         play and start scoring. */
+      v.plannedGapMs = typed;
+    }
+    save();
+    if(Object.keys(patch).length) pushVideo(patch);
+    $('#vidModal').classList.add('hidden');
+    toast(vidGap()!=null ? 'video lined up — ' + vidStamp(Math.max(0,vidGap())) + ' before tip'
+                         : 'video saved');
+    paintAdjVideo();
   });
 }
 
@@ -4088,7 +4703,7 @@ function wireConfirm(){
 /* ==================== shared view pieces ==================== */
 function showScreen(n){
   ['setup','startersview','squadsview','game','boxview','advview','finalview','logview',
-   'helpview'].forEach(id=>
+   'helpview','videoview'].forEach(id=>
     document.getElementById(id).classList.toggle('hidden', id!==n));
 }
 function scoreHeadHTML(d){
@@ -5814,10 +6429,12 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=196" defer></script>
-<script src="../vendor/supabase.js?v=196" defer></script>
-<script src="../live.js?v=196" defer></script>
-<script src="sync.js?v=196" defer></script>
-<script src="bootstrap.js?v=196" defer></script>
+<link rel="stylesheet" href="../video.css?v=233">
+<script src="../config.js?v=233" defer></script>
+<script src="../vendor/supabase.js?v=233" defer></script>
+<script src="../live.js?v=233" defer></script>
+<script src="../video.js?v=233" defer></script>
+<script src="sync.js?v=233" defer></script>
+<script src="bootstrap.js?v=233" defer></script>
 </body>
 </html>

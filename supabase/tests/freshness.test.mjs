@@ -75,9 +75,15 @@ const ok = (name, cond, detail) => {
   for (const [name, src, fn] of [['fixtures', fx, 'watchLive'], ['home', home, 'watchGames']]) {
     ok(`${name} joins the announce topic`, /epinoia:live/.test(src));
     /* Either spelling of the topic — the literal, or the constant it is held
+       THE WINDOW BELOW IS GENEROUS ON PURPOSE. This is a proximity check, and
+       the distance between the watch and the re-read is not the property being
+       tested. It grew past 320 characters when both handlers gained a scope
+       filter and a jittered delay, neither of which changes what the handler
+       DOES — a proximity heuristic that fails on a comment is a test reporting
+       on its own formatting.
        in — so long as watching it leads to a re-read and nothing else. */
     ok(`${name} responds by RE-READING, not by believing the message`,
-       new RegExp(`watch\\((?:ANNOUNCE_TOPIC|'epinoia:live')[\\s\\S]{0,320}${fn}\\(0\\)`).test(src),
+       new RegExp(`watch\\((?:ANNOUNCE_TOPIC|'epinoia:live')[\\s\\S]{0,1400}${fn}\\(0\\)`).test(src),
        'the message must only decide WHEN to look');
   }
   ok('both pages load the realtime client',

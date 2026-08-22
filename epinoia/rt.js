@@ -130,9 +130,23 @@ function create(opts) {
 
   function schedule() {
     if (closed) return;
-    const wait = retry;
+    /* THE FIRST RETRY IS NOT JITTERED. EVERY ONE AFTER IT IS.
+
+       Every client connected when the socket server restarts is disconnected
+       in the same instant, and a backoff without scatter brings them all back
+       in the same instant too — repeatedly, in lockstep, each wave landing
+       harder than the last because the doubling keeps them in phase. That is
+       how a brief restart becomes a long outage.
+
+       But the commonest disconnection is not a restart at all: it is one
+       phone changing network, and there is no herd to break up. Scattering
+       that one only makes a lone reconnection slower for no reason. A first
+       failure is treated as the lone case and a repeat as the shared one,
+       which is what a repeat almost always is. */
+    const first = retry === BACKOFF_MIN;
+    const wait = first ? retry : retry * (1 + Math.random() * 0.5);
     retry = Math.min(BACKOFF_MAX, Math.round(retry * 1.8));
-    setTimeout(connect, wait);
+    setTimeout(connect, Math.round(wait));
   }
 
   connect();

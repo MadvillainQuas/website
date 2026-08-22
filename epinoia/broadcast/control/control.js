@@ -27,6 +27,13 @@ const CFG = window.EPINOIA_CONFIG || {};
 const gameId = (qp.get('g') || qp.get('game') || '').trim();
 
 const $ = s => document.querySelector(s);
+/* Everything written into a note goes through this. A scene URL carries the
+   game id and whatever the operator typed into the chroma field, and a page
+   that builds HTML out of either without escaping is one paste away from
+   rewriting its own controls. */
+const esc = v => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 /* Every graphic this platform can put on air. Described in the words a director
    would use, because "plusminus" is a field name and "who is winning the
@@ -51,6 +58,7 @@ const SCENES = [
   ['plusminus', 'live', 'Plus / minus',      'Who is actually winning their minutes — often not the top scorer.'],
   ['rebounds',  'live', 'Rebounds',          'Both squads ranked by total rebounds.'],
   ['assists',   'live', 'Assists',           'Both squads ranked by assists.'],
+  ['index',     'live', 'Index leaders',     'FIBA valuation — everything that helped minus everything that did not. Often disagrees with the points column, which is the point of showing it.'],
   ['lineups',   'live', 'Best lineups',      'Five-man units with four minutes together or more, by plus/minus.'],
   ['compare',   'live', 'Team comparison',   'Points, rebounds, assists, turnovers and fouls, side by side.'],
   ['final',     'post', 'Final score',       'The result, with crests. For the whistle.']
@@ -135,6 +143,22 @@ function take(scene, opts) {
   const u = new URL(location.href);
   u.searchParams.set('scene', currentKey);
   history.replaceState(null, '', u);
+}
+
+/* Take nothing. The layer renders an empty scene; a driven mixer hides every
+   source it owns. Both paths, because a gallery running OBS still wants one
+   button that means "clean" rather than a hunt for the visible eyeball. */
+async function clearAir() {
+  currentKey = 'blank';
+  publish('blank', null);
+  document.querySelectorAll('.tile').forEach(t => t.classList.remove('on'));
+  $('#prev').src = sceneURL('blank', false, null);
+  if (mx && mx.drives && $('#mxDrive') && $('#mxDrive').checked) {
+    try {
+      if (mxKind === 'vmix') await mx.clearAll();
+      else await mx.take(SCENE_NAME, null, graphicsList().map(g => g.name));
+    } catch (_) { /* the layer went clean regardless, which is the point */ }
+  }
 }
 
 function render() {
@@ -253,12 +277,98 @@ function obsCollection() {
 function vmixPreset() {
   const x = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  /* The single-source input goes in FIRST, so it is input 1 in vMix and the
+     obvious one to put on an overlay channel. A production that wants the
+     twelve individual inputs has them underneath; a production that wants one
+     source switched from the control room has it at the top of the list. */
+  const inputs = [
+    '    <!-- One source, switched from the Epinoia control room. Put this on\n' +
+    '         overlay channel 1 and leave it there. -->\n' +
+    '    <input type="Browser" title="' + x('Epinoia · live layer') + '">\n' +
+    '      <browser url="' + x(sceneURL('scorebug', true)) + '" ' +
+    'width="1920" height="1080" />\n    </input>'
+  ].concat(SCENES.map(([key, , title, , opts]) =>
+    '    <input type="Browser" title="' + x('Epinoia · ' + title) + '">\n' +
+    '      <browser url="' + x(sceneURL(key, false, opts)) + '" ' +
+    'width="1920" height="1080" />\n    </input>'));
   return '<?xml version="1.0" encoding="utf-8"?>\n<preset>\n  <inputs>\n' +
-    SCENES.map(([key, , title, , opts]) =>
-      '    <input type="Browser" title="' + x('Epinoia · ' + title) + '">\n' +
-      '      <browser url="' + x(sceneURL(key, false, opts)) + '" ' +
-      'width="1920" height="1080" />\n    </input>').join('\n') +
-    '\n  </inputs>\n</preset>\n';
+    inputs.join('\n') + '\n  </inputs>\n</preset>\n';
+}
+
+/* ---- Wirecast, and every other mixer without an API ----------------------
+   A SHEET OF PAPER, because that is what the situation actually calls for.
+
+   Wirecast cannot be driven from a web page and does not need to be: one Web
+   Page shot pointing at the live layer, and every take in this control room
+   reaches it over the socket. But somebody has to set that shot up, in a hall,
+   probably on a laptop that is also running the stream — so the instructions
+   have to survive being read away from this screen.
+
+   The full URL list is included underneath rather than only the single one.
+   A production that would rather have twelve shots and switch them in Wirecast
+   is a perfectly good production; it just does not get take-follows-mixer. */
+function wirecastSheet() {
+  const line = '-'.repeat(72);
+  const one = sceneURL('scorebug', true);
+  return [
+    'EPINOIA GRAPHICS — WIRECAST SETUP',
+    (document.title.split(' · ')[0] || ''),
+    line,
+    '',
+    'THE SHORT VERSION',
+    '  Add ONE Web Page shot with the URL under "THE ONE URL" below.',
+    '  Leave it live on your top layer for the whole game.',
+    '  Every "take" in the Epinoia control room changes what it shows.',
+    '  Nothing else to press in Wirecast, and nothing to install.',
+    '',
+    line,
+    'STEP BY STEP',
+    '',
+    '  1. In Wirecast, choose a layer to keep graphics on — layer 1 or 2,',
+    '     above your cameras.',
+    '  2. Click the + under that layer and choose Web Page.',
+    '  3. Paste the URL from "THE ONE URL" below.',
+    '  4. Set the size to 1920 x 1080.',
+    '  5. Leave the background transparent. The page draws nothing at all when',
+    '     no graphic is on air, so this shot can sit over your camera all night.',
+    '  6. Make the shot live and leave it live.',
+    '',
+    '  That is the whole setup. Switching is done from the control room in a',
+    '  browser, not from Wirecast.',
+    '',
+    line,
+    'THE ONE URL',
+    '',
+    '  ' + one,
+    '',
+    line,
+    'IF YOU WOULD RATHER HAVE ONE SHOT PER GRAPHIC',
+    '',
+    '  Every graphic is also its own URL. Add them as separate Web Page shots',
+    '  and switch them in Wirecast as you would any other shot. You lose',
+    '  take-follows-mixer — the control room cannot tell Wirecast anything —',
+    '  and you gain Wirecast transitions and hotkeys on each one.',
+    '',
+    SCENES.map(([key, group, title, , opts]) =>
+      '  ' + title + '  (' + group + ')\n    ' + sceneURL(key, false, opts)).join('\n\n'),
+    '',
+    line,
+    'TROUBLESHOOTING',
+    '',
+    '  Nothing appears when I press take',
+    '    Check the tag at the top of the control room says "live layer',
+    '    connected". If it does not, the socket is down: the individual URLs',
+    '    above still work, switched in Wirecast.',
+    '',
+    '  The graphic is there but the wrong game',
+    '    The game id is in the URL. One URL per fixture — re-copy it from the',
+    '    control room for the game you are actually covering.',
+    '',
+    '  It shows a white box instead of nothing',
+    '    The shot is not transparent. Wirecast: shot properties, and make sure',
+    '    no background colour is set behind the Web Page shot.',
+    ''
+  ].join('\n');
 }
 
 /* And a plain list, for CasparCG, Singular, a hardware panel, or anything else
@@ -321,21 +431,79 @@ function mxRestore() {
   mxKindChanged();
 }
 
-/* The two products need different things, and asking vMix for a password is
-   how somebody concludes the whole feature is broken. */
+/* WHAT EACH PRODUCT ACTUALLY OFFERS, said before anybody presses anything.
+
+   These three are not three flavours of the same integration. OBS has a real
+   bidirectional API; vMix has a one-way one that may or may not let us read
+   the reply; Wirecast has none at all and does not need one. Asking vMix for a
+   password, or drawing a green light for Wirecast, is how somebody concludes
+   the whole feature is broken. */
+const MX_HELP = {
+  obs:
+    'In OBS: <b>Tools &rarr; WebSocket Server Settings</b>, tick <b>Enable</b>, ' +
+    'and copy the password in. Nothing to install — it has been built in since ' +
+    'OBS 28. This is the fullest integration: the rundown is built for you, ' +
+    'takes are driven from here, and OBS reports the stream back, including ' +
+    'exactly how long it has been running.',
+  vmix:
+    'In vMix: <b>Settings &rarr; Web Controller</b>, tick <b>Enable</b>, and ' +
+    'note the port. The rundown is built for you and takes go to <b>overlay ' +
+    'channel 1</b>. Whether this page can READ vMix back depends on your ' +
+    'install — it checks on connect and says which one you have got.',
+  wirecast:
+    'Wirecast has no control API a web page can reach — AppleScript on macOS, ' +
+    'keyboard shortcuts everywhere else. <b>It does not need one.</b> Add ONE ' +
+    'Web Page shot pointing at the single URL below, and every take here ' +
+    'reaches it directly over the socket. Press <b>Connect</b> for the steps.',
+  manual:
+    'Livestream Studio, Streamlabs, mimoLive, Ecamm, a hardware switcher with ' +
+    'an HTML input — anything that can open a web page. Add ONE full-frame ' +
+    'browser source pointing at the single URL below and switch it from here. ' +
+    'Press <b>Connect</b> for the steps.'
+};
+const MX_PORTS = { obs: '4455', vmix: '8088', wirecast: '', manual: '' };
+
 function mxKindChanged() {
   const kind = $('#mxKind').value;
-  const isObs = kind === 'obs';
-  $('#mxPass').style.display = isObs ? '' : 'none';
-  if (!$('#mxPort').dataset.touched) $('#mxPort').value = isObs ? '4455' : '8088';
-  $('#mxNote').innerHTML = isObs
-    ? 'In OBS: <b>Tools &rarr; WebSocket Server Settings</b>, tick <b>Enable</b>, ' +
-      'and copy the password in. Nothing to install — it has been built in since ' +
-      'OBS 28.'
-    : 'In vMix: <b>Settings &rarr; Web Controller</b>, tick <b>Enable</b>. vMix ' +
-      'answers without CORS headers, so this page can send commands but cannot ' +
-      'read the reply — it will say a command was <b>sent</b> rather than claim ' +
-      'it worked.';
+  const networked = kind === 'obs' || kind === 'vmix';
+  $('#mxPass').style.display = kind === 'obs' ? '' : 'none';
+  $('#mxHost').style.display = networked ? '' : 'none';
+  $('#mxPort').style.display = networked ? '' : 'none';
+  $('#mxConnect').textContent = networked ? 'Connect' : 'Show me the steps';
+  if (!$('#mxPort').dataset.touched && MX_PORTS[kind]) $('#mxPort').value = MX_PORTS[kind];
+  $('#mxNote').innerHTML = MX_HELP[kind] || MX_HELP.manual;
+  /* A mixer that is not driven must not offer to build a rundown in it. */
+  $('#mxLayout').style.display = networked ? '' : 'none';
+  const drive = $('#mxDrive');
+  if (drive) drive.closest('label').style.display = networked ? '' : 'none';
+}
+
+/* ---- the one-source path, written out ------------------------------------
+   The whole Wirecast integration, and the whole integration with everything
+   else that cannot be driven. Deliberately a numbered list rather than prose:
+   somebody is reading this in a sports hall twenty minutes before tip. */
+function manualSteps(product) {
+  const url = sceneURL('scorebug', true);
+  const wirecast = product === 'wirecast';
+  return '<b>' + (wirecast ? 'Wirecast' : 'Any mixer') + ' — one source, switched from here</b>' +
+    '<ol class="mxsteps">' +
+      '<li>' + (wirecast
+        ? 'Add a shot: <b>Shot &rarr; Add Web Page Shot</b>, or the <b>+</b> under a layer.'
+        : 'Add a <b>browser</b> or <b>web page</b> source to your scene.') + '</li>' +
+      '<li>Paste this URL:<br><code class="mxurl">' + esc(url) + '</code>' +
+        '<button class="ep-btn ghost mxcopy" data-copy="' + esc(url) + '">copy</button></li>' +
+      '<li>Set it to <b>1920 &times; 1080</b> and leave the background ' +
+        '<b>transparent</b> — the page draws nothing where there is no graphic, ' +
+        'so it can sit over your camera all night.</li>' +
+      '<li>Put it on your <b>topmost layer</b>' + (wirecast ? ' (Wirecast layer 1 or 2)' : '') +
+        ' and leave it live for the whole game.</li>' +
+      '<li>That is the setup. Every <b>take</b> on this page now changes what ' +
+        'that source shows, over the socket — nothing else to press in ' +
+        (wirecast ? 'Wirecast' : 'your mixer') + '.</li>' +
+    '</ol>' +
+    '<p class="mxwarn">If the tag above says the live layer is not connected, ' +
+    'takes will not reach it. The tiles still work as individual URLs in that ' +
+    'case — one source per graphic, switched in your mixer.</p>';
 }
 
 async function mxConnect() {
@@ -348,12 +516,37 @@ async function mxConnect() {
   mx = null; mxKind = kind;
   $('#mxLayout').disabled = true;
 
+  if (kind === 'wirecast' || kind === 'manual') {
+    /* Nothing to connect TO, and that is the design rather than a shortfall.
+       See the note on manual() in mixers.js: the take goes to the layer over
+       the socket, not to the mixer. */
+    mx = window.EpinoiaMixers.manual(kind);
+    mxSay('one source, driven from here', 'on');
+    $('#mxNote').innerHTML = manualSteps(kind);
+    wireCopy();
+    return;
+  }
+
   if (kind === 'vmix') {
-    /* Nothing to connect to: vMix has no handshake and no readable reply. The
-       honest thing is to say so rather than draw a green light. */
+    /* vMix has no handshake, so "connecting" means finding out whether its
+       replies are readable — which decides whether the layout can be a diff
+       and whether transport state can be reported at all. */
     mx = window.EpinoiaMixers.vmix(host, port);
-    mxSay('sending to vMix', 'on');
+    mxSay('checking vMix…');
+    const { readable, state } = await mx.probe();
+    mxSay(readable ? 'vMix connected' : 'sending to vMix (one-way)', 'on');
+    $('#mxNote').innerHTML = readable
+      ? 'vMix <b>' + esc(state.version || '') + '</b> is answering and this page ' +
+        'can read it back: <b>' + state.inputs.length + ' inputs</b> seen. Building ' +
+        'the rundown will update what is already there rather than duplicating it, ' +
+        'and the on-air panel below reports vMix truthfully.'
+      : '<b>Commands will be sent, but vMix will not let this page read its ' +
+        'replies</b> — that is a CORS restriction in the browser, not a fault ' +
+        'in your setup. Everything still works; what changes is that this page ' +
+        'cannot confirm anything, so it says a command was <b>sent</b>, and ' +
+        'building the rundown twice would add the inputs twice.';
     $('#mxLayout').disabled = false;
+    pollLive();
     return;
   }
 
@@ -382,11 +575,20 @@ async function mxLayout() {
   $('#mxLayout').disabled = true;
   try {
     if (mxKind === 'vmix') {
-      if (!confirm('Add ' + list.length + ' browser inputs to vMix?\n\n' +
-                   'vMix cannot tell this page what it already has, so running ' +
-                   'this twice adds them twice.')) { $('#mxLayout').disabled = false; return; }
-      await mx.layout(list);
-      mxSay('inputs sent to vMix', 'on');
+      if (!mx.readable &&
+          !confirm('Add ' + list.length + ' browser inputs to vMix?\n\n' +
+                   'This vMix will not let the page read its replies, so it ' +
+                   'cannot tell what is already there — running this twice ' +
+                   'adds them twice.')) { $('#mxLayout').disabled = false; return; }
+      await mx.layout(list, msg => mxSay(msg));
+      mxSay(mx.readable ? 'vMix connected' : 'inputs sent to vMix', 'on');
+      $('#mxNote').innerHTML = mx.readable
+        ? 'Updated <b>' + list.length + '</b> browser inputs in vMix. Takes go to ' +
+          '<b>overlay channel 1</b>; running this again updates them rather than ' +
+          'adding a second set.'
+        : 'Sent <b>' + list.length + '</b> browser inputs to vMix. Takes go to ' +
+          '<b>overlay channel 1</b>. This page cannot confirm they arrived — check ' +
+          'the vMix input list.';
     } else {
       await mx.layout(SCENE_NAME, list, msg => mxSay(msg));
       mxSay('OBS connected', 'on');
@@ -404,7 +606,9 @@ async function mxLayout() {
    wants the graphic, and the live layer has already changed — an alert about
    OBS in the middle of a game helps nobody. */
 function mxTake(key) {
-  if (!mx || !$('#mxDrive').checked) return;
+  /* drives:false is the whole Wirecast path — the take already reached the
+     layer over the socket, and there is nothing here to tell. */
+  if (!mx || !mx.drives || !$('#mxDrive').checked) return;
   const list = graphicsList();
   const want = list.find(g => g.key === key);
   if (!want) return;
@@ -414,7 +618,20 @@ function mxTake(key) {
   } catch (_) { /* the layer changed regardless */ }
 }
 
+/* Copy buttons inside a note that was just written into the DOM. Wired on
+   demand rather than once at load, because the note is replaced wholesale. */
+function wireCopy() {
+  document.querySelectorAll('.mxcopy').forEach(b => {
+    b.onclick = () => {
+      navigator.clipboard.writeText(b.dataset.copy)
+        .then(() => { b.textContent = 'copied'; setTimeout(() => { b.textContent = 'copy'; }, 1400); })
+        .catch(() => { b.textContent = 'select it by hand'; });
+    };
+  });
+}
+
 function wireMixer() {
+  $('#clearAir').addEventListener('click', clearAir);
   $('#mxKind').addEventListener('change', mxKindChanged);
   $('#mxPort').addEventListener('input', () => { $('#mxPort').dataset.touched = '1'; });
   $('#mxConnect').addEventListener('click', mxConnect);
@@ -448,9 +665,16 @@ function fmtDur(ms) {
 async function pollLive() {
   const panel = $('#golive');
   if (!panel) return;
-  if (!mx || mxKind !== 'obs' || !mx.ready) {
+
+  /* Three states, not two. A mixer that is not connected is different from one
+     that is connected but cannot be read — vMix behind a browser that will not
+     let us see its replies can still be told to start streaming, and refusing
+     to offer the button would be wrong. */
+  const usable = mx && mx.kind !== 'manual' && (mx.kind !== 'obs' || mx.ready);
+  if (!usable) {
     panel.dataset.state = 'off';
-    $('#lvState').textContent = 'mixer not connected';
+    $('#lvState').textContent = mx && mx.kind === 'manual'
+      ? 'start the stream in your mixer' : 'mixer not connected';
     $('#lvStats').textContent = '';
     $('#lvGo').disabled = true; $('#lvRec').disabled = true;
     return;
@@ -459,13 +683,32 @@ async function pollLive() {
     const [st, rec] = await Promise.all([mx.streamStatus(), mx.recordStatus()]);
     liveState = { streaming: st.outputActive, recording: rec.outputActive };
 
-    panel.dataset.state = st.outputActive ? 'live' : 'ready';
-    $('#lvState').textContent = st.outputActive ? 'ON AIR' : 'ready';
+    /* THE STREAM MAY HAVE BEEN STARTED SOMEWHERE ELSE, and the anchor for the
+       whole video timeline should not depend on which button was pressed. The
+       poll notices the output going active however it happened — this page,
+       OBS directly, or before anybody opened the control room — and anchors
+       from the mixer's own duration counter. See stampStreamStart. */
+    if (st.outputActive) stampStreamStart();
+
+    const unknown = st.unknown === true;
+    panel.dataset.state = st.outputActive ? 'live' : (unknown ? 'off' : 'ready');
+    $('#lvState').textContent = st.outputActive ? 'ON AIR'
+      : unknown ? 'cannot read this mixer' : 'ready';
     $('#lvGo').disabled = false;
-    $('#lvGo').textContent = st.outputActive ? 'Stop the stream' : 'Go live';
+    $('#lvGo').textContent = st.outputActive ? 'Stop the stream'
+      : unknown ? 'Start streaming' : 'Go live';
     $('#lvGo').className = 'ep-btn' + (st.outputActive ? ' danger' : '');
     $('#lvRec').disabled = false;
     $('#lvRec').textContent = rec.outputActive ? 'Stop recording' : 'Record';
+
+    /* vMix answers whether it is streaming but not for how long, so the
+       statistics below would all be zero. Saying nothing is better than
+       reporting 0 kbps on a healthy stream. */
+    if (unknown || st.outputDuration == null) {
+      $('#lvStats').textContent = unknown ? 'state not readable from this mixer' : '';
+      panel.dataset.warn = '';
+      return;
+    }
 
     if (st.outputActive) {
       /* Bitrate is not reported, so it is derived from bytes over duration —
@@ -529,6 +772,9 @@ async function sendLeagueDestination() {
 async function checkDestination() {
   const note = $('#lvNote');
   if (!mx || mxKind !== 'obs' || !mx.ready) { note.textContent = ''; return; }
+  /* OBS only: vMix does not publish its destination, and inventing one would
+     have this page telling an operator their stream is going somewhere it is
+     not. */
   const d = await mx.destination();
   if (d.ready) {
     note.innerHTML = 'OBS will send this to <b>' +
@@ -551,17 +797,129 @@ async function toggleStream() {
     try { await mx.stopStream(); } catch (err) { $('#lvNote').textContent = err.message; }
   } else {
     btn.disabled = true;
-    try { await mx.startStream(); }
+    try {
+      await mx.startStream();
+      /* THE ANCHOR IS NOT STAMPED HERE, deliberately. pollLive runs shortly
+         after, sees the output active, and stamps from the mixer's own
+         duration counter — one path, whether the stream was started by this
+         button, by OBS directly, or before this page was ever opened. Stamping
+         here as well would be a second path that is right only sometimes. */
+
+      /* AND THE REQUEST SUCCEEDING IS NOT THE STREAM STARTING.
+
+         Found against a real OBS: StartStream and StartRecord both return
+         success and then quietly do nothing at all if the output cannot
+         start — a destination that is not configured, an encoder that will
+         not initialise, an audio source that has wedged. OBS logs "failed to
+         start"; obs-websocket says nothing; this page said nothing either,
+         and the operator watched a button that had visibly worked while
+         nothing went out.
+
+         So the claim is checked rather than assumed. */
+      if (mx.kind === 'obs') confirmStarted();
+
+      if (mx.kind === 'vmix' && !mx.readable) {
+        $('#lvNote').innerHTML = 'Start sent to vMix. This vMix will not let the ' +
+          'page read its replies, so check vMix itself that it went live — and ' +
+          'note that the video anchor is taken from <b>now</b> rather than from ' +
+          'vMix, which does not report how long it has been streaming.';
+      }
+    }
     catch (err) {
-      /* The commonest failure by a mile is no destination configured, and OBS's
-         own message for it mentions an output, which tells nobody anything. */
-      $('#lvNote').innerHTML = '<b>OBS would not start the stream.</b> ' +
-        (/output/i.test(err.message)
-          ? 'That usually means no destination is set — <b>OBS → Settings → Stream</b>.'
-          : err.message);
+      /* The commonest failure by a mile is no destination configured, and the
+         mixer's own message for it mentions an output, which tells nobody
+         anything. */
+      const who = mx.kind === 'vmix' ? 'vMix' : 'OBS';
+      $('#lvNote').innerHTML = '<b>' + who + ' would not start the stream.</b> ' +
+        (/output/i.test(err.message || '')
+          ? 'That usually means no destination is set — <b>' + who +
+            ' &rarr; Settings &rarr; Stream</b>.'
+          : (err.message || String(err)));
     }
   }
   setTimeout(pollLive, 400);
+}
+
+/* Did it actually start? Asked for a few seconds, because encoders take a beat
+   to spin up and reporting a failure at 200ms would be a false alarm on every
+   healthy stream. Silent when it works: an operator who pressed Go live and
+   went live does not need telling. */
+async function confirmStarted() {
+  const t0 = Date.now();
+  while (Date.now() - t0 < 8000) {
+    await new Promise(r => setTimeout(r, 900));
+    try {
+      const st = await mx.streamStatus();
+      if (st.outputActive) return true;
+    } catch (_) { /* a blip is not a verdict */ }
+  }
+  $('#lvNote').innerHTML =
+    '<b>OBS accepted the request but the stream has not started.</b> ' +
+    'That is OBS reporting success and then failing quietly, and it means one ' +
+    'of three things: no destination is set (<b>OBS &rarr; Settings &rarr; ' +
+    'Stream</b>), the encoder will not initialise, or a source has wedged — ' +
+    'check <b>Help &rarr; Log Files &rarr; View Current Log</b> for a line ' +
+    'saying an output failed to start. Nothing has been anchored to this ' +
+    'attempt, so try again once it is fixed and the video will still line up.';
+  return false;
+}
+
+/* WHEN THE STREAM STARTED, TAKEN FROM THE MIXER RATHER THAN FROM A BUTTON.
+
+   This used to stamp "now" the moment somebody pressed Go live here, which is
+   wrong in three ordinary situations: the stream was started in OBS directly,
+   it was started twenty minutes before anybody opened this page, or the page
+   was reloaded since. All three produce a video whose every clip is out by
+   however long the difference was, with nothing on any screen to say so.
+
+   OBS counts its own output duration, so the start is now minus that — and
+   what is sent is the DURATION, not an instant, so the database stamps the
+   moment on its own clock. That matters more than it looks: the other end of
+   this subtraction is a tip-off stamped by the same database, and two ends of
+   one subtraction have to be on one clock or a laptop that is a minute fast
+   moves every clip in the game by a minute.
+
+   vMix reports whether it is streaming but not for how long, so it falls back
+   to now — which is right when this page pressed the button and is the best
+   available guess otherwise. The video screen in the scorer is where a human
+   corrects it, and it is one number.
+
+   ONCE PER STREAM. Restarting a dropped stream does not move the anchor: the
+   video a viewer ends up watching is the one that began at the first attempt.
+   A genuinely new recording for the second half is a judgement, and belongs to
+   the person in the hall rather than to a reconnect. */
+let stampedStart = false;
+async function stampStreamStart() {
+  if (stampedStart || !gameId || !window.epinoiaClient || !mx) return;
+  stampedStart = true;
+  try {
+    const ago = await mx.streamStartedMsAgo();
+    const sb2 = await window.epinoiaClient();
+    if (!sb2) return;
+    const dest = mx.destination ? await mx.destination() : {};
+    const patch = {
+      p_game: gameId,
+      /* elapsed, so the server stamps it — never an instant from this laptop */
+      p_stream_ms_ago: ago != null ? ago : 0,
+      p_is_live: true
+    };
+    /* The platform, from what the encoder is configured for rather than from a
+       dropdown. A link pasted later inherits it and cannot disagree with it. */
+    if (dest && dest.provider) patch.p_provider = dest.provider;
+    /* A destination with no watchable URL still anchors the timeline — the link
+       can be pasted afterwards and every clip position is already right. */
+    const url = (($('#lvWatch') && $('#lvWatch').value) || '').trim();
+    if (url) patch.p_url = url;
+
+    const { error } = await sb2.rpc('set_game_video', patch);
+    if (error) { console.warn('[video] could not stamp the stream start', error); return; }
+    const note = $('#lvNote');
+    if (note && ago != null && ago > 5000) {
+      note.innerHTML = 'Anchored to the stream, which OBS says has been running ' +
+        '<b>' + fmtDur(ago) + '</b>. Every play in the log now has a position in ' +
+        'the video.';
+    }
+  } catch (e) { console.warn('[video]', e); }
 }
 
 async function toggleRecord() {
@@ -573,8 +931,41 @@ async function toggleRecord() {
   setTimeout(pollLive, 400);
 }
 
+/* Attaching the watch link is its own button rather than a side effect of
+   going live, because the link usually does not exist until AFTER the stream
+   has started — YouTube hands it out when the broadcast goes up. */
+async function saveWatchLink() {
+  const input = $('#lvWatch');
+  const raw = (input.value || '').trim();
+  const note = $('#lvNote');
+  if (!raw) { note.textContent = 'Paste the public link first.'; return; }
+  if (!gameId) { note.textContent = 'No fixture is loaded, so there is nothing to attach it to.'; return; }
+  const V = window.EpinoiaVideo;
+  const parsed = V ? V.parse(raw) : { ok: false, provider: 'other', ref: '' };
+  const btn = $('#lvWatchSave');
+  btn.disabled = true;
+  try {
+    const sb2 = await window.epinoiaClient();
+    const { error } = await sb2.rpc('set_game_video', {
+      p_game: gameId, p_url: raw,
+      p_provider: parsed.provider || 'other', p_ref: parsed.ref || '',
+      p_is_live: true
+    });
+    if (error) throw new Error(error.message);
+    note.innerHTML = parsed.ok
+      ? 'Attached. The box score will embed it, and every line of the ' +
+        'play-by-play will seek into it once the clocks are lined up.'
+      : '<b>Saved, but not recognised.</b> It will show as a plain link — ' +
+        'plays will not be able to seek into it.';
+  } catch (e) {
+    note.textContent = 'Could not attach it: ' + (e.message || e);
+  }
+  btn.disabled = false;
+}
+
 function wireLive() {
   $('#lvGo').addEventListener('click', toggleStream);
+  $('#lvWatchSave').addEventListener('click', saveWatchLink);
   $('#lvRec').addEventListener('click', toggleRecord);
   $('#lvSend').addEventListener('click', sendLeagueDestination);
   clearInterval(liveTimer);
@@ -600,6 +991,7 @@ function wireExports() {
   on('#expObs', () => download(base + '-obs-scenes.json',
       JSON.stringify(obsCollection(), null, 2), 'application/json'));
   on('#expVmix', () => download(base + '-vmix.xml', vmixPreset(), 'application/xml'));
+  on('#expWirecast', () => download(base + '-wirecast-setup.txt', wirecastSheet()));
   on('#expUrls', () => download(base + '-graphics.txt', urlList()));
 }
 

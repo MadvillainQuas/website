@@ -5,8 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04170f">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
+<!-- THE VIDEO TAB EMBEDS A PLAYER, AND THAT COSTS FRAME-SRC ENTRIES.
+
+     Named hosts only, and only the four platforms epinoia/video.js can
+     actually parse a link for. A wildcard here would let anything the page
+     ever rendered a URL into become an iframe, which is precisely the hole
+     this header exists to close.
+
+     'self' MUST STAY IN THE LIST. frame-src does not fall back to default-src
+     once it is declared, so naming the platforms without it would silently
+     forbid the page from framing anything of ours. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.google.com">
+      content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://player.vimeo.com https://www.facebook.com https://www.google.com">
 <title>Box score · Epinoia</title>
 
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
@@ -14,10 +24,11 @@
 <!-- The scorer's own stylesheet, generated from it. The renderers below emit
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../boxscore.css?v=196">
-<link rel="stylesheet" href="report.css?v=196">
-<link rel="stylesheet" href="preview.css?v=196">
-<link rel="stylesheet" href="../kit/nav.css?v=196">
+<link rel="stylesheet" href="../boxscore.css?v=233">
+<link rel="stylesheet" href="report.css?v=233">
+<link rel="stylesheet" href="preview.css?v=233">
+<link rel="stylesheet" href="../video.css?v=233">
+<link rel="stylesheet" href="../kit/nav.css?v=233">
 <style>
   /* The way in for whoever is scoring tonight. Hidden by default and revealed
      only once the database has said this account may score THIS game, so a
@@ -61,6 +72,26 @@
   .revertcta.hide{display:none}
   /* the scoring button claims the spare room; this one sits next to it */
   #scoreCta + .revertcta{margin-left:8px}
+  /* The attach-video sheet. Deliberately plain: it is three fields used twice a
+     season by one person, not a screen anybody lives in. */
+  .vsheet{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;
+    justify-content:center;padding:24px;background:rgba(2,16,11,.94)}
+  .vsheet .box{width:min(460px,100%);border:1px solid var(--rule,rgba(147,242,191,.2));
+    border-radius:16px;background:var(--panel,#0a1a13);padding:20px;
+    display:flex;flex-direction:column;gap:12px}
+  .vsheet h3{margin:0;font-size:16px;font-weight:500}
+  .vsheet p{margin:0;font-size:12.5px;line-height:1.8;color:var(--ink-3,rgba(230,255,241,.55))}
+  .vsheet input{width:100%;padding:9px 11px;border-radius:9px;
+    border:1px solid var(--rule,rgba(147,242,191,.2));background:rgba(0,0,0,.28);
+    color:var(--ink,#e6fff1);font-size:13px}
+  .vsheet .tip{display:flex;gap:8px;align-items:center}
+  .vsheet .tip input{width:74px;text-align:center}
+  .vsheet .row{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+  .vsheet button{padding:9px 15px;border-radius:10px;font-size:13px;
+    border:1px solid var(--rule,rgba(147,242,191,.2));background:transparent;
+    color:var(--ink,#e6fff1);cursor:pointer}
+  .vsheet button.go{background:var(--lume,#93f2bf);border-color:var(--lume,#93f2bf);color:#04100b}
+  .vsheet .msg{font-size:12.5px;line-height:1.75;color:var(--amber,#ffd166);min-height:1px}
   /* Page chrome only — nothing here restyles the box score itself. */
   body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
   .wrap{max-width:1150px;margin:0 auto;padding:0 12px 60px}
@@ -97,6 +128,11 @@
       <span class="ctamenu hide" id="ctaMenu" role="menu"></span>
     </span>
     <button class="revertcta hide" id="revertCta" type="button">back to listing</button>
+    <!-- The route to a recording for a game that is already over. The scorer
+         will not open a finished fixture — correctly, its log is closed — so
+         the only place left that knows which game you are looking at is this
+         page. Shown only to somebody the database says may attach one. -->
+    <button class="revertcta hide" id="vidCta" type="button">attach video</button>
     <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
   </div>
 
@@ -108,28 +144,30 @@
   </div>
 </div>
 
-<script src="../config.js?v=196" defer></script>
-<script src="../vendor/supabase.js?v=196" defer></script>
-<script src="../engine.js?v=196" defer></script>
-<script src="../boxscore.js?v=196" defer></script>
-<script src="../live.js?v=196" defer></script>
-<script src="../seo.js?v=196" defer></script>
+<script src="../config.js?v=233" defer></script>
+<script src="../vendor/supabase.js?v=233" defer></script>
+<script src="../engine.js?v=233" defer></script>
+<script src="../boxscore.js?v=233" defer></script>
+<script src="../live.js?v=233" defer></script>
+<script src="../seo.js?v=233" defer></script>
 <!-- the preview a SCHEDULED fixture shows instead of an empty box score.
      data.js/season.js are what the statistics pages aggregate with, so the
      preview cannot disagree with them about what a rebound is. -->
-<script src="../season.js?v=196" defer></script>
-<script src="../bpm.js?v=196" defer></script>
-<script src="../data.js?v=196" defer></script>
+<script src="../season.js?v=233" defer></script>
+<script src="../bpm.js?v=233" defer></script>
+<script src="../data.js?v=233" defer></script>
 <!-- the match report: facts, then prose, then the page. Split on purpose —
      story.js decides what is TRUE and is testable, report.js decides how it
      READS, and a language model would slot in at that seam. -->
-<script src="story.js?v=196" defer></script>
-<script src="report.js?v=196" defer></script>
-<script src="reportview.js?v=196" defer></script>
-<script src="gamefacts.js?v=196" defer></script>
-<script src="preview.js?v=196" defer></script>
-<script src="game.js?v=196" defer></script>
-<script src="../nav.js?v=196" defer></script>
-<script src="../xscroll.js?v=196" defer></script>
+<script src="story.js?v=233" defer></script>
+<script src="report.js?v=233" defer></script>
+<script src="reportview.js?v=233" defer></script>
+<script src="gamefacts.js?v=233" defer></script>
+<script src="preview.js?v=233" defer></script>
+<script src="../video.js?v=233" defer></script>
+<script src="video.js?v=233" defer></script>
+<script src="game.js?v=233" defer></script>
+<script src="../nav.js?v=233" defer></script>
+<script src="../xscroll.js?v=233" defer></script>
 </body>
 </html>

@@ -25,24 +25,201 @@ function CFG() {
   return c;
 }
 
+/* ============================================================================
+   READING WHEN EVERYBODY ARRIVES AT ONCE.
+
+   A link goes out and four hundred people open the same box score inside a
+   minute. Two things happen that never happen in testing:
+
+     * THE SERVICE PUSHES BACK. A 429, or a 503 from the pooler while it opens
+       connections. Every one of these was fatal: the fetch threw, the page
+       said "Could not load", and a reader who arrived a second later saw a
+       working page. A transient refusal is not an answer, and treating it as
+       one turns a busy minute into a wave of broken pages.
+
+     * THE SAME PAGE ASKS TWICE. A profile fires half a dozen queries and some
+       overlap; a redraw can reissue one already in flight. Sending it again
+       costs a round trip and a row scan for an answer we are already waiting
+       for.
+
+   Retrying is bounded and it backs off. RETRY-AFTER IS OBEYED WHEN IT IS SENT,
+   because a service telling us when to come back is more informed than any
+   schedule of ours — and ignoring it is how a retry storm makes an overloaded
+   database worse rather than better.
+
+   A 4xx that is not 429 is NOT retried. Those are answers: a bad filter, a
+   missing table, a refusal. Repeating them just makes the same mistake more
+   often. */
+const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
+const RETRIES = 3;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* Identical requests in flight share one answer. Keyed on the whole path, so
+   two callers asking different questions never collide. */
+const inFlight = new Map();
+
 async function get(path) {
-  const c = CFG();
-  const r = await fetch(`${c.supabaseUrl}/rest/v1/${path}`, {
-    cache: 'no-store',
-    headers: { apikey: c.supabaseAnonKey, Accept: 'application/json' }
-  });
-  if (!r.ok) throw new Error(`${r.status} on ${path.split('?')[0]}`);
-  return r.json();
+  const rows = await share(path, false);
+  /* EACH CALLER GETS ITS OWN ARRAY. Sharing one promise means sharing one
+     resolved value, and two callers holding the same array is a bug waiting
+     for the first one that sorts it in place. The row objects are still
+     shared — nothing here mutates them, everything maps them into new shapes —
+     but the container is cheap to copy and is the part that gets reordered. */
+  return rows.slice();
 }
 
-/* PostgREST returns at most `limit` rows; walk until a short page comes back */
+/* The counted variant of the same request, used to open a paged read. It goes
+   through the identical retry: the first page of a big fetch is exactly the
+   request a busy service is most likely to refuse. */
+async function getCounted(path) {
+  return share(path, true);
+}
+
+function share(path, counted) {
+  const key = (counted ? 'C:' : 'G:') + path;
+  if (inFlight.has(key)) return inFlight.get(key);
+  const job = fetchWithRetry(path, counted).finally(() => inFlight.delete(key));
+  inFlight.set(key, job);
+  return job;
+}
+
+async function fetchWithRetry(path, counted) {
+  const c = CFG();
+  let wait = 400;
+  for (let attempt = 0; ; attempt++) {
+    let r;
+    try {
+      r = await fetch(`${c.supabaseUrl}/rest/v1/${path}`, {
+        cache: 'no-store',
+        headers: counted
+          ? { apikey: c.supabaseAnonKey, Accept: 'application/json',
+              Prefer: 'count=exact' }
+          : { apikey: c.supabaseAnonKey, Accept: 'application/json' }
+      });
+    } catch (netErr) {
+      /* A dropped connection is exactly the case retrying is for — a phone
+         changing cell, a hall's wifi blinking. */
+      if (attempt >= RETRIES) throw netErr;
+      await sleep(wait); wait *= 2; continue;
+    }
+
+    if (r.ok) {
+      const rows = await r.json();
+      if (!counted) return rows;
+      /* "0-999/2370" — and "0-999/*" when the server declines to count, which
+         is a real answer meaning "walk it". */
+      const tail = (r.headers.get('content-range') || '').split('/')[1];
+      return { rows, total: (tail && tail !== '*') ? parseInt(tail, 10) : null };
+    }
+    if (!RETRY_STATUS.has(r.status) || attempt >= RETRIES) {
+      throw new Error(`${r.status} on ${path.split('?')[0]}`);
+    }
+    /* Seconds, per the HTTP spec — and a date is also legal, so both are read.
+       Capped at ten seconds: a page that hangs for a minute obeying a header
+       is worse for the reader than one that gives up and says so. */
+    const ra = r.headers.get('retry-after');
+    let hold = wait;
+    if (ra) {
+      const secs = /^\d+$/.test(ra.trim()) ? +ra * 1000 : (Date.parse(ra) - Date.now());
+      if (isFinite(secs) && secs > 0) hold = Math.min(10000, secs);
+    }
+    await sleep(hold);
+    wait = Math.min(8000, wait * 2);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   PAGING THAT DOES NOT GROW A QUEUE.
+
+   PostgREST caps a response at 1000 rows, so anything larger is several
+   requests. This walked them ONE AT A TIME, waiting for each before asking for
+   the next — which is invisible on the demo league and is the single slowest
+   thing on the platform once a league has a season behind it. A club that has
+   played thirty games has about 24,000 events; that is twenty-four round trips
+   in a row, and measured against the live database each one costs between a
+   third and four fifths of a second. Eight seconds of staring at a profile.
+
+   The first page is asked for WITH A COUNT, which PostgREST returns in
+   Content-Range and which costs nothing extra — it is the same scan. Knowing
+   the total, every remaining page is requested at once. Twenty-four trips
+   become one plus a fan-out, and the wall-clock cost becomes the slowest single
+   page rather than the sum of all of them.
+
+   The cap is deliberate. Beyond forty pages — forty thousand rows — the answer
+   is not "fan out harder", it is that the caller is asking for too much, and
+   forty parallel requests is already more than a browser will open at once. */
+const MAX_PAGES = 40;
+
 async function all(path, page = 1000) {
-  let out = [], from = 0;
+  const sep = path.includes('?') ? '&' : '?';
+
+  /* ONE MORE THAN A PAGE, and that single extra row is the whole trick.
+
+     PostgREST reports a total in Content-Range only when it KNOWS the response
+     is partial — which means only when the request asked for more rows than it
+     is willing to return. Asking for exactly 1000 gets 1000 rows, HTTP 200 and
+     "0-999/*": a complete answer, as far as the protocol is concerned, and no
+     count at all. Asking for 1001 gets the same 1000 rows, HTTP 206, and
+     "0-999/2370".
+
+     Found in a browser after curl had said otherwise, which is the reason the
+     walk below exists at all rather than being deleted as redundant. */
+  const first = await getCounted(`${path}${sep}offset=0&limit=${page + 1}`);
+
+  /* STRICTLY FEWER, and the difference is a truncated season.
+
+     We asked for page+1 and the server returns at most `page`, so getting
+     exactly `page` back is ambiguous: it means either "here is everything,
+     which happened to be a round number" or "this is all I will give you".
+     Treating it as complete — which is what "<=" did here for one measured
+     run, returning 1000 rows of a 2370-row log — is the truncation this whole
+     function exists to prevent. Fewer than a page is the only unambiguous
+     proof of the end, so it is the only thing accepted as one.
+
+     The cost of being strict is one extra request on a log whose length is an
+     exact multiple of a thousand. The cost of being loose is a box score that
+     is quietly wrong. */
+  if (first.rows.length < page) return first.rows;
+
+  let out = first.rows.slice(0, page);
+  let from = page;
+
+  /* THE FAN-OUT IS AN OPTIMISATION. THE WALK IS THE CONTRACT.
+
+     With a total, every remaining page is requested at once — twenty-four
+     round trips in a row become one and a fan-out, which on a real profile
+     measured 1.6 seconds against 4.1 sequential. Without one, this does
+     nothing and the loop below walks exactly as it always did.
+
+     Correctness never depends on the count. That matters more than the speed:
+     a paging scheme that trusts a number it did not verify is how a season's
+     log comes back a fifth complete, reports success, and credits a player
+     with 17 points in a season he scored 98 in. This codebase has already had
+     that bug once. */
+  if (first.total != null) {
+    const pages = Math.min(MAX_PAGES, Math.ceil(first.total / page));
+    const offsets = [];
+    for (let i = 1; i < pages; i++) offsets.push(i * page);
+    const chunks = await Promise.all(offsets.map(off =>
+      get(`${path}${sep}offset=${off}&limit=${page}`)));
+    out = out.concat(...chunks);
+    from = pages * page;
+    /* A short page anywhere in the fan-out means the end arrived early; there
+       is nothing after it to walk to. */
+    if (chunks.length && chunks[chunks.length - 1].length < page) return out;
+  }
+
+  /* Walk until a short page proves the end — whatever any count said. */
   for (;;) {
-    const sep = path.includes('?') ? '&' : '?';
-    const chunk = await get(`${path}${sep}offset=${from}&limit=${page}`);
-    out = out.concat(chunk);
-    if (chunk.length < page) return out;
+    if (from >= MAX_PAGES * page) {
+      console.warn('[data] ' + path.split('?')[0] + ': stopped at ' + out.length +
+        ' rows (page cap) — there are more');
+      return out;
+    }
+    const more = await get(`${path}${sep}offset=${from}&limit=${page}`);
+    out = out.concat(more);
+    if (more.length < page) return out;
     from += page;
   }
 }
@@ -180,9 +357,13 @@ async function events(gameIds) {
   for (let i = 0; i < gameIds.length; i += 40) chunks.push(gameIds.slice(i, i + 40));
   const parts = await Promise.all(chunks.map(c =>
     all(`game_events?game_id=in.(${c.join(',')})` +
-        `&select=game_id,seq,t,team,pid,period,clock,payload&order=seq`)));
+        `&select=game_id,seq,t,team,pid,period,clock,payload,created_at&order=seq`)));
   return parts.flat().map(r => {
-    const e = Object.assign({ t: r.t, id: r.seq, gameId: r.game_id,
+    /* created_at rides along because it is the only axis the log shares with a
+       video of the game — see epinoia/video.js. Everything else here ignores
+       it, and re-fetching the whole log to get it back would be the alternative. */
+    const e = Object.assign({ t: r.t, id: r.seq, seq: r.seq, gameId: r.game_id,
+                              created_at: r.created_at,
                               period: r.period, clock: r.clock }, r.payload || {});
     if (r.team != null) e.team = r.team;
     if (r.pid != null) e.pid = r.pid;

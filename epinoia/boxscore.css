@@ -454,6 +454,24 @@ body.pregame .plist{opacity:.72}
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
 .sheetbtn:active{background:rgba(170,255,215,.16);}
 .sheetbtn.endy{color:var(--red);border-color:rgba(255,95,107,.4);}
+/* ============ the interval, and the other clock ============ */
+/* Half-time is amber rather than mint on purpose: at a glance across a table
+   it has to be impossible to mistake for a game clock that is running. */
+.clk.brk{color:var(--amber);}
+.vidline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;
+  border-bottom:1px solid var(--line);}
+.vidlab{flex:0 0 100%;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.07em;
+  color:var(--dim);}
+.vidval{flex:1 1 90px;min-width:0;font-family:var(--f-micro);font-size:11px;
+  color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vidbtn{flex:0 0 auto;padding:8px 12px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(170,255,215,.09);color:var(--txt);font-family:var(--f-micro);font-size:9.5px;
+  white-space:nowrap;}
+.vidbtn:active{background:rgba(170,255,215,.18);}
+.vidnudge{display:flex;gap:5px;margin:8px 0 2px;}
+.vidnudge button{flex:1;padding:9px 2px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(170,255,215,.06);color:var(--ink-2);font-family:var(--f-micro);font-size:10px;}
+.vidnudge button:active{background:rgba(170,255,215,.2);color:var(--ink);}
 
 /* ============ starters picker ============ */
 .spgrid{display:flex;gap:8px;flex:1;min-height:0;}

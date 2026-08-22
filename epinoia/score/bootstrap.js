@@ -271,6 +271,338 @@
     try { primeFixture(); } catch (e) { console.warn('[prime]', e); }
   }, 2500);
 
+  /* --------------------------------------------------------- the video ---
+     THE BRIDGE BETWEEN THE SCORER AND THE FOOTAGE.
+
+     Two instants line a video up with a game: when the stream started, and
+     when the ball went up. Both are known by machines that are already on this
+     platform at the moment they happen — the control room presses "go live",
+     the scorer presses resume — so neither should ever have to be typed. This
+     is the wire between the scorer's half of that and the database.
+
+     Fire-and-forget, in the same spirit as everything else here: an attached
+     video is a convenience, and nothing about recording a basket may ever wait
+     on it or fail because of it. A refused write is a warning in the console
+     and a screen the statistician can retry from, not an alarm mid-game. */
+  /* THE ONE WRITE HERE THAT CANNOT SIMPLY BE DROPPED.
+
+     Everything else this file sends is a convenience that the next tap will
+     send again. Tip-off is not: it happens once, it is the anchor for every
+     clip in the game, and it happens at the exact moment forty phones join one
+     access point in a sports hall. Fire-and-forget meant one refused request
+     and the game had no anchor at all, with nothing on any screen to say so.
+
+     So the patch is held and retried until it lands. Two details make that
+     safe rather than merely persistent:
+
+       * PATCHES MERGE. A tip, then a URL, then a trim, all queued behind one
+         outage, arrive as ONE call — and set_game_video treats null as
+         leave-alone, so a merge cannot clear a field somebody else set.
+
+       * TIMES ARE RE-DERIVED AT EACH ATTEMPT. __tipFrom and __streamFrom hold
+         a device timestamp and are converted to "this many milliseconds ago"
+         at the moment of sending. A retry four minutes later therefore still
+         anchors to the moment the ball went up, not to the moment the wifi
+         came back. Sending an absolute "now" instead — which is what this did
+         — would have made the retry worse than the failure. */
+  let pending = null, retryTimer = null, retryIn = 4000, videoSaidSo = false;
+
+  function elapsedFrom(patch) {
+    const out = Object.assign({}, patch);
+    if (out.__tipFrom != null) {
+      out.p_tip_ms_ago = Math.max(0, Date.now() - out.__tipFrom);
+      delete out.__tipFrom;
+    }
+    if (out.__streamFrom != null) {
+      out.p_stream_ms_ago = Math.max(0, Date.now() - out.__streamFrom);
+      delete out.__streamFrom;
+    }
+    return out;
+  }
+
+  window.EpinoiaGameVideo = {
+    gameId: () => gameId,
+    isFixture: () => isFixture,
+    pending: () => pending,
+
+    async push(patch) {
+      /* Two different refusals, said as two different things. Both used to
+         report "not a fixture", which is misleading for the second and cost a
+         session's debugging: a game the gate has already refused is a game
+         with a row, and being told otherwise sends you looking at the id. */
+      if (!isFixture) return { ok: false, why: 'not a fixture' };
+      if (refused) return { ok: false, why: 'this game is not open for scoring' };
+      pending = Object.assign(pending || {}, patch);
+      return window.EpinoiaGameVideo.flush();
+    },
+
+    async flush() {
+      if (!pending) return { ok: true };
+      const sb = window.epinoiaClient && epinoiaClient();
+      if (!sb) return schedule('offline');
+      let session = null;
+      try { session = (await sb.auth.getSession()).data.session; } catch (_) {}
+      if (!session) return schedule('not signed in');
+
+      const sending = pending;
+      const { data, error } = await sb.rpc('set_game_video',
+        Object.assign({ p_game: gameId }, elapsedFrom(sending)));
+      if (error) { console.warn('[video]', error); return schedule(error.message); }
+
+      /* Only clear what was actually sent. Anything added while the request
+         was in flight stays queued rather than being thrown away with it. */
+      if (pending === sending) pending = null;
+      else Object.keys(sending).forEach(k => { delete pending[k]; });
+      if (pending && !Object.keys(pending).length) pending = null;
+      retryIn = 4000;
+      clearTimeout(retryTimer); retryTimer = null;
+      if (videoSaidSo) { say('live · ' + shortId, '#93f2bf'); videoSaidSo = false; }
+      return { ok: true, row: Array.isArray(data) ? data[0] : data };
+    },
+
+    /* What is already attached — a second statistician taking over at
+       half-time, or the same one after a reload, must not have to line the
+       video up again. */
+    async load() {
+      if (!isFixture) return null;
+      const sb = window.epinoiaClient && epinoiaClient();
+      if (!sb) return null;
+      const { data, error } = await sb.from('game_videos')
+        .select('url,provider,video_ref,stream_started_at,tip_at,tip_wall,trim_ms,is_live')
+        .eq('game_id', gameId).eq('is_primary', true).limit(1);
+      /* Before 0082 is applied this table does not exist, and that is not
+         worth a word to anybody scoring a game. */
+      if (error || !data || !data.length) return null;
+      return data[0];
+    }
+  };
+
+  /* Backoff to half a minute and stay there. A sports hall's wifi comes back
+     within a quarter or it does not come back, and a tighter loop would just
+     be more requests into the same dead air. */
+  function schedule(why) {
+    if (!pending) return { ok: true };
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => { window.EpinoiaGameVideo.flush(); }, retryIn);
+    retryIn = Math.min(30000, Math.round(retryIn * 1.6));
+    /* SAID OUT LOUD, once, because a silent anchor failure is invisible until
+       somebody opens the footage a week later and every clip is wrong. */
+    if (!videoSaidSo && pending && (pending.__tipFrom != null || pending.p_tip_wall != null)) {
+      videoSaidSo = true;
+      say('video sync not saved — retrying', '#ffd166');
+    }
+    return { ok: false, why: why, retrying: true };
+  }
+
+  /* Fold what the database already knows into the scorer's own state, once,
+     as soon as there is a state to fold it into. Local values win only where
+     the database has nothing — the row is the shared truth between the person
+     in the hall and the person in the control room, and a stale tab must not
+     quietly overwrite what the other one set. */
+  (function adoptVideo() {
+    let done = false;
+    const timer = setInterval(async () => {
+      if (done || typeof S === 'undefined' || !S) return;
+      done = true;
+      clearInterval(timer);
+      try {
+        const row = await window.EpinoiaGameVideo.load();
+        if (!row) return;
+        S.video = S.video || {};
+        S.video.url = row.url || S.video.url || '';
+        S.video.provider = row.provider || S.video.provider || '';
+        S.video.ref = row.video_ref || S.video.ref || '';
+        S.video.streamStartedAt = row.stream_started_at || S.video.streamStartedAt || null;
+        S.video.tipAt = row.tip_at || S.video.tipAt || null;
+        S.video.tipWall = row.tip_wall != null ? +row.tip_wall : (S.video.tipWall || null);
+        S.video.trimMs = row.trim_ms != null ? row.trim_ms : (S.video.trimMs || 0);
+        if (typeof window.save === 'function') window.save();
+
+        /* RECONCILE, DO NOT JUST ADOPT. A scorer that tipped off while the
+           wifi was down, and was then reloaded, holds the only copy of the
+           anchor there is: the retry queue lives in memory and did not survive
+           the reload. If this device knows when the ball went up and the row
+           does not, it says so — which is the difference between a video that
+           lines up and one that never can. */
+        if (S.video.tipWall && !row.tip_wall) {
+          window.EpinoiaGameVideo.push({
+            __tipFrom: S.video.tipWall, p_tip_wall: S.video.tipWall
+          });
+        }
+      } catch (e) { console.warn('[video] adopt', e); }
+    }, 1500);
+    /* Give up after a minute rather than polling for the rest of a game. */
+    setTimeout(() => clearInterval(timer), 60000);
+  }());
+
+  /* ------------------------------------------------ somebody else is scoring ---
+     THE SCORER NEVER READ BACK A LOG, AND A SECOND DEVICE IS NOT RARE.
+
+     loadFixture fetches the squads and nothing else, so a phone opening a game
+     that is already being scored starts with an empty log and seq 1. What then
+     happens is worse than it sounds, and none of it is visible from the phone:
+
+       * Its events collide with the real ones. The durable write is an upsert
+         on (game_id, seq) with ignoreDuplicates, so the EXISTING rows win and
+         everything the second device records is silently discarded. It looks
+         like it is scoring. It is not.
+       * Its score is published over the fixture. maybeScore writes
+         home_score/away_score from its own derive, which is 0-0 — so the club
+         homepage, the ticker and the strip all snap back to nil-nil while a
+         game is being played.
+       * Both devices broadcast on the same channel, so every viewer sees the
+         score flip between the two.
+
+     This is not an exotic case. It is the same statistician in a private
+     window, a phone whose storage was cleared, a colleague taking over at
+     half-time, or a spare tablet opened "just to check". At one device per
+     game it never happens; at a league running six games a Saturday it is a
+     matter of weeks.
+
+     So the log is counted before anything is published. If the server holds
+     more than this device does, publishing STOPS and the operator is offered
+     the recorded game — which is the thing they actually wanted. */
+  let guarded = false;
+
+  async function guardAgainstOverwrite() {
+    if (guarded || !isFixture || refused) return;
+    if (typeof S === 'undefined' || !S || S.phase === 'setup') return;
+    guarded = true;
+
+    const sb = window.epinoiaClient && epinoiaClient();
+    if (!sb) return;
+    let count = 0;
+    try {
+      const res = await sb.from('game_events')
+        .select('seq', { count: 'exact', head: true }).eq('game_id', gameId);
+      if (res.error) return;                 // cannot tell: say nothing
+      count = res.count || 0;
+    } catch (_) { return; }
+
+    const mine = (S.events || []).length;
+    if (count <= mine) return;               // nothing recorded that we lack
+
+    /* Stop first, ask second. Every moment this keeps publishing is a moment
+       the live score on somebody's homepage is wrong. */
+    try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+    say('not publishing — another device is scoring', '#ffd166');
+    offerTakeover(count, mine);
+  }
+
+  /* Pull the recorded game onto this device.
+
+     The log is the game — the same premise the public box score is built on —
+     so this is the box score's own load, applied to the scorer's state. The
+     squads are NOT rebuilt: roster_snapshot is frozen at tip and is already
+     what loadFixture used, so the player ids in the log match the ones on
+     screen. */
+  async function loadRecorded() {
+    const sb = epinoiaClient();
+    const rows = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from('game_events')
+        .select('seq,t,team,pid,period,clock,payload')
+        .eq('game_id', gameId).order('seq').range(from, from + 999);
+      if (error) throw new Error(error.message);
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+
+    S.events = rows.map(r => {
+      const e = Object.assign({ t: r.t, id: r.seq, period: r.period, clock: r.clock },
+                              r.payload || {});
+      if (r.team != null) e.team = r.team;
+      if (r.pid != null) e.pid = r.pid;
+      return e;
+    });
+    S.redo = [];
+    /* The next id must not reuse one already in the durable log, or the upsert
+       would drop the new event as a duplicate — which is the very fault this
+       whole guard exists to prevent. */
+    S.evSeq = S.events.reduce((m, e) => Math.max(m, e.id || 0), 0);
+
+    /* Where the clock stands, from the row the other device has been keeping. */
+    try {
+      const { data: st } = await sb.from('game_state')
+        .select('period,clock_ms,running').eq('game_id', gameId).maybeSingle();
+      if (st) {
+        S.period = st.period || S.period;
+        S.clockMs = st.clock_ms != null ? st.clock_ms : S.clockMs;
+      }
+    } catch (_) { /* the log alone is enough to score from */ }
+    /* Never inherit a RUNNING clock: two devices both ticking is how the game
+       clock ends up ahead of the hall's. Whoever takes over starts it. */
+    S.running = false;
+    S.phase = 'game';
+
+    if (typeof window.buildPmap === 'function') window.buildPmap();
+    if (typeof window.save === 'function') window.save();
+    if (typeof window.renderAll === 'function') window.renderAll();
+    return S.events.length;
+  }
+
+  function offerTakeover(serverCount, mine) {
+    if (document.getElementById('ep-takeover')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'ep-takeover';
+    wrap.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:2147483600', 'display:flex',
+      'align-items:center', 'justify-content:center', 'padding:24px',
+      'background:rgba(2,16,11,.97)', 'font-family:system-ui,sans-serif',
+      'color:#e6fff1'
+    ].join(';');
+    wrap.innerHTML =
+      '<div style="max-width:460px;line-height:1.75">' +
+      '<div style="font-size:19px;margin-bottom:14px">This game is already being scored</div>' +
+      '<p style="color:rgba(230,255,241,.72);font-size:14px">' +
+      'The server holds <b>' + serverCount + '</b> actions for this fixture and this ' +
+      'device has <b>' + mine + '</b>. Publishing from here would drop everything you ' +
+      'record and reset the live score to nil-nil on every page showing it, so it has ' +
+      '<b>stopped</b>.</p>' +
+      '<p style="color:rgba(230,255,241,.72);font-size:14px">' +
+      'If you are taking over, load what has been recorded and carry on from there.</p>' +
+      '<div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">' +
+      '<button id="ep-take" style="padding:11px 16px;border-radius:11px;border:1px solid #93f2bf;' +
+      'background:#93f2bf;color:#04100b;font-size:14px">Load the recorded game</button>' +
+      '<button id="ep-leave" style="padding:11px 16px;border-radius:11px;' +
+      'border:1px solid rgba(230,255,241,.28);background:transparent;color:#e6fff1;' +
+      'font-size:14px">Leave it alone</button>' +
+      '</div><p id="ep-take-msg" style="margin-top:12px;font-size:13px;color:#ffd166"></p></div>';
+    document.body.appendChild(wrap);
+
+    document.getElementById('ep-leave').onclick = () => {
+      /* Publishing stays halted. Reading a game somebody else is scoring is a
+         perfectly reasonable thing to be doing on this screen. */
+      wrap.remove();
+      say('reading only — not publishing', '#ffd166');
+    };
+    document.getElementById('ep-take').onclick = async () => {
+      const btn = document.getElementById('ep-take');
+      btn.disabled = true;
+      document.getElementById('ep-take-msg').textContent = 'loading…';
+      try {
+        const n = await loadRecorded();
+        wrap.remove();
+        say('loaded ' + n + ' actions · reload to publish', '#93f2bf');
+        /* A reload rather than restarting the halted publisher in place: halt()
+           is deliberately one-way, and a fresh boot is the only path that has
+           been exercised. The state is already saved, so nothing is lost. */
+        setTimeout(() => location.reload(), 900);
+      } catch (err) {
+        btn.disabled = false;
+        document.getElementById('ep-take-msg').textContent =
+          'could not load it: ' + (err.message || err);
+      }
+    };
+  }
+
+  /* Checked once the scorer has a game, on the same poll that primes a
+     fixture — the scorer reaches that state by several routes and a missed
+     hook here would leave the very corruption this prevents. */
+  setInterval(() => {
+    try { guardAgainstOverwrite(); } catch (e) { console.warn('[guard]', e); }
+  }, 3000);
+
   /* --------------------------------------------------------- escape hatch --- */
   /* The scorer gets a hover bar rather than the sidebar every other page has.
 

@@ -6,13 +6,14 @@
 <meta name="theme-color" content="#04100b">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+      content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://player.vimeo.com https://www.facebook.com">
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=196">
-<link rel="stylesheet" href="../kit/table.css?v=196">
-<link rel="stylesheet" href="../kit/nav.css?v=196">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=233">
+<link rel="stylesheet" href="../kit/table.css?v=233">
+<link rel="stylesheet" href="../video.css?v=233">
+<link rel="stylesheet" href="../kit/nav.css?v=233">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -143,6 +144,16 @@
     <div id="log"></div>
   </div>
 
+  <!-- ON VIDEO. Hidden until there is footage lined up with a game this player
+       actually played in, which is why it carries no placeholder: an empty
+       section on every profile in a league without cameras teaches people to
+       scroll past this part of the page. -->
+  <div class="sec" id="videosec" style="display:none">
+    <div class="sec-h"><span class="idx">03b</span><h2>On video</h2>
+      <span class="note" id="videoNote"></span></div>
+    <div id="videopanel"></div>
+  </div>
+
   <div class="sec">
     <div class="sec-h"><span class="idx">04</span><h2>On the floor with</h2>
       <span class="note" id="wowyNote"></span></div>
@@ -182,20 +193,22 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=196" defer></script>
-<script src="../bpm.js?v=196" defer></script>
-<script src="../season.js?v=196" defer></script>
-<script src="../data.js?v=196" defer></script>
-<script src="../boxscore.js?v=196" defer></script>
-<script src="../shotchart.js?v=196" defer></script>
-<script src="../upload.js?v=196" defer></script>
-<script src="../lineups.js?v=196" defer></script>
-<script src="../wowy.js?v=196" defer></script>
-<script src="../withstats.js?v=196" defer></script>
-<script src="withui.js?v=196" defer></script>
-<script src="../fulltable.js?v=196" defer></script>
-<script src="player.js?v=196" defer></script>
-<script src="../nav.js?v=196" defer></script>
-<script src="../xscroll.js?v=196" defer></script>
+<script src="../config.js?v=233" defer></script>
+<script src="../bpm.js?v=233" defer></script>
+<script src="../season.js?v=233" defer></script>
+<script src="../data.js?v=233" defer></script>
+<script src="../boxscore.js?v=233" defer></script>
+<script src="../shotchart.js?v=233" defer></script>
+<script src="../upload.js?v=233" defer></script>
+<script src="../lineups.js?v=233" defer></script>
+<script src="../wowy.js?v=233" defer></script>
+<script src="../withstats.js?v=233" defer></script>
+<script src="withui.js?v=233" defer></script>
+<script src="../fulltable.js?v=233" defer></script>
+<script src="../video.js?v=233" defer></script>
+<script src="video.js?v=233" defer></script>
+<script src="player.js?v=233" defer></script>
+<script src="../nav.js?v=233" defer></script>
+<script src="../xscroll.js?v=233" defer></script>
 </body>
 </html>

@@ -145,15 +145,48 @@ begin
     raise exception '0081: the mask is wrong, got %', tail;
   end if;
 
-  /* the listing function must never return the key itself */
+  /* THE LISTING FUNCTION MUST NEVER RETURN THE KEY ITSELF.
+
+     Checked against the function's RETURN COLUMNS, not against its text.
+
+     The first version of this searched the body for "t.stream_key," and
+     refused to apply — because that is exactly what the masking looks like:
+     right(t.stream_key, 4). The guard matched the code that makes it safe and
+     called it a leak. A test that cannot tell "reads the column in order to
+     hide it" from "hands the column out" is not testing the thing it names.
+
+     proargnames carries the OUT names of a RETURNS TABLE function, so this
+     asks the only question that matters — is there a column called stream_key
+     coming out of here — and no amount of rewriting the masking can fool it. */
   if exists (
     select 1
-    from information_schema.routines r
-    where r.routine_schema = 'public'
-      and r.routine_name = 'stream_targets_for_league'
-      and r.routine_definition like '%t.stream_key,%'
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'stream_targets_for_league'
+      and 'stream_key' = any (p.proargnames)
   ) then
-    raise exception '0081: the listing function returns the raw key';
+    raise exception '0081: the listing function returns the raw key as a column';
+  end if;
+
+  /* And the masked column is the one that exists. Together with the check
+     above this pins the shape from both sides: key_tail present, stream_key
+     absent.
+
+     NOT by calling the function, which was the first thing tried here and
+     would have been theatre — it filters on is_league_admin/is_platform_admin
+     against auth.uid(), and a migration runs with no auth.uid() at all, so it
+     returns nothing whoever applies this. A test that cannot fail is worse
+     than no test, because it reads like reassurance. */
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'stream_targets_for_league'
+      and 'key_tail' = any (p.proargnames)
+  ) then
+    raise exception '0081: the listing function has no masked column';
   end if;
 
   delete from public.league_stream_targets where label = '__selftest';

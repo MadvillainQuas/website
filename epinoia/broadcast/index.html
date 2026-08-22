@@ -80,9 +80,31 @@ body{font-family:var(--f-ui);color:var(--ink)}
 .fivehead .when{
   font-family:var(--f-micro);text-transform:uppercase;letter-spacing:.18em}
 
-/* and every figure is Martian Mono, which is what the tables use */
-.bug .sc,.bug .clk,.rr .v,.lu .net,.l3 .st b,.cmp .r b,.fin .fs .s,
-.fpnum,.periods td{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+/* Figures in a TABLE are Martian Mono, which is what the tables use. */
+.rr .v,.lu .net,.l3 .st b,.cmp .r b,.fpnum,.periods td{
+  font-family:var(--f-data);font-variant-numeric:tabular-nums}
+
+/* THE SCOREBOARD'S OWN FIGURES ARE JERSEY, which is the face this platform
+   names for scores and the one every heading here is already set in. A
+   scorebug whose numbers are in the table face is a scorebug that looks like a
+   spreadsheet on a video wall.
+
+   Jersey is NOT tabular — measured, not assumed: at 100px its "1" advances
+   31.7 against 48.8 for its "2". So every character is given its own cell by
+   .fg below, which is what a scoreboard does anyway. See figures() in
+   broadcast.js. */
+.bug .sc,.bug .clk,.fin .fs .s{
+  font-family:var(--f-score);letter-spacing:.01em}
+/* Each character in its own cell — and the run must never break between them.
+   inline-block cells are wrappable, so a three-digit score in a squeezed flex
+   column came out as "10" over "6". Caught on a 106-79 game at 1.6x scale,
+   which is exactly the shape a real production uses. */
+.fg{display:inline-block;width:.56em;text-align:center}
+.bug .sc,.bug .clk{white-space:nowrap}
+.fg.sep{width:.3em}
+/* A minus, a slash or an en dash inside a run of figures wants the digit cell
+   rather than the narrow one — they are as wide as a numeral in this face. */
+.fg.sep:is(.wide){width:.56em}
 
 /* headings and team marks are Jersey, as they are on every page */
 .bug .tag,.sq .sqhd .nm,.five .hd span,.rank .hd span,.cmp .hd span,
@@ -92,8 +114,37 @@ body{font-family:var(--f-ui);color:var(--ink)}
 /* ============================================================================
    THE STARTING FIVE — full frame, not an overlay.
    ========================================================================= */
+/* ---- NOT QUITE THE WHOLE FRAME -------------------------------------------
+   These four — the starting five, both squads, the bench and the fives
+   together — were full-bleed: inset:0, edge to edge, and for the twenty or
+   thirty seconds one is up the broadcast is a slide rather than a basketball
+   game. A viewer who has just tuned in cannot tell whether the picture is
+   still there.
+
+   Inset by a few vmin instead, with a corner radius and a shadow, so a band of
+   the court shows all the way round. The card is still the subject and still
+   perfectly legible; it now reads as a graphic OVER a game rather than
+   INSTEAD of one, which is also what makes cutting back to play feel like a
+   cut rather than a channel change.
+
+   Percentages of the SHORT side, so the band is the same visual weight at
+   1080p and at 720p — the whole reason this file is in vmin. */
 .fivecard{
-  position:absolute;inset:0;display:flex;
+  position:absolute;inset:0;border-radius:2.4vmin;overflow:hidden;
+  box-shadow:0 2vmin 6vmin rgba(0,0,0,.55), 0 0 0 1px rgba(147,242,191,.16);
+  /* SCALED, NOT SHRUNK, and the difference matters here.
+
+     Insetting the box would give the same outer size and a different inner
+     one: everything in this card — the portraits, the rail, the type — is
+     measured in vmin against the VIEWPORT, so the contents would keep their
+     size while their container lost 20% of its. The five would then be
+     cropped, which is a worse graphic than a full-bleed one.
+
+     A transform takes the card and its contents together. Nothing reflows,
+     nothing clips, and the proportions a designer chose are the proportions
+     that go out — just smaller. */
+  transform:scale(.82);transform-origin:50% 50%;
+  display:flex;
   background:
     /* the ruled diagonal the platform uses behind its own headers, which is
        what stops a large dark area reading as a hole rather than a design */
@@ -265,8 +316,11 @@ body.chroma{background:var(--chroma)}
 
 /* Nothing renders until there is something true to show. A scorebug that
    appears with 0–0 and then corrects itself has already been on air wrong. */
+/* Hidden until every element is present, then one fade for the whole graphic —
+   see the note on reveal() in broadcast.js. A graphic that assembles itself in
+   front of an audience is one a director will not use twice. */
 #stage[data-ready="0"]{opacity:0}
-#stage{opacity:1;transition:opacity .25s ease}
+#stage{opacity:1;transition:opacity .3s ease}
 
 /* ---------------- crests ---------------- */
 /* The monogram is painted first and the crest loads on top of it, so there is
@@ -304,34 +358,75 @@ body.chroma{background:var(--chroma)}
 
 /* ---------------- scorebug ---------------- */
 .bug{display:flex;align-items:stretch}
-.bug .side{display:flex;align-items:center;gap:1.2vmin;padding:1.1vmin 1.6vmin;
+.bug .side{display:flex;align-items:center;gap:1vmin;padding:.9vmin 1.3vmin;
   position:relative}
 /* the club colour as an edge, never as a fill — see the note above */
 .bug .side.home{border-left:.55vmin solid var(--tc)}
 .bug .side.away{border-right:.55vmin solid var(--tc);flex-direction:row-reverse}
-.bug .tag{font-weight:800;font-size:2.5vmin;letter-spacing:.05em;line-height:1;
+.bug .tag{font-weight:800;font-size:2.1vmin;letter-spacing:.05em;line-height:1;
   min-width:5.4vmin;text-align:center}
-.bug .sc{font-weight:800;font-size:4.4vmin;line-height:.95;min-width:6vmin;
+/* A touch larger, because Jersey sits smaller on the line than Martian at the
+   same size — matching the number rather than matching the declaration. */
+/* Room for three digits at their own cell width, so a team passing 100 widens
+   the plate rather than breaking the number. */
+/* ---- SMALLER, ACROSS THE BOARD -------------------------------------------
+   Every figure here came down by about a fifth. A scorebug is read at a glance
+   from across a room and it is on screen for two hours, so the size it wants
+   is the smallest that is still instantly legible — not the largest that fits.
+   The previous set was sized to be readable in a screenshot of the graphic
+   ALONE, which is a different problem from being readable over a basketball
+   court, where everything around it is moving. */
+.bug .sc{font-weight:800;font-size:4vmin;line-height:.95;min-width:7vmin;
   text-align:center;font-variant-numeric:tabular-nums}
 .bug .mid{position:relative;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:.8vmin 2.2vmin;min-width:12vmin;
+  justify-content:center;padding:.6vmin 1.8vmin;min-width:10vmin;
   background:rgba(0,0,0,.42);
   border-left:1px solid rgba(255,255,255,.1);border-right:1px solid rgba(255,255,255,.1)}
-.bug .clk{font-weight:800;font-size:3.1vmin;line-height:1.05;font-variant-numeric:tabular-nums}
+.bug .clk{font-weight:800;font-size:2.9vmin;line-height:1.05}
 /* a running clock is a shade brighter than a stopped one, which tells a viewer
    whether play is live without a word */
 .bug .clk.run{color:#fff}
 .bug .clk:not(.run){color:rgba(255,255,255,.72)}
-.bug .per{font-size:1.35vmin;letter-spacing:.26em;color:var(--dim);text-transform:uppercase;
-  margin-top:.4vmin}
+/* FINAL is a state, not a time: amber rather than the live white, so a still
+   frame of a rerun cannot be read as a game in progress.
+
+   AFTER the :not(.run) rule above, not before it. Both are (0,3,0), so file
+   order decides and the earlier one loses — which is exactly how this landed
+   as a white FIN the first time and why the trap is written down here. */
+.bug .clk.fin{color:var(--amber);letter-spacing:.06em}
+.bug .per.fin{color:var(--amber)}
+.bug .per{font-size:1.15vmin;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;
+  margin-top:.3vmin}
+
+/* ---- the league's mark ----------------------------------------------------
+   Square, so a round badge and a wordmark both sit right, and the initials are
+   the same square when there is no image. data-fade is the platform's own
+   reveal: the monogram is drawn first and the picture fades over it once it
+   has actually loaded, so a slow or missing file leaves initials rather than
+   an empty box. See wireFades in broadcast.js. */
+.bug .lgm{position:relative;display:flex;align-items:center;justify-content:center;
+  width:5.4vmin;height:5.4vmin;flex:0 0 auto;margin-right:.9vmin}
+.bug .lgm i{font-family:var(--f-score);font-style:normal;color:var(--ink);opacity:.9}
+/* One or two letters across the badge. */
+.bug .lgm .ini2{font-size:2.2vmin;letter-spacing:.04em}
+/* Three stacked, filling the square. Tight leading because these are separate
+   lines of one glyph each and the face's own line height would leave the block
+   floating in the middle of the badge rather than occupying it. */
+.bug .lgm .ini3{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;line-height:.82;font-size:1.75vmin;letter-spacing:.06em}
+.bug .lgm .ini3 b{font-weight:400;display:block}
+.bug .lgm img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;transition:opacity .3s ease}
+.bug .lgm.haslgm img{opacity:1}
+.bug .lgm.haslgm i{opacity:0}
 .bug .arw{position:absolute;top:.5vmin;width:0;height:0;
   border-top:.7vmin solid transparent;border-bottom:.7vmin solid transparent}
 .bug .arw.l{left:.7vmin;border-right:.9vmin solid rgba(255,255,255,.75)}
 .bug .arw.r{right:.7vmin;border-left:.9vmin solid rgba(255,255,255,.75)}
-.bug .rail{display:flex;flex-direction:column;justify-content:center;gap:.6vmin;
-  padding:0 1.4vmin;background:rgba(0,0,0,.22);
+.bug .rail{display:flex;flex-direction:column;justify-content:center;gap:.5vmin;
+  padding:0 1.1vmin;background:rgba(0,0,0,.22);
   border-left:1px solid rgba(255,255,255,.08)}
-.bug .fl{display:flex;align-items:center;gap:.6vmin;font-size:1.2vmin;
+.bug .fl{display:flex;align-items:center;gap:.5vmin;font-size:1.05vmin;
   letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .bug .fl b{font-size:1vmin;letter-spacing:.16em;color:#ffd98a;font-weight:700}
 .bug .fl.bonus{color:#ffd98a}
@@ -511,11 +606,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=196" defer></script>
-<script src="../vendor/supabase.js?v=196" defer></script>
-<script src="../engine.js?v=196" defer></script>
-<script src="../rt.js?v=196" defer></script>
-<script src="../live.js?v=196" defer></script>
-<script src="broadcast.js?v=196" defer></script>
+<script src="../config.js?v=233" defer></script>
+<script src="../vendor/supabase.js?v=233" defer></script>
+<script src="../engine.js?v=233" defer></script>
+<script src="../rt.js?v=233" defer></script>
+<script src="../live.js?v=233" defer></script>
+<script src="broadcast.js?v=233" defer></script>
 </body>
 </html>

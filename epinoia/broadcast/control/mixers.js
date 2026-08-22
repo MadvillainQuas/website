@@ -268,8 +268,48 @@ function obs() {
                ready: !!(s.key && String(s.key).length),
                /* the SERVER, never the key — a URL is not a secret and it is
                   the half that tells an operator which channel this is */
-               server: s.server || null };
-    } catch (_) { return { type: null, ready: false, server: null }; }
+               server: s.server || null,
+               /* WHICH PLATFORM, WITHOUT ASKING ANYBODY.
+
+                  OBS knows: either as a bundled service name ("YouTube -
+                  RTMPS") or as an ingest host, and an ingest host names its
+                  platform unambiguously. So the video row gets its provider
+                  from what the encoder is actually configured for rather than
+                  from a dropdown somebody can get wrong, which is how a Twitch
+                  link ends up on a YouTube row.
+
+                  WHAT OBS CANNOT TELL US IS THE WATCH URL, and it is worth
+                  being exact about why rather than hunting for a request that
+                  does not exist. YouTube issues a watch URL to the BROADCAST.
+                  OBS holds an ingest URL and a stream key, which are what an
+                  encoder needs and are not derivable from one another; even
+                  with the account connected, obs-websocket exposes no
+                  broadcast id. The two honest routes are the league channel id
+                  stored once (migration 0083) or a single paste of the link,
+                  and both are offered. */
+               service: s.service || null,
+               provider: (self.EpinoiaVideo
+                 ? self.EpinoiaVideo.providerFromServer(s.server, s.service) : null) };
+    } catch (_) { return { type: null, ready: false, server: null, provider: null }; }
+  }
+
+  /* HOW LONG OBS SAYS IT HAS BEEN STREAMING, which is the only trustworthy
+     answer to "when did the stream start".
+
+     A button press in this page is not that answer: the stream may have been
+     started in OBS directly, or twenty minutes before anybody opened the
+     control room, or the page may have been reloaded since. OBS counts the
+     duration itself, from the output actually starting, so the moment it began
+     is now minus that — and it is turned into an instant on the SERVER, from a
+     duration, so no clock is ever compared across two machines.
+
+     Returns null when nothing is streaming, which is not the same as zero. */
+  async function streamStartedMsAgo() {
+    try {
+      const st = await request('GetStreamStatus');
+      if (!st.outputActive) return null;
+      return Math.max(0, Math.round(st.outputDuration || 0));
+    } catch (_) { return null; }
   }
 
   /* Point OBS at a destination. rtmp_custom with an explicit server rather
@@ -282,45 +322,219 @@ function obs() {
   });
 
   return {
+    kind: 'obs', readable: true, drives: true,
     connect, request, layout, take, setDestination,
     streamStatus, recordStatus, startStream, stopStream,
-    startRecord, stopRecord, videoSettings, destination,
+    startRecord, stopRecord, videoSettings, destination, streamStartedMsAgo,
     get ready() { return ready; },
     close() { try { ws && ws.close(); } catch (_) {} }
   };
 }
 
 /* ========================================================================= */
-/* vMix — the web controller on 8088                                         */
+/* vMix — the Web Controller on 8088                                         */
 /* ========================================================================= */
-/* Fire-and-forget over HTTP. vMix answers without CORS headers, so the browser
-   will not let this page READ the reply — which is fine, because there is
-   nothing in it worth reading. no-cors means the request is still sent.
+/* IT IS TRIED BOTH WAYS, BECAUSE THE ANSWER DEPENDS ON THE INSTALL.
 
-   The cost is honest and worth stating: a command that fails looks exactly
-   like one that worked. So the UI never claims vMix did anything; it says the
-   command was sent. */
+   The vMix Web Controller answers every command over plain HTTP and, in the
+   versions this was written against, without CORS headers — so a browser sends
+   the request and is then forbidden from reading the reply. Survivable for
+   commands; fatal for state. Without a reply we cannot know which inputs
+   exist, so re-running the layout would add a second set of twelve.
+
+   So this probes once. If the reply is readable — a newer vMix, a reverse
+   proxy in front of it, a browser started with the check relaxed — everything
+   works properly: the input list is read, the layout becomes a diff rather
+   than an append, and streaming state is reported honestly. If it is not, the
+   same commands go out blind and the interface says SENT rather than claiming
+   that anything worked.
+
+   The difference is stated in the interface rather than hidden, because "the
+   command was sent" and "the command succeeded" are genuinely different things
+   and an operator troubleshooting at six o'clock needs to know which one they
+   have got. */
 function vmix(host, port) {
-  const base = 'http://' + (host || 'localhost') + ':' + (port || 8088) + '/api/?';
-  const fire = params => fetch(base + new URLSearchParams(params).toString(),
-    { mode: 'no-cors', cache: 'no-store' }).then(() => true).catch(() => false);
+  const base = 'http://' + (host || 'localhost') + ':' + (port || 8088) + '/api/';
+  let readable = null;                 // null = not probed yet
+  let state = { inputs: [], streaming: false, recording: false, version: null };
+
+  const qs = params => base + '?' + new URLSearchParams(params).toString();
+
+  /* Blind send. Always resolves: no-cors yields an opaque response that says
+     nothing at all, and treating "no exception" as success would be a lie. */
+  const fire = params => fetch(qs(params), { mode: 'no-cors', cache: 'no-store' })
+    .then(() => true).catch(() => false);
+
+  /* Readable send, used once the probe has said it works. */
+  const call = async params => {
+    const r = await fetch(qs(params), { cache: 'no-store' });
+    return r.ok;
+  };
+
+  const send = params => (readable ? call(params).catch(() => fire(params)) : fire(params));
+
+  /* ---- reading the state -------------------------------------------------
+     vMix returns its whole state as XML. Parsed with DOMParser rather than by
+     regular expression: an input title contains whatever a person typed into
+     it, including the angle brackets that would end a naive match. */
+  async function probe() {
+    try {
+      const r = await fetch(base, { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+      const doc = new DOMParser().parseFromString(await r.text(), 'text/xml');
+      if (doc.querySelector('parsererror')) throw new Error('not XML');
+      const txt = sel => { const n = doc.querySelector(sel); return n ? n.textContent : ''; };
+      readable = true;
+      state = {
+        version: txt('vmix > version') || null,
+        streaming: /true/i.test(txt('vmix > streaming')),
+        recording: /true/i.test(txt('vmix > recording')),
+        inputs: [].slice.call(doc.querySelectorAll('vmix > inputs > input')).map(n => ({
+          key: n.getAttribute('key'),
+          number: n.getAttribute('number'),
+          title: n.getAttribute('title') || n.textContent || '',
+          type: n.getAttribute('type') || ''
+        }))
+      };
+      return { readable: true, state };
+    } catch (_) {
+      readable = false;
+      return { readable: false, state };
+    }
+  }
+
+  const find = title => state.inputs.find(i => i.title === title);
+
+  /* ---- the rundown -------------------------------------------------------
+     One browser input per graphic, named so a human can find it in the input
+     list. When the state is readable this is a proper upsert: an input that
+     already exists has its URL rewritten instead of being added again. When it
+     is not, the caller warns first — the only honest thing to do with a
+     command whose effect cannot be observed. */
+  async function layout(graphics, onProgress) {
+    const say = onProgress || (() => {});
+    if (readable === null) await probe();
+    if (readable) await probe();                 // a fresh list before diffing
+
+    for (let i = 0; i < graphics.length; i++) {
+      const g = graphics[i];
+      say('input ' + (i + 1) + ' of ' + graphics.length + ' — ' + g.name);
+      const have = readable ? find(g.name) : null;
+      if (have) {
+        /* Point it at the current URL and force a reload. The vMix browser
+           input caches exactly as the OBS one does, so a graphic rebuilt after
+           a colour change otherwise keeps showing what it showed before — the
+           same twenty minutes of "why has it not updated" that cost us a
+           session against OBS. */
+        await send({ Function: 'SetBrowserURL', Input: have.key, Value: g.url });
+        await send({ Function: 'BrowserReload', Input: have.key });
+      } else {
+        await send({ Function: 'AddInput', Value: 'Browser|' + g.url });
+        /* AddInput leaves the new input selected, and Input=0 is the vMix word
+           for "the one just added" — the only handle available without a
+           readable reply, and the correct handle even with one. */
+        await send({ Function: 'SetInputName', Input: '0', Value: g.name });
+      }
+    }
+    if (readable) await probe();
+    say('done');
+    return true;
+  }
+
+  /* ---- taking ------------------------------------------------------------
+     Overlay channel 1 by default: the channel a lower third lives on in every
+     vMix production anybody has ever set up. An overlay channel holds one
+     input, so putting a graphic on it takes the previous one off in the same
+     command — which is what a take is. */
+  async function take(name, channel) {
+    const ch = channel || 1;
+    const hit = readable ? find(name) : null;
+    return send({ Function: 'OverlayInput' + ch + 'In', Input: hit ? hit.key : name });
+  }
+  const clear = channel => send({ Function: 'OverlayInput' + (channel || 1) + 'Out' });
+  const clearAll = () => Promise.all([1, 2, 3, 4].map(ch =>
+    send({ Function: 'OverlayInput' + ch + 'Out' })));
+
+  /* ---- transport ---------------------------------------------------------
+     vMix reports WHETHER it is streaming but not for how long, so unlike OBS
+     it cannot say when the stream started. The control room falls back to the
+     moment the button was pressed, and says which one it used. */
+  const startStream = () => send({ Function: 'StartStreaming' });
+  const stopStream  = () => send({ Function: 'StopStreaming' });
+  const startRecord = () => send({ Function: 'StartRecording' });
+  const stopRecord  = () => send({ Function: 'StopRecording' });
+
+  async function streamStatus() {
+    if (readable === null) await probe();
+    if (!readable) return { outputActive: null, outputDuration: 0, unknown: true };
+    await probe();
+    return { outputActive: state.streaming, outputDuration: 0, unknown: false };
+  }
+  async function recordStatus() {
+    if (!readable) return { outputActive: null, unknown: true };
+    return { outputActive: state.recording, unknown: false };
+  }
+  /* vMix keeps its destination in its own settings and does not publish it, so
+     the honest answer is "cannot tell" rather than "nothing is set" — the
+     second would have the control room refusing to offer a working button. */
+  const destination = async () => ({ type: null, ready: null, server: null,
+                                     provider: null, unknown: true });
+  const streamStartedMsAgo = async () => null;
 
   return {
-    /* One input per graphic. vMix names an input by its title, so re-running
-       this adds duplicates — which is why the UI says so before it runs. */
-    async layout(graphics) {
-      for (const g of graphics) {
-        await fire({ Function: 'AddInput', Value: 'Browser|' + g.url });
-        await fire({ Function: 'SetInputName', Input: g.url, Value: g.name });
-      }
-      return true;
-    },
-    /* Overlay channel 1 by default: the channel a lower third lives on in every
-       vMix production anybody has ever set up. */
-    take: (name, channel) => fire({ Function: 'OverlayInput' + (channel || 1) + 'In', Input: name }),
-    clear: channel => fire({ Function: 'OverlayInput' + (channel || 1) + 'Out' })
+    kind: 'vmix', drives: true,
+    get readable() { return !!readable; },
+    get state() { return state; },
+    probe, layout, take, clear, clearAll,
+    startStream, stopStream, startRecord, stopRecord,
+    streamStatus, recordStatus, destination, streamStartedMsAgo,
+    close() {}
   };
 }
 
-return { obs, vmix, sha256b64, authString, VERSION: '1.0.0' };
+/* ========================================================================= */
+/* Wirecast, and everything else — ONE BROWSER SOURCE, SWITCHED FROM HERE     */
+/* ========================================================================= */
+/* THERE IS NO WIRECAST CONTROL API TO WRITE AGAINST, and saying so plainly is
+   more useful than shipping something that half works. Wirecast automates
+   through AppleScript on macOS and through keyboard shortcuts everywhere else;
+   neither is reachable from a web page, and no amount of wanting changes it.
+
+   It turns out not to matter, because the mixer was never the right place to
+   switch a graphic.
+
+   A production that imports twelve browser sources asks the MIXER which one is
+   visible. A production that imports ONE — the live layer, which this platform
+   has had from the beginning — asks the PLATFORM, over the same socket the
+   scores already travel on. The take button reaches that layer directly. The
+   mixer is not consulted, needs no API, and needs to know nothing at all.
+
+   So this adapter drives nothing and connects to nothing. It exists so the
+   interface can say that clearly instead of drawing a green light, and so the
+   setup steps and the one URL are somewhere a person will find them. It is the
+   path to recommend for Wirecast, Livestream Studio, Streamlabs Desktop,
+   mimoLive, Ecamm, and any hardware switcher with an HTML input — which is to
+   say, for everything. */
+function manual(product) {
+  return {
+    kind: 'manual',
+    product: product || 'any mixer',
+    readable: false,
+    /* The important line. Taking a graphic works perfectly; it simply does not
+       go through here. Reporting drives:false is what stops the control room
+       from claiming it is driving a mixer that it is not. */
+    drives: false,
+    async probe() { return { readable: false, state: null }; },
+    async layout() { return false; },
+    async take() { return false; },
+    async clear() { return false; },
+    async streamStatus() { return { outputActive: null, outputDuration: 0, unknown: true }; },
+    async recordStatus() { return { outputActive: null, unknown: true }; },
+    async destination() { return { type: null, ready: null, server: null, unknown: true }; },
+    async streamStartedMsAgo() { return null; },
+    close() {}
+  };
+}
+
+return { obs, vmix, manual, sha256b64, authString, VERSION: '1.1.0' };
 }));

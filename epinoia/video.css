@@ -1,0 +1,136 @@
+/* ============================================================================
+   VIDEO — the player, the filters and the list of plays.
+
+   Loaded by two pages that do NOT share a variable set: the public box score
+   inherits the scorer's own palette (--txt, --line, --lume) and a player
+   profile inherits the kit's (--ink, --rule, --lume). So every colour here is
+   written as a chain that resolves in either — kit name, scorer name, literal.
+   A missing variable is not a missing colour, it is an invisible control, and
+   the last time that happened a whole court outline vanished off one page and
+   nothing looked broken.
+   ============================================================================ */
+
+.vidwrap{
+  --v-ink:  var(--ink, var(--txt, #e6fff1));
+  --v-dim:  var(--ink-3, var(--dim, #7fb8a4));
+  --v-line: var(--rule, var(--line, rgba(147,242,191,.2)));
+  --v-lume: var(--lume, #93f2bf);
+  --v-amber:var(--amber, #ffd166);
+  --v-panel:var(--panel, rgba(10,26,19,.6));
+  display:flex; flex-direction:column; gap:12px;
+  font-family:var(--f-ui, "Helvetica Neue", Inter, system-ui, sans-serif);
+  color:var(--v-ink);
+}
+
+/* ---- the player ----
+   A fixed 16:9 box rather than a height, because the frame is an iframe whose
+   content we do not control and cannot measure. */
+.vidstage{
+  position:relative; width:100%; aspect-ratio:16/9;
+  background:#000; border:1px solid var(--v-line); border-radius:14px;
+  overflow:hidden;
+}
+.vidframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+
+.vidwarn{
+  border:1px solid rgba(255,209,102,.4); background:rgba(255,209,102,.07);
+  color:var(--v-amber); border-radius:12px; padding:10px 13px;
+  font-size:12.5px; line-height:1.65;
+}
+.vidwarn b{ color:var(--v-amber); }
+
+/* ---- filters ----
+   The chip row scrolls sideways on a phone rather than wrapping to three
+   lines and pushing the list below the fold. Same reasoning, and the same
+   touch-action, as the scorer's bottom sheet. */
+.vidbar{ display:flex; flex-direction:column; gap:9px; }
+.vidchips{
+  display:flex; gap:6px; overflow-x:auto; overflow-y:hidden;
+  touch-action:pan-x; scrollbar-width:none; padding-bottom:2px;
+}
+.vidchips::-webkit-scrollbar{ display:none; }
+.vidchip{
+  flex:0 0 auto; padding:7px 12px; border-radius:99px;
+  border:1px solid var(--v-line); background:transparent;
+  color:var(--v-dim); font-family:var(--f-micro, inherit);
+  font-size:10px; letter-spacing:.04em; cursor:pointer;
+  transition:color .18s ease, border-color .18s ease, background .18s ease;
+}
+.vidchip:hover{ color:var(--v-ink); border-color:var(--v-lume); }
+.vidchip.on{ color:#04100b; background:var(--v-lume); border-color:var(--v-lume); }
+
+.vidpick{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.vidpick select{
+  flex:1 1 190px; min-width:0; padding:8px 10px; border-radius:10px;
+  border:1px solid var(--v-line); background:var(--v-panel);
+  color:var(--v-ink); font-family:var(--f-ui, inherit); font-size:13px;
+}
+.vidreel{
+  display:flex; align-items:center; gap:7px; flex:0 0 auto;
+  color:var(--v-dim); font-family:var(--f-micro, inherit); font-size:10px;
+  letter-spacing:.04em; cursor:pointer; user-select:none;
+}
+.vidreel input{ accent-color:var(--v-lume); width:15px; height:15px; }
+
+.vidcount{
+  font-family:var(--f-micro, inherit); font-size:10px; letter-spacing:.05em;
+  color:var(--v-dim);
+}
+
+/* ---- the list ----
+   Capped and scrolled: a full game is three to four hundred plays, and a page
+   that grows to eight screens of them buries everything below it. */
+.vidlist{
+  list-style:none; margin:0; padding:0;
+  max-height:min(52vh, 460px); overflow-y:auto; overscroll-behavior:contain;
+  border:1px solid var(--v-line); border-radius:12px;
+}
+.viditem{
+  display:grid; grid-template-columns:auto auto minmax(0,1fr);
+  gap:12px; align-items:baseline;
+  padding:10px 13px; cursor:pointer;
+  border-bottom:1px solid var(--v-line);
+  transition:background .14s ease;
+}
+.viditem:last-child{ border-bottom:0; }
+.viditem:hover{ background:rgba(147,242,191,.07); }
+.viditem.on{ background:rgba(147,242,191,.14); }
+.viditem.on .vidt{ color:var(--v-lume); }
+.viditem.empty{ cursor:default; color:var(--v-dim); display:block; text-align:center; }
+/* The row that fetches the next screenful. Centred and quiet — it is the end
+   of a list, not a call to action. */
+.viditem.more{ display:block; text-align:center; color:var(--v-lume);
+  font-family:var(--f-micro, inherit); font-size:10px; letter-spacing:.05em; }
+.viditem.empty:hover{ background:transparent; }
+
+/* The marker on a play whose position was worked out rather than timed. Small
+   and quiet: it is a caveat, not a warning. */
+.vidapx{font-style:normal;opacity:.5;margin-left:2px;font-size:.85em;cursor:help}
+.viditem:focus-visible{outline:2px solid var(--v-lume);outline-offset:-2px}
+.vidt{
+  font-family:var(--f-data, ui-monospace, monospace); font-size:12px;
+  color:var(--v-ink); font-variant-numeric:tabular-nums; min-width:46px;
+}
+.vidq{
+  font-family:var(--f-micro, inherit); font-size:9px; letter-spacing:.04em;
+  color:var(--v-dim); white-space:nowrap;
+}
+.vidtxt{ font-size:13px; line-height:1.45; min-width:0; }
+
+.vidfoot{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; flex-wrap:wrap;
+  font-family:var(--f-micro, inherit); font-size:9.5px; letter-spacing:.04em;
+  color:var(--v-dim);
+}
+.vidfoot a{ color:var(--v-lume); text-decoration:none; }
+.vidfoot a:hover{ text-decoration:underline; }
+
+/* On a phone the quarter-and-clock column is the first thing to go: the video
+   timestamp is what a person taps on, and the description is what they read. */
+@media (max-width:560px){
+  .viditem{ grid-template-columns:auto minmax(0,1fr); gap:9px; padding:9px 11px; }
+  .vidq{ display:none; }
+  .vidtxt{ font-size:12.5px; }
+  .vidlist{ max-height:min(46vh, 380px); }
+}

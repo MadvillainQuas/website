@@ -351,9 +351,17 @@ function watchAnnouncements() {
                                  key: window.EPINOIA_CONFIG.supabaseAnonKey });
   if (!rt) return;
   let soon = null;
-  rt.watch(ANNOUNCE_TOPIC, () => {
+  rt.watch(ANNOUNCE_TOPIC, msg => {
+    /* Only a game this page is actually showing. The fixture list is already
+       loaded, so this is a set lookup rather than a query — and an
+       announcement about some other league's game reaching this page is
+       exactly the traffic the scope on the payload exists to stop. */
+    if (msg && msg.gameId && Array.isArray(GAMES) && GAMES.length &&
+        !GAMES.some(g => g.id === msg.gameId) &&
+        (msg.league || msg.home || msg.away)) return;
     clearTimeout(soon);
-    soon = setTimeout(() => { clearTimeout(liveTimer); watchLive(0); }, 80);
+    soon = setTimeout(() => { clearTimeout(liveTimer); watchLive(0); },
+                      80 + Math.random() * 1200);
   });
 }
 

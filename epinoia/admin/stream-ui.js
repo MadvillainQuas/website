@@ -86,6 +86,7 @@ function mount(opts) {
         sub.style.cssText = 'color:var(--ink-3);margin-top:3px;word-break:break-all';
         sub.textContent = (PLATFORMS[t.platform] || {}).label || t.platform;
         sub.textContent += ' · key ' + t.key_tail;
+        if (t.channel_ref) sub.textContent += ' · channel ' + t.channel_ref;
         left.appendChild(sub);
         row.appendChild(left);
 
@@ -132,11 +133,41 @@ function mount(opts) {
     key.autocomplete = 'off';
     form.appendChild(key);
 
+    /* THE PUBLIC IDENTIFIER, WHICH IS NOT A CREDENTIAL AND IS THE HALF THAT
+       SAVES EVERYBODY THE MOST WORK.
+
+       OBS can tell the platform when a stream started and which service it
+       goes to. It cannot tell us the public watch URL — YouTube issues that to
+       the broadcast, not to the encoder, and there is no obs-websocket request
+       that returns it. So without this, somebody has to paste a link into
+       every single fixture.
+
+       With it, nobody does: YouTube publishes a stable embed for "whatever
+       this channel is streaming now", so a live game embeds itself. The
+       archive link is still worth pasting afterwards, because only a real
+       video id can be seeked into — but that is one paste after the game
+       rather than one before every game. */
+    const chan = el('input', 'ep-in');
+    chan.placeholder = 'channel id — UC… (optional)';
+    chan.autocomplete = 'off';
+    form.appendChild(chan);
+
     const help = el('div', 'ep-micro');
     help.style.cssText = 'color:var(--ink-3);line-height:1.8';
     const setHelp = () => {
       const p = PLATFORMS[plat.value];
-      help.textContent = 'Find it in: ' + p.help;
+      help.innerHTML = 'Find the key in: ' + p.help +
+        (plat.value === 'youtube'
+          ? '<br><br><b>The channel id is optional and worth a minute.</b> ' +
+            'YouTube Studio &rarr; Settings &rarr; Channel &rarr; Advanced, ' +
+            'and copy the <b>Channel ID</b> — it starts UC. With it, a live ' +
+            'game embeds itself on the box score with nothing pasted per ' +
+            'fixture. It is a public identifier, not a secret.'
+          : plat.value === 'twitch'
+            ? '<br><br><b>The channel is optional:</b> your Twitch channel ' +
+              'name lets a live game embed itself with nothing pasted per ' +
+              'fixture.'
+            : '');
       if (p.server) server.value = p.server;
       server.readOnly = plat.value !== 'custom';
       server.style.opacity = plat.value === 'custom' ? '1' : '.6';
@@ -163,11 +194,12 @@ function mount(opts) {
         label: label.value.trim() || 'Main channel',
         platform: plat.value,
         server: server.value.trim(),
-        stream_key: k
+        stream_key: k,
+        channel_ref: chan.value.trim()
       });
       save.disabled = false;
       if (error) { say && say(error.message, true); return; }
-      key.value = ''; label.value = '';
+      key.value = ''; label.value = ''; chan.value = '';
       say && say('Saved. Anybody priming a fixture can now send it to OBS.');
       load();
     };

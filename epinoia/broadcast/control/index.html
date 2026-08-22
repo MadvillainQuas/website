@@ -7,7 +7,7 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*">
 <title>Broadcast control · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=196">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=233">
 <style>
 /* ============================================================================
    THE CONTROL ROOM.
@@ -103,6 +103,16 @@
   #mxNote{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);
     border:0;padding:0;margin-top:4px}
   #mxNote b{color:var(--ink-2);font-weight:400}
+  /* The one-source setup steps. A numbered list because somebody is reading
+     this in a sports hall twenty minutes before tip, not at a desk. */
+  .mxsteps{margin:8px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:9px}
+  .mxsteps li{line-height:1.9}
+  .mxurl{display:inline-block;margin:5px 8px 5px 0;padding:5px 8px;border-radius:6px;
+    background:rgba(147,242,191,.09);border:1px solid var(--rule);color:var(--ink-2);
+    font-family:var(--f-data,ui-monospace,monospace);font-size:9.5px;word-break:break-all;
+    max-width:100%}
+  .mxcopy{padding:4px 10px;font-size:9px;vertical-align:middle}
+  .mxwarn{margin-top:10px;color:var(--amber);line-height:1.9}
   .golive[data-state="live"]{border-color:var(--flare,#ff5f6b)}
   .golive[data-state="ready"]{border-color:var(--lume)}
   .lvpill{font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
@@ -153,6 +163,12 @@
     <label>scale <input id="scale" type="number" min="0.5" max="2" step="0.1" value="1" style="width:64px"></label>
     <label>chroma <input id="chroma" type="text" placeholder="off" style="width:88px"></label>
     <label><input id="safe" type="checkbox" checked> title-safe</label>
+    <!-- OFF AIR. A production with twelve sources goes clean by hiding them in
+         the mixer; a production with ONE has nowhere to hide and needs this, or
+         a graphic that goes up never comes down. It is the single most-used
+         button in a real gallery, so it sits with the layout controls rather
+         than at the end of a list of scenes. -->
+    <button class="ep-btn ghost" id="clearAir" style="margin-left:auto">off air</button>
   </div>
 
   <div class="prev"><iframe id="prev" title="Preview of the graphic on air"></iframe></div>
@@ -177,6 +193,16 @@
       <button class="ep-btn ghost" id="lvRec" disabled>Record</button>
       <button class="ep-btn ghost" id="lvSend">Use the league channel</button>
     </div>
+    <!-- WHERE PEOPLE WATCH IT, which is not the same thing as where OBS sends
+         it. The ingest URL and key are what the encoder needs; this is the
+         public link, and it is what the box score embeds and what every
+         play-by-play line seeks into. Pasted once, before or after going live —
+         the timeline is anchored by the clock either way. -->
+    <div class="erow">
+      <input id="lvWatch" class="mxin" style="flex:1 1 260px"
+             placeholder="public watch link — youtube.com/watch?v=…">
+      <button class="ep-btn ghost" id="lvWatchSave">Attach to this game</button>
+    </div>
     <div class="en" id="lvNote"></div>
   </div>
 
@@ -189,6 +215,8 @@
       <select id="mxKind" class="mxin">
         <option value="obs">OBS Studio 28+</option>
         <option value="vmix">vMix</option>
+        <option value="wirecast">Wirecast</option>
+        <option value="manual">Any other mixer</option>
       </select>
       <input id="mxHost" class="mxin" value="localhost" style="width:104px" placeholder="host">
       <input id="mxPort" class="mxin" value="4455" style="width:66px" placeholder="port">
@@ -208,6 +236,7 @@
     <div class="erow">
       <button class="ep-btn" id="expObs">OBS scene collection</button>
       <button class="ep-btn" id="expVmix">vMix preset</button>
+      <button class="ep-btn" id="expWirecast">Wirecast setup sheet</button>
       <button class="ep-btn" id="expUrls">Plain URL list</button>
     </div>
     <div class="en">Every graphic as a 1920&times;1080 browser source, named and
@@ -220,9 +249,10 @@
   <div class="msg" id="how"></div>
 </div>
 
-<script src="../../config.js?v=196" defer></script>
-<script src="../../vendor/supabase.js?v=196" defer></script>
-<script src="mixers.js?v=196" defer></script>
-<script src="control.js?v=196" defer></script>
+<script src="../../video.js?v=233" defer></script>
+<script src="../../config.js?v=233" defer></script>
+<script src="../../vendor/supabase.js?v=233" defer></script>
+<script src="mixers.js?v=233" defer></script>
+<script src="control.js?v=233" defer></script>
 </body>
 </html>

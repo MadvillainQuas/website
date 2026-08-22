@@ -54,7 +54,13 @@ ok('no line defaults a parameter and then dereferences it unguarded',
    risky.length === 0, risky.join('\n          '));
 
 ok('the position is resolved once, into a variable',
-   /const pos = String\(qp\.get\('pos'\) \|\| 'bl'\)\.toLowerCase\(\);/.test(layer));
+   /const pos = String\(qp\.get\('pos'\) \|\| '[a-z]{1,2}'\)\.toLowerCase\(\);/.test(layer));
+/* The default itself is a design decision, not a structural one, and it
+   changed: bottom-CENTRE, because that is where a scoreboard goes and a corner
+   reads as an overlay somebody added rather than as the score. Asserted
+   separately so moving it again is a deliberate edit to one line. */
+ok('...and the scorebug defaults to the foot of the frame, centred',
+   /qp\.get\('pos'\) \|\| 'bc'/.test(layer));
 ok('...and validated against a list', /POSITIONS\.includes\(pos\)/.test(layer));
 
 /* ---- 2. an optional column cannot blank the layer ------------------------ */
@@ -237,9 +243,16 @@ ok('hidden sources shut down rather than holding a socket',
    /shutdown: true/.test(mix));
 
 ok('vMix is driven over its web controller', /OverlayInput/.test(mix));
-ok('...and the page does not pretend to know it worked',
-   /a command that fails looks exactly\s+like one that worked/.test(mix),
-   'vMix answers without CORS headers, so the reply cannot be read');
+/* The wording moved when vMix stopped being fire-and-forget only — it now
+   PROBES, and the honesty requirement applies to the one-way case rather than
+   to every case. What must never come back is a page that reports success it
+   cannot observe. */
+ok('...and the page still refuses to claim success it cannot observe',
+   /Always resolves: no-cors yields an opaque response/.test(mix) &&
+   /treating "no exception" as success would be a lie/.test(mix),
+   'the blind path must say SENT, not SUCCEEDED');
+ok('...but it checks first, rather than assuming the worst',
+   /async function probe\(\)/.test(mix) && /readable = true;/.test(mix));
 
 ok('the CSP permits a local mixer socket',
    /ws:\/\/localhost:\*/.test(rd('epinoia', 'broadcast', 'control', 'index.html')));
@@ -513,6 +526,86 @@ ok('...triggered by a scheduled fixture that already has its fives',
 ok('...and the query actually fetches starters',
    /select=id,tipoff_at,status,venue,home_score,away_score,starters/.test(strip),
    'the signal is useless if the column is not asked for');
+
+
+/* ---- the Index, the badge, and how much frame a graphic takes ------------- */
+console.log('\nthe rankings, the league badge and the size of things');
+
+const bcss = rd('epinoia', 'broadcast', 'index.html');
+const ctrl2 = rd('epinoia', 'broadcast', 'control', 'control.js');
+
+/* THE INDEX. Run rather than read: it is arithmetic, and arithmetic that is
+   only inspected is arithmetic that is wrong. */
+const pirSrc = (() => {
+  const from = layer.indexOf('function pir(s)');
+  let d = 0;
+  for (let j = layer.indexOf('{', from); j < layer.length; j++) {
+    if (layer[j] === '{') d++;
+    else if (layer[j] === '}') { d--; if (!d) return layer.slice(from, j + 1); }
+  }
+})();
+const pir = new Function('return ' + pirSrc)();
+
+ok('an empty line is nothing, not a crash', pir({}) === 0 && pir(null) === 0);
+/* 23 pts, 7 reb, 3 ast, 1 stl, 0 blk, 3 drawn — 9/18 fg, 5/6 ft, 1 to, 2 pf.
+   good 23+7+3+1+0+3 = 37;  bad (18-9) + (6-5) + 1 + 2 = 13;  index 24. */
+ok('the valuation is FIBA\'s, worked through by hand',
+   pir({ pts: 23, or: 3, dr: 4, ast: 3, stl: 1, blk: 0, fd: 3,
+         p2a: 10, p2m: 6, p3a: 8, p3m: 3, fta: 6, ftm: 5, to: 1, pf: 2 }) === 24,
+   String(pir({ pts: 23, or: 3, dr: 4, ast: 3, stl: 1, blk: 0, fd: 3,
+                p2a: 10, p2m: 6, p3a: 8, p3m: 3, fta: 6, ftm: 5, to: 1, pf: 2 })));
+ok('a bad night is allowed to be negative',
+   pir({ pts: 2, p2a: 12, p2m: 1, to: 5, pf: 4 }) < 0);
+ok('fouls DRAWN count, which is the half people forget',
+   pir({ pts: 10, fd: 4 }) - pir({ pts: 10, fd: 0 }) === 4);
+ok('the graphic shows the sign, because a negative index is the story',
+   /rankCard\('index'[\s\S]{0,180}p\.index > 0 \? '\+' : ''/.test(layer));
+ok('...and it is offered in the control room', /\['index',     'live', 'Index leaders'/.test(ctrl2));
+ok('rebounds and assists have their own rankings too',
+   /rankCard\('rebounds'/.test(layer) && /rankCard\('assists'/.test(layer));
+
+/* THE BADGE. The blocklist is the part that matters. */
+const iniSrc = (() => {
+  const from = layer.indexOf('function leagueInitials()');
+  let d = 0;
+  for (let j = layer.indexOf('{', from); j < layer.length; j++) {
+    if (layer[j] === '{') d++;
+    else if (layer[j] === '}') { d--; if (!d) return layer.slice(from, j + 1); }
+  }
+})();
+const mkIni = (name, initials) => new Function('game', 'leagueShort',
+  'const LEAGUE_NOISE = ' + /^(of|the|and|for|a|an|de|du|la|le|el|des)$/i.toString() + ';' +
+  'const NEVER_DERIVE = ' + JSON.stringify(['EDL','BNP','KKK','NSDAP','C18','SS','NF','BUF']) + ';' +
+  iniSrc + '; return leagueInitials();')(
+    { competitions: { seasons: { leagues: initials ? { initials } : {} } } },
+    () => name);
+
+ok('a league name gives its initials', mkIni('Northern Counties Basketball League') === 'NCB');
+ok('small words are dropped', mkIni('League of the North') === 'LN');
+ok('a name that is already an acronym is left alone', mkIni('BBL') === 'BBL');
+/* The one this exists for. "Epinoia Demo League" derives EDL, which in Britain
+   names a far-right street movement — nobody chose it and it would have gone
+   out on every stream the league produced. */
+ok('a derived acronym is NEVER allowed to land on EDL',
+   mkIni('Epinoia Demo League') === 'ED', mkIni('Epinoia Demo League'));
+ok('...nor on the others on the list', mkIni('British National Party League') !== 'BNP');
+ok('a league that sets its own letters gets them, even three',
+   mkIni('Epinoia Basketball League', 'EBL') === 'EBL');
+ok('three letters stack into the badge, fewer do not',
+   /function initialsHTML\(txt\)/.test(layer) && /s\.length < 3/.test(layer) &&
+   /\.ini3\{display:flex;flex-direction:column/.test(bcss));
+ok('the column is asked for OUTSIDE the core select, so an older database still draws',
+   /select=competitions\(seasons\(leagues\(initials\)\)\)/.test(layer) &&
+   layer.indexOf('leagues(initials)') > layer.indexOf('const CORE'));
+
+/* THE SIZE. A full-bleed graphic is a slide, not a broadcast. */
+ok('the full-frame cards are scaled so the game shows behind them',
+   /transform:scale\(\.82\);transform-origin:50% 50%/.test(bcss));
+ok('...scaled rather than inset, because the contents are sized against the viewport',
+   /SCALED, NOT SHRUNK/.test(bcss));
+ok('the scorebug came down in size rather than staying as it was',
+   /\.bug \.sc\{font-weight:800;font-size:4vmin/.test(bcss) &&
+   /\.bug \.clk\{font-weight:800;font-size:2\.9vmin/.test(bcss));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

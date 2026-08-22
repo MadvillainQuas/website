@@ -226,7 +226,10 @@ function merge(g, events, removed, full) {
         onFrame(f) { merge(f.game, f.events, f.removed, f.full); render(); },
         onStatus() {}
       });
-      setInterval(render, 1000);         // the clock ticks locally, as everywhere
+      /* The clock ticks locally, as everywhere — but only while somebody can
+         see it. An embed in a background tab redrawing a clock once a second
+         for an hour is a phone getting warm for nothing. */
+      setInterval(() => { if (!document.hidden) render(); }, 1000);
     }
   } catch (e) {
     fail('Could not load this game');

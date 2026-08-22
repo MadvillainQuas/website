@@ -39,11 +39,36 @@ let liveClock = null;      // set while a live publisher is driving the clock
 window.S = null;
 window.derive = () => E.deriveGame(window.S);
 
-async function api(p) {
-  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
-  if (!r.ok) throw new Error(`${r.status} on ${p.split('?')[0]}`);
-  return r.json();
+/* THE BUSIEST READ ON THE PLATFORM, so it is the one that has to survive a
+   crowd. Same reasoning as epinoia/data.js: a 429 or a pooler 503 is a "not
+   now", not an answer, and four hundred people opening one box score in a
+   minute is precisely when it arrives. Anything else — a 400, a 404 — is a
+   real answer and is reported straight away rather than asked three times.
+
+   Deliberately a copy rather than an import: this page loads six scripts and
+   must render a box score with the network hostile; adding a dependency
+   between them to save fifteen lines would trade robustness for tidiness. */
+const API_RETRY = new Set([429, 500, 502, 503, 504]);
+
+async function api(p, attempt = 0) {
+  let r;
+  try {
+    r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
+      { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+  } catch (netErr) {
+    if (attempt >= 3) throw netErr;
+    await new Promise(res => setTimeout(res, 400 * Math.pow(2, attempt)));
+    return api(p, attempt + 1);
+  }
+  if (r.ok) return r.json();
+  if (API_RETRY.has(r.status) && attempt < 3) {
+    const ra = r.headers.get('retry-after');
+    let hold = 400 * Math.pow(2, attempt);
+    if (ra && /^\d+$/.test(ra.trim())) hold = Math.min(10000, +ra * 1000);
+    await new Promise(res => setTimeout(res, hold));
+    return api(p, attempt + 1);
+  }
+  throw new Error(`${r.status} on ${p.split('?')[0]}`);
 }
 
 function fail(msg) { $('#view').innerHTML = ''; $('#view').appendChild(
@@ -56,6 +81,11 @@ function rowToEvent(r) {
   const e = Object.assign({ t: r.t, id: r.seq, period: r.period, clock: r.clock }, r.payload || {});
   if (r.team != null) e.team = r.team;
   if (r.pid != null) e.pid = r.pid;
+  /* The wall clock rides along untouched. The replay ignores it — engine.js
+     works entirely in period and game clock — but it is the ONLY axis a video
+     of the game shares with the log, so dropping it here would mean fetching
+     the whole log twice to get it back. */
+  if (r.created_at) { e.created_at = r.created_at; e.seq = r.seq; }
   return e;
 }
 
@@ -66,7 +96,7 @@ async function fetchLog() {
   let events = [], from = 0;
   for (;;) {
     const page = await api(`game_events?game_id=eq.${encodeURIComponent(gameId)}` +
-      `&select=seq,t,team,pid,period,clock,payload&order=seq&offset=${from}&limit=1000`);
+      `&select=seq,t,team,pid,period,clock,payload,created_at&order=seq&offset=${from}&limit=1000`);
     events = events.concat(page);
     if (page.length < 1000) break;
     from += 1000;
@@ -96,6 +126,49 @@ async function loadStored() {
     if (extra.length) Object.assign(g, extra[0]);
   } catch (_) { /* an older database simply has none of these */ }
 
+  /* THE VIDEO IS ALSO A SEPARATE QUESTION, for exactly the reason above: the
+     table arrives in migration 0082 and a database without it must still be
+     able to show a box score. */
+  let video = null;
+  try {
+    const vs = await api(`game_videos?game_id=eq.${encodeURIComponent(gameId)}` +
+      `&is_primary=eq.true&select=url,provider,video_ref,label,` +
+      `stream_started_at,tip_at,tip_wall,trim_ms,is_live&limit=1`);
+    if (vs.length && vs[0].url) video = vs[0];
+    else if (vs.length) video = vs[0];         // anchored, link still to come
+  } catch (_) { /* no table, or none attached — the tab simply does not appear */ }
+
+  /* THE LEAGUE'S CHANNEL, WHEN NOBODY HAS PASTED A LINK.
+
+     A mixer can tell the platform when a stream started and which service it
+     goes to; it cannot tell us the public watch URL, because YouTube issues
+     that to the broadcast rather than to the encoder. Without a fallback,
+     every fixture would need a link pasted into it before anybody could watch
+     from here.
+
+     So a league that has recorded its channel id once gets "whatever this
+     channel is streaming right now" — which, during a game, is the game. It
+     cannot be seeked, so the play list stays unavailable until the archive
+     link arrives; that is stated on the tab rather than discovered by a
+     viewer pressing a play and going nowhere. */
+  if ((!video || !video.url) && g.status === 'live') {
+    try {
+      const chans = await api(`rpc/league_channel_for_game?p_game=` +
+        encodeURIComponent(gameId));
+      const c = Array.isArray(chans) ? chans[0] : chans;
+      if (c && c.channel_ref && window.EpinoiaVideo) {
+        const src = window.EpinoiaVideo.liveEmbedSrc(c.platform, c.channel_ref);
+        if (src) {
+          video = Object.assign({}, video || {}, {
+            provider: c.platform, channel_ref: c.channel_ref,
+            live_src: src, url: video && video.url ? video.url : '',
+            label: 'Live on the league channel', is_live: true
+          });
+        }
+      }
+    } catch (_) { /* no 0083 yet, or no channel recorded — nothing to show */ }
+  }
+
   const events = await fetchLog();
 
   const snap = g.roster_snapshot;
@@ -120,6 +193,7 @@ async function loadStored() {
     competition: [league.name, comp.name].filter(Boolean).join(' · ') || 'Friendly',
     leagueSlug: league.slug || null,
     venue: g.venue,
+    video: video,
     /* The scoresheet's context, in the shape matchDetailsHTML reads on both
        sides — the scorer keeps the same object on its own S, so one renderer
        serves the statistician's screen and the public page. */
@@ -159,7 +233,11 @@ const BODIES = {
   pbp:     d => B.pbpHTML(d),
   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
   adv:     d => B.advHTML(d),
-  lineups: () => B.lineupsHTML()
+  lineups: () => B.lineupsHTML(),
+  /* Rendered rather than returned as a string: the video tab owns a player, a
+     set of filters and a scroll position, and handing back HTML for the page
+     to insert would throw all three away on every redraw. */
+  video:   () => '<div id="vidHost"></div>'
 };
 /* the same five, in the same order, with the same labels as renderFinal() */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
@@ -170,10 +248,16 @@ const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot cha
    happened", which is the question most people arrive with. It is only offered
    once a game is final — there is nothing to report on a game still being
    played, and the facts it reads assume a complete log. */
+/* VIDEO IS A TAB ONLY WHEN THERE IS ONE. A permanently present tab that says
+   "no video has been attached" is a tab that trains people not to press it,
+   and every league without a camera would carry it for ever. */
 function tabsFor(status) {
-  return status === 'final'
+  const base = status === 'final'
     ? [['report', 'match report']].concat(TABS)
     : TABS;
+  const S = window.S;
+  const v = S && S.video;
+  return (v && (v.url || v.live_src)) ? base.concat([['video', 'video']]) : base;
 }
 
 /* Rendering is split three ways on purpose.
@@ -221,6 +305,7 @@ function renderShell() {
       S.teams[0].name + ' v ' + S.teams[1].name);
   offerToScore();
   offerToRevert();
+  offerToAttachVideo();
   /* THE GLOWS COME FROM THE CLUB COLOURS TOO.
 
      boxscore.css colours 27 things from --team0/--team1 — the score, the tab
@@ -480,6 +565,122 @@ async function rpcCallRaw(fn, args, token) {
   return { ok: r.ok, body };
 }
 
+/* ==========================================================================
+   ATTACHING THE RECORDING, AFTER THE GAME.
+
+   The ordinary case: the game finished on Saturday, the footage went up on
+   Sunday, and whoever ran the table wants to line the two up. The scorer
+   cannot help — it refuses to open a finished fixture, and rightly, because
+   its log is closed — so this page carries it instead.
+
+   Two numbers and one of them is already known. The tip's wall clock is in the
+   event log (the first period_start), so anchor_video_from_log fills it in.
+   The only thing nobody can derive is where the jump ball sits on the scrub
+   bar, which is the one field this asks for.
+   ========================================================================== */
+let vidChecking = false, vidShown = false;
+
+async function offerToAttachVideo() {
+  const cta = document.getElementById('vidCta');
+  if (!cta || vidShown || vidChecking || !gameId) return;
+  const token = storedToken();
+  if (!token) return;                          // ask again once signed in
+  vidChecking = true;
+  try {
+    const ok = await withRetry(() => rpcCall('may_attach_video', { p_game: gameId }, token));
+    if (ok !== true) return;
+    vidShown = true;
+    cta.classList.remove('hide');
+    cta.textContent = (window.S && window.S.video && window.S.video.url)
+      ? 'video sync' : 'attach video';
+    cta.onclick = openAttach;
+  } catch (_) {
+    /* Before 0088 the function does not exist, and a page that cannot offer
+       this is a page, not a failure. */
+  } finally { vidChecking = false; }
+}
+
+function openAttach() {
+  const V = window.EpinoiaVideo;
+  const cur = (window.S && window.S.video) || {};
+  const gap = V ? V.gapMs(cur) : null;
+  const wrap = document.createElement('div');
+  wrap.className = 'vsheet';
+  wrap.innerHTML =
+    '<div class="box">' +
+      '<h3>The recording of this game</h3>' +
+      '<p>Paste the link, then say where the jump ball is on the scrub bar. ' +
+      'Everything else is already known: the tip-off time comes from the event ' +
+      'log, so from that one number every play in the game gets a position in ' +
+      'the video — here, and on the profile of every player in it.</p>' +
+      '<input id="vsUrl" type="url" placeholder="https://www.youtube.com/watch?v=…" ' +
+        'value="' + B.esc(cur.url || '') + '">' +
+      '<div class="tip"><span style="font-size:12.5px">tip-off is at</span>' +
+        '<input id="vsMin" type="number" min="0" max="600" placeholder="mm" value="' +
+          (gap != null ? Math.floor(gap / 60000) : '') + '">' +
+        '<span>:</span>' +
+        '<input id="vsSec" type="number" min="0" max="59" placeholder="ss" value="' +
+          (gap != null ? Math.floor(gap / 1000) % 60 : '') + '"></div>' +
+      '<div class="msg" id="vsMsg"></div>' +
+      '<div class="row"><button id="vsCancel">cancel</button>' +
+        '<button class="go" id="vsSave">save</button></div>' +
+    '</div>';
+  document.body.appendChild(wrap);
+  document.getElementById('vsCancel').onclick = () => wrap.remove();
+  document.getElementById('vsSave').onclick = () => saveAttach(wrap);
+  document.getElementById('vsUrl').focus();
+}
+
+async function saveAttach(wrap) {
+  const V = window.EpinoiaVideo;
+  const msg = document.getElementById('vsMsg');
+  const save = document.getElementById('vsSave');
+  const raw = document.getElementById('vsUrl').value.trim();
+  if (!raw) { msg.textContent = 'The link first.'; return; }
+  const parsed = V ? V.parse(raw) : { ok: false, provider: 'other', ref: '' };
+  if (!parsed.ok) {
+    msg.textContent = 'That link is not one this recognises — YouTube, Twitch, ' +
+      'Vimeo, Facebook or a video file. It would be stored but no play could ' +
+      'seek into it.';
+    return;
+  }
+  const mm = Math.max(0, +document.getElementById('vsMin').value || 0);
+  const ss = Math.min(59, Math.max(0, +document.getElementById('vsSec').value || 0));
+  const tipMs = (mm * 60 + ss) * 1000;
+
+  const token = storedToken();
+  save.disabled = true;
+  msg.textContent = 'saving…';
+  try {
+    /* THE ORDER MATTERS. The row has to exist and carry a tip before the gap
+       can mean anything: a gap is measured FROM the tip, so setting it first
+       would be arithmetic against null. */
+    let r = await rpcCallRaw('set_game_video', {
+      p_game: gameId, p_url: raw,
+      p_provider: parsed.provider, p_ref: parsed.ref
+    }, token);
+    if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
+
+    r = await rpcCallRaw('anchor_video_from_log', { p_game: gameId }, token);
+    if (!r.ok) throw new Error((r.body && r.body.message) || 'no tip-off in the log');
+    const row = Array.isArray(r.body) ? r.body[0] : r.body;
+    if (!row || !row.tip_at) throw new Error('this game has no recorded tip-off');
+
+    /* Now the gap: the video began this far before the ball went up. */
+    const started = new Date(new Date(row.tip_at).getTime() - tipMs).toISOString();
+    r = await rpcCallRaw('set_game_video', {
+      p_game: gameId, p_stream_start: started, p_trim_ms: 0
+    }, token);
+    if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
+
+    wrap.remove();
+    location.reload();                 // the tab, the list and the embed, fresh
+  } catch (err) {
+    save.disabled = false;
+    msg.textContent = 'Could not save it: ' + (err.message || err);
+  }
+}
+
 let revertChecking = false, revertShown = false;
 async function offerToRevert() {
   const cta = document.getElementById('revertCta');
@@ -558,7 +759,9 @@ async function offerToRevert() {
    here. Retrying costs nothing once a button is already shown — both
    functions no-op on their own guard. */
 window.addEventListener('storage', e => {
-  if (e.key && /-auth-token$/.test(e.key)) { offerToScore(); offerToRevert(); }
+  if (e.key && /-auth-token$/.test(e.key)) {
+    offerToScore(); offerToRevert(); offerToAttachVideo();
+  }
 });
 
 /* cheap: 576 characters, safe to run on every clock tick */
@@ -595,7 +798,33 @@ function renderBody(d) {
   if (key === lastBodyKey) return;
   lastBodyKey = key;
   const el = $('#csBody');
-  if (el) { el.innerHTML = (BODIES[fTab] || BODIES.box)(d); linkifyPlayers(el); decorateTeams(el); }
+  if (el) {
+    el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
+    linkifyPlayers(el); decorateTeams(el);
+    if (fTab === 'video') mountVideo(d);
+  }
+}
+
+/* The video tab draws itself, because it owns a player that must not be
+   rebuilt on every redraw — reloading an iframe mid-clip is not a redraw, it
+   is an interruption. renderBody's key already prevents that for the common
+   case; this is the belt to its braces.
+
+   ?v= carries a focus in from elsewhere on the platform — a player profile
+   linking to "his plays in this game" — so arriving from a profile lands on
+   the right list rather than on all four hundred plays of the game. */
+function mountVideo(d) {
+  const S = window.S;
+  if (!S || !S.video || !window.EpinoiaVideoTab) {
+    const host = document.getElementById('vidHost');
+    if (host) host.innerHTML = '<div class="msg">No video is attached to this game.</div>';
+    return;
+  }
+  const qp2 = new URLSearchParams(location.search);
+  window.EpinoiaVideoTab.render({
+    host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
+    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null }
+  });
 }
 
 /* Turn every player row in the box score into a link to that player's profile.
@@ -746,6 +975,7 @@ function goLive() {
      broadcast, a viewer that woke from sleep. */
   setTimeout(() => backfill('post-connect'), 1500);
   setInterval(() => checkGap(), 10000);
+  watchForVideo();
 
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
@@ -776,10 +1006,26 @@ function goLive() {
    scheduled, a finalised one as final, both by the code that already knows
    how. One indexed row every four seconds, and only while the game is not
    already final — a finished game has nothing left to change. */
+/* A TAB NOBODY IS LOOKING AT ASKS FOR NOTHING.
+
+   This fires every four seconds for as long as the page is open, which is
+   right for somebody watching a game and wrong for the six tabs they left
+   behind. A phone in a pocket with four fixtures open was making one request a
+   second, for ever, and at a few hundred viewers that is the platform's
+   busiest endpoint serving people who cannot see the answer.
+
+   The Page Visibility API says when nobody is looking. Coming back is handled
+   too: a tab restored after an hour polls IMMEDIATELY rather than waiting out
+   the interval, because the first thing somebody does on returning is look at
+   the score. */
 const STATUS_POLL_MS = 4000;
 function watchGameStatus() {
   if (mode !== 'supabase' || !gameId) return;
-  setInterval(async () => {
+  let missedWhileHidden = false;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && missedWhileHidden) { missedWhileHidden = false; pollStatus(); }
+  });
+  async function pollStatus() {
     if (!window.S || window.S.status === 'final') return;
     let rows;
     try { rows = await api('games?id=eq.' + encodeURIComponent(gameId) + '&select=status&limit=1'); }
@@ -788,7 +1034,62 @@ function watchGameStatus() {
     if (!now || now === window.S.status) return;
     console.log('[status] ' + window.S.status + ' -> ' + now + ', reloading');
     location.reload();
+  }
+  setInterval(() => {
+    if (document.hidden) { missedWhileHidden = true; return; }
+    pollStatus();
   }, STATUS_POLL_MS);
+}
+
+/* A STREAM LINK USUALLY ARRIVES AFTER THE VIEWERS DO.
+
+   The video row is fetched once, at boot, and the tab bar is built from what
+   came back. That is right for a finished game and wrong for a live one: a
+   producer starts the stream, YouTube hands out the public link a minute
+   later, and by then everybody watching the box score has a tab bar without a
+   video tab on it and no reason to reload.
+
+   So a live game asks again, slowly. Once — the moment the row appears the
+   tab bar is rebuilt and the poll stops, because a video is attached once per
+   game and there is nothing further to watch for. */
+const VIDEO_POLL_MS = 45000;
+let videoMisses = 0;
+function watchForVideo() {
+  if (mode !== 'supabase' || !gameId) return;
+  const timer = setInterval(async () => {
+    if (document.hidden) return;              // nobody is looking; ask nothing
+    /* Keeps looking while the video row has no watchable LINK, not merely no
+       row. A stream anchored by the control room exists as a row minutes
+       before YouTube hands out the URL, and stopping at the row would mean the
+       link never arrived on a page anybody had open. */
+    if (!window.S || window.S.status === 'final') return;
+    if (window.S.video && window.S.video.url) return;
+    let rows;
+    try {
+      rows = await api('game_videos?game_id=eq.' + encodeURIComponent(gameId) +
+        '&is_primary=eq.true&select=url,provider,video_ref,label,' +
+        'stream_started_at,tip_at,tip_wall,trim_ms,is_live&limit=1');
+      videoMisses = 0;
+    } catch (_) {
+      /* A blip is worth retrying; a database without the table is not. Before
+         0082 is applied every one of these is a 400, and a page left open on a
+         live game would fire one every 45 seconds for the rest of the evening
+         — a request per minute per viewer, for a table that will not exist
+         until somebody runs a migration. Three strikes and it stops. */
+      if (++videoMisses >= 3) clearInterval(timer);
+      return;
+    }
+    if (!rows.length || !rows[0].url) return;
+    /* Keep a channel fallback's own fields — the row that has just arrived
+       carries the anchor and the link; live_src is how the page was showing
+       the league channel until now, and losing it mid-poll would blank the
+       frame for a beat. */
+    window.S.video = Object.assign({}, window.S.video || {}, rows[0]);
+    clearInterval(timer);
+    /* Rebuild the shell rather than the whole page: somebody is watching a
+       game, and a reload would throw away their scroll and their tab. */
+    shellBuilt = false; renderShell(); shellBuilt = true;
+  }, VIDEO_POLL_MS);
 }
 
 /* THE BACKFILL.
@@ -1051,9 +1352,12 @@ async function renderPreview() {
       ' · preview · Epinoia';
 
   /* The two consoles that belong on a fixture that has not started: whoever
-     may score it, and whoever may take it back off the listing. */
+     may score it, and whoever may take it back off the listing — plus the one
+     that belongs on a fixture that is OVER, which is where a recording is
+     normally attached. */
   offerToScore();
   offerToRevert();
+  offerToAttachVideo();
 }
 
 /* ------------------------------------------------------------------- boot --- */

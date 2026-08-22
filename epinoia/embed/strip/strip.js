@@ -358,7 +358,9 @@ function tickCadence() {
   const running = Array.from(LIVE.values()).some(s => s.running);
   const anyLiveCard = Array.from(ROWS.values()).some(g => statusOf(g) === 'live');
   if (running && anyLiveCard) {
-    if (!tickTimer) tickTimer = setInterval(paint, 250);
+    /* The local clock tick. Four times a second is right for a scoreboard
+       somebody is watching and is pure battery for one they are not. */
+    if (!tickTimer) tickTimer = setInterval(() => { if (watching()) paint(); }, 250);
   } else if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
 }
 
@@ -403,8 +405,38 @@ function watchable(gs) {
    this strip whose row we are re-reading in the same breath. */
 const ANNOUNCE_TOPIC = 'epinoia:live';
 let announceTimer = null;
+/* IS THIS ANNOUNCEMENT ABOUT US?
+
+   Every strip on every club site hears every game on the platform. Reloading
+   for all of them turned one game going live into a query from each — a herd
+   that grows with the platform rather than with the audience.
+
+   Three ways an announcement can matter, and one way it cannot:
+
+     * it is a game already on this strip                     — certainly ours
+     * it is in the league this strip was configured with     — ours
+     * one of its clubs is the club this strip belongs to     — ours
+     * it names a league and a pair of clubs, none of which   — not ours,
+       we asked for                                             ignore it
+
+   AN ANNOUNCEMENT WITH NO SCOPE IS TREATED AS OURS. A scorer running an older
+   build sends only an id and a status, and the right failure there is the old
+   behaviour — an unnecessary query — rather than a strip that silently stops
+   noticing games. */
+function concernsUs(msg) {
+  if (ROWS.has(msg.gameId)) return true;
+  if (!msg.league && !msg.home && !msg.away) return true;   // unscoped: assume ours
+  if (wantLeague && msg.league === wantLeague) return true;
+  if (wantTeam && (msg.home === wantTeam || msg.away === wantTeam)) return true;
+  /* A strip with no league and no club shows the whole platform, so everything
+     is its business. */
+  if (!wantLeague && !wantTeam) return true;
+  return false;
+}
+
 function onAnnounce(msg) {
   if (!msg || !msg.gameId || !msg.status) return;
+  if (!concernsUs(msg)) return;
   if (msg.status === 'live' && ROWS.has(msg.gameId)) {
     const held = LIVE.get(msg.gameId);
     if (held) held.status = 'live';
@@ -412,9 +444,15 @@ function onAnnounce(msg) {
     paint();                                   // looks right within the frame
   }
   /* Coalesced: finalising publishes a roster change and a status in the same
-     breath, and two reloads a millisecond apart would be one wasted query. */
+     breath, and two reloads a millisecond apart would be one wasted query.
+
+     AND JITTERED. Every strip that does care hears the same message in the
+     same millisecond, so a fixed delay makes them all ask together — a smaller
+     herd than before, but still a spike exactly when the database is busiest
+     with the game that caused it. Up to a second and a half of scatter costs a
+     reader nothing and turns a spike into a slope. */
   clearTimeout(announceTimer);
-  announceTimer = setTimeout(() => load().catch(() => {}), 60);
+  announceTimer = setTimeout(() => load().catch(() => {}), 60 + Math.random() * 1500);
 }
 
 function onFrame(frame, event) {
@@ -865,11 +903,61 @@ let pollTimer = null;
 /* Set by the last load: a scheduled fixture that already has its fives. */
 let primedNow = false;
 
+/* ---------------------------------------------------------------------------
+   A STRIP NOBODY CAN SEE ASKS FOR NOTHING.
+
+   This is the most-deployed surface on the platform: one per club website,
+   sitting there for the life of every page view. At a hundred clubs that is a
+   hundred pollers, and the two commonest places to find one are a background
+   tab and the bottom of a homepage nobody scrolls to. Both were polling at the
+   live cadence, indefinitely, for a strip that is not on any screen.
+
+   Two different questions, and both have to be false to stop:
+
+     document.hidden   the tab is in the background. Visibility propagates into
+                       nested browsing contexts, so an iframe knows this about
+                       the page that framed it.
+     onScreen          the strip is below the fold, or the page has scrolled
+                       past it. Only IntersectionObserver can see this, and it
+                       is the case document.hidden cannot detect at all.
+
+   Waking is immediate rather than on the next tick: somebody who has just
+   scrolled to a scoreboard is looking at it now, and making them wait out a
+   relaxed interval to see a live score is the whole thing failing at the one
+   moment it matters. */
+let onScreen = true;
+
+function watching() { return !document.hidden && onScreen; }
+
+function wake() {
+  if (!watching()) return;
+  clearTimeout(pollTimer);
+  load().catch(() => {}).then(schedule);
+}
+
+document.addEventListener('visibilitychange', wake);
+
+if (typeof IntersectionObserver === 'function') {
+  try {
+    new IntersectionObserver(entries => {
+      const was = onScreen;
+      onScreen = entries.some(e => e.isIntersecting);
+      if (onScreen && !was) wake();
+    }, { rootMargin: '200px' }).observe(document.body);
+  } catch (_) { /* no observer, no gate — polls as it always did */ }
+}
+
 function schedule() {
   clearTimeout(pollTimer);
   const wait = liveNow ? POLL_LIVE_MS : (primedNow ? POLL_PRIMED_MS : POLL_MS);
   pollTimer = setTimeout(async () => {
-    try { await load(); } catch (_) { /* keep polling through a blip */ }
+    /* Not "stop": reschedule without asking. A strip that cleared its timer
+       would need something to start it again, and the two things that can —
+       a visibility change and an intersection — are exactly the two that do
+       not fire if the page was already hidden when this loaded. */
+    if (watching()) {
+      try { await load(); } catch (_) { /* keep polling through a blip */ }
+    }
     schedule();
   }, wait);
 }

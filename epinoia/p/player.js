@@ -421,8 +421,20 @@ function drawShotChart(shots) {
        was on the floor before the first substitution. */
     try {
       if (team && team.id) {
+        /* BOUNDED, BECAUSE A CAREER IS NOT WHAT A READER IS LOOKING AT.
+
+           This asked for every game the club has ever played and then fetched
+           the full event log of each — which is right for four games and
+           ruinous for two hundred. The lineup work below is about who this
+           player has been on the floor with lately; the career table above it
+           already covers the long view and reads pre-aggregated season rows.
+
+           Newest first and capped, so the cost of this page is the same in a
+           league's fifth season as in its first. */
+        const RECENT_GAMES = 40;
         const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-          `&status=eq.final&select=id,home_team_id,away_team_id,starters`);
+          `&status=eq.final&select=id,home_team_id,away_team_id,starters,tipoff_at` +
+          `&order=tipoff_at.desc&limit=${RECENT_GAMES}`);
         if (!gs.length) {
           $('#withpanel').appendChild(el('div', 'empty',
             'No finalised games yet — this fills in once one is played.'));
@@ -458,6 +470,67 @@ function drawShotChart(shots) {
             drawShotChart(shots);
           } catch (e) { /* a chart is not worth breaking the page for */ }
 
+          /* ---- on video ----
+             The whole log for every game the club played is already in hand,
+             so this costs exactly one more query: which of those games has
+             footage attached. Anything without a video, or with one that has
+             not been lined up with the game clock, is filtered out by the
+             panel itself — a list of plays that cannot be found in a video is
+             worse than no list. */
+          try {
+            /* CHUNKED, because an in.() list is a URL and a URL has a length.
+
+               Forty uuids is 1.5KB of query string before anything else; a
+               league where a club has played two hundred games would build one
+               past every proxy's default header limit and fail with a 414 that
+               says nothing about video. Forty at a time is what the rest of
+               this file already uses, for the same reason. */
+            const inChunks = async (ids, build) => {
+              const out = [];
+              for (let i = 0; i < ids.length; i += 40) {
+                out.push(...await api(build(ids.slice(i, i + 40))));
+              }
+              return out;
+            };
+            const vids = await inChunks(gs.map(g => g.id), c =>
+              'game_videos?game_id=in.(' + c.join(',') + ')' +
+              '&is_primary=eq.true&select=game_id,url,provider,video_ref,label,' +
+              'stream_started_at,tip_at,tip_wall,trim_ms');
+            const byGameV = {};
+            vids.forEach(v => { if (v.url) byGameV[v.game_id] = v; });
+            if (Object.keys(byGameV).length && window.EpinoiaPlayerVideo) {
+              const meta = {};
+              (await inChunks(Object.keys(byGameV), c =>
+                'games?id=in.(' + c.join(',') + ')' +
+                '&select=id,tipoff_at,home:home_team_id(short_name,name),' +
+                'away:away_team_id(short_name,name)')).forEach(g => { meta[g.id] = g; });
+
+              const withVideo = Object.keys(byGameV).map(id => {
+                const m = meta[id] || {};
+                const h = (m.home || {}).short_name || (m.home || {}).name || 'home';
+                const a = (m.away || {}).short_name || (m.away || {}).name || 'away';
+                return {
+                  id, video: byGameV[id], date: m.tipoff_at,
+                  title: h + ' v ' + a +
+                    (m.tipoff_at ? ' · ' + new Date(m.tipoff_at).toLocaleDateString() : ''),
+                  events: evs.filter(e => e.gameId === id)
+                };
+              });
+              const shown = window.EpinoiaPlayerVideo.render({
+                host: '#videopanel', games: withVideo, playerId: pl.id
+              });
+              if (shown) {
+                $('#videosec').style.display = '';
+                $('#videoNote').textContent = withVideo.length +
+                  (withVideo.length === 1 ? ' game with footage' : ' games with footage');
+              }
+            }
+          } catch (e) {
+            /* Before 0082 is applied the table does not exist, and a profile
+               that cannot show video is a profile, not a failure. */
+            console.warn('[video]', e);
+          }
+
           /* teammates are whoever actually shared a stint with him */
           const mates = new Set();
           st.forEach(s3 => {
@@ -466,7 +539,8 @@ function drawShotChart(shots) {
             ids.forEach(id => { if (id !== pl.id) mates.add(id); });
           });
           const mm = await D.playerMeta([...mates]);
-          $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates';
+          $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates' +
+            (gs.length >= RECENT_GAMES ? ' · last ' + RECENT_GAMES + ' games' : '');
 
           window.EpinoiaWithUI.render({
             host: '#withpanel', recs, stints: st, playerId: pl.id,
