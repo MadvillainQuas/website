@@ -506,6 +506,16 @@ async function roster(team) {
 
   if (!rows.length) { host.appendChild(el('div', 'empty', 'No players listed yet.')); return; }
 
+  /* Suggestions for the position box. A datalist rather than a select, because
+     a league that plays "Combo" or "Point Forward" must be able to write it. */
+  if (!document.getElementById('posOptions')) {
+    const dl = el('datalist'); dl.id = 'posOptions';
+    ['Guard', 'Point Guard', 'Shooting Guard', 'Wing', 'Forward',
+     'Small Forward', 'Power Forward', 'Centre', 'Guard/Forward', 'Forward/Centre']
+      .forEach(v => { const o = el('option'); o.value = v; dl.appendChild(o); });
+    document.body.appendChild(dl);
+  }
+
   const wrap = el('div', 'ft-wrap');
   const t = el('table', 'ft');
   const thead = el('thead'), hr = el('tr');
@@ -529,7 +539,47 @@ async function roster(team) {
     if (p.slug) { const a = el('a', null, name); a.href = '../p/?p=' + encodeURIComponent(p.slug); cell.appendChild(a); }
     else cell.appendChild(el('span', null, name || 'Player'));
     nd.appendChild(cell); tr.appendChild(nd);
-    tr.appendChild(el('td', null, r.position || ''));
+    /* POSITION, EDITABLE WHERE THE ROSTER IS READ.
+       It has always been settable — several clicks into a per-player card in
+       the team portal — and read-only here, which is the page a club secretary
+       actually opens. Same inline treatment as the measurements beside it, and
+       the same permission: the club's own manager, a league administrator over
+       that club, or a platform administrator. */
+    if (!canEdit) {
+      tr.appendChild(el('td', null, r.position || ''));
+    } else {
+      const td = el('td', 'meas');
+      const inp = el('input', 'meas-in pos-in');
+      inp.value = r.position || '';
+      inp.placeholder = '—';
+      inp.maxLength = 24;
+      /* the vocabulary a basketball roster actually uses, offered rather than
+         enforced: a league that writes "Combo" or "Point Forward" must not be
+         told it is wrong by a dropdown */
+      inp.setAttribute('list', 'posOptions');
+      let last = inp.value;
+      const save = async () => {
+        const raw = inp.value.trim();
+        if (raw === last) return;
+        inp.classList.remove('bad'); inp.title = '';
+        inp.classList.add('saving');
+        const { error } = await sb.from('roster_entries')
+          .update({ position: raw || null })
+          .eq('team_id', team.id).eq('player_id', p.id);
+        inp.classList.remove('saving');
+        if (error) {
+          inp.classList.add('bad'); inp.title = error.message;
+          inp.value = last; return;
+        }
+        last = inp.value;
+        inp.classList.add('saved');
+        setTimeout(() => inp.classList.remove('saved'), 1200);
+      };
+      inp.addEventListener('blur', save);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    }
 
     MEASURES.forEach(m => {
       const td = el('td', 'meas');
@@ -591,8 +641,9 @@ async function roster(team) {
 
   if (canEdit) {
     host.appendChild(el('div', 'empty',
-      'You manage this club, so the measurements are editable — they save when ' +
-      'you leave the box. Heights and wingspans are in centimetres.'));
+      'You manage this club, so the position and the measurements are editable — ' +
+      'they save when you leave the box. Heights and wingspans are in centimetres, ' +
+      'and the position appears on the broadcast lineup graphics.'));
   }
 }
 

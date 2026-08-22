@@ -339,5 +339,45 @@ ok('labels are Silkscreen, uppercase and tracked, as everywhere else',
 ok('figures are Martian Mono, as the tables are',
    /font-family:var\(--f-data\);font-variant-numeric:tabular-nums/.test(layerH));
 
+/* ---- 17. position, height and weight beside each player ------------------ */
+console.log('\nthe team sheet reads position, height, weight');
+
+ok('the roster carries the measurements', /height: p\.height \|\| null/.test(layer));
+ok('...fetched from the players table', /height_cm,weight_kg/.test(layer));
+ok('...and the position from the roster entry, where it lives',
+   /pos: r\.position \|\| ''/.test(layer));
+ok('the five card prints them under the name', /vitalsHTML\(p\)/.test(layer));
+ok('...position first, because that is what a commentator says first',
+   /if \(p\.pos\) bits\.push/.test(layer));
+ok('...and only what is recorded', /return bits\.length/.test(layer),
+   'a club that has filled in nothing gets a name and a number, not a row of dashes');
+ok('height is shown in feet and inches too', /function feetInches\(cm\)/.test(layer));
+ok("...and 6'12\" is not a height anybody has ever been",
+   /if \(inch === 12\) \{ ft \+= 1; inch = 0; \}/.test(layer));
+
+/* the same figure is editable where a club secretary actually looks */
+const teamJs = rd('epinoia', 't', 'team.js');
+ok('position is editable on the team profile', /pos-in/.test(teamJs));
+ok('...saving to roster_entries, not to the player',
+   /from\('roster_entries'\)[\s\S]{0,80}position: raw/.test(teamJs),
+   'a position belongs to a squad place, not to a person for all time');
+ok('...gated on the same permission as the measurements beside it',
+   /if \(!canEdit\) \{[\s\S]{0,120}r\.position/.test(teamJs));
+ok('...offering the usual vocabulary without enforcing it',
+   /posOptions/.test(teamJs) && /datalist/.test(teamJs),
+   'a league that plays "Combo" must be able to write it');
+ok('and a signed-in user can actually ask whether they may edit',
+   /grant execute on function public\.is_team_manager\(uuid\) to authenticated/
+     .test(rd('supabase', 'migrations', '0080_position_on_team_page.sql')));
+
+/* ---- 18. what OBS taught us ---------------------------------------------- */
+console.log('\nthe browser source is told to reload');
+
+const mixJs = rd('epinoia', 'broadcast', 'control', 'mixers.js');
+ok('rebuilding a source forces a cache-free reload',
+   /refreshnocache/.test(mixJs),
+   'CEF caches the page and re-pointing a source at the same URL does not ' +
+   'restart it — a rebuilt graphic keeps showing what it showed before');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

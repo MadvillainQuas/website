@@ -193,6 +193,18 @@ function obs() {
         await request('SetSceneItemEnabled',
           { sceneName, sceneItemId, sceneItemEnabled: !!g.visible });
       } catch (_) { /* a source that will not report an id still exists */ }
+
+      /* AND MAKE IT RELOAD. Found by testing against a real OBS: the embedded
+         browser caches the page, and pointing an existing source at the same
+         URL does not restart it — so a graphic rebuilt after a colour change,
+         or after the fixture changed, keeps showing what it showed before.
+         Twenty minutes of "why has it not updated" before anybody suspects a
+         cache. The properties button is the same "Refresh cache of current
+         page" a person would press by hand. */
+      try {
+        await request('PressInputPropertiesButton',
+          { inputName: g.name, propertyName: 'refreshnocache' });
+      } catch (_) { /* older OBS: the source still reloads when next shown */ }
     }
     say('done');
     return true;

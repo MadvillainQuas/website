@@ -111,36 +111,59 @@ body{font-family:var(--f-ui);color:var(--ink)}
   border-right:.35vmin solid var(--tc)}
 .railtop{display:flex;flex-direction:column;align-items:center;gap:1.6vmin}
 .lgmark{width:7vmin;height:7vmin;object-fit:contain}
-.lgword{font-family:'EpinoiaMark','Jersey25',monospace;font-size:2.4vmin;
-  color:var(--lume);letter-spacing:.04em}
+/* The competition's NAME, not a wordmark. "Epinoia Demo League" broke over
+   three lines in a 15vmin rail and read as a mistake in the corner of the
+   frame. Set across the rail on two lines at most, centred and tight. */
+.lgword{font-family:var(--f-score);font-size:1.9vmin;line-height:1.05;
+  color:var(--lume);letter-spacing:.02em;text-align:center;max-width:12vmin;
+  text-transform:uppercase;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .railrule{display:block;width:5vmin;height:1px;background:var(--rule-2)}
 /* The club name runs up the rail, which is what every lineup card does — it
    buys the players the whole width instead of a band across the top. */
 .railname{margin-top:auto;writing-mode:vertical-rl;transform:rotate(180deg);
-  font-size:4.2vmin;text-transform:uppercase;color:var(--ink);line-height:1}
-.raillabel{margin-top:2vmin;writing-mode:vertical-rl;transform:rotate(180deg);
-  font-size:1.15vmin;color:var(--lume)}
+  font-size:4.8vmin;text-transform:uppercase;color:#fff;line-height:1}
+.raillabel{margin-top:1.6vmin;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:1.5vmin;color:var(--lume)}
 
 .fivebody{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;
-  padding:2.4vmin 3vmin 2.6vmin}
+  padding:1.8vmin 3vmin 1.8vmin}
 .fivehead{display:flex;align-items:baseline;gap:1.6vmin;
   padding-bottom:1.1vmin;border-bottom:1px solid var(--rule)}
 .fivehead .comp{font-size:1.3vmin;color:var(--lume)}
 .fivehead .when{margin-left:auto;font-size:1.2vmin;color:var(--faint)}
 
 .fiverow{flex:1 1 auto;display:grid;grid-template-columns:repeat(5,1fr);
-  gap:1.4vmin;align-items:end;min-height:0;padding-top:1.4vmin}
+  gap:1.4vmin;align-items:stretch;min-height:0;padding-top:.8vmin}
 .fp{display:flex;flex-direction:column;align-items:center;height:100%;min-height:0}
-.fpnum{font-size:5vmin;font-weight:800;line-height:1;color:var(--ink);
-  text-shadow:0 0 3vmin color-mix(in oklch, var(--tc) 55%, transparent)}
+.fpnum{font-size:4.4vmin;font-weight:800;line-height:1;color:#fff;
+  text-shadow:0 0 2.4vmin color-mix(in oklch, var(--tc) 60%, transparent),
+              0 .2vmin .6vmin rgba(0,0,0,.5)}
 /* the figure takes whatever height is left, so five of them always line up on
    the floor whatever the frame is */
 .fpcut{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:flex-end;
-  justify-content:center;margin:.8vmin 0 1vmin}
+  justify-content:center;margin:.6vmin 0 1.2vmin;position:relative}
+/* A FLOOR TO STAND ON. Five figures ending in mid-air read as floating; a
+   soft ellipse under each one is what a real lineup card uses and it costs
+   nothing. Behind the figure, so a cut-out with its own shadow still wins. */
+.fpcut::after{content:'';position:absolute;bottom:-.2vmin;left:14%;right:14%;
+  height:1.1vmin;border-radius:50%;
+  background:radial-gradient(closest-side,
+    color-mix(in oklch, var(--tc) 34%, transparent), transparent)}
 .cut{position:relative;display:block;height:100%;width:100%;
   display:flex;align-items:flex-end;justify-content:center}
-.cut .sil{height:100%;width:auto;max-width:100%;fill:color-mix(in oklch, var(--tc) 34%, #0d1a15);
-  opacity:.9;transition:opacity .2s ease}
+/* THE PLACEHOLDER MUST NOT BE THE LOUDEST THING ON THE CARD. At full height
+   and near-solid it dominated the frame and the graphic read as a wireframe
+   rather than a lineup. Shorter than a real cut-out would be, and quieter, so
+   the numbers and the names carry the card until the photographs arrive. */
+/* FULL HEIGHT AGAIN, QUIET INSTEAD OF SHORT. Cutting it to 84% pushed the
+   dead space to the TOP of the box — a hand's width of nothing between the
+   shirt number and the head, five times across the card. The figure fills its
+   box as a real cut-out will; what stops it dominating is its colour, not its
+   size. */
+.cut .sil{height:100%;width:auto;max-width:100%;
+  fill:color-mix(in oklch, var(--tc) 30%, #16211c);
+  opacity:.8;transition:opacity .2s ease}
 .cut img{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
   height:100%;width:auto;max-width:100%;object-fit:contain;object-position:50% 100%;
   opacity:0;transition:opacity .25s ease;
@@ -150,11 +173,19 @@ body{font-family:var(--f-ui);color:var(--ink)}
 .cut.hascut img{opacity:1}
 .cut.hascut .sil{opacity:0}
 
-.fpname{text-align:center;line-height:1.1}
+/* Off the frame edge. The names sat on the bottom rule, which is the one place
+   a broadcast overlay or a channel bug is most likely to land on top of them. */
+.fpname{text-align:center;line-height:1.12;padding-bottom:.6vmin}
 .fpname .first{display:block;font-family:var(--f-ui);font-weight:400;
-  font-size:1.6vmin;color:var(--dim);letter-spacing:.02em}
+  font-size:1.9vmin;color:var(--dim);letter-spacing:.02em}
 .fpname .last{display:block;font-family:var(--f-ui);font-weight:800;
-  font-size:2.6vmin;color:var(--ink);text-transform:capitalize;letter-spacing:-.01em}
+  font-size:2.6vmin;color:#fff;text-transform:capitalize;letter-spacing:-.01em;
+  text-shadow:0 .2vmin .8vmin rgba(0,0,0,.6)}
+/* position · height · weight, the three things read off a team sheet */
+.vitals{display:block;margin-top:.7vmin;font-family:var(--f-micro);
+  font-size:1.8vmin;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+.vitals b{font-weight:400;color:var(--lume)}
+.vitals i{font-style:normal;color:var(--faint);margin:0 .5vmin}
 
 /* A five-wide grid stops working long before a 16:9 frame does; below this the
    graphic is being previewed rather than broadcast, and two rows beats five
@@ -204,8 +235,8 @@ body.chroma{background:var(--chroma)}
 .badge.hascrest .mono{opacity:0}
 .badge.sm{width:3.2vmin;height:3.2vmin;border-radius:.45vmin}
 .badge.sm .mono{font-size:1.25vmin}
-.badge.lg{width:7.4vmin;height:7.4vmin;border-radius:.9vmin}
-.badge.lg .mono{font-size:2.9vmin}
+.badge.lg{width:9vmin;height:9vmin;border-radius:1vmin}
+.badge.lg .mono{font-size:3.4vmin}
 
 /* ---------------- the plate every card sits on ---------------- */
 .card,.bug{
@@ -431,11 +462,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=181" defer></script>
-<script src="../vendor/supabase.js?v=181" defer></script>
-<script src="../engine.js?v=181" defer></script>
-<script src="../rt.js?v=181" defer></script>
-<script src="../live.js?v=181" defer></script>
-<script src="broadcast.js?v=181" defer></script>
+<script src="../config.js?v=186" defer></script>
+<script src="../vendor/supabase.js?v=186" defer></script>
+<script src="../engine.js?v=186" defer></script>
+<script src="../rt.js?v=186" defer></script>
+<script src="../live.js?v=186" defer></script>
+<script src="broadcast.js?v=186" defer></script>
 </body>
 </html>

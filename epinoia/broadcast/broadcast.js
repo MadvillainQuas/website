@@ -147,7 +147,8 @@ function buildState() {
       /* The named squad, with no statistics attached — this is what a pre-game
          graphic draws, and it exists before a single event does. */
       roster: (S.teams[t].players || []).map(p => ({
-        id: p.id, number: p.num || '', name: p.name || '', pos: p.pos || '',
+        id: p.id, number: p.num || '', name: p.name || '',
+        pos: p.pos || '', height: p.height || null, weight: p.weight || null,
         photo: PHOTOS[p.id] || null
       })),
       totals: teamTotals(t, d)
@@ -360,7 +361,8 @@ async function loadRosters() {
   if (!ids.length) return;
   try {
     const re = await api('roster_entries?team_id=in.(' + ids.join(',') + ')' +
-      '&active=eq.true&select=team_id,jersey,position,players(id,first_name,last_name)');
+      '&active=eq.true&select=team_id,jersey,position,' +
+      'players(id,first_name,last_name,height_cm,weight_kg)');
     [game.home_team_id, game.away_team_id].forEach((tid, t) => {
       const list = (re || [])
         .filter(r => r.team_id === tid && r.players)     // a withheld minor comes back null
@@ -368,7 +370,9 @@ async function loadRosters() {
           id: r.players.id,
           name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim(),
           num: String(r.jersey || ''),
-          pos: r.position || ''
+          pos: r.position || '',
+          height: r.players.height_cm || null,
+          weight: r.players.weight_kg || null
         }))
         .sort((a, b) => (+a.num || 99) - (+b.num || 99));
       if (list.length) S.teams[t].players = list;
@@ -455,6 +459,32 @@ function cutoutHTML(p, colour) {
     silhouetteSVG() +
     (url ? '<img src="' + esc(url) + '" alt=""  data-fade="hascut">' : '') +
     '</span>';
+}
+
+/* POSITION, HEIGHT, WEIGHT — the three things a commentator reads off a team
+   sheet, in that order, because the position is what they say first.
+
+   ONLY WHAT IS RECORDED. A club that has filled in nothing gets a name and a
+   number and no empty row of dashes; a club that has filled in everything gets
+   the line. Height is shown in feet and inches as well, because that is the
+   unit the game is talked about in even where it is measured in centimetres. */
+function vitalsHTML(p) {
+  const bits = [];
+  if (p.pos) bits.push('<b>' + esc(p.pos) + '</b>');
+  if (p.height) bits.push(esc(feetInches(p.height)));
+  if (p.weight) bits.push(esc(p.weight + 'kg'));
+  return bits.length
+    ? '<span class="vitals">' + bits.join('<i>·</i>') + '</span>'
+    : '';
+}
+
+/* 198cm as 6'6". Rounded to the nearest inch, and rolled up when that rounds to
+   twelve — 6'12" is not a height anybody has ever been. */
+function feetInches(cm) {
+  const total = Math.round(cm / 2.54);
+  let ft = Math.floor(total / 12), inch = total % 12;
+  if (inch === 12) { ft += 1; inch = 0; }
+  return ft + "'" + inch + '"';
 }
 
 /* First name for the light line, surname for the heavy one — the two are
@@ -579,6 +609,7 @@ const SCENES = {
             '<div class="fpname">' +
               '<span class="first">' + esc(firstName(p.name)) + '</span>' +
               '<span class="last">' + esc(shortName(p.name)) + '</span>' +
+              vitalsHTML(p) +
             '</div>' +
           '</div>').join('') + '</div>' +
       '</div></div>';
