@@ -215,13 +215,56 @@ const ms = v => { const d = v ? new Date(v) : null;
    Returning null rather than zero is the whole point. Zero would silently
    claim every play is at the moment the stream started and send a viewer to
    an empty court, and nothing on the page would look wrong. */
+/* TWO KINDS OF VIDEO, TWO WAYS OF KNOWING THE GAP.
+
+     A RECORDING — somebody found the game on YouTube and read the jump ball
+     off the scrub bar. What they have is a plain number: tip-off is 7:45 in.
+     No clock is involved on any machine, so none can be wrong.
+
+     A STREAM — the platform started it through OBS and knows the instant it
+     began. The gap is the distance between two timestamps, both stamped by
+     the database so no clock is compared across machines (see 0083).
+
+   THE OFFSET WINS WHEN BOTH ARE PRESENT. A stream start is inferred from a
+   mixer's own duration counter; an offset was typed by somebody looking at the
+   footage everybody will actually watch. The person with the video in front of
+   them is better informed than the encoder. */
 function gapMs(v) {
   if (!v) return null;
+  const trim = v.trim_ms || 0;
+
+  const off = v.tip_offset_ms;
+  if (off != null && isFinite(+off)) return (+off) + trim;
+
   const tip = ms(v.tip_at), start = ms(v.stream_started_at);
   if (tip == null || start == null) return null;
-  return (tip - start) + (v.trim_ms || 0);
+  return (tip - start) + trim;
 }
-const hasAnchor = v => gapMs(v) != null;
+
+/* Which of the two this row is, for anything that needs to say so out loud. */
+function anchorKind(v) {
+  if (!v) return null;
+  if (v.tip_offset_ms != null && isFinite(+v.tip_offset_ms)) return 'recording';
+  if (ms(v.tip_at) != null && ms(v.stream_started_at) != null) return 'stream';
+  return null;
+}
+/* "CAN THIS VIDEO BE SEEKED TO A PLAY", which is what all four callers ask it.
+
+   It used to be gapMs(v) != null, and that is only half the question. Placing
+   a play needs the gap AND something to measure the play against — tip_wall
+   for a device-stamped log, tip_at for an older one. A recording carrying only
+   an offset satisfies the gap and nothing else: hasAnchor said yes, every
+   videoMsOf returned null, and the tab drew an empty list under the words "tap
+   one to jump to it". Nothing looked broken and nothing worked.
+
+   Both halves, or it is not anchored. */
+const hasAnchor = v => {
+  if (gapMs(v) == null) return false;
+  if (!v) return false;
+  const tw = v.tip_wall;
+  if (tw != null && isFinite(+tw)) return true;
+  return ms(v.tip_at) != null;
+};
 
 /* How long after tip-off this event happened — the second of the two
    durations, and the one that decides whether a clip is on the play or on the
@@ -525,6 +568,30 @@ function stamp(msIn) {
          ':' + String(s).padStart(2, '0');
 }
 
+/* AN HOUR AND A HALF OF DEAD AIR IS PROBABLY A MISTAKE, AND MIGHT NOT BE.
+
+   The live anchor is taken from the mixer's own duration counter, which is
+   right about how long IT has been streaming and knows nothing about which
+   game is on. Leave OBS running after the early fixture, open the control room
+   for the late one, and it reports three hours — so every clip in the second
+   game is three hours out and nothing anywhere says so.
+
+   But a league that runs both games on ONE continuous stream has a genuinely
+   three-hour offset, and refusing it would break the case it was built for. So
+   this flags and never blocks: the number is shown, the doubt is shown beside
+   it, and the person who can see both the hall and the stream decides.
+
+   Only the live anchor is questioned. A typed offset was read off the footage
+   by somebody looking at it, and second-guessing that would be impertinent. */
+const ODD_GAP_MS = 90 * 60 * 1000;
+
+function gapLooksOdd(v) {
+  if (!v) return false;
+  if (anchorKind(v) !== 'stream') return false;
+  const g = gapMs(v);
+  return g != null && g > ODD_GAP_MS;
+}
+
 /* The gap, written the way the person setting it thinks about it: "the stream
    was up eleven and a half minutes before the ball went up". Signed, because
    somebody who started recording after the tip has a negative one and needs to
@@ -536,7 +603,8 @@ function gapText(v) {
   return sign + stamp(Math.abs(g)) + ' before tip-off';
 }
 
-return { parse, safeUrl, embedSrc, watchHref, gapMs, hasAnchor, videoMsOf, sinceTipMs,
+return { parse, safeUrl, embedSrc, watchHref, gapMs, anchorKind, gapLooksOdd,
+         hasAnchor, videoMsOf, sinceTipMs,
          cumElapsed, logIsTimed,
          liveEmbedSrc, providerFromServer,
          index, select, FILTERS, filterBy, stamp, gapText, clipOf, ROLL };

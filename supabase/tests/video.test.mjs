@@ -504,11 +504,16 @@ ok('...and re-offered the moment somebody signs in',
 ok('a link the platform cannot seek into is refused before anything is written',
    /if \(!parsed\.ok\) \{/.test(gamejs) &&
    /would be stored but no play could/.test(gamejs.replace(/\s+/g, ' ')));
-/* Order matters: a gap is measured FROM the tip, so the tip has to exist first
-   or the arithmetic is against null. */
-ok('the tip is anchored before the gap is set',
-   gamejs.indexOf("rpcCallRaw('anchor_video_from_log'") <
-   gamejs.indexOf('p_stream_start: started'));
+/* The attach panel is the RECORDING path, so it writes an offset and never a
+   stream start — the other half of migration 0090. */
+ok('the game page attaches an offset, not an invented stream start',
+   /p_tip_offset_ms: tipMs, p_trim_ms: 0/.test(gamejs) &&
+   !/p_stream_start: started/.test(gamejs));
+ok('...with the link and the offset in ONE call, so a row cannot hold one without the other',
+   /p_provider: parsed\.provider, p_ref: parsed\.ref,\s*\n\s*p_tip_offset_ms: tipMs/
+     .test(gamejs.replace(/\r/g, '')));
+ok('...and still recovers the tip from the log, which is what places each play',
+   /rpcCallRaw\('anchor_video_from_log'/.test(gamejs));
 
 /* And the point of all of it: the same row feeds a player's own page. */
 ok('a player profile reads the same rows for the games their club played',
@@ -516,6 +521,200 @@ ok('a player profile reads the same rows for the games their club played',
    /EpinoiaPlayerVideo\.render/.test(playerjs));
 ok('...and the panel only appears when the plays can actually be found',
    /g\.video && V\(\)\.hasAnchor\(g\.video\) && V\(\)\.logIsTimed\(g\.events\)/.test(pvjs));
+
+/* ---- attaching a recording BEFORE the game, from the bottom menu ---------- */
+console.log('\nthe pre-game path: paste the link, say where the tip is, then score');
+
+ok('the bottom menu leads with what is useful before a ball is thrown',
+   /const SHEET_PREGAME = \['btnVid', 'btnDetails', 'btnHelp'/.test(scorer),
+   'below 760px the sheet shows about four of nine, and video sync was fifth');
+ok('...and returns to the in-play order once the game starts',
+   /const SHEET_INPLAY  = \['btnBox', 'btnLog', 'btnAdv', 'btnVid'/.test(scorer));
+ok('...by CSS order, so nothing is moved or rebuilt mid-game',
+   /b\.style\.order = i;/.test(scorer));
+ok('the button reads "attach video" before tip and "video sync" after',
+   /pre \? 'attach video' : 'video sync'/.test(scorer));
+
+/* The tip position can be typed before there is a tip to measure from, which is
+   the natural order when the recording already exists. */
+ok('the tip field is not locked before the ball goes up',
+   /disabled = \$\('#vidSec'\)\.disabled = false;/.test(scorer));
+/* NOTHING IS DEFERRED ANY MORE. A value typed before tip used to be held as
+   plannedGapMs and converted when the first period started, because the old
+   anchor needed a tip to subtract from. An offset does not: "tip-off is 7:45
+   into this video" is a fact about the footage and does not become more true
+   when the game starts. One assignment, before or after. */
+ok('...a value typed then is stored immediately, not held',
+   /v\.tipOffsetMs = typed;/.test(scorer));
+ok('...and there is no deferred-apply step left to go wrong',
+   !/plannedGapMs = typed/.test(scorer) &&
+   !/vid\(\)\.plannedGapMs != null/.test(scorer));
+
+/* ---- what the SCORER writes is what the WEBSITE reads --------------------- */
+console.log('\na link entered once must reach every page that needs it');
+
+/* THE BUG THIS EXISTS FOR. The tip applied a typed gap to the local game and
+   pushed only the tip, so the database got tip_at and tip_wall and never
+   learned when the video began. gapMs() then returned null for every reader on
+   the platform: the scorer looked perfect, because it held the local copy, and
+   the box score and every player profile said "not lined up yet". The feature
+   worked on exactly one screen. */
+ok('the offset is pushed when it is typed, in the same call as the link',
+   /patch\.p_tip_offset_ms = typed;/.test(scorer));
+ok('...so the tip push is only ever the tip',
+   /pushVideo\(\{ __tipFrom: ev\.wall, p_tip_wall: ev\.wall \}\);/.test(scorer));
+
+/* hasAnchor answers the question its callers ask: can a play be placed in this
+   video. The gap alone is half of it. */
+ok('an offset with nothing to measure plays against is NOT anchored',
+   V.hasAnchor({ tip_offset_ms: 465000 }) === false);
+ok('...it becomes anchored once the tip is known',
+   V.hasAnchor({ tip_offset_ms: 465000, tip_wall: 1787412859056 }) === true &&
+   V.hasAnchor({ tip_offset_ms: 465000, tip_at: '2026-03-14T14:00:00Z' }) === true);
+ok('...and a live row still needs both its instants',
+   V.hasAnchor({ tip_at: '2026-03-14T14:00:00Z' }) === false &&
+   V.hasAnchor({ tip_at: '2026-03-14T14:00:00Z',
+                 stream_started_at: '2026-03-14T13:49:00Z' }) === true);
+
+/* ---- and the two pipelines are separate ---------------------------------
+   A recording and a stream are not the same problem. A finished game on
+   YouTube has no stream start; what somebody has is a scrub bar and a number.
+   Storing that as stream_started_at = tip − offset invented an instant that
+   never happened, let the two paths overwrite each other, and made the
+   recording path depend on clocks it had no reason to care about. */
+ok('a typed tip position goes as a plain number',
+   /patch\.p_tip_offset_ms = typed;/.test(scorer));
+ok('...and no stream start is invented for a recording',
+   !/streamStartedAt = new Date\(.*plannedGapMs/.test(scorer) &&
+   !/patch\.__streamFrom = tipWall - typed;/.test(scorer));
+ok('the live path still sends an elapsed duration, because that is what a mixer knows',
+   /pushVideo\(\{ __streamFrom: Date\.now\(\) \}\)/.test(scorer));
+
+/* gapMs answers from whichever anchor the row actually has. */
+{
+  const rec = { tip_offset_ms: 465000, trim_ms: 0 };
+  const live = { tip_at: '2026-03-14T14:00:00Z',
+                 stream_started_at: '2026-03-14T13:49:00Z', trim_ms: 0 };
+  ok('a recording is anchored by its offset alone',
+     V.gapMs(rec) === 465000 && V.anchorKind(rec) === 'recording');
+  ok('a stream is anchored by its two instants',
+     V.gapMs(live) === 660000 && V.anchorKind(live) === 'stream');
+  ok('a row with neither is not anchored',
+     V.gapMs({ trim_ms: 0 }) === null && V.anchorKind({}) === null);
+  ok('the trim still applies to both',
+     V.gapMs({ tip_offset_ms: 465000, trim_ms: 2000 }) === 467000 &&
+     V.gapMs(Object.assign({}, live, { trim_ms: 2000 })) === 662000);
+  /* Somebody streamed the game AND later pasted the archive with an offset
+     read off the actual footage. The offset wins: it was measured against the
+     video everybody will watch, not inferred from an encoder's counter. */
+  const both = Object.assign({}, live, { tip_offset_ms: 465000 });
+  ok('when a row has both, the offset wins',
+     V.gapMs(both) === 465000 && V.anchorKind(both) === 'recording');
+}
+
+/* The arithmetic, end to end: what the queue sends, what the database would
+   store, and what the site computes from it. Run rather than read. */
+{
+  const bootstrap2 = rd('epinoia', 'score', 'bootstrap.js');
+  const from = bootstrap2.indexOf('function elapsedFrom(patch)');
+  let d = 0, body = '';
+  for (let j = bootstrap2.indexOf('{', from); j < bootstrap2.length; j++) {
+    if (bootstrap2[j] === '{') d++;
+    else if (bootstrap2[j] === '}') { d--; if (!d) { body = bootstrap2.slice(from, j + 1); break; } }
+  }
+  const elapsedFrom = new Function('return ' + body)();
+
+  const tipWall = Date.now() - 500;          // the ball went up half a second ago
+  const gap = 465000;                        // "tip-off is at 7:45"
+  const sent = elapsedFrom({ __tipFrom: tipWall, p_tip_wall: tipWall,
+                             __streamFrom: tipWall - gap, p_trim_ms: 0 });
+  ok('both halves convert to elapsed durations in one patch',
+     sent.p_tip_ms_ago != null && sent.p_stream_ms_ago != null &&
+     !('__tipFrom' in sent) && !('__streamFrom' in sent), JSON.stringify(sent));
+
+  /* set_game_video subtracts each from the same now(), so the stored gap is
+     the difference between the two durations — which must be what was typed,
+     whatever this machine's clock says. */
+  const now = Date.now();
+  const row = {
+    provider: 'youtube', video_ref: 'x',
+    tip_at: new Date(now - sent.p_tip_ms_ago).toISOString(),
+    stream_started_at: new Date(now - sent.p_stream_ms_ago).toISOString(),
+    tip_wall: tipWall, trim_ms: 0
+  };
+  ok('the gap the site computes is the gap that was typed',
+     Math.abs(V.gapMs(row) - gap) <= 50, V.stamp(V.gapMs(row)));
+  ok('...so the site reports it as anchored', V.hasAnchor(row) === true);
+
+  const play = { seq: 9, t: 'p3_made', pid: 'p1', period: 1, clock: 510000,
+                 wall: tipWall + 90000 };
+  ok('and a play tapped 90 seconds after tip lands at 9:15 of the recording',
+     Math.abs(V.videoMsOf(play, row) - (gap + 90000)) <= 50,
+     V.stamp(V.videoMsOf(play, row)));
+}
+
+/* The two readers pick the row up without anybody entering anything again. */
+ok('the box score reads the row at load',
+   /game_videos\?game_id=eq\./.test(gamejs));
+ok('...and keeps looking while a live game has no watchable link yet',
+   /if \(window\.S\.video && window\.S\.video\.url\) return;/.test(gamejs));
+ok('a player profile reads the same rows for that club',
+   /game_videos\?game_id=in\./.test(playerjs));
+
+/* ---- the live path, audited alongside the recording one ------------------ */
+console.log('\nthe stream anchor, and the one case where it lies');
+
+const ctrl = rd('epinoia', 'broadcast', 'control', 'control.js');
+
+/* A mixer's duration counter is right about the MIXER and knows nothing about
+   which game is on. Left running after the early fixture it reports hours. */
+ok('an unusually long stream gap is flagged',
+   V.gapLooksOdd({ tip_at: '2026-03-14T14:00:00Z',
+                   stream_started_at: '2026-03-14T11:00:00Z' }) === true);
+ok('...but an ordinary one is not',
+   V.gapLooksOdd({ tip_at: '2026-03-14T14:00:00Z',
+                   stream_started_at: '2026-03-14T13:49:00Z' }) === false);
+/* Never blocked: a league running both games on one feed genuinely has a
+   three-hour offset, and refusing it would break the case it was built for. */
+ok('...and it is still computed, not refused',
+   V.gapMs({ tip_at: '2026-03-14T14:00:00Z',
+             stream_started_at: '2026-03-14T11:00:00Z' }) === 3 * 3600000);
+/* A typed offset was read off the footage by somebody looking at it. */
+ok('a typed offset is never second-guessed, however large',
+   V.gapLooksOdd({ tip_offset_ms: 3 * 3600000 }) === false);
+
+ok('the control room says so where the stamp is made',
+   /That is a long time before tip-off/.test(ctrl));
+ok('the scorer names which anchor is actually deciding',
+   /A stream start would be ignored while this is set/.test(scorer) &&
+   /V\.anchorKind\(vidRow\(\)\)/.test(scorer));
+
+/* The live arithmetic itself, with a server clock that disagrees with the
+   laptop's — the gap must come out as whatever the mixer reported. */
+{
+  const skew = 37000;
+  const now = Date.now() + skew;
+  const running = 660000;
+  const tipWall = Date.now();
+  const live = {
+    stream_started_at: new Date(now - running).toISOString(),
+    tip_at: new Date(now).toISOString(),
+    tip_wall: tipWall, trim_ms: 0
+  };
+  ok('a live row is anchored by its two instants', V.anchorKind(live) === 'stream');
+  ok('...and a server clock 37s out does not leak into the gap',
+     Math.abs(V.gapMs(live) - running) <= 100, V.stamp(V.gapMs(live)));
+  const play = { seq: 9, t: 'p3_made', pid: 'p1', period: 1, clock: 510000,
+                 wall: tipWall + 90000 };
+  ok('...and a play 90s after tip sits at 12:30 of the stream',
+     Math.abs(V.videoMsOf(play, live) - (running + 90000)) <= 100,
+     V.stamp(V.videoMsOf(play, live)));
+}
+
+/* The control room must never write the recording anchor. */
+ok('the live path writes an elapsed duration and never an offset',
+   /p_stream_ms_ago: ago != null \? ago : 0/.test(ctrl) &&
+   !/p_tip_offset_ms/.test(ctrl));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

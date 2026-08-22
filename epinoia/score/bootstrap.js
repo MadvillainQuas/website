@@ -368,7 +368,7 @@
       const sb = window.epinoiaClient && epinoiaClient();
       if (!sb) return null;
       const { data, error } = await sb.from('game_videos')
-        .select('url,provider,video_ref,stream_started_at,tip_at,tip_wall,trim_ms,is_live')
+        .select('url,provider,video_ref,stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live')
         .eq('game_id', gameId).eq('is_primary', true).limit(1);
       /* Before 0082 is applied this table does not exist, and that is not
          worth a word to anybody scoring a game. */
@@ -415,6 +415,8 @@
         S.video.streamStartedAt = row.stream_started_at || S.video.streamStartedAt || null;
         S.video.tipAt = row.tip_at || S.video.tipAt || null;
         S.video.tipWall = row.tip_wall != null ? +row.tip_wall : (S.video.tipWall || null);
+        S.video.tipOffsetMs = row.tip_offset_ms != null ? +row.tip_offset_ms
+                                                        : (S.video.tipOffsetMs || null);
         S.video.trimMs = row.trim_ms != null ? row.trim_ms : (S.video.trimMs || 0);
         if (typeof window.save === 'function') window.save();
 

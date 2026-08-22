@@ -495,7 +495,7 @@ function drawShotChart(shots) {
             const vids = await inChunks(gs.map(g => g.id), c =>
               'game_videos?game_id=in.(' + c.join(',') + ')' +
               '&is_primary=eq.true&select=game_id,url,provider,video_ref,label,' +
-              'stream_started_at,tip_at,tip_wall,trim_ms');
+              'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms');
             const byGameV = {};
             vids.forEach(v => { if (v.url) byGameV[v.game_id] = v; });
             if (Object.keys(byGameV).length && window.EpinoiaPlayerVideo) {

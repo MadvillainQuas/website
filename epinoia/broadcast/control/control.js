@@ -915,9 +915,18 @@ async function stampStreamStart() {
     if (error) { console.warn('[video] could not stamp the stream start', error); return; }
     const note = $('#lvNote');
     if (note && ago != null && ago > 5000) {
+      /* Flagged, not refused. A mixer left running since the earlier fixture
+         reports hours, and so does a league streaming both games back to back
+         on one feed — the difference is not something this page can know, and
+         the person who can see the hall is the one to decide. */
+      const odd = ago > 90 * 60 * 1000;
       note.innerHTML = 'Anchored to the stream, which OBS says has been running ' +
         '<b>' + fmtDur(ago) + '</b>. Every play in the log now has a position in ' +
-        'the video.';
+        'the video.' +
+        (odd ? ' <b>That is a long time before tip-off</b> — right if this feed ' +
+               'has been up since an earlier game, wrong if the mixer was left ' +
+               'running by accident. The scoring app can correct it under ' +
+               '<b>video sync</b>.' : '');
     }
   } catch (e) { console.warn('[video]', e); }
 }

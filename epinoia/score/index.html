@@ -476,6 +476,8 @@ body.pregame .plist{opacity:.72}
   background:rgba(170,255,215,.09);color:var(--txt);font-family:var(--f-micro);font-size:9.5px;
   white-space:nowrap;}
 .vidbtn:active{background:rgba(170,255,215,.18);}
+#vidKind:empty{display:none}
+#vidKind.vwarn{color:var(--amber)}
 .vidnudge{display:flex;gap:5px;margin:8px 0 2px;}
 .vidnudge button{flex:1;padding:9px 2px;border-radius:9px;border:1px solid var(--line);
   background:rgba(170,255,215,.06);color:var(--ink-2);font-family:var(--f-micro);font-size:10px;}
@@ -1624,6 +1626,7 @@ html, body{ height:100dvh; }
 
       <div class="detsplit">lining it up</div>
       <div class="detnote" id="vidNote"></div>
+      <div class="detnote" id="vidKind"></div>
 
       <!-- Not .mrow/.detpick: those were built for a label, a select and an
            input, and a row of label + value + button does not fit that grid on
@@ -1846,11 +1849,7 @@ function addEvent(ev){
     /* A tip position typed before the ball went up becomes real here: the tip
        has just happened, so "tip-off is at 4:12 in the video" now fixes where
        the video began. */
-    if(vid().plannedGapMs != null){
-      vid().streamStartedAt = new Date(ev.wall - vid().plannedGapMs).toISOString();
-      vid().trimMs = 0;
-      vid().plannedGapMs = null;
-    }
+
     /* Elapsed rather than "now", because this write RETRIES — see the note in
        migration 0083. The elapsed value is recomputed at each attempt from the
        device clock, so a request that finally lands four minutes later still
@@ -2252,6 +2251,7 @@ function renderAll(){
     const sh = document.getElementById('sheet');
     if(sh && (ui.armed || ui.pending || ui.subOut)) sh.classList.remove('open');
     if(sh) sh.classList.toggle('locked', !!(ui.armed || ui.pending || ui.subOut));
+    orderSheet();
   }catch(_){}
   if(!S || S.phase==='setup') return;
   D = derive();
@@ -4372,6 +4372,43 @@ function wireAdjust(){
   });
 }
 
+/* ---- THE MENU LEADS WITH WHATEVER IS USEFUL NOW --------------------------
+   Below 760px the sheet is a horizontal scroller at about 96px a button, so a
+   phone shows four of the nine and the rest are past the fold behind a mask.
+   The order was fixed, and it was the order for a game IN PROGRESS: box score,
+   lineups, log. Before a ball is thrown all three of those are empty, and the
+   two things somebody actually wants — attaching the recording and entering the
+   officials — were the two they could not see without scrolling a strip that
+   gives no sign of how far it runs.
+
+   So the order follows the phase. Nothing is hidden and nothing moves during
+   play; the same nine buttons are simply sorted by what the person is doing.
+   CSS order rather than moving nodes, so this costs nothing and cannot disturb
+   a listener.
+
+   THE LABEL FOLLOWS TOO. "video sync" is right once a game is running and it is
+   the wrong words beforehand: before tip the job is to ATTACH a recording, and
+   somebody looking for that will not read "sync" as the thing they want. */
+const SHEET_PREGAME = ['btnVid', 'btnDetails', 'btnHelp', 'btnBox',
+                       'btnAdv', 'btnLog', 'btnExp', 'btnSim', 'btnEnd'];
+const SHEET_INPLAY  = ['btnBox', 'btnLog', 'btnAdv', 'btnVid',
+                       'btnDetails', 'btnHelp', 'btnExp', 'btnSim', 'btnEnd'];
+
+function orderSheet(){
+  if(!S) return;
+  const pre = S.phase === 'pregame';
+  const want = pre ? SHEET_PREGAME : SHEET_INPLAY;
+  want.forEach((id, i) => { const b = $('#' + id); if(b) b.style.order = i; });
+  const v = $('#btnVid');
+  if(v){
+    const label = pre ? 'attach video' : 'video sync';
+    if(v.textContent !== label) v.textContent = label;
+    v.title = pre
+      ? 'paste the recording and say where tip-off is in it'
+      : 'line the recording up with the game clock';
+  }
+}
+
 /* ==================== video sync ====================
    Two timelines are running: the game, and the footage of it. This screen
    lines them up, and the whole of "lining up" is ONE NUMBER — the dead air at
@@ -4388,7 +4425,9 @@ function wireAdjust(){
    See epinoia/video.js for the arithmetic and migration 0082 for the storage.
    ==================== */
 function vid(){
-  if(!S.video) S.video = {url:'',provider:'',ref:'',streamStartedAt:null,
+  if(!S.video) S.video = {url:'',provider:'',ref:'',
+                          /* the live pipeline */ streamStartedAt:null,
+                          /* the recording pipeline */ tipOffsetMs:null,
                           tipAt:null,tipWall:null,trimMs:0};
   return S.video;
 }
@@ -4399,7 +4438,8 @@ function vidRow(){
   const v = vid();
   return { provider:v.provider||'youtube', video_ref:v.ref||'', url:v.url||'',
            stream_started_at:v.streamStartedAt, tip_at:v.tipAt,
-           tip_wall:v.tipWall, trim_ms:v.trimMs||0 };
+           tip_wall:v.tipWall, tip_offset_ms:v.tipOffsetMs,
+           trim_ms:v.trimMs||0 };
 }
 function pushVideo(patch){
   try{ if(window.EpinoiaGameVideo) window.EpinoiaGameVideo.push(patch); }catch(e){}
@@ -4458,17 +4498,38 @@ function paintVideo(){
      Set early it is held as an intention and applied the moment the clock
      starts; set late it is applied at once. Same field, same meaning. */
   $('#vidMin').disabled = $('#vidSec').disabled = false;
-  const shown = gap != null ? gap : (v.plannedGapMs != null ? v.plannedGapMs : null);
+  const shown = gap != null ? gap : (v.tipOffsetMs != null ? v.tipOffsetMs : null);
   if(shown != null && document.activeElement !== $('#vidMin') && document.activeElement !== $('#vidSec')){
     const a = Math.max(0, shown);
     $('#vidMin').value = Math.floor(a/60000);
     $('#vidSec').value = Math.floor(a/1000)%60;
   }
 
+  /* WHICH OF THE TWO IS ACTUALLY DECIDING, said out loud.
+
+     There are two ways to line a video up and both controls are on this
+     screen. A recording's offset wins over a stream start (see migration
+     0090), so pressing "starting now" on a game that already has an offset
+     writes a value that is then ignored — a control that appears to work and
+     does nothing. Naming the anchor in force is the difference between that
+     and a deliberate choice. */
+  const kind = V ? V.anchorKind(vidRow()) : null;
+  const odd = V && V.gapLooksOdd(vidRow());
+  const kindEl = $('#vidKind');
+  if(kindEl){
+    kindEl.textContent = kind === 'recording'
+      ? 'Lined up by the tip position you typed. A stream start would be ignored while this is set.'
+      : kind === 'stream'
+        ? 'Lined up by when the stream started.' +
+          (odd ? ' That is more than an hour and a half before tip — check the mixer was not left running from an earlier game.' : '')
+        : '';
+    kindEl.className = 'detnote' + (odd ? ' vwarn' : '');
+  }
+
   $('#vidNote').textContent = canGap
     ? 'Lined up. Tip-off is at ' + vidStamp(Math.max(0,gap)) + ' in the video, so a play tapped now sits at ' + vidStamp(vidNowMs()||0) + '.'
-    : v.plannedGapMs != null
-      ? 'Tip-off will be taken as ' + vidStamp(v.plannedGapMs) + ' into the video. Start the clock when the ball goes up on screen and everything lines up from there.'
+    : v.tipOffsetMs != null
+      ? 'Tip-off is set to ' + vidStamp(v.tipOffsetMs) + ' into the recording. Start the clock as the ball goes up on screen and every action lines up from there.'
       : !v.streamStartedAt
         ? 'Scoring along with a recording? Find the jump ball on the scrub bar and type where it is below. Producing the stream yourself? Press "it is starting now" as you go live, or let the broadcast screen do it.'
         : 'The stream start is recorded. The gap fills in by itself the moment the ball goes up.';
@@ -4650,26 +4711,25 @@ function wireVideo(){
        see; so the thing that moves is the one nobody observed directly. Keeping
        a typed gap as its own field is how it ends up disagreeing with a
        corrected tip time and nothing says which is right. */
+    /* THE SAME NUMBER BEFORE AND AFTER THE BALL GOES UP.
+
+       This used to branch: with a tip to subtract from it computed a stream
+       start, and without one it held the value as plannedGapMs until addEvent
+       could apply it. Both were scaffolding for an anchor that no longer
+       exists. "Tip-off is 7:45 into this video" is a fact about the footage —
+       it does not become more true when the game starts, so there is nothing
+       to defer and nothing to convert. One assignment, either way.
+
+       No clock on this device, on the server, or in the mixer takes any part
+       in it; see the note on gapMs in epinoia/video.js. */
     const typed = ($('#vidMin').value !== '' || $('#vidSec').value !== '')
       ? (Math.max(0,+$('#vidMin').value||0)*60 + Math.max(0,Math.min(59,+$('#vidSec').value||0)))*1000
       : null;
-    if(typed != null && v.tipAt){
-      if(vidGap() == null || Math.abs(typed - vidGap()) >= 500){
-        v.trimMs = 0;
-        v.streamStartedAt = new Date(new Date(v.tipAt).getTime() - typed).toISOString();
-        /* Sent as an explicit instant rather than as "n ms ago": a typed gap is
-           a statement about a moment in the past, and elapsed-since-now would
-           drift by however long the modal stayed open. */
-        patch.p_stream_start = v.streamStartedAt; patch.p_trim_ms = 0;
-      }
-      v.plannedGapMs = null;
-    } else if(typed != null){
-      /* NO TIP YET, SO IT IS AN INTENTION RATHER THAN A MEASUREMENT. Held on
-         the game and applied by addEvent the instant the first period starts —
-         see the stamp there. Typing it early is the natural order for somebody
-         watching a recording: find the jump ball, note the time, then press
-         play and start scoring. */
-      v.plannedGapMs = typed;
+    if(typed != null && typed !== v.tipOffsetMs){
+      v.trimMs = 0;
+      v.tipOffsetMs = typed;
+      patch.p_tip_offset_ms = typed;
+      patch.p_trim_ms = 0;
     }
     save();
     if(Object.keys(patch).length) pushVideo(patch);
@@ -6429,12 +6489,12 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../video.css?v=233">
-<script src="../config.js?v=233" defer></script>
-<script src="../vendor/supabase.js?v=233" defer></script>
-<script src="../live.js?v=233" defer></script>
-<script src="../video.js?v=233" defer></script>
-<script src="sync.js?v=233" defer></script>
-<script src="bootstrap.js?v=233" defer></script>
+<link rel="stylesheet" href="../video.css?v=238">
+<script src="../config.js?v=238" defer></script>
+<script src="../vendor/supabase.js?v=238" defer></script>
+<script src="../live.js?v=238" defer></script>
+<script src="../video.js?v=238" defer></script>
+<script src="sync.js?v=238" defer></script>
+<script src="bootstrap.js?v=238" defer></script>
 </body>
 </html>

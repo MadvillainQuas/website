@@ -133,7 +133,7 @@ async function loadStored() {
   try {
     const vs = await api(`game_videos?game_id=eq.${encodeURIComponent(gameId)}` +
       `&is_primary=eq.true&select=url,provider,video_ref,label,` +
-      `stream_started_at,tip_at,tip_wall,trim_ms,is_live&limit=1`);
+      `stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live&limit=1`);
     if (vs.length && vs[0].url) video = vs[0];
     else if (vs.length) video = vs[0];         // anchored, link still to come
   } catch (_) { /* no table, or none attached — the tab simply does not appear */ }
@@ -652,26 +652,30 @@ async function saveAttach(wrap) {
   save.disabled = true;
   msg.textContent = 'saving…';
   try {
-    /* THE ORDER MATTERS. The row has to exist and carry a tip before the gap
-       can mean anything: a gap is measured FROM the tip, so setting it first
-       would be arithmetic against null. */
+    /* THIS IS THE RECORDING PATH, so it writes an offset and never a stream
+       start. It used to compute stream_started_at = tip − offset, inventing a
+       moment that never happened purely so the live path's arithmetic could
+       serve it; migration 0090 separated the two and this is the other half of
+       that change.
+
+       The link and the offset go in ONE call, so a row can never end up with
+       the video but not the number that places its plays. */
     let r = await rpcCallRaw('set_game_video', {
       p_game: gameId, p_url: raw,
-      p_provider: parsed.provider, p_ref: parsed.ref
+      p_provider: parsed.provider, p_ref: parsed.ref,
+      p_tip_offset_ms: tipMs, p_trim_ms: 0
     }, token);
     if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
 
+    /* The offset says where tip-off is in the FOOTAGE. Placing an individual
+       play also needs to know when it happened relative to the tip, and for a
+       finished game that reference is in the log — the first period_start.
+       Recovered rather than asked for: nobody remembers when a game last month
+       started, and the database already knows. */
     r = await rpcCallRaw('anchor_video_from_log', { p_game: gameId }, token);
     if (!r.ok) throw new Error((r.body && r.body.message) || 'no tip-off in the log');
     const row = Array.isArray(r.body) ? r.body[0] : r.body;
     if (!row || !row.tip_at) throw new Error('this game has no recorded tip-off');
-
-    /* Now the gap: the video began this far before the ball went up. */
-    const started = new Date(new Date(row.tip_at).getTime() - tipMs).toISOString();
-    r = await rpcCallRaw('set_game_video', {
-      p_game: gameId, p_stream_start: started, p_trim_ms: 0
-    }, token);
-    if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
 
     wrap.remove();
     location.reload();                 // the tab, the list and the embed, fresh
@@ -1068,7 +1072,7 @@ function watchForVideo() {
     try {
       rows = await api('game_videos?game_id=eq.' + encodeURIComponent(gameId) +
         '&is_primary=eq.true&select=url,provider,video_ref,label,' +
-        'stream_started_at,tip_at,tip_wall,trim_ms,is_live&limit=1');
+        'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live&limit=1');
       videoMisses = 0;
     } catch (_) {
       /* A blip is worth retrying; a database without the table is not. Before

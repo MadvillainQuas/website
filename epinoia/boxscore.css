@@ -468,6 +468,8 @@ body.pregame .plist{opacity:.72}
   background:rgba(170,255,215,.09);color:var(--txt);font-family:var(--f-micro);font-size:9.5px;
   white-space:nowrap;}
 .vidbtn:active{background:rgba(170,255,215,.18);}
+#vidKind:empty{display:none}
+#vidKind.vwarn{color:var(--amber)}
 .vidnudge{display:flex;gap:5px;margin:8px 0 2px;}
 .vidnudge button{flex:1;padding:9px 2px;border-radius:9px;border:1px solid var(--line);
   background:rgba(170,255,215,.06);color:var(--ink-2);font-family:var(--f-micro);font-size:10px;}
