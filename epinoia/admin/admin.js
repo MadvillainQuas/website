@@ -104,6 +104,12 @@ async function render() {
 
   if (!league || !admin.some(l => l.id === league.id)) league = admin[0];
   renderLeaguePick(admin);
+  /* The season and the competitions are read through functions rather than
+     passed by value: this panel is mounted once and the operator changes
+     season underneath it, and a captured `season` would keep exporting the
+     one that happened to be selected when the page loaded. */
+  window.EpinoiaExportUI.mount({ host: '#exportPanel', sb, say,
+    season: () => season, competitions: () => comps });
   window.EpinoiaKeys.mount({ host: '#keysPanel', sb, league, say });
   window.EpinoiaWebhook.mount({ host: '#webhookPanel', sb, league, say });
   window.EpinoiaFeeds.mount({ host: '#feedsPanel', sb, league, say,

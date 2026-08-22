@@ -35,6 +35,8 @@ const WANTED = [
   'mkP', 'mkOC', 'mkBox', 'mkT', 'cumEl', 'activeTags',
   'COURT', 'courtSVG',                       // COURT must come before courtSVG
   'arcSide', 'snapToValue',                  // where a shot was vs what it was worth
+  'OFFICIAL_ROLES', 'matchDetailsHTML',      // officials, hall, attendance
+  'FOUL_MARK', 'foulMarksByPlayer', 'scoresheetHTML', 'scoresheetDoc', 'printScoresheet',
   // calculators
   'teamTotals', 'teamAdv', 'playerAdv', 'playerAdvTable', 'lineupAgg',
   // HTML builders

@@ -77,6 +77,7 @@ async function fetchLog() {
 async function loadStored() {
   const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
     `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,` +
+    `capacity,attendance,officials,` +
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,logo_path),` +
     `away:away_team_id(slug,name,short_name,colour,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
@@ -107,6 +108,14 @@ async function loadStored() {
     competition: [league.name, comp.name].filter(Boolean).join(' · ') || 'Friendly',
     leagueSlug: league.slug || null,
     venue: g.venue,
+    /* The scoresheet's context, in the shape matchDetailsHTML reads on both
+       sides — the scorer keeps the same object on its own S, so one renderer
+       serves the statistician's screen and the public page. */
+    details: {
+      venue: g.venue, address: g.venue_address,
+      capacity: g.capacity, attendance: g.attendance,
+      officials: g.officials || {}
+    },
     /* kept for the link-preview and structured-data tags, which want the
        fixture's own facts rather than the replayed game's */
     meta: {
@@ -133,7 +142,8 @@ const BODIES = {
     const g = window.EpinoiaGameFacts.brief(window.S, d, B);
     return window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
   },
-  box:     d => B.qstripHTML(d) + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
+  box:     d => B.qstripHTML(d) + B.matchDetailsHTML() +
+                B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
   pbp:     d => B.pbpHTML(d),
   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
   adv:     d => B.advHTML(d),
@@ -168,17 +178,27 @@ let lastBodyKey = '';
 function renderShell() {
   const S = window.S;
   $('#view').innerHTML =
-    '<div class="ovhead"><div class="ovtitle" id="csHeading"></div></div>' +
+    '<div class="ovhead"><div class="ovtitle" id="csHeading"></div>' +
+      /* THE SCORESHEET IS THE RECORD, so it is offered wherever the record is
+         read — not buried in an admin screen. Only once the game is final:
+         a scoresheet of a game still being played is a document that will be
+         wrong by the time it is printed. */
+      (S.status === 'final'
+        ? '<button class="tabbtn" id="csSheet" style="margin-left:auto">scoresheet · pdf</button>'
+        : '') + '</div>' +
     '<div id="csHead"></div>' +
     '<div class="tabrow" style="flex-wrap:wrap">' + tabsFor(S.status).map(t =>
       '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
       B.esc(t[1]) + '</button>').join('') + '</div>' +
     '<div id="csBody"></div>';
 
-  document.querySelectorAll('#view .tabbtn').forEach(b => {
+  const sheetBtn = document.getElementById('csSheet');
+  if (sheetBtn) sheetBtn.onclick = () => B.printScoresheet();
+
+  document.querySelectorAll('#view .tabbtn[data-tab]').forEach(b => {
     b.onclick = () => {
       fTab = b.dataset.tab;
-      document.querySelectorAll('#view .tabbtn').forEach(x =>
+      document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x =>
         x.classList.toggle('on', x.dataset.tab === fTab));
       lastBodyKey = '';                 // force a redraw for the new tab
       renderBody();

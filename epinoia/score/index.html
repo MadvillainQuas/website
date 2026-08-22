@@ -1384,6 +1384,34 @@ html, body{ height:100dvh; }
   .hv-row > .hv-k{ font-size:10px; }
   .hv-row > .hv-v{ font-size:12px; }
 }
+
+/* ---- match details: the editor, and the strip it produces ---- */
+.detmodal{max-width:440px;width:min(94vw,440px)}
+.detscroll{max-height:min(52vh,430px);overflow-y:auto;overscroll-behavior:contain;
+  margin:0 -2px;padding:0 2px}
+.detin{background:rgba(200,255,230,.06);border:1px solid var(--line);border-radius:10px;
+  padding:9px 11px;color:var(--txt);font-family:var(--f-ui);font-size:13px;
+  width:min(240px,58%);min-height:40px}
+.detin:focus{border-color:var(--line-hi);outline:none}
+.detin.num{width:118px;text-align:right}
+.detsplit{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;
+  color:var(--lume);margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+.detnote{font-family:var(--f-micro);font-size:9px;line-height:1.85;color:var(--faint);
+  margin:12px 0 2px}
+
+.mdcard{padding:11px 13px;margin:10px 0;display:flex;flex-direction:column;gap:7px}
+.mdrow{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:baseline}
+.mdk{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--lume)}
+.mdv{font-family:var(--f-ui);font-size:12.5px;color:var(--txt);line-height:1.6}
+.mdrole{font-family:var(--f-micro);font-size:8px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-right:4px}
+.mdsep{color:var(--faint);margin:0 7px}
+.mddim{color:var(--dim)}
+@media (max-width:640px){
+  .mdrow{grid-template-columns:1fr;gap:2px}
+  .detin{width:min(200px,52%)}
+}
 </style>
 </head>
 <body>
@@ -1469,6 +1497,7 @@ html, body{ height:100dvh; }
       <button class="sheetbtn" id="btnAdv">lineups</button>
       <button class="sheetbtn" id="btnLog">log</button>
       <button class="sheetbtn" id="btnExp">export</button>
+      <button class="sheetbtn" id="btnDetails" title="officials, venue, attendance">match details</button>
       <button class="sheetbtn" id="btnHelp" title="every control, with diagrams">controls</button>
       <button class="sheetbtn" id="btnSim" title="test data">simulate</button>
       <button class="sheetbtn endy" id="btnEnd">end game</button>
@@ -1486,6 +1515,37 @@ html, body{ height:100dvh; }
 <section id="helpview" class="screen overlayview hidden"></section>
 
 <!-- ================= modals ================= -->
+<!-- Match details. Two moments need this and neither of them is mid-game: the
+     referees are known at the door, and the attendance is not known until the
+     game has started. So it opens from the bottom sheet before tip and again
+     after the final whistle, and the statistician is left alone in between. -->
+<div id="detModal" class="modalwrap hidden">
+  <div class="glass modal detmodal">
+    <div class="mtitle">match details</div>
+    <div class="detscroll">
+      <div class="mrow"><label>venue</label>
+        <input id="detVenue" class="detin" type="text" autocomplete="off" maxlength="80"></div>
+      <div class="mrow"><label>address</label>
+        <input id="detAddr" class="detin" type="text" autocomplete="off" maxlength="140"></div>
+      <div class="mrow"><label>capacity</label>
+        <input id="detCap" class="detin num" type="number" inputmode="numeric" min="0" max="200000"></div>
+      <div class="mrow"><label>attendance</label>
+        <input id="detAtt" class="detin num" type="number" inputmode="numeric" min="0" max="200000"></div>
+      <div class="detsplit">officials</div>
+      <div class="mrow"><label>referee</label><input id="det_referee" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>umpire 1</label><input id="det_umpire1" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>umpire 2</label><input id="det_umpire2" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>commissioner</label><input id="det_commissioner" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>scorer</label><input id="det_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>assistant scorer</label><input id="det_assistant_scorer" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>timekeeper</label><input id="det_timekeeper" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+      <div class="mrow"><label>shot clock</label><input id="det_shot_clock" class="detin" type="text" autocomplete="off" maxlength="60"></div>
+    </div>
+    <div class="detnote" id="detNote"></div>
+    <div class="mbtns"><button id="detCancel">cancel</button><button id="detOk" class="yes">save</button></div>
+  </div>
+</div>
+
 <div id="adjModal" class="modalwrap hidden">
   <div class="glass modal">
     <div class="mtitle">adjust clock</div>
@@ -1532,7 +1592,10 @@ function newState(){
     teams:[{name:'team one',players:[]},{name:'team two',players:[]}],
     starters:[[],[]], events:[], redo:[], evSeq:0,
     period:1, clockMs:PLEN(1), running:false, collapsed:false,
-    tipWinner:null, arrowInit:null};
+    tipWinner:null, arrowInit:null,
+    /* officials, hall and attendance — context a scoresheet needs and the
+       event log has no way to hold; see matchDetailsHTML below */
+    details:{officials:{}}};
 }
 /* Which slot this page saves into. The practice game gets its own, so
    opening the demo can never overwrite a real game in progress — see the note
@@ -3660,6 +3723,7 @@ function wireGame(){
   $('#btnAdv').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openAdv(); });
   $('#btnLog').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openLog(); });
   $('#btnExp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); downloadJSON(); });
+  $('#btnDetails').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openDetails(); });
   $('#btnHelp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openHelp(); });
   $('#btnSim').addEventListener('click', ()=>{ $('#sheet').classList.remove('open');
     askConfirm('simulate a full game? are you sure? this replaces the current game with test data', simulateGame); });
@@ -3679,6 +3743,12 @@ function wireGame(){
     }
     if(!$('#evModal').classList.contains('hidden')){
       if(e.key==='Escape'){ EM=null; $('#evModal').classList.add('hidden'); }
+      return;
+    }
+    if(!$('#detModal').classList.contains('hidden')){
+      /* swallow everything: a referee called Sam must not arm a shot on 's' */
+      if(e.key==='Escape') closeDetails();
+      if(e.key==='Enter' && !(e.target && e.target.matches && e.target.matches('input'))) saveDetails();
       return;
     }
     if(!$('#confirmModal').classList.contains('hidden')) return;
@@ -3717,6 +3787,10 @@ function wireGame(){
       case '?': case 'h': openHelp(); break;
     }
   });
+
+  $('#detCancel').addEventListener('click', closeDetails);
+  $('#detOk').addEventListener('click', saveDetails);
+  $('#detModal').addEventListener('click', e=>{ if(e.target.id==='detModal') closeDetails(); });
 
   wireAdjust(); wireCmd();
 }
@@ -4051,9 +4125,396 @@ function openBox(){ renderBox(); showScreen('boxview'); }
 function renderBox(){
   const d = derive();
   $('#boxview').innerHTML =
-    '<div class="ovhead"><button class="backbtn" id="bkBox">← statistician</button><div class="ovtitle">box score</div></div>'+
-    scoreHeadHTML(d)+qstripHTML(d)+bxTeamHTML(d,0)+bxTeamHTML(d,1)+'<div style="height:26px"></div>';
+    '<div class="ovhead"><button class="backbtn" id="bkBox">← statistician</button>'+
+      '<div class="ovtitle">box score</div>'+
+      '<button class="backbtn" id="bkSheet" style="margin-left:auto">scoresheet · pdf</button></div>'+
+    scoreHeadHTML(d)+qstripHTML(d)+matchDetailsHTML()+
+    bxTeamHTML(d,0)+bxTeamHTML(d,1)+'<div style="height:26px"></div>';
   $('#bkBox').onclick = ()=>showScreen('game');
+  $('#bkSheet').onclick = printScoresheet;
+}
+
+/* ==================== match details ====================
+   THE THINGS A SCORESHEET HAS THAT THE EVENT LOG DOES NOT.
+
+   Everything else this app publishes is derived from the log, which is why two
+   pages cannot disagree. Officials, the hall and the attendance are not
+   derived from anything — they are context, entered once — and a governed
+   competition cannot leave the officials line blank.
+
+   Kept on S so the box score renders them without a second fetch, and pushed
+   to the fixture through set_match_details() when there is a fixture to push
+   them to. A training game keeps them locally and publishes nothing, like
+   everything else it does. */
+
+const OFFICIAL_ROLES = [
+  ['referee',          'referee'],
+  ['umpire1',          'umpire 1'],
+  ['umpire2',          'umpire 2'],
+  ['commissioner',     'commissioner'],
+  ['scorer',           'scorer'],
+  ['assistant_scorer', 'assistant scorer'],
+  ['timekeeper',       'timekeeper'],
+  ['shot_clock',       'shot clock']
+];
+
+function details(){
+  if(!S) return {};
+  if(!S.details) S.details = {officials:{}};
+  if(!S.details.officials) S.details.officials = {};
+  return S.details;
+}
+
+/* The strip under the score on a box score. Only the lines that have something
+   in them: an empty "attendance —" row is noise on a screen and a lie on a
+   printout. */
+function matchDetailsHTML(){
+  const D0 = (typeof S === 'object' && S && S.details) ? S.details : {};
+  const off = D0.officials || {};
+  const bits = [];
+
+  const crew = OFFICIAL_ROLES
+    .filter(([k]) => off[k])
+    .map(([k, label]) => '<span class="mdrole">' + label + '</span> ' + esc(off[k]));
+  if(crew.length) bits.push(['officials', crew.join('<span class="mdsep">·</span>')]);
+
+  const place = [];
+  if(D0.venue)   place.push(esc(D0.venue));
+  if(D0.address) place.push('<span class="mddim">' + esc(D0.address) + '</span>');
+  if(place.length) bits.push(['venue', place.join('<span class="mdsep">·</span>')]);
+
+  /* Attendance next to capacity, because attendance alone is a number and
+     attendance against capacity is a competition telling you it filled the
+     hall — which is the only reason to record capacity at all. */
+  if(D0.attendance != null || D0.capacity != null){
+    const a = D0.attendance != null ? Number(D0.attendance).toLocaleString() : '—';
+    const c = D0.capacity   != null ? Number(D0.capacity).toLocaleString()   : null;
+    const pct = (D0.attendance != null && D0.capacity)
+      ? ' <span class="mddim">(' + Math.round(100 * D0.attendance / D0.capacity) + '% full)</span>' : '';
+    bits.push(['attendance', a + (c ? '<span class="mdsep">of</span>' + c : '') + pct]);
+  }
+
+  if(!bits.length) return '';
+  return '<div class="glass mdcard">' + bits.map(b =>
+    '<div class="mdrow"><span class="mdk">' + b[0] + '</span><span class="mdv">' + b[1] + '</span></div>'
+  ).join('') + '</div>';
+}
+
+/* ---- the editor ---------------------------------------------------------- */
+/* Reachable before tip AND after the final whistle, because those are the two
+   moments the information exists: the referees are known at the door and
+   somebody has time at 19:25, and the attendance is not known until the game
+   has started while the commissioner's name is the sort of thing corrected on
+   Monday. In between, the statistician has a game to score. */
+function openDetails(){
+  const D0 = details(), off = D0.officials || {};
+  $('#detVenue').value  = D0.venue   || '';
+  $('#detAddr').value   = D0.address || '';
+  $('#detCap').value    = D0.capacity   == null ? '' : D0.capacity;
+  $('#detAtt').value    = D0.attendance == null ? '' : D0.attendance;
+  OFFICIAL_ROLES.forEach(([k]) => { const el = $('#det_' + k); if(el) el.value = off[k] || ''; });
+  $('#detNote').textContent = EP_TRAIN
+    ? 'This is the training game — nothing here is saved anywhere.'
+    : (window.EpinoiaSync && EpinoiaSync.status && EpinoiaSync.status().gameId
+        ? 'Saved to the fixture, and shown on the public box score and the scoresheet.'
+        : 'Kept on this device — there is no fixture to save it to.');
+  $('#detModal').classList.remove('hidden');
+  setTimeout(()=>{ try{ $('#detVenue').focus(); }catch(_){} }, 30);
+}
+
+function closeDetails(){ $('#detModal').classList.add('hidden'); }
+
+async function saveDetails(){
+  const D0 = details();
+  const num = el => { const v = $(el).value.trim(); return v === '' ? null : Math.max(0, parseInt(v, 10) || 0); };
+  D0.venue      = $('#detVenue').value.trim();
+  D0.address    = $('#detAddr').value.trim();
+  D0.capacity   = num('#detCap');
+  D0.attendance = num('#detAtt');
+  D0.officials  = {};
+  OFFICIAL_ROLES.forEach(([k]) => {
+    const el = $('#det_' + k); const v = el ? el.value.trim() : '';
+    if(v) D0.officials[k] = v;
+  });
+  save();
+  renderAll();
+  refreshOpenViews();
+  closeDetails();
+  toast('match details saved');
+
+  /* And onto the fixture, if there is one. -1 rather than null clears a field,
+     because the function reads null as "not supplied" — a blank box here is a
+     deliberate erasure and has to be told apart from a caller that did not
+     mention the field at all. */
+  const st = window.EpinoiaSync && EpinoiaSync.status ? EpinoiaSync.status() : null;
+  const gid = st && st.gameId;
+  const CFG = window.EPINOIA_CONFIG || {};
+  if(EP_TRAIN || !gid || !CFG.supabaseUrl || !window.epinoiaClient) return;
+  try{
+    const sb = await window.epinoiaClient();
+    if(!sb) return;
+    const { error } = await sb.rpc('set_match_details', {
+      p_game: gid,
+      p_venue: D0.venue || '',
+      p_address: D0.address || '',
+      p_capacity:   D0.capacity   == null ? -1 : D0.capacity,
+      p_attendance: D0.attendance == null ? -1 : D0.attendance,
+      p_officials: D0.officials
+    });
+    if(error) throw error;
+  }catch(err){
+    /* Loud, because a statistician who thinks the referees are recorded and
+       finds them missing on Monday has no way back to what they typed. */
+    console.error('[details] not saved to the fixture', err);
+    toast('saved on this device — the fixture did not accept it: ' +
+          ((err && err.message) || 'unknown error'), 5200);
+  }
+}
+
+/* ==================== the official scoresheet ====================
+   THE LEGAL RECORD OF THE MATCH, WHICH IS NOT THE SAME DOCUMENT AS A BOX SCORE.
+
+   A box score is a reading of the game. A scoresheet is the thing referred to
+   in a protest: it names the officials, it carries the fouls in the order they
+   were committed rather than only their total, it shows the team-foul count per
+   period and the timeouts taken, and it has somewhere for four people to sign.
+   Federations require one, and "we export JSON" is not an answer that keeps a
+   governed competition on the platform.
+
+   IT IS A SEPARATE DOCUMENT, NOT A PRINT STYLESHEET OVER THE APP. The scorer
+   is a dark, fixed-height, gesture-driven phone app whose every surface is the
+   wrong shape for A4. Trying to print it means a @media print block that
+   fights every layout rule in a 5,000-line stylesheet, and loses somewhere
+   nobody notices until a league secretary sends back a page of black. So this
+   builds a complete, self-contained white document and prints THAT, from a
+   hidden iframe — no popup blocker, no tab to close, and nothing in it shares a
+   single rule with the app.
+
+   Everything on it is derived from the same replay as every other surface, so
+   the sheet cannot disagree with the box score it sits beside. The only inputs
+   that are not derived are the ones a log cannot hold — the officials, the
+   hall, the attendance — which is what match details is for.
+   ========================================================================= */
+
+/* The foul column on a scoresheet is not a count, it is a sequence: P for a
+   personal, T for a technical, U for unsportsmanlike, D for disqualifying, in
+   the order they happened. A player with four Ps is in different trouble from
+   one with two Ps and a U, and the total hides that. */
+const FOUL_MARK = { personal:'P', shooting:'P', floor:'P', offensive:'P',
+                    tech:'T', unsport:'U', disq:'D' };
+
+function foulMarksByPlayer(){
+  const marks = {};
+  (S.events || []).forEach(ev => {
+    if(ev.t !== 'foul' || !ev.pid) return;
+    (marks[ev.pid] = marks[ev.pid] || []).push(FOUL_MARK[ev.kind] || 'P');
+  });
+  return marks;
+}
+
+function scoresheetHTML(d){
+  const marks = foulMarksByPlayer();
+  const maxP  = Math.max(4, S.period);
+  const D0    = S.details || {};
+  const off   = D0.officials || {};
+  const won   = d.score[0] === d.score[1] ? null : (d.score[0] > d.score[1] ? 0 : 1);
+
+  const cell = v => '<td>' + (v == null ? '' : v) + '</td>';
+  const meta = (k, v) => v ? '<div class="mi"><span>' + k + '</span>' + esc(String(v)) + '</div>' : '';
+
+  /* ---- one team block ---- */
+  const teamBlock = t => {
+    const T = d.team[t];
+    const rows = S.teams[t].players.map(p => {
+      const s = d.stats[p.id];
+      const played = s.min > 0 || s.pts || s.pf || s.or || s.dr || s.ast;
+      const fm = (marks[p.id] || []).join(' ');
+      return '<tr' + (s.dq ? ' class="dq"' : '') + '>' +
+        cell(esc(p.num)) + '<td class="nm">' + esc(p.name) + (s.dq ? ' <b>DQ</b>' : '') + '</td>' +
+        cell(played ? fmtMin(s.min) : '—') +
+        cell(s.p2m + '-' + s.p2a) + cell(s.p3m + '-' + s.p3a) + cell(s.ftm + '-' + s.fta) +
+        cell(s.or) + cell(s.dr) + cell(s.or + s.dr) +
+        cell(s.ast) + cell(s.to) + cell(s.stl) + cell(s.blk) +
+        '<td class="fouls">' + (fm || '') + '</td>' +
+        cell(s.fd) + '<td class="pts">' + s.pts + '</td>' + '</tr>';
+    }).join('');
+
+    const tot = S.teams[t].players.reduce((a, p) => {
+      const s = d.stats[p.id];
+      ['pts','p2m','p2a','p3m','p3a','ftm','fta','or','dr','ast','to','stl','blk','pf','fd']
+        .forEach(k => a[k] += s[k]);
+      return a;
+    }, {pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,to:0,stl:0,blk:0,pf:0,fd:0});
+
+    /* team fouls per period, drawn as the four boxes a scoresheet has — the
+       fifth is the bonus, and seeing the row fill is the point of the row */
+    const tfRow = [];
+    for(let p = 1; p <= maxP; p++){
+      const n = (T.foulsP && T.foulsP[p > 4 ? 4 : p]) || 0;
+      const boxes = [1,2,3,4].map(i =>
+        '<span class="fb' + (i <= n ? ' on' : '') + '">' + i + '</span>').join('');
+      tfRow.push('<span class="tfp"><i>' + perName(p) + '</i>' + boxes +
+                 (n > 4 ? '<span class="fb on more">+' + (n - 4) + '</span>' : '') + '</span>');
+    }
+
+    return '<div class="team">' +
+      '<div class="th"><span class="tn">' + esc(tname(t)) + '</span>' +
+        '<span class="tsc">' + d.score[t] + '</span>' +
+        (won === t ? '<span class="win">winner</span>' : '') + '</div>' +
+      '<table class="bx"><thead><tr>' +
+        ['no','player','min','2pt','3pt','ft','or','dr','reb','ast','to','stl','blk','fouls','fd','pts']
+          .map(h => '<th>' + h + '</th>').join('') +
+      '</tr></thead><tbody>' + rows +
+      '<tr class="tot"><td></td><td class="nm">team totals</td>' +
+        cell('') + cell(tot.p2m + '-' + tot.p2a) + cell(tot.p3m + '-' + tot.p3a) +
+        cell(tot.ftm + '-' + tot.fta) +
+        cell(tot.or + T.teamRebO) + cell(tot.dr + T.teamRebD) +
+        cell(tot.or + tot.dr + T.teamRebO + T.teamRebD) +
+        cell(tot.ast) + cell(tot.to + T.teamTo) + cell(tot.stl) + cell(tot.blk) +
+        '<td class="fouls">' + tot.pf + '</td>' + cell(tot.fd) +
+        '<td class="pts">' + d.score[t] + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div></div>' +
+      '</div>';
+  };
+
+  /* ---- period scores ---- */
+  let ph = '<th></th>', r0 = '<td class="nm">' + esc(tname(0)) + '</td>',
+      r1 = '<td class="nm">' + esc(tname(1)) + '</td>';
+  for(let p = 1; p <= maxP; p++){
+    ph += '<th>' + perName(p) + '</th>';
+    r0 += '<td>' + (d.perQ[0][p] || 0) + '</td>';
+    r1 += '<td>' + (d.perQ[1][p] || 0) + '</td>';
+  }
+  ph += '<th>final</th>';
+  r0 += '<td class="pts">' + d.score[0] + '</td>';
+  r1 += '<td class="pts">' + d.score[1] + '</td>';
+
+  const when = S.details && S.details.tipoff ? S.details.tipoff : null;
+  const sig = n => '<div class="sg"><span class="ln"></span><i>' + n + '</i></div>';
+
+  return '<div class="sheet">' +
+    '<div class="head">' +
+      '<div class="brand">EPINOIΛ</div>' +
+      '<div class="ttl">Official scoresheet</div>' +
+      '<div class="comp">' + esc(S.competition || 'Friendly') + '</div>' +
+    '</div>' +
+
+    '<div class="metagrid">' +
+      meta('date', when || (typeof EP_SHEET_DATE === 'string' ? EP_SHEET_DATE : '')) +
+      meta('venue', D0.venue) +
+      meta('address', D0.address) +
+      meta('attendance', D0.attendance != null
+        ? Number(D0.attendance).toLocaleString() +
+          (D0.capacity ? ' of ' + Number(D0.capacity).toLocaleString() : '')
+        : (D0.capacity != null ? 'capacity ' + Number(D0.capacity).toLocaleString() : '')) +
+    '</div>' +
+
+    '<div class="officials">' + OFFICIAL_ROLES.map(([k, label]) =>
+      '<div class="oi"><span>' + label + '</span>' + (off[k] ? esc(off[k]) : '<i class="blank"></i>') + '</div>'
+    ).join('') + '</div>' +
+
+    teamBlock(0) + teamBlock(1) +
+
+    '<div class="periods"><table><thead><tr>' + ph + '</tr></thead>' +
+      '<tbody><tr>' + r0 + '</tr><tr>' + r1 + '</tr></tbody></table>' +
+      (won == null
+        ? '<div class="result">Tied ' + d.score[0] + '–' + d.score[1] + '</div>'
+        : '<div class="result">' + esc(tname(won)) + ' won ' +
+          Math.max(d.score[0], d.score[1]) + '–' + Math.min(d.score[0], d.score[1]) + '</div>') +
+    '</div>' +
+
+    '<div class="sigs">' + sig('Scorer') + sig('Assistant scorer') + sig('Timekeeper') +
+      sig('Shot clock') + sig('Crew chief') + sig('Captain (in case of protest)') + '</div>' +
+
+    '<div class="foot">Derived from the match event log. Fouls are shown in the order ' +
+      'they were committed: P personal · T technical · U unsportsmanlike · D disqualifying.</div>' +
+    '</div>';
+}
+
+/* The document the sheet lives in: white, A4, and sharing no rule with the app
+   it was generated from. */
+function scoresheetDoc(d, title){
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title>' +
+    '<style>' +
+    '@page{size:A4 portrait;margin:11mm}' +
+    '*{box-sizing:border-box}' +
+    'body{margin:0;background:#fff;color:#111;' +
+      'font:10px/1.45 ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif}' +
+    '.sheet{max-width:190mm;margin:0 auto}' +
+    '.head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #111;padding-bottom:6px}' +
+    '.brand{font-weight:800;letter-spacing:.06em;font-size:15px}' +
+    '.ttl{font-size:12px;text-transform:uppercase;letter-spacing:.18em}' +
+    '.comp{margin-left:auto;font-size:11px;font-weight:600}' +
+    '.metagrid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 14px;margin:7px 0 8px}' +
+    '.mi{font-size:10px}.mi span{display:block;font-size:7.5px;text-transform:uppercase;' +
+      'letter-spacing:.14em;color:#666}' +
+    '.officials{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 14px;' +
+      'border:1px solid #bbb;padding:6px 8px;margin-bottom:9px}' +
+    '.oi{font-size:10px}.oi span{display:block;font-size:7.5px;text-transform:uppercase;' +
+      'letter-spacing:.14em;color:#666}' +
+    '.oi .blank{display:block;border-bottom:1px solid #999;height:11px}' +
+    '.team{margin-bottom:9px;break-inside:avoid}' +
+    '.th{display:flex;align-items:baseline;gap:9px;background:#111;color:#fff;padding:3px 7px}' +
+    '.tn{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em}' +
+    '.tsc{margin-left:auto;font-weight:800;font-size:14px}' +
+    '.win{font-size:7.5px;text-transform:uppercase;letter-spacing:.16em;border:1px solid #fff;padding:1px 5px}' +
+    'table.bx{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}' +
+    'table.bx th{font-size:7px;text-transform:uppercase;letter-spacing:.08em;color:#444;' +
+      'border-bottom:1px solid #111;padding:3px 2px;text-align:right}' +
+    'table.bx th:nth-child(2){text-align:left}' +
+    'table.bx td{padding:2px;border-bottom:1px solid #e2e2e2;text-align:right;font-size:9px}' +
+    'table.bx td.nm{text-align:left;text-transform:capitalize}' +
+    'table.bx td.pts{font-weight:700}' +
+    'table.bx td.fouls{text-align:center;letter-spacing:.12em;font-weight:600}' +
+    'table.bx tr.dq{background:#f6f6f6}' +
+    'table.bx tr.tot td{border-top:1.5px solid #111;border-bottom:none;font-weight:700;padding-top:3px}' +
+    '.tfoot{margin-top:4px}' +
+    '.tfl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:7.5px;' +
+      'text-transform:uppercase;letter-spacing:.14em;color:#666}' +
+    '.tfp{display:inline-flex;align-items:center;gap:2px}' +
+    '.tfp i{font-style:normal;margin-right:3px;color:#111}' +
+    '.fb{display:inline-block;width:11px;height:11px;line-height:10px;text-align:center;' +
+      'border:1px solid #999;font-size:7px;color:#bbb}' +
+    '.fb.on{background:#111;color:#fff;border-color:#111}' +
+    '.fb.more{width:auto;padding:0 3px}' +
+    '.periods{display:flex;align-items:flex-end;gap:14px;margin:6px 0 10px;break-inside:avoid}' +
+    '.periods table{border-collapse:collapse;font-variant-numeric:tabular-nums}' +
+    '.periods th{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:#444;' +
+      'padding:2px 7px;border-bottom:1px solid #111}' +
+    '.periods td{padding:2px 7px;text-align:right;font-size:10px;border-bottom:1px solid #e2e2e2}' +
+    '.periods td.nm{text-align:left;text-transform:capitalize;font-weight:600}' +
+    '.periods td.pts{font-weight:800}' +
+    '.result{font-size:11px;font-weight:700;padding-bottom:3px}' +
+    '.sigs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 18px;margin-top:12px;' +
+      'break-inside:avoid}' +
+    '.sg .ln{display:block;border-bottom:1px solid #111;height:20px}' +
+    '.sg i{font-style:normal;font-size:7.5px;text-transform:uppercase;letter-spacing:.14em;color:#666}' +
+    '.foot{margin-top:11px;padding-top:5px;border-top:1px solid #ccc;font-size:7.5px;color:#666}' +
+    '</style></head><body>' + scoresheetHTML(d) + '</body></html>';
+}
+
+/* Printed from a hidden iframe rather than a new window: a popup blocker
+   cannot refuse it, there is no tab left open afterwards, and the app's own
+   stylesheet never touches the document. */
+function printScoresheet(){
+  const d = (typeof derive === 'function') ? derive() : null;
+  if(!d) return;
+  const title = [tname(0), 'v', tname(1)].join(' ') + ' — scoresheet';
+  const old = document.getElementById('epSheetFrame');
+  if(old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'epSheetFrame';
+  f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
+  document.body.appendChild(f);
+  const doc = f.contentDocument || f.contentWindow.document;
+  doc.open(); doc.write(scoresheetDoc(d, title)); doc.close();
+  /* the fonts and the layout have to settle before the dialog opens, or the
+     preview is measured against an empty document */
+  const go = () => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ } };
+  if(doc.readyState === 'complete') setTimeout(go, 60);
+  else f.onload = () => setTimeout(go, 60);
 }
 
 /* ==================== lineups view ==================== */
@@ -5238,10 +5699,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=158" defer></script>
-<script src="../vendor/supabase.js?v=158" defer></script>
-<script src="../live.js?v=158" defer></script>
-<script src="sync.js?v=158" defer></script>
-<script src="bootstrap.js?v=158" defer></script>
+<script src="../config.js?v=160" defer></script>
+<script src="../vendor/supabase.js?v=160" defer></script>
+<script src="../live.js?v=160" defer></script>
+<script src="sync.js?v=160" defer></script>
+<script src="bootstrap.js?v=160" defer></script>
 </body>
 </html>

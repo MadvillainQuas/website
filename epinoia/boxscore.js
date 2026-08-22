@@ -265,6 +265,261 @@ function snapToValue(nx, ny, wantThree){
   };
 }
 
+const OFFICIAL_ROLES = [
+  ['referee',          'referee'],
+  ['umpire1',          'umpire 1'],
+  ['umpire2',          'umpire 2'],
+  ['commissioner',     'commissioner'],
+  ['scorer',           'scorer'],
+  ['assistant_scorer', 'assistant scorer'],
+  ['timekeeper',       'timekeeper'],
+  ['shot_clock',       'shot clock']
+];
+
+function matchDetailsHTML(){
+  const D0 = (typeof S === 'object' && S && S.details) ? S.details : {};
+  const off = D0.officials || {};
+  const bits = [];
+
+  const crew = OFFICIAL_ROLES
+    .filter(([k]) => off[k])
+    .map(([k, label]) => '<span class="mdrole">' + label + '</span> ' + esc(off[k]));
+  if(crew.length) bits.push(['officials', crew.join('<span class="mdsep">·</span>')]);
+
+  const place = [];
+  if(D0.venue)   place.push(esc(D0.venue));
+  if(D0.address) place.push('<span class="mddim">' + esc(D0.address) + '</span>');
+  if(place.length) bits.push(['venue', place.join('<span class="mdsep">·</span>')]);
+
+  /* Attendance next to capacity, because attendance alone is a number and
+     attendance against capacity is a competition telling you it filled the
+     hall — which is the only reason to record capacity at all. */
+  if(D0.attendance != null || D0.capacity != null){
+    const a = D0.attendance != null ? Number(D0.attendance).toLocaleString() : '—';
+    const c = D0.capacity   != null ? Number(D0.capacity).toLocaleString()   : null;
+    const pct = (D0.attendance != null && D0.capacity)
+      ? ' <span class="mddim">(' + Math.round(100 * D0.attendance / D0.capacity) + '% full)</span>' : '';
+    bits.push(['attendance', a + (c ? '<span class="mdsep">of</span>' + c : '') + pct]);
+  }
+
+  if(!bits.length) return '';
+  return '<div class="glass mdcard">' + bits.map(b =>
+    '<div class="mdrow"><span class="mdk">' + b[0] + '</span><span class="mdv">' + b[1] + '</span></div>'
+  ).join('') + '</div>';
+}
+
+const FOUL_MARK = { personal:'P', shooting:'P', floor:'P', offensive:'P',
+                    tech:'T', unsport:'U', disq:'D' };
+
+function foulMarksByPlayer(){
+  const marks = {};
+  (S.events || []).forEach(ev => {
+    if(ev.t !== 'foul' || !ev.pid) return;
+    (marks[ev.pid] = marks[ev.pid] || []).push(FOUL_MARK[ev.kind] || 'P');
+  });
+  return marks;
+}
+
+function scoresheetHTML(d){
+  const marks = foulMarksByPlayer();
+  const maxP  = Math.max(4, S.period);
+  const D0    = S.details || {};
+  const off   = D0.officials || {};
+  const won   = d.score[0] === d.score[1] ? null : (d.score[0] > d.score[1] ? 0 : 1);
+
+  const cell = v => '<td>' + (v == null ? '' : v) + '</td>';
+  const meta = (k, v) => v ? '<div class="mi"><span>' + k + '</span>' + esc(String(v)) + '</div>' : '';
+
+  /* ---- one team block ---- */
+  const teamBlock = t => {
+    const T = d.team[t];
+    const rows = S.teams[t].players.map(p => {
+      const s = d.stats[p.id];
+      const played = s.min > 0 || s.pts || s.pf || s.or || s.dr || s.ast;
+      const fm = (marks[p.id] || []).join(' ');
+      return '<tr' + (s.dq ? ' class="dq"' : '') + '>' +
+        cell(esc(p.num)) + '<td class="nm">' + esc(p.name) + (s.dq ? ' <b>DQ</b>' : '') + '</td>' +
+        cell(played ? fmtMin(s.min) : '—') +
+        cell(s.p2m + '-' + s.p2a) + cell(s.p3m + '-' + s.p3a) + cell(s.ftm + '-' + s.fta) +
+        cell(s.or) + cell(s.dr) + cell(s.or + s.dr) +
+        cell(s.ast) + cell(s.to) + cell(s.stl) + cell(s.blk) +
+        '<td class="fouls">' + (fm || '') + '</td>' +
+        cell(s.fd) + '<td class="pts">' + s.pts + '</td>' + '</tr>';
+    }).join('');
+
+    const tot = S.teams[t].players.reduce((a, p) => {
+      const s = d.stats[p.id];
+      ['pts','p2m','p2a','p3m','p3a','ftm','fta','or','dr','ast','to','stl','blk','pf','fd']
+        .forEach(k => a[k] += s[k]);
+      return a;
+    }, {pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,to:0,stl:0,blk:0,pf:0,fd:0});
+
+    /* team fouls per period, drawn as the four boxes a scoresheet has — the
+       fifth is the bonus, and seeing the row fill is the point of the row */
+    const tfRow = [];
+    for(let p = 1; p <= maxP; p++){
+      const n = (T.foulsP && T.foulsP[p > 4 ? 4 : p]) || 0;
+      const boxes = [1,2,3,4].map(i =>
+        '<span class="fb' + (i <= n ? ' on' : '') + '">' + i + '</span>').join('');
+      tfRow.push('<span class="tfp"><i>' + perName(p) + '</i>' + boxes +
+                 (n > 4 ? '<span class="fb on more">+' + (n - 4) + '</span>' : '') + '</span>');
+    }
+
+    return '<div class="team">' +
+      '<div class="th"><span class="tn">' + esc(tname(t)) + '</span>' +
+        '<span class="tsc">' + d.score[t] + '</span>' +
+        (won === t ? '<span class="win">winner</span>' : '') + '</div>' +
+      '<table class="bx"><thead><tr>' +
+        ['no','player','min','2pt','3pt','ft','or','dr','reb','ast','to','stl','blk','fouls','fd','pts']
+          .map(h => '<th>' + h + '</th>').join('') +
+      '</tr></thead><tbody>' + rows +
+      '<tr class="tot"><td></td><td class="nm">team totals</td>' +
+        cell('') + cell(tot.p2m + '-' + tot.p2a) + cell(tot.p3m + '-' + tot.p3a) +
+        cell(tot.ftm + '-' + tot.fta) +
+        cell(tot.or + T.teamRebO) + cell(tot.dr + T.teamRebD) +
+        cell(tot.or + tot.dr + T.teamRebO + T.teamRebD) +
+        cell(tot.ast) + cell(tot.to + T.teamTo) + cell(tot.stl) + cell(tot.blk) +
+        '<td class="fouls">' + tot.pf + '</td>' + cell(tot.fd) +
+        '<td class="pts">' + d.score[t] + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="tfoot"><div class="tfl"><span>team fouls</span>' + tfRow.join('') + '</div></div>' +
+      '</div>';
+  };
+
+  /* ---- period scores ---- */
+  let ph = '<th></th>', r0 = '<td class="nm">' + esc(tname(0)) + '</td>',
+      r1 = '<td class="nm">' + esc(tname(1)) + '</td>';
+  for(let p = 1; p <= maxP; p++){
+    ph += '<th>' + perName(p) + '</th>';
+    r0 += '<td>' + (d.perQ[0][p] || 0) + '</td>';
+    r1 += '<td>' + (d.perQ[1][p] || 0) + '</td>';
+  }
+  ph += '<th>final</th>';
+  r0 += '<td class="pts">' + d.score[0] + '</td>';
+  r1 += '<td class="pts">' + d.score[1] + '</td>';
+
+  const when = S.details && S.details.tipoff ? S.details.tipoff : null;
+  const sig = n => '<div class="sg"><span class="ln"></span><i>' + n + '</i></div>';
+
+  return '<div class="sheet">' +
+    '<div class="head">' +
+      '<div class="brand">EPINOIΛ</div>' +
+      '<div class="ttl">Official scoresheet</div>' +
+      '<div class="comp">' + esc(S.competition || 'Friendly') + '</div>' +
+    '</div>' +
+
+    '<div class="metagrid">' +
+      meta('date', when || (typeof EP_SHEET_DATE === 'string' ? EP_SHEET_DATE : '')) +
+      meta('venue', D0.venue) +
+      meta('address', D0.address) +
+      meta('attendance', D0.attendance != null
+        ? Number(D0.attendance).toLocaleString() +
+          (D0.capacity ? ' of ' + Number(D0.capacity).toLocaleString() : '')
+        : (D0.capacity != null ? 'capacity ' + Number(D0.capacity).toLocaleString() : '')) +
+    '</div>' +
+
+    '<div class="officials">' + OFFICIAL_ROLES.map(([k, label]) =>
+      '<div class="oi"><span>' + label + '</span>' + (off[k] ? esc(off[k]) : '<i class="blank"></i>') + '</div>'
+    ).join('') + '</div>' +
+
+    teamBlock(0) + teamBlock(1) +
+
+    '<div class="periods"><table><thead><tr>' + ph + '</tr></thead>' +
+      '<tbody><tr>' + r0 + '</tr><tr>' + r1 + '</tr></tbody></table>' +
+      (won == null
+        ? '<div class="result">Tied ' + d.score[0] + '–' + d.score[1] + '</div>'
+        : '<div class="result">' + esc(tname(won)) + ' won ' +
+          Math.max(d.score[0], d.score[1]) + '–' + Math.min(d.score[0], d.score[1]) + '</div>') +
+    '</div>' +
+
+    '<div class="sigs">' + sig('Scorer') + sig('Assistant scorer') + sig('Timekeeper') +
+      sig('Shot clock') + sig('Crew chief') + sig('Captain (in case of protest)') + '</div>' +
+
+    '<div class="foot">Derived from the match event log. Fouls are shown in the order ' +
+      'they were committed: P personal · T technical · U unsportsmanlike · D disqualifying.</div>' +
+    '</div>';
+}
+
+function scoresheetDoc(d, title){
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title) + '</title>' +
+    '<style>' +
+    '@page{size:A4 portrait;margin:11mm}' +
+    '*{box-sizing:border-box}' +
+    'body{margin:0;background:#fff;color:#111;' +
+      'font:10px/1.45 ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif}' +
+    '.sheet{max-width:190mm;margin:0 auto}' +
+    '.head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #111;padding-bottom:6px}' +
+    '.brand{font-weight:800;letter-spacing:.06em;font-size:15px}' +
+    '.ttl{font-size:12px;text-transform:uppercase;letter-spacing:.18em}' +
+    '.comp{margin-left:auto;font-size:11px;font-weight:600}' +
+    '.metagrid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 14px;margin:7px 0 8px}' +
+    '.mi{font-size:10px}.mi span{display:block;font-size:7.5px;text-transform:uppercase;' +
+      'letter-spacing:.14em;color:#666}' +
+    '.officials{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 14px;' +
+      'border:1px solid #bbb;padding:6px 8px;margin-bottom:9px}' +
+    '.oi{font-size:10px}.oi span{display:block;font-size:7.5px;text-transform:uppercase;' +
+      'letter-spacing:.14em;color:#666}' +
+    '.oi .blank{display:block;border-bottom:1px solid #999;height:11px}' +
+    '.team{margin-bottom:9px;break-inside:avoid}' +
+    '.th{display:flex;align-items:baseline;gap:9px;background:#111;color:#fff;padding:3px 7px}' +
+    '.tn{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em}' +
+    '.tsc{margin-left:auto;font-weight:800;font-size:14px}' +
+    '.win{font-size:7.5px;text-transform:uppercase;letter-spacing:.16em;border:1px solid #fff;padding:1px 5px}' +
+    'table.bx{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}' +
+    'table.bx th{font-size:7px;text-transform:uppercase;letter-spacing:.08em;color:#444;' +
+      'border-bottom:1px solid #111;padding:3px 2px;text-align:right}' +
+    'table.bx th:nth-child(2){text-align:left}' +
+    'table.bx td{padding:2px;border-bottom:1px solid #e2e2e2;text-align:right;font-size:9px}' +
+    'table.bx td.nm{text-align:left;text-transform:capitalize}' +
+    'table.bx td.pts{font-weight:700}' +
+    'table.bx td.fouls{text-align:center;letter-spacing:.12em;font-weight:600}' +
+    'table.bx tr.dq{background:#f6f6f6}' +
+    'table.bx tr.tot td{border-top:1.5px solid #111;border-bottom:none;font-weight:700;padding-top:3px}' +
+    '.tfoot{margin-top:4px}' +
+    '.tfl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:7.5px;' +
+      'text-transform:uppercase;letter-spacing:.14em;color:#666}' +
+    '.tfp{display:inline-flex;align-items:center;gap:2px}' +
+    '.tfp i{font-style:normal;margin-right:3px;color:#111}' +
+    '.fb{display:inline-block;width:11px;height:11px;line-height:10px;text-align:center;' +
+      'border:1px solid #999;font-size:7px;color:#bbb}' +
+    '.fb.on{background:#111;color:#fff;border-color:#111}' +
+    '.fb.more{width:auto;padding:0 3px}' +
+    '.periods{display:flex;align-items:flex-end;gap:14px;margin:6px 0 10px;break-inside:avoid}' +
+    '.periods table{border-collapse:collapse;font-variant-numeric:tabular-nums}' +
+    '.periods th{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:#444;' +
+      'padding:2px 7px;border-bottom:1px solid #111}' +
+    '.periods td{padding:2px 7px;text-align:right;font-size:10px;border-bottom:1px solid #e2e2e2}' +
+    '.periods td.nm{text-align:left;text-transform:capitalize;font-weight:600}' +
+    '.periods td.pts{font-weight:800}' +
+    '.result{font-size:11px;font-weight:700;padding-bottom:3px}' +
+    '.sigs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 18px;margin-top:12px;' +
+      'break-inside:avoid}' +
+    '.sg .ln{display:block;border-bottom:1px solid #111;height:20px}' +
+    '.sg i{font-style:normal;font-size:7.5px;text-transform:uppercase;letter-spacing:.14em;color:#666}' +
+    '.foot{margin-top:11px;padding-top:5px;border-top:1px solid #ccc;font-size:7.5px;color:#666}' +
+    '</style></head><body>' + scoresheetHTML(d) + '</body></html>';
+}
+
+function printScoresheet(){
+  const d = (typeof derive === 'function') ? derive() : null;
+  if(!d) return;
+  const title = [tname(0), 'v', tname(1)].join(' ') + ' — scoresheet';
+  const old = document.getElementById('epSheetFrame');
+  if(old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'epSheetFrame';
+  f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
+  document.body.appendChild(f);
+  const doc = f.contentDocument || f.contentWindow.document;
+  doc.open(); doc.write(scoresheetDoc(d, title)); doc.close();
+  /* the fonts and the layout have to settle before the dialog opens, or the
+     preview is measured against an empty document */
+  const go = () => { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ } };
+  if(doc.readyState === 'complete') setTimeout(go, 60);
+  else f.onload = () => setTimeout(go, 60);
+}
+
 function teamTotals(d,t){
   const T = d.team[t];
   const P = S.teams[t].players.map(p=>d.stats[p.id]);
@@ -639,5 +894,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));
