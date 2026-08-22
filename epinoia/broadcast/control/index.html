@@ -7,7 +7,7 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*">
 <title>Broadcast control · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=192">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=196">
 <style>
 /* ============================================================================
    THE CONTROL ROOM.
@@ -115,6 +115,19 @@
   .lvstats{font-family:var(--f-data,var(--f-micro));font-size:10px;color:var(--ink-2);
     align-self:center;font-variant-numeric:tabular-nums}
   .ep-btn.danger{border-color:var(--flare,#ff5f6b);color:var(--flare,#ff5f6b)}
+  .fxready{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+  .fxready.on{color:var(--lume)}
+  .hd .live{margin-left:12px}
+  /* A tile that cannot work yet is marked, never removed — the reason a
+     director wants it is the reason they need to know it is coming. */
+  .tile.blocked{opacity:.55}
+  .tile.blocked:hover{border-color:var(--amber)}
+  /* a caveat is not a block: it will work, it will just say something else */
+  .tile.caveat{opacity:1}
+  .tile.caveat .blockwhy{color:var(--ink-3)}
+  .blockwhy{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--amber);line-height:1.6}
   .msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
     border-left:2px solid var(--rule-2);padding-left:11px;margin:calc(var(--u)*2) 0}
   code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
@@ -125,6 +138,7 @@
   <div class="hd">
     <h1>Broadcast control</h1>
     <span class="fx" id="fx">—</span>
+    <span class="fxready" id="fxReady">reading the fixture…</span>
     <span class="live" id="liveTag">layer not connected</span>
   </div>
 
@@ -206,9 +220,9 @@
   <div class="msg" id="how"></div>
 </div>
 
-<script src="../../config.js?v=192" defer></script>
-<script src="../../vendor/supabase.js?v=192" defer></script>
-<script src="mixers.js?v=192" defer></script>
-<script src="control.js?v=192" defer></script>
+<script src="../../config.js?v=196" defer></script>
+<script src="../../vendor/supabase.js?v=196" defer></script>
+<script src="mixers.js?v=196" defer></script>
+<script src="control.js?v=196" defer></script>
 </body>
 </html>

@@ -1043,6 +1043,83 @@ function wireFades() {
   });
 }
 
+/* ---- keeping up with the scorer, before a ball is thrown -----------------
+   THE LIVE FEED CARRIES EVENTS, AND BEFORE TIP THERE ARE NONE.
+
+   Everything the in-play graphics need arrives as game_events over a socket.
+   Everything the PRE-GAME graphics need — the squads, the starting fives, the
+   officials, the venue — is columns on the fixture row, which no event ever
+   touches. So a director with the lineup card up watched the statistician pick
+   the fives in the next seat and the graphic did not move.
+
+   A poll, not a subscription, and deliberately: this is a handful of fields
+   changing a handful of times in the half-hour before a game, and a Postgres
+   change-feed subscription for that is machinery to maintain for the rest of
+   the season. Eight seconds is well inside the time it takes anybody to walk
+   from the scorer's table to the camera.
+
+   It stops the moment the game is live, because from then on the event stream
+   is both faster and complete. */
+function watchPregame() {
+  if (!gameId || !CFG.supabaseUrl) return;
+  if (game.status === 'live' || game.status === 'final') return;
+
+  const tick = async () => {
+    if (!game || game.status === 'live' || game.status === 'final') {
+      clearInterval(timer);
+      return;
+    }
+    try {
+      const rows = await api('games?id=eq.' + encodeURIComponent(gameId) +
+        '&select=status,period,starters,roster_snapshot,venue,tipoff_at&limit=1');
+      if (!rows.length) return;
+      const g = rows[0];
+
+      /* Only rebuild when something actually moved: replacing the squad on
+         every tick would restart every portrait's fade-in, so the faces would
+         blink at the audience every eight seconds. */
+      const before = JSON.stringify([game.starters, S.teams.map(t => t.players.length)]);
+      let touched = false;
+
+      if (JSON.stringify(g.starters) !== JSON.stringify(game.starters)) {
+        game.starters = g.starters;
+        S.starters = g.starters || [[], []];
+        touched = true;
+      }
+      if (g.roster_snapshot && g.roster_snapshot.teams &&
+          JSON.stringify(g.roster_snapshot) !== JSON.stringify(game.roster_snapshot)) {
+        game.roster_snapshot = g.roster_snapshot;
+        S.teams = g.roster_snapshot.teams;
+        await mergeMeasurements();
+        await Promise.all([loadPhotos(), loadCutouts()]);
+        touched = true;
+      }
+      if (g.status && g.status !== game.status) { game.status = g.status; touched = true; }
+      if (g.venue !== game.venue) { game.venue = g.venue; touched = true; }
+
+      /* the optional columns, still separately, still allowed to be absent */
+      try {
+        const extra = await api('games?id=eq.' + encodeURIComponent(gameId) +
+          '&select=attendance,capacity,officials&limit=1');
+        if (extra.length && JSON.stringify(extra[0]) !==
+            JSON.stringify({ attendance: game.attendance, capacity: game.capacity,
+                             officials: game.officials })) {
+          Object.assign(game, extra[0]);
+          touched = true;
+        }
+      } catch (_) { /* a database without 0076 simply has none */ }
+
+      if (touched || before !== JSON.stringify([game.starters, S.teams.map(t => t.players.length)])) {
+        lastJSON = '';
+        render();
+      }
+    } catch (_) { /* the graphic keeps showing what it had */ }
+  };
+
+  const timer = setInterval(tick, 8000);
+  tick();
+}
+
 /* ---- boot ------------------------------------------------------------- */
 window.EpinoiaBroadcast = {
   VERSION: '1.0.0',
@@ -1103,6 +1180,7 @@ window.EpinoiaBroadcast = {
     };
     render();
     listenForScenes();
+    watchPregame();
 
     /* Squads and faces are what the pre-game graphics are made of, and neither
        is needed to draw a scorebug — so they load after the first paint and

@@ -209,6 +209,68 @@
     say('live · ' + shortId, '#93f2bf');
   }
 
+  /* ------------------------------------------------------ priming, pre-tip ---
+     THE FIVES EXIST TWENTY MINUTES BEFORE THEY ARE PUBLISHED, AND THAT IS THE
+     WHOLE PROBLEM.
+
+     claimFixture only runs at tip — deliberately, because that is when a game
+     becomes live. But the broadcast graphics that matter most are the ones
+     shown BEFORE tip: the squads, the starting fives, the officials. Until now
+     none of that reached the database until the ball was thrown, so a stream
+     opening twenty minutes early had nothing to put on air except a fixture
+     card, and the "starting fives" graphic honestly showed squads because the
+     fives genuinely were not knowable yet.
+
+     So the scorer now publishes the squad and the five as soon as the
+     statistician has picked them — status untouched, still 'scheduled',
+     because nothing has started. It is the same write, minus the one field
+     that means "this game is under way".
+
+     WHY status IS LEFT ALONE. Everything downstream gates on it: the strip
+     decides what is live, the public page decides whether to subscribe,
+     finalise decides what may be finalised. Writing a roster is a statement
+     about who is available; writing 'live' is a statement about the ball. */
+  let primed = false;
+
+  async function primeFixture() {
+    if (primed || claimed || !isFixture) return;
+    if (typeof S === 'undefined' || !S || S.phase !== 'pregame') return;
+    if (!S.starters || !S.starters[0] || !S.starters[0].length) return;
+    primed = true;
+
+    if (!(await checkPublishing())) { primed = false; return; }
+    const sb = epinoiaClient();
+
+    const snapshot = {
+      teams: S.teams.map(t => ({
+        name: t.name, color: t.color,
+        players: t.players.map(p => ({ id: p.id, name: p.name, num: p.num }))
+      }))
+    };
+    const { error } = await sb.from('games').update({
+      roster_snapshot: snapshot,
+      starters: S.starters
+    }).eq('id', gameId);
+
+    if (error) {
+      /* Quiet, unlike the tip-off failure. Nothing is lost if this does not
+         land — the same write happens again at tip — so an alarming badge
+         before a game has started would be noise about a graphic. */
+      console.warn('[prime]', error);
+      primed = false;
+      return;
+    }
+    say('primed · ' + shortId, '#8ff5ff');
+  }
+
+  /* The pregame card is the screen that exists between picking the fives and
+     throwing the ball, so its appearance is the signal. Polled rather than
+     hooked, because the scorer reaches that state by several routes and a
+     missed hook would silently un-prime a broadcast. */
+  setInterval(() => {
+    try { primeFixture(); } catch (e) { console.warn('[prime]', e); }
+  }, 2500);
+
   /* --------------------------------------------------------- escape hatch --- */
   /* The scorer gets a hover bar rather than the sidebar every other page has.
 

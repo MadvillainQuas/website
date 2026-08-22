@@ -179,6 +179,7 @@ function render() {
     });
     grid.appendChild(band);
   });
+  paintReady();
 
   $('#how').innerHTML =
     '<b>One source, driven from here:</b> add a browser source at ' +
@@ -602,6 +603,126 @@ function wireExports() {
   on('#expUrls', () => download(base + '-graphics.txt', urlList()));
 }
 
+/* ==========================================================================
+   WHAT THE STATISTICIAN HAS DONE, SEEN FROM THE GALLERY.
+
+   The two halves of a broadcast sit at opposite ends of a sports hall and
+   cannot see each other's screens. A director takes "starting fives" and gets
+   a card headed "squads" — correct, honest, and no use, because nothing told
+   them the fives had not been picked yet.
+
+   So the control room reads the same fixture the graphics read, and says which
+   graphics are ready. A tile that cannot work yet is marked rather than
+   removed: the reason a director wants it is the reason they need to know it
+   is coming.
+   ========================================================================== */
+let ready = { roster: false, fives: false, officials: false, status: 'scheduled' };
+let readyTimer = null;
+
+async function pollReady() {
+  if (!CFG.supabaseUrl || !gameId) return;
+  try {
+    const r = await fetch(CFG.supabaseUrl + '/rest/v1/games?id=eq.' +
+      encodeURIComponent(gameId) +
+      '&select=status,starters,roster_snapshot,home_team_id,away_team_id&limit=1',
+      { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey } });
+    const g = (await r.json())[0];
+    if (!g) return;
+
+    const fives = Array.isArray(g.starters) && (g.starters[0] || []).length >= 5
+                  && (g.starters[1] || []).length >= 5;
+
+    /* A ROSTER IS EITHER SOURCE, and getting this wrong made the tile lie:
+       every squad tile was marked "needs the squads picked in the scorer"
+       while the graphic beside it rendered twelve players perfectly happily,
+       because before tip the layer falls back to the clubs' own published
+       rosters. The control room has to mirror the layer's rules, not guess at
+       them — a tile that says a working graphic is unavailable is worse than
+       no tile at all. */
+    let roster = !!(g.roster_snapshot && g.roster_snapshot.teams &&
+                    (g.roster_snapshot.teams[0] || {}).players);
+    if (!roster && g.home_team_id) {
+      try {
+        const r3 = await fetch(CFG.supabaseUrl + '/rest/v1/roster_entries' +
+          '?select=player_id&active=eq.true&team_id=in.(' +
+          [g.home_team_id, g.away_team_id].filter(Boolean).join(',') + ')&limit=1',
+          { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey } });
+        roster = ((await r3.json()) || []).length > 0;
+      } catch (_) { /* leave it false; the tile says so */ }
+    }
+
+    let officials = ready.officials;
+    try {
+      const r2 = await fetch(CFG.supabaseUrl + '/rest/v1/games?id=eq.' +
+        encodeURIComponent(gameId) + '&select=officials&limit=1',
+        { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey } });
+      const o = (await r2.json())[0];
+      officials = !!(o && o.officials && Object.keys(o.officials).length);
+    } catch (_) { /* before 0076 there is no such column */ }
+
+    const next = { roster, fives, officials, status: g.status };
+    if (JSON.stringify(next) !== JSON.stringify(ready)) {
+      ready = next;
+      paintReady();
+    }
+  } catch (_) { /* the tiles simply stay as they were */ }
+}
+
+/* Which graphics can work right now. Mirrors the layer's own rules rather than
+   guessing at them — if these two disagree, the tile lies. */
+const blockedReason = key => {
+  /* A bench is the only one that genuinely cannot exist: it is defined by who
+     is NOT starting, so without the fives there is nothing to draw. */
+  if (key.startsWith('bench')) return ready.fives ? null : 'needs the starting fives';
+  if (!ready.roster && (key.startsWith('squad') || key.startsWith('five') || key === 'starters'))
+    return 'no squads on this fixture yet';
+  /* These DO work without the fives — they show the squad and say so. That is
+     worth telling a director before they take it, not instead of. */
+  if ((key.startsWith('five') || key === 'starters') && !ready.fives)
+    return 'shows squads until the fives are picked';
+  if (key === 'officials') return ready.officials ? null : 'no officials entered yet';
+  if (['scorebug', 'lower', 'scorers', 'plusminus', 'rebounds', 'assists', 'lineups', 'compare']
+      .includes(key)) {
+    return ready.status === 'scheduled' ? 'nothing to show until the game starts' : null;
+  }
+  return null;
+};
+
+/* Marked, but not the same kind of marked. A graphic that will show something
+   slightly different is not a graphic that will show nothing, and colouring
+   them alike trains a director to ignore both. */
+const isHardBlock = key =>
+  key.startsWith('bench') ? !ready.fives
+  : (!ready.roster && (key.startsWith('squad') || key.startsWith('five') || key === 'starters')) ? true
+  : key === 'officials' ? !ready.officials
+  : ['scorebug', 'lower', 'scorers', 'plusminus', 'rebounds', 'assists', 'lineups', 'compare']
+      .includes(key) ? ready.status === 'scheduled'
+  : false;
+
+function paintReady() {
+  document.querySelectorAll('.tile').forEach(t => {
+    const why = blockedReason(t.dataset.key);
+    const hard = isHardBlock(t.dataset.key);
+    t.classList.toggle('blocked', !!why && hard);
+    t.classList.toggle('caveat', !!why && !hard);
+    let tag = t.querySelector('.blockwhy');
+    if (why) {
+      if (!tag) { tag = document.createElement('div'); tag.className = 'blockwhy';
+                  t.insertBefore(tag, t.querySelector('.row')); }
+      tag.textContent = why;
+    } else if (tag) tag.remove();
+  });
+  const pill = $('#fxReady');
+  if (pill) {
+    const bits = [];
+    bits.push(ready.roster ? 'squads ✓' : 'squads —');
+    bits.push(ready.fives ? 'fives ✓' : 'fives —');
+    bits.push(ready.officials ? 'officials ✓' : 'officials —');
+    pill.textContent = bits.join('   ') + '   ·   ' + ready.status;
+    pill.className = 'fxready' + (ready.fives && ready.roster ? ' on' : '');
+  }
+}
+
 /* ---- boot --------------------------------------------------------------- */
 (function boot() {
   if (!gameId) {
@@ -622,6 +743,10 @@ function wireExports() {
   wireExports();
   wireMixer();
   wireLive();
+  pollReady();
+  /* The same eight seconds the graphics use, so the gallery and the layer
+     never disagree about what exists. */
+  readyTimer = setInterval(pollReady, 8000);
 
   /* AUTO-CONNECT WHEN PRIMED. "Prime for broadcast" means the operator has
      already decided they are streaming this fixture, so making them press

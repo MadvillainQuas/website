@@ -463,5 +463,56 @@ ok('...over rtmp_custom, not a bundled service name',
 ok('rebuilding a source cold-starts it rather than trusting a refresh',
    /A COLD START, NOT A REFRESH/.test(mx2));
 
+/* ---- 22. scoring and streaming are one pipeline -------------------------- */
+console.log('\nthe scorer publishes before tip, and the graphics notice');
+
+const boot = rd('epinoia', 'score', 'bootstrap.js');
+ok('the scorer primes a fixture before the ball is thrown',
+   /async function primeFixture\(\)/.test(boot));
+ok('...only once the fives are actually picked',
+   /if \(!S\.starters \|\| !S\.starters\[0\] \|\| !S\.starters\[0\]\.length\) return;/.test(boot));
+ok('...and does NOT touch status',
+   /WHY status IS LEFT ALONE/.test(boot),
+   'writing a roster says who is available; writing live says the ball is up');
+const primeBlock = boot.slice(boot.indexOf('async function primeFixture'),
+                              boot.indexOf('async function primeFixture') + 1400);
+ok('...which the write itself honours', !/status:/.test(primeBlock), primeBlock.slice(0, 120));
+ok('a failure to prime is quiet, unlike a failure to claim',
+   /an alarming badge/.test(boot),
+   'nothing is lost — the same write happens again at tip');
+
+ok('the graphics watch the fixture before tip',
+   /function watchPregame\(\)/.test(layer),
+   'the live feed carries events, and before tip there are none');
+ok('...and stop once the event stream can do the job',
+   /if \(game\.status === 'live' \|\| game\.status === 'final'\) return;/.test(layer));
+ok('...without restarting every fade on each tick',
+   /would restart every portrait/.test(layer),
+   'the faces would blink at the audience every eight seconds');
+
+/* the other direction: the gallery can see what the scorer has done */
+ok('the control room reads the fixture too', /async function pollReady\(\)/.test(control));
+ok('...and marks a graphic that cannot work yet', /const blockedReason = key =>/.test(control));
+ok('...telling a caveat apart from a block',
+   /function isHardBlock|const isHardBlock/.test(control),
+   'colouring them alike trains a director to ignore both');
+ok('...and mirrors the layer on where a roster comes from',
+   /A ROSTER IS EITHER SOURCE/.test(control),
+   'the layer falls back to the clubs published rosters, so a squad tile that ' +
+   'said "unavailable" beside a working graphic was simply wrong');
+
+/* ---- 23. a primed fixture is watched more closely ------------------------ */
+console.log('\nthe strip tightens up when a game is about to start');
+
+const strip = rd('epinoia', 'embed', 'strip', 'strip.js');
+ok('the strip has a primed cadence', /POLL_PRIMED_MS/.test(strip));
+ok('...faster than idle, slower than live',
+   /const POLL_PRIMED_MS = 6000;/.test(strip) && /POLL_MS = 20000/.test(strip));
+ok('...triggered by a scheduled fixture that already has its fives',
+   /primedNow = gs\.some\(g => statusOf\(g\) === 'scheduled'/.test(strip));
+ok('...and the query actually fetches starters',
+   /select=id,tipoff_at,status,venue,home_score,away_score,starters/.test(strip),
+   'the signal is useless if the column is not asked for');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

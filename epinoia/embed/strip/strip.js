@@ -101,6 +101,21 @@ async function siteConfig() {
    broadcast missed. */
 const POLL_MS = 20000;
 const POLL_LIVE_MS = 4000;
+/* A PRIMED FIXTURE IS A GAME ABOUT TO START.
+
+   The scorer now writes the squads and the starting fives as soon as the
+   statistician has picked them, minutes before the ball is thrown — so a
+   scheduled game whose starters are filled in is not "some time today", it is
+   "any minute". Polling that at the relaxed beat means the strip can be up to
+   twenty seconds late flipping to LIVE, on the one surface most people see and
+   at the one moment anybody is watching it.
+
+   The socket still does the real work and lands in a quarter of a second. This
+   is about the safety net being tighter exactly when the net is most likely to
+   be needed: the seconds around tip-off are also when a scorer's connection is
+   least settled, because somebody has just walked into a hall and joined the
+   wifi. */
+const POLL_PRIMED_MS = 6000;
 
 /* Appearance from the query string.
 
@@ -566,7 +581,7 @@ let lastKey = '';
 let liveNow = false;
 
 async function load() {
-  let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,' +
+  let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
     'home:home_team_id(slug,name,short_name,colour),away:away_team_id(slug,name,short_name,colour),' +
     'competitions(name,seasons(leagues(slug,name)))' +
     '&status=in.(live,scheduled,final,finalising)&order=tipoff_at.desc&limit=60';
@@ -625,6 +640,11 @@ async function load() {
      that is being played. */
   const liveCount = gs.filter(g => statusOf(g) === 'live').length;
   liveNow = liveCount > 0;
+  /* A scheduled fixture whose starting fives are already recorded is minutes
+     from tipping — the statistician has picked them and is waiting on the
+     referee. Worth watching closely; see POLL_PRIMED_MS. */
+  primedNow = gs.some(g => statusOf(g) === 'scheduled' &&
+    Array.isArray(g.starters) && (g.starters[0] || []).length >= 5);
   gs = gs.slice(0, Math.max(limit, liveCount));
 
   /* Rows first: paint() and statusOf() both read through this, and a frame can
@@ -842,13 +862,16 @@ siteConfig().catch(() => {}).then(() => load());
    interval can change between ticks, and so a slow response can never queue a
    second request behind the first. */
 let pollTimer = null;
+/* Set by the last load: a scheduled fixture that already has its fives. */
+let primedNow = false;
+
 function schedule() {
   clearTimeout(pollTimer);
-  const anyLive = liveNow;
+  const wait = liveNow ? POLL_LIVE_MS : (primedNow ? POLL_PRIMED_MS : POLL_MS);
   pollTimer = setTimeout(async () => {
     try { await load(); } catch (_) { /* keep polling through a blip */ }
     schedule();
-  }, anyLive ? POLL_LIVE_MS : POLL_MS);
+  }, wait);
 }
 schedule();
 setTimeout(postHeight, 400);
