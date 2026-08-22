@@ -1345,6 +1345,45 @@ html, body{ height:100dvh; }
   #delayB{top:auto; left:auto; right:10px; transform:none; z-index:60;
     bottom:calc(var(--ep-legend-h, 60px) + env(safe-area-inset-bottom) + 80px);}
 }
+
+/* ==================== the controls reference ====================
+   An exhaustive map of every gesture, key and button, drawn rather than
+   described wherever a direction is involved: "drag toward the middle" is a
+   sentence somebody has to translate into a movement, and an arrow beside a
+   roster column is the movement itself. Reachable before the demo starts and
+   from the bottom menu during a game, because the moment you need it is the
+   moment the ball is live and you have forgotten which way an assist goes. */
+#helpview{ padding-bottom:40px; }
+.hv-sec{ margin:0 0 6px; }
+.hv-sec > h4{
+  font-family:var(--f-head); font-size:11px; letter-spacing:.28em;
+  text-transform:uppercase; color:var(--lume); margin:0 0 8px; font-weight:600;
+}
+.hv-lead{ color:var(--dim); font-size:12.5px; line-height:1.75; margin:0 0 12px; }
+.hv-lead b{ color:var(--txt); font-weight:400; }
+.hv-tbl{ display:flex; flex-direction:column; gap:1px; background:var(--line); border-radius:12px; overflow:hidden; }
+.hv-row{
+  display:grid; grid-template-columns:minmax(120px,168px) 1fr; gap:12px;
+  padding:10px 12px; background:var(--bg1); align-items:baseline;
+}
+.hv-row > .hv-k{
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:10.5px; line-height:1.55;
+  letter-spacing:.06em; color:var(--lume); text-transform:lowercase;
+}
+.hv-row > .hv-v{ font-size:12.5px; color:var(--txt); line-height:1.55; }
+.hv-row > .hv-v small{ display:block; color:var(--faint); font-size:11px; margin-top:2px; }
+.hv-row.warn > .hv-k{ color:var(--amber); }
+.hv-court{ display:block; width:100%; max-width:520px; margin:2px auto 14px; }
+.hv-note{
+  font-size:11px; color:var(--faint); line-height:1.7; margin:10px 2px 0;
+  border-left:2px solid var(--line-hi); padding-left:10px;
+}
+.hv-cta{ display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 6px; }
+@media (max-width:640px){
+  .hv-row{ grid-template-columns:1fr; gap:3px; padding:9px 11px; }
+  .hv-row > .hv-k{ font-size:10px; }
+  .hv-row > .hv-v{ font-size:12px; }
+}
 </style>
 </head>
 <body>
@@ -1430,6 +1469,7 @@ html, body{ height:100dvh; }
       <button class="sheetbtn" id="btnAdv">lineups</button>
       <button class="sheetbtn" id="btnLog">log</button>
       <button class="sheetbtn" id="btnExp">export</button>
+      <button class="sheetbtn" id="btnHelp" title="every control, with diagrams">controls</button>
       <button class="sheetbtn" id="btnSim" title="test data">simulate</button>
       <button class="sheetbtn endy" id="btnEnd">end game</button>
     </div>
@@ -1443,6 +1483,7 @@ html, body{ height:100dvh; }
 <section id="boxview" class="screen overlayview hidden"></section>
 <section id="advview" class="screen overlayview hidden"></section>
 <section id="finalview" class="screen overlayview hidden"></section>
+<section id="helpview" class="screen overlayview hidden"></section>
 
 <!-- ================= modals ================= -->
 <div id="adjModal" class="modalwrap hidden">
@@ -1965,10 +2006,29 @@ function renderPregame(){
       esc(tname(1))+' '+five(1)+' starters.<br>The clock starts when the tip is awarded.</div>'+
     '<div class="pgbtns">'+
       '<button class="pgbtn go" id="pgGo">begin game</button>'+
+      '<button class="pgbtn" id="pgHelp">how the controls work</button>'+
       '<button class="pgbtn" id="pgSquads">edit squads</button>'+
     '</div>';
   document.getElementById('pgGo').onclick = beginGame;
+  document.getElementById('pgHelp').onclick = openHelp;
   document.getElementById('pgSquads').onclick = openSquads;
+
+  /* THE DEMO OPENS ON THE CONTROLS, ONCE.
+
+     ?train=1 drops a stranger straight into a live scoring screen — the setup
+     and the starter picker are clicked through on their behalf — so the first
+     thing they see is two rosters, a clock, and no indication that a made
+     basket is a hold rather than a tap. Every door into the demo arrives here,
+     so gating it at this screen covers all of them at once and cannot be left
+     off a new one later.
+
+     Once per page load rather than once ever: coming back to the pregame card
+     after editing the squads should not reopen it, and nor should a
+     re-render. The button above stays, so it is never more than one tap away. */
+  if(EP_TRAIN && !window.__hvSeen){
+    window.__hvSeen = true;
+    openHelp();
+  }
 }
 
 function renderTopbar(){
@@ -2136,7 +2196,7 @@ function helpSpec(){
   const p = ui.pending, L = [];
   const k = (key,txt,cls)=>L.push({key,txt,cls});
   if(ui.subOut){
-    k('hold + drag ▲','bench player — sub in');
+    k('hold + drag ▲ up','bench player — sub in');
     k('✕','cancel the sub','x');
     return L;
   }
@@ -2161,19 +2221,19 @@ function helpSpec(){
     if(p.kind==='miss'){
       if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k('hold shooter 1.5s','next ft — made','grn'); }
       else k('tap ft above','shooting foul — free throws');
-      k('drag to centre','any player — rebound (or chip → tap)');
+      k('hold + drag ▸ middle','any player — rebound (or chip → tap)');
       k('tap team name','team rebound');
-      if(p.shot!=='ft') k('drag outward','defender — block (or chip → tap)');
+      if(p.shot!=='ft') k('hold + drag ◂ outward','defender — block (or chip → tap)');
       if(p.shot==='ft') k('tap opponent','the fouler (type above)');
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='made'){
-      if(!p.assistDone) k('drag teammate','assist (or chip → tap)');
+      if(!p.assistDone) k('hold + drag ▸ middle','a teammate — assist (or chip → tap)');
       if(p.shot==='ft'){ k('tap shooter','next ft — missed','red'); k('hold shooter 1.5s','next ft — made','grn');
         k('tap opponent','the fouler'); }
       else { k('tap ft above','and-one — free throws'); k('paint / transition','tag the basket'); }
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='to'){
-      k('drag opponent','steal (or chip → tap)');
+      k('hold + drag ▸ middle','an opponent — steal (or chip → tap)');
       k(DONEK(),'confirm all','grn'); k(CANCK(),'cancel the last step','x');
     } else if(p.kind==='foul'){
       k('tap opponent','free throw — missed','red');
@@ -2190,7 +2250,16 @@ function helpSpec(){
     case 'to': k('tap player','turnover'); k('tap team name','team turnover'); T('type 1;10 ⏎','team 1 · #10  ·  1;t = team  ·  ,2;7s steal'); break;
     case 'pf': k('tap player','foul — type above'); k('tap team name','bench / coach foul'); T('type 1;10 ⏎','team 1 · #10  ·  1;t = bench'); break;
     case 'timeout': k('tap team name','timeout'); T('type 1 ⏎','team 1'); break;
-    default: return L;   // idle: no legend (tap the clock to start/stop · tap a team name for subs)
+    default:
+      /* IDLE USED TO SHOW NOTHING, which is where the substitution gesture went
+         to die: it is the one drag with no button behind it and no armed state
+         to hint at it, so a statistician who never held a row never found it.
+         Two lines, only while nothing is armed, and they cost no space that a
+         live window needs. The full map is behind `controls` in the menu. */
+      k('hold + drag ▼ down','a player on court — sub out');
+      k('tap the clock','start · stop'+(IS_TOUCH?'':'  ·  space'));
+      k(IS_TOUCH?'menu → controls':'? or h','every control, with diagrams');
+      return L;
   }
   k('✕','cancel','x');
   return L;
@@ -2498,6 +2567,255 @@ function wireLogRows(root){
     row.addEventListener('pointercancel', ()=>{ if(g){ row.style.transform=''; g=null; } });
   });
 }
+/* ==================== the controls reference ====================
+   EVERY CONTROL, FOR THE DEVICE IN YOUR HANDS.
+
+   Two genuinely different apps share this code. On a phone a made basket is a
+   press-and-hold, the typed command bar does not exist, and there is no key to
+   press for anything; on a desktop the same basket is a 1.5-second hold or
+   four typed characters, and half the app is reachable from the keyboard. One
+   list covering both would spend most of its length telling each reader about
+   controls they do not have — which is exactly how the legend came to offer
+   "esc" to a phone.
+
+   So the reference is built for ONE device and offers the other as a toggle
+   rather than mixing them. A statistician reading up on a laptop before
+   scoring a game on a tablet still needs to see the touch controls, so the
+   switch exists — but it is a deliberate act, not the default.
+
+   THE DIRECTIONS ARE DRAWN, NOT DESCRIBED. "Drag toward the middle" is a
+   sentence the reader has to translate into a movement, and it is ambiguous
+   the moment you notice the two teams face opposite ways: inward is RIGHT for
+   the left-hand column and LEFT for the right-hand one. An arrow beside a
+   roster column is the movement itself. */
+
+let HV_MODE = null;         // 'touch' | 'key' — null means "whatever this is"
+
+function hvMode(){ return HV_MODE || (IS_TOUCH ? 'touch' : 'key'); }
+
+/* The gesture map, drawn: two roster columns with the arrows that actually
+   fire, labelled with what they record. One picture instead of the four
+   paragraphs it replaces. */
+function hvCourtSVG(){
+  const line = 'var(--line-hi, rgba(190,255,225,.38))';
+  const arrow = (x1,y1,x2,y2) => {           /* a shaft with a head on the far end */
+    const dx = x2-x1, dy = y2-y1, L = Math.hypot(dx,dy), ux = dx/L, uy = dy/L;
+    const bx = x2-ux*9, by = y2-uy*9, px = -uy*6, py = ux*6;
+    return '<path d="M '+x1+' '+y1+' L '+x2+' '+y2+
+           ' M '+(bx+px)+' '+(by+py)+' L '+x2+' '+y2+' L '+(bx-px)+' '+(by-py)+'"/>';
+  };
+  /* Columns are inset far enough that the OUTWARD arrows have somewhere to go.
+     Drawing only the inward ones left "outward = block" as a caption with no
+     picture attached, which is the half of the gesture people get wrong. */
+  const col = (x,label,facing) =>
+    '<rect x="'+x+'" y="40" width="120" height="132" rx="10" fill="rgba(140,255,200,.05)" '+
+      'stroke="'+line+'"/>'+
+    '<text x="'+(x+60)+'" y="32" text-anchor="middle" fill="var(--dim)" font-size="11" '+
+      'letter-spacing="1.4">'+label+'</text>'+
+    [0,1,2,3].map(i=>'<rect x="'+(x+9)+'" y="'+(50+i*31)+'" width="102" height="23" rx="7" '+
+      'fill="rgba(200,255,230,.06)" stroke="var(--line, rgba(170,255,215,.16))"/>').join('')+
+    '<g stroke="var(--lume)" stroke-width="2.5" fill="none" stroke-linecap="round" '+
+      'stroke-linejoin="round">'+
+      (facing==='right' ? arrow(x+128, 92, x+172, 92) : arrow(x-8, 92, x-52, 92))+
+    '</g>'+
+    '<g stroke="var(--dim)" stroke-width="2" fill="none" stroke-linecap="round" '+
+      'stroke-linejoin="round" opacity=".8">'+
+      (facing==='right' ? arrow(x-8, 140, x-36, 140) : arrow(x+128, 140, x+156, 140))+
+    '</g>';
+
+  return '<svg class="hv-court" viewBox="0 0 520 274" xmlns="http://www.w3.org/2000/svg" '+
+      'preserveAspectRatio="xMidYMid meet" role="img" '+
+      'aria-label="Two roster columns facing each other across the middle of the screen. '+
+      'Holding a player and dragging toward the middle records a rebound, an assist or a '+
+      'steal. Dragging toward the outer edge records a block. Dragging down takes a player '+
+      'off the floor and dragging up brings one on, on either side.">'+
+    col(44,'left team','right')+
+    col(356,'right team','left')+
+    /* what the two inward arrows are both pointing at */
+    '<text x="260" y="82" text-anchor="middle" fill="var(--lume)" font-size="12" '+
+      'letter-spacing="1.2">toward the middle</text>'+
+    '<text x="260" y="100" text-anchor="middle" fill="var(--dim)" font-size="10.5">'+
+      'rebound · assist · steal</text>'+
+    /* and what the two faint outward ones are, said where they point away to */
+    '<text x="260" y="138" text-anchor="middle" fill="var(--faint)" font-size="10">'+
+      '← outward · block · outward →</text>'+
+    /* THE VERTICAL PAIR SITS IN THE MIDDLE ON PURPOSE. Drawn under the columns
+       they read as "left team subs out, right team subs in", which is not what
+       they mean: both work on either side. */
+    '<text x="260" y="196" text-anchor="middle" fill="var(--faint)" font-size="10">'+
+      'either team</text>'+
+    '<g stroke="var(--lume)" stroke-width="2.5" fill="none" stroke-linecap="round" '+
+      'stroke-linejoin="round" opacity=".9">'+
+      arrow(196, 212, 196, 244)+
+      arrow(316, 244, 316, 212)+
+    '</g>'+
+    '<text x="208" y="238" fill="var(--dim)" font-size="10.5">down · sub out</text>'+
+    '<text x="328" y="238" fill="var(--dim)" font-size="10.5">up · sub in</text>'+
+    '</svg>';
+}
+
+function renderControls(){
+  const T = hvMode()==='touch';
+  const sec = (title, rows, lead) =>
+    '<div class="glass mpcard hv-sec"><h4>'+title+'</h4>'+
+    (lead?'<p class="hv-lead">'+lead+'</p>':'')+
+    (rows.length?'<div class="hv-tbl">'+rows.map(r=>
+      '<div class="hv-row'+(r[2]?' '+r[2]:'')+'"><span class="hv-k">'+r[0]+'</span>'+
+      '<span class="hv-v">'+r[1]+'</span></div>').join('')+'</div>':'')+
+    '</div>';
+
+  /* the two device words the whole page turns on */
+  const HOLD  = T ? 'press &amp; hold' : 'hold 1.5s';
+  const POINT = T ? 'tap' : 'click';
+
+  const out = [];
+
+  out.push('<div class="ovhead"><button class="backbtn" id="hvBack">← back</button>'+
+    '<div class="ovtitle">how to score a game</div>'+
+    '<button class="backbtn" id="hvSwap" style="margin-left:auto;">'+
+      (T?'keyboard controls':'touch controls')+'</button></div>');
+
+  out.push('<div class="glass mpcard hv-sec"><h4>'+
+    (T?'touch controls':'mouse &amp; keyboard controls')+'</h4>'+
+    '<p class="hv-lead">'+
+    (T ? 'Everything here is a tap, a hold or a drag. There is no keyboard on this page and '+
+         'nothing below needs one.'
+       : 'Everything here can be done with the mouse. Almost all of it can also be typed, which '+
+         'is much quicker once you know it — the keys are listed beside each control.')+
+    '<br><br>The app works in <b>windows</b>. You arm a stat, name the player, and a follow-up '+
+    'window stays open for about <b>12 seconds</b> so you can add the rebound, the assist, the '+
+    'block or the steal without arming anything else. The window is frozen whenever the game '+
+    'clock is stopped, so a dead ball gives you as long as you need.</p></div>');
+
+  out.push(sec('1 · a shot, a turnover, a foul', [
+    [T?'tap ft / 2pt / 3pt':'click ft / 2pt / 3pt  ·  f / 2 / 3',
+     'Arm the shot. Nothing is recorded yet.'],
+    [T?'tap to / pf':'click to / pf  ·  t / p', 'Arm a turnover or a foul.'],
+    [POINT+' a player',
+     'The <b>miss</b> — or the turnover, or the foul.<small>The common case is one tap.</small>'],
+    [HOLD+' a player',
+     'The <b>make</b>.<small>The row fills as you hold — let go when it is full.</small>'],
+    [POINT+' a team name',
+     'Team rebound, team turnover, bench or coach foul, or timeout — whichever is armed.'],
+    [T?'✕':'✕  ·  esc or x', 'Cancel whatever you armed.', 'warn'],
+  ], 'Arm the stat first, then name the player. That order never changes.'));
+
+  out.push('<div class="glass mpcard hv-sec"><h4>2 · the drags</h4>'+
+    '<p class="hv-lead">Every drag is <b>hold first, then drag</b>. Hold until the row lifts and '+
+    'labelled arrows appear beside it showing exactly what that player can be given right now — '+
+    'so you never have to remember this table mid-game, only that holding shows you.</p>'+
+    hvCourtSVG()+
+    '<div class="hv-tbl">'+[
+      ['after a miss',
+       'Hold <b>any player</b>, drag <b>toward the middle</b> — that player takes the <b>rebound</b>.'+
+       '<small>Shooter&rsquo;s own team makes it offensive, the other team defensive. Worked out for you.</small>'],
+      ['after a miss',
+       'Hold a player on the <b>defending</b> team, drag <b>outward</b> — a <b>block</b>.'+
+       '<small>Field goals only; a missed free throw cannot be blocked.</small>'],
+      ['after a made basket',
+       'Hold a <b>teammate of the scorer</b>, drag <b>toward the middle</b> — an <b>assist</b>.'],
+      ['after a turnover',
+       'Hold an <b>opponent</b>, drag <b>toward the middle</b> — a <b>steal</b>.'],
+      ['nothing armed',
+       'Hold a player who is <b>on court</b> and drag <b>down</b> to take them off. Then hold a '+
+       '<b>bench</b> player and drag <b>up</b> to bring them on.'],
+    ].map(r=>'<div class="hv-row"><span class="hv-k">'+r[0]+'</span>'+
+             '<span class="hv-v">'+r[1]+'</span></div>').join('')+'</div>'+
+    '<p class="hv-note"><b>Toward the middle</b> is right for the left-hand team and left for the '+
+    'right-hand team — always in towards the scoreboard, whichever side you are on. A drag counts '+
+    'once it passes roughly 70px sideways or 80px up or down; anything shorter is read as a tap.'+
+    (T?'<br><br>Dragging straight down <i>without</i> holding first scrolls the roster instead. '+
+        'Hold, then drag, and you are moving a player.':'')+'</p></div>');
+
+  out.push(sec('3 · if you would rather not drag', [
+    [POINT+' a chip, then a player',
+     'Every drag has a button behind it. While a window is open the bar along the bottom offers '+
+     '<b>rebound</b>, <b>assist</b>, <b>block</b> and <b>steal</b> as chips — '+POINT+' the chip, '+
+     'then '+POINT+' the player. Same result, no gesture.'],
+  ].concat(T?[]:[
+    ['type 2;10r ⏎', 'Rebound by team 2, #10.<small>2;tr records a team rebound.</small>'],
+    ['type 2;7b ⏎',  'Block by team 2, #7.'],
+    ['type 1;4a ⏎',  'Assist by team 1, #4.'],
+    ['type 2;7s ⏎',  'Steal by team 2, #7.'],
+  ]), 'The drags are the fast way, not the only way.'));
+
+  out.push(sec('4 · the shot detail flow', [
+    ['step 1 — shot type',
+     POINT+' one of '+SHOTTYPES.join(', ')+(T?'.':'  ·  keys 1 to '+SHOTTYPES.length+'.')],
+    ['step 2 — location',
+     POINT+' the court where the shot came from.<small>A three placed inside the arc is moved out '+
+     'behind it and a two placed beyond it is moved in — the value you recorded is trusted over '+
+     'the tap, and it tells you when it has moved one.</small>'],
+    ['step 3 — who else', 'The assist on a make, or the rebound on a miss.'],
+    [T?'skip':'skip  ·  s', 'Skip any step. None of the detail is compulsory.'],
+    [T?'✓ done':'✓ done  ·  enter', 'Close the window now and bank everything in it.'],
+    [T?'✕ back':'✕  ·  esc', 'Undo the last step of the window.', 'warn'],
+  ], 'After a 2pt or a 3pt the bottom bar walks you through the detail, one step at a time.'));
+
+  out.push(sec('5 · free throws', [
+    [POINT+' the shooter', 'That attempt was <b>missed</b>.'],
+    [HOLD+' the shooter', 'That attempt was <b>made</b>.'],
+    [POINT+' an opponent', 'Names the player who committed the foul.'],
+    [POINT+' ft after a miss', 'A shooting foul — turns the miss into free throws.'],
+    [POINT+' ft after a make', 'An and-one.'],
+  ], 'One tap or hold per attempt. The window stays open between them.'));
+
+  out.push(sec('6 · the clock', [
+    [POINT+' the clock'+(T?'':'  ·  space'), 'Start it or stop it.'],
+    ['adjust'+(T?'':'  ·  a'), 'Opens the period and time editor.'],
+    ['hold adjust, drag ⇅',
+     'Scrub the clock without opening anything — <b>up runs it forward, down rewinds</b>. '+
+     'It accelerates the longer you hold, up to 20×.'],
+    ['+10s'+(T?'':'  ·  d'), 'Ten more seconds on the open follow-up window.'],
+    ['jump'+(T?'':'  ·  j'), 'Held ball — awards possession by the arrow.'],
+    ['timeout'+(T?'':'  ·  o'), 'Arm a timeout, then '+POINT+' a team name.'],
+  ]));
+
+  out.push(sec('7 · fixing a mistake', [
+    [T?'log, then tap an action':'log  ·  l',
+     'Opens the play-by-play. '+POINT+' any action to edit it — player, team, kind, time.'],
+    ['swipe an action left', 'Deletes it, and everything attached to it.'],
+    ['+ add event', 'Adds something that was missed, at any point in the game.'],
+  ].concat(T?[]:[
+    ['ctrl + z', 'Undo.'],
+    ['ctrl + shift + z  ·  ctrl + y', 'Redo.'],
+  ]), 'Nothing is final. The log <i>is</i> the game, and it can be edited all the way back.'));
+
+  if(!T) out.push(sec('8 · typing, once you are quick', [
+    ['/', 'Open the command bar.'],
+    ['1;10 ⏎', 'Team 1, #10 — <b>missed</b> whatever is armed.'],
+    ['1;10+ ⏎', 'Team 1, #10 — <b>made</b>.'],
+    ['1;t ⏎', 'The team rather than a player — team rebound, team turnover, bench foul.'],
+    ['1;10+ ,1;4a ⏎', 'A made basket and its assist, in one line.'],
+    ['1;10 ,2;7b ,2;10r ⏎', 'A miss, the block, and the rebound.'],
+  ], 'A comma chains a follow-up onto the same play. This is the quickest way to score a game, '+
+     'and it is the one thing here that does not exist on a phone.'));
+
+  out.push(sec((T?8:9)+' · everything else', [
+    ['box score'+(T?'':'  ·  b'), 'Full box score, four factors and shot charts, live.'],
+    ['lineups', 'Every combination that has been on the floor, and how it did.'],
+    ['log'+(T?'':'  ·  l'), 'The play-by-play.'],
+    ['controls', 'This page.'],
+    ['export', 'Downloads the whole game as JSON.'],
+    ['simulate', 'Fills the game with plausible test data — for trying the app out, never for a '+
+                 'real fixture.', 'warn'],
+    ['end game', 'Closes the game and opens the final screen.', 'warn'],
+  ], T ? 'The bottom sheet — drag the handle up, or tap it.'
+       : 'The bottom sheet — click the handle at the foot of the screen.'));
+
+  out.push('<div class="hv-cta"><button class="bigcta" id="hvGo">'+
+    (S && S.phase==='pregame' ? 'start scoring' : 'back to the game')+'</button></div>');
+
+  $('#helpview').innerHTML = out.join('');
+  $('#hvBack').onclick = closeHelp;
+  $('#hvGo').onclick   = closeHelp;
+  /* An explicit switch, not a guess: whoever taps this wants the OTHER set. */
+  $('#hvSwap').onclick = ()=>{ HV_MODE = hvMode()==='touch' ? 'key' : 'touch'; renderControls(); };
+}
+
+function openHelp(){ renderControls(); showScreen('helpview'); }
+function closeHelp(){ showScreen(S && S.phase==='final' ? 'finalview' : 'game'); }
+
 function openLog(){ renderLog(); showScreen('logview'); }
 function renderLog(){
   const d = derive(); D = d;
@@ -3336,6 +3654,7 @@ function wireGame(){
   $('#btnAdv').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openAdv(); });
   $('#btnLog').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openLog(); });
   $('#btnExp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); downloadJSON(); });
+  $('#btnHelp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openHelp(); });
   $('#btnSim').addEventListener('click', ()=>{ $('#sheet').classList.remove('open');
     askConfirm('simulate a full game? are you sure? this replaces the current game with test data', simulateGame); });
   $('#btnEnd').addEventListener('click', ()=>{
@@ -3362,7 +3681,7 @@ function wireGame(){
     }
     if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
     if(e.ctrlKey||e.metaKey||e.altKey) return;
-    const overlayOpen = ['boxview','advview','logview'].some(id=>!document.getElementById(id).classList.contains('hidden'));
+    const overlayOpen = ['boxview','advview','logview','helpview'].some(id=>!document.getElementById(id).classList.contains('hidden'));
     if(e.key==='Escape'){
       if(overlayOpen) showScreen('game');
       else if(ui.armed||ui.pending||ui.subOut) cancelStep();
@@ -3389,6 +3708,7 @@ function wireGame(){
       case 'j': jumpTap(); break;
       case 'b': openBox(); break;
       case 'l': openLog(); break;
+      case '?': case 'h': openHelp(); break;
     }
   });
 
@@ -3646,7 +3966,8 @@ function wireConfirm(){
 }
 /* ==================== shared view pieces ==================== */
 function showScreen(n){
-  ['setup','startersview','squadsview','game','boxview','advview','finalview','logview'].forEach(id=>
+  ['setup','startersview','squadsview','game','boxview','advview','finalview','logview',
+   'helpview'].forEach(id=>
     document.getElementById(id).classList.toggle('hidden', id!==n));
 }
 function scoreHeadHTML(d){
@@ -4911,10 +5232,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=156" defer></script>
-<script src="../vendor/supabase.js?v=156" defer></script>
-<script src="../live.js?v=156" defer></script>
-<script src="sync.js?v=156" defer></script>
-<script src="bootstrap.js?v=156" defer></script>
+<script src="../config.js?v=157" defer></script>
+<script src="../vendor/supabase.js?v=157" defer></script>
+<script src="../live.js?v=157" defer></script>
+<script src="sync.js?v=157" defer></script>
+<script src="bootstrap.js?v=157" defer></script>
 </body>
 </html>

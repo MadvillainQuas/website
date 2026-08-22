@@ -106,5 +106,116 @@ src.split('\n').forEach((l, i) => {
 ok('no arrow helper calls itself with no argument',
    selfRef.length === 0, selfRef.join('\n          '));
 
+/* ---- 5. the controls reference, and the ways into it ---------------------- */
+console.log('\nevery door into the demo arrives at the controls');
+
+ok('the help screen is a real screen showScreen knows about',
+   /'logview',\s*\n\s*'helpview'/.test(src),
+   'a screen missing from that list is shown without hiding the one behind it');
+ok('the bottom menu has a controls button', /id="btnHelp"/.test(src));
+ok('...wired to open the reference', /\$\('#btnHelp'\)\.addEventListener/.test(src));
+ok('escape closes it like any other overlay',
+   /overlayOpen = \['boxview','advview','logview','helpview'\]/.test(src));
+ok('? and h open it', /case '\?': case 'h': openHelp\(\); break;/.test(src));
+ok('the pregame card offers it before a ball is thrown', /id="pgHelp"/.test(src));
+ok('...and the demo opens on it, once per load',
+   /if\(EP_TRAIN && !window\.__hvSeen\)\{[\s\S]{0,80}openHelp\(\);/.test(src),
+   'every ?train=1 link lands here, so gating it at this screen covers all of them');
+
+/* ---- 6. it is two documents, not one with footnotes ----------------------- */
+console.log('\nthe reference is built for the device in your hands');
+
+/* Run renderControls for real, both ways, against a DOM small enough to stub.
+   A static check could only confirm the branch exists; the requirement is that
+   a touch reader is never shown a key they do not have, and that is a property
+   of the OUTPUT, not of the source. */
+const hvFrom = src.indexOf('let HV_MODE');
+/* through closeHelp, not up to openHelp: renderControls wires it to two
+   buttons, so a slice that stops short leaves it undefined at call time. */
+const hvTo   = src.indexOf('function openLog()');
+ok('the reference block can be located', hvFrom > -1 && hvTo > hvFrom);
+
+const SHOTTYPES = ['layup', 'dunk', 'tip-in', 'jump shot', 'floater', 'hook', 'fadeaway'];
+function build(isTouch) {
+  const out = { html: '' };
+  const $ = sel => sel === '#helpview' ? { set innerHTML(v) { out.html = v; } } : {};
+  new Function('IS_TOUCH', '$', 'S', 'SHOTTYPES',
+               src.slice(hvFrom, hvTo) + '\nrenderControls();')
+    (isTouch, $, { phase: 'pregame' }, SHOTTYPES);
+  return out.html;
+}
+
+let touch = '', keys = '';
+try { touch = build(true); keys = build(false); ok('both variants render', true); }
+catch (e) { ok('both variants render', false, String(e)); }
+
+if (touch && keys) {
+  /* THE TOUCH READER IS NEVER OFFERED A KEY. This is the bug the legend had —
+     "✓ done · enter" on a phone with no enter — generalised to a whole page. */
+  const keyish = [/ctrl \+/i, /\bhold 1\.5s\b/, /·\s*space\b/, /·\s*esc\b/, /·\s*enter\b/,
+                  /type 2;10r/, /typing, once you are quick/, /\bclick\b/];
+  keyish.forEach(re => ok(`touch: nothing about ${re.source}`, !re.test(touch),
+    (touch.match(re) || [''])[0]));
+  ok('touch: uses press &amp; hold for a made basket', /press &amp; hold/.test(touch));
+  ok('touch: uses tap, not click', /tap a player/.test(touch));
+  ok('touch: says how to reach the bottom sheet by hand', /drag the handle up/.test(touch));
+
+  /* and the keyboard reader gets the half of the app that only exists there */
+  ok('keyboard: names the 1.5s hold', /hold 1\.5s/.test(keys));
+  ok('keyboard: has the typed command section', /typing, once you are quick/.test(keys));
+  ok('keyboard: documents undo and redo',
+     /ctrl \+ z/.test(keys) && /ctrl \+ shift \+ z/.test(keys));
+  ok('keyboard: names the arm keys', /f \/ 2 \/ 3/.test(keys) && /t \/ p/.test(keys));
+  ok('keyboard: does NOT tell a mouse user to press and hold', !/press &amp; hold/.test(keys));
+  ok('the touch version is shorter, because it has less to say',
+     touch.length < keys.length, `touch ${touch.length} vs keys ${keys.length}`);
+
+  /* ---- the drags, which is what was asked for ---- */
+  console.log('\nthe drags are named, and drawn');
+  [['rebound', /drag <b>toward the middle<\/b> — that player takes the <b>rebound<\/b>/],
+   ['block',   /drag <b>outward<\/b> — a <b>block<\/b>/],
+   ['assist',  /teammate of the scorer<\/b>, drag <b>toward the middle<\/b> — an <b>assist<\/b>/],
+   ['steal',   /opponent<\/b>, drag <b>toward the middle<\/b> — a <b>steal<\/b>/],
+   ['sub out', /drag <b>down<\/b> to take them off/],
+   ['sub in',  /drag <b>up<\/b> to bring them on/],
+  ].forEach(([what, re]) =>
+    ok(`both variants explain the ${what} drag`, re.test(touch) && re.test(keys)));
+
+  ok('every drag says hold first',
+     /hold first, then drag/.test(touch) && /hold first, then drag/.test(keys));
+  ok('...and the ambiguity of "toward the middle" is resolved in words',
+     /right for the left-hand team and left for the/.test(keys));
+
+  const svg = (touch.match(/<svg class="hv-court"[\s\S]*?<\/svg>/) || [''])[0];
+  ok('there is a diagram, not just prose', svg.length > 400);
+  ok('...it labels both columns', /left team/.test(svg) && /right team/.test(svg));
+  const arrows = (svg.match(/<path /g) || []).length;
+  ok('...it draws inward, outward and both vertical arrows',
+     arrows === 6, `${arrows} arrows, expected 6`);
+  ok('...the substitution arrows are marked either team, not one column',
+     /either team/.test(svg));
+  ok('...and it carries a text alternative for a screen reader',
+     /role="img"/.test(svg) && /aria-label="/.test(svg));
+  ok("...the court colours survive off the scorer's stylesheet",
+     /var\(--line-hi, rgba\(/.test(svg));
+}
+
+/* ---- 7. the legend names the drags too ------------------------------------ */
+console.log('\nthe legend names the drags it used to leave vague');
+
+ok('rebound says hold, and which way', /k\('hold \+ drag ▸ middle','any player — rebound/.test(src));
+ok('block says outward', /k\('hold \+ drag ◂ outward','defender — block/.test(src));
+ok('assist says hold, and which way', /k\('hold \+ drag ▸ middle','a teammate — assist/.test(src));
+ok('steal says hold, and which way', /k\('hold \+ drag ▸ middle','an opponent — steal/.test(src));
+ok('subbing in and out both name a direction',
+   /k\('hold \+ drag ▲ up','bench player — sub in'\)/.test(src) &&
+   /k\('hold \+ drag ▼ down','a player on court — sub out'\)/.test(src));
+ok('the idle legend is no longer empty',
+   !/default: return L;\s*\/\/ idle: no legend/.test(src),
+   'the substitution drag has no button behind it, so an empty idle legend hid it entirely');
+ok('...and what it offers when idle is device-gated',
+   /IS_TOUCH\?'menu → controls':'\? or h'/.test(src) &&
+   /'start · stop'\+\(IS_TOUCH\?'':'  ·  space'\)/.test(src));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
