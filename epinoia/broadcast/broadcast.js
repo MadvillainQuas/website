@@ -355,8 +355,14 @@ function mmss(ms) {
 let PHOTOS = {};        // player id -> url, for whatever came back approved
 
 async function loadRosters() {
-  /* the snapshot is the truth once it exists */
-  if (game.roster_snapshot && game.roster_snapshot.teams) return;
+  const snapped = !!(game.roster_snapshot && game.roster_snapshot.teams);
+  /* THE SNAPSHOT FREEZES WHO WAS AVAILABLE, NOT HOW TALL THEY ARE. It is taken
+     at tip so a roster edited on Tuesday cannot rewrite who could play on
+     Saturday — which is exactly right for identity, and says nothing about a
+     position or a height. Read from the snapshot, those come back empty and
+     every played game loses the line under the name. So the squad still comes
+     from the snapshot; the measurements are fetched and merged onto it. */
+  if (snapped) return mergeMeasurements();
   const ids = [game.home_team_id, game.away_team_id].filter(Boolean);
   if (!ids.length) return;
   try {
@@ -378,6 +384,31 @@ async function loadRosters() {
       if (list.length) S.teams[t].players = list;
     });
   } catch (_) { /* a graphic with no squad shows no squad, and says so */ }
+}
+
+/* Position, height and weight for whoever is already in the squad, whatever
+   put them there. */
+async function mergeMeasurements() {
+  const ids = [];
+  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id) ids.push(p.id); }));
+  if (!ids.length) return;
+  const tids = [game.home_team_id, game.away_team_id].filter(Boolean);
+  try {
+    const [people, entries] = await Promise.all([
+      api('players?id=in.(' + ids.join(',') + ')&select=id,height_cm,weight_kg'),
+      tids.length
+        ? api('roster_entries?team_id=in.(' + tids.join(',') + ')&select=player_id,position')
+        : Promise.resolve([])
+    ]);
+    const meas = {}, pos = {};
+    (people || []).forEach(r => { meas[r.id] = r; });
+    (entries || []).forEach(r => { if (r.position) pos[r.player_id] = r.position; });
+    S.teams.forEach(tm => (tm.players || []).forEach(p => {
+      const m = meas[p.id];
+      if (m) { p.height = m.height_cm || null; p.weight = m.weight_kg || null; }
+      if (pos[p.id]) p.pos = pos[p.id];
+    }));
+  } catch (_) { /* a name and a number is still a lineup card */ }
 }
 
 async function loadPhotos() {
@@ -413,6 +444,79 @@ function faceHTML(p, colour) {
   return '<span class="face" style="--tc:' + esc(colour) + '">' +
     '<span class="ini">' + esc(ini) + '</span>' +
     (url ? '<img src="' + esc(url) + '" alt=""  data-fade="hasface">' : '') +
+    '</span>';
+}
+
+/* One card, two readings of the squad. */
+function rosterCard(st, mode) {
+  const t = side === 0 ? 0 : 1;
+  const T = side === 0 ? st.home : st.away;
+  const men = T.roster.length ? T.roster : T.squad;
+  if (!men.length) return '';
+
+  const starters = new Set(st.starters[t] || []);
+  let list, label;
+  if (mode === 'bench') {
+    /* A bench is defined by who is NOT starting, so it does not exist until
+       somebody has said who is. Showing the squad here instead would be a
+       graphic captioned "bench" listing the starting five. */
+    if (starters.size < 5) return '';
+    list = men.filter(p => !starters.has(p.id));
+    label = 'bench';
+    if (!list.length) return '';
+  } else {
+    list = men;
+    label = 'squad';
+  }
+
+  return '<div class="fivecard" style="--tc:' + esc(T.colour) + '">' +
+    railHTML(T, st, label) +
+    '<div class="fivebody">' +
+      '<div class="fivehead">' +
+        '<span class="comp">' + esc(st.game.competition || '') + '</span>' +
+        (st.game.tipoff ? '<span class="when">' + esc(st.game.tipoff) + '</span>' : '') +
+      '</div>' +
+      '<div class="benchrow' + (list.length <= 6 ? ' oneline' : '') + '">' +
+        list.slice(0, 12).map(p =>
+          '<div class="bp' + (starters.has(p.id) ? ' isstart' : '') + '">' +
+            '<div class="bpcut">' + portraitHTML(p, T.colour) +
+              '<span class="bpnum">' + esc(p.number || '') + '</span></div>' +
+            '<div class="fpname">' +
+              '<span class="last">' + esc(shortName(p.name)) + '</span>' +
+              vitalsHTML(p) +
+            '</div>' +
+          '</div>').join('') + '</div>' +
+    '</div></div>';
+}
+
+/* ONE RAIL, TWO CARDS. The starting five and the bench are the same document
+   at different scales, and the rail is what makes that read — writing it twice
+   is two places for the league mark, the crest and the club name to drift. */
+function railHTML(T, st, label) {
+  return '<div class="rail">' +
+    '<div class="railtop">' +
+      (st.game.leagueLogo
+        ? '<img class="lgmark" src="' + esc(st.game.leagueLogo) + '" alt="">'
+        : '<span class="lgword">' + esc(st.game.leagueShort || 'EPINOIΛ') + '</span>') +
+      '<span class="railrule"></span>' +
+      crestHTML(T, 'lg') +
+    '</div>' +
+    '<div class="railname">' + esc(T.name) + '</div>' +
+    '<div class="raillabel">' + esc(label) + '</div>' +
+  '</div>';
+}
+
+/* Head and shoulders, from the same approved cut-out. A full-body image
+   cropped to a square is a chest; object-position pulls the frame up to where
+   a face actually is, which is the same trick the profile photographs use. */
+function portraitHTML(p, colour) {
+  const url = CUTOUTS[p.id] || PHOTOS[p.id] || null;
+  const ini = String(p.name || '?').trim().split(/\s+/)
+    .map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  return '<span class="port2' + (CUTOUTS[p.id] ? ' fromcut' : '') +
+    '" style="--tc:' + esc(colour) + '">' +
+    '<span class="ini">' + esc(ini) + '</span>' +
+    (url ? '<img src="' + esc(url) + '" alt="" data-fade="hasface">' : '') +
     '</span>';
 }
 
@@ -585,17 +689,7 @@ const SCENES = {
     const picked = (st.starters[side === 0 ? 0 : 1] || []).length >= 5;
 
     return '<div class="fivecard" style="--tc:' + esc(T.colour) + '">' +
-      '<div class="rail">' +
-        '<div class="railtop">' +
-          (st.game.leagueLogo
-            ? '<img class="lgmark" src="' + esc(st.game.leagueLogo) + '" alt="">'
-            : '<span class="lgword">' + esc(st.game.leagueShort || 'EPINOIΛ') + '</span>') +
-          '<span class="railrule"></span>' +
-          crestHTML(T, 'lg') +
-        '</div>' +
-        '<div class="railname">' + esc(T.name) + '</div>' +
-        '<div class="raillabel">' + (picked ? 'starting five' : 'squad') + '</div>' +
-      '</div>' +
+      railHTML(T, st, picked ? 'starting five' : 'squad') +
 
       '<div class="fivebody">' +
         '<div class="fivehead">' +
@@ -619,22 +713,32 @@ const SCENES = {
      ONE TEAM'S SQUAD, WITH FACES. Two of these — side=0 and side=1 — are the
      twenty minutes before tip. Numbers in shirt order, because that is how a
      commentator's notes are laid out and how the crowd will read the shirts. */
-  lineup(st) {
-    const T = side === 0 ? st.home : st.away;
-    const men = T.squad.length ? T.squad : T.roster;
-    if (!men.length) return '';
-    const starters = new Set(st.starters[side === 0 ? 0 : 1] || []);
-    return '<div class="card sq" style="--tc:' + esc(T.colour) + '">' +
-      '<div class="sqhd">' + crestHTML(T, 'lg') +
-        '<span class="nm">' + esc(T.name) + '</span>' +
-        '<span class="lbl">' + (starters.size ? 'squad' : 'squad') + '</span></div>' +
-      '<div class="sqgrid">' + men.slice(0, 14).map(p =>
-        '<div class="pl' + (starters.has(p.id) ? ' start' : '') + '">' +
-          faceHTML(p, T.colour) +
-          '<span class="n">' + esc(p.number) + '</span>' +
-          '<span class="nm">' + esc(shortName(p.name)) + '</span>' +
-        '</div>').join('') + '</div></div>';
-  },
+  /* ---- THE REST OF THE SQUAD ---------------------------------------------
+     THE SAME CARD, AT A DIFFERENT SCALE. This is the graphic that follows the
+     starting five, so it has to look like it belongs to it: the same frame, the
+     same rail, the same header, the same floor. What changes is the portrait —
+     head and shoulders in a rounded frame rather than a full-body cut-out,
+     because twelve full-body figures across a 16:9 frame are forty pixels wide
+     each and read as a barcode.
+
+     Continuity is the point. A director cutting from the five to the bench
+     should be showing the second page of one document, not a second design. */
+  /* ---- the squad, and the bench ------------------------------------------
+     TWO GRAPHICS, NOT ONE WITH A MOOD. They were the same scene deciding for
+     itself whether to filter the starters out, which meant a director pressing
+     "bench" before the fives were picked got the whole squad relabelled — a
+     graphic that says one thing and shows another.
+
+     So: SQUAD is everyone and always works, which is what a stream needs
+     twenty minutes before tip. BENCH is strictly the players who are not
+     starting, which is only knowable once somebody has picked the fives, and
+     shows nothing until then rather than pretending.
+
+     Both share the frame, the rail, the header and the floor with the starting
+     five, because a director cutting between them is turning pages of one
+     document rather than changing design. */
+  squad(st) { return rosterCard(st, 'squad'); },
+  bench(st) { return rosterCard(st, 'bench'); },
 
   /* BOTH STARTING FIVES, SIDE BY SIDE. The graphic every stream opens with —
      and it adapts rather than lying: until the statistician has picked the

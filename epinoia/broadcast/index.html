@@ -187,6 +187,55 @@ body{font-family:var(--f-ui);color:var(--ink)}
 .vitals b{font-weight:400;color:var(--lume)}
 .vitals i{font-style:normal;color:var(--faint);margin:0 .5vmin}
 
+/* ---------------- the bench, on the same card ----------------
+   Deliberately the same frame, rail, header and floor as the starting five —
+   a director cutting from one to the other is turning a page, not changing
+   design. What differs is the portrait: head and shoulders in a rounded frame,
+   because twelve full-body figures across 16:9 are forty pixels wide each and
+   read as a barcode. */
+/* A FIXED PORTRAIT, NOT A FLEXING ONE. aspect-ratio:1 on a box that also flexed
+   to fill its row made every circle as tall as half the frame — they overlapped
+   their neighbours and each number landed on the wrong player. The portrait is
+   sized in vmin like everything else here, and the row lays out around it. */
+.benchrow{flex:1 1 auto;display:grid;
+  grid-template-columns:repeat(6,1fr);grid-auto-rows:min-content;
+  gap:3.4vmin 1.4vmin;min-height:0;padding:2vmin 0;align-content:center}
+.bp{display:flex;flex-direction:column;align-items:center;min-width:0}
+.bpcut{position:relative;width:min(100%,14vmin);height:14vmin;
+  display:flex;align-items:center;justify-content:center;margin-bottom:1.1vmin}
+.port2{position:relative;display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;border-radius:50%;overflow:hidden;
+  background:linear-gradient(180deg,
+    color-mix(in oklch, var(--tc) 22%, #0d1512), #0a1210);
+  border:.25vmin solid color-mix(in oklch, var(--tc) 52%, transparent)}
+.port2 .ini{font-family:var(--f-score);font-size:3.9vmin;
+  color:color-mix(in oklch, var(--tc) 78%, #fff)}
+.port2 img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  /* a face sits in the top third of a portrait and the very top of a
+     full-body cut-out, so the two are framed differently on purpose */
+  object-position:50% 18%;opacity:0;transition:opacity .2s ease}
+.port2.fromcut img{object-position:50% 6%;transform:scale(1.5);transform-origin:50% 8%}
+.port2.hasface img{opacity:1}
+.port2.hasface .ini{opacity:0}
+/* the number rides the portrait, as it does on a team sheet */
+/* The number sits ON its own portrait, centred under the chin — offset to the
+   corner it was overlapping the next player along. */
+.bpnum{position:absolute;left:50%;transform:translateX(-50%);bottom:-.9vmin;z-index:2;
+  font-family:var(--f-data);font-weight:800;font-size:1.4vmin;line-height:1;
+  padding:.3vmin .7vmin;border-radius:.4vmin;background:var(--tc);color:#04100b;
+  box-shadow:0 .2vmin .6vmin rgba(0,0,0,.5)}
+.bp .fpname{padding-bottom:0}
+.bp .fpname .last{font-size:1.95vmin}
+.bp .vitals{font-size:1.3vmin;margin-top:.4vmin}
+
+/* A bench of seven does not want a six-wide grid with one on the second row;
+   a short list gets one line and bigger portraits. */
+.benchrow.oneline{grid-template-columns:repeat(6,1fr)}
+.benchrow.oneline .bpcut{width:min(100%,17vmin);height:17vmin}
+.benchrow.oneline .port2 .ini{font-size:4.6vmin}
+
+@media (max-aspect-ratio:1/1){ .benchrow{grid-template-columns:repeat(4,1fr)} }
+
 /* A five-wide grid stops working long before a 16:9 frame does; below this the
    graphic is being previewed rather than broadcast, and two rows beats five
    unreadable columns. */
@@ -462,11 +511,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=186" defer></script>
-<script src="../vendor/supabase.js?v=186" defer></script>
-<script src="../engine.js?v=186" defer></script>
-<script src="../rt.js?v=186" defer></script>
-<script src="../live.js?v=186" defer></script>
-<script src="broadcast.js?v=186" defer></script>
+<script src="../config.js?v=192" defer></script>
+<script src="../vendor/supabase.js?v=192" defer></script>
+<script src="../engine.js?v=192" defer></script>
+<script src="../rt.js?v=192" defer></script>
+<script src="../live.js?v=192" defer></script>
+<script src="broadcast.js?v=192" defer></script>
 </body>
 </html>

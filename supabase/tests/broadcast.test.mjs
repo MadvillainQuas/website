@@ -179,22 +179,22 @@ ok('the admin deactivates rather than deletes',
 /* ---- 10. pre-game works before a ball is thrown -------------------------- */
 console.log('\nthe twenty minutes before tip are served');
 
-const pre = ['fixture', 'starters', 'lineup', 'officials'];
+const pre = ['fixture', 'starters', 'squad', 'bench', 'officials'];
 pre.forEach(sc => ok(`  the layer has a "${sc}" scene`, layerScenes.includes(sc),
   'has: ' + layerScenes.join(', ')));
 ok('the control room groups them before tip',
    /\['fixture',\s*'pre'/.test(control) && /\['officials',\s*'pre'/.test(control));
 ok('there are TWO squad screens, one per club',
-   (control.match(/\['lineup',\s*'pre'/g) || []).length === 2,
+   (control.match(/\['squad',\s*'pre'/g) || []).length === 2,
    'one screen cannot show both squads at a readable size');
 ok('...told apart by side, not by scene name',
    /keyOf = \(scene, opts\)/.test(control) && /\{ side: '1' \}/.test(control));
 
 ok('squads are fetched when there is no snapshot yet',
-   /if \(game\.roster_snapshot && game\.roster_snapshot\.teams\) return;/.test(layer),
+   /const snapped = !!\(game\.roster_snapshot && game\.roster_snapshot\.teams\);/.test(layer),
    'roster_snapshot is frozen at tip and does not exist before it');
 ok('...and the snapshot still wins once it exists',
-   /the snapshot is the truth once it exists/.test(layer));
+   /if \(snapped\) return mergeMeasurements\(\);/.test(layer));
 ok('the starting-five graphic does not invent a five',
    /const picked = \(st\.starters\[0\] \|\| \[\]\)\.length/.test(layer),
    'showing the first five shirt numbers as a starting five would be wrong ' +
@@ -279,7 +279,8 @@ ok('...and emits no inline event handler at all',
    !/\son[a-z]+=["']/.test(layer),
    (layer.match(/\son[a-z]+=["'][^"']{0,40}/) || [''])[0]);
 ok('images ask for their reveal with a data attribute instead',
-   (layer.match(/data-fade="/g) || []).length === 3);
+   (layer.match(/data-fade="/g) || []).length >= 3,
+   'crest, face, cut-out and portrait — every image that fades in');
 ok('...wired in script after every render', /function wireFades\(\)/.test(layer) &&
    /wireFades\(\);/.test(layer));
 ok('...and a cached image, already complete, is handled too',
@@ -378,6 +379,89 @@ ok('rebuilding a source forces a cache-free reload',
    /refreshnocache/.test(mixJs),
    'CEF caches the page and re-pointing a source at the same URL does not ' +
    'restart it — a rebuilt graphic keeps showing what it showed before');
+
+/* ---- 19. squad and bench are two graphics, not one with a mood ----------- */
+console.log('\na bench that includes the starters is not a bench');
+
+ok('squad and bench are separate scenes',
+   layerScenes.includes('squad') && layerScenes.includes('bench'));
+ok('...offered separately, per club',
+   (control.match(/\['squad',/g) || []).length === 2 &&
+   (control.match(/\['bench',/g) || []).length === 2);
+ok('the bench excludes the starters',
+   /list = men\.filter\(p => !starters\.has\(p\.id\)\)/.test(layer));
+ok('...and shows nothing until the fives are known, rather than the whole squad',
+   /if \(starters\.size < 5\) return '';/.test(layer),
+   'a graphic captioned "bench" listing the starting five is worse than a blank');
+ok('the squad graphic always works, which is what a stream needs before tip',
+   /list = men;RNRNRNRNlabel = 'squad';/.test(layer.replace(/[\nCR ]+/g, 'RN')) ||
+   /label = 'squad'/.test(layer));
+
+/* both share the five card's frame, or they are two designs */
+ok('both share the rail with the starting five', /function railHTML\(/.test(layer));
+ok('...and the same card', /rosterCard\(st, 'squad'\)/.test(layer) &&
+   /rosterCard\(st, 'bench'\)/.test(layer));
+ok('a portrait is head and shoulders, not a full body squeezed small',
+   /function portraitHTML\(/.test(layer),
+   'twelve full-body figures across 16:9 are forty pixels wide each');
+ok('...and the cut-out is reframed rather than reused as-is',
+   /\.port2\.fromcut img\{[^}]*transform:scale/.test(layerH));
+
+/* the sizing bug that made every circle overlap its neighbour */
+ok('a portrait has a fixed size, not a flexing one',
+   /A FIXED PORTRAIT, NOT A FLEXING ONE/.test(layerH));
+
+/* ---- 20. the snapshot freezes who, not how tall -------------------------- */
+console.log('\na played game still shows positions and heights');
+
+ok('measurements are merged onto a frozen roster',
+   /async function mergeMeasurements\(\)/.test(layer));
+ok('...because the snapshot holds names and numbers only',
+   /THE SNAPSHOT FREEZES WHO WAS AVAILABLE, NOT HOW TALL THEY ARE/.test(layer));
+ok('...and the squad itself still comes from the snapshot',
+   /if \(snapped\) return mergeMeasurements\(\);/.test(layer),
+   'a roster edited on Tuesday must not rewrite who could play on Saturday');
+
+/* ---- 21. going live, and the key that is not ours ------------------------ */
+console.log('\nthe stream is driven from here, the key is not');
+
+const mx2 = rd('epinoia', 'broadcast', 'control', 'mixers.js');
+const ctl2 = rd('epinoia', 'broadcast', 'control', 'control.js');
+['StartStream', 'StopStream', 'GetStreamStatus', 'StartRecord', 'GetRecordStatus']
+  .forEach(r => ok(`  OBS ${r} is wired`, mx2.includes(r)));
+ok('bitrate is derived, since OBS does not report it',
+   /outputBytes[\s\S]{0,60}outputDuration|\* 8\) \/ secs/.test(ctl2));
+ok('dropped frames and congestion are surfaced',
+   /outputSkippedFrames/.test(ctl2) && /outputCongestion/.test(ctl2),
+   'a bitrate that sags is a stream about to buffer');
+ok('stopping a live stream asks first',
+   /confirm\('Stop the stream\?/.test(ctl2),
+   'a stream is public and so is a misclick');
+
+/* the destination: stored by the league, never displayed */
+const mig = rd('supabase', 'migrations', '0081_stream_targets.sql');
+ok('a league can save a destination', /create table if not exists public\.league_stream_targets/.test(mig));
+ok("...readable only by that league's administrators",
+   /using \(public\.is_platform_admin\(\) or public\.is_league_admin\(league_id\)\)/.test(mig));
+ok('...and the listing masks the key rather than returning it',
+   /right\(t\.stream_key, 4\)/.test(mig));
+ok('...which the migration checks for itself',
+   /the listing function returns the raw key/.test(mig));
+const sui = rd('epinoia', 'admin', 'stream-ui.js');
+ok('the admin panel never fetches the key back',
+   !/select\([^)]*stream_key/.test(sui) && /stream_targets_for_league/.test(sui));
+ok('...and catches the commonest paste mistake',
+   /looks like the ingest URL rather than the key/.test(sui));
+ok('the control room posts it straight into OBS without rendering it',
+   /mx\.setDestination\(t\.server, t\.stream_key\)/.test(ctl2) &&
+   !/lvNote[^;]*stream_key/.test(ctl2));
+ok('...over rtmp_custom, not a bundled service name',
+   /streamServiceType: 'rtmp_custom'/.test(mx2),
+   "OBS's service list changes between versions; an ingest URL does not");
+
+/* what two rounds of testing against a real OBS actually taught */
+ok('rebuilding a source cold-starts it rather than trusting a refresh',
+   /A COLD START, NOT A REFRESH/.test(mx2));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -201,6 +201,20 @@ function obs() {
          Twenty minutes of "why has it not updated" before anybody suspects a
          cache. The properties button is the same "Refresh cache of current
          page" a person would press by hand. */
+      /* A COLD START, NOT A REFRESH. Found by testing against a real OBS twice:
+         refreshnocache reports success and changes nothing a screenshot can
+         see. Hiding a source with shutdown:true tears the browser down
+         completely, so showing it again is a fresh load — which is the only
+         sequence that reliably picked up a stylesheet change. Both are sent,
+         because the refresh costs nothing and older builds may want it. */
+      try {
+        const { sceneItemId } = await request('GetSceneItemId',
+          { sceneName, sourceName: g.name });
+        await request('SetSceneItemEnabled',
+          { sceneName, sceneItemId, sceneItemEnabled: false });
+        await request('SetSceneItemEnabled',
+          { sceneName, sceneItemId, sceneItemEnabled: !!g.visible });
+      } catch (_) { /* a source that will not report an id still exists */ }
       try {
         await request('PressInputPropertiesButton',
           { inputName: g.name, propertyName: 'refreshnocache' });
@@ -223,8 +237,54 @@ function obs() {
     return true;
   }
 
+  /* ---- going live ------------------------------------------------------
+     WE DRIVE THE TRANSPORT, NOT THE CREDENTIALS.
+
+     obs-websocket will happily let this page write a stream key through
+     SetStreamServiceSettings, and it must not. A key typed into a web page is
+     a key that page is now responsible for — in localStorage, in a form field,
+     in a screenshot somebody takes of the control room. OBS already holds it,
+     safely, and the destination is set once a season.
+
+     So: start, stop, and say what is happening. If there is no destination
+     configured the page says so and points at OBS's own settings, which is
+     both the honest answer and the one that leaves the key where it belongs. */
+  const streamStatus = () => request('GetStreamStatus');
+  const recordStatus = () => request('GetRecordStatus');
+  const startStream  = () => request('StartStream');
+  const stopStream   = () => request('StopStream');
+  const startRecord  = () => request('StartRecord');
+  const stopRecord   = () => request('StopRecord');
+  const videoSettings = () => request('GetVideoSettings');
+
+  /* Whether OBS has anywhere to send it. Read so the page can refuse to offer
+     "go live" as though it would work — pressing it with nothing configured
+     fails with a message about an output, which tells nobody anything. */
+  async function destination() {
+    try {
+      const svc = await request('GetStreamServiceSettings');
+      const s = svc.streamServiceSettings || {};
+      return { type: svc.streamServiceType || null,
+               ready: !!(s.key && String(s.key).length),
+               /* the SERVER, never the key — a URL is not a secret and it is
+                  the half that tells an operator which channel this is */
+               server: s.server || null };
+    } catch (_) { return { type: null, ready: false, server: null }; }
+  }
+
+  /* Point OBS at a destination. rtmp_custom with an explicit server rather
+     than rtmp_common with a service NAME: the bundled service list changes
+     between OBS versions and a name that is not in it fails in a way nobody
+     can debug from a sports hall, whereas an ingest URL is an ingest URL. */
+  const setDestination = (server, key) => request('SetStreamServiceSettings', {
+    streamServiceType: 'rtmp_custom',
+    streamServiceSettings: { server, key, use_auth: false }
+  });
+
   return {
-    connect, request, layout, take,
+    connect, request, layout, take, setDestination,
+    streamStatus, recordStatus, startStream, stopStream,
+    startRecord, stopRecord, videoSettings, destination,
     get ready() { return ready; },
     close() { try { ws && ws.close(); } catch (_) {} }
   };

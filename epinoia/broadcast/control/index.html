@@ -7,7 +7,7 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*">
 <title>Broadcast control · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=186">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=192">
 <style>
 /* ============================================================================
    THE CONTROL ROOM.
@@ -103,6 +103,18 @@
   #mxNote{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);
     border:0;padding:0;margin-top:4px}
   #mxNote b{color:var(--ink-2);font-weight:400}
+  .golive[data-state="live"]{border-color:var(--flare,#ff5f6b)}
+  .golive[data-state="ready"]{border-color:var(--lume)}
+  .lvpill{font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+    padding:5px 10px;border:1px solid var(--rule-2);color:var(--ink-3)}
+  .golive[data-state="ready"] .lvpill{color:var(--lume);border-color:var(--lume)}
+  .golive[data-state="live"] .lvpill{background:var(--flare,#ff5f6b);color:#fff;
+    border-color:var(--flare,#ff5f6b)}
+  /* A stream that is dropping frames is the one thing worth interrupting for. */
+  .golive[data-warn="1"] .lvstats{color:var(--amber)}
+  .lvstats{font-family:var(--f-data,var(--f-micro));font-size:10px;color:var(--ink-2);
+    align-self:center;font-variant-numeric:tabular-nums}
+  .ep-btn.danger{border-color:var(--flare,#ff5f6b);color:var(--flare,#ff5f6b)}
   .msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
     border-left:2px solid var(--rule-2);padding-left:11px;margin:calc(var(--u)*2) 0}
   code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
@@ -137,6 +149,23 @@
        vMix preset are both plain files, and importing one is two clicks — which
        beats a websocket that needs a password, a port and a machine on the same
        network as a sports hall. -->
+  <!-- ON AIR. The mixer is already connected for the graphics, so the stream is
+       two more requests — and the destination comes from the league rather than
+       from whichever laptop is in the hall. -->
+  <div class="exports golive" id="golive" data-state="off">
+    <div class="et">On air</div>
+    <div class="erow">
+      <span class="lvpill" id="lvState">mixer not connected</span>
+      <span class="lvstats" id="lvStats"></span>
+    </div>
+    <div class="erow">
+      <button class="ep-btn" id="lvGo" disabled>Go live</button>
+      <button class="ep-btn ghost" id="lvRec" disabled>Record</button>
+      <button class="ep-btn ghost" id="lvSend">Use the league channel</button>
+    </div>
+    <div class="en" id="lvNote"></div>
+  </div>
+
   <!-- THE FAST PATH. A scene file lays the sources out once; this drives the
        mixer for the rest of the night, so a take is a button here rather than
        a director hunting an eyeball icon while the play finishes. -->
@@ -177,9 +206,9 @@
   <div class="msg" id="how"></div>
 </div>
 
-<script src="../../config.js?v=186" defer></script>
-<script src="../../vendor/supabase.js?v=186" defer></script>
-<script src="mixers.js?v=186" defer></script>
-<script src="control.js?v=186" defer></script>
+<script src="../../config.js?v=192" defer></script>
+<script src="../../vendor/supabase.js?v=192" defer></script>
+<script src="mixers.js?v=192" defer></script>
+<script src="control.js?v=192" defer></script>
 </body>
 </html>

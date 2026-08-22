@@ -39,8 +39,10 @@ const SCENES = [
   ['five',      'pre',  'Starting five — home', 'Full frame. The five, standing, with the club on the rail.', { side: '0' }],
   ['five',      'pre',  'Starting five — away', 'The other club, same treatment.', { side: '1' }],
   ['starters',  'pre',  'Starting fives',    'Both fives with faces — or both squads, until the fives are picked.'],
-  ['lineup',    'pre',  'Squad — home',      'One club’s full squad, in shirt order, with faces.', { side: '0' }],
-  ['lineup',    'pre',  'Squad — away',      'The other club’s squad.', { side: '1' }],
+  ['squad',     'pre',  'Squad — home',      'The whole squad, in shirt order. Works before the fives are picked.', { side: '0' }],
+  ['squad',     'pre',  'Squad — away',      'The other club’s squad.', { side: '1' }],
+  ['bench',     'pre',  'Bench — home',      'Only the players not starting. Needs the fives picked first.', { side: '0' }],
+  ['bench',     'pre',  'Bench — away',      'The other club’s bench.', { side: '1' }],
   ['officials', 'pre',  'Match officials',   'The court crew and the table crew, as named on the fixture.'],
 
   ['scorebug',  'live', 'Scorebug',          'Score, clock, period, team fouls and the bonus. The one that stays up.'],
@@ -363,6 +365,8 @@ async function mxConnect() {
     mx = client;
     mxSay('OBS connected', 'on');
     $('#mxLayout').disabled = false;
+    checkDestination();
+    pollLive();
   } catch (err) {
     mxSay('not connected', 'bad');
     $('#mxNote').innerHTML = '<b>' + String((err && err.message) || err) + '</b><br>' +
@@ -417,6 +421,168 @@ function wireMixer() {
   mxRestore();
 }
 
+/* ==========================================================================
+   GOING LIVE FROM HERE.
+
+   The mixer is already connected for the graphics, so the stream is two more
+   requests. What it is NOT is a place to type a stream key: obs-websocket will
+   let this page write one and it must not. A key typed into a web page is a key
+   that page is now responsible for — in localStorage, in a form field, in a
+   screenshot of the control room somebody posts. OBS holds it already, the
+   destination is set once a season, and the honest thing is to say so and point
+   at OBS's own settings.
+
+   So this drives transport and reports state. Stopping asks first, because a
+   stream is public and a misclick is public too.
+   ========================================================================== */
+let liveTimer = null, liveState = { streaming: false, recording: false };
+
+function fmtDur(ms) {
+  const t = Math.max(0, Math.floor((ms || 0) / 1000));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) +
+         ':' + String(s).padStart(2, '0');
+}
+
+async function pollLive() {
+  const panel = $('#golive');
+  if (!panel) return;
+  if (!mx || mxKind !== 'obs' || !mx.ready) {
+    panel.dataset.state = 'off';
+    $('#lvState').textContent = 'mixer not connected';
+    $('#lvStats').textContent = '';
+    $('#lvGo').disabled = true; $('#lvRec').disabled = true;
+    return;
+  }
+  try {
+    const [st, rec] = await Promise.all([mx.streamStatus(), mx.recordStatus()]);
+    liveState = { streaming: st.outputActive, recording: rec.outputActive };
+
+    panel.dataset.state = st.outputActive ? 'live' : 'ready';
+    $('#lvState').textContent = st.outputActive ? 'ON AIR' : 'ready';
+    $('#lvGo').disabled = false;
+    $('#lvGo').textContent = st.outputActive ? 'Stop the stream' : 'Go live';
+    $('#lvGo').className = 'ep-btn' + (st.outputActive ? ' danger' : '');
+    $('#lvRec').disabled = false;
+    $('#lvRec').textContent = rec.outputActive ? 'Stop recording' : 'Record';
+
+    if (st.outputActive) {
+      /* Bitrate is not reported, so it is derived from bytes over duration —
+         which is the number an operator is actually watching for, because a
+         bitrate that sags is a stream about to buffer. */
+      const secs = Math.max(1, (st.outputDuration || 0) / 1000);
+      const kbps = Math.round(((st.outputBytes || 0) * 8) / secs / 1000);
+      const dropped = st.outputTotalFrames
+        ? ((st.outputSkippedFrames || 0) / st.outputTotalFrames * 100) : 0;
+      const bits = [fmtDur(st.outputDuration), kbps.toLocaleString() + ' kbps'];
+      if (dropped > 0.1) bits.push(dropped.toFixed(1) + '% dropped');
+      if (st.outputCongestion > 0.3) bits.push('congested');
+      $('#lvStats').textContent = bits.join('  ·  ');
+      /* dropped frames and congestion are the two things worth colouring */
+      panel.dataset.warn = (dropped > 2 || st.outputCongestion > 0.5) ? '1' : '';
+    } else {
+      $('#lvStats').textContent = rec.outputActive
+        ? 'recording · ' + fmtDur(rec.outputDuration) : '';
+      panel.dataset.warn = '';
+    }
+  } catch (_) {
+    panel.dataset.state = 'off';
+    $('#lvState').textContent = 'mixer not connected';
+  }
+}
+
+/* THE LEAGUE'S OWN CHANNEL, PUSHED INTO OBS.
+
+   A league administrator sets the destination once in the admin console; this
+   reads it for the fixture in hand and writes it into OBS. The key is never
+   rendered — it goes from the request straight into a socket to the same
+   machine — and it is only ever fetched by somebody the database already
+   trusts with it. */
+async function sendLeagueDestination() {
+  if (!mx || mxKind !== 'obs' || !mx.ready) return;
+  const btn = $('#lvSend');
+  btn.disabled = true;
+  try {
+    const sb2 = await window.epinoiaClient();
+    const { data, error } = await sb2.rpc('stream_target_for_game', { p_game: gameId });
+    if (error) throw error;
+    const t = (data || [])[0];
+    if (!t) {
+      $('#lvNote').innerHTML = '<b>This league has no destination set.</b> A league ' +
+        'administrator adds one under <b>Streaming destination</b> in the league ' +
+        'console — then it lands here by itself.';
+      return;
+    }
+    await mx.setDestination(t.server, t.stream_key);
+    $('#lvNote').innerHTML = 'OBS is now pointed at <b>' + (t.label || 'the league channel') +
+      '</b> (' + String(t.server).replace(/^rtmps?:\/\//, '').split('/')[0] + '). ' +
+      'The key went straight from the database into OBS — this page never showed it.';
+    checkDestination();
+  } catch (err) {
+    $('#lvNote').innerHTML = '<b>Could not set the destination.</b> ' +
+      ((err && err.message) || err) +
+      '<br>Only a league administrator can read their own stream key.';
+  } finally { btn.disabled = false; }
+}
+
+async function checkDestination() {
+  const note = $('#lvNote');
+  if (!mx || mxKind !== 'obs' || !mx.ready) { note.textContent = ''; return; }
+  const d = await mx.destination();
+  if (d.ready) {
+    note.innerHTML = 'OBS will send this to <b>' +
+      (d.server ? String(d.server).replace(/^rtmps?:\/\//, '') : d.type || 'its configured destination') +
+      '</b>. The key stays in OBS — this page never asks for it and never stores it.';
+  } else {
+    note.innerHTML = '<b>No destination is set in OBS yet.</b> If your league has ' +
+      'one saved, press <b>Use the league channel</b> above. Otherwise set it in ' +
+      '<b>OBS → Settings → Stream</b>. Recording works without one either way.';
+  }
+}
+
+async function toggleStream() {
+  if (!mx) return;
+  const btn = $('#lvGo');
+  if (liveState.streaming) {
+    /* A stream is public and so is a misclick. */
+    if (!confirm('Stop the stream?\n\nAnybody watching will see it end.')) return;
+    btn.disabled = true;
+    try { await mx.stopStream(); } catch (err) { $('#lvNote').textContent = err.message; }
+  } else {
+    btn.disabled = true;
+    try { await mx.startStream(); }
+    catch (err) {
+      /* The commonest failure by a mile is no destination configured, and OBS's
+         own message for it mentions an output, which tells nobody anything. */
+      $('#lvNote').innerHTML = '<b>OBS would not start the stream.</b> ' +
+        (/output/i.test(err.message)
+          ? 'That usually means no destination is set — <b>OBS → Settings → Stream</b>.'
+          : err.message);
+    }
+  }
+  setTimeout(pollLive, 400);
+}
+
+async function toggleRecord() {
+  if (!mx) return;
+  $('#lvRec').disabled = true;
+  try {
+    if (liveState.recording) await mx.stopRecord(); else await mx.startRecord();
+  } catch (err) { $('#lvNote').textContent = err.message; }
+  setTimeout(pollLive, 400);
+}
+
+function wireLive() {
+  $('#lvGo').addEventListener('click', toggleStream);
+  $('#lvRec').addEventListener('click', toggleRecord);
+  $('#lvSend').addEventListener('click', sendLeagueDestination);
+  clearInterval(liveTimer);
+  /* Two seconds: fast enough that a dropped-frame problem is noticed while it
+     can still be fixed, slow enough that it is not a request per frame. */
+  liveTimer = setInterval(pollLive, 2000);
+  pollLive();
+}
+
 function download(name, text, mime) {
   const blob = new Blob([text], { type: mime || 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -455,6 +621,16 @@ function wireExports() {
   render();
   wireExports();
   wireMixer();
+  wireLive();
+
+  /* AUTO-CONNECT WHEN PRIMED. "Prime for broadcast" means the operator has
+     already decided they are streaming this fixture, so making them press
+     Connect on arrival is a step that exists only because the page was written
+     before the button was. Only when settings have been saved before — the
+     first time, they still choose. */
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(MX_KEY) || 'null'); } catch (_) {}
+  if (saved && (qp.get('connect') === '1' || saved.auto)) setTimeout(mxConnect, 250);
   const [sc0, sd0] = currentKey.split(':');
   $('#prev').src = sceneURL(sc0, false, sd0 ? { side: sd0 } : null);
   connect();

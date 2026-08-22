@@ -108,6 +108,8 @@ async function render() {
      passed by value: this panel is mounted once and the operator changes
      season underneath it, and a captured `season` would keep exporting the
      one that happened to be selected when the page loaded. */
+  window.EpinoiaStreamUI.mount({ host: '#streamPanel', sb, say,
+    league: () => league });
   window.EpinoiaBcastImg.mount({ host: '#bcastImgPanel', sb, say,
     league: () => league });
   window.EpinoiaOfficials.mount({ host: '#officialsPanel', sb, say,
