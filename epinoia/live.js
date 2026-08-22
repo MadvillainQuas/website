@@ -130,6 +130,57 @@ function localTransport(gameId) {
 const whole = v => (v == null || v === '' ? null
   : (Number.isFinite(+v) ? Math.round(+v) : null));
 
+/* ---------------------------------------------------------------------------
+   A COLUMN THE DATABASE HAS NOT GOT MUST COST THE GARNISH, NOT THE GAME.
+
+   game_state carries the score, the clock, the period, the possession arrow
+   and the last sequence number — the things every viewer reads — plus, since
+   the interval was added, two fields that say whether it is half-time.
+
+   Postgres refuses a row, not a field. So a platform whose migrations were one
+   behind refused the WHOLE state row over two decorative columns: the score
+   stopped being written, the clock stopped being written, and the statistician
+   was told the league database would not save the game. For a caption.
+
+   The essential columns have existed since 0001 and are not going to fail.
+   Anything added since is optional by definition — it was not there last
+   season and the platform worked. So a refusal that names an unknown column is
+   retried immediately without the optional half, and the game keeps being
+   recorded while somebody finds a moment to run the migration.
+
+   IT IS RETRIED ONCE, NOT INDEFINITELY, and only for that one error. A refusal
+   for any other reason — a policy, a bad value, a dead connection — is the
+   caller's to hear about, unchanged, because those are faults that need
+   answering rather than working around. */
+const STATE_CORE = ['period', 'clock_ms', 'running', 'score_home', 'score_away',
+                    'possession', 'arrow', 'last_seq', 'updated_at'];
+
+/* PostgREST answers a column it does not know with PGRST204, and Postgres with
+   42703. Matched on both, plus the wording, because a proxy in between can
+   rewrite one and not the other. */
+function isUnknownColumn(err) {
+  if (!err) return false;
+  const code = String(err.code || '');
+  if (code === 'PGRST204' || code === '42703') return true;
+  return /column .* does not exist|could not find the .* column/i.test(
+    String(err.message || '') + ' ' + String(err.details || ''));
+}
+
+async function writeState(sb, gameId, st) {
+  const res = await sb.from('game_state').upsert(st);
+  if (!res || !res.error || !isUnknownColumn(res.error)) return res;
+
+  const core = { game_id: st.game_id };
+  STATE_CORE.forEach(k => { if (k in st) core[k] = st[k]; });
+  const retry = await sb.from('game_state').upsert(core);
+  if (!retry || !retry.error) {
+    console.warn('[live] game_state is missing a column this build writes (' +
+      (res.error.message || res.error) + ') — the score and clock are still ' +
+      'being saved without it. Apply the outstanding migrations.');
+  }
+  return retry;
+}
+
 /* supabase: broadcast for speed, table insert for durability */
 function supabaseTransport(gameId, sb, onError) {
   let channel = null;
@@ -179,7 +230,7 @@ function supabaseTransport(gameId, sb, onError) {
         const st = Object.assign({ game_id: gameId }, frame.state);
         ['period', 'clock_ms', 'score_home', 'score_away', 'possession', 'arrow', 'last_seq']
           .forEach(k => { if (k in st) st[k] = whole(st[k]); });
-        jobs.push(sb.from('game_state').upsert(st));
+        jobs.push(writeState(sb, gameId, st));
       }
       /* A REFUSED WRITE IS NOT A FULFILLED PROMISE'S PROBLEM — it is ours.
 
