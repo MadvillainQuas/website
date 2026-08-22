@@ -19,7 +19,36 @@
    says what it is in the words a coach would use — not a definition invented
    here. Adding a type is a version bump, never an edit, because a label written
    last season has to keep meaning what it meant when it was written.
-   ============================================================================ */
+
+   ---------------------------------------------------------------------------
+   THE ATTRIBUTION RULE, WHICH IS THE MOST IMPORTANT LINE IN THIS FILE
+
+   A play is typed by THE ACTION THAT ENDED THE CHANCE, not by the action that
+   started it.
+
+   If a ball screen is set, the handler comes off it, draws two, and kicks to a
+   shooter in the corner who shoots — that chance is a SPOT_UP. It is not a
+   pick-and-roll, even though a pick-and-roll is plainly what the offence ran,
+   and even though the screen is why the shot existed. The chance ended with a
+   spot-up shooter, so it is charged to the spot-up.
+
+   This is the industry convention and it is not obvious; roughly half of all
+   spot-ups in a professional season arise this way, out of pick-and-rolls,
+   isolations and post-ups that were passed out of. Anyone typing plays by what
+   the offence was RUNNING rather than by how the chance ENDED will produce a
+   table that disagrees with every other table in basketball, in a way that
+   looks like a modest difference of opinion and is in fact a different
+   statistic wearing the same column headings.
+
+   Two consequences worth stating out loud:
+
+     - A tracker built this way UNDERCOUNTS pick-and-roll relative to how often
+       teams actually run it. That is a known and accepted property of the
+       convention, not a defect to be fixed.
+     - It also means the type answers "how did this chance finish", which is the
+       question points-per-play is an answer to. That coherence is the reason
+       the convention is what it is.
+   --------------------------------------------------------------------------- */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -111,6 +140,18 @@ const SOURCE = { HUMAN: 'human', MODEL: 'model' };
    isolation — they look identical in it. Pretending otherwise would produce a
    tracker that is confidently wrong, which is worse than an empty one.
    --------------------------------------------------------------------------- */
+/* A TIME WINDOW IS A PROXY, AND IT IS THE WRONG DEFINITION.
+
+   Transition is properly defined by THE DEFENCE NOT BEING SET — the industry
+   convention has no clock cutoff at all, precisely because a slow break against
+   a scrambling defence is transition and a fast one into a set defence is not.
+   The event log cannot see a defence, so it cannot apply the real definition.
+
+   Seven seconds after a live-ball turnover is therefore a deliberate
+   approximation, offered at confidence 0.8 rather than 1 for that reason, and
+   it is the one suggestion here that a tagger should feel free to overrule from
+   the footage. `putback` is a definition and cannot be overruled; this is a
+   guess and can. */
 const TRANSITION_WINDOW_MS = 7000;
 
 function suggest(chance, prevChance) {
@@ -173,9 +214,32 @@ function report(tagged, opts) {
 /* A row is only worth reading at a sample it can support. Six plays at 1.50
    points a play is not a strength, it is six plays — and a tracker that prints
    it as a strength is one a coach stops trusting. */
-const THIN = 15;
+/* WHAT A SAMPLE HAS TO REACH BEFORE A ROW MEANS ANYTHING.
+
+   THIN was 15, which was far too generous and would have let this platform
+   publish rankings that are noise. The arithmetic is not close: points per play
+   has a standard deviation near 1.05, so the 95% half-width is about +/-0.29 at
+   50 plays, +/-0.21 at 100, and +/-0.10 at 400. The difference between an elite
+   and a poor play type is roughly 0.15 to 0.25 points per play. So below a few
+   hundred plays the interval swallows the entire effect being reported, and a
+   league table built on it ranks sampling noise.
+
+   Two thresholds, because they answer different questions:
+     THIN         below this a row should not be shown at all.
+     RESOLVABLE   below this a row may be shown WITH ITS INTERVAL, but must
+                  never be ranked against another row.
+
+   Worth knowing: the commercial standard is weaker than this. Synergy's own
+   percentile ranks are published with no stated minimum sample at all, and the
+   best-known public criticism of them is exactly this — that at 150 plays a
+   single made three moves a player two points per hundred and reorders the
+   leaderboard. Being stricter than the incumbent is the correct call here. */
+const THIN = 50;
+const RESOLVABLE = 400;
 const isThin = row => row.plays < THIN;
+const isResolvable = row => row.plays >= RESOLVABLE;
 
 return { VERSION, TYPES, BY_KEY, isType, COVERAGES, COVERAGE_BY_KEY, SOURCE,
-         suggest, report, isThin, THIN, TRANSITION_WINDOW_MS };
+         suggest, report, isThin, THIN, isResolvable, RESOLVABLE,
+         TRANSITION_WINDOW_MS };
 }));
