@@ -1538,6 +1538,12 @@ function newState(){
    opening the demo can never overwrite a real game in progress — see the note
    in the commit. */
 const EP_TRAIN = new URLSearchParams(location.search).get('train') === '1';
+/* ?guide=0 suppresses the controls screen the demo otherwise opens on. It
+   exists for the frame on the learn page, which is showing somebody what the
+   app LOOKS like — a product shot of its own documentation is not the pitch —
+   and for anyone linking straight back into a game they have already read it
+   for. Anything other than an explicit 0 leaves the guide on. */
+const EP_GUIDE = new URLSearchParams(location.search).get('guide') !== '0';
 const EP_KEY = EP_TRAIN ? 'epinoia_v1_demo' : 'epinoia_v1';
 window.EP_KEY = EP_KEY;
 function save(){ try{ localStorage.setItem(EP_KEY, JSON.stringify(S)); }catch(e){} }
@@ -2025,7 +2031,7 @@ function renderPregame(){
      Once per page load rather than once ever: coming back to the pregame card
      after editing the squads should not reopen it, and nor should a
      re-render. The button above stays, so it is never more than one tap away. */
-  if(EP_TRAIN && !window.__hvSeen){
+  if(EP_TRAIN && !window.__hvSeen && EP_GUIDE){
     window.__hvSeen = true;
     openHelp();
   }
@@ -5232,10 +5238,10 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<script src="../config.js?v=157" defer></script>
-<script src="../vendor/supabase.js?v=157" defer></script>
-<script src="../live.js?v=157" defer></script>
-<script src="sync.js?v=157" defer></script>
-<script src="bootstrap.js?v=157" defer></script>
+<script src="../config.js?v=158" defer></script>
+<script src="../vendor/supabase.js?v=158" defer></script>
+<script src="../live.js?v=158" defer></script>
+<script src="sync.js?v=158" defer></script>
+<script src="bootstrap.js?v=158" defer></script>
 </body>
 </html>

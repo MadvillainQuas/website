@@ -10,8 +10,8 @@
 <title>The scoring app · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=157">
-<link rel="stylesheet" href="../kit/nav.css?v=157">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=158">
+<link rel="stylesheet" href="../kit/nav.css?v=158">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -52,6 +52,87 @@
   footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
     font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
   footer.foot a{color:var(--ink-3);text-decoration:none}
+  /* ==================== the deployment slide ====================
+     A pitch page for a league administrator deciding between two things:
+     letting us run their whole public presence, or keeping the site they have
+     and taking the statistics into it. Both are real products, so both are
+     shown rather than described — the widgets in Model 02 are the actual
+     widgets, loaded live from this same origin, and the site in Model 01 is
+     the actual site. A screenshot of a product this small a team ships is a
+     liability the week after it is taken; a frame around the live thing is
+     never out of date and doubles as proof it works. */
+  .pitch-head{padding:calc(var(--u)*2) 0 calc(var(--u)*3);border-bottom:1px solid var(--rule);
+    margin-bottom:calc(var(--u)*3)}
+  .pitch-head h2{font-family:var(--f-score);font-size:clamp(22px,4.2vw,38px);line-height:1;
+    text-transform:uppercase;margin:0;color:var(--ink);letter-spacing:0}
+  .pitch-head h2 em{font-style:normal;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .pitch-head p{margin:calc(var(--u)*2) 0 0;max-width:82ch}
+
+  /* minmax(0,1fr), NOT 1fr. A grid track's implicit minimum is min-content, so
+     a wide child — a framed page, a long unbroken URL — grows its own column
+     and pushes the whole slide sideways instead of being contained by it.
+     Measured before the fix: tracks of 404px and 458px inside a 1265px page,
+     with 219px of the second model hanging off the right edge. */
+  .models{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin-bottom:calc(var(--u)*4)}
+  .model{min-width:0}
+  .shot,.port,.live,.live iframe{max-width:100%}
+  .model{background:var(--ground);padding:calc(var(--u)*3);display:flex;flex-direction:column}
+  .model .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .model h3{font-family:var(--f-ui);font-weight:800;font-size:clamp(15px,2.1vw,20px);
+    line-height:1.15;margin:6px 0 0;color:var(--lume);text-transform:none;letter-spacing:0}
+  .model .who{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);
+    margin:calc(var(--u)*1.5) 0 0;border-left:2px solid var(--lume);padding-left:11px}
+  .model h4{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink-3);margin:calc(var(--u)*3) 0 calc(var(--u));font-weight:400}
+  .model ul{padding-left:16px;margin:0}
+  .model li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
+    margin-bottom:5px}
+  .model li b{color:var(--ink);font-weight:400}
+  .model .grow{flex:1}
+
+  /* A frame, so a live page reads as a product shot rather than as part of
+     this page. The label on the bar says whose site you are looking at, which
+     is the whole distinction between the two models. */
+  .shot{border:1px solid var(--rule-2);background:var(--panel);margin:calc(var(--u)*2) 0 0}
+  .shot .bar{display:flex;align-items:center;gap:6px;padding:7px 9px;
+    border-bottom:1px solid var(--rule);background:color-mix(in oklch,var(--lume) 5%,transparent)}
+  .shot .dot{width:7px;height:7px;border-radius:50%;background:var(--rule-2);flex:0 0 auto}
+  .shot .url{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;color:var(--ink-3);
+    margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shot .cap{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);padding:7px 9px;border-top:1px solid var(--rule)}
+
+  /* A whole page, scaled to fit. The iframe is rendered at desktop width and
+     shrunk by learn.js, because a page squeezed into 400px shows its phone
+     layout — true, but not what somebody buying a league site wants to see. */
+  .port{position:relative;overflow:hidden;background:var(--ground)}
+  .port iframe{position:absolute;top:0;left:0;width:1280px;height:860px;border:0;
+    transform-origin:0 0;pointer-events:none}
+
+  /* The widgets, at their real size and fully interactive — they are the
+     product being sold in Model 02, and a live one argues better than a
+     picture of one. */
+  .live iframe{display:block;width:100%;border:0;background:var(--ground)}
+  .live + .live{border-top:1px solid var(--rule)}
+
+  .spec{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
+  .spec > div{background:var(--ground);padding:11px 13px}
+  .spec .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--lume)}
+  .spec .v{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2)}
+  .spec .v b{color:var(--ink);font-weight:400}
+
+  @media (max-width:820px){
+    .models{grid-template-columns:1fr}
+    .spec{grid-template-columns:1fr;gap:0}
+    .spec .k{padding-bottom:0}
+    .spec .v{padding-top:5px;border-bottom:1px solid var(--rule)}
+  }
 </style>
 </head>
 <body>
@@ -73,15 +154,214 @@
 
   <div class="tabs-wrap">
     <div class="ep-tabs" role="tablist">
-      <button class="ep-tab on" data-p="use" role="tab">Use it for your competition</button>
+      <button class="ep-tab on" data-p="deploy" role="tab">What we deploy</button>
+      <button class="ep-tab" data-p="use" role="tab">Use it for your competition</button>
       <button class="ep-tab" data-p="how" role="tab">How the app works</button>
+    </div>
+  </div>
+
+  <!-- ================= the deployment slide =================
+       First tab, because the question a league administrator arrives with is
+       "what would you actually give us", and the answer is one of two shapes.
+       Everything framed below is the live product on this origin: the widgets
+       are the real widgets and the site is the real site, so this page cannot
+       drift from what it is selling. -->
+  <div class="pane on" id="pane-deploy">
+    <div class="pitch-head">
+      <h2>Two deployment models.<br><em>One statistical pipeline.</em></h2>
+      <p>
+        Every figure Epinoia publishes &mdash; on a competition site, inside a
+        widget on a club&rsquo;s own pages, or through the API &mdash; is
+        derived from the same append-only event log by the same engine. The two
+        models differ in one respect only: how much of the public surface we
+        host. The capture, the derivation and the distribution are identical.
+      </p>
+    </div>
+
+    <div class="models">
+
+      <!-- ---------- 01 ---------- -->
+      <div class="model">
+        <div class="eyebrow">Model 01</div>
+        <h3>Managed competition platform</h3>
+        <div class="who">
+          For a competition with no website, or one whose current site cannot
+          carry statistics without somebody retyping them.
+        </div>
+
+        <h4>Scope of deployment</h4>
+        <ul>
+          <li><b>Competition site</b> &mdash; standings, fixtures and results, club and
+            player profiles, statistical leaders, full season tables, knockout
+            brackets and season awards.</li>
+          <li><b>Club portals</b> &mdash; each club maintains its own roster, crest, home
+            venue and merchandise, under its own credentials.</li>
+          <li><b>Editorial</b> &mdash; match reports and competition news, with an approval
+            workflow and role-based access: platform administrator, league
+            administrator, statistician, news writer.</li>
+          <li><b>Statistical production</b> &mdash; box scores, play-by-play, lineup and
+            with-or-without analysis, shot charts and four-factor summaries.</li>
+          <li><b>Distribution</b> &mdash; the widgets, API and partner push described
+            opposite are included, so third-party sites are served from day one.</li>
+        </ul>
+
+        <div class="grow"></div>
+
+        <div class="shot">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="url">your-competition.org &mdash; hosted by Epinoia</span></div>
+          <div class="port" data-scale><iframe loading="lazy" tabindex="-1" scrolling="no"
+            title="A live competition site: standings, fixtures and news"
+            src="../l/?c=demo-league"></iframe></div>
+          <div class="cap">Competition site &mdash; live, not a screenshot</div>
+        </div>
+
+        <div class="shot">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="url">your-competition.org/player</span></div>
+          <div class="port" data-scale data-h="920"><iframe loading="lazy" tabindex="-1" scrolling="no"
+            title="A live player profile with season shot chart"
+            src="../p/?p=65485ad8-55a4-4daa-a74c-60723b3291ef"></iframe></div>
+          <div class="cap">Player profile &mdash; season shot chart, on/off, game log</div>
+        </div>
+      </div>
+
+      <!-- ---------- 02 ---------- -->
+      <div class="model">
+        <div class="eyebrow">Model 02</div>
+        <h3>Statistics production &amp; syndication</h3>
+        <div class="who">
+          For a competition that already has a website and intends to keep it.
+          We supply the data layer; your site stays yours.
+        </div>
+
+        <h4>Scope of deployment</h4>
+        <ul>
+          <li><b>Scoring application</b> &mdash; for your statisticians, on any device with
+            a browser. Nothing to install.</li>
+          <li><b>Embeddable components</b> &mdash; a live fixture and score ticker,
+            standings, statistical leaders and a per-game box score. Each is an
+            isolated frame: your stylesheet and ours cannot reach each other,
+            and neither can break the other.</li>
+          <li><b>Read-only JSON API</b> &mdash; keyed per consumer, with rate-limit
+            headers and pagination echoed on every response.</li>
+          <li><b>Partner push on finalisation</b> &mdash; each game posted to a partner the
+            moment it is final, in JSON, CSV or XML, with configurable
+            sections, name order and date format, for RealGM, Eurobasket or a
+            club&rsquo;s own importer.</li>
+          <li><b>No build step</b> &mdash; a component is one tag, pasted into whatever
+            your site is already built with.</li>
+        </ul>
+
+        <div class="grow"></div>
+
+        <div class="shot">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="url">your-own-site.org &mdash; our components, your pages</span></div>
+          <div class="live"><iframe loading="lazy" scrolling="no" height="132"
+            title="Live fixture and score ticker"
+            src="../embed/strip/?l=demo-league&amp;n=8"></iframe></div>
+          <div class="cap">Live ticker &mdash; flips to in-play without a refresh</div>
+        </div>
+
+        <div class="shot">
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="url">your-own-site.org/results</span></div>
+          <div class="live"><iframe loading="lazy" scrolling="no" height="250"
+            title="Live box score widget"
+            src="../embed/game/?g=f1fe5ba6-7360-461e-9fd2-c71c60fdb7e0"></iframe></div>
+          <div class="live"><iframe loading="lazy" scrolling="no" height="300"
+            title="Live standings widget"
+            src="../embed/table/?l=demo-league&amp;kind=standings"></iframe></div>
+          <div class="cap">Box score and standings &mdash; both interactive, right here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- what does not vary ---------- -->
+    <h2>Common to both models</h2>
+    <p>
+      The difference between the two is the public surface. Nothing below
+      changes between them, because there is only one pipeline underneath.
+    </p>
+    <div class="spec">
+      <div class="k">Capture</div>
+      <div class="v">A browser-based scoring application, local-first: the game
+        is held on the device and published as connectivity allows, so a hall
+        with no signal is not a lost fixture. Games arriving from <b>FIBA
+        LiveStats</b> or as <b>CSV</b> are indistinguishable downstream from
+        one scored in the app.</div>
+
+      <div class="k">Data model</div>
+      <div class="v">An <b>append-only event log</b>. A correction appends a
+        retraction rather than editing history; the log is replayed and every
+        derived figure moves together.</div>
+
+      <div class="k">Derivation</div>
+      <div class="v">One shared engine, executed identically in the scoring
+        app, on the public site and on the server. Two surfaces cannot
+        disagree, because there is only one place a number is worked out.</div>
+
+      <div class="k">Transport</div>
+      <div class="v">A live socket broadcast to every subscribed surface, with
+        polling retained as a fallback rather than as the primary path. A
+        public box score tracks the statistician&rsquo;s table under a second
+        behind, and corrections propagate on the same path.</div>
+
+      <div class="k">Integrity</div>
+      <div class="v">Standings, awards and knockout brackets are <b>recomputed
+        from the log</b>, never accumulated. Delete them and re-derive, and the
+        same answers come back &mdash; which is what makes a late correction to
+        a September game safe in April.</div>
+
+      <div class="k">Safeguarding</div>
+      <div class="v">Players recorded as minors are withheld from public
+        profiles, from the API and from every partner feed unless consent is
+        recorded &mdash; enforced by a <b>row-level policy on the players
+        table</b>, so every reader inherits it rather than each surface
+        remembering to filter.</div>
+
+      <div class="k">Migration</div>
+      <div class="v">A season already played can be imported rather than
+        rescored, so a competition does not start from an empty table.</div>
+    </div>
+
+    <h2>What it costs to find out</h2>
+    <p>
+      Nothing, and no account. The training game below is this same
+      application with saving switched off &mdash; score a few possessions on
+      the device you would actually use on a Saturday.
+    </p>
+
+    <div class="shot" style="max-width:420px">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">the scoring application</span></div>
+      <div class="port" data-scale data-w="430" data-h="820"><iframe loading="lazy" tabindex="-1"
+        scrolling="no" title="The live scoring application, training mode"
+        src="../score/?train=1&amp;guide=0"></iframe></div>
+      <div class="cap">Live &mdash; open it properly with the button below</div>
+    </div>
+
+    <div class="note">
+      There is deliberately no pricing table on this page. What a competition
+      needs varies enormously between a four-team midweek league and a national
+      division, and which of the two models fits is usually obvious within one
+      conversation. Tell us the shape of yours and you get a straight answer
+      rather than a tier you have to interpret.
+    </div>
+
+    <div class="cta">
+      <a class="pri" href="../contact/">Discuss a deployment</a>
+      <a href="../score/?train=1">Open the training game</a>
+      <a href="../embed/">See the widget gallery</a>
+      <a href="../api/">Read the API docs</a>
     </div>
   </div>
 
   <!-- The sales tab is FIRST and is what somebody lands on, because a reader
        arriving from the splash is deciding whether this is for them, not
        learning to drive it. -->
-  <div class="pane on" id="pane-use">
+  <div class="pane" id="pane-use">
     <h2>What a league gets</h2>
     <p>
       Live scoring, a public table that rebuilds itself from the games, player
@@ -172,8 +452,11 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=157" defer></script>
-<script src="learn.js?v=157" defer></script>
-<script src="../nav.js?v=157" defer></script>
+<script src="../config.js?v=158" defer></script>
+<script src="learn.js?v=158" defer></script>
+<script src="../nav.js?v=158" defer></script>
+<!-- three tabs now, and a fourth would run off a phone; the platform's
+     standard scroller keeps the strip one row high and reachable -->
+<script src="../xscroll.js?v=158" defer></script>
 </body>
 </html>

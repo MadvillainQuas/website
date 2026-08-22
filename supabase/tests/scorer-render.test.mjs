@@ -119,7 +119,7 @@ ok('escape closes it like any other overlay',
 ok('? and h open it', /case '\?': case 'h': openHelp\(\); break;/.test(src));
 ok('the pregame card offers it before a ball is thrown', /id="pgHelp"/.test(src));
 ok('...and the demo opens on it, once per load',
-   /if\(EP_TRAIN && !window\.__hvSeen\)\{[\s\S]{0,80}openHelp\(\);/.test(src),
+   /if\(EP_TRAIN && !window\.__hvSeen && EP_GUIDE\)\{[\s\S]{0,80}openHelp\(\);/.test(src),
    'every ?train=1 link lands here, so gating it at this screen covers all of them');
 
 /* ---- 6. it is two documents, not one with footnotes ----------------------- */
