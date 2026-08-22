@@ -30,6 +30,13 @@ const repo = join(here, '..', '..');
 
 const FILES = [
   {
+    src: join(repo, 'epinoia', 'membership.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'membership.js'),
+    global: 'EpinoiaMembership',
+    names: ['STATUSES', 'fold', 'sameName', 'normaliseMember', 'planMerge',
+            'eligibilityOf', 'runSync', 'restAdapter', 'tableAdapter']
+  },
+  {
     src: join(repo, 'epinoia', 'bpm.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'bpm.js'),
     global: 'EpinoiaBPM',

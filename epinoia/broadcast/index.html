@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- PUBLIC, and deliberately chrome-free: this page is a video layer, not a
+     web page. No nav, no gate, no footer, nothing that could appear on air. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Broadcast graphics · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<style>
+/* ============================================================================
+   A BROWSER SOURCE, NOT A WEB PAGE.
+
+   OBS, vMix, CasparCG and Singular all composite an HTML page over video, and
+   all of them honour a transparent page background. So the background here is
+   transparent by default and every scene paints only its own box — anything
+   that fills the viewport becomes a black rectangle over the game.
+
+   ?chroma=#00b140 paints a key colour instead, for a mixer that cannot take an
+   alpha channel. Deliberately opt-in: keying is a downgrade, and defaulting to
+   it would mean everyone with a modern mixer keys a colour for no reason.
+
+   FONT SIZES ARE IN vmin AND EVERY SCENE SCALES AS A UNIT. A graphic is
+   designed once at 1920x1080 and then someone renders it at 1280x720 for a
+   stream — a layout in px silently changes proportion, a layout that scales
+   does not.
+   ========================================================================= */
+:root{
+  --home:#93f2bf; --away:#8ff5ff;
+  --ink:#ffffff; --dim:rgba(255,255,255,.62);
+  --panel:rgba(8,14,12,.86); --edge:rgba(255,255,255,.14);
+  --lume:#93f2bf;
+  --u:1vmin;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:transparent;overflow:hidden}
+body{font-family:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
+  color:var(--ink);-webkit-font-smoothing:antialiased}
+body.chroma{background:var(--chroma)}
+
+/* Safe area: broadcast graphics sit inside the title-safe box, not against the
+   edge of the raster. ?safe=0 turns it off for a mixer that positions the
+   source itself. */
+#stage{position:absolute;inset:0;display:flex;padding:4vmin 5vmin}
+#stage.pos-bl{align-items:flex-end;justify-content:flex-start}
+#stage.pos-br{align-items:flex-end;justify-content:flex-end}
+#stage.pos-tl{align-items:flex-start;justify-content:flex-start}
+#stage.pos-tr{align-items:flex-start;justify-content:flex-end}
+#stage.pos-bc{align-items:flex-end;justify-content:center}
+#stage.pos-tc{align-items:flex-start;justify-content:center}
+#stage.pos-c {align-items:center;justify-content:center}
+#stage.nosafe{padding:0}
+
+/* Nothing renders until there is something true to show. A scorebug that
+   appears with 0–0 and then corrects itself has already been on air wrong. */
+#stage[data-ready="0"]{opacity:0}
+#stage{opacity:1;transition:opacity .25s ease}
+
+/* ---------------- scorebug ---------------- */
+.bug{display:flex;align-items:stretch;background:var(--panel);
+  border:1px solid var(--edge);border-radius:.8vmin;overflow:hidden;
+  box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+.bug .side{display:flex;align-items:center;gap:1.4vmin;padding:1.1vmin 1.8vmin}
+.bug .tag{font-weight:800;font-size:2.6vmin;letter-spacing:.06em;line-height:1}
+.bug .sc{font-weight:800;font-size:4.2vmin;line-height:1;font-variant-numeric:tabular-nums}
+.bug .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:.7vmin 2vmin;background:rgba(0,0,0,.34);border-left:1px solid var(--edge);
+  border-right:1px solid var(--edge);min-width:11vmin}
+.bug .clk{font-weight:800;font-size:3.2vmin;line-height:1.05;font-variant-numeric:tabular-nums}
+.bug .per{font-size:1.5vmin;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;
+  margin-top:.4vmin}
+.bug .rail{display:flex;flex-direction:column;justify-content:center;gap:.5vmin;
+  padding:0 1.2vmin;font-size:1.3vmin;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dim)}
+.bug .bonus{color:#ffd98a;font-weight:700}
+.bug .arrow{opacity:.9}
+.dots{display:flex;gap:.45vmin;margin-top:.5vmin}
+.dot{width:.9vmin;height:.9vmin;border-radius:50%;background:rgba(255,255,255,.22)}
+.dot.on{background:#ff5f6b}
+.tos{display:flex;gap:.45vmin;margin-top:.5vmin}
+.to{width:1.6vmin;height:.45vmin;border-radius:.3vmin;background:rgba(255,255,255,.22)}
+.to.on{background:var(--lume)}
+
+/* ---------------- lower third ---------------- */
+.l3{min-width:46vmin;max-width:70vmin;background:var(--panel);border:1px solid var(--edge);
+  border-radius:.8vmin;overflow:hidden;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
+.l3 .bar{height:.7vmin}
+.l3 .who{display:flex;align-items:baseline;gap:1.4vmin;padding:1.6vmin 2.2vmin .8vmin}
+.l3 .num{font-weight:800;font-size:2.4vmin;color:var(--dim)}
+.l3 .nm{font-weight:800;font-size:3.4vmin;letter-spacing:.01em;text-transform:capitalize}
+.l3 .tm{margin-left:auto;font-size:1.5vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim)}
+.l3 .line{display:flex;gap:2.6vmin;padding:0 2.2vmin 1.8vmin}
+.l3 .st{display:flex;flex-direction:column}
+.l3 .st b{font-weight:800;font-size:2.8vmin;line-height:1;font-variant-numeric:tabular-nums}
+.l3 .st i{font-style:normal;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim);margin-top:.5vmin}
+
+/* ---------------- team comparison ---------------- */
+.cmp{min-width:52vmin;background:var(--panel);border:1px solid var(--edge);
+  border-radius:.8vmin;padding:1.8vmin 2.2vmin;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
+.cmp .hd{display:flex;justify-content:space-between;font-weight:800;font-size:2.2vmin;
+  margin-bottom:1.4vmin}
+.cmp .r{display:grid;grid-template-columns:6vmin 1fr 6vmin;align-items:center;
+  gap:1.4vmin;margin-bottom:1vmin;font-variant-numeric:tabular-nums}
+.cmp .r b{font-weight:800;font-size:2vmin}
+.cmp .r .lab{text-align:center;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim)}
+.cmp .r .v{text-align:right}
+.cmp .r .v2{text-align:left}
+.cmp .track{grid-column:1/-1;height:.6vmin;background:rgba(255,255,255,.12);
+  border-radius:.3vmin;overflow:hidden;display:flex}
+.cmp .track span{display:block;height:100%}
+
+/* ---------------- final ---------------- */
+.fin{text-align:center;background:var(--panel);border:1px solid var(--edge);
+  border-radius:.8vmin;padding:2.6vmin 4vmin;box-shadow:0 .6vmin 2.4vmin rgba(0,0,0,.45)}
+.fin .lbl{font-size:1.5vmin;letter-spacing:.34em;text-transform:uppercase;color:var(--dim)}
+.fin .row{display:flex;align-items:center;gap:2.6vmin;margin-top:1.2vmin}
+.fin .t{font-weight:800;font-size:3vmin;text-transform:uppercase;letter-spacing:.04em}
+.fin .s{font-weight:800;font-size:5.4vmin;font-variant-numeric:tabular-nums}
+
+/* Everything below only exists when the page is opened by a person rather than
+   by a mixer, which is the only time a diagnostic is welcome on screen. */
+#diag{position:absolute;left:1vmin;top:1vmin;font:11px ui-monospace,monospace;
+  color:#9ff;background:rgba(0,0,0,.6);padding:5px 8px;border-radius:4px;display:none}
+body.debug #diag{display:block}
+</style>
+</head>
+<body>
+<div id="stage" data-ready="0"></div>
+<div id="diag"></div>
+
+<script src="../config.js?v=162" defer></script>
+<script src="../vendor/supabase.js?v=162" defer></script>
+<script src="../engine.js?v=162" defer></script>
+<script src="../live.js?v=162" defer></script>
+<script src="broadcast.js?v=162" defer></script>
+</body>
+</html>
