@@ -144,6 +144,12 @@ function buildState() {
          name and its meaning; squad is the whole bench. */
       onCourt: d ? d.onCourt[t].map(pid => playerCard(t, pid, d)) : [],
       squad: d ? (S.teams[t].players || []).map(p => playerCard(t, p.id, d)) : [],
+      /* The named squad, with no statistics attached — this is what a pre-game
+         graphic draws, and it exists before a single event does. */
+      roster: (S.teams[t].players || []).map(p => ({
+        id: p.id, number: p.num || '', name: p.name || '', pos: p.pos || '',
+        photo: PHOTOS[p.id] || null
+      })),
       totals: teamTotals(t, d)
     };
   };
@@ -156,7 +162,10 @@ function buildState() {
       status: game.status,
       competition: compName(),
       venue: game.venue || null,
-      attendance: game.attendance != null ? game.attendance : null
+      attendance: game.attendance != null ? game.attendance : null,
+      capacity: game.capacity != null ? game.capacity : null,
+      officials: game.officials || {},
+      tipoff: tipoffLabel()
     },
     clock: {
       period,
@@ -169,6 +178,7 @@ function buildState() {
       ? sub.state.arrow : (S.arrowInit != null ? S.arrowInit : null),
     home: teamOf(0),
     away: teamOf(1),
+    starters: S.starters || [[], []],
     lineups: bestLineups(d),
     lastPlay: lastPlay(d)
   };
@@ -241,11 +251,25 @@ function shortName(n) {
   return parts.length > 1 ? parts[parts.length - 1] : (parts[0] || '');
 }
 
+/* The tip-off, in the words a graphic uses — a time on the night, not an ISO
+   string. Left null when the fixture has no time recorded rather than invented,
+   because "19:30" on a card for a game with no confirmed time is a promise the
+   graphic has no business making. */
+function tipoffLabel() {
+  if (!game.tipoff_at) return null;
+  try {
+    const d = new Date(game.tipoff_at);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short',
+                                       hour: '2-digit', minute: '2-digit' });
+  } catch (_) { return null; }
+}
+
 function playerCard(t, pid, d) {
   const p = (S.teams[t].players || []).find(x => x.id === pid) || {};
   const s = d.stats[pid] || {};
   return {
-    id: pid, number: p.num || '', name: p.name || '',
+    id: pid, number: p.num || '', name: p.name || '', photo: PHOTOS[pid] || null,
     pts: s.pts || 0, reb: (s.or || 0) + (s.dr || 0), ast: s.ast || 0,
     stl: s.stl || 0, blk: s.blk || 0, pf: s.pf || 0, pm: s.pm || 0,
     fg: (s.p2m || 0) + (s.p3m || 0) + '-' + ((s.p2a || 0) + (s.p3a || 0)),
@@ -292,6 +316,87 @@ function mmss(ms) {
 }
 
 /* ---- scenes ----------------------------------------------------------- */
+/* ---- before a ball is thrown ------------------------------------------------
+   PRE-GAME GRAPHICS ARE THE HALF-HOUR THE PLATFORM WAS NOT SERVING.
+
+   A stream starts twenty minutes before tip and has nothing to show. That gap is
+   where lineups, officials and the matchup card belong, and all of it exists in
+   the database well before anybody touches a scoring app.
+
+   Two things have to be fetched that an in-play graphic never needs:
+
+     THE SQUADS. roster_snapshot is frozen at tip and does not exist yet, so
+     before a game the rosters come from the clubs' own published lists. After
+     tip the snapshot wins, because a roster edited on Tuesday must not rewrite
+     who was available on Saturday.
+
+     THE PHOTOGRAPHS. media rows are readable only once a league has approved
+     them, and a minor's needs recorded consent — both enforced in the database
+     rather than here. So if a photograph comes back, it is publishable, and if
+     one does not, the graphic shows initials and nobody has to remember why. */
+
+let PHOTOS = {};        // player id -> url, for whatever came back approved
+
+async function loadRosters() {
+  /* the snapshot is the truth once it exists */
+  if (game.roster_snapshot && game.roster_snapshot.teams) return;
+  const ids = [game.home_team_id, game.away_team_id].filter(Boolean);
+  if (!ids.length) return;
+  try {
+    const re = await api('roster_entries?team_id=in.(' + ids.join(',') + ')' +
+      '&active=eq.true&select=team_id,jersey,position,players(id,first_name,last_name)');
+    [game.home_team_id, game.away_team_id].forEach((tid, t) => {
+      const list = (re || [])
+        .filter(r => r.team_id === tid && r.players)     // a withheld minor comes back null
+        .map(r => ({
+          id: r.players.id,
+          name: ((r.players.first_name || '') + ' ' + (r.players.last_name || '')).trim(),
+          num: String(r.jersey || ''),
+          pos: r.position || ''
+        }))
+        .sort((a, b) => (+a.num || 99) - (+b.num || 99));
+      if (list.length) S.teams[t].players = list;
+    });
+  } catch (_) { /* a graphic with no squad shows no squad, and says so */ }
+}
+
+async function loadPhotos() {
+  const ids = [];
+  S.teams.forEach(tm => (tm.players || []).forEach(p => { if (p.id) ids.push(p.id); }));
+  if (!ids.length) return;
+  try {
+    /* One request for both squads. media is embedded through the foreign key, so
+       an unapproved or unconsented photograph simply is not in the answer —
+       there is no filtering to get wrong on this side. */
+    const rows = await api('players?id=in.(' + ids.join(',') + ')' +
+      '&select=id,photo_url,media:photo_media_id(storage_path)');
+    (rows || []).forEach(r => {
+      const stored = r.media && r.media.storage_path
+        ? CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.media.storage_path
+        : null;
+      /* An approved upload beats a pasted URL: it has been through moderation
+         and the consent check, and it is served from our own storage rather
+         than whatever host somebody linked to. */
+      const url = stored || r.photo_url || null;
+      if (url) PHOTOS[r.id] = url;
+    });
+  } catch (_) { /* initials all round */ }
+}
+
+/* A player's face, or their initials. Same rule as the crest: the fallback is
+   painted first and the photograph loads on top, so a 404 leaves a portrait
+   frame with initials in it rather than a hole in the graphic. */
+function faceHTML(p, colour) {
+  const url = PHOTOS[p.id];
+  const ini = String(p.name || '?').trim().split(/\s+/)
+    .map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  return '<span class="face" style="--tc:' + esc(colour) + '">' +
+    '<span class="ini">' + esc(ini) + '</span>' +
+    (url ? '<img src="' + esc(url) + '" alt="" ' +
+           'onload="this.parentNode.classList.add(\'hasface\')">' : '') +
+    '</span>';
+}
+
 /* ---- the crest --------------------------------------------------------- */
 /* THE CLUB'S OWN BADGE WHERE ITS INITIALS WERE, and the initials underneath it
    the whole time. A crest that 404s in a gallery must leave a badge behind
@@ -319,6 +424,91 @@ function squadPool(st) {
 }
 
 const SCENES = {
+  /* ---- pre-game ----------------------------------------------------------
+     ONE TEAM'S SQUAD, WITH FACES. Two of these — side=0 and side=1 — are the
+     twenty minutes before tip. Numbers in shirt order, because that is how a
+     commentator's notes are laid out and how the crowd will read the shirts. */
+  lineup(st) {
+    const T = side === 0 ? st.home : st.away;
+    const men = T.squad.length ? T.squad : T.roster;
+    if (!men.length) return '';
+    const starters = new Set(st.starters[side === 0 ? 0 : 1] || []);
+    return '<div class="card sq" style="--tc:' + esc(T.colour) + '">' +
+      '<div class="sqhd">' + crestHTML(T, 'lg') +
+        '<span class="nm">' + esc(T.name) + '</span>' +
+        '<span class="lbl">' + (starters.size ? 'squad' : 'squad') + '</span></div>' +
+      '<div class="sqgrid">' + men.slice(0, 14).map(p =>
+        '<div class="pl' + (starters.has(p.id) ? ' start' : '') + '">' +
+          faceHTML(p, T.colour) +
+          '<span class="n">' + esc(p.number) + '</span>' +
+          '<span class="nm">' + esc(shortName(p.name)) + '</span>' +
+        '</div>').join('') + '</div></div>';
+  },
+
+  /* BOTH STARTING FIVES, SIDE BY SIDE. The graphic every stream opens with —
+     and it adapts rather than lying: until the statistician has picked the
+     fives there are none recorded, so it shows the squads and says so. A
+     graphic that invented a starting five from the first five shirt numbers
+     would be wrong on air perhaps one game in three. */
+  starters(st) {
+    const picked = (st.starters[0] || []).length && (st.starters[1] || []).length;
+    const col = (T, ids) => {
+      const men = picked
+        ? T.squad.concat(T.roster).filter((p, i, a) =>
+            ids.includes(p.id) && a.findIndex(x => x.id === p.id) === i)
+        : (T.squad.length ? T.squad : T.roster).slice(0, 5);
+      return '<div class="fivecol" style="--tc:' + esc(T.colour) + '">' +
+        '<div class="fh">' + crestHTML(T, 'sm') +
+          '<span>' + esc(T.short) + '</span></div>' +
+        men.slice(0, 5).map(p =>
+          '<div class="pl">' + faceHTML(p, T.colour) +
+            '<span class="n">' + esc(p.number) + '</span>' +
+            '<span class="nm">' + esc(shortName(p.name)) + '</span>' +
+          '</div>').join('') + '</div>';
+    };
+    if (!st.home.squad.length && !st.home.roster.length) return '';
+    return '<div class="card five">' +
+      '<div class="hd"><span>' + (picked ? 'starting fives' : 'squads') + '</span>' +
+      '<i>' + esc(st.game.competition || '') + '</i></div>' +
+      '<div class="fives">' + col(st.home, st.starters[0] || []) +
+        '<span class="vs">v</span>' + col(st.away, st.starters[1] || []) + '</div></div>';
+  },
+
+  /* THE CREW. A federation prints the officials on the scoresheet and a
+     broadcast names them before tip; both read the same four fields. Nothing
+     is shown for a chair nobody filled in — an empty "commissioner —" row is
+     a hole on screen and a question on air. */
+  officials(st) {
+    const named = OFFICIAL_ROLES.filter(([k]) => st.game.officials[k]);
+    if (!named.length) return '';
+    const court = named.filter(([k]) =>
+      ['referee', 'umpire1', 'umpire2', 'commissioner'].includes(k));
+    const table = named.filter(([k]) => !court.includes(k));
+    const group = (title, rows) => rows.length
+      ? '<div class="ogrp"><div class="ot">' + title + '</div>' +
+        rows.map(([k, label]) =>
+          '<div class="orow"><span class="r">' + label + '</span>' +
+          '<span class="n">' + esc(st.game.officials[k]) + '</span></div>').join('') +
+        '</div>'
+      : '';
+    return '<div class="card offs"><div class="hd"><span>match officials</span>' +
+      '<i>' + esc(st.game.venue || st.game.competition || '') + '</i></div>' +
+      '<div class="ogrps">' + group('court', court) + group('table', table) + '</div></div>';
+  },
+
+  /* THE FIXTURE CARD. What a stream sits on while people are still arriving:
+     who, where, when, and how full the hall is expected to be. */
+  fixture(st) {
+    const side_ = (T) => '<div class="fx1" style="--tc:' + esc(T.colour) + '">' +
+      crestHTML(T, 'lg') + '<span class="t">' + esc(T.name) + '</span></div>';
+    const bits = [st.game.venue, st.game.tipoff].filter(Boolean);
+    return '<div class="card fixcard">' +
+      (st.game.competition ? '<div class="lbl">' + esc(st.game.competition) + '</div>' : '') +
+      '<div class="row">' + side_(st.home) + '<span class="vs">v</span>' + side_(st.away) + '</div>' +
+      (bits.length ? '<div class="meta">' + bits.map(esc).join('<span class="sep">·</span>') +
+        '</div>' : '') + '</div>';
+  },
+
   scorebug(st) {
     const dots = n => '<span class="dots">' +
       [1,2,3,4,5].map(i => '<i class="dot' + (i <= n ? ' on' : '') + '"></i>').join('') +
@@ -561,8 +751,8 @@ window.EpinoiaBroadcast = {
        graphics layer that goes black because a column it does not need is
        missing is the worst possible way to discover a deployment is behind.
        Score, clock and fouls are the graphic; everything else is garnish. */
-    const CORE = 'id,status,period,home_score,away_score,venue,' +
-      'roster_snapshot,starters,tip_winner,arrow_init,' +
+    const CORE = 'id,status,period,home_score,away_score,venue,tipoff_at,' +
+      'home_team_id,away_team_id,roster_snapshot,starters,tip_winner,arrow_init,' +
       'home:home_team_id(name,short_name,colour,logo_path),' +
       'away:away_team_id(name,short_name,colour,logo_path),' +
       'competitions(name,seasons(name,leagues(name)))';
@@ -596,6 +786,14 @@ window.EpinoiaBroadcast = {
     };
     render();
     listenForScenes();
+
+    /* Squads and faces are what the pre-game graphics are made of, and neither
+       is needed to draw a scorebug — so they load after the first paint and
+       the layer repaints when they arrive. A stream that is already on air
+       gets its scorebug immediately either way. */
+    loadRosters()
+      .then(() => { lastJSON = ''; render(); return loadPhotos(); })
+      .then(() => { lastJSON = ''; render(); });
 
     if (game.status !== 'final') {
       sub = L.subscriber({

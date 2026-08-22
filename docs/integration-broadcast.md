@@ -30,14 +30,15 @@ Set the source to **1920×1080** and let the mixer scale it; every dimension is 
 | parameter | | |
 |---|---|---|
 | `g` | the game id | **required** |
-| `scene` | `scorebug` · `lower` · `compare` · `final` | `scorebug` |
+| `scene` | pre-game: `fixture` `starters` `lineup` `officials` · live: `scorebug` `lower` `scorers` `plusminus` `rebounds` `assists` `lineups` `compare` · `final` | `scorebug` |
 | `pos` | `bl br tl tr bc tc c` | `bl` |
-| `side` | `0` home, `1` away — for `lower` | `0` |
+| `side` | `0` home, `1` away — for `lower` and `lineup` | `0` |
 | `pid` | player id for `lower`; omit for the leading scorer on court | — |
 | `home` / `away` | `#rrggbb`, override a club colour for contrast against the pitch | club colour |
 | `chroma` | `#00b140` — paint a key colour instead of transparency | off |
 | `safe` | `0` turns off title-safe padding when the mixer positions the source | on |
 | `scale` | `0.5`–`2` | `1` |
+| `live` | `1` takes the scene from the control room instead of the URL | off |
 | `debug` | `1` shows a transport readout. **Off air only.** | off |
 
 Notes that matter in a gallery:
@@ -139,3 +140,89 @@ a lower third.
 
 Nothing else has to be running: the graphics read the same live feed as the
 public box score, so if the statistician is scoring, the bug is live.
+
+---
+
+## Driving the mixer, not just feeding it
+
+A scene file lays the sources out once. After that, every take is still a
+director hunting an eyeball icon while the play they wanted to caption finishes
+without them. Both mixers that matter here can be driven from the control room,
+and neither needs a plugin.
+
+### OBS Studio 28 and later
+
+`obs-websocket` v5 is **built in**. In OBS: **Tools → WebSocket Server
+Settings**, tick *Enable*, copy the password into the control room, press
+**Connect**.
+
+Then **Build the graphics in the mixer** creates a scene called
+`Epinoia graphics` with one browser source per graphic — all at 1920×1080, the
+scorebug visible, everything else hidden, and *shutdown when not visible* set so
+a hidden layer is not holding a socket for two hours. It is safe to press again:
+a source that already exists is reconfigured rather than duplicated, which is
+what you want after changing a colour or switching fixture.
+
+With **take also switches the mixer** ticked, pressing a tile shows that graphic
+in OBS and hides the others.
+
+> Mixed content would normally block `ws://localhost` from a page served over
+> TLS, and that is where integrations like this usually die. Localhost is the
+> exception — browsers treat `127.0.0.1` as a potentially trustworthy origin —
+> which is the only reason this works at all.
+
+### vMix
+
+**Settings → Web Controller → Enable**, then point the control room at port
+8088. *Build the graphics* adds a browser input per graphic; take fires
+`OverlayInput1In`.
+
+One honest limitation: vMix answers without CORS headers, so this page can send
+commands but cannot read the reply. A command that failed looks exactly like one
+that worked, so the control room says a command was **sent** rather than
+claiming it succeeded — and running *Build the graphics* twice adds the inputs
+twice, because vMix cannot be asked what it already has.
+
+### Everything else
+
+CasparCG, Singular, Chyron, a hardware panel: use the **plain URL list**, or the
+polled JSON endpoint above. Everything here is a URL underneath.
+
+### None of it is load-bearing
+
+If OBS is not running, the password is wrong, or the production is on something
+else entirely, every graphic is still a URL and the control room still switches
+a live layer over the game's own channel. This is the fast path, not the only
+one — and a control room that became a single point of failure for the graphics
+would be worse than no control room.
+
+---
+
+## Before tip
+
+The half-hour before a game is the part that was not being served, and all of it
+exists in the database well before anybody opens a scoring app:
+
+| scene | shows |
+|---|---|
+| `fixture` | who, where and when — what a stream sits on while people arrive |
+| `starters` | both starting fives with faces, or both squads until the fives are picked |
+| `lineup&side=0` / `&side=1` | one club's full squad, in shirt order, with faces |
+| `officials` | the court crew and the table crew, as named on the fixture |
+
+Two things are worth knowing about how these behave:
+
+- **The squads come from the clubs' published rosters before tip**, and from the
+  fixture's frozen snapshot after it. A roster edited on Tuesday must not
+  rewrite who was available on Saturday.
+- **The starting-five graphic does not invent a five.** Until the statistician
+  has picked them there are none recorded, so it shows the squads and says
+  *squads*. Taking the first five shirt numbers would be wrong roughly one game
+  in three.
+
+**Photographs** come from the same approved media the player profiles use. A
+league approves them under *Photographs* in the league admin, and a minor's
+needs recorded consent — both enforced by the database, so if a photograph
+reaches a graphic it is publishable. Where there is none, the frame shows
+initials in the club's colour; a picture that fails to load leaves the initials
+rather than a hole.

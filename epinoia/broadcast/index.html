@@ -83,7 +83,13 @@ body.chroma{background:var(--chroma)}
   border:1px solid rgba(255,255,255,.13);
   border-radius:1vmin;
   box-shadow:0 .8vmin 3vmin rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-  backdrop-filter:blur(8px);
+  /* NO backdrop-filter. It was here for a frosted edge over video and it
+     washed the whole plate out — measured: the same card renders correctly the
+     moment it is disabled. The plate is already 93-96% opaque so the blur was
+     buying almost nothing, and a filter that samples what is behind it is the
+     property most likely to misbehave in an embedded browser compositing with
+     an alpha channel. A graphic that is legible everywhere beats one that is
+     prettier on the machine it was designed on. */
   overflow:hidden}
 
 /* ---------------- scorebug ---------------- */
@@ -201,6 +207,89 @@ body.chroma{background:var(--chroma)}
 .fin .comp{margin-top:1vmin;font-size:1.3vmin;letter-spacing:.2em;text-transform:uppercase;
   color:var(--dim)}
 
+/* ---------------- faces ----------------
+   Same rule as the crest: initials are painted first and the photograph loads
+   on top, so a picture that 404s leaves a portrait with initials in it rather
+   than a hole. A broadcast graphic with a gap where a face should be is worse
+   than one that never had faces. */
+.face{position:relative;display:block;width:100%;aspect-ratio:3/4;overflow:hidden;
+  border-radius:.5vmin;background:linear-gradient(180deg,
+    color-mix(in oklch, var(--tc) 20%, #0d1512), #0a1210);
+  border:1px solid color-mix(in oklch, var(--tc) 40%, transparent);
+  display:flex;align-items:center;justify-content:center}
+.face .ini{font-weight:800;font-size:2.2vmin;color:color-mix(in oklch, var(--tc) 75%, #fff);
+  letter-spacing:.02em}
+.face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:50% 18%;opacity:0;transition:opacity .2s ease}
+.face.hasface img{opacity:1}
+.face.hasface .ini{opacity:0}
+
+/* ---------------- one team's squad ---------------- */
+.sq{min-width:56vmin;max-width:84vmin;padding:1.6vmin 1.8vmin 1.4vmin}
+.sq .sqhd{display:flex;align-items:center;gap:1.4vmin;padding-bottom:1.1vmin;
+  margin-bottom:1.2vmin;border-bottom:.35vmin solid var(--tc)}
+.sq .sqhd .nm{font-weight:800;font-size:2.8vmin;text-transform:uppercase;letter-spacing:.03em}
+.sq .sqhd .lbl{margin-left:auto;font-size:1.25vmin;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--dim)}
+.sqgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:.9vmin}
+.sqgrid .pl{display:flex;flex-direction:column;gap:.45vmin;position:relative}
+.sqgrid .pl .n{position:absolute;top:.35vmin;left:.35vmin;z-index:2;
+  font-weight:800;font-size:1.3vmin;padding:.1vmin .5vmin;border-radius:.3vmin;
+  background:rgba(0,0,0,.66);color:#fff}
+.sqgrid .pl .nm{font-size:1.25vmin;font-weight:600;text-transform:capitalize;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* a starter is marked rather than separated — the squad is still the squad */
+.sqgrid .pl.start .face{box-shadow:0 0 0 .3vmin var(--tc)}
+
+/* ---------------- both fives ---------------- */
+.five{min-width:64vmin;max-width:92vmin;padding:1.6vmin 2vmin 1.5vmin}
+.five .hd{display:flex;align-items:baseline;justify-content:space-between;
+  padding-bottom:.9vmin;margin-bottom:1.3vmin;border-bottom:1px solid rgba(255,255,255,.12)}
+.five .hd span{font-weight:800;font-size:2vmin;text-transform:uppercase;letter-spacing:.06em}
+.five .hd i{font-style:normal;font-size:1.2vmin;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--dim)}
+.fives{display:flex;align-items:flex-start;gap:1.6vmin}
+.fivecol{flex:1 1 0;min-width:0}
+.fivecol .fh{display:flex;align-items:center;gap:.8vmin;margin-bottom:.9vmin;
+  padding-bottom:.6vmin;border-bottom:.3vmin solid var(--tc)}
+.fivecol .fh span{font-weight:800;font-size:1.8vmin;letter-spacing:.05em}
+.fivecol .pl{display:grid;grid-template-columns:4.6vmin 2.6vmin 1fr;align-items:center;
+  gap:.8vmin;margin-bottom:.6vmin}
+.fivecol .pl .face{width:4.6vmin;aspect-ratio:1;border-radius:.45vmin}
+.fivecol .pl .face .ini{font-size:1.4vmin}
+.fivecol .pl .n{font-weight:800;font-size:1.5vmin;color:var(--tc);text-align:right}
+.fivecol .pl .nm{font-size:1.7vmin;font-weight:600;text-transform:capitalize;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fives .vs{align-self:center;font-size:1.5vmin;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--dim)}
+
+/* ---------------- officials ---------------- */
+.offs{min-width:44vmin;max-width:64vmin;padding:1.6vmin 2vmin 1.3vmin}
+.offs .hd{display:flex;align-items:baseline;justify-content:space-between;
+  padding-bottom:.9vmin;margin-bottom:1.1vmin;border-bottom:1px solid rgba(255,255,255,.12)}
+.offs .hd span{font-weight:800;font-size:1.9vmin;text-transform:uppercase;letter-spacing:.06em}
+.offs .hd i{font-style:normal;font-size:1.15vmin;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--dim)}
+.ogrps{display:flex;gap:2.4vmin}
+.ogrp{flex:1 1 0;min-width:0}
+.ogrp .ot{font-size:1.15vmin;letter-spacing:.24em;text-transform:uppercase;color:var(--lume);
+  margin-bottom:.7vmin}
+.orow{display:flex;align-items:baseline;gap:.9vmin;margin-bottom:.5vmin}
+.orow .r{font-size:1.15vmin;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  min-width:9vmin}
+.orow .n{font-weight:700;font-size:1.75vmin;text-transform:capitalize}
+
+/* ---------------- the fixture card ---------------- */
+.fixcard{padding:2.4vmin 3.4vmin;text-align:center;min-width:52vmin}
+.fixcard .lbl{font-size:1.3vmin;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.fixcard .row{display:flex;align-items:center;justify-content:center;gap:2.6vmin;
+  margin:1.4vmin 0 1.1vmin}
+.fx1{display:flex;flex-direction:column;align-items:center;gap:.8vmin}
+.fx1 .t{font-weight:800;font-size:2.2vmin;text-transform:uppercase;letter-spacing:.03em}
+.fixcard .vs{font-size:1.6vmin;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.fixcard .meta{font-size:1.3vmin;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.fixcard .meta .sep{margin:0 .8vmin;opacity:.6}
+
 /* Everything below only exists when the page is opened by a person rather than
    by a mixer, which is the only time a diagnostic is welcome on screen. */
 #diag{position:absolute;left:1vmin;top:1vmin;font:11px ui-monospace,monospace;
@@ -212,11 +301,11 @@ body.debug #diag{display:block}
 <div id="stage" data-ready="0"></div>
 <div id="diag"></div>
 
-<script src="../config.js?v=170" defer></script>
-<script src="../vendor/supabase.js?v=170" defer></script>
-<script src="../engine.js?v=170" defer></script>
-<script src="../rt.js?v=170" defer></script>
-<script src="../live.js?v=170" defer></script>
-<script src="broadcast.js?v=170" defer></script>
+<script src="../config.js?v=176" defer></script>
+<script src="../vendor/supabase.js?v=176" defer></script>
+<script src="../engine.js?v=176" defer></script>
+<script src="../rt.js?v=176" defer></script>
+<script src="../live.js?v=176" defer></script>
+<script src="broadcast.js?v=176" defer></script>
 </body>
 </html>

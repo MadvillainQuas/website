@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*">
 <title>Broadcast control · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=170">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=176">
 <style>
 /* ============================================================================
    THE CONTROL ROOM.
@@ -77,6 +77,32 @@
     text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:6px}
   .bar select,.bar input{font-family:var(--f-micro);font-size:10px;padding:6px 8px;
     background:var(--panel);border:1px solid var(--rule);color:var(--ink)}
+  .grouphd{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+    margin-top:calc(var(--u)*2)}
+  .grouphd span{font-family:var(--f-ui);font-weight:800;font-size:12px;text-transform:uppercase;
+    letter-spacing:.14em;color:var(--lume)}
+  .grouphd i{font-style:normal;font-family:var(--f-micro);font-size:9px;color:var(--ink-3);
+    line-height:1.8}
+  .band{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+    gap:12px}
+  .exports{border:1px solid var(--rule);background:var(--panel);padding:14px;
+    margin-bottom:calc(var(--u)*3)}
+  .exports .et{font-family:var(--f-ui);font-weight:800;font-size:12px;text-transform:uppercase;
+    letter-spacing:.14em;color:var(--lume);margin-bottom:10px}
+  .erow{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+  .exports .en{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3)}
+  .exports .en b{color:var(--ink-2);font-weight:400}
+  .live-mixer{border-color:var(--rule-2)}
+  .mxin{font-family:var(--f-micro);font-size:10px;padding:6px 8px;background:var(--ground);
+    border:1px solid var(--rule);color:var(--ink)}
+  .mxstate{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-3);align-self:center}
+  .mxstate.on{color:var(--lume)} .mxstate.bad{color:var(--flare,#ff5f6b)}
+  .mxlab{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;
+    align-items:center;gap:6px;align-self:center}
+  #mxNote{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);
+    border:0;padding:0;margin-top:4px}
+  #mxNote b{color:var(--ink-2);font-weight:400}
   .msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
     border-left:2px solid var(--rule-2);padding-left:11px;margin:calc(var(--u)*2) 0}
   code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
@@ -107,11 +133,53 @@
 
   <div class="grid" id="grid"></div>
 
+  <!-- Into whatever the production actually runs. An OBS scene collection and a
+       vMix preset are both plain files, and importing one is two clicks — which
+       beats a websocket that needs a password, a port and a machine on the same
+       network as a sports hall. -->
+  <!-- THE FAST PATH. A scene file lays the sources out once; this drives the
+       mixer for the rest of the night, so a take is a button here rather than
+       a director hunting an eyeball icon while the play finishes. -->
+  <div class="exports live-mixer">
+    <div class="et">Connect a mixer</div>
+    <div class="erow">
+      <select id="mxKind" class="mxin">
+        <option value="obs">OBS Studio 28+</option>
+        <option value="vmix">vMix</option>
+      </select>
+      <input id="mxHost" class="mxin" value="localhost" style="width:104px" placeholder="host">
+      <input id="mxPort" class="mxin" value="4455" style="width:66px" placeholder="port">
+      <input id="mxPass" class="mxin" type="password" style="width:132px" placeholder="password">
+      <button class="ep-btn" id="mxConnect">Connect</button>
+      <span class="mxstate" id="mxState">not connected</span>
+    </div>
+    <div class="erow">
+      <button class="ep-btn" id="mxLayout" disabled>Build the graphics in the mixer</button>
+      <label class="mxlab"><input type="checkbox" id="mxDrive" checked> take also switches the mixer</label>
+    </div>
+    <div class="exports .en" id="mxNote"></div>
+  </div>
+
+  <div class="exports">
+    <div class="et">Or set it up by hand</div>
+    <div class="erow">
+      <button class="ep-btn" id="expObs">OBS scene collection</button>
+      <button class="ep-btn" id="expVmix">vMix preset</button>
+      <button class="ep-btn" id="expUrls">Plain URL list</button>
+    </div>
+    <div class="en">Every graphic as a 1920&times;1080 browser source, named and
+      laid out, with the scorebug visible and the rest hidden until you take
+      them. In OBS: <b>Scene Collection &rarr; Import</b>. In vMix:
+      <b>Add Input &rarr; Preset</b>. The URL list is for CasparCG, Singular or
+      anything else that takes an address.</div>
+  </div>
+
   <div class="msg" id="how"></div>
 </div>
 
-<script src="../../config.js?v=170" defer></script>
-<script src="../../vendor/supabase.js?v=170" defer></script>
-<script src="control.js?v=170" defer></script>
+<script src="../../config.js?v=176" defer></script>
+<script src="../../vendor/supabase.js?v=176" defer></script>
+<script src="mixers.js?v=176" defer></script>
+<script src="control.js?v=176" defer></script>
 </body>
 </html>

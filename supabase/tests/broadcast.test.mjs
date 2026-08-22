@@ -80,7 +80,13 @@ ok('...and so does the season export',
 console.log('\nthe control room cannot call a scene the layer does not have');
 
 const layerScenes = [...layer.matchAll(/^\s{2}([a-z]+)\(st\)\s*\{/gm)].map(m => m[1]);
-const ctlScenes = [...control.matchAll(/\['([a-z]+)',\s*'/g)].map(m => m[1]);
+/* Read the SCENES table alone. GROUPS sits beside it in the same shape, so a
+   file-wide match would call "pre", "live" and "post" scenes and then demand
+   the layer implement them. */
+const ctlTable = control.slice(control.indexOf('const SCENES = ['),
+                               control.indexOf('];', control.indexOf('const SCENES = [')));
+const ctlScenes = [...new Set([...ctlTable.matchAll(/\['([a-z]+)',\s*'(?:pre|live|post)'/g)]
+  .map(m => m[1]))];
 ok('the layer defines scenes', layerScenes.length >= 8, layerScenes.join(', '));
 ctlScenes.forEach(s =>
   ok(`  control's "${s}" exists in the layer`, layerScenes.includes(s)));
@@ -102,7 +108,7 @@ ok('the layer only listens when asked to', /const LIVE_SCENE = qp\.get\('live'\)
 
 /* The control room must never become a single point of failure for the
    graphics: every scene has a plain URL that works with this page shut. */
-ok('every scene also has a fixed URL', /function sceneURL\(scene, live\)/.test(control));
+ok('every scene also has a fixed URL', /function sceneURL\(scene, live, opts\)/.test(control));
 ok('...and the operator is told to prefer it when the hall is unreliable',
    /never depend on this page being open/.test(control));
 
@@ -168,6 +174,95 @@ ok('a name already recorded but not on the list survives',
 ok('the admin deactivates rather than deletes',
    /deactivate/.test(offUi) && !/\.delete\(\)/.test(offUi),
    'a referee who stops officiating still refereed fourteen games');
+
+/* ---- 10. pre-game works before a ball is thrown -------------------------- */
+console.log('\nthe twenty minutes before tip are served');
+
+const pre = ['fixture', 'starters', 'lineup', 'officials'];
+pre.forEach(sc => ok(`  the layer has a "${sc}" scene`, layerScenes.includes(sc),
+  'has: ' + layerScenes.join(', ')));
+ok('the control room groups them before tip',
+   /\['fixture',\s*'pre'/.test(control) && /\['officials',\s*'pre'/.test(control));
+ok('there are TWO squad screens, one per club',
+   (control.match(/\['lineup',\s*'pre'/g) || []).length === 2,
+   'one screen cannot show both squads at a readable size');
+ok('...told apart by side, not by scene name',
+   /keyOf = \(scene, opts\)/.test(control) && /\{ side: '1' \}/.test(control));
+
+ok('squads are fetched when there is no snapshot yet',
+   /if \(game\.roster_snapshot && game\.roster_snapshot\.teams\) return;/.test(layer),
+   'roster_snapshot is frozen at tip and does not exist before it');
+ok('...and the snapshot still wins once it exists',
+   /the snapshot is the truth once it exists/.test(layer));
+ok('the starting-five graphic does not invent a five',
+   /const picked = \(st\.starters\[0\] \|\| \[\]\)\.length/.test(layer),
+   'showing the first five shirt numbers as a starting five would be wrong ' +
+   'roughly one game in three');
+
+/* ---- 11. photographs, and the hole they must not leave ------------------- */
+console.log('\na photograph that fails leaves initials, not a gap');
+
+ok('photos come from the approved media row', /media:photo_media_id\(storage_path\)/.test(layer));
+ok('...with a pasted URL as the fallback', /stored \|\| r\.photo_url/.test(layer));
+ok('...and the platform decides who may be shown, not this file',
+   /an unapproved or unconsented photograph simply is not in the answer/.test(layer),
+   'filtering minors on the client would be a second implementation of ' +
+   'something the database already enforces');
+ok('initials are painted first and the photo loads on top',
+   /<span class="ini">/.test(layer) && /onload=[^>]*hasface/.test(layer));
+ok('...which the stylesheet keys off',
+   /\.face\.hasface img\{opacity:1\}/.test(layerH) &&
+   /\.face\.hasface \.ini\{opacity:0\}/.test(layerH));
+
+/* backdrop-filter washed every plate out — measured, then removed */
+ok('no card uses backdrop-filter',
+   !/\.card,\.bug\{[\s\S]*?backdrop-filter:blur/.test(layerH),
+   'it sampled the transparent page and lightened the whole graphic');
+
+/* ---- 12. driving the mixer ----------------------------------------------- */
+console.log('\nthe control room drives the mixer, and survives without one');
+
+const mix = rd('epinoia', 'broadcast', 'control', 'mixers.js');
+ok('obs-websocket v5 is spoken directly', /op === 0/.test(mix) && /op === 2/.test(mix));
+ok('...with the documented challenge',
+   /sha256b64\(password \+ salt\)/.test(mix) && /sha256b64\(secret \+ challenge\)/.test(mix));
+ok('...and the primitive is checked against known digests, not assumed',
+   /checked against known SHA-256/.test(mix));
+ok('a request cannot hang a button for ever', /timed out/.test(mix));
+ok('building the layout is re-runnable',
+   /RE-RUNNABLE ON PURPOSE/.test(mix) && /SetInputSettings/.test(mix),
+   'a director presses it twice; the second press must not duplicate the sources');
+ok('hidden sources shut down rather than holding a socket',
+   /shutdown: true/.test(mix));
+
+ok('vMix is driven over its web controller', /OverlayInput/.test(mix));
+ok('...and the page does not pretend to know it worked',
+   /a command that fails looks exactly\s+like one that worked/.test(mix),
+   'vMix answers without CORS headers, so the reply cannot be read');
+
+ok('the CSP permits a local mixer socket',
+   /ws:\/\/localhost:\*/.test(rd('epinoia', 'broadcast', 'control', 'index.html')));
+ok('...and why that is allowed at all is written down',
+   /potentially trustworthy origin/.test(mix));
+
+ok('a missing mixer is not a failure',
+   /NOTHING HERE IS LOAD-BEARING/.test(mix));
+ok('...and take never interrupts a game to complain about OBS',
+   /the live layer has already changed/.test(rd('epinoia', 'broadcast', 'control', 'control.js')));
+
+/* ---- 13. the exported files are the same rundown -------------------------- */
+console.log('\nthe exports describe the same graphics');
+
+const ctl = rd('epinoia', 'broadcast', 'control', 'control.js');
+ok('an OBS scene collection is written', /function obsCollection\(\)/.test(ctl));
+ok('...every source at 1920x1080', /width: 1920, height: 1080/.test(ctl));
+ok('...with only the scorebug visible',
+   /visible: keyOf\(key, opts\) === 'scorebug'/.test(ctl));
+ok('a vMix preset is written', /function vmixPreset\(\)/.test(ctl));
+ok('...describing inputs only',
+   /would overwrite the cameras/.test(ctl),
+   'a preset describing the whole production is a thing you do to somebody once');
+ok('and a plain URL list, for everything else', /function urlList\(\)/.test(ctl));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
