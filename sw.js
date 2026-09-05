@@ -108,6 +108,15 @@ self.addEventListener('fetch', (event) => {
         return; // let the browser handle it normally
     }
 
+    // The share endpoint, for a different reason: its GET returns the whole
+    // ~400 KB game payload, and stale-while-revalidate would copy every share
+    // anyone opened into Cache Storage and keep it there until the next
+    // version bump. Shares are immutable, so the function's own
+    // Cache-Control (max-age=300) is the right and much cheaper layer.
+    if (/\.supabase\.co$/i.test(url.hostname) && /\/functions\/v1\/share\b/i.test(url.pathname)) {
+        return; // let the browser handle it normally
+    }
+
     // NEVER cache GitHub API responses. We use the Contents API to:
     //   • read the current `sha` of a file right before writing back to it
     //   • read user/admin config files freshly when a PAT is available

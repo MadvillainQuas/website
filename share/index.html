@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game stats — Prophesy Scouting</title>
+
+    <!-- A share link is sent to one person. It is not a page anybody should
+         arrive at from a search result, and the game data behind it is not
+         ours to publish at large. -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <link rel="apple-touch-icon" href="../logo.jpg">
+    <meta name="theme-color" content="#0a0b0f">
+
+    <!-- ============================================================
+         THE CARVE-OUT IS THE ABSENCE, AND IT IS DELIBERATE.
+         gate.js and topnav.js are NOT loaded here, and there is no
+         sessionStorage auth redirect. Every other page on this site
+         has all three; this one must not, because the entire point
+         is that a coach with no invite code can open it. Pasting the
+         standard <head> block in here would silently turn every
+         share link into a locked door. Enforced by CI —
+         .github/workflows/guard.yml, same rule as /epinoia/.
+
+         There is no service worker registration either: a share is
+         immutable, the Edge Function already sets a sane
+         Cache-Control on it, and caching a stranger's game data in
+         the coach's browser storage buys nothing.
+         ============================================================ -->
+    <style>
+        :root {
+            --bg: #0a0b0f; --panel: #12141b; --line: #232733;
+            --fg: #e8eaf0; --mut: #8892a8; --accent: #00d4ff; --warn: #ffb454;
+            --bar-h: 58px;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--fg);
+            font-family: 'Space Grotesk', ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+
+        #sh-bar {
+            position: fixed; top: 0; left: 0; right: 0; height: var(--bar-h); z-index: 40;
+            display: flex; align-items: center; gap: 14px; padding: 0 16px;
+            background: linear-gradient(180deg, #12141b 0%, #0d0f15 100%);
+            border-bottom: 1px solid var(--line); overflow: hidden;
+        }
+        #sh-bar .brand { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+        #sh-bar .brand img { width: 26px; height: 26px; border-radius: 5px; }
+        #sh-bar .brand span { font-size: .78rem; letter-spacing: .13em; text-transform: uppercase; color: var(--mut); }
+        .sh-score { display: flex; align-items: baseline; gap: 9px; min-width: 0; flex: 1 1 auto; }
+        .sh-score .t { font-weight: 600; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sh-score .n { font-size: 1.2rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+        .sh-score .d { color: var(--mut); }
+        .sh-meta { flex: 0 0 auto; color: var(--mut); font-size: .72rem; text-align: right; line-height: 1.35; }
+        .sh-chip { display: inline-block; border: 1px solid var(--line); border-radius: 3px;
+            padding: 1px 6px; font-size: .62rem; letter-spacing: .07em; text-transform: uppercase; }
+        .sh-chip.final { color: var(--accent); border-color: rgba(0,212,255,.4); }
+        .sh-chip.live  { color: var(--warn); border-color: rgba(255,180,84,.45); }
+
+        #sh-frame { position: fixed; left: 0; right: 0; top: var(--bar-h); bottom: 0;
+            width: 100%; height: calc(100vh - var(--bar-h)); border: 0; display: block; background: var(--bg); }
+        #sh-frame.hidden { display: none; }
+
+        #sh-stage { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+            justify-content: center; background: var(--bg); padding: 24px; }
+        #sh-stage.gone { display: none; }
+        .sh-card { max-width: 560px; text-align: center; }
+        .sh-card h1 { font-size: 1.25rem; margin: 0 0 10px; font-weight: 650; }
+        .sh-card p { color: var(--mut); font-size: .9rem; line-height: 1.6; margin: 0 0 8px; }
+        .sh-card code { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; color: var(--fg); }
+        .sh-spin { width: 34px; height: 34px; margin: 0 auto 18px; border: 3px solid var(--line);
+            border-top-color: var(--accent); border-radius: 50%; animation: sh-rot .85s linear infinite; }
+        @keyframes sh-rot { to { transform: rotate(360deg); } }
+        .sh-note { margin-top: 18px; padding: 11px 14px; border: 1px solid var(--line);
+            border-radius: 7px; background: var(--panel); color: var(--fg); font-size: .86rem; text-align: left; }
+        .sh-note b { color: var(--mut); font-weight: 600; font-size: .7rem; letter-spacing: .08em;
+            text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+        @media (max-width: 720px) {
+            :root { --bar-h: 52px; }
+            #sh-bar { gap: 9px; padding: 0 10px; }
+            #sh-bar .brand span, .sh-meta { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="sh-bar">
+    <div class="brand"><img src="../logo.jpg" alt=""><span>Prophesy</span></div>
+    <div class="sh-score" id="sh-score"></div>
+    <div class="sh-meta" id="sh-meta"></div>
+</div>
+
+<iframe id="sh-frame" class="hidden"
+        src="../GAMEVIS_with_ShotChart_v2_6.html?embedded=1"
+        title="Game statistics" allow="clipboard-write; fullscreen"></iframe>
+
+<div id="sh-stage">
+    <div class="sh-card" id="sh-card">
+        <div class="sh-spin"></div>
+        <h1 id="sh-h">Loading game</h1>
+        <p id="sh-p">Fetching the shared statistics…</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ─────────────────────────────────────────────────────────────────────
+    // WHAT THIS PAGE IS.
+    //
+    // It is a second wrapper around the SAME visualiser that gamevis.html
+    // embeds — not a re-implementation of it. That is the whole design: a
+    // share therefore has every tab the app has, and gains new ones when the
+    // app does, because it IS the app. A bespoke read-only renderer would
+    // have been half the features on the day it shipped and a quarter of them
+    // a year later, with nothing to tell you which.
+    //
+    // The only thing this wrapper does differently from gamevis.html is where
+    // the game data comes from: a stored snapshot fetched by share id, rather
+    // than a live pull from Genius Sports. So the interceptors below hand the
+    // visualiser the stored payload wherever gamevis.html would have gone to
+    // the network.
+    // ─────────────────────────────────────────────────────────────────────
+
+    const SUPABASE_URL = 'https://hhvofgqqadtyvcjudhjx.supabase.co';
+    // Overridable so the page can be pointed at a local `supabase functions
+    // serve`, or at a fixture, without editing this file.
+    const SHARE_FN = (typeof window !== 'undefined' && window.PROPHESY_SHARE_FN)
+        || (SUPABASE_URL + '/functions/v1/share');
+
+    const frame    = document.getElementById('sh-frame');
+    const stage    = document.getElementById('sh-stage');
+    const card     = document.getElementById('sh-card');
+    const scoreEl  = document.getElementById('sh-score');
+    const metaEl   = document.getElementById('sh-meta');
+
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    function fail(heading, detail, note) {
+        card.innerHTML = '<h1>' + esc(heading) + '</h1><p>' + esc(detail) + '</p>' +
+            (note ? '<p><code>' + esc(note) + '</code></p>' : '');
+        stage.classList.remove('gone');
+        frame.classList.add('hidden');
+    }
+
+    function postToFrame(type, data) {
+        if (!frame || !frame.contentWindow) return;
+        try {
+            frame.contentWindow.postMessage(
+                Object.assign({ source: 'slb-parent-app', type: type }, data || {}), '*');
+        } catch (e) { /* frame gone */ }
+    }
+
+    // ── the visualiser's own password prompt ────────────────────────────
+    // The app ships with a built-in unlock overlay and defends itself against
+    // the bypass globals, so the only legitimate way past it is the password
+    // — exactly what gamevis.html and lineup.html already do. config/lineup.json
+    // is a public file BY DESIGN and says so in its own _comment field
+    // ("PUBLIC FILE … acceptable trade-off for shared coaching access"), so
+    // reading it here exposes nothing that was not already world-readable at
+    // a URL. If that ever stops being acceptable, rotate the analyser password
+    // — this page will pick the new one up with no change.
+    async function unlockVisualiser() {
+        try {
+            const res = await fetch('../config/lineup.json', { cache: 'no-cache' });
+            if (res.ok) {
+                const cfg = await res.json();
+                if (cfg && typeof cfg.password === 'string' && cfg.password) {
+                    postToFrame('SAVED_PASSWORD', { password: cfg.password });
+                    return true;
+                }
+            }
+        } catch (_) { /* fall through */ }
+        postToFrame('NO_SAVED_PASSWORD');
+        return false;
+    }
+
+    // Wait for the in-iframe visualiser to finish booting. Mirrors
+    // gamevis.html's whenVisualizerReady, minus the JSON-patch condition —
+    // this page installs its own interceptors rather than waiting for the
+    // live-fetch ones.
+    function whenVisualiserReady(timeoutMs) {
+        const deadline = Date.now() + (timeoutMs || 25000);
+        return new Promise((resolve) => {
+            (function tick() {
+                let v = null;
+                try { v = frame.contentWindow && frame.contentWindow.fibaVisualizer; } catch (_) {}
+                if (v && typeof v.processGame === 'function' &&
+                    typeof v.generateBoxscoreHtmlFromJson === 'function') return resolve(v);
+                if (Date.now() > deadline) return resolve(null);
+                setTimeout(tick, 200);
+            })();
+        });
+    }
+
+    // Same helper gamevis.html uses — pull the shots out of the feed so the
+    // Shot Chart tab is populated without anyone uploading sc.html.
+    function applyShotChartFromJson(json, v) {
+        try {
+            if (!v || typeof v.parseShotChartJson !== 'function') return 0;
+            const shots = v.parseShotChartJson(json);
+            if (Array.isArray(shots) && shots.length) {
+                v.shotChartLoadedData = shots;
+                try { v.shotChartHTML = JSON.stringify(json); } catch (_) {}
+                return shots.length;
+            }
+        } catch (_) {}
+        return 0;
+    }
+
+    // Point every per-game fetch path at the snapshot. A share must never
+    // reach out to Genius Sports: the feed sends no CORS header (which is what
+    // supabase/functions/livestats exists to solve for the live app), old
+    // matches stop being served, and a link sent on Tuesday should still show
+    // Tuesday's numbers on Friday.
+    function installSnapshotInterceptors(v, gameId, payload) {
+        try {
+            if (typeof v.selectGame === 'function' && !v._shareSelectPatched) {
+                v.selectGame = async function (id) { renderInto(v, gameId, payload); };
+                v._shareSelectPatched = true;
+            }
+            if (typeof v.fetchWithProxy === 'function' && !v._shareFetchPatched) {
+                v.fetchWithProxy = async function (url) {
+                    const m = String(url || '').match(/\/(\d{5,12})\/(bs|pbp|sc)\.html(?:[?#].*)?$/i);
+                    if (m) {
+                        const kind = m[2].toLowerCase();
+                        if (kind === 'bs')  return v.generateBoxscoreHtmlFromJson(payload);
+                        if (kind === 'pbp') return v.generatePbpHtmlFromJson(payload);
+                        if (kind === 'sc')  return JSON.stringify(payload);
+                    }
+                    return '';   // schedule pages have no meaning in a share
+                };
+                v._shareFetchPatched = true;
+            }
+            if (typeof v._prophesyGetCachedJson !== 'function') {
+                v._prophesyGetCachedJson = async () => payload;
+            }
+        } catch (e) { console.warn('[Share] interceptor install failed:', e); }
+    }
+
+    // Strip the controls that lead nowhere for a recipient. The visualiser is
+    // built around loading YOUR files — "Back to Upload", the upload drop-box,
+    // the upload entries in the mobile nav and FAB. In a share there is
+    // nothing to go back to and nothing to upload: every one of them is a dead
+    // end that makes the page look broken rather than finished. Injected as a
+    // stylesheet into the frame (same-origin, same trick gamevis.html uses to
+    // hide its Tauri-era bits), with a MutationObserver because some of this
+    // chrome is rebuilt when the app re-renders.
+    function stripUploadChrome() {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const apply = () => {
+            if (doc.getElementById('sh-strip')) return;
+            const st = doc.createElement('style');
+            st.id = 'sh-strip';
+            st.textContent = `
+                #nav-back-upload, #nav-back-browser,
+                .upload-box, .fab-mini, #status-view,
+                .bottom-nav-item[data-view="upload"], .drawer-nav-item[data-view="upload"] { display: none !important; }
+            `;
+            (doc.head || doc.documentElement).appendChild(st);
+        };
+        apply();
+        try {
+            new MutationObserver(apply).observe(doc.documentElement, { childList: true, subtree: true });
+        } catch (_) {}
+        // The upload entries in the mobile nav/drawer carry no data-view
+        // attribute in every build, so catch them by their label too.
+        try {
+            doc.querySelectorAll('.bottom-nav-item, .drawer-nav-item').forEach((el) => {
+                if (/upload/i.test(el.textContent || '')) el.style.display = 'none';
+            });
+        } catch (_) {}
+    }
+
+    // The render sequence, kept deliberately identical to the one in
+    // gamevis.html's patched selectGame. If that one gains a step, this needs
+    // the same step — it is the one piece of genuine duplication in this page.
+    function renderInto(v, gameId, json) {
+        v.fibaJsonData = json;
+        v.boxscoreHTML = v.generateBoxscoreHtmlFromJson(json);
+        v.pbpHTML      = v.generatePbpHtmlFromJson(json);
+        applyShotChartFromJson(json, v);
+        try { if (typeof v.closeGameList === 'function') v.closeGameList(); } catch (_) {}
+        v.processGame();
+        try { frame.contentWindow.__lastGameJsonId = gameId; } catch (_) {}
+    }
+
+    // Answer the app's parent-bridge fetch requests from the snapshot, so any
+    // in-app path that asks the parent for data gets the share, not the network.
+    window.addEventListener('message', function (ev) {
+        const m = ev.data;
+        if (!m || typeof m !== 'object' || m.source !== 'gamevis-app') return;
+        if (!window.__sharePayload) return;
+        if (m.type === 'FETCH_URLS_REQUEST') {
+            postToFrame('URL_FETCH_RESULT', { payload: { jsonData: window.__sharePayload } });
+        } else if (m.type === 'FETCH_JSON_REQUEST') {
+            postToFrame('JSON_FETCH_RESULT', { payload: { jsonData: window.__sharePayload } });
+        }
+    });
+
+    function paintHeader(meta) {
+        const home = meta.home_name || 'Home', away = meta.away_name || 'Away';
+        const hs = meta.home_score == null ? '' : meta.home_score;
+        const as = meta.away_score == null ? '' : meta.away_score;
+        scoreEl.innerHTML =
+            '<span class="t">' + esc(home) + '</span><span class="n">' + esc(hs) + '</span>' +
+            '<span class="d">&ndash;</span><span class="n">' + esc(as) + '</span>' +
+            '<span class="t">' + esc(away) + '</span>' +
+            '<span class="sh-chip ' + (meta.is_final ? 'final">Final' : 'live">In progress') + '</span>';
+
+        let when = '';
+        try { when = new Date(meta.created_at).toLocaleString(undefined,
+            { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) {}
+        metaEl.innerHTML =
+            (meta.competition ? esc(meta.competition) + '<br>' : '') +
+            'Shared ' + esc(when) +
+            (meta.is_final ? '' : ' &middot; snapshot of a game in progress');
+
+        document.title = home + ' ' + hs + '–' + as + ' ' + away + ' — Prophesy Scouting';
+    }
+
+    async function boot() {
+        const id = new URLSearchParams(location.search).get('g') || '';
+        if (!/^[A-Za-z0-9_-]{10,40}$/.test(id)) {
+            return fail('That link is incomplete',
+                'A share link needs its id — the ?g=… part at the end. Ask whoever sent it to paste the whole link.');
+        }
+
+        let res, body;
+        try {
+            res = await fetch(SHARE_FN + '?g=' + encodeURIComponent(id), { cache: 'no-cache' });
+            body = await res.json();
+        } catch (e) {
+            return fail('Could not reach the server', 'The stats service did not respond. Try again in a moment.', String(e));
+        }
+        if (res.status === 404) {
+            return fail('This share no longer exists',
+                'The link may have been removed, or the id mistyped. Ask for a fresh link.');
+        }
+        if (!res.ok || !body || !body.payload) {
+            return fail('Could not load this game', (body && body.error) || ('HTTP ' + res.status));
+        }
+
+        const meta = body.meta || {};
+        const payload = body.payload;
+        window.__sharePayload = payload;
+        paintHeader(meta);
+
+        // Unlock, then wait for boot, then render. Unlock is fired first
+        // because the overlay auto-submits on receipt and the visualiser is
+        // only reachable once it clears.
+        unlockVisualiser();
+        const v = await whenVisualiserReady(25000);
+        if (!v) {
+            return fail('The visualiser did not start',
+                'The stats loaded but the viewer failed to initialise. A refresh usually fixes it.');
+        }
+
+        installSnapshotInterceptors(v, meta.game_id, payload);
+        try {
+            renderInto(v, meta.game_id, payload);
+        } catch (e) {
+            console.warn('[Share] render error:', e);
+            return fail('Could not display this game', 'The data loaded but the viewer could not draw it.', String(e));
+        }
+
+        stripUploadChrome();
+        frame.classList.remove('hidden');
+        stage.classList.add('gone');
+
+        if (meta.note) {
+            // Shown once, over the app, then dismissed on click — the sender's
+            // words should not be a permanent band across the stats.
+            const n = document.createElement('div');
+            n.className = 'sh-note';
+            n.style.cssText = 'position:fixed;right:16px;bottom:16px;max-width:320px;z-index:50;cursor:pointer';
+            n.innerHTML = '<b>Note from sender</b>' + esc(meta.note);
+            n.title = 'Click to dismiss';
+            n.addEventListener('click', () => n.remove());
+            document.body.appendChild(n);
+        }
+    }
+
+    boot();
+})();
+</script>
+</body>
+</html>

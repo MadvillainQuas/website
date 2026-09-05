@@ -6,7 +6,7 @@ name: guard
 
 on:
   push:
-    paths: ['epinoia/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
+    paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
   pull_request:
   workflow_dispatch:
 
@@ -25,6 +25,25 @@ jobs:
             exit 1
           fi
           echo "ok — no gate references under epinoia/"
+
+      # A share link is sent to a coach who has no invite code and never will.
+      # The carve-out is the ABSENCE of gate.js — and an absence is exactly what
+      # a well-meaning "make every page consistent" edit restores, turning every
+      # link already sent into a locked door with nothing to announce it.
+      - name: A share link must open for someone with no invite code
+        run: |
+          if grep -rnE --exclude-dir=vendor '<script[^>]+src=["'"'"'][^"'"'"']*(gate|topnav)\.js|import[^;]+["'"'"'][^"'"'"']*(gate|topnav)\.js' share/; then
+            echo "::error::gate.js / topnav.js is LOADED under share/ — every share link would demand an invite code."
+            exit 1
+          fi
+          # The other half of the same door: gamevis.html bounces visitors with
+          # no prophesy_auth_v2 session back to index.html. Copied into the
+          # share page it would lock out precisely the people shares exist for.
+          if grep -rn 'prophesy_auth_v2' share/; then
+            echo "::error::the sign-in redirect is present under share/ — recipients would be bounced to the login page."
+            exit 1
+          fi
+          echo "ok — share pages carry no gate and no auth redirect"
 
       - name: No service-role key may ship to a browser
         run: |

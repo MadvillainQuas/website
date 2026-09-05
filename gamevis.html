@@ -420,6 +420,31 @@
             min-height: 18px;
             line-height: 1.5;
         }
+
+        /* ── share dialog ─────────────────────────────────────────────── */
+        .gv-share-modal {
+            position: fixed; inset: 0; z-index: 120; display: flex;
+            align-items: center; justify-content: center; padding: 24px;
+            background: rgba(6, 8, 12, 0.72); backdrop-filter: blur(3px);
+        }
+        .gv-share-modal[aria-hidden="true"] { display: none; }
+        .gv-share-box {
+            width: 100%; max-width: 520px; background: #12141b;
+            border: 1px solid #232733; border-radius: 12px; padding: 22px 22px 18px;
+            box-shadow: 0 24px 60px rgba(0,0,0,.55);
+        }
+        .gv-share-box h2 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 650; }
+        .gv-share-box p { margin: 0 0 14px; color: #8892a8; font-size: .84rem; line-height: 1.55; }
+        .gv-share-note-label {
+            display: block; margin: 0 0 6px; color: #8892a8;
+            font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+        }
+        .gv-share-linkrow { display: flex; gap: 8px; margin-bottom: 14px; }
+        .gv-share-linkrow .gv-input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+        .gv-share-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .gv-btn-ghost { background: transparent !important; border: 1px solid #232733 !important; color: #8892a8 !important; }
+        .gv-share-warn { margin: 12px 0 0 !important; color: #ffb454 !important; font-size: .78rem !important; }
+        .gv-share-warn:empty { display: none; }
     </style>
 </head>
 <body>
@@ -501,6 +526,54 @@
                 <option value="60">60 s</option>
             </select>
             <span id="gv-live-last" class="gv-comp-meta" style="white-space: nowrap;"></span>
+        </div>
+
+        <button type="button" id="gv-share" class="gv-toggle"
+                title="Create a link to this game that opens for anyone — no invite code needed. Sends a frozen snapshot of the stats as they are right now.">
+            ⇗ Share
+        </button>
+    </div>
+
+    <!-- ============================================================
+         SHARE DIALOG — two states in one box.
+           compose : the note is asked for BEFORE the share is created,
+                     because the note is written with the snapshot and
+                     there is no endpoint to amend one afterwards. A note
+                     field sitting next to a finished link would look
+                     editable and silently do nothing.
+           done    : the link, shown as selectable text as well as behind
+                     a copy button — clipboard writes fail silently in
+                     some browsers and on insecure origins, and a link you
+                     cannot select is a dead end.
+         ============================================================ -->
+    <div id="gv-share-modal" class="gv-share-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="gv-share-title">
+        <div class="gv-share-box">
+            <h2 id="gv-share-title">Share this game</h2>
+
+            <div id="gv-share-compose">
+                <p id="gv-share-sub">Creates a link that opens for anyone — no sign-in, no invite code. The stats are frozen as they are right now.</p>
+                <label class="gv-share-note-label" for="gv-share-note">Note for the recipient (optional)</label>
+                <input id="gv-share-note" type="text" class="gv-input" maxlength="500"
+                       placeholder="e.g. watch the third quarter — our press broke down">
+                <div class="gv-share-actions">
+                    <button type="button" id="gv-share-create" class="gv-btn gv-btn-large">Create link</button>
+                    <button type="button" id="gv-share-cancel" class="gv-btn gv-btn-ghost">Cancel</button>
+                </div>
+            </div>
+
+            <div id="gv-share-done" hidden>
+                <p id="gv-share-donesub">Anyone with this link can see the full stats.</p>
+                <div class="gv-share-linkrow">
+                    <input id="gv-share-link" type="text" readonly class="gv-input" aria-label="Share link">
+                    <button type="button" id="gv-share-copy" class="gv-btn">Copy</button>
+                </div>
+                <div class="gv-share-actions">
+                    <button type="button" id="gv-share-open" class="gv-btn">Open it</button>
+                    <button type="button" id="gv-share-close" class="gv-btn gv-btn-ghost">Done</button>
+                </div>
+            </div>
+
+            <p id="gv-share-warn" class="gv-share-warn"></p>
         </div>
     </div>
 
@@ -1989,6 +2062,149 @@
         // preselect the dropdown, so nothing more to do here.
         showSplash();
         setTimeout(hideStatus, 12000);
+
+        // ─────────────────── share the loaded game ────────────────────────
+        // Sends the game's data.json to the `share` Edge Function, which
+        // stores it and returns a link to /share/?g=<id>. That page runs THIS
+        // SAME visualiser against the stored payload, so a share has every tab
+        // the app has — and gains new ones when the app does — instead of
+        // being a frozen re-rendering that quietly falls behind.
+        //
+        // A SHARE IS A SNAPSHOT, and the wording says so. The alternative,
+        // re-fetching from Genius Sports when the coach opens it, cannot work:
+        // their host sends no CORS header, old matches stop being served, and
+        // a link sent at half-time should still show half-time when it is
+        // opened after the final whistle rather than silently changing.
+        const SHARE_FN = 'https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/share';
+        const SHARE_ANON_KEY = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';
+
+        const shareBtn     = document.getElementById('gv-share');
+        const shareModal   = document.getElementById('gv-share-modal');
+        const shareCompose = document.getElementById('gv-share-compose');
+        const shareDone    = document.getElementById('gv-share-done');
+        const shareNote    = document.getElementById('gv-share-note');
+        const shareLink    = document.getElementById('gv-share-link');
+        const shareWarn    = document.getElementById('gv-share-warn');
+        const shareCreate  = document.getElementById('gv-share-create');
+
+        function shareSetWarn(msg) { if (shareWarn) shareWarn.textContent = msg || ''; }
+
+        function openShareModal() {
+            const id = getActiveGameId();
+            if (!id) {
+                showStatus('Load a game first, then share it.', 'err', 4000);
+                return;
+            }
+            shareCompose.hidden = false;
+            shareDone.hidden = true;
+            shareSetWarn('');
+            shareCreate.disabled = false;
+            shareCreate.textContent = 'Create link';
+            shareModal.setAttribute('aria-hidden', 'false');
+            try { shareNote.focus(); } catch (_) {}
+        }
+        function closeShareModal() { shareModal.setAttribute('aria-hidden', 'true'); }
+
+        // The payload the visualiser is currently displaying. Preferred over a
+        // fresh fetch so the share matches what the sharer is looking at —
+        // including, on a live game, the exact tick they decided to send.
+        async function currentGameJson(gameId) {
+            try {
+                const v = iframe.contentWindow && iframe.contentWindow.fibaVisualizer;
+                if (v && v.fibaJsonData) return v.fibaJsonData;
+                if (v && typeof v._prophesyGetCachedJson === 'function') {
+                    return await v._prophesyGetCachedJson(gameId, false);
+                }
+            } catch (_) {}
+            return await fetchJsonViaProxies(FIBA_JSON_BASE + gameId + '/data.json');
+        }
+
+        async function createShare() {
+            const gameId = getActiveGameId();
+            if (!gameId) { shareSetWarn('No game is loaded.'); return; }
+
+            shareCreate.disabled = true;
+            shareCreate.textContent = 'Creating…';
+            shareSetWarn('');
+
+            let json;
+            try {
+                json = await currentGameJson(gameId);
+            } catch (e) {
+                shareCreate.disabled = false;
+                shareCreate.textContent = 'Create link';
+                shareSetWarn('Could not read this game’s data: ' + (e?.message || e));
+                return;
+            }
+
+            let compName = '';
+            try {
+                const opt = compSelect && compSelect.options[compSelect.selectedIndex];
+                compName = (opt && opt.textContent || '').trim();
+            } catch (_) {}
+
+            try {
+                const res = await fetch(SHARE_FN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', apikey: SHARE_ANON_KEY },
+                    body: JSON.stringify({
+                        gameId: String(gameId),
+                        payload: json,
+                        competition: compName || undefined,
+                        note: (shareNote.value || '').trim() || undefined
+                    })
+                });
+                const out = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    shareCreate.disabled = false;
+                    shareCreate.textContent = 'Create link';
+                    shareSetWarn(out.error ? (out.error + (out.detail ? ' — ' + out.detail : ''))
+                                           : ('That was refused (' + res.status + ').'));
+                    return;
+                }
+
+                shareLink.value = out.url;
+                shareCompose.hidden = true;
+                shareDone.hidden = false;
+                // Say plainly when the shared game was still being played —
+                // the recipient sees a scoreline and will assume it is final
+                // unless told otherwise.
+                shareSetWarn(out.isFinal ? '' :
+                    'This game was still in progress. The link shows the stats frozen at this moment, not the final result.');
+                try { shareLink.select(); } catch (_) {}
+                showStatus('✓ Share link created', 'ok', 3000);
+            } catch (e) {
+                shareCreate.disabled = false;
+                shareCreate.textContent = 'Create link';
+                shareSetWarn('Could not reach the share service: ' + (e?.message || e));
+            }
+        }
+
+        if (shareBtn) shareBtn.addEventListener('click', openShareModal);
+        if (shareCreate) shareCreate.addEventListener('click', createShare);
+        document.getElementById('gv-share-cancel')?.addEventListener('click', closeShareModal);
+        document.getElementById('gv-share-close')?.addEventListener('click', closeShareModal);
+        document.getElementById('gv-share-open')?.addEventListener('click', () => {
+            if (shareLink.value) window.open(shareLink.value, '_blank', 'noopener');
+        });
+        document.getElementById('gv-share-copy')?.addEventListener('click', async () => {
+            const btn = document.getElementById('gv-share-copy');
+            try {
+                await navigator.clipboard.writeText(shareLink.value);
+                btn.textContent = 'Copied';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+            } catch (_) {
+                // Clipboard is blocked on insecure origins and in some
+                // embedded webviews — select the text so it can be copied by
+                // hand rather than leaving a button that appears to do nothing.
+                try { shareLink.select(); shareLink.setSelectionRange(0, 99999); } catch (_) {}
+                shareSetWarn('Clipboard blocked — the link is selected, copy it with Ctrl+C.');
+            }
+        });
+        shareModal?.addEventListener('click', (e) => { if (e.target === shareModal) closeShareModal(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && shareModal.getAttribute('aria-hidden') === 'false') closeShareModal();
+        });
     </script>
 </body>
 </html>

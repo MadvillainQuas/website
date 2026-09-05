@@ -15,3 +15,11 @@ project_id = "hhvofgqqadtyvcjudhjx"
 # gain — and the key would sit in the page source anyway.
 [functions.livestats]
 verify_jwt = false
+
+# share serves the public /share/ page. Its GET has to work for a coach with no
+# account and no key, which is the entire purpose of a share link, so the
+# gateway cannot be the thing that guards it. The function guards itself
+# instead: reads are by primary key only (the table has RLS on and no policy),
+# and writes require the project's anon key plus a size and shape check.
+[functions.share]
+verify_jwt = false
