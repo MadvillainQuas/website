@@ -18,7 +18,7 @@
  * Versioned cache name → bump CACHE_VERSION to invalidate the old
  * cache after a deploy. Old caches are pruned on activate.
  * ============================================================ */
-const CACHE_VERSION = 'prophesy-v28-2026-08-16';
+const CACHE_VERSION = 'prophesy-v29-2026-09-05';
 const APP_SHELL = [
     './',
     './index.html',
@@ -93,6 +93,19 @@ self.addEventListener('fetch', (event) => {
     if (/^(api\.codetabs\.com|api\.allorigins\.win|corsproxy\.io|thingproxy\.freeboard\.io)$/i.test(url.hostname) ||
         /\.workers\.dev$/i.test(url.hostname)) {
         return;
+    }
+
+    // Our own CORS shim for the same live data (supabase/functions/livestats).
+    // It exists BECAUSE the public proxies above went down, and it carries
+    // exactly the payload they used to — so it needs exactly their exemption.
+    // The FIBA host never appears in this URL (the match id travels as
+    // ?game=<id>), so none of the checks above catch it, and without this line
+    // it would fall through to the cross-origin stale-while-revalidate branch
+    // at the bottom and serve a cached score during a live game. The function
+    // sets its own short Cache-Control; the browser's HTTP cache honours that
+    // and is the right layer for it.
+    if (/\.supabase\.co$/i.test(url.hostname) && /\/functions\/v1\/livestats\b/i.test(url.pathname)) {
+        return; // let the browser handle it normally
     }
 
     // NEVER cache GitHub API responses. We use the Contents API to:

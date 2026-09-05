@@ -1,0 +1,17 @@
+# Supabase CLI config.
+#
+# Only settings that must differ from the CLI defaults belong here. Every
+# function not listed keeps the default verify_jwt = true, so adding this file
+# does not loosen anything that already exists — `contact`, `feeds`, `merch`,
+# `socials`, `api`, `broadcast`, `finalise-game` and `membership-sync` are all
+# unaffected.
+project_id = "hhvofgqqadtyvcjudhjx"
+
+# livestats is a read-only CORS shim in front of public Genius Sports feeds.
+# It reads nothing from the database, holds no secret and returns only what
+# fibalivestats already serves to anonymous callers, so there is nothing for a
+# token to protect. Requiring one would cost a CORS preflight on every live-mode
+# poll (a custom `apikey` header makes the request non-simple) for no security
+# gain — and the key would sit in the page source anyway.
+[functions.livestats]
+verify_jwt = false

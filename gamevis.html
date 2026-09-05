@@ -1232,17 +1232,45 @@
         // refit: every game load now goes via the FIBA JSON API instead of
         // scraping bs.html / pbp.html through CORS proxies.
         const FIBA_JSON_BASE = 'https://fibalivestats.dcd.shared.geniussports.com/data/';
+
+        // Our own CORS shim (supabase/functions/livestats). Overridable at
+        // runtime so a local `supabase functions serve` or a replacement host
+        // can be pointed at without editing this file.
+        const LIVESTATS_PROXY = (typeof window !== 'undefined' && window.GAMEVIS_LIVESTATS_PROXY)
+            || 'https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/livestats';
+
         // Proxy chain — order is "most likely to work right now" first.
-        // codetabs is the one that survived in the wild (corsproxy.io has
-        // started 403-ing free traffic; allorigins /raw has been flaky).
+        //
+        // 2026-09-05: every public proxy below failed simultaneously —
+        // codetabs and allorigins returned Cloudflare 522s, corsproxy.io a 403
+        // on free traffic. Because a proxy's ERROR page carries no CORS header
+        // either, the browser reported all of it as "No
+        // 'Access-Control-Allow-Origin' header", which looks like our bug and
+        // isn't. Hence the Supabase function at the head of the chain: it is
+        // the only link here we control. The public proxies are kept below it
+        // as fallbacks, so a Supabase outage degrades instead of breaking.
+        //
         // allorigins /get returns a JSON wrapper {contents: "<body>"} which
         // works when /raw fails for the same backend, so it's a separate
         // entry below with a custom unwrap path.
         //
         // Each entry: { name, build(url), unwrap(text) }.
         const PROXY_ENDPOINTS = [
-            // 1) Direct — works only if FIBA serves CORS for our origin (rare,
-            //    but free + fastest when it does).
+            // 0) Our Supabase Edge Function. Takes ?game=<id> for the common
+            //    data.json case (shortest URL, cacheable at the edge) and
+            //    ?url= for anything else on an allow-listed Genius host.
+            { name: 'supabase/livestats',
+              build: (u) => {
+                  const id = extractGameId(u);
+                  return id
+                      ? LIVESTATS_PROXY + '?game=' + id
+                      : LIVESTATS_PROXY + '?url=' + encodeURIComponent(u);
+              },
+              unwrap: (text) => text },
+            // 1) Direct — works only if FIBA serves CORS for our origin. It
+            //    does not today (verified: 200 with no ACAO header), but it
+            //    costs one request to find out and would be the fastest path
+            //    if that ever changes.
             { name: 'direct',          build: (u) => u,
               unwrap: (text) => text },
             // 2) Codetabs — proven working in production console logs.

@@ -14326,8 +14326,20 @@ body.focus-mode:hover .tab-container {
             // Server config
             this.serverUrl = 'http://localhost:5555';
             
-            // CORS Proxies - multiple fallbacks
+            // CORS Proxies - multiple fallbacks.
+            //
+            // Ours goes first (supabase/functions/livestats). The public ones
+            // below are best-effort: on 2026-09-05 all four failed at once —
+            // Cloudflare 522s from allorigins and codetabs, a 403 from
+            // corsproxy.io on free traffic, and cors-anywhere has required a
+            // manual opt-in for years. When a proxy's error page comes back
+            // without CORS headers the browser reports it as "No
+            // 'Access-Control-Allow-Origin' header", which reads like our bug,
+            // so having a link in this chain we actually control is the point.
+            this.livestatsProxy = (window.GAMEVIS_LIVESTATS_PROXY
+                || 'https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/livestats');
             this.corsProxies = [
+                { name: 'Livestats(ours)', url: this.livestatsProxy + '?url=' },
                 { name: 'AllOrigins', url: 'https://api.allorigins.win/raw?url=' },
                 { name: 'Corsproxy', url: 'https://corsproxy.io/?' },
                 { name: 'Corsanywhere', url: 'https://cors-anywhere.herokuapp.com/' },
@@ -15715,6 +15727,23 @@ body.focus-mode:hover .tab-container {
                 console.log('Local server not available, trying proxies...');
             }
             
+            // Our own shim first — the only proxy in this function we control.
+            // Genius Sports hosts only; it refuses anything else with a 403 and
+            // a JSON reason, so a miss here is readable instead of opaque.
+            try {
+                const response = await fetch(
+                    `${this.livestatsProxy}?url=${encodeURIComponent(url)}`, { cache: 'no-cache' });
+                if (response.ok) {
+                    const html = await response.text();
+                    if (html && html.length > 500) {
+                        console.log('Fetched via Livestats(ours)');
+                        return html;
+                    }
+                }
+            } catch (e) {
+                console.log('Livestats proxy failed:', e.message);
+            }
+
             // Try AllOrigins with JSON endpoint (more reliable)
             try {
                 const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
