@@ -27808,5 +27808,19 @@ if __name__ == '__main__':
         console.log('%cThis application is protected. Unauthorized access attempts are logged.','font-size:12px;color:#8892a8;');
     })();
     </script>
+
+    <!-- ============================================================
+         Plain-English hover explanations for every stat on the page,
+         written for coaches who are not statisticians. Loaded LAST
+         and kept in its own file: it only reads the rendered DOM and
+         decorates labels, touching nothing this app owns — which is
+         both why it is safe to run alongside the integrity checks
+         above, and why the glossary text can be edited later without
+         going anywhere near this 27,000-line file.
+
+         Because it lives in the app rather than in a wrapper, it
+         reaches gamevis.html and every /share/ link at once.
+         ============================================================ -->
+    <script src="stat-glossary.js" defer></script>
 </body>
 </html>
