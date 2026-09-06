@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T23:32:20.741943+00:00",
+"updated": "2026-09-06T23:35:20.022934+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2636,7 +2636,7 @@
 "hash": "92e4dfddb9de8b7bdbcee56c8b0dcc1685655ef3",
 "venue": "Netball Centre Loughborough University",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886985.json",
-"updated": "2026-09-06T23:32:05.881243+00:00"
+"updated": "2026-09-06T23:35:00.187476+00:00"
 },
 {
 "id": "2887014",
