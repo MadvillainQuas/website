@@ -424,6 +424,135 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
     return out
 
 
+# ----------------------------------------------------------------------------
+# THE LIVE LANE. GitHub's cron is best-effort (on 2026-09-06 the 10-minute lane never fired and the
+# half-hourly one skipped three slots in a row), so live coverage cannot wait on it. One pass of the
+# live lane is long-lived instead: it re-reads the due set every 2 minutes (a game that tips while we
+# run is picked up), polls every due game every --live-every seconds, naps until the next listed
+# tip-off when nothing is on, and at the end tells the workflow (GITHUB_OUTPUT chain=true) to start
+# the next pass whenever games are live or a tip-off is near. The passes chain back to back, so the
+# only cron that matters is the one that starts the first pass of the day - and the discovery lane
+# starts one too whenever it sees a game due.
+LIVE_BEFORE_TIP = 20 * 60      # start polling this long before the listed tip-off
+LIVE_AFTER_TIP = 4 * 3600      # keep polling an unpublished game this long after its tip-off
+LIVE_STALE = 7 * 3600          # a game still 'live' this long after tip is a log nobody closed - not a reason to keep a runner up
+CHAIN_AHEAD = 8 * 3600         # the live lane re-dispatches itself when the next tip-off is within this
+MAIN_CHAIN_AHEAD = 3 * 3600    # the discovery lane starts the live lane when the next tip-off is within this
+
+
+def gh_output(**kv) -> None:
+    """Hand values to the workflow step (GITHUB_OUTPUT) - no-op locally."""
+    p = os.environ.get("GITHUB_OUTPUT")
+    if not p:
+        return
+    with open(p, "a", encoding="utf-8") as f:
+        for k, v in kv.items():
+            f.write(f"{k}={v}\n")
+
+
+def _tip(r: dict):
+    try:
+        return datetime.fromisoformat(str(r.get("tipoff_at")).replace("Z", "+00:00")) if r.get("tipoff_at") else None
+    except ValueError:
+        return None
+
+
+def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[tuple[dict, dict]], datetime | None]:
+    """(due, next_tip): the games to poll now - live, or inside the tip-off window - and the next
+    listed tip-off beyond the window (so a quiet pass knows how long to wait)."""
+    due, next_tip = [], None
+    for src in sources:
+        try:
+            rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
+                                               "&select=external_id,external_status,tipoff_at,home_name,away_name,payload_hash")
+        except Exception as exc:
+            print(f"   (live lookup failed for {src['code']}: {exc})"); continue
+        for r in rows:
+            t = _tip(r); since = (now - t).total_seconds() if t else None
+            if r.get("external_status") == "live" and (since is None or since < LIVE_STALE):
+                due.append((src, r))
+            elif since is not None and -LIVE_BEFORE_TIP <= since < LIVE_AFTER_TIP:
+                due.append((src, r))
+            elif since is not None and since < -LIVE_BEFORE_TIP and (next_tip is None or t < next_tip):
+                next_tip = t
+    return due, next_tip
+
+
+def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
+    """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
+    fiba = [s for s in sources if s["adapter"] == "fiba_livestats"]
+    if sb is None or not fiba:
+        print("live lane: needs Supabase and a fiba_livestats source"); return 0, False
+    adapters = {s["code"]: get_adapter(s["adapter"]) for s in fiba}
+    worker = os.environ.get("GITHUB_RUN_ID", "local")
+    runs = {s["code"]: {"source_id": s.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0} for s in fiba}
+    hashes: dict[str, str] = {}
+    finished: set[str] = set()
+    end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
+    due, next_tip, recheck, exit_code = [], None, 0.0, 0
+    print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s")
+    while time.time() < end:
+        now = datetime.now(timezone.utc)
+        if time.time() >= recheck:
+            due, next_tip = live_due(sb, fiba, now)
+            due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
+            for s, r in due:
+                hashes.setdefault(str(r["external_id"]), r.get("payload_hash") or "")
+                runs[s["code"]]["games_seen"] = max(runs[s["code"]]["games_seen"], len([1 for s2, _ in due if s2 is s]))
+            recheck = time.time() + 120
+            print(f"{now.strftime('%H:%M:%S')}Z {len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
+                  ((": " + ", ".join(f"{r.get('home_name') or r['external_id']} v {r.get('away_name') or ''}" for _, r in due[:6])) if due else ""))
+        for src, r in due:
+            xid = str(r["external_id"])
+            g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
+                             tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
+            try:
+                b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+            except Exception as exc:
+                print(f"    ! {xid}: {exc}"); exit_code = 1; continue
+            if not b or hashes.get(xid) == b.payload_hash:
+                continue                                                  # not published yet / nothing new
+            run = runs[src["code"]]; run["games_fetched"] += 1
+            raw_ref = None
+            try:
+                raw_ref = write_supabase_feed(sb, src, b, entry_for(b, None, None, g))
+            except Exception as exc:
+                print(f"    (supabase feed write failed: {exc})")
+            try:
+                write_platform(sb, src, b, run); run["games_written"] += 1
+            except Exception as exc:
+                print(f"    (platform write failed: {exc})")
+            hashes[xid] = b.payload_hash
+            e = entry_for(b, None, raw_ref, g)
+            print(f"    ~ {b.home_name} {e['homeScore']}-{e['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}Z")
+            if b.status == "final":
+                finished.add(xid)
+        due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
+        if due:
+            time.sleep(every); continue
+        # nothing on: wait for the next tip-off if this pass can still reach it (short naps - the
+        # 2-minute recheck notices a schedule change or a game that goes live early)
+        wait = ((next_tip - datetime.now(timezone.utc)).total_seconds() - LIVE_BEFORE_TIP) if next_tip else None
+        if wait is None or time.time() + wait > end:
+            break
+        time.sleep(min(max(wait, 5), 120))
+    for s in fiba:
+        if s.get("id"):
+            try:
+                sb.patch("schedule_sources", f"id=eq.{s['id']}", {"last_polled_at": now_iso(), "last_ok_at": now_iso()})
+                if runs[s["code"]]["games_fetched"]:
+                    sb.insert("ingest_runs", {**runs[s["code"]], "finished_at": now_iso(), "status": "ok"})
+            except Exception:
+                pass
+    now = datetime.now(timezone.utc)
+    due, next_tip = live_due(sb, fiba, now)
+    due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
+    chain = bool(due) or (next_tip is not None and (next_tip - now).total_seconds() < CHAIN_AHEAD)
+    print(f"live lane done: {len(due)} still live/due" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
+          (" - chaining the next pass" if chain else " - nothing near, stopping"))
+    return exit_code, chain
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", help="label/code of one source")
@@ -448,6 +577,10 @@ def main() -> int:
 
     sources = load_sources(sb, args.config and sb is None, args.source)
     print(f"{len(sources)} source(s) due")
+    if args.live_only and not args.ids:
+        rc, chain = live_keeper(sb, sources, args)
+        gh_output(chain="true" if chain else "false")
+        return rc
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     exit_code = 0
     for src in sources:
@@ -617,6 +750,17 @@ def main() -> int:
                 except Exception:
                     pass
             print(f"   done in {time.time() - t0:.1f}s - seen {run['games_seen']}, fetched {run['games_fetched']}, written {run['games_written']}")
+    # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane
+    if sb and not args.dry_run and not args.ids:
+        try:
+            now = datetime.now(timezone.utc)
+            due, next_tip = live_due(sb, [s for s in sources if s["adapter"] == "fiba_livestats"], now)
+            chain = bool(due) or (next_tip is not None and (next_tip - now).total_seconds() < MAIN_CHAIN_AHEAD)
+            gh_output(chain="true" if chain else "false")
+            if chain:
+                print(f"{len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") + " - asking the workflow to start the live lane")
+        except Exception as exc:
+            print(f"(live-lane check failed: {exc})")
     return exit_code
 
 

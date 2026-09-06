@@ -594,10 +594,56 @@ async function offerToAttachVideo() {
     cta.textContent = (window.S && window.S.video && window.S.video.url)
       ? 'video sync' : 'attach video';
     cta.onclick = openAttach;
+    offerLiveStatsLink();                      // same people, same moment
   } catch (_) {
     /* Before 0088 the function does not exist, and a page that cannot offer
        this is a page, not a failure. */
   } finally { vidChecking = false; }
+}
+
+/* ---- The source of a fed game --------------------------------------------
+   A game the ingest worker writes from FIBA LiveStats has an external_games
+   row (public read). For the people who may attach video the top bar also
+   links to the Genius LiveStats page it is read from. The client code that
+   page needs comes from the feed's schedule_sources row (console-made
+   leagues; readable by that league's admins) or, for registry leagues, from
+   config/ingest-sources.json on this site; the feed code itself is the last
+   resort (SLB's client code is SLB). */
+let lsShown = false;
+async function offerLiveStatsLink() {
+  const cta = document.getElementById('lsCta');
+  if (!cta || lsShown || !gameId) return;
+  try {
+    const H = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
+    const token = storedToken();
+    if (token) H.Authorization = 'Bearer ' + token;
+    const r = await fetch(CFG.supabaseUrl + '/rest/v1/external_games?game_id=eq.' + gameId +
+      '&adapter=eq.fiba_livestats&select=external_id,competition_code,source_id&limit=1', { cache: 'no-store', headers: H });
+    const ext = r.ok ? (await r.json())[0] : null;
+    if (!ext || !ext.external_id) return;
+    let client = null;
+    if (ext.source_id) {
+      const rs = await fetch(CFG.supabaseUrl + '/rest/v1/schedule_sources?id=eq.' + ext.source_id +
+        '&select=adapter_config', { cache: 'no-store', headers: H });
+      const src = rs.ok ? (await rs.json())[0] : null;
+      client = src && src.adapter_config && (src.adapter_config.client_code || src.adapter_config.code);
+    }
+    if (!client) {
+      const rc = await fetch('../../config/ingest-sources.json', { cache: 'no-store' });
+      const reg = rc.ok ? await rc.json() : null;
+      const src = reg && (reg.sources || []).find(x => x.code === ext.competition_code);
+      client = src && ((src.adapter_config && src.adapter_config.client_code) || src.code);
+    }
+    client = client || ext.competition_code;
+    if (!client) return;
+    cta.href = 'https://fibalivestats.dcd.shared.geniussports.com/u/' +
+      encodeURIComponent(client) + '/' + encodeURIComponent(ext.external_id) + '/';
+    cta.title = 'the FIBA LiveStats page this game is fed from (' + client + ' ' + ext.external_id + ')';
+    cta.classList.remove('hide');
+    lsShown = true;
+  } catch (_) {
+    /* a page without the link is a page, not a failure */
+  }
 }
 
 function openAttach() {

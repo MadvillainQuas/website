@@ -70,6 +70,7 @@
   .revertcta:hover{color:var(--flare,#ff5f6b);border-color:var(--flare,#ff5f6b)}
   .revertcta:disabled{opacity:.5;cursor:default}
   .revertcta.hide{display:none}
+  a.revertcta{text-decoration:none;display:inline-block;line-height:1.2}
   /* the scoring button claims the spare room; this one sits next to it */
   #scoreCta + .revertcta{margin-left:8px}
   /* The attach-video sheet. Deliberately plain: it is three fields used twice a
@@ -133,6 +134,11 @@
          the only place left that knows which game you are looking at is this
          page. Shown only to somebody the database says may attach one. -->
     <button class="revertcta hide" id="vidCta" type="button">attach video</button>
+    <!-- Where a fed game's numbers come from: the FIBA LiveStats page the ingest
+         worker reads. Shown to the same people who may attach video (platform /
+         league admins, the game's statistician), so a score that looks behind can
+         be checked against the source in one click. -->
+    <a class="revertcta hide" id="lsCta" href="#" target="_blank" rel="noopener">FIBA LiveStats ↗</a>
     <span class="status offline" id="status"><i></i><span id="statusText">connecting</span></span>
   </div>
 
@@ -166,7 +172,7 @@
 <script src="preview.js?v=239" defer></script>
 <script src="../video.js?v=239" defer></script>
 <script src="video.js?v=239" defer></script>
-<script src="game.js?v=239" defer></script>
+<script src="game.js?v=240" defer></script>
 <script src="../nav.js?v=239" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

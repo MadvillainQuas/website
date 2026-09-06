@@ -85,15 +85,23 @@ redeploy with:
 cd /d C:\Users\Admin\Documents\website_repo && npx supabase@latest functions deploy finalise-game
 ```
 
-## 4c. Dates, fixtures and live games (built 2026-09-06)
+## 4c. Dates, fixtures and live games (built 2026-09-06; self-chaining live lane the same evening)
 
 The worker reads each game's tip-off time, venue and clubs from the Genius hosted schedule (league
-local time → UTC), so fixtures appear on Epinoia with real dates before tip. Two lanes run in the
-12:00–23:30 UTC window: the half-hourly discovery lane (new games, finals, repo feed commit) and a
-**live lane every 10 minutes** that polls only games live or due to tip (±20 min / last 4 h) every
-30 seconds for 9 minutes, appending new events and the running clock to Supabase — the game page
-picks the new rows up through its own gap check. Run the live lane by hand from Actions with the
-`live` box ticked.
+local time → UTC), so fixtures appear on Epinoia with real dates before tip. The half-hourly
+discovery lane (12:00–23:30 UTC) finds new games and finals and commits the repo feed. The **live
+lane** is a long-lived pass (up to 5.5 h): it re-reads the due set every 2 minutes, polls every game
+that is live or inside its tip-off window (20 min before → 4 h after) every 30 seconds, appending
+events + clock + score to Supabase, naps until the next listed tip-off when nothing is on, and
+**re-dispatches itself** while games are live or a tip-off is within 8 h. The discovery lane also
+starts it whenever a tip-off is within 3 h. So live coverage never depends on GitHub's cron, which
+is best-effort (on 6 Sep it dropped three half-hour slots and never fired the 10-minute lane; the
+Hemel game sat 30 minutes behind until a pass was started by hand).
+
+If the site ever looks behind: Actions → League ingest → Run workflow → tick **live**. The pass
+picks up within a minute and keeps chaining. A signed-in admin / league admin / the game's
+statistician also sees **FIBA LiveStats ↗** in the game page's top bar — the Genius page the game is
+fed from — to check the source directly.
 
 ## 5. Optional — bootstrap an existing archive into a platform league
 

@@ -18,7 +18,7 @@
  * Versioned cache name → bump CACHE_VERSION to invalidate the old
  * cache after a deploy. Old caches are pruned on activate.
  * ============================================================ */
-const CACHE_VERSION = 'prophesy-v29-2026-09-05';
+const CACHE_VERSION = 'prophesy-v30-2026-09-06';
 const APP_SHELL = [
     './',
     './index.html',
