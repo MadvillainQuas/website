@@ -52,6 +52,12 @@ jobs:
           repository: ${{ vars.SCRAPER_REPO }}
           ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
           path: scraper
+      - name: Install scraper requirements
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        run: |
+          # Windows-only helpers (toasts) are skipped; everything the parsers need installs.
+          grep -viE "win10toast|pywin32" scraper/requirements.txt > /tmp/req.txt || true
+          pip install -r /tmp/req.txt || pip install selenium beautifulsoup4 requests pandas numpy scikit-learn tqdm
       - name: Run ingest
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

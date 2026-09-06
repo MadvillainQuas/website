@@ -25,6 +25,9 @@ Set-Location $root
 function Say($m) { Write-Host "`n== $m" -ForegroundColor Cyan }
 
 # 1. GitHub CLI
+# gh installed in this session is not on PATH until a new terminal opens — look in its standard home too
+$ghHome = 'C:\Program Files\GitHub CLI'
+if (-not (Get-Command gh -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $ghHome 'gh.exe'))) { $env:PATH = "$ghHome;" + $env:PATH }
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   Say "installing GitHub CLI (winget)"
   winget install --id GitHub.cli -e --accept-source-agreements --accept-package-agreements

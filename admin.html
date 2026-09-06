@@ -669,6 +669,30 @@
             <div class="toast" id="dataFoldersToast" style="margin-top:12px;"></div>
         </div>
 
+
+        <!-- ============================================================
+             League feeds (auto-update) — the one registry the ingest
+             worker, Scrape Now and the GameVis viewer all read.
+             ============================================================ -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>League feeds (auto-update)</h2>
+            <div class="sub">// schedule URLs the ingest worker polls every 30 min → Supabase + data/feed → index_9 Advanced Games View, Scrape Now datasets, GameVis</div>
+
+            <div class="step">
+                One row per league: a short <code>code</code>, a <code>label</code>, the <strong>adapter</strong> (how the site is read — FIBA LiveStats covers SLB, BBE, EABL, SBF, CEBL, CIBA…), and the schedule URLs (the league page with <code>?WHurl=…</code> or the Genius hosted schedule). <strong>Publish</strong> commits <code>config/ingest-sources.json</code> and mirrors the FIBA rows into the GameVis list. <strong>Run ingest now</strong> starts the worker immediately (it otherwise runs every 30 min, 12:00–23:30 UTC).
+            </div>
+
+            <div id="lfList" style="display:flex; flex-direction:column; gap:14px; margin-top:8px;"></div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                <button class="btn" id="lfAddBtn" style="height:36px;">+ Add league</button>
+                <button class="btn primary" id="lfSaveBtn" style="height:36px;">⬆ Publish to repo</button>
+                <button class="btn" id="lfRunBtn" style="height:36px;">▶ Run ingest now</button>
+                <button class="btn" id="lfDownloadBtn" style="height:36px;">⬇ Download JSON</button>
+                <span id="lfStatus" class="small" style="font-family:'IBM Plex Mono', monospace; min-height:18px; align-self:center;"></span>
+            </div>
+            <div id="lfRuns" class="small" style="margin-top:10px; font-family:'IBM Plex Mono', monospace; color: var(--text-muted);"></div>
+        </div>
         <!-- ============================================================
              GAMEVIS COMPETITIONS — schedule URLs that the wrapper feeds
              to the FIBA Game Visualizer for each competition.
@@ -2525,6 +2549,134 @@
 
         // Boot
         gvLoadCompetitions();
+        // ============================================================
+        // League feeds (auto-update) — edits config/ingest-sources.json
+        // (the worker's registry) and mirrors FIBA rows into the GameVis
+        // competitions file so the viewer stays in sync.
+        // ============================================================
+        const LF_CONFIG_PATH = 'config/ingest-sources.json';
+        const LF_ADAPTERS = [
+            ['fiba_livestats', 'FIBA LiveStats (Genius) — SLB, BBE, EABL, SBF, CEBL, CIBA…'],
+            ['genius_html', 'Genius hosted HTML (non-LiveStats)'],
+            ['bbl_2bbl', 'German ProA / ProB (2BBL)'],
+            ['euroleague_api', 'EuroLeague / EuroCup API'],
+            ['eurobasket_html', 'Eurobasket.com pages'],
+            ['bcb_pipeline', 'Other league in the scraper pipeline']
+        ];
+        const lfList = document.getElementById('lfList'), lfStatus = document.getElementById('lfStatus'), lfRuns = document.getElementById('lfRuns');
+        let lfSources = [];
+        function lfSet(msg, kind) { if (!lfStatus) return; lfStatus.textContent = msg || ''; lfStatus.style.color = kind === 'ok' ? '#88c8a8' : (kind === 'err' ? '#c08888' : 'var(--text-muted)'); }
+        const lfInput = (val, ph, w) => { const i = document.createElement('input'); i.type = 'text'; i.value = val || ''; i.placeholder = ph || ''; i.style.cssText = 'width:100%; margin-top:3px; padding:8px 10px; background: rgba(5,18,18,0.45); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); font-family: "IBM Plex Mono", monospace; font-size: 0.78rem;'; return i; };
+        const lfLabel = (t) => { const l = document.createElement('label'); l.style.cssText = 'font-size:0.62rem; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); font-family:"IBM Plex Mono", monospace; display:block;'; l.textContent = t; return l; };
+        function lfRender() {
+            lfList.innerHTML = '';
+            if (!lfSources.length) { const d = document.createElement('div'); d.className = 'empty'; d.style.padding = '18px 12px'; d.textContent = 'No leagues yet — click "+ Add league".'; lfList.appendChild(d); return; }
+            lfSources.forEach((src, idx) => {
+                const card = document.createElement('div');
+                card.style.cssText = 'padding:14px 16px; background: rgba(5,18,18,0.30); border: 1px solid var(--border-subtle); border-radius: 12px; display:flex; flex-direction:column; gap:10px;';
+                const top = document.createElement('div'); top.style.cssText = 'display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;';
+                const w1 = document.createElement('div'); w1.style.cssText = 'flex:0 0 110px;'; w1.appendChild(lfLabel('code'));
+                const code = lfInput(src.code, 'SLB'); code.addEventListener('input', () => { code.value = gvNormalizeCode(code.value); src.code = code.value; }); w1.appendChild(code);
+                const w2 = document.createElement('div'); w2.style.cssText = 'flex:1 1 220px;'; w2.appendChild(lfLabel('label'));
+                const label = lfInput(src.label, 'Super League Basketball (M)'); label.addEventListener('input', () => { src.label = label.value; }); w2.appendChild(label);
+                const w3 = document.createElement('div'); w3.style.cssText = 'flex:1 1 260px;'; w3.appendChild(lfLabel('adapter'));
+                const sel = document.createElement('select'); sel.style.cssText = code.style.cssText;
+                LF_ADAPTERS.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if ((src.adapter || 'fiba_livestats') === v) o.selected = true; sel.appendChild(o); });
+                sel.addEventListener('change', () => { src.adapter = sel.value; }); w3.appendChild(sel);
+                const w4 = document.createElement('div'); w4.style.cssText = 'flex:0 0 90px;'; w4.appendChild(lfLabel('poll min'));
+                const poll = lfInput(String(src.poll_minutes || 30), '30'); poll.type = 'number'; poll.addEventListener('input', () => { src.poll_minutes = +poll.value || 30; }); w4.appendChild(poll);
+                const w5 = document.createElement('div'); w5.style.cssText = 'flex:0 0 auto; display:flex; gap:6px; align-items:center; padding-bottom:6px;';
+                const en = document.createElement('input'); en.type = 'checkbox'; en.checked = src.enabled !== false; en.addEventListener('change', () => { src.enabled = en.checked; });
+                const enl = document.createElement('span'); enl.className = 'small'; enl.textContent = 'enabled'; w5.appendChild(en); w5.appendChild(enl);
+                const rm = document.createElement('button'); rm.className = 'btn'; rm.textContent = '✕'; rm.title = 'Remove'; rm.style.cssText = 'height:34px; padding:0 12px; margin-left:8px;'; rm.addEventListener('click', () => { lfSources.splice(idx, 1); lfRender(); }); w5.appendChild(rm);
+                top.append(w1, w2, w3, w4, w5); card.appendChild(top);
+                const urlsWrap = document.createElement('div'); urlsWrap.appendChild(lfLabel('schedule URLs'));
+                (src.scheduleUrls || []).forEach((u, ui) => {
+                    const row = document.createElement('div'); row.style.cssText = 'display:flex; gap:6px; margin-top:4px;';
+                    const inp = lfInput(u, 'https://…?WHurl=… or https://hosted.wh.geniussports.com/CODE/en/schedule…'); inp.style.marginTop = '0'; inp.addEventListener('input', () => { src.scheduleUrls[ui] = inp.value; });
+                    const x = document.createElement('button'); x.className = 'btn'; x.textContent = '−'; x.style.cssText = 'height:34px; padding:0 10px;'; x.addEventListener('click', () => { src.scheduleUrls.splice(ui, 1); lfRender(); });
+                    row.append(inp, x); urlsWrap.appendChild(row);
+                });
+                const add = document.createElement('button'); add.className = 'btn'; add.textContent = '+ URL'; add.style.cssText = 'height:30px; padding:0 10px; margin-top:6px; font-size:0.72rem;'; add.addEventListener('click', () => { (src.scheduleUrls = src.scheduleUrls || []).push(''); lfRender(); });
+                urlsWrap.appendChild(add); card.appendChild(urlsWrap);
+                const ids = document.createElement('div'); ids.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap;';
+                const i1 = document.createElement('div'); i1.style.cssText = 'flex:1 1 240px;'; i1.appendChild(lfLabel('epinoia league id (optional — set by the Epinoia console)'));
+                const lid = lfInput(src.league_id || '', 'uuid'); lid.addEventListener('input', () => { src.league_id = lid.value.trim() || null; }); i1.appendChild(lid);
+                const i2 = document.createElement('div'); i2.style.cssText = 'flex:1 1 240px;'; i2.appendChild(lfLabel('epinoia competition id (optional)'));
+                const cid = lfInput(src.competition_id || '', 'uuid'); cid.addEventListener('input', () => { src.competition_id = cid.value.trim() || null; }); i2.appendChild(cid);
+                ids.append(i1, i2); card.appendChild(ids);
+                lfList.appendChild(card);
+            });
+        }
+        function lfPayload() {
+            const seen = new Set(), out = [];
+            for (const s of lfSources) {
+                const code = gvNormalizeCode(s.code || ''); if (!code || seen.has(code)) continue; seen.add(code);
+                out.push({ code, label: (s.label || '').trim() || code, adapter: s.adapter || 'fiba_livestats',
+                    league_id: s.league_id || null, competition_id: s.competition_id || null,
+                    poll_minutes: +s.poll_minutes || 30, active_window: [12, 24], enabled: s.enabled !== false,
+                    adapter_config: Object.assign({ archive_raw: true, store_pbp: false, auto_create: true }, s.adapter_config || {}, { code }),
+                    scheduleUrls: (s.scheduleUrls || []).map(u => String(u || '').trim()).filter(Boolean) });
+            }
+            return { _comment: "League feed registry. Edited from the admin dashboard (League feeds card). Read by scripts/ingest/run_ingest.py (GitHub Actions worker), build_dataset.py / Scrape Now, and mirrored into config/gamevis-competitions.json.", sources: out };
+        }
+        async function lfLoad() {
+            try {
+                const res = await fetch(LF_CONFIG_PATH + '?t=' + Date.now(), { cache: 'no-cache' });
+                const j = res.ok ? await res.json() : { sources: [] };
+                lfSources = (j.sources || []).map(s => ({ ...s, scheduleUrls: Array.isArray(s.scheduleUrls) ? [...s.scheduleUrls] : [] }));
+            } catch (e) { lfSources = []; }
+            lfRender(); lfLoadRuns();
+        }
+        async function lfLoadRuns() {
+            if (!lfRuns || !getGhPat()) return;
+            try {
+                const r = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/actions/workflows/ingest.yml/runs?per_page=3', { headers: { Authorization: 'Bearer ' + getGhPat(), Accept: 'application/vnd.github+json' } });
+                if (!r.ok) return;
+                const j = await r.json();
+                lfRuns.innerHTML = (j.workflow_runs || []).map(w => '• ' + new Date(w.created_at).toLocaleString() + ' — ' + (w.conclusion || w.status) + ' <a href="' + w.html_url + '" target="_blank" rel="noopener" style="color:#a8d8c8">log</a>').join('<br>') || 'no runs yet';
+            } catch (_) {}
+        }
+        document.getElementById('lfAddBtn')?.addEventListener('click', () => { lfSources.push({ code: '', label: '', adapter: 'fiba_livestats', scheduleUrls: [''], poll_minutes: 30, enabled: true }); lfRender(); });
+        document.getElementById('lfDownloadBtn')?.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(lfPayload(), null, 2) + '\n'], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ingest-sources.json'; document.body.appendChild(a); a.click(); a.remove();
+            lfSet('✓ downloaded — commit as config/ingest-sources.json', 'ok');
+        });
+        document.getElementById('lfSaveBtn')?.addEventListener('click', async () => {
+            if (!getGhPat()) return lfSet('Save a GitHub token in the publishing card first.', 'err');
+            const btn = document.getElementById('lfSaveBtn'); btn.disabled = true;
+            try {
+                lfSet('publishing…');
+                const payload = lfPayload();
+                const res = await ghPutFile(LF_CONFIG_PATH, new TextEncoder().encode(JSON.stringify(payload, null, 2) + '\n'), 'admin: update league feeds');
+                if (!res.ok) return lfSet('Publish failed: ' + res.message, 'err');
+                // mirror FIBA rows into the GameVis list (kept in sync, never removed)
+                const byCode = new Map(gvCompetitions.map(c => [gvNormalizeCode(c.code), c]));
+                payload.sources.filter(s => s.adapter === 'fiba_livestats' && s.scheduleUrls.length).forEach(s => {
+                    const ex = byCode.get(s.code);
+                    if (ex) { ex.label = ex.label || s.label; s.scheduleUrls.forEach(u => { if (!ex.scheduleUrls.includes(u)) ex.scheduleUrls.push(u); }); }
+                    else gvCompetitions.push({ code: s.code, label: s.label, scheduleUrls: [...s.scheduleUrls] });
+                });
+                gvRenderComps();
+                const res2 = await ghPutFile(GV_COMP_CONFIG_PATH, new TextEncoder().encode(JSON.stringify(gvBuildPayload(), null, 2) + '\n'), 'admin: mirror league feeds into GameVis competitions');
+                lfSet(res2.ok ? '✓ Published (feeds + GameVis) — the worker uses it on its next run.' : '✓ Feeds published; GameVis mirror failed: ' + res2.message, res2.ok ? 'ok' : 'err');
+            } catch (e) { lfSet('Publish error: ' + (e?.message || e), 'err'); }
+            finally { btn.disabled = false; }
+        });
+        document.getElementById('lfRunBtn')?.addEventListener('click', async () => {
+            if (!getGhPat()) return lfSet('Save a GitHub token in the publishing card first.', 'err');
+            try {
+                lfSet('starting the worker…');
+                const r = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/actions/workflows/ingest.yml/dispatches', {
+                    method: 'POST', headers: { Authorization: 'Bearer ' + getGhPat(), Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ref: 'main', inputs: {} }) });
+                if (r.status === 204) { lfSet('✓ Worker started — results in a few minutes (log below).', 'ok'); setTimeout(lfLoadRuns, 8000); }
+                else lfSet('Could not start: HTTP ' + r.status + (r.status === 403 ? ' — the token needs the "workflow"/actions permission' : ''), 'err');
+            } catch (e) { lfSet('Run error: ' + (e?.message || e), 'err'); }
+        });
+        lfLoad();
+
     </script>
 </body>
 </html>

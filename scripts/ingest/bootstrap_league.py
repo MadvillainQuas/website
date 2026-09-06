@@ -42,6 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_ingest import Supabase, CONFIG_PATH, FEED_DIR, now_iso  # noqa: E402
+from feedplatform import Platform, slugify, season_name_for  # noqa: E402
 
 for _s in (sys.stdout, sys.stderr):
     try:
@@ -49,131 +50,6 @@ for _s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-
-def slugify(s: str) -> str:
-    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
-    s = re.sub(r"[^a-zA-Z0-9]+", "-", s).strip("-").lower()
-    return re.sub(r"-{2,}", "-", s) or "x"
-
-
-def full_name(p: dict) -> tuple[str, str]:
-    first = (p.get("firstName") or p.get("internationalFirstName") or "").strip()
-    last = (p.get("familyName") or p.get("internationalFamilyName") or "").strip()
-    if not (first or last):
-        parts = (p.get("name") or "").replace(".", "").split()
-        first, last = (parts[0], " ".join(parts[1:])) if parts else ("", "")
-    return first, last
-
-
-class Bootstrap:
-    def __init__(self, sb: Supabase | None, dry: bool):
-        self.sb, self.dry = sb, dry
-        self.created = {"leagues": 0, "seasons": 0, "competitions": 0, "teams": 0, "players": 0, "roster_entries": 0, "games": 0}
-
-    # -- generic helpers -------------------------------------------------------------
-    def one(self, table, query):
-        rows = self.sb.select(table, query + "&limit=1") if self.sb else []
-        return rows[0] if rows else None
-
-    def insert(self, table, row, on_conflict=None):
-        self.created[table] = self.created.get(table, 0) + 1
-        if self.dry or not self.sb:
-            return {**row, "id": f"dry-{table}-{self.created[table]}"}
-        return self.sb.upsert(table, row, on_conflict or "id")[0]
-
-    # -- facets ----------------------------------------------------------------------
-    def league(self, code: str, name: str, slug: str) -> dict:
-        r = self.one("leagues", f"slug=eq.{slug}&select=id,slug,name")
-        if r:
-            return r
-        print(f"  + league {slug} ({name})")
-        return self.insert("leagues", {"slug": slug, "name": name, "public_live": True, "youth_protected": False})
-
-    def season(self, league_id: str, name: str) -> dict:
-        r = self.one("seasons", f"league_id=eq.{league_id}&name=eq.{name}&select=id,name")
-        if r:
-            return r
-        y = re.match(r"(\d{4})", name)
-        starts = f"{y.group(1)}-09-01" if y else None
-        ends = f"{int(y.group(1)) + 1}-06-30" if y else None
-        print(f"  + season {name}")
-        return self.insert("seasons", {"league_id": league_id, "name": name, "starts_on": starts, "ends_on": ends}, "league_id,name")
-
-    def competition(self, season_id: str, name: str) -> dict:
-        r = self.one("competitions", f"season_id=eq.{season_id}&name=eq.{name}&select=id,name")
-        if r:
-            return r
-        print(f"  + competition {name}")
-        return self.insert("competitions", {"season_id": season_id, "name": name, "kind": "league"}, "season_id,name")
-
-    def team(self, league_id: str, t: dict, cache: dict) -> dict:
-        code = (t.get("code") or "").strip() or slugify(t.get("name", ""))
-        if code in cache:
-            return cache[code]
-        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name")
-        if not r:
-            nm = (t.get("name") or "").strip()
-            rows = self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases") if self.sb else []
-            for row in rows:
-                names = {row["name"].strip().lower()} | {a.strip().lower() for a in (row.get("aliases") or [])}
-                if nm.lower() in names:
-                    r = row
-                    if not self.dry:
-                        self.sb.patch("teams", f"id=eq.{row['id']}", {"external_ids": {"fiba_livestats": code}})
-                    break
-        if not r:
-            slug = slugify(t.get("name", code))
-            print(f"  + team {t.get('name')} [{code}] → {slug}")
-            r = self.insert("teams", {"league_id": league_id, "slug": slug, "name": t.get("name", code).strip(),
-                                      "short_name": (t.get("shortName") or code)[:12], "logo_path": t.get("logoT") or t.get("logo"),
-                                      "external_ids": {"fiba_livestats": code}, "aliases": [t.get("nameInternational")] if t.get("nameInternational") and t.get("nameInternational") != t.get("name") else []})
-        cache[code] = r
-        return r
-
-    def player(self, team: dict, team_code: str, pno: str, p: dict, cache: dict) -> dict:
-        ext = f"{team_code}:{pno}"
-        if ext in cache:
-            return cache[ext]
-        r = self.one("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name")
-        first, last = full_name(p)
-        if not r and self.sb:
-            rows = self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,players(id,slug,first_name,last_name,aliases)")
-            for row in rows:
-                pl = row.get("players") or {}
-                names = {(pl.get("first_name", "") + " " + pl.get("last_name", "")).strip().lower()} | {a.strip().lower() for a in (pl.get("aliases") or [])}
-                if (first + " " + last).strip().lower() in names:
-                    r = pl
-                    if not self.dry:
-                        self.sb.patch("players", f"id=eq.{pl['id']}", {"external_ids": {"fiba_livestats": ext}})
-                    break
-        if not r:
-            slug = f"{team['slug']}-{slugify(first + ' ' + last)}"
-            aliases = [a for a in {p.get("name"), p.get("scoreboardName")} if a and a != (first + " " + last).strip()]
-            r = self.insert("players", {"slug": slug, "first_name": first or "?", "last_name": last, "is_minor": False,
-                                        "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
-        cache[ext] = r
-        return r
-
-    def roster(self, team: dict, player: dict, season_id: str, p: dict, seen: set) -> None:
-        key = (team["id"], player["id"], season_id)
-        if key in seen:
-            return
-        seen.add(key)
-        r = self.one("roster_entries", f"team_id=eq.{team['id']}&player_id=eq.{player['id']}&season_id=eq.{season_id}&select=id")
-        if r:
-            return
-        self.insert("roster_entries", {"team_id": team["id"], "player_id": player["id"], "season_id": season_id,
-                                       "jersey": str(p.get("shirtNumber") or ""), "position": p.get("playingPosition") or None, "active": True})
-
-    def game(self, comp_id: str, home: dict, away: dict, ext_id: str, adapter: str, status: str, hs: int, as_: int, date) -> None:
-        r = self.one("external_games", f"adapter=eq.{adapter}&external_id=eq.{ext_id}&select=game_id")
-        if r and r.get("game_id"):
-            return
-        st = "final" if status == "final" else ("live" if status == "live" else "scheduled")
-        g = self.insert("games", {"competition_id": comp_id, "home_team_id": home["id"], "away_team_id": away["id"],
-                                  "status": st, "home_score": hs, "away_score": as_, "tipoff_at": date})
-        if not self.dry and self.sb:
-            self.sb.upsert("external_games", {"adapter": adapter, "external_id": ext_id, "game_id": g["id"], "home_name": home["name"], "away_name": away["name"]}, "adapter,external_id")
 
 
 def main() -> int:
@@ -192,12 +68,12 @@ def main() -> int:
         raise SystemExit(f"no source {args.source}")
     code = src["code"]
     now = datetime.now(timezone.utc)
-    season_name = args.season or (f"{now.year}-{str(now.year + 1)[2:]}" if now.month >= 8 else f"{now.year - 1}-{str(now.year)[2:]}")
+    season_name = args.season or season_name_for(now)
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
     sb = Supabase(url, key) if (url and key) else None
     if not sb and not args.dry_run:
         raise SystemExit("SUPABASE_URL / SUPABASE_SERVICE_KEY missing (or pass --dry-run)")
-    B = Bootstrap(sb, args.dry_run)
+    B = Platform(sb, dry=args.dry_run, auto_create=True)
 
     archive = FEED_DIR / code / "games"
     files = sorted(archive.glob("*.json")) if archive.exists() else []
@@ -208,25 +84,21 @@ def main() -> int:
     season = B.season(league["id"], season_name)
     comp = B.competition(season["id"], args.competition or src.get("label", code))
 
-    teams, players, roster_seen = {}, {}, set()
     for f in files:
         raw = json.loads(f.read_text(encoding="utf-8"))
-        tm = raw.get("tm") or {}
-        sides = {}
-        for k in ("1", "2"):
-            t = tm.get(k) or {}
-            team = B.team(league["id"], t, teams)
-            sides[k] = team
-            if not B.dry and B.sb:
-                B.sb.upsert("competition_teams", {"competition_id": comp["id"], "team_id": team["id"]}, "competition_id,team_id")
-            tcode = (t.get("code") or "").strip() or slugify(t.get("name", ""))
-            for pno, p in (t.get("pl") or {}).items():
-                pl = B.player(team, tcode, str(pno), p, players)
-                B.roster(team, pl, season["id"], p, roster_seen)
+        people = B.ensure_game_people(league["id"], comp, season["id"], raw)
         g = index.get(f.stem, {})
         status = g.get("status") or ("final" if any(e.get("actionType") == "game" and e.get("subType") == "end" for e in raw.get("pbp") or []) else "scheduled")
-        B.game(comp["id"], sides["1"], sides["2"], f.stem, src["adapter"], status, int(g.get("homeScore") or 0), int(g.get("awayScore") or 0), g.get("date"))
-
+        h, a = people.get("1"), people.get("2")
+        if h and a:
+            ext = B.one("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{f.stem}&select=game_id")
+            if not (ext and ext.get("game_id")):
+                st = "final" if status == "final" else ("live" if status == "live" else "scheduled")
+                gm = B.insert("games", {"competition_id": comp["id"], "home_team_id": h["id"], "away_team_id": a["id"], "status": st,
+                                        "home_score": int(g.get("homeScore") or 0), "away_score": int(g.get("awayScore") or 0), "tipoff_at": g.get("date")})
+                if not B.dry and sb:
+                    sb.upsert("external_games", {"adapter": src["adapter"], "external_id": f.stem, "game_id": gm["id"], "home_name": h["name"], "away_name": a["name"]}, "adapter,external_id")
+    teams, players = B.cache["team"], B.cache["player"]
     print("created:", {k: v for k, v in B.created.items() if v})
     print(f"   {len(teams)} teams, {len(players)} players seen" + (" (dry run — nothing written)" if args.dry_run else ""))
     if not args.dry_run and sb:

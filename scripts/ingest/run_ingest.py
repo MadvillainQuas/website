@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from adapters import get_adapter  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from translate.fiba_events import translate, game_rows  # noqa: E402
+from feedplatform import Platform, season_name_for  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "ingest-sources.json"
@@ -188,75 +189,81 @@ def match_team_id(sb: Supabase, league_id: str, name: str, cache: dict) -> str |
 
 
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
-    """games + game_advanced for the Epinoia site — only when the source names a league."""
+    """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
+    A league connected from the console (auto_create) has its clubs / players / rosters created
+    from the payload the first time they appear; a hand-mapped league only matches, never invents."""
     league_id = src.get("league_id")
-    if not league_id:
+    if not league_id or b.raw is None:
         return False
-    cache = run.setdefault("_team_cache", {})
-    home_id = match_team_id(sb, league_id, b.home_name, cache)
-    away_id = match_team_id(sb, league_id, b.away_name, cache)
-    if not (home_id and away_id):
+    ac = src.get("adapter_config") or {}
+    plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
+    comp_id = src.get("competition_id")
+    if comp_id:
+        comp = {"id": comp_id}
+        srow = sb.select("competitions", f"id=eq.{comp_id}&select=season_id")
+        season_id = srow[0]["season_id"] if srow else None
+    else:
+        comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
+        src["competition_id"] = comp["id"]
+        season_id = plat.one("competitions", f"id=eq.{comp['id']}&select=season_id")["season_id"]
+        if src.get("id"):
+            try:
+                sb.patch("schedule_sources", f"id=eq.{src['id']}", {"competition_id": comp["id"]})
+            except Exception:
+                pass
+    people = plat.ensure_game_people(league_id, comp, season_id, b.raw)
+    home, away = people.get("1"), people.get("2")
+    if not (home and away):
         sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}",
-                 {"error": f"unmatched team: {'' if home_id else b.home_name} {'' if away_id else b.away_name}".strip()})
+                 {"error": f"unmatched team: {'' if home else b.home_name} {'' if away else b.away_name}".strip()})
         print(f"    !! unmatched team for {b.home_name} v {b.away_name} - add an alias in public.teams.aliases")
         return False
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
-    status = "final" if b.status == "final" else "live"
+    status = "final" if b.status == "final" else ("live" if b.status == "live" else "scheduled")
     scores = {"home_score": int(b.team["home"].get("points", 0)), "away_score": int(b.team["away"].get("points", 0))}
     if not game_id:
-        g = sb.upsert("games", {"competition_id": src.get("competition_id"), "home_team_id": home_id, "away_team_id": away_id,
+        g = sb.upsert("games", {"competition_id": comp["id"], "home_team_id": home["id"], "away_team_id": away["id"],
                                 "tipoff_at": b.tipoff_at, "status": status, **scores}, "id")
         game_id = g[0]["id"]
     else:
-        sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores})
+        cur = sb.select("games", f"id=eq.{game_id}&select=status")
+        if not (cur and cur[0].get("status") == "final"):
+            sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores})
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,
-                                "pbp": b.pbp if src.get("adapter_config", {}).get("store_pbp") else None, "computed_at": now_iso()}, "game_id")
+                                "pbp": b.pbp if ac.get("store_pbp") else None, "computed_at": now_iso()}, "game_id")
     sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}", {"game_id": game_id, "ingested_at": now_iso(), "error": None})
-    # Phase B: the feed becomes a real Epinoia game — roster snapshot + starters + the scorer's
-    # event log, then the platform's own finalise function derives everything downstream.
-    if src["adapter"] == "fiba_livestats" and b.raw is not None and src.get("adapter_config", {}).get("translate", True):
+    if src["adapter"] == "fiba_livestats" and ac.get("translate", True):
         try:
-            write_event_log(sb, src, b, game_id, home_id, away_id)
+            write_event_log(sb, src, b, game_id, people["pids"])
         except Exception as exc:
             print(f"    (event translation failed: {exc})")
     try:
-        if src.get("competition_id"):
-            sb.rpc("refresh_feed_team_season", {"p_competition": src["competition_id"]})
-    except Exception as exc:                     # 0095 not applied yet — the game is still saved
+        sb.rpc("refresh_feed_team_season", {"p_competition": comp["id"]})
+    except Exception as exc:
         print(f"    (season roll-up skipped: {exc})")
     return True
 
 
-def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, home_id: str, away_id: str) -> None:
+def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict) -> None:
     """Translate the FIBA payload into game_events and finalise the game (roadmap Phase B).
-    pids are the platform's players.id, resolved through players.external_ids.fiba_livestats
-    ("<teamcode>:<pno>", as bootstrap_league writes them); a player the platform does not know
-    keeps a synthetic "<team>:<pno>" id — reported, never invented as a person."""
+    `pids` maps "<teamcode>:<pno>" -> players.id (from Platform.ensure_game_people)."""
     tm = b.raw.get("tm") or {}
     codes = {0: (tm.get("1") or {}).get("code", ""), 1: (tm.get("2") or {}).get("code", "")}
-    lookup = {}
-    for i, team_id in ((0, home_id), (1, away_id)):
-        rows = sb.select("roster_entries", f"team_id=eq.{team_id}&select=players(id,external_ids)")
-        for r in rows:
-            pl = r.get("players") or {}
-            ext = (pl.get("external_ids") or {}).get("fiba_livestats")
-            if ext:
-                lookup[ext] = pl["id"]
     missing = set()
 
     def pid_for(team, pno):
         key = f"{codes[team]}:{pno}"
-        if key in lookup:
-            return lookup[key]
+        if key in pids:
+            return pids[key]
         missing.add(key)
         return f"{team}:{pno}"
 
     T = translate(b.raw, pid_for)
     if missing:
-        print(f"    ! {len(missing)} players not on the platform roster (run bootstrap_league.py): {sorted(missing)[:6]}…")
+        print(f"    ! {len(missing)} players without a platform id: {sorted(missing)[:6]}…")
     g = sb.select("games", f"id=eq.{game_id}&select=status")
     if g and g[0].get("status") == "final":
         return                                              # a finalised log is closed (insert trigger refuses)
@@ -280,27 +287,32 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, home_i
 
 # ─────────────────────────────────────────────────────────── main loop
 def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> list[dict]:
-    if use_config or sb is None:
-        cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-        rows = []
-        for s in cfg["sources"]:
-            if only and s["label"] != only and s.get("code") != only:
-                continue
-            for url in s["scheduleUrls"]:
-                rows.append({**s, "schedule_url": url, "id": None})
-        return rows
-    rows = sb.rpc("due_schedule_sources")
-    cfg_by_label = {}
+    """Config sources (config/ingest-sources.json, edited from the website admin) UNION the
+    database's due sources (schedule_sources, connected from the Epinoia console). Same
+    schedule URL in both → the DB row wins (it carries league_id + the poll bookkeeping)."""
+    rows: dict[str, dict] = {}
     try:
-        cfg_by_label = {s["label"]: s for s in json.loads(CONFIG_PATH.read_text(encoding="utf-8"))["sources"]}
-    except Exception:
-        pass
-    out = []
-    for r in rows:
-        if only and r["label"] != only:
-            continue
-        c = cfg_by_label.get(r["label"], {})
-        out.append({**c, **r, "code": r.get("code") or c.get("code") or r["label"]})
+        cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        for s in cfg["sources"]:
+            if not s.get("enabled", True):
+                continue
+            for url in s.get("scheduleUrls") or []:
+                rows[url] = {**s, "schedule_url": url, "id": None}
+    except Exception as exc:
+        print(f"(config sources unavailable: {exc})")
+    if sb and not use_config:
+        try:
+            for r in sb.rpc("due_schedule_sources"):
+                ac = r.get("adapter_config") or {}
+                code = ac.get("code") or r.get("label") or "FEED"
+                rows[r["schedule_url"]] = {**rows.get(r["schedule_url"], {}), **r, "code": code,
+                                           "scheduleUrls": [r["schedule_url"]], "adapter_config": ac,
+                                           "league_id": r.get("league_id"), "competition_id": r.get("competition_id")}
+        except Exception as exc:
+            print(f"(database sources unavailable: {exc})")
+    out = list(rows.values())
+    if only:
+        out = [r for r in out if r.get("label") == only or r.get("code") == only]
     return out
 
 
@@ -308,7 +320,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", help="label/code of one source")
     ap.add_argument("--dry-run", action="store_true", help="discover + fetch, write nothing")
-    ap.add_argument("--config", action="store_true", help="read config/ingest-sources.json instead of public.schedule_sources")
+    ap.add_argument("--config", action="store_true", help="(kept for compatibility) config sources are always read; with Supabase keys the database sources are merged in too")
     ap.add_argument("--max-games", type=int, default=400)
     ap.add_argument("--ids", help="comma-separated external ids: skip discovery and fetch just these (tests)")
     ap.add_argument("--feed-out", default=str(FEED_DIR), help="repo feed directory (default data/feed); '' to disable")
@@ -322,7 +334,7 @@ def main() -> int:
     if sb is None:
         print("Supabase: off" + ("" if args.no_supabase or args.dry_run else " (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)") + " - repo feed only")
 
-    sources = load_sources(sb, args.config or sb is None, args.source)
+    sources = load_sources(sb, args.config and sb is None, args.source)
     print(f"{len(sources)} source(s) due")
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     exit_code = 0

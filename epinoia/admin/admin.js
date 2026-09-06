@@ -116,6 +116,7 @@ async function render() {
     league: () => league });
   window.EpinoiaExportUI.mount({ host: '#exportPanel', sb, say,
     season: () => season, competitions: () => comps });
+  if (window.EpinoiaFeedUI) window.EpinoiaFeedUI.mount({ host: '#feedPanel', sb, say, league: () => league });
   window.EpinoiaKeys.mount({ host: '#keysPanel', sb, league, say });
   window.EpinoiaWebhook.mount({ host: '#webhookPanel', sb, league, say });
   window.EpinoiaFeeds.mount({ host: '#feedsPanel', sb, league, say,
