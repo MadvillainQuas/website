@@ -71,7 +71,21 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_ANON_KEY')!,
     { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } }
   );
-  const { data: { user } } = await caller.auth.getUser();
+  /* THE INGEST WORKER IS A CALLER TOO. It holds the service-role key (GitHub Actions
+     secret), never a person's session, so it identifies itself with that key and its
+     actions are attributed to a platform admin in the audit log. Everything else it does
+     goes through the admin client anyway; this only lets it reach the finalise gate. */
+  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const isWorker = bearer.length > 0 && bearer === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  let user: { id: string } | null = null;
+  if (isWorker) {
+    const { data: adminRow } = await admin.from('memberships').select('user_id')
+      .eq('role', 'platform_admin').limit(1).maybeSingle();
+    user = { id: adminRow?.user_id ?? '00000000-0000-0000-0000-000000000000' };
+  } else {
+    const got = await caller.auth.getUser();
+    user = got.data.user;
+  }
   if (!user) return json({ error: 'sign in first' }, 401);
 
   const { gameId, reopen, competitionId, awards } = await req.json().catch(() => ({}));
@@ -130,7 +144,7 @@ Deno.serve(async (req) => {
   if (!gameId) return json({ error: 'gameId required' }, 400);
 
   // authorisation is evaluated as the CALLER, so RLS decides — not this code
-  const { data: allowed } = await caller.from('games').select('id,status').eq('id', gameId).maybeSingle();
+  const { data: allowed } = await (isWorker ? admin : caller).from('games').select('id,status').eq('id', gameId).maybeSingle();
   if (!allowed) return json({ error: 'not your game' }, 403);
 
   // --------------------------------------------------------------- reopen ---

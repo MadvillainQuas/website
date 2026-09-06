@@ -202,11 +202,13 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
             fc = sb.select("feed_competitions", f"code=eq.{src['code']}&select=league_id")
             league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
             if not league_id:
-                lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"))
+                lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"), src.get("league_country"))
                 league_id = lg["id"]
                 sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
                 print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
             src["league_id"] = league_id
+            if src.get("league_country"):          # keeps an already-created league's country in step with the registry
+                plat.league(src["code"], src.get("league_name") or src["code"], src.get("league_slug"), src["league_country"])
         except Exception as exc:
             print(f"    (league creation failed: {exc})")
             return False

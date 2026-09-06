@@ -59,13 +59,21 @@ class Platform:
         return self.sb.upsert(table, row, on_conflict)[0]
 
     # -- league / season / competition ------------------------------------------
-    def league(self, code: str, name: str, slug: str | None = None) -> dict:
+    def league(self, code: str, name: str, slug: str | None = None, country: str | None = None) -> dict:
         slug = slug or slugify(code)
-        r = self.one("leagues", f"slug=eq.{slug}&select=id,slug,name")
+        r = self.one("leagues", f"slug=eq.{slug}&select=id,slug,name,country")
         if r:
+            if country and not r.get("country") and self.sb and not self.dry:
+                try:
+                    self.sb.patch("leagues", f"id=eq.{r['id']}", {"country": country})
+                except Exception:
+                    pass
             return r
         self.log(f"  + league {slug} ({name})")
-        lg = self.insert("leagues", {"slug": slug, "name": name, "public_live": True, "youth_protected": False})
+        row = {"slug": slug, "name": name, "public_live": True, "youth_protected": False}
+        if country:
+            row["country"] = country
+        lg = self.insert("leagues", row)
         # a league nobody administers is invisible in the console: hand it to every platform admin
         if self.sb and not self.dry:
             try:

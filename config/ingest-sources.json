@@ -45,7 +45,8 @@
       },
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/HBBC/en/schedule"
-      ]
+      ],
+      "league_country": "GB"
     },
     {
       "code": "EABL",
