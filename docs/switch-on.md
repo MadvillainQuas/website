@@ -74,6 +74,17 @@ that league's clubs, players, rosters and fixtures from the feed and turns every
 a scored Epinoia game (roster snapshot, event log, finalise). The card shows each feed's last poll,
 game counts and errors, with pause / resume / poll-now.
 
+## 4b. The worker finalises games — DONE 2026-09-06 (`finalise-game` redeployed)
+
+The finalise function accepts the ingest worker (it identifies itself with the service key;
+its actions are logged against the platform admin). If it is ever redeployed from an older
+checkout, fed games stay `live` with their full event log and the worker logs `finalise-game 401`;
+redeploy with:
+
+```bash
+cd /d C:\Users\Admin\Documents\website_repo && npx supabase@latest functions deploy finalise-game
+```
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash
