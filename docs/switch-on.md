@@ -46,7 +46,32 @@ workflow once for SLB and opens the Actions page. Re-running it is safe.
 Then open index_9 → Advanced Games View → 📡 League feed. The competition
 line says `supabase` once the run has written rows, `repo` before that.
 
-## 3. Optional now, required for Epinoia — create the platform league
+## 3. The scraper on the worker (stints, lineups, every league scraper) — DONE 2026-09-06
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\ingest\setup-scraper.ps1
+```
+Turns the `scraper files` folder into the PRIVATE repo `MadvillainQuas/scraper-pipeline`
+(everything except caches, node_modules, the 6 GB output folder, backups and users.json), adds a
+read-only deploy key, stores it as the website's `SCRAPER_DEPLOY_KEY` secret and sets
+`SCRAPER_REPO`. **Re-run it whenever you change a scraper file** — it pushes the changes. Run logs
+then read `(final, 32 stints)` instead of `0 stints`. To backfill stints for games ingested
+before this, run the workflow with the `refresh` box ticked (Actions → League ingest → Run workflow).
+
+## 4. Adding leagues — from the website, no files
+
+**prophesyscouting.co.uk/admin.html → League feeds (auto-update)**: one row per league (code,
+label, adapter, schedule URLs). *Publish* commits `config/ingest-sources.json` — the registry the
+worker, Scrape Now and GameVis all read — with your saved GitHub token; *Run ingest now* starts the
+worker immediately and the card lists the last runs.
+
+**Epinoia console → 07b Connect a league feed** (needs migration 0097 — run `Push Database.bat`
+again): paste the league's schedule URL, give it a code, press *connect*. The worker then creates
+that league's clubs, players, rosters and fixtures from the feed and turns every finished game into
+a scored Epinoia game (roster snapshot, event log, finalise). The card shows each feed's last poll,
+game counts and errors, with pause / resume / poll-now.
+
+## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash
 set SUPABASE_URL=https://hhvofgqqadtyvcjudhjx.supabase.co
