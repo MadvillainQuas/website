@@ -164,14 +164,37 @@ class Platform:
         r = self.one("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name")
         first, last = full_name(p)
         if not r and self.sb:
-            for row in self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,players(id,slug,first_name,last_name,aliases)"):
+            # THE SHARED MATCHER (matching.py = epinoia/match.js): the club's roster first, then anyone in
+            # the league with that surname, scored on surname / forename / nickname / club / shirt number.
+            # Only a clear winner is taken; an ambiguous pair is left to become (or stay) two players.
+            from matching import match_player
+            cands, seen = [], set()
+            rows = self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,jersey,position,players(id,slug,first_name,last_name,aliases)")
+            for row in rows:
                 pl = row.get("players") or {}
-                names = {(pl.get("first_name", "") + " " + pl.get("last_name", "")).strip().lower()} | {a.strip().lower() for a in (pl.get("aliases") or [])}
-                if (first + " " + last).strip().lower() in names:
-                    r = pl
-                    if not self.dry:
-                        self.sb.patch("players", f"id=eq.{pl['id']}", {"external_ids": {"fiba_livestats": ext}})
-                    break
+                if pl.get("id") and pl["id"] not in seen:
+                    seen.add(pl["id"])
+                    cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": team.get("name")})
+            try:
+                lg = self.sb.select("teams", f"id=eq.{team['id']}&select=league_id")
+                lid = lg[0]["league_id"] if lg else None
+                if lid and last:
+                    for row in self.sb.select("roster_entries", f"teams.league_id=eq.{lid}&players.last_name=ilike.*{last[:12]}*&select=player_id,jersey,position,teams!inner(name,league_id),players!inner(id,slug,first_name,last_name,aliases)"):
+                        pl = row.get("players") or {}
+                        if pl.get("id") and pl["id"] not in seen:
+                            seen.add(pl["id"])
+                            cands.append({**pl, "number": row.get("jersey"), "position": row.get("position"), "team": (row.get("teams") or {}).get("name")})
+            except Exception:
+                pass
+            res = match_player({"name": {"first": first, "last": last}, "team": team.get("name"),
+                                "number": p.get("shirtNumber"), "position": p.get("playingPosition")}, cands)
+            if res["status"] == "match":
+                r = res["match"]
+                self.log(f"  = {first} {last} -> {r.get('first_name')} {r.get('last_name')} ({', '.join(res['best']['reasons'])})")
+                if not self.dry:
+                    self.sb.patch("players", f"id=eq.{r['id']}", {"external_ids": {"fiba_livestats": ext}})
+            elif res["status"] == "ambiguous":
+                self.log(f"  ? {first} {last}: ambiguous between " + " / ".join(f"{x['candidate'].get('first_name')} {x['candidate'].get('last_name')}" for x in res["ranked"][:2]))
         if not r and self.auto_create:
             aliases = [a for a in {p.get("name"), p.get("scoreboardName")} if a and a != (first + " " + last).strip()]
             r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first or "?", "last_name": last,

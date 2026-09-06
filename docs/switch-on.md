@@ -114,6 +114,33 @@ reader loads once). The video tab then shows how tightly plays are placed (a fed
 stamped by the 10-second live poll), a ↗ link per play, +/− nudges for admins, and *export clips*
 (JSON) for the labelling studio. Plan and status: `docs/video-livestats-sync-roadmap.md`.
 
+## 4e. Phases, designation, crests, matching, broadcasts (built 2026-09-06 late)
+
+- **One competition per Genius phase.** A registry entry pointing at a client's whole schedule
+  (`…/HBBC/en/schedule`) is expanded by the worker into one source per competition the page offers
+  for the current season — BCB: *BCB 2026-2027* (league), *BCB Trophy 2027* (cup) — each with its
+  own schedule URL, its own Epinoia competition (kind from the name: trophy/cup → cup, playoff/finals
+  → playoff) and its own team list. All-star and exhibition phases are skipped unless named in
+  `adapter_config.competitions_include`; `competitions_exclude` drops any; `competition_kinds`
+  overrides a kind. Games filed under the league's catch-all competition before the phases were
+  known are re-filed on the next discovery run (tables rebuilt). A game an admin has placed
+  somewhere specific is never touched.
+- **Block designation.** Console → Fixtures: tick games (or *select all*) and *move ticked games
+  to…* another phase, before or after they are played. The game page has the same control for one
+  game (admins / league admins).
+- **Crests.** Every club's logo is taken from the schedule page at discovery (both sides of every
+  fixture carry one), so a club has its crest before its first game is fetched. Uploaded crests win.
+- **Player matching.** `epinoia/match.js` and its port `scripts/ingest/matching.py` score a name on
+  surname, forename / nickname / initial, club, shirt number and position; the worker uses it before
+  creating a player, and index_9's player profile links to the player's (or at least the club's)
+  Epinoia page through it. Ambiguous pairs are logged (`?  name: ambiguous between …`), never guessed.
+- **Broadcasts, found by themselves.** Add a repo secret `YOUTUBE_API_KEY` (a free, read-only YouTube
+  Data API key) and the worker attaches each finished fed game's broadcast: a search for both clubs
+  within a day of tip-off (the league's channel first when `adapter_config.youtube_channel` is set),
+  a live stream preferred because YouTube publishes its actual start time, which with the platform's
+  own tip stamp anchors every play with no human step. A plain upload is attached with the tip time
+  known and the offset left for the scoreboard reader on the game page.
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash

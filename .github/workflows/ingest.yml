@@ -81,6 +81,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # optional: a free, read-only YouTube Data API key lets the worker find and line up
+          # each fed game's broadcast by itself (scripts/ingest/auto_video.py)
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SCRAPER_DIR: ${{ github.workspace }}/scraper
           PYTHONPATH: ${{ github.workspace }}/scraper
         run: |

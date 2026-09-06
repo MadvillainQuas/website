@@ -575,6 +575,12 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 pass
         else:
             print("    = finalised")
+        # the broadcast, found and lined up by itself when a YouTube key is configured (auto_video.py)
+        try:
+            from auto_video import attach as attach_video
+            attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, src.get("adapter_config") or {})
+        except Exception as exc:
+            print(f"    (auto video: {exc})")
 
 
 # ─────────────────────────────────────────────────────────── main loop

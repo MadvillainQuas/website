@@ -386,8 +386,57 @@ async function loadFixtures() {
   }
 
   const byId = new Map(teams.map(t => [t.id, t]));
+  /* BLOCK DESIGNATION. A whole round of cup ties entered under the league, or a
+     feed that could only file everything under one phase: tick the games and
+     move them together, before or after they are played. Same move as the
+     per-row control — one update per game, both tables rebuilt afterwards.
+     Only offered when there is somewhere to move them TO. */
+  if (comps.length > 1) {
+    const bar = el('div', 'fxbulk');
+    const all = el('label', 'fxbulk-all');
+    const allBox = document.createElement('input'); allBox.type = 'checkbox'; allBox.title = 'tick every game shown';
+    all.append(allBox, document.createTextNode(' select all'));
+    const sel = el('select', 'ep-input mini');
+    sel.appendChild(el('option', null, 'move ticked games to…')).value = '';
+    comps.filter(c => c.id !== comp.id).forEach(c => {
+      const o = el('option', null, c.name + (c.kind && c.kind !== 'league' ? ' (' + c.kind + ')' : ''));
+      o.value = c.id; sel.appendChild(o);
+    });
+    const count = el('span', 'note', '');
+    const ticked = () => [...host.querySelectorAll('input.fxpick:checked')].map(i => i.value);
+    const refresh = () => { const n = ticked().length; count.textContent = n ? n + ' ticked' : ''; sel.disabled = !n; };
+    allBox.addEventListener('change', () => { host.querySelectorAll('input.fxpick').forEach(i => { i.checked = allBox.checked; }); refresh(); });
+    host.addEventListener('change', e => { if (e.target && e.target.classList.contains('fxpick')) refresh(); });
+    sel.addEventListener('change', async () => {
+      const to = comps.find(c => c.id === sel.value);
+      const ids = ticked();
+      if (!to || !ids.length) { sel.value = ''; return; }
+      if (!confirm('Move ' + ids.length + ' game' + (ids.length === 1 ? '' : 's') + ' to ' + to.name + '? Both tables will be rebuilt.')) { sel.value = ''; return; }
+      sel.disabled = true;
+      let moved = 0, failed = 0;
+      for (const id of ids) {
+        const { error } = await sb.from('games').update({ competition_id: to.id, tie_id: null, leg: null }).eq('id', id);
+        if (error) failed++; else moved++;
+      }
+      for (const cid of [comp.id, to.id]) {
+        await sb.rpc('recompute_standings', { p_competition: cid });
+        await sb.rpc('compute_season_awards', { p_competition: cid });
+        await sb.rpc('advance_bracket', { p_competition: cid });
+      }
+      say(moved + ' moved to ' + to.name + (failed ? ', ' + failed + ' refused' : '') + '.', failed ? 'warn' : 'ok');
+      loadFixtures(); loadStandingsDependents();
+    });
+    bar.append(all, sel, count);
+    host.appendChild(bar);
+    refresh();
+  }
   fixtures.forEach(g => {
     const row = el('div', 'fxrow');
+    if (comps.length > 1) {
+      const pick = document.createElement('input'); pick.type = 'checkbox'; pick.className = 'fxpick'; pick.value = g.id;
+      pick.title = 'tick to move with the others';
+      row.appendChild(pick);
+    }
     const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
     row.appendChild(el('div', 'd', when
       ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' +

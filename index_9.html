@@ -26,6 +26,7 @@
     <script src="gate.js"></script>
     <!-- V15 feed: Supabase URL + anon key (same project as the Epinoia site) for the league feed loader -->
     <script src="epinoia/config.js"></script>
+    <script src="epinoia/match.js"></script>
     <!-- Auth/session bootstrap: kick unauthenticated visitors back to sign-in -->
     <script>
         (function () {
@@ -20781,6 +20782,37 @@
             // survives tab switches because it lives in this component).
             // ═══════════════════════════════════════════════════════════════
             const [profilePlayer, setProfilePlayer] = useState(null); // { player, team }
+            // V15.7: the same person on Epinoia. Resolved through the shared matcher (epinoia/match.js):
+            // club first (name / short name / code), then the club's roster by surname, forename or
+            // nickname, initial and shirt number. Only a clear winner links; an ambiguous pair does not.
+            const [profileEpinoia, setProfileEpinoia] = useState(null);
+            useEffect(() => {
+                let dead = false;
+                setProfileEpinoia(null);
+                if (!profilePlayer || !profilePlayer.player) return;
+                (async () => {
+                    try {
+                        const M = window.EpinoiaMatch, C = window.EPINOIA_CONFIG;
+                        if (!M || !C || !C.supabaseUrl) return;
+                        const H = { apikey: C.supabaseAnonKey, Accept: 'application/json' };
+                        const get = async q => { const r = await fetch(C.supabaseUrl + '/rest/v1/' + q, { headers: H, cache: 'no-store' }); return r.ok ? r.json() : []; };
+                        const cache = window.__epMatch = window.__epMatch || {};
+                        if (!cache.teams) cache.teams = get('teams?select=id,name,short_name,slug,aliases,league_id,leagues(slug,name)&league_id=not.is.null&limit=2000');
+                        const teams = await cache.teams;
+                        const tm = M.matchTeam(profilePlayer.team || '', teams);
+                        if (dead || !tm.best) return;
+                        const key = 'roster:' + tm.best.id;
+                        if (!cache[key]) cache[key] = get('roster_entries?team_id=eq.' + tm.best.id + '&select=jersey,position,players(id,slug,first_name,last_name,aliases)');
+                        const rows = await cache[key];
+                        if (dead) return;
+                        const cands = (rows || []).filter(r => r.players).map(r => Object.assign({}, r.players, { number: r.jersey, position: r.position, team: tm.best.name }));
+                        const res = M.matchPlayer({ name: profilePlayer.player, team: tm.best.name }, cands);
+                        setProfileEpinoia({ team: tm.best, status: res.status, player: res.status === 'match' ? res.match : null,
+                                            reasons: res.best ? res.best.reasons : [] });
+                    } catch (_) { /* the profile stands without the link */ }
+                })();
+                return () => { dead = true; };
+            }, [profilePlayer && profilePlayer.player, profilePlayer && profilePlayer.team]);
             const profileReturnRef = React.useRef(null);              // { tab, scrollY }
             const [profileBarsMode, setProfileBarsMode] = useState('individual'); // individual | onoff | teamstats
             const [minQualifyingMinutes, setMinQualifyingMinutes] = useState(0.20); // 20% of league max minutes (V6.2)
@@ -55610,6 +55642,20 @@
                                 pTeam,
                                 ftRow && ftRow.positionLabel ? ' • ' + ftRow.positionLabel : '',
                                 ftRow && ftRow.roleLabel ? ' • ' + ftRow.roleLabel : ''
+                            ),
+                            profileEpinoia && profileEpinoia.team && e('div', { style: { marginTop: '8px' }},
+                                e('a', {
+                                    href: profileEpinoia.player
+                                        ? 'epinoia/p/?p=' + encodeURIComponent(profileEpinoia.player.slug || profileEpinoia.player.id)
+                                        : 'epinoia/t/?t=' + encodeURIComponent(profileEpinoia.team.slug),
+                                    target: '_blank', rel: 'noopener',
+                                    title: profileEpinoia.player
+                                        ? 'matched on ' + (profileEpinoia.reasons || []).join(', ')
+                                        : (profileEpinoia.status === 'ambiguous' ? 'two players on this club fit the name — opening the club instead' : 'no player on this club fits the name yet — opening the club'),
+                                    style: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                                             letterSpacing: '0.06em', textTransform: 'uppercase', textDecoration: 'none', color: '#04100b',
+                                             background: profileEpinoia.player ? 'linear-gradient(100deg, #93f2bf, #8ff5ff)' : 'rgba(147,242,191,0.35)' }
+                                }, profileEpinoia.player ? '↗ Epinoia profile' : '↗ ' + profileEpinoia.team.name + ' on Epinoia')
                             )
                         ),
                         e('div', { style: { display: 'flex', justifyContent: 'center', gap: isMobileView ? '6px' : '10px', flexWrap: 'wrap' }},

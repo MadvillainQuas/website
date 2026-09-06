@@ -56,7 +56,10 @@
     background:color-mix(in oklch,var(--flare) 9%,transparent)}
   .hide{display:none !important}
   .sw{display:flex;align-items:center;gap:7px;font-family:var(--f-micro);font-size:9px;color:var(--ink-2)}
-  .fxrow{display:grid;grid-template-columns:74px 1fr auto 1fr 84px;gap:9px;align-items:center;
+  .fxbulk{display:flex;align-items:center;gap:10px;padding:6px 4px;margin:2px 0 6px;border-bottom:1px dashed var(--rule,rgba(147,242,191,.18));font-size:11px}
+.fxbulk-all{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.fxrow input.fxpick{margin:0 6px 0 0}
+.fxrow{display:grid;grid-template-columns:74px 1fr auto 1fr 84px;gap:9px;align-items:center;
     padding:10px 0;border-bottom:1px solid var(--rule)}
   .fxrow .d{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
   .fxrow .tn{font-family:var(--f-ui);font-weight:700;font-size:12.5px;text-transform:uppercase}
@@ -552,7 +555,7 @@
 <script src="news-ui.js?v=239" defer></script>
 <script src="appearance-ui.js?v=239" defer></script>
 <script src="embeds-ui.js?v=239" defer></script>
-<script src="admin.js?v=239" defer></script>
+<script src="admin.js?v=249" defer></script>
 <script src="../nav.js?v=239" defer></script>
 </body>
 </html>
