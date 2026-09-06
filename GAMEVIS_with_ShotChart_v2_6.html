@@ -19127,6 +19127,13 @@ if __name__ == '__main__':
             const gamePoss = (homeTotal.possessions + awayTotal.possessions) / 2;
             const totalMins = (homeTotal.minutes || 200) / 5;
             const pace = totalMins > 0 ? (gamePoss / totalMins * 40) : 0;
+            // Each team's OWN pace (its possessions per 40) beside the game pace: the two can
+            // differ by a possession or two, and the comparison table should show both.
+            for (const tn of teamNames) {
+                const tt = teamsData[tn].teamTotals;
+                tt.pace = totalMins > 0 ? (tt.possessions / totalMins * 40) : pace;
+                tt.gamePace = pace;
+            }
             
             // Player metrics
             for (const teamName of teamNames) {
@@ -19251,6 +19258,20 @@ if __name__ == '__main__':
                         player.defOnCourtOrebPct = defOrebOpps > 0 ? (ocs.oppOreb / defOrebOpps * 100) : 0;
                         const defTovDenom = ocs.oppFGA + 0.44 * ocs.oppFTA + ocs.oppTov;
                         player.defOnCourtTovPct = defTovDenom > 0 ? (ocs.oppTov / defTovDenom * 100) : 0;
+
+                        // PACE WITH THIS PLAYER ON THE FLOOR, and the floor without them. Both teams'
+                        // possessions while on are averaged (same definition as the game pace) over the
+                        // seconds the player was on; "off" is the rest of the game. The +/- is on minus
+                        // off, so +3.0 reads "the game ran three possessions per 40 faster with them".
+                        // the on-court tracker does not always carry seconds; the box score's minutes are the same clock
+                        const ocSecs = (ocs.seconds > 0) ? ocs.seconds : ((player.minutes || 0) * 60);
+                        const ocPossAvg = (ocTeamPoss + ocOppPoss) / 2;
+                        player.onCourtPace = ocSecs > 0 ? (ocPossAvg / (ocSecs / 60) * 40) : 0;
+                        const offSecs = Math.max(0, totalMins * 60 - ocSecs);
+                        const offPossAvg = Math.max(0, gamePoss - ocPossAvg);
+                        player.offCourtPace = offSecs > 60 ? (offPossAvg / (offSecs / 60) * 40) : 0;
+                        player.pacePlusMinus = (player.onCourtPace > 0 && player.offCourtPace > 0)
+                            ? player.onCourtPace - player.offCourtPace : 0;
                     } else {
                         player.onCourtORtg = team.teamTotals.ortg;
                         player.onCourtDRtg = oppTotals.ortg;
@@ -19259,6 +19280,7 @@ if __name__ == '__main__':
                         player.onCourtFTARate = team.teamTotals.ftaRate;
                         player.onCourtOrebPct = team.teamTotals.orebPct;
                         player.onCourtTovPct = team.teamTotals.tovPct;
+                        player.onCourtPace = 0; player.offCourtPace = 0; player.pacePlusMinus = 0;
                         
                         // Defensive defaults (opponent averages)
                         player.defOnCourtEfg = oppTotals.efg;
@@ -19979,6 +20001,7 @@ if __name__ == '__main__':
             const statKeys = [
                 'minutes', 'usg', 'totalPointContribution',
                 'onCourtORtg', 'onCourtDRtg', 'onCourtEfg', 'onCourtFTARate', 'onCourtOrebPct', 'onCourtTovPct',
+                'onCourtPace', 'pacePlusMinus',
                 'defOnCourtEfg', 'defOnCourtFTARate', 'defOnCourtOrebPct', 'defOnCourtTovPct',
                 'ts', 'astPct', 'rebPct', 'astUsgRatio', 'tovPct', 'ppp',
                 'stlPct', 'blkPct', 'ftRate', 'orebPct', 'drebPct'
@@ -20010,6 +20033,7 @@ if __name__ == '__main__':
                         <div class="match-meta">${this.liveMode ? '🔴 LIVE' : 'Final'}</div>
                         <div class="pace-indicator">
                             ⚡ Pace: <span class="value">${pace.toFixed(1)}</span> / 40min
+                            <span style="opacity:.75;font-size:.85em"> · ${homeTeam.substring(0, 3).toUpperCase()} ${((homeTotals.pace != null ? homeTotals.pace : pace)).toFixed(1)} · ${awayTeam.substring(0, 3).toUpperCase()} ${((awayTotals.pace != null ? awayTotals.pace : pace)).toFixed(1)}</span>
                         </div>
                     </div>
                     <div class="team-block away">
@@ -21773,7 +21797,7 @@ if __name__ == '__main__':
                                     <th colspan="6" class="col-group col-group-header" data-group="scoring" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'scoring')">Scoring</th>
                                     <th colspan="3" class="col-group col-group-header" data-group="usage" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'usage')">Usage</th>
                                     <th colspan="6" class="col-group col-group-header shot-dist" data-group="shotdist" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'shotdist')">Shot Distribution</th>
-                                    <th colspan="4" class="col-group col-group-header off-impact" data-group="offcourt" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'offcourt')">Offensive On-Court</th>
+                                    <th colspan="5" class="col-group col-group-header off-impact" data-group="offcourt" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'offcourt')">Offensive On-Court</th>
                                     <th colspan="5" class="col-group col-group-header def-impact" data-group="defcourt" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'defcourt')">Defensive On-Court</th>
                                     <th colspan="7" class="col-group col-group-header" data-group="individual" onclick="window.fibaVisualizer.toggleColumnGroup('${uniqueId}', 'individual')">Individual</th>
                                 </tr>
@@ -21797,7 +21821,8 @@ if __name__ == '__main__':
                                     <th class="sortable-header" data-sort="onCourtORtg" data-table="${uniqueId}" data-group="offcourt">ORtg</th>
                                     <th class="sortable-header" data-sort="onCourtEfg" data-table="${uniqueId}" data-group="offcourt">eFG</th>
                                     <th class="sortable-header" data-sort="onCourtOrebPct" data-table="${uniqueId}" data-group="offcourt">ORB%</th>
-                                    <th class="sortable-header col-separator" data-sort="onCourtTovPct" data-table="${uniqueId}" data-group="offcourt">TOV%</th>
+                                    <th class="sortable-header" data-sort="onCourtTovPct" data-table="${uniqueId}" data-group="offcourt">TOV%</th>
+                                    <th class="sortable-header col-separator" data-sort="pacePlusMinus" data-table="${uniqueId}" data-group="offcourt" title="pace with this player on the floor minus pace without them (possessions per 40, both teams averaged)">PACE±</th>
                                     <th class="sortable-header" data-sort="onCourtDRtg" data-table="${uniqueId}" data-group="defcourt">DRtg</th>
                                     <th class="sortable-header" data-sort="defOnCourtEfg" data-table="${uniqueId}" data-group="defcourt">Opp eFG</th>
                                     <th class="sortable-header" data-sort="defOnCourtOrebPct" data-table="${uniqueId}" data-group="defcourt">Opp ORB</th>
@@ -21946,7 +21971,8 @@ if __name__ == '__main__':
                     <td data-group="offcourt"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${offORtg.class === 'positive' ? 'positive' : (offORtg.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${offORtg.barWidth}%;"></div></div><span class="metric-text ${offORtg.class}">${offORtg.text}</span></div></td>
                     <td data-group="offcourt"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${offEfg.class === 'positive' ? 'positive' : (offEfg.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${offEfg.barWidth}%;"></div></div><span class="metric-text ${offEfg.class}">${offEfg.text}</span></div></td>
                     <td data-group="offcourt"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${offOreb.class === 'positive' ? 'positive' : (offOreb.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${offOreb.barWidth}%;"></div></div><span class="metric-text ${offOreb.class}">${offOreb.text}</span></div></td>
-                    <td data-group="offcourt" class="col-separator"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${offTov.class === 'positive' ? 'positive' : (offTov.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${offTov.barWidth}%;"></div></div><span class="metric-text ${offTov.class}">${offTov.text}</span></div></td>
+                    <td data-group="offcourt"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${offTov.class === 'positive' ? 'positive' : (offTov.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${offTov.barWidth}%;"></div></div><span class="metric-text ${offTov.class}">${offTov.text}</span></div></td>
+                    <td data-group="offcourt" class="col-separator" title="pace on the floor ${(player.onCourtPace || 0).toFixed(1)} · off ${(player.offCourtPace || 0).toFixed(1)}"><span class="net-pill ${(player.pacePlusMinus || 0) > 0.5 ? 'positive' : (player.pacePlusMinus || 0) < -0.5 ? 'negative' : 'neutral'}">${(player.pacePlusMinus || 0) >= 0 ? '+' : ''}${(player.pacePlusMinus || 0).toFixed(1)}</span></td>
                     
                     <!-- Defensive On-Court (+/- vs opp avg) -->
                     <td data-group="defcourt"><div class="metric-cell"><div class="metric-bg"><div class="metric-fill ${defDRtg.class === 'positive' ? 'positive' : (defDRtg.class === 'negative' ? 'defense' : 'neutral')}" style="width: ${defDRtg.barWidth}%;"></div></div><span class="metric-text ${defDRtg.class}">${defDRtg.text}</span></div></td>
@@ -22949,6 +22975,17 @@ if __name__ == '__main__':
                     p.defOnCourtOrebPct = defOrebOpps > 0 ? (ocs.oppOreb / defOrebOpps * 100) : 0;
                     const defTovDenom = ocs.oppFGA + 0.44 * ocs.oppFTA + ocs.oppTov;
                     p.defOnCourtTovPct = defTovDenom > 0 ? (ocs.oppTov / defTovDenom * 100) : 0;
+
+                    // pace on / off the floor over the selected periods (see the full-game path)
+                    const ocSecs = (ocs.seconds > 0) ? ocs.seconds : ((p.minutes || 0) * 60);
+                    const ocPossAvg = (ocTeamPoss + ocOppPoss) / 2;
+                    p.onCourtPace = ocSecs > 0 ? (ocPossAvg / (ocSecs / 60) * 40) : 0;
+                    const gMin = (typeof gameMinutes === 'number' && gameMinutes > 0) ? gameMinutes : 0;
+                    const gPoss = (typeof teamPossessions === 'number' && typeof oppPossessions === 'number')
+                        ? (teamPossessions + oppPossessions) / 2 : null;
+                    const offSecs = gMin ? Math.max(0, gMin * 60 - ocSecs) : 0;
+                    p.offCourtPace = (gPoss != null && offSecs > 60) ? (Math.max(0, gPoss - ocPossAvg) / (offSecs / 60) * 40) : 0;
+                    p.pacePlusMinus = (p.onCourtPace > 0 && p.offCourtPace > 0) ? p.onCourtPace - p.offCourtPace : 0;
                 } else {
                     // Fallback to player-specific estimates
                     p.onCourtORtg = 0;
@@ -22957,6 +22994,7 @@ if __name__ == '__main__':
                     p.onCourtEfg = p.fga > 0 ? ((p.fgm + 0.5 * p.fg3m) / p.fga * 100) : 0;
                     p.onCourtOrebPct = 0;
                     p.onCourtTovPct = p.tovPct;
+                    p.onCourtPace = 0; p.offCourtPace = 0; p.pacePlusMinus = 0;
                     p.defOnCourtEfg = 0;
                     p.defOnCourtOrebPct = 0;
                     p.defOnCourtTovPct = 0;
@@ -23048,6 +23086,13 @@ if __name__ == '__main__':
             // Calculate opponent possessions for DRtg
             const oppPossessions = totals.oppFga + 0.44 * totals.oppFta - totals.oppOreb + totals.oppTov;
             totals.oppPossessions = Math.max(oppPossessions, 1);
+
+            // Pace over the selected periods: this team's possessions per 40 on the game clock those
+            // periods cover (10 min a quarter, 5 an overtime), and the game pace as the two-team average.
+            const selMinutes = (periods || []).reduce((m, per) => m + (per > 4 ? 5 : 10), 0);
+            totals.minutesPlayed = selMinutes;
+            totals.pace = selMinutes > 0 ? (totals.possessions / selMinutes * 40) : 0;
+            totals.gamePace = selMinutes > 0 ? ((totals.possessions + totals.oppPossessions) / 2 / selMinutes * 40) : 0;
             
             // Defensive Rating = (Opponent Points / Opponent Possessions) * 100
             totals.drtg = oppPossessions > 0 ? (totals.oppPoints / oppPossessions * 100) : 0;
@@ -23226,7 +23271,9 @@ if __name__ == '__main__':
                     metrics: [
                         { key: 'points', label: 'POINTS', format: v => v.toFixed(0) },
                         { key: 'ppp', label: 'PPP', format: v => v.toFixed(3) },
-                        { key: 'ortg', label: 'ORTG', format: v => v.toFixed(1) }
+                        { key: 'ortg', label: 'ORTG', format: v => v.toFixed(1) },
+                        { key: 'pace', label: 'PACE / 40', format: v => v.toFixed(1) },
+                        { key: 'possessions', label: 'POSS', format: v => v.toFixed(1) }
                     ]
                 },
                 efficiency: {
@@ -23350,7 +23397,9 @@ if __name__ == '__main__':
                     metrics: [
                         { key: 'points', label: 'POINTS', format: v => v.toFixed(0) },
                         { key: 'ppp', label: 'PPP', format: v => v.toFixed(3) },
-                        { key: 'ortg', label: 'ORTG', format: v => v.toFixed(1) }
+                        { key: 'ortg', label: 'ORTG', format: v => v.toFixed(1) },
+                        { key: 'pace', label: 'PACE / 40', format: v => v.toFixed(1) },
+                        { key: 'possessions', label: 'POSS', format: v => v.toFixed(1) }
                     ]
                 },
                 efficiency: {
