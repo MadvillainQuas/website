@@ -552,9 +552,10 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 sb.patch("games", f"id=eq.{game_id}", extra)
         else:
             sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
-    # a game being played: link its stream the moment the game is first seen, so the page has the
-    # broadcast while the game is on (the anchor is completed when the log has a tip)
-    if b.status == "live":
+    # THE BROADCAST, for a game being played or just finished: linked the moment the game is first
+    # seen (so the page carries the stream while the game is on), and its anchor completed whenever
+    # a stream start or a tip has since become known - whether or not the log is still open.
+    if b.status in ("live", "final"):
         try:
             from auto_video import attach as attach_video, complete as complete_video
             if not attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, ac):
@@ -678,14 +679,6 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 pass
         else:
             print("    = finalised")
-        # the broadcast: attached if it never was, and its anchor completed now the stream has a
-        # start time and the log a tip (auto_video.py — the league's channel needs no key)
-        try:
-            from auto_video import attach as attach_video, complete as complete_video
-            if not attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, src.get("adapter_config") or {}):
-                complete_video(sb, game_id)
-        except Exception as exc:
-            print(f"    (auto video: {exc})")
 
 
 # ─────────────────────────────────────────────────────────── main loop
