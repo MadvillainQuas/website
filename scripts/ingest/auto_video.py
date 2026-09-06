@@ -83,21 +83,29 @@ def watch_details(video_id: str) -> dict:
     # network (a server fetching the HTML can be handed a consent page instead), and carries the
     # live broadcast's start/end under microformat. The public web client key is baked into every
     # YouTube page; it is not a credential.
+    diag = []
     for client in ({"clientName": "ANDROID", "clientVersion": "19.09.37", "androidSdkVersion": 30},
-                   {"clientName": "WEB", "clientVersion": "2.20240905.00.00"}):
+                   {"clientName": "WEB", "clientVersion": "2.20240905.00.00"},
+                   {"clientName": "TVHTML5", "clientVersion": "7.20240813.07.00"},
+                   {"clientName": "IOS", "clientVersion": "19.09.3", "deviceModel": "iPhone14,3"}):
         try:
+            ua = {"WEB": UA, "TVHTML5": "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version",
+                  "ANDROID": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                  "IOS": "com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)"}[client["clientName"]]
             r = requests.post("https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false",
                               json={"context": {"client": client}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
-                              headers={"User-Agent": UA if client["clientName"] == "WEB" else "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
-                                       "Content-Type": "application/json"}, timeout=30)
+                              headers={"User-Agent": ua, "Content-Type": "application/json"}, timeout=30)
             if r.status_code != 200:
-                continue
+                diag.append(f"{client['clientName']}:{r.status_code}"); continue
             j = r.json()
             vd = j.get("videoDetails") or {}
             mf = ((j.get("microformat") or {}).get("playerMicroformatRenderer") or {})
             lb = mf.get("liveBroadcastDetails") or {}
+            st = ((j.get("playabilityStatus") or {}).get("status"))
             if not vd and not mf:
-                continue
+                diag.append(f"{client['clientName']}:{st or 'empty'}"); continue
+            if not lb.get("startTimestamp"):
+                diag.append(f"{client['clientName']}:{st}/live={vd.get('isLiveContent')}/mf={'y' if mf else 'n'}")
             d["title"] = vd.get("title") or ((mf.get("title") or {}).get("simpleText"))
             d["started_at"] = lb.get("startTimestamp"); d["ended_at"] = lb.get("endTimestamp")
             d["live"] = bool(vd.get("isLiveContent")) or bool(d["started_at"])
@@ -108,6 +116,8 @@ def watch_details(video_id: str) -> dict:
             break
         except Exception:
             continue
+    if not d["started_at"] and diag:
+        print(f"    (stream start unavailable for {video_id}: {', '.join(diag)})")
     if not d["title"]:
         # the watch page, as a last resort
         try:
