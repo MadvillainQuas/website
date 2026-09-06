@@ -1,0 +1,81 @@
+name: League ingest (schedule → feed → Supabase)
+
+# Polls every configured schedule source (config/ingest-sources.json, or
+# public.schedule_sources when Supabase keys are set), fetches new / live
+# games, and publishes them three ways: the repo feed under data/feed/
+# (committed here — index_9's offline source), Supabase external_games +
+# storage (index_9's primary source, realtime-capable), and — for sources
+# that name a platform league — games + game_advanced for the Epinoia site.
+# Nightly it also regenerates the 13-CSV dataset from the archived feed.
+# Same politeness rules as the GameVis pre-scrape: 300 ms request gap, one
+# host at a time.
+on:
+  schedule:
+    - cron: "*/30 12-23 * * *"      # every 30 min, 12:00–23:30 UTC (UK/EU evenings + US daytime)
+    - cron: "15 3 * * *"            # nightly dataset rebuild
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Only this source label/code (optional)"
+        required: false
+      dry_run:
+        description: "Discover + fetch, write nothing"
+        type: boolean
+        default: false
+      rebuild_dataset:
+        description: "Also regenerate the 13-CSV dataset from the archive"
+        type: boolean
+        default: false
+
+concurrency:
+  group: league-ingest
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: browser-actions/setup-chrome@v1      # headless Chrome for SPA schedule pages
+      - run: pip install -r scripts/requirements.txt
+      # The scraper pipeline (stints, lineups, the 13-CSV dataset). Private repo → deploy key.
+      - name: Checkout scraper pipeline
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Run ingest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: |
+          python scripts/ingest/run_ingest.py --config \
+            ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+      - name: Rebuild dataset from the archive (nightly / on request)
+        if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
+        env:
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: |
+          for code in $(python -c "import json;print(' '.join(s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s['adapter']=='fiba_livestats' and s['scheduleUrls']))"); do
+            python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
+          done
+      - name: Commit feed + datasets
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "league-ingest[bot]"
+          git config user.email "league-ingest@users.noreply.github.com"
+          git add data/feed data/latest.json data/data_* 2>/dev/null || true
+          git diff --cached --quiet && echo "nothing new" || git commit -m "feed: ingest $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push

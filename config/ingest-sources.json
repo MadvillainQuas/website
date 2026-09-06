@@ -1,0 +1,31 @@
+{
+  "_comment": "Ingest sources for scripts/ingest/run_ingest.py (--config mode) and the seed for public.schedule_sources. `adapter` picks the reader (fiba_livestats | genius_html | bbl_2bbl | euroleague_api | eurobasket_html | bcb_pipeline). Non-FIBA leagues change the adapter, never the pipeline. league_id / competition_id are the Supabase uuids for that league (fill from the admin console); leave null to run discovery-only dry runs.",
+  "sources": [
+    {
+      "code": "SLB", "label": "Super League Basketball (M)", "adapter": "fiba_livestats",
+      "league_id": null, "competition_id": null, "poll_minutes": 30, "active_window": [12, 24],
+      "adapter_config": { "archive_raw": true, "store_pbp": false, "pipeline_module": "bcb_scraper.fiba_livestats" },
+      "scheduleUrls": [
+        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fschedule%3FphaseName%3DRegular%20season%26poolNumber%3D0%26matchType%3DREGULAR%26roundNumber%3D-1%26"
+      ]
+    },
+    {
+      "code": "EABL", "label": "Elite Academy Basketball League", "adapter": "fiba_livestats",
+      "league_id": null, "competition_id": null, "poll_minutes": 60, "active_window": [12, 24],
+      "adapter_config": { "archive_raw": true, "store_pbp": false, "competition_id_external": 47445 },
+      "scheduleUrls": []
+    },
+    {
+      "code": "2BBL", "label": "ProA / ProB (2. Basketball Bundesliga)", "adapter": "bbl_2bbl",
+      "league_id": null, "competition_id": null, "poll_minutes": 60, "active_window": [14, 24],
+      "adapter_config": { "archive_raw": true },
+      "scheduleUrls": []
+    },
+    {
+      "code": "EL", "label": "EuroLeague", "adapter": "euroleague_api",
+      "league_id": null, "competition_id": null, "poll_minutes": 60, "active_window": [16, 24],
+      "adapter_config": { "archive_raw": true, "store_pbp": true },
+      "scheduleUrls": []
+    }
+  ]
+}

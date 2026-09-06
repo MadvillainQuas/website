@@ -24,6 +24,8 @@
     <title>Basketball Lineup Analyzer V5.0.0 - Dominance Analysis + Advanced Games View</title>
     <!-- Site invite gate (synchronous; hides page until verified) -->
     <script src="gate.js"></script>
+    <!-- V15 feed: Supabase URL + anon key (same project as the Epinoia site) for the league feed loader -->
+    <script src="epinoia/config.js"></script>
     <!-- Auth/session bootstrap: kick unauthenticated visitors back to sign-in -->
     <script>
         (function () {
@@ -10336,6 +10338,19 @@
             text-align: center;
             background: #0f172a;
         }
+        /* V15: fixed POS column right of Min */
+        .leaderboard-v2-table th.sticky-pos,
+        .leaderboard-v2-table td.sticky-pos {
+            position: sticky;
+            left: 282px;
+            z-index: 50;
+            min-width: 56px;
+            text-align: center;
+            background: #0f172a;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+        }
+        .leaderboard-v2-table th.sticky-pos { z-index: 110; background: linear-gradient(180deg, #1e293b 0%, #1a2234 100%); cursor: pointer; }
+        .leaderboard-v2-table tbody tr:hover td.sticky-pos { background: #1e293b; }
 
         /* Sticky header cells - highest z-index (above both regular headers and sticky body cells) */
         .leaderboard-v2-table th.sticky-rank,
@@ -10707,7 +10722,7 @@
         }
 
         /* Stat cell - extra padding for color-coded badges */
-        .leaderboard-v2-table td:not(.sticky-rank):not(.sticky-player):not(.sticky-team):not(.sticky-mins) {
+        .leaderboard-v2-table td:not(.sticky-rank):not(.sticky-player):not(.sticky-team):not(.sticky-mins):not(.sticky-pos) {
             padding: 4px 3px;
         }
 
@@ -14948,89 +14963,628 @@
         // - Position-varying AND role-varying coefficients (FGA/FTA vary by role, others by position)
         // - Linear BPM fallback for small samples / low-GP players / missing team data
         // =======================================================================
-        const BPM2 = {
-            VERSION: '2.0',
-            GAME_LENGTH: 40,           // FIBA; use 48 for NBA
-            MIN_MINUTES: 50,           // below this, return 0 BPM
-            TEAM_ADJ_MULTIPLIER: 1.20, // Engelmann research
-            LEAGUE_AVG_ORTG_FALLBACK: 100.0,
 
-            POS_ADJ_BPM: -0.818,   // Penalty value at position 1 (PG); 0 for position >= 3
-            POS_ADJ_OBPM: -1.698,
-            ROLE_ADJ_BPM: 2.774,   // Value at role 5 (Receiver); -value at role 1 (Creator)
-            ROLE_ADJ_OBPM: 0.86,
-
-            // Linear interpolation between value at position/role 1 and value at position/role 5
-            interp(a, b, p) {
-                const t = Math.max(0, Math.min(1, (p - 1) / 4));
-                return a + t * (b - a);
+        // =======================================================================
+        // V15 LEAGUE FEED — FIBA LiveStats data.json -> the bs/pbp HTML pair the
+        // Advanced Games View parser already understands. Lifted verbatim from
+        // GAMEVIS_with_ShotChart_v2_6.html (generateBoxscoreHtmlFromJson /
+        // generatePbpHtmlFromJson) so a feed game and a saved game_html game
+        // go through ONE parser. Only additions: the matchDetail date block and
+        // the ukDate helper.
+        // =======================================================================
+        const FibaJsonToHtml = {
+            normalizeNumber(num) {
+                if (num === null || num === undefined) return null;
+                const str = String(num).trim();
+                if (/^\d+$/.test(str)) return String(parseInt(str, 10));
+                return str;
             },
-
-            // Position constant: 0 for pos >= 3, linearly to full penalty at pos 1
-            positionConstant(position, type) {
-                if (position >= 3.0) return 0;
-                const v = type === 'offensive' ? this.POS_ADJ_OBPM : this.POS_ADJ_BPM;
-                return v * (1 - (position - 1) / 2);
+            timesWithinSeconds(time1, time2, maxDiff) {
+                if (!time1 || !time2) return false;
+                const parseTime = (t) => {
+                    const parts = t.split(':');
+                    if (parts.length !== 2) return null;
+                    const mins = parseInt(parts[0], 10), secs = parseInt(parts[1], 10);
+                    if (isNaN(mins) || isNaN(secs)) return null;
+                    return mins * 60 + secs;
+                };
+                const t1 = parseTime(time1), t2 = parseTime(time2);
+                if (t1 === null || t2 === null) return false;
+                return Math.abs(t1 - t2) <= maxDiff;
             },
-
-            // Role constant: -A at role 1 (Creator), 0 at role 3, +A at role 5 (Receiver)
-            roleConstant(role, type) {
-                const A = type === 'offensive' ? this.ROLE_ADJ_OBPM : this.ROLE_ADJ_BPM;
-                if (role <= 3.0) return -A * (1 - (role - 1) / 2);
-                return A * ((role - 3) / 2);
+            // ISO (YYYY-MM-DD) -> DD/MM/YYYY, the pattern parseGameSummary matches
+            ukDate(iso) {
+                const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || '');
             },
+            boxscore(data, meta) {
+            const teams = data.tm || {};
+            let html = '<!DOCTYPE html><html><body>';
+            if (meta && (meta.date || meta.competition)) {
+                html += '<div class="matchDetail"><h6>Game Details</h6><p>' + (meta.date ? FibaJsonToHtml.ukDate(meta.date) : '') + '</p></div>';
+                if (meta.competition) html += '<div class="matchDetail"><h6>Competition</h6><p>' + meta.competition + '</p></div>';
+            }
 
-            // Raw BPM (before team adjustment) using BPM 2.0 position + role interpolated coefficients
-            computeRawBPM(per100, teamAvgPtsPerTsa, position, role, type) {
-                const pos = Math.max(1, Math.min(5, position));
-                const rl = Math.max(1, Math.min(5, role));
-                let coef;
-                if (type === 'offensive') {
-                    coef = {
-                        pts_adj: 0.605, tpm: 0.477, ast: 0.476, pf: -0.439,
-                        to: this.interp(-0.579, -0.882, pos),
-                        orb: this.interp(0.606, 0.422, pos),
-                        drb: this.interp(-0.112, 0.103, pos),
-                        stl: this.interp(0.177, 0.294, pos),
-                        blk: this.interp(0.725, 0.097, pos),
-                        fga: this.interp(-0.330, -0.472, rl),
-                        fta: this.interp(-0.145, -0.208, rl),
-                    };
-                } else {
-                    coef = {
-                        pts_adj: 0.860, tpm: 0.389, to: -0.964, pf: -0.367,
-                        ast: this.interp(0.580, 1.034, pos),
-                        orb: this.interp(0.613, 0.181, pos),
-                        drb: this.interp(0.116, 0.181, pos),
-                        stl: this.interp(1.369, 1.008, pos),
-                        blk: this.interp(1.327, 0.703, pos),
-                        fga: this.interp(-0.560, -0.780, rl),
-                        fta: this.interp(-0.246, -0.343, rl),
-                    };
+            // Generate team data
+            ['1', '2'].forEach(teamId => {
+                // Try string keys first (FIBA JSON standard), then numeric fallback
+                const team = teams[teamId] || teams[parseInt(teamId, 10)] || {};
+                // Handle pl being either an array or an object
+                const rawPl = team.pl;
+                const players = Array.isArray(rawPl)
+                    ? rawPl.reduce((acc, p, idx) => { acc[p.id || idx] = p; return acc; }, {})
+                    : (rawPl || {});
+
+                html += `<span id="aj_${teamId}_name">${team.name || `Team ${teamId}`}</span>`;
+                html += `<table class="boxscore"><tbody>`;
+
+                // Generate player rows
+                Object.keys(players).forEach(pId => {
+                    const p = players[pId];
+                    // FIBA JSON uses starter as string '1' or number 1 or boolean
+                    // Also handle cases where it might be nested or use different property names
+                    const starterVal = p.starter ?? p.starting ?? p.isStarter ?? 0;
+                    const isStarter = starterVal == 1 || starterVal === '1' || starterVal === true;
+                    const notUsed = (p.sMinutes === '00:00' || p.sMinutes === '0:00' || !p.sMinutes);
+                    // Normalize shirt number to match PBP player numbers (remove leading zeros)
+                    const normalizedShirtNo = FibaJsonToHtml.normalizeNumber(p.shirtNumber || '');
+
+                    html += `<tr class="player-row ${isStarter ? 'p_starter' : ''} ${notUsed ? 'row-not-used' : ''}" id="aj_${teamId}_${pId}_row">`;
+                    html += `<td><span id="aj_${teamId}_${pId}_shirtNumber">${normalizedShirtNo}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_name">${p.name || p.familyName || ''}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sMinutes">${p.sMinutes || '0:00'}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sPoints">${p.sPoints || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sFieldGoalsMade">${p.sFieldGoalsMade || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sFieldGoalsAttempted">${p.sFieldGoalsAttempted || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sThreePointersMade">${p.sThreePointersMade || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sThreePointersAttempted">${p.sThreePointersAttempted || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sTwoPointersMade">${p.sTwoPointersMade || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sTwoPointersAttempted">${p.sTwoPointersAttempted || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sFreeThrowsMade">${p.sFreeThrowsMade || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sFreeThrowsAttempted">${p.sFreeThrowsAttempted || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sReboundsOffensive">${p.sReboundsOffensive || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sReboundsDefensive">${p.sReboundsDefensive || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sAssists">${p.sAssists || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sSteals">${p.sSteals || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sBlocks">${p.sBlocks || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sTurnovers">${p.sTurnovers || 0}</span></td>`;
+                    html += `<td><span id="aj_${teamId}_${pId}_sFoulsPersonal">${p.sFoulsPersonal || 0}</span></td>`;
+                    html += `</tr>`;
+                });
+
+                // Team totals row
+                html += `<tr class="team-totals">`;
+                html += `<td><span id="aj_${teamId}_tot_sPoints">${team.tot_sPoints || team.score || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sFieldGoalsMade">${team.tot_sFieldGoalsMade || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sFieldGoalsAttempted">${team.tot_sFieldGoalsAttempted || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sThreePointersMade">${team.tot_sThreePointersMade || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sThreePointersAttempted">${team.tot_sThreePointersAttempted || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sFreeThrowsMade">${team.tot_sFreeThrowsMade || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sFreeThrowsAttempted">${team.tot_sFreeThrowsAttempted || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sReboundsOffensive">${team.tot_sReboundsOffensive || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sReboundsDefensive">${team.tot_sReboundsDefensive || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sReboundsTotal">${team.tot_sReboundsTotal || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sAssists">${team.tot_sAssists || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sTurnovers">${team.tot_sTurnovers || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sSteals">${team.tot_sSteals || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sBlocks">${team.tot_sBlocks || 0}</span></td>`;
+                html += `<td><span id="aj_${teamId}_tot_sFoulsTotal">${team.tot_sFoulsTotal || 0}</span></td>`;
+                html += `</tr>`;
+
+                html += `</tbody></table>`;
+            });
+
+            html += '</body></html>';
+            return html;
+        },
+
+        /**
+         * Generate play-by-play HTML from FIBA JSON data
+         * Output format matches FIBA's native HTML structure for parsePBP compatibility
+         */
+            pbp(data) {
+            const pbp = data.pbp || [];
+            const tm = data.tm || {};
+
+            // Get team names for player lookup
+            const team1 = tm['1'] || {};
+            const team2 = tm['2'] || {};
+            const team1Players = {};
+            const team2Players = {};
+
+            // Build player lookup maps - pl can be either an object or an array
+            // In FIBA JSON, play.pno is the key in pl (internal player ID), not the shirt number
+            // We need to map pno -> player object to get the correct shirtNumber
+            const rawPl1 = team1.pl;
+            const rawPl2 = team2.pl;
+            const pl1 = Array.isArray(rawPl1)
+                ? rawPl1.reduce((acc, p, idx) => { acc[p.id || idx] = p; return acc; }, {})
+                : (rawPl1 || {});
+            const pl2 = Array.isArray(rawPl2)
+                ? rawPl2.reduce((acc, p, idx) => { acc[p.id || idx] = p; return acc; }, {})
+                : (rawPl2 || {});
+            // Use the key (internal player ID) as the lookup key - this matches play.pno
+            Object.keys(pl1).forEach(pId => {
+                const p = pl1[pId];
+                team1Players[pId] = p; // Use the key itself, not p.pno which is undefined
+            });
+            Object.keys(pl2).forEach(pId => {
+                const p = pl2[pId];
+                team2Players[pId] = p; // Use the key itself, not p.pno which is undefined
+            });
+
+            // ============================================================
+            // PRE-PROCESS: Build assist→scorer links from JSON data
+            // In FIBA JSON, assists follow their corresponding made baskets
+            // at the SAME timestamp. Link them explicitly for parsePBP.
+            //
+            // FIBA's data structure: when a player scores an assisted basket,
+            // there are TWO separate events at the same game time:
+            //   1. Made FG event (2pt/3pt, success=1) for the scorer
+            //   2. Assist event for the assister
+            // The assist ALWAYS follows immediately after the made basket in the array.
+            //
+            // Strategy: For each assist, find the IMMEDIATELY preceding made FG
+            // by the same team at the same timestamp.
+            // ============================================================
+            const assistScorerMap = new Map(); // Map<assistIndex, {scorerNum, points, wasThree}>
+            const usedShotIndices = new Set(); // Track shots already linked to assists
+
+            // NOTE: FIBA JSON is in REVERSE chronological order (newest first, highest actionNumber first)
+            // So assists come BEFORE their corresponding made baskets in the array
+            // We need to look FORWARD (higher indices) to find the made basket
+            for (let i = 0; i < pbp.length; i++) {
+                const play = pbp[i];
+                if (play.actionType === 'assist') {
+                    const assistTime = play.gt || '';
+                    const assistPeriod = play.period;
+                    const assistTeam = play.tno;
+
+                    // Find the made basket that this assist corresponds to
+                    // Since JSON is in reverse order, the made FG comes AFTER the assist
+                    // Look FORWARD (higher indices) to find it
+                    let bestMatch = null;
+                    let bestMatchIdx = -1;
+
+                    for (let j = i + 1; j < pbp.length && j <= i + 15; j++) {
+                        const nextPlay = pbp[j];
+
+                        // Must be same team
+                        if (nextPlay.tno !== assistTeam) continue;
+
+                        // Must be same period (break if we hit a different period)
+                        if (nextPlay.period !== assistPeriod) break;
+
+                        // Skip if already used by another assist
+                        if (usedShotIndices.has(j)) continue;
+
+                        // Check if this is a made field goal
+                        const isMade = nextPlay.success == 1;
+                        const is2pt = nextPlay.actionType === '2pt';
+                        const is3pt = nextPlay.actionType === '3pt';
+
+                        if (isMade && (is2pt || is3pt)) {
+                            const shotTime = nextPlay.gt || '';
+
+                            // Check timestamp match (exact or within 2 seconds for timing variations)
+                            const timesMatch = shotTime === assistTime ||
+                                FibaJsonToHtml.timesWithinSeconds(shotTime, assistTime, 2);
+
+                            if (timesMatch) {
+                                // Found the matching shot - this is our answer
+                                bestMatch = nextPlay;
+                                bestMatchIdx = j;
+                                break; // Don't look further, we found the match
+                            }
+
+                            // If we haven't found an exact match yet, keep this as fallback
+                            // (only use the FIRST available made FG as fallback)
+                            if (!bestMatch) {
+                                bestMatch = nextPlay;
+                                bestMatchIdx = j;
+                            }
+                        }
+                    }
+
+                    // Record the assist→scorer link
+                    if (bestMatch && bestMatchIdx >= 0) {
+                        const playerMap = bestMatch.tno === 1 ? team1Players : team2Players;
+                        const player = playerMap[bestMatch.pno] || {};
+                        // Get scorer number with multiple fallbacks
+                        // Priority: play event shirtNumber > roster shirtNumber
+                        const rawScorerNum = bestMatch.shirtNumber || player.shirtNumber || '';
+                        const scorerNum = FibaJsonToHtml.normalizeNumber(rawScorerNum);
+                        const is3pt = bestMatch.actionType === '3pt';
+
+                        assistScorerMap.set(i, {
+                            scorerNum: scorerNum,
+                            points: is3pt ? 3 : 2,
+                            wasThree: is3pt
+                        });
+                        usedShotIndices.add(bestMatchIdx);
+                    }
                 }
-                const tsa = (per100.fga || 0) + 0.44 * (per100.fta || 0);
-                const pts_adj = tsa > 0
-                    ? (per100.pts || 0) + (1 - teamAvgPtsPerTsa) * tsa
-                    : (per100.pts || 0);
-                return (
-                    coef.pts_adj * pts_adj +
-                    coef.tpm * (per100.tpm || 0) +
-                    coef.ast * (per100.ast || 0) +
-                    coef.to  * (per100.to  || 0) +
-                    coef.orb * (per100.orb || 0) +
-                    coef.drb * (per100.drb || 0) +
-                    coef.stl * (per100.stl || 0) +
-                    coef.blk * (per100.blk || 0) +
-                    coef.pf  * (per100.pf  || 0) +
-                    coef.fga * (per100.fga || 0) +
-                    coef.fta * (per100.fta || 0)
-                );
+            }
+
+            let html = '<!DOCTYPE html><html><body>';
+
+            // Add datapath for compatibility
+            html += `<input type="hidden" id="datapath" value="">`;
+
+            // Generate PBP container matching FIBA's structure
+            // parsePBP expects #aj_pbp with div.pbpa elements
+            html += '<div id="aj_pbp">';
+
+            // Helper to calculate elapsed time for sorting
+            const calcElapsed = (gt, period) => {
+                if (!gt) return 0;
+                const parts = gt.split(':');
+                if (parts.length !== 2) return 0;
+                const mins = parseInt(parts[0], 10);
+                const secs = parseInt(parts[1], 10);
+                const remaining = mins * 60 + secs;
+                if (period <= 4) {
+                    return (period - 1) * 600 + (600 - remaining);
+                }
+                return 2400 + (period - 5) * 300 + (300 - remaining);
+            };
+
+            // Sort plays by period and elapsed time (chronological order)
+            // This is critical because JSON actionNumber doesn't always match game chronology
+            const sortedPbp = [...pbp].sort((a, b) => {
+                if (a.period !== b.period) return a.period - b.period;
+                return calcElapsed(a.gt, a.period) - calcElapsed(b.gt, b.period);
+            });
+
+            // Process plays in reverse order (newest first, like FIBA's HTML)
+            // parsePBP will reverse them back to chronological
+            const reversedPbp = [...sortedPbp].reverse();
+
+            reversedPbp.forEach((play, reversedIdx) => {
+                // Calculate original index for assist→scorer lookup
+                const originalIdx = pbp.length - 1 - reversedIdx;
+
+                const teamNo = play.tno || 0;
+                const playerNo = play.pno || '';
+                const period = play.period || 1;
+                const periodType = play.periodType || 'REGULAR';
+                const clock = play.gt || '00:00';
+                const actionType = play.actionType || '';
+                const subType = play.subType || '';
+                const success = play.success;
+                const score1 = play.s1 || 0;
+                const score2 = play.s2 || 0;
+
+                // Get player info
+                // Note: playerNo (play.pno) is the internal player ID that maps to pl keys
+                // The actual shirt number is in play.shirtNumber or player.shirtNumber
+                const playerMap = teamNo === 1 ? team1Players : team2Players;
+                const player = playerMap[playerNo] || {};
+                const playerName = play.familyName || player.familyName || player.name || player.lastName || '';
+                // Normalize shirt number to match lineup tracking (remove leading zeros)
+                // Priority: play.shirtNumber (from play event) > player.shirtNumber (from roster)
+                const rawShirtNo = play.shirtNumber || player.shirtNumber || '';
+                const shirtNo = FibaJsonToHtml.normalizeNumber(rawShirtNo);
+
+                // Build action text matching FIBA's exact format
+                let actionText = '';
+                const playerDisplay = shirtNo ? `${shirtNo}, ${playerName}` : playerName;
+
+                // Map action types to text - match FIBA's exact wording from lexicon
+                // SubType mapping for shots to match parsePBP detection keywords
+                const subTypeMap = {
+                    'dunk': 'dunk',
+                    'layup': 'lay up',
+                    'drivinglayup': 'driving layup',
+                    'fadeaway': 'fade away',
+                    'tipin': 'tip in',
+                    'tipinlayup': 'tip in layup',
+                    'jumpshot': 'jump shot',
+                    'alleyoop': 'alley oop',
+                    'hookshot': 'hook shot',
+                    'floatingjumpshot': 'floating jump shot',
+                    'stepbackjumpshot': 'step back jump shot',
+                    'pullupjumpshot': 'pull up jump shot',
+                    'turnaroundjumpshot': 'turn around jump shot',
+                    'fingerroll': 'finger roll',
+                    'reverse': 'reverse',
+                    'putback': 'put back',
+                    'floater': 'floater',
+                    'runner': 'runner'
+                };
+                const subTypeText = subTypeMap[subType] || subType || '';
+
+                switch (actionType) {
+                    case '2pt':
+                        if (subTypeText) {
+                            actionText = success == 1 ? `2pt ${subTypeText} made` : `2pt ${subTypeText} missed`;
+                        } else {
+                            actionText = success == 1 ? `2pt shot made` : `2pt shot missed`;
+                        }
+                        break;
+                    case '3pt':
+                        if (subTypeText) {
+                            actionText = success == 1 ? `3pt ${subTypeText} made` : `3pt ${subTypeText} missed`;
+                        } else {
+                            actionText = success == 1 ? `3pt jump shot made` : `3pt jump shot missed`;
+                        }
+                        break;
+                    case 'freethrow':
+                        if (subType) {
+                            actionText = success == 1 ? `Free throw ${subType} made` : `Free throw ${subType} missed`;
+                        } else {
+                            actionText = success == 1 ? `Free throw made` : `Free throw missed`;
+                        }
+                        break;
+                    case 'rebound':
+                        if (subType === 'offensive' || subType === 'offensivedeadball') {
+                            actionText = `Offensive rebound`;
+                        } else if (subType === 'defensive' || subType === 'defensivedeadball') {
+                            actionText = `Defensive rebound`;
+                        } else if (subType === 'deadball') {
+                            actionText = `Dead ball rebound`;
+                        } else {
+                            actionText = `Defensive rebound`;
+                        }
+                        break;
+                    case 'turnover':
+                        const tovSubTypeMap = {
+                            'offensive': 'offensive',
+                            'badpass': 'bad pass',
+                            'ballhandling': 'ball handling',
+                            'travel': 'travel',
+                            'outofbounds': 'out of bounds',
+                            'shotclock': 'shot clock',
+                            '24sec': 'shot clock',
+                            '3sec': '3 seconds',
+                            '5sec': '5 seconds',
+                            '8sec': '8 seconds',
+                            'doubledribble': 'double dribble',
+                            'lostball': 'lost ball',
+                            'backcourt': 'backcourt',
+                            'overandback': 'cross court',
+                            'kickedball': 'kicked ball',
+                            'palming': 'palming',
+                            'stepping': 'stepping',
+                            'lane': 'lane violation'
+                        };
+                        const tovText = tovSubTypeMap[subType] || subType || '';
+                        actionText = tovText ? `Turnover (${tovText})` : `Turnover`;
+                        break;
+                    case 'steal':
+                        actionText = `Steal`;
+                        break;
+                    case 'block':
+                        actionText = `Block`;
+                        break;
+                    case 'foul':
+                        const foulSubTypeMap = {
+                            'personal': 'Personal',
+                            'offensive': 'Offensive',
+                            'technical': 'Technical',
+                            'unsportsmanlike': 'Unsportsmanlike',
+                            'disqualifying': 'Disqualifying',
+                            'benchTechnical': 'Bench technical',
+                            'coachTechnical': 'Coach technical'
+                        };
+                        const foulText = foulSubTypeMap[subType] || (subType ? subType.charAt(0).toUpperCase() + subType.slice(1) : 'Personal');
+                        actionText = `${foulText} foul`;
+                        break;
+                    case 'assist':
+                        actionText = `Assist`;
+                        break;
+                    case 'foulon':
+                        // Foul drawn by this player (player who was fouled)
+                        actionText = `Foul drawn`;
+                        break;
+                    case 'substitution':
+                        actionText = subType === 'in' ? `Substitution in` : `Substitution out`;
+                        break;
+                    case 'timeout':
+                        const timeoutMap = {
+                            'full': 'full',
+                            'short': 'short',
+                            'officials': 'official',
+                            'commercial': 'commercial'
+                        };
+                        const timeoutText = timeoutMap[subType] || '';
+                        actionText = timeoutText ? `Timeout - ${timeoutText}` : `Timeout`;
+                        break;
+                    case 'jumpball':
+                        const jumpballMap = {
+                            'won': 'won',
+                            'lost': 'lost',
+                            'startperiod': 'start period',
+                            'heldball': 'held ball'
+                        };
+                        const jumpText = jumpballMap[subType] || '';
+                        actionText = jumpText ? `Jump ball - ${jumpText}` : `Jump ball`;
+                        break;
+                    case 'period':
+                        actionText = subType === 'start' ? `Period start` : `Period end`;
+                        break;
+                    case 'game':
+                        actionText = subType === 'start' ? `Game start` : `Game end`;
+                        break;
+                    default:
+                        actionText = play.actionText || actionType || 'Unknown';
+                }
+
+                // Determine team class (pbpt1 for team 1, pbpt2 for team 2)
+                const teamClass = teamNo === 1 ? 'pbpt1' : (teamNo === 2 ? 'pbpt2' : 'pbpt0');
+
+                // Format period display - use P for regular, OT for overtime (matches parsePeriodString expectations)
+                let periodDisplay = '';
+                let periodKey = '';
+                if (periodType === 'OVERTIME') {
+                    periodDisplay = `OT${period}`;
+                    periodKey = `per_ot${period} per_ot`;
+                } else {
+                    // Regular period - use P1, P2, P3, P4 format that parsePeriodString expects
+                    periodDisplay = `P${period}`;
+                    periodKey = `per_${period} per_reg`;
+                }
+
+                // Build scoring block if this is a scoring action
+                let scoringBlock = '';
+                let scoringClass = '';
+                if (play.scoring && success == 1) {
+                    scoringBlock = `<span class="pbpsc">${score1}-${score2}</span>`;
+                    scoringClass = 'scaction';
+                }
+
+                // Build the action div matching FIBA's exact HTML structure
+                // For assists, add data attributes with scorer information for parsePBP
+                let assistDataAttrs = '';
+                if (actionType === 'assist') {
+                    const scorerInfo = assistScorerMap.get(originalIdx);
+                    if (scorerInfo) {
+                        assistDataAttrs = ` data-scorer-num="${scorerInfo.scorerNum}" data-scorer-points="${scorerInfo.points}" data-scorer-three="${scorerInfo.wasThree}"`;
+                    }
+                }
+                html += `<div id="${clock}" class="pbpa ${teamClass} pbpty${actionType} ${periodKey} ${subType} ${actionType}"${assistDataAttrs}>`;
+
+                if (teamNo === 0) {
+                    // Game/Period events (no team)
+                    html += `<div class="description">${actionText}</div>`;
+                    html += `<span class="pbpsc">${score1}-${score2}</span>`;
+                } else {
+                    // Team-specific action with nested pbp-team structure
+                    html += `<div class="pbp-team pbp-team${teamNo} ${scoringClass}">`;
+                    html += `<div class="pbp-time"><span class="pbp-period">${periodDisplay}</span> ${clock}${scoringBlock}</div>`;
+                    html += `<div class="pbp-action"><strong>${playerDisplay}</strong>, ${actionText}</div>`;
+                    html += `<span class="teamcolorbox team${teamNo}color"></span>`;
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            });
+
+            html += '</div>'; // Close #aj_pbp
+            html += '</body></html>';
+            return html;
+        }
+
+        /**
+         * Handle URL fetch button click - sends request to parent Tauri app
+         */
+        };
+
+        const BPM2 = {
+            // =================================================================
+            // Faithful port of Basketball-Reference's "Box Plus/Minus 2.0
+            // Example Calculations.xlsx" (Season sheet). Every step below is
+            // annotated with the spreadsheet cell it reproduces so the engine
+            // can be re-audited against the workbook. Differences from the
+            // NBA workbook are limited to (a) GAME_LENGTH (40 vs 48), (b) the
+            // absence of listed positions in our data (defaults to 3.0 with the
+            // same 50-minute prior weight the sheet uses), and (c) the team
+            // rating source: the sheet pulls NRtg/A + ORtg/A from BBRef's
+            // team-ratings table; we compute the same opponent-adjusted
+            // ratings from team_totals.csv game rows (SRS-style iteration).
+            // =================================================================
+            VERSION: '2.0-bbref',
+            GAME_LENGTH: 40,           // FIBA; use 48 for NBA
+            MIN_MINUTES: 50,           // display qualification ONLY — the engine, like BBRef, computes everyone
+            LEAD_BONUS: 0.35,          // F5: Lead Bonus = 0.35/2 * Avg Lead
+            VORP_REPLACEMENT: -2.0,    // DY: (BPM + 2) * %Min * G/82
+            VORP_SEASON_GAMES: 82,
+
+            // BJ3:BQ3 — position regression ("Modern") on % of TEAM stats while on court
+            POS: { intercept: 2.1296, trb: 8.6676, stl: -2.4861, pf: 0.992, ast: -3.5361, blk: 1.6669, minWt: 50, defaultPos: 3.0 },
+            // BK7:BQ7 — offensive role regression
+            ROLE: { intercept: 6.0, ast: -6.6416, thresh: -8.5441, ptThreshold: -0.33, defaultRole: 4.0, minWt: 50 },
+            // BZ3:CL4 (BPM) and BZ7:CL8 (OBPM). FTA coefficient = 0.44 * FGA coefficient (CC3 "=0.44*CB3").
+            COEF: {
+                bpm: {
+                    pos1: { adjPt: 0.86,  fga: -0.56,  tpm: 0.389, ast: 0.58,  to: -0.964, orb: 0.613, drb: 0.116, trb: 0, stl: 1.369, blk: 1.327, pf: -0.367 },
+                    pos5: { adjPt: 0.86,  fga: -0.78,  tpm: 0.389, ast: 1.034, to: -0.964, orb: 0.181, drb: 0.181, trb: 0, stl: 1.008, blk: 0.703, pf: -0.367 },
+                    posConst1: -0.818,   // CO4 "=-0.409*2"; CP4 (pos 3) = 0; CQ4 (pos 5) = 0
+                    roleSlope: 1.387,    // CR4: constant += slope * (role - 3)
+                },
+                obpm: {
+                    pos1: { adjPt: 0.605, fga: -0.33,  tpm: 0.477, ast: 0.476, to: -0.579, orb: 0.606, drb: -0.112, trb: 0, stl: 0.177, blk: 0.725, pf: -0.439 },
+                    pos5: { adjPt: 0.605, fga: -0.472, tpm: 0.477, ast: 0.476, to: -0.882, orb: 0.422, drb: 0.103,  trb: 0, stl: 0.294, blk: 0.097, pf: -0.439 },
+                    posConst1: -1.698,   // CO8 "=-0.849*2"
+                    roleSlope: 0.43,     // CR8
+                },
+            },
+            // Listed-position text → number (S51:T60 of the workbook)
+            LISTED_POS: { PG: 1, SG: 2, SF: 3, PF: 4, C: 5, 'G-F': 2.5, 'F-G': 2.5, G: 1.5, F: 3.5, 'F-C': 4.5, 'C-F': 4.5, '?': 3 },
+
+            clamp15(v) { return Math.max(1, Math.min(5, v)); },
+
+            // CA14: (5-pos)/4 * coefPos1 + (pos-1)/4 * coefPos5
+            interp(c1, c5, p) { return (5 - p) / 4 * c1 + (p - 1) / 4 * c5; },
+
+            // CQ14 / DL14: position constant (only bites below position 3) + role slope * (role - 3)
+            positionConstant(position, role, set) {
+                const posPart = position < 3 ? (3 - position) / 2 * set.posConst1 : 0;
+                return posPart + set.roleSlope * (role - 3);
             },
 
-            // Linear BPM — simplified, no position/role variation, no team adjustment needed.
-            // Recommended for small samples (< 20 games), per-pair / per-lineup contexts, and as
-            // fallback when team data is missing. Per Basketball-Reference: "The linear BPM
-            // coefficients work reliably down to single-game calculations."
+            // BC..BM / BO..BY: minutes-weighted blend toward the prior, then the sheet's THREE
+            // "shift-by-team-average-then-trim" passes. Team averages are taken over the TRIMMED
+            // values, but the shift is applied to the untrimmed minute-adjusted estimate.
+            // `items` = [{ est, minutes, prior }], returns array of final clamped values.
+            teamNormalize(items, minWt, totalMin) {
+                const n = items.length;
+                if (!n || totalMin <= 0) return items.map(() => 3.0);
+                const minAdj = items.map(it => (it.est * it.minutes + it.prior * minWt) / (it.minutes + minWt));
+                let cumShift = 0;
+                let trimmed = minAdj.map(v => this.clamp15(v));
+                for (let pass = 0; pass < 3; pass++) {
+                    let ws = 0;
+                    for (let i = 0; i < n; i++) ws += trimmed[i] * items[i].minutes;
+                    const avg = ws / totalMin;                 // BE14 / BH14 / BK14
+                    cumShift += (avg - 3);
+                    trimmed = minAdj.map(v => this.clamp15(v - cumShift)); // BG / BJ / BM
+                }
+                return trimmed;
+            },
+
+            // Opponent-adjusted team ratings (what the sheet reads from BBRef's NRtg/A + ORtg/A).
+            // gameLog: Map team -> [{ opp, ortg, drtg, weight }]. Returns Map team -> { adjOff, adjDef, adjNet, rawOff, rawDef }
+            // Convention: adjOff/adjDef are RELATIVE to league average; positive adjDef = good defence.
+            adjustedTeamRatings(gameLog, lgOrtg) {
+                const out = new Map();
+                if (!gameLog || gameLog.size === 0) return out;
+                const o = new Map(), d = new Map();
+                gameLog.forEach((games, team) => {
+                    if (!games.length) return;
+                    const mo = games.reduce((a, g) => a + g.ortg, 0) / games.length;
+                    const md = games.reduce((a, g) => a + g.drtg, 0) / games.length;
+                    o.set(team, mo - lgOrtg);
+                    d.set(team, lgOrtg - md);
+                    out.set(team, { rawOff: mo - lgOrtg, rawDef: lgOrtg - md });
+                });
+                for (let it = 0; it < 30; it++) {
+                    const no = new Map(), nd = new Map();
+                    gameLog.forEach((games, team) => {
+                        if (!games.length) return;
+                        let so = 0, sd = 0;
+                        games.forEach(g => {
+                            so += g.ortg - lgOrtg + (d.get(g.opp) || 0);
+                            sd += lgOrtg - g.drtg + (o.get(g.opp) || 0);
+                        });
+                        no.set(team, so / games.length);
+                        nd.set(team, sd / games.length);
+                    });
+                    // re-centre so the league still averages zero
+                    let mo = 0, md = 0, k = 0;
+                    no.forEach((v, t) => { mo += v; md += nd.get(t); k++; });
+                    mo /= Math.max(k, 1); md /= Math.max(k, 1);
+                    no.forEach((v, t) => { o.set(t, v - mo); d.set(t, nd.get(t) - md); });
+                }
+                out.forEach((r, team) => {
+                    r.adjOff = o.get(team) || 0;
+                    r.adjDef = d.get(team) || 0;
+                    r.adjNet = r.adjOff + r.adjDef;
+                });
+                return out;
+            },
+
+            // Linear BPM — kept for lineup / pair / single-stint contexts where no team context exists.
             computeLinearBPM(per100) {
                 const L = {
                     intercept: -0.0650,
@@ -15055,354 +15609,240 @@
                     L.pf   * (per100.pf  || 0);
             },
 
-            // Lineup/combo-contextual BPM helper. Takes raw totals (from a lineup or pair of
-            // players filtered to shared possessions) along with the context possessions count,
-            // and returns Linear BPM + a 60/40 OBPM/DBPM split. This is the method Basketball-
-            // Reference recommends for any sub-season context (per-lineup, per-pair, single-game).
-            //
-            // totals object expected keys: pts, fgm, fga, tpm, tpa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf
-            // poss: context-specific possessions (NOT minutes-scaled; use actual on-court poss)
+            // Lineup/combo-contextual BPM helper (unchanged API — used by lineup & pair tables).
             lineupBpmFromTotals(totals, poss) {
                 const p = Math.max(poss || 0, 1);
                 const f = 100 / p;
                 const per100 = {
-                    pts: (totals.pts || 0) * f,
-                    tpm: (totals.tpm || 0) * f,
-                    tpa: (totals.tpa || 0) * f,
-                    ast: (totals.ast || 0) * f,
-                    to:  (totals.tov || 0) * f,
-                    orb: (totals.oreb || 0) * f,
-                    drb: (totals.dreb || 0) * f,
-                    stl: (totals.stl || 0) * f,
-                    blk: (totals.blk || 0) * f,
-                    pf:  (totals.pf || 0) * f,
-                    fga: (totals.fga || 0) * f,
-                    fta: (totals.fta || 0) * f,
+                    pts: (totals.pts || 0) * f, tpm: (totals.tpm || 0) * f, tpa: (totals.tpa || 0) * f,
+                    ast: (totals.ast || 0) * f, to: (totals.tov || 0) * f,
+                    orb: (totals.oreb || 0) * f, drb: (totals.dreb || 0) * f,
+                    stl: (totals.stl || 0) * f, blk: (totals.blk || 0) * f, pf: (totals.pf || 0) * f,
+                    fga: (totals.fga || 0) * f, fta: (totals.fta || 0) * f,
                 };
                 const lin = this.computeLinearBPM(per100);
-                // Split 60/40 per Python _calc_bpm Linear mode convention
                 const obpm = lin * 0.6;
                 return { bpm: lin, obpm: obpm, dbpm: lin - obpm };
             },
 
-            // Per-100 TEAM possession stats (on court share * team possessions)
-            computePer100(player, teamTotals) {
-                const playerMin = player.min || 0;
-                const teamPoss = teamTotals.totalPoss || 0;
-                const teamGames = teamTotals.games || 1;
-                const gameMin = teamGames * this.GAME_LENGTH;
-                let playerPoss = (gameMin > 0 && teamPoss > 0)
-                    ? teamPoss * (playerMin / gameMin)
-                    : playerMin * 1.75; // fallback: ~70 poss per 40 min
-                playerPoss = Math.max(playerPoss, 0.1);
-                const f = 100 / playerPoss;
-                return {
-                    pts: (player.pts || 0) * f,
-                    tpm: (player.tpm || 0) * f,
-                    tpa: (player.tpa || 0) * f,
-                    ast: (player.ast || 0) * f,
-                    to:  (player.tov || 0) * f,
-                    orb: (player.oreb || 0) * f,
-                    drb: (player.dreb || 0) * f,
-                    trb: ((player.oreb || 0) + (player.dreb || 0)) * f,
-                    stl: (player.stl || 0) * f,
-                    blk: (player.blk || 0) * f,
-                    pf:  (player.pf  || 0) * f,
-                    fga: (player.fga || 0) * f,
-                    fta: (player.fta || 0) * f,
-                    fgm: (player.fgm || 0) * f,
-                    poss: playerPoss,
-                };
+            // Position label helpers shared by every consumer (leaderboard, profiles, pools)
+            positionLabel(position) {
+                if (position == null || isNaN(position)) return '—';
+                if (position <= 1.3) return 'PG';
+                if (position <= 1.8) return 'PG/SG';
+                if (position <= 2.3) return 'SG';
+                if (position <= 2.8) return 'SG/SF';
+                if (position <= 3.3) return 'SF';
+                if (position <= 3.8) return 'SF/PF';
+                if (position <= 4.3) return 'PF';
+                if (position <= 4.7) return 'PF/C';
+                return 'C';
+            },
+            // Coarse buckets used for "Relative Position" percentile peers
+            positionBucket(position) {
+                // Thresholds sit inside the 9-label scheme (PG/SG boundary 1.8→2.3, SF/PF 3.3→3.8) so
+                // buckets stay reasonably balanced when a league's estimates cluster around 2–3.
+                if (position == null || isNaN(position)) return null;
+                if (position < 2.25) return 'G';   // PG, PG/SG, low SG
+                if (position < 3.0)  return 'W';   // SG, SG/SF
+                if (position < 3.75) return 'F';   // SF, SF/PF
+                return 'B';                        // PF, PF/C, C
+            },
+            positionBucketLabel(b) {
+                return { G: 'Guards', W: 'Wings', F: 'Forwards', B: 'Bigs' }[b] || 'All positions';
+            },
+            roleLabel(role) {
+                if (role == null || isNaN(role)) return '—';
+                return role <= 2.0 ? 'Creator' : role <= 3.0 ? 'Combo' : role <= 4.0 ? 'Balanced' : 'Finisher';
             },
 
-            // "While on court" percentage stats per Basketball-Reference formulas
-            computePctStats(player, teamTotals) {
-                const playerMin = Math.max(player.min || 0, 0.1);
-                const teamGames = teamTotals.games || 1;
-                const teamMin = teamTotals.totalMinutes || teamGames * 200;
-                const tmMpPer5 = teamMin / 5;
-                const orb = player.oreb || 0, drb = player.dreb || 0, trb = orb + drb;
-                const tmOreb = teamTotals.oreb || 0, tmDreb = teamTotals.dreb || 0;
-                const oppOreb = teamTotals.oppOreb || 0, oppDreb = teamTotals.oppDreb || 0;
-                const orbOpp = tmOreb + oppDreb;
-                const drbOpp = tmDreb + oppOreb;
-                const trbOpp = tmOreb + tmDreb + oppOreb + oppDreb;
-                const res = {
-                    ORB_pct: orbOpp > 0 ? 100 * (orb * tmMpPer5) / (playerMin * orbOpp) : 0,
-                    DRB_pct: drbOpp > 0 ? 100 * (drb * tmMpPer5) / (playerMin * drbOpp) : 0,
-                    TRB_pct: trbOpp > 0 ? 100 * (trb * tmMpPer5) / (playerMin * trbOpp) : 0,
-                };
-                // AST%
-                const tmFgm = teamTotals.fgm || 0;
-                const pFgm = player.fgm || 0, pAst = player.ast || 0;
-                const fgmOnCourt = (playerMin / tmMpPer5) * tmFgm - pFgm;
-                res.AST_pct = fgmOnCourt > 0 ? 100 * pAst / fgmOnCourt : 0;
-                // STL%
-                const oppPoss = teamTotals.oppPoss || teamTotals.totalPoss || 0;
-                res.STL_pct = oppPoss > 0 ? 100 * ((player.stl || 0) * tmMpPer5) / (playerMin * oppPoss) : 0;
-                // BLK%
-                const oppFga = teamTotals.oppFga || 0;
-                const oppTpa = teamTotals.oppTpa || 0;
-                const opp2pa = Math.max(oppFga - oppTpa, 0);
-                res.BLK_pct = opp2pa > 0 ? 100 * ((player.blk || 0) * tmMpPer5) / (playerMin * opp2pa) : 0;
-                // USG% + TOV%
-                const pFga = player.fga || 0, pFta = player.fta || 0, pTov = player.tov || 0;
-                const tmFga = teamTotals.fga || 0, tmFta = teamTotals.fta || 0, tmTov = teamTotals.tov || 0;
-                const pUsage = pFga + 0.44 * pFta + pTov;
-                const tmUsage = tmFga + 0.44 * tmFta + tmTov;
-                res.USG_pct = tmUsage > 0 ? 100 * (pUsage * tmMpPer5) / (playerMin * tmUsage) : 0;
-                res.TOV_pct = pUsage > 0 ? 100 * pTov / pUsage : 0;
-                // PF% (normalized to 1.0 = average)
-                const tmPf = teamTotals.pf || 0;
-                const expectedPf = tmPf * (playerMin / tmMpPer5);
-                res.PF_pct = expectedPf > 0 ? (player.pf || 0) / expectedPf : 1.0;
-                return res;
-            },
-
-            // Estimate player position (1=PG to 5=C). Returns { raw, clamped }.
-            estimatePosition(pctStats, minutes, listedPos) {
-                const lp = listedPos || 3.0;
-                const posRaw = 2.130 +
-                    8.668  * ((pctStats.TRB_pct || 0) / 100) +
-                    -2.486 * ((pctStats.STL_pct || 0) / 100) +
-                    0.992  * (pctStats.PF_pct || 1.0) +
-                    -3.536 * ((pctStats.AST_pct || 0) / 100) +
-                    1.667  * ((pctStats.BLK_pct || 0) / 100);
-                const BLEND = 50;
-                const blended = (minutes * posRaw + BLEND * lp) / (minutes + BLEND);
-                return { raw: blended, clamped: Math.max(1, Math.min(5, blended)) };
-            },
-
-            // Estimate offensive role (1=Creator to 5=Receiver)
-            estimateRole(per100, teamAvgPtsPerTsa, teamTotalThresholdPts, pctStats, minutes) {
-                const pctAst = (pctStats.AST_pct || 0) / 100;
-                const tsa = (per100.fga || 0) + 0.44 * (per100.fta || 0);
-                const threshEff = teamAvgPtsPerTsa - 0.33;
-                let thresholdPts = 0;
-                if (tsa > 0 && (per100.pts / tsa) > threshEff) {
-                    thresholdPts = Math.max(0, per100.pts - threshEff * tsa);
-                }
-                const pctThresh = teamTotalThresholdPts > 0 ? thresholdPts / teamTotalThresholdPts : 0;
-                const roleRaw = 6.00 + (-6.642) * pctAst + (-8.544) * pctThresh;
-                const weighted = (minutes * roleRaw + 50 * 4.0) / (minutes + 50);
-                return Math.max(1, Math.min(5, weighted));
-            },
-
-            // Normalize team positions iteratively so minutes-weighted avg = 3.0
-            normalizeTeamPositions(teamPlayers) {
-                const valid = teamPlayers.filter(p => (p.minutes || 0) > 0);
-                if (!valid.length) return;
-                const totalMin = valid.reduce((a, p) => a + p.minutes, 0);
-                if (totalMin <= 0) return;
-                for (let iter = 0; iter < 10; iter++) {
-                    const ws = valid.reduce((a, p) => a + p.rawPosition * p.minutes, 0);
-                    const adj = 3.0 - ws / totalMin;
-                    if (Math.abs(adj) < 0.001) break;
-                    valid.forEach(p => { p.rawPosition += adj; });
-                }
-                valid.forEach(p => {
-                    p.position = Math.round(Math.max(1, Math.min(5, p.rawPosition)) * 10) / 10;
-                });
-            },
-
-            // Main pipeline. Input: seasonStatsMap (Map), teamSeasonTotals (Map).
-            // Options: { mode: 'auto'|'linear'|'position', autoSwitchGames, gameLength }
-            // Returns Map<key_from_seasonStatsMap, { bpm, obpm, dbpm, linearBpm, position, role, vorp, mode, hasData }>
+            // Main pipeline. Input: seasonStatsMap (Map key -> stats; alias keys share objects),
+            // teamSeasonTotals (Map team -> totals incl. optional .gameLog for opponent adjustment).
+            // Options: { gameLength, listedPositions: Map(lowercase name -> number|string) }
+            // Returns Map<key, result>
             compute(seasonStatsMap, teamSeasonTotals, options) {
                 const opts = options || {};
-                const mode = opts.mode || 'auto';
-                const autoSwitchGames = opts.autoSwitchGames != null ? opts.autoSwitchGames : 20;
                 if (opts.gameLength) this.GAME_LENGTH = opts.gameLength;
-
+                const GL = this.GAME_LENGTH;
                 const results = new Map();
                 if (!seasonStatsMap || seasonStatsMap.size === 0) return results;
 
-                // Dedupe players by name+team (seasonStatsMap has multiple keys per player via name variations)
-                const uniqByNameTeam = new Map();    // "name|||team" -> { keys: [...], stats }
+                // Dedupe by object identity (name variations point at the same stats object)
+                const uniq = new Map(); // stats object -> keys[]
                 seasonStatsMap.forEach((stats, key) => {
                     if (!stats || !stats.name) return;
-                    const id = stats.name + '|||' + (stats.team || '');
-                    if (!uniqByNameTeam.has(id)) uniqByNameTeam.set(id, { keys: [key], stats });
-                    else uniqByNameTeam.get(id).keys.push(key);
+                    if (!uniq.has(stats)) uniq.set(stats, []);
+                    uniq.get(stats).push(key);
                 });
-
-                // Group by team
                 const byTeam = new Map();
-                uniqByNameTeam.forEach((entry) => {
-                    const team = entry.stats.team || '';
+                uniq.forEach((keys, stats) => {
+                    const team = stats.team || '';
                     if (!byTeam.has(team)) byTeam.set(team, []);
-                    byTeam.get(team).push(entry);
+                    byTeam.get(team).push({ keys, stats });
                 });
 
-                // Compute league avg ORtg (for OBPM team adjustment).
-                // Uses PTS fallback (FGM*2 + 3PM + FTM) when pts column is missing from team CSV.
-                let totalLgPts = 0, totalLgPoss = 0;
-                teamSeasonTotals && teamSeasonTotals.forEach(t => {
-                    const pts = t.pts > 0
-                        ? t.pts
-                        : ((t.fgm || 0) * 2 + (t.tpm || 0) + (t.ftm || 0));
-                    totalLgPts += pts;
-                    totalLgPoss += t.totalPoss || 0;
+                // League average ORtg (I87 in the sheet) from team totals; player-sum fallback
+                let lgPts = 0, lgPoss = 0;
+                const gameLog = new Map();
+                teamSeasonTotals && teamSeasonTotals.forEach((t, team) => {
+                    const pts = t.pts > 0 ? t.pts : ((t.fgm || 0) * 2 + (t.tpm || 0) + (t.ftm || 0));
+                    lgPts += pts; lgPoss += t.totalPoss || 0;
+                    if (Array.isArray(t.gameLog) && t.gameLog.length) gameLog.set(team, t.gameLog);
                 });
-                const leagueAvgOrtg = totalLgPoss > 0
-                    ? (totalLgPts / totalLgPoss) * 100
-                    : this.LEAGUE_AVG_ORTG_FALLBACK;
+                if (lgPoss <= 0) {
+                    uniq.forEach((keys, s) => { lgPts += s.pts || 0; lgPoss += (s.min || 0) * 1.75; });
+                }
+                const lgOrtg = lgPoss > 0 ? lgPts / lgPoss * 100 : 100;
+                const adjRatings = this.adjustedTeamRatings(gameLog, lgOrtg);
 
-                // Process each team
                 byTeam.forEach((entries, team) => {
-                    const teamTotals = teamSeasonTotals && teamSeasonTotals.get(team);
-                    if (!teamTotals) {
-                        // Fall back to Linear BPM using per-game stats if team data missing
-                        entries.forEach(({ keys, stats }) => {
-                            const minutes = stats.min || 0;
-                            if (minutes < this.MIN_MINUTES) {
-                                const blank = { bpm: 0, obpm: 0, dbpm: 0, linearBpm: 0, vorp: 0,
-                                    position: 3.0, role: 4.0, mode: 'below_threshold', hasData: false };
-                                keys.forEach(k => results.set(k, blank));
-                                return;
-                            }
-                            // Build per-100 assuming ~1.75 poss/min
-                            const per100 = this.computePer100(stats, { totalPoss: minutes * 1.75, games: 1 });
-                            const linearBpm = this.computeLinearBPM(per100);
-                            const out = {
-                                bpm: Math.round(linearBpm * 10) / 10,
-                                obpm: Math.round(linearBpm * 0.6 * 10) / 10,
-                                dbpm: Math.round(linearBpm * 0.4 * 10) / 10,
-                                linearBpm: Math.round(linearBpm * 10) / 10,
-                                position: 3.0, role: 4.0,
-                                vorp: 0, mode: 'linear (no team data)', hasData: true,
-                            };
-                            keys.forEach(k => results.set(k, out));
-                        });
-                        return;
-                    }
+                    const tt = (teamSeasonTotals && teamSeasonTotals.get(team)) || null;
 
-                    // Derive avgPtsPerTsa with fallback if CSV didn't supply PTS.
-                    // Some team_totals CSVs only have FGM/3PM/FTM columns; we can reconstruct PTS.
-                    let teamAvgPtsPerTsa = teamTotals.avgPtsPerTsa;
-                    if (!teamAvgPtsPerTsa || teamAvgPtsPerTsa <= 0) {
-                        const tsa = (teamTotals.fga || 0) + 0.44 * (teamTotals.fta || 0);
-                        const tPts = teamTotals.pts > 0
-                            ? teamTotals.pts
-                            : ((teamTotals.fgm || 0) * 2 + (teamTotals.tpm || 0) + (teamTotals.ftm || 0));
-                        teamAvgPtsPerTsa = tsa > 0 ? tPts / tsa : 1.0;
-                    }
-
-                    // Phase 1: per-100, pct stats, team threshold points, per-player estimates
-                    let teamTotalThresholdPts = 0;
-                    const players = [];
-                    entries.forEach(({ keys, stats }) => {
-                        const minutes = stats.min || 0;
-                        if (minutes < this.MIN_MINUTES) {
-                            const blank = { bpm: 0, obpm: 0, dbpm: 0, linearBpm: 0, vorp: 0,
-                                position: 3.0, role: 4.0, mode: 'below_threshold', hasData: false };
-                            keys.forEach(k => results.set(k, blank));
-                            return;
-                        }
-                        const per100 = this.computePer100(stats, teamTotals);
-                        const pctStats = this.computePctStats(stats, teamTotals);
-                        // accumulate team threshold pts
-                        const tsa = per100.fga + 0.44 * per100.fta;
-                        const threshEff = teamAvgPtsPerTsa - 0.33;
-                        if (tsa > 0 && (per100.pts / tsa) > threshEff) {
-                            teamTotalThresholdPts += Math.max(0, per100.pts - threshEff * tsa);
-                        }
-                        players.push({ keys, stats, per100, pctStats, minutes, games: stats.games || 0 });
+                    // ---- Team context (rows 4–9 of the sheet; roster sums like R4/R5/R6/R9/X4:X8) ----
+                    const T = { pts: 0, fga: 0, fta: 0, trb: 0, stl: 0, pf: 0, ast: 0, blk: 0, min: 0 };
+                    entries.forEach(({ stats: s }) => {
+                        T.pts += s.pts || 0; T.fga += s.fga || 0; T.fta += s.fta || 0;
+                        T.trb += (s.oreb || 0) + (s.dreb || 0); T.stl += s.stl || 0; T.pf += s.pf || 0;
+                        T.ast += s.ast || 0; T.blk += s.blk || 0; T.min += s.min || 0;
                     });
-                    teamTotalThresholdPts = Math.max(teamTotalThresholdPts, 1.0);
-
-                    // Phase 2: position + role estimates (using accumulated team threshold)
-                    players.forEach(p => {
-                        const posRes = this.estimatePosition(p.pctStats, p.minutes);
-                        p.rawPosition = posRes.raw;
-                        p.position = posRes.clamped;
-                        p.role = Math.round(
-                            this.estimateRole(p.per100, teamAvgPtsPerTsa, teamTotalThresholdPts, p.pctStats, p.minutes) * 10
-                        ) / 10;
-                        p.linearBpm = this.computeLinearBPM(p.per100);
-                    });
-
-                    // Phase 3: normalize team positions (minutes-weighted avg = 3.0)
-                    this.normalizeTeamPositions(players);
-
-                    // Phase 4: determine team mode (auto = any player > threshold)
-                    let teamMode;
-                    if (mode === 'auto') {
-                        teamMode = players.some(p => p.games > autoSwitchGames) ? 'position' : 'linear';
+                    const teamGames = tt && tt.games > 0 ? tt.games : Math.max(1, Math.round(T.min / (GL * 5)));
+                    const teamMin = T.min > 0 ? T.min : teamGames * GL * 5;        // R9 Total Minutes
+                    const tsaTeam = T.fga + 0.44 * T.fta;
+                    const tmPtsPerTsa = tsaTeam > 0 ? T.pts / tsaTeam : 1.0;         // R7
+                    // Pace (C7): possessions per game, both teams averaged like BBRef pace
+                    let pacePerGame;
+                    if (tt && tt.totalPoss > 0 && tt.games > 0) {
+                        const opp = tt.oppPoss > 0 ? tt.oppPoss : tt.totalPoss;
+                        pacePerGame = (tt.totalPoss + opp) / 2 / tt.games;
                     } else {
-                        teamMode = mode;
+                        pacePerGame = 1.75 * GL; // ~70 per 40 min fallback
                     }
+                    // Team Rating (C4 = NRtg/A) and Off Rating (C5 = ORtg/A − league)
+                    let rating = 0, offRel = 0, ratingMode = 'no team data';
+                    const adj = adjRatings.get(team);
+                    if (tt && typeof tt.adjNetOverride === 'number') { rating = tt.adjNetOverride; offRel = typeof tt.adjOffOverride === 'number' ? tt.adjOffOverride : 0; ratingMode = 'override'; }
+                    else if (adj) { rating = adj.adjNet; offRel = adj.adjOff; ratingMode = 'adjusted'; }
+                    else if (tt && tt.totalPoss > 0) {
+                        const tPts = tt.pts > 0 ? tt.pts : ((tt.fgm || 0) * 2 + (tt.tpm || 0) + (tt.ftm || 0));
+                        const oPts = tt.oppPts > 0 ? tt.oppPts : ((tt.oppFgm || 0) * 2 + (tt.oppTpm || 0) + (tt.oppFtm || 0));
+                        const ortg = tPts / tt.totalPoss * 100;
+                        const drtg = oPts / Math.max(tt.oppPoss || tt.totalPoss, 1) * 100;
+                        rating = ortg - drtg; offRel = ortg - lgOrtg; ratingMode = 'raw';
+                    }
+                    const avgLead = rating * pacePerGame / 100 / 2;                 // F4
+                    const leadBonus = this.LEAD_BONUS / 2 * avgLead;                 // F5
+                    const adjTmRtg = rating + leadBonus;                             // F6
+                    const adjORtg = offRel + leadBonus / 2;                          // F7
 
-                    // Phase 5: compute raw BPM + position/role constants for all players
-                    players.forEach(p => {
-                        const rawBpm  = this.computeRawBPM(p.per100, teamAvgPtsPerTsa, p.position, p.role, 'total');
-                        const rawObpm = this.computeRawBPM(p.per100, teamAvgPtsPerTsa, p.position, p.role, 'offensive');
-                        const posConst  = this.positionConstant(p.position, 'total')     + this.roleConstant(p.role, 'total');
-                        const posConstO = this.positionConstant(p.position, 'offensive') + this.roleConstant(p.role, 'offensive');
-                        p.rawBpmPreAdj  = rawBpm  + posConst;
-                        p.rawObpmPreAdj = rawObpm + posConstO;
+                    // ---- Per player raw inputs (AC..AS) ----
+                    const P = entries.map(({ keys, stats: s }) => {
+                        const MP = s.min || 0;
+                        const G = s.games || 0;
+                        const tsa = (s.fga || 0) + 0.44 * (s.fta || 0);                       // AC
+                        const ptPerTsa = tsa > 0 ? (s.pts || 0) / tsa : 0;                       // AD
+                        const adjPts = ((ptPerTsa - tmPtsPerTsa) + 1.0) * tsa;                   // AE
+                        const poss = Math.max(MP * pacePerGame / GL, 0.01);                      // AF
+                        const threshPts = tsa > 0 ? tsa * (ptPerTsa - (tmPtsPerTsa + this.ROLE.ptThreshold)) : 0; // AG (signed!)
+                        const f = 100 / poss;
+                        const per100 = {
+                            adjPt: adjPts * f, fga: (s.fga || 0) * f, fta: (s.fta || 0) * f, tpm: (s.tpm || 0) * f,
+                            ast: (s.ast || 0) * f, to: (s.tov || 0) * f, orb: (s.oreb || 0) * f, drb: (s.dreb || 0) * f,
+                            trb: ((s.oreb || 0) + (s.dreb || 0)) * f, stl: (s.stl || 0) * f, blk: (s.blk || 0) * f, pf: (s.pf || 0) * f,
+                            pts: (s.pts || 0) * f, tpa: (s.tpa || 0) * f,
+                        };
+                        const minShare = teamMin > 0 ? MP / (teamMin / 5) : 0;                   // CS %Min
+                        return { keys, s, MP, G, tsa, threshPts, per100, minShare };
                     });
-
-                    // Phase 6: team adjustment (position mode only)
-                    const teamGp = teamTotals.games || 1;
-                    const totalGameMin = teamGp * this.GAME_LENGTH;
-                    const teamPoss = teamTotals.totalPoss || 1;
-                    // PTS fallback: if team CSV didn't supply PTS, derive from FGM*2 + 3PM + FTM
-                    // (same pattern lgTotals uses for consistency).
-                    const teamPts = teamTotals.pts > 0
-                        ? teamTotals.pts
-                        : ((teamTotals.fgm || 0) * 2 + (teamTotals.tpm || 0) + (teamTotals.ftm || 0));
-                    const teamOrtg = teamPts / teamPoss * 100;
-                    const oppPoss = teamTotals.oppPoss || teamPoss;
-                    const oppPts = teamTotals.oppPts > 0
-                        ? teamTotals.oppPts
-                        : ((teamTotals.oppFgm || 0) * 2 + (teamTotals.oppTpm || 0) + (teamTotals.oppFtm || 0));
-                    const teamDrtg = oppPts / oppPoss * 100;
-                    const teamNetRtg = teamOrtg - teamDrtg;
-                    const teamOrtgRelLg = teamOrtg - leagueAvgOrtg;
-
-                    let wBpmSum = 0, wObpmSum = 0, wTotal = 0;
-                    players.forEach(p => {
-                        p.minPct = totalGameMin > 0 ? p.minutes / totalGameMin : 0;
-                        if (teamMode === 'position') {
-                            wBpmSum  += p.rawBpmPreAdj  * p.minPct;
-                            wObpmSum += p.rawObpmPreAdj * p.minPct;
-                            wTotal   += p.minPct;
+                    const teamThresh = P.reduce((a, p) => a + p.threshPts, 0);                  // AB4
+                    // % of stats (AT..AY): share of team total divided by minutes share
+                    P.forEach(p => {
+                        const sh = (num, den) => (p.minShare > 0 && den !== 0) ? (num / den) / p.minShare : 0;
+                        p.pct = {
+                            trb: sh((p.s.oreb || 0) + (p.s.dreb || 0), T.trb),
+                            stl: sh(p.s.stl || 0, T.stl),
+                            pf:  sh(p.s.pf || 0, T.pf),
+                            ast: sh(p.s.ast || 0, T.ast),
+                            blk: sh(p.s.blk || 0, T.blk),
+                            thresh: sh(p.threshPts, teamThresh),
+                        };
+                        p.pctStats = p.pct;
+                        // BB: raw position estimate; BN: raw role estimate
+                        p.posEst = this.POS.intercept + this.POS.trb * p.pct.trb + this.POS.stl * p.pct.stl +
+                            this.POS.pf * p.pct.pf + this.POS.ast * p.pct.ast + this.POS.blk * p.pct.blk;
+                        p.roleEst = this.ROLE.intercept + this.ROLE.ast * p.pct.ast + this.ROLE.thresh * p.pct.thresh;
+                        let listed = this.POS.defaultPos;
+                        if (opts.listedPositions) {
+                            const lp = opts.listedPositions.get((p.s.name || '').toLowerCase());
+                            if (lp != null) listed = typeof lp === 'number' ? lp : (this.LISTED_POS[String(lp).toUpperCase()] || listed);
+                        } else if (p.s.listedPosition != null) {
+                            listed = typeof p.s.listedPosition === 'number' ? p.s.listedPosition : (this.LISTED_POS[String(p.s.listedPosition).toUpperCase()] || listed);
                         }
+                        p.listed = listed;
                     });
-                    const bpmAdj  = wTotal > 0 ? (teamNetRtg    * this.TEAM_ADJ_MULTIPLIER - wBpmSum)  / wTotal : 0;
-                    const obpmAdj = wTotal > 0 ? (teamOrtgRelLg * this.TEAM_ADJ_MULTIPLIER - wObpmSum) / wTotal : 0;
+                    // BM / BY: team-normalised position and role
+                    const positions = this.teamNormalize(P.map(p => ({ est: p.posEst, minutes: p.MP, prior: p.listed })), this.POS.minWt, teamMin);
+                    const roles = this.teamNormalize(P.map(p => ({ est: p.roleEst, minutes: p.MP, prior: this.ROLE.defaultRole })), this.ROLE.minWt, teamMin);
+                    P.forEach((p, i) => { p.position = positions[i]; p.role = roles[i]; });
 
-                    // Phase 7: emit final results
-                    players.forEach(p => {
-                        let finalBpm, finalObpm;
-                        if (teamMode === 'position') {
-                            finalBpm  = p.rawBpmPreAdj  + bpmAdj;
-                            finalObpm = p.rawObpmPreAdj + obpmAdj;
-                        } else {
-                            // Linear mode: no team adjustment; split BPM 60/40 per Python spec
-                            finalBpm  = p.linearBpm;
-                            finalObpm = p.linearBpm * 0.6;
-                        }
-                        const minPctVorp = totalGameMin > 0 ? p.minutes / totalGameMin : 0;
-                        const vorp = (finalBpm - (-2.0)) * minPctVorp * (teamGp / 82);
+                    // ---- Raw BPM / OBPM (CA..CR, CV..DM) ----
+                    const rawFor = (p, set) => {
+                        const c = {};
+                        ['adjPt', 'tpm', 'ast', 'to', 'orb', 'drb', 'trb', 'stl', 'blk', 'pf'].forEach(k => { c[k] = this.interp(set.pos1[k], set.pos5[k], p.position); });
+                        c.fga = this.interp(set.pos1.fga, set.pos5.fga, p.role);
+                        c.fta = 0.44 * c.fga;
+                        const x = p.per100;
+                        const scoring = c.adjPt * x.adjPt + c.fga * x.fga + c.fta * x.fta + c.tpm * x.tpm;
+                        const ball = c.ast * x.ast + c.to * x.to;
+                        const reb = c.orb * x.orb + c.drb * x.drb + c.trb * x.trb;
+                        const def = c.stl * x.stl + c.blk * x.blk + c.pf * x.pf;
+                        return scoring + ball + reb + def + this.positionConstant(p.position, p.role, set);
+                    };
+                    let contrib = 0, contribO = 0;
+                    P.forEach(p => {
+                        p.rawBpm = rawFor(p, this.COEF.bpm);
+                        p.rawObpm = rawFor(p, this.COEF.obpm);
+                        contrib += p.minShare * p.rawBpm;    // CT
+                        contribO += p.minShare * p.rawObpm;  // DO
+                    });
+                    const tmAdj = (adjTmRtg - contrib) / 5;   // CT11
+                    const tmAdjO = (adjORtg - contribO) / 5;  // DO11
+
+                    // ---- Final (DU..EE) ----
+                    P.forEach(p => {
+                        const bpm = p.rawBpm + tmAdj;
+                        const obpm = p.rawObpm + tmAdjO;
+                        const vorp = (bpm - this.VORP_REPLACEMENT) * p.minShare * teamGames / this.VORP_SEASON_GAMES;
+                        // Regressed BPM (DZ..EE) — scaled from the 48-minute constants to GAME_LENGTH
+                        const reMpg = p.G > 0 ? p.MP / (p.G + 4) : 0;
+                        const reMin = Math.max((450 * GL / 48 - p.MP) / 3, 0);
+                        const expBpm = -4.75 + 0.175 * reMpg * 48 / GL;
+                        const den = p.MP + reMin;
+                        const regBpm = den > 0 ? (bpm * p.MP + expBpm * reMin) / den : expBpm;
+                        const regObpm = den > 0 ? (obpm * p.MP + expBpm * reMin) / den : expBpm;
+                        const linearBpm = this.computeLinearBPM(p.per100);
+                        const qualified = p.MP >= this.MIN_MINUTES;
+                        const r1 = v => Math.round(v * 10) / 10;
                         const out = {
-                            bpm:  Math.round(finalBpm * 10) / 10,
-                            obpm: Math.round(finalObpm * 10) / 10,
-                            dbpm: Math.round((finalBpm - finalObpm) * 10) / 10,
-                            linearBpm: Math.round(p.linearBpm * 10) / 10,
-                            position: p.position,
-                            role: p.role,
-                            vorp: Math.round(vorp * 10) / 10,
-                            mode: teamMode === 'position'
-                                ? (mode === 'auto' ? 'position (auto)' : 'position')
-                                : (mode === 'auto' ? 'linear (auto)' : 'linear'),
-                            hasData: true,
+                            bpm: r1(bpm), obpm: r1(obpm), dbpm: r1(bpm - obpm),
+                            regBpm: r1(regBpm), regObpm: r1(regObpm), regDbpm: r1(regBpm - regObpm),
+                            linearBpm: r1(linearBpm),
+                            position: Math.round(p.position * 100) / 100,
+                            positionRaw: p.posEst,
+                            role: Math.round(p.role * 100) / 100,
+                            positionLabel: this.positionLabel(p.position),
+                            positionBucket: this.positionBucket(p.position),
+                            roleLabel: this.roleLabel(p.role),
+                            pct: p.pct,
+                            minShare: p.minShare,
+                            vorp: r1(vorp),
+                            teamAdj: tmAdj, teamAdjO: tmAdjO, teamRating: rating, teamRatingMode: ratingMode,
+                            qualified,
+                            hasData: qualified,
+                            mode: 'bbref 2.0 (' + ratingMode + ')' + (qualified ? '' : ' below_threshold'),
                         };
                         p.keys.forEach(k => results.set(k, out));
                     });
                 });
-
                 return results;
             },
         };
@@ -19850,11 +20290,13 @@
             useEffect(() => {
                 // Resolve the user's data folder from the auth session.
                 let dataFolder = '';
+                let followLatestOptOut = false;
                 try {
                     const raw = sessionStorage.getItem('prophesy_auth_v2');
                     if (raw) {
                         const parsed = JSON.parse(raw);
                         if (parsed && parsed.dataFolder) dataFolder = String(parsed.dataFolder).replace(/^\/+|\/+$/g, '');
+                        if (parsed && parsed.followLatest === false) followLatestOptOut = true;
                     }
                 } catch (_) {}
 
@@ -19884,8 +20326,25 @@
                     } catch (_) { return null; }
                 };
 
+                // V15: follow the newest dataset the ingest worker published for this league
+                // (data/latest.json = { "SLB": "data_2026-..._SLB", ... }): the stored folder is
+                // the league key, the manifest is the pointer. Opt out with followLatest:false.
+                const followLatest = (async () => {
+                    if (!dataFolder || followLatestOptOut) return dataFolder;
+                    try {
+                        const lr = await fetch('./data/latest.json', { cache: 'no-store' });
+                        if (!lr.ok) return dataFolder;
+                        const latest = await lr.json();
+                        const code = (dataFolder.match(/_([A-Z0-9_]+)$/i) || [])[1];
+                        const newest = code && latest && latest[code.toUpperCase()];
+                        if (newest && newest !== dataFolder) { console.log('[LineupAnalyzer] latest.json → ' + newest + ' (was ' + dataFolder + ')'); return newest; }
+                    } catch (_) { /* no manifest — keep the configured folder */ }
+                    return dataFolder;
+                })();
+
                 // Try per-user folder first (if any), then the shared root.
                 const loadFile = async (filename) => {
+                    dataFolder = await followLatest;
                     if (dataFolder) {
                         const t = await tryFetch('./data/' + dataFolder + '/' + filename);
                         if (t) return { text: t, source: dataFolder + '/' + filename };
@@ -20234,7 +20693,11 @@
             
             // V6.0: BartTorvik-style Leaderboard Table
             const [leaderboardViewMode, setLeaderboardViewMode] = useState('cards'); // 'cards' or 'table'
-            const [leaderboardTableColumns, setLeaderboardTableColumns] = useState(['net', 'off', 'def', 'offEfg', 'defEfg', 'offTov', 'defTov', 'offOreb', 'defOreb', 'offFtR', 'defFtR']);
+            // V15: the Full Table now opens on the BASIC view (per-75 box score, team-profile layout)
+            const [leaderboardTableColumns, setLeaderboardTableColumns] = useState(['games', 'mpg', 'pts75', 'fgm75', 'fga75', 'fgPct', 'tpm75', 'tpa75', 'threePctIndiv', 'ftm75', 'fta75', 'ftPct', 'oreb75', 'dreb75', 'reb75', 'ast75', 'stl75', 'blk75', 'tov75', 'pf75']);
+            const [leaderboardTableBasic, setLeaderboardTableBasic] = useState(true);       // Basic (per-75 box) vs Advanced Stats
+            const [leaderboardRelative, setLeaderboardRelative] = useState(false);           // show +/- vs league (or position) average
+            const [leaderboardRelativePosition, setLeaderboardRelativePosition] = useState(false); // percentiles vs same-position peers
             const [leaderboardTableTeamFilter, setLeaderboardTableTeamFilter] = useState('');
             const [leaderboardTableMinMins, setLeaderboardTableMinMins] = useState(50);
             const [leaderboardTableSortBy, setLeaderboardTableSortBy] = useState('net');
@@ -20261,7 +20724,7 @@
             const [mobileFiltersCollapsed, setMobileFiltersCollapsed] = useState(true);
             const [mobilePlayerColExpanded, setMobilePlayerColExpanded] = useState(false);
             const [mobileTeamColExpanded, setMobileTeamColExpanded] = useState(false);
-            const [leaderboardTableUseOnOff, setLeaderboardTableUseOnOff] = useState(true);
+            const [leaderboardTableUseOnOff, setLeaderboardTableUseOnOff] = useState(false); // V15: default view is Basic (individual)
             const [leaderboardTableFullscreen, setLeaderboardTableFullscreen] = useState(false);
             const [leaderboardTableStatMode, setLeaderboardTableStatMode] = useState('onoff'); // 'onoff', 'individual', 'rapm'
             const [leaderboardTableOffLuck, setLeaderboardTableOffLuck] = useState(0); // 0-100%
@@ -20339,6 +20802,7 @@
             const [profileTeam, setProfileTeam] = useState(null); // Team name to show in profile
             const teamProfileReturnRef = React.useRef(null);       // { tab, scrollY }
             const [teamBarsMode, setTeamBarsMode] = useState('basic'); // basic | adjusted | vsstarters | shots
+            const [teamWinLoss, setTeamWinLoss] = useState(false); // V15: show wins-vs-losses splits (with deltas) next to the team bars
             const [teamStatCategory, setTeamStatCategory] = useState('box'); // roster table category (box | per75 | advanced | shots | misc)
             const [teamRelative, setTeamRelative] = useState(false);          // roster table: actual vs league-average deltas
             const [teamRosterSort, setTeamRosterSort] = useState({ k: 'mpg', asc: false });
@@ -20427,6 +20891,8 @@
 
             // Dev hook for team profile
             useEffect(() => { window.__openTeamProfile = openTeamProfile; });
+            // Dev hook (V15): inspect the BPM2-enriched season map + universal percentile helper from the console/tests
+            useEffect(() => { window.__seasonStatsMap = seasonStatsMap; window.__teamSeasonTotals = teamSeasonTotals; window.__universalPlayerPct = universalPlayerPct; window.__fullTableRef = fullTableDataRef; });
 
             // V7.0: Help Mode - global click interceptor
             useEffect(() => {
@@ -20842,6 +21308,14 @@
             const [gvLineupViewMode, setGvLineupViewMode] = useState('cards');
             // Player table column groups collapse state
             const [gvCollapsedGroups, setGvCollapsedGroups] = useState({});
+            // V15: league feed (auto-updating games from the ingest worker / Supabase)
+            const [gvFeedComps, setGvFeedComps] = useState([]);      // [{code,label,adapter,games,updated,source}]
+            const [gvFeedComp, setGvFeedComp] = useState('');         // selected competition code
+            const [gvFeedAuto, setGvFeedAuto] = useState(true);       // re-check the feed while the tab is open
+            const [gvFeedStatus, setGvFeedStatus] = useState('');     // last loader message
+            const [gvFeedLoadedAt, setGvFeedLoadedAt] = useState(null);
+            const gvFeedCacheRef = React.useRef({ comp: null, games: new Map() }); // id -> {hash,status,file}
+            const gvFeedBusyRef = React.useRef(false);
             const [gvPlayerSortKey, setGvPlayerSortKey] = useState('minutes');
             const [gvPlayerSortAsc, setGvPlayerSortAsc] = useState(false);
             const [gvPlayerTableTeam, setGvPlayerTableTeam] = useState('all'); // 'all', 'home', 'away'
@@ -27298,8 +27772,9 @@
             // ═══════════════════════════════════════════════════════════════════════════
 
             // Process game HTML files asynchronously
-            const processGameHtmlFiles = async (gameFiles) => {
-                setGvLoading(true);
+            const processGameHtmlFiles = async (gameFiles, opts) => {
+                opts = opts || {};
+                if (!opts.silent) setGvLoading(true);
                 setGvLoadProgress({ current: 0, total: gameFiles.length });
                 const summaries = [];
 
@@ -27351,11 +27826,130 @@
                 });
 
                 setGvFolderGames(summaries);
-                setGvLoading(false);
-                if (summaries.length > 0) {
+                if (!opts.silent) setGvLoading(false);
+                if (summaries.length > 0 && !opts.keepView) {
                     setGvView('browser');
                 }
             };
+
+            // ═══════════════════════════════════════════════════════════════════════════
+            // V15: LEAGUE FEED LOADER — populates the Advanced Games View from the
+            // ingest worker's output instead of a dropped folder.
+            //   source 'supabase': external_games rows (competition_code, scores, status,
+            //                      payload_hash, raw_ref = public storage URL of data.json)
+            //   source 'repo':     data/feed/<CODE>/index.json + games/<id>.json committed
+            //                      by the same worker (offline / no-Supabase fallback)
+            // Live games are re-fetched through the livestats edge function (CORS shim)
+            // so an in-progress game is as fresh as FIBA's own page. Converted HTML is
+            // cached per game id + payload hash, so a refresh only re-parses what changed.
+            // ═══════════════════════════════════════════════════════════════════════════
+            const feedCfg = () => (window.EPINOIA_CONFIG && window.EPINOIA_CONFIG.supabaseUrl) ? window.EPINOIA_CONFIG : null;
+            const feedListCompetitions = async () => {
+                const out = [];
+                const cfg = feedCfg();
+                if (cfg) {
+                    try {
+                        const r = await fetch(cfg.supabaseUrl + '/rest/v1/feed_competitions?select=code,label,adapter,games,updated_at&order=code',
+                            { headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+                        if (r.ok) (await r.json()).forEach(c => out.push({ code: c.code, label: c.label || c.code, adapter: c.adapter, games: c.games, updated: c.updated_at, source: 'supabase' }));
+                    } catch (_) { /* Supabase unreachable, or 0096 not applied yet — the repo copy still works */ }
+                }
+                try {
+                    const r = await fetch('./data/feed/index.json', { cache: 'no-store' });
+                    if (r.ok) {
+                        const j = await r.json();
+                        (j.competitions || []).forEach(c => { if (!out.some(o => o.code === c.code)) out.push({ ...c, source: 'repo' }); });
+                    }
+                } catch (_) { /* no repo feed yet */ }
+                return out;
+            };
+            const feedGameIndex = async (comp) => {
+                const cfg = feedCfg();
+                if (comp.source === 'supabase' && cfg) {
+                    const r = await fetch(cfg.supabaseUrl + '/rest/v1/external_games?competition_code=eq.' + encodeURIComponent(comp.code) +
+                        '&select=external_id,home_name,away_name,home_score,away_score,external_status,game_date,payload_hash,raw_ref&order=game_date.desc.nullslast,external_id.desc',
+                        { headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+                    if (!r.ok) throw new Error('feed index ' + r.status);
+                    return (await r.json()).map(g => ({ id: String(g.external_id), home: g.home_name, away: g.away_name, homeScore: g.home_score, awayScore: g.away_score,
+                        status: g.external_status || 'final', date: g.game_date, hash: g.payload_hash, payloadUrl: g.raw_ref }));
+                }
+                const r = await fetch('./data/feed/' + encodeURIComponent(comp.code) + '/index.json', { cache: 'no-store' });
+                if (!r.ok) throw new Error('feed index ' + r.status);
+                const j = await r.json();
+                return (j.games || []).map(g => ({ ...g, id: String(g.id), payloadUrl: './data/feed/' + encodeURIComponent(comp.code) + '/games/' + encodeURIComponent(g.id) + '.json' }));
+            };
+            const feedFetchPayload = async (g, comp) => {
+                const cfg = feedCfg();
+                if (g.status === 'live' && cfg && (comp.adapter || 'fiba_livestats') === 'fiba_livestats') {
+                    try {
+                        const r = await fetch(cfg.supabaseUrl + '/functions/v1/livestats?game=' + encodeURIComponent(g.id), { cache: 'no-store' });
+                        if (r.ok) { const j = await r.json(); if (j && j.tm) return j; }
+                    } catch (_) { /* fall through to the archived copy */ }
+                }
+                if (!g.payloadUrl) return null;
+                const r = await fetch(g.payloadUrl, { cache: 'no-store' });
+                if (!r.ok) return null;
+                return await r.json();
+            };
+            const loadFeedGames = async (compCode, opts) => {
+                opts = opts || {};
+                const comp = gvFeedComps.find(c => c.code === compCode);
+                if (!comp || gvFeedBusyRef.current) return;
+                gvFeedBusyRef.current = true;
+                try {
+                    if (!opts.silent) { setGvLoading(true); setGvError(''); }
+                    const idx = await feedGameIndex(comp);
+                    const cache = gvFeedCacheRef.current;
+                    if (cache.comp !== comp.code) { cache.comp = comp.code; cache.games = new Map(); }
+                    const files = []; let fetched = 0, changed = false;
+                    setGvLoadProgress({ current: 0, total: idx.length });
+                    for (let i = 0; i < idx.length; i++) {
+                        const g = idx[i];
+                        const c = cache.games.get(g.id);
+                        if (c && c.hash === g.hash && g.status !== 'live') { files.push(c.file); continue; }
+                        const json = await feedFetchPayload(g, comp);
+                        if (json && json.tm) {
+                            const meta = { date: g.date, competition: comp.label || comp.code };
+                            const bsHtml = FibaJsonToHtml.boxscore(json, meta), pbpHtml = FibaJsonToHtml.pbp(json);
+                            const bs = new File([bsHtml], 'game' + g.id + 'bs.html', { type: 'text/html' });
+                            const pbp = new File([pbpHtml], 'game' + g.id + 'pbp.html', { type: 'text/html' });
+                            // _isAutoLoaded + _bsContent/_pbpContent is the shape loadGameForAnalysis reads for pre-fetched games
+                            const file = { gameId: String(g.id), bs, pbp, sc: null, _feed: g, _isAutoLoaded: true, _bsContent: bsHtml, _pbpContent: pbpHtml };
+                            cache.games.set(g.id, { hash: g.hash, status: g.status, file });
+                            files.push(file); fetched++; changed = true;
+                        } else if (c) files.push(c.file);
+                        setGvLoadProgress({ current: i + 1, total: idx.length });
+                    }
+                    if (files.length !== gvGameHtmlFiles.length) changed = true;
+                    if (changed || !opts.silent) {
+                        setGvGameHtmlFiles(files);
+                        await processGameHtmlFiles(files, { silent: !!opts.silent, keepView: !!opts.silent });
+                    }
+                    setGvFeedLoadedAt(new Date());
+                    setGvFeedStatus(files.length + ' games from ' + comp.source + (fetched ? ' · ' + fetched + ' fetched' : ' · nothing new') +
+                        (idx.some(g => g.status === 'live') ? ' · ' + idx.filter(g => g.status === 'live').length + ' live' : ''));
+                } catch (err) {
+                    console.warn('[feed]', err);
+                    if (!opts.silent) setGvError('Could not load the league feed: ' + (err.message || err));
+                    setGvFeedStatus('feed error: ' + (err.message || err));
+                } finally {
+                    gvFeedBusyRef.current = false;
+                    if (!opts.silent) setGvLoading(false);
+                }
+            };
+            // competitions list on first visit to the tab
+            useEffect(() => {
+                if (activeTab !== 'advancedgames' || gvFeedComps.length) return;
+                let alive = true;
+                feedListCompetitions().then(list => { if (alive) { setGvFeedComps(list); if (list.length && !gvFeedComp) setGvFeedComp(list[0].code); } });
+                return () => { alive = false; };
+            }, [activeTab]);
+            // auto-refresh while the tab is open (every 5 min; paused when the page is hidden)
+            useEffect(() => {
+                if (!gvFeedAuto || !gvFeedComp || activeTab !== 'advancedgames' || !gvFeedLoadedAt) return;
+                const t = setInterval(() => { if (!document.hidden) loadFeedGames(gvFeedComp, { silent: true }); }, 5 * 60 * 1000);
+                return () => clearInterval(t);
+            }, [gvFeedAuto, gvFeedComp, activeTab, gvFeedLoadedAt]);
 
             // Load a specific game for detailed analysis
             const loadGameForAnalysis = async (gameId) => {
@@ -28381,107 +28975,90 @@
             }, [lineupData, seasonData]);
 
             // Build team season totals from team_totals.csv for per-possession calculations AND advanced stats
-            const teamSeasonTotals = useMemo(() => {
-                const result = new Map(); // team -> { games, totalPoss, totalMinutes, fga, fgm, oreb, dreb, ast, stl, blk, tov, fta, tpa, oppOreb, oppDreb, oppFga, oppTpa, oppPoss }
-                if (teamTotalsData.length > 0) {
-                    const teamGames = new Map(); // team -> Set of game_ids
-                    const teamStats = new Map(); // team -> aggregated stats
-                    const gameTeams = new Map(); // game_id -> [team1, team2] for opponent matching
-                    
-                    // First pass: aggregate team stats and track games
-                    teamTotalsData.forEach(t => {
-                        const team = t.team;
-                        const gameId = t.game_id;
-                        if (!team) return;
-                        
-                        // Track unique games per team
-                        if (!teamGames.has(team)) teamGames.set(team, new Set());
-                        if (gameId) teamGames.get(team).add(gameId);
-                        
-                        // Track teams in each game for opponent matching
-                        if (gameId) {
-                            if (!gameTeams.has(gameId)) gameTeams.set(gameId, []);
-                            const teams = gameTeams.get(gameId);
-                            if (!teams.includes(team)) teams.push(team);
-                        }
-                        
-                        // Aggregate all stats
-                        if (!teamStats.has(team)) {
-                            teamStats.set(team, {
-                                fga: 0, fgm: 0, oreb: 0, dreb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fta: 0, ftm: 0, tpa: 0, tpm: 0, pts: 0, min: 0, pf: 0,
-                                oppFga: 0, oppFgm: 0, oppOreb: 0, oppDreb: 0, oppReb: 0, oppAst: 0, oppStl: 0, oppBlk: 0, oppTov: 0, oppFta: 0, oppTpa: 0, oppTpm: 0, oppPts: 0, oppPf: 0
-                            });
-                        }
-                        const s = teamStats.get(team);
-                        s.fga += parseFloat(t.fga || t.FGA) || 0;
-                        s.fgm += parseFloat(t.fgm || t.FGM) || 0;
-                        s.oreb += parseFloat(t.oreb || t.OREB) || 0;
-                        s.dreb += parseFloat(t.dreb || t.DREB) || 0;
-                        s.reb += parseFloat(t.reb || t.REB || (parseFloat(t.oreb || t.OREB) || 0) + (parseFloat(t.dreb || t.DREB) || 0)) || 0;
-                        s.ast += parseFloat(t.ast || t.AST) || 0;
-                        s.stl += parseFloat(t.stl || t.STL) || 0;
-                        s.blk += parseFloat(t.blk || t.BLK) || 0;
-                        s.tov += parseFloat(t.tov || t.TOV) || 0;
-                        s.fta += parseFloat(t.fta || t.FTA) || 0;
-                        s.ftm += parseFloat(t.ftm || t.FTM) || 0;
-                        s.tpa += parseFloat(t.tpa || t['3pa'] || t['3PA']) || 0;
-                        s.tpm += parseFloat(t.tpm || t['3pm'] || t['3PM']) || 0;
-                        s.pts += parseFloat(t.pts || t.PTS) || 0;
-                        s.min += parseFloat(t.min || t.MIN || t.minutes || t.MINUTES) || 0;
-                        s.pf += parseFloat(t.pf || t.PF) || 0;
-                    });
-                    
-                    // Second pass: calculate opponent stats by matching games
-                    teamTotalsData.forEach(t => {
-                        const team = t.team;
-                        const gameId = t.game_id;
-                        if (!team || !gameId) return;
-                        
-                        const teamsInGame = gameTeams.get(gameId) || [];
-                        const opponent = teamsInGame.find(tm => tm !== team);
-                        if (!opponent || !teamStats.has(team)) return;
-                        
-                        // Add this row's stats as opponent stats for the OTHER team
-                        const oppStats = teamStats.get(opponent);
-                        if (oppStats) {
-                            oppStats.oppFga += parseFloat(t.fga || t.FGA) || 0;
-                            oppStats.oppFgm += parseFloat(t.fgm || t.FGM) || 0;
-                            oppStats.oppOreb += parseFloat(t.oreb || t.OREB) || 0;
-                            oppStats.oppDreb += parseFloat(t.dreb || t.DREB) || 0;
-                            oppStats.oppReb += parseFloat(t.reb || t.REB || (parseFloat(t.oreb || t.OREB) || 0) + (parseFloat(t.dreb || t.DREB) || 0)) || 0;
-                            oppStats.oppAst += parseFloat(t.ast || t.AST) || 0;
-                            oppStats.oppStl += parseFloat(t.stl || t.STL) || 0;
-                            oppStats.oppBlk += parseFloat(t.blk || t.BLK) || 0;
-                            oppStats.oppTov += parseFloat(t.tov || t.TOV) || 0;
-                            oppStats.oppFta += parseFloat(t.fta || t.FTA) || 0;
-                            oppStats.oppTpa += parseFloat(t.tpa || t['3pa'] || t['3PA']) || 0;
-                            oppStats.oppTpm += parseFloat(t.tpm || t['3pm'] || t['3PM']) || 0;
-                            oppStats.oppPts += parseFloat(t.pts || t.PTS) || 0;
-                            oppStats.oppPf += parseFloat(t.pf || t.PF) || 0;
-                        }
-                    });
-
-                    // Calculate totals for each team
-                    teamStats.forEach((s, team) => {
-                        const games = teamGames.get(team)?.size || 0;
-                        // Dean Oliver possessions: FGA - OREB + TOV + 0.44*FTA
-                        const totalPoss = s.fga - s.oreb + s.tov + 0.44 * s.fta;
-                        const oppPoss = s.oppFga - s.oppOreb + s.oppTov + 0.44 * s.oppFta;
-                        const totalMinutes = s.min > 0 ? s.min : games * 40 * 5; // Use actual minutes if available, else estimate (5 players * 40 min)
-                        // BPM 2.0: Calculate team average points per TSA (True Shooting Attempt)
-                        const teamTsa = s.fga + 0.44 * s.fta;
-                        const avgPtsPerTsa = teamTsa > 0 ? s.pts / teamTsa : 1.0;
-                        result.set(team, {
-                            games, totalPoss, totalMinutes, oppPoss, avgPtsPerTsa,
-                            fga: s.fga, fgm: s.fgm, oreb: s.oreb, dreb: s.dreb, reb: s.reb || (s.oreb + s.dreb),
-                            ast: s.ast, stl: s.stl, blk: s.blk, tov: s.tov, fta: s.fta, ftm: s.ftm, tpa: s.tpa, tpm: s.tpm, pts: s.pts, pf: s.pf,
-                            oppFga: s.oppFga, oppFgm: s.oppFgm, oppOreb: s.oppOreb, oppDreb: s.oppDreb, oppReb: s.oppReb || (s.oppOreb + s.oppDreb),
-                            oppAst: s.oppAst, oppStl: s.oppStl, oppBlk: s.oppBlk, oppTov: s.oppTov, oppFta: s.oppFta, oppTpa: s.oppTpa, oppTpm: s.oppTpm, oppPts: s.oppPts, oppPf: s.oppPf
+            // Shared builder for season team totals (used by the full-season memo and the
+            // schedule-filtered memo so both read the SAME column aliases). team_totals.csv ships
+            // `points`, `fg3a`, `fg3m` (lower-case, no `pts`/`tpa`) — the old full-season memo only
+            // looked for pts/tpa/3PA and silently summed ZERO points and threes into the BPM engine.
+            const buildTeamSeasonTotalsFromRows = (rows) => {
+                const result = new Map();
+                if (!rows || rows.length === 0) return result;
+                const num = (t, names) => { for (const n of names) { const v = parseFloat(t[n]); if (!isNaN(v)) return v; } return 0; };
+                const rowBox = (t) => ({
+                    fga: num(t, ['fga', 'FGA']), fgm: num(t, ['fgm', 'FGM']),
+                    oreb: num(t, ['oreb', 'OREB']), dreb: num(t, ['dreb', 'DREB']),
+                    ast: num(t, ['ast', 'AST']), stl: num(t, ['stl', 'STL']), blk: num(t, ['blk', 'BLK']),
+                    tov: num(t, ['tov', 'TOV']), fta: num(t, ['fta', 'FTA']), ftm: num(t, ['ftm', 'FTM']),
+                    tpa: num(t, ['tpa', 'fg3a', '3pa', '3PA', 'TPA']), tpm: num(t, ['tpm', 'fg3m', '3pm', '3PM', 'TPM']),
+                    pts: num(t, ['pts', 'points', 'PTS']), min: num(t, ['min', 'MIN', 'minutes', 'MINUTES']), pf: num(t, ['pf', 'PF']),
+                    possCol: num(t, ['poss', 'POSS']),
+                });
+                const teamGames = new Map();
+                const teamStats = new Map();
+                const gameRows = new Map(); // game_id -> [{team, box, row}]
+                const blank = () => ({
+                    fga: 0, fgm: 0, oreb: 0, dreb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fta: 0, ftm: 0, tpa: 0, tpm: 0, pts: 0, min: 0, pf: 0,
+                    oppFga: 0, oppFgm: 0, oppOreb: 0, oppDreb: 0, oppReb: 0, oppAst: 0, oppStl: 0, oppBlk: 0, oppTov: 0, oppFta: 0, oppFtm: 0, oppTpa: 0, oppTpm: 0, oppPts: 0, oppPf: 0,
+                    gameLog: [], wins: 0, losses: 0,
+                });
+                rows.forEach(t => {
+                    const team = t.team; const gameId = t.game_id;
+                    if (!team) return;
+                    if (!teamGames.has(team)) teamGames.set(team, new Set());
+                    if (gameId) teamGames.get(team).add(gameId);
+                    const box = rowBox(t);
+                    if (gameId) {
+                        if (!gameRows.has(gameId)) gameRows.set(gameId, []);
+                        const arr = gameRows.get(gameId);
+                        if (!arr.some(x => x.team === team)) arr.push({ team, box, row: t });
+                    }
+                    if (!teamStats.has(team)) teamStats.set(team, blank());
+                    const s = teamStats.get(team);
+                    s.fga += box.fga; s.fgm += box.fgm; s.oreb += box.oreb; s.dreb += box.dreb; s.reb += box.oreb + box.dreb;
+                    s.ast += box.ast; s.stl += box.stl; s.blk += box.blk; s.tov += box.tov; s.fta += box.fta; s.ftm += box.ftm;
+                    s.tpa += box.tpa; s.tpm += box.tpm; s.pts += box.pts; s.min += box.min; s.pf += box.pf;
+                });
+                // Opponent totals + per-game log (for opponent-adjusted ratings in BPM2 + W/L splits)
+                gameRows.forEach((arr, gameId) => {
+                    if (arr.length !== 2) return;
+                    [[arr[0], arr[1]], [arr[1], arr[0]]].forEach(([me, opp]) => {
+                        const s = teamStats.get(me.team); if (!s) return;
+                        const b = opp.box;
+                        s.oppFga += b.fga; s.oppFgm += b.fgm; s.oppOreb += b.oreb; s.oppDreb += b.dreb; s.oppReb += b.oreb + b.dreb;
+                        s.oppAst += b.ast; s.oppStl += b.stl; s.oppBlk += b.blk; s.oppTov += b.tov; s.oppFta += b.fta; s.oppFtm += b.ftm;
+                        s.oppTpa += b.tpa; s.oppTpm += b.tpm; s.oppPts += b.pts; s.oppPf += b.pf;
+                        const mb = me.box;
+                        const poss = mb.possCol > 0 ? mb.possCol : (mb.fga - mb.oreb + mb.tov + 0.44 * mb.fta);
+                        const oppPoss = b.possCol > 0 ? b.possCol : (b.fga - b.oreb + b.tov + 0.44 * b.fta);
+                        const win = mb.pts > b.pts;
+                        if (win) s.wins++; else if (b.pts > mb.pts) s.losses++;
+                        s.gameLog.push({
+                            gameId, opp: opp.team, date: me.row.game_date || opp.row.game_date || null,
+                            pts: mb.pts, oppPts: b.pts, poss, oppPoss,
+                            ortg: poss > 0 ? mb.pts / poss * 100 : 0, drtg: oppPoss > 0 ? b.pts / oppPoss * 100 : 0,
+                            win,
                         });
                     });
-                }
+                });
+                teamStats.forEach((s, team) => {
+                    const games = teamGames.get(team)?.size || 0;
+                    const totalPoss = s.fga - s.oreb + s.tov + 0.44 * s.fta;
+                    const oppPoss = s.oppFga - s.oppOreb + s.oppTov + 0.44 * s.oppFta;
+                    const totalMinutes = s.min > 0 ? s.min : games * 40 * 5;
+                    const teamTsa = s.fga + 0.44 * s.fta;
+                    const avgPtsPerTsa = teamTsa > 0 ? s.pts / teamTsa : 1.0;
+                    result.set(team, {
+                        games, totalPoss, totalMinutes, oppPoss, avgPtsPerTsa,
+                        fga: s.fga, fgm: s.fgm, oreb: s.oreb, dreb: s.dreb, reb: s.reb || (s.oreb + s.dreb),
+                        ast: s.ast, stl: s.stl, blk: s.blk, tov: s.tov, fta: s.fta, ftm: s.ftm, tpa: s.tpa, tpm: s.tpm, pts: s.pts, pf: s.pf,
+                        oppFga: s.oppFga, oppFgm: s.oppFgm, oppOreb: s.oppOreb, oppDreb: s.oppDreb, oppReb: s.oppReb || (s.oppOreb + s.oppDreb),
+                        oppAst: s.oppAst, oppStl: s.oppStl, oppBlk: s.oppBlk, oppTov: s.oppTov, oppFta: s.oppFta, oppFtm: s.oppFtm, oppTpa: s.oppTpa, oppTpm: s.oppTpm, oppPts: s.oppPts, oppPf: s.oppPf,
+                        gameLog: s.gameLog, wins: s.wins, losses: s.losses,
+                    });
+                });
                 return result;
-            }, [teamTotalsData]);
+            };
+
+            const teamSeasonTotals = useMemo(() => buildTeamSeasonTotalsFromRows(teamTotalsData), [teamTotalsData]);
 
             // BPM 2.0: Calculate total threshold points per team from player season data
             // This is used for offensive role estimation in BPMPositionCalculator
@@ -28565,87 +29142,7 @@
             const lbFilteredTeamSeasonTotals = useMemo(() => {
                 if (!lbScheduleActive) return teamSeasonTotals;
                 const filteredTTD = teamTotalsData.filter(t => lbAllowedGameIds.has(t.game_id));
-                if (filteredTTD.length === 0) return new Map();
-                const result = new Map();
-                const teamGames = new Map();
-                const teamStats = new Map();
-                const gameTeams = new Map();
-                filteredTTD.forEach(t => {
-                    const team = t.team;
-                    const gameId = t.game_id;
-                    if (!team) return;
-                    if (!teamGames.has(team)) teamGames.set(team, new Set());
-                    if (gameId) teamGames.get(team).add(gameId);
-                    if (gameId) {
-                        if (!gameTeams.has(gameId)) gameTeams.set(gameId, []);
-                        const teams = gameTeams.get(gameId);
-                        if (!teams.includes(team)) teams.push(team);
-                    }
-                    if (!teamStats.has(team)) {
-                        teamStats.set(team, {
-                            fga: 0, fgm: 0, oreb: 0, dreb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, fta: 0, ftm: 0, tpa: 0, tpm: 0, pts: 0, min: 0, pf: 0,
-                            oppFga: 0, oppFgm: 0, oppOreb: 0, oppDreb: 0, oppReb: 0, oppAst: 0, oppStl: 0, oppBlk: 0, oppTov: 0, oppFta: 0, oppTpa: 0, oppTpm: 0, oppPts: 0, oppPf: 0
-                        });
-                    }
-                    const s = teamStats.get(team);
-                    s.fga += parseFloat(t.fga || t.FGA) || 0;
-                    s.fgm += parseFloat(t.fgm || t.FGM) || 0;
-                    s.oreb += parseFloat(t.oreb || t.OREB) || 0;
-                    s.dreb += parseFloat(t.dreb || t.DREB) || 0;
-                    s.reb += parseFloat(t.reb || t.REB || (parseFloat(t.oreb || t.OREB) || 0) + (parseFloat(t.dreb || t.DREB) || 0)) || 0;
-                    s.ast += parseFloat(t.ast || t.AST) || 0;
-                    s.stl += parseFloat(t.stl || t.STL) || 0;
-                    s.blk += parseFloat(t.blk || t.BLK) || 0;
-                    s.tov += parseFloat(t.tov || t.TOV) || 0;
-                    s.fta += parseFloat(t.fta || t.FTA) || 0;
-                    s.ftm += parseFloat(t.ftm || t.FTM) || 0;
-                    s.tpa += parseFloat(t.tpa || t['3pa'] || t['3PA'] || t.fg3a) || 0;
-                    s.tpm += parseFloat(t.tpm || t['3pm'] || t['3PM'] || t.fg3m) || 0;
-                    s.pts += parseFloat(t.pts || t.PTS || t.points) || 0;
-                    s.min += parseFloat(t.min || t.MIN || t.minutes || t.MINUTES) || 0;
-                    s.pf += parseFloat(t.pf || t.PF) || 0;
-                });
-                filteredTTD.forEach(t => {
-                    const team = t.team;
-                    const gameId = t.game_id;
-                    if (!team || !gameId) return;
-                    const teamsInGame = gameTeams.get(gameId) || [];
-                    const opponent = teamsInGame.find(tm => tm !== team);
-                    if (!opponent || !teamStats.has(opponent)) return;
-                    const oppStats = teamStats.get(opponent);
-                    if (oppStats) {
-                        oppStats.oppFga += parseFloat(t.fga || t.FGA) || 0;
-                        oppStats.oppFgm += parseFloat(t.fgm || t.FGM) || 0;
-                        oppStats.oppOreb += parseFloat(t.oreb || t.OREB) || 0;
-                        oppStats.oppDreb += parseFloat(t.dreb || t.DREB) || 0;
-                        oppStats.oppReb += parseFloat(t.reb || t.REB || (parseFloat(t.oreb || t.OREB) || 0) + (parseFloat(t.dreb || t.DREB) || 0)) || 0;
-                        oppStats.oppAst += parseFloat(t.ast || t.AST) || 0;
-                        oppStats.oppStl += parseFloat(t.stl || t.STL) || 0;
-                        oppStats.oppBlk += parseFloat(t.blk || t.BLK) || 0;
-                        oppStats.oppTov += parseFloat(t.tov || t.TOV) || 0;
-                        oppStats.oppFta += parseFloat(t.fta || t.FTA) || 0;
-                        oppStats.oppTpa += parseFloat(t.tpa || t['3pa'] || t['3PA'] || t.fg3a) || 0;
-                        oppStats.oppTpm += parseFloat(t.tpm || t['3pm'] || t['3PM'] || t.fg3m) || 0;
-                        oppStats.oppPts += parseFloat(t.pts || t.PTS || t.points) || 0;
-                        oppStats.oppPf += parseFloat(t.pf || t.PF) || 0;
-                    }
-                });
-                teamStats.forEach((s, team) => {
-                    const games = teamGames.get(team)?.size || 0;
-                    const totalPoss = s.fga - s.oreb + s.tov + 0.44 * s.fta;
-                    const oppPoss = s.oppFga - s.oppOreb + s.oppTov + 0.44 * s.oppFta;
-                    const totalMinutes = s.min > 0 ? s.min : games * 40 * 5;
-                    const teamTsa = s.fga + 0.44 * s.fta;
-                    const avgPtsPerTsa = teamTsa > 0 ? s.pts / teamTsa : 1.0;
-                    result.set(team, {
-                        games, totalPoss, totalMinutes, oppPoss, avgPtsPerTsa,
-                        fga: s.fga, fgm: s.fgm, oreb: s.oreb, dreb: s.dreb, reb: s.reb || (s.oreb + s.dreb),
-                        ast: s.ast, stl: s.stl, blk: s.blk, tov: s.tov, fta: s.fta, ftm: s.ftm, tpa: s.tpa, tpm: s.tpm, pts: s.pts, pf: s.pf,
-                        oppFga: s.oppFga, oppFgm: s.oppFgm, oppOreb: s.oppOreb, oppDreb: s.oppDreb, oppReb: s.oppReb || (s.oppOreb + s.oppDreb),
-                        oppAst: s.oppAst, oppStl: s.oppStl, oppBlk: s.oppBlk, oppTov: s.oppTov, oppFta: s.oppFta, oppTpa: s.oppTpa, oppTpm: s.oppTpm, oppPts: s.oppPts, oppPf: s.oppPf
-                    });
-                });
-                return result;
+                return buildTeamSeasonTotalsFromRows(filteredTTD);
             }, [lbScheduleActive, lbAllowedGameIds, teamTotalsData, teamSeasonTotals]);
 
             // V5.3: Build team game order (games sorted by date for each team)
@@ -28879,7 +29376,7 @@
                 // Runs on every dependency change, so any setting that affects teamSeasonTotals
                 // (schedule filter, merge rules, etc.) triggers a fresh BPM computation.
                 try {
-                    const bpmResults = BPM2.compute(map, teamSeasonTotals, { mode: 'auto', autoSwitchGames: 20 });
+                    const bpmResults = BPM2.compute(map, teamSeasonTotals, {});
                     // Enrich each stats entry. Note: multiple map keys point to the same stats
                     // object (name variations), so writes are seen by all lookups.
                     bpmResults.forEach((r, key) => {
@@ -28893,6 +29390,17 @@
                         s.bpmRole     = r.hasData ? r.role : null;
                         s.vorp        = r.hasData ? r.vorp : null;
                         s.bpmMode     = r.mode;
+                        // Position/role are computed for EVERY player (BBRef style) so the
+                        // leaderboard can always show a position; BPM display stays gated.
+                        s.regBpm      = r.hasData ? r.regBpm : null;
+                        s.regObpm     = r.hasData ? r.regObpm : null;
+                        s.regDbpm     = r.hasData ? r.regDbpm : null;
+                        s.position       = r.position;
+                        s.positionLabel  = r.positionLabel;
+                        s.positionBucket = r.positionBucket;
+                        s.role           = r.role;
+                        s.roleLabel      = r.roleLabel;
+                        s.bpmQualified   = r.qualified;
                     });
                 } catch (err) {
                     console.warn('[BPM2] Calculation failed:', err);
@@ -29246,23 +29754,27 @@
             // Extract arrays of team average values for percentile calculations
             const teamAvgArrays = useMemo(() => {
                 if (!allTeamsAverages.length) return {};
+                // V15: same qualifier as the Teams Leaderboard (100+ possessions) and no zero-fill
+                const _q0 = allTeamsAverages.filter(t => ((t.poss !== undefined ? t.poss : t.totalPoss) || 0) >= 100);
+                const _q = _q0.length >= 3 ? _q0 : allTeamsAverages;
+                const arr = (k) => _q.map(t => t[k]).filter(v => v !== null && v !== undefined && !isNaN(v));
                 return {
-                    net: allTeamsAverages.map(t => t.net), off: allTeamsAverages.map(t => t.off), def: allTeamsAverages.map(t => t.def),
-                    paceF: allTeamsAverages.map(t => t.paceF), paceV: allTeamsAverages.map(t => t.paceV),
-                    offEfg: allTeamsAverages.map(t => t.offEfg), offTov: allTeamsAverages.map(t => t.offTov),
-                    offOreb: allTeamsAverages.map(t => t.offOreb), offFtR: allTeamsAverages.map(t => t.offFtR),
-                    defEfg: allTeamsAverages.map(t => t.defEfg), defTov: allTeamsAverages.map(t => t.defTov),
-                    defOreb: allTeamsAverages.map(t => t.defOreb), defFtR: allTeamsAverages.map(t => t.defFtR),
-                    astPct: allTeamsAverages.map(t => t.astPct), stlPct: allTeamsAverages.map(t => t.stlPct), blkPct: allTeamsAverages.map(t => t.blkPct),
-                    oppAstPct: allTeamsAverages.map(t => t.oppAstPct), oppStlPct: allTeamsAverages.map(t => t.oppStlPct), oppBlkPct: allTeamsAverages.map(t => t.oppBlkPct),
-                    rimPct: allTeamsAverages.map(t => t.rimPct), midPct: allTeamsAverages.map(t => t.midPct), threePct: allTeamsAverages.map(t => t.threePct),
-                    rimPctV: allTeamsAverages.map(t => t.rimPctV), midPctV: allTeamsAverages.map(t => t.midPctV), threePctV: allTeamsAverages.map(t => t.threePctV),
+                    net: arr('net'), off: arr('off'), def: arr('def'),
+                    paceF: arr('paceF'), paceV: arr('paceV'),
+                    offEfg: arr('offEfg'), offTov: arr('offTov'),
+                    offOreb: arr('offOreb'), offFtR: arr('offFtR'),
+                    defEfg: arr('defEfg'), defTov: arr('defTov'),
+                    defOreb: arr('defOreb'), defFtR: arr('defFtR'),
+                    astPct: arr('astPct'), stlPct: arr('stlPct'), blkPct: arr('blkPct'),
+                    oppAstPct: arr('oppAstPct'), oppStlPct: arr('oppStlPct'), oppBlkPct: arr('oppBlkPct'),
+                    rimPct: arr('rimPct'), midPct: arr('midPct'), threePct: arr('threePct'),
+                    rimPctV: arr('rimPctV'), midPctV: arr('midPctV'), threePctV: arr('threePctV'),
                     // MISC stats
-                    secChance100: allTeamsAverages.map(t => t.secChance100 || 0), ptsOffTov100: allTeamsAverages.map(t => t.ptsOffTov100 || 0),
-                    secChance100V: allTeamsAverages.map(t => t.secChance100V || 0), ptsOffTov100V: allTeamsAverages.map(t => t.ptsOffTov100V || 0),
+                    secChance100: arr('secChance100'), ptsOffTov100: arr('ptsOffTov100'),
+                    secChance100V: arr('secChance100V'), ptsOffTov100V: arr('ptsOffTov100V'),
                     // Transition stats
-                    fastBreak100: allTeamsAverages.map(t => t.fastBreak100 || 0), fastBreak100V: allTeamsAverages.map(t => t.fastBreak100V || 0),
-                    transPct: allTeamsAverages.map(t => t.transPct || 0), transPctV: allTeamsAverages.map(t => t.transPctV || 0),
+                    fastBreak100: arr('fastBreak100'), fastBreak100V: arr('fastBreak100V'),
+                    transPct: arr('transPct'), transPctV: arr('transPctV'),
                 };
             }, [allTeamsAverages]);
 
@@ -31100,7 +31612,7 @@
 
                 // BPM 2.0 pipeline for schedule-filtered data (uses filtered team totals)
                 try {
-                    const bpmResults = BPM2.compute(result, lbFilteredTeamSeasonTotals, { mode: 'auto', autoSwitchGames: 20 });
+                    const bpmResults = BPM2.compute(result, lbFilteredTeamSeasonTotals, {});
                     bpmResults.forEach((r, key) => {
                         const s = result.get(key);
                         if (!s) return;
@@ -31112,6 +31624,17 @@
                         s.bpmRole     = r.hasData ? r.role : null;
                         s.vorp        = r.hasData ? r.vorp : null;
                         s.bpmMode     = r.mode;
+                        // Position/role are computed for EVERY player (BBRef style) so the
+                        // leaderboard can always show a position; BPM display stays gated.
+                        s.regBpm      = r.hasData ? r.regBpm : null;
+                        s.regObpm     = r.hasData ? r.regObpm : null;
+                        s.regDbpm     = r.hasData ? r.regDbpm : null;
+                        s.position       = r.position;
+                        s.positionLabel  = r.positionLabel;
+                        s.positionBucket = r.positionBucket;
+                        s.role           = r.role;
+                        s.roleLabel      = r.roleLabel;
+                        s.bpmQualified   = r.qualified;
                     });
                 } catch (err) {
                     console.warn('[BPM2 schedule-filtered] Calculation failed:', err);
@@ -34606,7 +35129,8 @@
                     const player = pd.Player ? pd.Player.trim() : '';
                     const playerTeam = pd.Team || '';
                     if (!player) return;
-                    const playerKey = player + '|||' + playerTeam;
+                    // V15: alias-merged key so name variations don't split one player into two pool entries
+                    const playerKey = normalizePlayerName(applyPlayerMerge(player)) + '|||' + playerTeam;
                     
                     const min = parseFloat(pd.Minutes) || 0;
                     
@@ -34857,8 +35381,12 @@
                         blk: teamTotals.blk || 0,
                         totalThresholdPts: teamThresholdPtsVal
                     };
-                    const positionVal = BPMPositionCalculator.estimatePosition(playerPer100ForPos, teamPer100ForPos, playerMin);
+                    // V15: prefer the BPM2 engine's team-normalised position (single source of truth)
+                    const positionVal = (seasonStats.position !== null && seasonStats.position !== undefined && !isNaN(seasonStats.position))
+                        ? seasonStats.position
+                        : BPMPositionCalculator.estimatePosition(playerPer100ForPos, teamPer100ForPos, playerMin);
                     p.position = Math.round(positionVal * 10) / 10;
+                    p.positionBucket = BPM2.positionBucket(positionVal);
                     p.positionRange = BPMPositionCalculator.getPositionRange(positionVal);
 
                     // V6.7: Calculate offensive role
@@ -35076,6 +35604,54 @@
                 // V6.6: Include positionPools for position-based percentile comparisons
                 return { statArrays, averages, playerCount: playersWithPer75.length, players: playersWithPer75, positionPools };
             }, [playerData, lineupData, playerApmStats, teamSeasonTotals]);
+
+            // ═══════════════════════════════════════════════════════════════════════════
+            // V15: UNIVERSAL PLAYER PERCENTILE — the ONE place a player percentile comes from.
+            // Priority: Full Table qualified pool (min on-court minutes slider, excluded teams
+            // removed, NOT narrowed by search/filters) → position bucket sub-pool when asked →
+            // leaguePlayerAverages (100+ season minutes, deduped) → null (caller shows '—').
+            // ═══════════════════════════════════════════════════════════════════════════
+            const universalPlayerPct = (value, poolKey, higherBetter, positionBucket) => {
+                if (value === null || value === undefined || isNaN(value)) return null;
+                const rankIn = (arr) => {
+                    if (!arr || arr.length < 5) return null;
+                    const rank = arr.filter(v => v < value).length;
+                    const pct = (rank / arr.length) * 100;
+                    return higherBetter ? pct : 100 - pct;
+                };
+                const ft = fullTableDataRef.current;
+                if (ft) {
+                    if (positionBucket && ft.percentileDataByPos && ft.percentileDataByPos[positionBucket]) {
+                        const r = rankIn(ft.percentileDataByPos[positionBucket][poolKey]);
+                        if (r !== null) return r;
+                    }
+                    if (ft.percentileData) {
+                        const r = rankIn(ft.percentileData[poolKey]);
+                        if (r !== null) return r;
+                    }
+                }
+                const lpa = leaguePlayerAverages;
+                if (lpa && lpa.players && lpa.players.length) {
+                    const q = lpa.players.filter(pl => (pl.seasonMin || 0) >= 100);
+                    const base = q.length >= 5 ? q : lpa.players;
+                    const clean = arr => arr.map(pl => pl[poolKey]).filter(v => v !== null && v !== undefined && !isNaN(v));
+                    if (positionBucket) {
+                        const r = rankIn(clean(base.filter(pl => BPM2.positionBucket(pl.position) === positionBucket)));
+                        if (r !== null) return r;
+                    }
+                    const r = rankIn(clean(base));
+                    if (r !== null) return r;
+                }
+                if (lpa && lpa.statArrays && lpa.statArrays[poolKey]) return rankIn(lpa.statArrays[poolKey]);
+                return null;
+            };
+            const universalPlayerPoolLabel = () => {
+                const ft = fullTableDataRef.current;
+                if (ft && ft.poolRows && ft.poolRows.length) return ft.poolRows.length + ' players (' + (ft.minMins || 0) + '+ on-court min)';
+                const lpa = leaguePlayerAverages;
+                if (lpa && lpa.players) { const q = lpa.players.filter(pl => (pl.seasonMin || 0) >= 100); return (q.length >= 5 ? q.length : lpa.players.length) + ' players (100+ min)'; }
+                return 'league';
+            };
 
             // V4.9.8: Calculate percentile for a value against an array (higher = better except for TOV)
             const calcLeaguePercentile = (value, sortedArray, higherBetter = true) => {
@@ -42910,6 +43486,7 @@
                                 leaderboardTableVsStarters, leaderboardTableVsStartersMinGames,
                                 leaderboardTableLambda, leaderboardTableDisplayLimit,
                                 leaderboardRapmMode, leaderboardTableUseOnOff,
+                                leaderboardTableBasic, leaderboardRelative, leaderboardRelativePosition,
                                 JSON.stringify(leaderboardTableColumns),
                                 leaderboardTableShowSettings, leaderboardTableShowFilters,
                                 mobileFiltersCollapsed, fullTableLoading,
@@ -43694,6 +44271,14 @@
                                 { key: 'stl75', label: 'STL/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Steals per 75 Possessions - Ball-hawking ability' },
                                 { key: 'blk75', label: 'BLK/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Blocks per 75 Possessions - Shot blocking ability' },
                                 { key: 'tov75', label: 'TOV/75', group: 'Per75', higherBetter: false, section: 'per75', desc: 'Turnovers per 75 Possessions - Ball security (lower is better)' },
+                                // V15: box-score counting stats per 75 (Basic view mirrors the team profile's per-game box layout)
+                                { key: 'fgm75', label: 'FGM/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Field goals made per 75 possessions' },
+                                { key: 'fga75', label: 'FGA/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Field goal attempts per 75 possessions' },
+                                { key: 'tpm75', label: '3PM/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Three-pointers made per 75 possessions' },
+                                { key: 'tpa75', label: '3PA/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Three-point attempts per 75 possessions' },
+                                { key: 'ftm75', label: 'FTM/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Free throws made per 75 possessions' },
+                                { key: 'fta75', label: 'FTA/75', group: 'Per75', higherBetter: true, section: 'per75', desc: 'Free throw attempts per 75 possessions' },
+                                { key: 'pf75', label: 'PF/75', group: 'Per75', higherBetter: false, section: 'per75', desc: 'Personal fouls per 75 possessions (lower is better)' },
                                 // Shooting Percentages
                                 { key: 'fgPct', label: 'FG%', group: 'Shooting', higherBetter: true, section: 'shooting', desc: 'Field Goal Percentage - Overall shooting accuracy' },
                                 { key: 'ftPct', label: 'FT%', group: 'Shooting', higherBetter: true, section: 'shooting', desc: 'Free Throw Percentage - Accuracy from the free throw line' },
@@ -43907,9 +44492,10 @@
                             }
 
                             // Build player data with all stats
+                            // V15: fullTableDataRaw = the universal QUALIFIED pool (min on-court minutes + excluded teams only).
+                            // Team filter / search / stat filters are applied later for display and never shrink the pool.
                             const fullTableDataRaw = _effOnOffData
                                 .filter(d => !excludedTeams.includes(d.team))
-                                .filter(d => leaderboardTableTeamFilter === '' || d.team === leaderboardTableTeamFilter)
                                 .filter(d => (d.onMinutes || 0) >= leaderboardTableMinMins)
                                 .map(d => {
                                     const onStats = d.onStats || {};
@@ -44065,6 +44651,11 @@
                                         result.stl75 = seasonStats.games > 0 ? (seasonStats.stl / seasonStats.games) * p75Factor : 0;
                                         result.blk75 = seasonStats.games > 0 ? (seasonStats.blk / seasonStats.games) * p75Factor : 0;
                                         result.tov75 = seasonStats.games > 0 ? (seasonStats.tov / seasonStats.games) * p75Factor : 0;
+                                        // V15: counting stats per 75 for the Basic view
+                                        const _pg75 = (k) => seasonStats.games > 0 ? ((seasonStats[k] || 0) / seasonStats.games) * p75Factor : 0;
+                                        result.fgm75 = _pg75('fgm'); result.fga75 = _pg75('fga'); result.tpm75 = _pg75('tpm'); result.tpa75 = _pg75('tpa');
+                                        result.ftm75 = _pg75('ftm'); result.fta75 = _pg75('fta'); result.pf75 = _pg75('pf');
+                                        result.regBpm = seasonStats.regBpm; result.regObpm = seasonStats.regObpm; result.regDbpm = seasonStats.regDbpm;
                                         
                                         // Per 100 possessions
                                         result.pts100 = totalPoss > 0 ? (seasonStats.pts / totalPoss) * 100 : 0;
@@ -44214,6 +44805,21 @@
                                             const roleData = BPMPositionCalculator.estimateOffensiveRole(playerPer100, teamAvgPtsPerTsa, teamPer100, playerMin);
                                             result.offensiveRole = Math.round(roleData * 10) / 10;
                                             result.roleLabel = roleData <= 2.0 ? 'Creator' : roleData <= 3.0 ? 'Combo' : roleData <= 4.0 ? 'Balanced' : 'Finisher';
+                                            // V15: single source of truth — the BPM2 engine's team-normalised position/role
+                                            // (Basketball-Reference BPM 2.0 workbook). The legacy estimate above only
+                                            // survives as a fallback when the engine had no data for this player.
+                                            if (seasonStats.position !== null && seasonStats.position !== undefined && !isNaN(seasonStats.position)) {
+                                                result.position = Math.round(seasonStats.position * 10) / 10;
+                                                result.positionLabel = seasonStats.positionLabel || BPM2.positionLabel(seasonStats.position);
+                                                result.positionRange = BPMPositionCalculator.getPositionRange(seasonStats.position);
+                                                result.positionBucket = seasonStats.positionBucket || BPM2.positionBucket(seasonStats.position);
+                                                if (seasonStats.role !== null && seasonStats.role !== undefined) {
+                                                    result.offensiveRole = Math.round(seasonStats.role * 10) / 10;
+                                                    result.roleLabel = seasonStats.roleLabel || BPM2.roleLabel(seasonStats.role);
+                                                }
+                                            } else {
+                                                result.positionBucket = BPM2.positionBucket(result.position);
+                                            }
                                         }
                                     }
                                     // else: No seasonStats available - player won't have individual stats
@@ -44613,6 +45219,7 @@
                             // Apply stat filters + player-name search
                             const _searchTerm = (leaderboardTablePlayerSearch || '').trim().toLowerCase();
                             const fullTableData = fullTableDataRaw.filter(d => {
+                                if (leaderboardTableTeamFilter !== '' && d.team !== leaderboardTableTeamFilter) return false;
                                 // UX: search matches player OR team so "search one box" always works
                                 if (_searchTerm && !((d.player || '').toLowerCase().includes(_searchTerm) || (d.team || '').toLowerCase().includes(_searchTerm))) return false;
                                 for (const [statKey, filter] of Object.entries(leaderboardTableStatFilters)) {
@@ -44624,16 +45231,36 @@
                                 return true;
                             });
                             
-                            // Calculate percentile distributions for each stat (PRE-SORTED for performance)
+                            // V15: percentile distributions from the QUALIFIED pool (fullTableDataRaw), pre-sorted,
+                            // plus per-position sub-pools (G / W / F / B buckets from the BPM2 position) and means
+                            // for the Relative / Relative Position toggles. Search + stat filters no longer
+                            // shrink the pool, so table colours, profile bars and the radar all agree.
                             const percentileData = {};
+                            const percentileDataByPos = { G: {}, W: {}, F: {}, B: {} };
+                            const leagueMeans = {};
+                            const posMeans = { G: {}, W: {}, F: {}, B: {} };
                             allStatColumns.forEach(col => {
-                                const values = fullTableData.map(d => d[col.key]).filter(v => v !== null && v !== undefined && !isNaN(v));
-                                // Pre-sort once instead of sorting every time getPercentile is called
-                                percentileData[col.key] = values.sort((a, b) => a - b);
+                                const values = [];
+                                const byPos = { G: [], W: [], F: [], B: [] };
+                                fullTableDataRaw.forEach(d => {
+                                    const v = d[col.key];
+                                    if (v === null || v === undefined || typeof v !== 'number' || isNaN(v)) return;
+                                    values.push(v);
+                                    const b = d.positionBucket;
+                                    if (b && byPos[b]) byPos[b].push(v);
+                                });
+                                values.sort((a, b) => a - b);
+                                percentileData[col.key] = values;
+                                leagueMeans[col.key] = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+                                Object.keys(byPos).forEach(b => {
+                                    const arr = byPos[b].sort((x, y) => x - y);
+                                    percentileDataByPos[b][col.key] = arr;
+                                    posMeans[b][col.key] = arr.length ? arr.reduce((x, y) => x + y, 0) / arr.length : null;
+                                });
                             });
 
-                            // V6.9: Store full table data and percentile pools for modal consistency
-                            fullTableDataRef.current = { data: fullTableData, percentileData: percentileData };
+                            // V6.9/V15: Store full table data + ALL percentile pools for profile/radar consistency
+                            fullTableDataRef.current = { data: fullTableData, poolRows: fullTableDataRaw, percentileData, percentileDataByPos, leagueMeans, posMeans, minMins: leaderboardTableMinMins };
 
                             // Sort data
                             const sortedFullTableData = [...fullTableData].sort((a, b) => {
@@ -45142,8 +45769,16 @@
                                             e('span', null, p.label)
                                         );
                                         // Mode pills (Individual / On-Off / VS) — these REPLACE the old Row 2 mode buttons
+                                        const basicCols = ['games', 'mpg', 'pts75', 'fgm75', 'fga75', 'fgPct', 'tpm75', 'tpa75', 'threePctIndiv', 'ftm75', 'fta75', 'ftPct', 'oreb75', 'dreb75', 'reb75', 'ast75', 'stl75', 'blk75', 'tov75', 'pf75'];
                                         const indivCols = ['totalMinutes', 'games', 'mpg', 'pts75', 'reb75', 'oreb75', 'dreb75', 'ast75', 'stl75', 'blk75', 'tov75', 'fgPct', 'ftPct', 'rima100', 'rimfgPct', 'rimPressureZ', 'mida100', 'midfgPct', 'tpa100', 'threePctIndiv', 'spacingZ', 'efgPct', 'tsPct', 'usgPct', 'astUsgRatio', 'ftr', 'orebPct', 'drebPct', 'trbPct', 'astPctIndiv', 'tovPct', 'stlPctIndiv', 'blkPctIndiv', 'stockPct', 'athleteCoef', 'bpm', 'obpm', 'dbpm', 'fbp40'];
                                         const onOffColsBase = ['net', 'off', 'def', 'offEfg', 'defEfg', 'offTov', 'defTov', 'offOreb', 'defOreb', 'offFtR', 'defFtR', 'rimPct', 'midPct', 'threePct', 'rimPctV', 'midPctV', 'threePctV', 'rimVol', 'midVol', 'threeVol', 'rimVolV', 'midVolV', 'threeVolV', 'astPct', 'stlPct', 'blkPct', 'fastBreak100', 'fastBreak100V', 'secChance100', 'ptsOffTov100'];
+                                        const applyBasic = () => {
+                                            setLeaderboardTableColumns([...basicCols]);
+                                            setLeaderboardRapmMode(false);
+                                            setLeaderboardTableUseOnOff(false);
+                                            setLeaderboardTableVsStarters(false);
+                                            setLeaderboardTableBasic(true);
+                                        };
                                         const applyIndividual = () => {
                                             const cols = [...indivCols];
                                             if (hasRapm) cols.unshift('rapmNet', 'rapmOff', 'rapmDef');
@@ -45152,6 +45787,7 @@
                                             setLeaderboardRapmMode(false);
                                             setLeaderboardTableUseOnOff(false);
                                             setLeaderboardTableVsStarters(false);
+                                            setLeaderboardTableBasic(false);
                                         };
                                         const applyOnOff = () => {
                                             const cols = [...onOffColsBase];
@@ -45161,11 +45797,13 @@
                                             setLeaderboardRapmMode(false);
                                             setLeaderboardTableUseOnOff(true);
                                             setLeaderboardTableVsStarters(false);
+                                            setLeaderboardTableBasic(false);
                                         };
                                         const toggleVs = () => {
                                             if (!(playerStintsData.length > 0 && playerData.length > 0)) return;
                                             const next = !leaderboardTableVsStarters;
                                             setLeaderboardTableVsStarters(next);
+                                            if (next) setLeaderboardTableBasic(false);
                                             if (next) {
                                                 setLeaderboardTableColumns(['vsStartersMins', 'vsStartersPlusMinus', 'vsOffRtg', 'vsDefRtg', 'vsPts75', 'vsReb75', 'vsOreb75', 'vsDreb75', 'vsAst75', 'vsStl75', 'vsBlk75', 'vsTov75', 'vsUsg', 'vsTsPct', 'vsEfgPct', 'vsFgPct', 'vs3Pct']);
                                                 setLeaderboardRapmMode(false);
@@ -45173,7 +45811,8 @@
                                         };
                                         const vsAvailable = playerStintsData.length > 0 && playerData.length > 0;
                                         const modeOrder = [
-                                            { def: { key: 'individual', label: 'Individual', icon: '📈', color: '#22c55e' }, isActive: !leaderboardTableUseOnOff && !leaderboardTableVsStarters, onClick: applyIndividual },
+                                            { def: { key: 'basic',      label: 'Basic',          icon: '📋', color: '#f59e0b' }, isActive:  leaderboardTableBasic && !leaderboardTableUseOnOff && !leaderboardTableVsStarters, onClick: applyBasic, title: 'Per-75 box score (same layout as the team profile box score)' },
+                                            { def: { key: 'individual', label: 'Advanced Stats', icon: '📈', color: '#22c55e' }, isActive: !leaderboardTableBasic && !leaderboardTableUseOnOff && !leaderboardTableVsStarters, onClick: applyIndividual },
                                             { def: { key: 'onOff',      label: 'On-Off',     icon: '⚡', color: '#3b82f6' }, isActive:  leaderboardTableUseOnOff && !leaderboardTableVsStarters, onClick: applyOnOff },
                                             { def: { key: 'vs',          label: 'VS★',        icon: '🎯', color: '#06b6d4' }, isActive:  leaderboardTableVsStarters, onClick: toggleVs, disabled: !vsAvailable, title: vsAvailable ? 'Toggle VS Starters mode' : 'Requires player_stints.csv data' },
                                         ];
@@ -45183,9 +45822,17 @@
                                             'data-help-title': 'View'
                                         },
                                             e('span', { style: { fontSize: '11px', fontWeight: 600, opacity: 0.7, letterSpacing: '0.05em', textTransform: 'uppercase', marginRight: '4px' }}, 'View:'),
-                                            // ◀ Mode pills (Individual / On-Off / VS)
+                                            // ◀ Mode pills (Basic / Advanced Stats / On-Off / VS)
                                             ...modeOrder.map(m => renderPill(m.def, m.isActive, m.onClick, { disabled: m.disabled, title: m.title })),
                                             // small separator
+                                            e('span', { style: { width: '1px', alignSelf: 'stretch', background: 'rgba(148,163,184,0.18)', margin: '4px 4px' }}),
+                                            // V15: universal Relative toggles — Relative (±) sits above Relative Position in the hierarchy:
+                                            //   Relative        → every numeric cell shows +/- from the league average (hover for actual)
+                                            //   Relative Position → percentiles (colours) AND the Relative baseline use same-position peers
+                                            renderPill({ key: 'relative', label: 'Relative', icon: '±', color: '#f472b6' }, leaderboardRelative, () => setLeaderboardRelative(v => !v),
+                                                { title: 'Show every stat as +/- from the average (league, or position when Relative Position is on)' }),
+                                            renderPill({ key: 'relpos', label: 'Relative Position', icon: '👥', color: '#a78bfa' }, leaderboardRelativePosition, () => setLeaderboardRelativePosition(v => !v),
+                                                { title: 'Rank each player against same-position peers (G / Wings / F / Bigs from the BPM 2.0 position estimate)' }),
                                             e('span', { style: { width: '1px', alignSelf: 'stretch', background: 'rgba(148,163,184,0.18)', margin: '4px 4px' }}),
                                             // Stat-group pills
                                             ...pillDefs.map(p => renderPill(p, leaderboardTableStatGroup === p.key, () => applyGroup(p.key))),
@@ -45616,6 +46263,16 @@
                                                     'Min',
                                                     leaderboardTableSortBy === 'onMins' && e('span', { className: 'leaderboard-v2-sort-icon' }, leaderboardTableSortAsc ? '▲' : '▼')
                                                 ),
+                                                // V15: POS is a FIXED column on every view (Basic / Advanced / On-Off / VS★)
+                                                e('th', {
+                                                    key: 'pos',
+                                                    className: 'sticky-pos ' + (leaderboardTableSortBy === 'position' ? 'sorted' : ''),
+                                                    onClick: () => handleSort('position'),
+                                                    title: 'Estimated position (BBRef BPM 2.0 regression, team-normalised)'
+                                                },
+                                                    'Pos',
+                                                    leaderboardTableSortBy === 'position' && e('span', { className: 'leaderboard-v2-sort-icon' }, leaderboardTableSortAsc ? '▲' : '▼')
+                                                ),
                                                 activeColumns.map((col, idx) => {
                                                     const isSorted = leaderboardTableSortBy === col.key;
                                                     const isBoundary = sectionBoundaries.includes(idx);
@@ -45692,10 +46349,20 @@
                                                     e('td', { className: 'sticky-mins' },
                                                         e('span', { className: 'leaderboard-v2-mins' }, Math.round(d.onMins || 0))
                                                     ),
+                                                    e('td', { className: 'sticky-pos', title: d.position != null ? ('position ' + Number(d.position).toFixed(1) + (d.roleLabel ? ' · ' + d.roleLabel : '')) : undefined },
+                                                        e('span', { className: 'leaderboard-v2-mins', style: { fontSize: '10px', letterSpacing: '0.03em' } }, d.positionLabel || '—')
+                                                    ),
                                                     activeColumns.map((col, idx) => {
                                                         const val = d[col.key];
-                                                        const pctPool = percentileData[col.key] || [];
-                                                        const pct = pctPool.length > 0 && val != null ? getPercentile(val, pctPool, col.higherBetter !== false) : 50;
+                                                        // V15: Relative Position → rank within the player's position bucket (falls back to league if < 5 peers)
+                                                        const _posPool = (leaderboardRelativePosition && d.positionBucket && percentileDataByPos[d.positionBucket]) ? percentileDataByPos[d.positionBucket][col.key] : null;
+                                                        const pctPool = (_posPool && _posPool.length >= 5) ? _posPool : (percentileData[col.key] || []);
+                                                        const pct = pctPool.length > 0 && val != null && typeof val === 'number' ? getPercentile(val, pctPool, col.higherBetter !== false) : 50;
+                                                        // V15: Relative → show +/- from league average (or position average when Relative Position is on)
+                                                        const _mean = (leaderboardRelative && !col.noColor && !col.noRelative && typeof val === 'number')
+                                                            ? ((leaderboardRelativePosition && d.positionBucket && posMeans[d.positionBucket] && posMeans[d.positionBucket][col.key] !== null && posMeans[d.positionBucket][col.key] !== undefined)
+                                                                ? posMeans[d.positionBucket][col.key] : leagueMeans[col.key])
+                                                            : null;
                                                         // Skip color coding if noColor flag is set
                                                         const pctClass = col.noColor ? '' : (pct >= 90 ? 'leaderboard-v2-pct-elite' : pct >= 75 ? 'leaderboard-v2-pct-great' : pct >= 60 ? 'leaderboard-v2-pct-good' : pct >= 40 ? 'leaderboard-v2-pct-avg' : pct >= 25 ? 'leaderboard-v2-pct-below' : pct >= 10 ? 'leaderboard-v2-pct-poor' : 'leaderboard-v2-pct-bad');
                                                         const isBoundary = sectionBoundaries.includes(idx);
@@ -45707,8 +46374,11 @@
                                                             className: sectionClass + (isBoundary ? ' section-start' : '') + (isSubBoundary ? ' subgroup-start' : '') + (leaderboardTableSortBy === col.key ? ' sorted-col' : ''),
                                                             style: sgCellStyle || undefined
                                                         },
-                                                            e('span', { className: 'leaderboard-v2-stat ' + pctClass },
-                                                                val != null ? (typeof val === 'number' ? val.toFixed(1) : val) : '-'
+                                                            e('span', { className: 'leaderboard-v2-stat ' + pctClass, title: (_mean !== null && _mean !== undefined) ? ('actual ' + val.toFixed(1) + ' · avg ' + _mean.toFixed(1)) : undefined },
+                                                                col.render ? col.render(d)
+                                                                    : val != null ? (typeof val === 'number'
+                                                                        ? ((_mean !== null && _mean !== undefined) ? (((val - _mean) > 0 ? '+' : '') + (val - _mean).toFixed(1)) : val.toFixed(1))
+                                                                        : val) : '-'
                                                             )
                                                         );
                                                     })
@@ -48596,7 +49266,8 @@
                             // 6. BUILD PERCENTILE ARRAYS FOR COLOR CODING
                             const teamStatArrays = {};
                             teamStatColumns.forEach(col => {
-                                teamStatArrays[col.key] = teamDataArray.map(t => t[col.key] || 0);
+                                // V15: no zero-fill — a team without a value for this stat is left out of the pool
+                                teamStatArrays[col.key] = teamDataArray.map(t => t[col.key]).filter(v => v !== null && v !== undefined && !isNaN(v));
                             });
                             // V14: expose leaderboard-exact team rows + percentile pools to the Team Profile page
                             teamLbDataRef.current = { data: teamDataArray, arrays: teamStatArrays };
@@ -54826,36 +55497,9 @@
                         rima100: 'rima100', rimfgPct: 'rimfgPct', mida100: 'mida100', midfgPct: 'midfgPct', fbp40: 'fbp40'
                     };
                     const calcPercentileFromPool = (value, poolKey, higherBetter, usePositionPool = false) => {
-                        const tablePercentileData = fullTableDataRef.current && fullTableDataRef.current.percentileData;
-                        if (tablePercentileData && tablePercentileData[poolKey] && tablePercentileData[poolKey].length >= 5) {
-                            const sortedArr = [...tablePercentileData[poolKey]].sort((a, b) => a - b);
-                            const rank = sortedArr.filter(v => v < value).length;
-                            const pct = (rank / sortedArr.length) * 100;
-                            return higherBetter ? pct : 100 - pct;
-                        }
-                        let sortedArr;
-                        const allPlayers = (leaguePlayerAverages && leaguePlayerAverages.players) || [];
-                        // V6.2: Minutes gating: calculate max minutes and apply threshold as % of max
-                        const maxSeasonMin = allPlayers.length > 0 ? Math.max(...allPlayers.map(p => p.seasonMin || 0)) : 1300;
-                        const minThresholdMinutes = Math.max(100, maxSeasonMin * minQualifyingMinutes); // At least 100 minutes baseline
-                        const filteredPlayers = allPlayers.filter(p => (p.seasonMin || 0) >= minThresholdMinutes);
-                        if (usePositionPool && stats.positionRange && stats.positionRange.shortLabel && filteredPlayers.length >= 5) {
-                            const inRange = filteredPlayers.filter(p => p.position !== null && p.position !== undefined &&
-                                p.position >= stats.positionRange.min && p.position <= stats.positionRange.max);
-                            if (inRange.length >= 5) {
-                                const pv = inRange.map(p => p[poolKey]).filter(v => v !== null && v !== undefined && !isNaN(v) && v > 0);
-                                if (pv.length >= 5) sortedArr = pv.sort((a, b) => a - b);
-                            }
-                        }
-                        if (!sortedArr) {
-                            const pv = filteredPlayers.map(p => p[poolKey]).filter(v => v !== null && v !== undefined && !isNaN(v) && v > 0);
-                            if (pv.length >= 5) sortedArr = pv.sort((a, b) => a - b);
-                            else if (leaguePlayerAverages && leaguePlayerAverages.statArrays && leaguePlayerAverages.statArrays[poolKey]) sortedArr = leaguePlayerAverages.statArrays[poolKey];
-                        }
-                        if (!sortedArr || sortedArr.length === 0) return null;
-                        const rank = sortedArr.filter(v => v < value).length;
-                        const pct = (rank / sortedArr.length) * 100;
-                        return higherBetter ? pct : 100 - pct;
+                        // V15: routed through the universal helper (one pool, one qualifier, everywhere)
+                        const bucket = usePositionPool ? (stats.positionBucket || BPM2.positionBucket(stats.position)) : null;
+                        return universalPlayerPct(value, poolKey, higherBetter, bucket);
                     };
                     const activeBarStats = profileBarsMode === 'individual' ? individualStats
                         : profileBarsMode === 'teamstats' ? teamOnStats : onOffStats;
@@ -55850,14 +56494,9 @@
                             if (!byGame.has(r.game_id)) byGame.set(r.game_id, []);
                             byGame.get(r.game_id).push(r);
                         });
-                        const gameLog = [];
-                        byGame.forEach((rows, gid) => {
-                            if (rows.length !== 2) return;
-                            const mine = rows.find(r => r.team === tName);
-                            const opp = rows.find(r => r.team !== tName);
-                            if (!mine || !opp) return;
+                        const mkGame = (gid, mine, opp) => {
                             const g = {
-                                gameId: gid,
+                                gameId: gid, team: mine.team,
                                 date: mine.game_date || opp.game_date || gameDatesLookup.get(gid) || '',
                                 opponent: opp.team,
                                 pts: col(mine, ['points', 'pts', 'PTS']), ptsA: col(opp, ['points', 'pts', 'PTS']),
@@ -55885,13 +56524,100 @@
                             g.oppThreePct = g.oppTpa > 0 ? (g.oppTpm / g.oppTpa) * 100 : null;
                             const dObj = g.date ? new Date(g.date) : null;
                             g.dateObj = (dObj && !isNaN(dObj)) ? dObj : null;
-                            gameLog.push(g);
+                            g.oppOrebPct = (g.oppOreb + g.dreb) > 0 ? (g.oppOreb / (g.oppOreb + g.dreb)) * 100 : null;
+                            g.oppFtr = g.oppFga > 0 ? (g.oppFta / g.oppFga) * 100 : null;
+                            g.frcTovPct = (g.oppFga + 0.44 * g.oppFta + g.oppTov) > 0 ? (g.oppTov / (g.oppFga + 0.44 * g.oppFta + g.oppTov)) * 100 : null;
+                            return g;
+                        };
+                        const gameLog = [];
+                        const leagueGameLog = []; // every team's perspective of every game — league averages for the trend section
+                        byGame.forEach((rows, gid) => {
+                            if (rows.length !== 2) return;
+                            const gA = mkGame(gid, rows[0], rows[1]);
+                            const gB = mkGame(gid, rows[1], rows[0]);
+                            leagueGameLog.push(gA, gB);
+                            if (rows[0].team === tName) gameLog.push(gA);
+                            else if (rows[1].team === tName) gameLog.push(gB);
                         });
                         gameLog.sort((a, b) => {
                             if (a.dateObj && b.dateObj) return a.dateObj - b.dateObj;
                             return String(a.gameId).localeCompare(String(b.gameId));
                         });
                         bundle.gameLog = gameLog;
+                        bundle.leagueGameLog = leagueGameLog;
+                        bundle.leagueTeamCount = new Set(leagueGameLog.map(g => g.team)).size;
+
+                        // ---- 1b) WIN / LOSS SPLITS for the percentile-bar keys (V15) ----
+                        // Basic-tab keys come from team_totals game rows; transition + shot keys come from
+                        // stints.csv per-side columns grouped by game. Values are ratio-of-sums, never
+                        // averages of per-game rates. `all` is the same-source baseline the deltas use.
+                        const winIds = new Set(gameLog.filter(g => g.win).map(g => String(g.gameId)));
+                        const lossIds = new Set(gameLog.filter(g => !g.win && g.pts !== g.ptsA).map(g => String(g.gameId)));
+                        const sumBox = (games) => games.reduce((a, g) => {
+                            Object.keys(a).forEach(k => { a[k] += (g[k] || 0); });
+                            return a;
+                        }, { pts: 0, ptsA: 0, poss: 0, oppPoss: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, oreb: 0, dreb: 0, tov: 0,
+                             oppFgm: 0, oppFga: 0, oppTpm: 0, oppTpa: 0, oppFta: 0, oppOreb: 0, oppDreb: 0, oppTov: 0 });
+                        const basicFromGames = (games) => {
+                            if (!games.length) return null;
+                            const t = sumBox(games);
+                            const div = (n, d) => d > 0 ? n / d : null;
+                            const ortg = div(t.pts * 100, t.poss), drtg = div(t.ptsA * 100, t.oppPoss);
+                            return {
+                                gp: games.length,
+                                netRtg: (ortg !== null && drtg !== null) ? ortg - drtg : null, offRtg: ortg, defRtg: drtg,
+                                offEfg: div((t.fgm + 0.5 * t.tpm) * 100, t.fga), offTov: div(t.tov * 100, t.fga + 0.44 * t.fta + t.tov),
+                                offOreb: div(t.oreb * 100, t.oreb + t.oppDreb), offFtRate: div(t.fta * 100, t.fga),
+                                defEfg: div((t.oppFgm + 0.5 * t.oppTpm) * 100, t.oppFga), defTov: div(t.oppTov * 100, t.oppFga + 0.44 * t.oppFta + t.oppTov),
+                                defOreb: div(t.oppOreb * 100, t.oppOreb + t.dreb), defFtRate: div(t.oppFta * 100, t.oppFga),
+                            };
+                        };
+                        // stints.csv per game (our side vs their side)
+                        const stintGames = new Map();
+                        const sNum = (r, k) => parseFloat(r[k]) || 0;
+                        stintsData.forEach(r => {
+                            const isHome = r.home_team === tName, isAway = r.away_team === tName;
+                            if (!isHome && !isAway) return;
+                            const me = isHome ? 'home_' : 'away_', op = isHome ? 'away_' : 'home_';
+                            const gid = String(r.game_id);
+                            if (!stintGames.has(gid)) stintGames.set(gid, { fga: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, tpa: 0, tpm: 0, fb: 0, sc: 0, pot: 0, poss: 0,
+                                oFga: 0, oRimA: 0, oRimM: 0, oMidA: 0, oMidM: 0, oTpa: 0, oTpm: 0, oFb: 0, oSc: 0, oPot: 0, oPoss: 0 });
+                            const a = stintGames.get(gid);
+                            a.fga += sNum(r, me + 'fga'); a.rimA += sNum(r, me + 'rim_att'); a.rimM += sNum(r, me + 'rim_made');
+                            a.midA += sNum(r, me + 'otd_2pt_att'); a.midM += sNum(r, me + 'otd_2pt_made');
+                            a.tpa += sNum(r, me + 'fg3a'); a.tpm += sNum(r, me + 'fg3m');
+                            a.fb += sNum(r, me + 'fast_break_pts'); a.sc += sNum(r, me + 'second_chance_pts'); a.pot += sNum(r, me + 'pts_off_tov');
+                            a.poss += sNum(r, me + 'possessions') || sNum(r, 'possessions');
+                            a.oFga += sNum(r, op + 'fga'); a.oRimA += sNum(r, op + 'rim_att'); a.oRimM += sNum(r, op + 'rim_made');
+                            a.oMidA += sNum(r, op + 'otd_2pt_att'); a.oMidM += sNum(r, op + 'otd_2pt_made');
+                            a.oTpa += sNum(r, op + 'fg3a'); a.oTpm += sNum(r, op + 'fg3m');
+                            a.oFb += sNum(r, op + 'fast_break_pts'); a.oSc += sNum(r, op + 'second_chance_pts'); a.oPot += sNum(r, op + 'pts_off_tov');
+                            a.oPoss += sNum(r, op + 'possessions') || sNum(r, 'possessions');
+                        });
+                        const stintFromIds = (idSet) => {
+                            const t = { fga: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, tpa: 0, tpm: 0, fb: 0, sc: 0, pot: 0, poss: 0,
+                                        oFga: 0, oRimA: 0, oRimM: 0, oMidA: 0, oMidM: 0, oTpa: 0, oTpm: 0, oFb: 0, oSc: 0, oPot: 0, oPoss: 0 };
+                            let n = 0;
+                            stintGames.forEach((a, gid) => { if (!idSet || idSet.has(gid)) { n++; Object.keys(t).forEach(k => { t[k] += a[k]; }); } });
+                            if (!n) return {};
+                            const div = (x, d) => d > 0 ? x / d : null;
+                            return {
+                                fastBreak100: div(t.fb * 100, t.poss), secChance100: div(t.sc * 100, t.poss), ptsOffTov100: div(t.pot * 100, t.poss),
+                                fastBreak100V: div(t.oFb * 100, t.oPoss), secChance100V: div(t.oSc * 100, t.oPoss), ptsOffTov100V: div(t.oPot * 100, t.oPoss),
+                                rimPct: div(t.rimM * 100, t.rimA), midPct: div(t.midM * 100, t.midA), threePct: div(t.tpm * 100, t.tpa),
+                                oppRimPct: div(t.oRimM * 100, t.oRimA), oppMidPct: div(t.oMidM * 100, t.oMidA), oppThreePct: div(t.oTpm * 100, t.oTpa),
+                                rimVol: div(t.rimA * 100, t.fga), threeVol: div(t.tpa * 100, t.fga), midVol: div(t.midA * 100, t.fga),
+                                moreyballPct: div((t.rimA + t.tpa) * 100, t.fga),
+                                oppRimVol: div(t.oRimA * 100, t.oFga), oppThreeVol: div(t.oTpa * 100, t.oFga), oppMidVol: div(t.oMidA * 100, t.oFga),
+                            };
+                        };
+                        const mkWl = (games, idSet) => Object.assign({}, basicFromGames(games) || {}, stintFromIds(idSet));
+                        bundle.wl = {
+                            record: { w: winIds.size, l: lossIds.size },
+                            all: mkWl(gameLog, null),
+                            wins: mkWl(gameLog.filter(g => winIds.has(String(g.gameId))), winIds),
+                            losses: mkWl(gameLog.filter(g => lossIds.has(String(g.gameId))), lossIds),
+                        };
 
                         // ---- 2) STARTER / BENCH SPLITS for every team — the exact Teams-Leaderboard
                         //      Starter Splits rules (4+ regular starters with 10+ GS, or 4+ of that
@@ -55999,7 +56725,7 @@
 
                         teamProfileCacheRef.current = bundle;
                     }
-                    const { gameLog, splits, roster, leaguePool } = teamProfileCacheRef.current;
+                    const { gameLog, splits, roster, leaguePool, leagueGameLog = [], leagueTeamCount = 0, wl = null } = teamProfileCacheRef.current;
                     const mySplits = splits.get(tName) || null;
 
                     // ───────────────────────────────────────────────────────────────
@@ -56085,8 +56811,10 @@
                         ]
                     };
                     const splitPoolVals = (key) => {
+                        // V15: only teams with 100+ possessions in that split enter the pool
+                        const possKey = key.startsWith('vs') ? 'vsPoss' : key.startsWith('our') ? 'ourPoss' : 'benchPoss';
                         const vals = [];
-                        splits.forEach(sp => { if (sp[key] !== null && sp[key] !== undefined && !isNaN(sp[key])) vals.push(sp[key]); });
+                        splits.forEach(sp => { if ((sp[possKey] || 0) >= 100 && sp[key] !== null && sp[key] !== undefined && !isNaN(sp[key])) vals.push(sp[key]); });
                         return vals;
                     };
                     const pctFromPool = (vals, value, lowerBetter) => {
@@ -56210,8 +56938,16 @@
                                 modeBtn(teamBarsMode === 'basic', 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 'rgba(245, 158, 11, 0.4)', '📊 Basic', () => setTeamBarsMode('basic'), 'Ratings, four factors and transition'),
                                 modeBtn(teamBarsMode === 'adjusted', 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 'rgba(16, 185, 129, 0.4)', '⚖️ Adjusted', () => setTeamBarsMode('adjusted'), 'Opponent-adjusted ratings + four-factor points added'),
                                 modeBtn(teamBarsMode === 'vsstarters', 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', 'rgba(6, 182, 212, 0.4)', '⭐ VS Starters', () => setTeamBarsMode('vsstarters'), 'Splits vs opp starters, with our starters, and our bench units'),
-                                modeBtn(teamBarsMode === 'shots', 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 'rgba(59, 130, 246, 0.4)', '🎯 Shots', () => setTeamBarsMode('shots'), 'Shot making and shot diet, both ends')
+                                modeBtn(teamBarsMode === 'shots', 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 'rgba(59, 130, 246, 0.4)', '🎯 Shots', () => setTeamBarsMode('shots'), 'Shot making and shot diet, both ends'),
+                                e('span', { style: { width: '1px', alignSelf: 'stretch', background: 'rgba(148,163,184,0.18)', margin: '2px 4px' }}),
+                                modeBtn(teamWinLoss, 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)', 'rgba(168, 85, 247, 0.4)',
+                                    '🏆 Win / Loss' + (wl && wl.record ? ' (' + wl.record.w + '-' + wl.record.l + ')' : ''),
+                                    () => setTeamWinLoss(v => !v), 'Show each stat in wins vs losses with a delta against the season value')
                             ),
+                            teamWinLoss && e('div', { style: { fontSize: '10px', color: '#94a3b8', textAlign: 'center', marginBottom: '10px' }},
+                                teamBarsMode === 'adjusted' || teamBarsMode === 'vsstarters'
+                                    ? 'Win/loss splits are only defined for the Basic and Shots tabs (adjusted ratings and starter splits are season-level constructs).'
+                                    : 'W / L values are ratio-of-sums over that subset of games (team_totals + stints); deltas compare each split with the same-source season value.'),
                             e('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '14px' }},
                                 [{ label: '80+', color: '#22c55e', name: 'Elite' }, { label: '60+', color: '#84cc16', name: 'Good' },
                                  { label: '40+', color: '#eab308', name: 'Avg' }, { label: '20+', color: '#f97316', name: 'Below' },
@@ -56230,7 +56966,7 @@
                                 style: { textAlign: 'center', fontSize: '11px', color: '#94a3b8', marginBottom: '10px', padding: '8px 10px',
                                          background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)', borderRadius: '8px' }
                             }, 'Starter splits need stints.csv data.'),
-                            e('div', { style: { display: 'grid', gridTemplateColumns: isMobileView ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: isMobileView ? '10px' : '14px' }},
+                            e('div', { style: { display: 'grid', gridTemplateColumns: isMobileView ? '1fr' : ('repeat(auto-fit, minmax(' + (teamWinLoss ? '470px' : '300px') + ', 1fr))'), gap: isMobileView ? '10px' : '14px' }},
                                 groupOrder.map(gKey => {
                                     const group = statGroups[gKey] || { name: '', color: '#94a3b8' };
                                     const rows = barData.filter(s => (s.group || '_') === gKey);
@@ -56245,7 +56981,7 @@
                                         rows.map(stat => {
                                             const c = pctColor(stat.pct);
                                             const w = stat.pct === null ? 0 : Math.max(2, Math.min(100, stat.pct));
-                                            return e('div', { key: stat.key, style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }},
+                                            return e('div', { key: stat.key, style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px', flexWrap: (teamWinLoss && isMobileView) ? 'wrap' : 'nowrap' }},
                                                 e('div', { style: { width: isMobileView ? '92px' : '108px', fontSize: '10px', fontWeight: 600, color: '#cbd5e1', flexShrink: 0, textAlign: 'right' }}, stat.label),
                                                 e('div', { style: { width: '46px', fontSize: '11px', fontWeight: 700, color: '#f1f5f9', flexShrink: 0, textAlign: 'right', fontFamily: 'var(--font-mono, monospace)' }}, fmtVal(stat)),
                                                 e('div', { style: { flex: 1, height: '14px', position: 'relative', background: 'rgba(15, 23, 42, 0.8)',
@@ -56258,7 +56994,25 @@
                                                         background: 'rgba(255,255,255,0.35)', borderRadius: '1px' }})
                                                 ),
                                                 e('div', { style: { width: '30px', fontSize: '10px', fontWeight: 800, flexShrink: 0, textAlign: 'center', color: c.border }},
-                                                    stat.pct === null ? '—' : Math.round(stat.pct))
+                                                    stat.pct === null ? '—' : Math.round(stat.pct)),
+                                                teamWinLoss && (() => {
+                                                    const base = wl && wl.all ? wl.all[stat.key] : null;
+                                                    const cell = (tag, v, color) => {
+                                                        const ok = v !== null && v !== undefined && !isNaN(v);
+                                                        const d = (ok && base !== null && base !== undefined && !isNaN(base)) ? v - base : null;
+                                                        const good = d === null ? null : (stat.lowerBetter ? d < 0 : d > 0);
+                                                        return e('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: '3px', whiteSpace: 'nowrap' }},
+                                                            e('span', { style: { fontSize: '8px', fontWeight: 800, color, letterSpacing: '0.06em' }}, tag),
+                                                            e('span', { style: { fontSize: '10px', fontWeight: 700, color: '#e2e8f0', fontFamily: 'var(--font-mono, monospace)' }}, ok ? v.toFixed(1) : '—'),
+                                                            d !== null && Math.abs(d) >= 0.05 && e('span', { style: { fontSize: '8px', fontWeight: 800, color: good ? '#34d399' : '#f87171' }},
+                                                                (d > 0 ? '▲+' : '▼') + d.toFixed(1))
+                                                        );
+                                                    };
+                                                    return e('div', { style: { width: isMobileView ? '100%' : '168px', flexShrink: 0, display: 'flex', gap: '8px', justifyContent: 'flex-end',
+                                                        paddingLeft: '6px', borderLeft: '1px solid rgba(148,163,184,0.15)' }},
+                                                        cell('W', wl && wl.wins ? wl.wins[stat.key] : null, '#34d399'),
+                                                        cell('L', wl && wl.losses ? wl.losses[stat.key] : null, '#f87171'));
+                                                })()
                                             );
                                         })
                                     );
@@ -56545,14 +57299,23 @@
                     };
                     const rangeAgg = aggTG(rangeGames);
                     const seasonAgg = aggTG(gameLog);
-                    const statCell = (label, val, seasonVal, fmt) => {
+                    // V15: league averages from every team's perspective of every game (same aggTG maths)
+                    const leagueAgg = leagueGameLog.length ? aggTG(leagueGameLog) : null;
+                    if (leagueAgg && leagueTeamCount > 0) leagueAgg.gp = leagueGameLog.length / leagueTeamCount;
+                    const statCell = (label, val, seasonVal, fmt, lgVal, lowerBetter) => {
                         const delta = (rangeActive && val !== null && seasonVal !== null && val !== undefined && seasonVal !== undefined && !isNaN(val) && !isNaN(seasonVal)) ? val - seasonVal : null;
+                        const lgDelta = (lgVal !== null && lgVal !== undefined && !isNaN(lgVal) && val !== null && val !== undefined && !isNaN(val)) ? val - lgVal : null;
+                        const lgGood = lgDelta === null ? null : (lowerBetter ? lgDelta < 0 : lgDelta > 0);
                         return e('div', { key: label, style: { padding: '10px 8px', background: 'rgba(15, 23, 42, 0.55)', borderRadius: '10px',
                             border: '1px solid rgba(71, 85, 105, 0.4)', textAlign: 'center' }},
                             e('div', { style: { fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginBottom: '3px' }}, label),
                             e('div', { style: { fontSize: '16px', fontWeight: 800, color: '#f1f5f9', fontFamily: 'var(--font-display)' }}, fmt(val)),
                             delta !== null && Math.abs(delta) >= 0.05 && e('div', { style: { fontSize: '9px', fontWeight: 700, color: delta > 0 ? '#34d399' : '#f87171' }},
-                                (delta > 0 ? '▲ +' : '▼ ') + fmt(delta) + ' vs season')
+                                (delta > 0 ? '▲ +' : '▼ ') + fmt(delta) + ' vs season'),
+                            lgVal !== null && lgVal !== undefined && !isNaN(lgVal) && e('div', { style: { fontSize: '9px', fontWeight: 600, color: '#22d3ee', marginTop: '2px', whiteSpace: 'nowrap' }},
+                                'lg ' + fmt(lgVal),
+                                lgDelta !== null && Math.abs(lgDelta) >= 0.05 && e('span', { style: { color: lgGood ? '#34d399' : '#f87171', marginLeft: '4px', fontWeight: 800 }},
+                                    (lgDelta > 0 ? '▲+' : '▼') + fmt(lgDelta)))
                         );
                     };
                     const TEAM_CHART_STATS = {
@@ -56589,7 +57352,10 @@
                             const span = hi - lo;
                             return { lo: lo - span * 0.05, hi: hi + span * 0.08 };
                         };
-                        const s1 = scaleOf(clean);
+                        // V15: league average of the same stat across every team-game (dashed cyan reference line)
+                        const lgVals = leagueGameLog.map(g => chartDef.get(g)).filter(v => v !== null && v !== undefined && !isNaN(v));
+                        const lgAvg = lgVals.length ? lgVals.reduce((a, b) => a + b, 0) / lgVals.length : null;
+                        const s1 = scaleOf(lgAvg !== null ? clean.concat([lgAvg]) : clean);
                         const xAt = (i) => padL + (games.length === 1 ? 0 : (i / (games.length - 1)) * (W - padL - padR));
                         const yAt = (v) => padT + (1 - (v - s1.lo) / (s1.hi - s1.lo)) * (H - padT - padB);
                         const avg = clean.reduce((a, b) => a + b, 0) / clean.length;
@@ -56629,6 +57395,8 @@
                                 )),
                                 e('line', { x1: padL, y1: yAt(avg), x2: W - padR, y2: yAt(avg), stroke: '#f472b6', strokeWidth: 1.5, strokeDasharray: '5 4', opacity: 0.8 }),
                                 e('text', { x: W - padR - 2, y: yAt(avg) - 4, textAnchor: 'end', fontSize: 9, fill: '#f472b6', fontWeight: 700 }, 'avg ' + chartDef.fmt(avg)),
+                                lgAvg !== null && e('line', { x1: padL, y1: yAt(lgAvg), x2: W - padR, y2: yAt(lgAvg), stroke: '#22d3ee', strokeWidth: 1.2, strokeDasharray: '2 4', opacity: 0.85 }),
+                                lgAvg !== null && e('text', { x: padL + 4, y: yAt(lgAvg) + (Math.abs(yAt(lgAvg) - yAt(avg)) < 12 ? 11 : -4), textAnchor: 'start', fontSize: 9, fill: '#22d3ee', fontWeight: 700 }, 'lg avg ' + chartDef.fmt(lgAvg)),
                                 area && e('path', { d: area, fill: 'url(#tpChartGrad)', opacity: 0.7 }),
                                 e('defs', null,
                                     e('linearGradient', { id: 'tpChartGrad', x1: '0', y1: '0', x2: '0', y2: '1' },
@@ -56691,21 +57459,21 @@
                                         ? 'Showing ' + rangeGames.length + ' of ' + gameLog.length + ' games (' + (rangeAgg ? rangeAgg.wins + '-' + rangeAgg.losses : '0-0') + ')' + (teamDateStart ? ' from ' + teamDateStart : '') + (teamDateEnd ? ' to ' + teamDateEnd : '') + ' — deltas vs full season.'
                                         : 'Full season: ' + gameLog.length + ' games (' + (seasonAgg ? seasonAgg.wins + '-' + seasonAgg.losses : '0-0') + '). Set a date range to isolate a stretch.'),
                                 rangeAgg ? e('div', { style: { display: 'grid', gridTemplateColumns: isMobileView ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(96px, 1fr))', gap: '8px', marginBottom: '18px' }},
-                                    statCell('GP', rangeAgg.gp, seasonAgg ? seasonAgg.gp : null, f0),
+                                    statCell('GP', rangeAgg.gp, seasonAgg ? seasonAgg.gp : null, f0, leagueAgg ? leagueAgg.gp : null),
                                     statCell('WIN%', rangeAgg.winPct, seasonAgg ? seasonAgg.winPct : null, f1),
-                                    statCell('ORTG', rangeAgg.offRtg, seasonAgg ? seasonAgg.offRtg : null, f1),
-                                    statCell('DRTG', rangeAgg.defRtg, seasonAgg ? seasonAgg.defRtg : null, f1),
-                                    statCell('NET', rangeAgg.netRtg, seasonAgg ? seasonAgg.netRtg : null, f1),
-                                    statCell('PACE', rangeAgg.pace, seasonAgg ? seasonAgg.pace : null, f1),
+                                    statCell('ORTG', rangeAgg.offRtg, seasonAgg ? seasonAgg.offRtg : null, f1, leagueAgg ? leagueAgg.offRtg : null),
+                                    statCell('DRTG', rangeAgg.defRtg, seasonAgg ? seasonAgg.defRtg : null, f1, leagueAgg ? leagueAgg.defRtg : null, true),
+                                    statCell('NET', rangeAgg.netRtg, seasonAgg ? seasonAgg.netRtg : null, f1, leagueAgg ? 0 : null),
+                                    statCell('PACE', rangeAgg.pace, seasonAgg ? seasonAgg.pace : null, f1, leagueAgg ? leagueAgg.pace : null),
                                     statCell('MARGIN', rangeAgg.margin, seasonAgg ? seasonAgg.margin : null, f1),
-                                    statCell('eFG%', rangeAgg.efg, seasonAgg ? seasonAgg.efg : null, f1),
-                                    statCell('OPP eFG%', rangeAgg.oppEfg, seasonAgg ? seasonAgg.oppEfg : null, f1),
-                                    statCell('TOV%', rangeAgg.tovPct, seasonAgg ? seasonAgg.tovPct : null, f1),
-                                    statCell('FRC TOV%', rangeAgg.frcTovPct, seasonAgg ? seasonAgg.frcTovPct : null, f1),
-                                    statCell('OREB%', rangeAgg.orebPct, seasonAgg ? seasonAgg.orebPct : null, f1),
-                                    statCell('FT RATE', rangeAgg.ftr, seasonAgg ? seasonAgg.ftr : null, f1),
-                                    statCell('3P%', rangeAgg.threePct, seasonAgg ? seasonAgg.threePct : null, f1),
-                                    statCell('OPP 3P%', rangeAgg.oppThreePct, seasonAgg ? seasonAgg.oppThreePct : null, f1)
+                                    statCell('eFG%', rangeAgg.efg, seasonAgg ? seasonAgg.efg : null, f1, leagueAgg ? leagueAgg.efg : null),
+                                    statCell('OPP eFG%', rangeAgg.oppEfg, seasonAgg ? seasonAgg.oppEfg : null, f1, leagueAgg ? leagueAgg.oppEfg : null, true),
+                                    statCell('TOV%', rangeAgg.tovPct, seasonAgg ? seasonAgg.tovPct : null, f1, leagueAgg ? leagueAgg.tovPct : null, true),
+                                    statCell('FRC TOV%', rangeAgg.frcTovPct, seasonAgg ? seasonAgg.frcTovPct : null, f1, leagueAgg ? leagueAgg.frcTovPct : null),
+                                    statCell('OREB%', rangeAgg.orebPct, seasonAgg ? seasonAgg.orebPct : null, f1, leagueAgg ? leagueAgg.orebPct : null),
+                                    statCell('FT RATE', rangeAgg.ftr, seasonAgg ? seasonAgg.ftr : null, f1, leagueAgg ? leagueAgg.ftr : null),
+                                    statCell('3P%', rangeAgg.threePct, seasonAgg ? seasonAgg.threePct : null, f1, leagueAgg ? leagueAgg.threePct : null),
+                                    statCell('OPP 3P%', rangeAgg.oppThreePct, seasonAgg ? seasonAgg.oppThreePct : null, f1, leagueAgg ? leagueAgg.oppThreePct : null, true)
                                 ) : e('div', { style: { color: '#94a3b8', fontSize: '12px', padding: '10px', textAlign: 'center' }}, 'No games in the selected range.'),
                                 e('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', margin: '4px 0 8px' }},
                                     e('div', { style: { fontSize: '12px', fontWeight: 700, color: '#cbd5e1' }},
@@ -74803,6 +75571,26 @@
                             'Powerful game analysis powered by FIBA LiveStats & German 2BBL data'
                         ),
 
+                        // V15: LEAGUE FEED — games straight from the ingest worker (Supabase, repo fallback)
+                        e('div', { style: { padding: '18px 22px', marginBottom: '16px', background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.10), rgba(6, 182, 212, 0.08))',
+                                            borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.25)' }},
+                            e('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }},
+                                e('div', { style: { fontSize: '15px', fontWeight: 700, color: '#4ade80' }}, '📡 League feed'),
+                                gvFeedComps.length
+                                    ? e('select', { value: gvFeedComp, onChange: ev => setGvFeedComp(ev.target.value),
+                                          style: { padding: '8px 10px', borderRadius: '8px', background: 'rgba(15,23,42,.7)', color: '#e2e8f0', border: '1px solid rgba(148,163,184,.3)', fontSize: '13px' }},
+                                        gvFeedComps.map(c => e('option', { key: c.code, value: c.code }, (c.label || c.code) + (c.games ? ' · ' + c.games + ' games' : '') + ' · ' + c.source)))
+                                    : e('span', { style: { fontSize: '12px', color: 'var(--gv-text-muted)' }}, 'No feed published yet — run scripts/ingest (or wait for the next worker run).'),
+                                gvFeedComps.length > 0 && e('button', { className: 'gv-upload-btn primary', style: { padding: '9px 16px', fontSize: '13px' },
+                                    onClick: () => loadFeedGames(gvFeedComp) }, gvFeedLoadedAt ? '↻ Refresh' : '⬇ Load games'),
+                                gvFeedComps.length > 0 && e('label', { style: { fontSize: '12px', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }},
+                                    e('input', { type: 'checkbox', checked: gvFeedAuto, onChange: ev => setGvFeedAuto(ev.target.checked) }), 'auto-update every 5 min'),
+                                gvFeedLoadedAt && e('button', { className: 'gv-upload-btn', style: { padding: '9px 14px', fontSize: '13px' }, onClick: () => setGvView('browser') }, '🏀 Browse →')
+                            ),
+                            e('div', { style: { fontSize: '11px', color: 'var(--gv-text-muted)', marginTop: '8px' }},
+                                gvFeedStatus || 'Games are discovered from the league\'s schedule URLs by the ingest worker; live games refresh through the livestats function.')
+                        ),
+
                         // Main upload area
                         e('div', { style: { padding: '28px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(0, 212, 255, 0.08))', borderRadius: '16px', border: '2px dashed rgba(139, 92, 246, 0.4)', marginBottom: '24px', position: 'relative', zIndex: 1 }},
                             gvGameHtmlFiles.length > 0 ?
@@ -78884,54 +79672,9 @@
                     // V6.9: Helper to calculate actual percentile from the SAME data source as the full table
                     // This ensures percentiles in modal match the table's color-coded percentiles exactly
                     const calcPercentileFromPool = (value, poolKey, higherBetter, usePositionPool = false) => {
-                        // V6.9: PRIMARY SOURCE - Use full table's percentile data for consistency
-                        // This is the exact same data used for the table's color coding
-                        const tablePercentileData = fullTableDataRef.current?.percentileData;
-                        if (tablePercentileData && tablePercentileData[poolKey] && tablePercentileData[poolKey].length >= 5) {
-                            const sortedArr = [...tablePercentileData[poolKey]].sort((a, b) => a - b);
-                            const rank = sortedArr.filter(v => v < value).length;
-                            const pct = (rank / sortedArr.length) * 100;
-                            return higherBetter ? pct : 100 - pct;
-                        }
-
-                        // Fallback to leaguePlayerAverages if fullTableData not available
-                        let sortedArr;
-                        const allPlayers = leaguePlayerAverages?.players || [];
-                        const filteredPlayers = allPlayers.filter(p => (p.seasonMin || 0) >= 100);
-
-                        if (usePositionPool && stats.positionRange?.shortLabel && filteredPlayers.length >= 5) {
-                            const playersInRange = filteredPlayers.filter(p =>
-                                p.position !== null && p.position !== undefined &&
-                                p.position >= stats.positionRange.min &&
-                                p.position <= stats.positionRange.max
-                            );
-                            if (playersInRange.length >= 5) {
-                                const poolValues = playersInRange
-                                    .map(p => p[poolKey])
-                                    .filter(v => v !== null && v !== undefined && !isNaN(v) && v > 0);
-                                if (poolValues.length >= 5) {
-                                    sortedArr = poolValues.sort((a, b) => a - b);
-                                }
-                            }
-                        }
-
-                        if (!sortedArr) {
-                            const poolValues = filteredPlayers
-                                .map(p => p[poolKey])
-                                .filter(v => v !== null && v !== undefined && !isNaN(v) && v > 0);
-                            if (poolValues.length >= 5) {
-                                sortedArr = poolValues.sort((a, b) => a - b);
-                            } else if (leaguePlayerAverages?.statArrays?.[poolKey]) {
-                                sortedArr = leaguePlayerAverages.statArrays[poolKey];
-                            }
-                        }
-
-                        if (!sortedArr || sortedArr.length === 0) {
-                            return null;
-                        }
-                        const rank = sortedArr.filter(v => v < value).length;
-                        const pct = (rank / sortedArr.length) * 100;
-                        return higherBetter ? pct : 100 - pct;
+                        // V15: routed through the universal helper (one pool, one qualifier, everywhere)
+                        const bucket = usePositionPool ? (stats.positionBucket || BPM2.positionBucket(stats.position)) : null;
+                        return universalPlayerPct(value, poolKey, higherBetter, bucket);
                     };
 
                     // DEBUG: Log player stats and pool sources

@@ -24,3 +24,8 @@ supabase/.branches/
 
 # Editor backups
 *.bak-*
+
+# ingest: raw feed payloads are archives, not source (bundles stay as fixtures)
+data/ingest-fixtures/*.raw.json
+data/ingest-raw/
+__pycache__/

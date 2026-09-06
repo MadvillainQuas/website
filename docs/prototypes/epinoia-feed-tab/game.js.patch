@@ -1,0 +1,186 @@
+diff --git a/epinoia/game/game.js b/epinoia/game/game.js
+index bab7a15..65f6546 100644
+--- a/epinoia/game/game.js
++++ b/epinoia/game/game.js
+@@ -171,6 +171,16 @@ async function loadStored() {
+ 
+   const events = await fetchLog();
+ 
++  /* THE FEED IS A SEPARATE QUESTION TOO. game_advanced (migration 0047) holds
++     what the ingest worker derived for a game that arrived from a league feed
++     rather than from a scorer. A database without it must still show the box
++     score; a game without a row simply has no feed tab. */
++  let advanced = null;
++  try {
++    const rows = await api(`game_advanced?game_id=eq.${encodeURIComponent(gameId)}&select=*&limit=1`);
++    if (rows.length) advanced = rows[0];
++  } catch (_) { /* no 0047 yet, or nothing ingested */ }
++
+   const snap = g.roster_snapshot;
+   const teams = (snap && snap.teams) ? snap.teams : [
+     { name: (g.home || {}).name || 'home', color: (g.home || {}).colour || '#93f2bf', players: [] },
+@@ -185,6 +195,7 @@ async function loadStored() {
+     teams,
+     starters: g.starters || [[], []],
+     events: events.map(rowToEvent),
++    advanced,
+     period: g.period || 1,
+     clockMs: 0,
+     tipWinner: g.tip_winner, arrowInit: g.arrow_init,
+@@ -234,6 +245,12 @@ const BODIES = {
+   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
+   adv:     d => B.advHTML(d),
+   lineups: () => B.lineupsHTML(),
++  /* THE FEED TAB draws the ingest worker's game_advanced row — the advanced
++     view of a game that was never scored here. Its renderer lives in
++     advanced.js and owns nothing but the per-game / per-75 toggle. */
++  feed:    () => window.EpinoiaAdvanced
++                   ? window.EpinoiaAdvanced.render(window.S.advanced, window.S)
++                   : '<div class="msg">The feed renderer could not be loaded.</div>',
+   /* Rendered rather than returned as a string: the video tab owns a player, a
+      set of filters and a scroll position, and handing back HTML for the page
+      to insert would throw all three away on every redraw. */
+@@ -252,10 +269,17 @@ const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot cha
+    "no video has been attached" is a tab that trains people not to press it,
+    and every league without a camera would carry it for ever. */
+ function tabsFor(status) {
+-  const base = status === 'final'
+-    ? [['report', 'match report']].concat(TABS)
+-    : TABS;
+   const S = window.S;
++  const fed = !!(S && S.advanced);
++  const scored = !!(S && S.events && S.events.length);
++  /* A FED GAME WITH NO EVENT LOG has nothing for the scorer's tabs to draw —
++     five tabs of zeroes would be the empty box score the preview exists to
++     avoid. So the feed tab stands alone (plus the report once final); a game
++     that has BOTH a log and a feed row offers everything. */
++  let base;
++  if (fed && !scored) base = [['feed', 'advanced (feed)']];
++  else base = fed ? TABS.concat([['feed', 'advanced (feed)']]) : TABS;
++  if (status === 'final' && scored) base = [['report', 'match report']].concat(base);
+   const v = S && S.video;
+   return (v && (v.url || v.live_src)) ? base.concat([['video', 'video']]) : base;
+ }
+@@ -798,7 +822,9 @@ function renderBody(d) {
+   d = d || window.derive();
+   /* the log length and the score are enough to know whether anything the body
+      shows can have changed; the clock alone never changes a table */
+-  const key = fTab + ':' + window.S.events.length + ':' + d.score.join('-');
++  const adv = window.S.advanced;
++  const key = fTab + ':' + window.S.events.length + ':' + d.score.join('-') +
++    (adv ? ':' + (adv.computed_at || '') + ':' + (window.EpinoiaAdvanced && window.EpinoiaAdvanced.per75 ? '75' : 'g') : '');
+   if (key === lastBodyKey) return;
+   lastBodyKey = key;
+   const el = $('#csBody');
+@@ -1370,7 +1396,13 @@ async function renderPreview() {
+   txt($('#foot'), 'transport: ' + mode);
+ 
+   let stored = null;
+-  if (mode === 'supabase') {
++  if (gameId.startsWith('fixture:')) {
++    /* LOCAL TEST MODE: ?g=fixture:<external id> renders a bundle written by
++       `run_ingest.py --fixture-out data/ingest-fixtures` with no database at
++       all. Same renderer, same tab, so what is verified here is what ships. */
++    try { stored = await loadFixture(gameId.slice(8)); }
++    catch (e) { return fail('Could not load fixture: ' + e.message); }
++  } else if (mode === 'supabase') {
+     try { stored = await loadStored(); }
+     catch (e) { return fail('Could not load this game: ' + e.message); }
+     if (!stored) return fail('This game is not public, or does not exist.');
+@@ -1384,13 +1416,27 @@ async function renderPreview() {
+ 
+   window.S = stored;
+ 
++  /* a fed game with no scorer log opens on the feed tab (its only tab), and
++     the scoreboard reads the feed's final score rather than an empty log's */
++  if (stored.advanced && !(stored.events && stored.events.length)) {
++    fTab = 'feed';
++    const baseDerive = window.derive;
++    window.derive = () => {
++      const d = baseDerive();
++      const t = window.S && window.S.advanced && window.S.advanced.team;
++      if (t && t.home && t.away) d.score = [Math.round(+t.home.points || 0), Math.round(+t.away.points || 0)];
++      return d;
++    };
++  }
++  if (window.EpinoiaAdvanced) window.EpinoiaAdvanced.onToggle = () => { lastBodyKey = ''; renderBody(); };
++
+   if (stored.status === 'final') {
+     setStatus('final');
+     /* A finished game opens on the report rather than the box score: the
+        numbers are still one tap away, and "what happened" is the question
+        most people arrive with. A live game keeps opening on the box score,
+        where the numbers ARE the story as it happens. */
+-    if (window.EpinoiaReport) fTab = 'report';
++    if (window.EpinoiaReport && fTab !== 'feed') fTab = 'report';
+     render();
+     return;                       // finished: nothing left to listen for
+   }
+@@ -1420,5 +1466,66 @@ async function renderPreview() {
+   watchGameStatus();
+ 
+   render();
+-  goLive();
++  if (stored.advanced) watchFeed();
++  /* a fed game has no publisher to listen to; opening the broadcast channel
++     would only ever report "connecting" */
++  if (!(stored.advanced && !(stored.events && stored.events.length))) goLive();
++  else setStatus(stored.status === 'live' ? 'live' : 'final');
+ })();
++
++/* A FED GAME UPDATES WHEN THE WORKER RUNS, not when a scorer taps. The
++   worker re-fetches a live game on every poll and upserts game_advanced, so
++   the page listens to that row: realtime (postgres_changes — the first such
++   subscription on the site; the table is in the publication, RLS allows the
++   read) with a slow poll behind it, paused while the tab is hidden, exactly
++   like watchGameStatus. */
++const FEED_POLL_MS = 60000;
++function watchFeed() {
++  if (mode !== 'supabase' || !gameId) return;
++  const apply = row => {
++    if (!row || !window.S) return;
++    if (window.S.advanced && window.S.advanced.computed_at === row.computed_at) return;
++    window.S.advanced = row;
++    if (row.status === 'final' && window.S.status !== 'final') { window.S.status = 'final'; setStatus('final'); }
++    lastBodyKey = '';
++    if (fTab === 'feed') renderBody();
++  };
++  try {
++    const sb = window.epinoiaClient ? epinoiaClient() : null;
++    if (sb) {
++      sb.channel('feed:' + gameId)
++        .on('postgres_changes', { event: '*', schema: 'public', table: 'game_advanced', filter: 'game_id=eq.' + gameId },
++            m => apply(m.new))
++        .subscribe();
++    }
++  } catch (e) { console.warn('[feed] realtime unavailable', e); }
++  let missed = false;
++  document.addEventListener('visibilitychange', () => { if (!document.hidden && missed) { missed = false; poll(); } });
++  async function poll() {
++    if (!window.S || window.S.status === 'final') return;
++    try {
++      const rows = await api(`game_advanced?game_id=eq.${encodeURIComponent(gameId)}&select=*&limit=1`);
++      if (rows.length) apply(rows[0]);
++    } catch (_) { /* a blip is not a verdict */ }
++  }
++  setInterval(() => { if (document.hidden) { missed = true; return; } poll(); }, FEED_POLL_MS);
++}
++
++/* Fixture loader for ?g=fixture:<id> — see boot(). Relative to the site root
++   so it works from /epinoia/game/ on the dev server and on Pages alike. */
++async function loadFixture(id) {
++  const r = await fetch('../../data/ingest-fixtures/' + encodeURIComponent(id) + '.json', { cache: 'no-store' });
++  if (!r.ok) throw new Error('fixture ' + id + ' not found (' + r.status + ')');
++  const b = await r.json();
++  const home = (b.team && b.team.home) || {}, away = (b.team && b.team.away) || {};
++  return {
++    teams: [{ name: home.team || b.home_name || 'home', color: '#93f2bf', players: [] },
++            { name: away.team || b.away_name || 'away', color: '#8ff5ff', players: [] }],
++    starters: [[], []], events: [], advanced: Object.assign({ computed_at: new Date().toISOString() }, b),
++    period: 4, clockMs: 0, phase: b.status === 'final' ? 'final' : 'game', status: b.status || 'final',
++    competition: 'Fixture · ' + (b.adapter || 'ingest'), leagueSlug: null, venue: null, video: null,
++    details: { officials: {} },
++    meta: { status: b.status || 'final', home_score: home.points, away_score: away.points,
++            home: { name: home.team }, away: { name: away.team } }
++  };
++}

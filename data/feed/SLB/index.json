@@ -1,0 +1,44 @@
+{
+"code": "SLB",
+"label": "Super League Basketball (M)",
+"adapter": "fiba_livestats",
+"updated": "2026-09-06T13:15:51.313743+00:00",
+"games": [
+{
+"id": "2702560",
+"home": "Surrey 89ers",
+"away": "Bristol Flyers",
+"homeScore": 66,
+"awayScore": 96,
+"status": "final",
+"date": null,
+"hash": "f09615b87295fef0d5813e4e79ae96747c2f49a9",
+"raw_ref": null,
+"updated": "2026-09-06T13:15:50.822778+00:00"
+},
+{
+"id": "2702551",
+"home": "B. Braun Sheffield Sharks",
+"away": "Newcastle Eagles",
+"homeScore": 78,
+"awayScore": 73,
+"status": "final",
+"date": null,
+"hash": "a83f59f7b9e75f08904e7dd0b1c1ea4f5a793ef8",
+"raw_ref": null,
+"updated": "2026-09-06T13:15:51.313743+00:00"
+},
+{
+"id": "2702542",
+"home": "Bristol Flyers",
+"away": "B. Braun Sheffield Sharks",
+"homeScore": 78,
+"awayScore": 60,
+"status": "final",
+"date": null,
+"hash": "0720297d9dcd5ba817d1c5fab416d86b93b671a3",
+"raw_ref": null,
+"updated": "2026-09-06T13:15:50.297554+00:00"
+}
+]
+}

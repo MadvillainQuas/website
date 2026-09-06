@@ -1,0 +1,13 @@
+diff --git a/epinoia/game/index.html b/epinoia/game/index.html
+index 76bd1bb..0b5404c 100644
+--- a/epinoia/game/index.html
++++ b/epinoia/game/index.html
+@@ -166,6 +166,8 @@
+ <script src="preview.js?v=239" defer></script>
+ <script src="../video.js?v=239" defer></script>
+ <script src="video.js?v=239" defer></script>
++<!-- the feed tab: renders game_advanced for games ingested from a league feed -->
++<script src="advanced.js?v=239" defer></script>
+ <script src="game.js?v=239" defer></script>
+ <script src="../nav.js?v=239" defer></script>
+ <script src="../xscroll.js?v=239" defer></script>
