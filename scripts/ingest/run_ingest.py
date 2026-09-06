@@ -147,13 +147,25 @@ class RepoFeed:
         (self.root / "index.json").write_text(json.dumps({"updated": now_iso(), "competitions": comps}, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def entry_for(b: GameBundle, prev: dict | None, raw_ref: str | None) -> dict:
+def entry_for(b: GameBundle, prev: dict | None, raw_ref: str | None, sched: ScheduleGame | None = None) -> dict:
+    tip = (sched.tipoff_at if sched else None) or b.tipoff_at or (prev or {}).get("date")
     return {
         "id": b.external_id, "home": b.home_name, "away": b.away_name,
         "homeScore": int(b.team["home"].get("points", 0) or 0), "awayScore": int(b.team["away"].get("points", 0) or 0),
-        "status": b.status, "date": b.tipoff_at or (prev or {}).get("date"), "hash": b.payload_hash,
+        "status": b.status, "date": tip, "hash": b.payload_hash,
+        "venue": (sched.extra.get("venue") if sched else None) or (prev or {}).get("venue"),
         "raw_ref": raw_ref or (prev or {}).get("raw_ref"), "updated": now_iso(),
     }
+
+
+def sched_entry(g: ScheduleGame, prev: dict | None) -> dict:
+    """A game the schedule lists but the feed has not published yet (no payload): keep it in the
+    index with its date, teams and venue so index_9 and Epinoia can show the fixture."""
+    e = dict(prev or {})
+    e.update({"id": g.external_id, "home": g.home_name or e.get("home"), "away": g.away_name or e.get("away"),
+              "status": e.get("status") if e.get("hash") else (g.status or "scheduled"),
+              "date": g.tipoff_at or e.get("date"), "venue": (g.extra or {}).get("venue") or e.get("venue")})
+    return e
 
 
 # ─────────────────────────────────────────────────────────── Supabase feed + platform writes
@@ -164,8 +176,8 @@ def write_supabase_feed(sb: Supabase, src: dict, b: GameBundle, entry: dict) -> 
     sb.upsert("external_games", {
         "adapter": src["adapter"], "external_id": b.external_id, "source_id": src.get("id"),
         "competition_code": src["code"], "home_name": b.home_name, "away_name": b.away_name,
-        "home_score": entry["homeScore"], "away_score": entry["awayScore"], "game_date": entry.get("date"),
-        "external_status": b.status, "payload_hash": b.payload_hash, "raw_ref": raw_ref, "last_fetched_at": now_iso(),
+        "home_score": entry["homeScore"], "away_score": entry["awayScore"], "game_date": (entry.get("date") or "")[:10] or None,
+        "tipoff_at": entry.get("date"), "external_status": b.status, "payload_hash": b.payload_hash, "raw_ref": raw_ref, "last_fetched_at": now_iso(),
     }, "adapter,external_id")
     return raw_ref
 
@@ -173,6 +185,40 @@ def write_supabase_feed(sb: Supabase, src: dict, b: GameBundle, entry: dict) -> 
 def write_supabase_competition(sb: Supabase, src: dict, count: int) -> None:
     sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"],
                                     "league_id": src.get("league_id"), "games": count, "updated_at": now_iso()}, "code")
+
+
+def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
+    """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
+    fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
+    league_id = src.get("league_id")
+    if not league_id or not (g.home_name and g.away_name):
+        return
+    ac = src.get("adapter_config") or {}
+    plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
+    comp_id = src.get("competition_id")
+    if not comp_id:
+        comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
+        comp_id = src["competition_id"] = comp["id"]
+    ex = g.extra or {}
+    home = plat.team(league_id, {"name": g.home_name, "code": ex.get("home_code") or ""})
+    away = plat.team(league_id, {"name": g.away_name, "code": ex.get("away_code") or ""})
+    if not (home and away):
+        return
+    existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
+    game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
+    row = {"tipoff_at": g.tipoff_at, "venue": ex.get("venue")}
+    if game_id:
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,venue")
+        if cur and cur[0].get("status") in ("scheduled", None) and (cur[0].get("tipoff_at") != g.tipoff_at or (ex.get("venue") and cur[0].get("venue") != ex.get("venue"))):
+            sb.patch("games", f"id=eq.{game_id}", {k: v for k, v in row.items() if v})
+        return
+    gm = sb.upsert("games", {"competition_id": comp_id, "home_team_id": home["id"], "away_team_id": away["id"], "status": "scheduled", **{k: v for k, v in row.items() if v}}, "id")
+    for tid in (home["id"], away["id"]):
+        sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tid}, "competition_id,team_id")
+    sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"], "game_id": gm[0]["id"],
+                                 "home_name": g.home_name, "away_name": g.away_name, "external_status": "scheduled",
+                                 "tipoff_at": g.tipoff_at, "game_date": (g.tipoff_at or "")[:10] or None}, "adapter,external_id")
+    run["fixtures"] = run.get("fixtures", 0) + 1
 
 
 def match_team_id(sb: Supabase, league_id: str, name: str, cache: dict) -> str | None:
@@ -246,6 +292,8 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
         g = sb.upsert("games", {"competition_id": comp["id"], "home_team_id": home["id"], "away_team_id": away["id"],
                                 "tipoff_at": b.tipoff_at, "status": status, **scores}, "id")
         game_id = g[0]["id"]
+    elif b.tipoff_at:
+        sb.patch("games", f"id=eq.{game_id}", {"tipoff_at": b.tipoff_at})
     else:
         cur = sb.select("games", f"id=eq.{game_id}&select=status")
         if cur and cur[0].get("status") == "final" and will_translate:
@@ -295,13 +343,34 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     sb.patch("games", f"id=eq.{game_id}", {"roster_snapshot": T["roster_snapshot"], "starters": T["starters"],
                                            "tip_winner": T["tip_winner"], "arrow_init": T["arrow_init"], "period": T["period"],
                                            "status": "live"})
-    sb.delete("game_events", f"game_id=eq.{game_id}")       # re-import = delete then insert (the platform's own model)
     rows = game_rows(game_id, T["events"])
-    for i in range(0, len(rows), 400):
-        sb.insert("game_events", rows[i:i + 400])
-    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": 0, "running": False,
+    # LIVE GAMES GROW: if the existing log is a prefix of the new one, append only the tail — the
+    # game page's gap check (last_seq) then pulls just the new rows, like a scorer's frames.
+    existing = sb.select("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock&order=seq")
+    same_prefix = len(existing) <= len(rows) and all(
+        e["seq"] == r["seq"] and e["t"] == r["t"] and e.get("team") == r["team"] and e.get("pid") == r["pid"] and e["period"] == r["period"] and e["clock"] == r["clock"]
+        for e, r in zip(existing, rows))
+    if existing and same_prefix:
+        tail = rows[len(existing):]
+        for i in range(0, len(tail), 400):
+            sb.insert("game_events", tail[i:i + 400])
+        how = f"+{len(tail)} events (now {len(rows)})"
+    else:
+        sb.delete("game_events", f"game_id=eq.{game_id}")   # a corrected feed = replace (the platform's own model)
+        for i in range(0, len(rows), 400):
+            sb.insert("game_events", rows[i:i + 400])
+        how = f"{len(rows)} events written"
+    # scoreboard state: FIBA's clock is mm:ss remaining in the current period
+    live = b.status == "live"
+    clock_ms = 0
+    try:
+        mm, ss = str(b.raw.get("clock") or "0:00").split(":")[:2]
+        clock_ms = (int(mm) * 60 + int(float(ss))) * 1000
+    except Exception:
+        pass
+    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": live and clock_ms > 0,
                              "score_home": T["home_score"], "score_away": T["away_score"], "last_seq": len(rows), "updated_at": now_iso()}, "game_id")
-    print(f"    = {len(rows)} events written" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
+    print(f"    = {how}" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
     if b.status == "final":
         code, body = sb.function("finalise-game", {"gameId": game_id})
         if code >= 300:
@@ -357,7 +426,9 @@ def main() -> int:
     ap.add_argument("--fixture-out", help="also write each bundle (+ raw) as JSON test fixtures here")
     ap.add_argument("--no-supabase", action="store_true")
     ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
-    ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games currently live so they finalise the moment they end (the 5-minute pass)")
+    ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games live or due to tip (the frequent pass)")
+    ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
+    ap.add_argument("--live-every", type=int, default=30)
     args = ap.parse_args()
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
@@ -385,18 +456,31 @@ def main() -> int:
             if args.ids:
                 games = [ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()]
             elif args.live_only:
-                live_ids = set()
-                if sb:
-                    try:
-                        for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=eq.live&select=external_id"):
-                            live_ids.add(str(r["external_id"]))
-                    except Exception as exc:
-                        print(f"   (live lookup failed: {exc})")
-                elif feed:
-                    live_ids = {k for k, v in feed.known(src["code"]).items() if v.get("status") == "live"}
-                games = [ScheduleGame(external_id=x) for x in sorted(live_ids)]
+                # games live now, or due to tip within 20 min / tipped within the last 4 h (from the schedule dates)
+                games = []
+                now = datetime.now(timezone.utc)
+                try:
+                    rows_ = (sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final&select=external_id,external_status,tipoff_at,home_name,away_name")
+                             if sb else [dict(external_id=k, external_status=v.get("status"), tipoff_at=v.get("date"), home_name=v.get("home"), away_name=v.get("away"))
+                                         for k, v in (feed.known(src["code"]) if feed else {}).items() if v.get("status") != "final"])
+                except Exception as exc:
+                    print(f"   (live lookup failed: {exc})"); rows_ = []
+                for r in rows_:
+                    due = False
+                    if r.get("external_status") == "live":
+                        due = True
+                    elif r.get("tipoff_at"):
+                        try:
+                            t = datetime.fromisoformat(str(r["tipoff_at"]).replace("Z", "+00:00"))
+                            due = (t - now).total_seconds() < 20 * 60 and (now - t).total_seconds() < 4 * 3600
+                        except ValueError:
+                            due = False
+                    if due:
+                        games.append(ScheduleGame(external_id=str(r["external_id"]), home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
+                                                  tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled"))
                 if not games:
-                    print("   no live games"); continue
+                    print("   no live or due games"); continue
+                print(f"   {len(games)} live/due game(s): " + ", ".join(f"{g.home_name or g.external_id} v {g.away_name}" for g in games[:6]))
             else:
                 games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
             run["games_seen"] = len(games)
@@ -419,9 +503,23 @@ def main() -> int:
                     [g for g in games if not (known.get(g.external_id, {}).get("status") == "final" and known.get(g.external_id, {}).get("hash"))])[: args.max_games]
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch")
             entries = {**known_repo, **known}
+            # schedule facts for every game (dates, venues, clubs) even before the feed publishes a payload
+            for g in games:
+                if g.tipoff_at or g.home_name:
+                    entries[g.external_id] = sched_entry(g, entries.get(g.external_id))
+                    if sb and not args.dry_run and not entries[g.external_id].get("hash"):
+                        try:
+                            write_fixture(sb, src, g, run)
+                            sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"],
+                                                         "home_name": g.home_name or None, "away_name": g.away_name or None,
+                                                         "external_status": g.status or "scheduled", "tipoff_at": g.tipoff_at,
+                                                         "game_date": (g.tipoff_at or "")[:10] or None}, "adapter,external_id")
+                        except Exception as exc:
+                            print(f"    (fixture {g.external_id}: {exc})")
+            live_set = []
             for g in todo:
                 try:
-                    b = adapter.fetch(g.external_id, src.get("adapter_config", {}))
+                    b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league
                     print(f"    ! {g.external_id}: {exc}")
                     continue
@@ -439,10 +537,10 @@ def main() -> int:
                 raw_ref = None
                 if sb:
                     try:
-                        raw_ref = write_supabase_feed(sb, src, b, entry_for(b, prev, None))
+                        raw_ref = write_supabase_feed(sb, src, b, entry_for(b, prev, None, g))
                     except Exception as exc:
                         print(f"    (supabase feed write failed: {exc})")
-                entry = entry_for(b, prev, raw_ref)
+                entry = entry_for(b, prev, raw_ref, g)
                 if feed:
                     feed.write_game(src["code"], b)
                 entries[g.external_id] = entry
@@ -454,10 +552,44 @@ def main() -> int:
                 if args.fixture_out:
                     write_fixture(Path(args.fixture_out), src, b)
                 run["games_written"] += 1
+                if b.status == "live":
+                    live_set.append(g)
                 print(f"    + {b.home_name} {entry['homeScore']}-{entry['awayScore']} {b.away_name} ({b.status}, {len(b.stints)} stints)")
+            # LIVE LOOP: keep the in-progress games moving every --live-every seconds until the budget
+            # runs out or every one of them has finished (then the next scheduled pass takes over)
+            deadline = time.time() + max(0, args.live_loop)
+            while args.live_loop and live_set and time.time() < deadline and not args.dry_run:
+                time.sleep(args.live_every)
+                still = []
+                for g in live_set:
+                    try:
+                        b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+                    except Exception as exc:
+                        print(f"    ! {g.external_id}: {exc}"); still.append(g); continue
+                    if not b:
+                        still.append(g); continue
+                    prev = entries.get(g.external_id)
+                    if prev and prev.get("hash") == b.payload_hash:
+                        still.append(g); continue                     # nothing new on the feed yet
+                    raw_ref = None
+                    if sb:
+                        try:
+                            raw_ref = write_supabase_feed(sb, src, b, entry_for(b, prev, None, g))
+                        except Exception as exc:
+                            print(f"    (supabase feed write failed: {exc})")
+                    entries[g.external_id] = entry_for(b, prev, raw_ref, g)
+                    if sb:
+                        try:
+                            write_platform(sb, src, b, run)
+                        except Exception as exc:
+                            print(f"    (platform write failed: {exc})")
+                    print(f"    ~ {b.home_name} {entries[g.external_id]['homeScore']}-{entries[g.external_id]['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
+                    if b.status == "live":
+                        still.append(g)
+                live_set = still
             if not args.dry_run:
-                if feed:
-                    feed.update_index(src, {k: v for k, v in entries.items() if v.get("hash")})
+                if feed and not args.live_only:
+                    feed.update_index(src, {k: v for k, v in entries.items() if v.get("hash") or v.get("date")})
                 if sb:
                     try:
                         write_supabase_competition(sb, src, len([v for v in entries.values() if v.get("hash")]))

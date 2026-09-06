@@ -34,9 +34,15 @@ on:
       ids:
         description: "Only these game ids, comma-separated (tests)"
         required: false
+      live:
+        description: "Run the live lane now (poll live/due games every 30 s for 9 min)"
+        type: boolean
+        default: false
 
+# the live lane (10-minute cron) runs for ~9 minutes polling in-progress games; it must not queue
+# behind, or block, the half-hourly discovery run — so the two lanes have their own groups
 concurrency:
-  group: league-ingest
+  group: league-ingest-${{ (github.event.schedule == '5-55/10 12-23 * * *' || github.event.inputs.live == 'true') && 'live' || 'main' }}
   cancel-in-progress: false
 
 permissions:
@@ -75,7 +81,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ github.event.schedule == '5-55/10 12-23 * * *' && '--live-only' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ (github.event.schedule == '5-55/10 12-23 * * *' || github.event.inputs.live == 'true') && '--live-only --live-loop 540 --live-every 30 --feed-out ""' || '' }}
       - name: Rebuild dataset from the archive (nightly / on request)
         if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
         env:
@@ -86,7 +92,7 @@ jobs:
             python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
           done
       - name: Commit feed + datasets
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ github.event.inputs.dry_run != 'true' && github.event.schedule != '5-55/10 12-23 * * *' && github.event.inputs.live != 'true' }}
         run: |
           git config user.name "league-ingest[bot]"
           git config user.email "league-ingest@users.noreply.github.com"

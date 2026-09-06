@@ -33,6 +33,11 @@ from typing import Iterable, Optional
 
 import re
 import urllib.parse
+from datetime import datetime, timezone
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # pragma: no cover
+    ZoneInfo = None
 
 import requests
 
@@ -110,8 +115,46 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 codes = []
         return [f"{self.HOSTED}/{c}/en{wh}" for c in dict.fromkeys(codes)]
 
+    # One hosted schedule block per match:
+    #   <div class="match-wrap STATUS_COMPLETE" id="extfix_2886984"> … <div class="match-time"><h6>Date / Time: </h6>
+    #   <span>Sep 5, 2026, 7:00 PM</span></div> … <a class="venuename">Oaklands College Sportszone</a> …
+    #   home-team … <span class="team-name-full">Oaklands Wolves</span><span class="team-name-code">OAK</span> … <div class="fake-cell">68</div>
+    # Times are the league's local time (config timezone, default Europe/London) → stored as UTC.
+    _BLOCK = re.compile(r'<div class="match-wrap([^"]*)"\s+id\s*=\s*"extfix_(\d{5,10})"(.*?)(?=<div class="match-wrap|\Z)', re.S)
+    _TIME = re.compile(r'match-time.*?<span>([^<]+)</span>', re.S)
+    _VENUE = re.compile(r'class="venuename">([^<]+)<', re.S)
+    _SIDE = re.compile(r'class="(home|away)-team".*?team-name-full">([^<]*)<.*?team-name-code">([^<]*)<(?:.*?fake-cell">([^<]*)<)?', re.S)
+
+    def parse_schedule(self, html: str, tz_name: str = "Europe/London") -> list[ScheduleGame]:
+        tz = ZoneInfo(tz_name) if ZoneInfo else None
+        out = []
+        for m in self._BLOCK.finditer(html):
+            classes, gid, body = m.group(1), m.group(2), m.group(3)
+            status = "final" if "COMPLETE" in classes else ("live" if ("INPROGRESS" in classes or "LIVE" in classes.upper()) else "scheduled")
+            tip = None
+            tm = self._TIME.search(body)
+            if tm:
+                txt = tm.group(1).strip().replace("\xa0", " ")
+                for fmt in ("%b %d, %Y, %I:%M %p", "%b %d, %Y %I:%M %p", "%d %b %Y, %H:%M", "%b %d, %Y"):
+                    try:
+                        dt = datetime.strptime(txt, fmt)
+                        dt = dt.replace(tzinfo=tz) if tz else dt.replace(tzinfo=timezone.utc)
+                        tip = dt.astimezone(timezone.utc).isoformat()
+                        break
+                    except ValueError:
+                        continue
+            venue = (self._VENUE.search(body) or [None, None])[1]
+            sides = {}
+            for sm in self._SIDE.finditer(body):
+                sides[sm.group(1)] = {"name": sm.group(2).strip(), "code": sm.group(3).strip(), "score": sm.group(4)}
+            h, a = sides.get("home", {}), sides.get("away", {})
+            out.append(ScheduleGame(external_id=gid, home_name=h.get("name", ""), away_name=a.get("name", ""), tipoff_at=tip, status=status,
+                                    extra={"venue": (venue or "").strip() or None, "home_code": h.get("code"), "away_code": a.get("code"),
+                                           "home_score": h.get("score"), "away_score": a.get("score")}))
+        return out
+
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
-        found: set[str] = set()
+        games: dict[str, ScheduleGame] = {}
         for hu in self.hosted_urls(schedule_url, dict(config, code=config.get("code") or self._code_hint)):
             try:
                 gap = time.time() - self._last
@@ -121,19 +164,26 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 r = requests.get(hu, headers={"User-Agent": UA}, timeout=40)
                 if r.status_code != 200:
                     continue
-                for pat in self.ID_PATTERNS:
-                    found.update(pat.findall(r.text))
-                if found:
-                    print(f"     hosted schedule: {len(found)} game ids ({hu[:80]}…)")
+                parsed = self.parse_schedule(r.text, config.get("timezone") or "Europe/London")
+                for g in parsed:
+                    games[g.external_id] = g
+                if not games:                                   # markup we do not know: fall back to bare ids
+                    for pat in self.ID_PATTERNS:
+                        for gid in pat.findall(r.text):
+                            games.setdefault(str(gid), ScheduleGame(external_id=str(gid)))
+                if games:
+                    dated = sum(1 for g in games.values() if g.tipoff_at)
+                    print(f"     hosted schedule: {len(games)} games, {dated} with a tip-off time ({hu[:80]}…)")
                     break
             except Exception as exc:
                 print(f"     hosted schedule failed ({exc}); trying the next candidate")
-        if not found:
+        if not games:
             if gvs is None:
                 raise RuntimeError(f"no ids from the hosted schedule and gamevis_schedule_scraper not importable ({_GVS_IMPORT_ERROR})")
-            found.update(str(x) for x in gvs.discover_game_ids([schedule_url], headless=not config.get("headed", False)))
-        for gid in sorted(found, key=lambda x: int(x)):
-            yield ScheduleGame(external_id=str(gid))
+            for x in gvs.discover_game_ids([schedule_url], headless=not config.get("headed", False)):
+                games[str(x)] = ScheduleGame(external_id=str(x))
+        for gid in sorted(games, key=lambda x: int(x)):
+            yield games[gid]
 
     _code_hint = None
 
@@ -153,7 +203,10 @@ class FibaLiveStatsAdapter(BaseAdapter):
         raw = self._get(FIBA_DATA_URL.format(game_id=external_id))
         if not raw or "tm" not in raw:
             return None
-        return self.bundle_from_raw(raw, external_id, config)
+        b = self.bundle_from_raw(raw, external_id, config)
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
 
     def bundle_from_raw(self, raw: dict, external_id: str, config: dict | None = None) -> GameBundle:
         config = config or {}
