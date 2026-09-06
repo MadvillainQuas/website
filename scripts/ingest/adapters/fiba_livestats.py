@@ -144,7 +144,7 @@ class FibaLiveStatsAdapter(BaseAdapter):
             time.sleep(self.min_request_gap_s - gap)
         self._last = time.time()
         r = requests.get(url, headers={"User-Agent": UA}, timeout=25)
-        if r.status_code == 404:
+        if r.status_code in (403, 404):     # not published yet (403 is what the feed returns before tip) — try next poll
             return None
         r.raise_for_status()
         return r.json()

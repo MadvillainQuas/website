@@ -65,7 +65,15 @@ class Platform:
         if r:
             return r
         self.log(f"  + league {slug} ({name})")
-        return self.insert("leagues", {"slug": slug, "name": name, "public_live": True, "youth_protected": False})
+        lg = self.insert("leagues", {"slug": slug, "name": name, "public_live": True, "youth_protected": False})
+        # a league nobody administers is invisible in the console: hand it to every platform admin
+        if self.sb and not self.dry:
+            try:
+                for m in self.sb.select("memberships", "role=eq.platform_admin&select=user_id"):
+                    self.sb.upsert("memberships", {"user_id": m["user_id"], "role": "league_admin", "scope_type": "league", "scope_id": lg["id"]}, "user_id,role,scope_type,scope_id")
+            except Exception as exc:
+                self.log(f"    (could not grant league_admin: {exc})")
+        return lg
 
     def season(self, league_id: str, name: str) -> dict:
         r = self.one("seasons", f"league_id=eq.{league_id}&name=eq.{name}&select=id,name")

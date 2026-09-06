@@ -46,6 +46,37 @@
     host.appendChild(form);
     const list = el('div', 'list'); host.appendChild(list);
 
+    /* NEW LEAGUE, from nothing but a name and its schedule URLs. One press creates the league,
+       the current season, a competition, makes you its administrator and registers the feed;
+       the worker does the rest. Platform admins only (the same rule as create_league). */
+    const isPlat = () => (typeof o.isPlatformAdmin === 'function' ? o.isPlatformAdmin() : !!o.isPlatformAdmin);
+    if (isPlat()) {
+      const nl = el('div'); nl.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in oklch,var(--ink-3) 30%,transparent)';
+      nl.innerHTML =
+        '<div class="note" style="margin:0 0 8px">NEW LEAGUE FROM A SCHEDULE — name it, paste its schedule URL(s), press create. Clubs, players, rosters, fixtures and every finished game arrive from the worker.</div>' +
+        '<div class="row">' +
+          '<input class="ep-input grow" type="text" id="nlName" placeholder="League name — e.g. British Championship Basketball">' +
+          '<input class="ep-input" type="text" id="nlCode" placeholder="CODE (BCB)" maxlength="12" style="flex:0 0 130px">' +
+          '<input class="ep-input" type="text" id="nlClient" placeholder="Genius code if different (HBBC)" maxlength="12" style="flex:0 0 220px">' +
+        '</div>' +
+        '<div class="row"><textarea class="ep-input grow" id="nlUrls" rows="2" placeholder="Schedule URL(s), one per line — the league page with ?WHurl=… or https://hosted.wh.geniussports.com/CODE/en/schedule…" style="resize:vertical"></textarea>' +
+          '<button type="button" class="ep-btn" id="nlGo" style="align-self:flex-start">create league</button></div>';
+      host.appendChild(nl);
+      nl.querySelector('#nlUrls').addEventListener('change', () => { const c = nl.querySelector('#nlCode'); if (!c.value) c.value = guessCode(nl.querySelector('#nlUrls').value.split(/\s+/)[0], nl.querySelector('#nlName').value); });
+      nl.querySelector('#nlGo').addEventListener('click', async () => {
+        const name = nl.querySelector('#nlName').value.trim(), code = nl.querySelector('#nlCode').value.trim().toUpperCase();
+        const client = nl.querySelector('#nlClient').value.trim().toUpperCase() || null;
+        const urls = nl.querySelector('#nlUrls').value.split(/\s+/).map(x => x.trim()).filter(x => /^https?:\/\//.test(x));
+        if (!name) return say('Give the league a name.', 'bad');
+        if (!code) return say('Give the feed a short code (e.g. BCB).', 'bad');
+        if (!urls.length) return say('Paste at least one schedule URL.', 'bad');
+        const { data, error } = await sb.rpc('create_league_from_feed', { p_name: name, p_code: code, p_urls: urls, p_client: client, p_adapter: 'fiba_livestats', p_poll: 30 });
+        if (error) return say(error.message, 'bad');
+        say('League created (' + data + '). Reloading…', 'ok');
+        setTimeout(() => location.reload(), 900);
+      });
+    }
+
     const urlIn = form.querySelector('#feedUrl'), codeIn = form.querySelector('#feedCode'), labelIn = form.querySelector('#feedLabel'), pollIn = form.querySelector('#feedPoll');
     urlIn.addEventListener('change', () => { if (!codeIn.value) codeIn.value = guessCode(urlIn.value, league() && league().name); if (!labelIn.value && league()) labelIn.value = league().name; });
 

@@ -193,10 +193,25 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
     A league connected from the console (auto_create) has its clubs / players / rosters created
     from the payload the first time they appear; a hand-mapped league only matches, never invents."""
     league_id = src.get("league_id")
-    if not league_id or b.raw is None:
-        return False
     ac = src.get("adapter_config") or {}
     plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
+    if not league_id and src.get("create_league") and b.raw is not None:
+        # a registry entry that asks for its own league (website admin card / config) — created once,
+        # then remembered on feed_competitions so every later run finds it
+        try:
+            fc = sb.select("feed_competitions", f"code=eq.{src['code']}&select=league_id")
+            league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
+            if not league_id:
+                lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"))
+                league_id = lg["id"]
+                sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
+                print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
+            src["league_id"] = league_id
+        except Exception as exc:
+            print(f"    (league creation failed: {exc})")
+            return False
+    if not league_id or b.raw is None:
+        return False
     comp_id = src.get("competition_id")
     if comp_id:
         comp = {"id": comp_id}
@@ -374,7 +389,11 @@ def main() -> int:
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch")
             entries = {**known_repo, **known}
             for g in todo:
-                b = adapter.fetch(g.external_id, src.get("adapter_config", {}))
+                try:
+                    b = adapter.fetch(g.external_id, src.get("adapter_config", {}))
+                except Exception as exc:                                 # one bad game never stops the league
+                    print(f"    ! {g.external_id}: {exc}")
+                    continue
                 if not b:
                     continue
                 run["games_fetched"] += 1
