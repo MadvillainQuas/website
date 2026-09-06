@@ -79,21 +79,52 @@ def watch_details(video_id: str) -> dict:
     if hit and (hit[1].get("started_at") or time.time() - hit[0] < 300):
         return hit[1]
     d = {"live": False, "started_at": None, "ended_at": None, "duration_s": 0, "title": None}
-    try:
-        r = requests.get(f"https://www.youtube.com/watch?v={video_id}", headers=HDR, timeout=40)
-        if r.status_code == 200:
-            w = r.text
-            g = lambda k: (re.search('"' + k + r'":"?([^",}]+)', w) or [None, None])[1]
-            d["started_at"] = g("startTimestamp"); d["ended_at"] = g("endTimestamp")
-            d["live"] = (g("isLiveContent") == "true") or bool(d["started_at"])
+    # THE PLAYER ENDPOINT FIRST. It is what the watch page itself calls, answers JSON from any
+    # network (a server fetching the HTML can be handed a consent page instead), and carries the
+    # live broadcast's start/end under microformat. The public web client key is baked into every
+    # YouTube page; it is not a credential.
+    for client in ({"clientName": "ANDROID", "clientVersion": "19.09.37", "androidSdkVersion": 30},
+                   {"clientName": "WEB", "clientVersion": "2.20240905.00.00"}):
+        try:
+            r = requests.post("https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false",
+                              json={"context": {"client": client}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+                              headers={"User-Agent": UA if client["clientName"] == "WEB" else "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                                       "Content-Type": "application/json"}, timeout=30)
+            if r.status_code != 200:
+                continue
+            j = r.json()
+            vd = j.get("videoDetails") or {}
+            mf = ((j.get("microformat") or {}).get("playerMicroformatRenderer") or {})
+            lb = mf.get("liveBroadcastDetails") or {}
+            if not vd and not mf:
+                continue
+            d["title"] = vd.get("title") or ((mf.get("title") or {}).get("simpleText"))
+            d["started_at"] = lb.get("startTimestamp"); d["ended_at"] = lb.get("endTimestamp")
+            d["live"] = bool(vd.get("isLiveContent")) or bool(d["started_at"])
             try:
-                d["duration_s"] = int(g("lengthSeconds") or 0)
+                d["duration_s"] = int(vd.get("lengthSeconds") or 0)
             except ValueError:
                 pass
-            t = re.search(r'"title":"([^"]+)"', w)
-            d["title"] = t.group(1) if t else None
-    except Exception:
-        pass
+            break
+        except Exception:
+            continue
+    if not d["title"]:
+        # the watch page, as a last resort
+        try:
+            r = requests.get(f"https://www.youtube.com/watch?v={video_id}", headers=HDR, timeout=40)
+            if r.status_code == 200:
+                w = r.text
+                g = lambda k: (re.search('"' + k + r'":"?([^",}]+)', w) or [None, None])[1]
+                d["started_at"] = d["started_at"] or g("startTimestamp"); d["ended_at"] = d["ended_at"] or g("endTimestamp")
+                d["live"] = d["live"] or (g("isLiveContent") == "true") or bool(d["started_at"])
+                try:
+                    d["duration_s"] = d["duration_s"] or int(g("lengthSeconds") or 0)
+                except ValueError:
+                    pass
+                t = re.search(r'"title":"([^"]+)"', w)
+                d["title"] = t.group(1) if t else None
+        except Exception:
+            pass
     _watch_cache[video_id] = (time.time(), d)
     return d
 
@@ -238,8 +269,28 @@ def find_broadcast(home: str, away: str, tipoff_iso: str, cfg: dict) -> dict | N
     return found
 
 
+def log_is_timed(sb, game_id: str) -> bool:
+    """The page's own physical test: real time between the first and last event can never be less
+    than the game time between them. A log inserted (or replaced) in one go fails it, and its
+    created_at means nothing about when the plays happened."""
+    try:
+        rows = sb.select("game_events", f"game_id=eq.{game_id}&select=period,clock,created_at&order=seq")
+    except Exception:
+        return False
+    if len(rows) < 2:
+        return False
+    t0 = datetime.fromisoformat(rows[0]["created_at"].replace("Z", "+00:00"))
+    t1 = datetime.fromisoformat(rows[-1]["created_at"].replace("Z", "+00:00"))
+    last = rows[-1]
+    plen = lambda p: 600000 if p <= 4 else 300000
+    played = sum(plen(q) for q in range(1, int(last.get("period") or 1))) + plen(int(last.get("period") or 1)) - max(0, min(plen(int(last.get("period") or 1)), int(last.get("clock") or 0)))
+    return (t1 - t0).total_seconds() * 1000 >= played * 0.6
+
+
 def tip_instant(sb, game_id: str) -> tuple[str | None, int | None]:
-    """(tip_at iso, tip_wall ms): the first period_start's poll stamp, else that row's insert time."""
+    """(tip_at iso, tip_wall ms): the first period_start's poll stamp; else, only for a log that was
+    written live, that row's insert time; else nothing — the offset is then a person's (or the
+    scoreboard reader's) to give, which beats a confident wrong number."""
     try:
         ev = sb.select("game_events", f"game_id=eq.{game_id}&t=eq.period_start&period=eq.1&select=payload,created_at&order=seq&limit=1")
     except Exception:
@@ -249,7 +300,9 @@ def tip_instant(sb, game_id: str) -> tuple[str | None, int | None]:
     w = (ev[0].get("payload") or {}).get("wall")
     if isinstance(w, (int, float)) and w > 0:
         return datetime.fromtimestamp(w / 1000, tz=timezone.utc).isoformat(), int(w)
-    return ev[0].get("created_at"), None
+    if log_is_timed(sb, game_id):
+        return ev[0].get("created_at"), None
+    return None, None
 
 
 def attach(sb, game_id: str, home: str, away: str, tipoff_iso: str, cfg: dict, log=print) -> bool:
@@ -297,13 +350,22 @@ def complete(sb, game_id: str, log=print) -> bool:
     if not v.get("stream_started_at") and v.get("video_ref"):
         d = watch_details(v["video_ref"])
         if d.get("started_at"):
-            patch["stream_started_at"] = d["started_at"]
+            patch["stream_started_at"] = d["started_at"]; patch["is_live"] = True
     if not v.get("tip_at"):
         tip_at, tip_wall = tip_instant(sb, game_id)
         if tip_at:
             patch["tip_at"] = tip_at
             if tip_wall:
                 patch["tip_wall"] = tip_wall
+    elif not v.get("tip_wall"):
+        # a tip taken from a row's insert time before the log was checked for being live-written:
+        # keep it only if the log passes that test now, else withdraw it (a wrong anchor is worse
+        # than none - the page then asks for the offset, or reads it off the scoreboard)
+        tip_at, tip_wall = tip_instant(sb, game_id)
+        if tip_wall:
+            patch["tip_at"] = tip_at; patch["tip_wall"] = tip_wall
+        elif not tip_at:
+            patch["tip_at"] = None
     if not patch:
         return False
     try:
