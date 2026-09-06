@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball (M)",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T16:15:05.131176+00:00",
+"updated": "2026-09-06T16:18:57.050060+00:00",
 "games": [
 {
 "id": "2829681",
@@ -1730,7 +1730,7 @@
 "date": null,
 "hash": "0720297d9dcd5ba817d1c5fab416d86b93b671a3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702542.json",
-"updated": "2026-09-06T16:12:00.306613+00:00"
+"updated": "2026-09-06T16:18:57.045564+00:00"
 }
 ]
 }
