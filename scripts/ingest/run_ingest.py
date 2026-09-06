@@ -187,14 +187,39 @@ def write_supabase_competition(sb: Supabase, src: dict, count: int) -> None:
                                     "league_id": src.get("league_id"), "games": count, "updated_at": now_iso()}, "code")
 
 
+def resolve_league(sb: Supabase, src: dict, run: dict) -> str | None:
+    """The platform league a source feeds: given in the registry, remembered on feed_competitions,
+    or — for an entry that asks for its own league (create_league) — created now, once."""
+    ac = src.get("adapter_config") or {}
+    plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
+    league_id = src.get("league_id")
+    if league_id or not src.get("create_league"):
+        return league_id
+    try:
+        fc = sb.select("feed_competitions", f"code=eq.{src['code']}&select=league_id")
+        league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
+        if not league_id:
+            lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"), src.get("league_country"))
+            league_id = lg["id"]
+            sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
+            print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
+        elif src.get("league_country"):        # keep an existing league's country in step with the registry
+            plat.league(src["code"], src.get("league_name") or src["code"], src.get("league_slug"), src["league_country"])
+        src["league_id"] = league_id
+    except Exception as exc:
+        print(f"    (league creation failed: {exc})")
+        return None
+    return league_id
+
+
 def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
     fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
-    league_id = src.get("league_id")
+    league_id = resolve_league(sb, src, run)
     if not league_id or not (g.home_name and g.away_name):
         return
     ac = src.get("adapter_config") or {}
-    plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
+    plat = run["_platform"]
     comp_id = src.get("competition_id")
     if not comp_id:
         comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
@@ -238,26 +263,9 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
     from the payload the first time they appear; a hand-mapped league only matches, never invents."""
-    league_id = src.get("league_id")
     ac = src.get("adapter_config") or {}
-    plat = run.setdefault("_platform", Platform(sb, dry=False, auto_create=bool(ac.get("auto_create", True))))
-    if not league_id and src.get("create_league") and b.raw is not None:
-        # a registry entry that asks for its own league (website admin card / config) — created once,
-        # then remembered on feed_competitions so every later run finds it
-        try:
-            fc = sb.select("feed_competitions", f"code=eq.{src['code']}&select=league_id")
-            league_id = fc[0]["league_id"] if fc and fc[0].get("league_id") else None
-            if not league_id:
-                lg = plat.league(src["code"], src.get("league_name") or src.get("label") or src["code"], src.get("league_slug"), src.get("league_country"))
-                league_id = lg["id"]
-                sb.upsert("feed_competitions", {"code": src["code"], "label": src.get("label", src["code"]), "adapter": src["adapter"], "league_id": league_id, "updated_at": now_iso()}, "code")
-                print(f"    + league {src.get('league_slug') or src['code']} created for {src['code']}")
-            src["league_id"] = league_id
-            if src.get("league_country"):          # keeps an already-created league's country in step with the registry
-                plat.league(src["code"], src.get("league_name") or src["code"], src.get("league_slug"), src["league_country"])
-        except Exception as exc:
-            print(f"    (league creation failed: {exc})")
-            return False
+    league_id = resolve_league(sb, src, run)
+    plat = run["_platform"]
     if not league_id or b.raw is None:
         return False
     comp_id = src.get("competition_id")
