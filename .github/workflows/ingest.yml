@@ -11,7 +11,8 @@ name: League ingest (schedule → feed → Supabase)
 # host at a time.
 on:
   schedule:
-    - cron: "*/30 12-23 * * *"      # every 30 min, 12:00–23:30 UTC (UK/EU evenings + US daytime)
+    - cron: "*/30 12-23 * * *"      # every 30 min, 12:00–23:30 UTC (UK/EU evenings + US daytime): discovery + new games
+    - cron: "5-55/10 12-23 * * *"   # every 10 min in between: live games only, so a finished game finalises within minutes
     - cron: "15 3 * * *"            # nightly dataset rebuild
   workflow_dispatch:
     inputs:
@@ -74,7 +75,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ github.event.schedule == '5-55/10 12-23 * * *' && '--live-only' || '' }}
       - name: Rebuild dataset from the archive (nightly / on request)
         if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
         env:
