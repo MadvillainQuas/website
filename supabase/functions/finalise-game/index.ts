@@ -76,7 +76,17 @@ Deno.serve(async (req) => {
      actions are attributed to a platform admin in the audit log. Everything else it does
      goes through the admin client anyway; this only lets it reach the finalise gate. */
   const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const isWorker = bearer.length > 0 && bearer === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  let isWorker = bearer.length > 0 && bearer === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!isWorker && bearer && req.headers.get('x-ingest-worker') === '1') {
+    // the worker may hold the newer sb_secret_… form of the service key, which is not the
+    // string this function was deployed with — prove the privilege instead of matching bytes:
+    // only a service-role key may list users.
+    try {
+      const probe = createClient(Deno.env.get('SUPABASE_URL')!, bearer, { auth: { persistSession: false } });
+      const { error } = await probe.auth.admin.listUsers({ page: 1, perPage: 1 });
+      isWorker = !error;
+    } catch (_) { isWorker = false; }
+  }
   let user: { id: string } | null = null;
   if (isWorker) {
     const { data: adminRow } = await admin.from('memberships').select('user_id')

@@ -93,7 +93,7 @@ class Supabase:
         r.raise_for_status(); return True
 
     def function(self, name: str, body: dict):
-        r = requests.post(f"{self.url}/functions/v1/{name}", headers=self.h, json=body, timeout=120)
+        r = requests.post(f"{self.url}/functions/v1/{name}", headers=dict(self.h, **{"x-ingest-worker": "1"}), json=body, timeout=120)
         return r.status_code, (r.json() if r.text and r.headers.get("content-type", "").startswith("application/json") else r.text)
 
     def storage_put(self, bucket: str, path: str, data: bytes, content_type="application/json") -> str:
