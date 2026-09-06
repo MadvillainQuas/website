@@ -18941,7 +18941,8 @@ if __name__ == '__main__':
                     }
                     if (playerNum && this.periodStats[scoringTeam] && this.periodStats[scoringTeam][this.currentPeriod][playerNum]) {
                         this.periodStats[scoringTeam][this.currentPeriod][playerNum].tov++;
-                        this.teamPeriodTotals[scoringTeam][this.currentPeriod].tov++;
+                        // (the team's period total was already counted above — counting it again here
+                        //  doubled every attributed turnover and inflated the half-by-half possessions)
                     }
                 }
                 
@@ -22852,6 +22853,15 @@ if __name__ == '__main__':
             // Calculate opponent possessions for rate stats
             const oppPossessions = Math.max(1, oppFga + 0.44 * oppFta - oppOreb + oppTov);
             const opp2pa = Math.max(1, oppFga - oppFg3a); // Opponent 2-point attempts for BLK%
+            // This team's possessions over the selected periods (same 0.96 estimate as the game), for
+            // the pace-off calculation below: the floor without a player = the periods' total less his.
+            let tpFga = 0, tpFta = 0, tpOreb = 0, tpTov = 0;
+            (periods || []).forEach(per => {
+                const t = this.teamPeriodTotals && this.teamPeriodTotals[teamName] && this.teamPeriodTotals[teamName][per];
+                if (t) { tpFga += t.fga || 0; tpFta += t.fta || 0; tpOreb += t.oreb || 0; tpTov += t.tov || 0; }
+            });
+            const teamPossessions96 = 0.96 * (tpFga + 0.44 * tpFta - tpOreb + tpTov);
+            const oppPossessions96 = 0.96 * (oppFga + 0.44 * oppFta - oppOreb + oppTov);
             
             // Team minutes for rate stat adjustments
             // In basketball, team minutes = 5 * game minutes (5 players on court)
@@ -22981,8 +22991,7 @@ if __name__ == '__main__':
                     const ocPossAvg = (ocTeamPoss + ocOppPoss) / 2;
                     p.onCourtPace = ocSecs > 0 ? (ocPossAvg / (ocSecs / 60) * 40) : 0;
                     const gMin = (typeof gameMinutes === 'number' && gameMinutes > 0) ? gameMinutes : 0;
-                    const gPoss = (typeof teamPossessions === 'number' && typeof oppPossessions === 'number')
-                        ? (teamPossessions + oppPossessions) / 2 : null;
+                    const gPoss = (teamPossessions96 > 0 && oppPossessions96 > 0) ? (teamPossessions96 + oppPossessions96) / 2 : null;
                     const offSecs = gMin ? Math.max(0, gMin * 60 - ocSecs) : 0;
                     p.offCourtPace = (gPoss != null && offSecs > 60) ? (Math.max(0, gPoss - ocPossAvg) / (offSecs / 60) * 40) : 0;
                     p.pacePlusMinus = (p.onCourtPace > 0 && p.offCourtPace > 0) ? p.onCourtPace - p.offCourtPace : 0;
@@ -23077,14 +23086,16 @@ if __name__ == '__main__':
             // This is the simplified version commonly used in basketball analytics
             // The 0.44 coefficient accounts for and-1s, technical FTs, and 3-shot fouls
             
-            const possessions = totals.fga + 0.44 * totals.fta - totals.oreb + totals.tov;
+            // Same estimate as the full-game path (0.96 × …) so a half's possessions, ORtg and pace
+            // sit on the same scale as the game's.
+            const possessions = 0.96 * (totals.fga + 0.44 * totals.fta - totals.oreb + totals.tov);
             totals.possessions = Math.max(possessions, 1); // Avoid division by zero
             
             // Offensive Rating = (Points / Possessions) * 100
             totals.ortg = possessions > 0 ? (totals.points / possessions * 100) : 0;
             
             // Calculate opponent possessions for DRtg
-            const oppPossessions = totals.oppFga + 0.44 * totals.oppFta - totals.oppOreb + totals.oppTov;
+            const oppPossessions = 0.96 * (totals.oppFga + 0.44 * totals.oppFta - totals.oppOreb + totals.oppTov);
             totals.oppPossessions = Math.max(oppPossessions, 1);
 
             // Pace over the selected periods: this team's possessions per 40 on the game clock those

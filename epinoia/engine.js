@@ -410,8 +410,17 @@ function playerAdv(game, d, t, p, TT, OT) {
   const oc = s.oc;
   const ocPoss    = 0.96 * (oc.tFGA + oc.tTOV + 0.44 * oc.tFTA - oc.tOR);
   const ocOppPoss = 0.96 * (oc.oFGA + oc.oTOV + 0.44 * oc.oFTA - oc.oOR);
+  // pace on the floor / off it (both teams' possessions per 40 — the game-pace definition);
+  // off = the game's possessions and minutes less the player's; overtime is in TT.minutes
+  const ocPossAvg = (ocPoss + ocOppPoss) / 2;
+  const gamePossAvg = ((TT.possessions || 0) + (OT.possessions || 0)) / 2;
+  const paceOn = mins > 0 ? ocPossAvg / mins * 40 : 0;
+  const offMin = Math.max(0, gameMinutes - mins);
+  const paceOff = offMin > 1 ? Math.max(0, gamePossAvg - ocPossAvg) / offMin * 40 : 0;
+  const pacePM = (paceOn > 0 && paceOff > 0) ? paceOn - paceOff : 0;
 
   const r = {
+    paceOn, paceOff, pacePM,
     id: p.id, num: p.num, name: p.name, min: mins, minTxt: fmtMin(s.min),
     fgm, ast: s.ast, pts: s.pts, ptsAst: s.ptsAst, tpc: s.pts + s.ptsAst,
     ppp: dv(s.pts, pPoss), usg, astPct,

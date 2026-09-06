@@ -44208,6 +44208,7 @@
                                     { key: 'bayesDbpm', label: 'BayesDBPM', group: 'APM', higherBetter: true, isApm: true, section: 'apm', desc: 'Bayesian DBPM/dRAPM — defensive variance-weighted posterior' }
                                 ] : []),
                                 // Ratings (On/Off)
+                                { key: 'pacePM', label: 'PACE ±', group: 'Ratings', higherBetter: null, isOnOff: true, section: 'ratings', desc: 'Pace On minus Off - possessions per 40 (offence and defence averaged) with the player on the floor minus without them. A style measure, not a quality one' },
                                 { key: 'net', label: 'Net±', group: 'Ratings', higherBetter: true, isOnOff: true, section: 'ratings', desc: 'Net Rating On vs Team Average - How much better/worse the team is with player on court' },
                                 { key: 'off', label: 'ORtg±', group: 'Ratings', higherBetter: true, isOnOff: true, section: 'ratings', desc: 'Offensive Rating On vs Team Average - Offensive efficiency with player on court' },
                                 { key: 'def', label: 'DRtg±', group: 'Ratings', higherBetter: true, isOnOff: true, section: 'ratings', desc: 'Defensive Rating On vs Team Average - Defensive efficiency with player on court (inverted: positive = better defense)' },
@@ -44621,6 +44622,10 @@
                                         // Pace
                                         paceF: d_off(onStats.paceF, 'paceF'),
                                         paceV: d_def(onStats.paceV, 'paceV'),
+                                        // V15.6: PACE ± = pace with the player on the floor minus pace with them off
+                                        // (offensive + defensive possessions per 40, averaged — the game-pace definition),
+                                        // always ON minus OFF regardless of the on-off method chosen above
+                                        pacePM: (((onStats.paceF || 0) + (onStats.paceV || 0)) / 2) - (((offStats.paceF || 0) + (offStats.paceV || 0)) / 2),
                                         // Transition/MISC
                                         fastBreak100: d_off(onStats.fastBreak100, 'fastBreak100'),
                                         fastBreak100V: d_def(onStats.fastBreak100V, 'fastBreak100V'),
@@ -45779,7 +45784,7 @@
                                         // Mode pills (Individual / On-Off / VS) — these REPLACE the old Row 2 mode buttons
                                         const basicCols = ['games', 'mpg', 'pts75', 'fgm75', 'fga75', 'fgPct', 'tpm75', 'tpa75', 'threePctIndiv', 'ftm75', 'fta75', 'ftPct', 'oreb75', 'dreb75', 'reb75', 'ast75', 'stl75', 'blk75', 'tov75', 'pf75'];
                                         const indivCols = ['totalMinutes', 'games', 'mpg', 'pts75', 'reb75', 'oreb75', 'dreb75', 'ast75', 'stl75', 'blk75', 'tov75', 'fgPct', 'ftPct', 'rima100', 'rimfgPct', 'rimPressureZ', 'mida100', 'midfgPct', 'tpa100', 'threePctIndiv', 'spacingZ', 'efgPct', 'tsPct', 'usgPct', 'astUsgRatio', 'ftr', 'orebPct', 'drebPct', 'trbPct', 'astPctIndiv', 'tovPct', 'stlPctIndiv', 'blkPctIndiv', 'stockPct', 'athleteCoef', 'bpm', 'obpm', 'dbpm', 'fbp40'];
-                                        const onOffColsBase = ['net', 'off', 'def', 'offEfg', 'defEfg', 'offTov', 'defTov', 'offOreb', 'defOreb', 'offFtR', 'defFtR', 'rimPct', 'midPct', 'threePct', 'rimPctV', 'midPctV', 'threePctV', 'rimVol', 'midVol', 'threeVol', 'rimVolV', 'midVolV', 'threeVolV', 'astPct', 'stlPct', 'blkPct', 'fastBreak100', 'fastBreak100V', 'secChance100', 'ptsOffTov100'];
+                                        const onOffColsBase = ['net', 'off', 'def', 'offEfg', 'defEfg', 'offTov', 'defTov', 'offOreb', 'defOreb', 'offFtR', 'defFtR', 'rimPct', 'midPct', 'threePct', 'rimPctV', 'midPctV', 'threePctV', 'rimVol', 'midVol', 'threeVol', 'rimVolV', 'midVolV', 'threeVolV', 'astPct', 'stlPct', 'blkPct', 'pacePM', 'fastBreak100', 'fastBreak100V', 'secChance100', 'ptsOffTov100'];
                                         const applyBasic = () => {
                                             setLeaderboardTableColumns([...basicCols]);
                                             setLeaderboardRapmMode(false);

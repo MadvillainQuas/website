@@ -55,7 +55,9 @@ const ADV_GROUPS = [
     {k:'ocOrtg',l:'ortg',diff:'ortg'},
     {k:'ocEfg',l:'efg',diff:'efg'},
     {k:'ocOreb',l:'orb%',diff:'orebp'},
-    {k:'ocTov',l:'tov%',diff:'tovp',inv:true,sep:true}]},
+    {k:'ocTov',l:'tov%',diff:'tovp',inv:true},
+    /* pace with the player on minus pace with them off (both teams' possessions per 40) */
+    {k:'pacePM',l:'pace±',pill:true,dec:1,sep:true}]},
   {key:'defcourt', label:'defensive on-court', cols:[
     {k:'ocDrtg',l:'drtg',diff:'ortg',inv:true},
     {k:'ocOppEfg',l:'opp efg',diff:'efg',inv:true},
@@ -574,7 +576,16 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
   const oc = s.oc;
   const ocPoss = 0.96*(oc.tFGA + oc.tTOV + 0.44*oc.tFTA - oc.tOR);
   const ocOppPoss = 0.96*(oc.oFGA + oc.oTOV + 0.44*oc.oFTA - oc.oOR);
+  /* pace on the floor / off it — both teams' possessions per 40, the game-pace definition;
+     off = the game's possessions and minutes less the player's; overtime is in TT.minutes */
+  const ocPossAvg = (ocPoss + ocOppPoss) / 2;
+  const gamePossAvg = ((TT.possessions || 0) + (OT.possessions || 0)) / 2;
+  const paceOn = mins > 0 ? ocPossAvg / mins * 40 : 0;
+  const offMin = Math.max(0, gameMinutes - mins);
+  const paceOff = offMin > 1 ? Math.max(0, gamePossAvg - ocPossAvg) / offMin * 40 : 0;
+  const pacePM = (paceOn > 0 && paceOff > 0) ? paceOn - paceOff : 0;
   const r = {
+    paceOn, paceOff, pacePM,
     id:p.id, num:p.num, name:p.name, min:mins, minTxt:fmtMin(s.min),
     fgm, ast:s.ast, pts:s.pts, ptsAst:s.ptsAst, tpc:s.pts+s.ptsAst,
     ppp: dv(s.pts,pPoss), usg, astPct,
@@ -617,7 +628,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       const hid = (advHidden.has(g.key)?'col-hidden ':'')+'g-'+g.key+' ';
       const sep = c.sep?'sep':'';
       const v = r[c.k];
-      if(c.pill) return '<td class="'+hid+sep+'"><span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(0)+'</span></td>';
+      if(c.pill) return '<td class="'+hid+sep+'"><span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(c.dec!=null?c.dec:0)+'</span></td>';
       if(c.diff){ const D=diffTxt(v,gameAvg[c.diff],c.inv); const eff = c.inv?-D.dff:D.dff;
         const w = Math.max(0,Math.min(100,50+(eff/15)*50)); const left=Math.min(50,w), right=Math.max(50,w);
         return '<td class="'+hid+sep+'"><span class="dcell"><span class="v '+D.cls+'">'+D.txt+'</span><span class="track"></span>'+
