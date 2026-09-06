@@ -305,7 +305,7 @@ function renderShell() {
       S.teams[0].name + ' v ' + S.teams[1].name);
   offerToScore();
   offerToRevert();
-  offerToAttachVideo();
+  offerToAttachVideo(); offerToMoveCompetition();
   /* THE GLOWS COME FROM THE CLUB COLOURS TOO.
 
      boxscore.css colours 27 things from --team0/--team1 — the score, the tab
@@ -963,7 +963,7 @@ async function offerToRevert() {
    functions no-op on their own guard. */
 window.addEventListener('storage', e => {
   if (e.key && /-auth-token$/.test(e.key)) {
-    offerToScore(); offerToRevert(); offerToAttachVideo();
+    offerToScore(); offerToRevert(); offerToAttachVideo(); offerToMoveCompetition();
   }
 });
 
@@ -1130,10 +1130,10 @@ function decorateTeams(scope) {
     node.textContent = '';
 
     /* the crest, when the club actually has one */
-    if (club.logo_path) {
+    const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(club.logo_path) : null;
+    if (crestUrl) {
       const img = document.createElement('img');
-      img.src = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' +
-                club.logo_path.split('/').map(encodeURIComponent).join('/');
+      img.src = crestUrl;
       img.alt = '';
       img.style.cssText = TEAM_CREST_CSS;
       img.addEventListener('error', () => img.remove());
@@ -1261,6 +1261,65 @@ function feedFresh() {
   if (!sub || !sub.state || !sub.state.updated_at) return false;
   const t = new Date(sub.state.updated_at).getTime();
   return isFinite(t) && (Date.now() - t) < feedFreshMs;
+}
+
+/* ---- which competition this game counts for --------------------------------
+   A game's phase IS its competition (league, cup, trophy, playoff), and the
+   console can move one. The same control here, for the people who may manage
+   the game, so a fixture entered under the wrong phase — or a fed game the
+   feed could only file under the league — can be put right from the page it
+   is being looked at on, before or after it is played. Both tables are
+   rebuilt afterwards, exactly as the console does. */
+let compShown = false;
+async function offerToMoveCompetition() {
+  const sel = document.getElementById('compCta');
+  if (!sel || compShown || !gameId) return;
+  const token = storedToken();
+  if (!token) return;
+  try {
+    const ok = await withRetry(() => rpcCall('can_manage_game', { p_game: gameId }, token));
+    if (ok !== true) return;
+    const H = { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token, Accept: 'application/json' };
+    const g = await (await fetch(CFG.supabaseUrl + '/rest/v1/games?id=eq.' + gameId +
+      '&select=competition_id,competitions(season_id)', { headers: H, cache: 'no-store' })).json();
+    const row = g && g[0];
+    const seasonId = row && row.competitions && row.competitions.season_id;
+    if (!seasonId) return;
+    const comps = await (await fetch(CFG.supabaseUrl + '/rest/v1/competitions?season_id=eq.' + seasonId +
+      '&select=id,name,kind&order=name', { headers: H, cache: 'no-store' })).json();
+    if (!Array.isArray(comps) || comps.length < 2) return;   // nowhere to move it to
+    sel.textContent = '';
+    comps.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name + (c.kind && c.kind !== 'league' ? ' (' + c.kind + ')' : '');
+      sel.appendChild(o);
+    });
+    sel.value = row.competition_id;
+    sel.onchange = async () => {
+      const to = comps.find(c => c.id === sel.value);
+      if (!to || to.id === row.competition_id) return;
+      if (!confirm('Move this game to ' + to.name + '? Both tables will be rebuilt.')) { sel.value = row.competition_id; return; }
+      sel.disabled = true;
+      const r = await fetch(CFG.supabaseUrl + '/rest/v1/games?id=eq.' + gameId, {
+        method: 'PATCH', cache: 'no-store',
+        headers: Object.assign({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }, H),
+        body: JSON.stringify({ competition_id: to.id, tie_id: null, leg: null })
+      });
+      if (!r.ok) { sel.disabled = false; sel.value = row.competition_id; alert('Could not move the game (HTTP ' + r.status + ').'); return; }
+      /* a played game counts towards a table, so BOTH ends are redone */
+      for (const cid of [row.competition_id, to.id]) {
+        for (const fn of ['recompute_standings', 'compute_season_awards', 'advance_bracket']) {
+          try { await rpcCallRaw(fn, { p_competition: cid }, token); } catch (_) {}
+        }
+      }
+      location.reload();
+    };
+    sel.classList.remove('hide');
+    compShown = true;
+  } catch (_) {
+    /* a page without the control is a page, not a failure */
+  }
 }
 
 /* THE STATUS WATCH — how this page learns the game has been taken away.
@@ -1636,7 +1695,7 @@ async function renderPreview() {
      normally attached. */
   offerToScore();
   offerToRevert();
-  offerToAttachVideo();
+  offerToAttachVideo(); offerToMoveCompetition();
 }
 
 /* ------------------------------------------------------------------- boot --- */

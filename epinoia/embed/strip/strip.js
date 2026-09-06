@@ -568,6 +568,15 @@ function card(g) {
     const box = el('div', 'tm' + (final ? (sc > other ? ' win' : sc < other ? ' lose' : '') : ''));
     const cr = el('span', 'crest', abbr(t).slice(0, 2));
     cr.style.background = (t && t.colour) || '#93f2bf';
+    /* the club's crest where it has one (uploaded, or from its LiveStats feed) */
+    const crestUrl = (t && window.epinoiaLogoUrl) ? window.epinoiaLogoUrl(t.logo_path) : null;
+    if (crestUrl) {
+      const img = document.createElement('img');
+      img.src = crestUrl; img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
+      img.addEventListener('error', () => img.remove());
+      cr.textContent = ''; cr.appendChild(img);
+    }
     box.append(cr, el('span', 'abbr', abbr(t)));
     return box;
   };
@@ -646,7 +655,7 @@ let liveNow = false;
 
 async function load() {
   let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
-    'home:home_team_id(slug,name,short_name,colour),away:away_team_id(slug,name,short_name,colour),' +
+    'home:home_team_id(slug,name,short_name,colour,logo_path),away:away_team_id(slug,name,short_name,colour,logo_path),' +
     'competitions(name,seasons(leagues(slug,name)))' +
     '&status=in.(live,scheduled,final,finalising)&order=tipoff_at.desc&limit=60';
 
@@ -667,7 +676,7 @@ async function load() {
     [gs, live] = await Promise.all([
       api(sel),
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,' +
-          'home:home_team_id(slug,name,short_name,colour),away:away_team_id(slug,name,short_name,colour),' +
+          'home:home_team_id(slug,name,short_name,colour,logo_path),away:away_team_id(slug,name,short_name,colour,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
           '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => [])
     ]);

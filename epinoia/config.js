@@ -26,6 +26,32 @@ window.EPINOIA_CONFIG = {
 
 /* Lazily create the Supabase client, only if the SDK and a key are present.
    Pages work in local mode with neither. */
+/* ============================================================================
+   A CLUB'S CREST, WHEREVER IT CAME FROM.
+
+   teams.logo_path started life as a path inside the media-public bucket (a
+   club's approved upload). A league fed from FIBA LiveStats gets its crests
+   from the feed instead — Genius publishes each club's logo at an absolute
+   URL, and the ingest worker writes that in. One resolver, used by every page
+   that draws a crest, so both kinds work everywhere and nothing prefixes a
+   bucket path onto a URL that already has a host. Tolerates the JSON blob an
+   early worker wrote in place of the URL. Returns null for "no crest".
+   ============================================================================ */
+window.epinoiaLogoUrl = function (path) {
+  if (!path) return null;
+  let p = String(path).trim();
+  if (p.charAt(0) === '{') {
+    try { p = (JSON.parse(p) || {}).url || ''; } catch (_) { return null; }
+  }
+  if (!p) return null;
+  if (/^https:\/\//i.test(p)) return p;
+  if (/^http:\/\//i.test(p)) return null;          // mixed content: the browser would block it anyway
+  const c = window.EPINOIA_CONFIG || {};
+  if (!c.supabaseUrl) return null;
+  return c.supabaseUrl + '/storage/v1/object/public/media-public/' +
+         p.split('/').map(encodeURIComponent).join('/');
+};
+
 window.epinoiaClient = function () {
   const c = window.EPINOIA_CONFIG;
   if (window.__sb) return window.__sb;

@@ -105,12 +105,34 @@ class Platform:
         return self.competition(s["id"], label)
 
     # -- clubs + people -----------------------------------------------------------
+    @staticmethod
+    def logo_url(t: dict) -> str | None:
+        """Genius publishes each club's crest as {url, size, width, ...} under logo / logoT / logoS.
+        The largest is preferred; only an https URL is worth storing (the pages refuse http)."""
+        for k in ("logo", "logoS", "logoT"):
+            v = t.get(k)
+            if isinstance(v, dict):
+                v = v.get("url")
+            if isinstance(v, str) and v.startswith("https://"):
+                return v
+        return None
+
     def team(self, league_id: str, t: dict) -> dict | None:
         code = (t.get("code") or "").strip() or slugify(t.get("name", ""))
         key = (league_id, code)
         if key in self.cache["team"]:
             return self.cache["team"][key]
-        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name")
+        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name,logo_path")
+        if r and not self.dry:
+            # a crest the club has not got yet (or the JSON blob an early worker wrote) -> the feed's URL
+            lp = r.get("logo_path") or ""
+            url = self.logo_url(t)
+            if url and (not lp or lp.startswith("{")):
+                try:
+                    self.sb.patch("teams", f"id=eq.{r['id']}", {"logo_path": url})
+                    r["logo_path"] = url
+                except Exception:
+                    pass
         if not r:
             nm = (t.get("name") or "").strip().lower()
             for row in (self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases") if self.sb else []):
@@ -123,7 +145,7 @@ class Platform:
         if not r and self.auto_create:
             self.log(f"  + team {t.get('name')} [{code}]")
             r = self.insert("teams", {"league_id": league_id, "slug": slugify(t.get("name", code)), "name": (t.get("name") or code).strip(),
-                                      "short_name": (t.get("shortName") or code)[:12], "logo_path": t.get("logoT") or t.get("logo"),
+                                      "short_name": (t.get("shortName") or code)[:12], "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
                                       "aliases": [t["nameInternational"]] if t.get("nameInternational") and t["nameInternational"] != t.get("name") else []})
         self.cache["team"][key] = r

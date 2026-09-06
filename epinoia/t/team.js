@@ -34,7 +34,7 @@ function oops(msg) {
   if (!want) return oops('No team specified.');
   try {
     const key = isUuid ? 'id' : 'slug';
-    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug)&limit=1`);
+    const ts = await api(`teams?${key}=eq.${encodeURIComponent(want)}&select=*,leagues(id,name,slug,country)&limit=1`);
     if (!ts.length) return oops('Team not found.');
     const team = ts[0];
     const colour = team.colour || '#93f2bf';
@@ -54,14 +54,12 @@ function oops(msg) {
     const badge = $('#badge');
     badge.style.background = colour;
     badge.textContent = team.short_name || (team.name || '?').slice(0, 2).toUpperCase();
-    if (team.logo_path) {
+    const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path) : null;
+    if (crestUrl) {
       const crest = document.createElement('img');
-      /* The bucket is written in rather than borrowed from EpinoiaUpload: this
-         page is a public read and does not load the upload pipeline — a whole
-         image resizer pulled in to build one URL. The storage-urls test is what
-         keeps this literal honest. */
-      crest.src = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' +
-                  team.logo_path;
+      /* resolved by the shared helper: a club's uploaded crest lives in the
+         media-public bucket, a fed club's comes from FIBA LiveStats as a URL */
+      crest.src = crestUrl;
       crest.alt = '';
       crest.addEventListener('load', () => {
         /* the initials are only cleared once the crest is actually on screen */
@@ -269,6 +267,21 @@ async function lineupPanels(team) {
 /* the home venue panel lives in its own module — it is a self-contained
    piece of page with its own illustration and its own privacy rule */
 async function venue(team) {
+  /* THE HOME VENUE, READ OFF THE FIXTURES when nobody has typed one in. Every
+     home fixture the feed (or a league admin) files carries a venue, and the
+     one that appears most is the club's hall. A recorded venue still wins —
+     this only fills the gap, and a league administrator or the club can
+     overwrite it from their own settings. */
+  if (!team.home_venue && !team.home_venue_address) {
+    try {
+      const rows = await api('games?home_team_id=eq.' + team.id + '&venue=not.is.null&select=venue&order=tipoff_at.desc&limit=60');
+      const count = new Map();
+      (rows || []).forEach(g => { const v = String(g.venue || '').trim(); if (v) count.set(v, (count.get(v) || 0) + 1); });
+      let best = null, n = 0;
+      count.forEach((c, v) => { if (c > n) { best = v; n = c; } });
+      if (best) { team.home_venue_auto = best; team.home_venue_auto_n = n; }
+    } catch (_) { /* no fixtures, no guess */ }
+  }
   const out = await window.EpinoiaVenue.render({
     host: '#venue', team, api, cfg: CFG
   });

@@ -610,7 +610,8 @@ async function render(opts) {
   const team = opts.team || {};
   host.textContent = '';
 
-  const name = team.home_venue, addr = team.home_venue_address;
+  /* a recorded venue, else the one the club's home fixtures name most often */
+  const name = team.home_venue || team.home_venue_auto || null, addr = team.home_venue_address;
   const wrap = el('div', 'vwrap');
   wrap.style.setProperty('--ink-c', team.colour || '#93f2bf');
 
@@ -644,6 +645,11 @@ async function render(opts) {
 
     const head = el('div', 'vhead');
     head.appendChild(el('div', 'vname', name || 'Home venue'));
+    if (!team.home_venue && team.home_venue_auto) {
+      head.appendChild(el('div', 'vaddr', 'from the club\u2019s home fixtures' +
+        (team.home_venue_auto_n > 1 ? ' (' + team.home_venue_auto_n + ' games)' : '') +
+        ' \u2014 a league administrator or the club can set the address'));
+    }
     if (addr) {
       /* Each line of the address on its own line, as it would be written on an
          envelope. A comma-separated run is harder to read and harder to copy. */
@@ -657,7 +663,17 @@ async function render(opts) {
     }
     wrap.appendChild(head);
 
-    const query = [name, addr].filter(Boolean).join(', ');
+    /* WHAT THE MAP IS ASKED FOR. The address when the club recorded one.
+       Otherwise the venue's name — and, because "Sports Centre" alone lands
+       anywhere on earth, the league's country beside it, which is enough for
+       Google to pick the right hall from a name like "Netball Centre
+       Loughborough University". */
+    const COUNTRY = { GB: 'United Kingdom', IE: 'Ireland', ES: 'Spain', DE: 'Germany', FR: 'France',
+                      IT: 'Italy', NL: 'Netherlands', BE: 'Belgium', PT: 'Portugal', US: 'United States',
+                      CA: 'Canada', AU: 'Australia', NZ: 'New Zealand' };
+    const cc = team.leagues && team.leagues.country;
+    const hint = !addr && cc ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
+    const query = [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
     grid.append(photoUrl ? photoPane(team, photoUrl) : drawnPane(team),
                 mapPane(team, query));

@@ -416,7 +416,7 @@ async function clubs() {
   let ts = [];
   try {
     ts = await api('teams?league_id=eq.' + LEAGUE.id +
-      '&select=id,name,short_name,slug,colour&order=name');
+      '&select=id,name,short_name,slug,colour,logo_path&order=name');
   } catch (e) {
     return [];                    // a league page without clubs is still a page
   }
@@ -465,7 +465,8 @@ async function clubs() {
     ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
 
     const mark = el('div', 'club-mark');
-    const url = logos.get(t.id);
+    /* an approved upload first; else the crest the club's feed publishes */
+    const url = logos.get(t.id) || (window.epinoiaLogoUrl ? window.epinoiaLogoUrl(t.logo_path) : null);
     if (url) {
       const img = document.createElement('img');
       img.className = 'club-logo';

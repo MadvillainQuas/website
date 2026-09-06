@@ -236,7 +236,7 @@ async function renderTable() {
 async function renderStandingsInto(pane, competition) {
   const rows = await api(
     `standings?competition_id=eq.${competition.id}` +
-    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(name,short_name,colour,slug)` +
+    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(name,short_name,colour,slug,logo_path)` +
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
 
@@ -273,6 +273,14 @@ function groupTable(rows) {
     const cell = el('div', 'tname-cell');
     const crest = el('span', 'crest', tm.short_name || '');
     crest.style.background = tm.colour || 'var(--lume)';
+    const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(tm.logo_path) : null;
+    if (crestUrl) {
+      const img = document.createElement('img');
+      img.src = crestUrl; img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
+      img.addEventListener('error', () => img.remove());
+      crest.textContent = ''; crest.appendChild(img);
+    }
     const a = el('a', null, tm.name || '');
     a.href = '../t/?t=' + encodeURIComponent(tm.slug || '');
     cell.append(crest, a); nameTd.appendChild(cell); tr.appendChild(nameTd);

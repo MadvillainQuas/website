@@ -221,8 +221,8 @@ function buildState() {
    means "approved" — no second request to find out. */
 function logoOf(t) {
   const src = t === 0 ? game.home : game.away;
-  if (!src || !src.logo_path || !CFG.supabaseUrl) return null;
-  return CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + src.logo_path;
+  if (!src || !src.logo_path) return null;
+  return window.epinoiaLogoUrl ? window.epinoiaLogoUrl(src.logo_path) : null;
 }
 
 function teamTotals(t, d) {
@@ -364,9 +364,7 @@ function lastPlay(d) {
    it for a league that has not uploaded one. */
 function leagueLogo() {
   const l = ((game.competitions || {}).seasons || {}).leagues || {};
-  return (l.logo_path && CFG.supabaseUrl)
-    ? CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + l.logo_path
-    : null;
+  return (l.logo_path && window.epinoiaLogoUrl) ? window.epinoiaLogoUrl(l.logo_path) : null;
 }
 function leagueShort() {
   const l = ((game.competitions || {}).seasons || {}).leagues || {};
