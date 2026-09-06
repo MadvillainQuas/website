@@ -637,7 +637,7 @@ async function offerLiveStatsLink() {
     client = client || ext.competition_code;
     if (!client) return;
     cta.href = 'https://fibalivestats.dcd.shared.geniussports.com/u/' +
-      encodeURIComponent(client) + '/' + encodeURIComponent(ext.external_id) + '/';
+      encodeURIComponent(client) + '/' + encodeURIComponent(ext.external_id) + '/bs.html';
     cta.title = 'the FIBA LiveStats page this game is fed from (' + client + ' ' + ext.external_id + ')';
     cta.classList.remove('hide');
     lsShown = true;
