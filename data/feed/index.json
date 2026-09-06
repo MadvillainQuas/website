@@ -1,12 +1,12 @@
 {
- "updated": "2026-09-06T14:21:18.968904+00:00",
+ "updated": "2026-09-06T16:15:05.132861+00:00",
  "competitions": [
   {
    "code": "SLB",
    "label": "Super League Basketball (M)",
    "adapter": "fiba_livestats",
    "games": 144,
-   "updated": "2026-09-06T14:21:18.967293+00:00"
+   "updated": "2026-09-06T16:15:05.131176+00:00"
   }
  ]
 }

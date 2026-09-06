@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball (M)",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T14:21:18.967293+00:00",
+"updated": "2026-09-06T16:15:05.131176+00:00",
 "games": [
 {
 "id": "2829681",
@@ -11,9 +11,10 @@
 "homeScore": 117,
 "awayScore": 120,
 "status": "final",
+"date": null,
 "hash": "d93ed5fb9010f6c4c1a795f84967b924123c8b44",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2829681.json",
-"date": null
+"updated": "2026-09-06T16:15:05.124538+00:00"
 },
 {
 "id": "2829677",
@@ -22,9 +23,10 @@
 "homeScore": 87,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "d9e23d18bfb45ef596204aef340f63ded8b7d5a1",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2829677.json",
-"date": null
+"updated": "2026-09-06T16:15:03.830982+00:00"
 },
 {
 "id": "2811018",
@@ -33,9 +35,10 @@
 "homeScore": 81,
 "awayScore": 68,
 "status": "final",
+"date": null,
 "hash": "da9bc4ab17ce75d34e159cc7b7d0de112024207f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2811018.json",
-"date": null
+"updated": "2026-09-06T16:15:02.181192+00:00"
 },
 {
 "id": "2811017",
@@ -44,9 +47,10 @@
 "homeScore": 87,
 "awayScore": 72,
 "status": "final",
+"date": null,
 "hash": "c4f9a805e1fad92ee7d928190e342ca1233213bd",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2811017.json",
-"date": null
+"updated": "2026-09-06T16:14:59.809291+00:00"
 },
 {
 "id": "2801738",
@@ -55,9 +59,10 @@
 "homeScore": 105,
 "awayScore": 79,
 "status": "final",
+"date": null,
 "hash": "a03b97b0a16d4732e01ebfc0e9991be64a43f710",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2801738.json",
-"date": null
+"updated": "2026-09-06T16:14:58.504460+00:00"
 },
 {
 "id": "2792599",
@@ -66,9 +71,10 @@
 "homeScore": 88,
 "awayScore": 94,
 "status": "final",
+"date": null,
 "hash": "71c3a38dfba6bd6f10013f17cc2aa6d4d67f3a81",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2792599.json",
-"date": null
+"updated": "2026-09-06T16:14:57.257446+00:00"
 },
 {
 "id": "2761932",
@@ -77,9 +83,10 @@
 "homeScore": 79,
 "awayScore": 73,
 "status": "final",
+"date": null,
 "hash": "e6c5f2e133281a0fee0099d8b184a032f3f8164c",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2761932.json",
-"date": null
+"updated": "2026-09-06T16:14:56.109613+00:00"
 },
 {
 "id": "2741000",
@@ -88,9 +95,10 @@
 "homeScore": 95,
 "awayScore": 98,
 "status": "final",
+"date": null,
 "hash": "69109d060d0a10c97e3edecb00e17d2a4a6f1f39",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2741000.json",
-"date": null
+"updated": "2026-09-06T16:14:54.783237+00:00"
 },
 {
 "id": "2719735",
@@ -99,9 +107,10 @@
 "homeScore": 92,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "339774cc722ddcf92ddd407c3d3bfbcc7520241b",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2719735.json",
-"date": null
+"updated": "2026-09-06T16:14:52.863837+00:00"
 },
 {
 "id": "2719734",
@@ -110,9 +119,10 @@
 "homeScore": 77,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "25fe1c2097de06f26b461e446af2feada68a2862",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2719734.json",
-"date": null
+"updated": "2026-09-06T16:14:51.456949+00:00"
 },
 {
 "id": "2714364",
@@ -121,9 +131,10 @@
 "homeScore": 93,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "258745359a0e1b7e201d0dee778ce66ad101364b",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2714364.json",
-"date": null
+"updated": "2026-09-06T16:14:50.240170+00:00"
 },
 {
 "id": "2702678",
@@ -132,9 +143,10 @@
 "homeScore": 98,
 "awayScore": 77,
 "status": "final",
+"date": null,
 "hash": "6736ed78b42b7d73dba87316e4c6bc18c6a85bcb",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702678.json",
-"date": null
+"updated": "2026-09-06T16:14:49.045097+00:00"
 },
 {
 "id": "2702677",
@@ -143,9 +155,10 @@
 "homeScore": 74,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "1e21d37fb39ed929d9d7af5c90633013e55c20ed",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702677.json",
-"date": null
+"updated": "2026-09-06T16:14:47.580743+00:00"
 },
 {
 "id": "2702676",
@@ -154,9 +167,10 @@
 "homeScore": 62,
 "awayScore": 86,
 "status": "final",
+"date": null,
 "hash": "0ab7dc4bedaa0672fa9a894d22122375388c9a73",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702676.json",
-"date": null
+"updated": "2026-09-06T16:14:46.728256+00:00"
 },
 {
 "id": "2702675",
@@ -165,9 +179,10 @@
 "homeScore": 94,
 "awayScore": 75,
 "status": "final",
+"date": null,
 "hash": "5738b5a696c6dfc384436eb7005a7c884e74b9bc",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702675.json",
-"date": null
+"updated": "2026-09-06T16:14:45.891291+00:00"
 },
 {
 "id": "2702674",
@@ -176,9 +191,10 @@
 "homeScore": 86,
 "awayScore": 94,
 "status": "final",
+"date": null,
 "hash": "174df19600449609a537bdcd7b8aed8b075fd3b2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702674.json",
-"date": null
+"updated": "2026-09-06T16:14:44.822674+00:00"
 },
 {
 "id": "2702673",
@@ -187,9 +203,10 @@
 "homeScore": 82,
 "awayScore": 91,
 "status": "final",
+"date": null,
 "hash": "014294b2b9cd0d02a839ed2d1570863346da3d16",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702673.json",
-"date": null
+"updated": "2026-09-06T16:14:43.698304+00:00"
 },
 {
 "id": "2702672",
@@ -198,9 +215,10 @@
 "homeScore": 111,
 "awayScore": 101,
 "status": "final",
+"date": null,
 "hash": "d5cf24cfd374c2339570ed66fa8a9551fafe12d4",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702672.json",
-"date": null
+"updated": "2026-09-06T16:14:42.366650+00:00"
 },
 {
 "id": "2702671",
@@ -209,9 +227,10 @@
 "homeScore": 80,
 "awayScore": 92,
 "status": "final",
+"date": null,
 "hash": "b9e0a2644e4949643f0a5b31887f397595866d26",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702671.json",
-"date": null
+"updated": "2026-09-06T16:14:41.218684+00:00"
 },
 {
 "id": "2702670",
@@ -220,9 +239,10 @@
 "homeScore": 86,
 "awayScore": 91,
 "status": "final",
+"date": null,
 "hash": "d24ed3dc16487cd359e05f247961c8b61b9e1155",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702670.json",
-"date": null
+"updated": "2026-09-06T16:14:40.297815+00:00"
 },
 {
 "id": "2702669",
@@ -231,9 +251,10 @@
 "homeScore": 79,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "ed9966a9bc5c8787f4d68cd6bda5145622dcc99f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702669.json",
-"date": null
+"updated": "2026-09-06T16:14:39.211581+00:00"
 },
 {
 "id": "2702667",
@@ -242,9 +263,10 @@
 "homeScore": 82,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "ce70eab4abda09b0b31dbdce0bdc6e6986fb0293",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702667.json",
-"date": null
+"updated": "2026-09-06T16:14:38.256345+00:00"
 },
 {
 "id": "2702666",
@@ -253,9 +275,10 @@
 "homeScore": 92,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "637b717be416cb9f8b2444ca6fc998d44fb837b3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702666.json",
-"date": null
+"updated": "2026-09-06T16:14:37.020138+00:00"
 },
 {
 "id": "2702665",
@@ -264,9 +287,10 @@
 "homeScore": 76,
 "awayScore": 83,
 "status": "final",
+"date": null,
 "hash": "8a7215e38fe2d83e3520aa3843cdb3545e5090b2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702665.json",
-"date": null
+"updated": "2026-09-06T16:14:35.524165+00:00"
 },
 {
 "id": "2702664",
@@ -275,9 +299,10 @@
 "homeScore": 113,
 "awayScore": 75,
 "status": "final",
+"date": null,
 "hash": "755f681f070025740c405e0961b303164af80aad",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702664.json",
-"date": null
+"updated": "2026-09-06T16:14:34.302066+00:00"
 },
 {
 "id": "2702663",
@@ -286,9 +311,10 @@
 "homeScore": 98,
 "awayScore": 101,
 "status": "final",
+"date": null,
 "hash": "266e398e3c55010a538d0a839ca5e003f68ab24f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702663.json",
-"date": null
+"updated": "2026-09-06T16:14:33.118084+00:00"
 },
 {
 "id": "2702662",
@@ -297,9 +323,10 @@
 "homeScore": 79,
 "awayScore": 99,
 "status": "final",
+"date": null,
 "hash": "5d4690c0fecf7b5f6746f60106296bdadff7f7d1",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702662.json",
-"date": null
+"updated": "2026-09-06T16:14:32.196106+00:00"
 },
 {
 "id": "2702661",
@@ -308,9 +335,10 @@
 "homeScore": 81,
 "awayScore": 60,
 "status": "final",
+"date": null,
 "hash": "9de1980c66bcb5a49101501d4431ee624ff3ec28",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702661.json",
-"date": null
+"updated": "2026-09-06T16:14:30.497631+00:00"
 },
 {
 "id": "2702660",
@@ -319,9 +347,10 @@
 "homeScore": 67,
 "awayScore": 96,
 "status": "final",
+"date": null,
 "hash": "eed5f0e45a7960b290a051c1590cb2bbc1187e7a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702660.json",
-"date": null
+"updated": "2026-09-06T16:14:29.564066+00:00"
 },
 {
 "id": "2702659",
@@ -330,9 +359,10 @@
 "homeScore": 93,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "b725c1a0c6bab19a596e6b076d850e9d001bf57a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702659.json",
-"date": null
+"updated": "2026-09-06T16:14:28.154527+00:00"
 },
 {
 "id": "2702658",
@@ -341,9 +371,10 @@
 "homeScore": 85,
 "awayScore": 78,
 "status": "final",
+"date": null,
 "hash": "57650e6cadd54f61b0a8ee4fddc3bf4a6bcbdade",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702658.json",
-"date": null
+"updated": "2026-09-06T16:14:27.207112+00:00"
 },
 {
 "id": "2702657",
@@ -352,9 +383,10 @@
 "homeScore": 80,
 "awayScore": 83,
 "status": "final",
+"date": null,
 "hash": "6ee905008d59a18cd63f5667a00eb9af4003b834",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702657.json",
-"date": null
+"updated": "2026-09-06T16:14:25.859962+00:00"
 },
 {
 "id": "2702656",
@@ -363,9 +395,10 @@
 "homeScore": 94,
 "awayScore": 77,
 "status": "final",
+"date": null,
 "hash": "450a518d1edfb57a205f0c5fec401d30b42d5c7a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702656.json",
-"date": null
+"updated": "2026-09-06T16:14:24.785335+00:00"
 },
 {
 "id": "2702655",
@@ -374,9 +407,10 @@
 "homeScore": 94,
 "awayScore": 103,
 "status": "final",
+"date": null,
 "hash": "273b1811a9642e0bbd63d81fabe9cb0389e66530",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702655.json",
-"date": null
+"updated": "2026-09-06T16:14:23.408795+00:00"
 },
 {
 "id": "2702654",
@@ -385,9 +419,10 @@
 "homeScore": 93,
 "awayScore": 68,
 "status": "final",
+"date": null,
 "hash": "90706bf5a8e1ab18acd04ecb4863032d4d9964c3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702654.json",
-"date": null
+"updated": "2026-09-06T16:14:22.016724+00:00"
 },
 {
 "id": "2702653",
@@ -396,9 +431,10 @@
 "homeScore": 108,
 "awayScore": 97,
 "status": "final",
+"date": null,
 "hash": "32f27a9f8a483e3d5f4ee5e033ee3fb1503278bb",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702653.json",
-"date": null
+"updated": "2026-09-06T16:14:20.472901+00:00"
 },
 {
 "id": "2702652",
@@ -407,9 +443,10 @@
 "homeScore": 116,
 "awayScore": 73,
 "status": "final",
+"date": null,
 "hash": "ecbf06311a4e89c04e468197d7975891ac577311",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702652.json",
-"date": null
+"updated": "2026-09-06T16:14:19.056168+00:00"
 },
 {
 "id": "2702651",
@@ -418,9 +455,10 @@
 "homeScore": 90,
 "awayScore": 103,
 "status": "final",
+"date": null,
 "hash": "08470e22710cf991a17fddb4f2b1cdf593790a51",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702651.json",
-"date": null
+"updated": "2026-09-06T16:14:17.920457+00:00"
 },
 {
 "id": "2702650",
@@ -429,9 +467,10 @@
 "homeScore": 99,
 "awayScore": 96,
 "status": "final",
+"date": null,
 "hash": "91ece4a6abfbc108c60416927b236c3b54eb4845",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702650.json",
-"date": null
+"updated": "2026-09-06T16:14:16.961329+00:00"
 },
 {
 "id": "2702649",
@@ -440,9 +479,10 @@
 "homeScore": 89,
 "awayScore": 86,
 "status": "final",
+"date": null,
 "hash": "d3fba9e7cfa01332a844e732d6c29b292aeecdef",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702649.json",
-"date": null
+"updated": "2026-09-06T16:14:15.997286+00:00"
 },
 {
 "id": "2702648",
@@ -451,9 +491,10 @@
 "homeScore": 93,
 "awayScore": 120,
 "status": "final",
+"date": null,
 "hash": "2020057ae823a444ad54c906d94ec6feefb85b0e",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702648.json",
-"date": null
+"updated": "2026-09-06T16:14:14.561906+00:00"
 },
 {
 "id": "2702647",
@@ -462,9 +503,10 @@
 "homeScore": 77,
 "awayScore": 57,
 "status": "final",
+"date": null,
 "hash": "3012b79534b738562129c01bc0e797ffed1efb71",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702647.json",
-"date": null
+"updated": "2026-09-06T16:14:12.998506+00:00"
 },
 {
 "id": "2702646",
@@ -473,9 +515,10 @@
 "homeScore": 100,
 "awayScore": 106,
 "status": "final",
+"date": null,
 "hash": "e3010739fb2a23cd172cb7e419b6490c782e8b61",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702646.json",
-"date": null
+"updated": "2026-09-06T16:14:12.038783+00:00"
 },
 {
 "id": "2702645",
@@ -484,9 +527,10 @@
 "homeScore": 87,
 "awayScore": 67,
 "status": "final",
+"date": null,
 "hash": "4c0017ed1215acf0ee208c934b5e139f97791813",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702645.json",
-"date": null
+"updated": "2026-09-06T16:14:10.904982+00:00"
 },
 {
 "id": "2702644",
@@ -495,9 +539,10 @@
 "homeScore": 92,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "a99685ad13a3606dfd3e04f6fa0aa772a2d661dd",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702644.json",
-"date": null
+"updated": "2026-09-06T16:14:09.736639+00:00"
 },
 {
 "id": "2702642",
@@ -506,9 +551,10 @@
 "homeScore": 77,
 "awayScore": 86,
 "status": "final",
+"date": null,
 "hash": "2b03b3e3878c3329b2a1839fb4a49ec459707c26",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702642.json",
-"date": null
+"updated": "2026-09-06T16:14:08.663420+00:00"
 },
 {
 "id": "2702641",
@@ -517,9 +563,10 @@
 "homeScore": 98,
 "awayScore": 71,
 "status": "final",
+"date": null,
 "hash": "ce14b92373b0e3578c98728afcc4403b9c0666d3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702641.json",
-"date": null
+"updated": "2026-09-06T16:14:07.112949+00:00"
 },
 {
 "id": "2702640",
@@ -528,9 +575,10 @@
 "homeScore": 79,
 "awayScore": 65,
 "status": "final",
+"date": null,
 "hash": "bc917530f188cdb43eddc4098edd9d5b430bfb5d",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702640.json",
-"date": null
+"updated": "2026-09-06T16:14:05.921682+00:00"
 },
 {
 "id": "2702639",
@@ -539,9 +587,10 @@
 "homeScore": 85,
 "awayScore": 94,
 "status": "final",
+"date": null,
 "hash": "7cc12fd69c0493ff875da637d738180b8714b321",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702639.json",
-"date": null
+"updated": "2026-09-06T16:14:04.570748+00:00"
 },
 {
 "id": "2702638",
@@ -550,9 +599,10 @@
 "homeScore": 95,
 "awayScore": 77,
 "status": "final",
+"date": null,
 "hash": "db32afc028045726a34e915c4482dfea479924a2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702638.json",
-"date": null
+"updated": "2026-09-06T16:14:03.058043+00:00"
 },
 {
 "id": "2702637",
@@ -561,9 +611,10 @@
 "homeScore": 74,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "03a3aa17f72e74702024e8aa0c7ec70ce2052f45",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702637.json",
-"date": null
+"updated": "2026-09-06T16:14:01.611838+00:00"
 },
 {
 "id": "2702636",
@@ -572,9 +623,10 @@
 "homeScore": 104,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "dfac0ab27ac6590a956bd43037d56fb8b1bc9126",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702636.json",
-"date": null
+"updated": "2026-09-06T16:13:59.888742+00:00"
 },
 {
 "id": "2702635",
@@ -583,9 +635,10 @@
 "homeScore": 99,
 "awayScore": 72,
 "status": "final",
+"date": null,
 "hash": "2a5818efd14da08aafeb213879de5b8572997369",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702635.json",
-"date": null
+"updated": "2026-09-06T16:13:58.708927+00:00"
 },
 {
 "id": "2702634",
@@ -594,9 +647,10 @@
 "homeScore": 78,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "271c609ac73cf969018dd094a88df083d0d8773a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702634.json",
-"date": null
+"updated": "2026-09-06T16:13:57.148793+00:00"
 },
 {
 "id": "2702633",
@@ -605,9 +659,10 @@
 "homeScore": 95,
 "awayScore": 78,
 "status": "final",
+"date": null,
 "hash": "e40555848cf10af69ae629ab60ddb5fd63fe8e48",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702633.json",
-"date": null
+"updated": "2026-09-06T16:13:55.980822+00:00"
 },
 {
 "id": "2702632",
@@ -619,7 +674,7 @@
 "date": null,
 "hash": "0a691722f254c840423a6c4fb6a76fac49dd14c5",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702632.json",
-"updated": "2026-09-06T14:21:18.961452+00:00"
+"updated": "2026-09-06T16:13:54.711631+00:00"
 },
 {
 "id": "2702631",
@@ -628,9 +683,10 @@
 "homeScore": 70,
 "awayScore": 92,
 "status": "final",
+"date": null,
 "hash": "393ee109976e18d276d8cbf653c5537faa586b26",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702631.json",
-"date": null
+"updated": "2026-09-06T16:13:53.571857+00:00"
 },
 {
 "id": "2702630",
@@ -639,9 +695,10 @@
 "homeScore": 94,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "8a910ab8b2688cf6fe4df4a3b44ed92028e543af",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702630.json",
-"date": null
+"updated": "2026-09-06T16:13:52.612540+00:00"
 },
 {
 "id": "2702629",
@@ -650,9 +707,10 @@
 "homeScore": 76,
 "awayScore": 98,
 "status": "final",
+"date": null,
 "hash": "0100283f9c987bac7ef35deb8d99d7b7e405cf3e",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702629.json",
-"date": null
+"updated": "2026-09-06T16:13:51.369041+00:00"
 },
 {
 "id": "2702628",
@@ -661,9 +719,10 @@
 "homeScore": 80,
 "awayScore": 83,
 "status": "final",
+"date": null,
 "hash": "8d415a65e149e56093dd420eef467752bafa49f0",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702628.json",
-"date": null
+"updated": "2026-09-06T16:13:50.391263+00:00"
 },
 {
 "id": "2702627",
@@ -672,9 +731,10 @@
 "homeScore": 77,
 "awayScore": 75,
 "status": "final",
+"date": null,
 "hash": "e1e40605c4b76130330c7b7e90ac5f1af018c944",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702627.json",
-"date": null
+"updated": "2026-09-06T16:13:49.275345+00:00"
 },
 {
 "id": "2702626",
@@ -683,9 +743,10 @@
 "homeScore": 101,
 "awayScore": 78,
 "status": "final",
+"date": null,
 "hash": "8db53d2f367f9540c4bee033b807d7cbd15b5dd3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702626.json",
-"date": null
+"updated": "2026-09-06T16:13:47.971220+00:00"
 },
 {
 "id": "2702625",
@@ -694,9 +755,10 @@
 "homeScore": 71,
 "awayScore": 72,
 "status": "final",
+"date": null,
 "hash": "2f4e9e23c1cb29f0d6c86b400e241c53988cc191",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702625.json",
-"date": null
+"updated": "2026-09-06T16:13:46.969742+00:00"
 },
 {
 "id": "2702624",
@@ -705,9 +767,10 @@
 "homeScore": 83,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "b5350e12225fab9ae402db95012b9be55b4ba329",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702624.json",
-"date": null
+"updated": "2026-09-06T16:13:46.167238+00:00"
 },
 {
 "id": "2702623",
@@ -716,9 +779,10 @@
 "homeScore": 102,
 "awayScore": 100,
 "status": "final",
+"date": null,
 "hash": "e192790c9a330f9a3c1fda9d59ac7d7a811fe9d3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702623.json",
-"date": null
+"updated": "2026-09-06T16:13:45.356981+00:00"
 },
 {
 "id": "2702622",
@@ -727,9 +791,10 @@
 "homeScore": 89,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "d454e09a2f7be8b8df370a6c5e44d0d2f907b336",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702622.json",
-"date": null
+"updated": "2026-09-06T16:13:43.905810+00:00"
 },
 {
 "id": "2702621",
@@ -738,9 +803,10 @@
 "homeScore": 106,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "1b1e2899040d48084f8685d0276589e78ac242e8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702621.json",
-"date": null
+"updated": "2026-09-06T16:13:42.703708+00:00"
 },
 {
 "id": "2702620",
@@ -749,9 +815,10 @@
 "homeScore": 98,
 "awayScore": 99,
 "status": "final",
+"date": null,
 "hash": "eeb76b3cfdc9e2daccd4932292efb44a99a24f88",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702620.json",
-"date": null
+"updated": "2026-09-06T16:13:41.306922+00:00"
 },
 {
 "id": "2702619",
@@ -760,9 +827,10 @@
 "homeScore": 83,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "06263f8bcedb737da24c38360b6f894c5d0cb334",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702619.json",
-"date": null
+"updated": "2026-09-06T16:13:40.056665+00:00"
 },
 {
 "id": "2702618",
@@ -771,9 +839,10 @@
 "homeScore": 75,
 "awayScore": 88,
 "status": "final",
+"date": null,
 "hash": "d1f62e50fbd1bc74399bb1b329803225baa8ccc5",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702618.json",
-"date": null
+"updated": "2026-09-06T16:13:39.179151+00:00"
 },
 {
 "id": "2702617",
@@ -782,9 +851,10 @@
 "homeScore": 77,
 "awayScore": 67,
 "status": "final",
+"date": null,
 "hash": "e200fb2072b353accafda92cc4a78590a4156e2f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702617.json",
-"date": null
+"updated": "2026-09-06T16:13:38.014172+00:00"
 },
 {
 "id": "2702616",
@@ -793,9 +863,10 @@
 "homeScore": 81,
 "awayScore": 73,
 "status": "final",
+"date": null,
 "hash": "f1cd6bd5fc937b19848f919b524694a5313e405f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702616.json",
-"date": null
+"updated": "2026-09-06T16:13:36.398753+00:00"
 },
 {
 "id": "2702615",
@@ -804,9 +875,10 @@
 "homeScore": 116,
 "awayScore": 90,
 "status": "final",
+"date": null,
 "hash": "55b57ba8dc79c1e6c0b786291507da62c01db549",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702615.json",
-"date": null
+"updated": "2026-09-06T16:13:35.433676+00:00"
 },
 {
 "id": "2702614",
@@ -815,9 +887,10 @@
 "homeScore": 101,
 "awayScore": 98,
 "status": "final",
+"date": null,
 "hash": "29574237bbfa50dd3ddf08e04e1702ac81dc6745",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702614.json",
-"date": null
+"updated": "2026-09-06T16:13:34.134988+00:00"
 },
 {
 "id": "2702613",
@@ -826,9 +899,10 @@
 "homeScore": 80,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "fbc0f5e5e3cd52d905f06b6715cc345a5d3d2877",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702613.json",
-"date": null
+"updated": "2026-09-06T16:13:32.827446+00:00"
 },
 {
 "id": "2702612",
@@ -837,9 +911,10 @@
 "homeScore": 80,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "7d1cd3547445501b579c1ff59f7cbff71591a157",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702612.json",
-"date": null
+"updated": "2026-09-06T16:13:31.684600+00:00"
 },
 {
 "id": "2702611",
@@ -848,9 +923,10 @@
 "homeScore": 79,
 "awayScore": 87,
 "status": "final",
+"date": null,
 "hash": "81f53631f0d6777af94cfbb31aaed9abb0f32ba1",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702611.json",
-"date": null
+"updated": "2026-09-06T16:13:30.153249+00:00"
 },
 {
 "id": "2702610",
@@ -859,9 +935,10 @@
 "homeScore": 73,
 "awayScore": 86,
 "status": "final",
+"date": null,
 "hash": "b903b082260ca7f1ad4f7bacb0323aa6081f898f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702610.json",
-"date": null
+"updated": "2026-09-06T16:13:28.789594+00:00"
 },
 {
 "id": "2702609",
@@ -870,9 +947,10 @@
 "homeScore": 86,
 "awayScore": 87,
 "status": "final",
+"date": null,
 "hash": "58456423a51337903650466afb9cac75acb0f9e4",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702609.json",
-"date": null
+"updated": "2026-09-06T16:13:27.158264+00:00"
 },
 {
 "id": "2702608",
@@ -881,9 +959,10 @@
 "homeScore": 102,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "5c823c7c6afa3913c5a8bdfdba56d66ba2b33905",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702608.json",
-"date": null
+"updated": "2026-09-06T16:13:26.232045+00:00"
 },
 {
 "id": "2702607",
@@ -892,9 +971,10 @@
 "homeScore": 76,
 "awayScore": 101,
 "status": "final",
+"date": null,
 "hash": "26f5c25eba199461ad55858c1e6624bab49a82d3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702607.json",
-"date": null
+"updated": "2026-09-06T16:13:24.948827+00:00"
 },
 {
 "id": "2702606",
@@ -903,9 +983,10 @@
 "homeScore": 75,
 "awayScore": 83,
 "status": "final",
+"date": null,
 "hash": "5e5a01aa4a90ea03305ad096e78daca3145660e6",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702606.json",
-"date": null
+"updated": "2026-09-06T16:13:23.747982+00:00"
 },
 {
 "id": "2702605",
@@ -914,9 +995,10 @@
 "homeScore": 100,
 "awayScore": 90,
 "status": "final",
+"date": null,
 "hash": "e3ebb4a8783ac07f349278d964e81b508b6ae83d",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702605.json",
-"date": null
+"updated": "2026-09-06T16:13:22.443815+00:00"
 },
 {
 "id": "2702604",
@@ -925,9 +1007,10 @@
 "homeScore": 50,
 "awayScore": 76,
 "status": "final",
+"date": null,
 "hash": "531728cca8211fd4d793f9db19d5bb053fb13681",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702604.json",
-"date": null
+"updated": "2026-09-06T16:13:20.836317+00:00"
 },
 {
 "id": "2702603",
@@ -936,9 +1019,10 @@
 "homeScore": 74,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "758e744ec8b4930391fd6651d0a04d99249f031b",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702603.json",
-"date": null
+"updated": "2026-09-06T16:13:19.100799+00:00"
 },
 {
 "id": "2702602",
@@ -947,9 +1031,10 @@
 "homeScore": 83,
 "awayScore": 92,
 "status": "final",
+"date": null,
 "hash": "769369bb60fa8366f85e73865a434dda26e61391",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702602.json",
-"date": null
+"updated": "2026-09-06T16:13:17.753486+00:00"
 },
 {
 "id": "2702601",
@@ -958,9 +1043,10 @@
 "homeScore": 84,
 "awayScore": 106,
 "status": "final",
+"date": null,
 "hash": "e4f77c533e1d75eedc01c921bfe2b257e28c1820",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702601.json",
-"date": null
+"updated": "2026-09-06T16:13:16.557097+00:00"
 },
 {
 "id": "2702600",
@@ -969,9 +1055,10 @@
 "homeScore": 94,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "2fb5e6148b2dab095ef1648c3411124a1058748a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702600.json",
-"date": null
+"updated": "2026-09-06T16:13:14.638318+00:00"
 },
 {
 "id": "2702599",
@@ -980,9 +1067,10 @@
 "homeScore": 102,
 "awayScore": 98,
 "status": "final",
+"date": null,
 "hash": "225e23922fea4484087e40f4188cf2c77913bd69",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702599.json",
-"date": null
+"updated": "2026-09-06T16:13:12.953407+00:00"
 },
 {
 "id": "2702598",
@@ -991,9 +1079,10 @@
 "homeScore": 82,
 "awayScore": 88,
 "status": "final",
+"date": null,
 "hash": "6817b9c163c6d76eec4cfb125da8f63786e3b636",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702598.json",
-"date": null
+"updated": "2026-09-06T16:13:11.745331+00:00"
 },
 {
 "id": "2702597",
@@ -1002,9 +1091,10 @@
 "homeScore": 79,
 "awayScore": 101,
 "status": "final",
+"date": null,
 "hash": "0713882bb3d00e90836a268e4feef1e7c75c63c7",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702597.json",
-"date": null
+"updated": "2026-09-06T16:13:10.400032+00:00"
 },
 {
 "id": "2702596",
@@ -1013,9 +1103,10 @@
 "homeScore": 79,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "658005760b134a1e223667565eddb284463ac833",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702596.json",
-"date": null
+"updated": "2026-09-06T16:13:08.563119+00:00"
 },
 {
 "id": "2702595",
@@ -1024,9 +1115,10 @@
 "homeScore": 85,
 "awayScore": 73,
 "status": "final",
+"date": null,
 "hash": "c5be51f35c507f0e237d0b3a002a3281ffa465f8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702595.json",
-"date": null
+"updated": "2026-09-06T16:13:07.588496+00:00"
 },
 {
 "id": "2702594",
@@ -1035,9 +1127,10 @@
 "homeScore": 98,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "df7303fc2ae2910f49adc98d80f0b7f2311657cf",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702594.json",
-"date": null
+"updated": "2026-09-06T16:13:06.400344+00:00"
 },
 {
 "id": "2702593",
@@ -1046,9 +1139,10 @@
 "homeScore": 88,
 "awayScore": 77,
 "status": "final",
+"date": null,
 "hash": "38c81600ceed07ccb4bb9ee40ee9464ba2092e0a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702593.json",
-"date": null
+"updated": "2026-09-06T16:13:05.100960+00:00"
 },
 {
 "id": "2702592",
@@ -1057,9 +1151,10 @@
 "homeScore": 101,
 "awayScore": 97,
 "status": "final",
+"date": null,
 "hash": "572af715c45c3c3be4af588a6c719b20062dd201",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702592.json",
-"date": null
+"updated": "2026-09-06T16:13:03.497666+00:00"
 },
 {
 "id": "2702591",
@@ -1068,9 +1163,10 @@
 "homeScore": 74,
 "awayScore": 91,
 "status": "final",
+"date": null,
 "hash": "8cad32f87e3de653cce7118efe8078d7b36ef430",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702591.json",
-"date": null
+"updated": "2026-09-06T16:13:02.362691+00:00"
 },
 {
 "id": "2702590",
@@ -1079,9 +1175,10 @@
 "homeScore": 87,
 "awayScore": 67,
 "status": "final",
+"date": null,
 "hash": "8a6ccac621414905551541358d1936cba9ad10c8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702590.json",
-"date": null
+"updated": "2026-09-06T16:13:00.924182+00:00"
 },
 {
 "id": "2702589",
@@ -1090,9 +1187,10 @@
 "homeScore": 88,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "b77ad353453d88516efebb1eda9dd8e6ca70503d",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702589.json",
-"date": null
+"updated": "2026-09-06T16:12:59.514157+00:00"
 },
 {
 "id": "2702588",
@@ -1101,9 +1199,10 @@
 "homeScore": 65,
 "awayScore": 73,
 "status": "final",
+"date": null,
 "hash": "f550a1500e7ef8dfa40daa18239982629f62258c",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702588.json",
-"date": null
+"updated": "2026-09-06T16:12:58.571841+00:00"
 },
 {
 "id": "2702587",
@@ -1112,9 +1211,10 @@
 "homeScore": 78,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "30eae75636a41a4835ddf6fa2da06188190c5219",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702587.json",
-"date": null
+"updated": "2026-09-06T16:12:57.266221+00:00"
 },
 {
 "id": "2702586",
@@ -1123,9 +1223,10 @@
 "homeScore": 79,
 "awayScore": 86,
 "status": "final",
+"date": null,
 "hash": "047d25d10fea5d9a76c6d95d8b380005483767d5",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702586.json",
-"date": null
+"updated": "2026-09-06T16:12:56.131298+00:00"
 },
 {
 "id": "2702585",
@@ -1134,9 +1235,10 @@
 "homeScore": 68,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "c56b23b7ac2fdb564c542159d2f7cc7bce90f474",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702585.json",
-"date": null
+"updated": "2026-09-06T16:12:54.707299+00:00"
 },
 {
 "id": "2702584",
@@ -1145,9 +1247,10 @@
 "homeScore": 111,
 "awayScore": 84,
 "status": "final",
+"date": null,
 "hash": "033249eee6279d78d2ab9869a8e70abc94c1a388",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702584.json",
-"date": null
+"updated": "2026-09-06T16:12:53.293859+00:00"
 },
 {
 "id": "2702583",
@@ -1156,9 +1259,10 @@
 "homeScore": 95,
 "awayScore": 82,
 "status": "final",
+"date": null,
 "hash": "6cd1e4ae5f8cf1d5daa82e88c71b484ac67e597a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702583.json",
-"date": null
+"updated": "2026-09-06T16:12:52.458394+00:00"
 },
 {
 "id": "2702582",
@@ -1167,9 +1271,10 @@
 "homeScore": 97,
 "awayScore": 91,
 "status": "final",
+"date": null,
 "hash": "b515cfc156f507633ba3ef91607796985e98f195",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702582.json",
-"date": null
+"updated": "2026-09-06T16:12:51.151535+00:00"
 },
 {
 "id": "2702581",
@@ -1178,9 +1283,10 @@
 "homeScore": 85,
 "awayScore": 79,
 "status": "final",
+"date": null,
 "hash": "f286c43725fa6e356e5837a8b16121a8674ecaf3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702581.json",
-"date": null
+"updated": "2026-09-06T16:12:49.820007+00:00"
 },
 {
 "id": "2702580",
@@ -1189,9 +1295,10 @@
 "homeScore": 68,
 "awayScore": 54,
 "status": "final",
+"date": null,
 "hash": "983d59ae2b78ab707b7f06dc4890a66af3538523",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702580.json",
-"date": null
+"updated": "2026-09-06T16:12:48.267193+00:00"
 },
 {
 "id": "2702579",
@@ -1200,9 +1307,10 @@
 "homeScore": 91,
 "awayScore": 93,
 "status": "final",
+"date": null,
 "hash": "c0907416baf8291907b0dc81a0fc6ac37d033a29",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702579.json",
-"date": null
+"updated": "2026-09-06T16:12:47.129756+00:00"
 },
 {
 "id": "2702578",
@@ -1211,9 +1319,10 @@
 "homeScore": 87,
 "awayScore": 75,
 "status": "final",
+"date": null,
 "hash": "8bc62aa3645ce6203d50e83d46b2ddf9c59ca7cf",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702578.json",
-"date": null
+"updated": "2026-09-06T16:12:45.892455+00:00"
 },
 {
 "id": "2702577",
@@ -1222,9 +1331,10 @@
 "homeScore": 74,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "430f0423f1628d0f67377f165816ebeb382a5a94",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702577.json",
-"date": null
+"updated": "2026-09-06T16:12:44.573860+00:00"
 },
 {
 "id": "2702576",
@@ -1233,9 +1343,10 @@
 "homeScore": 90,
 "awayScore": 87,
 "status": "final",
+"date": null,
 "hash": "7e1efc83eea26c63a6e7699cd5430c3f1820fc07",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702576.json",
-"date": null
+"updated": "2026-09-06T16:12:43.346032+00:00"
 },
 {
 "id": "2702575",
@@ -1244,9 +1355,10 @@
 "homeScore": 95,
 "awayScore": 93,
 "status": "final",
+"date": null,
 "hash": "9a07dd010e524770ffbfde871d83fb2e1efc1090",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702575.json",
-"date": null
+"updated": "2026-09-06T16:12:42.089570+00:00"
 },
 {
 "id": "2702574",
@@ -1255,9 +1367,10 @@
 "homeScore": 76,
 "awayScore": 93,
 "status": "final",
+"date": null,
 "hash": "40257202c392a8cb1fb4508d731adb47995ce7c6",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702574.json",
-"date": null
+"updated": "2026-09-06T16:12:40.931007+00:00"
 },
 {
 "id": "2702573",
@@ -1266,9 +1379,10 @@
 "homeScore": 114,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "59fd42b15b49905ffbbdb56498dd02d3b57f8c30",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702573.json",
-"date": null
+"updated": "2026-09-06T16:12:39.682846+00:00"
 },
 {
 "id": "2702572",
@@ -1277,9 +1391,10 @@
 "homeScore": 85,
 "awayScore": 100,
 "status": "final",
+"date": null,
 "hash": "2014d023be58b5aac61769f3d8a33a8eab1284e5",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702572.json",
-"date": null
+"updated": "2026-09-06T16:12:38.536992+00:00"
 },
 {
 "id": "2702571",
@@ -1288,9 +1403,10 @@
 "homeScore": 98,
 "awayScore": 79,
 "status": "final",
+"date": null,
 "hash": "76ab4f8542ce5b9584a1255b277bb4470590d16b",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702571.json",
-"date": null
+"updated": "2026-09-06T16:12:37.224434+00:00"
 },
 {
 "id": "2702570",
@@ -1299,9 +1415,10 @@
 "homeScore": 51,
 "awayScore": 96,
 "status": "final",
+"date": null,
 "hash": "381413b4d5b92cd368ef1916ab72ecf34424672a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702570.json",
-"date": null
+"updated": "2026-09-06T16:12:35.841397+00:00"
 },
 {
 "id": "2702568",
@@ -1310,9 +1427,10 @@
 "homeScore": 95,
 "awayScore": 99,
 "status": "final",
+"date": null,
 "hash": "7109971ec5aa0342acb04a41d325ec625879b883",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702568.json",
-"date": null
+"updated": "2026-09-06T16:12:34.580573+00:00"
 },
 {
 "id": "2702567",
@@ -1321,9 +1439,10 @@
 "homeScore": 90,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "96e74ce4c47f2854282e2102bd7599af17a0c9a2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702567.json",
-"date": null
+"updated": "2026-09-06T16:12:32.832060+00:00"
 },
 {
 "id": "2702566",
@@ -1332,9 +1451,10 @@
 "homeScore": 77,
 "awayScore": 71,
 "status": "final",
+"date": null,
 "hash": "39e65f8bfc6e908aa9cc970aa8fa2d1f6075c75a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702566.json",
-"date": null
+"updated": "2026-09-06T16:12:31.462328+00:00"
 },
 {
 "id": "2702565",
@@ -1343,9 +1463,10 @@
 "homeScore": 103,
 "awayScore": 94,
 "status": "final",
+"date": null,
 "hash": "688264d8f6300094293cd95c5f70e221a478d97b",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702565.json",
-"date": null
+"updated": "2026-09-06T16:12:29.843369+00:00"
 },
 {
 "id": "2702564",
@@ -1354,9 +1475,10 @@
 "homeScore": 78,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "0a29ed3ba4212c4c4d8cc8f0a41fcaf2a59a4d05",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702564.json",
-"date": null
+"updated": "2026-09-06T16:12:28.348541+00:00"
 },
 {
 "id": "2702563",
@@ -1365,9 +1487,10 @@
 "homeScore": 87,
 "awayScore": 72,
 "status": "final",
+"date": null,
 "hash": "2c8686b0c5b81707e854dbdc58b226c7ccc03efb",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702563.json",
-"date": null
+"updated": "2026-09-06T16:12:27.212723+00:00"
 },
 {
 "id": "2702562",
@@ -1376,9 +1499,10 @@
 "homeScore": 82,
 "awayScore": 70,
 "status": "final",
+"date": null,
 "hash": "596518e02ddbb689575869adab2558865716adae",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702562.json",
-"date": null
+"updated": "2026-09-06T16:12:26.130790+00:00"
 },
 {
 "id": "2702561",
@@ -1387,9 +1511,10 @@
 "homeScore": 86,
 "awayScore": 95,
 "status": "final",
+"date": null,
 "hash": "4a2f0d7e930cc011c95a883f6cc06481f953f21a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702561.json",
-"date": null
+"updated": "2026-09-06T16:12:24.902032+00:00"
 },
 {
 "id": "2702560",
@@ -1401,7 +1526,7 @@
 "date": null,
 "hash": "f09615b87295fef0d5813e4e79ae96747c2f49a9",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702560.json",
-"updated": "2026-09-06T14:21:17.713897+00:00"
+"updated": "2026-09-06T16:12:23.082649+00:00"
 },
 {
 "id": "2702559",
@@ -1410,9 +1535,10 @@
 "homeScore": 74,
 "awayScore": 62,
 "status": "final",
+"date": null,
 "hash": "9f4e7ab1db15042a3b9dc4d211712e0628026e3a",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702559.json",
-"date": null
+"updated": "2026-09-06T16:12:21.676162+00:00"
 },
 {
 "id": "2702558",
@@ -1421,9 +1547,10 @@
 "homeScore": 91,
 "awayScore": 85,
 "status": "final",
+"date": null,
 "hash": "b3524be736f60bc44e4f9ae9b33bf791613fc25f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702558.json",
-"date": null
+"updated": "2026-09-06T16:12:20.332767+00:00"
 },
 {
 "id": "2702557",
@@ -1432,9 +1559,10 @@
 "homeScore": 108,
 "awayScore": 96,
 "status": "final",
+"date": null,
 "hash": "17d02377d794f7a4499db768fd31cbd792ccc019",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702557.json",
-"date": null
+"updated": "2026-09-06T16:12:18.947872+00:00"
 },
 {
 "id": "2702556",
@@ -1443,9 +1571,10 @@
 "homeScore": 76,
 "awayScore": 69,
 "status": "final",
+"date": null,
 "hash": "367e5abe718cb4dcd26272a47e6b9c5fea78b2d7",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702556.json",
-"date": null
+"updated": "2026-09-06T16:12:17.390364+00:00"
 },
 {
 "id": "2702554",
@@ -1454,9 +1583,10 @@
 "homeScore": 74,
 "awayScore": 70,
 "status": "final",
+"date": null,
 "hash": "6d071d98311d18b6d7f88e9b966d8efee2eb7ba4",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702554.json",
-"date": null
+"updated": "2026-09-06T16:12:15.727718+00:00"
 },
 {
 "id": "2702553",
@@ -1465,9 +1595,10 @@
 "homeScore": 83,
 "awayScore": 87,
 "status": "final",
+"date": null,
 "hash": "c43e84dc4eb06a523037994e802e6a673580732e",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702553.json",
-"date": null
+"updated": "2026-09-06T16:12:14.830427+00:00"
 },
 {
 "id": "2702552",
@@ -1476,9 +1607,10 @@
 "homeScore": 91,
 "awayScore": 77,
 "status": "final",
+"date": null,
 "hash": "70f77ec52a652ce845008af139c71ebf3bcd73f2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702552.json",
-"date": null
+"updated": "2026-09-06T16:12:13.656532+00:00"
 },
 {
 "id": "2702551",
@@ -1490,7 +1622,7 @@
 "date": null,
 "hash": "a83f59f7b9e75f08904e7dd0b1c1ea4f5a793ef8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702551.json",
-"updated": "2026-09-06T14:21:15.180515+00:00"
+"updated": "2026-09-06T16:12:12.791159+00:00"
 },
 {
 "id": "2702550",
@@ -1499,9 +1631,10 @@
 "homeScore": 94,
 "awayScore": 80,
 "status": "final",
+"date": null,
 "hash": "2c1bf1dee3e5cec80121382fbdf5d1c148fea334",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702550.json",
-"date": null
+"updated": "2026-09-06T16:12:11.520365+00:00"
 },
 {
 "id": "2702549",
@@ -1510,9 +1643,10 @@
 "homeScore": 88,
 "awayScore": 70,
 "status": "final",
+"date": null,
 "hash": "69294afd43d704d3c6a962607a5d2759c7d850e1",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702549.json",
-"date": null
+"updated": "2026-09-06T16:12:10.308849+00:00"
 },
 {
 "id": "2702548",
@@ -1521,9 +1655,10 @@
 "homeScore": 72,
 "awayScore": 60,
 "status": "final",
+"date": null,
 "hash": "273430cd5aa6c56271f434ce23f715187a8fdccd",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702548.json",
-"date": null
+"updated": "2026-09-06T16:12:08.852379+00:00"
 },
 {
 "id": "2702547",
@@ -1532,9 +1667,10 @@
 "homeScore": 65,
 "awayScore": 93,
 "status": "final",
+"date": null,
 "hash": "0f0e4d6478758028d5da2e2e63be26c98dddb377",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702547.json",
-"date": null
+"updated": "2026-09-06T16:12:07.509991+00:00"
 },
 {
 "id": "2702546",
@@ -1543,9 +1679,10 @@
 "homeScore": 89,
 "awayScore": 83,
 "status": "final",
+"date": null,
 "hash": "239b47736842b95c550b3e4fdb0c8d383876df09",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702546.json",
-"date": null
+"updated": "2026-09-06T16:12:06.041918+00:00"
 },
 {
 "id": "2702545",
@@ -1554,9 +1691,10 @@
 "homeScore": 104,
 "awayScore": 109,
 "status": "final",
+"date": null,
 "hash": "55579de183c04b0e2bc11ecbf107e54ae8dfcc04",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702545.json",
-"date": null
+"updated": "2026-09-06T16:12:04.915980+00:00"
 },
 {
 "id": "2702544",
@@ -1565,9 +1703,10 @@
 "homeScore": 92,
 "awayScore": 89,
 "status": "final",
+"date": null,
 "hash": "953030b5301e11d5f3cbfc3687c8c984ae685f49",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702544.json",
-"date": null
+"updated": "2026-09-06T16:12:03.550679+00:00"
 },
 {
 "id": "2702543",
@@ -1576,9 +1715,10 @@
 "homeScore": 72,
 "awayScore": 79,
 "status": "final",
+"date": null,
 "hash": "eba78fae98b6d54b067b4a4edd10887dc1d09958",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702543.json",
-"date": null
+"updated": "2026-09-06T16:12:02.264730+00:00"
 },
 {
 "id": "2702542",
@@ -1590,7 +1730,7 @@
 "date": null,
 "hash": "0720297d9dcd5ba817d1c5fab416d86b93b671a3",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2702542.json",
-"updated": "2026-09-06T14:21:12.436644+00:00"
+"updated": "2026-09-06T16:12:00.306613+00:00"
 }
 ]
 }
