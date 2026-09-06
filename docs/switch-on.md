@@ -103,6 +103,17 @@ picks up within a minute and keeps chaining. A signed-in admin / league admin / 
 statistician also sees **FIBA LiveStats ↗** in the game page's top bar — the Genius page the game is
 fed from — to check the source directly.
 
+## 4d. Video on a fed game (built 2026-09-06 evening)
+
+Attach video from the game page as before (admin / league admin / the game's statistician). The
+sheet can now fill the tip-off number in itself: *from the stream's start time* (YouTube live
+streams — put a free YouTube Data API key in `epinoia/config.js` as `youtubeApiKey`), *from a local
+copy of the footage* (the file's own clock, read in the browser, never uploaded), or *read the
+scoreboard in the picture* (finds the overlay and the first running first-period clock; ~11 MB of
+reader loads once). The video tab then shows how tightly plays are placed (a fed game's plays are
+stamped by the 10-second live poll), a ↗ link per play, +/− nudges for admins, and *export clips*
+(JSON) for the labelling studio. Plan and status: `docs/video-livestats-sync-roadmap.md`.
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash

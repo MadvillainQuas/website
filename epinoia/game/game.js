@@ -655,10 +655,10 @@ function openAttach() {
   wrap.innerHTML =
     '<div class="box">' +
       '<h3>The recording of this game</h3>' +
-      '<p>Paste the link, then say where the jump ball is on the scrub bar. ' +
-      'Everything else is already known: the tip-off time comes from the event ' +
-      'log, so from that one number every play in the game gets a position in ' +
-      'the video — here, and on the profile of every player in it.</p>' +
+      '<p>Paste the link, then say where the jump ball is on the scrub bar — or let ' +
+      'the page find it. The tip-off time comes from the event log, so from that one ' +
+      'number every play in the game gets a position in the video — here, and on the ' +
+      'profile of every player in it.</p>' +
       '<input id="vsUrl" type="url" placeholder="https://www.youtube.com/watch?v=…" ' +
         'value="' + B.esc(cur.url || '') + '">' +
       '<div class="tip"><span style="font-size:12.5px">tip-off is at</span>' +
@@ -667,14 +667,164 @@ function openAttach() {
         '<span>:</span>' +
         '<input id="vsSec" type="number" min="0" max="59" placeholder="ss" value="' +
           (gap != null ? Math.floor(gap / 1000) % 60 : '') + '"></div>' +
+      /* THE THREE WAYS THE PAGE CAN FILL THAT NUMBER IN ITSELF (roadmap Phase 1).
+         Each is offered, none is applied silently: the number lands in the
+         fields above with its source written beside it, and the person who can
+         see the footage presses save. */
+      '<div class="vsauto">' +
+        '<div class="vsrow"><button type="button" id="vsFromStream">from the stream\u2019s start time</button>' +
+          '<span class="vsnote" id="vsStreamNote">YouTube live streams</span></div>' +
+        '<div class="vsrow"><label class="vsfile"><span>from a local copy of the footage</span>' +
+          '<input type="file" id="vsFile" accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/*"></label>' +
+          '<span class="vsnote" id="vsFileNote">read here, never uploaded</span></div>' +
+        '<div class="vsrow hide" id="vsScanRow"><button type="button" id="vsScan">read the scoreboard in the picture</button>' +
+          '<span class="vsnote" id="vsScanNote"></span></div>' +
+      '</div>' +
       '<div class="msg" id="vsMsg"></div>' +
       '<div class="row"><button id="vsCancel">cancel</button>' +
         '<button class="go" id="vsSave">save</button></div>' +
     '</div>';
   document.body.appendChild(wrap);
-  document.getElementById('vsCancel').onclick = () => wrap.remove();
+  document.getElementById('vsCancel').onclick = () => { wrap.remove(); anchorCleanup(); };
   document.getElementById('vsSave').onclick = () => saveAttach(wrap);
+  document.getElementById('vsFromStream').onclick = () => anchorFromStream();
+  document.getElementById('vsFile').onchange = ev => anchorFromFile(ev.target.files && ev.target.files[0]);
+  document.getElementById('vsScan').onclick = () => anchorFromScoreboard();
   document.getElementById('vsUrl').focus();
+}
+
+/* ---- the automatic anchors -------------------------------------------
+   All three need the same fact: WHEN the ball went up, as a wall clock. For a
+   fed game that is the first period_start's poll stamp (payload.wall); for a
+   scored one its device stamp or insert time; and failing both, the
+   database's own answer (game_tip_wallclock). */
+let anchorFile = null, anchorVideoEl = null, anchorBusy = false;
+
+function tipWallMs() {
+  const S = window.S;
+  const ev = (S && S.events || []).find(e => e.t === 'period_start' && (e.period || 1) === 1);
+  if (ev) {
+    if (typeof ev.wall === 'number' && isFinite(ev.wall)) return ev.wall;
+    const t = ev.created_at || ev.at;
+    if (t && !isNaN(new Date(t).getTime())) return new Date(t).getTime();
+  }
+  return null;
+}
+async function tipWallMsAsync() {
+  const local = tipWallMs();
+  if (local != null) return local;
+  try {
+    const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/game_tip_wallclock', {
+      method: 'POST', cache: 'no-store',
+      headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ p_game: gameId })
+    });
+    const j = r.ok ? await r.json() : null;
+    return j && !isNaN(new Date(j).getTime()) ? new Date(j).getTime() : null;
+  } catch (_) { return null; }
+}
+
+function setProposedOffset(ms, note) {
+  const m = document.getElementById('vsMin'), sIn = document.getElementById('vsSec'), msg = document.getElementById('vsMsg');
+  if (!m || !sIn) return;
+  const clamped = Math.max(0, Math.round(ms / 1000));
+  m.value = Math.floor(clamped / 60); sIn.value = clamped % 60;
+  if (msg) msg.textContent = note || '';
+}
+const fmtMMSS = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+async function anchorFromStream() {
+  const A = window.EpinoiaVideoAnchor, V = window.EpinoiaVideo;
+  const note = document.getElementById('vsStreamNote');
+  const raw = document.getElementById('vsUrl').value.trim();
+  const parsed = V && raw ? V.parse(raw) : null;
+  if (!parsed || parsed.provider !== 'youtube') { note.textContent = 'paste the YouTube link first — only YouTube publishes a stream\u2019s start time'; return; }
+  if (!CFG.youtubeApiKey) { note.textContent = 'needs a YouTube Data API key in epinoia/config.js (youtubeApiKey) — free, read-only'; return; }
+  note.textContent = 'asking YouTube…';
+  const tip = await tipWallMsAsync();
+  if (tip == null) { note.textContent = 'this game has no recorded tip-off yet'; return; }
+  const st = await A.youtubeStreamStart(parsed.ref, CFG.youtubeApiKey);
+  if (!st) { note.textContent = 'YouTube has no start time for that video (not a live stream, or the key is wrong)'; return; }
+  const off = tip - st.at.getTime();
+  if (off < -5 * 60000 || off > 6 * 3600000) { note.textContent = 'the stream started ' + fmtMMSS(Math.abs(off)) + (off < 0 ? ' after' : ' before') + ' the tip — that does not look like this game\u2019s stream'; return; }
+  note.textContent = 'stream began ' + fmtMMSS(off) + ' before tip (platform delay is usually 5–30 s: check one play, nudge if needed)';
+  setProposedOffset(off, 'From the stream\u2019s start time on YouTube. Press save, then check a play and nudge the video if it lands a few seconds off.');
+}
+
+async function anchorFromFile(file) {
+  const A = window.EpinoiaVideoAnchor;
+  const note = document.getElementById('vsFileNote'), scanRow = document.getElementById('vsScanRow');
+  anchorFile = file || null;
+  if (!file) { note.textContent = 'read here, never uploaded'; scanRow.classList.add('hide'); return; }
+  scanRow.classList.remove('hide');
+  note.textContent = 'reading the file\u2019s clock…';
+  const tip = await tipWallMsAsync();
+  const ct = await A.mp4CreationTime(file);
+  if (!ct) { note.textContent = 'no recording time in this file (downloads usually strip it) — use the scoreboard below'; return; }
+  if (tip == null) { note.textContent = 'file made ' + ct.at.toLocaleString() + ', but this game has no recorded tip-off yet'; return; }
+  const off = tip - ct.at.getTime();
+  if (off < -5 * 60000 || off > 6 * 3600000) { note.textContent = 'file made ' + ct.at.toLocaleString() + ' — ' + fmtMMSS(Math.abs(off)) + (off < 0 ? ' after' : ' before') + ' tip, which does not look like this game\u2019s recording'; return; }
+  note.textContent = 'file made ' + fmtMMSS(off) + ' before tip (' + ct.source + '). Camera clocks drift — confirm on the scoreboard.';
+  setProposedOffset(off, 'From the file\u2019s own clock. Camera clocks drift by minutes, so press “read the scoreboard in the picture” to confirm it before saving.');
+}
+
+function anchorVideo() {
+  if (anchorVideoEl && anchorVideoEl._file === anchorFile) return anchorVideoEl;
+  anchorCleanup();
+  const v = document.createElement('video');
+  v.muted = true; v.playsInline = true; v.preload = 'auto';
+  v.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:-9px;top:-9px';
+  v.src = URL.createObjectURL(anchorFile);
+  v._file = anchorFile;
+  document.body.appendChild(v);
+  anchorVideoEl = v;
+  return v;
+}
+function anchorCleanup() {
+  if (anchorVideoEl) {
+    try { URL.revokeObjectURL(anchorVideoEl.src); } catch (_) {}
+    anchorVideoEl.remove(); anchorVideoEl = null;
+  }
+}
+
+/* THE SCOREBOARD ROUTE. Find where the overlay is (the usual corners and
+   edges), then search from a little before the proposed tip for the first
+   frame the first-period clock is running in, and refine to half a second.
+   Everything happens in this tab on the local file; nothing leaves it. */
+async function anchorFromScoreboard() {
+  const A = window.EpinoiaVideoAnchor;
+  const note = document.getElementById('vsScanNote'), btn = document.getElementById('vsScan');
+  if (!anchorFile) { note.textContent = 'choose the footage file first'; return; }
+  if (anchorBusy) return;
+  anchorBusy = true; btn.disabled = true;
+  try {
+    const v = anchorVideo();
+    await new Promise((res, rej) => {
+      if (v.readyState >= 1) return res();
+      v.addEventListener('loadedmetadata', res, { once: true });
+      v.addEventListener('error', () => rej(new Error('this browser cannot decode that file')), { once: true });
+    });
+    const mm = +document.getElementById('vsMin').value || 0, ss = +document.getElementById('vsSec').value || 0;
+    const guess = (mm * 60 + ss) || null;
+    const probeAt = Math.min(Math.max(0, (guess != null ? guess : 0) + 60), Math.max(0, v.duration - 1));
+    const status = s => { note.textContent = s; };
+    status('finding the scoreboard…');
+    let found = await A.autoCrop(v, probeAt, { onStatus: status });
+    if (!found.crop && guess == null) found = await A.autoCrop(v, Math.min(300, v.duration - 1), { onStatus: status });
+    if (!found.crop) {
+      status('no clock overlay found in the picture at ' + A.stampS(probeAt) + ' — type the time by hand, or try a link with the broadcast graphics');
+      return;
+    }
+    const from = Math.max(0, (guess != null ? guess - 15 * 60 : 0));
+    const to = Math.min(v.duration, guess != null ? guess + 15 * 60 : Math.min(v.duration, 60 * 60));
+    const r = await A.findTip(v, found.crop, { from, to, step: 2, onStatus: status });
+    if (r.tipMs == null) { status(r.why || 'could not find the start of the first period'); return; }
+    const read = r.read.m + ':' + String(r.read.s).padStart(2, '0');
+    status('clock read ' + read + ' at ' + A.stampS(r.readAt) + ' → tip at ' + fmtMMSS(r.tipMs) + (r.refined ? ' (to about a second)' : ' (to about 2 s)'));
+    setProposedOffset(r.tipMs, 'From the scoreboard in the picture: it read ' + read + ' at ' + A.stampS(r.readAt) + ', so the ball went up at ' + fmtMMSS(r.tipMs) + '. Press save.');
+  } catch (err) {
+    note.textContent = 'could not read the footage: ' + (err && err.message || err);
+  } finally { anchorBusy = false; btn.disabled = false; }
 }
 
 async function saveAttach(wrap) {
@@ -706,11 +856,14 @@ async function saveAttach(wrap) {
 
        The link and the offset go in ONE call, so a row can never end up with
        the video but not the number that places its plays. */
-    let r = await rpcCallRaw('set_game_video', {
-      p_game: gameId, p_url: raw,
-      p_provider: parsed.provider, p_ref: parsed.ref,
-      p_tip_offset_ms: tipMs, p_trim_ms: 0
-    }, token);
+    /* A fed game's plays carry the poll's wall clock (payload.wall, see the
+       ingest worker); the tip's stamp is the same clock at the same moment, so
+       handing it over makes every play a device-against-itself subtraction. */
+    const tw = tipWallMs();
+    const args = { p_game: gameId, p_url: raw, p_provider: parsed.provider, p_ref: parsed.ref,
+                   p_tip_offset_ms: tipMs, p_trim_ms: 0 };
+    if (tw != null) args.p_tip_wall = Math.round(tw);
+    let r = await rpcCallRaw('set_game_video', args, token);
     if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
 
     /* The offset says where tip-off is in the FOOTAGE. Placing an individual
@@ -723,7 +876,7 @@ async function saveAttach(wrap) {
     const row = Array.isArray(r.body) ? r.body[0] : r.body;
     if (!row || !row.tip_at) throw new Error('this game has no recorded tip-off');
 
-    wrap.remove();
+    wrap.remove(); anchorCleanup();
     location.reload();                 // the tab, the list and the embed, fresh
   } catch (err) {
     save.disabled = false;
@@ -873,8 +1026,29 @@ function mountVideo(d) {
   const qp2 = new URLSearchParams(location.search);
   window.EpinoiaVideoTab.render({
     host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
-    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null }
+    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null },
+    /* the people who may attach a video may also nudge it; the same check */
+    canEdit: vidShown,
+    onTrim: nudgeVideo,
+    game: { id: gameId, home: S.teams[0] && S.teams[0].name, away: S.teams[1] && S.teams[1].name,
+            tipoff_at: S.meta && S.meta.tipoff_at || null }
   });
+}
+
+/* "The clips land four seconds early" is one number on the video row —
+   trim_ms — and this is the control for it. Cumulative, saved at once, and the
+   tab redraws from the new value; nothing else on the page is touched. */
+async function nudgeVideo(deltaMs) {
+  const S = window.S;
+  if (!S || !S.video || !gameId) return false;
+  const token = storedToken();
+  if (!token) return false;
+  const next = (+S.video.trim_ms || 0) + deltaMs;
+  const r = await rpcCallRaw('set_game_video', { p_game: gameId, p_trim_ms: next }, token);
+  if (!r.ok) return false;
+  S.video.trim_ms = next;
+  mountVideo(window.derive());
+  return true;
 }
 
 /* Turn every player row in the box score into a link to that player's profile.

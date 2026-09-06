@@ -214,6 +214,9 @@ function render() {
           '<span class="vidq">' + esc(perName(p.period)) + ' ' +
             esc(fmtClock(p.clock)) + '</span>' +
           '<span class="vidtxt">' + esc(p.label) + '</span>' +
+          /* the same moment as a link: a clip anybody can be sent */
+          (channelOnly ? '' : '<a class="vidlink" href="' + esc(V().watchHref(v, p.start)) + '" target="_blank" rel="noopener" ' +
+            'title="open this play on its own, at ' + esc(V().stamp(p.start)) + '">↗</a>') +
         '</li>').join('')
         : '<li class="viditem empty">Nothing matches that filter.</li>') +
         (list.length > st.shown
@@ -232,9 +235,53 @@ function render() {
                            : v.provider === 'twitch' ? 'Twitch'
                            : v.provider === 'vimeo' ? 'Vimeo' : 'the source') + ' ↗</a>') +
         (lined ? '<span class="vidgap">' + esc(V().gapText(v)) + '</span>' : '') +
+        /* HOW SURE. A fed game's plays were stamped by a poll, so each carries
+           how far back it could really have happened; a tapped game's plays
+           carry no such number and the run-up covers the reaction time. */
+        (lined && accuracyMs() != null
+          ? '<span class="vidacc" title="a fed game\'s plays are stamped by the ingest worker\'s poll; this is the poll interval">' +
+            'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '') +
+        /* THE NUDGE. If the clips land early the gap is too small: the video
+           needs to run later, so + adds to it. Shown to the same people who may
+           attach the video, saved as trim_ms, cumulative. */
+        (lined && ctx.canEdit && ctx.onTrim
+          ? '<span class="vidnudge">clips land early? ' +
+            '<button data-n="1000" title="move every clip 1 s later">+1 s</button>' +
+            '<button data-n="5000" title="move every clip 5 s later">+5 s</button>' +
+            ' · late? <button data-n="-1000" title="move every clip 1 s earlier">−1 s</button>' +
+            '<button data-n="-5000" title="move every clip 5 s earlier">−5 s</button>' +
+            (v.trim_ms ? '<i>(' + (v.trim_ms > 0 ? '+' : '') + (v.trim_ms / 1000) + ' s)</i>' : '') + '</span>' : '') +
+        (lined && timed && list.length
+          ? '<button class="videxport" id="vidExport" title="every listed play as a clip list (JSON) for the labelling studio or an editor">export clips</button>' : '') +
       '</div>';
 
   wire();
+}
+
+/* The worst-case stamp error among this game's timed plays (payload.wall_err,
+   written by the ingest worker), or null for a log with none. */
+function accuracyMs() {
+  let worst = null;
+  for (const e of ctx.events) {
+    const x = e.wall_err;
+    if (x == null || !isFinite(+x)) continue;
+    if (worst == null || +x > worst) worst = +x;
+  }
+  return worst;
+}
+
+function exportClips() {
+  const A = root0().EpinoiaVideoAnchor;
+  if (!A) return;
+  const v = ctx.video;
+  const data = A.clipsExport(selected(), Object.assign({ gap_ms: V().gapMs(v) }, v), ctx.game, ctx.events);
+  const name = ((ctx.game && ctx.game.home || 'game') + '-v-' + (ctx.game && ctx.game.away || '') + '-clips.json')
+    .toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
 }
 
 /* perName/fmtClock live on the engine; the page has them as free variables in
@@ -263,6 +310,16 @@ function wire() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); grow(); }
     };
   }
+  host.querySelectorAll('.vidnudge button').forEach(b => {
+    b.onclick = async () => {
+      b.disabled = true;
+      const ok = ctx.onTrim ? await ctx.onTrim(+b.dataset.n) : false;
+      if (!ok) { b.disabled = false; b.textContent = 'not saved'; }
+    };
+  });
+  const ex = host.querySelector('#vidExport');
+  if (ex) ex.onclick = exportClips;
+  host.querySelectorAll('.vidlink').forEach(a => { a.onclick = e => e.stopPropagation(); });
   host.querySelectorAll('.viditem[data-id]').forEach(li => {
     const go = () => jumpTo(+li.dataset.id);
     li.onclick = go;
@@ -315,7 +372,8 @@ function render_(opts) {
   host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
   const fresh = !ctx || ctx.video !== opts.video || ctx.events !== opts.events;
-  ctx = { video: opts.video, events: opts.events || [], S: opts.S, d: opts.d };
+  ctx = { video: opts.video, events: opts.events || [], S: opts.S, d: opts.d,
+          canEdit: !!opts.canEdit, onTrim: opts.onTrim || null, game: opts.game || null };
   if (opts.focus && opts.focus.pid != null) st.pid = opts.focus.pid;
   if (opts.focus && opts.focus.filter) st.filter = opts.focus.filter;
   /* A new game, or a log that has been replaced wholesale, invalidates both

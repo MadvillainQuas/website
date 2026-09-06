@@ -134,3 +134,15 @@
   .vidtxt{ font-size:12.5px; }
   .vidlist{ max-height:min(46vh, 380px); }
 }
+
+/* per-play clip link, accuracy note, the nudge and the export (roadmap Phase 2/3) */
+.viditem .vidlink{margin-left:auto;padding:0 6px;opacity:.45;text-decoration:none;font-size:12px;align-self:center}
+.viditem .vidlink:hover{opacity:1}
+.vidacc{opacity:.7}
+.vidnudge{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
+.vidnudge button{font:inherit;font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.8}
+.vidnudge button:hover{opacity:1}
+.vidnudge button:disabled{opacity:.4;cursor:default}
+.vidnudge i{font-style:normal;opacity:.6;margin-left:4px}
+.videxport{font:inherit;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.8}
+.videxport:hover{opacity:1}

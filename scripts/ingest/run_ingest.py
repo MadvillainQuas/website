@@ -32,7 +32,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -259,7 +259,7 @@ def match_team_id(sb: Supabase, league_id: str, name: str, cache: dict) -> str |
     return None
 
 
-def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
+def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
     from the payload the first time they appear; a hand-mapped league only matches, never invents."""
@@ -319,7 +319,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
     sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}", {"game_id": game_id, "ingested_at": now_iso(), "error": None})
     if will_translate:
         try:
-            write_event_log(sb, src, b, game_id, people["pids"])
+            write_event_log(sb, src, b, game_id, people["pids"], observed)
         except Exception as exc:
             print(f"    (event translation failed: {exc})")
     try:
@@ -329,9 +329,16 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
     return True
 
 
-def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict) -> None:
+def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict, observed: tuple | None = None) -> None:
     """Translate the FIBA payload into game_events and finalise the game (roadmap Phase B).
-    `pids` maps "<teamcode>:<pno>" -> players.id (from Platform.ensure_game_people)."""
+    `pids` maps "<teamcode>:<pno>" -> players.id (from Platform.ensure_game_people).
+    `observed` = (epoch_ms, err_ms): WHEN THIS POLL SAW THE FEED, and how far back the play could
+    really have happened (the poll interval + fetch time). The Genius payload carries no time of
+    day for a play, so the only clock that saw it happen is ours. New events get payload.wall =
+    epoch_ms (the device-stamp slot epinoia/video.js already prefers) and payload.wall_err =
+    err_ms, which is what places a fed game's plays in a video - see
+    docs/video-livestats-sync-roadmap.md, Phase 0. Backfilled logs get no stamp: their created_at
+    is the import, and the page's timed-log test correctly refuses to anchor a video to them."""
     tm = b.raw.get("tm") or {}
     codes = {0: (tm.get("1") or {}).get("code", ""), 1: (tm.get("2") or {}).get("code", "")}
     missing = set()
@@ -355,20 +362,48 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     rows = game_rows(game_id, T["events"])
     # LIVE GAMES GROW: if the existing log is a prefix of the new one, append only the tail — the
     # game page's gap check (last_seq) then pulls just the new rows, like a scorer's frames.
-    existing = sb.select("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock&order=seq")
+    existing = sb.select("game_events", f"game_id=eq.{game_id}&select=seq,t,team,pid,period,clock,payload,created_at&order=seq")
     same_prefix = len(existing) <= len(rows) and all(
         e["seq"] == r["seq"] and e["t"] == r["t"] and e.get("team") == r["team"] and e.get("pid") == r["pid"] and e["period"] == r["period"] and e["clock"] == r["clock"]
         for e, r in zip(existing, rows))
+    stamp = None
+    if observed and observed[1] is not None and observed[1] <= 180_000:
+        stamp = {"wall": int(observed[0]), "wall_err": int(observed[1])}
     if existing and same_prefix:
         tail = rows[len(existing):]
+        if stamp:
+            for r in tail:
+                r["payload"] = {**(r.get("payload") or {}), **stamp}
         for i in range(0, len(tail), 400):
             sb.insert("game_events", tail[i:i + 400])
-        how = f"+{len(tail)} events (now {len(rows)})"
+        how = f"+{len(tail)} events (now {len(rows)})" + (" stamped" if stamp and tail else "")
     else:
-        sb.delete("game_events", f"game_id=eq.{game_id}")   # a corrected feed = replace (the platform's own model)
+        # A corrected feed = replace (the platform's own model). The stamps already earned are
+        # carried across by matching the old rows in order - one Genius correction three plays
+        # back must not un-time the whole game.
+        carry = {}
+        for e in existing:
+            p = e.get("payload") or {}
+            if p.get("wall") is not None:
+                carry.setdefault((e["t"], e.get("team"), e.get("pid"), e["period"], e["clock"]), []).append(
+                    {"wall": p["wall"], "wall_err": p.get("wall_err"), "created_at": e.get("created_at")})
+        kept = 0
+        for r in rows:
+            k = (r["t"], r["team"], r["pid"], r["period"], r["clock"])
+            if carry.get(k):
+                c = carry[k].pop(0)
+                r["payload"] = {**(r.get("payload") or {}), "wall": c["wall"], **({"wall_err": c["wall_err"]} if c.get("wall_err") is not None else {})}
+                if c.get("created_at"):
+                    r["created_at"] = c["created_at"]
+                kept += 1
+        if stamp and existing:
+            for r in rows[len(existing):]:
+                if "wall" not in (r.get("payload") or {}):
+                    r["payload"] = {**(r.get("payload") or {}), **stamp}
+        sb.delete("game_events", f"game_id=eq.{game_id}")
         for i in range(0, len(rows), 400):
             sb.insert("game_events", rows[i:i + 400])
-        how = f"{len(rows)} events written"
+        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else "")
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0
@@ -464,12 +499,17 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
     for src in sources:
         try:
             rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
-                                               "&select=external_id,external_status,tipoff_at,home_name,away_name,payload_hash")
+                                               "&select=external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash")
         except Exception as exc:
             print(f"   (live lookup failed for {src['code']}: {exc})"); continue
+        today = now.date().isoformat(); yday = (now - timedelta(days=1)).date().isoformat()
         for r in rows:
             t = _tip(r); since = (now - t).total_seconds() if t else None
-            if r.get("external_status") == "live" and (since is None or since < LIVE_STALE):
+            # a game marked live is polled while its tip-off is recent - or, when the schedule never
+            # gave one, while its game date is today/yesterday. A log nobody closed last season must
+            # not keep a runner alive (and chaining) for ever.
+            recent = (since is not None and since < LIVE_STALE) or (since is None and r.get("game_date") in (today, yday))
+            if r.get("external_status") == "live" and recent:
                 due.append((src, r))
             elif since is not None and -LIVE_BEFORE_TIP <= since < LIVE_AFTER_TIP:
                 due.append((src, r))
@@ -506,12 +546,15 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             xid = str(r["external_id"])
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
+            t_obs = time.time()
             try:
                 b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
             except Exception as exc:
                 print(f"    ! {xid}: {exc}"); exit_code = 1; continue
             if not b or hashes.get(xid) == b.payload_hash:
                 continue                                                  # not published yet / nothing new
+            # a play in this payload happened between the previous poll and this fetch
+            observed = (int(t_obs * 1000), int((every + (time.time() - t_obs)) * 1000))
             run = runs[src["code"]]; run["games_fetched"] += 1
             raw_ref = None
             try:
@@ -519,7 +562,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             except Exception as exc:
                 print(f"    (supabase feed write failed: {exc})")
             try:
-                write_platform(sb, src, b, run); run["games_written"] += 1
+                write_platform(sb, src, b, run, observed); run["games_written"] += 1
             except Exception as exc:
                 print(f"    (platform write failed: {exc})")
             hashes[xid] = b.payload_hash

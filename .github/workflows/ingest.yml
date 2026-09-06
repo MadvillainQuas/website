@@ -35,7 +35,7 @@ on:
         description: "Only these game ids, comma-separated (tests)"
         required: false
       live:
-        description: "Run the live lane now (polls live/due games every 30 s, waits for tip-offs, chains itself)"
+        description: "Run the live lane now (polls live/due games every 10 s, waits for tip-offs, chains itself)"
         type: boolean
         default: false
 
@@ -86,7 +86,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ (github.event.schedule == '5-55/10 12-23 * * *' || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 30 --feed-out ""' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}             ${{ (github.event.schedule == '5-55/10 12-23 * * *' || github.event.inputs.live == 'true') && '--live-only --live-loop 19800 --live-every 10 --feed-out ""' || '' }}
       # The worker says chain=true when a game is live or a tip-off is near: the live lane starts
       # (or continues) its next pass straight away instead of waiting for a cron slot.
       - name: Start the next live-lane pass
