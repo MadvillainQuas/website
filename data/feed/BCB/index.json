@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T16:50:46.817001+00:00",
+"updated": "2026-09-06T16:56:07.774612+00:00",
 "games": [
 {
 "id": "2887016",
@@ -12,9 +12,9 @@
 "awayScore": 23,
 "status": "live",
 "date": null,
-"hash": "0e000ad0d31695c69550c4481e69b0ee1368a055",
+"hash": "177354434bc0764812343fe53ba7b934b2501ae0",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
-"updated": "2026-09-06T16:50:27.971501+00:00"
+"updated": "2026-09-06T16:55:49.827477+00:00"
 },
 {
 "id": "2887014",
@@ -26,7 +26,7 @@
 "date": null,
 "hash": "6f7407881ac355ddad821b138e52d12c8fb31e53",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887014.json",
-"updated": "2026-09-06T16:50:13.300882+00:00"
+"updated": "2026-09-06T16:55:30.423820+00:00"
 },
 {
 "id": "2887006",
@@ -36,33 +36,33 @@
 "awayScore": 54,
 "status": "live",
 "date": null,
-"hash": "4e48fdc92f479ddea924dc396617eb1174d200cd",
+"hash": "fecce45e8152acb4c85191886169e07f1b569a71",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887006.json",
-"updated": "2026-09-06T16:49:53.265773+00:00"
+"updated": "2026-09-06T16:55:12.657150+00:00"
 },
 {
 "id": "2887005",
 "home": "Worthing Thunder",
 "away": "Portsmouth Force",
-"homeScore": 96,
-"awayScore": 63,
+"homeScore": 104,
+"awayScore": 65,
 "status": "live",
 "date": null,
-"hash": "693e82a36a2a43613dc73536c9c0aaebd6c9ca42",
+"hash": "f38549c8b51b9af55de3acad8a5f21a87b81a4ff",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887005.json",
-"updated": "2026-09-06T16:49:32.812410+00:00"
+"updated": "2026-09-06T16:54:53.599465+00:00"
 },
 {
 "id": "2886996",
 "home": "Gloucester City Kings",
 "away": "Plymouth Raiders",
-"homeScore": 43,
-"awayScore": 36,
+"homeScore": 45,
+"awayScore": 41,
 "status": "live",
 "date": null,
-"hash": "6d487df234e2a61ebd31f6bbf927fcb7f9d6d2b7",
+"hash": "1be3a71a4ad7bd7d59dd0e01d761b18b4c6fe1ac",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
-"updated": "2026-09-06T16:49:10.900380+00:00"
+"updated": "2026-09-06T16:54:32.519879+00:00"
 },
 {
 "id": "2886995",
@@ -74,7 +74,7 @@
 "date": null,
 "hash": "a25ae38d5a78928f3d67d7204428c8ee48347a8f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886995.json",
-"updated": "2026-09-06T16:48:46.652379+00:00"
+"updated": "2026-09-06T16:54:07.099331+00:00"
 },
 {
 "id": "2886994",
@@ -86,7 +86,7 @@
 "date": null,
 "hash": "2b450e8d4f3a539fe169c826e7796e1ee3083e9e",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886994.json",
-"updated": "2026-09-06T16:48:25.719472+00:00"
+"updated": "2026-09-06T16:53:49.099376+00:00"
 },
 {
 "id": "2886984",
@@ -98,7 +98,7 @@
 "date": null,
 "hash": "be20e7168846b6aa0d6c6be9a4b1122ee1035fe2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886984.json",
-"updated": "2026-09-06T16:47:55.388855+00:00"
+"updated": "2026-09-06T16:53:17.893583+00:00"
 }
 ]
 }
