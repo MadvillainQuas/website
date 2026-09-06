@@ -285,6 +285,9 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
                 in_season = season_match(n, season)
                 ours = any(w in n.lower() for w in words)
                 wanted = in_season and ours
+            # an all-star game or exhibition is not a phase with a table; only when asked for by name
+            if wanted and kind_of(n, ac.get("competition_kinds")) == "friendly" and not any(r.search(n) for r in inc):
+                continue
             if wanted:
                 picked.append(c)
         if not picked:
