@@ -355,6 +355,52 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
         print(f"   {n} club crest(s) taken from the schedule")
 
 
+def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> None:
+    """Games this phase's schedule lists that still sit in the league's catch-all competition (filed
+    there before the feed's phases were known) move to the phase - fixtures and finished games alike.
+    Discovery skips games it already holds, so this is a pass of its own. A game an administrator
+    has placed in any OTHER competition is left exactly where it is."""
+    if not src.get("competition_label") or not games:
+        return
+    league_id = resolve_league(sb, src, run)
+    if not league_id:
+        return
+    plat = run["_platform"]; ac = src.get("adapter_config") or {}
+    comp_id = source_competition(sb, plat, src, league_id, ac)["id"]
+    dflt = default_competition_id(plat, src, league_id, ac)
+    if not dflt or dflt == comp_id:
+        return
+    ids = [str(g.external_id) for g in games]
+    game_ids: list[str] = []
+    for i in range(0, len(ids), 100):
+        try:
+            rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=in.({','.join(ids[i:i + 100])})&game_id=not.is.null&select=game_id")
+            game_ids += [r["game_id"] for r in rows if r.get("game_id")]
+        except Exception:
+            continue
+    moved = 0; team_ids: set = set()
+    for i in range(0, len(game_ids), 100):
+        try:
+            rows = sb.select("games", f"id=in.({','.join(game_ids[i:i + 100])})&competition_id=eq.{dflt}&select=id,home_team_id,away_team_id")
+        except Exception:
+            continue
+        for r in rows:
+            try:
+                sb.patch("games", f"id=eq.{r['id']}", {"competition_id": comp_id})
+                moved += 1; team_ids.update({r.get("home_team_id"), r.get("away_team_id")})
+            except Exception:
+                continue
+    for tid in team_ids:
+        if tid:
+            try:
+                sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tid}, "competition_id,team_id")
+            except Exception:
+                pass
+    if moved:
+        run.setdefault("_recompute", set()).update({dflt, comp_id})
+        print(f"   {moved} game(s) filed under {src['competition_label']} (were in the catch-all)")
+
+
 def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
     fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
@@ -863,6 +909,10 @@ def main() -> int:
                         sync_logos(sb, src, games, run)
                     except Exception as exc:
                         print(f"   (crests: {exc})")
+                    try:
+                        refile_from_catchall(sb, src, games, run)
+                    except Exception as exc:
+                        print(f"   (re-filing: {exc})")
             run["games_seen"] = len(games)
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);
