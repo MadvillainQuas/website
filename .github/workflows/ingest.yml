@@ -76,6 +76,8 @@ jobs:
         run: |
           git config user.name "league-ingest[bot]"
           git config user.email "league-ingest@users.noreply.github.com"
-          git add data/feed data/latest.json data/data_* 2>/dev/null || true
+          git add -A data/feed
+          [ -f data/latest.json ] && git add data/latest.json
+          ls -d data/data_* >/dev/null 2>&1 && git add -A data/data_*
           git diff --cached --quiet && echo "nothing new" || git commit -m "feed: ingest $(date -u +%Y-%m-%dT%H:%MZ)"
           git push

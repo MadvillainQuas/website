@@ -27876,7 +27876,7 @@
                 const r = await fetch('./data/feed/' + encodeURIComponent(comp.code) + '/index.json', { cache: 'no-store' });
                 if (!r.ok) throw new Error('feed index ' + r.status);
                 const j = await r.json();
-                return (j.games || []).map(g => ({ ...g, id: String(g.id), payloadUrl: './data/feed/' + encodeURIComponent(comp.code) + '/games/' + encodeURIComponent(g.id) + '.json' }));
+                return (j.games || []).map(g => ({ ...g, id: String(g.id), payloadUrl: g.raw_ref || ('./data/feed/' + encodeURIComponent(comp.code) + '/games/' + encodeURIComponent(g.id) + '.json') }));
             };
             const feedFetchPayload = async (g, comp) => {
                 const cfg = feedCfg();

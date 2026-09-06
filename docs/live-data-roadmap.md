@@ -53,9 +53,12 @@ nightly / on demand: scripts/ingest/build_dataset.py --source SLB  (or scripts/i
    `supabase` once 0096 is live, `repo` until then.
 
 ## Known gaps / next
-- **Game dates**: FIBA data.json carries none; the feed index has `date: null` until discovery is
-  extended to read the date/team names off the schedule DOM (the GameVis wrapper already parses it).
-  Cards still sort by id, which is chronological for FIBA.
+- **Discovery** now reads the server-rendered Genius hosted schedule
+  (`hosted.wh.geniussports.com/<CLIENT>/en/<WHurl>`) with a plain GET — 144 SLB ids in ~1 s, no
+  Chrome; headless Chrome is only the fallback. The same HTML carries dates and team names, so the
+  next step is parsing them into the index (FIBA data.json carries no date; cards sort by id, which
+  is chronological). Note the SLB menu's current-season link is `/competition/49597/schedule…`
+  (173 ids) — put that URL first in `config/ingest-sources.json` for the new season.
 - **Non-FIBA adapters** are registry stubs (`bbl_2bbl`, `euroleague_api`, `eurobasket_html`): each
   needs `discover()` + `fetch()` written against the corresponding parser in the scraper project
   (see the pbp-scraper-builder skill for the per-league conventions).

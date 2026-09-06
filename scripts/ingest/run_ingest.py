@@ -341,19 +341,24 @@ def main() -> int:
             games = ([ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()] if args.ids
                      else list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code")))))
             run["games_seen"] = len(games)
-            # what we already have (repo index + Supabase rows) — finals with a payload are never re-fetched
-            known = feed.known(src["code"]) if feed else {}
+            # What we already have. When Supabase is configured IT is the authority for "already
+            # done" (a game only in the repo index still needs its Supabase rows + storage copy);
+            # the repo index is merged in afterwards so index.json keeps every game it knew.
+            known_repo = feed.known(src["code"]) if feed else {}
+            known_db = {}
             if sb:
                 try:
-                    for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date"):
+                    for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date,home_name,away_name,home_score,away_score"):
                         k = str(r["external_id"])
-                        known.setdefault(k, {"id": k})
-                        known[k].update({"status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date")})
+                        known_db[k] = {**known_repo.get(k, {"id": k}), "id": k, "home": r.get("home_name"), "away": r.get("away_name"),
+                                       "homeScore": r.get("home_score"), "awayScore": r.get("away_score"),
+                                       "status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date")}
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
+            known = known_db if sb else known_repo
             todo = [g for g in games if not (known.get(g.external_id, {}).get("status") == "final" and known.get(g.external_id, {}).get("hash"))][: args.max_games]
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch")
-            entries = dict(known)
+            entries = {**known_repo, **known}
             for g in todo:
                 b = adapter.fetch(g.external_id, src.get("adapter_config", {}))
                 if not b:
