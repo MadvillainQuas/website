@@ -93,16 +93,22 @@ class Platform:
                                        "starts_on": f"{y.group(1)}-09-01" if y else None,
                                        "ends_on": f"{int(y.group(1)) + 1}-06-30" if y else None}, "league_id,name")
 
-    def competition(self, season_id: str, name: str) -> dict:
-        r = self.one("competitions", f"season_id=eq.{season_id}&name=eq.{name}&select=id,name")
+    def competition(self, season_id: str, name: str, kind: str | None = None) -> dict:
+        r = self.one("competitions", f"season_id=eq.{season_id}&name=eq.{name}&select=id,name,kind")
         if r:
+            # a phase the feed names as a cup / playoff is filed as one, even if it was made as a league
+            if kind and r.get("kind") != kind and r.get("kind") in (None, "league") and not self.dry and self.sb:
+                try:
+                    self.sb.patch("competitions", f"id=eq.{r['id']}", {"kind": kind}); r["kind"] = kind
+                except Exception:
+                    pass
             return r
-        self.log(f"  + competition {name}")
-        return self.insert("competitions", {"season_id": season_id, "name": name, "kind": "league"}, "season_id,name")
+        self.log(f"  + competition {name} ({kind or 'league'})")
+        return self.insert("competitions", {"season_id": season_id, "name": name, "kind": kind or "league"}, "season_id,name")
 
-    def ensure_competition(self, league_id: str, label: str, season_name: str | None = None) -> dict:
+    def ensure_competition(self, league_id: str, label: str, season_name: str | None = None, kind: str | None = None) -> dict:
         s = self.season(league_id, season_name or season_name_for())
-        return self.competition(s["id"], label)
+        return self.competition(s["id"], label, kind)
 
     # -- clubs + people -----------------------------------------------------------
     @staticmethod

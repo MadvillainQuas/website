@@ -124,6 +124,20 @@ class FibaLiveStatsAdapter(BaseAdapter):
     _TIME = re.compile(r'match-time.*?<span>([^<]+)</span>', re.S)
     _VENUE = re.compile(r'class="venuename">([^<]+)<', re.S)
     _SIDE = re.compile(r'class="(home|away)-team".*?team-name-full">([^<]*)<.*?team-name-code">([^<]*)<(?:.*?fake-cell">([^<]*)<)?', re.S)
+    # each side's crest: <div class="home-team-logo team-logo"> <a ...><img src = "https://images.statsengine…/…T1.png" alt="Club">
+    _SIDE_LOGO = re.compile(r'class="(home|away)-team-logo[^"]*".*?<img\s+src\s*=\s*"([^"]+)"', re.S)
+    # the competition picker on a hosted schedule: one <option> per competition the client runs
+    _COMP_OPTION = re.compile(r'<option[^>]*value\s*=\s*"([^"]*?/competition/(\d+)/schedule[^"]*)"([^>]*)>\s*([^<]+?)\s*</option>', re.S | re.I)
+
+    def parse_competitions(self, html: str) -> list[dict]:
+        """Every competition the hosted schedule offers: [{id, url, name, selected}]. Genius runs a
+        league's phases as separate competitions (BCB: 'BCB 2026-2027', 'BCB Trophy 2027', an All Star
+        game), each with its own schedule URL and its own team list."""
+        out = []
+        for m in self._COMP_OPTION.finditer(html):
+            url = m.group(1).replace("hosted.dcd.shared.geniussports.com", "hosted.wh.geniussports.com")
+            out.append({"id": m.group(2), "url": url, "name": m.group(4).strip(), "selected": "selected" in m.group(3).lower()})
+        return out
 
     def parse_schedule(self, html: str, tz_name: str = "Europe/London") -> list[ScheduleGame]:
         tz = ZoneInfo(tz_name) if ZoneInfo else None
@@ -147,10 +161,14 @@ class FibaLiveStatsAdapter(BaseAdapter):
             sides = {}
             for sm in self._SIDE.finditer(body):
                 sides[sm.group(1)] = {"name": sm.group(2).strip(), "code": sm.group(3).strip(), "score": sm.group(4)}
+            for lm in self._SIDE_LOGO.finditer(body):
+                if lm.group(2).startswith("https://"):
+                    sides.setdefault(lm.group(1), {})["logo"] = lm.group(2)
             h, a = sides.get("home", {}), sides.get("away", {})
             out.append(ScheduleGame(external_id=gid, home_name=h.get("name", ""), away_name=a.get("name", ""), tipoff_at=tip, status=status,
                                     extra={"venue": (venue or "").strip() or None, "home_code": h.get("code"), "away_code": a.get("code"),
-                                           "home_score": h.get("score"), "away_score": a.get("score")}))
+                                           "home_score": h.get("score"), "away_score": a.get("score"),
+                                           "home_logo": h.get("logo"), "away_logo": a.get("logo")}))
         return out
 
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
@@ -167,6 +185,10 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 parsed = self.parse_schedule(r.text, config.get("timezone") or "Europe/London")
                 for g in parsed:
                     games[g.external_id] = g
+                try:
+                    self.last_competitions = self.parse_competitions(r.text)
+                except Exception:
+                    self.last_competitions = []
                 if not games:                                   # markup we do not know: fall back to bare ids
                     for pat in self.ID_PATTERNS:
                         for gid in pat.findall(r.text):

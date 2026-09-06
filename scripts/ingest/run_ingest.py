@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -212,6 +213,145 @@ def resolve_league(sb: Supabase, src: dict, run: dict) -> str | None:
     return league_id
 
 
+KIND_RULES = [
+    (re.compile(r"play-?off|final four|finals?\b|post-?season", re.I), "playoff"),
+    (re.compile(r"trophy|cup|shield|plate|knock-?out", re.I), "cup"),
+    (re.compile(r"all.?star|exhibition|friendl|pre-?season|showcase", re.I), "friendly"),
+]
+
+
+def kind_of(name: str, overrides: dict | None = None) -> str:
+    """What sort of competition a Genius phase name describes. adapter_config.competition_kinds
+    ({"BCB Trophy 2027": "cup"}) wins over the words."""
+    if overrides and name in overrides:
+        return overrides[name]
+    for rx, kind in KIND_RULES:
+        if rx.search(name or ""):
+            return kind
+    return "league"
+
+
+def season_match(name: str, season_name: str) -> bool:
+    """Does a Genius phase name belong to this season? A name carrying a year RANGE (2025-2026,
+    2025/26) must carry ours; a name with a single year (BCB Trophy 2027, Pro Am 2026) may name
+    either end of ours. '2026' inside '2025-2026' is last season, not this one."""
+    m = re.match(r"(\d{4})-(\d{2})$", season_name or "")
+    if not m:
+        return bool(season_name) and season_name in (name or "")
+    y1 = int(m.group(1)); y2 = y1 + 1
+    ranges = re.findall(r"(\d{4})\s*[-/–]\s*(\d{2,4})", name or "")
+    if ranges:
+        for a, b in ranges:
+            bb = int(b) if len(b) == 4 else int(str(y1)[:2] + b)
+            if int(a) == y1 and bb == y2:
+                return True
+        return False
+    years = {int(y) for y in re.findall(r"(?<!\d)(\d{4})(?!\d)", name or "")}
+    return bool(years & {y1, y2})
+
+
+def expand_competition_sources(sources: list[dict]) -> list[dict]:
+    """A FIBA source pointing at a client's whole schedule page becomes ONE SOURCE PER COMPETITION
+    the page offers for the current season (league, cup/trophy, playoffs, an all-star game), each
+    carrying the competition's own schedule URL, name and kind. That is what gives Epinoia the
+    separate team lists and tables a cup has, straight from the feed. Names that carry none of
+    the league's own words (a client also hosting somebody else's event) are left alone unless
+    adapter_config.competitions_include names them; competitions_exclude drops any."""
+    out = []
+    for src in sources:
+        ac = src.get("adapter_config") or {}
+        url = src.get("schedule_url") or ""
+        if src.get("adapter") != "fiba_livestats" or "/competition/" in url or ac.get("expand_competitions") is False:
+            out.append(src); continue
+        adapter = get_adapter(src["adapter"])
+        try:
+            list(adapter.discover(url, dict(ac, code=src.get("code"))))
+            comps = getattr(adapter, "last_competitions", None) or []
+        except Exception as exc:
+            print(f"   (competition list unavailable for {src.get('code')}: {exc})"); comps = []
+        if not comps:
+            out.append(src); continue
+        season = ac.get("season") or season_name_for()
+        words = {w.lower() for w in re.findall(r"[A-Za-z]{3,}", f"{src.get('label', '')} {src.get('code', '')} {src.get('league_name', '')}")}
+        inc = [re.compile(x, re.I) for x in (ac.get("competitions_include") or [])]
+        exc_ = [re.compile(x, re.I) for x in (ac.get("competitions_exclude") or [])]
+        picked = []
+        for c in comps:
+            n = c["name"]
+            if any(r.search(n) for r in exc_):
+                continue
+            wanted = any(r.search(n) for r in inc)
+            if not wanted:
+                in_season = season_match(n, season)
+                ours = any(w in n.lower() for w in words)
+                wanted = in_season and ours
+            if wanted:
+                picked.append(c)
+        if not picked:
+            out.append(src); continue
+        print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{c['name']} [{kind_of(c['name'], ac.get('competition_kinds'))}]" for c in picked))
+        for c in picked:
+            out.append({**src, "schedule_url": c["url"], "competition_label": c["name"],
+                        "competition_kind": kind_of(c["name"], ac.get("competition_kinds")), "competition_id": None,
+                        "label": src.get("label"), "_parent_url": url})
+    return out
+
+
+def source_competition(sb: Supabase, plat, src: dict, league_id: str, ac: dict) -> dict:
+    """The competition this source's games belong to: the DB row's, else the feed's phase for
+    this source (name + kind), else the league's default competition (the source label)."""
+    if src.get("competition_id"):
+        return {"id": src["competition_id"]}
+    if src.get("competition_label"):
+        comp = plat.ensure_competition(league_id, src["competition_label"], ac.get("season"), src.get("competition_kind"))
+    else:
+        comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
+    src["competition_id"] = comp["id"]
+    if src.get("id"):
+        try:
+            sb.patch("schedule_sources", f"id=eq.{src['id']}", {"competition_id": comp["id"]})
+        except Exception:
+            pass
+    return comp
+
+
+def default_competition_id(plat, src: dict, league_id: str, ac: dict) -> str | None:
+    """The league's catch-all competition (named after the source), if it exists - the one games
+    were filed under before the feed's phases were known."""
+    try:
+        s = plat.season(league_id, ac.get("season") or season_name_for())
+        r = plat.one("competitions", f"season_id=eq.{s['id']}&name=eq.{src.get('label') or src.get('code')}&select=id")
+        return r["id"] if r else None
+    except Exception:
+        return None
+
+
+def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
+    """Every club on the schedule gets its crest from the schedule page itself (both sides of every
+    fixture carry one), so a club's logo is on the site before its first game is fetched."""
+    league_id = resolve_league(sb, src, run)
+    if not league_id or not games:
+        return
+    plat = run["_platform"]
+    seen = set(); n = 0
+    for g in games:
+        for side in ("home", "away"):
+            code = (g.extra or {}).get(f"{side}_code"); logo = (g.extra or {}).get(f"{side}_logo")
+            name = g.home_name if side == "home" else g.away_name
+            if not code or not logo or code in seen:
+                continue
+            seen.add(code)
+            try:
+                before = plat.cache["team"].get((league_id, code), {}) or {}
+                t = plat.team(league_id, {"code": code, "name": name, "logoT": {"url": logo}})
+                if t and t.get("logo_path") == logo and before.get("logo_path") != logo:
+                    n += 1
+            except Exception:
+                continue
+    if n:
+        print(f"   {n} club crest(s) taken from the schedule")
+
+
 def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
     fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
@@ -220,10 +360,7 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
         return
     ac = src.get("adapter_config") or {}
     plat = run["_platform"]
-    comp_id = src.get("competition_id")
-    if not comp_id:
-        comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
-        comp_id = src["competition_id"] = comp["id"]
+    comp_id = source_competition(sb, plat, src, league_id, ac)["id"]
     ex = g.extra or {}
     home = plat.team(league_id, {"name": g.home_name, "code": ex.get("home_code") or ""})
     away = plat.team(league_id, {"name": g.away_name, "code": ex.get("away_code") or ""})
@@ -238,6 +375,11 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
             sb.patch("games", f"id=eq.{game_id}", {k: v for k, v in row.items() if v})
         return
     gm = sb.upsert("games", {"competition_id": comp_id, "home_team_id": home["id"], "away_team_id": away["id"], "status": "scheduled", **{k: v for k, v in row.items() if v}}, "id")
+    if src.get("competition_label") and gm and gm[0].get("competition_id") not in (None, comp_id):
+        dflt = default_competition_id(plat, src, league_id, ac)
+        if dflt and gm[0]["competition_id"] == dflt:
+            sb.patch("games", f"id=eq.{gm[0]['id']}", {"competition_id": comp_id})
+            run.setdefault("_recompute", set()).update({dflt, comp_id})
     for tid in (home["id"], away["id"]):
         sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tid}, "competition_id,team_id")
     sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"], "game_id": gm[0]["id"],
@@ -268,20 +410,9 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     plat = run["_platform"]
     if not league_id or b.raw is None:
         return False
-    comp_id = src.get("competition_id")
-    if comp_id:
-        comp = {"id": comp_id}
-        srow = sb.select("competitions", f"id=eq.{comp_id}&select=season_id")
-        season_id = srow[0]["season_id"] if srow else None
-    else:
-        comp = plat.ensure_competition(league_id, src.get("label") or src.get("code") or "League", ac.get("season"))
-        src["competition_id"] = comp["id"]
-        season_id = plat.one("competitions", f"id=eq.{comp['id']}&select=season_id")["season_id"]
-        if src.get("id"):
-            try:
-                sb.patch("schedule_sources", f"id=eq.{src['id']}", {"competition_id": comp["id"]})
-            except Exception:
-                pass
+    comp = source_competition(sb, plat, src, league_id, ac)
+    srow = sb.select("competitions", f"id=eq.{comp['id']}&select=season_id")
+    season_id = srow[0]["season_id"] if srow else None
     people = plat.ensure_game_people(league_id, comp, season_id, b.raw)
     home, away = people.get("1"), people.get("2")
     if not (home and away):
@@ -301,8 +432,17 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                                 "tipoff_at": b.tipoff_at, "status": status, **scores}, "id")
         game_id = g[0]["id"]
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id")
         extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and cur[0].get("tipoff_at") != b.tipoff_at) else {}
+        # A game filed under the league's catch-all competition before the feed's phases were known
+        # moves to the phase this source is (Trophy, League, playoffs). A game an administrator has
+        # already placed somewhere specific is never touched - only the catch-all is.
+        if src.get("competition_label") and cur and cur[0].get("competition_id") not in (None, comp["id"]):
+            dflt = default_competition_id(plat, src, league_id, ac)
+            if dflt and cur[0]["competition_id"] == dflt:
+                extra["competition_id"] = comp["id"]
+                run.setdefault("_recompute", set()).update({dflt, comp["id"]})
+                print(f"    -> filed under {src['competition_label']}")
         if cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
@@ -310,7 +450,10 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra})
             elif extra:
                 sb.patch("games", f"id=eq.{game_id}", extra)
-        elif not (cur and cur[0].get("status") == "final"):
+        elif cur and cur[0].get("status") == "final":
+            if extra:
+                sb.patch("games", f"id=eq.{game_id}", extra)
+        else:
             sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
@@ -538,7 +681,11 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
 
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
-    fiba = [s for s in sources if s["adapter"] == "fiba_livestats"]
+    fiba, seen_codes = [], set()
+    for s_ in sources:
+        if s_["adapter"] == "fiba_livestats" and s_["code"] not in seen_codes:
+            seen_codes.add(s_["code"])
+            fiba.append({**s_, "competition_label": None, "competition_kind": None})   # discovery decides the phase
     if sb is None or not fiba:
         print("live lane: needs Supabase and a fiba_livestats source"); return 0, False
     adapters = {s["code"]: get_adapter(s["adapter"]) for s in fiba}
@@ -651,6 +798,8 @@ def main() -> int:
         print("Supabase: off" + ("" if args.no_supabase or args.dry_run else " (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)") + " - repo feed only")
 
     sources = load_sources(sb, args.config and sb is None, args.source)
+    if not args.ids:
+        sources = expand_competition_sources(sources)
     print(f"{len(sources)} source(s) due")
     if args.live_only and not args.ids:
         rc, chain = live_keeper(sb, sources, args)
@@ -700,6 +849,11 @@ def main() -> int:
                 print(f"   {len(games)} live/due game(s): " + ", ".join(f"{g.home_name or g.external_id} v {g.away_name}" for g in games[:6]))
             else:
                 games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
+                if sb and not args.dry_run:
+                    try:
+                        sync_logos(sb, src, games, run)
+                    except Exception as exc:
+                        print(f"   (crests: {exc})")
             run["games_seen"] = len(games)
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);
@@ -805,6 +959,13 @@ def main() -> int:
                         still.append(g)
                 live_set = still
             if not args.dry_run:
+                # games moved between phases: both tables are rebuilt, as the console does
+                for cid in sorted(run.pop("_recompute", set()) or []):
+                    for fn in ("recompute_standings", "compute_season_awards", "advance_bracket"):
+                        try:
+                            sb.rpc(fn, {"p_competition": cid})
+                        except Exception:
+                            pass
                 if feed and not args.live_only:
                     feed.update_index(src, {k: v for k, v in entries.items() if v.get("hash") or v.get("date")})
                 if sb:
