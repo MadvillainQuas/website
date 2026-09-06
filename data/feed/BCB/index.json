@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T17:35:29.275607+00:00",
+"updated": "2026-09-06T17:46:47.409138+00:00",
 "games": [
 {
 "id": "2886993",
@@ -256,27 +256,27 @@
 "id": "2886985",
 "home": "Loughborough Riders",
 "away": "Hemel Storm",
-"homeScore": 3,
-"awayScore": 0,
+"homeScore": 11,
+"awayScore": 16,
 "status": "live",
 "date": "2026-09-06T17:30:00+00:00",
-"hash": "91af78f316d2e5b448f2232ffe501329aab29e50",
+"hash": "460f95ff0d355b59fb94132fe88086f73377011a",
 "venue": "Netball Centre Loughborough University",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886985.json",
-"updated": "2026-09-06T17:34:38.846605+00:00"
+"updated": "2026-09-06T17:45:42.224192+00:00"
 },
 {
 "id": "2886996",
 "home": "Gloucester City Kings",
 "away": "Plymouth Raiders",
-"homeScore": 73,
-"awayScore": 57,
+"homeScore": 93,
+"awayScore": 68,
 "status": "live",
 "date": "2026-09-06T16:15:00+00:00",
-"hash": "38eb606719f413b9b05b039c21893a40b1230125",
+"hash": "8787072c9d43cd3a6226616481898cadf0777c76",
 "venue": "Oxstalls Sports Park Arena",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
-"updated": "2026-09-06T17:34:58.553368+00:00"
+"updated": "2026-09-06T17:46:05.856790+00:00"
 },
 {
 "id": "2887006",
@@ -321,14 +321,14 @@
 "id": "2887016",
 "home": "Nottingham Hoods",
 "away": "Derby Trailblazers",
-"homeScore": 39,
-"awayScore": 50,
+"homeScore": 41,
+"awayScore": 53,
 "status": "live",
 "date": "2026-09-06T13:00:00+00:00",
-"hash": "b7077ff2cd7f1969f25629ffd09b4d083b8e1f36",
+"hash": "9b32db49de23504aeae9a52917cc7690510a0d41",
 "venue": "Harvey Hadden Sports Village",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
-"updated": "2026-09-06T17:35:16.293717+00:00"
+"updated": "2026-09-06T17:46:29.726769+00:00"
 },
 {
 "id": "2886984",
