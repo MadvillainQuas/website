@@ -85,6 +85,16 @@ redeploy with:
 cd /d C:\Users\Admin\Documents\website_repo && npx supabase@latest functions deploy finalise-game
 ```
 
+## 4c. Dates, fixtures and live games (built 2026-09-06)
+
+The worker reads each game's tip-off time, venue and clubs from the Genius hosted schedule (league
+local time → UTC), so fixtures appear on Epinoia with real dates before tip. Two lanes run in the
+12:00–23:30 UTC window: the half-hourly discovery lane (new games, finals, repo feed commit) and a
+**live lane every 10 minutes** that polls only games live or due to tip (±20 min / last 4 h) every
+30 seconds for 9 minutes, appending new events and the running clock to Supabase — the game page
+picks the new rows up through its own gap check. Run the live lane by hand from Actions with the
+`live` box ticked.
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash

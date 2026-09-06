@@ -532,7 +532,7 @@ def main() -> int:
                 if args.dry_run:
                     print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}")
                     if args.fixture_out:
-                        write_fixture(Path(args.fixture_out), src, b)
+                        write_test_fixture(Path(args.fixture_out), src, b)
                     continue
                 raw_ref = None
                 if sb:
@@ -550,7 +550,7 @@ def main() -> int:
                     except Exception as exc:
                         print(f"    (platform write failed: {exc})")
                 if args.fixture_out:
-                    write_fixture(Path(args.fixture_out), src, b)
+                    write_test_fixture(Path(args.fixture_out), src, b)
                 run["games_written"] += 1
                 if b.status == "live":
                     live_set.append(g)
@@ -611,7 +611,7 @@ def main() -> int:
     return exit_code
 
 
-def write_fixture(d: Path, src: dict, b: GameBundle) -> None:
+def write_test_fixture(d: Path, src: dict, b: GameBundle) -> None:
     d.mkdir(parents=True, exist_ok=True)
     (d / f"{b.external_id}.json").write_text(json.dumps({
         "external_id": b.external_id, "adapter": src["adapter"], "status": b.status, "home_name": b.home_name, "away_name": b.away_name,
