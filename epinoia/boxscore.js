@@ -551,7 +551,12 @@ function teamAdv(d,t){
     p3p: dv(T.fg3m,T.fg3a)*100, p3r: dv(T.fg3a,T.fga)*100,
     astPtsP: dv(T.ptsAst, T.pts-T.ftm)*100,
     tsaPer100: dv(T.tsa,T.possessions)*100,
-    pace: dv(T.possessions+O.possessions, 2) / Math.max(1,T.minutes/5) * 40
+    /* game pace: the two teams' possessions averaged, per 40 minutes of game clock
+       (T.minutes is five players' worth, so /5 is the game's elapsed minutes) */
+    pace: dv(T.possessions+O.possessions, 2) / Math.max(1,T.minutes/5) * 40,
+    /* this team's OWN pace — its possessions per 40 — which can differ from the
+       opponent's by a possession or two (end-of-period leftovers) */
+    paceOwn: T.possessions / Math.max(1,T.minutes/5) * 40
   });
 }
 
@@ -801,8 +806,11 @@ function advHTML(d){
   const FF = [
     {l:'ortg', k:'ortg', max:130, hb:true, f:f1}, {l:'efg%', k:'efg', max:70, hb:true, f:f1},
     {l:'fta rate', k:'ftr', max:50, hb:true, f:f1}, {l:'oreb%', k:'orebp', max:50, hb:true, f:f1},
-    {l:'tov%', k:'tovp', max:30, hb:false, f:f1}];
-  const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h; const hWin = x.hb?hw:aw, aWin = x.hb?aw:hw;
+    {l:'tov%', k:'tovp', max:30, hb:false, f:f1},
+    /* possessions and each team's own pace (per 40); the header carries the game pace */
+    {l:'possessions', k:'possessions', max:110, hb:null, f:f0}, {l:'pace / 40', k:'paceOwn', max:100, hb:null, f:f1}];
+  const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
+    const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
     return '<div class="ffrow"><span class="ffval'+(hWin?' winner':'')+'">'+x.f(h)+'</span>'+
       '<div class="ffmid"><div class="ffbar"><i style="width:'+Math.min(100,h/x.max*100)+'%;background:'+c0+'"></i></div>'+
       '<div class="ffbar"><i style="width:'+Math.min(100,a/x.max*100)+'%;background:'+c1+'"></i></div><div class="fflabel">'+x.l+'</div></div>'+

@@ -1188,8 +1188,16 @@ function goLive() {
       backfill('snapshot');
     },
     onFrame(f) { mergeLive(f.game, f.events, f.removed, f.full); render(); checkGap(); },
-    onStatus(s) { if (statusVal !== 'final') setStatus(s); }
+    /* A FED GAME HAS NO SCORER BROADCASTING, so no frame ever arrives and the
+       watchdog would call it "delayed" for the whole game. Its heartbeat is the
+       state row the ingest worker rewrites every poll: fresh = live. */
+    onStatus(s) {
+      if (statusVal === 'final') return;
+      if (window.S && window.S.fed && s === 'delayed' && feedFresh()) { setStatus('live'); return; }
+      setStatus(s);
+    }
   });
+  detectFed();
   /* The clock lives inside the scoreboard block the scorer renders, not in a
      element of its own, so ticking it means redrawing that block — which is
      cheap. The body is untouched, so tables keep their scroll position. */
@@ -1213,7 +1221,14 @@ function goLive() {
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
     const S = window.S;
-    S.clockMs = sub.clockMs();
+    /* A fed clock never ticks here: it is whatever the last payload said
+       (the worker writes it stopped), and it moves when the next poll lands —
+       exactly what the FIBA LiveStats page does. */
+    S.clockMs = S.fed ? (+sub.state.clock_ms || 0) : sub.clockMs();
+    if (S.fed && statusVal !== 'final' && S.status !== 'final') {
+      const want = feedFresh() ? 'live' : 'delayed';
+      if (statusVal !== want) setStatus(want);
+    }
     if (sub.state.period != null && +sub.state.period > 0 && +sub.state.period !== +S.period) {
       S.period = +sub.state.period;
       renderHead();                              // a new period is worth a rebuild
@@ -1226,6 +1241,23 @@ function goLive() {
       if (pill.firstChild.nodeValue !== want) pill.firstChild.nodeValue = want;
     } else renderHead();
   }, 500);
+}
+
+/* IS THIS A FED GAME? One anonymous read of external_games at connect time.
+   The answer changes two things above: the clock stops ticking locally, and
+   "live" means the worker's state row is fresh rather than a scorer's frame. */
+let feedFreshMs = 90 * 1000;              // the live lane polls every 10 s; three misses = delayed
+async function detectFed() {
+  if (!gameId || !window.S || window.S.fed != null) return;
+  try {
+    const rows = await api('external_games?game_id=eq.' + encodeURIComponent(gameId) + '&select=external_id&limit=1');
+    window.S.fed = !!(rows && rows.length);
+  } catch (_) { window.S.fed = false; }
+}
+function feedFresh() {
+  if (!sub || !sub.state || !sub.state.updated_at) return false;
+  const t = new Date(sub.state.updated_at).getTime();
+  return isFinite(t) && (Date.now() - t) < feedFreshMs;
 }
 
 /* THE STATUS WATCH — how this page learns the game has been taken away.

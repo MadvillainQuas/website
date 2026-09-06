@@ -412,7 +412,10 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         clock_ms = (int(mm) * 60 + int(float(ss))) * 1000
     except Exception:
         pass
-    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": live and clock_ms > 0,
+    # `running` stays FALSE for a fed game: the page would otherwise count the clock down locally
+    # between polls, and a feed clock is only ever as current as its last event. Written stopped,
+    # it reads exactly what FIBA LiveStats shows and moves when the next payload lands.
+    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": False,
                              "score_home": T["home_score"], "score_away": T["away_score"], "last_seq": len(rows), "updated_at": now_iso()}, "game_id")
     print(f"    = {how}" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
     if b.status == "final":

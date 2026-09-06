@@ -27646,6 +27646,14 @@
                 const gamePoss = (homeTotal.possessions + awayTotal.possessions) / 2;
                 const totalMins = (homeTotal.minutes || 200) / 5;
                 const pace = totalMins > 0 ? (gamePoss / totalMins * 40) : 70;
+                // V15.6: each team's OWN pace (its possessions per 40) beside the game pace, so the
+                // comparison row shows two numbers that can differ instead of the same one twice
+                for (const tn of teamNames) {
+                    const tt = teamsData[tn].totals;
+                    const tMins = ((tt.minutes || homeTotal.minutes || 200) / 5) || totalMins;
+                    tt.pace = tMins > 0 ? (tt.possessions / tMins * 40) : pace;
+                    tt.gamePace = pace;
+                }
 
                 // Calculate game averages for +/- comparison
                 const gameAvg = {
@@ -76282,12 +76290,14 @@
                                             })()
                                         ),
                                         // Efficiency Ratings row
-                                        e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', padding: '0 16px 16px' }},
+                                        e('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', padding: '0 16px 16px' }},
                                             [
                                                 { label: 'Off Rtg', home: homeTotals.ortg, away: awayTotals.ortg, higherBetter: true },
                                                 { label: 'Def Rtg', home: homeTotals.drtg, away: awayTotals.drtg, higherBetter: false },
                                                 { label: 'Net Rtg', home: (homeTotals.ortg || 100) - (homeTotals.drtg || 100), away: (awayTotals.ortg || 100) - (awayTotals.drtg || 100), higherBetter: true },
-                                                { label: 'Pace', home: gvCurrentGame.pace, away: gvCurrentGame.pace, higherBetter: null }
+                                                // V15.6: each team's own possessions per 40 (game pace = their average, shown in the header)
+                                                { label: 'Pace', home: homeTotals.pace != null ? homeTotals.pace : gvCurrentGame.pace, away: awayTotals.pace != null ? awayTotals.pace : gvCurrentGame.pace, higherBetter: null },
+                                                { label: 'Poss', home: homeTotals.possessions, away: awayTotals.possessions, higherBetter: null }
                                             ].map((stat, i) => {
                                                 const homeWins = stat.higherBetter === null ? false : stat.higherBetter ? stat.home > stat.away : stat.home < stat.away;
                                                 return e('div', { key: i, style: { textAlign: 'center', padding: '10px', background: 'var(--gv-bg-glass)', borderRadius: '8px' }},

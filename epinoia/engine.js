@@ -386,7 +386,10 @@ function teamAdv(game, d, t) {
     p3p: dv(T.fg3m, T.fg3a) * 100, p3r: dv(T.fg3a, T.fga) * 100,
     astPtsP: dv(T.ptsAst, T.pts - T.ftm) * 100,
     tsaPer100: dv(T.tsa, T.possessions) * 100,
-    pace: dv(T.possessions + O.possessions, 2) / Math.max(1, T.minutes / 5) * 40
+    // game pace (both teams' possessions averaged, per 40 min of game clock) and
+    // this team's own possessions per 40, which can differ by a possession or two
+    pace: dv(T.possessions + O.possessions, 2) / Math.max(1, T.minutes / 5) * 40,
+    paceOwn: T.possessions / Math.max(1, T.minutes / 5) * 40
   });
 }
 
