@@ -1253,6 +1253,9 @@ async function detectFed() {
     const rows = await api('external_games?game_id=eq.' + encodeURIComponent(gameId) + '&select=external_id&limit=1');
     window.S.fed = !!(rows && rows.length);
   } catch (_) { window.S.fed = false; }
+  /* the header was drawn with a ticking clock before this was known — redraw
+     it from the feed's own clock so pace and minutes agree with the state row */
+  if (window.S.fed && sub && sub.state) { window.S.clockMs = +sub.state.clock_ms || 0; render(); }
 }
 function feedFresh() {
   if (!sub || !sub.state || !sub.state.updated_at) return false;
