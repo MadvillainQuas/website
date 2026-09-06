@@ -30,6 +30,9 @@ on:
         description: "Re-process every game (backfill stints / re-translate)"
         type: boolean
         default: false
+      ids:
+        description: "Only these game ids, comma-separated (tests)"
+        required: false
 
 concurrency:
   group: league-ingest
@@ -45,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: "3.12" }   # the scraper pipeline is written against 3.12
       - uses: browser-actions/setup-chrome@v1      # headless Chrome for SPA schedule pages
       - run: pip install -r scripts/requirements.txt
       # The scraper pipeline (stints, lineups, the 13-CSV dataset). Private repo → deploy key.
@@ -71,7 +74,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}             ${{ github.event.inputs.ids && format('--ids "{0}"', github.event.inputs.ids) || '' }}
       - name: Rebuild dataset from the archive (nightly / on request)
         if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
         env:
@@ -90,4 +93,6 @@ jobs:
           [ -f data/latest.json ] && git add data/latest.json
           ls -d data/data_* >/dev/null 2>&1 && git add -A data/data_*
           git diff --cached --quiet && echo "nothing new" || git commit -m "feed: ingest $(date -u +%Y-%m-%dT%H:%MZ)"
+          # somebody may have pushed while we ran — replay our feed commit on top of theirs
+          git pull --rebase --autostash origin main || true
           git push

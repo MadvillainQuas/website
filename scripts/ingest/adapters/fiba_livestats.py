@@ -288,6 +288,9 @@ class FibaLiveStatsAdapter(BaseAdapter):
     def _stints_via_pipeline(self, raw: dict, gid: str, config: dict, team_rows: dict) -> list:
         fap = self._load_pipeline(config)
         if not fap:
+            if not getattr(FibaLiveStatsAdapter, "_pipeline_warned", False):
+                FibaLiveStatsAdapter._pipeline_warned = True
+                print(f"     (stints skipped: scraper pipeline not importable from {config.get('scraper_dir') or DEFAULT_SCRAPER_DIR}: {self._pipeline_error})")
             return []
         bcb = sys.modules.get("bcb_scraper")
         try:
@@ -298,6 +301,7 @@ class FibaLiveStatsAdapter(BaseAdapter):
             stints = parser.get_stints()
         except Exception as exc:
             self._pipeline_error = repr(exc)
+            print(f"     (stints failed for {gid}: {exc!r})")
             return []
         if not stints:
             return []
