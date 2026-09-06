@@ -300,17 +300,18 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
         g = sb.upsert("games", {"competition_id": comp["id"], "home_team_id": home["id"], "away_team_id": away["id"],
                                 "tipoff_at": b.tipoff_at, "status": status, **scores}, "id")
         game_id = g[0]["id"]
-    elif b.tipoff_at:
-        sb.patch("games", f"id=eq.{game_id}", {"tipoff_at": b.tipoff_at})
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at")
+        extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and cur[0].get("tipoff_at") != b.tipoff_at) else {}
         if cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
             if not n_ev:
-                sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores})
+                sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra})
+            elif extra:
+                sb.patch("games", f"id=eq.{game_id}", extra)
         elif not (cur and cur[0].get("status") == "final"):
-            sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores})
+            sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,
