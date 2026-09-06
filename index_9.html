@@ -27649,7 +27649,7 @@
                 // V15.6: each team's OWN pace (its possessions per 40) beside the game pace, so the
                 // comparison row shows two numbers that can differ instead of the same one twice
                 for (const tn of teamNames) {
-                    const tt = teamsData[tn].totals;
+                    const tt = teamsData[tn].teamTotals;
                     const tMins = ((tt.minutes || homeTotal.minutes || 200) / 5) || totalMins;
                     tt.pace = tMins > 0 ? (tt.possessions / tMins * 40) : pace;
                     tt.gamePace = pace;
@@ -76303,9 +76303,10 @@
                                                 return e('div', { key: i, style: { textAlign: 'center', padding: '10px', background: 'var(--gv-bg-glass)', borderRadius: '8px' }},
                                                     e('div', { style: { fontSize: '9px', color: 'var(--gv-text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}, stat.label),
                                                     e('div', { style: { display: 'flex', justifyContent: 'center', gap: '8px' }},
+                                                        // V15.6: neutral rows (pace, possessions) still show BOTH teams — each has its own number — just without a winner colour
                                                         e('span', { style: { fontSize: '14px', fontWeight: '700', color: homeWins ? 'var(--gv-team-home)' : 'var(--gv-text-secondary)' }}, (stat.home || 0).toFixed(1)),
-                                                        stat.higherBetter !== null && e('span', { style: { color: 'var(--gv-text-muted)', fontSize: '12px' }}, '-'),
-                                                        stat.higherBetter !== null && e('span', { style: { fontSize: '14px', fontWeight: '700', color: !homeWins ? 'var(--gv-team-away)' : 'var(--gv-text-secondary)' }}, (stat.away || 0).toFixed(1))
+                                                        e('span', { style: { color: 'var(--gv-text-muted)', fontSize: '12px' }}, '-'),
+                                                        e('span', { style: { fontSize: '14px', fontWeight: '700', color: (stat.higherBetter !== null && !homeWins) ? 'var(--gv-team-away)' : 'var(--gv-text-secondary)' }}, (stat.away || 0).toFixed(1))
                                                     )
                                                 );
                                             })
