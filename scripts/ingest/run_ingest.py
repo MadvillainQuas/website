@@ -235,7 +235,10 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
         return False
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
-    status = "final" if b.status == "final" else ("live" if b.status == "live" else "scheduled")
+    will_translate = src["adapter"] == "fiba_livestats" and ac.get("translate", True)
+    # a game we are about to translate stays 'live' until finalise-game closes it — 'final' means
+    # "log closed" to the platform (insert trigger refuses events, finalise refuses a second pass)
+    status = ("live" if will_translate else "final") if b.status == "final" else ("live" if b.status == "live" else "scheduled")
     scores = {"home_score": int(b.team["home"].get("points", 0)), "away_score": int(b.team["away"].get("points", 0))}
     if not game_id:
         g = sb.upsert("games", {"competition_id": comp["id"], "home_team_id": home["id"], "away_team_id": away["id"],
@@ -243,14 +246,19 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict) -> bool:
         game_id = g[0]["id"]
     else:
         cur = sb.select("games", f"id=eq.{game_id}&select=status")
-        if not (cur and cur[0].get("status") == "final"):
+        if cur and cur[0].get("status") == "final" and will_translate:
+            # marked final without a scored log (an earlier run inserted it closed) → reopen it
+            n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
+            if not n_ev:
+                sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores})
+        elif not (cur and cur[0].get("status") == "final"):
             sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores})
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,
                                 "pbp": b.pbp if ac.get("store_pbp") else None, "computed_at": now_iso()}, "game_id")
     sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}", {"game_id": game_id, "ingested_at": now_iso(), "error": None})
-    if src["adapter"] == "fiba_livestats" and ac.get("translate", True):
+    if will_translate:
         try:
             write_event_log(sb, src, b, game_id, people["pids"])
         except Exception as exc:

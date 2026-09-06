@@ -65,8 +65,11 @@ label, adapter, schedule URLs). *Publish* commits `config/ingest-sources.json` �
 worker, Scrape Now and GameVis all read — with your saved GitHub token; *Run ingest now* starts the
 worker immediately and the card lists the last runs.
 
-**Epinoia console → 07b Connect a league feed** (needs migration 0097 — run `Push Database.bat`
-again): paste the league's schedule URL, give it a code, press *connect*. The worker then creates
+**Epinoia console → 07b Connect a league feed** (migrations 0097 + 0098 — run `Push Database.bat`
+again after pulling): a platform admin can **create a brand-new league** here from nothing but a
+name, a code and its schedule URL(s) (`create league` — makes the league, the current season, a
+competition, you as its admin, and registers the feed). To attach a feed to a league that already
+exists, paste the league's schedule URL, give it a code, press *connect*. The worker then creates
 that league's clubs, players, rosters and fixtures from the feed and turns every finished game into
 a scored Epinoia game (roster snapshot, event log, finalise). The card shows each feed's last poll,
 game counts and errors, with pause / resume / poll-now.
