@@ -79,10 +79,28 @@ def watch_details(video_id: str) -> dict:
     if hit and (hit[1].get("started_at") or time.time() - hit[0] < 300):
         return hit[1]
     d = {"live": False, "started_at": None, "ended_at": None, "duration_s": 0, "title": None}
-    # THE PLAYER ENDPOINT FIRST. It is what the watch page itself calls, answers JSON from any
-    # network (a server fetching the HTML can be handed a consent page instead), and carries the
-    # live broadcast's start/end under microformat. The public web client key is baked into every
-    # YouTube page; it is not a credential.
+    # THE DATA API FIRST, WHEN THERE IS A KEY. From a datacenter address (GitHub's runners) YouTube
+    # answers its own player endpoint and watch pages with a sign-in wall (LOGIN_REQUIRED /
+    # 400 - seen 2026-09-07), so the official API is the one route to a stream's real start from
+    # the worker. One unit per lookup; the free quota is ten thousand a day.
+    key = os.environ.get("YOUTUBE_API_KEY")
+    if key:
+        try:
+            r = requests.get(f"{API}/videos", params={"part": "snippet,contentDetails,liveStreamingDetails", "id": video_id, "key": key}, timeout=30)
+            it = (r.json().get("items") or [None])[0] if r.status_code == 200 else None
+            if it:
+                lsd = it.get("liveStreamingDetails") or {}
+                d["title"] = (it.get("snippet") or {}).get("title")
+                d["started_at"] = lsd.get("actualStartTime"); d["ended_at"] = lsd.get("actualEndTime")
+                d["live"] = bool(lsd) or bool(d["started_at"])
+                d["duration_s"] = _iso_dur_s((it.get("contentDetails") or {}).get("duration"))
+                _watch_cache[video_id] = (time.time(), d)
+                return d
+        except Exception:
+            pass
+    # THE PLAYER ENDPOINT NEXT. It is what the watch page itself calls and carries the live
+    # broadcast's start/end under microformat; it answers from a home connection, not from a
+    # datacenter. The public web client key is baked into every YouTube page; it is not a credential.
     diag = []
     for client in ({"clientName": "ANDROID", "clientVersion": "19.09.37", "androidSdkVersion": 30},
                    {"clientName": "WEB", "clientVersion": "2.20240905.00.00"},

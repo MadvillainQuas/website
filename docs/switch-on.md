@@ -152,6 +152,13 @@ attached days ahead (streams are scheduled early); when the game goes live the s
 filled in; when the log has its first period_start the tip is filled in — and every play is placed.
 Verified on the 5–6 Sep weekend: 7 of 8 games matched (the eighth was never streamed).
 
+**Why the key still matters.** Matching works from the worker without one (the RSS feed answers
+anywhere), but YouTube shows GitHub's runners a sign-in wall on its watch pages and player endpoint
+(LOGIN_REQUIRED, seen 7 Sep), so the stream's real start — the thing that anchors every play with no
+human step — only comes back through the Data API. Until the key is in, streams are attached and
+the page asks for the tip-off offset (or reads it off the scoreboard); once it is in, the next run
+anchors every attached stream by itself.
+
 **Finding the channel id for another league:** open the channel's page, view source, search
 `externalId` — the `UC…` value — and put it in that league's registry entry (admin.html → League
 feeds → adapter config) as `youtube_channel`.
