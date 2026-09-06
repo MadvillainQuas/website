@@ -2,19 +2,19 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T17:10:59.373150+00:00",
+"updated": "2026-09-06T17:19:11.892472+00:00",
 "games": [
 {
 "id": "2887016",
 "home": "Nottingham Hoods",
 "away": "Derby Trailblazers",
-"homeScore": 33,
-"awayScore": 31,
+"homeScore": 36,
+"awayScore": 38,
 "status": "live",
 "date": null,
-"hash": "8cda4f511bf0ea1bf1f5c8ca61f8fb0dbeca0672",
+"hash": "463b3c6a8ac3565d8f2d6daae37bdfc9c0c35189",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
-"updated": "2026-09-06T17:10:40.783856+00:00"
+"updated": "2026-09-06T17:18:54.369052+00:00"
 },
 {
 "id": "2887014",
@@ -56,13 +56,13 @@
 "id": "2886996",
 "home": "Gloucester City Kings",
 "away": "Plymouth Raiders",
-"homeScore": 47,
-"awayScore": 41,
+"homeScore": 55,
+"awayScore": 50,
 "status": "live",
 "date": null,
-"hash": "c1f0973c554e3b44266e7b435cd7af4fc82e1c86",
+"hash": "fd480acfe95287b47974d168872fb49af30bd8ee",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
-"updated": "2026-09-06T17:09:28.492156+00:00"
+"updated": "2026-09-06T17:18:31.243427+00:00"
 },
 {
 "id": "2886995",
@@ -96,9 +96,9 @@
 "awayScore": 0,
 "status": "scheduled",
 "date": null,
-"hash": "880c2b1ed88b91f72337ce73c63c2da7e190e08c",
+"hash": "869ff3d5ed039b975dc0cd967958ad46d3241169",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886985.json",
-"updated": "2026-09-06T17:08:18.858717+00:00"
+"updated": "2026-09-06T17:18:09.793487+00:00"
 },
 {
 "id": "2886984",
