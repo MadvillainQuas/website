@@ -305,7 +305,12 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     if b.status == "final":
         code, body = sb.function("finalise-game", {"gameId": game_id})
         if code >= 300:
-            print(f"    ! finalise-game {code}: {str(body)[:300]}")
+            msg = f"finalise-game {code}: {str(body)[:300]}"
+            print(f"    ! {msg}")
+            try:
+                sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}", {"error": msg[:500]})
+            except Exception:
+                pass
         else:
             print("    = finalised")
 
@@ -352,6 +357,7 @@ def main() -> int:
     ap.add_argument("--fixture-out", help="also write each bundle (+ raw) as JSON test fixtures here")
     ap.add_argument("--no-supabase", action="store_true")
     ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
+    ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games currently live so they finalise the moment they end (the 5-minute pass)")
     args = ap.parse_args()
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
@@ -376,8 +382,23 @@ def main() -> int:
         t0 = time.time(); err = None
         try:
             print(f"-> {src['label']} [{src['adapter']}] {src['schedule_url'][:90]}")
-            games = ([ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()] if args.ids
-                     else list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code")))))
+            if args.ids:
+                games = [ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()]
+            elif args.live_only:
+                live_ids = set()
+                if sb:
+                    try:
+                        for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=eq.live&select=external_id"):
+                            live_ids.add(str(r["external_id"]))
+                    except Exception as exc:
+                        print(f"   (live lookup failed: {exc})")
+                elif feed:
+                    live_ids = {k for k, v in feed.known(src["code"]).items() if v.get("status") == "live"}
+                games = [ScheduleGame(external_id=x) for x in sorted(live_ids)]
+                if not games:
+                    print("   no live games"); continue
+            else:
+                games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
             run["games_seen"] = len(games)
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);
