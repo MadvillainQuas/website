@@ -506,10 +506,21 @@ async function loadState(ids) {
 
   rows.forEach(row => {
     const held = LIVE.get(row.game_id);
-    /* A frame already heard is fresher than anything a table can offer. */
-    if (held && held.last_seq != null && row.last_seq != null && row.last_seq <= held.last_seq) return;
+    /* A frame already heard is fresher than anything a table can offer — but
+       only if it really is newer. A FED game (FIBA LiveStats through the ingest
+       worker) has no frames at all: its state row is rewritten every poll, and
+       the clock moves there without the event count moving. Skipping a row on
+       an equal last_seq froze those clocks and scores until the next basket. So
+       a row is ignored only when its sequence is behind, or the same and no
+       newer by its own timestamp. */
+    if (held && held.last_seq != null && row.last_seq != null) {
+      if (row.last_seq < held.last_seq) return;
+      const rowAt = Date.parse(row.updated_at || '') || 0;
+      if (row.last_seq === held.last_seq && held.updatedAt && rowAt <= held.updatedAt) return;
+    }
     if (!noteState(row.game_id, row, held && held.status)) return;
     const s = LIVE.get(row.game_id);
+    s.updatedAt = Date.parse(row.updated_at || '') || 0;
     s.elapsedBase = Math.max(0, serverNow - Date.parse(row.updated_at || '') || 0);
   });
   paint();
@@ -592,12 +603,27 @@ function card(g) {
 }
 
 /* live first, then what is coming, then what is done — a strip is glanced at */
-const RANK = { live: 0, scheduled: 1, final: 2 };
+/* LIVE FIRST, THEN THE CLOSEST GAMES EITHER SIDE OF NOW.
+
+   The old rule was live, then EVERY upcoming fixture, then finished — and a
+   league with a season's worth of fixtures loaded meant the finished games
+   never reached the strip at all: twelve cards of next month before tonight's
+   result. A strip is glanced at for what is happening and what just happened,
+   so after the live games the rest are ranked by how far they are from this
+   moment: a result from this afternoon sits ahead of a fixture on Saturday,
+   which sits ahead of one a fortnight out. Between a fixture and a result the
+   same distance apart, the fixture comes first. Judged through statusOf so a
+   game being written up counts as finished, not as upcoming. */
 function order(a, b) {
-  const r = RANK[a.status] - RANK[b.status];
-  if (r) return r;
-  const ta = new Date(a.tipoff_at || 0), tb = new Date(b.tipoff_at || 0);
-  return a.status === 'final' ? tb - ta : ta - tb;   // upcoming ascending, finished descending
+  const sa = statusOf(a), sb = statusOf(b);
+  if ((sa === 'live') !== (sb === 'live')) return sa === 'live' ? -1 : 1;
+  const now = Date.now();
+  const ta = new Date(a.tipoff_at || 0).getTime(), tb = new Date(b.tipoff_at || 0).getTime();
+  if (sa === 'live' && sb === 'live') return ta - tb;
+  const da = Math.abs(ta - now), db = Math.abs(tb - now);
+  if (Math.abs(da - db) > 60 * 1000) return da - db;
+  if (sa !== sb) return sa === 'final' ? 1 : -1;
+  return sa === 'final' ? tb - ta : ta - tb;
 }
 
 /* the rules are read through a function rather than the table, so the answer is

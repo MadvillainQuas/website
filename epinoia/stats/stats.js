@@ -15,6 +15,11 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const { league, comp, comps } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
     $('#ctx').textContent = league.name;
     $('#title').textContent = league.name + ' — season statistics';
+    /* the route to team stats: the league page's Team Stats tab, for THIS league
+       (and the same competition when one was chosen here) */
+    const tl = $('#teamsLink');
+    if (tl) tl.href = '../l/?l=' + encodeURIComponent(league.slug) +
+      (qp.get('c') ? '&c=' + encodeURIComponent(qp.get('c')) : '') + '#teams';
     if (!comp) return fail('This league has no competitions yet.');
 
     /* THE SAME SCOPE THE LEAGUE PAGE USES, for the same reason: this table was
