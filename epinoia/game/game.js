@@ -1027,10 +1027,30 @@ function goLive() {
   setInterval(() => checkGap(), 10000);
   watchForVideo();
 
+  /* THE CLOCK TICK. Two things it must not do, both learned on a fed game:
+       - rebuild the header. Rebuilding replaced the team names every half
+         second, and as the clock digits changed width the flex row re-laid
+         them out — the names visibly jittered. Now the tick touches only the
+         text inside the pill; the header is rebuilt when an event arrives.
+       - trust the period it was loaded with. The games row's period is what
+         the page opened on; the live state's period is where the game IS. A
+         fed game that moved into Q3 while nobody was watching read "Q2" with
+         Q3 points already in the quarter row. */
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
-    window.S.clockMs = sub.clockMs();
-    renderHead();
+    const S = window.S;
+    S.clockMs = sub.clockMs();
+    if (sub.state.period != null && +sub.state.period > 0 && +sub.state.period !== +S.period) {
+      S.period = +sub.state.period;
+      renderHead();                              // a new period is worth a rebuild
+      return;
+    }
+    const pill = document.querySelector('#csHead .pacepill');
+    if (!pill || S.phase === 'final') { renderHead(); return; }
+    const want = B.perName(S.period) + ' · ' + B.fmtClock(S.clockMs) + ' ';
+    if (pill.firstChild && pill.firstChild.nodeType === 3) {
+      if (pill.firstChild.nodeValue !== want) pill.firstChild.nodeValue = want;
+    } else renderHead();
   }, 500);
 }
 

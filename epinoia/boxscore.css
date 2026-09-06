@@ -761,6 +761,8 @@ table.bx th,table.adv th,.qstrip th,.benchsep,.thead .tsub{
 .pacepill{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);
   border-radius:100px;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.8px;font-family:var(--f-head);font-weight:600;}
 .pacepill b{font-family:var(--f-mono);color:var(--gold);font-weight:700;}
+/* the clock must not change width as it ticks - a widening digit used to shove both team names */
+.pacepill{font-variant-numeric:tabular-nums;min-width:15.5em;justify-content:center;}
 /* chips: 0.15 fill / 0.4 border / full-strength text */
 .statchip{background:rgba(147,242,191,.06);border-color:var(--border-subtle);}
 .stchip.on,.tabbtn.on{font-weight:600;}
