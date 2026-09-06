@@ -50,6 +50,11 @@ scraped_data/
 "@ | Set-Content -Encoding utf8 .gitignore
 }
 if (-not (Test-Path '.git')) { git init -q; git branch -M main }
+# commits need an identity; reuse the website repo's, else a noreply one
+$siteName = git -C (Split-Path $PSScriptRoot -Parent | Split-Path -Parent) config user.name
+$siteMail = git -C (Split-Path $PSScriptRoot -Parent | Split-Path -Parent) config user.email
+if (-not (git config user.name))  { git config user.name  ($(if ($siteName) { $siteName } else { 'MadvillainQuas' })) }
+if (-not (git config user.email)) { git config user.email ($(if ($siteMail) { $siteMail } else { 'MadvillainQuas@users.noreply.github.com' })) }
 git add -A
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) { git commit -q -m "scraper pipeline: $(Get-Date -Format 'yyyy-MM-dd HH:mm')" }

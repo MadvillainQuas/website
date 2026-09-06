@@ -326,6 +326,7 @@ def main() -> int:
     ap.add_argument("--feed-out", default=str(FEED_DIR), help="repo feed directory (default data/feed); '' to disable")
     ap.add_argument("--fixture-out", help="also write each bundle (+ raw) as JSON test fixtures here")
     ap.add_argument("--no-supabase", action="store_true")
+    ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
     args = ap.parse_args()
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
@@ -368,7 +369,8 @@ def main() -> int:
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
             known = known_db if sb else known_repo
-            todo = [g for g in games if not (known.get(g.external_id, {}).get("status") == "final" and known.get(g.external_id, {}).get("hash"))][: args.max_games]
+            todo = ([g for g in games] if args.refresh else
+                    [g for g in games if not (known.get(g.external_id, {}).get("status") == "final" and known.get(g.external_id, {}).get("hash"))])[: args.max_games]
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch")
             entries = {**known_repo, **known}
             for g in todo:
@@ -377,7 +379,7 @@ def main() -> int:
                     continue
                 run["games_fetched"] += 1
                 prev = known.get(g.external_id)
-                if prev and prev.get("hash") == b.payload_hash and b.status != "live":
+                if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh:
                     continue
                 if args.dry_run:
                     print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}")

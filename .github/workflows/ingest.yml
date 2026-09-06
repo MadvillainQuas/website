@@ -26,6 +26,10 @@ on:
         description: "Also regenerate the 13-CSV dataset from the archive"
         type: boolean
         default: false
+      refresh:
+        description: "Re-process every game (backfill stints / re-translate)"
+        type: boolean
+        default: false
 
 concurrency:
   group: league-ingest
@@ -67,7 +71,7 @@ jobs:
         run: |
           python scripts/ingest/run_ingest.py --config \
             ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}             ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }}
       - name: Rebuild dataset from the archive (nightly / on request)
         if: ${{ github.event.schedule == '15 3 * * *' || github.event.inputs.rebuild_dataset == 'true' }}
         env:
