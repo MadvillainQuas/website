@@ -1,0 +1,104 @@
+{
+"code": "BCB",
+"label": "British Championship Basketball",
+"adapter": "fiba_livestats",
+"updated": "2026-09-06T16:39:24.855776+00:00",
+"games": [
+{
+"id": "2887016",
+"home": "Nottingham Hoods",
+"away": "Derby Trailblazers",
+"homeScore": 18,
+"awayScore": 17,
+"status": "live",
+"date": null,
+"hash": "8ff535428bb4456dbfdb9b8019c1ecad46385590",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
+"updated": "2026-09-06T16:38:49.323581+00:00"
+},
+{
+"id": "2887014",
+"home": "Newcastle Knights",
+"away": "Yorkshire Dragons",
+"homeScore": 80,
+"awayScore": 70,
+"status": "final",
+"date": null,
+"hash": "6f7407881ac355ddad821b138e52d12c8fb31e53",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887014.json",
+"updated": "2026-09-06T16:38:30.232811+00:00"
+},
+{
+"id": "2887006",
+"home": "Reading Rockets",
+"away": "London Cavaliers",
+"homeScore": 75,
+"awayScore": 52,
+"status": "live",
+"date": null,
+"hash": "29d6e92a22137c80bfd23c28b66330e2f716ed52",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887006.json",
+"updated": "2026-09-06T16:37:57.032851+00:00"
+},
+{
+"id": "2887005",
+"home": "Worthing Thunder",
+"away": "Portsmouth Force",
+"homeScore": 88,
+"awayScore": 55,
+"status": "live",
+"date": null,
+"hash": "3f9df2596d0c5407c49fcbbd64d1dad32d079fad",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887005.json",
+"updated": "2026-09-06T16:37:19.851413+00:00"
+},
+{
+"id": "2886996",
+"home": "Gloucester City Kings",
+"away": "Plymouth Raiders",
+"homeScore": 31,
+"awayScore": 18,
+"status": "live",
+"date": null,
+"hash": "07e1bd8a8b3b2e474dcde23743b4980f9fc9462a",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
+"updated": "2026-09-06T16:36:40.370375+00:00"
+},
+{
+"id": "2886995",
+"home": "Bristol Hurricanes",
+"away": "Bristol Flyers II",
+"homeScore": 104,
+"awayScore": 72,
+"status": "final",
+"date": null,
+"hash": "a25ae38d5a78928f3d67d7204428c8ee48347a8f",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886995.json",
+"updated": "2026-09-06T16:36:03.428996+00:00"
+},
+{
+"id": "2886994",
+"home": "Yorkshire Dragons",
+"away": "Falkirk Fury",
+"homeScore": 44,
+"awayScore": 38,
+"status": "live",
+"date": null,
+"hash": "2b450e8d4f3a539fe169c826e7796e1ee3083e9e",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886994.json",
+"updated": "2026-09-06T16:35:27.188693+00:00"
+},
+{
+"id": "2886984",
+"home": "Oaklands Wolves",
+"away": "Milton Keynes Breakers",
+"homeScore": 68,
+"awayScore": 84,
+"status": "final",
+"date": null,
+"hash": "be20e7168846b6aa0d6c6be9a4b1122ee1035fe2",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886984.json",
+"updated": "2026-09-06T16:34:42.774567+00:00"
+}
+]
+}
