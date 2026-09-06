@@ -476,6 +476,21 @@ LIVE_AFTER_TIP = 4 * 3600      # keep polling an unpublished game this long afte
 LIVE_STALE = 7 * 3600          # a game still 'live' this long after tip is a log nobody closed - not a reason to keep a runner up
 CHAIN_AHEAD = 8 * 3600         # the live lane re-dispatches itself when the next tip-off is within this
 MAIN_CHAIN_AHEAD = 3 * 3600    # the discovery lane starts the live lane when the next tip-off is within this
+STALE_FINAL_S = 15 * 60        # a payload unchanged this long at the end of P4+ with unequal scores is a finished game
+
+
+def _looks_finished(raw: dict) -> bool:
+    """End of the fourth period or later, clock at 0:00, scores not level: nothing but a scorer's
+    'game end' tap is missing. Level scores mean overtime is coming, so never final."""
+    try:
+        period = int(raw.get("period") or 0)
+        clock = str(raw.get("clock") or "").strip()
+        tm = raw.get("tm") or {}
+        s1 = int((tm.get("1") or {}).get("score") or 0)
+        s2 = int((tm.get("2") or {}).get("score") or 0)
+    except (TypeError, ValueError):
+        return False
+    return period >= 4 and clock in ("00:00", "0:00", "00:00:00") and s1 != s2
 
 
 def gh_output(**kv) -> None:
@@ -531,6 +546,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     runs = {s["code"]: {"source_id": s.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0} for s in fiba}
     hashes: dict[str, str] = {}
     finished: set[str] = set()
+    unchanged_since: dict[str, float] = {}      # when each game's payload last changed (stale-final rule)
     end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
     due, next_tip, recheck, exit_code = [], None, 0.0, 0
     print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s")
@@ -554,8 +570,21 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
             except Exception as exc:
                 print(f"    ! {xid}: {exc}"); exit_code = 1; continue
-            if not b or hashes.get(xid) == b.payload_hash:
-                continue                                                  # not published yet / nothing new
+            if not b:
+                continue                                                  # not published yet
+            if hashes.get(xid) == b.payload_hash:
+                # NOTHING NEW - but a game a scorer never closed must still finish. Genius only
+                # marks a game final through an explicit 'game end' action; when the payload has
+                # sat unchanged for 15 min at the end of the fourth period (or later) with the
+                # scores not level, the game is over in every sense that matters and is finalised.
+                first_seen = unchanged_since.setdefault(xid, time.time())
+                if b.status == "live" and time.time() - first_seen >= STALE_FINAL_S and _looks_finished(b.raw):
+                    print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() - first_seen) // 60)} min at the end of P{b.raw.get('period')} - treating as final")
+                    b.status = "final"
+                else:
+                    continue
+            else:
+                unchanged_since[xid] = time.time()
             # a play in this payload happened between the previous poll and this fetch
             observed = (int(t_obs * 1000), int((every + (time.time() - t_obs)) * 1000))
             run = runs[src["code"]]; run["games_fetched"] += 1
