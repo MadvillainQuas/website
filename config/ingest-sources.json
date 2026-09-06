@@ -41,7 +41,8 @@
         "client_code": "HBBC",
         "archive_raw": true,
         "store_pbp": false,
-        "auto_create": true
+        "auto_create": true,
+        "youtube_channel": "UCbx2AZS5az8q39mI_MB_RkA"
       },
       "scheduleUrls": [
         "https://hosted.wh.geniussports.com/HBBC/en/schedule"

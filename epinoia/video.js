@@ -469,8 +469,19 @@ function index(events, video, opts) {
   const out = [];
   if (!Array.isArray(events)) return out;
 
+  /* A CLOCK TRACK PLACES PLAYS BY THE GAME CLOCK. When the video row carries
+     readings of the clock overlay (the page's scoreboard reader, or a vision
+     model's import — epinoia-clock-track/1), every play is put where its
+     period and clock were on screen: exact, stoppages included, and needing
+     no tip-off anchor at all. Wall-clock placement below is the fallback for
+     plays in a period the track did not read. */
+  const A = (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaVideoAnchor;
+  const track = video && video.clock_track && Array.isArray(video.clock_track.samples) && video.clock_track.samples.length
+    ? video.clock_track : null;
+  const byTrack = e => (track && A && A.positionFromTrack) ? A.positionFromTrack(track, e.period || 1, e.clock || 0) : null;
+
   const gap = gapMs(video);
-  if (gap == null) return out;
+  if (gap == null && !track) return out;
 
   /* Two passes. The first takes every play that can say for itself how long
      after tip it happened; the second fills in the ones that cannot, from
@@ -499,17 +510,20 @@ function index(events, video, opts) {
     if (e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
-    rows.push({ e: e, since: sinceTipMs(e, video, mode) });
+    rows.push({ e: e, since: sinceTipMs(e, video, mode), trackPos: byTrack(e) });
   }
   fillGaps(rows);
 
   for (const row of rows) {
-    if (row.since == null) continue;
     const e = row.e;
-    const pos = gap + row.since;
+    const tp = row.trackPos;
+    if (tp == null && (row.since == null || gap == null)) continue;
+    const pos = tp != null ? tp : gap + row.since;
     if (pos < 0) continue;
     const [pre, post] = clipOf(e.t);
     out.push({
+      /* placed by the clock overlay rather than by wall clock */
+      byClock: tp != null,
       id: e.seq != null ? e.seq : e.id,
       t: e.t,
       pid: e.pid != null ? e.pid : (e.payload || {}).pid || null,
@@ -519,7 +533,7 @@ function index(events, video, opts) {
       ms: pos,
       /* Marked, because a reader deciding whether a clip is worth clipping
          should know which ones were placed rather than timed. */
-      approx: !!row.guessed,
+      approx: tp == null && !!row.guessed,
       start: Math.max(0, pos - pre),
       end: pos + post,
       label: label(e)

@@ -348,6 +348,80 @@ async function autoCrop(video, t, opts) {
   return { crop: null, tried };
 }
 
+/* THE WHOLE GAME CLOCK, READ OFF THE FOOTAGE.
+
+   Every play-by-play event carries the game clock, so if the clock overlay is
+   read at points through the video, every event can be placed by its clock —
+   exactly, stoppages included — instead of by wall-clock arithmetic. This
+   walks the footage at `step` seconds, reads the clock in the crop, keeps the
+   readings that make sense (a valid period and a clock that never runs UP
+   within a period), and returns a track the page stores on the video row:
+
+     {format:'epinoia-clock-track/1', samples:[{t, period, clock_ms}, …]}
+
+   The same shape is what a computer-vision model can produce offline and
+   import; the page treats both alike. `onProgress(done, total, sample)` lets a
+   sheet show it working; `signal` (an AbortSignal) lets it be stopped. */
+async function trackClock(video, crop, opts) {
+  const o = Object.assign({ from: 0, to: null, step: 5, periodLength: 600, onStatus: null, onProgress: null, signal: null }, opts || {});
+  const to = o.to != null ? o.to : (video.duration || 0);
+  const status = s => { if (o.onStatus) o.onStatus(s); };
+  await loadOcr(status);
+  const samples = [];
+  let period = 1, lastClock = null, lastPeriodAt = -1;
+  const total = Math.max(1, Math.floor((to - o.from) / o.step));
+  let i = 0;
+  for (let t = o.from; t <= to; t += o.step, i++) {
+    if (o.signal && o.signal.aborted) break;
+    try { await seek(video, t); } catch (_) { continue; }
+    let r;
+    try { r = await readClock(sampleFrame(video, crop)); } catch (_) { continue; }
+    const c = r.clock;
+    if (o.onProgress) o.onProgress(i, total, { t, text: r.text, clock: c });
+    if (!c || c.ms < 0 || c.ms > o.periodLength * 1000) continue;
+    /* which period: the overlay's own label when it prints one; otherwise the
+       clock jumping back UP to (near) full after running down means a new
+       period began since the last reading */
+    if (c.period) period = c.period;
+    else if (lastClock != null && c.ms > lastClock + 60 * 1000 && c.ms >= (o.periodLength - 30) * 1000 && t - lastPeriodAt > 120) {
+      period += 1; lastPeriodAt = t;
+    }
+    /* a reading that runs up within a period is a misread (a 3 read as an 8) */
+    if (lastClock != null && c.ms > lastClock + 2000 && !(c.period && c.period !== (samples.length ? samples[samples.length - 1].period : 0)) && period === (samples.length ? samples[samples.length - 1].period : period)) continue;
+    samples.push({ t: Math.round(t * 10) / 10, period, clock_ms: c.ms });
+    lastClock = c.ms;
+  }
+  status('read ' + samples.length + ' clock readings');
+  return { format: 'epinoia-clock-track/1', samples };
+}
+
+/* An event's position in the footage from a clock track: the readings of its
+   period that bracket its clock, interpolated on the clock (the clock runs
+   at one second per second while it runs, so between two readings the map is
+   linear); at a stoppage — two readings with the same clock — the earlier one.
+   null when the track has nothing in that period. */
+function positionFromTrack(track, period, clockMs) {
+  const S = track && Array.isArray(track.samples) ? track.samples.filter(s => s.period === period) : [];
+  if (!S.length) return null;
+  S.sort((a, b) => a.t - b.t);
+  let before = null, after = null;
+  for (const s of S) {
+    if (s.clock_ms > clockMs) before = s;           // the last reading still ahead of the event's clock
+    else { after = s; break; }                      // the first reading at or past it
+  }
+  /* the clock stood at exactly this value: the FIRST reading of it is when the
+     play happened (the whistle); later ones are the stoppage that followed */
+  if (after && after.clock_ms === clockMs) return after.t * 1000;
+  if (before && after) {
+    const span = before.clock_ms - after.clock_ms;
+    const frac = span > 0 ? (before.clock_ms - clockMs) / span : 0;
+    return (before.t + (after.t - before.t) * frac) * 1000;
+  }
+  if (before) return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;   // past the last reading: the clock runs on
+  if (after) return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  return null;
+}
+
 /* Period starts for the later quarters: the frames where a full clock
    (10:00) first gives way to a running one, searched from a hint. Optional
    and slower; the sheet offers it after the tip is found. */
@@ -383,5 +457,5 @@ function clipsExport(plays, video, game, events) {
 }
 
 return { mp4CreationTime, youtubeStreamStart, loadOcr, sampleFrame, readClock, parseClock,
-         autoCrop, findTip, findPeriodStart, clipsExport, stampS, VENDOR };
+         autoCrop, findTip, findPeriodStart, trackClock, positionFromTrack, clipsExport, stampS, VENDOR };
 }));

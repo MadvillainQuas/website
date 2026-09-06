@@ -401,6 +401,54 @@ def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> Non
         print(f"   {moved} game(s) filed under {src['competition_label']} (were in the catch-all)")
 
 
+def sync_videos(sb: Supabase, src: dict, games: list, run: dict) -> None:
+    """Recent games this schedule lists that have no video yet get their broadcast looked up on the
+    league's channel (upcoming streams are scheduled days ahead, so a fixture can carry its stream
+    before tip); rows attached earlier get their anchor completed once the stream has started."""
+    ac = src.get("adapter_config") or {}
+    if not ac.get("youtube_channel") and not os.environ.get("YOUTUBE_API_KEY"):
+        return
+    try:
+        from auto_video import attach as attach_video, complete as complete_video
+    except Exception:
+        return
+    now = datetime.now(timezone.utc)
+    recent = []
+    for g in games:
+        if not g.tipoff_at:
+            continue
+        try:
+            t = datetime.fromisoformat(str(g.tipoff_at).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if -14 * 86400 <= (now - t).total_seconds() <= 4 * 86400:
+            recent.append(g)
+    if not recent:
+        return
+    ids = [str(g.external_id) for g in recent]
+    by_ext = {}
+    for i in range(0, len(ids), 100):
+        try:
+            for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=in.({','.join(ids[i:i + 100])})&game_id=not.is.null&select=external_id,game_id"):
+                by_ext[str(r["external_id"])] = r["game_id"]
+        except Exception:
+            continue
+    n_att = n_done = 0
+    for g in recent:
+        gid = by_ext.get(str(g.external_id))
+        if not gid:
+            continue
+        try:
+            if attach_video(sb, gid, g.home_name, g.away_name, g.tipoff_at, ac, log=lambda *a: None):
+                n_att += 1
+            elif complete_video(sb, gid, log=lambda *a: None):
+                n_done += 1
+        except Exception:
+            continue
+    if n_att or n_done:
+        print(f"   videos: {n_att} attached, {n_done} anchored")
+
+
 def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     """A scheduled game (no payload yet) becomes an Epinoia fixture with its date and venue, so the
     fixtures page shows what is coming. Clubs are matched by code/name; unknown clubs wait for the payload."""
@@ -504,6 +552,15 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 sb.patch("games", f"id=eq.{game_id}", extra)
         else:
             sb.patch("games", f"id=eq.{game_id}", {"status": status, **scores, **extra})
+    # a game being played: link its stream the moment the game is first seen, so the page has the
+    # broadcast while the game is on (the anchor is completed when the log has a tip)
+    if b.status == "live":
+        try:
+            from auto_video import attach as attach_video, complete as complete_video
+            if not attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, ac):
+                complete_video(sb, game_id)
+        except Exception as exc:
+            print(f"    (auto video: {exc})")
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,
@@ -621,10 +678,12 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 pass
         else:
             print("    = finalised")
-        # the broadcast, found and lined up by itself when a YouTube key is configured (auto_video.py)
+        # the broadcast: attached if it never was, and its anchor completed now the stream has a
+        # start time and the log a tip (auto_video.py — the league's channel needs no key)
         try:
-            from auto_video import attach as attach_video
-            attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, src.get("adapter_config") or {})
+            from auto_video import attach as attach_video, complete as complete_video
+            if not attach_video(sb, game_id, b.home_name, b.away_name, b.tipoff_at, src.get("adapter_config") or {}):
+                complete_video(sb, game_id)
         except Exception as exc:
             print(f"    (auto video: {exc})")
 
@@ -913,6 +972,10 @@ def main() -> int:
                         refile_from_catchall(sb, src, games, run)
                     except Exception as exc:
                         print(f"   (re-filing: {exc})")
+                    try:
+                        sync_videos(sb, src, games, run)
+                    except Exception as exc:
+                        print(f"   (videos: {exc})")
             run["games_seen"] = len(games)
             # What we already have. When Supabase is configured IT is the authority for "already
             # done" (a game only in the repo index still needs its Supabase rows + storage copy);

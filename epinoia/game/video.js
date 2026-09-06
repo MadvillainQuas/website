@@ -63,7 +63,8 @@ let indexed = null, indexedKey = '';
 function plays() {
   const v = ctx.video;
   const key = (ctx.events.length) + ':' + (v.tip_wall || v.tip_at || '') + ':' +
-              (v.stream_started_at || '') + ':' + (v.trim_ms || 0);
+              (v.stream_started_at || '') + ':' + (v.trim_ms || 0) + ':' +
+              (v.clock_track && v.clock_track.samples ? v.clock_track.samples.length : 0);
   if (indexed && key === indexedKey) return indexed;
   indexedKey = key;
   indexed = buildPlays();
@@ -163,9 +164,12 @@ function render() {
      video id, only "what is on now". So the play list is not offered against
      it, and the reason is said out loud. */
   const channelOnly = !!(v.live_src && !v.url);
-  const timed = !channelOnly && V().logIsTimed(ctx.events);
+  /* a clock track places plays by the game clock, so neither a timed log nor
+     a tip-off anchor is needed when one is present */
+  const hasTrack = !!(v.clock_track && Array.isArray(v.clock_track.samples) && v.clock_track.samples.length);
+  const timed = !channelOnly && (hasTrack || V().logIsTimed(ctx.events));
   const list = timed ? selected() : [];
-  const lined = V().hasAnchor(v) && timed;
+  const lined = (V().hasAnchor(v) || hasTrack) && timed;
 
   if (!host.querySelector('.vidbody')) mount();
   const body = host.querySelector('.vidbody');
@@ -238,9 +242,12 @@ function render() {
         /* HOW SURE. A fed game's plays were stamped by a poll, so each carries
            how far back it could really have happened; a tapped game's plays
            carry no such number and the run-up covers the reaction time. */
-        (lined && accuracyMs() != null
+        (hasTrack
+          ? '<span class="vidacc" title="the clock overlay was read at these points in the footage; every play sits where its clock was on screen">' +
+            'placed by the game clock · ' + v.clock_track.samples.length + ' readings</span>'
+          : (lined && accuracyMs() != null
           ? '<span class="vidacc" title="a fed game\'s plays are stamped by the ingest worker\'s poll; this is the poll interval">' +
-            'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '') +
+            'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '')) +
         /* THE NUDGE. If the clips land early the gap is too small: the video
            needs to run later, so + adds to it. Shown to the same people who may
            attach the video, saved as trim_ms, cumulative. */

@@ -133,7 +133,7 @@ async function loadStored() {
   try {
     const vs = await api(`game_videos?game_id=eq.${encodeURIComponent(gameId)}` +
       `&is_primary=eq.true&select=url,provider,video_ref,label,` +
-      `stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live&limit=1`);
+      `stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live,clock_track&limit=1`);
     if (vs.length && vs[0].url) video = vs[0];
     else if (vs.length) video = vs[0];         // anchored, link still to come
   } catch (_) { /* no table, or none attached — the tab simply does not appear */ }
@@ -679,6 +679,16 @@ function openAttach() {
           '<span class="vsnote" id="vsFileNote">read here, never uploaded</span></div>' +
         '<div class="vsrow hide" id="vsScanRow"><button type="button" id="vsScan">read the scoreboard in the picture</button>' +
           '<span class="vsnote" id="vsScanNote"></span></div>' +
+        /* THE WHOLE CLOCK. After the game, with the video attached: read the
+           clock overlay right through the footage so every play is placed by
+           its own game clock — or import the same readings from a vision model
+           (epinoia-clock-track/1 JSON). Either way the plays stop depending on
+           a tip-off anchor at all. */
+        '<div class="vsrow hide" id="vsTrackRow"><button type="button" id="vsTrack">read the whole game clock</button>' +
+          '<span class="vsnote" id="vsTrackNote"></span></div>' +
+        '<div class="vsrow"><label class="vsfile"><span>import a clock track (JSON from a vision model)</span>' +
+          '<input type="file" id="vsTrackFile" accept="application/json,.json"></label>' +
+          '<span class="vsnote" id="vsTrackFileNote">' + (cur.clock_track && cur.clock_track.samples ? cur.clock_track.samples.length + ' readings on file' : 'none yet') + '</span></div>' +
       '</div>' +
       '<div class="msg" id="vsMsg"></div>' +
       '<div class="row"><button id="vsCancel">cancel</button>' +
@@ -690,7 +700,80 @@ function openAttach() {
   document.getElementById('vsFromStream').onclick = () => anchorFromStream();
   document.getElementById('vsFile').onchange = ev => anchorFromFile(ev.target.files && ev.target.files[0]);
   document.getElementById('vsScan').onclick = () => anchorFromScoreboard();
+  document.getElementById('vsTrack').onclick = () => anchorTrackClock();
+  document.getElementById('vsTrackFile').onchange = ev => importClockTrack(ev.target.files && ev.target.files[0]);
   document.getElementById('vsUrl').focus();
+}
+
+/* ---- the whole game clock ----------------------------------------------
+   Reads the overlay right through a local copy of the footage (the sheet's
+   file), every 5 s, and saves the readings on the video row. Needs the video
+   attached first (the readings belong to that footage), and takes a few
+   minutes for a full game — the note counts along. */
+async function anchorTrackClock() {
+  const A = window.EpinoiaVideoAnchor;
+  const note = document.getElementById('vsTrackNote'), btn = document.getElementById('vsTrack');
+  if (!anchorFile) { note.textContent = 'choose the footage file first'; return; }
+  if (!(window.S && window.S.video && window.S.video.url)) { note.textContent = 'save the video link first — the readings belong to that footage'; return; }
+  if (anchorBusy) return;
+  anchorBusy = true; btn.disabled = true;
+  const ctl = new AbortController();
+  const stop = document.createElement('button'); stop.type = 'button'; stop.textContent = 'stop'; stop.style.marginLeft = '8px';
+  stop.onclick = () => ctl.abort();
+  btn.after(stop);
+  try {
+    const v = anchorVideo();
+    await new Promise((res, rej) => {
+      if (v.readyState >= 1) return res();
+      v.addEventListener('loadedmetadata', res, { once: true });
+      v.addEventListener('error', () => rej(new Error('this browser cannot decode that file')), { once: true });
+    });
+    const status = s => { note.textContent = s; };
+    const mm = +document.getElementById('vsMin').value || 0, ss = +document.getElementById('vsSec').value || 0;
+    const guess = (mm * 60 + ss) || 60;
+    status('finding the scoreboard…');
+    let found = await A.autoCrop(v, Math.min(guess + 60, v.duration - 1), { onStatus: status });
+    if (!found.crop) found = await A.autoCrop(v, Math.min(guess + 300, v.duration - 1), { onStatus: status });
+    if (!found.crop) { status('no clock overlay found in the picture — a vision model’s track can be imported instead'); return; }
+    const track = await A.trackClock(v, found.crop, {
+      from: Math.max(0, guess - 120), step: 5, signal: ctl.signal,
+      onProgress: (i, n, s) => { note.textContent = 'reading… ' + Math.round(100 * i / n) + '% · ' + A.stampS(s.t) + ' → "' + (s.text || '') + '"'; }
+    });
+    if (!track.samples.length) { status('no readable clock in the footage'); return; }
+    const ok = await saveClockTrack(track);
+    status(ok ? track.samples.length + ' readings saved — every play now sits where its clock was on screen'
+              : 'read ' + track.samples.length + ' readings but could not save them (signed in? migration 0099 applied?)');
+  } catch (err) {
+    note.textContent = 'could not read the footage: ' + (err && err.message || err);
+  } finally { anchorBusy = false; btn.disabled = false; stop.remove(); }
+}
+
+/* A vision model's readings, in the same shape: {samples:[{t, period, clock_ms}]}.
+   Also accepts the studio's export ({format:'epinoia-clock-track/1', …}). */
+async function importClockTrack(file) {
+  const note = document.getElementById('vsTrackFileNote');
+  if (!file) return;
+  if (!(window.S && window.S.video && window.S.video.url)) { note.textContent = 'save the video link first'; return; }
+  try {
+    const j = JSON.parse(await file.text());
+    const samples = (j.samples || j.track || []).map(s => ({
+      t: +s.t != null && isFinite(+s.t) ? +s.t : (+s.video_s || 0),
+      period: +(s.period || s.p || 1),
+      clock_ms: s.clock_ms != null ? +s.clock_ms : (s.clock_s != null ? Math.round(+s.clock_s * 1000) : null)
+    })).filter(s => isFinite(s.t) && s.clock_ms != null && isFinite(s.clock_ms) && s.period >= 1);
+    if (!samples.length) { note.textContent = 'no readings in that file (expected samples:[{t, period, clock_ms}])'; return; }
+    const ok = await saveClockTrack({ format: 'epinoia-clock-track/1', source: j.source || file.name, samples });
+    note.textContent = ok ? samples.length + ' readings saved' : 'could not save the track (signed in? migration 0099 applied?)';
+  } catch (err) { note.textContent = 'not a clock track: ' + (err && err.message || err); }
+}
+
+async function saveClockTrack(track) {
+  const token = storedToken();
+  if (!token || !gameId) return false;
+  const r = await rpcCallRaw('set_video_clock_track', { p_game: gameId, p_track: track }, token);
+  if (!r.ok) return false;
+  if (window.S && window.S.video) { window.S.video.clock_track = track; mountVideo(window.derive()); }
+  return true;
 }
 
 /* ---- the automatic anchors -------------------------------------------
@@ -755,8 +838,10 @@ async function anchorFromFile(file) {
   const A = window.EpinoiaVideoAnchor;
   const note = document.getElementById('vsFileNote'), scanRow = document.getElementById('vsScanRow');
   anchorFile = file || null;
-  if (!file) { note.textContent = 'read here, never uploaded'; scanRow.classList.add('hide'); return; }
+  const trackRow = document.getElementById('vsTrackRow');
+  if (!file) { note.textContent = 'read here, never uploaded'; scanRow.classList.add('hide'); if (trackRow) trackRow.classList.add('hide'); return; }
   scanRow.classList.remove('hide');
+  if (trackRow) trackRow.classList.remove('hide');
   note.textContent = 'reading the file\u2019s clock…';
   const tip = await tipWallMsAsync();
   const ct = await A.mp4CreationTime(file);
@@ -1406,7 +1491,7 @@ function watchForVideo() {
     try {
       rows = await api('game_videos?game_id=eq.' + encodeURIComponent(gameId) +
         '&is_primary=eq.true&select=url,provider,video_ref,label,' +
-        'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live&limit=1');
+        'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live,clock_track&limit=1');
       videoMisses = 0;
     } catch (_) {
       /* A blip is worth retrying; a database without the table is not. Before

@@ -141,6 +141,39 @@ stamped by the 10-second live poll), a ↗ link per play, +/− nudges for admin
   own tip stamp anchors every play with no human step. A plain upload is attached with the tip time
   known and the offset left for the scoreboard reader on the game page.
 
+## 4f. Broadcasts: the channel path (no key), the API key, and the clock track (2026-09-07)
+
+**What runs by itself now.** BCB's registry entry names the league's YouTube channel
+(`adapter_config.youtube_channel = UCbx2AZS5az8q39mI_MB_RkA`, i.e. @BritishChampionshipBasketball).
+The worker reads the channel's RSS feed (its newest fifteen videos, no key needed), matches a video to
+a fixture by both clubs' names and the date in the title (typos tolerated when the publish time
+fits), and reads the stream's real start and end off the watch page. A fixture gets its stream
+attached days ahead (streams are scheduled early); when the game goes live the stream start is
+filled in; when the log has its first period_start the tip is filled in — and every play is placed.
+Verified on the 5–6 Sep weekend: 7 of 8 games matched (the eighth was never streamed).
+
+**Finding the channel id for another league:** open the channel's page, view source, search
+`externalId` — the `UC…` value — and put it in that league's registry entry (admin.html → League
+feeds → adapter config) as `youtube_channel`.
+
+**The YouTube Data API key (optional — reaches beyond the newest fifteen videos and other channels):**
+1. console.cloud.google.com → create a project (any name).
+2. APIs & Services → Library → "YouTube Data API v3" → Enable.
+3. APIs & Services → Credentials → Create credentials → API key. Restrict it: API restrictions →
+   YouTube Data API v3 only. (Leave application restrictions unset; the worker calls from GitHub.)
+4. GitHub → the website repo → Settings → Secrets and variables → Actions → New repository secret:
+   name `YOUTUBE_API_KEY`, value the key. Nothing else to change; the workflow already passes it.
+   Free quota is 10,000 units a day; one game costs about 100, so it is never a concern.
+
+**The clock track — plays placed by the game clock itself.** After a game, on its page (attach
+video → choose a local copy of the footage) *read the whole game clock* walks the footage every 5 s,
+reads the overlay, and saves the readings on the video row; from then on every play sits where its
+period and clock were on screen, stoppages included, with no tip-off anchor involved. A vision model
+can do the same job offline and be imported with *import a clock track*: a JSON file
+`{"format":"epinoia-clock-track/1","samples":[{"t":1287.5,"period":1,"clock_ms":598000}, …]}` where `t`
+is seconds into the video (`clock_s` and `p` are accepted too). Needs migration **0099** — run
+`Push Database.bat` again.
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash
