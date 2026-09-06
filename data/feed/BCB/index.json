@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T19:27:45.905474+00:00",
+"updated": "2026-09-06T21:39:26.161330+00:00",
 "games": [
 {
 "id": "2886993",
@@ -445,14 +445,14 @@
 "id": "2887016",
 "home": "Nottingham Hoods",
 "away": "Derby Trailblazers",
-"homeScore": 61,
-"awayScore": 67,
-"status": "live",
+"homeScore": 79,
+"awayScore": 76,
+"status": "final",
 "date": "2026-09-06T13:00:00+00:00",
-"hash": "2c4f448fd30e830051a3aad88c865ce74f37c4a7",
+"hash": "44e1ae7ed5500a3614d4e7de9c185d08f4a2e411",
 "venue": "Harvey Hadden Sports Village",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
-"updated": "2026-09-06T19:27:30.319098+00:00"
+"updated": "2026-09-06T21:38:52.341624+00:00"
 },
 {
 "id": "2886984",
