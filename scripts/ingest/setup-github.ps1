@@ -82,10 +82,17 @@ if ($LASTEXITCODE -ne 0) {
 git push origin HEAD
 if ($LASTEXITCODE -ne 0) { throw "git push failed - see above" }
 
-# 5. first run
+# 5. first run — GitHub registers a newly pushed workflow a few seconds after the push
 Say "running the ingest workflow once for SLB"
-gh workflow run ingest.yml --repo $repo -f source=SLB
-Start-Sleep -Seconds 3
+$ok = $false
+for ($i = 0; $i -lt 12; $i++) {
+  gh workflow run ingest.yml --repo $repo -f source=SLB 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+  Write-Host "  workflow not registered yet, retrying in 5 s..."
+  Start-Sleep -Seconds 5
+}
+if (-not $ok) { Write-Host "could not dispatch - open the Actions page and press 'Run workflow'" -ForegroundColor Yellow }
+Start-Sleep -Seconds 5
 gh run list --repo $repo --workflow ingest.yml --limit 1
 Start-Process "https://github.com/$repo/actions/workflows/ingest.yml"
 Write-Host "`nDone. Watch the run in the browser; the feed lands in data/feed/ and in Supabase on success." -ForegroundColor Green

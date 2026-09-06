@@ -31,6 +31,9 @@ import time
 from pathlib import Path
 from typing import Iterable, Optional
 
+import re
+import urllib.parse
+
 import requests
 
 from .base import BaseAdapter, GameBundle, ScheduleGame
@@ -78,12 +81,61 @@ class FibaLiveStatsAdapter(BaseAdapter):
     _box_cache: dict = {}
 
     # ------------------------------------------------------------------ discovery
+    # League sites embed the Genius Sports "hosted solution" widget: the page itself is an
+    # SPA, but the widget's own pages at hosted.wh.geniussports.com/<CLIENT>/en/<WHurl> are
+    # SERVER-RENDERED, so a plain GET returns every match id (verified 2026-09-06: 144 ids for
+    # SLB in one request; headless Chrome on the Actions runner returned 0). Chrome is now the
+    # fallback, not the road.
+    ID_PATTERNS = [re.compile(p) for p in (
+        r"extfix_(\d{5,10})", r"/match/(\d{5,10})/", r"/u/[A-Z]+/(\d{5,10})/",
+        r"matchId[\"']?\s*[:=]\s*[\"']?(\d{5,10})", r"/data/(\d{6,10})/data\.json")]
+    HOSTED = "https://hosted.wh.geniussports.com"
+
+    def hosted_urls(self, schedule_url: str, config: dict) -> list[str]:
+        """Candidate server-rendered schedule URLs for a league schedule URL."""
+        u = urllib.parse.urlparse(schedule_url)
+        if "geniussports.com" in u.netloc:
+            return [schedule_url]
+        qs = urllib.parse.parse_qs(u.query)
+        wh = qs.get("WHurl", [None])[0]
+        if not wh:
+            return []
+        wh = urllib.parse.unquote(wh)
+        codes = [c for c in (config.get("client_code"), config.get("code")) if c]
+        if not codes:
+            try:                       # the page names its client code in the embed loader: //embed','SLB'
+                page = requests.get(schedule_url, headers={"User-Agent": UA}, timeout=25, verify=False).text
+                codes = re.findall(r"geniussports\.com//embed['\"]?\s*,\s*['\"]([A-Za-z0-9_]+)['\"]", page)
+            except Exception:
+                codes = []
+        return [f"{self.HOSTED}/{c}/en{wh}" for c in dict.fromkeys(codes)]
+
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
-        if gvs is None:
-            raise RuntimeError(f"gamevis_schedule_scraper not importable ({_GVS_IMPORT_ERROR}) - run on the Actions worker")
-        ids = gvs.discover_game_ids([schedule_url], headless=not config.get("headed", False))
-        for gid in ids:
+        found: set[str] = set()
+        for hu in self.hosted_urls(schedule_url, dict(config, code=config.get("code") or self._code_hint)):
+            try:
+                gap = time.time() - self._last
+                if gap < self.min_request_gap_s:
+                    time.sleep(self.min_request_gap_s - gap)
+                self._last = time.time()
+                r = requests.get(hu, headers={"User-Agent": UA}, timeout=40)
+                if r.status_code != 200:
+                    continue
+                for pat in self.ID_PATTERNS:
+                    found.update(pat.findall(r.text))
+                if found:
+                    print(f"     hosted schedule: {len(found)} game ids ({hu[:80]}…)")
+                    break
+            except Exception as exc:
+                print(f"     hosted schedule failed ({exc}); trying the next candidate")
+        if not found:
+            if gvs is None:
+                raise RuntimeError(f"no ids from the hosted schedule and gamevis_schedule_scraper not importable ({_GVS_IMPORT_ERROR})")
+            found.update(str(x) for x in gvs.discover_game_ids([schedule_url], headless=not config.get("headed", False)))
+        for gid in sorted(found, key=lambda x: int(x)):
             yield ScheduleGame(external_id=str(gid))
+
+    _code_hint = None
 
     # ------------------------------------------------------------------ fetch
     def _get(self, url: str) -> Optional[dict]:

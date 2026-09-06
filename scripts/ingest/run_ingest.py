@@ -339,7 +339,7 @@ def main() -> int:
         try:
             print(f"-> {src['label']} [{src['adapter']}] {src['schedule_url'][:90]}")
             games = ([ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()] if args.ids
-                     else list(adapter.discover(src["schedule_url"], src.get("adapter_config", {}))))
+                     else list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code")))))
             run["games_seen"] = len(games)
             # what we already have (repo index + Supabase rows) — finals with a payload are never re-fetched
             known = feed.known(src["code"]) if feed else {}
