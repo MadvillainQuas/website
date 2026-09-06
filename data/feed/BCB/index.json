@@ -2,31 +2,281 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-06T17:19:11.892472+00:00",
+"updated": "2026-09-06T17:35:29.275607+00:00",
 "games": [
 {
-"id": "2887016",
-"home": "Nottingham Hoods",
-"away": "Derby Trailblazers",
-"homeScore": 36,
-"awayScore": 38,
-"status": "live",
-"date": null,
-"hash": "463b3c6a8ac3565d8f2d6daae37bdfc9c0c35189",
-"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
-"updated": "2026-09-06T17:18:54.369052+00:00"
+"id": "2886993",
+"home": "Oaklands Wolves",
+"away": "Birmingham Rockets",
+"status": "scheduled",
+"date": "2026-09-27T16:00:00+00:00",
+"venue": "Oaklands College Sportszone"
 },
 {
-"id": "2887014",
+"id": "2887015",
+"home": "London Cavaliers",
+"away": "Portsmouth Force",
+"status": "scheduled",
+"date": "2026-09-27T15:30:00+00:00",
+"venue": "Uxbridge College"
+},
+{
+"id": "2887004",
+"home": "Plymouth Raiders",
+"away": "Bristol Hurricanes",
+"status": "scheduled",
+"date": "2026-09-27T13:00:00+00:00",
+"venue": "Plymouth Life Centre"
+},
+{
+"id": "2887023",
+"home": "Derby Trailblazers",
+"away": "Newcastle Knights",
+"status": "scheduled",
+"date": "2026-09-26T18:30:00+00:00",
+"venue": "Clarence Wiggins Sports Centre"
+},
+{
+"id": "2886992",
+"home": "Hemel Storm",
+"away": "Milton Keynes Breakers",
+"status": "scheduled",
+"date": "2026-09-26T18:00:00+00:00",
+"venue": "Hemel Hempstead Leisure Centre"
+},
+{
+"id": "2887013",
+"home": "Essex Rebels",
+"away": "Reading Rockets",
+"status": "scheduled",
+"date": "2026-09-26T17:30:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2887003",
+"home": "Bristol Flyers II",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-09-26T17:30:00+00:00",
+"venue": "SGS College WISE Campus"
+},
+{
+"id": "2887022",
+"home": "Falkirk Fury",
+"away": "Nottingham Hoods",
+"status": "scheduled",
+"date": "2026-09-26T13:00:00+00:00",
+"venue": "Grangemouth Sports Complex"
+},
+{
+"id": "2886991",
+"home": "Hemel Storm",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-09-20T17:00:00+00:00",
+"venue": "Hemel Hempstead Leisure Centre"
+},
+{
+"id": "2886990",
+"home": "Birmingham Rockets",
+"away": "Loughborough Riders",
+"status": "scheduled",
+"date": "2026-09-20T16:30:00+00:00",
+"venue": "Nechells Wellbeing Centre"
+},
+{
+"id": "2887011",
+"home": "Reading Rockets",
+"away": "Worthing Thunder",
+"status": "scheduled",
+"date": "2026-09-20T15:00:00+00:00",
+"venue": "Loddon Valley Leisure Centre"
+},
+{
+"id": "2887021",
 "home": "Newcastle Knights",
+"away": "Nottingham Hoods",
+"status": "scheduled",
+"date": "2026-09-20T13:00:00+00:00",
+"venue": "Newcastle University Sports Centre"
+},
+{
+"id": "2887002",
+"home": "Cardiff Met Archers",
+"away": "Bristol Hurricanes",
+"status": "scheduled",
+"date": "2026-09-20T13:00:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2887020",
+"home": "Derby Trailblazers",
+"away": "Falkirk Fury",
+"status": "scheduled",
+"date": "2026-09-19T18:30:00+00:00",
+"venue": "Clarence Wiggins Sports Centre"
+},
+{
+"id": "2887010",
+"home": "London Cavaliers",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-09-19T18:30:00+00:00",
+"venue": "Uxbridge College"
+},
+{
+"id": "2887000",
+"home": "Bristol Hurricanes",
+"away": "Gloucester City Kings",
+"status": "scheduled",
+"date": "2026-09-19T16:30:00+00:00",
+"venue": "UWE Centre for Sport"
+},
+{
+"id": "2886989",
+"home": "Milton Keynes Breakers",
+"away": "Birmingham Rockets",
+"status": "scheduled",
+"date": "2026-09-19T16:00:00+00:00",
+"venue": "Bletchley Leisure Centre"
+},
+{
+"id": "2887001",
+"home": "Cardiff Met Archers",
+"away": "Plymouth Raiders",
+"status": "scheduled",
+"date": "2026-09-19T15:00:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2887019",
+"home": "Nottingham Hoods",
 "away": "Yorkshire Dragons",
-"homeScore": 80,
-"awayScore": 70,
-"status": "final",
-"date": null,
-"hash": "6f7407881ac355ddad821b138e52d12c8fb31e53",
-"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887014.json",
-"updated": "2026-09-06T16:55:30.423820+00:00"
+"status": "scheduled",
+"date": "2026-09-18T17:30:00+00:00",
+"venue": "Harvey Hadden Sports Village"
+},
+{
+"id": "2886987",
+"home": "Birmingham Rockets",
+"away": "Hemel Storm",
+"status": "scheduled",
+"date": "2026-09-13T16:30:00+00:00",
+"venue": "Nechells Wellbeing Centre"
+},
+{
+"id": "2886998",
+"home": "Gloucester City Kings",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-09-13T16:15:00+00:00",
+"venue": "Oxstalls Sports Park Arena"
+},
+{
+"id": "2887009",
+"home": "Worthing Thunder",
+"away": "London Cavaliers",
+"status": "scheduled",
+"date": "2026-09-13T16:00:00+00:00",
+"venue": "Worthing Leisure Centre"
+},
+{
+"id": "2886988",
+"home": "Milton Keynes Breakers",
+"away": "Loughborough Riders",
+"status": "scheduled",
+"date": "2026-09-13T16:00:00+00:00",
+"venue": "Bletchley Leisure Centre"
+},
+{
+"id": "2887008",
+"home": "Portsmouth Force",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-09-13T13:00:00+00:00",
+"venue": "Ravelin Sports Centre"
+},
+{
+"id": "2886999",
+"home": "Plymouth Raiders",
+"away": "Bristol Flyers II",
+"status": "scheduled",
+"date": "2026-09-13T13:00:00+00:00",
+"venue": "Plymouth Life Centre"
+},
+{
+"id": "2887012",
+"home": "Essex Rebels",
+"away": "Worthing Thunder",
+"status": "scheduled",
+"date": "2026-09-12T17:30:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2887007",
+"home": "Portsmouth Force",
+"away": "Reading Rockets",
+"status": "scheduled",
+"date": "2026-09-12T17:30:00+00:00",
+"venue": "Ravelin Sports Centre"
+},
+{
+"id": "2886997",
+"home": "Bristol Flyers II",
+"away": "Gloucester City Kings",
+"status": "scheduled",
+"date": "2026-09-12T17:30:00+00:00",
+"venue": "SGS College WISE Campus"
+},
+{
+"id": "2886986",
+"home": "Loughborough Riders",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-09-12T17:30:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2887018",
+"home": "Yorkshire Dragons",
+"away": "Derby Trailblazers",
+"status": "scheduled",
+"date": "2026-09-12T17:15:00+00:00",
+"venue": "Inspire Leisure Centre"
+},
+{
+"id": "2887017",
+"home": "Falkirk Fury",
+"away": "Newcastle Knights",
+"status": "scheduled",
+"date": "2026-09-12T13:00:00+00:00",
+"venue": "Grangemouth Sports Complex"
+},
+{
+"id": "2886985",
+"home": "Loughborough Riders",
+"away": "Hemel Storm",
+"homeScore": 3,
+"awayScore": 0,
+"status": "live",
+"date": "2026-09-06T17:30:00+00:00",
+"hash": "91af78f316d2e5b448f2232ffe501329aab29e50",
+"venue": "Netball Centre Loughborough University",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886985.json",
+"updated": "2026-09-06T17:34:38.846605+00:00"
+},
+{
+"id": "2886996",
+"home": "Gloucester City Kings",
+"away": "Plymouth Raiders",
+"homeScore": 73,
+"awayScore": 57,
+"status": "live",
+"date": "2026-09-06T16:15:00+00:00",
+"hash": "38eb606719f413b9b05b039c21893a40b1230125",
+"venue": "Oxstalls Sports Park Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
+"updated": "2026-09-06T17:34:58.553368+00:00"
 },
 {
 "id": "2887006",
@@ -35,10 +285,11 @@
 "homeScore": 80,
 "awayScore": 54,
 "status": "final",
-"date": null,
+"date": "2026-09-06T15:00:00+00:00",
 "hash": "7d695a5829752514faa48464210684eb8b5f3ea1",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887006.json",
-"updated": "2026-09-06T17:10:15.840986+00:00"
+"updated": "2026-09-06T17:10:15.840986+00:00",
+"venue": "Loddon Valley Leisure Centre"
 },
 {
 "id": "2887005",
@@ -47,34 +298,11 @@
 "homeScore": 104,
 "awayScore": 65,
 "status": "final",
-"date": null,
+"date": "2026-09-06T15:00:00+00:00",
 "hash": "697c76aa7a81e477a68844c92bc915f049aac121",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887005.json",
-"updated": "2026-09-06T17:09:50.437320+00:00"
-},
-{
-"id": "2886996",
-"home": "Gloucester City Kings",
-"away": "Plymouth Raiders",
-"homeScore": 55,
-"awayScore": 50,
-"status": "live",
-"date": null,
-"hash": "fd480acfe95287b47974d168872fb49af30bd8ee",
-"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886996.json",
-"updated": "2026-09-06T17:18:31.243427+00:00"
-},
-{
-"id": "2886995",
-"home": "Bristol Hurricanes",
-"away": "Bristol Flyers II",
-"homeScore": 104,
-"awayScore": 72,
-"status": "final",
-"date": null,
-"hash": "a25ae38d5a78928f3d67d7204428c8ee48347a8f",
-"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886995.json",
-"updated": "2026-09-06T16:54:07.099331+00:00"
+"updated": "2026-09-06T17:09:50.437320+00:00",
+"venue": "Worthing Leisure Centre"
 },
 {
 "id": "2886994",
@@ -83,22 +311,24 @@
 "homeScore": 97,
 "awayScore": 92,
 "status": "final",
-"date": null,
+"date": "2026-09-06T14:15:00+00:00",
 "hash": "0cc4ff93f3fd8882fe01d1bae99626ca35dcb4d5",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886994.json",
-"updated": "2026-09-06T17:09:03.031014+00:00"
+"updated": "2026-09-06T17:09:03.031014+00:00",
+"venue": "Inspire Leisure Centre"
 },
 {
-"id": "2886985",
-"home": "Loughborough Riders",
-"away": "Hemel Storm",
-"homeScore": 0,
-"awayScore": 0,
-"status": "scheduled",
-"date": null,
-"hash": "869ff3d5ed039b975dc0cd967958ad46d3241169",
-"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886985.json",
-"updated": "2026-09-06T17:18:09.793487+00:00"
+"id": "2887016",
+"home": "Nottingham Hoods",
+"away": "Derby Trailblazers",
+"homeScore": 39,
+"awayScore": 50,
+"status": "live",
+"date": "2026-09-06T13:00:00+00:00",
+"hash": "b7077ff2cd7f1969f25629ffd09b4d083b8e1f36",
+"venue": "Harvey Hadden Sports Village",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887016.json",
+"updated": "2026-09-06T17:35:16.293717+00:00"
 },
 {
 "id": "2886984",
@@ -107,10 +337,37 @@
 "homeScore": 68,
 "awayScore": 84,
 "status": "final",
-"date": null,
+"date": "2026-09-05T18:00:00+00:00",
 "hash": "be20e7168846b6aa0d6c6be9a4b1122ee1035fe2",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886984.json",
-"updated": "2026-09-06T16:53:17.893583+00:00"
+"updated": "2026-09-06T16:53:17.893583+00:00",
+"venue": "Oaklands College Sportszone"
+},
+{
+"id": "2886995",
+"home": "Bristol Hurricanes",
+"away": "Bristol Flyers II",
+"homeScore": 104,
+"awayScore": 72,
+"status": "final",
+"date": "2026-09-05T16:30:00+00:00",
+"hash": "a25ae38d5a78928f3d67d7204428c8ee48347a8f",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886995.json",
+"updated": "2026-09-06T16:54:07.099331+00:00",
+"venue": "UWE Centre for Sport"
+},
+{
+"id": "2887014",
+"home": "Newcastle Knights",
+"away": "Yorkshire Dragons",
+"homeScore": 80,
+"awayScore": 70,
+"status": "final",
+"date": "2026-09-05T13:00:00+00:00",
+"hash": "6f7407881ac355ddad821b138e52d12c8fb31e53",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887014.json",
+"updated": "2026-09-06T16:55:30.423820+00:00",
+"venue": "Newcastle University Sports Centre"
 }
 ]
 }
