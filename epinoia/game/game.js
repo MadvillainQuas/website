@@ -595,6 +595,7 @@ async function offerToAttachVideo() {
       ? 'video sync' : 'attach video';
     cta.onclick = openAttach;
     offerLiveStatsLink();                      // same people, same moment
+    watchVideoJob();                           // a job already running shows on the button
   } catch (_) {
     /* Before 0088 the function does not exist, and a page that cannot offer
        this is a page, not a failure. */
@@ -674,6 +675,17 @@ function openAttach() {
          Each is offered, none is applied silently: the number lands in the
          fields above with its source written beside it, and the person who can
          see the footage presses save. */
+      /* AI PROCESS GAME. One press; the processing machine downloads the footage, reads the
+         clock or the score (whichever the picture holds), and writes the readings onto this
+         video row; the card below follows the job live and the page re-derives itself when
+         the track lands. Everything under it stays as the hand-driven fallback. */
+      '<div class="vsauto vsai">' +
+        '<div class="vsrow"><button type="button" class="go" id="vsAiGo"' + (cur.url ? '' : ' disabled') + '>AI process game</button>' +
+          '<span class="vsnote" id="vsAiNote">' + (cur.url
+            ? 'the processing machine reads the footage — clock, score, or both — and every play then seeks by its own game clock'
+            : 'save the link first; the reader needs footage to read') + '</span></div>' +
+        '<div class="vsjob hide" id="vsJob"></div>' +
+      '</div>' +
       '<div class="vsauto">' +
         '<div class="vsrow"><button type="button" id="vsFromStream">from the stream\u2019s start time</button>' +
           '<span class="vsnote" id="vsStreamNote">YouTube live streams</span></div>' +
@@ -712,7 +724,199 @@ function openAttach() {
   document.getElementById('vsScan').onclick = () => anchorFromScoreboard();
   document.getElementById('vsTrack').onclick = () => anchorTrackClock();
   document.getElementById('vsTrackFile').onchange = ev => importClockTrack(ev.target.files && ev.target.files[0]);
+  document.getElementById('vsAiGo').onclick = () => requestAiJob();
+  watchVideoJob();
   document.getElementById('vsUrl').focus();
+}
+
+/* ==========================================================================
+   AI PROCESS GAME — the queue's client side.
+
+   request_video_job puts a row in video_jobs; a worker on a PC with the GPU
+   (scripts/worker/ai_worker.py) claims it, downloads the stream, reads the
+   picture and writes game_videos.clock_track. This page follows the row over
+   realtime (public read) with a slow poll as the fallback, and when the track
+   lands it re-reads the video row and re-derives — the play list starts
+   seeking by game clock without a reload. docs/ai-process-game-roadmap.md.
+   ========================================================================== */
+let jobChannel = null, jobPoll = null, jobRow = null;
+
+async function requestAiJob() {
+  const note = document.getElementById('vsAiNote'), btn = document.getElementById('vsAiGo');
+  const token = storedToken();
+  if (!token) { if (note) note.textContent = 'sign in first'; return; }
+  if (btn) btn.disabled = true;
+  try {
+    const r = await rpcCallRaw('request_video_job', { p_game: gameId, p_mode: 'auto' }, token);
+    if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
+    jobRow = r.body;
+    renderJob(jobRow);
+    watchVideoJob(true);
+  } catch (err) {
+    if (note) note.textContent = 'could not queue it: ' + (err && err.message || err) +
+      (/function|schema cache|404/i.test(String(err && err.message)) ? ' — migration 0100 applied?' : '');
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function cancelAiJob(id) {
+  const token = storedToken();
+  if (!token) return;
+  try {
+    const r = await rpcCallRaw('cancel_video_job', { p_job: id }, token);
+    if (r.ok) { jobRow = r.body; renderJob(jobRow); }
+  } catch (_) { /* the card keeps showing the row as it is */ }
+}
+
+const JOB_ACTIVE = { queued: 1, claimed: 1, running: 1 };
+
+function jobAgo(iso) {
+  if (!iso) return '';
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 90) return Math.round(s) + ' s ago';
+  if (s < 5400) return Math.round(s / 60) + ' min ago';
+  if (s < 172800) return Math.round(s / 3600) + ' h ago';
+  return Math.round(s / 86400) + ' d ago';
+}
+
+function jobModeLabel(m) {
+  return m === 'clock+score' ? 'clock and score' : m === 'score' ? 'score (no clock on screen)' :
+         m === 'clock' ? 'clock overlay' : m === 'none' ? 'no readable overlay' : '';
+}
+
+function renderJob(j, worker) {
+  const card = document.getElementById('vsJob'), btn = document.getElementById('vsAiGo');
+  const cta = document.getElementById('vidCta');
+  const active = !!(j && JOB_ACTIVE[j.status]);
+  if (cta && vidShown) {
+    cta.textContent = active ? 'AI processing…' : ((window.S && window.S.video && window.S.video.url) ? 'video sync' : 'attach video');
+  }
+  if (!card) return;
+  if (!j) { card.classList.add('hide'); card.innerHTML = ''; if (btn) btn.disabled = !(window.S && window.S.video && window.S.video.url); return; }
+  card.classList.remove('hide');
+  if (btn) btn.disabled = active;
+  const p = j.progress || {};
+  const pct = p.n ? Math.min(100, Math.round(100 * (p.i || 0) / p.n)) : 0;
+  let body = '';
+  if (j.status === 'queued') {
+    const seen = worker && worker.last_seen ? 'processing machine last seen ' + jobAgo(worker.last_seen) : 'no processing machine has reported in yet';
+    body = '<b>waiting for the processing machine</b> · queued ' + jobAgo(j.requested_at) + '<br><span class="dim">' + B.esc(seen) +
+           (p.stage ? ' · ' + B.esc(p.stage) : '') + '</span>';
+  } else if (j.status === 'claimed' || j.status === 'running') {
+    const stage = String(p.stage || 'starting');
+    const label = /^downloading/.test(stage) ? 'downloading the footage' :
+                  /^reading:clock/.test(stage) ? 'reading the clock' :
+                  /^reading:score/.test(stage) ? 'reading the score' :
+                  /^reading/.test(stage) ? 'looking at the picture' :
+                  /^harvesting/.test(stage) ? 'track saved · learning from the footage' :
+                  /^play-by-play/.test(stage) ? 'fetching the play-by-play' :
+                  /^track saved/.test(stage) ? 'track saved' : stage;
+    body = '<b>' + B.esc(label) + '</b> · ' + pct + '%' +
+           (p.accepted ? ' · ' + p.accepted + (/score/.test(stage) ? ' score changes' : ' readings') : '') +
+           (p.score && p.score[0] != null ? ' · score ' + p.score[0] + '–' + p.score[1] : '') +
+           (p.period ? ' · P' + p.period : '') +
+           (p.t != null ? ' · ' + fmtVideoT(p.t) : '') +
+           '<br><span class="dim">' + B.esc(String(p.last || '')) + (j.worker ? ' · on ' + B.esc(j.worker) : '') + '</span>';
+  } else if (j.status === 'done') {
+    const r = j.result || {};
+    body = '<b>done</b> · ' + (r.samples || 0) + ' readings across ' + ((r.periods || []).length || 0) + ' periods' +
+           (r.mode ? ' · read from the ' + B.esc(jobModeLabel(r.mode)) : '') +
+           (r.matched != null ? ' · ' + r.matched + ' of ' + (r.seen || 0) + ' score changes matched' : '') +
+           '<br><span class="dim">plays now seek by their own game clock' +
+           (r.harvest && typeof r.harvest === 'object' ? ' · learned ' + (r.harvest.ball || 0) + ' ball + ' + (r.harvest.rim || 0) + ' rim labels' : '') +
+           ' · finished ' + jobAgo(j.finished_at) + '</span>';
+  } else if (j.status === 'failed') {
+    body = '<b class="bad">failed</b> · ' + B.esc(String(j.error || 'no reason recorded')) +
+           '<br><span class="dim">' + jobAgo(j.finished_at) + ' · press AI process game to try again</span>';
+  } else if (j.status === 'cancelled') {
+    body = '<b>cancelled</b> <span class="dim">' + jobAgo(j.finished_at) + '</span>';
+  }
+  card.innerHTML = '<div class="vsjobrow">' + body + '</div>' +
+    (active ? '<button type="button" class="vsjobcancel" id="vsJobCancel">' + (j.cancel_requested ? 'stopping…' : 'stop') + '</button>' : '');
+  const cancel = document.getElementById('vsJobCancel');
+  if (cancel) cancel.onclick = () => cancelAiJob(j.id);
+}
+
+function fmtVideoT(t) {
+  t = Math.max(0, Math.round(t));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+
+async function fetchLatestJob() {
+  try {
+    const rows = await api('video_jobs?game_id=eq.' + encodeURIComponent(gameId) + '&order=requested_at.desc&limit=1&select=*');
+    return rows && rows[0] || null;
+  } catch (_) { return null; }     // before 0100 the table does not exist; the sheet stands without the card
+}
+
+async function fetchWorker() {
+  try {
+    const rows = await api('video_workers?select=id,last_seen,busy_job&order=last_seen.desc&limit=1');
+    return rows && rows[0] || null;
+  } catch (_) { return null; }
+}
+
+/* the track has landed: re-read the video row and re-derive the page */
+async function refreshVideoRow() {
+  try {
+    const rows = await api('game_videos?game_id=eq.' + encodeURIComponent(gameId) +
+      '&is_primary=eq.true&select=url,provider,video_ref,label,' +
+      'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live,clock_track&limit=1');
+    if (!rows || !rows.length || !window.S) return;
+    window.S.video = Object.assign(window.S.video || {}, rows[0]);
+    if (typeof mountVideo === 'function' && window.derive) mountVideo(window.derive());
+    const note = document.getElementById('vsTrackFileNote');
+    const ct = rows[0].clock_track;
+    if (note && ct && ct.samples) note.textContent = ct.samples.length + ' readings on file';
+  } catch (_) { /* the next open of the page reads it */ }
+}
+
+async function watchVideoJob(force) {
+  const j = await fetchLatestJob();
+  jobRow = j;
+  renderJob(j, j && j.status === 'queued' ? await fetchWorker() : null);
+  if (!j || !JOB_ACTIVE[j.status]) { stopWatchingJob(); return; }
+  if (jobChannel && !force) return;
+  /* realtime first — the table is on the publication and publicly readable */
+  try {
+    if (window.epinoiaSdk) await window.epinoiaSdk();
+    const sb = window.epinoiaClient && window.epinoiaClient();
+    if (sb && !jobChannel) {
+      jobChannel = sb.channel('video_jobs:' + gameId)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'video_jobs', filter: 'game_id=eq.' + gameId },
+            payload => onJobChange(payload.new))
+        .subscribe();
+    }
+  } catch (_) { /* the poll below carries it */ }
+  if (!jobPoll) {
+    jobPoll = setInterval(async () => {
+      const row = await fetchLatestJob();
+      if (row) onJobChange(row);
+    }, 10000);
+  }
+}
+
+function onJobChange(row) {
+  if (!row || (jobRow && row.id !== jobRow.id && jobRow.requested_at > row.requested_at)) return;
+  const wasActive = !!(jobRow && JOB_ACTIVE[jobRow.status]);
+  const stageBefore = jobRow && jobRow.progress && jobRow.progress.stage;
+  jobRow = row;
+  renderJob(row);
+  const stageNow = row.progress && row.progress.stage;
+  /* the track is written before the harvest: refresh as soon as the stage says so, and again at done */
+  if ((stageNow && /^(track saved|harvesting|done)/.test(String(stageNow)) && stageBefore !== stageNow) || (row.status === 'done' && wasActive)) {
+    refreshVideoRow();
+  }
+  if (!JOB_ACTIVE[row.status]) stopWatchingJob();
+}
+
+function stopWatchingJob() {
+  if (jobPoll) { clearInterval(jobPoll); jobPoll = null; }
+  if (jobChannel) {
+    try { const sb = window.epinoiaClient && window.epinoiaClient(); if (sb) sb.removeChannel(jobChannel); } catch (_) {}
+    jobChannel = null;
+  }
 }
 
 /* ---- the whole game clock ----------------------------------------------

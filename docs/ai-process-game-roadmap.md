@@ -6,10 +6,12 @@ a score, or both, places every play by its own game clock, and the page updates 
 it works. Later the click itself disappears: a final game with an attached video is processed
 on its own.
 
-Where things stand (2026-09-07): every stage exists and is verified, but as separate hand
-steps — `clock.py auto|clock|score` in the vision skill, the studio route, the game page's
-"import a clock track" file picker, and migration 0099's `set_video_clock_track`. This roadmap
-joins them.
+Where things stand (2026-09-07, evening): **phases 0–4 are built.** Migration 0100 (queue,
+request/cancel/claim), the button and live card on the game page, `scripts/worker/ai_worker.py`
+with its batch file and config template, `clock.py auto` (probe → clock / score / clock+score /
+none, with score anchors correcting the clock), and the ingest queueing every final fed game with
+a stream. Switch-on steps are in `switch-on.md` §4g. Phase 5 remains optional. The text below is
+the design as built.
 
 ## The one constraint that decides the shape
 

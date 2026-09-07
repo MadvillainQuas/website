@@ -188,6 +188,38 @@ can do the same job offline and be imported with *import a clock track*: a JSON 
 is seconds into the video (`clock_s` and `p` are accepted too). Needs migration **0099** — run
 `Push Database.bat` again.
 
+## 4g. AI process game — one button, the PC does the rest (built 2026-09-07)
+
+**What it is.** On a game page, attach video → **AI process game**. A row goes into `video_jobs`;
+the worker on your PC claims it, downloads the stream (720p, yt-dlp, no ffmpeg needed), fetches
+the game's archived FIBA log, looks at five frames spread through the footage to decide what the
+picture holds — a clock, a score, or both — reads it right through, and writes the readings onto
+the video row. The card under the button follows the job live (waiting → downloading → reading
+with the last score or clock seen → done), and the page re-derives itself when the track lands:
+every play seeks by its own game clock. Then, while the file is still on disk, the worker
+harvests self-labels for the detectors around every basket the log knows about, and deletes the
+file. The ingest queues a job by itself for every fed game that goes **final** with a stream
+attached (`adapter_config.auto_process_video = false` turns that off per league), so the button
+is mostly for re-runs.
+
+**Switch it on (once, on the PC):**
+1. `Push Database.bat` — migration **0100** (video_jobs, video_workers, request/cancel/claim).
+2. Copy `scripts\worker\worker.example.json` to `%APPDATA%\epinoia\worker.json` and paste the
+   **service_role** key (Supabase → Project settings → API). It stays on this machine — it is
+   what lets the worker claim jobs and write tracks with nobody signed in.
+3. Double-click `scripts\worker\ai_worker.bat`. Leave the window open; it polls every 20 s.
+   To have it start at every logon, from an Administrator prompt:
+   `schtasks /Create /TN "Epinoia AI worker" /SC ONLOGON /RL LIMITED /TR "\"C:\Users\Admin\Documents\website_repo\scripts\worker\ai_worker.bat\"" /F`
+4. On a game page (signed in as league admin / admin): attach video → AI process game. If the
+   card says "no processing machine has reported in yet", the worker is not running.
+
+**Timing.** A full game is ~50 min in score mode (step 2 s) or clock mode (step 5 s); clock+score
+runs both and takes ~1.5×; the harvest adds ~6 min per basket window (capped at 40, skipped when
+another game is waiting). One machine, one game at a time; a second PC with the skill can run the
+same worker and the claim never hands both the same job.
+
+**Test without the database:** `python scripts\worker\ai_worker.py --dry-run <game.mp4> --pbp <data.json URL> --start 1000 --end 1300 --harvest 1`.
+
 ## 5. Optional — bootstrap an existing archive into a platform league
 
 ```bash
@@ -210,4 +242,6 @@ worker also writes `games` + `game_advanced` from the next run.
 | event translator | `scripts/ingest/translate/` (roadmap Phase B) |
 | dataset rebuild | `scripts/ingest/build_dataset.py` (local, needs the scraper folder) |
 | schedule | `.github/workflows/ingest.yml` — every 30 min 12:00–23:30 UTC |
-| roadmaps | `docs/live-data-roadmap.md`, `docs/epinoia-fiba-roadmap.md` |
+| vision worker | `scripts/worker/ai_worker.py` (+ `ai_worker.bat`, `worker.example.json`) — the PC side of AI process game |
+| reader | `%USERPROFILE%\.claude\skills\playtype-vision\scripts\clock.py` (`auto` = probe, read, fuse) |
+| roadmaps | `docs/live-data-roadmap.md`, `docs/epinoia-fiba-roadmap.md` |, `docs/ai-process-game-roadmap.md`, `docs/video-livestats-sync-roadmap.md`

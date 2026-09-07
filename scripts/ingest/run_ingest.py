@@ -498,6 +498,25 @@ def match_team_id(sb: Supabase, league_id: str, name: str, cache: dict) -> str |
     return None
 
 
+def enqueue_video_job(sb: Supabase, game_id: str) -> bool:
+    """Queue the footage of a final game for the vision worker, once. Needs a primary video with a
+    link, no clock track yet, and no job for the game that is waiting, running, or already done
+    (a failed or cancelled job is retried once by the ingest; after that the button on the page is
+    the way). Returns True when a row was written. Needs migration 0100."""
+    vids = sb.select("game_videos", f"game_id=eq.{game_id}&is_primary=eq.true&select=url,clock_track&limit=1")
+    if not vids or not vids[0].get("url") or vids[0].get("clock_track"):
+        return False
+    jobs = sb.select("video_jobs", f"game_id=eq.{game_id}&select=status&order=requested_at.desc&limit=3")
+    if any(j.get("status") in ("queued", "claimed", "running", "done") for j in jobs):
+        return False
+    if len([j for j in jobs if j.get("status") in ("failed", "cancelled")]) >= 2:
+        return False
+    sb.insert("video_jobs", {"game_id": game_id, "video_url": vids[0]["url"], "mode_requested": "auto",
+                             "requested_via": "ingest"})
+    print("    + queued for the vision worker (AI process game)")
+    return True
+
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
@@ -562,6 +581,15 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 complete_video(sb, game_id)
         except Exception as exc:
             print(f"    (auto video: {exc})")
+    # AI PROCESS GAME, with nobody pressing anything: a final game with a stream attached and no
+    # clock track yet is queued for the PC worker (scripts/worker/ai_worker.py), which reads the
+    # clock or the score off the footage and places every play. A league can turn this off with
+    # adapter_config.auto_process_video = false. docs/ai-process-game-roadmap.md, Phase 4.
+    if b.status == "final" and ac.get("auto_process_video", True):
+        try:
+            enqueue_video_job(sb, game_id)
+        except Exception as exc:
+            print(f"    (auto process: {exc})")
     sb.upsert("game_advanced", {"game_id": game_id, "external_id": b.external_id, "adapter": src["adapter"], "status": b.status,
                                 "box": b.box, "team": b.team, "stints": b.stints, "lineups": b.lineups,
                                 "four_factors": b.four_factors, "shots": b.shots, "transition": b.transition,

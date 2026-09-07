@@ -1,0 +1,13 @@
+{
+  "supabase_url": "https://hhvofgqqadtyvcjudhjx.supabase.co",
+  "service_key": "PASTE THE service_role KEY HERE (Supabase → Project settings → API). It stays on this machine.",
+  "skill_scripts": "C:\\Users\\Admin\\.claude\\skills\\playtype-vision\\scripts",
+  "download_dir": "D:\\Download\\bcb_streams",
+  "keep_video": false,
+  "harvest": true,
+  "harvest_windows": 40,
+  "step_clock": 5.0,
+  "step_score": 2.0,
+  "poll_s": 20,
+  "max_height": 720
+}
