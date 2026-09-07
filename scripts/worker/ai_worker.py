@@ -49,6 +49,7 @@ DEFAULTS = {
     'worker_id': socket.gethostname(),
     'max_height': 720,
     'backfill': True,           # queue every final game with a stream and no track, by itself
+    'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
 }
 VERSION = 'ai_worker/1.0'
@@ -320,6 +321,40 @@ def harvest_around(video_path, times, cfg, progress, should_stop):
     return tot
 
 
+# --------------------------------------------------------------------------- the window, when there is something to watch
+DASHBOARD_MUTEX = 'Epinoia.AI.Dashboard'
+
+
+def dashboard_open():
+    """Is a dashboard window already up on this machine? (It holds a named mutex while it runs.)"""
+    try:
+        import ctypes
+        h = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, DASHBOARD_MUTEX)   # SYNCHRONIZE
+        if h:
+            ctypes.windll.kernel32.CloseHandle(h)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def open_dashboard(cfg):
+    """Bring up the dashboard as a game starts processing — once; a window already open raises itself."""
+    if not cfg.get('dashboard_auto', True) or dashboard_open():
+        return
+    try:
+        exe = sys.executable
+        pyw = os.path.join(os.path.dirname(exe), 'pythonw.exe')
+        if os.path.exists(pyw):
+            exe = pyw
+        flags = getattr(subprocess, 'DETACHED_PROCESS', 0) | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+        subprocess.Popen([exe, os.path.join(HERE, 'ai_dashboard.py')], cwd=HERE, creationflags=flags,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+        log('dashboard opened')
+    except Exception as exc:
+        log('(could not open the dashboard: %s)' % exc)
+
+
 # --------------------------------------------------------------------------- one job
 class Job(object):
     def __init__(self, db, row, cfg):
@@ -371,6 +406,7 @@ class Job(object):
         db, cfg, row = self.db, self.cfg, self.row
         game_id = row['game_id']
         log('job %s  game %s  %s' % (self.id[:8], game_id[:8], row['video_url']))
+        open_dashboard(cfg)
         db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'running', 'heartbeat_at': now_iso(),
                                                         'progress': {'stage': 'starting', 'i': 0, 'n': 1}})
         heartbeat(db, cfg, self.id, 'processing ' + game_id[:8])

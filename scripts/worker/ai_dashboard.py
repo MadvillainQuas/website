@@ -205,9 +205,28 @@ def others_running():
 
 
 # --------------------------------------------------------------------------- the window
+_MUTEX = None
+
+
+def claim_single_instance():
+    """Hold the named mutex the worker looks for. False when another dashboard already holds it."""
+    global _MUTEX
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        _MUTEX = k.CreateMutexW(None, False, W.DASHBOARD_MUTEX)
+        if k.GetLastError() == 183:            # ERROR_ALREADY_EXISTS
+            return False
+    except Exception:
+        pass                                    # not Windows: no mutex, no harm
+    return True
+
+
 def run_window(cfg):
     import tkinter as tk
     from tkinter import ttk, messagebox, simpledialog
+    if not claim_single_instance():
+        return                                  # the open window raises itself when a game starts
 
     M = Model(cfg)
     root = tk.Tk()
@@ -410,9 +429,24 @@ def run_window(cfg):
             return (n, game_name(j), tip(j), 'failed', j.get('mode_used') or '', bar(0.0), '', (j.get('error') or '')[:110] + ' · ' + ago(j.get('finished_at'))), 'failed'
         return (n, game_name(j), tip(j), s, '', bar(0.0), '', ago(j.get('finished_at'))), 'cancelled'
 
+    seen_running = set()
+
+    def come_forward():
+        # a game has just started: be visible, whatever was on top, then stop insisting
+        try:
+            root.deiconify(); root.lift(); root.attributes('-topmost', True)
+            root.after(2500, lambda: root.attributes('-topmost', False))
+        except Exception:
+            pass
+
     def render():
         sel = tree.selection()
         keep = sel[0] if sel else None
+        now_running = {j['id'] for j in M.jobs if j['status'] in ('claimed', 'running')}
+        if now_running - seen_running and seen_running is not None and render.primed:
+            come_forward()
+        seen_running.clear(); seen_running.update(now_running)
+        render.primed = True
         tree.delete(*tree.get_children())
         n = 0
         for j in M.ordered():
@@ -453,6 +487,7 @@ def run_window(cfg):
             sb_text = 'database: ' + M.error
         status.configure(text=sb_text + '   ·   refreshed ' + datetime.now().strftime('%H:%M:%S'), fg=(AMBER if M.error else INK))
 
+    render.primed = False
     busy = {'on': False}
 
     def refresh_now():

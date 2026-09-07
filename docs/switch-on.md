@@ -216,6 +216,8 @@ and claims nothing more; stop kills the process and the current game goes back t
 **To top / Up / Down / To bottom / Cancel / Retry / Open page** for the selected game, and
 **Add game…** (paste a game page link). Migration **0101** (priority + paused) is applied. A status
 bar along the bottom counts waiting / running / done / failed. Double-click a row to open its page.
+It opens by itself whenever a game starts processing (and comes to the front if already open); one
+window only. `dashboard_auto: false` in worker.json turns that off.
 
 **Then nothing.** Every final game with a stream attached and no clock track — including ones
 that finished before the worker existed, back 21 days — is queued and read by itself; the button
