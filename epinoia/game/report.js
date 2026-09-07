@@ -55,7 +55,10 @@ function tc(str) {
      so the regex matched nothing and every name stayed lowercase. No
      escapes here means nothing to get lost in transit. */
   return String(str == null ? '' : str).split(' ')
-    .map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+    .map(w => !w ? w
+      /* a roman numeral stays as it is: "Flyers II", never "Flyers Ii" */
+      : /^[IVXLC]+$/i.test(w) && w.length <= 4 && w === w.toUpperCase() ? w
+      : w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
 const nm = (g, t) => esc(tc(g.names[t]));
@@ -923,7 +926,7 @@ function sectionLineups(g, fs, R) {
   });
   if (worst && !told.has(key(worst))) {
     out.push(pick('worst' + worst.data.pm + worst.data.dur, [
-      'At the other end of it, ', 'It went the other way for ',
+      'At the other end of it, ', 'At the other end, ',
       'The reverse was true at the other end: '
     ]) + R.subj(worst.side) + ' lost ' +
       Math.abs(worst.data.pm) + ' points in ' + mins(worst.data.dur) + ' with ' +
