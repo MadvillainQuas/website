@@ -48,6 +48,8 @@ DEFAULTS = {
     'harvest_stride': 3,
     'worker_id': socket.gethostname(),
     'max_height': 720,
+    'backfill': True,           # queue every final game with a stream and no track, by itself
+    'backfill_days': 21,        # ...as long as it tipped off this recently
 }
 VERSION = 'ai_worker/1.0'
 
@@ -428,9 +430,86 @@ class Job(object):
                     pass
 
 
+# --------------------------------------------------------------------------- setup, once
+def setup(path):
+    """Write the config with the one thing only a person can supply: the service_role key."""
+    d = os.path.dirname(path)
+    if d and not os.path.isdir(d):
+        os.makedirs(d)
+    cfg = load_config(path)
+    if cfg.get('service_key') and 'PASTE' not in cfg['service_key']:
+        log('config already in place: %s' % path)
+        return True
+    if not cfg.get('supabase_url'):
+        cfg['supabase_url'] = 'https://hhvofgqqadtyvcjudhjx.supabase.co'
+    print()
+    print('  Supabase -> Project settings -> API -> "service_role" (secret). Copy it, paste it here, Enter.')
+    print('  It is written to %s and never leaves this machine.' % path)
+    print()
+    try:
+        key = input('  service_role key: ').strip()
+    except EOFError:
+        key = ''
+    if not key.startswith('eyJ') or len(key) < 60:
+        print('  that does not look like a Supabase key (they start with eyJ and are long). Nothing written.')
+        return False
+    cfg['service_key'] = key
+    cfg.pop('worker_id', None)                       # the hostname is picked up at run time
+    with io.open(path, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, indent=2)
+    try:
+        DB(cfg['supabase_url'], key).select('video_workers', 'select=id&limit=1')
+        print('  key works. saved.')
+    except Exception as exc:
+        print('  saved, but the database refused it (%s) -- check the key.' % exc)
+        return False
+    return True
+
+
+# --------------------------------------------------------------------------- nobody presses anything
+_last_backfill = 0.0
+
+
+def backfill(db, cfg):
+    """Every final game with a stream attached and no clock track, tipped off within backfill_days,
+    gets a job -- so nothing needs a button, not even games that finished before the worker existed."""
+    global _last_backfill
+    if not cfg.get('backfill') or time.time() - _last_backfill < 3600:
+        return 0
+    _last_backfill = time.time()
+    since = datetime.fromtimestamp(time.time() - 86400 * float(cfg.get('backfill_days') or 21), timezone.utc).isoformat()
+    rows = db.select('game_videos', 'select=game_id,url,games!inner(status,tipoff_at)&is_primary=eq.true'
+                                    '&clock_track=is.null&url=neq.&games.status=eq.final&games.tipoff_at=gte.' + since)
+    if not rows:
+        return 0
+    ids = ','.join(r['game_id'] for r in rows)
+    have = db.select('video_jobs', 'select=game_id,status&game_id=in.(%s)' % ids)
+    blocked = {j['game_id'] for j in have if j['status'] in ('queued', 'claimed', 'running', 'done')}
+    tries = {}
+    for j in have:
+        if j['status'] in ('failed', 'cancelled'):
+            tries[j['game_id']] = tries.get(j['game_id'], 0) + 1
+    n = 0
+    for r in rows:
+        g = r['game_id']
+        if g in blocked or tries.get(g, 0) >= 2:
+            continue
+        requests.post('%s/rest/v1/video_jobs' % db.url, headers=dict(db.h, Prefer='return=minimal'),
+                      json={'game_id': g, 'video_url': r['url'], 'mode_requested': 'auto', 'requested_via': 'worker'},
+                      timeout=30).raise_for_status()
+        n += 1
+    if n:
+        log('queued %d final game(s) with a stream and no track' % n)
+    return n
+
+
 # --------------------------------------------------------------------------- loops
 def one_pass(db, cfg):
     heartbeat(db, cfg, None, 'idle')
+    try:
+        backfill(db, cfg)
+    except Exception as exc:
+        log('(backfill failed: %s)' % exc)
     row = db.rpc('claim_video_job', {'p_worker': cfg['worker_id']})
     if not row:
         return False
@@ -474,12 +553,15 @@ def main():
     ap.add_argument('--start', type=float, default=0.0); ap.add_argument('--end', type=float)
     ap.add_argument('--harvest', type=int, default=0, help='dry run: also harvest this many windows')
     ap.add_argument('--out')
+    ap.add_argument('--setup', action='store_true', help='write the config (asks for the service_role key) and exit')
     args = ap.parse_args()
+    if args.setup:
+        sys.exit(0 if setup(args.config) else 1)
     cfg = load_config(args.config)
     if args.dry_run:
         return dry_run(args, cfg)
-    if not cfg['supabase_url'] or not cfg['service_key']:
-        sys.exit('no database: put supabase_url and service_key in %s (see worker.example.json)' % args.config)
+    if not cfg['supabase_url'] or not cfg['service_key'] or 'PASTE' in cfg['service_key']:
+        sys.exit('no database: run setup-worker.bat once (it asks for the service_role key)')
     db = DB(cfg['supabase_url'], cfg['service_key'])
     log('%s on %s, watching %s' % (VERSION, cfg['worker_id'], cfg['supabase_url']))
     if args.once:

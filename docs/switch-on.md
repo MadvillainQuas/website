@@ -202,16 +202,16 @@ file. The ingest queues a job by itself for every fed game that goes **final** w
 attached (`adapter_config.auto_process_video = false` turns that off per league), so the button
 is mostly for re-runs.
 
-**Switch it on (once, on the PC):**
-1. `Push Database.bat` — migration **0100** (video_jobs, video_workers, request/cancel/claim).
-2. Copy `scripts\worker\worker.example.json` to `%APPDATA%\epinoia\worker.json` and paste the
-   **service_role** key (Supabase → Project settings → API). It stays on this machine — it is
-   what lets the worker claim jobs and write tracks with nobody signed in.
-3. Double-click `scripts\worker\ai_worker.bat`. Leave the window open; it polls every 20 s.
-   To have it start at every logon, from an Administrator prompt:
-   `schtasks /Create /TN "Epinoia AI worker" /SC ONLOGON /RL LIMITED /TR "\"C:\Users\Admin\Documents\website_repo\scripts\worker\ai_worker.bat\"" /F`
-4. On a game page (signed in as league admin / admin): attach video → AI process game. If the
-   card says "no processing machine has reported in yet", the worker is not running.
+**Switch it on — one step, once, on the PC.** Double-click `scripts\worker\setup-worker.bat`,
+paste the **service_role** key when it asks (Supabase → Project settings → API → service_role),
+Enter. It writes `%APPDATA%\epinoia\worker.json`, drops a launcher in your Startup folder so the
+worker runs minimised at every logon (no admin rights needed; delete that launcher to stop it),
+and starts the worker now. The key never leaves this machine. (Migration **0100** is already
+applied.)
+
+**Then nothing.** Every final game with a stream attached and no clock track — including ones
+that finished before the worker existed, back 21 days — is queued and read by itself; the button
+on a game page is only for re-runs. Watch a game's card (attach video) or the minimised window.
 
 **Timing.** A full game is ~50 min in score mode (step 2 s) or clock mode (step 5 s); clock+score
 runs both and takes ~1.5×; the harvest adds ~10 min per basket window (capped at 12, skipped when
