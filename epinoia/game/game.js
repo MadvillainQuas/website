@@ -1061,10 +1061,50 @@ async function offerToRevert() {
    here. Retrying costs nothing once a button is already shown — both
    functions no-op on their own guard. */
 window.addEventListener('storage', e => {
-  if (e.key && /-auth-token$/.test(e.key)) {
-    offerToScore(); offerToRevert(); offerToAttachVideo(); offerToMoveCompetition();
-  }
+  if (e.key && /-auth-token$/.test(e.key)) offerAdminControls();
 });
+
+function offerAdminControls() {
+  offerToScore(); offerToRevert(); offerToAttachVideo(); offerToMoveCompetition();
+  const cta = document.getElementById('vidCta');
+  if (cta && vidShown) {
+    cta.textContent = (window.S && window.S.video && window.S.video.url) ? 'video sync' : 'attach video';
+  }
+}
+
+/* THE HOUR-OLD TOKEN.
+
+   Every admin control on this page keys off the access token in localStorage,
+   and storedToken() rightly treats an expired one as signed out. But an access
+   token lasts an hour. Sign in at the console, come to a game page later, and
+   the token on file is stale: the SDK (loaded here for nav) refreshes it — in
+   THIS tab, which fires no 'storage' event here — so the offers above ran once
+   against a dead token and never again. The page looked signed out to someone
+   who was signed in, and "attach video" never appeared.
+
+   So when a session is on file at all, wait for the SDK, let it refresh, and
+   offer again; and keep offering whenever it reports a new token. */
+(async function watchAuth() {
+  let raw = null;
+  try {
+    const ref = (CFG.supabaseUrl.match(/^https?:\/\/([^.]+)\./) || [])[1];
+    raw = ref && localStorage.getItem('sb-' + ref + '-auth-token');
+  } catch (_) { /* no storage, nobody to offer to */ }
+  if (!raw) return;                              // nobody has signed in on this browser
+  try {
+    if (window.epinoiaSdk) await window.epinoiaSdk();
+    for (let i = 0; i < 50 && !(window.epinoiaClient && window.supabase); i++) {
+      await new Promise(r => setTimeout(r, 100));   // the SDK tag is deferred; give it a moment
+    }
+    const sb = window.epinoiaClient && window.epinoiaClient();
+    if (!sb || !sb.auth) return;
+    sb.auth.onAuthStateChange((ev) => {
+      if (ev === 'TOKEN_REFRESHED' || ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') offerAdminControls();
+    });
+    const { data } = await sb.auth.getSession();   // refreshes an expired session when it can
+    if (data && data.session) offerAdminControls();
+  } catch (_) { /* the SDK is a convenience here; the page stands without it */ }
+})();
 
 /* cheap: 576 characters, safe to run on every clock tick */
 function renderHead(d) {
