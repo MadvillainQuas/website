@@ -209,7 +209,7 @@ worker runs minimised at every logon (no admin rights needed; delete that launch
 and starts the worker now. The key never leaves this machine. (Migration **0100** is already
 applied.)
 
-**The dashboard (a window on the PC).** `scripts\workeri_dashboard.bat` — the queue with a
+**The dashboard (a window on the PC).** `scripts\worker\ai_dashboard.bat` — the queue with a
 progress bar per game and the last thing the reader saw, the worker's state (online / paused /
 not running), and buttons: **Start worker / Stop / Pause / Resume** (pause finishes the current game
 and claims nothing more; stop kills the process and the current game goes back to the queue),
