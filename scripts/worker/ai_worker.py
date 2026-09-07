@@ -135,7 +135,11 @@ def fetch_video(url, cfg, progress):
         if os.path.exists(out) and os.path.getsize(out) > 5 * 1024 * 1024:
             progress('downloaded', 1, 1, 'already on disk')
             return out
-        fmt = 'b[height<=%d][ext=mp4]/b[height<=%d]/b' % (cfg['max_height'], cfg['max_height'])
+        # VIDEO ONLY. The reader never hears the game, and YouTube's archived streams offer no
+        # combined video+audio file at all (only DASH halves) -- asking for one fails, and merging
+        # would need ffmpeg. h264 first: it decodes fastest in OpenCV.
+        h = cfg['max_height']
+        fmt = ('bv*[height<=%d][ext=mp4][vcodec^=avc1]/bv*[height<=%d][ext=mp4]/bv*[height<=%d]/b[height<=%d]/b' % (h, h, h, h))
         base = [sys.executable, '-m', 'yt_dlp'] if _module_ok('yt_dlp') else ['yt-dlp']
         cmd = base + ['-f', fmt, '--no-playlist', '--continue', '--newline', '-o', out, 'https://www.youtube.com/watch?v=' + vid]
         log('yt-dlp ' + vid)
@@ -565,6 +569,14 @@ def main():
         sys.exit('no database: run setup-worker.bat once (it asks for the service_role key)')
     db = DB(cfg['supabase_url'], cfg['service_key'])
     log('%s on %s, watching %s' % (VERSION, cfg['worker_id'], cfg['supabase_url']))
+    # a fresh start means nothing of mine can still be running: give those jobs back to the queue
+    try:
+        back = db.patch('video_jobs', 'worker=eq.%s&status=in.(claimed,running)' % cfg['worker_id'],
+                        {'status': 'queued', 'worker': None, 'claimed_at': None, 'heartbeat_at': None})
+        if back:
+            log('requeued %d job(s) left over from my last run' % len(back))
+    except Exception as exc:
+        log('(requeue failed: %s)' % exc)
     if args.once:
         did = one_pass(db, cfg)
         log('done' if did else 'nothing queued')
