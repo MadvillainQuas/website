@@ -492,6 +492,266 @@ function factSeasonContext(g) {
   return out;
 }
 
+/* elapsed ms from the tip to (period, clock-remaining) — the same arithmetic
+   the engine uses for minutes, kept local so a brief from any source works */
+const PLEN_ = p => (p <= 4 ? 600000 : 300000);
+function elapsed(period, clock) {
+  let t = 0;
+  for (let p = 1; p < (period || 1); p++) t += PLEN_(p);
+  return t + (PLEN_(period || 1) - (clock == null ? 0 : clock));
+}
+const SCORE_PTS = { p2_made: 2, p3_made: 3, ft_made: 1 };
+/* does the log carry a clock at all? a bulk import may not */
+function clocked(ev) {
+  let n = 0, c = 0;
+  (ev || []).forEach(e => { if (SCORE_PTS[e.t]) { n++; if (e.clock != null) c++; } });
+  return n > 0 && c / n >= 0.8;
+}
+
+/* ---- the half: where it stood at the break, and what the second half did -- */
+function factHalf(g) {
+  const out = [];
+  if (!g.perQ || g.periods < 4) return out;
+  const per = g.perQ;
+  const h1 = [(per[0][1] || 0) + (per[0][2] || 0), (per[1][1] || 0) + (per[1][2] || 0)];
+  const h2 = [g.score[0] - h1[0], g.score[1] - h1[1]];          // OT included
+  const w = g.score[0] >= g.score[1] ? 0 : 1;
+  const halfLead = h1[w] - h1[1 - w];
+  const secondHalf = h2[w] - h2[1 - w];
+  out.push(F('half', null, 55, { h1, h2, halfLead, secondHalf, winner: w }, 'the score at the break'));
+  if (halfLead <= -4) {
+    out.push(F('turnedAfterHalf', w, 86, { deficit: -halfLead, h1, h2, secondHalf },
+      g.names[w] + ' turned it round after the break'));
+  } else if (halfLead >= 15) {
+    out.push(F('overByHalf', w, 62, { halfLead, h1 }, g.names[w] + ' had it won by half-time'));
+  } else if (secondHalf >= 15) {
+    out.push(F('secondHalfSurge', w, 66, { secondHalf, h2, halfLead },
+      g.names[w] + ' won the second half by ' + secondHalf));
+  }
+  if (g.periods > 4) {
+    const ot = [0, 0];
+    for (let p = 5; p <= g.periods; p++) { ot[0] += per[0][p] || 0; ot[1] += per[1][p] || 0; }
+    const reg = [g.score[0] - ot[0], g.score[1] - ot[1]];
+    out.push(F('overtime', w, 93, { ots: g.periods - 4, ot, reg },
+      g.names[w] + ' won in overtime'));
+  }
+  return out;
+}
+
+/* ---- the closing minutes: the part everybody who was there remembers ----- */
+function factClosing(g) {
+  const out = [];
+  const ev = g.events || [];
+  if (!clocked(ev)) return out;
+  const last = g.periods, final = g.score;
+  const s = [0, 0];
+  let at5 = null, at2 = null;
+  const ft = [[0, 0], [0, 0]];                    // [made, attempted] in the last two minutes
+  const lastScorers = [];                          // scoring plays inside the last five minutes
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (e.period === last && e.clock != null) {
+      if (at5 == null && e.clock <= 300000) at5 = s.slice();
+      if (at2 == null && e.clock <= 120000) at2 = s.slice();
+      if (e.clock <= 120000 && e.team != null) {
+        if (e.t === 'ft_made') { ft[e.team][0]++; ft[e.team][1]++; }
+        else if (e.t === 'ft_miss') ft[e.team][1]++;
+      }
+      if (v && e.team != null && e.clock <= 300000) lastScorers.push({ team: e.team, v, pid: e.pid, clock: e.clock });
+    }
+    if (v && e.team != null) s[e.team] += v;
+  });
+  if (at5 == null) return out;
+  const w = final[0] >= final[1] ? 0 : 1, l = 1 - w;
+  const lead5 = at5[w] - at5[l];                   // the eventual winner's lead with five to play
+  const margin = final[w] - final[l];
+  const late = [final[0] - at5[0], final[1] - at5[1]];   // points in the last five minutes
+  const base = { at5, at2, late, lead5, margin, ft, winner: w, last };
+  out.push(F('closing', null, 57, base, 'the last five minutes'));
+  if (Math.abs(lead5) <= 5 && margin <= 6 && margin > 0) {
+    out.push(F('closeFinish', w, 82, base, 'it went to the last five minutes'));
+  } else if (Math.abs(lead5) <= 6 && margin >= 12) {
+    out.push(F('pulledAway', w, 83, base, g.names[w] + ' pulled away late'));
+  } else if (lead5 >= 10 && margin <= 5) {
+    out.push(F('heldOn', w, 84, base, g.names[w] + ' held on'));
+  } else if (lead5 <= -8 && margin > 0) {
+    out.push(F('stolenLate', w, 96, base, g.names[w] + ' stole it late'));
+  }
+  /* the line, in the last two minutes: where close games are kept or lost */
+  if (ft[w][1] >= 4 && ft[w][0] / ft[w][1] >= 0.75 && margin <= 10) {
+    out.push(F('icedIt', w, 61, { made: ft[w][0], att: ft[w][1] }, g.names[w] + ' closed it out at the line'));
+  }
+  if (ft[l][1] >= 4 && ft[l][0] / ft[l][1] <= 0.5 && margin <= 8) {
+    out.push(F('lineCostThem', l, 63, { made: ft[l][0], att: ft[l][1], margin }, g.names[l] + ' missed at the line late'));
+  }
+  /* the last points of the game: one side scoring the last N unanswered */
+  let tail = 0, tailTeam = null;
+  for (let i = lastScorers.length - 1; i >= 0; i--) {
+    const x = lastScorers[i];
+    if (tailTeam == null) tailTeam = x.team;
+    if (x.team !== tailTeam) break;
+    tail += x.v;
+  }
+  if (tailTeam != null && tail >= 7) {
+    out.push(F('lastPoints', tailTeam, 64, { n: tail }, g.names[tailTeam] + ' scored the last ' + tail));
+  }
+  return out;
+}
+
+/* ---- the box score, said: shooting lines, the boards, the break ----------- */
+function factTeamLines(g) {
+  const out = [];
+  for (const t of [0, 1]) {
+    const A = g.adv[t], O = g.adv[1 - t], T = g.team[t] || {}, OT = g.team[1 - t] || {};
+    if (!A || !O) continue;
+    const line = {
+      fgm: num(A.fgm), fga: num(A.fga), fg3m: num(A.fg3m), fg3a: num(A.fg3a), ftm: num(A.ftm), fta: num(A.fta),
+      reb: (num(A.oreb) || 0) + (num(A.dreb) || 0), oreb: num(A.oreb), dreb: num(A.dreb),
+      ast: num(A.ast), tov: num(A.tov), stl: num(A.stl), blk: num(A.blk),
+      fgp: num(A.fga) ? num(A.fgm) / num(A.fga) * 100 : null, p3p: num(A.p3p), ftp: num(A.ftp),
+      fast: num(T.fast), oppFast: num(OT.fast), lead: num(T.lead)
+    };
+    out.push(F('teamLine', t, 40, line, g.names[t] + '\u2019s line'));
+    if (line.fg3a >= 15 && line.p3p != null && line.p3p <= 22) {
+      out.push(F('coldThree', t, 63, { m: line.fg3m, a: line.fg3a, pct: line.p3p }, g.names[t] + ' went cold from three'));
+    } else if (line.fg3a >= 12 && line.p3p != null && line.p3p >= 42) {
+      out.push(F('hotThree', t, 67, { m: line.fg3m, a: line.fg3a, pct: line.p3p }, g.names[t] + ' shot it from three'));
+    }
+    if (line.fta >= 12 && line.ftp != null && line.ftp <= 60) {
+      out.push(F('poorLine', t, 60, { m: line.ftm, a: line.fta, pct: line.ftp }, g.names[t] + ' struggled at the line'));
+    }
+    if (line.fast != null && line.oppFast != null && line.fast >= 12 && line.fast - line.oppFast >= 8) {
+      out.push(F('fastBreak', t, 59, { mine: line.fast, theirs: line.oppFast }, g.names[t] + ' ran'));
+    }
+    if (line.tov != null && line.tov >= 18) {
+      out.push(F('careless', t, 56, { tov: line.tov }, g.names[t] + ' turned it over ' + line.tov + ' times'));
+    }
+  }
+  const A = g.adv[0], B = g.adv[1];
+  if (A && B) {
+    const ra = (num(A.oreb) || 0) + (num(A.dreb) || 0), rb = (num(B.oreb) || 0) + (num(B.dreb) || 0);
+    if (Math.abs(ra - rb) >= 10) {
+      const side = ra > rb ? 0 : 1;
+      out.push(F('boards', side, 65, { mine: Math.max(ra, rb), theirs: Math.min(ra, rb) }, g.names[side] + ' won the boards'));
+    }
+    if (num(A.fga) && num(B.fga)) {
+      const fa = num(A.fgm) / num(A.fga) * 100, fb = num(B.fgm) / num(B.fga) * 100;
+      out.push(F('floor', fa >= fb ? 0 : 1, 42, { a: fa, b: fb }, 'from the floor'));
+    }
+  }
+  return out;
+}
+
+/* ---- players, in full: the line, the bench, the spree, the boards --------- */
+function factPlayerLines(g) {
+  const out = [];
+  const starters = g.starters || [[], []];
+  g.players.forEach(p => {
+    if (!p.min) return;
+    const reb = (p.or || 0) + (p.dr || 0);
+    const known = (starters[p.team] || []).length >= 5;      // no five on record: nobody is "off the bench"
+    const isStarter = (starters[p.team] || []).indexOf(p.id) >= 0;
+    if (known && !isStarter && (p.pts || 0) >= 15) {
+      out.push(F('benchSpark', p.team, 68, { p, pts: p.pts }, p.name + ' came off the bench for ' + p.pts));
+    }
+    if (reb >= 14) {
+      out.push(F('rebounder', p.team, 70, { p, reb }, p.name + ' pulled down ' + reb));
+    }
+    if ((p.fta || 0) >= 10) {
+      out.push(F('lineLiving', p.team, 60, { p, made: p.ftm || 0, att: p.fta }, p.name + ' lived at the line'));
+    }
+    if ((p.to || 0) >= 5) {
+      out.push(F('turnoverProne', p.team, 57, { p, to: p.to }, p.name + ' gave it away ' + p.to + ' times'));
+    }
+    if ((p.min || 0) >= 38 * 60000) {
+      out.push(F('bigMinutes', p.team, 44, { p, min: p.min }, p.name + ' barely sat'));
+    }
+    const margin = Math.abs(g.score[0] - g.score[1]);
+    if (num(p.pm) != null && p.pm >= 18 && p.pm - margin >= 8) {
+      out.push(F('plusMinus', p.team, 58, { p, pm: p.pm }, p.name + ' was ' + p.pm + ' on the night'));
+    }
+    const near = [p.pts || 0, reb, p.ast || 0].filter(v => v >= 8).length === 3 &&
+                 [p.pts || 0, reb, p.ast || 0].filter(v => v >= 10).length === 2;
+    if (near) out.push(F('nearTriple', p.team, 77, { p, reb }, p.name + ' was a rebound or two from a triple-double'));
+  });
+  /* a personal spree: one man scoring his side's points, unanswered by his own team-mates,
+     for a stretch — read from the log, because a box score has no order in it */
+  const ev = g.events || [];
+  let cur = { pid: null, team: null, n: 0, period: 1 }, best = null;
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (!v || e.team == null) return;
+    if (e.pid && cur.pid === e.pid) cur.n += v;
+    else cur = { pid: e.pid, team: e.team, n: v, period: e.period || 1 };
+    if (cur.pid && (!best || cur.n > best.n)) best = Object.assign({}, cur);
+  });
+  if (best && best.n >= 9 && g.byId[best.pid]) {
+    out.push(F('spree', best.team, 73, { p: g.byId[best.pid], n: best.n, period: best.period },
+      g.byId[best.pid].name + ' scored ' + best.n + ' straight for his side'));
+  }
+  return out;
+}
+
+/* ---- ties, the early going, and the drought ------------------------------- */
+function factTexture(g) {
+  const out = [];
+  const ev = g.events || [];
+  const s = [0, 0];
+  let ties = 0, early = null;
+  const lastFG = [null, null], worst = [null, null];
+  const hasClock = clocked(ev);
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (e.t === 'period_start' && hasClock) {
+      /* a drought does not run through the interval */
+      for (const t of [0, 1]) lastFG[t] = elapsed(e.period, PLEN_(e.period));
+    }
+    if (!v || e.team == null) return;
+    s[e.team] += v;
+    if (s[0] === s[1] && s[0] > 0) ties++;
+    if ((e.period || 1) === 1 && early == null) {
+      const d = s[0] - s[1];
+      if (Math.abs(d) >= 8 && Math.min(s[0], s[1]) <= 6) early = { side: d > 0 ? 0 : 1, score: s.slice() };
+    }
+    if (hasClock && e.t !== 'ft_made') {
+      const now = elapsed(e.period || 1, e.clock);
+      const t = e.team;
+      if (lastFG[t] != null) {
+        const gap = now - lastFG[t];
+        if (!worst[t] || gap > worst[t].dur) worst[t] = { dur: gap, period: e.period || 1, endScore: s.slice() };
+      }
+      lastFG[t] = now;
+    }
+  });
+  if (ties >= 6) out.push(F('ties', null, 58, { ties }, 'level ' + ties + ' times'));
+  if (early) out.push(F('earlyLead', early.side, 52, early, g.names[early.side] + ' led ' + early.score[early.side] + '\u2013' + early.score[1 - early.side] + ' early'));
+  for (const t of [0, 1]) {
+    if (worst[t] && worst[t].dur >= 300000) {
+      out.push(F('drought', t, 62, { dur: worst[t].dur, period: worst[t].period },
+        g.names[t] + ' went ' + mins(worst[t].dur) + ' without a field goal'));
+    }
+  }
+  return out;
+}
+
+/* ---- where and when: the dateline ---------------------------------------- */
+function factMeta(g) {
+  const m = g.meta;
+  if (!m) return [];
+  let day = null, evening = null;
+  if (m.tipoff_at) {
+    const d = new Date(m.tipoff_at);
+    if (!isNaN(d)) {
+      day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
+      const h = d.getHours();
+      evening = h >= 17 ? 'evening' : h >= 12 ? 'afternoon' : 'morning';
+    }
+  }
+  const att = num(m.attendance);
+  return [F('meta', null, 20, { venue: m.venue || null, attendance: att && att > 0 ? att : null,
+    day, evening, competition: m.competition || null, league: m.league || null }, 'the dateline')];
+}
+
 function ordinal(n) {
   return n === 1 ? 'first' : n === 2 ? 'second' : n === 3 ? 'third'
        : n === 4 ? 'fourth' : n + 'th';
@@ -505,7 +765,11 @@ function facts(g) {
     factResult(g), factQuarters(g), factFlow(g), factFactors(g),
     factLineups(g), factPlayers(g), factTeamShape(g),
     factDefence(g), factFouls(g), factPassing(g), factZones(g),
-    factTempo(g), factSeasonContext(g)
+    factTempo(g), factSeasonContext(g),
+    /* 2026-09-07: the half, the finish, the box score in words, fuller player
+       lines, ties/droughts/early leads, and the dateline */
+    factHalf(g), factClosing(g), factTeamLines(g), factPlayerLines(g),
+    factTexture(g), factMeta(g)
   ).filter(Boolean).sort((a, b) => b.salience - a.salience);
 }
 
@@ -517,7 +781,8 @@ return { facts, F, esc, num, one, pct1, mins, ordinal, plural,
          __x: { factResult, factQuarters, factFlow, factFactors,
                 factLineups, factPlayers, factTeamShape,
                 factDefence, factFouls, factPassing, factZones,
-                factTempo, factSeasonContext } };
+                factTempo, factSeasonContext,
+                factHalf, factClosing, factTeamLines, factPlayerLines, factTexture, factMeta } };
 }));
 
 /* ---------------------------------------------------------------------------

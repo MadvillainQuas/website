@@ -89,6 +89,8 @@ function brief(S, d) {
     lineups: [Engine.lineupAgg(d, 0), Engine.lineupAgg(d, 1)],
     stints: [d.lineups[0] || [], d.lineups[1] || []],
     perQ: d.perQ, periods, events: S.events || [],
+    starters: S.starters || [[], []],
+    meta: S.meta || null,
     season: S.season || null
   };
 }
@@ -113,7 +115,12 @@ const FAMILIES = {
   'pace/ratings':   /pace|possession|per 100|rating/i,
   'individuals':    /led .* with|scored \d+|filled every column|went for/i,
   'season context': /average|season|per game this|usual|career|form/i,
-  'fouls':          /foul|disqualif|in trouble/i
+  'fouls':          /foul|disqualif|in trouble/i,
+  /* 2026-09-07: the families the rewrite added */
+  'half-time':      /half-time|at the break|went in level|second half/i,
+  'the finish':     /five minutes|last five|last two minutes|closed it out|hang on|see it out|last \w+ points of the game/i,
+  'dateline':       /in front of \d+|on (Saturday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday)/i,
+  'full lines':     /rebounds and|assists and|points, \w+ rebounds|off the bench/i
 };
 
 function measure(rep) {
@@ -167,9 +174,11 @@ function measure(rep) {
 /* -------------------------------------------------------------------- run --- */
 const show = (() => { const i = process.argv.indexOf('--show');
   return i > 0 ? (parseInt(process.argv[i + 1], 10) || 1) : 0; })();
+/* --only <id prefix>: print that one game in full (and still measure everything) */
+const only = (() => { const i = process.argv.indexOf('--only'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
 
 const games = await api('games?status=eq.final&select=id,home_team_id,away_team_id' +
-  ',competition_id&order=tipoff_at.desc&limit=30');
+  ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name)))&order=tipoff_at.desc&limit=30');
 
 /* Season aggregates, exactly as the page loads them, so the evaluator
    measures the prose the reader actually gets rather than a version
@@ -202,7 +211,11 @@ for (const g of games) {
     if (!events.length) continue;
     S = { teams: snap.teams, starters: gs.starters || [[], []], events,
           period: gs.period || 4, clockMs: 0, phase: 'final',
-          tipWinner: gs.tip_winner, arrowInit: gs.arrow_init };
+          tipWinner: gs.tip_winner, arrowInit: gs.arrow_init,
+          meta: { venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
+                  competition: g.competitions && g.competitions.name || null,
+                  league: g.competitions && g.competitions.seasons && g.competitions.seasons.leagues &&
+                          g.competitions.seasons.leagues.name || null } };
     d = Engine.deriveGame(S);
   } catch (e) { continue; }
 
@@ -213,7 +226,7 @@ for (const g of games) {
   const m = measure(rep);
   rows.push({ id: g.id.slice(0, 8), score: b.score.join('-'), ...m });
 
-  if (shown < show) {
+  if ((shown < show && !only) || (only && g.id.startsWith(only))) {
     shown++;
     console.log('\n' + '='.repeat(74));
     console.log(rep.headline.toUpperCase());

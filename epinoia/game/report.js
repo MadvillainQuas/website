@@ -59,13 +59,21 @@ function tc(str) {
     .join(' ');
 }
 const nm = (g, t) => esc(tc(g.names[t]));
+/* "Derby Trailblazers'" not "Derby Trailblazers's": a name ending in s takes
+   the bare apostrophe */
+const possOf = name => String(name) + (/s$/i.test(String(name).replace(/<[^>]*>/g, '')) ? '\u2019' : '\u2019s');
+const nmPoss = (g, t) => possOf(nm(g, t));
 
 /* Surnames only for a lineup sentence — five full names in one clause is a
    list, not a sentence. */
 function five(g, ids) {
   const names = (ids || []).map(id => {
     const p = g.byId[id];
-    return p ? tc(String(p.name || '').split(/\s+/).slice(-1)[0]) : null;
+    if (!p) return null;
+    const parts = String(p.name || '').split(/\s+/).filter(Boolean);
+    /* "Glasgow Jr" is Glasgow; a suffix on its own names nobody */
+    while (parts.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(parts[parts.length - 1])) parts.pop();
+    return tc(parts[parts.length - 1] || '');
   }).filter(Boolean);
   if (!names.length) return 'that group';
   if (names.length === 1) return esc(names[0]);
@@ -97,10 +105,15 @@ function makeRef(g, fs) {
      question is only ever "was the previous sentence about this side". */
   let last = null;
   const named = [false, false];
-  let roleUsed = [false, false];
-
-  const role = t => (winner == null ? null
-    : t === winner ? 'the winners' : 'the losers');
+  /* the roles a side can be called, each once: winners/losers, and hosts/
+     visitors (side 0 is the home side throughout the platform) */
+  const roles = [[], []];
+  if (winner != null) {
+    roles[winner].push('the winners'); roles[1 - winner].push('the losers');
+  }
+  roles[0].push('the hosts'); roles[1].push('the visitors');
+  const role = t => (roles[t].length ? roles[t][0] : null);
+  const spendRole = t => roles[t].shift();
 
   return {
     subj(t, opts) {
@@ -108,10 +121,10 @@ function makeRef(g, fs) {
       let word;
       if (last === t && named[t] && !o.noPronoun) {
         word = 'They';
-      } else if (o.allowRole && named[t] && !roleUsed[t] && role(t)) {
+      } else if (o.allowRole && named[t] && role(t)) {
         /* sentence case, not title case: "The winners", never "The Winners" */
-        word = role(t).charAt(0).toUpperCase() + role(t).slice(1);
-        roleUsed[t] = true;
+        const rl = spendRole(t);
+        word = rl.charAt(0).toUpperCase() + rl.slice(1);
       } else {
         word = nm(g, t);
         named[t] = true;
@@ -122,7 +135,7 @@ function makeRef(g, fs) {
     poss(t) {
       let word;
       if (last === t && named[t]) word = 'their';
-      else { word = nm(g, t) + '\u2019s'; named[t] = true; }
+      else { word = nmPoss(g, t); named[t] = true; }
       last = t;
       return word;
     },
@@ -192,6 +205,40 @@ function spell(n) {
   return (v >= 0 && v <= 12) ? WORDS[v] : String(v);
 }
 
+/* A referring expression built for the FRONT of a sentence ("The winners",
+   "They") that lands in the middle of one drops its capital. Club names keep
+   theirs. */
+function midCase(w) {
+  return String(w).replace(/^(The winners|The losers|The hosts|The visitors|They)\b/, m => m.toLowerCase());
+}
+
+/* A player's line beyond the points, in words: only the parts worth a clause,
+   so a scorer with two rebounds is not credited with two rebounds. */
+function lineTail(p, opts) {
+  const o = opts || {};
+  const reb = (p.or || 0) + (p.dr || 0), ast = p.ast || 0, stl = p.stl || 0, blk = p.blk || 0;
+  const bits = [];
+  if (reb >= (o.rebMin || 6)) bits.push(spell(reb) + ' rebounds');
+  if (ast >= (o.astMin || 4)) bits.push(spell(ast) + ' assists');
+  if (stl >= 3) bits.push(spell(stl) + ' steals');
+  if (blk >= 2 && bits.length < 3) bits.push(spell(blk) + ' blocks');
+  if (!bits.length) return '';
+  if (bits.length === 1) return ' and ' + bits[0];
+  return ', ' + bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1];
+}
+
+/* "on Saturday evening at the Arena, in front of 312" — whichever parts the
+   fixture actually carries; nothing is invented to fill a gap */
+function dateline(g, fs) {
+  const m = fs.find(f => f.kind === 'meta');
+  if (!m) return '';
+  const d = m.data, bits = [];
+  if (d.day) bits.push('on ' + d.day + (d.evening ? ' ' + d.evening : ''));
+  if (d.venue) bits.push('at ' + esc(tc(String(d.venue))));
+  const where = bits.join(' ');
+  return d.attendance ? (where ? where + ', in front of ' + d.attendance : 'in front of ' + d.attendance) : where;
+}
+
 /* ------------------------------------------------------------- headline --- */
 function headline(g, fs) {
   const r = fs.find(f => f.kind === 'result');
@@ -202,9 +249,17 @@ function headline(g, fs) {
   const td = fs.find(f => f.kind === 'tripleDouble');
   const big = fs.find(f => f.kind === 'bigScore');
 
+  const ot = fs.find(f => f.kind === 'overtime');
+  const stolen = fs.find(f => f.kind === 'stolenLate');
+  const turned = fs.find(f => f.kind === 'turnedAfterHalf');
+  const pulled = fs.find(f => f.kind === 'pulledAway');
   if (r.data.margin === 0) return nm(g, 0) + ' and ' + nm(g, 1) + ' tie ' + sc;
+  if (ot) return nm(g, w) + ' outlast ' + nm(g, l) + ' in overtime, ' + sc;
+  if (stolen) return nm(g, w) + ' steal it late from ' + nm(g, l) + ', ' + sc;
   if (comeback) return nm(g, w) + ' overturn ' + comeback.data.deficit +
     ' to beat ' + nm(g, l);
+  if (turned) return nm(g, w) + ' come from behind to beat ' + nm(g, l) + ' ' + sc;
+  if (pulled && r.data.how !== 'rout') return nm(g, w) + ' pull away late from ' + nm(g, l) + ', ' + sc;
   if (td) return esc(tc(td.data.p.name)) + ' triple-double carries ' + nm(g, w);
   if (r.data.how === 'rout') return nm(g, w) + ' overwhelm ' + nm(g, l) + ', ' + sc;
   if (r.data.how === 'squeaker') return nm(g, w) + ' edge ' + nm(g, l) + ' ' + sc;
@@ -264,10 +319,24 @@ function standfirst(g, fs) {
     : 'The whistle sent ' + who + ' to the line far more often');
   }
   if (!bits.length) {
+    const fin = fs.find(f => f.kind === 'stolenLate' || f.kind === 'closeFinish' || f.kind === 'heldOn' || f.kind === 'pulledAway');
+    const half = fs.find(f => f.kind === 'turnedAfterHalf');
     const r = fs.find(f => f.kind === 'result');
-    bits.push(r ? (r.data.how === 'close' ? 'It stayed tight throughout'
-                                          : 'A ' + r.data.margin + '-point margin')
-                : 'Full time');
+    if (fin) {
+      SPENT.add('finish');
+      const a = fin.data.at5, w = fin.data.winner;
+      bits.push(fin.kind === 'stolenLate' ? nm(g, w) + ' were ' + Math.abs(fin.data.lead5) + ' down with five minutes left'
+              : fin.kind === 'heldOn' ? 'A ' + fin.data.lead5 + '-point lead with five to play nearly went'
+              : fin.kind === 'pulledAway' ? 'It was ' + Math.max(a[0], a[1]) + '\u2013' + Math.min(a[0], a[1]) + ' with five minutes left, and then it was not'
+              : 'It was ' + Math.max(a[0], a[1]) + '\u2013' + Math.min(a[0], a[1]) + ' with five to play');
+    } else if (half) {
+      SPENT.add('half');
+      bits.push(nm(g, half.side) + ' trailed by ' + half.data.deficit + ' at the break and won the second half by ' + half.data.secondHalf);
+    } else {
+      bits.push(r ? (r.data.how === 'close' ? 'It stayed tight throughout'
+                                            : 'A ' + r.data.margin + '-point margin')
+                  : 'Full time');
+    }
   }
   /* TWO FACTS, BUT NOT THE SAME TWO THE BODY LEADS WITH.
 
@@ -355,19 +424,35 @@ function sectionFlow(g, fs, R) {
 
   const hi = Math.max(g.score[0], g.score[1]), lo = Math.min(g.score[0], g.score[1]);
   const W = R.subj(r.data.winner);        // resolved once, before the options
-  const opening = pick('open' + hi + lo + r.data.how, [
-    W + ' took this ' + hi + '\u2013' + lo +
-      (r.data.how === 'rout' ? ', and it was never close'
-       : r.data.how === 'squeaker' ? ', on a night that could have gone either way'
-       : r.data.how === 'comfortable' ? ', pulling clear when it mattered' : '') + '.',
-    W + ' came through ' + hi + '\u2013' + lo +
-      (r.data.how === 'squeaker' ? ', but only just.'
-       : r.data.how === 'rout' ? ', and were rarely troubled.' : '.'),
-    (r.data.how === 'rout' ? 'This was over early. ' : '') + W + ' won it ' +
-      hi + '\u2013' + lo + '.',
-    'It finished ' + hi + '\u2013' + lo + ' to ' + W + '.'
-  ]);
-  const second = cb
+  const where = dateline(g, fs);
+  const comp = (fs.find(f => f.kind === 'meta') || { data: {} }).data.competition;
+  const inComp = comp ? ' in ' + (/^(the|division|league|cup|trophy|playoff)/i.test(String(comp)) ? '' : 'the ') + esc(String(comp)) : '';
+  /* THE DATELINE LEADS when the fixture carries one: a report that knows where
+     and when it happened says so first, the way a paper does. The winner is
+     then named mid-sentence, which also stops the club name opening the piece
+     and the next sentence in a row. */
+  const opening = where
+    ? pick('open' + hi + lo + r.data.how, [
+        where.charAt(0).toUpperCase() + where.slice(1) + ', ' + midCase(W) + ' beat ' + R.obj(r.data.loser) + ' ' + hi + '\u2013' + lo + inComp +
+          (r.data.how === 'rout' ? ', and it was never close.' : r.data.how === 'squeaker' ? ', and it took everything they had.' : '.'),
+        W + ' took this ' + hi + '\u2013' + lo + ' ' + where + inComp +
+          (r.data.how === 'rout' ? ', and were rarely troubled.' : r.data.how === 'comfortable' ? ', pulling clear when it mattered.' : '.'),
+        'It finished ' + hi + '\u2013' + lo + ' to ' + midCase(W) + ' ' + where + inComp + '.'
+      ])
+    : pick('open' + hi + lo + r.data.how, [
+        W + ' took this ' + hi + '\u2013' + lo +
+          (r.data.how === 'rout' ? ', and it was never close'
+           : r.data.how === 'squeaker' ? ', on a night that could have gone either way'
+           : r.data.how === 'comfortable' ? ', pulling clear when it mattered' : '') + '.',
+        W + ' came through ' + hi + '\u2013' + lo +
+          (r.data.how === 'squeaker' ? ', but only just.'
+           : r.data.how === 'rout' ? ', and were rarely troubled.' : '.'),
+        (r.data.how === 'rout' ? 'This was over early. ' : '') + W + ' won it ' +
+          hi + '\u2013' + lo + '.',
+        'It finished ' + hi + '\u2013' + lo + ' to ' + W + '.'
+      ]);
+  const turnedEarly = fs.find(f => f.kind === 'turnedAfterHalf');
+  const second = (cb && !turnedEarly)
     ? R.subj(r.data.winner) + ' had trailed by ' + cb.data.deficit +
       ', which makes this the sort of result that says more about the second ' +
       'half than the first.'
@@ -379,6 +464,48 @@ function sectionFlow(g, fs, R) {
       ? R.subj(bl.side, { allowRole: true }) + ' led by as many as ' + bl.data.by + '.'
     : null;
   out.push(joinSentences([opening, second], 'plain'));
+
+  /* THE HALF. Every match report in every paper says what the score was at the
+     break, because it is the one number a reader uses to picture the game's
+     shape. Said once, plainly, unless the standfirst already spent it. */
+  const half = fs.find(f => f.kind === 'half');
+  const turned = fs.find(f => f.kind === 'turnedAfterHalf');
+  const overBy = fs.find(f => f.kind === 'overByHalf');
+  const surge = fs.find(f => f.kind === 'secondHalfSurge');
+  const ot = fs.find(f => f.kind === 'overtime');
+  const halfBits = [];
+  if (half && !SPENT.has('half')) {
+    const h = half.data.h1, lead = h[0] === h[1] ? null : (h[0] > h[1] ? 0 : 1);
+    if (turned) {
+      R.neutral();
+      const leader = nm(g, 1 - turned.side), winner = nm(g, turned.side);
+      halfBits.push(pick('turned' + turned.data.deficit, [
+        'It did not look that way at the break, when ' + leader + ' led ' + Math.max(h[0], h[1]) + '\u2013' + Math.min(h[0], h[1]) + '.',
+        winner + ' went in ' + turned.data.deficit + ' down at half-time, ' + Math.min(h[0], h[1]) + '\u2013' + Math.max(h[0], h[1]) + ', and won the second half by ' + turned.data.secondHalf + '.'
+      ]));
+      R.neutral();
+    } else if (lead == null) {
+      halfBits.push('The sides went in level at ' + h[0] + ' apiece.');
+    } else if (overBy) {
+      halfBits.push(R.subj(overBy.side, { allowRole: true }) + ' had the game won by half-time, ' + h[lead] + '\u2013' + h[1 - lead] + ' at the break.');
+    } else {
+      const who = R.obj(lead);                       // resolved once: a plain club name in every option
+      halfBits.push(pick('half' + h[0] + h[1], [
+        'It was ' + h[lead] + '\u2013' + h[1 - lead] + ' to ' + who + ' at half-time.',
+        who + ' led ' + h[lead] + '\u2013' + h[1 - lead] + ' at the break.',
+        'The half-time score was ' + h[lead] + '\u2013' + h[1 - lead] + ', ' + who + ' in front.'
+      ]));
+      if (surge) halfBits.push(R.subj(surge.side) + ' won the second half by ' + surge.data.secondHalf + '.');
+    }
+  }
+  if (ot) {
+    R.neutral();
+    const reg = ot.data.reg, o = ot.data.ot;
+    halfBits.push('It took ' + (ot.data.ots > 1 ? ot.data.ots + ' overtimes' : 'overtime') + ': ' + reg[0] + '\u2013' + reg[1] +
+      ' after forty minutes, and ' + R.subj(ot.side) + ' won the extra ' + (ot.data.ots > 1 ? 'periods' : 'period') + ' ' +
+      o[ot.side] + '\u2013' + o[1 - ot.side] + '.');
+  }
+  if (halfBits.length) out.push(joinSentences(halfBits, 'plain'));
 
   /* ---------------------------------------------------------------------------
      THE SECTION MUST NOT ARGUE WITH ITSELF.
@@ -428,8 +555,10 @@ function sectionFlow(g, fs, R) {
   if (q && sameSpell) {
     /* One event, one sentence: the run is the detail, the quarter score is the
        size of it. Two sentences about the same ten minutes read as two
-       different turning points. */
-    mid.push(R.subj(q.side, { allowRole: true }) + ' took the period ' +
+       different turning points. When the run and the quarter went to different
+       sides, that is the point, and it is said as one. */
+    const opp = run && q.side !== run.data.team;
+    mid.push((opp ? 'Even so, ' + midCase(R.subj(q.side, { allowRole: true })) : R.subj(q.side, { allowRole: true })) + ' took the period ' +
       Math.max(q.data.pf, q.data.pa) + '\u2013' + Math.min(q.data.pf, q.data.pa) + '.');
   } else if (q) {
     /* ONLY ONE THING CAN BE THE THING THAT DECIDED IT.
@@ -449,16 +578,74 @@ function sectionFlow(g, fs, R) {
   /* In front at every break and a game nobody settled into are different
      games. The sweep is the harder fact, so it wins and the other is dropped. */
   if (sw) mid.push(R.subj(sw.side) + ' were in front at every break.');
+  const early = fs.find(f => f.kind === 'earlyLead');
+  if (early && !sw && !(run && run.data.period === 1)) {
+    mid.push(R.subj(early.side, { allowRole: true }) + ' were ' + early.data.score[early.side] + '\u2013' + early.data.score[1 - early.side] + ' up early' +
+      (early.side !== r.data.winner ? ', and it did not last.' : '.'));
+  }
+  const ties = fs.find(f => f.kind === 'ties');
   if (lc) {
     R.neutral();
     mid.push(routish
       /* the lead changed hands, and then it stopped: that is the story of the
          first half of a rout, not of the game */
       ? 'The lead had changed ' + plural(lc.data.changes, 'time') + ' before that.'
-      : 'There were ' + plural(lc.data.changes, 'lead change') +
+      : 'There were ' + plural(lc.data.changes, 'lead change') + (ties ? ' and the scores were level ' + spell(ties.data.ties) + ' times' : '') +
         ', so neither side ever properly settled.');
+  } else if (ties && !routish) {
+    R.neutral();
+    mid.push('The scores were level ' + spell(ties.data.ties) + ' times.');
   }
   if (mid.length) out.push(joinSentences(mid, 'plain'));
+
+  /* THE FINISH. What happened in the last five minutes is the paragraph a
+     person who was there would write first and this report never wrote at
+     all. Only when the log carries a clock. */
+  const fin = fs.find(f => f.kind === 'stolenLate' || f.kind === 'closeFinish' || f.kind === 'heldOn' || f.kind === 'pulledAway');
+  const closing = fs.find(f => f.kind === 'closing');
+  const lastPts = fs.find(f => f.kind === 'lastPoints');
+  const iced = fs.find(f => f.kind === 'icedIt');
+  const cost = fs.find(f => f.kind === 'lineCostThem');
+  const endBits = [];
+  if (fin && closing) {
+    const a = fin.data.at5, w = fin.data.winner, l = 1 - w, late = fin.data.late;
+    const lead5 = fin.data.lead5;
+    R.neutral();
+    if (!SPENT.has('finish')) {
+      const gap = Math.abs(lead5);
+      const gapWords = gap === 0 ? 'level' : 'a ' + spell(gap) + '-point game';
+      const WN = nm(g, w), LN = nm(g, l);          // plain names: these sentences open a new thought
+      R.neutral();
+      if (fin.kind === 'stolenLate') {
+        endBits.push(WN + ' were ' + spell(gap) + ' down with five minutes left and outscored ' + LN + ' ' + late[w] + '\u2013' + late[l] + ' from there.');
+      } else if (fin.kind === 'closeFinish') {
+        endBits.push(pick('close' + a[0] + a[1], [
+          'It was ' + gapWords + ' with five minutes to play, and ' + WN + ' finished it ' + late[w] + '\u2013' + late[l] + '.',
+          'Five minutes out it was ' + gapWords + (gap ? ', ' + (lead5 > 0 ? WN : LN) + ' ahead' : '') + ', and the last five went ' + late[w] + '\u2013' + late[l] + ' to ' + WN + '.'
+        ]));
+      } else if (fin.kind === 'pulledAway') {
+        endBits.push(pick('pull' + a[0] + a[1], [
+          'It was still ' + gapWords + ' with five minutes left before ' + WN + ' closed it out ' + late[w] + '\u2013' + late[l] + '.',
+          'The margin was ' + (gap ? 'only ' + spell(gap) : 'nothing') + ' with five to play, and then ' + WN + ' finished ' + late[w] + '\u2013' + late[l] + '.'
+        ]));
+      } else if (fin.kind === 'heldOn') {
+        endBits.push(WN + ' led by ' + spell(lead5) + ' with five minutes to go and had to hang on, ' + LN + ' taking the last five ' + late[l] + '\u2013' + late[w] + '.');
+      }
+      R.neutral();
+    } else {
+      /* the standfirst gave the score with five to play; say what the finish looked like */
+      endBits.push('The last five minutes went ' + late[w] + '\u2013' + late[l] + ' to ' + R.obj(w) + '.');
+    }
+  }
+  if (lastPts && (!fin || fin.kind !== 'pulledAway')) {
+    endBits.push(R.subj(lastPts.side) + ' scored the last ' + spell(lastPts.data.n) + ' points of the game.');
+  }
+  if (iced) {
+    endBits.push(R.subj(iced.side) + ' went ' + spell(iced.data.made) + ' of ' + spell(iced.data.att) + ' from the line in the last two minutes to see it out.');
+  } else if (cost) {
+    endBits.push(R.subj(cost.side) + ' missed ' + spell(cost.data.att - cost.data.made) + ' of ' + spell(cost.data.att) + ' free throws in the last two minutes, in a game they lost by ' + cost.data.margin + '.');
+  }
+  if (endBits.length) out.push(joinSentences(endBits, 'plain'));
 
   /* tempo and season context close the section, because they are the frame
      rather than the events */
@@ -485,6 +672,42 @@ function sectionFlow(g, fs, R) {
 
 function sectionNumbers(g, fs, R) {
   const out = [];
+  R.neutral();                     // a new section: name the club again before any "they"
+
+  /* THE BOX SCORE, SAID. Field-goal percentage, the three-point line, the free
+     throws, the boards and the break, each only when it says something, and
+     never more than one figure pair to a clause. */
+  const floor = fs.find(f => f.kind === 'floor');
+  const hot = fs.find(f => f.kind === 'hotThree'), cold = fs.find(f => f.kind === 'coldThree');
+  const poorL = fs.find(f => f.kind === 'poorLine');
+  const boards = fs.find(f => f.kind === 'boards');
+  const fb = fs.find(f => f.kind === 'fastBreak');
+  const careless = fs.find(f => f.kind === 'careless');
+  const drought = fs.filter(f => f.kind === 'drought').sort((a, b) => b.data.dur - a.data.dur)[0];
+  const box = [];
+  if (floor && Math.abs(floor.data.a - floor.data.b) >= 5) {
+    const hiP = Math.max(floor.data.a, floor.data.b), loP = Math.min(floor.data.a, floor.data.b);
+    const who = R.subj(floor.side, { allowRole: true, noPronoun: true });   // resolved once, before the options
+    box.push(pick('floor' + Math.round(hiP), [
+      'From the floor it was ' + Math.round(hiP) + '% to ' + Math.round(loP) + '% in ' + midCase(who) + '\u2019s favour',
+      who + ' shot ' + Math.round(hiP) + '% from the field to ' + Math.round(loP) + '%'
+    ]));
+  }
+  if (hot) box.push(R.subj(hot.side, { allowRole: true }) + ' made ' + hot.data.m + ' of ' + hot.data.a + ' from three');
+  if (cold) box.push(R.subj(cold.side, { allowRole: true }) + ' went ' + cold.data.m + ' of ' + cold.data.a + ' from three');
+  if (poorL) box.push(R.subj(poorL.side) + ' made only ' + poorL.data.m + ' of ' + poorL.data.a + ' free throws');
+  if (boards) box.push(R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs);
+  if (fb) box.push(R.subj(fb.side, { allowRole: true }) + ' scored ' + fb.data.mine + ' on the break to ' + fb.data.theirs);
+  if (careless) box.push(R.subj(careless.side) + ' gave the ball away ' + careless.data.tov + ' times');
+  /* two figure pairs to a sentence at most; the rest start a new one */
+  for (let i = 0; i < box.length; i += 2) {
+    out.push(joinSentences(box.slice(i, i + 2), 'plain') + '.');
+  }
+  if (drought) {
+    R.neutral();
+    out.push(R.subj(drought.side) + ' went ' + mins(drought.data.dur) + ' without a field goal in the ' + ordinal(drought.data.period) + '.');
+  }
+
   const factors = fs.filter(f => f.kind === 'factor').slice(0, 3);
   if (factors.length) {
     /* EACH FACTOR IS A DIFFERENT SENTENCE, because each is a different thing.
@@ -506,7 +729,7 @@ function sectionNumbers(g, fs, R) {
           'against ' + pct1(theirs),
         who + ' were the sharper side from the floor \u2014 ' + pct1(mine) +
           ' eFG to ' + pct1(theirs),
-        'The shooting decided it: ' + who + ' at ' + pct1(mine) + ' eFG, their ' +
+        'The shooting decided it: ' + midCase(who) + ' at ' + pct1(mine) + ' eFG, their ' +
           'opponents at ' + pct1(theirs)
       ]);
     } else if (lead.data.factor === 'tov') {
@@ -515,7 +738,7 @@ function sectionNumbers(g, fs, R) {
           ' of their possessions against ' + pct1(theirs),
         who + ' were far the more careful side, a ' + pct1(mine) +
           ' turnover rate to ' + pct1(theirs),
-        'Possessions were the difference \u2014 ' + who + ' turned it over on ' +
+        'Possessions were the difference \u2014 ' + midCase(who) + ' turned it over on ' +
           pct1(mine) + ' of theirs, their opponents on ' + pct1(theirs)
       ]);
     } else if (lead.data.factor === 'oreb') {
@@ -524,7 +747,7 @@ function sectionNumbers(g, fs, R) {
           ' of their own misses to ' + pct1(theirs),
         who + ' kept possessions alive \u2014 ' + pct1(mine) + ' of their misses ' +
           'came back to them, against ' + pct1(theirs),
-        'The second shots went one way: ' + who + ' recovered ' + pct1(mine) +
+        'The second shots went one way: ' + midCase(who) + ' recovered ' + pct1(mine) +
           ' of their own misses to ' + pct1(theirs)
       ]);
     } else {
@@ -535,7 +758,7 @@ function sectionNumbers(g, fs, R) {
           ' free throws for every hundred shots, against ' + per(theirs),
         who + ' lived at the line, drawing ' + per(mine) +
           ' free-throw attempts per hundred field goals to ' + per(theirs),
-        'The whistle paid ' + who + ': ' + per(mine) + ' free throws per hundred ' +
+        'The whistle paid ' + midCase(who) + ': ' + per(mine) + ' free throws per hundred ' +
           'shots, their opponents ' + per(theirs)
       ]);
     }
@@ -566,7 +789,7 @@ function sectionNumbers(g, fs, R) {
           ' of their attempts came at the rim, against ' + pct1(zone.data.theirs) + acc));
   }
   if (share) {
-    shapeBits.push(R.subj(share.side) + ' moved it well, assisting on ' +
+    shapeBits.push(R.subj(share.side, { allowRole: true }) + ' moved it well, assisting on ' +
       pct1(share.data.astp) + ' of their field goals');
   }
   if (shapeBits.length) out.push(joinSentences(shapeBits, 'plain') + '.');
@@ -591,12 +814,31 @@ function sectionNumbers(g, fs, R) {
       plural(disrupt.data.stl, 'steal') + ' and ' +
       plural(disrupt.data.blk, 'block'));
   }
-  if (defBits.length) out.push(joinSentences(defBits, 'cause') + '.');
+  /* "so" only joins two claims about the SAME side. The first version welded
+     one club's defensive rating to the other club's steals with "so", which
+     read as one causing the other. */
+  const defSides = [dr, forced, (disrupt && !forced) ? disrupt : null].filter(Boolean).map(f => f.side);
+  const oneSide = defSides.every(x => x === defSides[0]);
+  if (defBits.length) out.push(joinSentences(defBits, oneSide ? 'cause' : 'plain') + '.');
 
   /* the team-shape numbers */
-  const shape = fs.filter(f =>
-    ['bench', 'pointsOffTurnovers', 'paint', 'secondChance'].indexOf(f.kind) >= 0)
-    .slice(0, 3);
+  let shape = fs.filter(f =>
+    ['bench', 'pointsOffTurnovers', 'paint', 'secondChance'].indexOf(f.kind) >= 0);
+  const scBoth = shape.filter(f => f.kind === 'secondChance');
+  if (scBoth.length === 2) {
+    shape = shape.filter(f => f.kind !== 'secondChance');
+    const a = scBoth.find(f => f.side === 0), b = scBoth.find(f => f.side === 1);
+    R.neutral();
+    out.push('Both sides lived off second chances \u2014 ' + a.data.sc + ' points for ' + nm(g, 0) + ', ' + b.data.sc + ' for ' + nm(g, 1) + '.');
+  }
+  const potBoth = shape.filter(f => f.kind === 'pointsOffTurnovers');
+  if (potBoth.length === 2) {
+    shape = shape.filter(f => f.kind !== 'pointsOffTurnovers');
+    const a = potBoth.find(f => f.side === 0), b = potBoth.find(f => f.side === 1);
+    R.neutral();
+    out.push('Turnovers were punished at both ends: ' + a.data.pot + ' points off them for ' + nm(g, 0) + ', ' + b.data.pot + ' for ' + nm(g, 1) + '.');
+  }
+  shape = shape.slice(0, 3);
   if (shape.length) {
     out.push(joinSentences(shape.map(f =>
       f.kind === 'bench' ? R.poss(f.side) + ' bench put up ' + f.data.bench +
@@ -627,6 +869,7 @@ const RATE_MIN_MS = 360000;   // six minutes
 
 function sectionLineups(g, fs, R) {
   const out = [];
+  R.neutral();                     // a new section: "their" must not lean on the last one
   const stretch = fs.find(f => f.kind === 'stretch');
   const bests = fs.filter(f => f.kind === 'lineupBest');
   const worst = fs.find(f => f.kind === 'lineupWorst');
@@ -649,9 +892,10 @@ function sectionLineups(g, fs, R) {
        twice and tells them nothing new. What the standfirst had no room for is
        WHO was on the floor, which is the only reason this section exists. */
     if (SPENT.has('stretch')) {
-      out.push('The five who did it: ' + five(g, stretch.data.ids) + ' for ' +
-        R.obj(owner) + ', ' + (gained ? 'together for the whole of that swing.'
-                                      : 'on the floor for all of it.'));
+      out.push(gained
+        ? 'The five who did it: ' + five(g, stretch.data.ids) + ' for ' + R.obj(owner) + ', together for the whole of that swing.'
+        : 'The damage was done with ' + five(g, stretch.data.ids) + ' on the floor for ' + R.obj(owner) +
+          ', a group outscored by ' + stretch.data.swing + ' in that time.');
     } else {
       out.push('The game turned inside a single ' + mins(stretch.data.dur) +
         ' spell with ' + five(g, stretch.data.ids) + ' on the floor for ' +
@@ -787,24 +1031,63 @@ function sectionPlayers(g, fs, R) {
   const leaders = [0, 1].map(t => topScorer[t])
     .filter(p => p && (p.pts || 0) >= 10)
     .sort((a, b) => (b.pts || 0) - (a.pts || 0));
+  /* THE LEADER GETS HIS WHOLE LINE, not just the points: "22 points, seven
+     rebounds and four assists" is what a report says about the man of the
+     match. The other side's leader follows in his own sentence, so neither
+     line is squeezed to make room for the other. */
+  const tailA = leaders[0] ? lineTail(leaders[0]) : '';
   if (leaders.length === 2) {
     const [a, b] = leaders;
-    out.push(pickVaried('lead' + a.id + b.id, [
-      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ', and ' +
-        nameOf(b) + ' had ' + b.pts + ' for ' + club(b.team) + '.',
-      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts +
-        ', while ' + nameOf(b) + ' managed ' + b.pts + ' for ' + club(b.team) + '.',
-      club(a.team) + ' had ' + nameOf(a) + ' for ' + a.pts + '; ' +
-        club(b.team) + ' had ' + nameOf(b) + ' for ' + b.pts + '.'
-    ]));
+    const tailB = lineTail(b, { rebMin: 7, astMin: 5 });
+    const first = pickVaried('lead' + a.id + b.id, [
+      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA + '.',
+      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts + tailA + '.',
+      club(a.team) + ' had ' + a.pts + ' points' + tailA + ' from ' + nameOf(a) + '.'
+    ]);
+    const second = pickVaried('lead2' + b.id, [
+      nameOf(b) + ' answered with ' + b.pts + tailB + ' for ' + club(b.team) + '.',
+      'For ' + club(b.team) + ', ' + nameOf(b) + ' had ' + b.pts + tailB + '.',
+      nameOf(b) + ' finished with ' + b.pts + tailB + ' for ' + club(b.team) + '.'
+    ]);
+    out.push(first + ' ' + second);
   } else if (leaders.length === 1) {
     const a = leaders[0];
-    out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts +
+    out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA +
       (aboveAverage(a) ? ', a season high.' : '.'));
   }
 
+  /* off the bench, a personal spree, the boards, the line: the deeds a box
+     score buries and a person watching would have noticed. A man already
+     given his line above is not re-introduced here with the same total. */
+  const deeds = [];
+  const deedSeen = new Set(leaders.map(p => p.id));
+  byKind('benchSpark').slice(0, 2).forEach(f => {
+    const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
+    deeds.push({ side: p.team, txt: nameOf(p) + ' came off the bench for ' + p.pts + lineTail(p, { rebMin: 7, astMin: 5 }) });
+  });
+  byKind('spree').slice(0, 1).forEach(f => {
+    const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
+    deeds.push({ side: p.team, txt: nameOf(p) + ' scored ' + spell(f.data.n) + ' straight points in the ' + ordinal(f.data.period) });
+  });
+  byKind('rebounder').slice(0, 2).forEach(f => {
+    const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
+    deeds.push({ side: p.team, txt: nameOf(p) + ' pulled down ' + f.data.reb + ' rebounds' });
+  });
+  byKind('lineLiving').slice(0, 1).forEach(f => {
+    const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
+    deeds.push({ side: p.team, txt: nameOf(p) + ' went ' + f.data.made + ' of ' + f.data.att + ' from the line' });
+  });
+  byKind('nearTriple').slice(0, 1).forEach(f => {
+    const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
+    deeds.push({ side: p.team, txt: nameOf(p) + ' came within a rebound or two of a triple-double' });
+  });
+  if (deeds.length) {
+    out.push(joinClauses(sides(deeds.slice(0, 3)).map(grp =>
+      list(grp.items.map(x => x.txt)) + ' for ' + club(grp.t))) + '.');
+  }
+
   /* ---- who else contributed -------------------------------------------- */
-  const seen = new Set(leaders.map(p => p.id));
+  const seen = new Set(Array.from(deedSeen));
   const support = [];
   byKind('bigScore').concat(byKind('aboveSelf')).forEach(f => {
     const p = f.data.p;
@@ -829,9 +1112,10 @@ function sectionPlayers(g, fs, R) {
      listed twice in the same sentence — "Beck Sandoval had seven assists and
      Beck Sandoval hit five from three". */
   const specialSeen = new Set();
+  const inLine = new Set(leaders.map(p => p.id));          // their assists/steals were said with their points
   byKind('creator').slice(0, 2).forEach(f => {
     const p = f.data.p;
-    if (specialSeen.has(p.id)) return;
+    if (specialSeen.has(p.id) || inLine.has(p.id)) return;
     specialSeen.add(p.id);
     specials.push({ side: p.team, who: nameOf(p),
                     did: 'had ' + spell(p.ast || 0) + ' assists',
@@ -847,7 +1131,7 @@ function sectionPlayers(g, fs, R) {
   });
   byKind('defender').slice(0, 2).forEach(f => {
     const p = f.data.p;
-    if (specialSeen.has(p.id)) return;
+    if (specialSeen.has(p.id) || inLine.has(p.id)) return;
     specialSeen.add(p.id);
     const bits = [];
     if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
@@ -890,11 +1174,16 @@ function sectionPlayers(g, fs, R) {
     const note = shot ? ' (' + shot + ')' : ((p.pts || 0) === 0 ? ' (scoreless)' : '');
     rough.push({ id: p.id, side: p.team, txt: nameOf(p) + note });
   });
+  byKind('turnoverProne').slice(0, 2).forEach(f => {
+    const p = f.data.p;
+    if (rough.some(r => r.id === p.id) || (leaders[0] && leaders[0].id === p.id)) return;
+    rough.push({ id: p.id, side: p.team, txt: nameOf(p) + ' (' + spell(f.data.to) + ' turnovers)' });
+  });
   if (rough.length) {
     /* the possessive puts the club in front of its own men, which reads more
        naturally here than trailing "for X" onto a list of shooting lines */
     const clauses = sides(rough.slice(0, 4)).map(grp =>
-      club(grp.t) + '\u2019s ' + list(grp.items.map(x => x.txt)));
+      possOf(club(grp.t)) + ' ' + list(grp.items.map(x => x.txt)));
     out.push(pickVaried('rough' + rough.length, [
       'It was a long night for ' + joinClauses(clauses) + '.',
       'Little went right for ' + joinClauses(clauses) + '.',

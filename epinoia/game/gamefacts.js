@@ -60,6 +60,16 @@ function brief(S, d, B) {
     names, score: d.score.slice(), players, byId,
     team: [d.team[0], d.team[1]], adv, lineups, stints,
     perQ: d.perQ, periods, events: S.events || [],
+    /* who started, so a 20-point night off the bench can be called that */
+    starters: S.starters || [[], []],
+    /* where and when: the fixture's own facts, for the dateline */
+    meta: {
+      venue: S.venue || (S.meta && S.meta.venue) || null,
+      attendance: (S.details && S.details.attendance) || null,
+      tipoff_at: (S.meta && S.meta.tipoff_at) || null,
+      competition: (S.meta && S.meta.competitionName) || null,
+      league: (S.meta && S.meta.leagueName) || null
+    },
     /* set by game.js once the season aggregates land; the fact engine
        simply omits its season sentences when it is absent */
     season: S.season || null

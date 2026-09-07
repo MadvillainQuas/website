@@ -33,7 +33,7 @@ export function advTS(s: any): number | null {
 
 /* `game` is the scorer's state (teams, events), `d` the replayed derive(),
    `TA` the two teamAdv() results, `lineupAgg` the shared engine's aggregator. */
-export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function) {
+export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, meta: any = null) {
   const names = [game.teams[0].name, game.teams[1].name];
 
   const players: any[] = [], byId: Record<string, any> = {};
@@ -59,7 +59,17 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function) {
     stints: [d.lineups[0] ?? [], d.lineups[1] ?? []],
     perQ: d.perQ,
     periods,
-    events: game.events ?? []
+    events: game.events ?? [],
+    starters: game.starters ?? [[], []],
+    /* venue, crowd, date and competition for the dateline; null when the
+       caller has none, and the report simply opens without one */
+    meta: meta ? {
+      venue: meta.venue ?? null,
+      attendance: meta.attendance ?? null,
+      tipoff_at: meta.tipoff_at ?? null,
+      competition: meta.competition ?? null,
+      league: meta.league ?? null
+    } : null
   };
 }
 

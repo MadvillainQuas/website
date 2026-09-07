@@ -323,7 +323,18 @@ Deno.serve(async (req) => {
       const { data: tgt } = await admin.rpc('game_report_target', { p_game: gameId });
       const target = Array.isArray(tgt) ? tgt[0] : tgt;
       if (target?.league_id && target.auto_reports) {
-        const brief = gameBrief(game, d, TA, lineupAgg);
+        /* the dateline: the games row has venue, attendance and tip-off; the
+           competition and league names are one hop away */
+        let comp: any = null;
+        try {
+          const { data: c } = await admin.from('competitions')
+            .select('name,seasons(leagues(name))').eq('id', g.competition_id).maybeSingle();
+          comp = c;
+        } catch (_) { /* a report without a dateline is still a report */ }
+        const brief = gameBrief(game, d, TA, lineupAgg, {
+          venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
+          competition: comp?.name ?? null, league: comp?.seasons?.leagues?.name ?? null
+        });
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);
         const { error } = await admin.from('news_articles').upsert({
