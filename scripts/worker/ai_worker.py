@@ -59,8 +59,27 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+LOG_PATH = os.path.join(os.path.dirname(CONFIG_PATH), 'worker.log')
+
+
 def log(msg):
-    print('%s  %s' % (datetime.now().strftime('%H:%M:%S'), msg), flush=True)
+    """To the console and to worker.log beside the config (UTF-8, appended; trimmed when it passes
+    ~5 MB) -- the record a person needs when a game read only half of itself."""
+    line = '%s  %s' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print(line, flush=True)
+    try:
+        d = os.path.dirname(LOG_PATH)
+        if d and not os.path.isdir(d):
+            os.makedirs(d)
+        if os.path.exists(LOG_PATH) and os.path.getsize(LOG_PATH) > 5 * 1024 * 1024:
+            with io.open(LOG_PATH, encoding='utf-8', errors='replace') as f:
+                tail = f.read()[-1024 * 1024:]
+            with io.open(LOG_PATH, 'w', encoding='utf-8') as f:
+                f.write(tail)
+        with io.open(LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write(line + '\n')
+    except Exception:
+        pass
 
 
 def load_config(path):
