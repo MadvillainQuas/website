@@ -463,6 +463,15 @@ class Job(object):
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'mode_used': used, 'result': result,
                                                             'progress': dict(self.progress, stage='track saved')})
             log('  track saved: %d readings, periods %s, mode %s' % (result['samples'], periods, used))
+            # LABELS FOR THE READER, FOR FREE: every reading the log confirmed is a crop with a known
+            # answer. Written now, while the footage is on disk; train_ocr.py fine-tunes on them.
+            try:
+                CK = skill(cfg)
+                self.report('ocr labels', 0, 1, 'writing labelled crops')
+                h = CK.harvest_digits(video_path, track, log=log)
+                result['ocr_labels'] = h.get('written', 0)
+            except Exception as exc:
+                log('  (ocr labels failed: %s)' % exc)
             # learning, while the footage is on disk -- skipped when another game is waiting
             if cfg.get('harvest'):
                 waiting = db.select('video_jobs', 'status=eq.queued&select=id&limit=1')
