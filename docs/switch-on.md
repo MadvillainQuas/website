@@ -214,7 +214,7 @@ is mostly for re-runs.
    card says "no processing machine has reported in yet", the worker is not running.
 
 **Timing.** A full game is ~50 min in score mode (step 2 s) or clock mode (step 5 s); clock+score
-runs both and takes ~1.5×; the harvest adds ~6 min per basket window (capped at 40, skipped when
+runs both and takes ~1.5×; the harvest adds ~10 min per basket window (capped at 12, skipped when
 another game is waiting). One machine, one game at a time; a second PC with the skill can run the
 same worker and the claim never hands both the same job.
 

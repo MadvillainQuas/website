@@ -44,7 +44,8 @@ DEFAULTS = {
     'step_score': 2.0,
     'poll_s': 20,
     'harvest': True,
-    'harvest_windows': 40,
+    'harvest_windows': 12,      # ~10 min each at 720p on a GTX 1660 SUPER
+    'harvest_stride': 3,
     'worker_id': socket.gethostname(),
     'max_height': 720,
 }
@@ -281,7 +282,7 @@ def harvest_around(video_path, times, cfg, progress, should_stop):
     import auto_labels as AL, dataset as DS, frames as FR  # noqa
     import hashlib
     times = sorted(set(round(t) for t in times if t is not None))
-    n_max = int(cfg.get('harvest_windows') or 40)
+    n_max = int(cfg.get('harvest_windows') or 12)
     if len(times) > n_max:
         stride = len(times) / float(n_max)
         times = [times[int(i * stride)] for i in range(n_max)]
@@ -298,7 +299,7 @@ def harvest_around(video_path, times, cfg, progress, should_stop):
         if should_stop():
             break
         t0, t1 = max(0.0, t - 8.0), t + 2.0          # the shot goes up before the score changes
-        r = AL.harvest_window(cap, det, os.path.basename(video_path), t0, t1, 2, fps, d, run_id, wlog)
+        r = AL.harvest_window(cap, det, os.path.basename(video_path), t0, t1, int(cfg.get('harvest_stride') or 3), fps, d, run_id, wlog)
         for key in ('frames', 'ball', 'neg', 'rim', 'flights'):
             tot[key] += r.get(key, 0)
         tot['windows'] += 1
