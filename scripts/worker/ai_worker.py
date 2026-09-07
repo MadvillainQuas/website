@@ -185,6 +185,34 @@ def _module_ok(name):
         return False
 
 
+def sweep_downloads(cfg, max_age_h=6):
+    """Nothing is meant to live in the download folder: a finished job deletes its file, and an
+    interrupted download leaves .part/.ytdl fragments behind. Anything older than a few hours
+    that is not being written right now goes, so the disk never fills with two-hour games."""
+    ddir = cfg.get('download_dir')
+    if not ddir or not os.path.isdir(ddir):
+        return
+    now = time.time()
+    freed = 0
+    for name in os.listdir(ddir):
+        path = os.path.join(ddir, name)
+        if not os.path.isfile(path):
+            continue
+        low = name.lower()
+        video = low.endswith(('.mp4', '.mkv', '.webm', '.part', '.ytdl'))
+        if not video or (now - os.path.getmtime(path)) < max_age_h * 3600:
+            continue
+        if cfg.get('keep_video') and low.endswith(('.mp4', '.mkv', '.webm')):
+            continue
+        try:
+            freed += os.path.getsize(path)
+            os.remove(path)
+        except Exception:
+            pass
+    if freed:
+        log('swept %d MB of old downloads' % (freed >> 20))
+
+
 # --------------------------------------------------------------------------- the play-by-play
 def pbp_for_game(db, game_id):
     """The archived FIBA LiveStats payload (running score per action) this game was fed from."""
@@ -608,6 +636,7 @@ def main():
         sys.exit('no database: run setup-worker.bat once (it asks for the service_role key)')
     db = DB(cfg['supabase_url'], cfg['service_key'])
     log('%s on %s, watching %s' % (VERSION, cfg['worker_id'], cfg['supabase_url']))
+    sweep_downloads(cfg)
     # a fresh start means nothing of mine can still be running: give those jobs back to the queue
     try:
         back = db.patch('video_jobs', 'worker=eq.%s&status=in.(claimed,running)' % cfg['worker_id'],
