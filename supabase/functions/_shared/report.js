@@ -57,8 +57,9 @@ function tc(str) {
      escapes here means nothing to get lost in transit. */
   return String(str == null ? '' : str).split(' ')
     .map(w => !w ? w
-      /* a roman numeral stays as it is: "Flyers II", never "Flyers Ii" */
-      : /^[IVXLC]+$/i.test(w) && w.length <= 4 && w === w.toUpperCase() ? w
+      /* a roman numeral is set in capitals whatever case it arrived in: the
+         scorer stores "bristol flyers ii", and that is "Flyers II", never "Ii" */
+      : /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/i.test(w) ? w.toUpperCase()
       : w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
