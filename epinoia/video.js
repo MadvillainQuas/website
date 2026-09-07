@@ -400,7 +400,14 @@ const ROLL = {
 };
 const DEFAULT_ROLL = [7000, 4500];
 
-function clipOf(t) { return ROLL[t] || DEFAULT_ROLL; }
+/* LEEWAY. Every seek lands this much earlier again than the run-up asks for.
+   A play's position is a best estimate — a poll interval, a clock reading, a
+   score change pulled back to the basket — and an estimate that is a second
+   late cuts the shot off; one that is two seconds early shows the whole play
+   with a breath before it. Two seconds early is never wrong. */
+const LEEWAY_MS = 2000;
+
+function clipOf(t) { const r = ROLL[t] || DEFAULT_ROLL; return [r[0] + LEEWAY_MS, r[1]]; }
 
 /* ------------------------------------------- plays that nobody tapped live --
    A PLAY PLACED BY HAND DID NOT HAPPEN WHEN IT WAS TYPED.
