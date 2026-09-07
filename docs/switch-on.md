@@ -172,6 +172,13 @@ feeds → adapter config) as `youtube_channel`.
    name `YOUTUBE_API_KEY`, value the key. Nothing else to change; the workflow already passes it.
    Free quota is 10,000 units a day; one game costs about 100, so it is never a concern.
 
+**The vision model's clock track.** The playtype-vision studio (`label_server.py --video <game.mp4>`,
+then `/studio`, mode **clock**) reads the clock right through a whole game with the jersey-number
+model (PARSeq) asked the clock question — only times the clock can legally show are candidates,
+the overlay's own digits are learned as it goes — and offers the track for download; import it on
+the game page. `python scripts/clock.py track <video>` does the same from a prompt. Details in the
+skill's SKILL.md ("The game clock").
+
 **The clock track — plays placed by the game clock itself.** After a game, on its page (attach
 video → choose a local copy of the footage) *read the whole game clock* walks the footage every 5 s,
 reads the overlay, and saves the readings on the video row; from then on every play sits where its

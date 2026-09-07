@@ -756,11 +756,15 @@ async function importClockTrack(file) {
   if (!(window.S && window.S.video && window.S.video.url)) { note.textContent = 'save the video link first'; return; }
   try {
     const j = JSON.parse(await file.text());
+    /* a reading's own confidence, when the model reports one: below 0.3 it is a
+       guess and is left out; the physics gate upstream has already done the
+       heavy lifting, this just keeps the track honest */
     const samples = (j.samples || j.track || []).map(s => ({
       t: +s.t != null && isFinite(+s.t) ? +s.t : (+s.video_s || 0),
       period: +(s.period || s.p || 1),
-      clock_ms: s.clock_ms != null ? +s.clock_ms : (s.clock_s != null ? Math.round(+s.clock_s * 1000) : null)
-    })).filter(s => isFinite(s.t) && s.clock_ms != null && isFinite(s.clock_ms) && s.period >= 1);
+      clock_ms: s.clock_ms != null ? +s.clock_ms : (s.clock_s != null ? Math.round(+s.clock_s * 1000) : null),
+      conf: s.conf != null ? +s.conf : null
+    })).filter(s => isFinite(s.t) && s.clock_ms != null && isFinite(s.clock_ms) && s.period >= 1 && (s.conf == null || s.conf >= 0.3));
     if (!samples.length) { note.textContent = 'no readings in that file (expected samples:[{t, period, clock_ms}])'; return; }
     const ok = await saveClockTrack({ format: 'epinoia-clock-track/1', source: j.source || file.name, samples });
     note.textContent = ok ? samples.length + ' readings saved' : 'could not save the track (signed in? migration 0099 applied?)';
