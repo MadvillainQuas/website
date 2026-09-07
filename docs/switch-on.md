@@ -209,6 +209,14 @@ worker runs minimised at every logon (no admin rights needed; delete that launch
 and starts the worker now. The key never leaves this machine. (Migration **0100** is already
 applied.)
 
+**The dashboard (a window on the PC).** `scripts\workeri_dashboard.bat` — the queue with a
+progress bar per game and the last thing the reader saw, the worker's state (online / paused /
+not running), and buttons: **Start worker / Stop / Pause / Resume** (pause finishes the current game
+and claims nothing more; stop kills the process and the current game goes back to the queue),
+**To top / Up / Down / To bottom / Cancel / Retry / Open page** for the selected game, and
+**Add game…** (paste a game page link). Migration **0101** (priority + paused) is applied. A status
+bar along the bottom counts waiting / running / done / failed. Double-click a row to open its page.
+
 **Then nothing.** Every final game with a stream attached and no clock track — including ones
 that finished before the worker existed, back 21 days — is queued and read by itself; the button
 on a game page is only for re-runs. Watch a game's card (attach video) or the minimised window.

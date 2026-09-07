@@ -20,6 +20,8 @@ set STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
 echo   starts at logon: "%STARTUP%\Epinoia AI worker.bat"  (delete that file to stop it)
 start "" /min "%~dp0ai_worker.bat"
 echo   worker started (minimised window "Epinoia AI worker").
+start "" pythonw ai_dashboard.py
+echo   dashboard opened (ai_dashboard.bat opens it again any time).
 echo.
 echo   Done. Final games with a stream are read by themselves from now on.
 pause

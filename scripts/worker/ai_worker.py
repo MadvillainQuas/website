@@ -363,6 +363,9 @@ class Job(object):
                 self.db.patch('video_jobs', 'id=eq.%s' % self.id, {'progress': p, 'heartbeat_at': now_iso()})
             except Exception as exc:
                 log('(progress write failed: %s)' % exc)
+            if now - getattr(self, '_last_beat', 0) >= 60:          # the dashboard's "online" light
+                self._last_beat = now
+                heartbeat(self.db, self.cfg, self.id, 'processing ' + str(self.row.get('game_id', ''))[:8])
 
     def run(self):
         db, cfg, row = self.db, self.cfg, self.row
