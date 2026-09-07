@@ -618,9 +618,12 @@ async function offerLiveStatsLink() {
     const token = storedToken();
     if (token) H.Authorization = 'Bearer ' + token;
     const r = await fetch(CFG.supabaseUrl + '/rest/v1/external_games?game_id=eq.' + gameId +
-      '&adapter=eq.fiba_livestats&select=external_id,competition_code,source_id&limit=1', { cache: 'no-store', headers: H });
+      '&adapter=eq.fiba_livestats&select=external_id,competition_code,source_id,raw_ref&limit=1', { cache: 'no-store', headers: H });
     const ext = r.ok ? (await r.json())[0] : null;
     if (!ext || !ext.external_id) return;
+    /* the archived payload (running scores per action) is what the vision model's
+       score mode matches against; the attach sheet shows it for copy */
+    window.__fedRawRef = ext.raw_ref || null;
     let client = null;
     if (ext.source_id) {
       const rs = await fetch(CFG.supabaseUrl + '/rest/v1/schedule_sources?id=eq.' + ext.source_id +
@@ -689,6 +692,13 @@ function openAttach() {
         '<div class="vsrow"><label class="vsfile"><span>import a clock track (JSON from a vision model)</span>' +
           '<input type="file" id="vsTrackFile" accept="application/json,.json"></label>' +
           '<span class="vsnote" id="vsTrackFileNote">' + (cur.clock_track && cur.clock_track.samples ? cur.clock_track.samples.length + ' readings on file' : 'none yet') + '</span></div>' +
+        /* the vision model's score mode (a broadcast with no clock on screen) matches
+           overlay score changes against this game's archived play-by-play */
+        (window.__fedRawRef
+          ? '<div class="vsrow"><span class="vsnote">play-by-play for the vision model’s score mode: ' +
+            '<a href="' + B.esc(window.__fedRawRef) + '" target="_blank" rel="noopener">data.json ↗</a> — ' +
+            'studio → clock → mode <i>score</i>, paste that link; or <code>python clock.py score &lt;video&gt; --pbp ' + B.esc(window.__fedRawRef) + '</code></span></div>'
+          : '') +
       '</div>' +
       '<div class="msg" id="vsMsg"></div>' +
       '<div class="row"><button id="vsCancel">cancel</button>' +
