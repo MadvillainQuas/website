@@ -477,7 +477,8 @@ def backfill(db, cfg):
     if not cfg.get('backfill') or time.time() - _last_backfill < 3600:
         return 0
     _last_backfill = time.time()
-    since = datetime.fromtimestamp(time.time() - 86400 * float(cfg.get('backfill_days') or 21), timezone.utc).isoformat()
+    # 'Z', not '+00:00': a plus sign inside a URL query is a space
+    since = datetime.fromtimestamp(time.time() - 86400 * float(cfg.get('backfill_days') or 21), timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     rows = db.select('game_videos', 'select=game_id,url,games!inner(status,tipoff_at)&is_primary=eq.true'
                                     '&clock_track=is.null&url=neq.&games.status=eq.final&games.tipoff_at=gte.' + since)
     if not rows:
@@ -511,8 +512,8 @@ def one_pass(db, cfg):
     except Exception as exc:
         log('(backfill failed: %s)' % exc)
     row = db.rpc('claim_video_job', {'p_worker': cfg['worker_id']})
-    if not row:
-        return False
+    if not row or not isinstance(row, dict) or not row.get('id'):
+        return False                # an empty queue comes back as a row of nulls, not as nothing
     Job(db, row, cfg).run()
     return True
 
