@@ -87,8 +87,10 @@ function allPlays() {
 }
 function selected() {
   const fn = V().filterBy(st.filter);
-  /* a basket he assisted counts as his assist, and as nothing else of his */
-  const keep = p => p.byAssist ? (st.filter === 'all' || st.filter === 'ast') : fn(p);
+  /* a basket he assisted counts as his assist, and as nothing else of his; a basket HE
+     scored off somebody's pass is a basket of his, never one of his assists */
+  const keep = p => p.byAssist ? (st.filter === 'all' || st.filter === 'ast')
+                               : (st.filter === 'ast' ? false : fn(p));
   return allPlays().filter(p => keep(p) && (!st.gameId || p.game.id === st.gameId));
 }
 
