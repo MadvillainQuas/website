@@ -167,6 +167,9 @@ def fetch_video(url, cfg, progress):
         cmd = base + ['-f', fmt, '--no-playlist', '--continue', '--newline', '-o', out, 'https://www.youtube.com/watch?v=' + vid]
         # A cookie FILE first: the browser's own store is locked while the browser is open, so an
         # export taken once (with the browser closed) is what actually works day to day.
+        # yt-dlp solves YouTube's JavaScript challenge with a JS runtime; Node is on this machine
+        if shutil.which('node'):
+            cmd[-1:-1] = ['--js-runtimes', 'node']
         if cfg.get('yt_cookies_file') and os.path.exists(str(cfg['yt_cookies_file'])):
             cmd[-1:-1] = ['--cookies', str(cfg['yt_cookies_file'])]
         elif cfg.get('yt_cookies_browser'):
