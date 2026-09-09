@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="../kit/epinoia-kit.css?v=239">
 <link rel="stylesheet" href="../kit/table.css?v=239">
 <link rel="stylesheet" href="../kit/nav.css?v=239">
+<link rel="stylesheet" href="../video.css?v=263">
 <link rel="stylesheet" href="../kit/card.css?v=239">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
@@ -263,6 +264,10 @@
   .vsocial-l:hover{color:var(--lume);border-bottom-color:var(--lume)}
   /* the tiles are .ig-grid / .ig-tile in kit/card.css, shared with the
      league's Socials section */
+  .ttabs{padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  /* the video tab: the profile steps aside */
+  body.vtab #tbody{display:none}
+  #videosec{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
 </style>
 </head>
 <body>
@@ -279,6 +284,19 @@
 
   <div class="rec" id="rec"></div>
 
+  <!-- PROFILE / VIDEO. Shown only when a game the club played has footage the page
+       can seek; every play of the club's then lives under the Video tab. -->
+  <div class="ep-tabs ttabs" id="ttabs" role="tablist" style="display:none">
+    <button class="ep-tab on" data-p="profile" role="tab">Profile</button>
+    <button class="ep-tab" data-p="video" role="tab">Video</button>
+  </div>
+  <div id="videosec" style="display:none">
+    <div class="ep-hdr"><span class="idx">V</span><h2>On video</h2>
+      <span class="hnote" id="videoNote"></span></div>
+    <div id="videopanel"></div>
+  </div>
+
+  <div id="tbody">
   <div class="ep-hdr"><span class="idx">01</span><h2>Team statistics</h2></div>
   <div id="teamstats"></div>
 
@@ -308,6 +326,7 @@
 
   <div class="ep-hdr"><span class="idx">07</span><h2>Every lineup</h2></div>
   <div id="lulist"></div>
+  </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
     <a id="leagueLink" href="../l/" style="color:var(--ink-3)">← league</a>
@@ -324,8 +343,10 @@
 <script src="lineupui.js?v=239" defer></script>
 <script src="../fulltable.js?v=239" defer></script>
 <script src="../igtile.js?v=239" defer></script>
+<script src="../video.js?v=263" defer></script>
+<script src="../p/video.js?v=263" defer></script>
 <script src="venue.js?v=248" defer></script>
-<script src="team.js?v=260" defer></script>
+<script src="team.js?v=263" defer></script>
 <script src="../nav.js?v=239" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

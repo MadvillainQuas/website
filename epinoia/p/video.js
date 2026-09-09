@@ -47,7 +47,17 @@ function words(e) {
   return WORDS[e.t] || e.t;
 }
 
-let st = { filter: 'all', gameId: null, current: null, seekMs: 0 };
+let st = { filter: 'all', gameId: null, current: null, seekMs: 0, nudgeMs: 0 };
+
+/* THE EVENT'S TIME, NOT THE VIDEO'S. "Q1 8:10" is what a reader knows a play by;
+   the video offset is the machine's business and stays in the tooltip. */
+const perName = p => (p == null ? '' : p <= 4 ? 'Q' + p : 'OT' + (p - 4));
+const fmtClock = ms => {
+  if (ms == null) return '';
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+};
+const NUDGE_STEP = 5000;
 let host = null, ctx = null;
 /* Indexed once per set of games, not once per glance. selected() is called by
    the render, by currentGame() and again inside every click handler, and each
@@ -68,7 +78,13 @@ function allPlays() {
       names: ctx.names,
       label: e => words(e) + (e.tag ? ' (' + e.tag + ')' : '')
     }).forEach(p => {
-      if (p.pid === ctx.playerId) {
+      if (ctx.teamMode) {
+        /* the whole club: every play on its side of this game, with the man named */
+        if (p.team === g.side) {
+          const who = ctx.names[p.pid];
+          out.push(Object.assign({ game: g }, p, { label: (who ? who + ' \u2014 ' : '') + p.label }));
+        }
+      } else if (p.pid === ctx.playerId) {
         out.push(Object.assign({ game: g }, p));
       } else if (p.assist && p.assist.pid === ctx.playerId) {
         /* his contribution to somebody else's basket: listed under him, as an assist */
@@ -122,7 +138,7 @@ const key = p => p.game.id + ':' + p.id;
    because this list spans games; the signature covers both. */
 function stageHTML(g) {
   if (!g) return '';
-  const src = V().embedSrc(g.video, { ms: st.seekMs, autoplay: st.current != null });
+  const src = V().embedSrc(g.video, { ms: Math.max(0, st.seekMs + st.nudgeMs), autoplay: st.current != null });
   if (!src) return '<div class="vidwarn">That video link cannot be played here.</div>';
   return '<iframe class="vidframe" src="' + esc(src) + '" ' +
     'allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" ' +
@@ -170,7 +186,8 @@ function render() {
           ' aria-label="' + esc(p.label + ', ' + p.game.title + ', at ' +
                               V().stamp(p.start) + ' in the video') + '"' +
           (st.current === key(p) ? ' aria-current="true"' : '') + '>' +
-          '<span class="vidt">' + esc(V().stamp(p.start)) +
+          '<span class="vidt" title="' + esc(V().stamp(p.start)) + ' into the video">' +
+            esc(perName(p.period) + ' ' + fmtClock(p.clock)) +
             (p.approx ? '<i class="vidapx" title="placed by hand — this position ' +
                         'is worked out from the plays either side">~</i>' : '') + '</span>' +
           '<span class="vidq">' + esc(p.game.title) + '</span>' +
@@ -183,6 +200,15 @@ function render() {
         '<a href="../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase">' +
           'the full box score for this game →</a>' +
         '<span class="vidgap">' + esc(placedText(g.video)) + '</span>' +
+        /* THE ADJUSTMENT. Every position on this page is an estimate; if the clips
+           land early or late for this reader, five seconds either way, kept for the
+           visit and applied to every seek. Nothing is written anywhere. */
+        '<span class="vidnudge">' +
+          '<button type="button" class="vidnb" data-n="-1" title="seek five seconds earlier">\u22125 s</button>' +
+          '<b>' + (st.nudgeMs ? (st.nudgeMs > 0 ? '+' : '\u2212') + Math.abs(st.nudgeMs / 1000) + ' s' : 'on time') + '</b>' +
+          '<button type="button" class="vidnb" data-n="1" title="seek five seconds later">+5 s</button>' +
+          (st.nudgeMs ? '<button type="button" class="vidnb" data-n="0" title="back to the placed time">reset</button>' : '') +
+        '</span>' +
       '</div>' : '');
 
   wire();
@@ -194,6 +220,13 @@ function wire() {
   });
   const sel = host.querySelector('#pvGame');
   if (sel) sel.onchange = () => { st.gameId = sel.value || null; st.current = null; render(); };
+  host.querySelectorAll('.vidnb').forEach(b => {
+    b.onclick = () => {
+      const n = +b.dataset.n;
+      st.nudgeMs = n === 0 ? 0 : st.nudgeMs + n * NUDGE_STEP;
+      render();                    // the stage re-seeks to the same play, shifted
+    };
+  });
   host.querySelectorAll('.viditem[data-k]').forEach(li => {
     li.onkeydown = e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
@@ -223,7 +256,7 @@ function render_(opts) {
     g.video && (V().hasAnchor(g.video) || hasTrack(g.video)) &&
     (V().logIsTimed(g.events) || hasTrack(g.video)));
   if (!games.length) return false;
-  ctx = { games, playerId: opts.playerId, names: opts.names || {} };
+  ctx = { games, playerId: opts.playerId, names: opts.names || {}, teamMode: !!opts.teamId };
   indexed = null;
   if (!allPlays().length) return false;
   render();

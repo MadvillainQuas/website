@@ -81,8 +81,65 @@ function oops(msg) {
     await Promise.all([record(team), teamStats(team), venue(team),
                        roster(team), games(team)]);
     await lineupPanels(team);
+    await videoPanel(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
+
+/* ON VIDEO — every play the club made in every game that has footage the page can
+   seek, under a Video tab beside the profile. The same panel as a player's profile
+   (p/video.js) in team mode: the whole side of each game, each man named. */
+async function videoPanel(team) {
+  const D = window.EpinoiaData;
+  if (!D || !window.EpinoiaPlayerVideo) return;
+  try {
+    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,` +
+      `home:home_team_id(short_name,name),away:away_team_id(short_name,name)&order=tipoff_at.desc&limit=40`);
+    if (!gs.length) return;
+    const chunk = async (ids, build) => {
+      const out = [];
+      for (let i = 0; i < ids.length; i += 40) out.push(...await api(build(ids.slice(i, i + 40))));
+      return out;
+    };
+    const vids = await chunk(gs.map(g => g.id), c =>
+      'game_videos?game_id=in.(' + c.join(',') + ')&is_primary=eq.true&select=game_id,url,provider,video_ref,label,' +
+      'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,clock_track');
+    const byGameV = {};
+    vids.forEach(v => { if (v.url) byGameV[v.game_id] = v; });
+    const withV = gs.filter(g => byGameV[g.id]);
+    if (!withV.length) return;
+    const evs = await D.events(withV.map(g => g.id));
+    const names = {};
+    try {
+      const meta = await D.playerMeta([...new Set(evs.map(e => e.pid).filter(Boolean))]);
+      Object.keys(meta).forEach(id => { if (meta[id] && meta[id].name) names[id] = meta[id].name; });
+    } catch (_) { /* rows fall back to the play alone */ }
+    const games = withV.map(g => {
+      const h = (g.home || {}).short_name || (g.home || {}).name || 'home';
+      const a = (g.away || {}).short_name || (g.away || {}).name || 'away';
+      return {
+        id: g.id, video: byGameV[g.id], date: g.tipoff_at,
+        side: g.home_team_id === team.id ? 0 : 1,
+        title: h + ' v ' + a + (g.tipoff_at ? ' \u00b7 ' + new Date(g.tipoff_at).toLocaleDateString() : ''),
+        events: evs.filter(e => e.gameId === g.id)
+      };
+    });
+    const shown = window.EpinoiaPlayerVideo.render({ host: '#videopanel', games, teamId: team.id, names });
+    if (!shown) return;
+    $('#videoNote').textContent = games.length + (games.length === 1 ? ' game with footage' : ' games with footage');
+    const tabs = $('#ttabs');
+    if (!tabs) return;
+    tabs.style.display = '';
+    const showVideo = on => {
+      document.body.classList.toggle('vtab', on);
+      $('#videosec').style.display = on ? '' : 'none';
+      tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
+      if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
+    };
+    tabs.querySelectorAll('.ep-tab').forEach(b => { b.onclick = () => showVideo(b.dataset.p === 'video'); });
+    if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
+  } catch (e) { console.warn('[video]', e); }
+}
 
 async function record(team) {
   const st = await api(`standings?team_id=eq.${team.id}` +
