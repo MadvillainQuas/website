@@ -219,6 +219,12 @@ bar along the bottom counts waiting / running / done / failed. Double-click a ro
 It opens by itself whenever a game starts processing (and comes to the front if already open); one
 window only. `dashboard_auto: false` in worker.json turns that off.
 
+**When YouTube asks for a sign-in.** After many downloads from one address YouTube shows a "confirm
+you're not a bot" wall for a while. The worker treats it as weather: the job goes back to the queue,
+the card says "waiting: YouTube asked for a sign-in check", and the worker rests half an hour before
+trying again. If it keeps happening, `"yt_cookies_browser": "edge"` (or `"chrome"`) in worker.json
+hands yt-dlp your own browser's YouTube sign-in; that is your call, it is off by default.
+
 **Then nothing.** Every final game with a stream attached and no clock track — including ones
 that finished before the worker existed, back 21 days — is queued and read by itself; the button
 on a game page is only for re-runs. Watch a game's card (attach video) or the minimised window.

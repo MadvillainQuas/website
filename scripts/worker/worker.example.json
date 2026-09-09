@@ -10,5 +10,7 @@
   "step_clock": 5.0,
   "step_score": 2.0,
   "poll_s": 20,
-  "max_height": 720
+  "max_height": 720,
+  "yt_cookies_browser": "",
+  "retry_wait_s": 1800
 }

@@ -49,6 +49,8 @@ DEFAULTS = {
     'worker_id': socket.gethostname(),
     'max_height': 720,
     'backfill': True,           # queue every final game with a stream and no track, by itself
+    'yt_cookies_browser': '',   # e.g. 'edge' or 'chrome': hand yt-dlp your browser's YouTube sign-in when YouTube demands one (opt-in)
+    'retry_wait_s': 1800,       # how long a job waits after YouTube's "confirm you're not a bot" before it is tried again
     'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
 }
@@ -162,6 +164,8 @@ def fetch_video(url, cfg, progress):
         fmt = ('bv*[height<=%d][ext=mp4][vcodec^=avc1]/bv*[height<=%d][ext=mp4]/bv*[height<=%d]/b[height<=%d]/b' % (h, h, h, h))
         base = [sys.executable, '-m', 'yt_dlp'] if _module_ok('yt_dlp') else ['yt-dlp']
         cmd = base + ['-f', fmt, '--no-playlist', '--continue', '--newline', '-o', out, 'https://www.youtube.com/watch?v=' + vid]
+        if cfg.get('yt_cookies_browser'):
+            cmd[-1:-1] = ['--cookies-from-browser', str(cfg['yt_cookies_browser'])]
         log('yt-dlp ' + vid)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
         last = ''
@@ -175,6 +179,13 @@ def fetch_video(url, cfg, progress):
                 progress('downloading', float(m.group(1)), 100.0, line)
         p.wait()
         if p.returncode != 0 or not os.path.exists(out):
+            # YOUTUBE'S SIGN-IN CHECK IS WEATHER, NOT A VERDICT. After a run of downloads from one
+            # address YouTube asks for a sign-in; it lifts by itself. The job goes back to the queue
+            # to be tried later rather than being marked failed for something that is not wrong.
+            if 'confirm you' in last or 'not a bot' in last or 'Sign in' in last:
+                raise Transient('YouTube asked for a sign-in check; trying again later')
+            if 'live event will begin' in last or 'Premieres in' in last:
+                raise Transient('the stream has not happened yet; trying again later')
             raise RuntimeError('yt-dlp failed: ' + last[:300])
         return out
     # a direct file
@@ -194,6 +205,10 @@ def fetch_video(url, cfg, progress):
                     progress('downloading', got, total, '%d MB' % (got >> 20))
     os.replace(out + '.part', out)
     return out
+
+
+class Transient(Exception):
+    """Not a failure: the job should wait and be tried again."""
 
 
 def _module_ok(name):
@@ -514,6 +529,16 @@ class Job(object):
                                                             'progress': dict(self.progress, stage='cancelled')})
             log('  cancelled')
             return False
+        except Transient as exc:
+            # back to the queue, behind everything else, and the worker itself pauses so the
+            # same wall is not hit every twenty seconds
+            wait = float(cfg.get('retry_wait_s') or 1800)
+            db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'queued', 'worker': None, 'claimed_at': None, 'heartbeat_at': None,
+                                                            'priority': -1,
+                                                            'progress': {'stage': 'waiting: ' + str(exc), 'i': 0, 'n': 1}})
+            log('  deferred: %s (worker rests %d min)' % (exc, wait // 60))
+            self.deferred = wait
+            return False
         except Exception as exc:
             traceback.print_exc()
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'failed', 'finished_at': now_iso(),
@@ -613,7 +638,11 @@ def one_pass(db, cfg):
     row = db.rpc('claim_video_job', {'p_worker': cfg['worker_id']})
     if not row or not isinstance(row, dict) or not row.get('id'):
         return False                # an empty queue comes back as a row of nulls, not as nothing
-    Job(db, row, cfg).run()
+    job = Job(db, row, cfg)
+    job.run()
+    if getattr(job, 'deferred', 0):
+        heartbeat(db, cfg, None, 'resting after a YouTube sign-in check')
+        time.sleep(job.deferred)
     return True
 
 
