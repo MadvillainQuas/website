@@ -174,7 +174,8 @@ function paintBars(mine, field) {
       row.appendChild(track);
 
       const dp = (k === 'ast_to' || k === 'au') ? 2 : 1;
-      const val = el('div', 'bv', v == null ? '—' : Number(v).toFixed(dp));
+      /* a differential carries its sign: +12.5 is a claim, 12.5 is a number */
+      const val = el('div', 'bv', v == null ? '—' : ((String(k).startsWith('diff_') && Number(v) > 0 ? '+' : '') + Number(v).toFixed(dp)));
       if (p != null) val.appendChild(el('div', 'bp', ord(p)));
       row.appendChild(val);
       wrap.appendChild(row);
