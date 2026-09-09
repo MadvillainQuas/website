@@ -12,5 +12,6 @@
   "poll_s": 20,
   "max_height": 720,
   "yt_cookies_browser": "",
+  "yt_cookies_file": "",
   "retry_wait_s": 1800
 }

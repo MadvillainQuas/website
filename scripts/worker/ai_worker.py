@@ -50,6 +50,7 @@ DEFAULTS = {
     'max_height': 720,
     'backfill': True,           # queue every final game with a stream and no track, by itself
     'yt_cookies_browser': '',   # e.g. 'edge' or 'chrome': hand yt-dlp your browser's YouTube sign-in when YouTube demands one (opt-in)
+    'yt_cookies_file': '',      # a Netscape cookie file exported once (yt-dlp --cookies-from-browser edge --cookies <file>); works while the browser is open
     'retry_wait_s': 1800,       # how long a job waits after YouTube's "confirm you're not a bot" before it is tried again
     'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
@@ -164,7 +165,11 @@ def fetch_video(url, cfg, progress):
         fmt = ('bv*[height<=%d][ext=mp4][vcodec^=avc1]/bv*[height<=%d][ext=mp4]/bv*[height<=%d]/b[height<=%d]/b' % (h, h, h, h))
         base = [sys.executable, '-m', 'yt_dlp'] if _module_ok('yt_dlp') else ['yt-dlp']
         cmd = base + ['-f', fmt, '--no-playlist', '--continue', '--newline', '-o', out, 'https://www.youtube.com/watch?v=' + vid]
-        if cfg.get('yt_cookies_browser'):
+        # A cookie FILE first: the browser's own store is locked while the browser is open, so an
+        # export taken once (with the browser closed) is what actually works day to day.
+        if cfg.get('yt_cookies_file') and os.path.exists(str(cfg['yt_cookies_file'])):
+            cmd[-1:-1] = ['--cookies', str(cfg['yt_cookies_file'])]
+        elif cfg.get('yt_cookies_browser'):
             cmd[-1:-1] = ['--cookies-from-browser', str(cfg['yt_cookies_browser'])]
         log('yt-dlp ' + vid)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
