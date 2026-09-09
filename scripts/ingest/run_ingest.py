@@ -215,7 +215,8 @@ def resolve_league(sb: Supabase, src: dict, run: dict) -> str | None:
 
 KIND_RULES = [
     (re.compile(r"play-?off|final four|finals?\b|post-?season", re.I), "playoff"),
-    (re.compile(r"trophy|cup|shield|plate|knock-?out", re.I), "cup"),
+    (re.compile(r"trophy", re.I), "trophy"),                  # a trophy is its own category on the site
+    (re.compile(r"cup|shield|plate|knock-?out", re.I), "cup"),
     (re.compile(r"all.?star|exhibition|friendl|pre-?season|showcase", re.I), "friendly"),
 ]
 

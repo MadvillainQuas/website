@@ -107,6 +107,10 @@
   .with-tbl td.stick.c1{text-align:left}
   .with-tbl .ft-name{font-family:var(--f-micro);font-size:9px;letter-spacing:.09em;
     text-transform:uppercase;color:var(--ink-3)}
+  .ptabs{padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .compscope{padding:0 0 calc(var(--u)*2)}
+  /* the video tab: everything else steps aside */
+  body.vtab .sec:not(#videosec), body.vtab section.card{display:none}
 </style>
 </head>
 <body>
@@ -125,6 +129,13 @@
   </div>
 
   <div class="tiles" id="tiles"></div>
+
+  <!-- PROFILE / VIDEO. Shown only when a game this player was in has footage the
+       page can seek; the video section then lives under its own tab. -->
+  <div class="ep-tabs ptabs" id="ptabs" role="tablist" style="display:none">
+    <button class="ep-tab on" data-p="profile" role="tab">Profile</button>
+    <button class="ep-tab" data-p="video" role="tab">Video</button>
+  </div>
 
   <div class="sec">
     <div class="sec-h"><span class="idx">01</span><h2>League percentile</h2>
@@ -205,9 +216,9 @@
 <script src="../withstats.js?v=239" defer></script>
 <script src="withui.js?v=239" defer></script>
 <script src="../fulltable.js?v=239" defer></script>
-<script src="../video.js?v=259" defer></script>
-<script src="video.js?v=259" defer></script>
-<script src="player.js?v=239" defer></script>
+<script src="../video.js?v=260" defer></script>
+<script src="video.js?v=260" defer></script>
+<script src="player.js?v=260" defer></script>
 <script src="../nav.js?v=239" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

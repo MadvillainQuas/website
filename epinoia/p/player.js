@@ -366,21 +366,53 @@ function paintLog(rows) {
        be ranked against everyone else in it. */
     const D = window.EpinoiaData;
     let mine = null, field = [];
+    /* WHICH COMPETITION. A club plays a league and a trophy in the same season and
+       the two are different fields; the reader chooses all of it or one kind of it.
+       The competitions are whatever the club's finalised games belong to. */
+    let compRows = [];
     try {
-      const comps = team && team.id
-        ? await D.get(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-                      `&status=eq.final&select=competition_id&limit=1`)
+      const played = team && team.id
+        ? await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+                      `&status=eq.final&select=competition_id`)
         : [];
-      const compId = comps[0] && comps[0].competition_id;
-      if (compId) {
-        const S = await D.season(compId);
-        field = S.players;
-        mine = field.find(r => r.id === pl.id) || null;
+      const ids = [...new Set(played.map(g => g.competition_id).filter(Boolean))];
+      if (ids.length) {
+        compRows = await D.all(`competitions?id=in.(${ids.join(',')})&select=id,name,kind`);
       }
-    } catch (e) { console.warn('[season]', e); }
-
-    paintTiles(mine);
-    paintBars(mine, field);
+    } catch (e) { console.warn('[competitions]', e); }
+    const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
+    const kinds = [...new Set(compRows.map(c => c.kind || 'league'))];
+    let scopeKind = 'all';
+    const paintScope = async kind => {
+      scopeKind = kind;
+      const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
+      mine = null; field = [];
+      try {
+        if (ids.length) {
+          const S = await D.season(ids);
+          field = S.players;
+          mine = field.find(r => r.id === pl.id) || null;
+        }
+      } catch (e) { console.warn('[season]', e); }
+      paintTiles(mine);
+      paintBars(mine, field);
+      const bn = $('#barNote');
+      if (bn && kind !== 'all') bn.textContent = (bn.textContent || '').replace(/ \u00b7 .*$/, '') + ' \u00b7 ' + (KIND_LABEL[kind] || kind);
+      document.querySelectorAll('#compScope .ep-tab').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+    };
+    if (kinds.length > 1) {
+      const strip = document.createElement('div');
+      strip.className = 'ep-tabs compscope'; strip.id = 'compScope'; strip.setAttribute('role', 'tablist');
+      [['all', 'All']].concat(kinds.map(k => [k, KIND_LABEL[k] || k])).forEach(([k, lab]) => {
+        const b = document.createElement('button');
+        b.className = 'ep-tab' + (k === 'all' ? ' on' : ''); b.dataset.k = k; b.setAttribute('role', 'tab'); b.textContent = lab;
+        b.onclick = () => paintScope(k);
+        strip.appendChild(b);
+      });
+      const bars = $('#bars');
+      if (bars && bars.parentNode) bars.parentNode.insertBefore(strip, bars);
+    }
+    await paintScope('all');
 
     /* ---- career, a row per season ----
        One line was fine when nobody had a second season. A career table is the
@@ -495,7 +527,7 @@ function drawShotChart(shots) {
             const vids = await inChunks(gs.map(g => g.id), c =>
               'game_videos?game_id=in.(' + c.join(',') + ')' +
               '&is_primary=eq.true&select=game_id,url,provider,video_ref,label,' +
-              'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms');
+              'stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,clock_track');
             const byGameV = {};
             vids.forEach(v => { if (v.url) byGameV[v.game_id] = v; });
             if (Object.keys(byGameV).length && window.EpinoiaPlayerVideo) {
@@ -516,13 +548,33 @@ function drawShotChart(shots) {
                   events: evs.filter(e => e.gameId === id)
                 };
               });
+              /* names for the ASSIST tags and for "by <shooter>" on his assists */
+              const names = {};
+              try {
+                const pids = [...new Set(evs.map(e => e.pid).filter(Boolean))];
+                const meta = await D.playerMeta(pids);
+                Object.keys(meta).forEach(id => { if (meta[id] && meta[id].name) names[id] = meta[id].name; });
+              } catch (_) { /* tags fall back to "assisted" */ }
               const shown = window.EpinoiaPlayerVideo.render({
-                host: '#videopanel', games: withVideo, playerId: pl.id
+                host: '#videopanel', games: withVideo, playerId: pl.id, names: names
               });
               if (shown) {
-                $('#videosec').style.display = '';
                 $('#videoNote').textContent = withVideo.length +
                   (withVideo.length === 1 ? ' game with footage' : ' games with footage');
+                /* THE VIDEO TAB. The section stays out of the profile's flow and gets a
+                   tab of its own beside the profile, shown only when there is footage. */
+                const tabs = $('#ptabs');
+                if (tabs) {
+                  tabs.style.display = '';
+                  const showVideo = on => {
+                    document.body.classList.toggle('vtab', on);
+                    $('#videosec').style.display = on ? '' : 'none';
+                    tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
+                    if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
+                  };
+                  tabs.querySelectorAll('.ep-tab').forEach(b => { b.onclick = () => showVideo(b.dataset.p === 'video'); });
+                  if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
+                }
               }
             }
           } catch (e) {

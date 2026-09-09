@@ -1369,7 +1369,7 @@ function mountVideo(d) {
   const qp2 = new URLSearchParams(location.search);
   window.EpinoiaVideoTab.render({
     host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
-    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null },
+    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null, seq: qp2.get('vs') || null },
     /* the people who may attach a video may also nudge it; the same check */
     canEdit: vidShown,
     onTrim: nudgeVideo,
@@ -2068,6 +2068,8 @@ async function renderPreview() {
        most people arrive with. A live game keeps opening on the box score,
        where the numbers ARE the story as it happens. */
     if (window.EpinoiaReport) fTab = 'report';
+    /* a link from a profile to one play opens straight on the video */
+    if (qp.get('vs') || qp.get('vp')) fTab = 'video';
     render();
     return;                       // finished: nothing left to listen for
   }

@@ -103,14 +103,34 @@ async function record(team) {
 /* Two readings of the same season: the team's own line, and every player on it
    through the full table. The team line is shown as tiles because there is
    only one row of it — a one-row table is a worse way to read a single line. */
-async function teamStats(team) {
+let teamScopeKind = 'all';
+const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
+
+async function teamStats(team, kind) {
   const host = $('#teamstats'); host.textContent = '';
   const D = window.EpinoiaData;
+  if (kind) teamScopeKind = kind;
   let S = null;
   try {
-    const g = await D.get(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-                          `&status=eq.final&select=competition_id&limit=1`);
-    if (g[0] && g[0].competition_id) S = await D.season(g[0].competition_id);
+    /* WHICH COMPETITION. The club's finalised games name the competitions it plays
+       in; the reader takes all of them or one kind (league, cup, trophy, playoffs). */
+    const played = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+                               `&status=eq.final&select=competition_id`);
+    const ids = [...new Set(played.map(g => g.competition_id).filter(Boolean))];
+    const comps = ids.length ? await D.all(`competitions?id=in.(${ids.join(',')})&select=id,name,kind`) : [];
+    const kinds = [...new Set(comps.map(c => c.kind || 'league'))];
+    if (kinds.length > 1) {
+      const strip = el('div', 'ep-tabs compscope'); strip.setAttribute('role', 'tablist');
+      [['all', 'All']].concat(kinds.map(k => [k, KIND_LABEL[k] || k])).forEach(([k, lab]) => {
+        const b = document.createElement('button');
+        b.className = 'ep-tab' + (k === teamScopeKind ? ' on' : ''); b.dataset.k = k; b.setAttribute('role', 'tab'); b.textContent = lab;
+        b.onclick = () => teamStats(team, k);
+        strip.appendChild(b);
+      });
+      host.appendChild(strip);
+    }
+    const scoped = comps.filter(c => teamScopeKind === 'all' || (c.kind || 'league') === teamScopeKind).map(c => c.id);
+    if (scoped.length) S = await D.season(scoped);
   } catch (e) {
     host.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return;
   }

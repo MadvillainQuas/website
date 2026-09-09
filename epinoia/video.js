@@ -473,7 +473,36 @@ function fillGaps(rows) {
 function index(events, video, opts) {
   const o = opts || {};
   const label = o.label || (e => e.t);
+  const names = o.names || {};
   const out = [];
+  /* THE ASSIST RIDES ON THE BASKET. An assist is logged as its own event a beat
+     after the made shot it belongs to, at the same clock. On the page it is
+     the same moment of video, so the basket carries "ASSIST: X" — and in a
+     score-only game, where only baskets can be placed, the basket also stands
+     in for the assist itself (the assists filter finds it, the assister's
+     profile lists it). `names` maps a pid to a name; without one the tag still
+     says an assist happened. */
+  const pidOf = e => (e.pid != null ? e.pid : (e.payload || {}).pid || null);
+  const seqOf = e => (e.seq != null ? e.seq : e.id);
+  const assistOf = {};
+  {
+    const recent = [];
+    for (const e of events) {
+      if (e.t === 'p2_made' || e.t === 'p3_made') {
+        recent.push({ seq: seqOf(e), team: e.team, period: e.period, clock: e.clock, pid: pidOf(e) });
+        if (recent.length > 3) recent.shift();
+      } else if (e.t === 'ast' && pidOf(e) != null) {
+        for (let i = recent.length - 1; i >= 0; i--) {
+          const m = recent[i];
+          if (m.team === e.team && m.period === e.period && m.pid !== pidOf(e) &&
+              Math.abs((m.clock || 0) - (e.clock || 0)) <= 5000) {
+            assistOf[m.seq] = { pid: pidOf(e), seq: seqOf(e) };
+            break;
+          }
+        }
+      }
+    }
+  }
   if (!Array.isArray(events)) return out;
 
   /* A CLOCK TRACK PLACES PLAYS BY THE GAME CLOCK. When the video row carries
@@ -521,6 +550,9 @@ function index(events, video, opts) {
        same basket three times. */
     if (e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
     if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made')) continue;
+    /* in every mode the separate assist row is redundant once the basket carries it —
+       but a timed log can place it on its own, so it stays there; only a score-only
+       track has nothing to place it by */
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
     rows.push({ e: e, since: sinceTipMs(e, video, mode), trackPos: byTrack(e) });
@@ -549,7 +581,14 @@ function index(events, video, opts) {
       approx: tp == null && !!row.guessed,
       start: Math.max(0, pos - pre),
       end: pos + post,
-      label: label(e)
+      assist: assistOf[e.seq != null ? e.seq : e.id] || null,
+      /* a score-only game: the basket IS the assist's place in the video */
+      standsForAssist: scoreOnly && !!assistOf[e.seq != null ? e.seq : e.id],
+      label: label(e) + (assistOf[e.seq != null ? e.seq : e.id]
+        ? (names[assistOf[e.seq != null ? e.seq : e.id].pid]
+            ? ' \u00b7 ASSIST: ' + names[assistOf[e.seq != null ? e.seq : e.id].pid]
+            : ' \u00b7 assisted')
+        : '')
     });
   }
   out.sort((a, b) => a.ms - b.ms);
@@ -567,7 +606,7 @@ const FILTERS = [
     fn: p => /^p[23]_(made|miss)$/.test(p.t) },
   { key: 'three',  label: 'three-pointers', fn: p => /^p3_/.test(p.t) },
   { key: 'reb',    label: 'rebounds',     fn: p => p.t === 'reb' },
-  { key: 'ast',    label: 'assists',      fn: p => p.t === 'ast' },
+  { key: 'ast',    label: 'assists',      fn: p => p.t === 'ast' || !!p.standsForAssist },
   { key: 'def',    label: 'steals & blocks',
     fn: p => p.t === 'stl' || p.t === 'blk' },
   { key: 'to',     label: 'turnovers',    fn: p => p.t === 'to' },

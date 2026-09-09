@@ -23,6 +23,9 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
 const V = () => (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaVideo;
+/* a clock or score track places plays without a tip-off anchor or a timed log */
+const hasTrack = v => !!(v && v.clock_track && Array.isArray(v.clock_track.samples) && v.clock_track.samples.length);
+const scoreOnly = v => hasTrack(v) && v.clock_track.mode === 'score';
 const esc = s => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -58,11 +61,24 @@ function allPlays() {
   if (indexed) return indexed;
   const out = [];
   ctx.games.forEach(g => {
-    const mine = g.events.filter(e => e.pid === ctx.playerId);
-    V().index(mine, g.video, {
+    /* THE WHOLE LOG, NOT JUST HIS ROWS: an assist he gave is logged against the
+       shooter's basket, and the indexer needs the sequence to pair the two. */
+    V().index(g.events, g.video, {
       skipStructural: true,
+      names: ctx.names,
       label: e => words(e) + (e.tag ? ' (' + e.tag + ')' : '')
-    }).forEach(p => out.push(Object.assign({ game: g }, p)));
+    }).forEach(p => {
+      if (p.pid === ctx.playerId) {
+        out.push(Object.assign({ game: g }, p));
+      } else if (p.assist && p.assist.pid === ctx.playerId) {
+        /* his contribution to somebody else's basket: listed under him, as an assist */
+        const shooter = ctx.names[p.pid] || 'a team-mate';
+        out.push(Object.assign({ game: g }, p, {
+          byAssist: true,
+          label: 'assist \u00b7 ' + String(p.label).replace(/ \u00b7 (ASSIST:.*|assisted)$/, '') + ' by ' + shooter
+        }));
+      }
+    });
   });
   out.sort((a, b) => (new Date(b.game.date || 0) - new Date(a.game.date || 0)) ||
                      (a.ms - b.ms));
@@ -71,7 +87,15 @@ function allPlays() {
 }
 function selected() {
   const fn = V().filterBy(st.filter);
-  return allPlays().filter(p => fn(p) && (!st.gameId || p.game.id === st.gameId));
+  /* a basket he assisted counts as his assist, and as nothing else of his */
+  const keep = p => p.byAssist ? (st.filter === 'all' || st.filter === 'ast') : fn(p);
+  return allPlays().filter(p => keep(p) && (!st.gameId || p.game.id === st.gameId));
+}
+
+function placedText(v) {
+  if (scoreOnly(v)) return 'placed by score changes \u00b7 scoring plays and assists only';
+  if (hasTrack(v)) return 'placed by the game clock \u00b7 ' + v.clock_track.samples.length + ' readings';
+  return V().gapText(v);
 }
 
 /* ------------------------------------------------------------- rendering --- */
@@ -156,7 +180,7 @@ function render() {
       (g ? '<div class="vidfoot">' +
         '<a href="../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase">' +
           'the full box score for this game →</a>' +
-        '<span class="vidgap">' + esc(V().gapText(g.video)) + '</span>' +
+        '<span class="vidgap">' + esc(placedText(g.video)) + '</span>' +
       '</div>' : '');
 
   wire();
@@ -194,9 +218,10 @@ function render_(opts) {
      when things happened. A bulk-imported season passes the first two and
      would fill this panel with ninety plays all sitting on the same frame. */
   const games = (opts.games || []).filter(g =>
-    g.video && V().hasAnchor(g.video) && V().logIsTimed(g.events));
+    g.video && (V().hasAnchor(g.video) || hasTrack(g.video)) &&
+    (V().logIsTimed(g.events) || hasTrack(g.video)));
   if (!games.length) return false;
-  ctx = { games, playerId: opts.playerId };
+  ctx = { games, playerId: opts.playerId, names: opts.names || {} };
   indexed = null;
   if (!allPlays().length) return false;
   render();

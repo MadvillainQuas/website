@@ -77,8 +77,12 @@ function buildPlays() {
      version of this page where a different sentence would be an improvement. */
   const byId = {};
   (ctx.d.pbp || []).forEach(p => { byId[p.id] = p; });
+  /* names for the ASSIST tag, off the roster the page already holds */
+  const names = {};
+  ((ctx.S && ctx.S.teams) || []).forEach(t => (t.players || []).forEach(p => { names[p.id] = p.name; }));
   const all = V().index(ctx.events, v, {
     skipStructural: true,
+    names: names,
     label: e => {
       const p = byId[e.seq != null ? e.seq : e.id];
       return p ? p.txt : e.t;
@@ -392,6 +396,12 @@ function render_(opts) {
   if (fresh) { indexed = null; indexedKey = ''; }
   if (fresh || !host.querySelector('.vidbody')) mount();
   render();
+  /* a link that names a play (?vs=<seq>) lands on it, playing */
+  if (opts.focus && opts.focus.seq != null && st.current == null) {
+    const want = String(opts.focus.seq);
+    const p = selected().find(x => String(x.id) === want);
+    if (p) jumpTo(p.id);
+  }
 }
 
 function reset() {
