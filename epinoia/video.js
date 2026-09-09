@@ -463,6 +463,29 @@ function fillGaps(rows) {
   return rows;
 }
 
+/* A play's position from a clock track: the reading at exactly its clock, or the
+   interpolation between the readings either side (kept identical to
+   videoanchor.js positionFromTrack). */
+function positionFromTrackLocal(track, period, clockMs) {
+  const S = track && Array.isArray(track.samples) ? track.samples.filter(s => s.period === period) : [];
+  if (!S.length) return null;
+  S.sort((a, b) => a.t - b.t);
+  let before = null, after = null;
+  for (const s of S) {
+    if (s.clock_ms > clockMs) before = s;
+    else { after = s; break; }
+  }
+  if (after && after.clock_ms === clockMs) return after.t * 1000;
+  if (before && after) {
+    const span = before.clock_ms - after.clock_ms;
+    const frac = span > 0 ? (before.clock_ms - clockMs) / span : 0;
+    return (before.t + (after.t - before.t) * frac) * 1000;
+  }
+  if (before) return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;
+  if (after) return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  return null;
+}
+
 /* ------------------------------------------------------------- the index --- */
 /* Turn a game's event log into a list of watchable plays.
 
@@ -514,7 +537,10 @@ function index(events, video, opts) {
   const A = (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaVideoAnchor;
   const track = video && video.clock_track && Array.isArray(video.clock_track.samples) && video.clock_track.samples.length
     ? video.clock_track : null;
-  const byTrack = e => (track && A && A.positionFromTrack) ? A.positionFromTrack(track, e.period || 1, e.clock || 0) : null;
+  /* videoanchor.js carries the canonical positionFromTrack for the game page; a profile page
+     does not load it, and a track-placed game there used to lose every play. Same arithmetic. */
+  const posFromTrack = (A && A.positionFromTrack) ? A.positionFromTrack : positionFromTrackLocal;
+  const byTrack = e => track ? posFromTrack(track, e.period || 1, e.clock || 0) : null;
   /* SCORE-ONLY TRACKS PLACE SCORING PLAYS AND NOTHING ELSE. With no clock on screen the
      readings are the baskets themselves; everything between two baskets would be an
      interpolation on a stopped clock, and a foul "placed" forty seconds wrong is worse
