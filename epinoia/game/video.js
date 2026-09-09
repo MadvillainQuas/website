@@ -242,7 +242,10 @@ function render() {
         /* HOW SURE. A fed game's plays were stamped by a poll, so each carries
            how far back it could really have happened; a tapped game's plays
            carry no such number and the run-up covers the reaction time. */
-        (hasTrack
+        (hasTrack && v.clock_track.mode === 'score'
+          ? '<span class="vidacc" title="no clock on this broadcast: the score overlay was read instead, so each basket is placed by its own score change and only scoring plays are listed">' +
+            'placed by score changes · ' + v.clock_track.samples.length + ' baskets · scoring plays only</span>'
+          : hasTrack
           ? '<span class="vidacc" title="the clock overlay was read at these points in the footage; every play sits where its clock was on screen">' +
             'placed by the game clock · ' + v.clock_track.samples.length + ' readings</span>'
           : (lined && accuracyMs() != null

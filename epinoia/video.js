@@ -486,6 +486,11 @@ function index(events, video, opts) {
   const track = video && video.clock_track && Array.isArray(video.clock_track.samples) && video.clock_track.samples.length
     ? video.clock_track : null;
   const byTrack = e => (track && A && A.positionFromTrack) ? A.positionFromTrack(track, e.period || 1, e.clock || 0) : null;
+  /* SCORE-ONLY TRACKS PLACE SCORING PLAYS AND NOTHING ELSE. With no clock on screen the
+     readings are the baskets themselves; everything between two baskets would be an
+     interpolation on a stopped clock, and a foul "placed" forty seconds wrong is worse
+     than no foul in the list. So the list holds the plays the track can vouch for. */
+  const scoreOnly = !!(track && track.mode === 'score');
 
   const gap = gapMs(video);
   if (gap == null && !track) return out;
@@ -515,6 +520,7 @@ function index(events, video, opts) {
        an event that is already in this list; including them would show the
        same basket three times. */
     if (e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
+    if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made')) continue;
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
     rows.push({ e: e, since: sinceTipMs(e, video, mode), trackPos: byTrack(e) });
