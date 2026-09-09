@@ -130,11 +130,13 @@ const BAR_GROUPS = [
   ['playmaking', [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],
                   ['tov_pct','TURNOVER%']]],
   ['rebounding', [['oreb_pct','OREB%'],['dreb_pct','DREB%'],['trb_pct','TOTAL REB%']]],
-  ['defence',    [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['vs_efg','OPP eFG% ON']]],
-  ['impact',     [['on_net','ON NET'],['diff_net','ON-OFF']]]
+  ['defence',    [['stl_pct','STEAL%'],['blk_pct','BLOCK%'],['diff_vs_efg','OPP eFG% ±']]],
+  /* on/off as differentials: how much better the team is in each with him on */
+  ['impact',     [['diff_net','NET ±'],['diff_ortg','ORTG ±'],['diff_drtg','DRTG ±'],
+                  ['diff_efg','eFG% ±'],['diff_tov','TOV% ±'],['diff_oreb','OREB% ±']]]
 ];
 /* the ones where a smaller number is the better performance */
-const BAR_LOW = ['tov_pct', 'vs_efg'];
+const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov'];
 
 function paintBars(mine, field) {
   const host = $('#bars'); host.textContent = '';

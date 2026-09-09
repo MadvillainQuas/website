@@ -266,8 +266,31 @@ function finishPlayer(A, m) {
     off_ortg: r1(offOrtg), off_drtg: r1(offDrtg), off_net: r1(offNet),
     diff_net:  r1(onNet != null && offNet != null ? onNet - offNet : null),
     diff_ortg: r1(onOrtg != null && offOrtg != null ? onOrtg - offOrtg : null),
-    diff_drtg: r1(onDrtg != null && offDrtg != null ? onDrtg - offDrtg : null)
+    diff_drtg: r1(onDrtg != null && offDrtg != null ? onDrtg - offDrtg : null),
+
+    /* ---- THE ON/OFF STATS AS WHAT THEY MEAN: how much better the team is in each
+       when he is on. Each is on-court minus off-court, in percentage points; a
+       negative TOV% or opponent-eFG% differential is the good direction and the
+       tables say so with their "lower is better" flag. Off-court shares need a
+       real sample (the same handful-of-possessions guard as the ratings). ---- */
+    off_efg:  r1(offPoss > 4 ? pct(off.fgm + 0.5 * off.fg3m, off.fga) : null),
+    off_tov:  r1(offPoss > 4 ? pct(off.tov, off.fga + 0.44 * off.fta + off.tov) : null),
+    off_oreb: r1(offPoss > 4 ? pct(off.oreb, off.oreb + offOpp.dreb) : null),
+    off_ftr:  r1(offPoss > 4 ? pct(off.fta, off.fga) : null),
+    vs_off_efg:  r1(offOppPoss > 4 ? pct(offOpp.fgm + 0.5 * offOpp.fg3m, offOpp.fga) : null),
+    vs_off_tov:  r1(offOppPoss > 4 ? pct(offOpp.tov, offOpp.fga + 0.44 * offOpp.fta + offOpp.tov) : null),
+    vs_off_oreb: r1(offOppPoss > 4 ? pct(offOpp.oreb, offOpp.oreb + off.dreb) : null),
+    vs_off_ftr:  r1(offOppPoss > 4 ? pct(offOpp.fta, offOpp.fga) : null)
   };
+  const dif = (a, b) => (out[a] != null && out[b] != null ? r1(out[a] - out[b]) : null);
+  out.diff_efg  = dif('on_efg', 'off_efg');
+  out.diff_tov  = dif('on_tov', 'off_tov');
+  out.diff_oreb = dif('on_oreb', 'off_oreb');
+  out.diff_ftr  = dif('on_ftr', 'off_ftr');
+  out.diff_vs_efg  = dif('vs_efg', 'vs_off_efg');
+  out.diff_vs_tov  = dif('vs_tov', 'vs_off_tov');
+  out.diff_vs_oreb = dif('vs_oreb', 'vs_off_oreb');
+  out.diff_vs_ftr  = dif('vs_ftr', 'vs_off_ftr');
   out.au = out.usg ? r2(out.ast_pct / out.usg) : null;   // assist-to-usage
   return Object.assign(out, m || {});
 }

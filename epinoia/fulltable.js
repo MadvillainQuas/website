@@ -127,27 +127,33 @@ const P = [
   { k:'poss',  l:'POSS', g:['advanced'], fmt:r=>f1(r.poss) },
 
   /* on / off — the differential is the headline, so it leads the group */
-  { k:'diff_net', l:'ON-OFF', g:['onoff'], fmt:r=>sgn(r.diff_net), heat:1, lead:1, signed:1 },
-  { k:'on_net',   l:'ON NET', g:['onoff'], fmt:r=>sgn(r.on_net),   heat:1, signed:1 },
-  { k:'on_ortg',  l:'ON ORTG', g:['onoff'], fmt:r=>f1(r.on_ortg), heat:1 },
-  { k:'on_drtg',  l:'ON DRTG', g:['onoff'], fmt:r=>f1(r.on_drtg), heat:1, low:1 },
-  { k:'off_net',  l:'OFF NET', g:['onoff'], fmt:r=>sgn(r.off_net), heat:1, signed:1 },
-  { k:'off_ortg', l:'OFF ORTG', g:['onoff'], fmt:r=>f1(r.off_ortg), heat:1 },
-  { k:'off_drtg', l:'OFF DRTG', g:['onoff'], fmt:r=>f1(r.off_drtg), heat:1, low:1 },
-  { k:'pm',       l:'+/-',   g:['basic','onoff'], fmt:r=>sgn0(r.pm), heat:1, signed:1 },
-  { k:'on_efg',   l:'ON eFG%',  g:['onoff'], fmt:r=>f1(r.on_efg), heat:1 },
-  { k:'on_oreb',  l:'ON OREB%', g:['onoff'], fmt:r=>f1(r.on_oreb), heat:1 },
-  { k:'on_tov',   l:'ON TOV%',  g:['onoff'], fmt:r=>f1(r.on_tov), heat:1, low:1 },
+  /* ON / OFF AS DIFFERENTIALS. Every column here is on-court minus off-court:
+     how much better (or worse) the team is in that stat with him out there. A
+     bare "ON eFG% 54.1" told a reader nothing without the off number beside it;
+     "+4.2" is the claim itself. The raw on and off values stay on the row for
+     anything that wants them, they just are not columns any more. */
+  { k:'diff_net',  l:'NET ±',   g:['onoff'], fmt:r=>sgn(r.diff_net),  heat:1, lead:1, signed:1 },
+  { k:'diff_ortg', l:'ORTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_ortg), heat:1, signed:1 },
+  { k:'diff_drtg', l:'DRTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_drtg), heat:1, signed:1, low:1 },
+  { k:'pm',        l:'+/-',     g:['basic','onoff'], fmt:r=>sgn0(r.pm), heat:1, signed:1 },
+  { k:'diff_efg',  l:'eFG% ±',  g:['onoff'], fmt:r=>sgn(r.diff_efg),  heat:1, signed:1 },
+  { k:'diff_oreb', l:'OREB% ±', g:['onoff'], fmt:r=>sgn(r.diff_oreb), heat:1, signed:1 },
+  { k:'diff_tov',  l:'TOV% ±',  g:['onoff'], fmt:r=>sgn(r.diff_tov),  heat:1, signed:1, low:1 },
+  { k:'diff_ftr',  l:'FTr ±',   g:['onoff'], fmt:r=>sgn(r.diff_ftr),  heat:1, signed:1 },
+  { k:'diff_vs_efg',  l:'OPP eFG% ±',  g:['onoff'], fmt:r=>sgn(r.diff_vs_efg),  heat:1, signed:1, low:1 },
+  { k:'diff_vs_tov',  l:'OPP TOV% ±',  g:['onoff'], fmt:r=>sgn(r.diff_vs_tov),  heat:1, signed:1 },
+  { k:'diff_vs_oreb', l:'OPP OREB% ±', g:['onoff'], fmt:r=>sgn(r.diff_vs_oreb), heat:1, signed:1, low:1 },
+  { k:'diff_vs_ftr',  l:'OPP FTr ±',   g:['onoff'], fmt:r=>sgn(r.diff_vs_ftr),  heat:1, signed:1, low:1 },
 
   /* what the opponent managed while he was on the floor */
   /* The defensive side is in the on/off group too, not only in "opponent".
      An on/off that shows what a team scores with a player and not what it
      concedes tells half the story, and the missing half is usually the reason
      the number looks the way it does. */
-  { k:'vs_efg',  l:'OPP eFG%',  g:['onoff','vs','defense'], fmt:r=>f1(r.vs_efg),  heat:1, low:1 },
-  { k:'vs_tov',  l:'OPP TOV%',  g:['onoff','vs','defense'], fmt:r=>f1(r.vs_tov),  heat:1 },
-  { k:'vs_oreb', l:'OPP OREB%', g:['onoff','vs','defense'], fmt:r=>f1(r.vs_oreb), heat:1, low:1 },
-  { k:'vs_ftr',  l:'OPP FTr',   g:['onoff','vs'], fmt:r=>f1(r.vs_ftr), heat:1, low:1 }
+  { k:'vs_efg',  l:'OPP eFG%',  g:['vs','defense'], fmt:r=>f1(r.vs_efg),  heat:1, low:1 },
+  { k:'vs_tov',  l:'OPP TOV%',  g:['vs','defense'], fmt:r=>f1(r.vs_tov),  heat:1 },
+  { k:'vs_oreb', l:'OPP OREB%', g:['vs','defense'], fmt:r=>f1(r.vs_oreb), heat:1, low:1 },
+  { k:'vs_ftr',  l:'OPP FTr',   g:['vs'], fmt:r=>f1(r.vs_ftr), heat:1, low:1 }
 ];
 
 const T = [
