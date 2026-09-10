@@ -508,6 +508,7 @@ function index(events, video, opts) {
   const pidOf = e => (e.pid != null ? e.pid : (e.payload || {}).pid || null);
   const seqOf = e => (e.seq != null ? e.seq : e.id);
   const assistOf = {};
+  const pairedAst = {};           // seq of every assist row that found its basket
   {
     const recent = [];
     for (const e of events) {
@@ -520,6 +521,7 @@ function index(events, video, opts) {
           if (m.team === e.team && m.period === e.period && m.pid !== pidOf(e) &&
               Math.abs((m.clock || 0) - (e.clock || 0)) <= 5000) {
             assistOf[m.seq] = { pid: pidOf(e), seq: seqOf(e) };
+            pairedAst[seqOf(e)] = true;
             break;
           }
         }
@@ -576,9 +578,11 @@ function index(events, video, opts) {
        same basket three times. */
     if (e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
     if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made')) continue;
-    /* in every mode the separate assist row is redundant once the basket carries it —
-       but a timed log can place it on its own, so it stays there; only a score-only
-       track has nothing to place it by */
+    /* ONE ROW PER MOMENT. An assist paired with its basket is the same second of video
+       as the basket, which already reads "two-pointer made · ASSIST: X"; a second row
+       saying "assist" underneath it was the same clip listed twice. Only an assist the
+       pairing could not place beside a basket keeps its own row. */
+    if (e.t === 'ast' && pairedAst[seqOf(e)]) continue;
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
     rows.push({ e: e, since: sinceTipMs(e, video, mode), trackPos: byTrack(e) });
@@ -608,8 +612,8 @@ function index(events, video, opts) {
       start: Math.max(0, pos - pre),
       end: pos + post,
       assist: assistOf[e.seq != null ? e.seq : e.id] || null,
-      /* a score-only game: the basket IS the assist's place in the video */
-      standsForAssist: scoreOnly && !!assistOf[e.seq != null ? e.seq : e.id],
+      /* the basket IS the assist's place in the video (the assist's own row was dropped) */
+      standsForAssist: !!assistOf[e.seq != null ? e.seq : e.id],
       label: label(e) + (assistOf[e.seq != null ? e.seq : e.id]
         ? (names[assistOf[e.seq != null ? e.seq : e.id].pid]
             ? ' \u00b7 ASSIST: ' + names[assistOf[e.seq != null ? e.seq : e.id].pid]
@@ -643,11 +647,17 @@ const filterBy = key => (FILTERS.find(f => f.key === key) || FILTERS[0]).fn;
 function select(plays, opts) {
   const o = opts || {};
   const fn = filterBy(o.filter);
-  return plays.filter(p =>
-    (!o.pid || p.pid === o.pid) &&
-    (o.team == null || p.team === o.team) &&
-    (!o.period || p.period === o.period) &&
-    fn(p));
+  return plays.filter(p => {
+    if (o.team != null && p.team !== o.team) return false;
+    if (o.period && p.period !== o.period) return false;
+    if (o.pid && p.pid !== o.pid) {
+      /* somebody else's basket that he assisted: his, but only as an assist -- never as
+         his points or his field goals */
+      const his = p.assist && p.assist.pid === o.pid;
+      return his && (!o.filter || o.filter === 'all' || o.filter === 'ast');
+    }
+    return fn(p);
+  });
 }
 
 /* ---------------------------------------------------------------- format --- */
