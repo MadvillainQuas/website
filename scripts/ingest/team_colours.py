@@ -118,8 +118,14 @@ def palette(data: bytes) -> dict:
             dh = abs(m['h'] - primary['h']); dh = min(dh, 360 - dh)
             return dh >= 35 or abs(m['l'] - primary['l']) >= 0.30
         return abs(m['l'] - primary['l']) >= 0.30 or _dist(m['rgb'], primary['rgb']) >= 0.35
+    # THE HIERARCHY: a colour that is present outranks black, white and grey in BOTH slots. A
+    # crest is drawn in its colours on a ground of black or white; the ground is never the
+    # identity, however much of the picture it covers. So the second slot goes to the strongest
+    # DIFFERENT colour if there is one at all (orange-and-green Plymouth, not orange-and-black),
+    # and only a crest with no second colour takes its dominant tone.
     others = [m for m in merged if different(m)]
-    second = max(others, key=rank) if others else None
+    chroma_others = [m for m in others if m['chromatic']]
+    second = max(chroma_others, key=rank) if chroma_others else (max(others, key=rank) if others else None)
     return {'primary': primary['hex'], 'secondary': second['hex'] if second else None,
             'bins': [{'hex': m['hex'], 'share': round(m['share'], 3), 'chromatic': m['chromatic']} for m in merged[:8]]}
 

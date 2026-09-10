@@ -112,7 +112,8 @@
       }
       return Math.abs(m.l - primary.l) >= 0.30 || dist(m.rgb, primary.rgb) >= 0.35;
     };
-    const second = best(list.filter(different));
+    /* a present colour outranks black/white/grey in both slots: the ground is never the identity */
+    const second = best(list.filter(m => different(m) && m.chromatic)) || best(list.filter(different));
     return { primary: toHex(primary.rgb), secondary: second ? toHex(second.rgb) : null };
   }
 
