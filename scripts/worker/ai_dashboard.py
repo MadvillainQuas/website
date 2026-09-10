@@ -312,10 +312,10 @@ def run_window(cfg):
 
     # ---- middle: the queue
     mid = ttk.Frame(root, padding=(14, 4, 14, 4)); mid.pack(fill='both', expand=True)
-    cols = ('n', 'game', 'when', 'status', 'mode', 'bar', 'pct', 'last')
+    cols = ('n', 'game', 'when', 'status', 'mode', 'bar', 'pct', 'scanned', 'last')
     tree = ttk.Treeview(mid, columns=cols, show='headings', selectmode='browse')
     heads = {'n': ('#', 34), 'game': ('Game', 300), 'when': ('Tipped off', 96), 'status': ('Status', 86), 'mode': ('Read from', 96),
-             'bar': ('Progress', 150), 'pct': ('%', 46), 'last': ('Stage · last seen', 330)}
+             'bar': ('Progress', 150), 'pct': ('%', 46), 'scanned': ('Scanned', 118), 'last': ('Stage · last seen', 330)}
     for c in cols:
         tree.heading(c, text=heads[c][0])
         tree.column(c, width=heads[c][1], minwidth=30, stretch=(c in ('game', 'last')), anchor='w')
@@ -396,6 +396,17 @@ def run_window(cfg):
         except Exception:
             return t[:10]
 
+    def scanned(j):
+        """When this game was scanned: the finish for a done or failed job, the start while it runs."""
+        iso = j.get('finished_at') or j.get('claimed_at')
+        if not iso:
+            return ''
+        try:
+            t = datetime.fromisoformat(iso.replace('Z', '+00:00')).astimezone()
+            return t.strftime('%d %b %H:%M')
+        except Exception:
+            return str(iso)[:16]
+
     def row_of(j, n):
         p = j.get('progress') or {}
         stg = str(p.get('stage') or '')
@@ -417,17 +428,17 @@ def run_window(cfg):
             last = label + (' · ' + ' · '.join(extra) if extra else '') + (' · ' + str(p.get('last') or '')[:60] if p.get('last') and not stg.startswith('reading') else '')
             if j.get('cancel_requested'):
                 last = 'stopping… · ' + last
-            return (n, game_name(j), tip(j), s, j.get('mode_used') or '', bar(frac), '%d' % round(frac * 100), last), 'running'
+            return (n, game_name(j), tip(j), s, j.get('mode_used') or '', bar(frac), '%d' % round(frac * 100), scanned(j), last), 'running'
         if s == 'queued':
-            return (n, game_name(j), tip(j), 'waiting', '', bar(0.0), '', 'queued %s via %s' % (ago(j['requested_at']), j.get('requested_via'))), 'queued'
+            return (n, game_name(j), tip(j), 'waiting', '', bar(0.0), '', '', 'queued %s via %s' % (ago(j['requested_at']), j.get('requested_via'))), 'queued'
         if s == 'done':
             r = j.get('result') or {}
             last = '%d readings · %d periods%s · %s' % (r.get('samples') or 0, len(r.get('periods') or []),
                     (' · %s/%s score changes' % (r.get('matched'), r.get('seen'))) if r.get('matched') is not None else '', ago(j.get('finished_at')))
-            return (n, game_name(j), tip(j), 'done', j.get('mode_used') or '', bar(1.0), '100', last), 'done'
+            return (n, game_name(j), tip(j), 'done', j.get('mode_used') or '', bar(1.0), '100', scanned(j), last), 'done'
         if s == 'failed':
-            return (n, game_name(j), tip(j), 'failed', j.get('mode_used') or '', bar(0.0), '', (j.get('error') or '')[:110] + ' · ' + ago(j.get('finished_at'))), 'failed'
-        return (n, game_name(j), tip(j), s, '', bar(0.0), '', ago(j.get('finished_at'))), 'cancelled'
+            return (n, game_name(j), tip(j), 'failed', j.get('mode_used') or '', bar(0.0), '', scanned(j), (j.get('error') or '')[:110] + ' · ' + ago(j.get('finished_at'))), 'failed'
+        return (n, game_name(j), tip(j), s, '', bar(0.0), '', scanned(j), ago(j.get('finished_at'))), 'cancelled'
 
     seen_running = set()
 
