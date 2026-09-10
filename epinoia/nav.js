@@ -402,8 +402,14 @@
     const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
     tx.appendChild(el('b', null, 'Add Epinoia to your home screen'));
+    /* SAMSUNG INTERNET packages a home-screen app itself, and Google Play Protect warns about
+       its packaging ("built for an older version of Android"). That is Samsung's installer, not
+       the site: "Install anyway" is safe, and Chrome on the same phone installs it cleanly. */
+    const samsung = /SamsungBrowser/i.test(navigator.userAgent);
     tx.appendChild(el('span', null, installEvt
-      ? 'Scores, fixtures and your clubs one tap away, with alerts when you ask for them.'
+      ? (samsung
+          ? 'Scores, fixtures and your clubs one tap away. If Play Protect warns about Samsung’s packaging, choose “Install anyway”, or install from Chrome instead.'
+          : 'Scores, fixtures and your clubs one tap away, with alerts when you ask for them.')
       : isIOS() ? 'Tap Share \u2191 below, then \u201cAdd to Home Screen\u201d. Alerts for your clubs work from there.'
       : 'Open this page in Chrome or Edge on your phone and add it from the browser menu.'));
     const go = el('button', 'go', installEvt ? 'add' : 'got it'); go.type = 'button';
