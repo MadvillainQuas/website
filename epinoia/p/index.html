@@ -128,9 +128,22 @@
                                        color-mix(in oklch,var(--team-a) 10%,var(--ground)) 55%, transparent 100%)}
   body.themed .idband::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
     background:linear-gradient(90deg,var(--team-a) 0 72%,var(--team-b) 72% 88%,var(--team-a) 88%)}
-  body.themed .photo{border-color:color-mix(in oklch,var(--team-a) 60%,transparent);
-    box-shadow:0 0 0 1px color-mix(in oklch,var(--team-b) 45%,transparent)}
-  body.themed .photo .num{background:var(--team-a);color:var(--team-on-a)}
+  /* THE PLAYER CARD IS A CLUB CARD. The photo box is printed the way the club cards on the
+     league page are: a flood of the club's colour with a halftone bitten into it, the
+     initials in the club's ink with the second colour showing through the offset, the
+     jersey number on a band of the colour. A photograph, when there is one, sits on the
+     same plate and keeps the frame. */
+  body.themed .photo{border-color:color-mix(in oklch,var(--team-a) 70%,transparent);
+    background:
+      radial-gradient(circle,color-mix(in oklch,var(--team-a) 62%,transparent) 1.1px,transparent 1.4px) 0 0/7px 7px,
+      linear-gradient(180deg,color-mix(in oklch,var(--team-a) 42%,var(--panel-2)),
+                             color-mix(in oklch,var(--team-a) 16%,var(--panel-2)));
+    box-shadow:0 0 0 1px color-mix(in oklch,var(--team-b) 55%,transparent),
+               0 0 26px color-mix(in oklch,var(--team-a) 30%,transparent)}
+  body.themed .photo .ini{color:var(--team-a-ink);
+    text-shadow:3px 3px 0 color-mix(in oklch,var(--team-b) 60%,transparent)}
+  body.themed .photo .num{background:var(--team-a);color:var(--team-on-a);
+    box-shadow:0 -1px 0 var(--team-b)}
   body.themed .idmeta .sub a{color:var(--team-a-ink)}
   body.themed .idmeta .sub a:hover{color:var(--ink)}
   body.themed .pos-chip{border-color:color-mix(in oklch,var(--team-b) 60%,transparent);color:var(--team-b-ink)}
@@ -244,7 +257,7 @@
 <script src="../fulltable.js?v=264" defer></script>
 <script src="../video.js?v=264" defer></script>
 <script src="video.js?v=264" defer></script>
-<script src="player.js?v=266" defer></script>
+<script src="player.js?v=267" defer></script>
 <script src="../nav.js?v=239" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>
