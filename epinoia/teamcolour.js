@@ -47,6 +47,17 @@
     for (let i = 0; i < 24 && contrast(c, g) < 4.5; i++) c = mix(c, towards, 0.09);
     return toHex(c);
   }
+  /* THE COLOUR AS A SURFACE: a tab, a badge, a trim. A white club's white on the light page
+     (or a black club's black on the dark one) is no surface at all, so the colour is nudged
+     away from the ground until it shows -- gently, 1.6:1, enough to be seen, not enough to
+     stop being the club's colour. The text put ON it (on()) is chosen against the result. */
+  function surface(hex) {
+    let c = parse(hex); if (!c) return null;
+    const g = parse(ground());
+    const towards = light() ? [0, 0, 0] : [255, 255, 255];
+    for (let i = 0; i < 20 && contrast(c, g) < 1.6; i++) c = mix(c, towards, 0.08);
+    return toHex(c);
+  }
   /* text on a surface of this colour */
   function on(hex) {
     const c = parse(hex); if (!c) return GROUND;
@@ -60,9 +71,10 @@
 
   function apply(root, a, b) {
     root = root || document.documentElement;
-    const A = parse(a) ? toHex(parse(a)) : null;
-    if (!A) return false;
-    const B = parse(b) ? toHex(parse(b)) : derived(A);
+    const A0 = parse(a) ? toHex(parse(a)) : null;
+    if (!A0) return false;
+    const B0 = parse(b) ? toHex(parse(b)) : derived(A0);
+    const A = surface(A0), B = surface(B0);
     const s = root.style;
     s.setProperty('--team-a', A);           s.setProperty('--team-b', B);
     s.setProperty('--team-a-ink', ink(A));  s.setProperty('--team-b-ink', ink(B));
@@ -157,5 +169,5 @@
     });
   }
 
-  window.EpinoiaTeamColour = { apply, card, ink, on, derived, fromImage, palette, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

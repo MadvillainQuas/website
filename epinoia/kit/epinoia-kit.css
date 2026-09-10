@@ -503,6 +503,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-follow span{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-left:6px}
 .ep-follow.lbl{width:auto;border-radius:15px;padding:0 10px 0 8px;grid-auto-flow:column}
 .ep-follow.big{width:36px;height:36px}
+.ep-follow.big.lbl{width:auto;height:30px}
 .ep-follow.big svg{width:18px;height:18px}
 .ep-follow.corner{position:absolute;top:8px;right:8px;z-index:2}
 

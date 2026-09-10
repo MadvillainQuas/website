@@ -1508,3 +1508,11 @@ body::before, body::after{ position:fixed; }
   --border-subtle:rgba(0,0,0,.08); --border-accent:color-mix(in oklch,var(--lume) 35%,transparent);
   --positive:#12925f; --negative:#d13a49;
 }
+
+/* light: the tab strip and the scoreboard card, which kept their own dark values */
+:root[data-theme="light"] .tabrow{ background:#ffffff; border-color:rgba(13,31,23,.2) }
+:root[data-theme="light"] .tabbtn{ color:var(--text-secondary) }
+:root[data-theme="light"] .tabbtn:hover{ background:rgba(13,31,23,.05); color:var(--text-primary) }
+:root[data-theme="light"] .tabbtn.on{ color:#ffffff; box-shadow:none }
+:root[data-theme="light"] .bx-scorehead .bscore{ text-shadow:none }
+:root[data-theme="light"] .stchip, :root[data-theme="light"] .statchip{ background:rgba(13,31,23,.05); border-color:rgba(13,31,23,.18); color:var(--text-primary) }

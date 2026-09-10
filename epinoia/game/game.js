@@ -447,6 +447,10 @@ function renderShell() {
            ',' + parseInt(m.slice(4, 6), 16) + ',' + a + ')';
   };
   const r = document.documentElement.style;
+  /* on the light theme a club colour is TEXT on a pale page (the names, the scores) and a
+     surface under white type (the tab): the ink form reads for both */
+  const TC = window.EpinoiaTeamColour;
+  if (TC && document.documentElement.getAttribute('data-theme') === 'light') { c0 = TC.ink(c0); c1 = TC.ink(c1); }
   r.setProperty('--team0', c0);
   r.setProperty('--team1', c1);
   r.setProperty('--team0-glow', glow(c0, .4));
