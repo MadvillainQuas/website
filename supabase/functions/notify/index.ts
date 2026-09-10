@@ -63,10 +63,13 @@ Deno.serve(async (req) => {
   /* ------------------------------------------------------------- email --- */
   const resendKey = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('CONTACT_FROM') ?? 'Epinoia <onboarding@resend.dev>';
-  const { data: toMail } = await admin.from('notifications')
-    .select('id,user_id,kind,title,body,link,created_at,fan_prefs!inner(notify_email)')
-    .is('emailed_at', null).gte('created_at', since).eq('fan_prefs.notify_email', true)
-    .order('created_at', { ascending: true }).limit(500);
+  /* who asked for email, then their unsent rows (no foreign key joins the two tables) */
+  const mailUsers = ((await admin.from('fan_prefs').select('user_id').eq('notify_email', true)).data ?? []).map((r: any) => r.user_id);
+  const { data: toMail } = mailUsers.length
+    ? await admin.from('notifications').select('id,user_id,kind,title,body,link,created_at')
+        .is('emailed_at', null).gte('created_at', since).in('user_id', mailUsers)
+        .order('created_at', { ascending: true }).limit(500)
+    : { data: [] as any[] };
   if (!resendKey) {
     if ((toMail ?? []).length) notes.push('RESEND_API_KEY not set: ' + toMail!.length + ' email(s) waiting');
   } else {
@@ -98,10 +101,12 @@ Deno.serve(async (req) => {
 
   /* -------------------------------------------------------------- push --- */
   const pub = Deno.env.get('VAPID_PUBLIC_KEY'), priv = Deno.env.get('VAPID_PRIVATE_KEY');
-  const { data: toPush } = await admin.from('notifications')
-    .select('id,user_id,kind,title,body,link,fan_prefs!inner(notify_push)')
-    .is('pushed_at', null).gte('created_at', since).eq('fan_prefs.notify_push', true)
-    .order('created_at', { ascending: true }).limit(500);
+  const pushUsers = ((await admin.from('fan_prefs').select('user_id').eq('notify_push', true)).data ?? []).map((r: any) => r.user_id);
+  const { data: toPush } = pushUsers.length
+    ? await admin.from('notifications').select('id,user_id,kind,title,body,link')
+        .is('pushed_at', null).gte('created_at', since).in('user_id', pushUsers)
+        .order('created_at', { ascending: true }).limit(500)
+    : { data: [] as any[] };
   if (!pub || !priv) {
     if ((toPush ?? []).length) notes.push('VAPID keys not set: ' + toPush!.length + ' push(es) waiting');
   } else {
