@@ -194,8 +194,8 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-micro{font-family:var(--f-micro);font-size:11px;color:var(--ink-3);text-transform:uppercase}
 .ep-lede{color:var(--ink-2);font-size:17px;max-width:60ch}
 .ep-data{font-family:var(--f-data);font-variant-numeric:tabular-nums}
-.ep-inverted{background:linear-gradient(105deg,var(--lume),var(--aqua));color:#04100b}
-.ep-inverted :where(p,.ep-micro){color:rgba(4,16,11,.72)}
+.ep-inverted{background:linear-gradient(105deg,var(--lume),var(--aqua));color:var(--on-accent)}
+.ep-inverted :where(p,.ep-micro){color:color-mix(in oklch,var(--ground) 72%,transparent)}
 
 /* ---------- 6. ticker ---------- */
 .ep-marquee{overflow:hidden;border-bottom:1px solid var(--rule);background:var(--panel);white-space:nowrap;padding:9px 0}
@@ -226,7 +226,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-clk{font-family:var(--f-score);font-size:clamp(26px,4.6vw,40px);line-height:1;color:var(--ink)}
 .ep-prd{font-family:var(--f-micro);font-size:11px;color:var(--ink-3)}
 .ep-live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-micro);font-size:10px;
-  background:var(--flare);color:#150406;padding:3px 9px 2px 4px}
+  background:var(--flare);color:var(--on-accent);padding:3px 9px 2px 4px}
 .ep-live .dot{width:12px;height:12px;border-radius:50%;padding:2px;animation:ep-spin 1.5s linear infinite;
   background:conic-gradient(from var(--ring),rgba(21,4,6,.92) 0 30%,rgba(21,4,6,.18) 30%)}
 .ep-live .dot i{display:block;width:100%;height:100%;border-radius:50%;background:var(--flare)}
@@ -360,7 +360,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   border-top:1px solid var(--rule-2);font-weight:700}
 .ep-tbl tfoot td:nth-child(2){text-align:left;font-family:var(--f-ui)}
 .ep-crest{display:inline-grid;place-items:center;width:21px;height:21px;font-family:var(--f-score);
-  font-size:11px;color:#04100b;margin-right:8px;vertical-align:-4px;flex:none;overflow:hidden}
+  font-size:11px;color:var(--on-accent);margin-right:8px;vertical-align:-4px;flex:none;overflow:hidden}
 /* the crest itself: on a white tile so a dark mark reads on the dark page, as the tables do */
 .ep-crest.has-img{background:#fff !important;border-radius:3px}
 .ep-crest img{width:100%;height:100%;object-fit:contain;display:block;padding:1px;box-sizing:border-box}
@@ -386,17 +386,17 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 /* ---------- 10. controls ---------- */
 .ep-btn{font-family:var(--f-micro);font-size:11px;padding:11px 18px;border:1px solid var(--rule-2);
   background:transparent;color:var(--ink);cursor:pointer;text-transform:uppercase;transition:.2s var(--ease)}
-.ep-btn:hover{background:var(--lume);color:#04100b;border-color:var(--lume)}
-.ep-btn.pri{background:var(--lume);border-color:var(--lume);color:#0a1a12}
+.ep-btn:hover{background:var(--lume);color:var(--on-accent);border-color:var(--lume)}
+.ep-btn.pri{background:var(--lume);border-color:var(--lume);color:var(--on-accent)}
 .ep-btn.pri:hover{filter:brightness(1.12)}
 .ep-btn.dgr{color:var(--flare);border-color:color-mix(in oklch,var(--flare) 55%,transparent)}
-.ep-btn.dgr:hover{background:var(--flare);color:#150406;border-color:var(--flare)}
+.ep-btn.dgr:hover{background:var(--flare);color:var(--on-accent);border-color:var(--flare)}
 .ep-tabs{display:inline-flex;border:1px solid var(--rule-2)}
 .ep-tab{font-family:var(--f-micro);font-size:11px;padding:10px 16px;background:transparent;border:none;
   border-right:1px solid var(--rule-2);color:var(--ink-3);cursor:pointer;text-transform:uppercase;transition:.2s}
 .ep-tab:last-child{border-right:none}
 .ep-tab:hover{color:var(--ink)}
-.ep-tab.on{background:var(--lume);color:#04100b}
+.ep-tab.on{background:var(--lume);color:var(--on-accent)}
 .ep-chip{font-family:var(--f-micro);font-size:10px;padding:6px 11px;border:1px solid var(--rule);
   color:var(--ink-2);cursor:pointer;text-transform:uppercase;transition:.2s}
 .ep-chip:hover{border-color:var(--ink-2)}
@@ -487,7 +487,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-install img{width:44px;height:44px;border-radius:9px;display:block}
 .ep-install .tx b{display:block;font-size:13px;color:var(--ink)}
 .ep-install .tx span{display:block;font-family:var(--f-micro);font-size:8.5px;line-height:1.6;color:var(--ink-3);margin-top:2px}
-.ep-install .go{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--lume);color:#04100b;
+.ep-install .go{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--lume);color:var(--on-accent);
   border:none;padding:10px 14px;cursor:pointer}
 .ep-install .x{background:transparent;border:none;color:var(--ink-3);font-size:20px;cursor:pointer;padding:4px 6px}
 :root[data-theme="light"] .ep-install .go{color:#fff}
@@ -498,7 +498,7 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   border:1px solid var(--rule-2);background:transparent;color:var(--ink-3);cursor:pointer;padding:0;vertical-align:middle}
 .ep-follow svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .ep-follow:hover{color:var(--lume);border-color:var(--lume)}
-.ep-follow.on{background:var(--lume);border-color:var(--lume);color:var(--on-accent,#04100b)}
+.ep-follow.on{background:var(--lume);border-color:var(--lume);color:var(--on-accent,var(--ground))}
 .ep-follow.on svg{fill:currentColor}
 .ep-follow span{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-left:6px}
 .ep-follow.lbl{width:auto;border-radius:15px;padding:0 10px 0 8px;grid-auto-flow:column}

@@ -136,8 +136,8 @@ const POLL_PRIMED_MS = 6000;
     else document.body.removeAttribute('data-theme');
   };
   let stored = null;
-  try { stored = localStorage.getItem('epinoia_strip_theme'); } catch (_) { stored = null; }
-  const start = stored === 'light' || stored === 'dark' ? stored : ((q.get('theme') || '') === 'light' ? 'light' : 'dark');
+  try { stored = localStorage.getItem('epinoia_embed_theme'); } catch (_) { stored = null; }
+  const start = stored === 'light' || stored === 'dark' ? stored : ((q.get('theme') || '').toLowerCase() === 'dark' ? 'dark' : 'light');
   apply(start);
   const tg = document.createElement('button');
   tg.type = 'button'; tg.className = 'ep-theme';
@@ -146,7 +146,7 @@ const POLL_PRIMED_MS = 6000;
   tg.addEventListener('click', () => {
     const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
     apply(next); paint(next);
-    try { localStorage.setItem('epinoia_strip_theme', next); } catch (_) { /* private mode */ }
+    try { localStorage.setItem('epinoia_embed_theme', next); } catch (_) { /* private mode */ }
   });
   document.addEventListener('DOMContentLoaded', () => { const host = document.querySelector('.ep-strip'); if (host) host.appendChild(tg); });
   if (document.readyState !== 'loading') { const host = document.querySelector('.ep-strip'); if (host && !tg.parentNode) host.appendChild(tg); }

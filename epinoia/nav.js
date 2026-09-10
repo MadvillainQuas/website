@@ -469,9 +469,9 @@
       /* THE THEME TRAVELS WITH THE ACCOUNT: chosen on a laptop, it applies on the phone at the
          next sign-in, and is kept in this browser so the next page opens in it before paint */
       if (rows.length && rows[0].theme) {
-        const want = rows[0].theme === 'light' ? 'light' : 'dark';
-        let have = 'dark';
-        try { have = localStorage.getItem('epinoia_theme') === 'light' ? 'light' : 'dark'; } catch (_) { /* private */ }
+        const want = rows[0].theme === 'dark' ? 'dark' : 'light';
+        let have = 'light';
+        try { have = localStorage.getItem('epinoia_theme') === 'dark' ? 'dark' : 'light'; } catch (_) { /* private */ }
         if (want !== have) {
           try { localStorage.setItem('epinoia_theme', want); } catch (_) { /* private */ }
           if (want === 'light') document.documentElement.setAttribute('data-theme', 'light');

@@ -190,7 +190,7 @@ async function paintRecent() {
   $('#body').classList.remove('hide');
 
   const { data } = await sb.from('fan_prefs').select('*').maybeSingle();
-  prefs = data || { theme: 'dark', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,
+  prefs = data || { theme: 'light', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,
                     notify_push: false, want_results: true, want_players: true, want_fixtures: true, want_announcements: true };
   if (!data) await sb.rpc('set_fan_prefs', { p: {} });
 
@@ -204,7 +204,7 @@ async function paintRecent() {
     save();
   };
   $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
-  applyTheme(prefs.theme);
+  applyTheme(prefs.theme === 'dark' ? 'dark' : 'light');
   $('#themeDark').onclick = () => { applyTheme('dark'); save(); };
   $('#themeLight').onclick = () => { applyTheme('light'); save(); };
   paintColour();

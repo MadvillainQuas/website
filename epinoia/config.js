@@ -70,8 +70,12 @@ window.epinoiaCrest = function (team, opts) {
    this browser as well as on their row, so every page opens in it without a round trip. */
 try {
   const th = localStorage.getItem('epinoia_theme');
-  if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
-} catch (_) { /* private mode: dark */ }
+  if (th !== 'dark') document.documentElement.setAttribute('data-theme', 'light');     // light unless dark was chosen
+} catch (_) { document.documentElement.setAttribute('data-theme', 'light'); }
+try {
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m && document.documentElement.getAttribute('data-theme') === 'light') m.setAttribute('content', '#f3faf6');
+} catch (_) { /* no meta */ }
 /* the public half of the Web Push key pair (the private half lives with the notify function) */
 window.EPINOIA_VAPID = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
 

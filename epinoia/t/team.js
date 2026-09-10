@@ -95,10 +95,25 @@ function oops(msg) {
     $('#tname').textContent = team.name;
     if (!themed) $('#tname').style.color = colour;
     /* follow the club: results and fixtures in the bell, email or a push if asked */
+    const acts = el('div', 'hero-acts');
     if (window.EpinoiaFollow) {
       const fb = window.EpinoiaFollow.bell('team', team.id, { cls: 'big', label: 'follow' });
-      fb.classList.add('lbl'); $('#tname').parentNode.appendChild(fb);
+      fb.classList.add('lbl'); acts.appendChild(fb);
     }
+    /* THE FIXTURES IN YOUR CALENDAR. The ics function serves the club's games as a feed that
+       calendars fetch themselves and keep fetching, so a moved tip-off or a new round arrives
+       on its own. Google subscribes from its "add by URL" screen; Apple and Outlook take the
+       webcal link. Finished games stay in it with the score. */
+    const ics = CFG.supabaseUrl + '/functions/v1/ics?team=' + encodeURIComponent(team.slug || team.id);
+    const gcal = el('a', 'ep-chip cal', 'add to Google Calendar');
+    gcal.href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(ics);
+    gcal.target = '_blank'; gcal.rel = 'noopener';
+    gcal.title = 'subscribe to every ' + team.name + ' fixture in Google Calendar';
+    const ical = el('a', 'ep-chip cal', 'Apple / Outlook');
+    ical.href = ics.replace(/^https:/, 'webcal:');
+    ical.title = 'subscribe in Apple Calendar or Outlook';
+    acts.append(gcal, ical);
+    $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
     $('#tsub').textContent = lg.name || 'Independent';

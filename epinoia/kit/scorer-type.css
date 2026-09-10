@@ -56,3 +56,10 @@ h3{ font-size:16px }
 /* ---- figures: the data face, tabular */
 td, .num, .stat, .val, .pctile .v, .pcrow .v{ font-family:var(--f-data); font-variant-numeric:tabular-nums }
 td{ font-size:12px }
+
+/* ---- capitals, properly. The pages lower-cased everything as a style; names and prose now
+   keep the case they were written in, headings and labels go up as the site's do. */
+.tagline, .setup-note, .pname, .bxname, .pcname, td, .stchip .n, .mrow label{ text-transform:none }
+.lbl, .stepdot, #scorebox .per, .thead .tsub, .benchsep, .stchip, .logrow .lx, .evsec, .qstrip th, .qstrip td:first-child,
+.statchip, table.bx th, .fflabel, .mrlabel, .mrsep, .tsacell .fm, table.adv th, .pbprow .px, .pbpq, .bx-scorehead .bmid,
+.thead .tn, .bx-scorehead .bteam, .mptitle, .bxteam h3, .ffcard h3, .advcard h3, .logo, .mtitle, .ovtitle{ text-transform:uppercase }
