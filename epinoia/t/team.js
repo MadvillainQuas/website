@@ -95,6 +95,7 @@ function oops(msg) {
     $('#tname').textContent = team.name;
     if (!themed) $('#tname').style.color = colour;
     const lg = team.leagues || {};
+    if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
     $('#tsub').textContent = lg.name || 'Independent';
     $('#ctx').textContent = lg.name ? lg.name + ' · ' + team.name : team.name;
     if (lg.slug) $('#leagueLink').href = '../l/?l=' + encodeURIComponent(lg.slug);

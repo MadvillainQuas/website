@@ -365,10 +365,11 @@ function paintLog(rows) {
     }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name)&order=created_at.desc&limit=1`);
+      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,leagues(slug))&order=created_at.desc&limit=1`);
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
+    if (team && team.leagues && team.leagues.slug) window.__CS_LEAGUE_SLUG = team.leagues.slug;
 
     /* ---- the season, from the shared intermediary ----
        Aggregated the same way as the leaders board, so the two cannot

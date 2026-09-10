@@ -180,6 +180,8 @@ async function loadStored() {
   const comp = g.competitions || {};
   const season = comp.seasons || {};
   const league = season.leagues || {};
+  /* the rail's phone tab bar wants the league this game is in */
+  if (league.slug) window.__CS_LEAGUE_SLUG = league.slug;
 
   return {
     teams,
