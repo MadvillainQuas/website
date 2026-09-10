@@ -101,10 +101,10 @@ def roster_snapshot(raw: dict, pid_for: Callable[[int, str], str]) -> tuple[dict
             first = (p.get("firstName") or "").strip(); last = (p.get("familyName") or "").strip()
             name = (first + " " + last).strip() or (p.get("name") or "").strip()
             pid = pid_for(i, str(pno))
-            players.append({"id": pid, "name": name.lower(), "num": str(p.get("shirtNumber") or "")})
+            players.append({"id": pid, "name": name.strip(), "num": str(p.get("shirtNumber") or "")})
             if str(p.get("starter", "0")) == "1":
                 starters[i].append(pid)
-        teams.append({"name": (t.get("name") or f"team {k}").lower(), "color": "#93f2bf" if i == 0 else "#8ff5ff", "players": players})
+        teams.append({"name": (t.get("name") or f"team {k}").strip(), "color": "#93f2bf" if i == 0 else "#8ff5ff", "players": players})
     return {"teams": teams}, starters
 
 

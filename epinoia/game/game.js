@@ -172,7 +172,18 @@ async function loadStored() {
   const events = await fetchLog();
 
   const snap = g.roster_snapshot;
-  const teams = (snap && snap.teams) ? snap.teams : [
+  /* CAPITALS, PROPERLY. The snapshots the ingest wrote carry names in lower case ("jax
+     bouknight", "reading rockets") because the scorer once lower-cased everything as a style.
+     The club's name comes from its own row, and a player's name is set back to the case a
+     name is written in: each word capitalised, Mc/Mac/O' and hyphens handled. */
+  const properName = s => String(s || '').trim().toLowerCase()
+    .replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase())
+    .replace(/\bMc([a-z])/g, (m, c) => 'Mc' + c.toUpperCase())
+    .replace(/\bMac([a-z]{3,})/g, (m, r) => 'Mac' + r[0].toUpperCase() + r.slice(1));
+  const teams = (snap && snap.teams) ? snap.teams.map((t, i) => Object.assign({}, t, {
+    name: (i === 0 ? (g.home || {}).name : (g.away || {}).name) || properName(t.name),
+    players: (t.players || []).map(p => Object.assign({}, p, { name: properName(p.name) }))
+  })) : [
     { name: (g.home || {}).name || 'home', color: (g.home || {}).colour || '#93f2bf', players: [] },
     { name: (g.away || {}).name || 'away', color: (g.away || {}).colour || '#8ff5ff', players: [] }
   ];
