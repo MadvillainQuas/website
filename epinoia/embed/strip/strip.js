@@ -549,6 +549,18 @@ function card(g) {
   a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
                    location.href).href;
 
+  /* THE TWO CLUBS' COLOURS, cut on a diagonal behind the scoreboard (embed.css .half): the
+     home club's on the left, the away club's on the right, each with its second colour as
+     the dot in its corner. A club without colours of its own leaves its half to the
+     league's accent, as the card always was. */
+  const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
+  const hc = hex(g.home && g.home.colour), ac = hex(g.away && g.away.colour);
+  if (hc && hc.toLowerCase() !== '#93f2bf') a.style.setProperty('--h', hc);
+  if (ac && ac.toLowerCase() !== '#93f2bf') a.style.setProperty('--a', ac);
+  if (hex(g.home && g.home.colour_2)) a.style.setProperty('--h2', g.home.colour_2);
+  if (hex(g.away && g.away.colour_2)) a.style.setProperty('--a2', g.away.colour_2);
+  a.append(el('div', 'half h'), el('div', 'half a'), el('div', 'seam'));
+
   /* competition and state, small, above the scoreboard */
   const meta = el('div', 'meta');
   meta.appendChild(el('span', 'comp', (g.competitions && g.competitions.name) || 'Fixture'));
@@ -655,7 +667,7 @@ let liveNow = false;
 
 async function load() {
   let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
-    'home:home_team_id(slug,name,short_name,colour,logo_path),away:away_team_id(slug,name,short_name,colour,logo_path),' +
+    'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
     'competitions(name,seasons(leagues(slug,name)))' +
     '&status=in.(live,scheduled,final,finalising)&order=tipoff_at.desc&limit=60';
 
@@ -676,7 +688,7 @@ async function load() {
     [gs, live] = await Promise.all([
       api(sel),
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,' +
-          'home:home_team_id(slug,name,short_name,colour,logo_path),away:away_team_id(slug,name,short_name,colour,logo_path),' +
+          'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
           '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => [])
     ]);

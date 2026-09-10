@@ -155,9 +155,47 @@
 }
 
 .ep-card::before{
-  content:''; position:absolute; left:0; right:0; top:0; height:2px;
+  content:''; position:absolute; left:0; right:0; top:0; height:2px; z-index:2;
   background:color-mix(in oklch, var(--ep-accent) 30%, transparent);
 }
+
+/* THE CARD IS THE TWO CLUBS. Behind the scoreboard the card is cut on a diagonal, the home
+   club's colour on the left and the away club's on the right — the same print as the club
+   cards on the league page: a flood of the colour with a halftone bitten into it — with a
+   pale seam along the cut. strip.js sets --h and --a (and --h2/--a2, the second colours,
+   which pick out the registration dot in each corner). The floods are mixed at a fraction so
+   a red-v-red fixture is still a dark card with a scoreboard on it, and they read on the
+   light theme too because they are mixed into transparency, not into a ground. */
+.ep-card .half{ position:absolute; inset:0; z-index:0; pointer-events:none }
+.ep-card .half.h{
+  clip-path:polygon(0 0, 58% 0, 42% 100%, 0 100%);
+  background:
+    radial-gradient(circle, color-mix(in oklch, var(--h, var(--ep-accent)) 55%, transparent) 1px, transparent 1.35px) 0 0/6px 6px,
+    linear-gradient(180deg, color-mix(in oklch, var(--h, var(--ep-accent)) 34%, transparent),
+                            color-mix(in oklch, var(--h, var(--ep-accent)) 18%, transparent));
+}
+.ep-card .half.a{
+  clip-path:polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+  background:
+    radial-gradient(circle, color-mix(in oklch, var(--a, var(--ep-accent-2)) 55%, transparent) 1px, transparent 1.35px) 3px 3px/6px 6px,
+    linear-gradient(180deg, color-mix(in oklch, var(--a, var(--ep-accent-2)) 34%, transparent),
+                            color-mix(in oklch, var(--a, var(--ep-accent-2)) 18%, transparent));
+}
+/* the seam: the cut itself, a hair of light along the same line */
+.ep-card .seam{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  clip-path:polygon(57.2% 0, 58.8% 0, 42.8% 100%, 41.2% 100%);
+  background:rgba(255,255,255,.16);
+}
+/* a dot of each club's second colour in its own corner, as the club cards carry their marks */
+.ep-card .half.h::after, .ep-card .half.a::after{
+  content:''; position:absolute; bottom:5px; width:4px; height:4px; border-radius:50%; opacity:.85;
+}
+.ep-card .half.h::after{ left:5px; background:var(--h2, var(--h, var(--ep-accent))) }
+.ep-card .half.a::after{ right:5px; background:var(--a2, var(--a, var(--ep-accent-2))) }
+/* the scoreboard sits on top of the print */
+.ep-card .meta, .ep-card .row, .ep-card .when{ position:relative; z-index:1 }
+.cse[data-theme="light"] .ep-card .seam{ background:rgba(0,0,0,.14) }
 .ep-card.is-live::before{ background:#ff5f6b }
 .ep-card.is-upcoming::before{ background:var(--ep-accent-2) }
 

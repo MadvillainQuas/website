@@ -580,7 +580,7 @@ async function stars() {
     const eligible = (agg.players || [])
       .filter(p => p.bpm != null && (p.gp || 0) >= w.minGames && (p.min || 0) >= w.minMinutes)
       .sort((a, b) => b.bpm - a.bpm)
-      .slice(0, 3);
+      .slice(0, 10);                       /* three on the podium, ten on tap */
     if (!eligible.length) continue;
 
     const ids = eligible.map(p => p.id);
@@ -605,10 +605,17 @@ async function stars() {
                 el('span', 'starrow-s', r.span + ' · ' + r.games +
                    (r.games === 1 ? ' game' : ' games') +
                    ' · min ' + r.w.minGames + 'g/' + r.w.minMinutes + 'min'));
+    /* THE PODIUM OPENS TO A TOP TEN. The three cards are the glance; the head row, or the
+       button on it, opens the rest of the list underneath -- rank, name, club, BPM and the
+       line -- and closes it again. */
+    const more = r.top.length > 3;
+    const xb = el('button', 'starrow-x', 'top 10');
+    xb.type = 'button'; xb.setAttribute('aria-expanded', 'false');
+    if (more) head.appendChild(xb);
     host.appendChild(head);
 
     const grid = el('div', 'stargrid');
-    r.top.forEach((p, i) => {
+    r.top.slice(0, 3).forEach((p, i) => {
       const m = r.meta[p.id] || {};
       const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
       const ink = team.colour || m.colour || '#93f2bf';
@@ -649,6 +656,36 @@ async function stars() {
       grid.appendChild(a);
     });
     host.appendChild(grid);
+
+    if (more) {
+      const list = el('div', 'starlist'); list.hidden = true;
+      r.top.forEach((p, i) => {
+        const m = r.meta[p.id] || {};
+        const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
+        const row = el('a', 'starlist-r' + (i < 3 ? ' podium' : ''));
+        row.href = 'p/?p=' + encodeURIComponent(m.slug || '');
+        paintCard(row, team.colour || m.colour || '#93f2bf', team.colour_2);
+        row.append(el('span', 'sl-rank', String(i + 1)),
+                   el('span', 'sl-name', m.name || 'Player'),
+                   el('span', 'sl-team', team.short_name || team.name || m.teamFull || ''),
+                   el('span', 'sl-bpm', (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1)),
+                   el('span', 'sl-line',
+                      (p.ppg != null ? p.ppg + 'p' : '') +
+                      (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
+                      (p.apg != null ? ' ' + p.apg + 'a' : '')));
+        list.appendChild(row);
+      });
+      host.appendChild(list);
+      const toggle = () => {
+        const open = list.hidden;
+        list.hidden = !open;
+        head.classList.toggle('open', open);
+        xb.setAttribute('aria-expanded', String(open));
+        xb.textContent = open ? 'top 3' : 'top 10';
+      };
+      head.classList.add('can-open');
+      head.addEventListener('click', toggle);
+    }
   });
 
   /* The month's winner, handed to the merchandise section. It is the same row
