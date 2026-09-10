@@ -401,6 +401,10 @@ async function trackClock(video, crop, opts) {
    linear); at a stoppage — two readings with the same clock — the earlier one.
    null when the track has nothing in that period. */
 function positionFromTrack(track, period, clockMs) {
+  /* video.js carries the map now -- the clock's runs first, the readings behind them --
+     and a page that loads both must place a play the same way on both */
+  const V = (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaVideo;
+  if (V && V.positionFromTrack) return V.positionFromTrack(track, period, clockMs);
   const S = track && Array.isArray(track.samples) ? track.samples.filter(s => s.period === period) : [];
   if (!S.length) return null;
   S.sort((a, b) => a.t - b.t);

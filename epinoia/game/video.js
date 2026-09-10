@@ -38,6 +38,10 @@ const esc = s => String(s == null ? '' : s)
    the game page rebuilds its body whenever the log changes, and a filter the
    reader chose must survive that. */
 let st = { filter: 'all', pid: '', team: '', reel: false, current: null, seekMs: 0,
+           /* EVENTS, PLAYER MINUTES or LINEUPS. A clock-read game knows when the clock ran, so
+              it can show not only where each play is but every stretch a player, or a five,
+              was on the floor -- and take the viewer to the start of any of them. */
+           tab: 'events',
            /* HOW MANY ROWS ARE IN THE DOCUMENT, which is not the same question
               as how many plays match. A full game is four hundred actions and
               a busy one more; the list is a scroller, so all of them were being
@@ -92,6 +96,90 @@ function buildPlays() {
      a descriptor, or something engine.js deliberately renders silently. It
      should not appear here either. */
   return all.filter(p => p.label && p.label !== p.t);
+}
+
+/* ------------------------------------------------------ minutes & fives --- */
+/* Player intervals and lineup intervals from the log (video.js stints), each placed in the
+   footage by the clock's runs. Built once per log, like the plays. */
+let stinted = null, stintedKey = '';
+function stintsOf() {
+  const v = ctx.video;
+  const key = (ctx.events.length) + ':' + (v.clock_track && v.clock_track.samples ? v.clock_track.samples.length : 0);
+  if (stinted && key === stintedKey) return stinted;
+  stintedKey = key;
+  const starters = (ctx.S && ctx.S.starters) || null;
+  const raw = V().stints(ctx.events, starters);
+  const place = (period, clock) => V().positionFromTrack(v.clock_track, period, clock);
+  const span = x => Object.assign({}, x, {
+    ms: (x.c0 - x.c1),
+    start: place(x.period, x.c0), end: place(x.period, x.c1),
+    key: x.period + ':' + x.c0 + ':' + x.c1
+  });
+  const players = raw.players.map(span), lineups = raw.lineups.map(span);
+  const names = {}, nums = {};
+  ((ctx.S && ctx.S.teams) || []).forEach(t => (t.players || []).forEach(p => { names[p.id] = p.name; nums[p.id] = p.num; }));
+  /* per player: the intervals, in game order, and the total */
+  const byPid = {};
+  players.forEach(x => {
+    const b = byPid[x.pid] || (byPid[x.pid] = { pid: x.pid, team: x.team, name: names[x.pid] || 'unknown', num: nums[x.pid] || '', ms: 0, spans: [] });
+    b.ms += x.ms; b.spans.push(x);
+  });
+  const byFive = {};
+  lineups.forEach(x => {
+    const k = x.team + '|' + x.key.split(':')[0] + '|' + x.ids.join(',');
+    const id = x.team + '|' + x.ids.join(',');
+    const b = byFive[id] || (byFive[id] = { id, team: x.team, ids: x.ids, names: x.ids.map(i => names[i] || '?'), ms: 0, spans: [] });
+    b.ms += x.ms; b.spans.push(x);
+  });
+  stinted = {
+    known: raw.known,
+    players: Object.values(byPid).sort((a, b) => (a.team - b.team) || (b.ms - a.ms)),
+    fives: Object.values(byFive).sort((a, b) => (a.team - b.team) || (b.ms - a.ms))
+  };
+  return stinted;
+}
+const mmss = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+function spanChips(spans, who) {
+  return spans.map(x =>
+    '<button class="vidspan' + (st.current === who + '@' + x.key ? ' on' : '') + '"' +
+      ' data-seek="' + (x.start != null ? Math.round(x.start) : '') + '" data-cur="' + esc(who + '@' + x.key) + '"' +
+      (x.start == null ? ' disabled title="this stretch is in a period the clock was not read in"' : '') +
+      ' title="' + esc(perName(x.period) + ' ' + fmtClock(x.c0) + ' to ' + fmtClock(x.c1) + (x.start != null ? ' · from ' + V().stamp(x.start) + ' in the video' : '')) + '">' +
+      '<b>' + esc(perName(x.period)) + '</b> ' + esc(fmtClock(x.c0)) + '–' + esc(fmtClock(x.c1)) +
+      ' <i>' + mmss(x.ms) + '</i></button>').join('');
+}
+function minutesHTML() {
+  const S = stintsOf();
+  if (!S.known) return '<div class="vidwarn">This game\'s log has no starting fives recorded, so who was on the floor cannot be followed.</div>';
+  const teams = (ctx.S && ctx.S.teams) || [];
+  const list = S.players.filter(p => !st.pid || p.pid === st.pid);
+  if (!list.length) return '<ol class="vidlist"><li class="viditem empty">Nobody matches that filter.</li></ol>';
+  let out = '', team = null;
+  list.forEach(p => {
+    if (p.team !== team) { team = p.team; out += '<div class="vidsec">' + esc((teams[team] && teams[team].name) || ('team ' + (team + 1))) + '</div>'; }
+    out += '<div class="vidmin">' +
+      '<div class="vidmin-h"><span class="vidmin-n">' + (p.num ? '<i>' + esc(p.num) + '</i> ' : '') + esc(p.name) + '</span>' +
+        '<span class="vidmin-t">' + mmss(p.ms) + ' <small>' + p.spans.length + (p.spans.length === 1 ? ' stint' : ' stints') + '</small></span></div>' +
+      '<div class="vidspans">' + spanChips(p.spans, p.pid) + '</div></div>';
+  });
+  return out;
+}
+function lineupsHTML() {
+  const S = stintsOf();
+  if (!S.known) return '<div class="vidwarn">This game\'s log has no starting fives recorded, so the fives cannot be followed.</div>';
+  const teams = (ctx.S && ctx.S.teams) || [];
+  const list = S.fives.filter(f => !st.pid || f.ids.includes(st.pid));
+  if (!list.length) return '<ol class="vidlist"><li class="viditem empty">No five matches that filter.</li></ol>';
+  let out = '', team = null;
+  list.forEach(f => {
+    if (f.team !== team) { team = f.team; out += '<div class="vidsec">' + esc((teams[team] && teams[team].name) || ('team ' + (team + 1))) + '</div>'; }
+    out += '<div class="vidmin five">' +
+      '<div class="vidmin-h"><span class="vidmin-n">' + f.names.map(esc).join(' <em>·</em> ') + '</span>' +
+        '<span class="vidmin-t">' + mmss(f.ms) + ' <small>' + f.spans.length + (f.spans.length === 1 ? ' stint' : ' stints') + '</small></span></div>' +
+      '<div class="vidspans">' + spanChips(f.spans, f.id) + '</div></div>';
+  });
+  return out;
 }
 
 function selected() {
@@ -171,6 +259,9 @@ function render() {
   /* a clock track places plays by the game clock, so neither a timed log nor
      a tip-off anchor is needed when one is present */
   const hasTrack = !!(v.clock_track && Array.isArray(v.clock_track.samples) && v.clock_track.samples.length);
+  /* a clock was read (not score changes alone): the runs exist, so minutes and fives can be placed */
+  const clocked = hasTrack && v.clock_track.mode !== 'score' && V().runsFromTrack(v.clock_track).length > 0;
+  if (!clocked && st.tab !== 'events') st.tab = 'events';
   const timed = !channelOnly && (hasTrack || V().logIsTimed(ctx.events));
   const list = timed ? selected() : [];
   const lined = (V().hasAnchor(v) || hasTrack) && timed;
@@ -193,22 +284,33 @@ function render() {
           'so individual plays cannot be found in it. Whoever scored the game can ' +
           'line it up from <b>video sync</b> in the scoring app — it takes one number.</div>') +
 
+      /* the tabs, on a game whose clock was read: minutes and fives need the clock's runs */
+      (timed && clocked ? '<div class="vidtabs" role="tablist">' + [['events', 'Events'], ['minutes', 'Player minutes'], ['lineups', 'Lineups']].map(t =>
+        '<button class="vidtab' + (st.tab === t[0] ? ' on' : '') + '" role="tab" data-tab="' + t[0] + '"' +
+        ' aria-selected="' + (st.tab === t[0]) + '">' + t[1] + '</button>').join('') + '</div>' : '') +
+
       (timed ? '<div class="vidbar">' +
-        '<div class="vidchips">' + V().FILTERS.map(f =>
+        (st.tab === 'events' ? '<div class="vidchips">' + V().FILTERS.map(f =>
           '<button class="vidchip' + (st.filter === f.key ? ' on' : '') + '" ' +
-          'data-f="' + f.key + '">' + esc(f.label) + '</button>').join('') + '</div>' +
+          'data-f="' + f.key + '">' + esc(f.label) + '</button>').join('') + '</div>' : '') +
         '<div class="vidpick">' +
           '<select id="vidWho" class="ep-in">' + playerOptions() + '</select>' +
           '<label class="vidreel"><input type="checkbox" id="vidReel"' +
             (st.reel ? ' checked' : '') + '> in sequence</label>' +
         '</div>' +
-      '</div>' +
+      '</div>' : '') +
 
-      '<div class="vidcount">' + list.length + ' ' +
+      (timed && clocked && st.tab === 'minutes'
+        ? '<div class="vidcount">every stretch on the floor, by the game clock · tap one to watch it from the start</div>' + minutesHTML()
+        : timed && clocked && st.tab === 'lineups'
+        ? '<div class="vidcount">every five, and every stretch it was on · tap one to watch it from the start</div>' + lineupsHTML()
+        : '') +
+
+      (timed && !(clocked && st.tab !== 'events') ? '<div class="vidcount">' + list.length + ' ' +
         (list.length === 1 ? 'play' : 'plays') +
-        (lined ? ' · tap one to jump to it' : '') + '</div>' +
+        (lined ? ' · tap one to jump to it' : '') + '</div>' : '') +
 
-      '<ol class="vidlist">' + (list.length ? list.slice(0, st.shown).map(p =>
+      (timed && !(clocked && st.tab !== 'events') ? '<ol class="vidlist">' + (list.length ? list.slice(0, st.shown).map(p =>
         /* A row is a control, so it is one to a keyboard and to a screen
            reader as well as to a mouse. It was a bare <li> with an onclick,
            which is unreachable without a pointer. */
@@ -305,6 +407,21 @@ function fmtClock(ms) { return root0().EpinoiaEngine.fmtClock(ms); }
 
 /* ---------------------------------------------------------------- wiring --- */
 function wire() {
+  host.querySelectorAll('.vidtab').forEach(b => {
+    b.onclick = () => { st.tab = b.dataset.tab; st.shown = PAGE; stopReel(); render(); };
+  });
+  host.querySelectorAll('.vidspan[data-seek]').forEach(b => {
+    b.onclick = () => {
+      if (b.disabled || b.dataset.seek === '') return;
+      stopReel();
+      st.current = b.dataset.cur;
+      st.seekMs = +b.dataset.seek;
+      paintStage();
+      render();
+      const on = host.querySelector('.vidspan.on');
+      if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+    };
+  });
   host.querySelectorAll('.vidchip').forEach(b => {
     b.onclick = () => { st.filter = b.dataset.f; st.shown = PAGE; stopReel(); render(); };
   });
@@ -393,7 +510,7 @@ function render_(opts) {
   /* A new game, or a log that has been replaced wholesale, invalidates both
      the index and the mounted player. The same game redrawing does not — that
      is the whole point of the split above. */
-  if (fresh) { indexed = null; indexedKey = ''; }
+  if (fresh) { indexed = null; indexedKey = ''; stinted = null; stintedKey = ''; }
   if (fresh || !host.querySelector('.vidbody')) mount();
   render();
   /* a link that names a play (?vs=<seq>) lands on it, playing */
@@ -407,8 +524,8 @@ function render_(opts) {
 function reset() {
   stopReel();
   st = { filter: 'all', pid: '', team: '', reel: false, current: null, seekMs: 0,
-         shown: PAGE };
-  indexed = null; indexedKey = ''; ctx = null;
+         tab: 'events', shown: PAGE };
+  indexed = null; indexedKey = ''; stinted = null; stintedKey = ''; ctx = null;
 }
 
 return { render: render_, reset, state: () => st };

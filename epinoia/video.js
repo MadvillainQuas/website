@@ -466,7 +466,66 @@ function fillGaps(rows) {
 /* A play's position from a clock track: the reading at exactly its clock, or the
    interpolation between the readings either side (kept identical to
    videoanchor.js positionFromTrack). */
-function positionFromTrackLocal(track, period, clockMs) {
+/* ------------------------------------------------------- the clock's runs --- */
+/* THE CLOCK RUNS AND STOPS, AND THAT IS THE MAP. A clock track is a thousand readings of
+   the overlay two seconds apart; what they describe is a few dozen stretches where the
+   clock ran at the speed of time and the whistles between them. Those stretches -- runs --
+   are the honest shape of the game: inside one, any clock value is a fixed second of video;
+   between two, the clock stood still and the moment a play "happened" is the whistle that
+   stopped it. The worker writes `runs` with the track (clock.py runs_from_samples); a track
+   without them gets the same runs derived here, once, from its readings. */
+function runsFromTrack(track) {
+  if (!track) return [];
+  if (Array.isArray(track.runs) && track.runs.length) return track.runs;
+  if (track._runs) return track._runs;
+  const S = (track.samples || []).filter(x => x && x.clock_ms != null && x.period != null && x.t != null)
+    .slice().sort((x, y) => (x.period - y.period) || (x.t - y.t));
+  const runs = [];
+  let cur = null;
+  for (let i = 1; i < S.length; i++) {
+    const a = S[i - 1], b = S[i];
+    const dt = b.t - a.t, dc = (a.clock_ms - b.clock_ms) / 1000;
+    /* the clock ran between these two readings: it fell by (about) the time that passed */
+    const ran = a.period === b.period && dt > 0 && dt <= 30 && dc > 0 &&
+                Math.abs(dc - dt) <= Math.max(1.5, 0.25 * dt);
+    if (ran) {
+      if (cur && cur.period === a.period && cur.t1 === a.t) { cur.t1 = b.t; cur.c1 = b.clock_ms; cur.n++; }
+      else { if (cur) runs.push(cur); cur = { period: a.period, t0: a.t, t1: b.t, c0: a.clock_ms, c1: b.clock_ms, n: 2 }; }
+    } else if (cur) { runs.push(cur); cur = null; }
+  }
+  if (cur) runs.push(cur);
+  /* a run is at least three readings and four seconds: two misreads in a row are not a run */
+  const out = runs.filter(r => r.n >= 3 && (r.t1 - r.t0) >= 4).map(r => ({ period: r.period, t0: r.t0, t1: r.t1, c0: r.c0, c1: r.c1 }));
+  try { Object.defineProperty(track, '_runs', { value: out, enumerable: false, configurable: true }); } catch (_) { /* frozen */ }
+  return out;
+}
+/* the stoppages: between one run's end and the next run's start, the clock stood at c */
+function stopsFromRuns(runs) {
+  const out = [];
+  for (let i = 1; i < runs.length; i++) {
+    const a = runs[i - 1], b = runs[i];
+    if (a.period === b.period && b.t0 > a.t1) out.push({ period: a.period, t0: a.t1, t1: b.t0, c: a.c1 });
+  }
+  return out;
+}
+/* where in the video a (period, clock) sits, by the runs: inside a run it is arithmetic;
+   in a stoppage it is the whistle that began it; null when the period has no runs */
+function positionFromRuns(runs, period, clockMs) {
+  const R = runs.filter(r => r.period === period).sort((x, y) => x.t0 - y.t0);
+  if (!R.length) return null;
+  for (let i = 0; i < R.length; i++) {
+    const r = R[i];
+    if (clockMs <= r.c0 && clockMs >= r.c1) return (r.t0 + (r.c0 - clockMs) / 1000) * 1000;
+    const next = R[i + 1];
+    if (next && clockMs < r.c1 && clockMs > next.c0) return r.t1 * 1000;      // the clock stood here
+  }
+  const first = R[0], last = R[R.length - 1];
+  if (clockMs > first.c0) return Math.max(0, first.t0 - (clockMs - first.c0) / 1000) * 1000;
+  if (clockMs < last.c1) return (last.t1 + (last.c1 - clockMs) / 1000) * 1000;
+  return null;
+}
+/* the readings themselves, for a period the runs do not cover */
+function positionFromSamples(track, period, clockMs) {
   const S = track && Array.isArray(track.samples) ? track.samples.filter(s => s.period === period) : [];
   if (!S.length) return null;
   S.sort((a, b) => a.t - b.t);
@@ -485,14 +544,78 @@ function positionFromTrackLocal(track, period, clockMs) {
   if (after) return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
   return null;
 }
+function positionFromTrack(track, period, clockMs) {
+  if (!track) return null;
+  const byRuns = positionFromRuns(runsFromTrack(track), period, clockMs);
+  return byRuns != null ? byRuns : positionFromSamples(track, period, clockMs);
+}
+const positionFromTrackLocal = positionFromTrack;
 
-/* ------------------------------------------------------------- the index --- */
-/* Turn a game's event log into a list of watchable plays.
+/* ---------------------------------------------------------- who was on --- */
+/* THE MINUTES, FROM THE LOG. Starters open the game; every substitution closes one man's
+   interval and opens another's, and closes the five and opens a new five; a period ends at
+   0:00 and the next opens at its full length. Each interval is (period, from-clock, to-clock),
+   which the runs then turn into seconds of video. Nothing is estimated: the clock values are
+   the log's own, the same ones the plays are placed by. */
+function stints(events, starters, opts) {
+  const o = opts || {};
+  const perLen = p => (o.periodMs && o.periodMs[p]) || (p <= 4 ? 600000 : 300000);
+  const on = [new Set((starters && starters[0]) || []), new Set((starters && starters[1]) || [])];
+  if (!on[0].size && !on[1].size) return { players: [], lineups: [], known: false };
+  const players = [], lineups = [];
+  const openP = {};                 // pid -> {team, period, c0}
+  const openL = [null, null];       // team -> {ids, period, c0}
+  const key = ids => [...ids].sort().join(',');
+  const closeP = (pid, period, c1) => {
+    const x = openP[pid]; if (!x) return;
+    if (x.period === period && x.c0 > c1) players.push({ pid, team: x.team, period, c0: x.c0, c1 });
+    delete openP[pid];
+  };
+  const closeL = (team, period, c1) => {
+    const x = openL[team]; if (!x) return;
+    if (x.period === period && x.c0 > c1) lineups.push({ team, ids: x.ids, key: key(x.ids), period, c0: x.c0, c1 });
+    openL[team] = null;
+  };
+  const openAll = (period, c0) => {
+    [0, 1].forEach(team => {
+      on[team].forEach(pid => { openP[pid] = { team, period, c0 }; });
+      openL[team] = { ids: [...on[team]].sort(), period, c0 };
+    });
+  };
+  const closeAll = (period, c1) => {
+    Object.keys(openP).forEach(pid => closeP(pid, period, c1));
+    [0, 1].forEach(team => closeL(team, period, c1));
+  };
+  let period = null;
+  const evs = (events || []).filter(e => e && e.t !== 'loc' && e.t !== 'tag' && e.t !== 'stype');
+  for (const e of evs) {
+    const ep = e.period || 1, ec = e.clock != null ? e.clock : perLen(ep);
+    if (period == null) { period = ep; openAll(ep, e.t === 'period_start' ? ec : perLen(ep)); if (e.t === 'period_start') continue; }
+    if (ep !== period) {              // a period ended at 0:00 and this one opens in full
+      closeAll(period, 0);
+      period = ep;
+      openAll(ep, e.t === 'period_start' ? ec : perLen(ep));
+      if (e.t === 'period_start') continue;
+    }
+    const pl = e.payload || {};
+    const pin = e.in != null ? e.in : pl.in, pout = e.out != null ? e.out : pl.out;
+    if (e.t === 'sub' && e.team != null && (pin != null || pout != null)) {
+      const team = e.team;
+      if (pout != null) closeP(pout, ep, ec);
+      closeL(team, ep, ec);
+      if (pout != null) on[team].delete(pout);
+      if (pin != null) on[team].add(pin);
+      if (pin != null && !openP[pin]) openP[pin] = { team, period: ep, c0: ec };
+      openL[team] = { ids: [...on[team]].sort(), period: ep, c0: ec };
+    } else if (e.t === 'game_end') {
+      closeAll(ep, ec != null ? Math.min(ec, perLen(ep)) : 0);
+      period = null;
+    }
+  }
+  if (period != null) closeAll(period, 0);
+  return { players, lineups, known: true };
+}
 
-   `events` are rows as they come back from PostgREST — the flat shape with
-   created_at still on them. `label` is supplied by the caller because naming a
-   player is the box score's job, not this module's: engine.js already writes
-   those lines and there is no reason to have a second wording of them. */
 function index(events, video, opts) {
   const o = opts || {};
   const label = o.label || (e => e.t);
@@ -706,6 +829,7 @@ function gapText(v) {
 }
 
 return { parse, safeUrl, embedSrc, watchHref, gapMs, anchorKind, gapLooksOdd,
+         runsFromTrack, stopsFromRuns, positionFromRuns, positionFromTrack, stints,
          hasAnchor, videoMsOf, sinceTipMs,
          cumElapsed, logIsTimed,
          liveEmbedSrc, providerFromServer,

@@ -146,3 +146,30 @@
 .vidnudge i{font-style:normal;opacity:.6;margin-left:4px}
 .videxport{font:inherit;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.8}
 .videxport:hover{opacity:1}
+
+/* ---- the tabs above the list: events, player minutes, lineups ---- */
+.vidtabs{ display:flex; gap:0; border-bottom:1px solid var(--v-rule,rgba(147,242,191,.2)); margin:0 0 6px; }
+.vidtab{ font-family:var(--f-micro,ui-monospace); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  padding:9px 14px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--v-ink-3,rgba(230,255,241,.55)); cursor:pointer; }
+.vidtab:hover{ color:var(--v-ink,#e6fff1); }
+.vidtab.on{ color:var(--v-lume,#93f2bf); border-bottom-color:var(--v-lume,#93f2bf); }
+/* ---- minutes and fives ---- */
+.vidsec{ font-family:var(--f-micro,ui-monospace); font-size:8.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--v-lume,#93f2bf); padding:10px 12px 4px; border-top:1px solid var(--v-rule,rgba(147,242,191,.2)); }
+.vidmin{ padding:7px 12px 9px; border-bottom:1px solid var(--v-rule,rgba(147,242,191,.12)); }
+.vidmin-h{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.vidmin-n{ font-family:var(--f-ui,system-ui); font-weight:700; font-size:13px; min-width:0; }
+.vidmin-n i{ font-style:normal; font-family:var(--f-score,ui-monospace); color:var(--v-lume,#93f2bf); }
+.vidmin-n em{ font-style:normal; color:var(--v-ink-3,rgba(230,255,241,.4)); }
+.vidmin.five .vidmin-n{ font-weight:600; font-size:12px; }
+.vidmin-t{ font-family:var(--f-score,ui-monospace); font-size:17px; color:var(--v-ink,#e6fff1); white-space:nowrap; }
+.vidmin-t small{ font-family:var(--f-micro,ui-monospace); font-size:7.5px; color:var(--v-ink-3,rgba(230,255,241,.5)); letter-spacing:.1em; }
+.vidspans{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.vidspan{ font-family:var(--f-data,ui-monospace); font-size:10.5px; padding:4px 8px; cursor:pointer;
+  background:rgba(147,242,191,.06); border:1px solid var(--v-rule,rgba(147,242,191,.22)); color:var(--v-ink-2,rgba(230,255,241,.8)); }
+.vidspan b{ font-family:var(--f-micro,ui-monospace); font-size:8px; letter-spacing:.1em; color:var(--v-lume,#93f2bf); font-weight:400; }
+.vidspan i{ font-style:normal; color:var(--v-ink-3,rgba(230,255,241,.5)); }
+.vidspan:hover{ border-color:var(--v-lume,#93f2bf); color:var(--v-ink,#e6fff1); }
+.vidspan.on{ background:var(--v-lume,#93f2bf); color:#04100b; border-color:var(--v-lume,#93f2bf); }
+.vidspan.on b, .vidspan.on i{ color:#04100b; }
+.vidspan:disabled{ opacity:.45; cursor:not-allowed; }

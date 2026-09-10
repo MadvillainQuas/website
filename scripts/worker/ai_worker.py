@@ -305,6 +305,13 @@ def slim_track(track):
            'mode': track.get('mode'), 'video': track.get('video'), 'samples': samples}
     if track.get('fusion'):
         out['fusion'] = track['fusion']
+    # THE CLOCK'S RUNS go with the readings: the page seeks by them and follows minutes by them
+    if track.get('mode') != 'score':
+        runs = track.get('runs')
+        if runs is None and hasattr(CK, 'runs_from_samples'):
+            runs = CK.runs_from_samples(samples)
+        if runs:
+            out['runs'] = runs
     if track.get('matched') is not None:
         out['matched'] = track['matched']; out['changes_seen'] = track.get('changes_seen')
     return out
