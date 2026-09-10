@@ -30,9 +30,9 @@
    read as text on a pale ground, and the few places that put dark type ON the accent get white. */
 :root[data-theme="light"]{
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
-  --ink:#0d1f17; --ink-2:rgba(13,31,23,.76); --ink-3:rgba(13,31,23,.56);
-  --rule:rgba(13,31,23,.14); --rule-2:rgba(13,31,23,.32);
-  --lume:#0f8a5f; --aqua:#0b6f8a; --amber:#a8700a; --flare:#d13a49; --violet:#6b4fd1;
+  --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
+  --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
+  --lume:#0c7a54; --aqua:#0a6680; --amber:#8a5a06; --flare:#c22f3e; --violet:#5b40c4;
   --good:#12925f; --bad:#d13a49;
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#ffffff;

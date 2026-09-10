@@ -830,7 +830,8 @@ function paintGames(team) {
     row.appendChild(el('div', 's', final ? `${us}\u2013${them}` : (g.status === 'live' ? 'LIVE' : '')));
     const res = final ? (us > them ? 'W' : 'L') : (g.status === 'live' ? 'LIVE' : (g.venue || 'SCHEDULED'));
     row.appendChild(el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res));
-    if (window.EpinoiaFollow) row.appendChild(window.EpinoiaFollow.bell('game', g.id));
+    if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id));
+    else row.appendChild(el('span'));
     row.style.cursor = 'pointer';
     row.addEventListener('click', () => location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase');
     host.appendChild(row);

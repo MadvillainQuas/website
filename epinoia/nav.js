@@ -464,8 +464,20 @@
     /* a person who turned the bell off on their profile does not get one */
     try {
       const c = window.EPINOIA_CONFIG;
-      const r = await fetch(c.supabaseUrl + '/rest/v1/fan_prefs?select=notify_inapp', { cache: 'no-store', headers: bellHeaders(sess) });
+      const r = await fetch(c.supabaseUrl + '/rest/v1/fan_prefs?select=notify_inapp,theme', { cache: 'no-store', headers: bellHeaders(sess) });
       const rows = r.ok ? await r.json() : [];
+      /* THE THEME TRAVELS WITH THE ACCOUNT: chosen on a laptop, it applies on the phone at the
+         next sign-in, and is kept in this browser so the next page opens in it before paint */
+      if (rows.length && rows[0].theme) {
+        const want = rows[0].theme === 'light' ? 'light' : 'dark';
+        let have = 'dark';
+        try { have = localStorage.getItem('epinoia_theme') === 'light' ? 'light' : 'dark'; } catch (_) { /* private */ }
+        if (want !== have) {
+          try { localStorage.setItem('epinoia_theme', want); } catch (_) { /* private */ }
+          if (want === 'light') document.documentElement.setAttribute('data-theme', 'light');
+          else document.documentElement.removeAttribute('data-theme');
+        }
+      }
       if (rows.length && rows[0].notify_inapp === false) { unmountBell(); return; }
     } catch (_) { /* no answer: show the bell */ }
     if (bell) return;

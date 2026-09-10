@@ -298,7 +298,8 @@ async function games() {
     }
 
     row.append(h, el('div', 'sc', final || live ? `${g.home_score}–${g.away_score}` : 'v'), a, st);
-    if (window.EpinoiaFollow) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'fxbell' }));
+    if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'fxbell' }));
+    else row.appendChild(el('span', 'fxbell'));
 
     /* Where and when, on a line of its own. A fixture list without a venue is
        a list you have to ask somebody about. */

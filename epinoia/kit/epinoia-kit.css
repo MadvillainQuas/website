@@ -108,9 +108,9 @@
    read as text on a pale ground, and the few places that put dark type ON the accent get white. */
 :root[data-theme="light"]{
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
-  --ink:#0d1f17; --ink-2:rgba(13,31,23,.76); --ink-3:rgba(13,31,23,.56);
-  --rule:rgba(13,31,23,.14); --rule-2:rgba(13,31,23,.32);
-  --lume:#0f8a5f; --aqua:#0b6f8a; --amber:#a8700a; --flare:#d13a49; --violet:#6b4fd1;
+  --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
+  --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
+  --lume:#0c7a54; --aqua:#0a6680; --amber:#8a5a06; --flare:#c22f3e; --violet:#5b40c4;
   --good:#12925f; --bad:#d13a49;
   --team-a:var(--lume); --team-b:var(--aqua);
   --on-accent:#ffffff;
@@ -505,3 +505,17 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-follow.big{width:36px;height:36px}
 .ep-follow.big svg{width:18px;height:18px}
 .ep-follow.corner{position:absolute;top:8px;right:8px;z-index:2}
+
+/* ---------- light theme: every card gets an outline ----------
+   On the dark ground a card is a lighter panel and needs no edge; on the light ground a white
+   card on an off-white page has none, so each gets a hairline. */
+:root[data-theme="light"] .club-plate, :root[data-theme="light"] .rcard, :root[data-theme="light"] .sq-side,
+:root[data-theme="light"] .fixture, :root[data-theme="light"] .tile, :root[data-theme="light"] .ffcard,
+:root[data-theme="light"] .ep-card, :root[data-theme="light"] .news-card .club-plate, :root[data-theme="light"] .ep-bell .panel,
+:root[data-theme="light"] .ms-plate, :root[data-theme="light"] .sq-face, :root[data-theme="light"] .photo,
+:root[data-theme="light"] .badge, :root[data-theme="light"] .vidwrap, :root[data-theme="light"] .ep-tbl,
+:root[data-theme="light"] .sec, :root[data-theme="light"] .card{ border-color:rgba(13,31,23,.24) }
+:root[data-theme="light"] .club-plate{ background:#ffffff; box-shadow:0 1px 3px rgba(13,31,23,.08) }
+:root[data-theme="light"] .tile, :root[data-theme="light"] .ffcard{ background:#ffffff }
+:root[data-theme="light"] body{ -webkit-font-smoothing:auto }
+:root[data-theme="light"] .ep-hdr h2, :root[data-theme="light"] .hname, :root[data-theme="light"] .rep-hl{ text-shadow:none }

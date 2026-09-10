@@ -1,0 +1,58 @@
+/* ============================================================================
+   THE SCORER AND THE BOX SCORE, IN THE SITE'S TYPE.
+
+   Both pages carry their own stylesheet (score/index.html and boxscore.css, one generated
+   from the other) written before the kit existed, and neither loaded the kit's faces, so
+   their "Archivo" and "MartianMono" were falling back to whatever the phone had. This sheet
+   loads after theirs and does two things: names the four faces for the roles the pages
+   already use, and re-sizes the places where a face changes shape -- Jersey25 is narrow and
+   light, so numerals and headings go up a notch; Silkscreen is wide, so labels come down one.
+
+   Roles, as everywhere on Epinoia:
+     Jersey25     scores, clocks, headings          (--f-score, and the pages' --f-head titles)
+     Silkscreen   labels, badges, table heads       (--f-micro)
+     Archivo      names, prose, buttons             (--f-body / --f-ui)
+     MartianMono  figures in tables                 (--f-mono / --f-data)
+   ============================================================================ */
+:root{
+  --f-body:'Archivo',system-ui,sans-serif;
+  --f-ui:'Archivo',system-ui,sans-serif;
+  --f-head:'Archivo',system-ui,sans-serif;
+  --f-mono:'MartianMono',ui-monospace,Menlo,Consolas,monospace;
+  --f-data:'MartianMono',ui-monospace,Menlo,Consolas,monospace;
+  --f-micro:'Silkscreen',ui-monospace,monospace;
+  --f-score:'Jersey25',ui-monospace,monospace;
+}
+
+/* ---- numerals: the scoreboard face. Lighter and narrower than a bold sans, so a size up. */
+#scorebox .snum, .bx-scorehead .bscore, .bscore, .pcnum, .clock, .bxclock, .qs .v{
+  font-family:var(--f-score); font-weight:400; letter-spacing:.01em; font-variant-numeric:tabular-nums }
+.bx-scorehead .bscore{ font-size:54px }
+.pcnum{ font-size:46px; min-width:60px }
+#scorebox .snum{ font-size:48px }
+
+/* ---- headings and titles: the headings face, upper case as the site sets its headings */
+.mtitle, .ovtitle, h3, .tn, .bteam, .logo{
+  font-family:var(--f-score); font-weight:400; text-transform:uppercase; letter-spacing:.02em }
+.mtitle, .ovtitle{ font-size:18px }
+h3{ font-size:16px }
+.tn{ font-size:17px }
+.bteam{ font-size:20px }
+.logo{ font-size:32px }
+
+/* ---- labels: the micro face is wide at any size, so each comes down a point and tracks looser */
+.pcteam, .pcsec, .pctile .l, .pcrow .l, .pcfoot, .sub, .cmdhint, th, .qs .l, .qstrip .l, .pill, .tag, .lbl{
+  font-family:var(--f-micro); font-weight:400; text-transform:uppercase; letter-spacing:.1em }
+.pcteam, .pctile .l, .pcrow .l, .pcfoot, .sub, th{ font-size:7.5px }
+.pcsec{ font-size:8px; letter-spacing:.14em }
+.cmdhint{ font-size:8px; letter-spacing:.06em }
+
+/* ---- names, buttons, prose: Archivo, weight where the pages asked for it */
+.pcname, .bxname, .pname, .act, .tabbtn, .sheetbtn, .bigcta, .ghostcta, .backbtn, .mini, body, input, select, textarea, button{
+  font-family:var(--f-ui) }
+.pcname{ font-weight:800; letter-spacing:0 }
+.tabbtn, .act, .bigcta, .ghostcta, .sheetbtn, .backbtn{ font-weight:700; letter-spacing:.04em }
+
+/* ---- figures: the data face, tabular */
+td, .num, .stat, .val, .pctile .v, .pcrow .v{ font-family:var(--f-data); font-variant-numeric:tabular-nums }
+td{ font-size:12px }

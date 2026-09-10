@@ -188,15 +188,15 @@
 }
 
 /* ---------- the squads under the headline ---------- */
-.rep-squads{ display:grid; gap:18px; margin:-6px 0 26px }
-.sq-side{ border:1px solid var(--rule); background:color-mix(in oklch,var(--panel) 60%,transparent); padding:10px 12px 12px }
+.rep-squads{ display:grid; gap:18px; margin:-6px 0 26px; min-width:0; max-width:100% }
+.sq-side{ border:1px solid var(--rule); background:color-mix(in oklch,var(--panel) 60%,transparent); padding:10px 12px 12px; min-width:0; max-width:100%; overflow:hidden }
 .sq-team{ display:flex; align-items:baseline; gap:10px; font-family:var(--f-ui); font-weight:800; font-size:13px; text-transform:uppercase;
   letter-spacing:.02em; color:var(--ink); margin:0 0 8px }
 .sq-team small{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3) }
 .sq-team.sub{ margin:12px 0 6px }
 .sq-side.t1 .sq-team{ color:var(--team-b, var(--aqua)) }
 .sq-side.t0 .sq-team{ color:var(--team-a, var(--lume)) }
-.sq-row{ display:flex; gap:12px; align-items:flex-start }
+.sq-row{ display:flex; gap:12px; align-items:flex-start; max-width:100%; min-width:0 }
 /* THE FIVE STARTERS STAY ON ONE ROW; the bench wraps inside its section on a desktop */
 .sq-row.starters{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:4px }
 .sq-row.bench{ flex-wrap:wrap }
