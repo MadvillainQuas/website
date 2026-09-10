@@ -181,6 +181,12 @@
 .hlh b{ font-family:var(--f-ui); font-size:13px }
 .hlh span{ font-family:var(--f-micro); font-size:8.5px; color:var(--ink-3); letter-spacing:.06em }
 .hlkinds{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:8px }
+.hlk i{ font-style:normal; opacity:.55 }
+.hlk.none{ opacity:.4 }
+.hlclear{ font-family:var(--f-micro); font-size:9px; letter-spacing:.08em; text-transform:uppercase; background:none; border:1px solid var(--v-rule,var(--rule)); color:var(--ink-2); padding:3px 8px; cursor:pointer }
+.vidlist.picking .viditem{ grid-template-columns:auto auto auto minmax(0,1fr) }
+.hlpick{ width:16px; height:16px; margin:0; align-self:center; accent-color:var(--lume); cursor:pointer }
+@media (max-width:560px){ .vidlist.picking .viditem{ grid-template-columns:auto auto minmax(0,1fr) } }
 .hlk{ font-family:var(--f-micro); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); display:inline-flex; align-items:center; gap:6px; cursor:pointer }
 .hlrow{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center }
 .hln{ font-family:var(--f-micro); font-size:9px; color:var(--ink-3); margin-left:auto }

@@ -166,6 +166,113 @@ async function exportEdit() {
   } catch (e) { $('#status').textContent = 'could not send: ' + String(e.message || e).slice(0, 140); }
 }
 
+/* ------------------------------------------------- export, in the browser ---
+   THE EDIT NEED NOT LEAVE THE PHONE. The reel is already a public MP4 with CORS on it, so the
+   browser can play it through a canvas -- cropped, with the text drawn on -- and record what
+   the canvas shows with MediaRecorder, sound included. That is how the web editors people
+   already use do it: no upload, no queue, the file lands in the downloads folder as soon as
+   the reel has played through once. Chrome and Edge (126 up) and Safari write MP4; Firefox
+   writes WebM, and is told so. The league's PC stays available for the cases a browser cannot
+   do: a phone that cannot record, or somebody who wants the render done for them.
+
+   The reel plays audibly while it records -- a muted element gives a silent capture -- so the
+   suite says so and turns the volume down to a murmur rather than off. */
+function recorderMime() {
+  if (!window.MediaRecorder) return null;
+  const types = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4',
+                 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  return types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch (_) { return false; } }) || null;
+}
+function drawTexts(ctx, ow, oh, W, H, sx, sy, sw, sh, now) {
+  edits.texts.forEach(t => {
+    if (!String(t.text || '').trim()) return;
+    const a = t.from != null ? t.from : 0, b = t.to != null ? t.to : Infinity;
+    if (now < a || now > b) return;
+    const x = ((t.x * W) - sx) / sw * ow, y = ((t.y * H) - sy) / sh * oh;
+    const size = Math.max(10, (t.size || 64) * (ow / 1080) * (W / (sw || W)));
+    ctx.font = '700 ' + size + 'px Bahnschrift, Archivo, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lines = String(t.text).split('\n');
+    const lh = size * 1.15, tw = Math.max(...lines.map(l => ctx.measureText(l).width)), th = lh * lines.length;
+    if (t.plate !== false) {
+      const pad = size * 0.35;
+      ctx.fillStyle = 'rgba(4,16,11,.75)';
+      const rx = x - tw / 2 - pad, ry = y - th / 2 - pad * 0.6, rw = tw + pad * 2, rh = th + pad * 1.2, r = size * 0.2;
+      ctx.beginPath(); ctx.moveTo(rx + r, ry); ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, r); ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
+      ctx.arcTo(rx, ry + rh, rx, ry, r); ctx.arcTo(rx, ry, rx + rw, ry, r); ctx.closePath(); ctx.fill();
+    }
+    ctx.lineWidth = Math.max(1, size / 24); ctx.strokeStyle = 'rgba(0,0,0,.55)';
+    ctx.fillStyle = t.colour || '#fff';
+    lines.forEach((l, i) => { const ly = y - th / 2 + lh * (i + 0.5); ctx.strokeText(l, x, ly); ctx.fillText(l, x, ly); });
+  });
+}
+let localBusy = false;
+async function exportLocal() {
+  if (localBusy) return;
+  const v = vid();
+  const mime = recorderMime();
+  if (!mime || !(v.captureStream || v.mozCaptureStream)) { $('#status').textContent = 'this browser cannot record video — use the league’s PC below'; return; }
+  localBusy = true;
+  const W = v.videoWidth || 1080, H = v.videoHeight || 1920;
+  const c = edits.crop || { x: 0, y: 0, w: 1, h: 1 };
+  const sx = Math.round(c.x * W), sy = Math.round(c.y * H), sw = Math.max(2, Math.round(c.w * W)), sh = Math.max(2, Math.round(c.h * H));
+  let ow = W, oh = Math.abs(sw / sh - W / H) < 0.02 ? H : Math.round(W * sh / sw);
+  ow -= ow % 2; oh -= oh % 2;
+  const canvas = document.createElement('canvas'); canvas.width = ow; canvas.height = oh;
+  const ctx = canvas.getContext('2d', { alpha: false });
+  /* frames are pushed by hand after every draw (captureStream(0) + requestFrame): a timed
+     capture of a canvas painted from a video delivered two frames in six seconds here */
+  const stream = canvas.captureStream(0);
+  const vtrack = stream.getVideoTracks()[0];
+  const push = () => { if (vtrack && vtrack.requestFrame) vtrack.requestFrame(); };
+  let media = null;
+  try { media = v.captureStream ? v.captureStream() : v.mozCaptureStream(); } catch (_) { media = null; }
+  if (media) media.getAudioTracks().forEach(t => stream.addTrack(t));
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 9000000, audioBitsPerSecond: 128000 });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const t0 = edits.trim.start || 0, t1 = edits.trim.end != null ? edits.trim.end : (dur || v.duration);
+  const status = $('#status');
+  const wasMuted = v.muted, wasVol = v.volume;
+  v.muted = false; v.volume = 0.15;
+  const draw = () => { ctx.drawImage(v, sx, sy, sw, sh, 0, 0, ow, oh); drawTexts(ctx, ow, oh, W, H, sx, sy, sw, sh, v.currentTime); push(); };
+  let finish = null;
+  const done = new Promise(r => { finish = r; });
+  rec.onstop = () => finish();
+  try {
+    v.pause();
+    await new Promise(res => { const h = () => { v.removeEventListener('seeked', h); res(); }; v.addEventListener('seeked', h); v.currentTime = t0; });
+    draw();
+    rec.start(500);
+    let stopped = false;
+    const stop = () => { if (stopped) return; stopped = true; v.pause(); try { rec.stop(); } catch (_) { finish(); } };
+    const loop = () => {
+      if (stopped) return;
+      draw();
+      status.textContent = 'recording in your browser — ' + fmt(Math.max(0, v.currentTime - t0)) + ' of ' + fmt(t1 - t0) + ' (keep this page open)';
+      if (v.currentTime >= t1 - 0.03 || v.ended) { stop(); return; }
+      if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(loop); else requestAnimationFrame(loop);
+    };
+    await v.play();
+    if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(loop); else requestAnimationFrame(loop);
+    await done;
+  } catch (e) {
+    status.textContent = 'could not record: ' + String(e.message || e).slice(0, 120);
+    localBusy = false; v.muted = wasMuted; v.volume = wasVol;
+    return;
+  }
+  v.muted = wasMuted; v.volume = wasVol;
+  const isMp4 = /mp4/.test(mime);
+  const blob = new Blob(chunks, { type: isMp4 ? 'video/mp4' : 'video/webm' });
+  const name = ((job.player_name || 'reel') + '-edit.' + (isMp4 ? 'mp4' : 'webm')).toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
+  const a = $('#localDl');
+  if (a.href && a.href.startsWith('blob:')) URL.revokeObjectURL(a.href);
+  a.href = URL.createObjectURL(blob); a.download = name; a.classList.remove('hide');
+  a.textContent = 'save ' + name + ' (' + (blob.size / 1048576).toFixed(1) + ' MB)';
+  status.textContent = isMp4 ? 'done — saved in your browser; the file is yours to post' : 'done — this browser writes WebM, not MP4; for an MP4 use the league’s PC below';
+  localBusy = false;
+}
+
 /* --------------------------------------------------------------- boot --- */
 (async function boot() {
   const F = window.EpinoiaFollow;
@@ -203,4 +310,7 @@ async function exportEdit() {
   window.addEventListener('resize', () => { paintCrop(); paintTexts(); });
   dragCrop(); wireText(); wireTrim();
   $('#exportBtn').onclick = exportEdit;
+  $('#localBtn').onclick = exportLocal;
+  if (!recorderMime()) { $('#localBtn').disabled = true; $('#localNote').textContent = 'this browser cannot record video, so the export runs on the league’s PC'; }
+  else if (!/mp4/.test(recorderMime())) $('#localNote').textContent = 'this browser saves WebM rather than MP4; the league’s PC export gives an MP4';
 })();

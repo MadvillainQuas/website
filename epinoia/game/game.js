@@ -366,11 +366,20 @@ function boxSwitchHTML() {
       '<button type="button" role="tab" data-boxmode="' + m[0] + '"' + (boxMode === m[0] ? ' class="on" aria-selected="true"' : '') + '>' + m[1] + '</button>').join('') +
     '</div>';
 }
+let seasonAsked = false;
+function ensureSeasonPositions() {
+  if (seasonAsked || !window.EpinoiaModernBox || !window.S) return;
+  seasonAsked = true;
+  window.EpinoiaModernBox.loadSeason(window.S).then(ok => {
+    if (ok && fTab === 'box' && boxMode === 'modern') { lastBodyKey = ''; renderBody(); }
+  });
+}
 function bindBoxSwitch(el) {
   el.querySelectorAll('[data-boxmode]').forEach(b => {
     b.onclick = () => {
       if (boxMode === b.dataset.boxmode) return;
       boxMode = b.dataset.boxmode;
+      if (boxMode === 'modern') ensureSeasonPositions();
       try { localStorage.setItem('epinoia_box_mode', boxMode); } catch (_) { /* fine */ }
       if (window.EpinoiaModernBox) window.EpinoiaModernBox.hidePop();
       lastBodyKey = '';
@@ -2215,6 +2224,8 @@ async function renderPreview() {
     window.EpinoiaModernBox.loadListed(api, stored).then(ok => {
       if (ok && fTab === 'box' && boxMode === 'modern') { lastBodyKey = ''; renderBody(); }
     });
+    /* the season aggregation is a real fetch, so it is only made once the modern view is wanted */
+    if (boxMode === 'modern') ensureSeasonPositions();
   }
 
   if (stored.status === 'final') {

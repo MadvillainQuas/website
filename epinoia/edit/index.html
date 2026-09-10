@@ -89,9 +89,15 @@
       </div>
 
       <div class="tool">
+        <h3>Export</h3>
         <div class="row">
-          <button class="ep-btn pri" id="exportBtn" type="button">export this edit</button>
-          <a class="ep-btn" id="dlBtn" href="#" download>download the MP4</a>
+          <button class="ep-btn pri" id="localBtn" type="button">export here, in your browser</button>
+          <a class="ep-btn hide" id="localDl" href="#" download>save the file</a>
+        </div>
+        <div class="sub" id="localNote">the reel plays through once while it records — no upload, no queue</div>
+        <div class="row" style="margin-top:8px">
+          <button class="ep-btn" id="exportBtn" type="button">render on the league’s PC instead</button>
+          <a class="ep-btn" id="dlBtn" href="#" download>download the original MP4</a>
         </div>
         <div class="status" id="status"></div>
       </div>
@@ -111,7 +117,7 @@
 </div>
 <script src="../config.js?v=276" defer></script>
 <script src="../follow.js?v=270" defer></script>
-<script src="edit.js?v=277" defer></script>
+<script src="edit.js?v=279" defer></script>
 <script src="../nav.js?v=274" defer></script>
 </body>
 </html>

@@ -78,7 +78,15 @@ class Eye(object):
             import evaluate
             w = os.path.join(skill_dir, 'weights', 'ball_v2.onnx')
             if os.path.exists(w):
-                self.ball = evaluate.make_runner('rfdetr', w, 0, 0.30, tile=0, device='auto')
+                # TILED, at the size the model was trained on. tile=0 squeezes the whole 1280-wide
+                # frame into the 512 input and a 26-pixel ball becomes a smudge the model never
+                # scores -- on a real clip that gave 33 detections in 320 looks. A 640 tile keeps
+                # the ball at the size it learnt; a 640 crop around the predicted ball is ONE tile.
+                self.ball = evaluate.make_runner('rfdetr', w, 0, 0.10, tile=640, device='auto')
+                # a 720p broadcast shows a 12-pixel ball; the model learnt ~26. Upscaling by 1.5
+                # before looking more than doubled the frames it scored the ball in (probe,
+                # Reading v London): 9/24 above 0.2 against 4/24 at native size.
+                self.scale = 1.5
                 log('   ball detector: ball_v2.onnx')
         except Exception as exc:
             log('   (ball detector unavailable: %s)' % str(exc)[:100])
@@ -90,45 +98,266 @@ class Eye(object):
         except Exception as exc:
             log('   (people detector unavailable: %s)' % str(exc)[:100])
 
-    def look(self, frame):
-        """(x, y, kind) in frame pixels, or None."""
+    def look(self, frame, around=None, people=True):
+        import cv2
+        """Every ball candidate as (cx, cy, conf) in frame pixels, and where the players are
+        (cx, cy) or None. With `around` (x, y) only a 640-square about that point is searched --
+        one tile, the cheap case while the ball is being followed; without it the whole frame is
+        swept. The choice between candidates is the tracker's, not the detector's: the most
+        confident box in one frame is often a head, a spare ball or the scorebug."""
+        balls, ppl = [], None
+        H, W = frame.shape[:2]
         if self.ball is not None:
             try:
-                dets = self.ball(frame, 0)
-                if dets:
-                    x, y, w, h, s = max(dets, key=lambda d: d[4])
-                    return (x + w / 2.0, y + h / 2.0, 'ball')
+                sc = getattr(self, 'scale', 1.0)
+                if around is not None:
+                    side = int(640 / sc)                       # one 640 tile after upscaling
+                    x0 = int(max(0, min(W - side, around[0] - side / 2.0)))
+                    y0 = int(max(0, min(H - side, around[1] - side / 2.0)))
+                    crop = frame[y0:y0 + side, x0:x0 + side]
+                    if sc != 1.0:
+                        crop = cv2.resize(crop, None, fx=sc, fy=sc, interpolation=cv2.INTER_CUBIC)
+                    dets = [(x / sc + x0, y / sc + y0, w / sc, h / sc, c) for (x, y, w, h, c) in (self.ball(crop, 0) or [])]
+                else:
+                    img = frame if sc == 1.0 else cv2.resize(frame, None, fx=sc, fy=sc, interpolation=cv2.INTER_CUBIC)
+                    dets = [(x / sc, y / sc, w / sc, h / sc, c) for (x, y, w, h, c) in (self.ball(img, 0) or [])]
+                for x, y, w, h, c in dets:
+                    if c >= 0.12 and w > 3 and h > 3 and w < W * 0.12 and h < H * 0.2:
+                        balls.append((x + w / 2.0, y + h / 2.0, float(c)))
+                balls.sort(key=lambda d: -d[2])
+                balls = balls[:5]
             except Exception:
                 pass
-        if self.people is not None:
+        if people and self.people is not None:
             try:
-                ppl = self.people(frame)
-                if ppl:
-                    ppl = sorted(ppl, key=lambda d: -d[4])[:8]
-                    xs = [d[0] + d[2] / 2.0 for d in ppl]; ys = [d[1] + d[3] / 2.0 for d in ppl]
-                    return (sum(xs) / len(xs), sum(ys) / len(ys), 'people')
+                pp = self.people(frame)
+                if pp:
+                    pp = sorted(pp, key=lambda d: -d[4])[:8]
+                    xs = [d[0] + d[2] / 2.0 for d in pp]; ys = [d[1] + d[3] / 2.0 for d in pp]
+                    ppl = (sum(xs) / len(xs), sum(ys) / len(ys))
             except Exception:
                 pass
+        return balls, ppl
+
+
+class _Tracker(object):
+    """One ball position per sample, or None where the ball is honestly not seen. A constant-
+    velocity guess, a gate that widens while the ball is lost, and a rule that a NEW track must
+    be seen twice running before it is believed -- which is what stops a single confident false
+    positive dragging the camera across the floor."""
+    def __init__(self, W, H, fps, stride):
+        self.W, self.H = W, H
+        self.gate0 = 0.075 * W * max(1.0, stride / 3.0)
+        self.stride = max(1, stride)
+        self.x = self.y = None
+        self.vx = self.vy = 0.0
+        self.last_i = None
+        self.lost = 0
+        self.pending = None          # a candidate seen once, waiting to be seen again
+
+    def alive(self):
+        return self.x is not None
+
+    def predict(self, i):
+        if self.x is None:
+            return None
+        dt = float(i - self.last_i) / self.stride
+        return (self.x + self.vx * dt, self.y + self.vy * dt)
+
+    def gate(self):
+        return self.gate0 * min(3.5, 1.0 + 0.6 * self.lost)
+
+    def accepts(self, i, balls):
+        p = self.predict(i)
+        if p is None:
+            return False
+        g = self.gate()
+        return any(((b[0] - p[0]) ** 2 + (b[1] - p[1]) ** 2) ** 0.5 <= g for b in balls)
+
+    def _acquire(self, i, balls):
+        """A strong candidate that agrees with one seen at the previous sample."""
+        strong = [b for b in balls if b[2] >= 0.30]
+        if self.pending is not None:
+            for b in strong:
+                if ((b[0] - self.pending[0]) ** 2 + (b[1] - self.pending[1]) ** 2) ** 0.5 <= self.gate0 * 1.5:
+                    self.x, self.y, self.vx, self.vy = b[0], b[1], 0.0, 0.0
+                    self.last_i = i; self.lost = 0; self.pending = None
+                    return (i, self.x, self.y)
+        self.pending = strong[0] if strong else None
+        return None
+
+    def step(self, i, balls):
+        if self.x is None:
+            return self._acquire(i, balls)
+        dt = float(i - self.last_i) / self.stride
+        px, py = self.x + self.vx * dt, self.y + self.vy * dt
+        g = self.gate()
+        best, best_s = None, None
+        for b in balls:
+            d = ((b[0] - px) ** 2 + (b[1] - py) ** 2) ** 0.5
+            if d > g:
+                continue
+            sc = b[2] - 0.5 * d / g
+            if best is None or sc > best_s:
+                best, best_s = b, sc
+        if best is not None:
+            nvx, nvy = (best[0] - self.x) / max(dt, 1e-6), (best[1] - self.y) / max(dt, 1e-6)
+            # damped velocity: a shot arc is fast, a bounce reverses; neither should be extrapolated hard
+            self.vx, self.vy = 0.5 * self.vx + 0.5 * nvx, 0.5 * self.vy + 0.5 * nvy
+            self.x, self.y = best[0], best[1]
+            self.last_i = i; self.lost = 0
+            return (i, self.x, self.y)
+        self.lost += 1
+        self.vx *= 0.6; self.vy *= 0.6
+        if self.lost >= 5:                       # ~0.25 s at a 3-frame stride on 60 fps: let it go
+            self.x = None
+            self.pending = None
+            return self._acquire(i, balls)
         return None
 
 
-def _smooth_path(samples, n_frames, W, win_w):
-    """A pan path from sparse (frame_index, x) samples: linear between samples, then an EMA so
-    the window moves like a camera operator's shoulders -- never faster than the frame's width
-    in a second and never beyond the picture. Returns the window's LEFT edge per frame."""
+def _follow(frames, eye, W, H, fps, stride, log=None):
+    """Where the ball is through a clip: [(frame_index, x, y)] for the samples it was seen at,
+    plus [(frame_index, x)] of the players' centre for the fallback. While the ball is being
+    followed the eye looks only around where it should be (one tile); when it is lost, the
+    whole frame is swept."""
+    tr = _Tracker(W, H, fps, stride)
+    samples, people = [], []
+    sweeps = 0
+    k = 0
+    for i in range(0, len(frames), stride):
+        k += 1
+        around = tr.predict(i)
+        if around is None and k % 2:
+            # lost: a full sweep costs eight tiles, so it is made at half the cadence
+            if k % 4 == 1:
+                _, ppl = eye.look(frames[i], None, people=True) if eye.ball is None else (None, None)
+                if eye.people is not None and eye.ball is not None:
+                    try:
+                        pp = eye.people(frames[i])
+                        if pp:
+                            pp = sorted(pp, key=lambda d: -d[4])[:8]
+                            ppl = (sum(d[0] + d[2] / 2.0 for d in pp) / len(pp), sum(d[1] + d[3] / 2.0 for d in pp) / len(pp))
+                    except Exception:
+                        ppl = None
+                if ppl:
+                    people.append((i, ppl[0]))
+            continue
+        balls, ppl = eye.look(frames[i], around, people=(around is None or k % 4 == 0))
+        if around is not None and not tr.accepts(i, balls):
+            balls, ppl = eye.look(frames[i], None, people=True)
+            sweeps += 1
+        elif around is None:
+            sweeps += 1
+        pos = tr.step(i, balls)
+        if pos:
+            samples.append(pos)
+        if ppl:
+            people.append((i, ppl[0]))
+    # a track that lasted under four looks (~0.2 s) is a head, a shoe or a scorebug digit
+    kept, run_ = [], []
+    for smp in samples:
+        if run_ and smp[0] - run_[-1][0] > stride:
+            if len(run_) >= 4:
+                kept.extend(run_)
+            run_ = []
+        run_.append(smp)
+    if len(run_) >= 4:
+        kept.extend(run_)
+    if log:
+        log('   followed: %d of %d looks had the ball, %d kept in tracks (%d full sweeps)' % (len(samples), (len(frames) + stride - 1) // stride, len(kept), sweeps))
+    return kept, people
+
+
+def _gauss(a, sigma):
+    """Zero-phase Gaussian smoothing with edge reflection: nothing lags, nothing overshoots."""
     import numpy as np
-    if not samples:
+    if sigma <= 0.5 or len(a) < 3:
+        return a.copy()
+    r = int(3 * sigma)
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2); k /= k.sum()
+    pad = np.pad(a, r, mode='reflect')
+    return np.convolve(pad, k, mode='valid')
+
+
+def _smooth_path(samples, n_frames, W, win_w, fps=25.0, stride=3, people=None):
+    """The window's LEFT edge per frame, from sparse ball positions [(frame_index, x)] and,
+    where the ball was lost, where the players were.
+
+    The order of operations is the camera operator's: interpolate the target through short
+    gaps (long gaps fall back to the players), smooth it with a zero-phase Gaussian so the
+    stride's stepping is gone, hold the window still while the ball stays inside a central
+    band (a real operator does not chase every dribble), smooth the resulting moves, cap the
+    pan speed, and finally nudge the window wherever the ball would have left the frame."""
+    import numpy as np
+    centre = (W - win_w) / 2.0 + win_w / 2.0
+    frames = np.arange(n_frames, dtype=np.float64)
+    if not samples and not people:
         return np.full(n_frames, (W - win_w) / 2.0)
-    idx = np.array([s[0] for s in samples], dtype=np.float64)
-    xs = np.array([s[1] for s in samples], dtype=np.float64)
-    path = np.interp(np.arange(n_frames), idx, xs)
-    out = np.empty_like(path)
-    a = 0.12                              # per-frame follow; ~0.6 s to settle at 25 fps
-    cur = path[0]
+    # 1. the target: ball where seen; through gaps under 1.5 s linearly; longer gaps -> players
+    tgt = np.full(n_frames, np.nan)
+    for i, x in samples:
+        if 0 <= i < n_frames:
+            tgt[i] = x
+    idx = np.where(~np.isnan(tgt))[0]
+    if len(idx):
+        filled = np.interp(frames, idx, tgt[idx])
+        maxgap = int(1.5 * fps)
+        for a, b in zip(idx[:-1], idx[1:]):
+            if b - a > maxgap:
+                filled[a + 1:b] = np.nan
+        filled[:idx[0]] = np.nan if idx[0] > maxgap else filled[idx[0]]
+        filled[idx[-1] + 1:] = np.nan if n_frames - 1 - idx[-1] > maxgap else filled[idx[-1]]
+    else:
+        filled = tgt
+    if people:
+        pp = np.full(n_frames, np.nan)
+        for i, x in people:
+            if 0 <= i < n_frames:
+                pp[i] = x
+        pidx = np.where(~np.isnan(pp))[0]
+        if len(pidx):
+            pfill = np.interp(frames, pidx, pp[pidx])
+            hole = np.isnan(filled)
+            filled[hole] = pfill[hole]
+    if np.isnan(filled).all():
+        return np.full(n_frames, (W - win_w) / 2.0)
+    # whatever is still unknown holds the nearest known value
+    kidx = np.where(~np.isnan(filled))[0]
+    filled = np.interp(frames, kidx, filled[kidx])
+    # 2. the stepping of a 3-frame stride, and detector jitter, go here
+    target = _gauss(filled, 0.30 * fps)
+    # 3. the dead band: the window rests while the ball stays within the middle of it
+    band = 0.17 * win_w
+    cam = np.empty(n_frames)
+    cur = float(target[0])
     for i in range(n_frames):
-        cur += (path[i] - cur) * a
-        out[i] = cur
-    left = out - win_w / 2.0
+        t = target[i]
+        if t > cur + band:
+            cur = t - band
+        elif t < cur - band:
+            cur = t + band
+        cam[i] = cur
+    # 4. the moves themselves are eased, and never faster than the width of the frame in 1.4 s
+    cam = _gauss(cam, 0.28 * fps)
+    vmax = W / (1.4 * fps)
+    for i in range(1, n_frames):
+        d = cam[i] - cam[i - 1]
+        if abs(d) > vmax:
+            cam[i] = cam[i - 1] + vmax * (1 if d > 0 else -1)
+    # 5. the ball must stay in the picture: where the smoothed window would lose it, pull the
+    #    window over, then ease that correction too (twice, since easing can reopen a little)
+    margin = 0.06 * win_w
+    lo = filled - (win_w / 2.0 - margin)
+    hi = filled + (win_w / 2.0 - margin)
+    for _ in range(2):
+        fix = np.clip(cam, lo, hi)
+        cam = _gauss(fix, 0.15 * fps)
+        for i in range(1, n_frames):
+            d = cam[i] - cam[i - 1]
+            if abs(d) > vmax:
+                cam[i] = cam[i - 1] + vmax * (1 if d > 0 else -1)
+    left = cam - win_w / 2.0
     return np.clip(left, 0, max(0, W - win_w))
 
 
@@ -163,15 +392,13 @@ def _render_clip(src, start_s, dur_s, eye, portrait, label, sub, out_path, ffmpe
     cap.release()
     if not frames:
         raise RuntimeError('no frames at %.1fs' % start_s)
-    # the eye looks every third frame
-    samples = []
-    for i in range(0, len(frames), 3):
-        p = eye.look(frames[i])
-        if p:
-            samples.append((i, p[0]))
+    # about twelve looks a second whatever the frame rate; the tracker decides which box is the ball
+    STRIDE = max(2, int(round(fps / 12.0)))
+    track, people = _follow(frames, eye, W, H, fps, STRIDE, log)
+    samples = [(t[0], t[1]) for t in track]
     if portrait:
         win_w = int(H * 9 / 16.0); win_h = H
-        lefts = _smooth_path(samples, len(frames), W, win_w)
+        lefts = _smooth_path(samples, len(frames), W, win_w, fps=fps, stride=STRIDE, people=people)
         out_w, out_h = 1080, 1920
     else:
         out_w, out_h = 1280, 720

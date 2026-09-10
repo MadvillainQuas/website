@@ -38,7 +38,7 @@ const esc = s => String(s == null ? '' : s)
    the game page rebuilds its body whenever the log changes, and a filter the
    reader chose must survive that. */
 let st = { filter: 'all', pid: '', team: '', reel: false, current: null, seekMs: 0,
-           hlOpen: false, hlKinds: null, hlOr: 'portrait', hlJob: null, hlMsg: '', hlDone: null,
+           hlOpen: false, hlSel: null, hlKinds: null, hlOr: 'portrait', hlJob: null, hlMsg: '', hlDone: null,
            /* EVENTS, PLAYER MINUTES or LINEUPS. A clock-read game knows when the clock ran, so
               it can show not only where each play is but every stretch a player, or a five,
               was on the floor -- and take the viewer to the start of any of them. */
@@ -314,7 +314,7 @@ function render() {
         (list.length === 1 ? 'play' : 'plays') +
         (lined ? ' · tap one to jump to it' : '') + '</div>' : '') +
 
-      (timed && !(clocked && st.tab !== 'events') ? '<ol class="vidlist">' + (list.length ? list.slice(0, st.shown).map(p =>
+      (timed && !(clocked && st.tab !== 'events') ? '<ol class="vidlist' + (st.hlOpen ? ' picking' : '') + '">' + (list.length ? list.slice(0, st.shown).map(p =>
         /* A row is a control, so it is one to a keyboard and to a screen
            reader as well as to a mouse. It was a bare <li> with an onclick,
            which is unreachable without a pointer. */
@@ -322,6 +322,8 @@ function render() {
           ' role="button" tabindex="0"' +
           ' aria-label="' + esc(p.label + ', at ' + V().stamp(p.start) + ' in the video') + '"' +
           (st.current === p.id ? ' aria-current="true"' : '') + '>' +
+          (st.hlOpen ? '<input type="checkbox" class="hlpick" data-id="' + p.id + '"' + (hlSel().has(p.id) ? ' checked' : '') +
+            ' aria-label="in the reel" title="in the reel">' : '') +
           '<span class="vidt">' + esc(V().stamp(p.start)) +
             (p.approx ? '<i class="vidapx" title="placed by hand — this position is ' +
                         'worked out from the plays either side">~</i>' : '') + '</span>' +
@@ -420,14 +422,15 @@ function fmtClock(ms) { return root0().EpinoiaEngine.fmtClock(ms); }
 const HL_KINDS = [['points', 'every point'], ['fg', 'field goals'], ['three', 'three-pointers'], ['reb', 'rebounds'],
                   ['ast', 'assists'], ['def', 'steals & blocks'], ['to', 'turnovers'], ['foul', 'fouls']];
 function hlPanelHTML() {
-  const chosen = st.hlKinds || ['points', 'ast', 'def'];
   const who = st.pid ? (playerNameOf(st.pid) || 'this player') : (st.team !== '' ? ((ctx.S.teams[+st.team] || {}).name || 'this side') : 'everyone');
   const n = hlClips().length;
+  const shown = selected().length;
   return '<div class="hlpanel">' +
-    '<div class="hlh"><b>Export highlights</b><span>' + esc(who) + ' \u00b7 pick the plays, then create. Choose a player above to narrow it.</span></div>' +
+    '<div class="hlh"><b>Export highlights</b><span>' + esc(who) + ' \u00b7 tick the plays in the list, or tick whole kinds here. Choose a player above to narrow it.</span></div>' +
     '<div class="hlkinds">' +
-      '<label class="hlk"><input type="checkbox" id="hlAll"' + (chosen.length === HL_KINDS.length ? ' checked' : '') + '> <b>select all</b></label>' +
-      HL_KINDS.map(k => '<label class="hlk"><input type="checkbox" data-k="' + k[0] + '"' + (chosen.indexOf(k[0]) >= 0 ? ' checked' : '') + '> ' + esc(k[1]) + '</label>').join('') +
+      '<label class="hlk"><input type="checkbox" id="hlAll"' + (shown && hlAllShownIn() ? ' checked' : '') + '> <b>every play listed</b> (' + shown + ')</label>' +
+      HL_KINDS.map(k => { const c = hlKindCount(k[0]); return '<label class="hlk' + (c ? '' : ' none') + '"><input type="checkbox" data-k="' + k[0] + '"' + (c && hlKindAllIn(k[0]) ? ' checked' : '') + (c ? '' : ' disabled') + '> ' + esc(k[1]) + ' <i>' + c + '</i></label>'; }).join('') +
+      '<button type="button" class="hlclear" id="hlNone">clear</button>' +
     '</div>' +
     '<div class="hlrow">' +
       '<label class="hlk"><input type="radio" name="hlOr" value="portrait"' + (st.hlOr !== 'landscape' ? ' checked' : '') + '> vertical 9:16 (Instagram, TikTok)</label>' +
@@ -443,16 +446,29 @@ function playerNameOf(pid) {
   (ctx.S.teams || []).forEach(t => (t.players || []).forEach(p => { if (p.id === pid) nm = p.name; }));
   return nm;
 }
+/* THE CHOICE IS A SET OF PLAYS, not a set of kinds. The kind boxes are shortcuts that tick or
+   untick every play of that kind for the player (or side) chosen above; a row's own box is the
+   last word. The first time the panel opens it is seeded with points, assists and defence. */
+function hlSel() {
+  if (!st.hlSel) {
+    st.hlSel = new Set();
+    ['points', 'ast', 'def'].forEach(k => hlKindPlays(k).forEach(p => st.hlSel.add(p.id)));
+  }
+  return st.hlSel;
+}
+function hlKindPlays(k) {
+  return V().select(plays(), { filter: k, pid: st.pid || null, team: st.team === '' ? null : +st.team });
+}
+function hlKindCount(k) { return hlKindPlays(k).length; }
+function hlKindAllIn(k) { const sel = hlSel(); const ps = hlKindPlays(k); return ps.length > 0 && ps.every(p => sel.has(p.id)); }
+function hlAllShownIn() { const sel = hlSel(); const ps = selected(); return ps.length > 0 && ps.every(p => sel.has(p.id)); }
+function hlKindOf(id) {
+  for (const k of HL_KINDS) { if (V().select(plays(), { filter: k[0] }).some(p => p.id === id)) return k[0]; }
+  return 'play';
+}
 function hlClips() {
-  const kinds = st.hlKinds || ['points', 'ast', 'def'];
-  const seen = new Set(), out = [];
-  kinds.forEach(k => {
-    V().select(plays(), { filter: k, pid: st.pid || null, team: st.team === '' ? null : +st.team }).forEach(p => {
-      if (seen.has(p.id)) return;
-      seen.add(p.id);
-      out.push({ id: p.id, start_ms: Math.round(p.start), end_ms: Math.round(p.end), label: p.label, kind: k });
-    });
-  });
+  const sel = hlSel();
+  const out = plays().filter(p => sel.has(p.id)).map(p => ({ id: p.id, start_ms: Math.round(p.start), end_ms: Math.round(p.end), label: p.label, kind: hlKindOf(p.id) }));
   return out.sort((a, b) => a.start_ms - b.start_ms).slice(0, 80);
 }
 async function hlCreate() {
@@ -466,7 +482,7 @@ async function hlCreate() {
   const who = st.pid ? playerNameOf(st.pid) : null;
   const body = {
     game_id: ctx.game.id, requested_by: JSON.parse(atob(sess.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub,
-    player_id: st.pid || null, player_name: who, kinds: st.hlKinds || ['points', 'ast', 'def'],
+    player_id: st.pid || null, player_name: who, kinds: HL_KINDS.map(k => k[0]).filter(hlKindAllIn),
     orientation: st.hlOr === 'landscape' ? 'landscape' : 'portrait', clips: clips
   };
   const r = await fetch(c.supabaseUrl + '/rest/v1/highlight_jobs', {
@@ -507,12 +523,24 @@ function wire() {
   const hb = host.querySelector('#vidHl');
   if (hb) hb.onclick = () => { st.hlOpen = !st.hlOpen; render(); };
   const all = host.querySelector('#hlAll');
-  if (all) all.onchange = () => { st.hlKinds = all.checked ? HL_KINDS.map(k => k[0]) : []; render(); };
+  if (all) all.onchange = () => { const sel = hlSel(); selected().forEach(p => { if (all.checked) sel.add(p.id); else sel.delete(p.id); }); render(); };
+  const none = host.querySelector('#hlNone');
+  if (none) none.onclick = () => { hlSel().clear(); render(); };
   host.querySelectorAll('.hlkinds input[data-k]').forEach(cb => {
     cb.onchange = () => {
-      const set = new Set(st.hlKinds || ['points', 'ast', 'def']);
-      if (cb.checked) set.add(cb.dataset.k); else set.delete(cb.dataset.k);
-      st.hlKinds = HL_KINDS.map(k => k[0]).filter(k => set.has(k)); render();
+      const sel = hlSel();
+      hlKindPlays(cb.dataset.k).forEach(p => { if (cb.checked) sel.add(p.id); else sel.delete(p.id); });
+      render();
+    };
+  });
+  host.querySelectorAll('.hlpick').forEach(cb => {
+    cb.onclick = e => e.stopPropagation();
+    cb.onchange = () => {
+      const sel = hlSel();
+      if (cb.checked) sel.add(+cb.dataset.id); else sel.delete(+cb.dataset.id);
+      /* the panel's counts follow; the list itself is left alone so the scroll stays put */
+      const panel = host.querySelector('.hlpanel');
+      if (panel) { const d = document.createElement('div'); d.innerHTML = hlPanelHTML(); panel.replaceWith(d.firstChild); wire(); }
     };
   });
   host.querySelectorAll('input[name="hlOr"]').forEach(rb => { rb.onchange = () => { st.hlOr = rb.value; }; });
@@ -573,7 +601,7 @@ function wire() {
   host.querySelectorAll('.vidlink').forEach(a => { a.onclick = e => e.stopPropagation(); });
   host.querySelectorAll('.viditem[data-id]').forEach(li => {
     const go = () => jumpTo(+li.dataset.id);
-    li.onclick = go;
+    li.onclick = e => { if (e.target && e.target.classList && e.target.classList.contains('hlpick')) return; go(); };
     li.onkeydown = e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
     };

@@ -8,11 +8,14 @@
    minutes order, and every face opens the full line on a tap or a hover.
 
    Where each of the five stands is not a position anybody typed for this game.
-   BPM's position estimate (bpm.js: rebounds, assists, steals, blocks, fouls,
-   regressed towards the club's listed position) gives every player a number
-   between 1 and 5; the five are sorted by it and dealt onto the five spots —
-   point, off guard, wing, forward, big. A five-guard lineup still gets five
-   spots; it just gets them by how those guards actually play.
+   BPM's position estimate (bpm.js: rebounds, assists, steals, blocks, fouls)
+   gives every player a number between 1 and 5 — over the SEASON, from the same
+   aggregation the stats pages read (data.js season()), with the club's listed
+   position as the prior it leans on when the minutes are few. A player without
+   forty season minutes yet falls back to this game's own numbers. The five are
+   sorted by it and dealt onto the five spots — point, off guard, wing, forward,
+   big. A five-guard lineup still gets five spots; it just gets them by how
+   those guards actually play.
 
    Live, the five are engine.js's onCourt, which follows every substitution in
    the log; on a final game they are the starters, the five the game began with.
@@ -114,9 +117,27 @@
         try {
           BPM.forTeam(team, players, leagueAvg).forEach(r => {
             bpmByPid[r.id] = r.bpm;
-            if (r.position != null) posByPid[r.id] = Object.assign({}, posByPid[r.id], { n: r.position, src: 'bpm' });
+            if (r.position != null) posByPid[r.id] = Object.assign({}, posByPid[r.id], { n: r.position, src: 'game' });
           });
         } catch (_) { /* positions stay listed */ }
+      });
+    }
+    /* THE SEASON'S ESTIMATE, where it exists. bpm.js regresses its estimate towards a listed
+       position with a fifty-minute prior, and the season aggregation had no listed position to
+       give it (it used 3.0). With the club's own listing to hand the prior is re-pointed at it:
+       the raw season estimate is recovered, then regressed again towards what the club says. */
+    if (seasonPos) {
+      Object.keys(posByPid).forEach(pid => {
+        const s = seasonPos[pid];
+        if (!s || !(s.min >= 40)) return;
+        let n = s.pos;
+        const cur = posByPid[pid];
+        if (cur.src === 'listed' || (cur.listed && listedToNumber(cur.listed) != null)) {
+          const l = listedToNumber(cur.listed);
+          const raw = (s.pos * (s.min + 50) - 50 * 3.0) / s.min;
+          n = (s.min * raw + 50 * l) / (s.min + 50);
+        }
+        posByPid[pid] = Object.assign({}, cur, { n: Math.max(1, Math.min(5, n)), src: 'season', seasonMin: s.min });
       });
     }
   }
@@ -191,7 +212,7 @@
   function render(d) {
     compute(d);
     return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' +
-      '<div class="setup-note mv-note">positions from the game’s own numbers (BPM’s estimate, leaning on the club’s listed position) · tap or hover a player for the full line</div>';
+      '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has forty season minutes) · tap or hover a player for the full line</div>';
   }
 
   /* -------------------------------------------------------------- popover --- */
@@ -215,7 +236,7 @@
     return '<div class="mv-pophead" style="--c:' + esc(colour) + '">' +
         '<span class="mv-popnum">' + esc(p.num || '') + '</span>' +
         '<div><b>' + (href ? '<a href="' + esc(href) + '">' + esc(p.name) + '</a>' : esc(p.name)) + '</b>' +
-        '<small>' + esc(slot.label) + (pos.listed ? ' · listed ' + esc(pos.listed) : '') + ' · ' + B.fmtMin(x.min || 0) + ' min' +
+        '<small>' + esc(slot.label) + (pos.src === 'season' ? ' (season)' : pos.src === 'game' ? ' (this game)' : '') + (pos.listed ? ' · listed ' + esc(pos.listed) : '') + ' · ' + B.fmtMin(x.min || 0) + ' min' +
           (b == null ? '' : ' · ' + (b > 0 ? '+' : '') + b.toFixed(1) + ' bpm') + '</small></div>' +
         '<button class="mv-close" type="button" aria-label="close">×</button></div>' +
       '<div class="mv-grid">' +
@@ -333,6 +354,25 @@
     host.dispatchEvent(new CustomEvent('mv:redrawn'));
   }
 
+  /* the season's positions: one aggregation of the competition, cached for the page */
+  let seasonPos = null, seasonLoading = null;
+  function loadSeason(S) {
+    if (seasonLoading) return seasonLoading;
+    const D = window.EpinoiaData;
+    const cid = S && S.meta && S.meta.competitionId;
+    if (!D || !D.season || !cid) return Promise.resolve(false);
+    seasonLoading = (async () => {
+      try {
+        const r = await D.season(cid);
+        const map = {};
+        (r.players || []).forEach(p => { if (p.bpm_pos != null) map[p.id] = { pos: p.bpm_pos, min: p.min || 0 }; });
+        seasonPos = map;
+        return Object.keys(map).length > 0;
+      } catch (_) { return false; }
+    })();
+    return seasonLoading;
+  }
+
   /* the clubs' listed positions, once per game, for BPM to lean on */
   let posLoaded = false;
   async function loadListed(api, S) {
@@ -349,5 +389,5 @@
     } catch (_) { return false; }
   }
 
-  window.EpinoiaModernBox = { render, mounted, loadListed, hidePop, listedToNumber, SLOTS, placed, _pos: () => posByPid };
+  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, hidePop, listedToNumber, SLOTS, placed, _pos: () => posByPid };
 }());
