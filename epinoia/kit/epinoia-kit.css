@@ -92,6 +92,15 @@
   /* neon */
   --lume:#93f2bf; --aqua:#8ff5ff; --amber:#ffd166; --flare:#ff5f6b; --violet:#b7a8ff;
   --team-a:var(--lume); --team-b:var(--aqua);
+  --good:#63ffa0; --bad:#ff5f6b;
+  /* type roles */
+  --f-score:'Jersey25',ui-monospace,monospace;   /* scores, clock, headings   */
+  --f-micro:'Silkscreen',ui-monospace,monospace; /* labels, ticker, badges    */
+  --f-ui:'Archivo',system-ui,sans-serif;         /* names, prose, buttons     */
+  --f-data:'MartianMono',ui-monospace,monospace; /* table figures             */
+  /* rhythm */
+  --u:8px; --ease:cubic-bezier(.22,.9,.24,1);
+  color-scheme:dark;
 }
 /* LIGHT, for a fan who asked for it on their profile (data-theme on the root, set by config.js
    before first paint). The same tokens, the other way up; the accents darkened so they still
@@ -103,16 +112,8 @@
   --lume:#0f8a5f; --aqua:#0b6f8a; --amber:#a8700a; --flare:#d13a49; --violet:#6b4fd1;
   --good:#12925f; --bad:#d13a49;
   --team-a:var(--lume); --team-b:var(--aqua);
-  --good:#63ffa0; --bad:#ff5f6b;
-  /* type roles */
-  --f-score:'Jersey25',ui-monospace,monospace;   /* scores, clock, headings   */
-  --f-micro:'Silkscreen',ui-monospace,monospace; /* labels, ticker, badges    */
-  --f-ui:'Archivo',system-ui,sans-serif;         /* names, prose, buttons     */
-  --f-data:'MartianMono',ui-monospace,monospace; /* table figures             */
-  /* rhythm */
-  --u:8px; --ease:cubic-bezier(.22,.9,.24,1);
-  color-scheme:dark;
 }
+
 
 /* ---------- 2b. scale --------------------------------------------------------
    EVERY PAGE THAT LOADS THIS KIT RENDERS AT 150%, which is what these screens
