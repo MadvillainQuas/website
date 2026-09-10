@@ -1004,7 +1004,9 @@ function renumber() {
     applyTheme(LEAGUE.theme);
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
-    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug);
+    /* the strip is an embed with its own theme switch; it takes the page's */
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + (light ? '&theme=light' : '');
 
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';

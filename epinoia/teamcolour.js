@@ -34,11 +34,17 @@
   const contrast = (a, b) => { const la = lum(a) + 0.05, lb = lum(b) + 0.05; return la > lb ? la / lb : lb / la; };
   const mix = (a, b, t) => a.map((c, i) => c + (b[i] - c) * t);
 
-  /* the colour as text on the ground: lifted towards white, in small steps, until it reads */
+  /* the page's ground, which the light theme turns pale: on it a club colour is pulled
+     towards black to read, not towards white */
+  const LIGHT_GROUND = '#f3faf6';
+  const light = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+  const ground = () => (light() ? LIGHT_GROUND : GROUND);
+  /* the colour as text on the ground: nudged in small steps, until it reads */
   function ink(hex) {
     let c = parse(hex); if (!c) return null;
-    const g = parse(GROUND);
-    for (let i = 0; i < 24 && contrast(c, g) < 4.5; i++) c = mix(c, [255, 255, 255], 0.09);
+    const g = parse(ground());
+    const towards = light() ? [0, 0, 0] : [255, 255, 255];
+    for (let i = 0; i < 24 && contrast(c, g) < 4.5; i++) c = mix(c, towards, 0.09);
     return toHex(c);
   }
   /* text on a surface of this colour */
