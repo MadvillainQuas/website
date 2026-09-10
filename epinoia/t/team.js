@@ -39,6 +39,18 @@ function oops(msg) {
     const team = ts[0];
     const colour = team.colour || '#93f2bf';
     document.documentElement.style.setProperty('--team-a', colour);
+    /* THE PAGE IN THE CLUB'S COLOURS. A team with colours of its own -- read from the crest by
+       the ingest, or chosen by an admin -- gets the whole page in them (body.themed, see the
+       stylesheet); a team still on the site's default mint is left in the site's own dress,
+       because mint everywhere is the site, not a club that happens to be mint. */
+    const TC = window.EpinoiaTeamColour;
+    const paint = (a, b) => {
+      if (!TC || !a || String(a).toLowerCase() === '#93f2bf') return false;
+      if (!TC.apply(document.documentElement, a, b)) return false;
+      document.body.classList.add('themed');
+      return true;
+    };
+    const themed = paint(team.colour, team.colour_2);
 
     /* THE CLUB'S CREST WHERE ITS INITIALS WERE.
 
@@ -52,7 +64,7 @@ function oops(msg) {
        has actually loaded: a crest that 404s must leave a badge behind rather
        than an empty square where the club should be. */
     const badge = $('#badge');
-    badge.style.background = colour;
+    if (!themed) badge.style.background = colour;
     badge.textContent = team.short_name || (team.name || '?').slice(0, 2).toUpperCase();
     const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(team.logo_path) : null;
     if (crestUrl) {
@@ -68,9 +80,20 @@ function oops(msg) {
       });
       crest.addEventListener('error', () => crest.remove());
       badge.appendChild(crest);
+      /* a crest the ingest has not read yet (a club's fresh upload): read it here, for this
+         visit -- the media-public bucket is CORS-readable; the feed's image host is not, and
+         fromImage resolves null there without a word */
+      if (!themed && team.colour_source !== 'manual' && TC && TC.fromImage) {
+        TC.fromImage(crestUrl).then(pal => {
+          if (pal && pal.primary && paint(pal.primary, pal.secondary)) {
+            badge.style.background = '';
+            $('#tname').style.color = '';
+          }
+        });
+      }
     }
     $('#tname').textContent = team.name;
-    $('#tname').style.color = colour;
+    if (!themed) $('#tname').style.color = colour;
     const lg = team.leagues || {};
     $('#tsub').textContent = lg.name || 'Independent';
     $('#ctx').textContent = lg.name ? lg.name + ' · ' + team.name : team.name;

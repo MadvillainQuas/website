@@ -268,6 +268,43 @@
   /* the video tab: the profile steps aside */
   body.vtab #tbody{display:none}
   #videosec{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  /* IN THE CLUB'S COLOURS. teamcolour.js paints --team-a/--team-b from the crest's two brand
+     colours (read by the ingest) and the -ink variants that are safe as text on the dark
+     ground; body.themed switches the page over to them. The page's own accent (--lume) becomes
+     the club's primary as ink, so every rule, tab, hover and heading the kit draws in mint
+     draws in the club's colour instead -- and because -ink is lifted to 4.5:1 against the
+     ground, a navy or a black club still reads. The ground itself takes a wash of the primary
+     from the top-left and a fainter breath of the secondary from the right. */
+  body.themed{--lume:var(--team-a-ink);
+    --rule:color-mix(in oklch,var(--team-a) 26%,transparent);
+    --rule-2:color-mix(in oklch,var(--team-a) 50%,transparent);
+    background:
+      radial-gradient(1100px 620px at 12% -8%, color-mix(in oklch,var(--team-a) 30%,var(--ground)), transparent 62%),
+      radial-gradient(900px 520px at 100% 22%, color-mix(in oklch,var(--team-b) 14%,var(--ground)), transparent 60%),
+      var(--ground);
+    background-attachment:fixed}
+  body.themed .hero{position:relative;border-bottom:none;
+    background:linear-gradient(120deg, color-mix(in oklch,var(--team-a) 34%,var(--ground)) 0%,
+                                       color-mix(in oklch,var(--team-a) 12%,var(--ground)) 55%, transparent 100%)}
+  /* the trim: a band of the primary with the secondary's stripe at its end */
+  body.themed .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+    background:linear-gradient(90deg,var(--team-a) 0 72%,var(--team-b) 72% 88%,var(--team-a) 88%)}
+  body.themed .hname{color:var(--team-a-ink);
+    text-shadow:0 0 34px color-mix(in oklch,var(--team-a) 40%,transparent)}
+  body.themed .hsub{color:var(--team-b-ink)}
+  body.themed .badge{background:var(--team-a);color:var(--team-on-a);
+    box-shadow:0 0 0 1px color-mix(in oklch,var(--team-b) 70%,transparent)}
+  /* the crest keeps its own ground; the club's secondary frames it */
+  body.themed .badge.has-crest{box-shadow:0 0 0 1px color-mix(in oklch,var(--team-a) 55%,transparent);
+    background:color-mix(in oklch,var(--team-a) 10%,transparent) !important}
+  body.themed .rec{background:color-mix(in oklch,var(--team-a) 7%,transparent)}
+  body.themed .rec .v{color:var(--team-a-ink)}
+  body.themed .ep-hdr .idx{color:var(--team-b-ink)}
+  body.themed .ep-hdr h2{color:var(--ink)}
+  body.themed .ep-tab.on{background:var(--team-a);color:var(--team-on-a)}
+  body.themed .tile.hi .v,body.themed .ffhead{color:var(--team-a-ink)}
+  body.themed .fx .s{color:var(--team-a-ink)}
+  body.themed a.plain:hover{color:var(--team-a-ink)}
 </style>
 </head>
 <body>
@@ -335,6 +372,7 @@
 </div>
 <script src="../vendor/supabase.js?v=239" defer></script>
 <script src="../config.js?v=248" defer></script>
+<script src="../teamcolour.js?v=264" defer></script>
 <script src="../bpm.js?v=239" defer></script>
 <script src="../season.js?v=264" defer></script>
 <script src="../data.js?v=239" defer></script>

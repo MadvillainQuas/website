@@ -354,6 +354,18 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
                 continue
     if n:
         print(f"   {n} club crest(s) taken from the schedule")
+    # THE CREST SAYS WHAT COLOUR THE CLUB IS. Every team with a crest and no colour of its own
+    # (colour_source 'default': never coloured, or its crest just changed) is read now; a team
+    # already coloured from its crest, or by an admin, is left alone. Pillow missing -> skipped.
+    try:
+        import team_colours
+        c = team_colours.sweep(sb, log=lambda m: print(m))
+        if c:
+            print(f"   {c} club(s) coloured from their crest")
+    except ImportError as exc:
+        print(f"   (colours: {exc})")
+    except Exception as exc:
+        print(f"   (colours: {exc})")
 
 
 def refile_from_catchall(sb: Supabase, src: dict, games: list, run: dict) -> None:

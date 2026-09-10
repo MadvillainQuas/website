@@ -854,6 +854,9 @@ $('#tmGo').addEventListener('click', async () => {
   const { data, error } = await sb.from('teams').insert({
     league_id: league.id, name, short_name: short,
     colour: $('#tmCol').value,
+    /* a colour the admin changed from the default is theirs; the ingest's crest reader never
+       writes over a manual choice (left at default, the crest decides) */
+    colour_source: $('#tmCol').value.toLowerCase() !== '#93f2bf' ? 'manual' : 'default',
     slug: slugify(name) + '-' + Math.random().toString(36).slice(2, 6)
   }).select('id').single();
   if (error) return oops(error);
