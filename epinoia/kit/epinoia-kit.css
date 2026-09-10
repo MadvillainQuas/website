@@ -92,6 +92,7 @@
   /* neon */
   --lume:#93f2bf; --aqua:#8ff5ff; --amber:#ffd166; --flare:#ff5f6b; --violet:#b7a8ff;
   --team-a:var(--lume); --team-b:var(--aqua);
+  --on-accent:#04100b;
   --good:#63ffa0; --bad:#ff5f6b;
   /* type roles */
   --f-score:'Jersey25',ui-monospace,monospace;   /* scores, clock, headings   */
@@ -112,6 +113,7 @@
   --lume:#0f8a5f; --aqua:#0b6f8a; --amber:#a8700a; --flare:#d13a49; --violet:#6b4fd1;
   --good:#12925f; --bad:#d13a49;
   --team-a:var(--lume); --team-b:var(--aqua);
+  --on-accent:#ffffff;
 }
 
 
@@ -490,3 +492,16 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-install .x{background:transparent;border:none;color:var(--ink-3);font-size:20px;cursor:pointer;padding:4px 6px}
 :root[data-theme="light"] .ep-install .go{color:#fff}
 @media (min-width:901px){ .ep-install{left:auto;right:16px;bottom:16px;width:420px} }
+
+/* ---------- follow (follow.js): the bell beside a fixture, a club, a player ---------- */
+.ep-follow{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;flex:none;
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-3);cursor:pointer;padding:0;vertical-align:middle}
+.ep-follow svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ep-follow:hover{color:var(--lume);border-color:var(--lume)}
+.ep-follow.on{background:var(--lume);border-color:var(--lume);color:var(--on-accent,#04100b)}
+.ep-follow.on svg{fill:currentColor}
+.ep-follow span{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-left:6px}
+.ep-follow.lbl{width:auto;border-radius:15px;padding:0 10px 0 8px;grid-auto-flow:column}
+.ep-follow.big{width:36px;height:36px}
+.ep-follow.big svg{width:18px;height:18px}
+.ep-follow.corner{position:absolute;top:8px;right:8px;z-index:2}

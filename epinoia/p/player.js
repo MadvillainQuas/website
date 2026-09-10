@@ -43,6 +43,11 @@ function paintIdentity(pl, entry, team) {
   const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
   $('#name').textContent = name;
   document.title = name + ' · Epinoia';
+  /* follow the player: his line after every game */
+  if (window.EpinoiaFollow && pl.id) {
+    const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
+    fb.classList.add('lbl'); $('#name').insertAdjacentElement('afterend', fb);
+  }
 
   const colour = (team && team.colour) || '#93f2bf';
   document.documentElement.style.setProperty('--team-a', colour);

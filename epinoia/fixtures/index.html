@@ -15,14 +15,14 @@
 <title>Fixtures · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=268">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=271">
 <link rel="stylesheet" href="../kit/nav.css?v=269">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
   .wm{font-family:var(--f-score);font-size:19px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
     padding:3px 11px 1px;text-transform:uppercase}
   .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,54px);line-height:.88;margin:0;
@@ -59,7 +59,7 @@
   /* the badge: the club plate in miniature, same ink and halftone as the
      screenprint cards so a club looks like itself everywhere */
   .badge{position:relative;width:54px;height:54px;flex:none;display:grid;place-items:center;
-    background:#07130d;border:1px solid var(--rule-2);overflow:hidden}
+    background:var(--panel);border:1px solid var(--rule-2);overflow:hidden}
   .badge .bflood{position:absolute;inset:0;background:var(--ink-c);opacity:.16}
   .badge .btone{position:absolute;inset:-25%;
     background-image:radial-gradient(circle,var(--ink-c) .9px,transparent 1.2px);
@@ -131,6 +131,8 @@
     .venue{text-align:left;margin-left:0}
   }
   .ep-chip .kind{margin-left:6px;font-size:7px;letter-spacing:.12em;opacity:.65;text-transform:uppercase}
+  .fixture{position:relative}
+  .fixture .ep-follow.corner{top:10px;right:10px}
 </style>
 </head>
 <body>
@@ -163,11 +165,12 @@
   </footer>
 </div>
 <script src="../config.js?v=266" defer></script>
+<script src="../follow.js?v=270" defer></script>
 <script src="../rt.js?v=239" defer></script>
 <script src="../season.js?v=264" defer></script>
 <script src="../bpm.js?v=239" defer></script>
 <script src="../data.js?v=265" defer></script>
-<script src="fixtures.js?v=265" defer></script>
+<script src="fixtures.js?v=271" defer></script>
 <script src="../nav.js?v=269" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

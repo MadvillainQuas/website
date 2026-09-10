@@ -19,20 +19,20 @@
 .rep{ max-width:940px; margin:0 auto; padding:0 0 40px }
 
 /* ------------------------------------------------------------------ head --- */
-.rep-head{ padding:6px 0 22px; border-bottom:1px solid var(--line,rgba(147,242,191,.18)); margin-bottom:24px }
+.rep-head{ padding:6px 0 22px; border-bottom:1px solid var(--line,color-mix(in oklch,var(--lume) 18%,transparent)); margin-bottom:24px }
 .rep-kicker{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:8.5px; letter-spacing:.26em; text-transform:uppercase;
-  color:var(--lume,#93f2bf); margin-bottom:12px;
+  color:var(--lume,var(--lume)); margin-bottom:12px;
 }
 .rep-hl{
   margin:0 0 12px; font-size:clamp(24px,4.6vw,40px); line-height:1.12;
-  font-weight:600; letter-spacing:-.01em; color:var(--txt,#e6fff1);
+  font-weight:600; letter-spacing:-.01em; color:var(--txt,var(--ink));
   overflow-wrap:anywhere;
 }
 .rep-stand{
   margin:0; font-size:clamp(15px,2vw,17.5px); line-height:1.6;
-  color:var(--dim,rgba(230,255,241,.72)); max-width:64ch;
+  color:var(--dim,color-mix(in oklch,var(--ink) 72%,transparent)); max-width:64ch;
 }
 
 /* --------------------------------------------------------------- section --- */
@@ -40,138 +40,138 @@
 .rsec h2{
   margin:0 0 12px; font-size:10px; font-weight:400;
   font-family:var(--f-micro,ui-monospace,monospace);
-  letter-spacing:.26em; text-transform:uppercase; color:var(--lume,#93f2bf);
+  letter-spacing:.26em; text-transform:uppercase; color:var(--lume,var(--lume));
 }
 .rprose p{
   margin:0 0 14px; font-size:15.5px; line-height:1.78;
-  color:var(--dim,rgba(230,255,241,.86)); max-width:62ch;
+  color:var(--dim,color-mix(in oklch,var(--ink) 86%,transparent)); max-width:62ch;
 }
 .rprose p:last-child{ margin-bottom:0 }
 
 /* ------------------------------------------------------------------ card --- */
 .rcard{
   margin-top:16px; padding:15px 16px; border-radius:12px;
-  border:1px solid var(--line,rgba(147,242,191,.16));
+  border:1px solid var(--line,color-mix(in oklch,var(--lume) 16%,transparent));
   background:linear-gradient(180deg,rgba(190,255,224,.035),rgba(110,220,180,.012));
 }
 .rcard-h{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:8px; letter-spacing:.22em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.45)); margin-bottom:12px;
+  color:var(--faint,color-mix(in oklch,var(--ink) 45%,transparent)); margin-bottom:12px;
 }
 .rlegend{
   display:flex; gap:16px; margin-top:12px;
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:8px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.5));
+  color:var(--faint,color-mix(in oklch,var(--ink) 50%,transparent));
 }
 .rlegend span{ display:inline-flex; align-items:center; gap:6px }
 .rlegend i{ width:9px; height:9px; border-radius:2px; flex:none }
-.rlegend .sw-a{ background:var(--team0,#93f2bf) }
-.rlegend .sw-b{ background:var(--team1,#8ff5ff) }
+.rlegend .sw-a{ background:var(--team0,var(--lume)) }
+.rlegend .sw-b{ background:var(--team1,var(--aqua)) }
 
 /* ---- scoring by period --------------------------------------------------- */
 .rq{ display:flex; gap:10px; align-items:flex-end }
 .rq-col{ flex:1; min-width:0; text-align:center }
 .rq-pair{ display:flex; gap:3px; align-items:flex-end; height:88px; justify-content:center }
 .rq-pair span{ width:14px; border-radius:3px 3px 0 0; min-height:2px; display:block }
-.rq-a{ background:var(--team0,#93f2bf) }
-.rq-b{ background:var(--team1,#8ff5ff) }
+.rq-a{ background:var(--team0,var(--lume)) }
+.rq-b{ background:var(--team1,var(--aqua)) }
 .rq-n{
   display:flex; gap:3px; justify-content:center; margin-top:6px;
   font-family:var(--f-score,ui-monospace,monospace); font-size:11px;
   font-variant-numeric:tabular-nums;
 }
-.rq-n b{ width:14px; font-weight:400; color:var(--dim,rgba(230,255,241,.75)) }
+.rq-n b{ width:14px; font-weight:400; color:var(--dim,color-mix(in oklch,var(--ink) 75%,transparent)) }
 .rq-p{
   margin-top:4px; font-family:var(--f-micro,ui-monospace,monospace);
-  font-size:8px; letter-spacing:.14em; color:var(--faint,rgba(230,255,241,.42));
+  font-size:8px; letter-spacing:.14em; color:var(--faint,color-mix(in oklch,var(--ink) 42%,transparent));
 }
 
 /* ---- four factors -------------------------------------------------------- */
 .rf{ display:grid; gap:11px }
 .rf-row{ display:grid; grid-template-columns:104px 1fr 104px; gap:10px; align-items:center }
-.rf-lab{ font-size:11.5px; color:var(--dim,rgba(230,255,241,.8)) }
+.rf-lab{ font-size:11.5px; color:var(--dim,color-mix(in oklch,var(--ink) 80%,transparent)) }
 .rf-lab i{
   display:block; font-style:normal; font-family:var(--f-micro,ui-monospace,monospace);
   font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.4)); margin-top:2px;
+  color:var(--faint,color-mix(in oklch,var(--ink) 40%,transparent)); margin-top:2px;
 }
-.rf-bar{ display:flex; height:8px; border-radius:4px; overflow:hidden; background:rgba(4,16,11,.5) }
+.rf-bar{ display:flex; height:8px; border-radius:4px; overflow:hidden; background:color-mix(in oklch,var(--ground) 50%,transparent) }
 .rf-bar span{ display:block; height:100% }
-.rf-a{ background:color-mix(in oklch, var(--team0,#93f2bf) 38%, transparent) }
-.rf-b{ background:color-mix(in oklch, var(--team1,#8ff5ff) 38%, transparent) }
-.rf-a.win{ background:var(--team0,#93f2bf) }
-.rf-b.win{ background:var(--team1,#8ff5ff) }
+.rf-a{ background:color-mix(in oklch, var(--team0,var(--lume)) 38%, transparent) }
+.rf-b{ background:color-mix(in oklch, var(--team1,var(--aqua)) 38%, transparent) }
+.rf-a.win{ background:var(--team0,var(--lume)) }
+.rf-b.win{ background:var(--team1,var(--aqua)) }
 .rf-v{
   display:flex; justify-content:space-between; gap:8px;
   font-family:var(--f-score,ui-monospace,monospace); font-size:11.5px;
-  font-variant-numeric:tabular-nums; color:var(--faint,rgba(230,255,241,.5));
+  font-variant-numeric:tabular-nums; color:var(--faint,color-mix(in oklch,var(--ink) 50%,transparent));
 }
 .rf-v b{ font-weight:400 }
-.rf-v b.win{ color:var(--txt,#e6fff1) }
+.rf-v b.win{ color:var(--txt,var(--ink)) }
 
 /* ---- lineups ------------------------------------------------------------- */
 .rl{ display:grid; gap:10px }
 .rl-row{
-  padding:11px 12px; border-radius:10px; background:rgba(4,16,11,.4);
-  border-left:3px solid var(--team0,#93f2bf);
+  padding:11px 12px; border-radius:10px; background:color-mix(in oklch,var(--ground) 40%,transparent);
+  border-left:3px solid var(--team0,var(--lume));
 }
-.rl-row.t1{ border-left-color:var(--team1,#8ff5ff) }
+.rl-row.t1{ border-left-color:var(--team1,var(--aqua)) }
 .rl-what{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:7.5px; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.5)); margin-bottom:7px;
+  color:var(--faint,color-mix(in oklch,var(--ink) 50%,transparent)); margin-bottom:7px;
 }
 .rl-five{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px }
 .rl-p{
   display:inline-flex; align-items:baseline; gap:4px;
-  font-size:11.5px; color:var(--dim,rgba(230,255,241,.85));
+  font-size:11.5px; color:var(--dim,color-mix(in oklch,var(--ink) 85%,transparent));
 }
 .rl-p i{
   font-style:normal; font-family:var(--f-score,ui-monospace,monospace);
-  font-size:9px; color:var(--faint,rgba(230,255,241,.4));
+  font-size:9px; color:var(--faint,color-mix(in oklch,var(--ink) 40%,transparent));
 }
 .rl-nums{
   display:flex; gap:12px; align-items:baseline;
   font-family:var(--f-score,ui-monospace,monospace); font-size:11px;
-  font-variant-numeric:tabular-nums; color:var(--faint,rgba(230,255,241,.5));
+  font-variant-numeric:tabular-nums; color:var(--faint,color-mix(in oklch,var(--ink) 50%,transparent));
 }
 .rl-pm{ font-size:15px }
 .rl-pm.pos{ color:var(--green,#63ffa0) }
-.rl-pm.neg{ color:var(--red,#ff5f6b) }
+.rl-pm.neg{ color:var(--red,var(--flare)) }
 
 /* ---- performances -------------------------------------------------------- */
 .rps{ display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:10px }
 .rp{
-  padding:12px; border-radius:10px; background:rgba(4,16,11,.4);
-  border-top:2px solid var(--team0,#93f2bf);
+  padding:12px; border-radius:10px; background:color-mix(in oklch,var(--ground) 40%,transparent);
+  border-top:2px solid var(--team0,var(--lume));
 }
-.rp.t1{ border-top-color:var(--team1,#8ff5ff) }
-.rp-n{ font-size:14px; font-weight:600; color:var(--txt,#e6fff1); overflow-wrap:anywhere }
+.rp.t1{ border-top-color:var(--team1,var(--aqua)) }
+.rp-n{ font-size:14px; font-weight:600; color:var(--txt,var(--ink)); overflow-wrap:anywhere }
 .rp-n a{ color:inherit; text-decoration:none }
 .rp-n a:hover{ text-decoration:underline }
 .rp-t{
   margin-top:2px; font-family:var(--f-micro,ui-monospace,monospace);
   font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--faint,rgba(230,255,241,.42));
+  color:var(--faint,color-mix(in oklch,var(--ink) 42%,transparent));
 }
 .rp-line{
   margin-top:9px; font-family:var(--f-score,ui-monospace,monospace);
-  font-size:11px; color:var(--faint,rgba(230,255,241,.55));
+  font-size:11px; color:var(--faint,color-mix(in oklch,var(--ink) 55%,transparent));
   font-variant-numeric:tabular-nums;
 }
-.rp-line b{ font-size:16px; color:var(--txt,#e6fff1); font-weight:400; margin-right:2px }
+.rp-line b{ font-size:16px; color:var(--txt,var(--ink)); font-weight:400; margin-right:2px }
 .rp-adv{
   margin-top:7px; font-family:var(--f-score,ui-monospace,monospace);
-  font-size:10px; color:var(--faint,rgba(230,255,241,.45));
+  font-size:10px; color:var(--faint,color-mix(in oklch,var(--ink) 45%,transparent));
 }
 
 /* ------------------------------------------------------------------ foot --- */
 .rep-foot{
   margin-top:8px; padding-top:16px;
-  border-top:1px solid var(--line,rgba(147,242,191,.14));
-  font-size:11.5px; line-height:1.6; color:var(--faint,rgba(230,255,241,.42));
+  border-top:1px solid var(--line,color-mix(in oklch,var(--lume) 14%,transparent));
+  font-size:11.5px; line-height:1.6; color:var(--faint,color-mix(in oklch,var(--ink) 42%,transparent));
   max-width:62ch;
 }
 
@@ -185,4 +185,41 @@
   .rf-lab{ font-size:10.5px }
   .rq-pair{ height:66px }
   .rq-pair span{ width:11px }
+}
+
+/* ---------- the squads under the headline ---------- */
+.rep-squads{ display:grid; gap:18px; margin:-6px 0 26px }
+.sq-side{ border:1px solid var(--rule); background:color-mix(in oklch,var(--panel) 60%,transparent); padding:10px 12px 12px }
+.sq-team{ display:flex; align-items:baseline; gap:10px; font-family:var(--f-ui); font-weight:800; font-size:13px; text-transform:uppercase;
+  letter-spacing:.02em; color:var(--ink); margin:0 0 8px }
+.sq-team small{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3) }
+.sq-team.sub{ margin:12px 0 6px }
+.sq-side.t1 .sq-team{ color:var(--team-b, var(--aqua)) }
+.sq-side.t0 .sq-team{ color:var(--team-a, var(--lume)) }
+.sq-row{ display:flex; gap:12px; align-items:flex-start }
+/* THE FIVE STARTERS STAY ON ONE ROW; the bench wraps inside its section on a desktop */
+.sq-row.starters{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:4px }
+.sq-row.bench{ flex-wrap:wrap }
+.sq-row::-webkit-scrollbar{ display:none }
+.sq{ flex:0 0 96px; width:96px; display:flex; flex-direction:column; align-items:center; text-align:center; text-decoration:none; color:inherit;
+  position:relative; padding-top:2px }
+.sq-face{ width:64px; height:64px; border-radius:50%; overflow:hidden; display:grid; place-items:center; position:relative;
+  background:color-mix(in oklch,var(--c,var(--lume)) 22%,var(--panel-2)); border:2px solid color-mix(in oklch,var(--c,var(--lume)) 70%,transparent) }
+.sq-face .sq-nm{ font-family:var(--f-ui); font-weight:800; font-size:9px; line-height:1.15; padding:4px; color:var(--ink);
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; text-transform:uppercase; letter-spacing:.01em }
+.sq-face img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none }
+.sq-face.has-img img{ display:block }
+.sq-face.has-img .sq-nm{ display:none }
+.sq-num{ position:absolute; top:0; right:10px; font-family:var(--f-score); font-size:12px; color:var(--ink-3) }
+.sq-min{ font-family:var(--f-score); font-size:24px; line-height:1; margin-top:7px; color:var(--ink) }
+.sq-bpm{ font-family:var(--f-data); font-size:10.5px; margin-top:3px; color:var(--ink-2) }
+.sq-bpm.pos{ color:var(--good) } .sq-bpm.neg{ color:var(--bad) } .sq-bpm.none{ height:13px }
+.sq-line{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); margin-top:5px; line-height:1.6 }
+.sq-more{ font-family:var(--f-micro); font-size:7px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); line-height:1.6 }
+.sq:hover .sq-face{ border-color:var(--c,var(--lume)) }
+@media (max-width:720px){
+  .sq-row.bench{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:4px }
+  .sq{ flex:0 0 84px; width:84px }
+  .sq-face{ width:56px; height:56px }
+  .sq-min{ font-size:21px }
 }

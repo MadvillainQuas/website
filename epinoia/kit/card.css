@@ -6,7 +6,7 @@
    club plate from the kit" since the day it was written, and it was not true:
    the plate lived on one page, so the news page drew the same markup with none
    of the paint. Measured there before this move — no border, a transparent
-   plate instead of #07130d, the registration crosses unpainted, the ink flood
+   plate instead of var(--panel), the registration crosses unpainted, the ink flood
    at full opacity instead of .14, and the caption band laid out as a block
    instead of a row. The card was not a different design; it was the same design
    with the stylesheet missing.
@@ -38,7 +38,7 @@
 .club{position:relative;display:block;text-decoration:none;color:inherit;
   isolation:isolate}
 .club-plate{position:relative;aspect-ratio:1;overflow:hidden;
-  background:#07130d;border:1px solid var(--rule);
+  background:var(--panel);border:1px solid var(--rule);
   display:grid;place-items:center;
   transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s ease}
 .club:hover .club-plate{border-color:var(--ink-t,var(--ink-c));transform:translate(-2px,-2px)}
@@ -129,7 +129,7 @@
   background:var(--ink-c2,var(--ink-c));opacity:.9;transform:rotate(-4deg);
   display:grid;place-items:center;overflow:hidden}
 .club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.42em;
-  text-transform:uppercase;color:var(--ink-on2,#07130d);white-space:nowrap;font-weight:700}
+  text-transform:uppercase;color:var(--ink-on2,var(--panel));white-space:nowrap;font-weight:700}
 
 .club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
 .club-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;

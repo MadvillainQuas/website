@@ -40,12 +40,12 @@
   clip-path:polygon(0 0, 58% 0, 42% 100%, 0 100%);
   background:
     radial-gradient(circle,color-mix(in oklch,var(--c) 60%,transparent) 1.1px,transparent 1.4px) 0 0/7px 7px,
-    linear-gradient(160deg,color-mix(in oklch,var(--c) 46%,#07130d),color-mix(in oklch,var(--c) 22%,#07130d))}
+    linear-gradient(160deg,color-mix(in oklch,var(--c) 46%,var(--panel)),color-mix(in oklch,var(--c) 22%,var(--panel)))}
 .news-card.match .mt-half.away{
   clip-path:polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
   background:
     radial-gradient(circle,color-mix(in oklch,var(--c) 60%,transparent) 1.1px,transparent 1.4px) 3px 3px/7px 7px,
-    linear-gradient(200deg,color-mix(in oklch,var(--c) 46%,#07130d),color-mix(in oklch,var(--c) 22%,#07130d))}
+    linear-gradient(200deg,color-mix(in oklch,var(--c) 46%,var(--panel)),color-mix(in oklch,var(--c) 22%,var(--panel)))}
 /* each club's second colour, as a stripe along its outer edge */
 .news-card.match .mt-half::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:var(--c2);opacity:.9}
 .news-card.match .mt-half.home::before{left:0} .news-card.match .mt-half.away::before{right:0}
@@ -62,11 +62,11 @@
   text-shadow:0 1px 2px rgba(0,0,0,.8);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .news-card.match .mt-mid{font-family:var(--f-score);font-size:clamp(26px,3vw,40px);line-height:1;color:#fff;
   white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 14px rgba(0,0,0,.6);
-  background:rgba(4,16,11,.55);padding:4px 10px 2px;border:1px solid rgba(255,255,255,.14)}
+  background:color-mix(in oklch,var(--ground) 55%,transparent);padding:4px 10px 2px;border:1px solid rgba(255,255,255,.14)}
 .news-card.match .mt-mid .d{padding:0 5px;color:rgba(255,255,255,.45)}
 .news-card.match .mt-mid .vs{font-family:var(--f-micro);font-size:11px;letter-spacing:.2em}
 .news-card.match .news-over{background:linear-gradient(to top,
-    rgba(4,16,11,.96) 0%, rgba(4,16,11,.84) 55%, rgba(4,16,11,0) 100%)}
+    color-mix(in oklch,var(--ground) 96%,transparent) 0%, color-mix(in oklch,var(--ground) 84%,transparent) 55%, rgba(4,16,11,0) 100%)}
 /* THE CLUBS GET THE UPPER HALF. The score and the two crests already say what happened;
    the headline is held to two lines and the standfirst is left to the article, so the
    scrim stops well short of the crests instead of swallowing them on a narrow column. */
@@ -94,15 +94,15 @@
   position:absolute; inset:auto 0 0 0; z-index:2;
   padding:calc(var(--u)*2);
   background:linear-gradient(to top,
-    rgba(4,16,11,.94) 0%, rgba(4,16,11,.78) 46%, rgba(4,16,11,0) 100%);
+    color-mix(in oklch,var(--ground) 94%,transparent) 0%, color-mix(in oklch,var(--ground) 78%,transparent) 46%, rgba(4,16,11,0) 100%);
 }
 .news-title{
   font-family:var(--f-ui); font-weight:800; font-size:15px; line-height:1.22;
-  color:#eafff4; text-wrap:balance;
+  color:var(--ink); text-wrap:balance;
 }
 .news-card:first-child .news-title{font-size:19px}
 .news-stand{
-  font-family:var(--f-micro); font-size:9px; line-height:1.8; color:rgba(234,255,244,.72);
+  font-family:var(--f-micro); font-size:9px; line-height:1.8; color:color-mix(in oklch,var(--ink) 72%,transparent);
   margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -111,7 +111,7 @@
 .news-flag{
   position:absolute; top:10px; left:10px; z-index:3;
   font-family:var(--f-micro); font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
-  background:var(--amber); color:#04100b; padding:3px 8px;
+  background:var(--amber); color:var(--on-accent); padding:3px 8px;
 }
 
 /* PINNED IS NOT LATEST, so it does not look like it. Amber is the "this just
@@ -120,7 +120,7 @@
    there, which is a quieter thing. Same shape, so the two read as one family
    of flag rather than two unrelated badges. */
 .news-flag.pin{
-  background:transparent; color:var(--text-primary,#e6fff1);
+  background:transparent; color:var(--text-primary,var(--ink));
   box-shadow:inset 0 0 0 1px currentColor; padding:2px 7px;
 }
 .news-more{padding:0 calc(var(--u)*3) calc(var(--u)*2)}

@@ -16,10 +16,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
 <script src="mode.js?v=239"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=268">
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=271">
 <link rel="stylesheet" href="kit/nav.css?v=269">
-<link rel="stylesheet" href="kit/card.css?v=265">
-<link rel="stylesheet" href="kit/news.css?v=268">
+<link rel="stylesheet" href="kit/card.css?v=271">
+<link rel="stylesheet" href="kit/news.css?v=271">
 <link rel="stylesheet" href="kit/splash.css?v=239">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
@@ -50,12 +50,12 @@
     padding:12px calc(var(--u)*3);border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
   .lg:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
   .lg .cr{display:grid;place-items:center;width:34px;height:34px;border-radius:3px;
-    font-family:var(--f-score);font-size:15px;color:#04100b}
+    font-family:var(--f-score);font-size:15px;color:var(--on-accent)}
   .lg .nm{font-family:var(--f-ui);font-weight:700;font-size:14.5px;text-transform:uppercase;letter-spacing:.02em}
   .lg .sub{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:3px}
   .lg .go{font-family:var(--f-micro);font-size:16px;color:var(--ink-3)}
 
-  .fx{display:grid;grid-template-columns:1fr auto 1fr 62px;gap:10px;align-items:center;
+  .fx{display:grid;grid-template-columns:1fr auto 1fr 62px 30px;gap:10px;align-items:center;
     padding:11px calc(var(--u)*3);border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
   .fx:hover{background:color-mix(in oklch,var(--lume) 6%,transparent)}
   .fx .tn{font-family:var(--f-ui);font-weight:700;font-size:13px;text-transform:uppercase;
@@ -63,7 +63,7 @@
   .fx .tn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fx .h{text-align:right;justify-content:flex-end}
   .fxcrest{display:inline-grid;place-items:center;width:24px;height:24px;flex:none;overflow:hidden;
-    font-family:var(--f-score);font-size:11px;color:#04100b;border-radius:3px}
+    font-family:var(--f-score);font-size:11px;color:var(--on-accent);border-radius:3px}
   .fxcrest.has-img{background:#fff}
   .fxcrest img{width:100%;height:100%;object-fit:contain;display:block;padding:1px;box-sizing:border-box}
   /* the games section's chips: competition, then state */
@@ -72,6 +72,8 @@
   .gpick .ep-chip .kind{margin-left:6px;font-size:7px;letter-spacing:.12em;opacity:.65;text-transform:uppercase}
   .fx .sc{font-family:var(--f-score);font-size:20px;padding:0 8px;white-space:nowrap}
   .fx .st{font-family:var(--f-micro);font-size:9px;text-align:right}
+  .fx .fxbell{justify-self:end}
+  .fx .fxwhere{grid-column:1 / -1}
   .fx .st.live{color:var(--flare)} .fx .st.final{color:var(--ink-3)} .fx .st.sched{color:var(--aqua)}
   /* the row leads to a preview — said quietly, under the date, so the date
      stays the thing the eye lands on when scanning a list of fixtures */
@@ -89,20 +91,20 @@
   @keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
   .stripwrap{margin-top:calc(var(--u)*2);border:1px solid var(--rule);
-    border-radius:4px;overflow:hidden;background:#04100b}
-  .stripframe{display:block;width:100%;height:129px;border:0;background:#04100b}
+    border-radius:4px;overflow:hidden;background:var(--ground)}
+  .stripframe{display:block;width:100%;height:129px;border:0;background:var(--ground)}
   /* ---- league splash: the table and leaders as clickable cards ---- */
   .splitgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
     gap:calc(var(--u)*2);padding:calc(var(--u)*3)}
   .embedcard{position:relative;border:1px solid var(--rule);border-radius:4px;
-    overflow:hidden;background:#04100b;transition:border-color .15s ease}
+    overflow:hidden;background:var(--ground);transition:border-color .15s ease}
   .embedcard:hover{border-color:var(--lume)}
   .embedhead{display:flex;align-items:baseline;gap:10px;
     padding:10px calc(var(--u)*2);border-bottom:1px solid var(--rule);
     font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--ink-3)}
   .embedgo{margin-left:auto;color:var(--lume)}
-  .embedframe{display:block;width:100%;height:330px;border:0;background:#04100b}
+  .embedframe{display:block;width:100%;height:330px;border:0;background:var(--ground)}
   /* the whole card is one link. It sits ABOVE the iframe deliberately: an
      iframe swallows clicks, so without this the card would look clickable and
      do nothing. It also makes the embed a picture here, which is what a
@@ -158,7 +160,7 @@
     border:1px solid var(--rule-2);padding:4px 9px;cursor:pointer}
   .starrow-x::after{content:" \25BE";font-size:9px}
   .starrow-h.open .starrow-x::after{content:" \25B4"}
-  .starrow-x:hover,.starrow-h.can-open:hover .starrow-x{background:var(--lume);color:#04100b}
+  .starrow-x:hover,.starrow-h.can-open:hover .starrow-x{background:var(--lume);color:var(--on-accent)}
   .stargrid.starmore{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:calc(var(--u)*1.5);
     padding-top:0;margin-top:calc(var(--u)*-1)}
   @media (min-width:1100px){ .stargrid.starmore{grid-template-columns:repeat(7,minmax(96px,132px));justify-content:start} }
@@ -250,7 +252,7 @@
     padding-bottom:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   @media (max-width:720px){ .merch-star{grid-template-columns:1fr} }
   .ms-plate{position:relative;aspect-ratio:4/5;overflow:hidden;
-    background:#07130d;border:1px solid var(--rule-2)}
+    background:var(--panel);border:1px solid var(--rule-2)}
   .ms-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     filter:grayscale(.35) contrast(1.08)}
   .ms-mono{position:absolute;inset:0;display:grid;place-items:center}
@@ -262,7 +264,7 @@
   .ms-lock{position:absolute;left:0;right:0;bottom:0;z-index:2;
     padding:calc(var(--u)*2) calc(var(--u)*2) calc(var(--u)*1.5);
     display:flex;flex-direction:column;align-items:flex-start;gap:2px;
-    background:linear-gradient(transparent,rgba(4,16,11,.55) 34%,rgba(4,16,11,.94))}
+    background:linear-gradient(transparent,color-mix(in oklch,var(--ground) 55%,transparent) 34%,color-mix(in oklch,var(--ground) 94%,transparent))}
   .ms-kicker{font-family:var(--f-micro);font-size:9px;letter-spacing:.44em;
     text-transform:uppercase;color:var(--ink-c);
     text-shadow:0 0 8px color-mix(in oklch,var(--ink-c) 45%,transparent)}
@@ -289,7 +291,7 @@
     color:var(--ink-3);max-width:46ch;margin:4px 0 0}
   .ms-btn{align-self:flex-start;margin-top:6px;text-decoration:none;
     font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
-    color:#04100b;background:var(--ink-c);padding:9px 16px;border:1px solid var(--ink-c)}
+    color:var(--on-accent);background:var(--ink-c);padding:9px 16px;border:1px solid var(--ink-c)}
   .ms-btn:hover{background:transparent;color:var(--ink-c)}
   .ms-btn.wide{align-self:auto;display:inline-block}
 
@@ -298,7 +300,7 @@
     grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
   @media (min-width:1000px){ .merch-rack{grid-template-columns:repeat(5,1fr)} }
   .prod{display:block;text-decoration:none;color:inherit}
-  .prod-art{position:relative;aspect-ratio:1;background:#07130d;
+  .prod-art{position:relative;aspect-ratio:1;background:var(--panel);
     border:1px solid var(--rule-2);overflow:hidden;
     transition:border-color .16s ease,transform .16s ease}
   .prod-art svg{width:100%;height:100%;display:block}
@@ -373,7 +375,7 @@
     justify-content:start} }
   .toty .club-plate{aspect-ratio:4/3}
   .toty-ribbon{position:absolute;top:9px;left:-30px;transform:rotate(-38deg);
-    background:var(--amber);color:#04100b;font-family:var(--f-micro);font-size:7px;
+    background:var(--amber);color:var(--on-accent);font-family:var(--f-micro);font-size:7px;
     letter-spacing:.14em;text-transform:uppercase;padding:3px 34px;z-index:3;
     box-shadow:0 1px 6px rgba(0,0,0,.4)}
   .toty-mark{font-family:var(--f-score);font-size:13px;letter-spacing:.04em}
@@ -678,6 +680,7 @@
   </div>
 </div>
 <script src="config.js?v=266" defer></script>
+<script src="follow.js?v=270" defer></script>
 <script src="teamcolour.js?v=265" defer></script>
 <script src="rt.js?v=239" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
@@ -694,7 +697,7 @@
 <script src="socials.js?v=239" defer></script>
 <script src="music.js?v=239" defer></script>
 <script src="splash.js?v=239" defer></script>
-<script src="home.js?v=268" defer></script>
+<script src="home.js?v=271" defer></script>
 <script src="nav.js?v=269" defer></script>
 <script src="xscroll.js?v=239" defer></script>
 </body>

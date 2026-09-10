@@ -94,6 +94,11 @@ function oops(msg) {
     }
     $('#tname').textContent = team.name;
     if (!themed) $('#tname').style.color = colour;
+    /* follow the club: results and fixtures in the bell, email or a push if asked */
+    if (window.EpinoiaFollow) {
+      const fb = window.EpinoiaFollow.bell('team', team.id, { cls: 'big', label: 'follow' });
+      fb.classList.add('lbl'); $('#tname').parentNode.appendChild(fb);
+    }
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
     $('#tsub').textContent = lg.name || 'Independent';
@@ -825,6 +830,7 @@ function paintGames(team) {
     row.appendChild(el('div', 's', final ? `${us}\u2013${them}` : (g.status === 'live' ? 'LIVE' : '')));
     const res = final ? (us > them ? 'W' : 'L') : (g.status === 'live' ? 'LIVE' : (g.venue || 'SCHEDULED'));
     row.appendChild(el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res));
+    if (window.EpinoiaFollow) row.appendChild(window.EpinoiaFollow.bell('game', g.id));
     row.style.cursor = 'pointer';
     row.addEventListener('click', () => location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase');
     host.appendChild(row);

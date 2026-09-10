@@ -238,6 +238,8 @@ function fixtureRow(g, stats, names) {
 
   top.append(hs, scoreboard(g), as);
   row.appendChild(top);
+  /* the bell: follow this one game -- its reminder and its score in your bell */
+  if (window.EpinoiaFollow) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'corner' }));
 
   const foot = el('div', 'fxfoot');
   if (final) foot.appendChild(leaders(stats, names));

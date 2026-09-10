@@ -30,9 +30,9 @@
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
 <link rel="stylesheet" href="../boxscore.css?v=242">
-<link rel="stylesheet" href="report.css?v=239">
+<link rel="stylesheet" href="report.css?v=271">
 <link rel="stylesheet" href="preview.css?v=239">
-<link rel="stylesheet" href="../video.css?v=265">
+<link rel="stylesheet" href="../video.css?v=271">
 <link rel="stylesheet" href="../kit/nav.css?v=269">
 <style>
   /* The way in for whoever is scoring tonight. Hidden by default and revealed
@@ -40,7 +40,7 @@
      visitor is never shown a door that would be shut in their face. */
   .scorecta{font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.14em;
     text-transform:uppercase;text-decoration:none;padding:7px 13px;border-radius:999px;
-    background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
     font-weight:700;margin-left:auto;white-space:nowrap}
   .scorecta:hover{filter:brightness(1.08)}
   .scorecta.hide{display:none}
@@ -51,17 +51,17 @@
   .ctawrap{display:inline-flex;align-items:stretch;position:relative}
   .ctawrap.hide{display:none}
   .ctamore{font-family:var(--f-micro,inherit);font-size:11px;line-height:1;
-    padding:0 9px;cursor:pointer;color:#04100b;
+    padding:0 9px;cursor:pointer;color:var(--on-accent);
     background:var(--lume);border:0;border-left:1px solid rgba(0,0,0,.22)}
   .ctamore:hover{filter:brightness(1.08)}
   .ctamenu{position:absolute;top:calc(100% + 5px);right:0;z-index:40;min-width:250px;
-    background:var(--panel,#0a1512);border:1px solid var(--rule-2,rgba(147,242,191,.44));
+    background:var(--panel,#0a1512);border:1px solid var(--rule-2,color-mix(in oklch,var(--lume) 44%,transparent));
     box-shadow:0 10px 30px rgba(0,0,0,.5);padding:5px;display:flex;flex-direction:column}
   .ctamenu.hide{display:none}
-  .ctamenu a{display:block;padding:9px 11px;text-decoration:none;color:var(--ink,#e6fff1);
+  .ctamenu a{display:block;padding:9px 11px;text-decoration:none;color:var(--ink,var(--ink));
     font-family:var(--f-micro,inherit);font-size:10px;letter-spacing:.06em;line-height:1.75}
-  .ctamenu a:hover{background:rgba(147,242,191,.12)}
-  .ctamenu a small{display:block;color:var(--ink-3,rgba(230,255,241,.5));font-size:9px;
+  .ctamenu a:hover{background:color-mix(in oklch,var(--lume) 12%,transparent)}
+  .ctamenu a small{display:block;color:var(--ink-3,color-mix(in oklch,var(--ink) 50%,transparent));font-size:9px;
     letter-spacing:.02em;margin-top:2px}
   /* Quieter than the scoring button beside it, and deliberately so: one of
      these is what somebody came here to do, and the other is the undo for a
@@ -72,7 +72,7 @@
     text-transform:uppercase;padding:6px 12px;border-radius:999px;cursor:pointer;
     background:transparent;color:var(--ink-3,#8aa);border:1px solid var(--rule-2,#345);
     white-space:nowrap;margin-left:8px}
-  .revertcta:hover{color:var(--flare,#ff5f6b);border-color:var(--flare,#ff5f6b)}
+  .revertcta:hover{color:var(--flare,var(--flare));border-color:var(--flare,var(--flare))}
   .revertcta:disabled{opacity:.5;cursor:default}
   .revertcta.hide{display:none}
   a.revertcta{text-decoration:none;display:inline-block;line-height:1.2}
@@ -83,51 +83,51 @@
      season by one person, not a screen anybody lives in. */
   .vsheet{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;
     justify-content:center;padding:24px;background:rgba(2,16,11,.94)}
-  .vsheet .box{width:min(460px,100%);border:1px solid var(--rule,rgba(147,242,191,.2));
-    border-radius:16px;background:var(--panel,#0a1a13);padding:20px;
+  .vsheet .box{width:min(460px,100%);border:1px solid var(--rule,color-mix(in oklch,var(--lume) 20%,transparent));
+    border-radius:16px;background:var(--panel,var(--panel));padding:20px;
     display:flex;flex-direction:column;gap:12px}
   .vsheet h3{margin:0;font-size:16px;font-weight:500}
-  .vsheet p{margin:0;font-size:12.5px;line-height:1.8;color:var(--ink-3,rgba(230,255,241,.55))}
+  .vsheet p{margin:0;font-size:12.5px;line-height:1.8;color:var(--ink-3,color-mix(in oklch,var(--ink) 55%,transparent))}
   .vsheet input{width:100%;padding:9px 11px;border-radius:9px;
-    border:1px solid var(--rule,rgba(147,242,191,.2));background:rgba(0,0,0,.28);
-    color:var(--ink,#e6fff1);font-size:13px}
+    border:1px solid var(--rule,color-mix(in oklch,var(--lume) 20%,transparent));background:rgba(0,0,0,.28);
+    color:var(--ink,var(--ink));font-size:13px}
   .vsheet .tip{display:flex;gap:8px;align-items:center}
   .vsheet .tip input{width:74px;text-align:center}
   .vsheet .row{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
   .vsheet button{padding:9px 15px;border-radius:10px;font-size:13px;
-    border:1px solid var(--rule,rgba(147,242,191,.2));background:transparent;
-    color:var(--ink,#e6fff1);cursor:pointer}
-  .vsheet button.go{background:var(--lume,#93f2bf);border-color:var(--lume,#93f2bf);color:#04100b}
-  .vsheet .msg{font-size:12.5px;line-height:1.75;color:var(--amber,#ffd166);min-height:1px}
+    border:1px solid var(--rule,color-mix(in oklch,var(--lume) 20%,transparent));background:transparent;
+    color:var(--ink,var(--ink));cursor:pointer}
+  .vsheet button.go{background:var(--lume,var(--lume));border-color:var(--lume,var(--lume));color:var(--on-accent)}
+  .vsheet .msg{font-size:12.5px;line-height:1.75;color:var(--amber,var(--amber));min-height:1px}
   /* the automatic anchors: three quiet rows under the typed number */
-  .vsheet .vsauto{display:flex;flex-direction:column;gap:7px;padding:10px 0 2px;border-top:1px solid var(--rule,rgba(147,242,191,.14))}
+  .vsheet .vsauto{display:flex;flex-direction:column;gap:7px;padding:10px 0 2px;border-top:1px solid var(--rule,color-mix(in oklch,var(--lume) 14%,transparent))}
   .vsheet .vsrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .vsheet .vsrow button{padding:6px 11px;font-size:12px}
-  .vsheet .vsnote{font-size:11.5px;line-height:1.5;color:var(--ink-3,rgba(230,255,241,.55));flex:1;min-width:160px}
+  .vsheet .vsnote{font-size:11.5px;line-height:1.5;color:var(--ink-3,color-mix(in oklch,var(--ink) 55%,transparent));flex:1;min-width:160px}
   .vsheet .vsfile{display:inline-flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}
   .vsheet .vsfile input{width:auto;padding:0;font-size:11.5px}
   .vsheet .vsrow.hide{display:none}
   .vsheet .vsai{border-top:0;padding-top:2px}
-  .vsheet .vsjob{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.6;padding:8px 10px;border-radius:9px;background:rgba(147,242,191,.06);border:1px solid var(--rule,rgba(147,242,191,.14))}
+  .vsheet .vsjob{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.6;padding:8px 10px;border-radius:9px;background:color-mix(in oklch,var(--lume) 6%,transparent);border:1px solid var(--rule,color-mix(in oklch,var(--lume) 14%,transparent))}
   .vsheet .vsjob.hide{display:none}
   .vsheet .vsjobrow{flex:1;min-width:0}
-  .vsheet .vsjob .dim{color:var(--ink-3,rgba(230,255,241,.55))}
-  .vsheet .vsjob .bad{color:var(--amber,#ffd166)}
+  .vsheet .vsjob .dim{color:var(--ink-3,color-mix(in oklch,var(--ink) 55%,transparent))}
+  .vsheet .vsjob .bad{color:var(--amber,var(--amber))}
   .vsheet .vsjobcancel{padding:4px 9px;font-size:11.5px}
   /* Page chrome only — nothing here restyles the box score itself. */
-  body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,#e6fff1)}
+  body{margin:0;background:var(--bg-base,#060c09);color:var(--text-primary,var(--ink))}
   .wrap{max-width:1150px;margin:0 auto;padding:0 12px 60px}
   .top{display:flex;align-items:center;gap:12px;padding:12px 2px;flex-wrap:wrap}
-  .wm{font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,#93f2bf,#8ff5ff);
-    color:#04100b;padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  .wm{font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    color:var(--on-accent);padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
   .ctx{font-family:var(--f-micro);font-size:9px;color:var(--text-muted);letter-spacing:.1em;
     text-transform:uppercase}
   .status{margin-left:auto;display:flex;align-items:center;gap:7px;font-family:var(--f-micro);
     font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
   .status i{width:7px;height:7px;border-radius:50%;background:#5d7f70;display:block}
-  .status.live i{background:#ff5f6b;animation:pl 1.6s ease-in-out infinite}
-  .status.delayed i{background:#ffd166}
-  .status.final i{background:#93f2bf}
+  .status.live i{background:var(--flare);animation:pl 1.6s ease-in-out infinite}
+  .status.delayed i{background:var(--amber)}
+  .status.final i{background:var(--lume)}
   .status.offline i{background:#5d7f70}
   @keyframes pl{0%,100%{opacity:1}50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.status.live i{animation:none}}
@@ -175,6 +175,7 @@
 </div>
 
 <script src="../config.js?v=266" defer></script>
+<script src="../follow.js?v=270" defer></script>
 <script src="../vendor/supabase.js?v=239" defer></script>
 <script src="../engine.js?v=246" defer></script>
 <script src="../boxscore.js?v=246" defer></script>
@@ -199,7 +200,7 @@
      scoreboard in the picture (OCR, vendored — the CSP allows no CDN script) -->
 <script src="../videoanchor.js?v=265" defer></script>
 <script src="video.js?v=266" defer></script>
-<script src="game.js?v=270" defer></script>
+<script src="game.js?v=271" defer></script>
 <script src="../nav.js?v=269" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

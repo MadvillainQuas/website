@@ -11,11 +11,11 @@
    ============================================================================ */
 
 .vidwrap{
-  --v-ink:  var(--ink, var(--txt, #e6fff1));
+  --v-ink:  var(--ink, var(--txt, var(--ink)));
   --v-dim:  var(--ink-3, var(--dim, #7fb8a4));
-  --v-line: var(--rule, var(--line, rgba(147,242,191,.2)));
-  --v-lume: var(--lume, #93f2bf);
-  --v-amber:var(--amber, #ffd166);
+  --v-line: var(--rule, var(--line, color-mix(in oklch,var(--lume) 20%,transparent)));
+  --v-lume: var(--lume, var(--lume));
+  --v-amber:var(--amber, var(--amber));
   --v-panel:var(--panel, rgba(10,26,19,.6));
   display:flex; flex-direction:column; gap:12px;
   font-family:var(--f-ui, "Helvetica Neue", Inter, system-ui, sans-serif);
@@ -57,7 +57,7 @@
   transition:color .18s ease, border-color .18s ease, background .18s ease;
 }
 .vidchip:hover{ color:var(--v-ink); border-color:var(--v-lume); }
-.vidchip.on{ color:#04100b; background:var(--v-lume); border-color:var(--v-lume); }
+.vidchip.on{ color:var(--on-accent); background:var(--v-lume); border-color:var(--v-lume); }
 
 .vidpick{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .vidpick select{
@@ -93,8 +93,8 @@
   transition:background .14s ease;
 }
 .viditem:last-child{ border-bottom:0; }
-.viditem:hover{ background:rgba(147,242,191,.07); }
-.viditem.on{ background:rgba(147,242,191,.14); }
+.viditem:hover{ background:color-mix(in oklch,var(--lume) 7%,transparent); }
+.viditem.on{ background:color-mix(in oklch,var(--lume) 14%,transparent); }
 .viditem.on .vidt{ color:var(--v-lume); }
 .viditem.empty{ cursor:default; color:var(--v-dim); display:block; text-align:center; }
 /* The row that fetches the next screenful. Centred and quiet — it is the end
@@ -148,28 +148,28 @@
 .videxport:hover{opacity:1}
 
 /* ---- the tabs above the list: events, player minutes, lineups ---- */
-.vidtabs{ display:flex; gap:0; border-bottom:1px solid var(--v-rule,rgba(147,242,191,.2)); margin:0 0 6px; }
+.vidtabs{ display:flex; gap:0; border-bottom:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 20%,transparent)); margin:0 0 6px; }
 .vidtab{ font-family:var(--f-micro,ui-monospace); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
-  padding:9px 14px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--v-ink-3,rgba(230,255,241,.55)); cursor:pointer; }
-.vidtab:hover{ color:var(--v-ink,#e6fff1); }
-.vidtab.on{ color:var(--v-lume,#93f2bf); border-bottom-color:var(--v-lume,#93f2bf); }
+  padding:9px 14px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 55%,transparent)); cursor:pointer; }
+.vidtab:hover{ color:var(--v-ink,var(--ink)); }
+.vidtab.on{ color:var(--v-lume,var(--lume)); border-bottom-color:var(--v-lume,var(--lume)); }
 /* ---- minutes and fives ---- */
 .vidsec{ font-family:var(--f-micro,ui-monospace); font-size:8.5px; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--v-lume,#93f2bf); padding:10px 12px 4px; border-top:1px solid var(--v-rule,rgba(147,242,191,.2)); }
-.vidmin{ padding:7px 12px 9px; border-bottom:1px solid var(--v-rule,rgba(147,242,191,.12)); }
+  color:var(--v-lume,var(--lume)); padding:10px 12px 4px; border-top:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 20%,transparent)); }
+.vidmin{ padding:7px 12px 9px; border-bottom:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 12%,transparent)); }
 .vidmin-h{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
 .vidmin-n{ font-family:var(--f-ui,system-ui); font-weight:700; font-size:13px; min-width:0; }
-.vidmin-n i{ font-style:normal; font-family:var(--f-score,ui-monospace); color:var(--v-lume,#93f2bf); }
-.vidmin-n em{ font-style:normal; color:var(--v-ink-3,rgba(230,255,241,.4)); }
+.vidmin-n i{ font-style:normal; font-family:var(--f-score,ui-monospace); color:var(--v-lume,var(--lume)); }
+.vidmin-n em{ font-style:normal; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 40%,transparent)); }
 .vidmin.five .vidmin-n{ font-weight:600; font-size:12px; }
-.vidmin-t{ font-family:var(--f-score,ui-monospace); font-size:17px; color:var(--v-ink,#e6fff1); white-space:nowrap; }
-.vidmin-t small{ font-family:var(--f-micro,ui-monospace); font-size:7.5px; color:var(--v-ink-3,rgba(230,255,241,.5)); letter-spacing:.1em; }
+.vidmin-t{ font-family:var(--f-score,ui-monospace); font-size:17px; color:var(--v-ink,var(--ink)); white-space:nowrap; }
+.vidmin-t small{ font-family:var(--f-micro,ui-monospace); font-size:7.5px; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); letter-spacing:.1em; }
 .vidspans{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
 .vidspan{ font-family:var(--f-data,ui-monospace); font-size:10.5px; padding:4px 8px; cursor:pointer;
-  background:rgba(147,242,191,.06); border:1px solid var(--v-rule,rgba(147,242,191,.22)); color:var(--v-ink-2,rgba(230,255,241,.8)); }
-.vidspan b{ font-family:var(--f-micro,ui-monospace); font-size:8px; letter-spacing:.1em; color:var(--v-lume,#93f2bf); font-weight:400; }
-.vidspan i{ font-style:normal; color:var(--v-ink-3,rgba(230,255,241,.5)); }
-.vidspan:hover{ border-color:var(--v-lume,#93f2bf); color:var(--v-ink,#e6fff1); }
-.vidspan.on{ background:var(--v-lume,#93f2bf); color:#04100b; border-color:var(--v-lume,#93f2bf); }
-.vidspan.on b, .vidspan.on i{ color:#04100b; }
+  background:color-mix(in oklch,var(--lume) 6%,transparent); border:1px solid var(--v-rule,color-mix(in oklch,var(--lume) 22%,transparent)); color:var(--v-ink-2,color-mix(in oklch,var(--ink) 80%,transparent)); }
+.vidspan b{ font-family:var(--f-micro,ui-monospace); font-size:8px; letter-spacing:.1em; color:var(--v-lume,var(--lume)); font-weight:400; }
+.vidspan i{ font-style:normal; color:var(--v-ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); }
+.vidspan:hover{ border-color:var(--v-lume,var(--lume)); color:var(--v-ink,var(--ink)); }
+.vidspan.on{ background:var(--v-lume,var(--lume)); color:var(--on-accent); border-color:var(--v-lume,var(--lume)); }
+.vidspan.on b, .vidspan.on i{ color:var(--on-accent); }
 .vidspan:disabled{ opacity:.45; cursor:not-allowed; }

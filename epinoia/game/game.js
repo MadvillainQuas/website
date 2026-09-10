@@ -228,7 +228,11 @@ const BODIES = {
       return '<div class="msg">The match report could not be loaded.</div>';
     }
     const g = window.EpinoiaGameFacts.brief(window.S, d, B);
-    return window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
+    const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g));
+    /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
+    const strip = squadsHTML(d);
+    setTimeout(squadPhotos, 0);
+    return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
   },
   box:     d => B.qstripHTML(d) + B.matchDetailsHTML() +
                 B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
@@ -241,6 +245,105 @@ const BODIES = {
      to insert would throw all three away on every redraw. */
   video:   () => '<div id="vidHost"></div>'
 };
+/* ---------------------------------------------------------- the squads ---
+   Beneath the report's headline: two rows of circles a side -- the five starters on one row,
+   always, then the bench -- each a face where the league has passed a photograph and the
+   player's name where it has not, with minutes largest, the game's BPM, then the line. On a
+   phone each row scrolls sideways; on a desktop the bench wraps inside its section. */
+function gameBPM(d) {
+  const BPM = window.EpinoiaBPM, S = window.S;
+  const out = {};
+  if (!BPM || !BPM.forTeam || !S) return out;
+  const adv = [0, 1].map(t => { try { return E.teamAdv(S, d, t); } catch (_) { return {}; } });
+  const ortgs = adv.map(a => a.ortg).filter(v => v > 0);
+  const leagueAvg = ortgs.length ? ortgs.reduce((a, b) => a + b, 0) / ortgs.length : 100;
+  [0, 1].forEach(t => {
+    const players = (S.teams[t].players || []).map(p => {
+      const x = d.stats[p.id]; if (!x) return null;
+      return { id: p.id, minutes: (x.min || 0) / 60000, pts: x.pts || 0, tpm: x.p3m || 0, ast: x.ast || 0, to: x.to || 0,
+               orb: x.or || 0, drb: x.dr || 0, stl: x.stl || 0, blk: x.blk || 0, pf: x.pf || 0,
+               fga: (x.p2a || 0) + (x.p3a || 0), fta: x.fta || 0 };
+    }).filter(Boolean);
+    const sum = k => players.reduce((n, q) => n + (q[k] || 0), 0);
+    const tsa = sum('fga') + 0.44 * sum('fta');
+    const mins = Math.max(1, sum('minutes') / 5);
+    const poss = adv[t].pace ? adv[t].pace * mins / 40 : Math.max(1, tsa);
+    const per100 = {}; ['pts', 'tpm', 'ast', 'to', 'orb', 'drb', 'stl', 'blk', 'pf', 'fga', 'fta'].forEach(k => { per100[k] = sum(k) * 100 / Math.max(1, poss); });
+    per100.trb = per100.orb + per100.drb;
+    const team = { pace: adv[t].pace || 70, netRtg: (adv[t].ortg || 0) - (adv[t].drtg || 0), offRtg: adv[t].ortg || null,
+                   avgPtsPerTSA: tsa ? sum('pts') / tsa : 1.0, per100 };
+    try { BPM.forTeam(team, players, leagueAvg).forEach(r => { out[r.id] = r.bpm; }); } catch (_) { /* no BPM for this side */ }
+  });
+  return out;
+}
+function squadsHTML(d) {
+  const S = window.S;
+  if (!S || !S.teams || !d || !d.stats) return '';
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const bpm = gameBPM(d);
+  const sides = [0, 1].map(t => {
+    const team = S.teams[t] || {};
+    const starters = (S.starters && S.starters[t]) || [];
+    const played = (team.players || []).filter(p => d.stats[p.id] && (d.stats[p.id].min > 0 || d.stats[p.id].pts > 0));
+    if (!played.length) return '';
+    const byId = {}; played.forEach(p => { byId[p.id] = p; });
+    const first = starters.map(id => byId[id]).filter(Boolean);
+    const rest = played.filter(p => starters.indexOf(p.id) < 0).sort((a, b) => (d.stats[b.id].min || 0) - (d.stats[a.id].min || 0));
+    const circle = p => {
+      const x = d.stats[p.id];
+      const reb = (x.or || 0) + (x.dr || 0);
+      const b = bpm[p.id];
+      const initials = String(p.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase();
+      const href = /^[0-9a-f-]{36}$/i.test(p.id) ? '../p/?p=' + encodeURIComponent(p.id) : null;
+      return (href ? '<a class="sq" href="' + esc(href) + '"' : '<div class="sq"') + ' data-pid="' + esc(p.id) + '" title="' + esc(p.name) + '">' +
+        '<span class="sq-face" style="--c:' + esc(team.color || '#93f2bf') + '"><span class="sq-nm">' + esc(p.name) + '</span></span>' +
+        '<b class="sq-min">' + B.fmtMin(x.min || 0) + '</b>' +
+        '<span class="sq-bpm' + (b == null ? ' none' : b >= 0 ? ' pos' : ' neg') + '">' + (b == null ? '' : (b > 0 ? '+' : '') + b.toFixed(1) + ' BPM') + '</span>' +
+        '<span class="sq-line">' + (x.pts || 0) + ' pts · ' + reb + ' reb · ' + (x.ast || 0) + ' ast</span>' +
+        '<span class="sq-more">' + (x.stl || 0) + ' stl · ' + (x.blk || 0) + ' blk · ' + (x.pm > 0 ? '+' : '') + (x.pm || 0) + '</span>' +
+        '<span class="sq-num">' + esc(p.num || '') + '</span>' +
+        (href ? '</a>' : '</div>');
+    };
+    return '<section class="sq-side t' + t + '">' +
+      '<div class="sq-team">' + esc(team.name) + (first.length ? '<small>starters</small>' : '') + '</div>' +
+      (first.length ? '<div class="sq-row starters">' + first.map(circle).join('') + '</div>' : '') +
+      (rest.length ? '<div class="sq-team sub"><small>bench</small></div><div class="sq-row bench">' + rest.map(circle).join('') + '</div>' : '') +
+    '</section>';
+  }).join('');
+  return sides ? '<div class="rep-squads">' + sides + '</div>' : '';
+}
+/* the faces: approved photographs, fetched once per game and swapped in where they exist */
+let squadPhotoCache = null;
+async function squadPhotos() {
+  const host = document.querySelector('.rep-squads');
+  if (!host) return;
+  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  if (!ids.length) return;
+  if (!squadPhotoCache) {
+    squadPhotoCache = {};
+    try {
+      const CFG = window.EPINOIA_CONFIG;
+      for (let i = 0; i < ids.length; i += 40) {
+        const c = ids.slice(i, i + 40);
+        const r = await fetch(CFG.supabaseUrl + '/rest/v1/media?owner_type=eq.player&kind=eq.photo&status=eq.approved&owner_id=in.(' + c.join(',') + ')&select=owner_id,storage_path&order=created_at.desc',
+                              { headers: { apikey: CFG.supabaseAnonKey } });
+        (r.ok ? await r.json() : []).forEach(m => { if (!squadPhotoCache[m.owner_id]) squadPhotoCache[m.owner_id] = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + m.storage_path; });
+      }
+    } catch (_) { /* names stay */ }
+  }
+  host.querySelectorAll('.sq[data-pid]').forEach(e => {
+    const url = squadPhotoCache[e.dataset.pid];
+    if (!url) return;
+    const face = e.querySelector('.sq-face');
+    if (!face || face.querySelector('img')) return;
+    const img = document.createElement('img');
+    img.src = url; img.alt = ''; img.loading = 'lazy';
+    img.addEventListener('load', () => face.classList.add('has-img'));
+    img.addEventListener('error', () => img.remove());
+    face.appendChild(img);
+  });
+}
+
 /* the same five, in the same order, with the same labels as renderFinal() */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full table / advanced'], ['lineups', 'lineups']];
