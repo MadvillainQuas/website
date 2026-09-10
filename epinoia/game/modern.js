@@ -12,7 +12,7 @@
    gives every player a number between 1 and 5 — over the SEASON, from the same
    aggregation the stats pages read (data.js season()), with the club's listed
    position as the prior it leans on when the minutes are few. A player without
-   forty season minutes yet falls back to this game's own numbers. The five are
+   twenty season minutes yet falls back to this game's own numbers. The five are
    sorted by it and dealt onto the five spots — point, off guard, wing, forward,
    big. A five-guard lineup still gets five spots; it just gets them by how
    those guards actually play.
@@ -129,7 +129,7 @@
     if (seasonPos) {
       Object.keys(posByPid).forEach(pid => {
         const s = seasonPos[pid];
-        if (!s || !(s.min >= 40)) return;
+        if (!s || !(s.min >= 20)) return;
         let n = s.pos;
         const cur = posByPid[pid];
         if (cur.src === 'listed' || (cur.listed && listedToNumber(cur.listed) != null)) {
@@ -212,7 +212,7 @@
   function render(d) {
     compute(d);
     return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' +
-      '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has forty season minutes) · tap or hover a player for the full line</div>';
+      '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes) · tap or hover a player for the full line</div>';
   }
 
   /* -------------------------------------------------------------- popover --- */
