@@ -340,6 +340,7 @@ Deno.serve(async (req) => {
         const { error } = await admin.from('news_articles').upsert({
           league_id: target.league_id,
           slug,
+          game_id: gameId,           /* the card draws the two clubs from it (0105) */
           title: stripTags(rep.headline),
           standfirst: stripTags(rep.standfirst),
           body: articleBody(rep, gameId),

@@ -37,17 +37,65 @@ function tint(seedText) {
   return 'hsl(' + h + ' 46% 62%)';
 }
 
+const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? String(v) : null);
+
+/* A MATCH REPORT'S CARD IS THE TWO CLUBS. news_public brings the game with the article
+   (0104): the plate is cut on a diagonal, the home club's colour on the left and the away
+   club's on the right, each side printed as the club cards are -- a flood with the halftone
+   bitten into it -- with the crest and short name on each half and the score between them.
+   A club without a crest shows its initials; a club still on the default colour takes the
+   card's headline tint for its half, so the cut is always there. */
+function matchPlate(a, o, plate, ink) {
+  const TC = typeof window !== 'undefined' ? window.EpinoiaTeamColour : null;
+  const logoUrl = typeof window !== 'undefined' ? window.epinoiaLogoUrl : null;
+  const side = (k) => {
+    const c = hex(a[k + '_colour']);
+    const colour = (c && c.toLowerCase() !== '#93f2bf') ? c : ink;
+    const half = el('div', 'mt-half ' + k);
+    half.style.setProperty('--c', colour);
+    half.style.setProperty('--c2', hex(a[k + '_colour_2']) || colour);
+    const who = el('div', 'mt-club ' + k);
+    const url = logoUrl ? logoUrl(a[k + '_logo']) : null;
+    const mark = el('div', 'mt-crest');
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', () => { img.remove(); mark.textContent = (a[k + '_short'] || '?').slice(0, 3); });
+      mark.appendChild(img);
+    } else {
+      mark.textContent = (a[k + '_short'] || a[k + '_name'] || '?').slice(0, 3);
+    }
+    const nm = el('div', 'mt-name', a[k + '_short'] || a[k + '_name'] || '');
+    nm.style.color = TC && TC.ink ? TC.ink(colour) : colour;
+    who.append(mark, nm);
+    return [half, who];
+  };
+  const [hh, hw] = side('home'), [ah, aw] = side('away');
+  plate.append(hh, ah, el('div', 'mt-seam'));
+  const mid = el('div', 'mt-mid');
+  if (a.home_score != null && a.away_score != null) {
+    mid.append(el('span', 'v', String(a.home_score)), el('span', 'd', '–'), el('span', 'v', String(a.away_score)));
+  } else {
+    mid.appendChild(el('span', 'vs', 'v'));
+  }
+  const row = el('div', 'mt-row');
+  row.append(hw, mid, aw);
+  plate.appendChild(row);
+}
+
 function card(a, opts) {
   const o = opts || {};
   const ink = tint(a.title);
-  const link = el('a', 'club news-card');
+  const isMatch = !!(a.game_id && (a.home_name || a.away_name));
+  const link = el('a', 'club news-card' + (isMatch ? ' match' : ''));
   link.href = (o.base || '') + 'news/?l=' + encodeURIComponent(o.leagueSlug) +
               '&a=' + encodeURIComponent(a.slug);
   link.style.setProperty('--ink-c', ink);
   link.setAttribute('aria-label', a.title);
 
   const plate = el('div', 'club-plate');
-  plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+  if (isMatch && !a.cover_path) matchPlate(a, o, plate, ink);
+  else plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
   ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
 
   if (a.cover_path) {
