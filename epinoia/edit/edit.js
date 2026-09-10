@@ -16,7 +16,7 @@ const qp = new URLSearchParams(location.search);
 let sess = null, job = null, dur = 0;
 let edits = { trim: { start: 0, end: null }, crop: null, texts: [] };
 let cur = -1;                       // the selected text layer
-const pub = p => CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + p;
+const pub = p => CFG.supabaseUrl + '/storage/v1/object/public/highlights/' + p;
 const hdr = () => ({ apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + sess.token, 'Content-Type': 'application/json' });
 const fmt = s => (Math.round(s * 10) / 10).toFixed(1) + 's';
 

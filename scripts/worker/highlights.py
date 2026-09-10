@@ -12,7 +12,7 @@ clock track: [{start_ms, end_ms, label, kind}]. This module, run by ai_worker on
      pans like a camera operator, not a cursor, and a 9:16 window follows it across the 16:9
      frame;
   4. writes each clip portrait at 1080x1920 with a caption, marries the audio back, joins them;
-  5. uploads the MP4 to media-public/highlights/<job>.mp4 and tells the requester's bell.
+  5. uploads the MP4 to the highlights bucket as <job>.mp4 and tells the requester's bell.
 
 Landscape is the same pipeline without the crop. Nothing here needs a GPU; a 60-second reel
 takes a few minutes on the CPU.
@@ -243,7 +243,7 @@ def _render_edit(db, cfg, row, log, work):
     """Trim, crop and text over a rendered reel: one ffmpeg pass with a filter graph."""
     import cv2
     ffmpeg = _ffmpeg(cfg)
-    src_url = '%s/storage/v1/object/public/media-public/%s' % (db.url, row['source_path'])
+    src_url = '%s/storage/v1/object/public/highlights/%s' % (db.url, row['source_path'])
     src = os.path.join(work, 'source.mp4')
     with requests.get(src_url, stream=True, timeout=600) as r:
         r.raise_for_status()
@@ -300,9 +300,9 @@ def run_edit(db, cfg, row, log):
         db.patch('highlight_jobs', 'id=eq.%s' % jid, {'status': 'running', 'progress': {'stage': 'rendering the edit', 'i': 0, 'n': 1}, 'heartbeat_at': now_iso()})
         log('   edit %s of %s' % (jid[:8], str(row.get('source_path'))[-20:]))
         out, n_text = _render_edit(db, cfg, row, log, work)
-        path = 'highlights/%s.mp4' % jid
+        path = '%s.mp4' % jid
         with open(out, 'rb') as f:
-            r = requests.post('%s/storage/v1/object/media-public/%s' % (db.url, path),
+            r = requests.post('%s/storage/v1/object/highlights/%s' % (db.url, path),
                               headers={'apikey': db.h['apikey'], 'Authorization': db.h['Authorization'], 'Content-Type': 'video/mp4', 'x-upsert': 'true'},
                               data=f, timeout=1800)
         if r.status_code >= 300:
@@ -379,9 +379,9 @@ def run(db, cfg, row, log):
         final = os.path.join(work, 'highlights.mp4')
         _run([ffmpeg, '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', '-movflags', '+faststart', final], timeout=900)
         report('uploading', len(clips), len(clips))
-        path = 'highlights/%s.mp4' % jid
+        path = '%s.mp4' % jid
         with open(final, 'rb') as f:
-            r = requests.post('%s/storage/v1/object/media-public/%s' % (db.url, path),
+            r = requests.post('%s/storage/v1/object/highlights/%s' % (db.url, path),
                               headers={'apikey': db.h['apikey'], 'Authorization': db.h['Authorization'], 'Content-Type': 'video/mp4', 'x-upsert': 'true'},
                               data=f, timeout=1800)
         if r.status_code >= 300:

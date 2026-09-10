@@ -520,7 +520,7 @@ function wire() {
   if (go) go.onclick = hlCreate;
   const done = host.querySelector('#hlStatus');
   if (done && st.hlDone) {
-    done.innerHTML = 'ready \u2014 <a href="../edit/?hl=' + esc(st.hlJob) + '">open in the edit suite</a> \u00b7 <a href="' + esc(root0().EPINOIA_CONFIG.supabaseUrl + '/storage/v1/object/public/media-public/' + st.hlDone) + '" download>download the MP4</a>';
+    done.innerHTML = 'ready \u2014 <a href="../edit/?hl=' + esc(st.hlJob) + '">open in the edit suite</a> \u00b7 <a href="' + esc(root0().EPINOIA_CONFIG.supabaseUrl + '/storage/v1/object/public/highlights/' + st.hlDone) + '" download>download the MP4</a>';
   }
   host.querySelectorAll('.vidtab').forEach(b => {
     b.onclick = () => { st.tab = b.dataset.tab; st.shown = PAGE; stopReel(); render(); };
