@@ -245,8 +245,11 @@ const BODIES = {
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
   },
-  box:     d => B.qstripHTML(d) + B.matchDetailsHTML() +
-                B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1),
+  /* TWO WAYS TO READ THE SAME NUMBERS. Traditional is the table; Modern is the five on the
+     floor drawn on a half court with the bench beneath (modern.js). The choice is remembered. */
+  box:     d => boxSwitchHTML() + (boxMode === 'modern' && window.EpinoiaModernBox
+                ? window.EpinoiaModernBox.render(d)
+                : B.qstripHTML(d) + B.matchDetailsHTML() + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1)),
   pbp:     d => B.pbpHTML(d),
   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
   adv:     d => B.advHTML(d),
@@ -326,9 +329,9 @@ function squadsHTML(d) {
 /* the faces: approved photographs, fetched once per game and swapped in where they exist */
 let squadPhotoCache = null;
 async function squadPhotos() {
-  const host = document.querySelector('.rep-squads');
+  const host = document.getElementById('csBody');
   if (!host) return;
-  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return;
   if (!squadPhotoCache) {
     squadPhotoCache = {};
@@ -342,7 +345,7 @@ async function squadPhotos() {
       }
     } catch (_) { /* names stay */ }
   }
-  host.querySelectorAll('.sq[data-pid]').forEach(e => {
+  host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]').forEach(e => {
     const url = squadPhotoCache[e.dataset.pid];
     if (!url) return;
     const face = e.querySelector('.sq-face');
@@ -355,9 +358,30 @@ async function squadPhotos() {
   });
 }
 
+let boxMode = 'trad';
+try { if (localStorage.getItem('epinoia_box_mode') === 'modern') boxMode = 'modern'; } catch (_) { /* default */ }
+function boxSwitchHTML() {
+  return '<div class="mv-switch" role="tablist">' +
+    [['trad', 'traditional'], ['modern', 'modern']].map(m =>
+      '<button type="button" role="tab" data-boxmode="' + m[0] + '"' + (boxMode === m[0] ? ' class="on" aria-selected="true"' : '') + '>' + m[1] + '</button>').join('') +
+    '</div>';
+}
+function bindBoxSwitch(el) {
+  el.querySelectorAll('[data-boxmode]').forEach(b => {
+    b.onclick = () => {
+      if (boxMode === b.dataset.boxmode) return;
+      boxMode = b.dataset.boxmode;
+      try { localStorage.setItem('epinoia_box_mode', boxMode); } catch (_) { /* fine */ }
+      if (window.EpinoiaModernBox) window.EpinoiaModernBox.hidePop();
+      lastBodyKey = '';
+      renderBody();
+    };
+  });
+}
+
 /* the same five, in the same order, with the same labels as renderFinal() */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
-              ['adv', 'full table / advanced'], ['lineups', 'lineups']];
+              ['adv', 'full stats'], ['lineups', 'lineups']];
 
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
@@ -1469,6 +1493,10 @@ function renderBody(d) {
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
+    if (fTab === 'box') {
+      bindBoxSwitch(el);
+      if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
+    }
   }
 }
 
@@ -2181,6 +2209,13 @@ async function renderPreview() {
   }
 
   window.S = stored;
+  /* the clubs' listed positions steer where the modern view stands each player; they arrive a
+     moment after the page, and the view is redrawn once if it is already showing */
+  if (window.EpinoiaModernBox) {
+    window.EpinoiaModernBox.loadListed(api, stored).then(ok => {
+      if (ok && fTab === 'box' && boxMode === 'modern') { lastBodyKey = ''; renderBody(); }
+    });
+  }
 
   if (stored.status === 'final') {
     setStatus('final');
