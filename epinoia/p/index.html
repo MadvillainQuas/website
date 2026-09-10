@@ -111,6 +111,31 @@
   .compscope{padding:0 0 calc(var(--u)*2)}
   /* the video tab: everything else steps aside */
   body.vtab .sec:not(#videosec), body.vtab section.card{display:none}
+  /* IN THE CLUB'S COLOURS -- the same dress as the club's own page (t/index.html): the
+     player is at a club and the card says which one before the name is read. teamcolour.js
+     paints --team-a/--team-b and the -ink variants that are safe as text; body.themed
+     switches the page's accent to them. */
+  body.themed{--lume:var(--team-a-ink);
+    --rule:color-mix(in oklch,var(--team-a) 26%,transparent);
+    --rule-2:color-mix(in oklch,var(--team-a) 50%,transparent);
+    background:
+      radial-gradient(1000px 560px at 10% -6%, color-mix(in oklch,var(--team-a) 26%,var(--ground)), transparent 60%),
+      radial-gradient(800px 480px at 100% 20%, color-mix(in oklch,var(--team-b) 12%,var(--ground)), transparent 58%),
+      var(--ground);
+    background-attachment:fixed}
+  body.themed .idband{position:relative;border-bottom:none;
+    background:linear-gradient(120deg, color-mix(in oklch,var(--team-a) 30%,var(--ground)) 0%,
+                                       color-mix(in oklch,var(--team-a) 10%,var(--ground)) 55%, transparent 100%)}
+  body.themed .idband::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+    background:linear-gradient(90deg,var(--team-a) 0 72%,var(--team-b) 72% 88%,var(--team-a) 88%)}
+  body.themed .photo{border-color:color-mix(in oklch,var(--team-a) 60%,transparent);
+    box-shadow:0 0 0 1px color-mix(in oklch,var(--team-b) 45%,transparent)}
+  body.themed .photo .num{background:var(--team-a);color:var(--team-on-a)}
+  body.themed .idmeta .sub a{color:var(--team-a-ink)}
+  body.themed .idmeta .sub a:hover{color:var(--ink)}
+  body.themed .pos-chip{border-color:color-mix(in oklch,var(--team-b) 60%,transparent);color:var(--team-b-ink)}
+  body.themed .tile.hi .v,body.themed .sec-h .idx{color:var(--team-a-ink)}
+  body.themed .ep-tab.on{background:var(--team-a);color:var(--team-on-a)}
 </style>
 </head>
 <body>
@@ -205,6 +230,7 @@
   </div>
 </div>
 <script src="../config.js?v=248" defer></script>
+<script src="../teamcolour.js?v=265" defer></script>
 <script src="../bpm.js?v=239" defer></script>
 <script src="../season.js?v=264" defer></script>
 <script src="../data.js?v=239" defer></script>
@@ -218,7 +244,7 @@
 <script src="../fulltable.js?v=264" defer></script>
 <script src="../video.js?v=264" defer></script>
 <script src="video.js?v=264" defer></script>
-<script src="player.js?v=265" defer></script>
+<script src="player.js?v=266" defer></script>
 <script src="../nav.js?v=239" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

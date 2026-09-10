@@ -22,9 +22,13 @@
    because right now none of them have one. So the monogram is the artwork, not
    a placeholder for it.
 
-   --ink-c IS THE ONE INPUT. Every layer here reads it, and each caller sets it
-   inline: the club's own colour for a club, a colour derived from the headline
-   for an article. Nothing in this file picks a colour.
+   --ink-c IS THE INPUT, and each caller sets it inline: the club's own colour
+   for a club, a colour derived from the headline for an article. Nothing in
+   this file picks a colour. Three more are read WHEN GIVEN and fall back to it:
+     --ink-c2   the club's second colour (the band, the registration marks)
+     --ink-t    the primary made safe as TEXT on the dark ground
+     --ink-on2  text on the band
+   teamcolour.js card() sets all four from a team's colour pair.
 
    What sits ON the plate belongs to whoever is using it — news.css for an
    article's headline and scrim, epinoia/index.html for the aspect-ratio and
@@ -37,7 +41,7 @@
   background:#07130d;border:1px solid var(--rule);
   display:grid;place-items:center;
   transition:transform .18s cubic-bezier(.2,.8,.3,1),border-color .18s ease}
-.club:hover .club-plate{border-color:var(--ink-c);transform:translate(-2px,-2px)}
+.club:hover .club-plate{border-color:var(--ink-t,var(--ink-c));transform:translate(-2px,-2px)}
 
 /* the ink block: a hard flood that the halftone eats into */
 .club-flood{position:absolute;inset:0;background:var(--ink-c);opacity:.14}
@@ -54,8 +58,8 @@
 /* registration crosses, as a printer would leave them */
 .club-reg{position:absolute;width:11px;height:11px;opacity:.5;
   background:
-    linear-gradient(var(--ink-c),var(--ink-c)) center/1px 100% no-repeat,
-    linear-gradient(var(--ink-c),var(--ink-c)) center/100% 1px no-repeat}
+    linear-gradient(var(--ink-c2,var(--ink-c)),var(--ink-c2,var(--ink-c))) center/1px 100% no-repeat,
+    linear-gradient(var(--ink-c2,var(--ink-c)),var(--ink-c2,var(--ink-c))) center/100% 1px no-repeat}
 .club-reg.tl{top:8px;left:8px} .club-reg.tr{top:8px;right:8px}
 .club-reg.bl{bottom:8px;left:8px} .club-reg.br{bottom:8px;right:8px}
 
@@ -122,16 +126,19 @@
 }
 
 .club-band{position:absolute;left:-10%;right:-10%;top:64%;height:15px;
-  background:var(--ink-c);opacity:.9;transform:rotate(-4deg);
+  background:var(--ink-c2,var(--ink-c));opacity:.9;transform:rotate(-4deg);
   display:grid;place-items:center;overflow:hidden}
 .club-band span{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.42em;
-  text-transform:uppercase;color:#07130d;white-space:nowrap;font-weight:700}
+  text-transform:uppercase;color:var(--ink-on2,#07130d);white-space:nowrap;font-weight:700}
 
 .club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
 .club-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;
-  text-transform:uppercase;letter-spacing:.02em;color:var(--ink);
+  text-transform:uppercase;letter-spacing:.02em;color:var(--ink-t,var(--ink));
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.club:hover .club-name{color:var(--ink-c)}
+/* the club's name in the club's ink -- the text-safe one, so a navy club is not
+   a line of near-black on near-black */
+.club:hover .club-name{color:var(--ink-t,var(--ink-c));
+  text-shadow:0 0 12px color-mix(in oklch,var(--ink-c) 40%,transparent)}
 .club-ed{margin-left:auto;font-family:var(--f-micro);font-size:8px;
   color:var(--ink-3);letter-spacing:.1em;white-space:nowrap}
 

@@ -181,7 +181,10 @@ function card(r, award, photos) {
   const ink = r.team_colour || '#93f2bf';
   const a = el('a', 'club toty');
   a.href = 'p/?p=' + encodeURIComponent(r.player_slug || '');
-  a.style.setProperty('--ink-c', ink);
+  /* the club's pair, with text-safe inks, when the helper is on the page */
+  const TC = window.EpinoiaTeamColour;
+  if (TC && TC.card) TC.card(a, ink, r.team_colour_2);
+  else a.style.setProperty('--ink-c', ink);
   a.setAttribute('aria-label', r.player_name + ', ' + (r.team_name || ''));
 
   const plate = el('div', 'club-plate');

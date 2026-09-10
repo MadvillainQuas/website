@@ -66,6 +66,19 @@
     return true;
   }
 
+  /* A CARD IN THE CLUB'S INK. The print-style cards (kit/card.css: the club grid, the stars
+     of the month, the Team of the Year) read one input, --ink-c. They now read four: the
+     raw primary for the flood and halftone, the secondary for the band and registration
+     marks, and the text-safe ink of each for anything that has to be read. */
+  function card(elm, a, b) {
+    const A = parse(a) ? toHex(parse(a)) : '#93f2bf';
+    const B = parse(b) ? toHex(parse(b)) : derived(A);
+    const s = elm.style;
+    s.setProperty('--ink-c', A);      s.setProperty('--ink-c2', B);
+    s.setProperty('--ink-t', ink(A)); s.setProperty('--ink-t2', ink(B));
+    s.setProperty('--ink-on2', on(B));
+  }
+
   /* ---------------------------------------------------- the same count, in the browser --- */
   function hsl(r, g, b) {
     r /= 255; g /= 255; b /= 255;
@@ -138,5 +151,5 @@
     });
   }
 
-  window.EpinoiaTeamColour = { apply, ink, on, derived, fromImage, palette, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  window.EpinoiaTeamColour = { apply, card, ink, on, derived, fromImage, palette, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

@@ -401,6 +401,14 @@ function leagueCompetitions(leagueId) {
 
    The initials come from the club's short name where it has one, because that
    is what the club calls itself, and are derived only as a fallback. */
+/* the card in the club's two colours, with text-safe inks (teamcolour.js); the one-colour
+   fallback when the helper is not on the page */
+function paintCard(a, colour, colour2) {
+  const TC = window.EpinoiaTeamColour;
+  if (TC && TC.card) TC.card(a, colour || '#93f2bf', colour2);
+  else a.style.setProperty('--ink-c', colour || '#93f2bf');
+}
+
 function monogram(t) {
   const s = (t.short_name || '').trim();
   if (s) return s.slice(0, 3).toUpperCase();
@@ -416,7 +424,7 @@ async function clubs() {
   let ts = [];
   try {
     ts = await api('teams?league_id=eq.' + LEAGUE.id +
-      '&select=id,name,short_name,slug,colour,logo_path&order=name');
+      '&select=id,name,short_name,slug,colour,colour_2,logo_path&order=name');
   } catch (e) {
     return [];                    // a league page without clubs is still a page
   }
@@ -457,7 +465,7 @@ async function clubs() {
   ts.forEach((t, i) => {
     const a = el('a', 'club');
     a.href = 't/?t=' + encodeURIComponent(t.slug || '');
-    a.style.setProperty('--ink-c', t.colour || '#93f2bf');
+    paintCard(a, t.colour, t.colour_2);
     a.setAttribute('aria-label', t.name);
 
     const plate = el('div', 'club-plate');
@@ -553,7 +561,7 @@ async function stars() {
   /* names and clubs, resolved once for every window */
   const teamsById = new Map();
   try {
-    (await api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour'))
+    (await api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2'))
       .forEach(t => teamsById.set(t.id, t));
   } catch (_) { /* the podium still works with a colourless card */ }
 
@@ -607,7 +615,7 @@ async function stars() {
 
       const a = el('a', 'club star');
       a.href = 'p/?p=' + encodeURIComponent(m.slug || '');
-      a.style.setProperty('--ink-c', ink);
+      paintCard(a, ink, team.colour_2);
       a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || ''));
 
       const plate = el('div', 'club-plate');

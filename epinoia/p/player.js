@@ -46,6 +46,13 @@ function paintIdentity(pl, entry, team) {
 
   const colour = (team && team.colour) || '#93f2bf';
   document.documentElement.style.setProperty('--team-a', colour);
+  /* THE PLAYER IN HIS CLUB'S COLOURS. A club with colours of its own (read from its crest,
+     or chosen) dresses the page -- body.themed in the stylesheet; a club still on the site's
+     default mint leaves the page in the site's own. */
+  const TC = window.EpinoiaTeamColour;
+  const themed = !!(TC && team && team.colour && String(team.colour).toLowerCase() !== '#93f2bf' &&
+                    TC.apply(document.documentElement, team.colour, team.colour_2));
+  document.body.classList.toggle('themed', themed);
 
   /* Photo. media rows are only readable once approved, and a minor's needs
      recorded guardian consent — both enforced in the database, so if a photo
@@ -69,7 +76,7 @@ function paintIdentity(pl, entry, team) {
   }
   if (entry && entry.jersey) {
     const num = el('span', 'num', entry.jersey);
-    num.style.background = colour;
+    if (!themed) num.style.background = colour;
     box.appendChild(num);
   }
 
@@ -358,7 +365,7 @@ function paintLog(rows) {
     }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,short_name)&order=created_at.desc&limit=1`);
+      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name)&order=created_at.desc&limit=1`);
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
