@@ -450,11 +450,12 @@ function renderShell() {
   /* on the light theme a club colour is TEXT on a pale page (the names, the scores) and a
      surface under white type (the tab): the ink form reads for both */
   const TC = window.EpinoiaTeamColour;
-  if (TC && document.documentElement.getAttribute('data-theme') === 'light') { c0 = TC.ink(c0); c1 = TC.ink(c1); }
-  r.setProperty('--team0', c0);
-  r.setProperty('--team1', c1);
-  r.setProperty('--team0-glow', glow(c0, .4));
-  r.setProperty('--team1-glow', glow(c1, .4));
+  const lightNow = !!(TC && document.documentElement.getAttribute('data-theme') === 'light');
+  const k0 = lightNow ? TC.ink(c0) : c0, k1 = lightNow ? TC.ink(c1) : c1;
+  r.setProperty('--team0', k0);
+  r.setProperty('--team1', k1);
+  r.setProperty('--team0-glow', glow(k0, .4));
+  r.setProperty('--team1-glow', glow(k1, .4));
   shellBuilt = true;
 }
 
