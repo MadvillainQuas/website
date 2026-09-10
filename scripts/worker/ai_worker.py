@@ -40,6 +40,7 @@ DEFAULTS = {
     'skill_scripts': r'C:\Users\Admin\.claude\skills\playtype-vision\scripts',
     'download_dir': r'D:\Download\bcb_streams',
     'keep_video': False,
+    'ffmpeg': '',               # path to ffmpeg.exe for highlight reels; blank = %APPDATA%\epinoia\ffmpeg\bin\ffmpeg.exe
     'step_clock': 5.0,
     'step_score': 2.0,
     'poll_s': 20,
@@ -715,6 +716,20 @@ def one_pass(db, cfg):
         log('(backfill failed: %s)' % exc)
     row = db.rpc('claim_video_job', {'p_worker': cfg['worker_id']})
     if not row or not isinstance(row, dict) or not row.get('id'):
+        # no clock to read: a highlights reel, if somebody asked for one (highlights.py)
+        hl = db.rpc('claim_highlight_job', {'p_worker': cfg['worker_id']})
+        if hl and isinstance(hl, dict) and hl.get('id'):
+            import highlights
+            heartbeat(db, cfg, hl['id'], 'highlights ' + str(hl.get('game_id', ''))[:8])
+            try:
+                highlights.run(db, cfg, hl, log)
+            except Exception as exc:
+                log('   highlights failed: %s' % exc)
+                try:
+                    db.patch('highlight_jobs', 'id=eq.%s' % hl['id'], {'status': 'failed', 'error': str(exc)[:400], 'finished_at': now_iso()})
+                except Exception:
+                    pass
+            return True
         return False                # an empty queue comes back as a row of nulls, not as nothing
     job = Job(db, row, cfg)
     job.run()

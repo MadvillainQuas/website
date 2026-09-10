@@ -38,6 +38,7 @@ const esc = s => String(s == null ? '' : s)
    the game page rebuilds its body whenever the log changes, and a filter the
    reader chose must survive that. */
 let st = { filter: 'all', pid: '', team: '', reel: false, current: null, seekMs: 0,
+           hlOpen: false, hlKinds: null, hlOr: 'portrait', hlJob: null, hlMsg: '', hlDone: null,
            /* EVENTS, PLAYER MINUTES or LINEUPS. A clock-read game knows when the clock ran, so
               it can show not only where each play is but every stretch a player, or a five,
               was on the floor -- and take the viewer to the start of any of them. */
@@ -372,7 +373,10 @@ function render() {
             (v.trim_ms ? '<i>(' + (v.trim_ms > 0 ? '+' : '') + (v.trim_ms / 1000) + ' s)</i>' : '') + '</span>' : '') +
         (lined && timed && list.length
           ? '<button class="videxport" id="vidExport" title="every listed play as a clip list (JSON) for the labelling studio or an editor">export clips</button>' : '') +
-      '</div>';
+        (lined && timed && list.length
+          ? '<button class="videxport hl" id="vidHl" title="a vertical reel of the plays you choose, cut from the footage, the ball kept in frame">export highlights</button>' : '') +
+      '</div>' +
+      (st.hlOpen ? hlPanelHTML() : '');
 
   wire();
 }
@@ -408,8 +412,116 @@ function exportClips() {
 function perName(p) { return root0().EpinoiaEngine.perName(p); }
 function fmtClock(ms) { return root0().EpinoiaEngine.fmtClock(ms); }
 
+/* ------------------------------------------------------- export highlights --- */
+/* THE REEL. A player (or a side, or everyone), the kinds of play wanted, portrait or landscape:
+   the plays the page has already placed become clips, and the worker on the league's PC cuts
+   them from the stream, follows the ball into a 9:16 frame and joins them. The finished MP4
+   opens in the edit suite. Signed-in people only -- it is minutes of somebody's computer. */
+const HL_KINDS = [['points', 'every point'], ['fg', 'field goals'], ['three', 'three-pointers'], ['reb', 'rebounds'],
+                  ['ast', 'assists'], ['def', 'steals & blocks'], ['to', 'turnovers'], ['foul', 'fouls']];
+function hlPanelHTML() {
+  const chosen = st.hlKinds || ['points', 'ast', 'def'];
+  const who = st.pid ? (playerNameOf(st.pid) || 'this player') : (st.team !== '' ? ((ctx.S.teams[+st.team] || {}).name || 'this side') : 'everyone');
+  const n = hlClips().length;
+  return '<div class="hlpanel">' +
+    '<div class="hlh"><b>Export highlights</b><span>' + esc(who) + ' \u00b7 pick the plays, then create. Choose a player above to narrow it.</span></div>' +
+    '<div class="hlkinds">' +
+      '<label class="hlk"><input type="checkbox" id="hlAll"' + (chosen.length === HL_KINDS.length ? ' checked' : '') + '> <b>select all</b></label>' +
+      HL_KINDS.map(k => '<label class="hlk"><input type="checkbox" data-k="' + k[0] + '"' + (chosen.indexOf(k[0]) >= 0 ? ' checked' : '') + '> ' + esc(k[1]) + '</label>').join('') +
+    '</div>' +
+    '<div class="hlrow">' +
+      '<label class="hlk"><input type="radio" name="hlOr" value="portrait"' + (st.hlOr !== 'landscape' ? ' checked' : '') + '> vertical 9:16 (Instagram, TikTok)</label>' +
+      '<label class="hlk"><input type="radio" name="hlOr" value="landscape"' + (st.hlOr === 'landscape' ? ' checked' : '') + '> landscape</label>' +
+      '<span class="hln">' + n + (n === 1 ? ' clip' : ' clips') + (n > 80 ? ' \u00b7 the first 80 go in' : '') + '</span>' +
+      '<button class="ep-btn pri" id="hlGo"' + (n ? '' : ' disabled') + '>create the reel</button>' +
+    '</div>' +
+    '<div class="hlstatus" id="hlStatus">' + (st.hlMsg ? esc(st.hlMsg) : '') + '</div>' +
+  '</div>';
+}
+function playerNameOf(pid) {
+  let nm = null;
+  (ctx.S.teams || []).forEach(t => (t.players || []).forEach(p => { if (p.id === pid) nm = p.name; }));
+  return nm;
+}
+function hlClips() {
+  const kinds = st.hlKinds || ['points', 'ast', 'def'];
+  const seen = new Set(), out = [];
+  kinds.forEach(k => {
+    V().select(plays(), { filter: k, pid: st.pid || null, team: st.team === '' ? null : +st.team }).forEach(p => {
+      if (seen.has(p.id)) return;
+      seen.add(p.id);
+      out.push({ id: p.id, start_ms: Math.round(p.start), end_ms: Math.round(p.end), label: p.label, kind: k });
+    });
+  });
+  return out.sort((a, b) => a.start_ms - b.start_ms).slice(0, 80);
+}
+async function hlCreate() {
+  const F = root0().EpinoiaFollow;
+  const sess = F && F.session();
+  if (!sess) { location.href = '../signin/?next=' + encodeURIComponent(location.pathname + location.search); return; }
+  const clips = hlClips();
+  if (!clips.length) return;
+  const c = root0().EPINOIA_CONFIG;
+  st.hlMsg = 'sending\u2026'; render();
+  const who = st.pid ? playerNameOf(st.pid) : null;
+  const body = {
+    game_id: ctx.game.id, requested_by: JSON.parse(atob(sess.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub,
+    player_id: st.pid || null, player_name: who, kinds: st.hlKinds || ['points', 'ast', 'def'],
+    orientation: st.hlOr === 'landscape' ? 'landscape' : 'portrait', clips: clips
+  };
+  const r = await fetch(c.supabaseUrl + '/rest/v1/highlight_jobs', {
+    method: 'POST', headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + sess.token, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { st.hlMsg = 'could not ask: ' + (await r.text()).slice(0, 120); render(); return; }
+  const row = (await r.json())[0];
+  st.hlJob = row.id;
+  st.hlMsg = 'queued \u2014 the reel is cut on the league\u2019s PC; it opens in the edit suite when ready (your bell will say)';
+  render();
+  hlWatch(sess);
+}
+let hlTimer = null;
+function hlWatch(sess) {
+  clearTimeout(hlTimer);
+  const c = root0().EPINOIA_CONFIG;
+  const tick = async () => {
+    if (!st.hlJob) return;
+    try {
+      const r = await fetch(c.supabaseUrl + '/rest/v1/highlight_jobs?id=eq.' + st.hlJob + '&select=status,progress,output_path,error',
+                            { headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + sess.token }, cache: 'no-store' });
+      const j = (await r.json())[0];
+      if (!j) return;
+      const p = j.progress || {};
+      if (j.status === 'done') { st.hlMsg = 'ready'; st.hlDone = j.output_path; render(); return; }
+      if (j.status === 'failed') { st.hlMsg = 'failed: ' + (j.error || ''); render(); return; }
+      st.hlMsg = (j.status === 'queued' ? 'queued' : (p.stage || 'working')) + (p.n ? ' \u00b7 ' + p.i + '/' + p.n : '') + (p.last ? ' \u00b7 ' + p.last : '');
+      const el = host.querySelector('#hlStatus'); if (el) el.textContent = st.hlMsg;
+    } catch (_) { /* next tick */ }
+    hlTimer = setTimeout(tick, 5000);
+  };
+  tick();
+}
+
 /* ---------------------------------------------------------------- wiring --- */
 function wire() {
+  const hb = host.querySelector('#vidHl');
+  if (hb) hb.onclick = () => { st.hlOpen = !st.hlOpen; render(); };
+  const all = host.querySelector('#hlAll');
+  if (all) all.onchange = () => { st.hlKinds = all.checked ? HL_KINDS.map(k => k[0]) : []; render(); };
+  host.querySelectorAll('.hlkinds input[data-k]').forEach(cb => {
+    cb.onchange = () => {
+      const set = new Set(st.hlKinds || ['points', 'ast', 'def']);
+      if (cb.checked) set.add(cb.dataset.k); else set.delete(cb.dataset.k);
+      st.hlKinds = HL_KINDS.map(k => k[0]).filter(k => set.has(k)); render();
+    };
+  });
+  host.querySelectorAll('input[name="hlOr"]').forEach(rb => { rb.onchange = () => { st.hlOr = rb.value; }; });
+  const go = host.querySelector('#hlGo');
+  if (go) go.onclick = hlCreate;
+  const done = host.querySelector('#hlStatus');
+  if (done && st.hlDone) {
+    done.innerHTML = 'ready \u2014 <a href="../edit/?hl=' + esc(st.hlJob) + '">open in the edit suite</a> \u00b7 <a href="' + esc(root0().EPINOIA_CONFIG.supabaseUrl + '/storage/v1/object/public/media-public/' + st.hlDone) + '" download>download the MP4</a>';
+  }
   host.querySelectorAll('.vidtab').forEach(b => {
     b.onclick = () => { st.tab = b.dataset.tab; st.shown = PAGE; stopReel(); render(); };
   });

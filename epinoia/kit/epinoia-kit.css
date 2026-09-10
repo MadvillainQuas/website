@@ -520,3 +520,5 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 :root[data-theme="light"] .tile, :root[data-theme="light"] .ffcard{ background:#ffffff }
 :root[data-theme="light"] body{ -webkit-font-smoothing:auto }
 :root[data-theme="light"] .ep-hdr h2, :root[data-theme="light"] .hname, :root[data-theme="light"] .rep-hl{ text-shadow:none }
+
+:root[data-theme="light"] .ep-chip.on{ background:var(--lume); border-color:var(--lume); color:#ffffff }
