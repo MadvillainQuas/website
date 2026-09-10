@@ -449,3 +449,19 @@ body.nav-drawer-open{ overflow:hidden }
   .ep-nav.drawer-open .phead .lname .marq > span{ font-size:12.5px }
   .ep-nav.drawer-open .acct{ flex-direction:column }
 }
+
+/* ---- phones: the tab bar (nav.js paintTabbar) ---- */
+.ep-tabbar{ display:none }
+@media (max-width:820px){
+  .ep-nav .ep-tabbar{ display:flex; flex:1 1 auto; min-width:0; align-items:stretch }
+  .ep-nav.has-tabbar:not(.drawer-open) .ep-nav-scroll{ display:none }
+  .ep-nav.drawer-open .ep-tabbar{ display:none }
+  .ep-tabbar a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; padding:8px 2px 7px; text-decoration:none; color:var(--ink-2); border-top:2px solid transparent }
+  .ep-tabbar a .ic{ font-size:15px; line-height:1 }
+  .ep-tabbar a .tx{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
+  .ep-tabbar a.on{ color:var(--lume); border-top-color:var(--lume) }
+  .ep-tabbar a:active{ background:color-mix(in oklch,var(--lume) 10%,transparent) }
+  body.nav-drawer-open{ overflow:hidden }
+}

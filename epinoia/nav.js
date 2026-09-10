@@ -528,6 +528,36 @@
   home.append(el('span', 'ic', '←'), homeTx);
   home.title = 'back to Epinoia';
   navScroll.appendChild(home);
+  /* ------------------------------------------------------------ the tab bar ---
+     ON A PHONE THE BAR IS THE LEAGUE'S FIVE PLACES, NOT THE WHOLE RAIL. The rail's row-flow
+     put the countries/leagues deck, the account, contact and the admin rows into one sideways
+     scroller, so what showed at the bottom of the screen was whatever happened to be scrolled
+     into view -- "admin controls · platform · your@email" -- and the pages a fan actually wants
+     were off to the left. This bar is fixed: home, fixtures, table, statistics, news, then
+     the menu, which opens the full rail as the sheet. Hidden above 820px; left out when the
+     page has no league to point at, where the old row does its job. */
+  const tabbar = el('div', 'ep-tabbar');
+  const TABS = [
+    { key: 'home', ic: '⌂', tx: 'home', href: '', on: () => /\/epinoia\/$/.test(here) && !!qp.get('l') },
+    { key: 'fixtures' }, { key: 'table' }, { key: 'statistics' }, { key: 'news' }
+  ];
+  function paintTabbar() {
+    tabbar.textContent = '';
+    if (!lg) { nav.classList.remove('has-tabbar'); return; }
+    TABS.forEach(t => {
+      const spec = t.href !== undefined ? t : PAGES.find(p => p.key === t.key);
+      if (!spec) return;
+      const a = el('a', 'tab');
+      a.href = withLeague(root + (spec.href || ''));
+      a.append(el('span', 'ic', spec.ic), el('span', 'tx', spec.tx));
+      const on = t.on ? t.on() : (spec.match && spec.match.test(here));
+      if (on) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
+      tabbar.appendChild(a);
+    });
+    nav.classList.add('has-tabbar');
+  }
+  paintTabbar();
+  nav.appendChild(tabbar);
   nav.appendChild(navScroll);
 
   /* THE WAY IN, ON A PHONE.
@@ -561,6 +591,13 @@
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && nav.classList.contains('drawer-open')) navToggle.click();
+  });
+  /* the dimmed page above the sheet closes it, as does choosing anything inside it */
+  document.addEventListener('click', e => {
+    if (!nav.classList.contains('drawer-open')) return;
+    if (!nav.contains(e.target)) { navToggle.click(); return; }
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (a && nav.contains(a)) setTimeout(() => { if (nav.classList.contains('drawer-open')) navToggle.click(); }, 50);
   });
   nav.appendChild(navToggle);
 
@@ -1086,6 +1123,7 @@
       get() { return lg; },
       set(v) {
         lg = v || '';
+        try { paintTabbar(); } catch (_) { /* before the bar exists */ }
         pageLeague = lg;              // the page has just told us what it is about
         markCurrent();
         retarget();
