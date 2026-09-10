@@ -203,6 +203,7 @@ async function paintRecent() {
     else await disablePush();
     save();
   };
+  $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
   applyTheme(prefs.theme);
   $('#themeDark').onclick = () => { applyTheme('dark'); save(); };
   $('#themeLight').onclick = () => { applyTheme('light'); save(); };

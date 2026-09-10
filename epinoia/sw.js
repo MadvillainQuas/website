@@ -6,6 +6,17 @@
    No caching, no interception of fetches: the site is served exactly as before.
    ============================================================================ */
 self.addEventListener('install', () => self.skipWaiting());
+/* A fetch handler makes the app installable; it passes every request straight through. Nothing
+   is cached here on purpose: a live score served from yesterday's cache would be worse than no
+   app at all, and the pages already carry their own version stamps. */
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).catch(() => new Response(
+    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<body style="margin:0;background:#04100b;color:#e6fff1;font-family:system-ui;display:grid;place-items:center;height:100vh;text-align:center">' +
+    '<div><div style="font-size:22px;font-weight:800">Epinoia is offline</div><div style="opacity:.7;margin-top:8px">Nothing is stored on this phone; connect and try again.</div></div></body>',
+    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
+});
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', e => {

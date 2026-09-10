@@ -381,6 +381,48 @@
   acct.appendChild(meLink);
   navScroll.appendChild(acct);
 
+  /* ------------------------------------------------------- add to home screen ---
+     The app is installable (manifest.webmanifest + sw.js). On Android the browser fires
+     beforeinstallprompt and the banner's button hands that prompt to the person; on iPhone
+     there is no such event and the banner explains the share sheet instead. Shown once a
+     visit on a phone-sized screen that is not already the installed app; a dismissal is
+     remembered for a fortnight. window.epinoiaInstall() offers the same from a page. */
+  let installEvt = null, installBanner = null;
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const dismissed = () => { try { return (+localStorage.getItem('epinoia_install_dismissed') || 0) > Date.now() - 14 * 86400000; } catch (_) { return false; } };
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});
+  }
+  function showInstall(force) {
+    if (installBanner || standalone()) return;
+    if (!force && (dismissed() || window.innerWidth > 900)) return;
+    if (!installEvt && !isIOS() && !force) return;
+    installBanner = el('div', 'ep-install');
+    const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
+    const tx = el('div', 'tx');
+    tx.appendChild(el('b', null, 'Add Epinoia to your home screen'));
+    tx.appendChild(el('span', null, installEvt
+      ? 'Scores, fixtures and your clubs one tap away, with alerts when you ask for them.'
+      : isIOS() ? 'Tap Share \u2191 below, then \u201cAdd to Home Screen\u201d. Alerts for your clubs work from there.'
+      : 'Open this page in Chrome or Edge on your phone and add it from the browser menu.'));
+    const go = el('button', 'go', installEvt ? 'add' : 'got it'); go.type = 'button';
+    const x = el('button', 'x', '\u00d7'); x.type = 'button'; x.title = 'not now';
+    const close = () => { try { localStorage.setItem('epinoia_install_dismissed', String(Date.now())); } catch (_) {} installBanner.remove(); installBanner = null; };
+    go.onclick = async () => {
+      if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (_) {} installEvt = null; }
+      close();
+    };
+    x.onclick = close;
+    installBanner.append(ic, tx, go, x);
+    document.body.appendChild(installBanner);
+  }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(false); });
+  window.addEventListener('appinstalled', () => { if (installBanner) { installBanner.remove(); installBanner = null; } });
+  window.epinoiaInstall = () => showInstall(true);
+  window.epinoiaCanInstall = () => !!installEvt;
+  if (isIOS()) setTimeout(() => showInstall(false), 2500);
+
   /* --------------------------------------------------------------- the bell ---
      Top right of every page for a signed-in person: what the platform has to tell them, by
      the settings on their profile. Read straight off the notifications table with the stored
