@@ -522,3 +522,15 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 :root[data-theme="light"] .ep-hdr h2, :root[data-theme="light"] .hname, :root[data-theme="light"] .rep-hl{ text-shadow:none }
 
 :root[data-theme="light"] .ep-chip.on{ background:var(--lume); border-color:var(--lume); color:#ffffff }
+
+/* ---- light: every chip, button and tab is a solid surface ---- */
+:root[data-theme="light"] .ep-chip{ background:#ffffff; color:var(--ink-2); border-color:var(--rule-2) }
+:root[data-theme="light"] .ep-chip:hover{ border-color:var(--lume); color:var(--lume) }
+:root[data-theme="light"] .ep-btn{ background:#ffffff; color:var(--ink); border-color:var(--rule-2) }
+:root[data-theme="light"] .ep-btn:hover{ background:var(--lume); color:#ffffff }
+:root[data-theme="light"] .ep-btn.pri{ background:var(--lume); color:#ffffff }
+:root[data-theme="light"] .ep-tab{ color:var(--ink-2) }
+:root[data-theme="light"] .ep-tab.on{ background:var(--lume); color:#ffffff }
+:root[data-theme="light"] .ep-input{ background:#ffffff; color:var(--ink); border-color:var(--rule-2) }
+:root[data-theme="light"] .vidchip, :root[data-theme="light"] .vidspan, :root[data-theme="light"] .starrow-x{ background:#ffffff }
+:root[data-theme="light"] .vidchip.on, :root[data-theme="light"] .vidspan.on{ background:var(--lume); color:#ffffff }
