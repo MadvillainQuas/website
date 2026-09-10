@@ -128,7 +128,28 @@ const POLL_PRIMED_MS = 6000;
    becomes an injection point. Only #rgb / #rrggbb is accepted. */
 (function appearance() {
   const q = new URLSearchParams(location.search);
-  if ((q.get('theme') || '') === 'light') document.body.setAttribute('data-theme', 'light');
+  /* LIGHT OR DARK: the reader's own choice on the bar wins, then the host page's ?theme=,
+     then dark. The choice is kept in this browser (localStorage is partitioned per host
+     site, which is right: a fan's choice on one club site is theirs on that site). */
+  const apply = t => {
+    if (t === 'light') document.body.setAttribute('data-theme', 'light');
+    else document.body.removeAttribute('data-theme');
+  };
+  let stored = null;
+  try { stored = localStorage.getItem('epinoia_strip_theme'); } catch (_) { stored = null; }
+  const start = stored === 'light' || stored === 'dark' ? stored : ((q.get('theme') || '') === 'light' ? 'light' : 'dark');
+  apply(start);
+  const tg = document.createElement('button');
+  tg.type = 'button'; tg.className = 'ep-theme';
+  const paint = t => { tg.textContent = t === 'light' ? '☾' : '☀'; tg.title = t === 'light' ? 'switch to dark' : 'switch to light'; tg.setAttribute('aria-label', tg.title); };
+  paint(start);
+  tg.addEventListener('click', () => {
+    const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    apply(next); paint(next);
+    try { localStorage.setItem('epinoia_strip_theme', next); } catch (_) { /* private mode */ }
+  });
+  document.addEventListener('DOMContentLoaded', () => { const host = document.querySelector('.ep-strip'); if (host) host.appendChild(tg); });
+  if (document.readyState !== 'loading') { const host = document.querySelector('.ep-strip'); if (host && !tg.parentNode) host.appendChild(tg); }
 
   const hex = v => (/^#?[0-9a-f]{3}$|^#?[0-9a-f]{6}$/i.test(v || '')
     ? (v[0] === '#' ? v : '#' + v) : null);
