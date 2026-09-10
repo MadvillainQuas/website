@@ -170,14 +170,14 @@
 .ep-card .half.h{
   clip-path:polygon(0 0, 58% 0, 42% 100%, 0 100%);
   background:
-    radial-gradient(circle, color-mix(in oklch, var(--h, var(--ep-accent)) 55%, transparent) 1px, transparent 1.35px) 0 0/6px 6px,
+    radial-gradient(circle, color-mix(in oklch, var(--h, var(--ep-accent)) 42%, transparent) 1px, transparent 1.35px) 0 0/6px 6px,
     linear-gradient(180deg, color-mix(in oklch, var(--h, var(--ep-accent)) 34%, transparent),
                             color-mix(in oklch, var(--h, var(--ep-accent)) 18%, transparent));
 }
 .ep-card .half.a{
   clip-path:polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
   background:
-    radial-gradient(circle, color-mix(in oklch, var(--a, var(--ep-accent-2)) 55%, transparent) 1px, transparent 1.35px) 3px 3px/6px 6px,
+    radial-gradient(circle, color-mix(in oklch, var(--a, var(--ep-accent-2)) 42%, transparent) 1px, transparent 1.35px) 3px 3px/6px 6px,
     linear-gradient(180deg, color-mix(in oklch, var(--a, var(--ep-accent-2)) 34%, transparent),
                             color-mix(in oklch, var(--a, var(--ep-accent-2)) 18%, transparent));
 }
@@ -193,8 +193,28 @@
 }
 .ep-card .half.h::after{ left:5px; background:var(--h2, var(--h, var(--ep-accent))) }
 .ep-card .half.a::after{ right:5px; background:var(--a2, var(--a, var(--ep-accent-2))) }
-/* the scoreboard sits on top of the print */
+/* THE SCOREBOARD READS OVER THE PRINT. A scrim of the ground darkens the middle of the card,
+   where the names and the score are, and leaves the colours full at the edges; the type on
+   top is white with a shadow, so a white club or a gold one is as legible as a navy. */
+.ep-card .scrim{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(4,16,11,.50) 0, rgba(4,16,11,.72) 26%, rgba(4,16,11,.72) 70%, rgba(4,16,11,.55) 100%);
+}
+.cse[data-theme="light"] .ep-card .scrim{
+  background:linear-gradient(180deg, rgba(255,255,255,.55) 0, rgba(255,255,255,.80) 26%, rgba(255,255,255,.80) 70%, rgba(255,255,255,.6) 100%);
+}
 .ep-card .meta, .ep-card .row, .ep-card .when{ position:relative; z-index:1 }
+.ep-card .abbr{ color:#ffffff; text-shadow:0 1px 2px rgba(0,0,0,.85), 0 0 6px rgba(0,0,0,.5) }
+.ep-card .sc{ text-shadow:0 1px 2px rgba(0,0,0,.85), 0 0 8px rgba(0,0,0,.5) }
+.ep-card .meta{ color:rgba(230,255,241,.72); text-shadow:0 1px 2px rgba(0,0,0,.8) }
+.ep-card .meta .st{ color:rgba(230,255,241,.9) }
+.ep-card .when{ color:rgba(230,255,241,.7); text-shadow:0 1px 2px rgba(0,0,0,.8); border-top-color:rgba(255,255,255,.14) }
+.ep-card .vs{ color:rgba(230,255,241,.6) }
+.ep-card .tm.lose .abbr{ color:rgba(255,255,255,.55) }
+.cse[data-theme="light"] .ep-card .abbr{ color:#0d1f17; text-shadow:none }
+.cse[data-theme="light"] .ep-card .sc, .cse[data-theme="light"] .ep-card .meta,
+.cse[data-theme="light"] .ep-card .when{ text-shadow:none }
 .cse[data-theme="light"] .ep-card .seam{ background:rgba(0,0,0,.14) }
 .ep-card.is-live::before{ background:#ff5f6b }
 .ep-card.is-upcoming::before{ background:var(--ep-accent-2) }

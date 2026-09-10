@@ -542,6 +542,49 @@ const dayMs = 86400000;
 const shortDate = iso => { try { return new Date(iso).toLocaleDateString('en-GB',
   { day: 'numeric', month: 'short' }); } catch (_) { return ''; } };
 
+/* One star card: rank as the mark, BPM across the band, name and club below. `small` is the
+   size ranks four to ten are drawn at under the podium. */
+function starCard(r, p, i, small) {
+      const m = r.meta[p.id] || {};
+      const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
+      const ink = team.colour || m.colour || '#93f2bf';
+
+      const a = el('a', 'club star' + (small ? ' small' : ''));
+      a.href = 'p/?p=' + encodeURIComponent(m.slug || '');
+      paintCard(a, ink, team.colour_2);
+      a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || ''));
+
+      const plate = el('div', 'club-plate');
+      plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+      ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+
+      /* the rank is the mark, printed like the club monogram */
+      const mark = el('div', 'club-mark');
+      const rank = String(i + 1);
+      mark.append(el('span', 'club-mono ghost', rank), el('span', 'club-mono', rank));
+      plate.appendChild(mark);
+
+      /* BPM across the band, because it is why this player is on the podium */
+      const band = el('div', 'club-band');
+      band.appendChild(el('span', null,
+        (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1) + ' BPM'));
+      plate.appendChild(band);
+      plate.appendChild(el('div', 'club-grain'));
+
+      const foot = el('div', 'club-foot star-foot');
+      const who = el('div', 'star-who');
+      who.append(el('span', 'star-name', m.name || 'Player'),
+                 el('span', 'star-team', team.name || m.teamFull || ''));
+      foot.appendChild(who);
+      foot.appendChild(el('span', 'club-ed',
+        (p.ppg != null ? p.ppg + 'p' : '') +
+        (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
+        (p.apg != null ? ' ' + p.apg + 'a' : '')));
+
+      a.append(plate, foot);
+      return a;
+}
+
 async function stars() {
   const sec = $('#starsSec');
   if (!sec || !LEAGUE) return null;
@@ -615,66 +658,16 @@ async function stars() {
     host.appendChild(head);
 
     const grid = el('div', 'stargrid');
-    r.top.slice(0, 3).forEach((p, i) => {
-      const m = r.meta[p.id] || {};
-      const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
-      const ink = team.colour || m.colour || '#93f2bf';
-
-      const a = el('a', 'club star');
-      a.href = 'p/?p=' + encodeURIComponent(m.slug || '');
-      paintCard(a, ink, team.colour_2);
-      a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || ''));
-
-      const plate = el('div', 'club-plate');
-      plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
-      ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
-
-      /* the rank is the mark, printed like the club monogram */
-      const mark = el('div', 'club-mark');
-      const rank = String(i + 1);
-      mark.append(el('span', 'club-mono ghost', rank), el('span', 'club-mono', rank));
-      plate.appendChild(mark);
-
-      /* BPM across the band, because it is why this player is on the podium */
-      const band = el('div', 'club-band');
-      band.appendChild(el('span', null,
-        (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1) + ' BPM'));
-      plate.appendChild(band);
-      plate.appendChild(el('div', 'club-grain'));
-
-      const foot = el('div', 'club-foot star-foot');
-      const who = el('div', 'star-who');
-      who.append(el('span', 'star-name', m.name || 'Player'),
-                 el('span', 'star-team', team.name || m.teamFull || ''));
-      foot.appendChild(who);
-      foot.appendChild(el('span', 'club-ed',
-        (p.ppg != null ? p.ppg + 'p' : '') +
-        (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
-        (p.apg != null ? ' ' + p.apg + 'a' : '')));
-
-      a.append(plate, foot);
-      grid.appendChild(a);
-    });
+    r.top.slice(0, 3).forEach((p, i) => grid.appendChild(starCard(r, p, i, false)));
     host.appendChild(grid);
 
+
     if (more) {
-      const list = el('div', 'starlist'); list.hidden = true;
-      r.top.forEach((p, i) => {
-        const m = r.meta[p.id] || {};
-        const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
-        const row = el('a', 'starlist-r' + (i < 3 ? ' podium' : ''));
-        row.href = 'p/?p=' + encodeURIComponent(m.slug || '');
-        paintCard(row, team.colour || m.colour || '#93f2bf', team.colour_2);
-        row.append(el('span', 'sl-rank', String(i + 1)),
-                   el('span', 'sl-name', m.name || 'Player'),
-                   el('span', 'sl-team', team.short_name || team.name || m.teamFull || ''),
-                   el('span', 'sl-bpm', (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1)),
-                   el('span', 'sl-line',
-                      (p.ppg != null ? p.ppg + 'p' : '') +
-                      (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
-                      (p.apg != null ? ' ' + p.apg + 'a' : '')));
-        list.appendChild(row);
-      });
+      /* ranks four to ten: the same card, smaller, under the podium. Hidden by the attribute
+         and by a rule that says so (a class with display:grid beats [hidden] on its own,
+         which is how the list once refused to close). */
+      const list = el('div', 'stargrid starmore'); list.hidden = true;
+      r.top.slice(3).forEach((p, i) => list.appendChild(starCard(r, p, i + 3, true)));
       host.appendChild(list);
       const toggle = () => {
         const open = list.hidden;

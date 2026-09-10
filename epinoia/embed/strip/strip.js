@@ -559,7 +559,7 @@ function card(g) {
   if (ac && ac.toLowerCase() !== '#93f2bf') a.style.setProperty('--a', ac);
   if (hex(g.home && g.home.colour_2)) a.style.setProperty('--h2', g.home.colour_2);
   if (hex(g.away && g.away.colour_2)) a.style.setProperty('--a2', g.away.colour_2);
-  a.append(el('div', 'half h'), el('div', 'half a'), el('div', 'seam'));
+  a.append(el('div', 'half h'), el('div', 'half a'), el('div', 'seam'), el('div', 'scrim'));
 
   /* competition and state, small, above the scoreboard */
   const meta = el('div', 'meta');
