@@ -153,7 +153,7 @@ function minutesHTML() {
   const S = stintsOf();
   if (!S.known) return '<div class="vidwarn">This game\'s log has no starting fives recorded, so who was on the floor cannot be followed.</div>';
   const teams = (ctx.S && ctx.S.teams) || [];
-  const list = S.players.filter(p => !st.pid || p.pid === st.pid);
+  const list = S.players.filter(p => (!st.pid || p.pid === st.pid) && (st.team === '' || p.team === st.team));
   if (!list.length) return '<ol class="vidlist"><li class="viditem empty">Nobody matches that filter.</li></ol>';
   let out = '', team = null;
   list.forEach(p => {
@@ -169,7 +169,7 @@ function lineupsHTML() {
   const S = stintsOf();
   if (!S.known) return '<div class="vidwarn">This game\'s log has no starting fives recorded, so the fives cannot be followed.</div>';
   const teams = (ctx.S && ctx.S.teams) || [];
-  const list = S.fives.filter(f => !st.pid || f.ids.includes(st.pid));
+  const list = S.fives.filter(f => (!st.pid || f.ids.includes(st.pid)) && (st.team === '' || f.team === st.team));
   if (!list.length) return '<ol class="vidlist"><li class="viditem empty">No five matches that filter.</li></ol>';
   let out = '', team = null;
   list.forEach(f => {
@@ -196,6 +196,9 @@ function playerOptions() {
   (ctx.S.teams || []).forEach((t, i) => {
     if (!t.players || !t.players.length) return;
     opts.push('<optgroup label="' + esc(t.name) + '">');
+    /* THE SIDE ITSELF IS A CHOICE: every play, every stint, every five of one club */
+    opts.push('<option value="team:' + i + '"' + (st.team === i && !st.pid ? ' selected' : '') + '>' +
+              'everyone — ' + esc(t.name) + '</option>');
     t.players.forEach(p => opts.push('<option value="' + esc(p.id) + '"' +
       (st.pid === p.id ? ' selected' : '') + '>' +
       (p.num ? esc(p.num) + ' · ' : '') + esc(p.name) + '</option>'));
@@ -426,7 +429,12 @@ function wire() {
     b.onclick = () => { st.filter = b.dataset.f; st.shown = PAGE; stopReel(); render(); };
   });
   const who = host.querySelector('#vidWho');
-  if (who) who.onchange = () => { st.pid = who.value; st.shown = PAGE; stopReel(); render(); };
+  if (who) who.onchange = () => {
+    const m = /^team:(\d)$/.exec(who.value);
+    st.pid = m ? '' : who.value;
+    st.team = m ? +m[1] : '';
+    st.shown = PAGE; stopReel(); render();
+  };
   const reel = host.querySelector('#vidReel');
   if (reel) reel.onchange = () => {
     st.reel = reel.checked;

@@ -50,7 +50,8 @@ DEFAULTS = {
     'max_height': 720,
     'backfill': True,           # queue every final game with a stream and no track, by itself
     'yt_cookies_browser': '',   # e.g. 'edge' or 'chrome': hand yt-dlp your browser's YouTube sign-in when YouTube demands one (opt-in)
-    'yt_cookies_file': '',      # a Netscape cookie file exported once (yt-dlp --cookies-from-browser edge --cookies <file>); works while the browser is open
+    'yt_cookies_file': '',      # a Netscape cookie file; the cookie bridge below keeps it fresh from the browser
+    'cookie_bridge_port': 47831, # the browser extension (scripts/worker/cookie-bridge) posts the YouTube sign-in here; 0 = off
     'retry_wait_s': 1800,       # how long a job waits after YouTube's "confirm you're not a bot" before it is tried again
     'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
@@ -123,6 +124,68 @@ class DB(object):
         r = requests.post('%s/rest/v1/%s?on_conflict=%s' % (self.url, table, on_conflict), headers=h, json=rows, timeout=30)
         r.raise_for_status()
         return True
+
+
+# --------------------------------------------------------------------------- the cookie bridge
+def start_cookie_bridge(cfg):
+    """A door on 127.0.0.1 for the browser to hand over its YouTube sign-in.
+
+    scripts/worker/cookie-bridge is a tiny Edge/Chrome extension: whenever the youtube.com
+    cookies change (and every half hour regardless) it POSTs them here as a Netscape cookie
+    file, and this writes them where yt-dlp reads them (yt_cookies_file). A session exported
+    by hand goes stale the next time the browser rotates it; this one never does. Loopback
+    only, plain text, nothing leaves the PC. Off when cookie_bridge_port is 0."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    port = int(cfg.get('cookie_bridge_port') or 0)
+    if not port:
+        return None
+    path = cfg.get('yt_cookies_file') or os.path.join(os.environ.get('APPDATA', '.'), 'epinoia', 'yt_cookies.txt')
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):          # quiet
+            pass
+        def _reply(self, code, text):
+            body = text.encode('utf-8')
+            self.send_response(code); self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*'); self.send_header('Content-Length', str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+        def do_OPTIONS(self):
+            self.send_response(204); self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'content-type'); self.end_headers()
+        def do_GET(self):
+            self._reply(200, 'epinoia worker: cookie bridge up')
+        def do_POST(self):
+            if self.path.rstrip('/') != '/cookies':
+                return self._reply(404, 'no')
+            n = int(self.headers.get('Content-Length') or 0)
+            text = self.rfile.read(n).decode('utf-8', 'replace') if n else ''
+            rows = [l for l in text.splitlines() if l and not l.startswith('# ') and l.count('\t') >= 6]
+            names = {r.split('\t')[5] for r in rows}
+            if not rows or not any('youtube.com' in r for r in rows):
+                return self._reply(400, 'not a youtube cookie file')
+            signed = bool(names & {'SAPISID', 'LOGIN_INFO', 'SID'})
+            if not signed:
+                log('cookie bridge: %d cookies arrived but no sign-in among them (signed out in the browser?)' % len(rows))
+                return self._reply(200, 'received, but not signed in')
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+                f.write(text if text.endswith('\n') else text + '\n')
+            os.replace(tmp, path)
+            log('cookie bridge: YouTube sign-in refreshed from the browser (%d cookies)' % len(rows))
+            self._reply(200, 'saved %d cookies' % len(rows))
+
+    try:
+        srv = HTTPServer(('127.0.0.1', port), H)
+    except OSError as exc:
+        log('cookie bridge not started on %d: %s' % (port, exc))
+        return None
+    t = threading.Thread(target=srv.serve_forever, name='cookie-bridge', daemon=True)
+    t.start()
+    log('cookie bridge listening on 127.0.0.1:%d (Edge extension: scripts/worker/cookie-bridge)' % port)
+    return srv
 
 
 def heartbeat(db, cfg, job_id=None, note=None):
@@ -702,6 +765,7 @@ def main():
     if args.setup:
         sys.exit(0 if setup(args.config) else 1)
     cfg = load_config(args.config)
+    start_cookie_bridge(cfg)
     if args.dry_run:
         return dry_run(args, cfg)
     if not cfg['supabase_url'] or not cfg['service_key'] or 'PASTE' in cfg['service_key']:
