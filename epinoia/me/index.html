@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<!-- PUBLIC page; the content needs a session, which the page asks Supabase for itself. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
+<title>Your profile · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=266">
+<link rel="stylesheet" href="../kit/nav.css?v=239">
+<style>
+  .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
+  .hsub{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);margin-top:6px}
+  .sec{border-bottom:1px solid var(--rule);padding-bottom:calc(var(--u)*2)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:calc(var(--u)) calc(var(--u)*3)}
+  .lbl{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);flex:0 0 100%}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u))}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-ui);font-weight:700;font-size:12px;
+    padding:6px 10px 6px 6px;border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);cursor:pointer}
+  .chip:hover{border-color:var(--lume);color:var(--ink)}
+  .chip.on{background:var(--team-a);color:#04100b;border-color:var(--team-a)}
+  .chip .ep-crest{margin:0}
+  .chip.on .ep-crest{box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .pl{display:flex;align-items:center;gap:10px;padding:7px calc(var(--u)*3);border-top:1px solid var(--rule)}
+  .pl b{font-family:var(--f-ui);font-size:13px}
+  .pl small{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .pl button{margin-left:auto}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:8px calc(var(--u)*3);border-top:1px solid var(--rule)}
+  .opt input{margin-top:3px}
+  .opt b{font-family:var(--f-ui);font-size:13px;display:block}
+  .opt span{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.7}
+  .swatch{width:34px;height:34px;border:1px solid var(--rule-2);cursor:pointer;flex:none}
+  .swatch.on{outline:2px solid var(--ink);outline-offset:2px}
+  .status{font-family:var(--f-micro);font-size:9px;color:var(--lume);padding:0 calc(var(--u)*3) calc(var(--u))}
+  .note{padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:1.9}
+  .ntf{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:9px calc(var(--u)*3);border-top:1px solid var(--rule);text-decoration:none;color:inherit}
+  .ntf.unread{background:color-mix(in oklch,var(--lume) 7%,transparent)}
+  .ntf .k{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume);padding-top:4px}
+  .ntf b{font-family:var(--f-ui);font-size:13px;display:block}
+  .ntf small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+  .ntf time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="bar" style="display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--rule)">
+    <a href="../" class="wm epinoia-mark" aria-label="Epinoia" style="font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding:3px 11px 1px;text-transform:uppercase;text-decoration:none">EPINOIΛ</a>
+    <span id="ctx" class="ep-micro">your profile</span>
+  </div>
+
+  <div class="hero">
+    <div class="hname" id="who">Your profile</div>
+    <div class="hsub" id="email">—</div>
+  </div>
+
+  <div id="signedout" class="note hide">
+    You are not signed in. <a id="signinLink" href="../signin/?next=/epinoia/me/" style="color:var(--lume)">Sign in</a> with your email to follow clubs and players and choose how Epinoia keeps you posted.
+  </div>
+
+  <div id="body" class="hide">
+    <section class="sec">
+      <div class="ep-hdr"><span class="idx">01</span><h2>Your clubs</h2><span class="note" id="clubNote" style="padding:0;margin-left:auto"></span></div>
+      <div class="row"><span class="lbl">League</span><div id="leaguePick" class="chips" style="padding:0"></div></div>
+      <div class="row"><span class="lbl">Clubs you follow — tap to follow or unfollow</span></div>
+      <div id="teamPick" class="chips"></div>
+    </section>
+
+    <section class="sec">
+      <div class="ep-hdr"><span class="idx">02</span><h2>Your players</h2></div>
+      <div class="row">
+        <input id="plq" class="ep-input" placeholder="Search a player by name" style="flex:1 1 240px">
+      </div>
+      <div id="plResults"></div>
+      <div class="row"><span class="lbl">Players you follow</span></div>
+      <div id="plMine"></div>
+    </section>
+
+    <section class="sec">
+      <div class="ep-hdr"><span class="idx">03</span><h2>Appearance</h2></div>
+      <div class="row"><span class="lbl">Your colour</span><div id="swatches" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <input id="colour" type="color" class="ep-input" style="width:58px;padding:3px" title="any colour"></div>
+      <div class="row"><span class="lbl">Light or dark, everywhere on Epinoia</span>
+        <button class="ep-chip" id="themeDark" type="button">dark</button>
+        <button class="ep-chip" id="themeLight" type="button">light</button></div>
+    </section>
+
+    <section class="sec">
+      <div class="ep-hdr"><span class="idx">04</span><h2>Notifications</h2></div>
+      <div class="row"><span class="lbl">How</span></div>
+      <label class="opt"><input type="checkbox" id="nInapp"><div><b>On the site</b><span>the bell at the top right of every page</span></div></label>
+      <label class="opt"><input type="checkbox" id="nEmail"><div><b>Email</b><span id="nEmailTo">to the address you sign in with</span></div></label>
+      <label class="opt"><input type="checkbox" id="nPush"><div><b>Phone and desktop alerts</b><span id="nPushNote">a push to this browser, even when Epinoia is closed. On a phone, add Epinoia to your home screen first (iPhone needs that; Android does not).</span></div></label>
+      <div class="row"><span class="lbl">What</span></div>
+      <label class="opt"><input type="checkbox" id="wResults"><div><b>Results</b><span>the final score whenever a club you follow plays</span></div></label>
+      <label class="opt"><input type="checkbox" id="wPlayers"><div><b>Player lines</b><span>points, rebounds and assists of players you follow, after each game</span></div></label>
+      <label class="opt"><input type="checkbox" id="wFixtures"><div><b>Upcoming games</b><span>three days before a club you follow plays, and again on the day</span></div></label>
+      <label class="opt"><input type="checkbox" id="wAnn"><div><b>League announcements</b><span>notices from the leagues your clubs play in</span></div></label>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="sec">
+      <div class="ep-hdr"><span class="idx">05</span><h2>Recent</h2><button class="ep-chip" id="readAll" type="button" style="margin-left:auto">mark all read</button></div>
+      <div id="recent"></div>
+    </section>
+  </div>
+</div>
+<script src="../config.js?v=266" defer></script>
+<script src="../vendor/supabase.js?v=239" defer></script>
+<script src="me.js?v=266" defer></script>
+<script src="../nav.js?v=266" defer></script>
+</body>
+</html>

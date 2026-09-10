@@ -372,7 +372,93 @@
     encodeURIComponent(location.pathname + location.search);
   acctLink.title = 'sign in';
   acct.appendChild(acctLink);
+  /* a fan's own page: clubs, players, colour, light or dark, how to be told */
+  const meLink = el('a', 'item');
+  meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your profile'));
+  meLink.href = root + 'me/';
+  meLink.title = 'your clubs, players and notifications';
+  meLink.hidden = true;
+  acct.appendChild(meLink);
   navScroll.appendChild(acct);
+
+  /* --------------------------------------------------------------- the bell ---
+     Top right of every page for a signed-in person: what the platform has to tell them, by
+     the settings on their profile. Read straight off the notifications table with the stored
+     token (RLS shows a person only their own rows); the count refreshes every minute. */
+  let bell = null, bellTimer = null;
+  function bellHeaders(sess) {
+    const c = window.EPINOIA_CONFIG;
+    return { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + sess.token, 'Content-Type': 'application/json' };
+  }
+  async function bellCount(sess) {
+    const c = window.EPINOIA_CONFIG;
+    const r = await fetch(c.supabaseUrl + '/rest/v1/notifications?select=id&read_at=is.null&limit=1', {
+      cache: 'no-store', headers: Object.assign(bellHeaders(sess), { Prefer: 'count=exact' }) });
+    const m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
+    return m ? +m[1] : 0;
+  }
+  async function bellList(sess) {
+    const c = window.EPINOIA_CONFIG;
+    const r = await fetch(c.supabaseUrl + '/rest/v1/notifications?select=id,kind,title,body,link,created_at,read_at&order=created_at.desc&limit=25',
+      { cache: 'no-store', headers: bellHeaders(sess) });
+    return r.ok ? r.json() : [];
+  }
+  async function bellReadAll(sess) {
+    const c = window.EPINOIA_CONFIG;
+    await fetch(c.supabaseUrl + '/rest/v1/notifications?read_at=is.null', {
+      method: 'PATCH', headers: bellHeaders(sess), body: JSON.stringify({ read_at: new Date().toISOString() }) });
+  }
+  function unmountBell() {
+    if (bell) bell.remove(); bell = null;
+    if (bellTimer) clearInterval(bellTimer); bellTimer = null;
+  }
+  async function mountBell(sess) {
+    /* a person who turned the bell off on their profile does not get one */
+    try {
+      const c = window.EPINOIA_CONFIG;
+      const r = await fetch(c.supabaseUrl + '/rest/v1/fan_prefs?select=notify_inapp', { cache: 'no-store', headers: bellHeaders(sess) });
+      const rows = r.ok ? await r.json() : [];
+      if (rows.length && rows[0].notify_inapp === false) { unmountBell(); return; }
+    } catch (_) { /* no answer: show the bell */ }
+    if (bell) return;
+    bell = el('div', 'ep-bell');
+    const btn = el('button'); btn.type = 'button'; btn.title = 'notifications'; btn.setAttribute('aria-label', 'notifications');
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>';
+    const n = el('span', 'n');
+    btn.appendChild(n);
+    const panel = el('div', 'panel'); panel.hidden = true;
+    bell.append(btn, panel);
+    document.body.appendChild(bell);
+    const refresh = async () => { try { const k = await bellCount(sess); n.textContent = k ? (k > 99 ? '99+' : String(k)) : ''; } catch (_) { /* offline */ } };
+    const open = async () => {
+      panel.hidden = false;
+      panel.innerHTML = '<div class="ph">notifications</div><div class="empty">loading…</div>';
+      let rows = [];
+      try { rows = await bellList(sess); } catch (_) { rows = []; }
+      panel.textContent = '';
+      const ph = el('div', 'ph', 'notifications');
+      const me = el('a', null, 'settings'); me.href = root + 'me/';
+      const ra = el('button', null, 'mark all read'); ra.type = 'button';
+      ra.onclick = async () => { await bellReadAll(sess); open(); refresh(); };
+      ph.append(me, ra); panel.appendChild(ph);
+      if (!rows.length) {
+        panel.appendChild(el('div', 'empty', 'Nothing yet. Follow a club or a player on your profile and their next result lands here.'));
+        return;
+      }
+      rows.forEach(x => {
+        const a = el('a', 'it' + (x.read_at ? '' : ' unread'));
+        a.href = root + (x.link || 'me/');
+        const mid = el('div'); mid.append(el('b', null, x.title), el('small', null, x.body || ''));
+        const d = new Date(x.created_at);
+        a.append(el('span', 'k', x.kind), mid, el('time', null, d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })));
+        panel.appendChild(a);
+      });
+    };
+    btn.onclick = () => { if (panel.hidden) open(); else panel.hidden = true; };
+    document.addEventListener('click', e => { if (bell && !bell.contains(e.target)) panel.hidden = true; });
+    refresh();
+    bellTimer = setInterval(refresh, 60000);
+  }
 
   const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
   contact.href = root + 'contact/';
@@ -818,6 +904,8 @@
       demoRows.forEach(([node, spec, demoHref]) => applyDemo(node, spec, demoHref, true));
       acctTx.textContent = 'sign in';
       acctIc.textContent = '◐';
+      meLink.hidden = true;
+      unmountBell();
       acctLink.href = root + 'signin/?next=' +
         encodeURIComponent(location.pathname + location.search);
       acctLink.title = 'sign in';
@@ -827,6 +915,8 @@
 
     acctTx.textContent = sess.email || 'account';
     acctIc.textContent = '◉';
+    meLink.hidden = false;
+    mountBell(sess);
     acctLink.href = root + 'signin/';
     acctLink.title = sess.email ? sess.email + ' — manage or sign out' : 'account';
 

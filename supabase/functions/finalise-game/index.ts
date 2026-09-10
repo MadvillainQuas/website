@@ -360,6 +360,17 @@ Deno.serve(async (req) => {
     // queue the static page + OG image; a scheduled job commits these in batches
     await admin.from('publish_queue').upsert({ game_id: gameId, requested_at: new Date().toISOString() });
 
+    // THE FANS. Everyone following either club gets the score, everyone following a player in
+    // it gets his line (notify_game_final, 0106); then the notify function emails and pushes to
+    // those who asked. Neither may fail a finalise.
+    try {
+      await admin.rpc('notify_game_final', { p_game: gameId });
+      const sk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      fetch(Deno.env.get('SUPABASE_URL')! + '/functions/v1/notify', {
+        method: 'POST', headers: { apikey: sk, Authorization: 'Bearer ' + sk, 'Content-Type': 'application/json' }, body: '{}'
+      }).catch(() => {});
+    } catch (e) { console.error('[finalise] fan notifications:', String(e)); }
+
     // Tell the league's Discord, if it has one. Deliberately last, deliberately
     // non-throwing: the game is final and correct whatever a third-party
     // webhook does, and a Discord outage must not fail a finalise or reopen a

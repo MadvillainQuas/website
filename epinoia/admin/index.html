@@ -11,7 +11,7 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=265">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=266">
 <link rel="stylesheet" href="../kit/nav.css?v=239">
 <link rel="stylesheet" href="../kit/news.css?v=268">
 <style>
@@ -364,6 +364,29 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">05b</span><h2>Announcements &amp; messages</h2>
+        <span class="note" id="anNote">to the league's fans, or to its clubs' managers</span></div>
+      <div class="body">
+        <div class="row">
+          <input id="anTitle" class="ep-input grow" placeholder="Title — e.g. Trophy semi-finals moved to Sunday">
+        </div>
+        <div class="row">
+          <textarea id="anBody" class="ep-input grow" rows="3" placeholder="The notice itself (optional)"></textarea>
+        </div>
+        <div class="row">
+          <select id="anAudience" class="ep-input">
+            <option value="fans">to fans of the league</option>
+            <option value="club_admins">to club managers</option>
+            <option value="all">to fans and club managers</option>
+          </select>
+          <select id="anTeam" class="ep-input"><option value="">every club</option></select>
+          <button id="anGo" class="ep-btn pri" type="button">send</button>
+        </div>
+        <div id="anList" class="list"></div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h"><span class="idx">06</span><h2>Format &amp; knockout</h2>
         <span class="note" id="fmtNote"></span></div>
       <div class="body"><div id="formatPanel"></div></div>
@@ -530,7 +553,7 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=265" defer></script>
+<script src="../config.js?v=266" defer></script>
 <script src="../upload.js?v=239" defer></script>
 <script src="../vendor/supabase.js?v=239" defer></script>
 <script src="../livestats.js?v=239" defer></script>
@@ -555,7 +578,7 @@
 <script src="news-ui.js?v=239" defer></script>
 <script src="appearance-ui.js?v=239" defer></script>
 <script src="embeds-ui.js?v=239" defer></script>
-<script src="admin.js?v=249" defer></script>
-<script src="../nav.js?v=239" defer></script>
+<script src="admin.js?v=266" defer></script>
+<script src="../nav.js?v=266" defer></script>
 </body>
 </html>

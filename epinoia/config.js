@@ -66,6 +66,15 @@ window.epinoiaCrest = function (team, opts) {
   return box;
 };
 
+/* LIGHT OR DARK, DECIDED BEFORE THE PAGE PAINTS. A fan's choice on their profile is kept in
+   this browser as well as on their row, so every page opens in it without a round trip. */
+try {
+  const th = localStorage.getItem('epinoia_theme');
+  if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
+} catch (_) { /* private mode: dark */ }
+/* the public half of the Web Push key pair (the private half lives with the notify function) */
+window.EPINOIA_VAPID = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
+
 window.epinoiaLogoUrl = function (path) {
   if (!path) return null;
   let p = String(path).trim();

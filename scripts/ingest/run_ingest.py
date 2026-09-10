@@ -357,6 +357,15 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
     # THE CREST SAYS WHAT COLOUR THE CLUB IS. Every team with a crest and no colour of its own
     # (colour_source 'default': never coloured, or its crest just changed) is read now; a team
     # already coloured from its crest, or by an admin, is left alone. Pillow missing -> skipped.
+    # THE FANS' DIARY. A club's followers hear three days before it plays and again on the day
+    # (notify_fixtures, 0106); the notify function then emails and pushes what is waiting.
+    try:
+        k = sb.rpc('notify_fixtures')
+        if k:
+            print(f"   {k} fixture reminder(s) written")
+        sb.function('notify', {})
+    except Exception as exc:
+        print(f"   (notifications: {exc})")
     try:
         import team_colours
         c = team_colours.sweep(sb, log=lambda m: print(m))

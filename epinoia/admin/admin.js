@@ -266,12 +266,50 @@ function renderCompPick() {
   });
 }
 
+/* ---------------------------------------------------------- announcements --- */
+/* A NOTICE TO THE FANS, A MESSAGE TO THE CLUBS. post_announcement (0106) writes the notice and
+   fans it out as notifications -- to everyone following a club in this league, to the managers
+   of every club or of one club -- and the notify function then emails and pushes to those who
+   asked for that on their profile. */
+async function loadAnnouncements() {
+  const host = $('#anList'); if (!host || !league) return;
+  host.textContent = '';
+  const { data } = await sb.from('announcements').select('id,title,body,audience,team_id,created_at')
+    .eq('league_id', league.id).order('created_at', { ascending: false }).limit(20);
+  (data || []).forEach(a => {
+    const row = document.createElement('div'); row.className = 'item';
+    const t = teams.find(x => x.id === a.team_id);
+    row.innerHTML = '<b>' + esc(a.title) + '</b> <span class="ep-micro">' +
+      esc(a.audience === 'fans' ? 'fans' : a.audience === 'club_admins' ? ('managers' + (t ? ' of ' + t.name : '')) : 'fans + managers') +
+      ' · ' + new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + '</span>' +
+      (a.body ? '<div class="ep-micro" style="margin-top:3px">' + esc(a.body).slice(0, 200) + '</div>' : '');
+    host.appendChild(row);
+  });
+  const sel = $('#anTeam');
+  if (sel) {
+    sel.innerHTML = '<option value="">every club</option>' + teams.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
+  }
+}
+async function deliverNow() {
+  /* the notify function delivers what was just written, by email and push, to those who asked */
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    await fetch(window.EPINOIA_CONFIG.supabaseUrl + '/functions/v1/notify', {
+      method: 'POST', headers: { apikey: window.EPINOIA_CONFIG.supabaseAnonKey, Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+  } catch (_) { /* the ingest's next pass delivers it anyway */ }
+}
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /* ------------------------------------------------------------------ teams --- */
 async function loadTeams() {
   const { data, error } = await sb.from('teams')
     .select('id,name,short_name,colour,slug').eq('league_id', league.id).order('name');
   if (error) return oops(error);
   teams = data || [];
+  loadAnnouncements().catch(() => {});
 
   let entered = new Set();
   enteredRows = [];
@@ -845,6 +883,24 @@ $('#cpGo').addEventListener('click', async () => {
   say('Competition ' + name + ' added.', 'ok');
   $('#cpName').value = '';
   await loadComps();
+});
+
+$('#anGo').addEventListener('click', async () => {
+  if (!league) return say('Pick a league first.', 'err');
+  const title = $('#anTitle').value.trim();
+  if (!title) return say('Give the notice a title.', 'err');
+  const audience = $('#anAudience').value, team = $('#anTeam').value || null;
+  if (team && audience === 'fans') return say('A message to one club goes to its managers: choose "to club managers".', 'err');
+  $('#anGo').disabled = true;
+  const { data, error } = await sb.rpc('post_announcement', {
+    p_league: league.id, p_title: title, p_body: $('#anBody').value.trim(), p_audience: audience, p_team: team
+  });
+  $('#anGo').disabled = false;
+  if (error) return oops(error);
+  say('Sent.' + (audience === 'fans' ? ' Every fan following a club in ' + league.name + ' has it.' : ''), 'ok');
+  $('#anTitle').value = ''; $('#anBody').value = '';
+  deliverNow();
+  await loadAnnouncements();
 });
 
 $('#tmGo').addEventListener('click', async () => {
