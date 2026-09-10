@@ -380,7 +380,7 @@ async function playerMeta(ids) {
     const [ps, re] = await Promise.all([
       all(`players?id=in.(${c.join(',')})&select=id,first_name,last_name,slug,photo_url`),
       all(`roster_entries?player_id=in.(${c.join(',')})&active=eq.true` +
-          `&select=player_id,jersey,position,teams(id,name,short_name,slug,colour)`)
+          `&select=player_id,jersey,position,teams(id,name,short_name,slug,colour,logo_path)`)
     ]);
     const byPlayer = {};
     re.forEach(r => { if (!byPlayer[r.player_id]) byPlayer[r.player_id] = r; });
@@ -393,7 +393,7 @@ async function playerMeta(ids) {
         jersey: r.jersey || '', position: r.position || '',
         teamId: t.id || null, teamName: t.short_name || t.name || '',
         teamFull: t.name || '', teamShort: t.short_name || '',
-        teamSlug: t.slug || '', colour: t.colour || null
+        teamSlug: t.slug || '', colour: t.colour || null, teamLogo: t.logo_path || null
       };
     });
   }
@@ -401,10 +401,10 @@ async function playerMeta(ids) {
 }
 
 async function teamMeta(leagueId) {
-  const ts = await all(`teams?league_id=eq.${leagueId}&select=id,name,short_name,slug,colour`);
+  const ts = await all(`teams?league_id=eq.${leagueId}&select=id,name,short_name,slug,colour,logo_path`);
   const out = {};
   ts.forEach(t => { out[t.id] = { name: t.name, teamShort: t.short_name,
-                                  slug: t.slug, colour: t.colour }; });
+                                  slug: t.slug, colour: t.colour, logo: t.logo_path || null }; });
   return out;
 }
 

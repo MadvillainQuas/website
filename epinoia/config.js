@@ -37,6 +37,35 @@ window.EPINOIA_CONFIG = {
    bucket path onto a URL that already has a host. Tolerates the JSON blob an
    early worker wrote in place of the URL. Returns null for "no crest".
    ============================================================================ */
+/* THE CLUB'S CREST, WHEREVER A CLUB IS NAMED. One element: the crest where the club has one
+   (uploaded, or from its feed), the initials on the club's colour where it has not, and the
+   initials again if the image fails. `team` needs logo_path (or logo_url), short_name/name and
+   colour; `opts.cls` names the class the host page styles (default ep-crest). */
+window.epinoiaCrest = function (team, opts) {
+  const o = opts || {}; const t = team || {};
+  const box = document.createElement('span');
+  box.className = o.cls || 'ep-crest';
+  const s = String(t.short_name || '').trim();
+  const words = String(t.name || '').trim().split(/\s+/).filter(Boolean);
+  const initials = s ? s.slice(0, 3).toUpperCase()
+    : words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase()
+    : String(t.name || '?').slice(0, 2).toUpperCase();
+  const paint = () => {
+    box.textContent = initials; box.classList.remove('has-img');
+    box.style.background = t.colour || '#93f2bf';
+  };
+  const url = t.logo_url || (window.epinoiaLogoUrl ? window.epinoiaLogoUrl(t.logo_path || t.logo || null) : null);
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.addEventListener('error', () => { img.remove(); paint(); });
+    box.classList.add('has-img'); box.style.background = '';
+    box.appendChild(img);
+    box.title = t.name || '';
+  } else paint();
+  return box;
+};
+
 window.epinoiaLogoUrl = function (path) {
   if (!path) return null;
   let p = String(path).trim();

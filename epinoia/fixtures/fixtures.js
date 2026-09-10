@@ -77,9 +77,11 @@ function badge(team) {
 }
 
 /* --------------------------------------------------------------- filters --- */
+let COMPS = [], compFilter = '';
 function syncUrl() {
   const u = new URL(location.href);
   if (LEAGUE) u.searchParams.set('l', LEAGUE.slug);
+  if (compFilter) u.searchParams.set('comp', compFilter); else u.searchParams.delete('comp');
   if (teamFilter) u.searchParams.set('t', teamFilter); else u.searchParams.delete('t');
   if (stateFilter !== 'all') u.searchParams.set('show', stateFilter); else u.searchParams.delete('show');
   history.replaceState(null, '', u);
@@ -103,6 +105,25 @@ function renderFilters() {
       teamFilter = t.slug; syncUrl(); renderFilters(); render();
     }, t.colour));
   });
+
+  /* the competitions of the season that have fixtures: league, cup, trophy, playoffs */
+  const cp = $('#compPick');
+  if (cp) {
+    cp.textContent = '';
+    const withGames = COMPS.filter(c => GAMES.some(g => g.competition_id === c.id));
+    if (withGames.length > 1) {
+      cp.parentNode.style.display = '';
+      const mkc = (label, on, click, kind) => {
+        const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
+        if (kind) b.appendChild(el('small', 'kind', kind));
+        b.addEventListener('click', click); return b;
+      };
+      cp.appendChild(mkc('All competitions', !compFilter, () => { compFilter = ''; syncUrl(); renderFilters(); render(); }));
+      withGames.forEach(c => cp.appendChild(mkc(c.name, compFilter === c.id, () => {
+        compFilter = c.id; syncUrl(); renderFilters(); render();
+      }, c.kind || '')));
+    } else cp.parentNode.style.display = 'none';
+  }
 
   const sp = $('#statePick'); sp.textContent = '';
   STATES.forEach(([k, label]) => {
@@ -240,6 +261,7 @@ async function render() {
   host.textContent = '';
 
   let list = GAMES.slice();
+  if (compFilter) list = list.filter(g => g.competition_id === compFilter);
   if (teamFilter) {
     const t = [...TEAMS.values()].find(x => x.slug === teamFilter);
     if (t) list = list.filter(g => g.home_team_id === t.id || g.away_team_id === t.id);
@@ -402,8 +424,13 @@ function watchLive(delay) {
     document.title = 'Fixtures · ' + LEAGUE.name;
     if (LEAGUE.colour_a) document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
 
-    (await D.all(`teams?league_id=eq.${LEAGUE.id}&select=id,name,short_name,slug,colour`))
-      .forEach(t => TEAMS.set(t.id, t));
+    (await D.all(`teams?league_id=eq.${LEAGUE.id}&select=id,name,short_name,slug,colour,logo_path`))
+      .forEach(t => {
+        TEAMS.set(t.id, t);
+        /* the crest the club's feed publishes, until an approved upload replaces it below */
+        const u = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(t.logo_path) : null;
+        if (u) LOGOS.set(t.id, u);
+      });
 
     try {
       const ids = [...TEAMS.keys()];
@@ -411,7 +438,7 @@ function watchLive(delay) {
         (await D.all('media?owner_type=eq.team&kind=eq.logo&status=eq.approved' +
           '&owner_id=in.(' + ids.join(',') + ')&select=owner_id,storage_path'))
           .forEach(r => {
-            if (!LOGOS.has(r.owner_id)) {
+            if (!LOGOS.has(r.owner_id) || !LOGOS.get(r.owner_id).includes('/media-public/')) {
               LOGOS.set(r.owner_id, window.EPINOIA_CONFIG.supabaseUrl +
                 '/storage/v1/object/public/media-public/' + r.storage_path);
             }
@@ -419,14 +446,16 @@ function watchLive(delay) {
       }
     } catch (_) { /* monograms all round */ }
 
-    const comps = (ctx.comps || []).map(c => c.id);
+    COMPS = (ctx.comps || []).slice();
+    compFilter = qp.get('comp') && COMPS.some(c => c.id === qp.get('comp')) ? qp.get('comp') : '';
+    const comps = COMPS.map(c => c.id);
     if (!comps.length) {
       $('#list').textContent = '';
       $('#list').appendChild(el('div', 'empty', 'This season has no competitions yet.'));
       return;
     }
     GAMES = await D.all('games?competition_id=in.(' + comps.join(',') + ')' +
-      '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,' +
+      '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
       'home_team_id,away_team_id&order=tipoff_at.desc');
 
     renderFilters();

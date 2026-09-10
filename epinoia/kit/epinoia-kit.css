@@ -346,7 +346,10 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
   border-top:1px solid var(--rule-2);font-weight:700}
 .ep-tbl tfoot td:nth-child(2){text-align:left;font-family:var(--f-ui)}
 .ep-crest{display:inline-grid;place-items:center;width:21px;height:21px;font-family:var(--f-score);
-  font-size:11px;color:#04100b;margin-right:8px;vertical-align:-4px}
+  font-size:11px;color:#04100b;margin-right:8px;vertical-align:-4px;flex:none;overflow:hidden}
+/* the crest itself: on a white tile so a dark mark reads on the dark page, as the tables do */
+.ep-crest.has-img{background:#fff !important;border-radius:3px}
+.ep-crest img{width:100%;height:100%;object-fit:contain;display:block;padding:1px;box-sizing:border-box}
 
 /* ---------- 9. bars ---------- */
 .ep-bar{display:grid;grid-template-columns:92px 1fr 50px;gap:12px;align-items:center;padding:5px 0}

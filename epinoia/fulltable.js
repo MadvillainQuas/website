@@ -594,9 +594,12 @@ function render(opts) {
         const td = el('td', i < 2 ? 'stick c' + i : '');
         if (c.k === 'name') {
           const cell = el('div', 'ft-name');
-          if (r.colour || r.teamColour) {
-            const crest = el('span', 'ft-crest', (r.teamShort || '').slice(0, 3));
-            crest.style.background = r.colour || r.teamColour;
+          if (r.colour || r.teamColour || r.logo || r.teamLogo) {
+            const meta = { short_name: r.teamShort || (isTeam ? r.name : ''), name: isTeam ? r.name : (r.teamFull || ''),
+                           colour: r.colour || r.teamColour, logo_path: r.logo || r.teamLogo || null };
+            let crest;
+            if (window.epinoiaCrest) crest = window.epinoiaCrest(meta, { cls: 'ft-crest' });
+            else { crest = el('span', 'ft-crest', (r.teamShort || '').slice(0, 3)); crest.style.background = meta.colour; }
             cell.appendChild(crest);
           }
           const href = isTeam ? (opts.teamHref && opts.teamHref(r))

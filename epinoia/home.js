@@ -125,6 +125,38 @@ function applySections() {
    again, so the reader is told what is true: it is finished. */
 const DONE = st => st === 'final' || st === 'finalising';
 
+/* WHICH COMPETITION, AND WHAT STATE. The section defaults to the week either side of now
+   across every competition; the chips narrow it to one competition (only those that have
+   games appear) and to results or upcoming, in which case the whole list of that kind is
+   shown, newest result first, next fixture first. */
+let gamesComp = '', gamesShow = 'week';
+const KIND_LABEL = { league: 'league', cup: 'cup', trophy: 'trophy', playoff: 'playoffs', playoffs: 'playoffs', friendly: 'friendly' };
+function gamesPicker(gs) {
+  const sec = $('#gamesSec'); if (!sec) return;
+  let pick = $('#gamesPick');
+  if (!pick) { pick = el('div', 'gpick'); pick.id = 'gamesPick'; $('#games').before(pick); }
+  pick.textContent = '';
+  const comps = new Map();
+  gs.forEach(g => { const c = g.competitions; if (c && c.id && !comps.has(c.id)) comps.set(c.id, c); });
+  const chip = (label, on, fn, tag) => {
+    const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
+    if (tag) b.appendChild(el('small', 'kind', tag));
+    b.addEventListener('click', () => { fn(); gamesKey = ''; games(); });
+    return b;
+  };
+  if (comps.size > 1) {
+    const row = el('div', 'grow');
+    row.appendChild(chip('all competitions', !gamesComp, () => { gamesComp = ''; }));
+    [...comps.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(c =>
+      row.appendChild(chip(c.name, gamesComp === c.id, () => { gamesComp = c.id; }, KIND_LABEL[c.kind] || '')));
+    pick.appendChild(row);
+  }
+  const row2 = el('div', 'grow');
+  [['week', 'this week'], ['results', 'results'], ['upcoming', 'upcoming']].forEach(([k, label]) =>
+    row2.appendChild(chip(label, gamesShow === k, () => { gamesShow = k; })));
+  pick.appendChild(row2);
+}
+
 async function games() {
   let gs;
   try {
@@ -142,9 +174,10 @@ async function games() {
       }
       scope = '&competition_id=in.(' + comps.join(',') + ')';
     }
-    gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,' +
-      'home:home_team_id(name,short_name,colour),away:away_team_id(name,short_name,colour)' +
-      '&status=in.(live,final,finalising,scheduled)' + scope + '&order=tipoff_at.desc&limit=120');
+    gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
+      'competitions(id,name,kind),' +
+      'home:home_team_id(name,short_name,colour,logo_path),away:away_team_id(name,short_name,colour,logo_path)' +
+      '&status=in.(live,final,finalising,scheduled)' + scope + '&order=tipoff_at.desc&limit=400');
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
@@ -157,10 +190,13 @@ async function games() {
      restart the crest animations and flash the section for no reason. The
      fingerprint is what a reader would notice: which games, in what state, at
      what score. */
-  const key = gs.map(g => g.id + ':' + g.status + ':' +
+  const key = gamesComp + '/' + gamesShow + '|' + gs.map(g => g.id + ':' + g.status + ':' +
                      g.home_score + '-' + g.away_score).join('|');
   if (key === gamesKey && $('#games').childElementCount) return;
   gamesKey = key;
+
+  gamesPicker(gs);
+  if (gamesComp) gs = gs.filter(g => g.competition_id === gamesComp);
 
   const host = $('#games'); host.textContent = '';
   if (!gs.length) {
@@ -204,8 +240,12 @@ async function games() {
      existed. Anything LIVE stays pinned at the top — it is the thing somebody
      opened the page for — and everything else runs strictly by kick-off,
      earliest first, so results flow into fixtures the way a season does. */
-  const CAP = 15;
-  const rest = recent.concat(upcoming, odd).sort((a, b) => at(a) - at(b));
+  const CAP = gamesShow === 'week' ? 15 : 60;
+  const rest = gamesShow === 'results'
+    ? gs.filter(g => DONE(g.status)).sort((a, b) => at(b) - at(a))
+    : gamesShow === 'upcoming'
+    ? gs.filter(g => g.status === 'scheduled').sort((a, b) => at(a) - at(b))
+    : recent.concat(upcoming, odd).sort((a, b) => at(a) - at(b));
   const shown = live.concat(rest).slice(0, CAP);
   const total = gs.length;
 
@@ -219,6 +259,8 @@ async function games() {
 
   $('#gamesNote').textContent = live.length
     ? live.length + ' live now'
+    : gamesShow === 'results' ? rest.length + (rest.length === 1 ? ' result' : ' results')
+    : gamesShow === 'upcoming' ? rest.length + ' upcoming'
     : recent.length + ' this week · ' + upcoming.length + ' upcoming' +
       (odd.length ? ' · ' + odd.length + ' dated ahead' : '');
   showAllLink(total);
@@ -230,8 +272,11 @@ async function games() {
     const row = el('a', 'fx');
     row.href = 'game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
 
-    const h = el('div', 'tn h', (g.home || {}).name || '—');
-    const a = el('div', 'tn', (g.away || {}).name || '—');
+    const h = el('div', 'tn h'), a = el('div', 'tn');
+    if (window.epinoiaCrest) {
+      h.append(el('span', null, (g.home || {}).name || '\u2014'), window.epinoiaCrest(g.home, { cls: 'fxcrest' }));
+      a.append(window.epinoiaCrest(g.away, { cls: 'fxcrest' }), el('span', null, (g.away || {}).name || '\u2014'));
+    } else { h.textContent = (g.home || {}).name || '\u2014'; a.textContent = (g.away || {}).name || '\u2014'; }
     if (final) {
       if (g.home_score > g.away_score) h.style.color = 'var(--lume)';
       if (g.away_score > g.home_score) a.style.color = 'var(--lume)';

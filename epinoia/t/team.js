@@ -761,31 +761,71 @@ async function roster(team) {
 }
 
 
+let TG = { comp: '', show: 'all', rows: [] };
 async function games(team) {
   const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-    `&select=id,tipoff_at,status,home_score,away_score,home_team_id,venue,` +
-    `home:home_team_id(name,slug),away:away_team_id(name,slug)&order=tipoff_at.desc`);
+    `&select=id,tipoff_at,status,home_score,away_score,home_team_id,venue,competition_id,competitions(id,name,kind),` +
+    `home:home_team_id(name,slug,short_name,colour,logo_path),away:away_team_id(name,slug,short_name,colour,logo_path)&order=tipoff_at.desc`);
   const host = $('#games'); host.textContent = '';
   if (!gs.length) { host.appendChild(el('div', 'empty', 'No games yet.')); return; }
+  TG.rows = gs;
+  paintGames(team);
+}
+/* WHICH COMPETITION, WHAT STATE. The chips sit above the list: one per competition the club
+   has played in (only when there is more than one), then all / results / upcoming. */
+function paintGames(team) {
+  const host = $('#games'); host.textContent = '';
+  const gs = TG.rows;
+  const comps = new Map();
+  gs.forEach(g => { const c = g.competitions; if (c && c.id && !comps.has(c.id)) comps.set(c.id, c); });
+  const pick = el('div', 'gpick');
+  const chip = (label, on, fn, kind) => {
+    const b = el('button', 'ep-chip' + (on ? ' on' : ''), label); b.type = 'button';
+    if (kind) b.appendChild(el('small', 'kind', kind));
+    b.addEventListener('click', () => { fn(); paintGames(team); });
+    return b;
+  };
+  if (comps.size > 1) {
+    const row = el('div', 'grow');
+    row.appendChild(chip('all competitions', !TG.comp, () => { TG.comp = ''; }));
+    [...comps.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(c =>
+      row.appendChild(chip(c.name, TG.comp === c.id, () => { TG.comp = c.id; }, c.kind || '')));
+    pick.appendChild(row);
+  }
+  const row2 = el('div', 'grow');
+  [['all', 'all games'], ['results', 'results'], ['upcoming', 'upcoming']].forEach(([k, label]) =>
+    row2.appendChild(chip(label, TG.show === k, () => { TG.show = k; })));
+  pick.appendChild(row2);
+  host.appendChild(pick);
 
-  gs.forEach(g => {
+  const done = st => st === 'final' || st === 'finalising';
+  let list = gs.slice();
+  if (TG.comp) list = list.filter(g => g.competition_id === TG.comp);
+  if (TG.show === 'results') list = list.filter(g => done(g.status) || g.status === 'live');
+  if (TG.show === 'upcoming') list = list.filter(g => g.status === 'scheduled')
+                                       .sort((a, b) => new Date(a.tipoff_at || 0) - new Date(b.tipoff_at || 0));
+  if (!list.length) { host.appendChild(el('div', 'empty', 'Nothing matches that.')); return; }
+
+  list.forEach(g => {
     const home = g.home_team_id === team.id;
     const opp = home ? (g.away || {}) : (g.home || {});
     const us = home ? g.home_score : g.away_score;
     const them = home ? g.away_score : g.home_score;
-    const final = g.status === 'final';
+    const final = done(g.status);
 
     const row = el('div', 'fx');
     const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
     row.appendChild(el('div', 'd', when ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'TBC'));
-    row.appendChild(el('div', 'o', (home ? 'v ' : '@ ') + (opp.name || '—')));
-    row.appendChild(el('div', 's', final ? `${us}–${them}` : (g.status === 'live' ? 'LIVE' : '')));
+    const o = el('div', 'o');
+    if (window.epinoiaCrest) o.appendChild(window.epinoiaCrest(opp, { cls: 'fxcrest' }));
+    o.appendChild(el('span', null, (home ? 'v ' : '@ ') + (opp.name || '\u2014')));
+    if (g.competitions && g.competitions.name && comps.size > 1) o.appendChild(el('small', 'comp', g.competitions.name));
+    row.appendChild(o);
+    row.appendChild(el('div', 's', final ? `${us}\u2013${them}` : (g.status === 'live' ? 'LIVE' : '')));
     const res = final ? (us > them ? 'W' : 'L') : (g.status === 'live' ? 'LIVE' : (g.venue || 'SCHEDULED'));
     row.appendChild(el('div', 'r ' + (final ? (us > them ? 'w' : 'ls') : ''), res));
-    if (final || g.status === 'live') {
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', () => location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase');
-    }
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => location.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase');
     host.appendChild(row);
   });
 }

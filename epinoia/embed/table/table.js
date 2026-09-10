@@ -62,9 +62,18 @@ function table(head, body) {
   return t;
 }
 
-const nameCell = (label, colour, abbr) => {
+const nameCell = (label, colour, abbr, logo) => {
   const w = el('div', 'nm');
-  if (colour) {
+  const url = (logo && window.epinoiaLogoUrl) ? window.epinoiaLogoUrl(logo) : null;
+  if (url) {
+    const c = el('span', 'c');
+    c.style.cssText = 'background:#fff;overflow:hidden';
+    const img = document.createElement('img');
+    img.src = url; img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
+    img.addEventListener('error', () => { img.remove(); c.textContent = (abbr || '').slice(0, 2).toUpperCase(); c.style.background = colour || '#93f2bf'; });
+    c.appendChild(img); w.appendChild(c);
+  } else if (colour) {
     const c = el('span', 'c', (abbr || '').slice(0, 2).toUpperCase());
     c.style.background = colour;
     w.appendChild(c);
@@ -92,7 +101,7 @@ const STATS = {
       $('#more').href = new URL('../../l/?l=' + encodeURIComponent(league.slug),
                                 location.href).href;
       const st = await D.all(`standings?competition_id=eq.${comp.id}` +
-        `&select=rank,gp,w,l,diff,league_points,streak,teams(name,short_name,colour,slug)` +
+        `&select=rank,gp,w,l,diff,league_points,streak,teams(name,short_name,colour,slug,logo_path)` +
         `&order=rank`);
       if (!st.length) return fail('No games played yet');
       $('#host').textContent = '';
@@ -100,7 +109,7 @@ const STATS = {
         ['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
         st.slice(0, rows).map(r => {
           const t = r.teams || {};
-          return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name),
+          return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
                   r.gp, r.w, r.l, (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
         })));
     } else {
@@ -122,7 +131,7 @@ const STATS = {
       $('#host').appendChild(table(
         ['#', 'PLAYER', 'TEAM', 'GP', label],
         eligible.slice(0, rows).map((p, i) => [
-          i + 1, nameCell(p.name, p.colour, p.teamShort), p.teamShort || '', p.gp, get(p)
+          i + 1, nameCell(p.name, p.colour, p.teamShort, p.teamLogo), p.teamShort || '', p.gp, get(p)
         ])));
     }
     postHeight();

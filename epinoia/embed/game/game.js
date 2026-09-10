@@ -86,6 +86,15 @@ function render() {
     const box = el('div', 'tm' + (away ? ' away' : ''));
     const cr = el('span', 'crest', abbr(t).slice(0, 2));
     cr.style.background = (t && t.colour) || '#93f2bf';
+    /* the club's crest where it has one */
+    const crestUrl = (t && window.epinoiaLogoUrl) ? window.epinoiaLogoUrl(t.logo_path) : null;
+    if (crestUrl) {
+      const img = document.createElement('img');
+      img.src = crestUrl; img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
+      img.addEventListener('error', () => img.remove());
+      cr.textContent = ''; cr.appendChild(img);
+    }
     const holder = el('div');
     /* a class, not an inline colour: the light theme has to be able to
        restyle the winner, and an inline value is unreachable from CSS */
@@ -194,8 +203,8 @@ function merge(g, events, removed, full) {
   try {
     const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
       `&select=id,status,period,tipoff_at,venue,home_score,away_score,roster_snapshot,starters,` +
-      `tip_winner,arrow_init,home:home_team_id(name,short_name,colour),` +
-      `away:away_team_id(name,short_name,colour),competitions(name)&limit=1`);
+      `tip_winner,arrow_init,home:home_team_id(name,short_name,colour,logo_path),` +
+      `away:away_team_id(name,short_name,colour,logo_path),competitions(name)&limit=1`);
     if (!gs.length) return fail('Game not found');
     game = gs[0];
 

@@ -229,3 +229,8 @@ table.ft td.neg{ color:var(--bad,#ff5f6b) }
   }
   table.ft thead th{ position:static } /* and a sticky header eats too much of it */
 }
+
+/* the crest in a table's name cell: the image on a white tile, the initials otherwise */
+.ft-crest{overflow:hidden;flex:none}
+.ft-crest.has-img{background:#fff !important;border-radius:3px}
+.ft-crest img{width:100%;height:100%;object-fit:contain;display:block;padding:1px;box-sizing:border-box}
