@@ -476,6 +476,7 @@
           try { localStorage.setItem('epinoia_theme', want); } catch (_) { /* private */ }
           if (want === 'light') document.documentElement.setAttribute('data-theme', 'light');
           else document.documentElement.removeAttribute('data-theme');
+          if (window.epinoiaColourScheme) window.epinoiaColourScheme(want === 'light');
         }
       }
       if (rows.length && rows[0].notify_inapp === false) { unmountBell(); return; }

@@ -109,8 +109,8 @@ async function loadStored() {
     `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,` +
 
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
-    `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,logo_path),` +
-    `away:away_team_id(slug,name,short_name,colour,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
+    `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),` +
+    `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
 
@@ -180,13 +180,24 @@ async function loadStored() {
     .replace(/(^|[\s\-'])([a-z])/g, (m, p, c) => p + c.toUpperCase())
     .replace(/\bMc([a-z])/g, (m, c) => 'Mc' + c.toUpperCase())
     .replace(/\bMac([a-z]{3,})/g, (m, r) => 'Mac' + r[0].toUpperCase() + r.slice(1));
+  /* THE CLUB'S COLOUR, NOT THE SNAPSHOT'S. The roster snapshot froze whatever colour the scorer
+     or the ingest had at tip-off, which for a fed game is the kit's own mint and cyan -- so the
+     box score of every ingested game was drawn in the defaults. The club row carries the colour
+     read from the crest (0102); it wins whenever it exists. */
+  const clubColour = i => { const c = (i === 0 ? g.home : g.away) || {}; return /^#[0-9a-f]{6}$/i.test(String(c.colour || '')) ? c.colour : null; };
   const teams = (snap && snap.teams) ? snap.teams.map((t, i) => Object.assign({}, t, {
     name: (i === 0 ? (g.home || {}).name : (g.away || {}).name) || properName(t.name),
+    color: clubColour(i) || t.color,
     players: (t.players || []).map(p => Object.assign({}, p, { name: properName(p.name) }))
   })) : [
     { name: (g.home || {}).name || 'home', color: (g.home || {}).colour || '#93f2bf', players: [] },
     { name: (g.away || {}).name || 'away', color: (g.away || {}).colour || '#8ff5ff', players: [] }
   ];
+
+  /* TWO CLUBS IN THE SAME COLOUR are two sides the page cannot tell apart: every score, bar
+     and heading is coloured by side. When the two clash, one side takes its club's SECOND
+     colour (teams.colour_2, read from the crest) -- the away side first, then the home. */
+  resolveClash(teams, g.home || {}, g.away || {});
 
   const comp = g.competitions || {};
   const season = comp.seasons || {};
@@ -228,6 +239,47 @@ async function loadStored() {
     }
   };
 }
+
+/* ------------------------------------------------------ colours that clash ---
+   Hue within 28 degrees at a similar lightness, or two near-neutrals (black v black, white v
+   grey) at a similar lightness. Exposed for the test harness. */
+function hexToHsl(hex) {
+  const m = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(m)) return null;
+  const r = parseInt(m.slice(0, 2), 16) / 255, gg = parseInt(m.slice(2, 4), 16) / 255, b = parseInt(m.slice(4, 6), 16) / 255;
+  const max = Math.max(r, gg, b), min = Math.min(r, gg, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = max === r ? (gg - b) / d + (gg < b ? 6 : 0) : max === gg ? (b - r) / d + 2 : (r - gg) / d + 4;
+  return [h * 60, s, l];
+}
+function coloursClash(a, b) {
+  const A = hexToHsl(a), B = hexToHsl(b);
+  if (!A || !B) return false;
+  const dl = Math.abs(A[2] - B[2]);
+  const neutralA = A[1] < 0.18, neutralB = B[1] < 0.18;
+  if (neutralA && neutralB) return dl < 0.32;
+  if (neutralA !== neutralB) return false;
+  let dh = Math.abs(A[0] - B[0]); if (dh > 180) dh = 360 - dh;
+  return dh < 28 && dl < 0.28;
+}
+function resolveClash(teams, home, away) {
+  if (!teams || teams.length < 2) return;
+  const ok = v => window.EpinoiaBox && window.EpinoiaBox.COLOUR_OK ? window.EpinoiaBox.COLOUR_OK.test(String(v || '')) : /^#[0-9a-f]{6}$/i.test(String(v || ''));
+  const c0 = teams[0].color, c1 = teams[1].color;
+  if (!coloursClash(c0, c1)) return;
+  const tries = [
+    [c0, away.colour_2], [home.colour_2, c1], [home.colour_2, away.colour_2]
+  ];
+  for (const [x, y] of tries) {
+    if (ok(x) && ok(y) && !coloursClash(x, y)) {
+      teams[0].color = x; teams[1].color = y;
+      teams[0].colourSwapped = x !== c0; teams[1].colourSwapped = y !== c1;
+      return;
+    }
+  }
+}
+window.__epinoiaClash = { hexToHsl, coloursClash, resolveClash };
 
 /* ------------------------------------------------------------------ render --- */
 const BODIES = {

@@ -29,7 +29,7 @@
    before first paint). The same tokens, the other way up; the accents darkened so they still
    read as text on a pale ground, and the few places that put dark type ON the accent get white. */
 :root[data-theme="light"]{
-  color-scheme:light;              /* the browser's own controls -- buttons, selects, sliders -- follow */
+  color-scheme:only light;         /* the browser's own controls follow; 'only' refuses a forced dark mode */
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
   --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
   --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);

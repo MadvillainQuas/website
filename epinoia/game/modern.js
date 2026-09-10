@@ -74,6 +74,13 @@
   let posByPid = {};          // pid -> { n: estimate 1..5, src: 'bpm'|'listed'|'none', listed: text }
   let bpmByPid = {};
   let pinned = null;          // pid whose popover is pinned open
+  let lastPopColour = null;
+  /* a club colour as text or a border on the page's ground: the ink form on the light theme */
+  function teamInk(hex) {
+    const TC = window.EpinoiaTeamColour;
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    return (light && TC && TC.ink) ? TC.ink(hex) : hex;
+  }
 
   function compute(d) {
     const S = window.S, B = window.EpinoiaBox, E = window.EpinoiaEngine;
@@ -189,7 +196,7 @@
   function teamHTML(d, t) {
     const S = window.S, B = window.EpinoiaBox;
     const team = S.teams[t] || {};
-    const colour = B.safeColour(team.color, t ? '#8ff5ff' : '#93f2bf');
+    const colour = teamInk(B.safeColour(team.color, t ? '#8ff5ff' : '#93f2bf'));
     const byId = {}; (team.players || []).forEach(p => { byId[p.id] = p; });
     const final = S.status === 'final' || S.phase === 'final';
     const five = fiveFor(d, t);
@@ -200,7 +207,7 @@
     const floor = onFloor.map(({ p, slot }) => circleHTML(p, d.stats[p.id] || B.mkP(), colour,
       { style: 'left:' + (slot.x * 100).toFixed(1) + '%;top:' + (slot.y * 100).toFixed(1) + '%' })).join('');
     const T = d.team[t] || {};
-    return '<div class="glass bxteam mv-card t' + t + '" data-t="' + t + '">' +
+    return '<div class="glass bxteam mv-card t' + t + '" data-t="' + t + '" style="--c:' + esc(colour) + '">' +
       '<div class="mv-head"><h3 data-team-slot="' + t + '" style="color:' + colour + '">' + esc(B.tname(t)) + '</h3>' +
         '<span class="mv-tag">' + (final ? 'starters' : 'on the floor') + ' · ' + (T.pts || 0) + ' pts</span></div>' +
       '<div class="mv-court">' + court + '<div class="mv-five">' + floor + '</div></div>' +
@@ -225,7 +232,8 @@
     const x = d.stats[pid] || B.mkP();
     const a = advByPid[pid] || {};
     const pos = posByPid[pid] || {};
-    const colour = B.safeColour((S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf');
+    const colour = teamInk(B.safeColour((S.teams[t] || {}).color, t ? '#8ff5ff' : '#93f2bf'));
+    lastPopColour = colour;
     const f1 = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(1);
     const f0 = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(0);
     const pm = (x.pm > 0 ? '+' : '') + (x.pm || 0);
@@ -270,6 +278,7 @@
   function showPop(pid, anchor) {
     const el = popEl();
     el.innerHTML = popHTML(pid);
+    if (lastPopColour) el.style.setProperty('--c', lastPopColour);
     el.dataset.pid = pid;
     el.hidden = false;
     place(el, anchor);

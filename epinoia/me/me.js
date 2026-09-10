@@ -131,6 +131,7 @@ function paintColour() {
 function applyTheme(t) {
   if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
+  if (window.epinoiaColourScheme) window.epinoiaColourScheme(t === 'light');
   try { localStorage.setItem('epinoia_theme', t === 'light' ? 'light' : 'dark'); } catch (_) { /* private mode */ }
   $('#themeDark').classList.toggle('on', t !== 'light');
   $('#themeLight').classList.toggle('on', t === 'light');

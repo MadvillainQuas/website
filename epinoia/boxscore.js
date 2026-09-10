@@ -639,7 +639,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
-  return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
@@ -801,7 +801,7 @@ function shotChartHTML(d,t){
      knowing where a shot came from. `plain` drops the lane ticks, which are
      detail this size cannot carry. */
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
-  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'" style="color:'+col+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
       (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+
@@ -892,7 +892,7 @@ function lineupsHTML(){
         '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
         '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
-    return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
       '<th class="blk-o">ortg</th><th>efg%</th><th>tov%</th><th>orb%</th><th>ft rate</th>'+
       '<th class="blk-d">drtg</th><th>opp efg</th><th>tov frc</th><th>orb alwd</th><th>opp ftr</th>'+

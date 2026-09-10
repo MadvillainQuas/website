@@ -74,7 +74,19 @@ try {
 } catch (_) { document.documentElement.setAttribute('data-theme', 'light'); }
 try {
   const m = document.querySelector('meta[name="theme-color"]');
-  if (m && document.documentElement.getAttribute('data-theme') === 'light') m.setAttribute('content', '#f3faf6');
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  if (m && light) m.setAttribute('content', '#f3faf6');
+  /* SAMSUNG INTERNET AND CHROME CAN DARKEN A PAGE BY FORCE ("dark mode" in the browser's own
+     settings): every colour is inverted or dimmed and the light theme comes out as a murky
+     dark one. "only light" is the documented opt-out; a page that chose dark says so too. */
+  window.epinoiaColourScheme = function (isLight) {
+    let cs = document.querySelector('meta[name="color-scheme"]');
+    if (!cs) { cs = document.createElement('meta'); cs.setAttribute('name', 'color-scheme'); document.head.appendChild(cs); }
+    cs.setAttribute('content', isLight ? 'only light' : 'dark');
+    const tc = document.querySelector('meta[name="theme-color"]');
+    if (tc) tc.setAttribute('content', isLight ? '#f3faf6' : '#04100b');
+  };
+  window.epinoiaColourScheme(light);
 } catch (_) { /* no meta */ }
 /* the public half of the Web Push key pair (the private half lives with the notify function) */
 window.EPINOIA_VAPID = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
