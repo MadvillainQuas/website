@@ -506,7 +506,10 @@ function subscriber(opts) {
   }
   function applyFrame(f) {
     if (!f) return;
-    lastTraffic = Date.now();
+    /* only a frame that carries the game (events, state, a sequence) counts as traffic: a
+       phone saying hello every few seconds must not stop the poll ladder from noticing that
+       the scorer has gone quiet */
+    if (f.events || f.state || f.seq != null || f.full) lastTraffic = Date.now();
     // a gap in the sequence means we missed a frame — resync rather than drift
     if (f.seq != null && lastSeq && f.seq > lastSeq + 1) { resync('gap'); return; }
     if (f.seq != null) lastSeq = f.seq;

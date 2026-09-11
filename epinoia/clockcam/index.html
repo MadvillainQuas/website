@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#04100b">
-<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta http-equiv="Content-Security-Policy"
@@ -48,7 +48,8 @@
 </head>
 <body>
 <div class="cc">
-  <div class="bar"><a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a><span class="sub" id="ctx">clock cam</span></div>
+  <div class="bar"><a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a><span class="sub" id="ctx">clock cam</span><button class="btn hide" id="installBtn" type="button" style="margin-left:auto">install</button></div>
+  <div class="hint hide" id="iosHint">On iPhone: tap Share, then "Add to Home Screen" to install the clock cam as an app.</div>
 
   <div id="signedout" class="hide">
     <h2>Sign in first</h2>
@@ -101,6 +102,6 @@
 </div>
 <script src="../config.js?v=281" defer></script>
 <script src="../vendor/supabase.js?v=239" defer></script>
-<script src="clockcam.js?v=294" defer></script>
+<script src="clockcam.js?v=295" defer></script>
 </body>
 </html>

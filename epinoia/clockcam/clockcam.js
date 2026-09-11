@@ -77,7 +77,24 @@ async function openGame() {
   setInterval(tick, 250);
   chan = sb.channel('game:' + gameId);
   chan.subscribe(st => { joined = (st === 'SUBSCRIBED'); paintStatus(); });
+  /* a hello every five seconds while the app is open on this game, so the control room can
+     say "phone connected" before the first reading and show the last one after */
+  setInterval(() => {
+    if (!chan || !joined) return;
+    try { chan.send({ type: 'broadcast', event: 'frame', payload: { phone: true, hello: true, sending, reading: clockMs, period, running } }); } catch (_) {}
+  }, 5000);
 }
+
+/* ------------------------------------------------------------ install --- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; const b = $('#installBtn'); if (b) b.classList.remove('hide'); });
+document.addEventListener('DOMContentLoaded', () => {
+  const b = $('#installBtn');
+  if (b) b.onclick = async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (_) {} installEvt = null; b.classList.add('hide'); };
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (ios && !standalone) $('#iosHint').classList.remove('hide');
+});
 
 /* ------------------------------------------------------------- camera --- */
 async function startCamera() {
@@ -303,7 +320,7 @@ function publish(force) {
   if (!force && clockMs === lastSentMs && now - lastSentAt < 1500) return;
   const state = { game_id: gameId, period, clock_ms: Math.round(clockMs), running, updated_at: new Date(now).toISOString(), source: 'cam' };
   if ($('#sendScore').checked && scores.home != null && scores.away != null) { state.score_home = scores.home; state.score_away = scores.away; }
-  try { chan.send({ type: 'broadcast', event: 'frame', payload: { cam: true, phone: true, state } }); sent++; lastSentMs = clockMs; lastSentAt = now; } catch (_) {}
+  try { chan.send({ type: 'broadcast', event: 'frame', payload: { cam: true, phone: true, sending: true, state } }); sent++; lastSentMs = clockMs; lastSentAt = now; } catch (_) {}
   paintStatus();
 }
 async function postCrop() {

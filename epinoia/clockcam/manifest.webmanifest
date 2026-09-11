@@ -1,0 +1,19 @@
+{
+  "name": "Epinoia Clock Cam",
+  "short_name": "Clock Cam",
+  "description": "Point a phone at the hall's scoreboard and send the real clock to a game's broadcast graphics.",
+  "id": "/epinoia/clockcam/",
+  "start_url": "/epinoia/clockcam/?source=pwa",
+  "scope": "/epinoia/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04100b",
+  "theme_color": "#04100b",
+  "lang": "en-GB",
+  "icons": [
+    { "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/epinoia/brand/epinoia-mark-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/epinoia/brand/epinoia-mark-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/epinoia/brand/epinoia-mark-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

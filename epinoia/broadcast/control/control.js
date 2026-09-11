@@ -166,7 +166,7 @@ async function kpConnect() {
     /* the room reads the game the way a layer does: to seed the keeper and to re-base it */
     feedSub = window.EpinoiaLive.subscriber({
       gameId, mode: 'supabase', supabase: sb, pollMs: 2000, pollNow: !!fedGame,
-      onSnapshot: () => kpFromFeed(), onFrame: f => { if (!f.keeper) kpFromFeed(); }
+      onSnapshot: () => kpFromFeed(), onFrame: f => { if (f.phone) phoneSeen(f); if (!f.keeper && !f.phone) kpFromFeed(); }
     });
   } catch (_) { /* the keeper still runs, unsynced */ }
   kpTimer = setInterval(() => {
@@ -188,6 +188,40 @@ function kpFromFeed() {
   if (!kp.active) { kp.clock_ms = est; kp.at = Date.now(); kp.running = false; kpPaint(); return; }
   if (kp.follow && Math.abs(est - kpNow()) > 1500) { kp.clock_ms = est; kp.at = Date.now(); kpPublish(); kpPaint(); }
 }
+/* ------------------------------------------------------------ the phone ---
+   The pairing is a URL with the game in it, drawn as a code. Presence and readings arrive as
+   frames on the game's channel marked phone:true (a hello every few seconds while the app is
+   open on this game; readings while it sends), and the card says which. */
+let phoneAt = 0, phoneLast = null, phoneSending = false;
+function phoneUrl() {
+  return location.origin + location.pathname.replace(/broadcast\/control\/?$/, '') + 'clockcam/?g=' + encodeURIComponent(gameId);
+}
+function phoneCardInit() {
+  const url = phoneUrl();
+  const u = kpEl('ccUrl'); if (u) u.textContent = url;
+  const q = kpEl('ccQr');
+  if (q && window.qrcode) {
+    try { const qr = window.qrcode(0, 'M'); qr.addData(url); qr.make(); q.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch (_) { q.textContent = url; }
+  }
+  const cp = kpEl('ccCopy');
+  if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(url); cp.textContent = 'copied'; setTimeout(() => { cp.textContent = 'copy link'; }, 1500); } catch (_) { /* the link is on screen */ } };
+  setInterval(phonePaint, 1000);
+}
+function phoneSeen(f) {
+  phoneAt = Date.now(); phoneSending = !!f.sending || !!(f.state && f.state.source === 'cam');
+  if (f.state && f.state.clock_ms != null) phoneLast = { ms: f.state.clock_ms, period: f.state.period, running: f.state.running, at: Date.now() };
+  else if (f.reading != null) phoneLast = { ms: f.reading, period: f.period, running: !!f.running, at: Date.now() };
+  phonePaint();
+}
+function phonePaint() {
+  const st = kpEl('ccPhone'), last = kpEl('ccLast'); if (!st) return;
+  const age = Date.now() - phoneAt;
+  if (!phoneAt || age > 20000) { st.textContent = 'no phone connected'; st.classList.remove('on'); if (last) last.textContent = ''; return; }
+  st.textContent = phoneSending ? 'phone connected \u00b7 sending the clock' : 'phone connected \u00b7 open on this game, not sending yet';
+  st.classList.add('on');
+  if (last) last.textContent = phoneLast ? ('last reading P' + phoneLast.period + ' ' + kpFmt(phoneLast.ms) + (phoneLast.running ? ' running' : ' stopped') + ' \u00b7 ' + Math.round((Date.now() - phoneLast.at) / 1000) + ' s ago') : 'waiting for a reading';
+}
+
 function kpWire() {
   const on = (id, fn) => { const e = kpEl(id); if (e) e.onclick = fn; };
   on('kpToggle', () => kpSet(kpNow(), !kp.running));
@@ -207,7 +241,7 @@ function kpWire() {
     e.preventDefault(); kpSet(kpNow(), !kp.running);
   });
 }
-document.addEventListener('DOMContentLoaded', kpWire);
+document.addEventListener('DOMContentLoaded', () => { kpWire(); phoneCardInit(); });
 
 /* THE HEARTBEAT. A game scored in FIBA LiveStats reaches the graphics only as fast as the
    ingest worker reads the feed. Arming the game (games.broadcast_until, four hours, renewed
