@@ -357,9 +357,15 @@ function render() {
         (hasTrack && v.clock_track.mode === 'score'
           ? '<span class="vidacc" title="no clock on this broadcast: the score overlay was read instead, so each basket is placed by its own score change and only scoring plays are listed">' +
             'placed by score changes · ' + v.clock_track.samples.length + ' baskets · scoring plays only</span>'
+          : hasTrack && v.clock_track.mode === 'wall'
+          ? '<span class="vidacc" title="no clock could be read off this broadcast, so every play is placed by the moment the live log recorded it against the stream\u2019s own start time">' +
+            'placed by the broadcast\u2019s timestamps · ' + v.clock_track.samples.length + ' plays' +
+            (v.clock_track.samples.length && v.clock_track.samples[0].err_ms ? ' · ±' + Math.ceil(v.clock_track.samples[0].err_ms / 1000) + ' s' : '') + '</span>'
           : hasTrack
-          ? '<span class="vidacc" title="the clock overlay was read at these points in the footage; every play sits where its clock was on screen">' +
-            'placed by the game clock · ' + v.clock_track.samples.length + ' readings</span>'
+          ? '<span class="vidacc" title="the clock overlay was read at these points in the footage; every play sits where its clock was on screen' +
+            (v.clock_track.wall_check ? '; checked against the broadcast\u2019s own timestamps on ' + v.clock_track.wall_check.plays + ' plays' : '') + '">' +
+            'placed by the game clock · ' + v.clock_track.samples.length + ' readings' +
+            (v.clock_track.wall_check ? ' · checked' : '') + '</span>'
           : (lined && accuracyMs() != null
           ? '<span class="vidacc" title="a fed game\'s plays are stamped by the ingest worker\'s poll; this is the poll interval">' +
             'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '')) +

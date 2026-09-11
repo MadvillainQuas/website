@@ -1478,6 +1478,20 @@ function merge(g, events, removed, full) {
   if (g) {
     if (g.period != null) S.period = g.period;
     if (g.status) S.phase = g.status === 'final' ? 'final' : 'game';
+    /* THE FIVE AND THE SQUADS CAN CHANGE AFTER THE LAYER LOADED: a statistician who names the
+       starters at the last minute, a federation feed that publishes them at tip, a late
+       roster addition. Before, only the pre-game watcher saw those; a layer opened during the
+       game kept whatever it booted with. Now every poll and frame carries them. */
+    if (Array.isArray(g.starters) && JSON.stringify(g.starters) !== JSON.stringify(S.starters)) {
+      S.starters = g.starters; lastJSON = '';
+    }
+    if (Array.isArray(g.teams) && g.teams.length === 2) {
+      const ids = ts => ts.map(t => (t.players || []).map(p => p.id).join(',')).join('|');
+      if (ids(g.teams) !== ids(S.teams)) {
+        S.teams = g.teams; lastJSON = '';
+        Promise.resolve().then(() => mergeMeasurements()).then(() => Promise.all([loadPhotos(), loadCutouts()])).then(() => { lastJSON = ''; render(); }).catch(() => {});
+      }
+    }
   }
   if (full && Array.isArray(events)) { S.events = events.map(rowToEvent); return; }
   if (Array.isArray(removed) && removed.length) {

@@ -539,6 +539,8 @@ def enqueue_video_job(sb: Supabase, game_id: str) -> bool:
     return True
 
 
+_CLOCK_SEEN: dict = {}      # game_id -> (clock_ms at the last read, when), for the running flag under the heartbeat
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
@@ -712,10 +714,18 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         clock_ms = (int(mm) * 60 + int(float(ss))) * 1000
     except Exception:
         pass
-    # `running` stays FALSE for a fed game: the page would otherwise count the clock down locally
-    # between polls, and a feed clock is only ever as current as its last event. Written stopped,
-    # it reads exactly what FIBA LiveStats shows and moves when the next payload lands.
-    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": False,
+    # `running` is FALSE for a fed game on the ordinary cadence: the page would otherwise count
+    # the clock down locally between ten-second polls, and a feed clock is only ever as current
+    # as its last event. Under the BROADCAST HEARTBEAT (a read every couple of seconds) the
+    # arithmetic changes: if the clock came down between two reads seconds apart, it is running,
+    # and a scorebug that ticks from the last reading and is corrected two seconds later is
+    # smoother and no less honest than one that jumps. A stopped clock (a timeout, a dead ball)
+    # shows as stopped on the next read.
+    prev = _CLOCK_SEEN.get(game_id)
+    fast = bool(observed and observed[1] is not None and observed[1] <= 6000)
+    moving = bool(live and fast and prev and prev[0] is not None and clock_ms < prev[0] and (time.time() - prev[1]) < 15)
+    _CLOCK_SEEN[game_id] = (clock_ms if live else None, time.time())
+    sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": moving,
                              "score_home": T["home_score"], "score_away": T["away_score"], "last_seq": len(rows), "updated_at": now_iso()}, "game_id")
     print(f"    = {how}" + (f", warnings: {'; '.join(T['report']['warnings'])}" if T["report"]["warnings"] else ""))
     if b.status == "final":

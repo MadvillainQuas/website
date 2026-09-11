@@ -351,24 +351,134 @@ def skill(cfg):
     return CK
 
 
-def read_track(video_path, pbp, cfg, mode, progress, should_stop):
+def _iso_ms(s):
+    if not s:
+        return None
+    try:
+        from datetime import datetime
+        return int(datetime.fromisoformat(str(s).replace('Z', '+00:00')).timestamp() * 1000)
+    except Exception:
+        return None
+
+
+def wall_hints(db, game_id, log_=None):
+    """Where the plays SHOULD sit in the footage, from the broadcast's own clock.
+
+    A game scored live carries a wall stamp on every play (payload.wall from the ingest
+    worker's poll, tight to two seconds under the broadcast heartbeat; created_at from the
+    scoring app), and a stream attached while it was live carries when the stream started
+    (game_videos.stream_started_at, from the platform's own API). Subtracting the two places
+    every play in the video to within the stamp's error before a single frame is read.
+
+    Returns [(t_seconds, period, clock_ms, err_ms)] in video order, or [] when either side
+    is missing -- an uploaded recording with no start time, or a backfilled log."""
+    try:
+        v = db.select('game_videos', 'game_id=eq.%s&is_primary=eq.true&select=stream_started_at,trim_ms&limit=1' % game_id)
+    except Exception:
+        v = []
+    if not v or not v[0].get('stream_started_at'):
+        return []
+    t0 = _iso_ms(v[0]['stream_started_at'])
+    if t0 is None:
+        return []
+    trim = (v[0].get('trim_ms') or 0) / 1000.0
+    try:
+        rows = db.select('game_events', 'game_id=eq.%s&select=seq,t,period,clock,payload,created_at&order=seq' % game_id)
+    except Exception:
+        return []
+    out = []
+    for e in rows:
+        t = e.get('t') or ''
+        if t in ('loc', 'tag', 'stype') or e.get('period') is None or e.get('clock') is None:
+            continue
+        p = e.get('payload') or {}
+        wall = p.get('wall') if isinstance(p.get('wall'), (int, float)) else _iso_ms(e.get('created_at'))
+        if wall is None:
+            continue
+        ts = (wall - t0) / 1000.0 + trim
+        if ts < 0 or ts > 8 * 3600:
+            continue
+        err = p.get('wall_err') if isinstance(p.get('wall_err'), (int, float)) else 15000
+        out.append((float(ts), int(e['period']), int(e['clock']), int(err)))
+    out.sort()
+    if log_:
+        log_('  wall hints: %d plays placed by the broadcast clock' % len(out) + (' (\u00b1%.0f s typical)' % (sorted(h[3] for h in out)[len(out) // 2] / 1000.0) if out else ''))
+    return out
+
+
+def wall_track(hints, video_path, CK=None):
+    """A track made of the stamps alone: the fallback when the picture had no readable clock.
+    One reading per play, at the moment the broadcast says it happened; the page seeks by it
+    exactly as it does by an OCR track, with the stamp's error instead of a reading's."""
+    seen = set(); samples = []
+    for ts, period, clock_ms, err in hints:
+        key = (period, clock_ms)
+        if key in seen:
+            continue
+        seen.add(key)
+        samples.append({'t': round(ts, 2), 'period': period, 'clock_ms': clock_ms, 'conf': 0.5, 'how': 'wall', 'err_ms': err})
+    # a clock only goes one way inside a period: a stamp that runs backwards is a late write, dropped
+    kept, last = [], {}
+    for s in samples:
+        lc = last.get(s['period'])
+        if lc is not None and s['clock_ms'] > lc:
+            continue
+        last[s['period']] = s['clock_ms']; kept.append(s)
+    track = {'format': 'epinoia-clock-track/1', 'source': 'wall stamps via %s' % VERSION, 'mode': 'wall',
+             'video': os.path.basename(video_path), 'video_path': os.path.abspath(video_path), 'samples': kept,
+             'note': 'no clock or score overlay could be read; the plays are placed by the broadcast\u2019s own timestamps'}
+    if CK is not None and hasattr(CK, 'runs_from_samples'):
+        try:
+            track['runs'] = CK.runs_from_samples(kept)
+        except Exception:
+            pass
+    return track
+
+
+def read_track(video_path, pbp, cfg, mode, progress, should_stop, hints=None):
     CK = skill(cfg)
     def prog(i, n, s):
         what = s.get('text') or (s.get('read') and '%s-%s' % tuple(s['read'])) or s.get('note', '')
         progress('reading:' + s.get('stage', mode), i, n, what, extra={'t': s.get('t'), 'period': s.get('period'),
                  'accepted': bool(s.get('accepted')), 'score': [s.get('home'), s.get('away')] if s.get('home') is not None else None})
-    return CK.run_auto(video_path, pbp=pbp, mode=mode, step=cfg['step_clock'], score_step=cfg['step_score'],
-                       on_progress=prog, stop=should_stop, quiet=True)
+    # THE STAMPS NARROW THE READ: the reader looks from a minute and a half before the first
+    # play to three minutes after the last, not through the pre-game and the empty hall after
+    window = {}
+    if hints:
+        lo = max(0.0, min(h[0] for h in hints) - 90.0); hi = max(h[0] for h in hints) + 180.0
+        window = {'start_s': lo, 'end_s': hi}
+        log('  reading %s\u2013%s of the footage (from the wall stamps)' % (time.strftime('%H:%M:%S', time.gmtime(lo)), time.strftime('%H:%M:%S', time.gmtime(hi))))
+    track = CK.run_auto(video_path, pbp=pbp, mode=mode, step=cfg['step_clock'], score_step=cfg['step_score'],
+                        on_progress=prog, stop=should_stop, quiet=True, **window)
+    # AND THEY CHECK THE READ: every play with both a reading and a stamp gives a difference;
+    # the median is the stream's ingest delay (a constant), the spread says whether the read
+    # holds together. Both are kept on the track for the page and the dashboard.
+    if hints and track.get('samples'):
+        diffs = []
+        for ts, period, clock_ms, err in hints:
+            vt = video_time_for(track, period, clock_ms)
+            if vt is not None:
+                diffs.append(vt - ts)
+        if diffs:
+            diffs.sort(); med = diffs[len(diffs) // 2]
+            q1 = diffs[len(diffs) // 4]; q3 = diffs[(3 * len(diffs)) // 4]
+            track['wall_check'] = {'plays': len(diffs), 'median_s': round(med, 1), 'spread_s': round(q3 - q1, 1)}
+            log('  wall check: %d plays, read sits %+.1f s from the stamps (spread %.1f s)' % (len(diffs), med, q3 - q1))
+    return track
 
 
 def slim_track(track):
     """What the page stores: the readings and how they were made, not the diagnostics."""
-    keep = ('t', 'period', 'clock_ms', 'conf', 'how')
+    keep = ('t', 'period', 'clock_ms', 'conf', 'how', 'err_ms')
     samples = [{k: s[k] for k in keep if k in s} for s in track.get('samples') or []]
     out = {'format': 'epinoia-clock-track/1', 'source': '%s via %s' % (track.get('source', 'clock.py'), VERSION),
            'mode': track.get('mode'), 'video': track.get('video'), 'samples': samples}
     if track.get('fusion'):
         out['fusion'] = track['fusion']
+    if track.get('wall_check'):
+        out['wall_check'] = track['wall_check']
+    if track.get('note') and track.get('mode') == 'wall':
+        out['note'] = track['note']
     # THE CLOCK'S RUNS go with the readings: the page seeks by them and follows minutes by them
     if track.get('mode') != 'score':
         runs = track.get('runs')
@@ -562,27 +672,33 @@ class Job(object):
             if mode == 'score' and not pbp:
                 raise RuntimeError('score mode needs the play-by-play, and this game has no archived FIBA log')
             self.report('reading', 0, 1, 'looking at the picture')
-            track = read_track(video_path, pbp, cfg, mode, self.report, self.stop)
+            hints = wall_hints(db, game_id, log)
+            track = read_track(video_path, pbp, cfg, mode, self.report, self.stop, hints=hints)
             if self.stop():
                 raise KeyboardInterrupt('cancelled')
             used = track.get('mode')
+            if not track.get('samples') and len(hints) >= 8:
+                # the picture gave nothing; the broadcast's own clock still places every play
+                track = wall_track(hints, video_path, skill(cfg)); used = 'wall'
+                log('  no readable overlay; placing %d plays by the wall stamps instead' % len(track['samples']))
             if not track.get('samples'):
                 raise RuntimeError('nothing readable: ' + (track.get('note') or 'the reader found no clock and no score it could match'))
             slim = write_track(db, game_id, track)
             periods = sorted({s['period'] for s in slim['samples']})
             result = {'samples': len(slim['samples']), 'periods': periods, 'mode': used,
                       'matched': track.get('matched'), 'seen': track.get('changes_seen'), 'fusion': track.get('fusion'),
-                      'probe': track.get('probe')}
+                      'probe': track.get('probe'), 'wall_check': track.get('wall_check'), 'wall_hints': len(hints)}
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'mode_used': used, 'result': result,
                                                             'progress': dict(self.progress, stage='track saved')})
             log('  track saved: %d readings, periods %s, mode %s' % (result['samples'], periods, used))
             # LABELS FOR THE READER, FOR FREE: every reading the log confirmed is a crop with a known
             # answer. Written now, while the footage is on disk; train_ocr.py fine-tunes on them.
             try:
-                CK = skill(cfg)
-                self.report('ocr labels', 0, 1, 'writing labelled crops')
-                h = CK.harvest_digits(video_path, track, log=log)
-                result['ocr_labels'] = h.get('written', 0)
+                if used != 'wall':
+                    CK = skill(cfg)
+                    self.report('ocr labels', 0, 1, 'writing labelled crops')
+                    h = CK.harvest_digits(video_path, track, log=log)
+                    result['ocr_labels'] = h.get('written', 0)
             except Exception as exc:
                 log('  (ocr labels failed: %s)' % exc)
             # learning, while the footage is on disk -- skipped when another game is waiting

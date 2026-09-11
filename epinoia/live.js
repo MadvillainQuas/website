@@ -257,6 +257,23 @@ function supabaseTransport(gameId, sb, onError) {
       }
       return true;
     },
+    /* THE CHEAP POLL. A full snapshot is the whole log every time -- five hundred rows every
+       two seconds on a poor connection is how a layer falls behind the game it is drawing.
+       The delta asks only for what is new past the last sequence held, plus the state row and
+       the fixture's own fields (starters, roster, period, status), which are small. */
+    async delta(afterSeq) {
+      const [{ data: events }, { data: state }, { data: g }] = await Promise.all([
+        sb.from('game_events').select('*').eq('game_id', gameId).gt('seq', afterSeq || 0).order('seq'),
+        sb.from('game_state').select('*').eq('game_id', gameId).maybeSingle(),
+        sb.from('games').select('id,status,starters,roster_snapshot,period').eq('id', gameId).maybeSingle()
+      ]);
+      return {
+        events: (events || []).map(r => Object.assign({ id: r.seq, seq: r.seq, t: r.t, team: r.team,
+                                                        pid: r.pid, period: r.period, clock: r.clock }, r.payload || {})),
+        state: state || null,
+        game: g ? Object.assign({ status: g.status, starters: g.starters, period: g.period }, g.roster_snapshot || {}) : null
+      };
+    },
     listen(onFrame, onStatus) {
       channel = sb.channel('game:' + gameId);
       channel.on('broadcast', { event: 'frame' }, m => onFrame(m.payload));
@@ -458,9 +475,11 @@ function subscriber(opts) {
   let lastTraffic = Date.now();
   let status = 'connecting';
   let stopListen = null, pollTimer = null, watchdog = null, retry = 1000;
-
+  let maxSeq = 0;            // the highest event sequence held, for the cheap poll
+  let polling = false, lastFull = 0;
+  const FULL_EVERY_MS = 30000;   // a retraction cannot be seen in a delta; a full read catches it
   const setStatus = s => { if (s !== status) { status = s; onStatus && onStatus(s); } };
-
+  const noteSeqs = evs => { (evs || []).forEach(e => { const s = +(e.seq != null ? e.seq : e.id); if (s > maxSeq) maxSeq = s; }); };
   function applyFrame(f) {
     if (!f) return;
     lastTraffic = Date.now();
@@ -468,15 +487,35 @@ function subscriber(opts) {
     if (f.seq != null && lastSeq && f.seq > lastSeq + 1) { resync('gap'); return; }
     if (f.seq != null) lastSeq = f.seq;
     if (f.state) state = f.state;
+    noteSeqs(f.events);
     onFrame && onFrame(f);
     setStatus('live');
   }
-
+  /* ONE POLL AT A TIME. On a slow link a poll can take longer than the interval; a second
+     one starting before the first returns would stack requests until the connection gave
+     up. A poll that finds the transport can do a delta asks for the delta; every
+     FULL_EVERY_MS it takes the whole snapshot instead, which is what retracted events and a
+     replaced roster need. */
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      if (!tx.delta || Date.now() - lastFull > FULL_EVERY_MS) { await resync('poll'); return; }
+      const d = await tx.delta(maxSeq);
+      if (d.state) state = d.state;
+      noteSeqs(d.events);
+      if (onFrame && (d.events.length || d.state || d.game)) onFrame({ events: d.events, state: d.state, game: d.game, full: false, polled: true });
+      if (status === 'offline') setStatus('delayed');
+    } catch (_) { setStatus('offline'); }
+    finally { polling = false; }
+  }
   async function resync(why) {
     try {
       const snap = await tx.snapshot();
       state = snap.state || state;
       lastSeq = 0;
+      maxSeq = 0; noteSeqs(snap.events);
+      lastFull = Date.now();
       onSnapshot && onSnapshot(snap, why);
       /* Only a frame arriving over the socket proves the scorer is live.
          A successful poll just means the store answered — that is 'delayed',
@@ -491,12 +530,12 @@ function subscriber(opts) {
     await resync('initial');
     stopListen = tx.listen(applyFrame, s => setStatus(s === 'live' ? 'live' : 'connecting'));
     if (tx.kind === 'local') setStatus('live');
-    if (pollNow && !pollTimer) pollTimer = setInterval(() => resync('poll'), pollEvery);
+    if (pollNow && !pollTimer) pollTimer = setInterval(poll, pollEvery);
     // degradation ladder: if nothing arrives for STALE_MS, poll instead of pretending
     watchdog = setInterval(() => {
       if (Date.now() - lastTraffic > STALE_MS) {
         if (status !== 'delayed') setStatus('delayed');
-        if (!pollTimer) pollTimer = setInterval(() => resync('poll'), pollEvery);
+        if (!pollTimer) pollTimer = setInterval(poll, pollEvery);
       } else if (pollTimer && !pollNow) { clearInterval(pollTimer); pollTimer = null; }
     }, 2000);
   }
