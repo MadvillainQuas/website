@@ -196,6 +196,10 @@ const T = [
   { k:'p3_pct', l:'3P%',  g:['shooting'], fmt:r=>f1(r.p3_pct), heat:1 },
   { k:'ft_pct', l:'FT%',  g:['shooting'], fmt:r=>f1(r.ft_pct), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting'], fmt:r=>f1(r.ts), heat:1 },
+  /* the shot diet's expected return beside what it actually returned, and the gap: shot-making */
+  { k:'pred_efg', l:'EXP eFG%', g:['shooting'], fmt:r=>f1(r.pred_efg), heat:1 },
+  { k:'efg_sh',   l:'eFG%',     g:['shooting'], fmt:r=>f1(r.efg_sh),   heat:1 },
+  { k:'efg_vs',   l:'eFG vs EXP', g:['shooting'], fmt:r=>sgn(r.efg_vs), heat:1, signed:1 },
 
   /* shot diet by zone: attempts per game beside the accuracy from there.
      Either number alone misleads — 60% at the rim on three attempts a night
@@ -206,6 +210,13 @@ const T = [
   { k:'mid_pct', l:'MID%',   g:['scoring','shooting'], fmt:r=>f1(r.mid_pct), heat:1 },
   { k:'p3_apg',  l:'3PA/G',  g:['scoring','shooting'], fmt:r=>f1(r.p3_apg),  heat:1 },
   { k:'p3_acc',  l:'3P%',    g:['scoring'], fmt:r=>f1(r.p3_acc), heat:1 },
+  /* WHAT THE SHOT DIET SHOULD BE WORTH. Predicted eFG% weights each zone's attempts by the
+     accuracy the zone usually yields, so it reads the QUALITY OF THE SHOTS a side takes with the
+     shot-making taken out; against the real eFG% it says whether a team is making or missing
+     what it should. Moreyball% is the share of attempts at the rim (the restricted area, not
+     the whole paint) or from three -- the two shots worth taking. Both need the zone read
+     (attachZoneStats), which the league table runs before it draws. */
+  { k:'morey',    l:'MOREY%',    g:['scoring'], fmt:r=>f1(r.morey),    heat:1 },
   { k:'rim_share', l:'RIM SHARE', g:['scoring'], fmt:r=>f1(r.rim_share), heat:1 },
   { k:'mid_share', l:'MID SHARE', g:['scoring'], fmt:r=>f1(r.mid_share), heat:1 },
   { k:'p3_share',  l:'3P SHARE',  g:['scoring'], fmt:r=>f1(r.p3_share),  heat:1 },
@@ -237,6 +248,14 @@ const T = [
    carry them under z_<zone>_<measure> once the page has run attachZoneStats; a table drawn
    without that shows dashes. The key list is duplicated from shotchart.js on purpose: this
    file must not depend on that one being loaded first. */
+/* THE USUAL RETURN FROM EACH AREA, as eFG%, from the published league-wide shooting splits
+   (NBA seasons 2021-22 to 2023-24, per NBA.com's shot dashboard and Cleaning the Glass's
+   accuracy-by-zone tables; the same bands appear in FIBA-level analyses): restricted area
+   about 66% (a two, so eFG = FG%), the rest of the paint about 43%, mid-range about 41%,
+   corner threes about 39% made (58.5% eFG), threes above the break about 36% made (54% eFG).
+   They are benchmarks, not this league's own averages -- that is the point: they let a
+   shot diet be judged against what those shots usually return anywhere. */
+const ZONE_EFG = { rim: 66, paint: 43, mid: 41, c3: 58.5, ab3: 54 };
 const ZONE_KEYS = [['rim', 'RIM', 'z_rim'], ['paint', 'PAINT', 'z_rim'],
                    ['base', 'BASE MID', 'z_mid'], ['wingm', 'WING MID', 'z_mid'], ['topm', 'TOP MID', 'z_mid'],
                    ['c3', 'CORNER 3', 'z_three'], ['w3', 'WING 3', 'z_three'], ['t3', 'TOP 3', 'z_three'],
@@ -327,6 +346,20 @@ function render(opts) {
     const pg = v => (v == null || !isFinite(v)) ? null : v / gp;
     r.poss_pg = pg(r.poss); r.fgm_pg = pg(r.fgm); r.fga_pg = pg(r.fga); r.p3m_pg = pg(r.p3m); r.p3a_pg = pg(r.p3a);
     r.paint_pg = pg(r.paint); r.fast_pg = pg(r.fast); r.second_pg = pg(r.second_chance); r.pot_pg = pg(r.pts_off_to); r.bench_pg = pg(r.bench);
+    /* the zone-weighted expectation and the Moreyball share, from the zone read when present */
+    const za = k => +r['z_' + k + '_att'] || 0;
+    const tot = za('all');
+    if (tot > 0) {
+      const exp = za('rim') * ZONE_EFG.rim + za('paint') * ZONE_EFG.paint + za('mid') * ZONE_EFG.mid +
+                  za('c3') * ZONE_EFG.c3 + (za('w3') + za('t3')) * ZONE_EFG.ab3;
+      r.pred_efg = exp / tot;
+      r.morey = 100 * (za('rim') + za('three')) / tot;
+      /* eFG% over the same located shots, so the comparison is like for like */
+      const zm = k => +r['z_' + k + '_madeG'] || 0, gp2 = r.gp || 1;
+      const made = (zm('all')) * gp2, made3 = (zm('three')) * gp2;
+      r.efg_sh = 100 * (made + 0.5 * made3) / tot;
+      r.efg_vs = r.efg_sh - r.pred_efg;
+    } else { r.pred_efg = null; r.morey = null; r.efg_sh = null; r.efg_vs = null; }
   });
 
   let preset = opts.preset || presets[0][0];
