@@ -102,12 +102,14 @@
   /* rhythm */
   --u:8px; --ease:cubic-bezier(.22,.9,.24,1);
   color-scheme:dark;
+  --line-hi:rgba(190,255,225,.38);   /* the scorer's court lines (boxscore.js courtSVG) on pages without boxscore.css */
 }
 /* LIGHT, for a fan who asked for it on their profile (data-theme on the root, set by config.js
    before first paint). The same tokens, the other way up; the accents darkened so they still
    read as text on a pale ground, and the few places that put dark type ON the accent get white. */
 :root[data-theme="light"]{
   color-scheme:only light;         /* the browser's own controls follow; 'only' refuses a forced dark mode */
+  --line-hi:rgba(13,31,23,.42);
   --ground:#f3faf6; --panel:#ffffff; --panel-2:#e9f4ee;
   --ink:#0d1f17; --ink-2:rgba(13,31,23,.82); --ink-3:rgba(13,31,23,.64);
   --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
@@ -265,6 +267,9 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
    is capped so it does not swallow a phone screen on its own. */
 .sc-wrap{max-width:520px;margin:0 auto}
 .sc-wrap svg{width:100%;height:auto;display:block;border-radius:10px}
+.sc-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
+.sc-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);padding:4px 9px;border:1px solid var(--rule);border-radius:999px}
+.sc-chip b{color:var(--ink);font-weight:400;margin-left:5px;font-family:var(--f-data);font-size:10px;letter-spacing:0;text-transform:none}
 .sc-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);
   text-align:center;padding:calc(var(--u)*1.5) 0 0;line-height:1.8}
 .sc-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}

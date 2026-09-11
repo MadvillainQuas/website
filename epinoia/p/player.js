@@ -452,13 +452,15 @@ let SHOTS = [];
 document.addEventListener('change', e => {
   if (e.target && (e.target.id === 'scCell' || e.target.id === 'scMin')) drawShotChart();
 });
-function drawShotChart(shots) {
+let SHOT_COLOUR = null;
+function drawShotChart(shots, colour) {
   if (shots) SHOTS = shots;
+  if (colour) SHOT_COLOUR = colour;
   const host = document.querySelector('#shotchart');
   if (!host || !window.EpinoiaShotChart) return;
-  const cell = +(document.querySelector('#scCell') || {}).value || 120;
-  const floor = +(document.querySelector('#scMin') || {}).value || 2;
-  window.EpinoiaShotChart.render({ host, shots: SHOTS, cellCm: cell, minAttempts: floor });
+  /* THE BOX SCORE'S CHART, over the season: every located shot as a dot or a cross in the
+     club's colour, the floor cut into zones with each zone's makes, attempts and percentage */
+  window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3 });
 }
 
 /* ---- on the floor with ----
@@ -515,7 +517,7 @@ function drawShotChart(shots) {
               gameIds: gs.map(g => g.id),
               playerId: pl.id
             });
-            drawShotChart(shots);
+            drawShotChart(shots, (team && team.colour) || null);
           } catch (e) { /* a chart is not worth breaking the page for */ }
 
           /* ---- on video ----

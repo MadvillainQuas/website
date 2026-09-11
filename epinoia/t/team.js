@@ -124,10 +124,36 @@ function oops(msg) {
 
     await Promise.all([record(team), teamStats(team), venue(team),
                        roster(team), games(team)]);
+    teamShots(team);
     await lineupPanels(team);
     await videoPanel(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
+
+/* ---------------------------------------------------------------------------
+   THE CLUB'S SHOOTING, on the box score's court: every located shot the side took in its
+   last forty finalised games, dots and crosses in the club's colour, the floor cut into zones
+   with each zone's makes, attempts and percentage. Locations live in the event log, so the
+   logs are fetched; the video panel below fetches its own subset for the games with footage.
+   --------------------------------------------------------------------------- */
+async function teamShots(team) {
+  const host = $('#teamshots');
+  if (!host || !window.EpinoiaShotChart || !window.EpinoiaData) return;
+  try {
+    const D = window.EpinoiaData;
+    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at&order=tipoff_at.desc&limit=40`);
+    if (!gs.length) { host.appendChild(el('div', 'empty', 'No finalised games yet.')); return; }
+    const evs = await D.events(gs.map(g => g.id));
+    const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+    const sideOf = {}; gs.forEach(g => { sideOf[g.id] = g.home_team_id === team.id ? 0 : 1; });
+    const shots = await window.EpinoiaShotChart.gather({
+      fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
+    });
+    window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5,
+      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games') });
+  } catch (e) { host.appendChild(el('div', 'empty', 'The shot chart could not be drawn.')); }
+}
 
 /* ON VIDEO — every play the club made in every game that has footage the page can
    seek, under a Video tab beside the profile. The same panel as a player's profile

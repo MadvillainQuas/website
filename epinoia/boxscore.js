@@ -750,7 +750,12 @@ function pbpHTML(d){
 }
 
 function shotChartHTML(d,t){
-  const col = safeColour(S.teams[t].color, '#93f2bf');
+  const raw = safeColour(S.teams[t].color, '#93f2bf');
+  /* the club's colour as a mark on THIS theme's ground: a white club's white dots on the light
+     page were invisible; the team-colour module nudges it until it reads (the scorer has no
+     such module and keeps the colour as it is) */
+  const TCm = (typeof root !== 'undefined' && root.EpinoiaTeamColour) || (typeof window !== 'undefined' && window.EpinoiaTeamColour);
+  const col = (TCm && TCm.ink && TCm.ink(raw)) || raw;
   const shots = S.events.filter(e=>/^p[23]_/.test(e.t) && e.team===t);
   const withLoc = shots.filter(e=>d.locs[e.id]);
   /* Locations are stored NORMALISED (0..1 across the court's own box), which
