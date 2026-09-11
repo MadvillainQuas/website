@@ -111,6 +111,7 @@ function players(pgs, tgs, meta) {
     A.ptsAst += num(s.ptsAst);
     A.rimA += num(s.rimA); A.rimM += num(s.rimM);
     A.midA += num(s.midA); A.midM += num(s.midM);
+    A.paint += num(s.paint); A.fast += num(s.fast); A.sc += num(s.sc); A.pot += num(s.pot);
     if (s.dq) A.dq += 1;
 
     /* on-court context — every field is a count, so it sums */
@@ -139,7 +140,7 @@ function players(pgs, tgs, meta) {
          subtracting the on-court block gives the off-court side */
       A.teamAll.pts += TT.pts; A.teamAll.fga += TT.fga; A.teamAll.fgm += TT.fgm;
       A.teamAll.fg3m += TT.fg3m; A.teamAll.fta += TT.fta; A.teamAll.tov += TT.tov;
-      A.teamAll.oreb += TT.oreb; A.teamAll.dreb += TT.dreb;
+      A.teamAll.oreb += TT.oreb; A.teamAll.dreb += TT.dreb; A.teamAll.min += teamMin5;
       A.oppAll.pts += OT.pts; A.oppAll.fga += OT.fga; A.oppAll.fgm += OT.fgm;
       A.oppAll.fg3m += OT.fg3m; A.oppAll.fta += OT.fta; A.oppAll.tov += OT.tov;
       A.oppAll.oreb += OT.oreb; A.oppAll.dreb += OT.dreb;
@@ -152,11 +153,11 @@ function players(pgs, tgs, meta) {
 function blankPlayer(id) {
   return { id, gp: 0, min: 0, pts: 0, p2m: 0, p2a: 0, p3m: 0, p3a: 0, ftm: 0, fta: 0,
     oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, fd: 0, pm: 0,
-    ptsAst: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, dq: 0,
+    ptsAst: 0, rimA: 0, rimM: 0, midA: 0, midM: 0, dq: 0, paint: 0, fast: 0, sc: 0, pot: 0,
     oc: { tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
           oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 },
     den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0 },
-    teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 },
+    teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0, min:0 },
     oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 } };
 }
 
@@ -202,6 +203,15 @@ function finishPlayer(A, m) {
     ast: A.ast, stl: A.stl, blk: A.blk, tov: A.tov, pf: A.pf, fd: A.fd, pm: A.pm,
     fgm, fga, p2m: A.p2m, p2a: A.p2a, p3m: A.p3m, p3a: A.p3a, ftm: A.ftm, fta: A.fta,
     rimA: A.rimA, rimM: A.rimM, midA: A.midA, midM: A.midM, ptsAst: A.ptsAst,
+    paint: A.paint, fast: A.fast, sc: A.sc, pot: A.pot,
+    /* per game: the points he assisted, everything he had a hand in, and the miscellany */
+    ptsAst_pg: r1(A.ptsAst / g), contrib_pg: r1((A.pts + A.ptsAst) / g),
+    paint_pg: r1(A.paint / g), fast_pg: r1(A.fast / g), sc_pg: r1(A.sc / g), pot_pg: r1(A.pot / g),
+    /* RealGM's advanced trio: the three percentages summed, Hollinger's pure point rating
+       (without the league-pace factor, which a single league has no use for), points per shot */
+    total_s: r1((pct(fgm, fga) || 0) + (pct(A.p3m, A.p3a) || 0) + (pct(A.ftm, A.fta) || 0)),
+    ppr: r1(A.min > 0 ? 100 * ((2 / 3) * A.ast - A.tov) / A.min : null),
+    pps: r2(dv(A.pts, fga)),
 
     /* ---- per game: the default view ---- */
     mpg: r1(A.min / g), ppg: r1(A.pts / g), rpg: r1(reb / g), apg: r1(A.ast / g),
@@ -268,6 +278,9 @@ function finishPlayer(A, m) {
     diff_net:  r1(onNet != null && offNet != null ? onNet - offNet : null),
     diff_ortg: r1(onOrtg != null && offOrtg != null ? onOrtg - offOrtg : null),
     diff_drtg: r1(onDrtg != null && offDrtg != null ? onDrtg - offDrtg : null),
+    /* pace with him on the floor and off it: both sides' possessions per 40 minutes */
+    on_pace: r1(A.min > 0 ? ((onPoss + onOppPoss) / 2) / (A.min / 40) : null),
+    off_pace: r1((A.teamAll.min - A.min) > 2 ? ((offPoss + offOppPoss) / 2) / ((A.teamAll.min - A.min) / 40) : null),
 
     /* ---- THE ON/OFF STATS AS WHAT THEY MEAN: how much better the team is in each
        when he is on. Each is on-court minus off-court, in percentage points; a
@@ -284,6 +297,7 @@ function finishPlayer(A, m) {
     vs_off_ftr:  r1(offOppPoss > 4 ? pct(offOpp.fta, offOpp.fga) : null)
   };
   const dif = (a, b) => (out[a] != null && out[b] != null ? r1(out[a] - out[b]) : null);
+  out.diff_pace = dif('on_pace', 'off_pace');
   out.diff_efg  = dif('on_efg', 'off_efg');
   out.diff_tov  = dif('on_tov', 'off_tov');
   out.diff_oreb = dif('on_oreb', 'off_oreb');

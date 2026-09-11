@@ -44,7 +44,7 @@ const mkOC  = () => ({ tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
 const mkBox = () => ({ fga:0,fgm:0,f3m:0,fta:0,tov:0,or:0,dr:0,pts:0 });
 const mkP   = () => ({ pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,stl:0,blk:0,
                        to:0,pf:0,fd:0,pm:0,min:0,t:0,u:0,dq:false,
-                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, oc:mkOC() });
+                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, paint:0,fast:0,sc:0,pot:0, oc:mkOC() });
 const mkT   = () => ({ pts:0,teamRebO:0,teamRebD:0,teamTo:0,toTot:0,foulTot:0,foulsP:{},
                        paint:0,fast:0,sc:0,pot:0,bench:0,lead:0,
                        tos:{h1:0,h2:0,last2:0,ot:{}} });
@@ -218,14 +218,17 @@ function deriveGame(game) {
     d.onCourt[1 - ev.team].forEach(id => { if (d.stats[id]) d.stats[id].pm -= v; });
     cur[ev.team].pf += v; cur[1 - ev.team].pa += v;
     const tg = tags[ev.id];
-    if (tg && tg.has('paint')) d.team[ev.team].paint += v;
+    /* THE SCORER IS CREDITED AS WELL AS THE SIDE: a player's own paint, transition,
+       second-chance and off-turnover points, by the same rules as the team's */
+    const sp = ev.pid ? st(ev) : null;
+    if (tg && tg.has('paint')) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
     /* tagged by hand, or inside the window a change of possession opened */
     const gotItAt = breakAt[ev.team];
     const quick = gotItAt != null &&
       (cumEl(ev.period, ev.clock) - gotItAt) <= TRANSITION_MS;
-    if ((tg && tg.has('transition')) || quick) d.team[ev.team].fast += v;
-    if (flag.sc[ev.team])  d.team[ev.team].sc  += v;
-    if (flag.pot[ev.team]) d.team[ev.team].pot += v;
+    if ((tg && tg.has('transition')) || quick) { d.team[ev.team].fast += v; if (sp) sp.fast += v; }
+    if (flag.sc[ev.team])  { d.team[ev.team].sc  += v; if (sp) sp.sc  += v; }
+    if (flag.pot[ev.team]) { d.team[ev.team].pot += v; if (sp) sp.pot += v; }
     if (ev.pid && !game.starters[ev.team].includes(ev.pid)) d.team[ev.team].bench += v;
     const lead = d.score[ev.team] - d.score[1 - ev.team];
     if (lead > d.team[ev.team].lead) d.team[ev.team].lead = lead;

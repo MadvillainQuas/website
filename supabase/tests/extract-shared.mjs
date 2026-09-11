@@ -44,6 +44,19 @@ const FILES = [
             'estimatePosition', 'estimateOffensiveRole', 'rawBPM',
             'positionConstant', 'teamAdjustment', 'lerp']
   },
+  /* THE ENGINE ITSELF. finalise-game replays the log with it to write every stat row, so
+     the function copy was a hand-kept duplicate that had fallen behind the page's (the
+     derived transition window, the per-player paint / transition / second-chance / off-
+     turnover credit). Generated now like the rest: one replay, everywhere. */
+  {
+    src: join(repo, 'epinoia', 'engine.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'engine.js'),
+    global: 'EpinoiaEngine',
+    names: ['PLEN', 'WIN_MS', 'FOULNAMES', 'perName', 'fmtClock', 'fmtMin', 'cumEl',
+            'mkP', 'mkT', 'mkOC', 'mkBox', 'makeNamer', 'activeTags', 'pbpLine',
+            'deriveGame', 'teamTotals', 'teamAdv', 'playerAdv', 'lineupAgg',
+            'timeoutsLeft', 'teamFoulsNow', 'fullGame', 'VERSION']
+  },
   {
     src: join(repo, 'epinoia', 'season.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),

@@ -1,3 +1,4 @@
+/* GENERATED from epinoia/engine.js by supabase/tests/extract-shared.mjs — do not edit. */
 /* ============================================================================
    EPINOIA ENGINE — the single source of statistical truth.
    Extracted verbatim from the scorer so the scorer, the finalise function
@@ -44,7 +45,7 @@ const mkOC  = () => ({ tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
 const mkBox = () => ({ fga:0,fgm:0,f3m:0,fta:0,tov:0,or:0,dr:0,pts:0 });
 const mkP   = () => ({ pts:0,p2m:0,p2a:0,p3m:0,p3a:0,ftm:0,fta:0,or:0,dr:0,ast:0,stl:0,blk:0,
                        to:0,pf:0,fd:0,pm:0,min:0,t:0,u:0,dq:false,
-                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, oc:mkOC() });
+                       ptsAst:0,rimA:0,rimM:0,midA:0,midM:0, paint:0,fast:0,sc:0,pot:0, oc:mkOC() });
 const mkT   = () => ({ pts:0,teamRebO:0,teamRebD:0,teamTo:0,toTot:0,foulTot:0,foulsP:{},
                        paint:0,fast:0,sc:0,pot:0,bench:0,lead:0,
                        tos:{h1:0,h2:0,last2:0,ot:{}} });
@@ -118,6 +119,29 @@ function deriveGame(game) {
   };
   let arw = (game.arrowInit != null) ? game.arrowInit : null;   // alternating-possession arrow
   const flag = { sc: [false, false], pot: [false, false] };     // live 2nd-chance / points-off-TO windows
+
+  /* TRANSITION, WORKED OUT RATHER THAN TAGGED.
+
+     Second chance and points-off-turnovers have always been derived — an
+     offensive rebound opens one window, a turnover opens the other — while
+     fast-break points alone waited for somebody to tag the shot 'transition'
+     during a live game, which is the one moment nobody has a spare hand. So
+     the column read 2 in a game with twenty fast breaks in it.
+
+     A break is a shot that arrives quickly after the ball changes hands, so
+     that is what is measured: the clock at the moment possession turned over
+     to this side, and any score within eight seconds of it. Eight is the usual
+     cut in public play-by-play work and it matches what a viewer would call a
+     break — long enough for a rebound, an outlet and two dribbles, short
+     enough to exclude a set offence.
+
+     Opened by a DEFENSIVE rebound or a steal, both of which start a break.
+     Not by an offensive rebound, which is a second chance in the same
+     half-court, and not by a made basket, where the other side inbounds and
+     nothing about it is fast. A manual 'transition' tag still counts, so a
+     scorer can mark one the clock would miss. */
+  const TRANSITION_MS = 8000;
+  const breakAt = [null, null];       // cumulative ms when this side got the ball running
   let lastFoulKind = null;
 
   game.teams.forEach(tm => tm.players.forEach(p => { d.stats[p.id] = mkP(); }));
@@ -139,8 +163,32 @@ function deriveGame(game) {
   });
   d.stypes = stypes; d.locs = locs;
 
-  /* a 2pt counts as a rim attempt if it was located inside the key, or tagged paint */
+  /* WHAT COUNTS AS A SHOT AT THE RIM.
+
+     Location alone answered this, which throws away the surer signal: a
+     statistician who picks "dunk" has told you exactly where the shot was, and
+     more reliably than a thumb landing on a court drawn two inches wide. A
+     layup that was tapped slightly outside the key measured as a mid-range
+     attempt, and a fadeaway taken with a heel on the paint line measured as a
+     shot at the rim. Both are wrong in the direction that matters, because rim
+     rate and rim accuracy are read as a claim about how a team scores.
+
+     So the TYPE decides when it is decisive, and location fills the gaps:
+
+       layup, dunk, tip-in, putback   at the rim, wherever the tap landed
+       jump shot, fadeaway, step-back not at the rim, ditto
+       floater, hook, everything else no opinion — fall through to location
+
+     Floater and hook are deliberately left to the location. Both are taken
+     anywhere from two feet to fifteen, and asserting either way would be
+     inventing a fact the scorer did not give. */
+  const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
+  const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
+                            'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
   const isRim = ev => {
+    const ty = (stypes[ev.id] || '').toLowerCase();
+    if (ty && RIM_TYPE.has(ty)) return true;
+    if (ty && FAR_TYPE.has(ty)) return false;
     const l = locs[ev.id];
     return (l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'));
   };
@@ -171,9 +219,17 @@ function deriveGame(game) {
     d.onCourt[1 - ev.team].forEach(id => { if (d.stats[id]) d.stats[id].pm -= v; });
     cur[ev.team].pf += v; cur[1 - ev.team].pa += v;
     const tg = tags[ev.id];
-    if (tg) { if (tg.has('paint')) d.team[ev.team].paint += v; if (tg.has('transition')) d.team[ev.team].fast += v; }
-    if (flag.sc[ev.team])  d.team[ev.team].sc  += v;
-    if (flag.pot[ev.team]) d.team[ev.team].pot += v;
+    /* THE SCORER IS CREDITED AS WELL AS THE SIDE: a player's own paint, transition,
+       second-chance and off-turnover points, by the same rules as the team's */
+    const sp = ev.pid ? st(ev) : null;
+    if (tg && tg.has('paint')) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
+    /* tagged by hand, or inside the window a change of possession opened */
+    const gotItAt = breakAt[ev.team];
+    const quick = gotItAt != null &&
+      (cumEl(ev.period, ev.clock) - gotItAt) <= TRANSITION_MS;
+    if ((tg && tg.has('transition')) || quick) { d.team[ev.team].fast += v; if (sp) sp.fast += v; }
+    if (flag.sc[ev.team])  { d.team[ev.team].sc  += v; if (sp) sp.sc  += v; }
+    if (flag.pot[ev.team]) { d.team[ev.team].pot += v; if (sp) sp.pot += v; }
     if (ev.pid && !game.starters[ev.team].includes(ev.pid)) d.team[ev.team].bench += v;
     const lead = d.score[ev.team] - d.score[1 - ev.team];
     if (lead > d.team[ev.team].lead) d.team[ev.team].lead = lead;
@@ -261,15 +317,23 @@ function deriveGame(game) {
       case 'reb':
         d.poss = ev.team;
         if (ev.off) flag.sc[ev.team] = true;
-        else { flag.sc = [false, false]; flag.pot = [false, false]; }
+        else {
+          flag.sc = [false, false]; flag.pot = [false, false];
+          breakAt[ev.team] = cumEl(ev.period, ev.clock);
+        }
         break;
-      case 'stl': d.poss = ev.team; break;
+      case 'stl':
+        d.poss = ev.team;
+        breakAt[ev.team] = cumEl(ev.period, ev.clock);
+        break;
       case 'to':
         d.poss = 1 - ev.team;
         flag.sc[ev.team] = false; flag.pot[ev.team] = false;
         flag.sc[1 - ev.team] = false; flag.pot[1 - ev.team] = true; break;
       case 'foul': lastFoulKind = ev.kind || 'personal'; break;
-      case 'period_start': flag.sc = [false, false]; flag.pot = [false, false]; break;
+      case 'period_start':
+        flag.sc = [false, false]; flag.pot = [false, false];
+        breakAt[0] = breakAt[1] = null; break;
     }
 
     const line = pbpLine(ev, ev.id, tags, stypes, nm);
@@ -326,7 +390,10 @@ function teamAdv(game, d, t) {
     p3p: dv(T.fg3m, T.fg3a) * 100, p3r: dv(T.fg3a, T.fga) * 100,
     astPtsP: dv(T.ptsAst, T.pts - T.ftm) * 100,
     tsaPer100: dv(T.tsa, T.possessions) * 100,
-    pace: dv(T.possessions + O.possessions, 2) / Math.max(1, T.minutes / 5) * 40
+    // game pace (both teams' possessions averaged, per 40 min of game clock) and
+    // this team's own possessions per 40, which can differ by a possession or two
+    pace: dv(T.possessions + O.possessions, 2) / Math.max(1, T.minutes / 5) * 40,
+    paceOwn: T.possessions / Math.max(1, T.minutes / 5) * 40
   });
 }
 
@@ -347,8 +414,17 @@ function playerAdv(game, d, t, p, TT, OT) {
   const oc = s.oc;
   const ocPoss    = 0.96 * (oc.tFGA + oc.tTOV + 0.44 * oc.tFTA - oc.tOR);
   const ocOppPoss = 0.96 * (oc.oFGA + oc.oTOV + 0.44 * oc.oFTA - oc.oOR);
+  // pace on the floor / off it (both teams' possessions per 40 — the game-pace definition);
+  // off = the game's possessions and minutes less the player's; overtime is in TT.minutes
+  const ocPossAvg = (ocPoss + ocOppPoss) / 2;
+  const gamePossAvg = ((TT.possessions || 0) + (OT.possessions || 0)) / 2;
+  const paceOn = mins > 0 ? ocPossAvg / mins * 40 : 0;
+  const offMin = Math.max(0, gameMinutes - mins);
+  const paceOff = offMin > 1 ? Math.max(0, gamePossAvg - ocPossAvg) / offMin * 40 : 0;
+  const pacePM = (paceOn > 0 && paceOff > 0) ? paceOn - paceOff : 0;
 
   const r = {
+    paceOn, paceOff, pacePM,
     id: p.id, num: p.num, name: p.name, min: mins, minTxt: fmtMin(s.min),
     fgm, ast: s.ast, pts: s.pts, ptsAst: s.ptsAst, tpc: s.pts + s.ptsAst,
     ppp: dv(s.pts, pPoss), usg, astPct,
@@ -443,13 +519,13 @@ return {
 };
 }));
 
-/* Deno/ESM surface. The UMD half above attaches to globalThis; re-export the
-   same object so the Edge Function and the browser run one identical file. */
+/* ---------------------------------------------------------------------------
+   GENERATED TAIL — do not edit this file. Edit the browser copy and re-run
+   `node supabase/tests/extract-shared.mjs`; CI fails if the two drift.
+
+   The UMD half above attaches to globalThis; this re-exports the same object
+   so the Edge Function and the browser run one identical file.
+   --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaEngine;
-export const {
-  PLEN, WIN_MS, FOULNAMES, perName, fmtClock, fmtMin, cumEl,
-  mkP, mkT, mkOC, mkBox, makeNamer, activeTags, pbpLine,
-  deriveGame, teamTotals, teamAdv, playerAdv, lineupAgg,
-  timeoutsLeft, teamFoulsNow, fullGame, VERSION
-} = __api;
+export const { PLEN, WIN_MS, FOULNAMES, perName, fmtClock, fmtMin, cumEl, mkP, mkT, mkOC, mkBox, makeNamer, activeTags, pbpLine, deriveGame, teamTotals, teamAdv, playerAdv, lineupAgg, timeoutsLeft, teamFoulsNow, fullGame, VERSION } = __api;
 export default __api;

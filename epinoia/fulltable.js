@@ -44,30 +44,37 @@ const P = [
   { k:'jersey', l:'#',      g:['id'], fmt:r=>r.jersey||'', sort:r=>+r.jersey||999 },
   { k:'name',   l:'PLAYER', g:['id'], fmt:r=>r.name, text:true },
   { k:'teamName', l:'TEAM', g:['id'], fmt:r=>r.teamName||'', text:true },
-  { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced'], fmt:r=>f0(r.gp) },
+  { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'], fmt:r=>f0(r.gp), ord:{advanced:0} },
 
   /* per game — the default view */
   { k:'mpg',  l:'MPG',  g:['basic'], fmt:r=>f1(r.mpg),  heat:1 },
   { k:'ppg',  l:'PPG',  g:['basic'], fmt:r=>f1(r.ppg),  heat:1, lead:1 },
-  { k:'rpg',  l:'RPG',  g:['basic'], fmt:r=>f1(r.rpg),  heat:1 },
-  { k:'apg',  l:'APG',  g:['basic'], fmt:r=>f1(r.apg),  heat:1 },
-  { k:'spg',  l:'SPG',  g:['basic'], fmt:r=>f1(r.spg),  heat:1 },
-  { k:'bpg',  l:'BPG',  g:['basic'], fmt:r=>f1(r.bpg),  heat:1 },
-  { k:'topg', l:'TOPG', g:['basic'], fmt:r=>f1(r.topg), heat:1, low:1 },
-  { k:'pfpg', l:'PFPG', g:['basic'], fmt:r=>f1(r.pfpg), heat:1, low:1 },
+  { k:'rpg',  l:'RPG',  g:['basic','rebounding'], fmt:r=>f1(r.rpg),  heat:1 },
+  { k:'orpg', l:'ORPG', g:['rebounding'], fmt:r=>f1(r.orpg), heat:1 },
+  { k:'drpg', l:'DRPG', g:['rebounding','defense'], fmt:r=>f1(r.drpg), heat:1 },
+  { k:'apg',  l:'APG',  g:['basic','playmaking'], fmt:r=>f1(r.apg),  heat:1 },
+  { k:'spg',  l:'SPG',  g:['basic','defense'], fmt:r=>f1(r.spg),  heat:1 },
+  { k:'bpg',  l:'BPG',  g:['basic','defense'], fmt:r=>f1(r.bpg),  heat:1 },
+  { k:'topg', l:'TOPG', g:['basic','playmaking'], fmt:r=>f1(r.topg), heat:1, low:1 },
+  { k:'pfpg', l:'PFPG', g:['basic','defense'], fmt:r=>f1(r.pfpg), heat:1, low:1 },
 
   /* totals */
   { k:'min',  l:'MIN',  g:['totals'], fmt:r=>f1(r.min),  heat:1 },
   { k:'pts',  l:'PTS',  g:['totals'], fmt:r=>f0(r.pts),  heat:1, lead:1 },
-  { k:'reb',  l:'REB',  g:['totals','rebounding'], fmt:r=>f0(r.reb), heat:1 },
-  { k:'oreb', l:'OREB', g:['totals','rebounding'], fmt:r=>f0(r.oreb), heat:1 },
-  { k:'dreb', l:'DREB', g:['totals','rebounding','defense'], fmt:r=>f0(r.dreb), heat:1 },
-  { k:'ast',  l:'AST',  g:['totals','playmaking'], fmt:r=>f0(r.ast), heat:1 },
-  { k:'stl',  l:'STL',  g:['totals','defense'], fmt:r=>f0(r.stl), heat:1 },
-  { k:'blk',  l:'BLK',  g:['totals','defense'], fmt:r=>f0(r.blk), heat:1 },
-  { k:'tov',  l:'TO',   g:['totals','playmaking'], fmt:r=>f0(r.tov), heat:1, low:1 },
-  { k:'pf',   l:'PF',   g:['totals','defense'], fmt:r=>f0(r.pf), heat:1, low:1 },
+  { k:'reb',  l:'REB',  g:['totals'], fmt:r=>f0(r.reb), heat:1 },
+  { k:'oreb', l:'OREB', g:['totals'], fmt:r=>f0(r.oreb), heat:1 },
+  { k:'dreb', l:'DREB', g:['totals'], fmt:r=>f0(r.dreb), heat:1 },
+  { k:'ast',  l:'AST',  g:['totals'], fmt:r=>f0(r.ast), heat:1 },
+  { k:'stl',  l:'STL',  g:['totals'], fmt:r=>f0(r.stl), heat:1 },
+  { k:'blk',  l:'BLK',  g:['totals'], fmt:r=>f0(r.blk), heat:1 },
+  { k:'tov',  l:'TO',   g:['totals'], fmt:r=>f0(r.tov), heat:1, low:1 },
+  { k:'pf',   l:'PF',   g:['totals'], fmt:r=>f0(r.pf), heat:1, low:1 },
   { k:'fd',   l:'FD',   g:['totals'], fmt:r=>f0(r.fd), heat:1 },
+  { k:'ptsAst', l:'PTS AST', g:['totals'], fmt:r=>f0(r.ptsAst), heat:1 },
+  { k:'paint', l:'PAINT', g:['totals'], fmt:r=>f0(r.paint), heat:1 },
+  { k:'fast',  l:'TRANS', g:['totals'], fmt:r=>f0(r.fast), heat:1 },
+  { k:'sc',    l:'2ND',   g:['totals'], fmt:r=>f0(r.sc), heat:1 },
+  { k:'pot',   l:'PoT',   g:['totals'], fmt:r=>f0(r.pot), heat:1 },
 
   /* shooting */
   /* per game, made-attempted: "6.2-11.4" is the shape of a night's work,
@@ -86,12 +93,12 @@ const P = [
      box score. An estimate, not a measurement — it cannot see a closeout — but
      it is the single number that comes closest to "how good was this player",
      which is why it leads the advanced group. */
-  { k:'bpm',  l:'BPM',  g:['advanced'], fmt:r=>sgn1(r.bpm),  heat:1, w:58 },
-  { k:'obpm', l:'OBPM', g:['advanced'], fmt:r=>sgn1(r.obpm), heat:1, w:60 },
-  { k:'dbpm', l:'DBPM', g:['advanced'], fmt:r=>sgn1(r.dbpm), heat:1, w:60 },
-  { k:'vorp', l:'VORP', g:['advanced'], fmt:r=>f1(r.vorp),   heat:1, w:58 },
-  { k:'efg',    l:'eFG%', g:['shooting','advanced'], fmt:r=>f1(r.efg), heat:1 },
-  { k:'ts',     l:'TS%',  g:['shooting','advanced'], fmt:r=>f1(r.ts),  heat:1 },
+  { k:'bpm',  l:'BPM',  g:['advanced'], fmt:r=>sgn1(r.bpm),  heat:1, w:58, ord:{advanced:16} },
+  { k:'obpm', l:'OBPM', g:['advanced'], fmt:r=>sgn1(r.obpm), heat:1, w:60, ord:{advanced:17} },
+  { k:'dbpm', l:'DBPM', g:['advanced'], fmt:r=>sgn1(r.dbpm), heat:1, w:60, ord:{advanced:18} },
+  { k:'vorp', l:'VORP', g:['advanced'], fmt:r=>f1(r.vorp),   heat:1, w:58, ord:{advanced:19} },
+  { k:'efg',    l:'eFG%', g:['shooting','advanced'], fmt:r=>f1(r.efg), heat:1, ord:{advanced:2} },
+  { k:'ts',     l:'TS%',  g:['shooting','advanced'], fmt:r=>f1(r.ts),  heat:1, ord:{advanced:1} },
   /* Each zone's accuracy with the volume it rests on, in that order — the same
      pairing the team table uses and the player profile's bars show. 60% at the
      rim means one thing on eight attempts a night and nothing at all on one,
@@ -104,27 +111,39 @@ const P = [
   { k:'rim_rate', l:'RIM/FGA', g:['shooting'], fmt:r=>f1(r.rim_rate), heat:1 },
   { k:'mid_rate', l:'MID/FGA', g:['shooting'], fmt:r=>f1(r.mid_rate), heat:1 },
   { k:'p3_rate',  l:'3PA/FGA', g:['shooting'], fmt:r=>f1(r.p3_rate),  heat:1 },
-  { k:'ftr',      l:'FTr',   g:['shooting','advanced'], fmt:r=>f1(r.ftr), heat:1 },
+  { k:'ftr',      l:'FTr',   g:['shooting','advanced'], fmt:r=>f1(r.ftr), heat:1, ord:{advanced:20} },
 
   /* playmaking */
-  { k:'ast_pct', l:'AST%',    g:['playmaking','advanced'], fmt:r=>f1(r.ast_pct), heat:1 },
-  { k:'tov_pct', l:'TOV%',    g:['playmaking','advanced'], fmt:r=>f1(r.tov_pct), heat:1, low:1 },
+  { k:'ast_pct', l:'AST%',    g:['playmaking','advanced'], fmt:r=>f1(r.ast_pct), heat:1, ord:{advanced:6} },
+  { k:'tov_pct', l:'TOV%',    g:['playmaking','advanced'], fmt:r=>f1(r.tov_pct), heat:1, low:1, ord:{advanced:7} },
   { k:'ast_to',  l:'A/TO',    g:['playmaking'], fmt:r=>f2(r.ast_to), heat:1 },
   { k:'au',      l:'AST/USG', g:['playmaking'], fmt:r=>f2(r.au), heat:1 },
-  { k:'ptsAst',  l:'PTS AST', g:['playmaking'], fmt:r=>f0(r.ptsAst), heat:1 },
+  { k:'ptsAst_pg',  l:'PTS AST/G', g:['playmaking'], fmt:r=>f1(r.ptsAst_pg), heat:1, w:70 },
+  { k:'contrib_pg', l:'PTS CONTRIB/G', g:['playmaking'], fmt:r=>f1(r.contrib_pg), heat:1, w:86 },
+  /* the miscellany: where a player's points come from, per game */
+  { k:'paint_pg', l:'PAINT/G', g:['misc'], fmt:r=>f1(r.paint_pg), heat:1 },
+  { k:'fast_pg',  l:'TRANS/G', g:['misc'], fmt:r=>f1(r.fast_pg),  heat:1 },
+  { k:'sc_pg',    l:'2ND/G',   g:['misc'], fmt:r=>f1(r.sc_pg),    heat:1 },
+  { k:'pot_pg',   l:'PoT/G',   g:['misc'], fmt:r=>f1(r.pot_pg),   heat:1 },
 
   /* defence + rebounding rates */
-  { k:'stl_pct',  l:'STL%',  g:['defense','advanced'], fmt:r=>f1(r.stl_pct), heat:1 },
-  { k:'blk_pct',  l:'BLK%',  g:['defense','advanced'], fmt:r=>f1(r.blk_pct), heat:1 },
-  { k:'oreb_pct', l:'OREB%', g:['rebounding','advanced'], fmt:r=>f1(r.oreb_pct), heat:1 },
-  { k:'dreb_pct', l:'DREB%', g:['rebounding','defense','advanced'], fmt:r=>f1(r.dreb_pct), heat:1 },
-  { k:'trb_pct',  l:'TRB%',  g:['rebounding'], fmt:r=>f1(r.trb_pct), heat:1 },
+  { k:'stl_pct',  l:'STL%',  g:['defense','advanced'], fmt:r=>f1(r.stl_pct), heat:1, ord:{advanced:8} },
+  { k:'blk_pct',  l:'BLK%',  g:['defense','advanced'], fmt:r=>f1(r.blk_pct), heat:1, ord:{advanced:9} },
+  { k:'oreb_pct', l:'OREB%', g:['rebounding','advanced'], fmt:r=>f1(r.oreb_pct), heat:1, ord:{advanced:3} },
+  { k:'dreb_pct', l:'DREB%', g:['rebounding','defense','advanced'], fmt:r=>f1(r.dreb_pct), heat:1, ord:{advanced:4} },
+  { k:'trb_pct',  l:'TRB%',  g:['rebounding','advanced'], fmt:r=>f1(r.trb_pct), heat:1, ord:{advanced:5} },
+  /* the rebounding on/off: the team's share with him on against off, both ends */
 
   /* usage and efficiency */
-  { k:'usg',   l:'USG%', g:['advanced'], fmt:r=>f1(r.usg), heat:1 },
-  { k:'ppp',   l:'PPP',  g:['advanced'], fmt:r=>f2(r.ppp), heat:1 },
-  { k:'pts75', l:'PTS/75', g:['advanced'], fmt:r=>f1(r.pts75), heat:1 },
-  { k:'poss',  l:'POSS', g:['advanced'], fmt:r=>f1(r.poss) },
+  { k:'usg',   l:'USG%', g:['advanced'], fmt:r=>f1(r.usg), heat:1, ord:{advanced:10} },
+  { k:'total_s', l:'TOTAL S%', g:['advanced'], fmt:r=>f1(r.total_s), heat:1, ord:{advanced:11}, w:72 },
+  { k:'ppr',   l:'PPR',  g:['advanced'], fmt:r=>f1(r.ppr), heat:1, ord:{advanced:12} },
+  { k:'pps',   l:'PPS',  g:['advanced'], fmt:r=>f2(r.pps), heat:1, ord:{advanced:13} },
+  { k:'on_ortg', l:'ORTG', g:['advanced'], fmt:r=>f1(r.on_ortg), heat:1, ord:{advanced:14} },
+  { k:'on_drtg', l:'DRTG', g:['advanced'], fmt:r=>f1(r.on_drtg), heat:1, low:1, ord:{advanced:15} },
+  { k:'ppp',   l:'PPP',  g:['advanced'], fmt:r=>f2(r.ppp), heat:1, ord:{advanced:21} },
+  { k:'pts75', l:'PTS/75', g:['advanced'], fmt:r=>f1(r.pts75), heat:1, ord:{advanced:22} },
+  { k:'poss',  l:'POSS/G', g:['advanced'], fmt:r=>f1(r.poss_pg), sort:r=>r.poss_pg, ord:{advanced:23} },
 
   /* on / off — the differential is the headline, so it leads the group */
   /* ON / OFF AS DIFFERENTIALS. Every column here is on-court minus off-court:
@@ -135,14 +154,15 @@ const P = [
   { k:'diff_net',  l:'NET ±',   g:['onoff'], fmt:r=>sgn(r.diff_net),  heat:1, lead:1, signed:1 },
   { k:'diff_ortg', l:'ORTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_ortg), heat:1, signed:1 },
   { k:'diff_drtg', l:'DRTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_drtg), heat:1, signed:1, low:1 },
+  { k:'diff_pace', l:'PACE ±',  g:['onoff'], fmt:r=>sgn(r.diff_pace), heat:1, signed:1 },
   { k:'pm',        l:'+/-',     g:['basic','onoff'], fmt:r=>sgn0(r.pm), heat:1, signed:1 },
   { k:'diff_efg',  l:'eFG% ±',  g:['onoff'], fmt:r=>sgn(r.diff_efg),  heat:1, signed:1 },
-  { k:'diff_oreb', l:'OREB% ±', g:['onoff'], fmt:r=>sgn(r.diff_oreb), heat:1, signed:1 },
+  { k:'diff_oreb',    l:'OREB% ±',     g:['onoff','rebounding'], fmt:r=>sgn(r.diff_oreb), heat:1, signed:1 },
   { k:'diff_tov',  l:'TOV% ±',  g:['onoff'], fmt:r=>sgn(r.diff_tov),  heat:1, signed:1, low:1 },
   { k:'diff_ftr',  l:'FTr ±',   g:['onoff'], fmt:r=>sgn(r.diff_ftr),  heat:1, signed:1 },
   { k:'diff_vs_efg',  l:'OPP eFG% ±',  g:['onoff'], fmt:r=>sgn(r.diff_vs_efg),  heat:1, signed:1, low:1 },
   { k:'diff_vs_tov',  l:'OPP TOV% ±',  g:['onoff'], fmt:r=>sgn(r.diff_vs_tov),  heat:1, signed:1 },
-  { k:'diff_vs_oreb', l:'OPP OREB% ±', g:['onoff'], fmt:r=>sgn(r.diff_vs_oreb), heat:1, signed:1, low:1 },
+  { k:'diff_vs_oreb', l:'OPP OREB% ±', g:['onoff','rebounding'], fmt:r=>sgn(r.diff_vs_oreb), heat:1, signed:1, low:1 },
   { k:'diff_vs_ftr',  l:'OPP FTr ±',   g:['onoff'], fmt:r=>sgn(r.diff_vs_ftr),  heat:1, signed:1, low:1 },
 
   /* what the opponent managed while he was on the floor */
@@ -283,6 +303,7 @@ const PRESETS = {
     ['onoff',      'on / off'],
     ['vs',         'opponent'],
     ['advanced',   'advanced'],
+    ['misc',       'misc'],
     ['*',          'everything']
   ],
   team: [
@@ -341,6 +362,7 @@ function render(opts) {
   /* PER GAME OUTSIDE THE TOTALS VIEW. A season row carries totals; every column except the
      totals preset reads a per-game form of them, derived here so the heat map and the sort
      rank the per-game numbers rather than the totals behind them. */
+  if (!isTeam) rows.forEach(r => { r.poss_pg = (r.poss == null || !isFinite(r.poss)) ? null : r.poss / (r.gp || 1); });
   if (isTeam) rows.forEach(r => {
     const gp = r.gp || 1;
     const pg = v => (v == null || !isFinite(v)) ? null : v / gp;
@@ -375,7 +397,11 @@ function render(opts) {
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
   const visible = () => idCols.concat(
     CAT.filter(c => !c.g.includes('id') &&
-                    ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k))));
+                    ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
+       .map((c, i) => [c, i])
+       .sort((a, b) => ((a[0].ord && a[0].ord[preset] != null ? a[0].ord[preset] : 1000 + a[1]) -
+                        (b[0].ord && b[0].ord[preset] != null ? b[0].ord[preset] : 1000 + b[1])))
+       .map(x => x[0]));
 
   host.textContent = '';
 
