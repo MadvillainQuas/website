@@ -480,16 +480,41 @@ function subscriber(opts) {
   const FULL_EVERY_MS = 30000;   // a retraction cannot be seen in a delta; a full read catches it
   const setStatus = s => { if (s !== status) { status = s; onStatus && onStatus(s); } };
   const noteSeqs = evs => { (evs || []).forEach(e => { const s = +(e.seq != null ? e.seq : e.id); if (s > maxSeq) maxSeq = s; }); };
+  /* THE CLOCK HAS A PECKING ORDER. A federation feed's clock is a snapshot that moves when the
+     table syncs an action; a clock keeper in the control room, or a camera on the hall's
+     scoreboard, sends the real thing. When one of those has spoken in the last twenty seconds
+     its clock fields are kept and the feed's are not allowed to overwrite them; everything
+     else in the polled state (score, fouls, possession) is still taken. */
+  let authority = null;        // { source, until }
+  const AUTHORITY_MS = 20000;
+  const clockFields = ['clock_ms', 'running', 'updated_at', 'at', 'period', 'source'];
+  function adoptState(next, viaFrame) {
+    if (!next) return;
+    const src = next.source;
+    if (viaFrame && (src === 'keeper' || src === 'cam')) {
+      authority = { source: src, until: Date.now() + AUTHORITY_MS };
+      state = Object.assign({}, state || {}, next);
+      return;
+    }
+    if (authority && Date.now() < authority.until && state) {
+      const kept = {};
+      clockFields.forEach(k => { if (k in state) kept[k] = state[k]; });
+      state = Object.assign({}, next, kept);
+      return;
+    }
+    state = next;
+  }
   function applyFrame(f) {
     if (!f) return;
     lastTraffic = Date.now();
     // a gap in the sequence means we missed a frame — resync rather than drift
     if (f.seq != null && lastSeq && f.seq > lastSeq + 1) { resync('gap'); return; }
     if (f.seq != null) lastSeq = f.seq;
-    if (f.state) state = f.state;
+    if (f.state) adoptState(f.state, true);
     noteSeqs(f.events);
     onFrame && onFrame(f);
-    setStatus('live');
+    /* a clock frame alone does not prove a scorer is on the socket: the status stays as it was */
+    if (f.events || f.seq != null || f.full) setStatus('live');
   }
   /* ONE POLL AT A TIME. On a slow link a poll can take longer than the interval; a second
      one starting before the first returns would stack requests until the connection gave
@@ -502,7 +527,7 @@ function subscriber(opts) {
     try {
       if (!tx.delta || Date.now() - lastFull > FULL_EVERY_MS) { await resync('poll'); return; }
       const d = await tx.delta(maxSeq);
-      if (d.state) state = d.state;
+      if (d.state) adoptState(d.state, false);
       noteSeqs(d.events);
       if (onFrame && (d.events.length || d.state || d.game)) onFrame({ events: d.events, state: d.state, game: d.game, full: false, polled: true });
       if (status === 'offline') setStatus('delayed');
@@ -512,7 +537,7 @@ function subscriber(opts) {
   async function resync(why) {
     try {
       const snap = await tx.snapshot();
-      state = snap.state || state;
+      if (snap.state) adoptState(snap.state, false);
       lastSeq = 0;
       maxSeq = 0; noteSeqs(snap.events);
       lastFull = Date.now();
@@ -546,6 +571,8 @@ function subscriber(opts) {
     transport: tx.kind,
     get status() { return status; },
     get state() { return state; },
+    /** who is driving the clock right now: 'keeper', 'cam', or 'feed' */
+    clockSource() { return (authority && Date.now() < authority.until) ? authority.source : 'feed'; },
     /** the whole point: a smooth clock with zero bandwidth */
     clockMs() {
       if (!state) return 0;

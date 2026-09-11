@@ -140,7 +140,7 @@ function buildState() {
      game reading "0.0" looks broken to the person laying it out — which is
      exactly who is looking at it then. A period that has not started shows its
      own length, which is what the board in the hall shows. */
-  let clockMs = sub ? sub.clockMs() : (S.clockMs || 0);
+  let clockMs = smoothClock(sub ? sub.clockMs() : (S.clockMs || 0), !!(sub && sub.state && sub.state.running));
   const started = !!(sub && sub.state) || S.events.length > 0;
   if (!started && !clockMs && E.PLEN) clockMs = E.PLEN(period);
 
@@ -204,7 +204,8 @@ function buildState() {
       ms: clockMs,
       display: game.status === 'final' ? 'FIN' : mmss(clockMs),
       final: game.status === 'final',
-      running: !!(sub && sub.state && sub.state.running)
+      running: !!(sub && sub.state && sub.state.running),
+      source: sub && sub.clockSource ? sub.clockSource() : 'feed'
     },
     possessionArrow: (sub && sub.state && sub.state.arrow != null)
       ? sub.state.arrow : (S.arrowInit != null ? S.arrowInit : null),
@@ -438,6 +439,28 @@ const periodLabel = p => (p <= 4 ? 'Q' + p : 'OT' + (p - 4));
    shows tenths, because the last thirty seconds is the only time anybody reads
    the clock precisely; above a minute it shows m:ss, because tenths ticking
    for nine minutes is visual noise on air. */
+/* THE SHOWN CLOCK IS NOT THE LAST READING. Readings arrive in lumps -- a two-second poll of a
+   federation feed, a keeper's tap, a camera's read -- and a clock that snaps to each one
+   stutters. The shown clock runs on its own while the state says running, and every reading
+   is a correction it slides towards at a quarter of a second per second; only a difference of
+   more than a second and a half is taken at once (a timeout put back, a period reset). */
+let shownMs = null, shownAt = 0;
+function smoothClock(target, running) {
+  const now = performance.now();
+  if (shownMs == null || !isFinite(target)) { shownMs = target; shownAt = now; return target; }
+  const dt = Math.max(0, now - shownAt); shownAt = now;
+  if (running) shownMs = Math.max(0, shownMs - dt);
+  const diff = target - shownMs;
+  /* a big step down (a period reset comes as a step UP of minutes) is taken at once; a step up of
+     a few seconds while running is what a misread looks like, and is only slid towards */
+  if (diff < -1500 || diff > 10000) shownMs = target;
+  else {
+    const step = 0.25 * dt;                    // a quarter-second of correction per second
+    shownMs += Math.max(-step, Math.min(step, diff));
+  }
+  return Math.max(0, Math.round(shownMs));
+}
+
 function mmss(ms) {
   const t = Math.max(0, ms || 0);
   if (t < 60000) return (Math.floor(t / 100) / 10).toFixed(1);

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Clock cam · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=294">
+<style>
+  :root{ --cc-ink:#e6fff1 }
+  body{ background:#04100b; color:#e6fff1 }
+  .cc{ max-width:720px; margin:0 auto; padding:10px 12px calc(24px + env(safe-area-inset-bottom)) }
+  .bar{ display:flex; align-items:center; gap:10px; padding:6px 0 10px }
+  .wm{ font-family:var(--f-score); font-size:19px; background:linear-gradient(100deg,#93f2bf,#8ff5ff); color:#04100b; padding:3px 11px 1px; text-transform:uppercase; text-decoration:none }
+  .sub{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:rgba(230,255,241,.6) }
+  .stage{ position:relative; width:100%; background:#000; border-radius:12px; overflow:hidden; touch-action:none; user-select:none; aspect-ratio:4/3 }
+  .stage video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block }
+  .stage canvas{ position:absolute; inset:0; width:100%; height:100%; display:block }
+  .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 }
+  .btn{ font-family:var(--f-micro); font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:11px 14px; border-radius:999px; border:1px solid rgba(147,242,191,.4); background:rgba(147,242,191,.08); color:#e6fff1; cursor:pointer }
+  .btn.on{ background:#93f2bf; color:#04100b; border-color:#93f2bf }
+  .btn.big{ font-size:13px; padding:14px 22px }
+  .btn.warn{ border-color:#ff5f6b; color:#ff5f6b }
+  .btn:disabled{ opacity:.4 }
+  .read{ display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; border:1px solid rgba(147,242,191,.25); border-radius:12px; padding:10px 14px; margin:10px 0 }
+  .read .clk{ font-family:var(--f-score); font-size:56px; line-height:1; color:#e6fff1 }
+  .read .clk.run{ color:#93f2bf }
+  .read .per{ font-family:var(--f-score); font-size:24px; color:rgba(230,255,241,.7) }
+  .read .sc{ font-family:var(--f-score); font-size:24px; color:rgba(230,255,241,.85); text-align:right }
+  .read .st{ grid-column:1/-1; font-family:var(--f-micro); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:rgba(230,255,241,.55) }
+  .thumbs{ display:flex; gap:8px; flex-wrap:wrap }
+  .thumbs canvas{ height:44px; width:auto; border:1px solid rgba(147,242,191,.3); border-radius:4px; image-rendering:pixelated; background:#000 }
+  .thumbs span{ font-family:var(--f-micro); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:rgba(230,255,241,.5); display:block; margin-top:3px }
+  .hint{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; line-height:1.8; color:rgba(230,255,241,.55) }
+  .games a{ display:block; padding:10px 12px; border:1px solid rgba(147,242,191,.25); border-radius:10px; margin:6px 0; color:#e6fff1; text-decoration:none; font-family:var(--f-ui); font-size:13px }
+  .games a small{ display:block; font-family:var(--f-micro); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:rgba(230,255,241,.5); margin-top:3px }
+  label.tg{ font-family:var(--f-micro); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:rgba(230,255,241,.75); display:inline-flex; gap:6px; align-items:center }
+  input[type=range]{ flex:1 1 120px }
+  .hide{ display:none !important }
+  h2{ font-family:var(--f-score); font-size:22px; text-transform:uppercase; margin:14px 0 4px }
+</style>
+</head>
+<body>
+<div class="cc">
+  <div class="bar"><a href="../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a><span class="sub" id="ctx">clock cam</span></div>
+
+  <div id="signedout" class="hide">
+    <h2>Sign in first</h2>
+    <p class="hint">The clock cam sends the hall's clock to the game's broadcast graphics, so it needs an account that may broadcast the game: a league admin, a manager of either club, or the assigned statistician.</p>
+    <a class="btn on" id="signinLink" href="../signin/?next=/epinoia/clockcam/">sign in</a>
+  </div>
+
+  <div id="pick" class="hide">
+    <h2>Which game?</h2>
+    <p class="hint">Games on today, or about to be. Tap one.</p>
+    <div class="games" id="games"></div>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="stage" id="stage">
+      <video id="cam" autoplay playsinline muted></video>
+      <canvas id="ov"></canvas>
+    </div>
+    <div class="row">
+      <button class="btn" id="boxClock" type="button">box the clock</button>
+      <button class="btn" id="boxHome" type="button">box home score</button>
+      <button class="btn" id="boxAway" type="button">box away score</button>
+      <button class="btn" id="boxClear" type="button">clear boxes</button>
+    </div>
+    <div class="hint" id="boxHint">Drag a rectangle tightly round the clock digits (include the colon). Keep the phone still: a clamp or a rail beats a hand. Digits should be level and at least the height of your thumbnail on screen.</div>
+
+    <div class="read">
+      <span class="per" id="rPer">P1</span>
+      <span class="clk" id="rClk">–:––</span>
+      <span class="sc" id="rSc"></span>
+      <span class="st" id="rSt">not connected</span>
+    </div>
+
+    <div class="row">
+      <button class="btn big" id="go" type="button">connect &amp; send</button>
+      <button class="btn" id="pDown" type="button">P−</button>
+      <button class="btn" id="pUp" type="button">P+</button>
+      <label class="tg"><input id="sendScore" type="checkbox"> also send the score</label>
+    </div>
+
+    <div class="row">
+      <label class="tg"><input id="invert" type="checkbox"> light digits on dark (auto)</label>
+      <label class="tg">threshold <input id="thr" type="range" min="-60" max="60" value="0"></label>
+      <label class="tg"><input id="pcMode" type="checkbox"> read on the league's PC instead</label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="hint" id="pcHint" class="hide">PC mode posts the boxed clock to the league's PC a few times a second; on the PC run <code>python scripts\worker\clock_cam.py --game &lt;id&gt; --source phone</code>. Use it when the phone's own reading keeps missing (a dim or unusual board).</div>
+    <div class="hint">Readings are held until they run at the speed of time or repeat; a reading that jumps the clock forward is ignored unless it repeats. The graphics tick between readings and slide to each correction, so a missed frame never shows.</div>
+  </div>
+</div>
+<script src="../config.js?v=281" defer></script>
+<script src="../vendor/supabase.js?v=239" defer></script>
+<script src="clockcam.js?v=294" defer></script>
+</body>
+</html>

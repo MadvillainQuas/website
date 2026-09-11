@@ -738,6 +738,8 @@ function buildCtaMenu(o) {
      'and start moving on the first basket.' + (S.fed ? ' Opening the control room arms the live heartbeat for this FIBA LiveStats game.' : '')],
     ['../broadcast/?g=' + g + '&live=1&pos=bl', 'Open the graphics layer',
      'The transparent page to add as a browser source in OBS or vMix.'],
+    ['../clockcam/?g=' + g, 'Clock cam (phone)',
+     'Point a phone at the hall\u2019s scoreboard and send the real clock to the graphics.'],
     ['../broadcast/help/?g=' + g, 'How to set up a broadcast',
      'The full walkthrough: arming the game, the control room, OBS, vMix, the scenes.']
   ].concat(o && o.broadcastOnly ? [] : [

@@ -143,6 +143,17 @@
   code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
   .hd .help{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--lume);text-decoration:none;border:1px solid var(--lume);border-radius:999px;padding:5px 10px}
   .hd .help:hover{background:color-mix(in oklch,var(--lume) 14%,transparent)}
+  .keeper{border:1px solid var(--rule);border-radius:12px;padding:10px 14px;margin:10px 0}
+  .keeper .kpl{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);display:flex;gap:12px;align-items:center;margin-bottom:6px}
+  .keeper .kps{color:var(--ink-3)} .keeper .kps.on{color:var(--lume)}
+  .keeper .kprow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .keeper .kpp{font-family:var(--f-score);font-size:22px;color:var(--ink-2)}
+  .keeper .kpc{font-family:var(--f-score);font-size:44px;line-height:1;min-width:120px;color:var(--ink)}
+  .keeper .kpc.run{color:var(--lume)}
+  .keeper .kpt{min-width:84px} .keeper .kpt.run{background:var(--flare);border-color:var(--flare)}
+  .keeper .kpset{display:inline-flex;gap:4px;align-items:center}
+  .keeper .kpf{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);display:inline-flex;gap:6px;align-items:center}
+  .keeper .kph{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);margin-top:8px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -173,6 +184,26 @@
          button in a real gallery, so it sits with the layout controls rather
          than at the end of a list of scenes. -->
     <button class="ep-btn ghost" id="clearAir" style="margin-left:auto">off air</button>
+  </div>
+
+  <!-- THE CLOCK. The feed's clock is a snapshot; this is where a person keeps the real one.
+       Space starts and stops it; the feed re-bases it when it disagrees; a camera on the
+       hall's scoreboard (scripts/worker/clock_cam.py) can keep it instead of a person. -->
+  <div class="keeper" id="keeper">
+    <div class="kpl">clock keeper <span class="kps" id="kpSource">clock: from the feed (snapshot)</span></div>
+    <div class="kprow">
+      <span class="kpp" id="kpPeriod">P1</span>
+      <span class="kpc" id="kpClock">10:00</span>
+      <button class="ep-btn pri kpt" id="kpToggle" type="button" title="Space">start</button>
+      <button class="ep-btn ghost" id="kpMinus" type="button" title="a second earlier">−1 s</button>
+      <button class="ep-btn ghost" id="kpPlus" type="button" title="a second later">+1 s</button>
+      <span class="kpset"><input id="kpSetVal" type="text" placeholder="m:ss" style="width:64px"><button class="ep-btn ghost" id="kpSetBtn" type="button">set</button></span>
+      <button class="ep-btn ghost" id="kpPeriodDown" type="button" title="previous period">P−</button>
+      <button class="ep-btn ghost" id="kpPeriodUp" type="button" title="next period, clock to full">P+</button>
+      <label class="kpf"><input id="kpFollow" type="checkbox" checked> follow the feed</label>
+      <button class="ep-btn ghost" id="kpRelease" type="button" title="hand the clock back to the feed">release</button>
+    </div>
+    <div class="kph">Tap <b>start</b> on the throw-in and <b>stop</b> on the whistle (or press Space). While you keep it, every layer runs from your taps; the feed only nudges the time when it disagrees by more than a second and a half. To read the hall's board with a camera instead, open the <a id="ccLink" href="../../clockcam/" target="_blank" rel="noopener" style="color:var(--lume)">clock cam on a phone</a> or run the PC reader (see the tutorial).</div>
   </div>
 
   <div class="prev"><iframe id="prev" title="Preview of the graphic on air"></iframe></div>
@@ -256,7 +287,8 @@
 <script src="../../video.js?v=293" defer></script>
 <script src="../../config.js?v=281" defer></script>
 <script src="../../vendor/supabase.js?v=239" defer></script>
+<script src="../../live.js?v=294" defer></script>
 <script src="mixers.js?v=239" defer></script>
-<script src="control.js?v=292" defer></script>
+<script src="control.js?v=295" defer></script>
 </body>
 </html>

@@ -49,7 +49,7 @@
     <div class="toc">
       <a href="#need">what you need</a><a href="#arm">1 · arm the game</a><a href="#control">2 · the control room</a>
       <a href="#obs">3 · add the layer in OBS</a><a href="#others">vMix · Wirecast · Streamlabs</a><a href="#scenes">the scenes</a>
-      <a href="#fiba">FIBA LiveStats games</a><a href="#scored">games scored in Epinoia</a><a href="#json">data for Vizrt · XPression</a>
+      <a href="#fiba">FIBA LiveStats games</a><a href="#clock">the clock</a><a href="#scored">games scored in Epinoia</a><a href="#json">data for Vizrt · XPression</a>
       <a href="#trouble">troubleshooting</a><a href="#checklist">match-day checklist</a>
     </div>
 
@@ -128,12 +128,50 @@
     <ul>
       <li>Opening the control room (or the caret's <b>Prime for broadcast</b>) as a club or league admin arms the game for four hours and re-arms it every half hour while the control room stays open.</li>
       <li>While armed, the worker reads the game's feed every <b>two seconds</b> and the graphics layer polls the store at the same rate. Expect the scorebug to trail the arena's own scoreboard by <b>two to five seconds</b> — the feed itself is a few seconds behind the table, and that part is the federation's.</li>
-      <li>The clock on the scorebug follows the feed: it moves each time a reading arrives rather than ticking on its own, because a LiveStats clock is not broadcast continuously.</li>
+      <li>The clock on the scorebug runs on its own and is corrected by each reading; for a clock that matches the hall exactly, keep it yourself or point a camera at the board — see <a href="#clock">the clock</a>.</li>
       <li>Nothing else changes: the same scenes, the same control room, the same URLs. The statistician is at the federation's table; you only stream.</li>
     </ul>
     <div class="note"><p>Keep the control room tab open for the whole game. If it is closed, the arming runs out after four hours and the graphics fall back to the ten-second read. You can re-open it at any time to re-arm.</p></div>
     <h3>arming without our graphics</h3>
     <p>Arming is worth doing even when the stream carries someone else's graphics, or none. Every play the feed reports is stamped with the moment it was read, and under the heartbeat that stamp is tight to two seconds. When the game's YouTube stream is attached afterwards, those stamps place every play in the video on their own, and the AI worker that reads the scoreboard off the footage uses them to know where to look and to check what it read. So: open the control room at tip-off, leave it open, and the video work after the game is a great deal easier.</p>
+
+    <h2 id="clock">The clock</h2>
+    <p>A scorebug lives or dies by its clock, and the clock is the one thing a federation feed cannot give you well: FIBA LiveStats publishes the time as a snapshot that moves when the table syncs an action, and Genius's own page does not tick it between reads. So the graphics run their <b>own</b> clock and use whatever source you give them to correct it, sliding towards each correction rather than jumping. You have three sources, in rising order of quality.</p>
+    <table class="t">
+      <tr><th>source</th><th>how it works</th><th>good for</th></tr>
+      <tr><td>the feed</td><td>Each read of the LiveStats feed re-bases the clock; if it came down between two reads it is treated as running. Nobody does anything.</td><td>a stream with nobody spare; accept that whistles the feed does not see will drift the clock a few seconds until the next action</td></tr>
+      <tr><td>the clock keeper</td><td>A person in the control room taps <b>start</b> on the throw-in and <b>stop</b> on the whistle (Space does both). Every layer runs from the taps. The feed keeps re-basing the time whenever it disagrees by more than a second and a half, so the keeper never types a time.</td><td>any stream with a second person; accurate to a few tenths of a second</td></tr>
+      <tr><td>the clock cam</td><td>A camera on the hall's scoreboard: a phone running the clock-cam app reads the boxed digits itself and pushes the real clock, or the league's PC reads a camera, a stream, or the phone's crops with the scoreboard model. About a second of delay, no person once it is pointed.</td><td>any hall — a phone on a clamp is enough</td></tr>
+    </table>
+    <h3>using the clock keeper</h3>
+    <ol>
+      <li>Open the control room. The <b>clock keeper</b> panel sits above the preview, seeded from the feed (or 10:00 before tip).</li>
+      <li>Press <b>start</b> as the ball goes up, <b>stop</b> on every whistle, <b>start</b> on the inbound. Space is the same key so you can keep your eyes on the floor.</li>
+      <li><b>−1 s / +1 s</b> nudge it; <b>set</b> takes a time like <code>7:42</code>; <b>P−/P+</b> move the period (P+ puts the clock back to full).</li>
+      <li>Leave <b>follow the feed</b> ticked: a fresh reading from the table that disagrees by more than 1.5 s re-bases you silently. Untick it if the table is the thing that is wrong.</li>
+      <li><b>release</b> hands the clock back to the feed (or to the camera).</li>
+    </ol>
+    <h3>using the clock cam on a phone</h3>
+    <ol>
+      <li>On any phone, signed in as a league admin or a manager of either club, open <b>Clock cam (phone)</b> from the game's broadcast caret, or go to <code>/epinoia/clockcam/</code> and pick the game. Add it to your home screen if you like; it is part of the app.</li>
+      <li>Allow the camera, prop the phone where the whole scoreboard is in shot and still — a clamp on the table rail is ideal — and press <b>box the clock</b>, then drag a rectangle tightly round the clock digits, colon included. Box the two scores the same way if you want them sent too.</li>
+      <li>The thumbnail under the controls shows what the phone sees after it has picked the digits out. If it reads wrong, nudge <b>threshold</b> or tick <b>light digits on dark</b>. The boxes are remembered for this game on this phone.</li>
+      <li>Press <b>connect &amp; send</b>. Once the clock has been seen running (or repeated), every reading goes to the graphics; the control room's clock tag changes to "the camera is keeping it". <b>P−/P+</b> set the period.</li>
+      <li>If the board defeats the phone's reader — a dim or dot-matrix board — tick <b>read on the league's PC instead</b>: the phone posts the boxed crop a few times a second and the PC's scoreboard model reads it (below, with <code>--source phone</code>).</li>
+    </ol>
+    <h3>using the clock cam on the league's PC</h3>
+    <ol>
+      <li>Point a camera at the arena's scoreboard so the digits are level, sharp and at least 20 pixels tall. A phone on a clamp at the table streaming over RTSP (IP Webcam on Android, or any IP camera) is enough; a webcam on the PC works; so does a YouTube stream that keeps the board in shot.</li>
+      <li>On the league's PC (the one the video worker runs on) start the reader with the game's id:
+        <pre>python scripts\worker\clock_cam.py --game &lt;game-id&gt; --source rtsp://192.168.1.20:8080/h264_ulaw.sdp
+python scripts\worker\clock_cam.py --game &lt;game-id&gt; --source 0            # the PC's own webcam
+python scripts\worker\clock_cam.py --game &lt;game-id&gt; --source https://youtu.be/…   # a stream showing the board
+python scripts\\worker\\clock_cam.py --game &lt;game-id&gt; --source phone            # the crops a phone app is posting</pre>
+        Add <code>--show</code> to see what it is reading with the clock boxed in green.</li>
+      <li>It prints "locked on the clock" once it has found the digits and seen them run, then pushes every reading. The control room's clock tag changes to "the camera is keeping it"; the keeper's keys still work on top if you ever need to step in.</li>
+      <li>Delay is about a second: the read cadence plus the push. Leave it running until the final board.</li>
+    </ol>
+    <div class="note"><p>Precedence: a keeper's tap or a camera reading holds the clock for twenty seconds; while one of those is fresh the feed can change the score and the fouls but not the time. When both go quiet the layers fall back to the feed on their own.</p></div>
 
     <h2 id="scored">Games scored in the Epinoia app</h2>
     <p>If the statistician scores the game in Epinoia's own scoring app, nothing needs arming. Every tap is pushed to the graphics the moment it is recorded and the clock ticks on the layer itself, so the scorebug is as live as the table. The scoring app is the third item under the caret on the game page.</p>
@@ -148,7 +186,7 @@
       <tr><th>symptom</th><th>cause and fix</th></tr>
       <tr><td>Nothing shows in OBS</td><td>Check the URL has <code>?g=</code> with the game id (copy it from the control room rather than typing it). Right-click the source → Refresh. Make sure the source is above the camera in the list.</td></tr>
       <tr><td>The scorebug shows but never moves</td><td>For a LiveStats game: the game is not armed — open the control room signed in as an admin of the league or club, and check the "heartbeat" tag says armed. For an Epinoia-scored game: the statistician's app is not connected; the app shows its own connection light.</td></tr>
-      <tr><td>The score is right, the clock is behind</td><td>Normal on a LiveStats game: the clock follows the feed's readings. It ticks live only on games scored in Epinoia.</td></tr>
+      <tr><td>The score is right, the clock is behind or stalls</td><td>On a LiveStats game the feed's clock is a snapshot. Keep the clock in the control room (Space to start/stop) or run the clock cam — see <a href="#clock">the clock</a>.</td></tr>
       <tr><td>Wrong colours or crest</td><td>Club colours come from the crest a club published. Override for tonight with <code>&amp;home=rrggbb</code> / <code>&amp;away=rrggbb</code> on the URL, or fix the club's colour in the club portal.</td></tr>
       <tr><td>The graphic is cut off at the edge</td><td>Your canvas is not 1920×1080, or the source was resized. Set the source to the canvas size and use <code>scale</code> instead of resizing.</td></tr>
       <tr><td>Take / clear do nothing</td><td>The control room's live tag says not connected: the layer and the control room talk over a live channel that needs the internet on both. The fixed per-scene URLs still work; switch scenes in OBS instead.</td></tr>

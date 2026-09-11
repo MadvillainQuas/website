@@ -26,6 +26,7 @@ const qp = new URLSearchParams(location.search);
 const CFG = window.EPINOIA_CONFIG || {};
 const gameId = (qp.get('g') || qp.get('game') || '').trim();
 { const hl = document.getElementById('helpLink'); if (hl && gameId) hl.href = '../help/?g=' + encodeURIComponent(gameId); }
+{ const cc = document.getElementById('ccLink'); if (cc && gameId) cc.href = '../../clockcam/?g=' + encodeURIComponent(gameId); }
 
 const $ = s => document.querySelector(s);
 /* Everything written into a note goes through this. A scene URL carries the
@@ -110,8 +111,103 @@ async function connect() {
     chan.subscribe(st => { joined = (st === 'SUBSCRIBED'); paintLive(); });
     armHeartbeat();
     setInterval(armHeartbeat, 30 * 60 * 1000);      // re-armed while the room stays open
+    setTimeout(kpConnect, 800);                      // after the fed/ scored question is answered
   } catch (_) { /* the fixed URLs still work, which is the whole point */ }
 }
+
+/* ============================================================ THE CLOCK KEEPER ===
+   The feed's clock is a snapshot; the real clock is on the wall of the hall. One person with
+   a key beside the preview can carry it: tap on the whistle, tap on the throw-in, and the
+   layer runs from the taps. The keeper's clock starts from whatever the feed last said and
+   is re-based whenever a fresh feed reading disagrees by more than a second and a half, so
+   nobody types a time unless they want to. The keeper's frames go over the same live channel
+   the scoring app uses, and every layer treats them as the authority for twenty seconds. */
+let kp = { clock_ms: 600000, period: 1, running: false, at: 0, active: false, follow: true };
+let kpChan = null, kpJoined = false, kpTimer = null, feedSub = null, feedSeen = '';
+const kpEl = id => document.getElementById(id);
+function kpNow() {
+  if (!kp.running) return kp.clock_ms;
+  return Math.max(0, kp.clock_ms - (Date.now() - kp.at));
+}
+function kpFmt(ms) {
+  const s = Math.ceil(ms / 1000), m = Math.floor(s / 60);
+  return (ms < 60000 ? (ms / 1000).toFixed(1) : m + ':' + String(s % 60).padStart(2, '0'));
+}
+function kpPaint() {
+  const d = kpEl('kpClock'); if (!d) return;
+  d.textContent = kpFmt(kpNow());
+  d.classList.toggle('run', kp.running);
+  kpEl('kpPeriod').textContent = 'P' + kp.period;
+  kpEl('kpToggle').textContent = kp.running ? 'stop' : 'start';
+  kpEl('kpToggle').classList.toggle('run', kp.running);
+  const src = feedSub && feedSub.clockSource ? feedSub.clockSource() : 'feed';
+  const tag = kpEl('kpSource');
+  tag.textContent = kp.active ? 'clock: you are keeping it' : src === 'cam' ? 'clock: the camera is keeping it' : 'clock: from the feed (snapshot)';
+  tag.classList.toggle('on', kp.active || src === 'cam');
+}
+function kpPublish() {
+  if (!kpChan || !kpJoined) return;
+  try {
+    kpChan.send({ type: 'broadcast', event: 'frame', payload: { keeper: true, state: {
+      game_id: gameId, period: kp.period, clock_ms: Math.round(kpNow()), running: kp.running,
+      updated_at: new Date().toISOString(), source: 'keeper' } } });
+  } catch (_) { /* the next tick tries again */ }
+}
+function kpSet(ms, running) {
+  kp.clock_ms = Math.max(0, Math.min(kp.period <= 4 ? 600000 : 300000, Math.round(ms)));
+  kp.at = Date.now(); kp.running = !!running; kp.active = true;
+  kpPublish(); kpPaint();
+}
+async function kpConnect() {
+  if (!sb || !gameId || !window.EpinoiaLive) return;
+  try {
+    kpChan = sb.channel('game:' + gameId);
+    kpChan.subscribe(st => { kpJoined = (st === 'SUBSCRIBED'); kpPaint(); });
+    /* the room reads the game the way a layer does: to seed the keeper and to re-base it */
+    feedSub = window.EpinoiaLive.subscriber({
+      gameId, mode: 'supabase', supabase: sb, pollMs: 2000, pollNow: !!fedGame,
+      onSnapshot: () => kpFromFeed(), onFrame: f => { if (!f.keeper) kpFromFeed(); }
+    });
+  } catch (_) { /* the keeper still runs, unsynced */ }
+  kpTimer = setInterval(() => {
+    kpPaint();
+    if (kp.active && Date.now() - (kp._lastPub || 0) > 5000) { kp._lastPub = Date.now(); kpPublish(); }
+    if (kp.running && kpNow() <= 0) { kp.running = false; kpPublish(); }
+  }, 100);
+}
+function kpFromFeed() {
+  const st = feedSub && feedSub.state; if (!st) return;
+  if (st.source === 'keeper' || st.source === 'cam') return;       // not the feed
+  const key = (st.updated_at || '') + ':' + st.clock_ms + ':' + st.period;
+  if (key === feedSeen) return;
+  feedSeen = key;
+  if (st.period && st.period !== kp.period) { kp.period = st.period; }
+  const age = Math.max(0, Date.now() - new Date(st.updated_at || Date.now()).getTime());
+  if (age > 8000) return;                                            // stale: not a fresh word from the table
+  const est = Math.max(0, (st.clock_ms || 0) - (st.running ? age : 0));
+  if (!kp.active) { kp.clock_ms = est; kp.at = Date.now(); kp.running = false; kpPaint(); return; }
+  if (kp.follow && Math.abs(est - kpNow()) > 1500) { kp.clock_ms = est; kp.at = Date.now(); kpPublish(); kpPaint(); }
+}
+function kpWire() {
+  const on = (id, fn) => { const e = kpEl(id); if (e) e.onclick = fn; };
+  on('kpToggle', () => kpSet(kpNow(), !kp.running));
+  on('kpMinus', () => kpSet(kpNow() - 1000, kp.running));
+  on('kpPlus', () => kpSet(kpNow() + 1000, kp.running));
+  on('kpSetBtn', () => {
+    const v = (kpEl('kpSetVal').value || '').trim(); const m = /^(\d{1,2}):(\d{2})(?:\.(\d))?$/.exec(v);
+    if (!m) { kpEl('kpSetVal').focus(); return; }
+    kpSet((+m[1] * 60 + +m[2]) * 1000 + (m[3] ? +m[3] * 100 : 0), kp.running);
+  });
+  on('kpPeriodDown', () => { kp.period = Math.max(1, kp.period - 1); kpSet(kpNow(), kp.running); });
+  on('kpPeriodUp', () => { kp.period = Math.min(6, kp.period + 1); kpSet(kp.period > 4 ? 300000 : 600000, false); });
+  on('kpRelease', () => { kp.active = false; kp.running = false; kpPaint(); });
+  const fl = kpEl('kpFollow'); if (fl) fl.onchange = () => { kp.follow = fl.checked; };
+  document.addEventListener('keydown', e => {
+    if (e.code !== 'Space' || e.target.closest('input,textarea,select')) return;
+    e.preventDefault(); kpSet(kpNow(), !kp.running);
+  });
+}
+document.addEventListener('DOMContentLoaded', kpWire);
 
 /* THE HEARTBEAT. A game scored in FIBA LiveStats reaches the graphics only as fast as the
    ingest worker reads the feed. Arming the game (games.broadcast_until, four hours, renewed
