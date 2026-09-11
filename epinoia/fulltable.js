@@ -186,11 +186,13 @@ const T = [
   { k:'drtg', l:'DRTG', g:['ratings'], fmt:r=>f1(r.drtg), heat:1, low:1 },
   { k:'net',  l:'NET',  g:['ratings'], fmt:r=>sgn(r.net), heat:1, signed:1, lead:1 },
   { k:'pace', l:'PACE', g:['ratings'], fmt:r=>f1(r.pace), heat:1 },
-  { k:'poss', l:'POSS', g:['ratings'], fmt:r=>f1(r.poss) },
+  { k:'poss_pg', l:'POSS/G', g:['ratings'], fmt:r=>f1(r.poss_pg), heat:1 },
 
-  { k:'fgm',    l:'FG',   g:['shooting','totals'], fmt:r=>pair(r.fgm,r.fga), sort:r=>r.fgm },
+  { k:'fgm_pg', l:'FG/G', g:['shooting'], fmt:r=>pair(r.fgm_pg,r.fga_pg), sort:r=>r.fgm_pg },
+  { k:'fgm',    l:'FG',   g:['totals'], fmt:r=>pair(r.fgm,r.fga), sort:r=>r.fgm },
   { k:'fg_pct', l:'FG%',  g:['shooting'], fmt:r=>f1(r.fg_pct), heat:1 },
-  { k:'p3m',    l:'3PT',  g:['shooting','totals'], fmt:r=>pair(r.p3m,r.p3a), sort:r=>r.p3m },
+  { k:'p3m_pg', l:'3PT/G', g:['shooting'], fmt:r=>pair(r.p3m_pg,r.p3a_pg), sort:r=>r.p3m_pg },
+  { k:'p3m',    l:'3PT',  g:['totals'], fmt:r=>pair(r.p3m,r.p3a), sort:r=>r.p3m },
   { k:'p3_pct', l:'3P%',  g:['shooting'], fmt:r=>f1(r.p3_pct), heat:1 },
   { k:'ft_pct', l:'FT%',  g:['shooting'], fmt:r=>f1(r.ft_pct), heat:1 },
   { k:'ts',     l:'TS%',  g:['shooting'], fmt:r=>f1(r.ts), heat:1 },
@@ -208,11 +210,16 @@ const T = [
   { k:'mid_share', l:'MID SHARE', g:['scoring'], fmt:r=>f1(r.mid_share), heat:1 },
   { k:'p3_share',  l:'3P SHARE',  g:['scoring'], fmt:r=>f1(r.p3_share),  heat:1 },
 
-  { k:'paint',         l:'PAINT', g:['scoring'], fmt:r=>f0(r.paint), heat:1 },
-  { k:'fast',          l:'FAST',  g:['scoring'], fmt:r=>f0(r.fast),  heat:1 },
-  { k:'second_chance', l:'2ND',   g:['scoring'], fmt:r=>f0(r.second_chance), heat:1 },
-  { k:'pts_off_to',    l:'PoT',   g:['scoring'], fmt:r=>f0(r.pts_off_to), heat:1 },
-  { k:'bench',         l:'BENCH', g:['scoring'], fmt:r=>f0(r.bench), heat:1 },
+  { k:'paint_pg',      l:'PAINT/G', g:['scoring'], fmt:r=>f1(r.paint_pg), heat:1 },
+  { k:'fast_pg',       l:'FAST/G',  g:['scoring'], fmt:r=>f1(r.fast_pg),  heat:1 },
+  { k:'second_pg',     l:'2ND/G',   g:['scoring'], fmt:r=>f1(r.second_pg), heat:1 },
+  { k:'pot_pg',        l:'PoT/G',   g:['scoring'], fmt:r=>f1(r.pot_pg), heat:1 },
+  { k:'bench_pg',      l:'BENCH/G', g:['scoring'], fmt:r=>f1(r.bench_pg), heat:1 },
+  { k:'paint',         l:'PAINT', g:['totals'], fmt:r=>f0(r.paint), heat:1 },
+  { k:'fast',          l:'FAST',  g:['totals'], fmt:r=>f0(r.fast),  heat:1 },
+  { k:'second_chance', l:'2ND',   g:['totals'], fmt:r=>f0(r.second_chance), heat:1 },
+  { k:'pts_off_to',    l:'PoT',   g:['totals'], fmt:r=>f0(r.pts_off_to), heat:1 },
+  { k:'bench',         l:'BENCH', g:['totals'], fmt:r=>f0(r.bench), heat:1 },
 
   { k:'reb',  l:'REB',  g:['totals'], fmt:r=>f0(r.reb), heat:1 },
   { k:'oreb', l:'OREB', g:['totals'], fmt:r=>f0(r.oreb), heat:1 },
@@ -223,7 +230,7 @@ const T = [
   { k:'tov',  l:'TO',   g:['totals'], fmt:r=>f0(r.tov), heat:1, low:1 },
   { k:'fouls',l:'PF',   g:['totals','defense'], fmt:r=>f0(r.fouls), heat:1, low:1 },
   { k:'ast_to',  l:'A/TO', g:['basic','totals'], fmt:r=>f2(r.ast_to), heat:1 },
-  { k:'ast_pct', l:'AST%', g:['totals'], fmt:r=>f1(r.ast_pct), heat:1 }
+  { k:'ast_pct', l:'AST%', g:['shooting'], fmt:r=>f1(r.ast_pct), heat:1 }
 ];
 /* SHOT ZONES: every zone of the chart (shotchart.js) and the larger cuts, five measures each
    -- share of shots, attempts per 100 possessions, attempts and makes per game, eFG%. The rows
@@ -305,6 +312,15 @@ function render(opts) {
     (c.k === 'name' && opts.nameLabel) ? Object.assign({}, c, { l: opts.nameLabel }) : c);
   const presets = PRESETS[isTeam ? 'team' : 'player'];
   let rows = (opts.rows || []).map((r, i) => Object.assign({ __i: i }, r));
+  /* PER GAME OUTSIDE THE TOTALS VIEW. A season row carries totals; every column except the
+     totals preset reads a per-game form of them, derived here so the heat map and the sort
+     rank the per-game numbers rather than the totals behind them. */
+  if (isTeam) rows.forEach(r => {
+    const gp = r.gp || 1;
+    const pg = v => (v == null || !isFinite(v)) ? null : v / gp;
+    r.poss_pg = pg(r.poss); r.fgm_pg = pg(r.fgm); r.fga_pg = pg(r.fga); r.p3m_pg = pg(r.p3m); r.p3a_pg = pg(r.p3a);
+    r.paint_pg = pg(r.paint); r.fast_pg = pg(r.fast); r.second_pg = pg(r.second_chance); r.pot_pg = pg(r.pts_off_to); r.bench_pg = pg(r.bench);
+  });
 
   let preset = opts.preset || presets[0][0];
   let sortKey = opts.sortKey || (isTeam ? 'ppg' : 'ppg');

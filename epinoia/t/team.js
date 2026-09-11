@@ -303,6 +303,7 @@ async function teamStats(team, kind) {
   ff.appendChild(grid);
   host.appendChild(ff);
 
+  const pg = v => (v == null || !isFinite(v)) ? null : v / (mine.gp || 1);
   const tiles = el('div', 'tiles');
   [['ppg', n1(mine.ppg), true], ['opp ppg', n1(mine.papg), false],
    ['diff', mine.diffpg == null ? '—' : (mine.diffpg > 0 ? '+' : '') + n1(mine.diffpg), true],
@@ -310,10 +311,10 @@ async function teamStats(team, kind) {
    ['net', mine.net == null ? '—' : (mine.net > 0 ? '+' : '') + n1(mine.net), true],
    ['pace', n1(mine.pace), false], ['ts%', n1(mine.ts), false],
    ['ast/to', mine.ast_to == null ? '—' : Number(mine.ast_to).toFixed(2), false],
-   ['reb', mine.reb, false], ['ast', mine.ast, false], ['stl', mine.stl, false],
-   ['blk', mine.blk, false], ['paint', mine.paint, false], ['fast', mine.fast, false],
-   ['2nd chance', mine.second_chance, false], ['off turnovers', mine.pts_off_to, false],
-   ['bench', mine.bench, false]]
+   ['reb / g', n1(pg(mine.reb)), false], ['ast / g', n1(pg(mine.ast)), false], ['stl / g', n1(pg(mine.stl)), false],
+   ['blk / g', n1(pg(mine.blk)), false], ['paint / g', n1(pg(mine.paint)), false], ['fast / g', n1(pg(mine.fast)), false],
+   ['2nd chance / g', n1(pg(mine.second_chance)), false], ['off turnovers / g', n1(pg(mine.pts_off_to)), false],
+   ['bench / g', n1(pg(mine.bench)), false]]
     .forEach(([l, v, hi]) => {
       const d = el('div', 'tile' + (hi ? ' hi' : ''));
       d.append(el('div', 'v', v == null ? '—' : v), el('div', 'l', l));
