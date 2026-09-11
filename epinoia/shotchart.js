@@ -170,17 +170,17 @@
      The geometry is the scorer's: a shot's zone is decided from the same COURT measurements
      the lines are drawn from, so the zone a dot sits in is the zone it is counted in. */
   const ZONES = [
-    { k: 'ra',    kind: 'paint', label: 'at the rim',     x: 750,  y: 350 },
-    { k: 'paint', kind: 'paint', label: 'paint',          x: 750,  y: 500 },
-    { k: 'bl',    kind: 'mid',   label: 'baseline',       x: 330,  y: 300 },
-    { k: 'br',    kind: 'mid',   label: 'baseline',       x: 1170, y: 300 },
-    { k: 'wl',    kind: 'mid',   label: 'wing',           x: 330,  y: 720 },
-    { k: 'wr',    kind: 'mid',   label: 'wing',           x: 1170, y: 720 },
-    { k: 'tm',    kind: 'mid',   label: 'top',            x: 750,  y: 730 },
-    { k: 'c3l',   kind: 'three', label: 'corner',         x: 140,  y: 470 },
-    { k: 'c3r',   kind: 'three', label: 'corner',         x: 1360, y: 470 },
-    { k: 'w3l',   kind: 'three', label: 'wing 3',         x: 240,  y: 1000 },
-    { k: 'w3r',   kind: 'three', label: 'wing 3',         x: 1260, y: 1000 },
+    { k: 'ra',    kind: 'paint', label: 'rim',            x: 750,  y: 250 },
+    { k: 'paint', kind: 'paint', label: 'paint',          x: 750,  y: 480 },
+    { k: 'bl',    kind: 'mid',   label: 'baseline',       x: 330,  y: 250 },
+    { k: 'br',    kind: 'mid',   label: 'baseline',       x: 1170, y: 250 },
+    { k: 'wl',    kind: 'mid',   label: 'wing',           x: 360,  y: 690 },
+    { k: 'wr',    kind: 'mid',   label: 'wing',           x: 1140, y: 690 },
+    { k: 'tm',    kind: 'mid',   label: 'top',            x: 750,  y: 700 },
+    { k: 'c3l',   kind: 'three', label: 'corner',         x: 48,   y: 200 },
+    { k: 'c3r',   kind: 'three', label: 'corner',         x: 1452, y: 200 },
+    { k: 'w3l',   kind: 'three', label: 'wing 3',         x: 200,  y: 960 },
+    { k: 'w3r',   kind: 'three', label: 'wing 3',         x: 1300, y: 960 },
     { k: 't3',    kind: 'three', label: 'top 3',          x: 750,  y: 1120 }
   ];
   function zoneOf(x, y, three) {
@@ -220,30 +220,40 @@
     Object.values(out).forEach(z => { z.pct = z.att ? 100 * z.made / z.att : 0; });
     return out;
   }
-  /* the faint boundaries between zones, drawn from the same measurements */
-  function zoneLines() {
+  /* THE ZONES AS SHAPES. Each is a closed path built from the court's own measurements --
+     the key, the restricted area, the arc, the corner lines and the rays that split the
+     wings from the top -- so the shape a dot sits in is the shape it is counted in. They are
+     tinted and laid UNDER the court lines, which is what keeps the chart clean: no pills over
+     the shots, the floor itself carries the colour, and the numbers sit small in each area. */
+  function zonePaths() {
     const C = dims();
-    const RX = C.RIM_X || 750, RY = C.RIM_Y || 157.5, KH = C.KEY_HALF || 245, KL = C.KEY_LEN || 580, ARC = C.ARC_R || 675;
-    const CY = (C.CORNER_Y || 299) + 45;
-    const line = 'var(--line-hi, rgba(190,255,225,.38))';
-    const ray = (deg, r0, r1) => {
-      const a = deg * Math.PI / 180;
-      return 'M ' + (RX + Math.sin(a) * r0).toFixed(1) + ' ' + (RY + Math.cos(a) * r0).toFixed(1) +
-             ' L ' + (RX + Math.sin(a) * r1).toFixed(1) + ' ' + (RY + Math.cos(a) * r1).toFixed(1);
+    const RX = C.RIM_X || 750, RY = C.RIM_Y || 157.5, KH = C.KEY_HALF || 245, KL = C.KEY_LEN || 580;
+    const RA = (C.RA_R || 125) + 25, ARC = C.ARC_R || 675, CX = C.CORNER_X || 90, CY = C.CORNER_Y || 299, CYb = CY + 45;
+    const W = C.W, H = C.H;
+    const hw = y => Math.sqrt(Math.max(0, ARC * ARC - (y - RY) * (y - RY)));
+    const xKL = RX - hw(KL), xKLr = RX + hw(KL), xC = RX - hw(CYb), xCr = RX + hw(CYb);
+    const r26 = 26 * Math.PI / 180, r32 = 32 * Math.PI / 180;
+    const a26 = [RX - ARC * Math.sin(r26), RY + ARC * Math.cos(r26)], a26r = [RX + ARC * Math.sin(r26), a26[1]];
+    const a32 = [RX - ARC * Math.sin(r32), RY + ARC * Math.cos(r32)], a32r = [RX + ARC * Math.sin(r32), a32[1]];
+    const k26 = RX - Math.tan(r26) * (KL - RY), k26r = RX + Math.tan(r26) * (KL - RY);
+    const tEdge = RX / Math.sin(r32), yEdge = Math.min(H, RY + tEdge * Math.cos(r32));
+    const f = v => (+v).toFixed(1);
+    const A = (sweep, x, y) => ' A ' + ARC + ' ' + ARC + ' 0 0 ' + sweep + ' ' + f(x) + ' ' + f(y);
+    const kl = RX - KH, kr = RX + KH;
+    return {
+      ra:    'M ' + f(RX - RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX + RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX - RA) + ' ' + f(RY) + ' Z',
+      paint: 'M ' + kl + ' 0 H ' + kr + ' V ' + KL + ' H ' + kl + ' Z M ' + f(RX - RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX + RA) + ' ' + f(RY) + ' A ' + RA + ' ' + RA + ' 0 1 0 ' + f(RX - RA) + ' ' + f(RY) + ' Z',
+      bl:    'M ' + CX + ' 0 H ' + kl + ' V ' + KL + ' H ' + f(xKL) + A(1, CX, CY) + ' Z',
+      br:    'M ' + kr + ' 0 H ' + (W - CX) + ' V ' + CY + A(1, xKLr, KL) + ' H ' + kr + ' Z',
+      wl:    'M ' + f(xKL) + ' ' + KL + ' H ' + f(k26) + ' L ' + f(a26[0]) + ' ' + f(a26[1]) + A(1, xKL, KL) + ' Z',
+      wr:    'M ' + f(k26r) + ' ' + KL + ' H ' + f(xKLr) + A(1, a26r[0], a26r[1]) + ' Z',
+      tm:    'M ' + f(k26) + ' ' + KL + ' H ' + f(k26r) + ' L ' + f(a26r[0]) + ' ' + f(a26r[1]) + A(1, a26[0], a26[1]) + ' Z',
+      c3l:   'M 0 0 H ' + CX + ' V ' + CY + A(0, xC, CYb) + ' H 0 Z',
+      c3r:   'M ' + (W - CX) + ' 0 H ' + W + ' V ' + CYb + ' H ' + f(xCr) + A(0, W - CX, CY) + ' Z',
+      w3l:   'M 0 ' + CYb + ' H ' + f(xC) + A(0, a32[0], a32[1]) + ' L 0 ' + f(yEdge) + ' Z',
+      w3r:   'M ' + W + ' ' + CYb + ' H ' + f(xCr) + A(1, a32r[0], a32r[1]) + ' L ' + W + ' ' + f(yEdge) + ' Z',
+      t3:    'M ' + f(a32[0]) + ' ' + f(a32[1]) + A(0, a32r[0], a32r[1]) + ' L ' + W + ' ' + f(yEdge) + ' V ' + H + ' H 0 V ' + f(yEdge) + ' Z'
     };
-    const far = 1500;
-    const d = [
-      /* baseline mid-range from the wings: level with the free-throw line, key to arc */
-      'M ' + (RX - KH) + ' ' + KL + ' L ' + (RX - Math.sqrt(Math.max(0, ARC * ARC - (KL - RY) * (KL - RY)))).toFixed(1) + ' ' + KL,
-      'M ' + (RX + KH) + ' ' + KL + ' L ' + (RX + Math.sqrt(Math.max(0, ARC * ARC - (KL - RY) * (KL - RY)))).toFixed(1) + ' ' + KL,
-      /* corners from the wings beyond the arc */
-      'M 3 ' + CY + ' L ' + (RX - Math.sqrt(Math.max(0, ARC * ARC - (CY - RY) * (CY - RY)))).toFixed(1) + ' ' + CY,
-      'M ' + (C.W - 3) + ' ' + CY + ' L ' + (RX + Math.sqrt(Math.max(0, ARC * ARC - (CY - RY) * (CY - RY)))).toFixed(1) + ' ' + CY,
-      /* top from the wings: 26 degrees inside the arc (from the free-throw line), 32 beyond it */
-      ray(26, (KL - RY) / Math.cos(26 * Math.PI / 180), ARC), ray(-26, (KL - RY) / Math.cos(26 * Math.PI / 180), ARC),
-      ray(32, ARC, far), ray(-32, ARC, far)
-    ];
-    return '<path d="' + d.join(' ') + '" fill="none" stroke="' + line + '" stroke-width="4" stroke-dasharray="14 18" opacity=".8"/>';
   }
   /* a club colour the marks can be seen in on this theme's ground (white on white was the
      alternative); the team-colour module knows the ground, the fallback is the colour itself */
@@ -262,25 +272,33 @@
     const col = markColour(o.colour);
     const z = zones(shots);
     const dots = shots.map(sh => {
-      const x = sh.x * C.W, y = sh.y * C.H, a = 22;
+      const x = sh.x * C.W, y = sh.y * C.H, a = 14;
       return sh.made
-        ? '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="24" fill="' + col + '" opacity=".85"/>'
-        : '<g stroke="' + col + '" stroke-width="11" stroke-linecap="round" opacity=".6">' +
+        ? '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="17" fill="' + col + '" opacity=".8"/>'
+        : '<g stroke="' + col + '" stroke-width="8" stroke-linecap="round" opacity=".5">' +
           '<line x1="' + (x - a).toFixed(1) + '" y1="' + (y - a).toFixed(1) + '" x2="' + (x + a).toFixed(1) + '" y2="' + (y + a).toFixed(1) + '"/>' +
           '<line x1="' + (x - a).toFixed(1) + '" y1="' + (y + a).toFixed(1) + '" x2="' + (x + a).toFixed(1) + '" y2="' + (y - a).toFixed(1) + '"/></g>';
     }).join('');
-    const pills = ZONES.map(zz => {
+    const paths = zonePaths();
+    const fills = ZONES.map(zz => {
       const v = z[zz.k]; const h = heat(v.pct, zz.kind, v.att, floor);
-      const txt = v.att ? (v.made + '/' + v.att + ' \u00b7 ' + v.pct.toFixed(0) + '%') : '\u2014';
-      const w = 120 + Math.max(txt.length * 24, zz.label.length * 20);
-      return '<g class="sc-zone" opacity="' + (v.att ? 1 : .55) + '">' +
-        '<rect x="' + (zz.x - w / 2).toFixed(1) + '" y="' + (zz.y - 42) + '" width="' + w + '" height="84" rx="42" fill="' + h.fill + '" stroke="' + h.stroke + '" stroke-width="4"/>' +
-        '<text x="' + zz.x + '" y="' + (zz.y - 8) + '" text-anchor="middle" font-size="28" fill="var(--ink, #e6fff1)" font-family="var(--f-micro, monospace)" letter-spacing="2">' + zz.label.toUpperCase() + '</text>' +
-        '<text x="' + zz.x + '" y="' + (zz.y + 30) + '" text-anchor="middle" font-size="40" font-weight="700" fill="var(--ink, #e6fff1)" font-family="var(--f-data, monospace)">' + txt + '</text>' +
-        '<title>' + zz.label + ': ' + v.made + ' of ' + v.att + '</title></g>';
+      return '<path d="' + paths[zz.k] + '" fill="' + h.fill + '" fill-rule="evenodd" stroke="' + h.stroke + '" stroke-width="3" stroke-opacity=".35">' +
+        '<title>' + zz.label + ': ' + v.made + ' of ' + v.att + (v.att ? ' \u00b7 ' + v.pct.toFixed(0) + '%' : '') + '</title></path>';
+    }).join('');
+    const labels = ZONES.map(zz => {
+      const v = z[zz.k];
+      const txt = v.att ? (v.made + '/' + v.att) : '\u2014';
+      const pct = v.att ? v.pct.toFixed(0) + '%' : '';
+      const vertical = zz.k === 'c3l' || zz.k === 'c3r';
+      const tf = vertical ? ' transform="rotate(' + (zz.k === 'c3l' ? -90 : 90) + ' ' + zz.x + ' ' + zz.y + ')"' : '';
+      return '<g class="sc-zone" opacity="' + (v.att ? 1 : .5) + '"' + tf + '>' +
+        '<text x="' + zz.x + '" y="' + (zz.y - 18) + '" text-anchor="middle" font-size="22" letter-spacing="2" fill="var(--ink-2, #cfe)" font-family="var(--f-micro, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">' + zz.label.toUpperCase() + '</text>' +
+        '<text x="' + zz.x + '" y="' + (zz.y + 16) + '" text-anchor="middle" font-size="34" font-weight="700" fill="var(--ink, #e6fff1)" font-family="var(--f-data, monospace)" stroke="var(--panel, #0a1a13)" stroke-width="6" paint-order="stroke" stroke-linejoin="round">' + txt + (pct ? ' \u00b7 ' + pct : '') + '</text></g>';
     }).join('');
     const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '<svg viewBox="0 0 ' + C.W + ' ' + C.H + '"></svg>';
-    const svg = court.replace(/<\/svg>\s*$/, zoneLines() + dots + pills + '</svg>');
+    /* the tints go straight after the court's background rectangle, beneath every line */
+    let svg = court.replace(/(<rect[^>]*\/>)/, '$1' + fills);
+    svg = svg.replace(/<\/svg>\s*$/, dots + labels + '</svg>');
     const made = shots.filter(x => x.made).length;
     const chip = (name, pred) => { const a = shots.filter(pred); const m = a.filter(x => x.made).length;
       return '<span class="sc-chip">' + name + '<b>' + m + '/' + a.length + (a.length ? ' \u00b7 ' + Math.round(100 * m / a.length) + '%' : '') + '</b></span>'; };
@@ -297,5 +315,5 @@
     return { zones: z, attempts: shots.length };
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, renderZones, markColour, ZONES };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, renderZones, markColour, ZONES };
 }));

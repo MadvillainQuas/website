@@ -200,7 +200,57 @@ class Platform:
             r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first or "?", "last_name": last,
                                         "is_minor": False, "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
         self.cache["player"][ext] = r
+        if r:
+            self.photo(r, p)
         return r
+
+    # ------------------------------------------------------------------ photographs
+    # FIBA LiveStats carries a head shot for many players -- the picture the box score's
+    # pop-up (#pop-player-image) shows -- under photoT / photoS / photo in data.json, as a
+    # {url, ...} object or a bare URL. It is copied into media-public once, recorded as an
+    # approved photo on the media table and pointed at from players.photo_media_id, which is
+    # exactly what an uploaded, league-approved photograph looks like to every page.
+    @staticmethod
+    def photo_url(p: dict) -> str | None:
+        for k in ("photoS", "photo", "photoT"):
+            v = p.get(k)
+            if isinstance(v, dict):
+                v = v.get("url")
+            if isinstance(v, str) and v.startswith("http"):
+                return v
+        return None
+
+    def photo(self, player: dict, p: dict) -> None:
+        url = self.photo_url(p)
+        if not url or self.dry or not self.sb or not hasattr(self.sb, "storage_put"):
+            return
+        pid = player.get("id")
+        if not pid or pid in self.cache.setdefault("photo", set()):
+            return
+        self.cache["photo"].add(pid)
+        try:
+            row = self.sb.select("players", f"id=eq.{pid}&select=photo_media_id,is_minor")
+            if not row or row[0].get("photo_media_id") or row[0].get("is_minor"):
+                return
+            import requests as _rq
+            r = _rq.get(url, timeout=30)
+            if r.status_code != 200 or len(r.content) < 800:
+                return
+            ctype = (r.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+            if not ctype.startswith("image/"):
+                return
+            ext = {"image/png": "png", "image/webp": "webp", "image/gif": "gif"}.get(ctype, "jpg")
+            path = f"players/{pid}/fiba.{ext}"
+            self.sb.storage_put("media-public", path, r.content, ctype)
+            self.sb.insert("media", {"owner_type": "player", "owner_id": pid, "kind": "photo", "storage_path": path,
+                                     "bytes": len(r.content), "status": "approved"})
+            found = self.sb.select("media", f"owner_type=eq.player&owner_id=eq.{pid}&storage_path=eq.{path}&select=id&limit=1")
+            mid = found[0]["id"] if found else None
+            if mid:
+                self.sb.patch("players", f"id=eq.{pid}", {"photo_media_id": mid})
+                self.log(f"  \u25cf photo for {player.get('first_name')} {player.get('last_name')}")
+        except Exception as exc:
+            self.log(f"  (photo skipped for {pid[:8]}: {str(exc)[:80]})")
 
     def roster(self, team: dict, player: dict, season_id: str, p: dict) -> None:
         key = (team["id"], player["id"], season_id)

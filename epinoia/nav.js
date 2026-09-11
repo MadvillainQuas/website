@@ -113,6 +113,9 @@
       match: /\/epinoia\/stats\/wowy\// },
     { href: 'l/',          ic: '▤', tx: 'table',      lg: true, key: 'table',
       match: /\/epinoia\/l\// },
+    /* not a page: a layer of the rail (the clubs), see openTeams */
+    { href: 'l/',          ic: '◉', tx: 'teams',      lg: true, key: 'teams', teams: true,
+      match: /\/epinoia\/t\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
     { label: 'take part', auth: true },
@@ -228,7 +231,12 @@
   const countryPanel = el('div', 'panel countrypanel');
   const rootPanel = el('div', 'panel rootpanel');
   const leaguePanel = el('div', 'panel leaguepanel');
-  deck.append(countryPanel, rootPanel, leaguePanel);
+  /* THE CLUBS, A LAYER DEEPER. "Teams" in the league's pages slides the deck one more panel
+     along: the league's clubs, each with its crest (or a monogram in its colour where none
+     has been published), each a link to the club's profile. The list is fetched the first
+     time the layer opens and kept for the page. */
+  const teamsPanel = el('div', 'panel teamspanel');
+  deck.append(countryPanel, rootPanel, leaguePanel, teamsPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -316,6 +324,60 @@
   phead.append(back, lnameLink);
   const pages = el('div', 'pages');
   leaguePanel.append(phead, pages);
+  const thead = el('div', 'phead');
+  const tback = el('button', 'back', '\u2039');
+  tback.type = 'button';
+  tback.title = 'Back to the league';
+  tback.setAttribute('aria-label', 'Back to the league');
+  const tname = el('a', 'lname');
+  thead.append(tback, tname);
+  const tlist = el('div', 'teams');
+  teamsPanel.append(thead, tlist);
+  const teamsCache = {};
+  async function fillTeams(l) {
+    tname.textContent = '';
+    tname.append(crest(l), marquee('Teams \u00b7 ' + l.name));
+    tname.href = root + 'l/?l=' + encodeURIComponent(l.slug);
+    tname.title = l.name + ' \u2014 the table';
+    tlist.textContent = '';
+    tlist.appendChild(el('div', 'gempty', '\u2026'));
+    sizeDeck(false);
+    let rows = teamsCache[l.slug];
+    if (!rows) {
+      const c = window.EPINOIA_CONFIG || {};
+      try {
+        const scope = l.id ? 'league_id=eq.' + encodeURIComponent(l.id) : 'leagues.slug=eq.' + encodeURIComponent(l.slug);
+        const r = await fetch(c.supabaseUrl + '/rest/v1/teams?' + scope + '&select=id,slug,name,short_name,colour,logo_path&order=name',
+          { headers: { apikey: c.supabaseAnonKey } });
+        rows = r.ok ? await r.json() : [];
+      } catch (_) { rows = []; }
+      teamsCache[l.slug] = rows;
+    }
+    tlist.textContent = '';
+    if (!rows.length) { tlist.appendChild(el('div', 'gempty', 'no clubs yet')); sizeDeck(false); return; }
+    rows.forEach(t => {
+      const a = el('a', 'item trow');
+      a.href = root + 't/?t=' + encodeURIComponent(t.slug);
+      a.title = t.name;
+      const badge = window.epinoiaCrest ? window.epinoiaCrest(t, { cls: 'ep-crest ic' }) : el('span', 'ic', '\u25cf');
+      a.append(badge, marquee(t.name));
+      if (new RegExp('/epinoia/t/').test(here) && qp.get('t') === t.slug) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
+      tlist.appendChild(a);
+    });
+    afterPaint(() => sizeDeck(false));
+  }
+  function openTeams(animate) {
+    const l = bySlug();
+    if (!l) return;
+    fillTeams(l);
+    setView('teams', animate !== false);
+  }
+  tback.addEventListener('click', () => {
+    setView('league', true);
+    const row = pages.querySelector('a[data-teams-row]');
+    if (row) row.focus({ preventScroll: true });
+  });
+  window.epinoiaOpenTeams = () => openTeams(true);
 
   const gated = [];            // [node, predicate] — shown once roles are known
   const demoRows = [];         // [node, spec, demoHref] — rows that downgrade rather than hide
@@ -345,6 +407,15 @@
     a.title = it.tx;
     if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
     if (it.key) navKeyed.push([a, it.key]);
+    if (it.teams) {
+      a.dataset.teamsRow = '1';
+      a.append(el('span', 'lgo', '\u203a'));
+      a.addEventListener('click', e => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        openTeams(true);
+      });
+    }
     pages.appendChild(a);
   });
   retarget();          // set the initial "you are here" marks
@@ -552,7 +623,7 @@
   const tabbar = el('div', 'ep-tabbar');
   const TABS = [
     { key: 'home', ic: '⌂', tx: 'home', href: '', on: () => /\/epinoia\/$/.test(here) && !!qp.get('l') },
-    { key: 'fixtures' }, { key: 'table' }, { key: 'statistics' }, { key: 'news' }
+    { key: 'fixtures' }, { key: 'table' }, { key: 'teams' }, { key: 'statistics' }, { key: 'news' }
   ];
   function paintTabbar() {
     tabbar.textContent = '';
@@ -565,6 +636,16 @@
       a.append(el('span', 'ic', spec.ic), el('span', 'tx', spec.tx));
       const on = t.on ? t.on() : (spec.match && spec.match.test(here));
       if (on) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
+      if (spec.teams) {
+        /* the clubs are a layer of the sheet, not a page: open the sheet on that layer */
+        a.dataset.teamsTab = '1';
+        a.addEventListener('click', e => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          if (!nav.classList.contains('drawer-open')) navToggle.click();
+          openTeams(false);
+        });
+      }
       tabbar.appendChild(a);
     });
     nav.classList.add('has-tabbar');
@@ -610,7 +691,7 @@
     if (!nav.classList.contains('drawer-open')) return;
     if (!nav.contains(e.target)) { navToggle.click(); return; }
     const a = e.target.closest && e.target.closest('a[href]');
-    if (a && nav.contains(a)) setTimeout(() => { if (nav.classList.contains('drawer-open')) navToggle.click(); }, 50);
+    if (a && nav.contains(a) && !a.dataset.teamsRow && !a.dataset.teamsTab) setTimeout(() => { if (nav.classList.contains('drawer-open')) navToggle.click(); }, 50);
   });
   nav.appendChild(navToggle);
 
@@ -623,7 +704,8 @@
      taller one would otherwise set the height and leave a hole beneath the
      shorter one. */
   function panelFor(view) {
-    return view === 'league' ? leaguePanel
+    return view === 'teams'  ? teamsPanel
+         : view === 'league' ? leaguePanel
          : view === 'root'   ? rootPanel
          : countryPanel;
   }
@@ -655,6 +737,7 @@
       countryPanel.setAttribute('aria-hidden', 'false');
       rootPanel.setAttribute('aria-hidden', 'false');
       leaguePanel.setAttribute('aria-hidden', 'false');
+      teamsPanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
         navdeck.classList.remove('animating');
         applyHidden();
@@ -669,6 +752,7 @@
     countryPanel.setAttribute('aria-hidden', String(v !== 'country'));
     rootPanel.setAttribute('aria-hidden', String(v !== 'root'));
     leaguePanel.setAttribute('aria-hidden', String(v !== 'league'));
+    teamsPanel.setAttribute('aria-hidden', String(v !== 'teams'));
   }
 
   function fillHeader(l) {
@@ -800,7 +884,7 @@
     if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
     try {
       const r = await fetch(cfg.supabaseUrl +
-        '/rest/v1/leagues?select=slug,name,colour_a,colour_b,logo_path,country,nav&order=name',
+        '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,logo_path,country,nav&order=name',
         { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
       if (!r.ok) throw new Error(String(r.status));
       leagues = await r.json();
