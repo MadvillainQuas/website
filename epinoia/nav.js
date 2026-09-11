@@ -371,6 +371,8 @@
     if (!l) return;
     fillTeams(l);
     setView('teams', animate !== false);
+    /* the top half is the scroller: start it at the top of the list */
+    navScroll.scrollTop = 0; nav.scrollTop = 0;
   }
   tback.addEventListener('click', () => {
     setView('league', true);
@@ -432,7 +434,12 @@
 
      Both stay hidden until whoami() says otherwise, and hiding them is a
      courtesy: the consoles refuse everything to somebody without the role. */
-  navScroll.append(adminRow, platRow);
+  /* THE RAIL IN TWO HALVES. Everything about WHERE YOU ARE -- countries, leagues, a league's
+     pages, its clubs -- scrolls in the top half; everything about YOU -- administration, the
+     account, contact, the way out -- stays put in a foot beneath it. On a phone the sheet
+     keeps the same shape: the list scrolls, the foot does not. */
+  const navFoot = el('div', 'ep-nav-foot');
+  navFoot.append(adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
@@ -450,7 +457,7 @@
   meLink.title = 'your clubs, players and notifications';
   meLink.hidden = true;
   acct.appendChild(meLink);
-  navScroll.appendChild(acct);
+  navFoot.appendChild(acct);
 
   /* ------------------------------------------------------- add to home screen ---
      The app is installable (manifest.webmanifest + sw.js). On Android the browser fires
@@ -596,7 +603,7 @@
   contact.href = root + 'contact/';
   contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));
   contact.title = 'contact';
-  navScroll.appendChild(contact);
+  navFoot.appendChild(contact);
 
   /* THE WAY OUT IS EPINOIA, not Prophe(s)y. This rail is on the public half
      of the site, and the row at the bottom of it should be the way back to
@@ -611,7 +618,7 @@
   const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
   home.append(el('span', 'ic', '←'), homeTx);
   home.title = 'back to Epinoia';
-  navScroll.appendChild(home);
+  navFoot.appendChild(home);
   /* ------------------------------------------------------------ the tab bar ---
      ON A PHONE THE BAR IS THE LEAGUE'S FIVE PLACES, NOT THE WHOLE RAIL. The rail's row-flow
      put the countries/leagues deck, the account, contact and the admin rows into one sideways
@@ -653,6 +660,7 @@
   paintTabbar();
   nav.appendChild(tabbar);
   nav.appendChild(navScroll);
+  nav.appendChild(navFoot);
 
   /* THE WAY IN, ON A PHONE.
      The bar below 820px is every one of these same rows, reflowed into a

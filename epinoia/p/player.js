@@ -452,15 +452,16 @@ let SHOTS = [];
 document.addEventListener('change', e => {
   if (e.target && (e.target.id === 'scCell' || e.target.id === 'scMin')) drawShotChart();
 });
-let SHOT_COLOUR = null;
-function drawShotChart(shots, colour) {
+let SHOT_COLOUR = null, SHOT_GAMES = 0;
+function drawShotChart(shots, colour, games) {
   if (shots) SHOTS = shots;
   if (colour) SHOT_COLOUR = colour;
+  if (games) SHOT_GAMES = games;
   const host = document.querySelector('#shotchart');
   if (!host || !window.EpinoiaShotChart) return;
   /* THE BOX SCORE'S CHART, over the season: every located shot as a dot or a cross in the
      club's colour, the floor cut into zones with each zone's makes, attempts and percentage */
-  window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3 });
+  window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3, games: SHOT_GAMES });
 }
 
 /* ---- on the floor with ----
@@ -517,7 +518,9 @@ function drawShotChart(shots, colour) {
               gameIds: gs.map(g => g.id),
               playerId: pl.id
             });
-            drawShotChart(shots, (team && team.colour) || null);
+            /* games this player appeared in among those fetched: a game with an event of theirs */
+            const played = new Set(evs.filter(e => String(e.pid) === String(pl.id)).map(e => e.gameId));
+            drawShotChart(shots, (team && team.colour) || null, played.size);
           } catch (e) { /* a chart is not worth breaking the page for */ }
 
           /* ---- on video ----

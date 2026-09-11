@@ -36,9 +36,16 @@
   background:var(--nav-bg,var(--panel));
   border-right:1px solid color-mix(in oklch,var(--lume) 20%,transparent);
   box-shadow:1px 0 0 rgba(0,0,0,.4);
-  overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
+  overflow:hidden; scrollbar-width:none;
 }
 .ep-nav::-webkit-scrollbar{ display:none }
+/* TWO HALVES. The scroller holds the places (countries, leagues, a league's pages, its clubs)
+   and scrolls on its own; the foot holds the person's rows and never moves. */
+.ep-nav .ep-nav-scroll{ display:flex; flex-direction:column; gap:1px; flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden; scrollbar-width:none; overscroll-behavior:contain }
+.ep-nav .ep-nav-scroll::-webkit-scrollbar{ display:none }
+.ep-nav .ep-nav-foot{ display:flex; flex-direction:column; gap:1px; flex:none; margin-top:6px; padding-top:6px;
+  border-top:1px solid color-mix(in oklch,var(--lume) 16%,transparent) }
 
 /* ---- rows ---------------------------------------------------------------- */
 .ep-nav a.item, .ep-nav button.item{
@@ -124,7 +131,7 @@ body.nav-drawer-open{ overflow:hidden }
    phone media query below gives it a shape, and that shape is the thing
    that actually scrolls — kept separate from .navtoggle precisely so the
    toggle is never inside the box being swiped. */
-.ep-nav-scroll{ display:contents }
+/* (the scroller and the foot are real boxes now; see the two-halves rule above) */
 
 /* ============================================================== the deck ===
    Two panels side by side in a window one panel wide. Sliding is a transform,
@@ -408,9 +415,9 @@ body.nav-drawer-open{ overflow:hidden }
     background:rgba(2,10,7,.55);
   }
   .ep-nav.drawer-open{
-    top:auto; bottom:0; height:auto; max-height:68vh;
+    top:auto; bottom:0; height:auto; max-height:76vh;
     flex-direction:column; align-items:stretch;
-    overflow-y:auto; overflow-x:hidden;
+    overflow:hidden; display:flex; touch-action:pan-y;
     padding:12px 0 calc(env(safe-area-inset-bottom) + 10px);
     z-index:2000; border-top:1px solid color-mix(in oklch,var(--lume) 30%,transparent);
     border-radius:16px 16px 0 0;
@@ -420,10 +427,17 @@ body.nav-drawer-open{ overflow:hidden }
      open, this is a plain vertical column again, same as the wrapper is on
      desktop, just an actual box instead of display:contents */
   .ep-nav.drawer-open .ep-nav-scroll{
-    display:flex; flex-direction:column; flex:none; min-width:0;
-    overflow:visible;
+    display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0;
+    overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
   }
+  .ep-nav.drawer-open .ep-nav-foot{ display:flex; flex-direction:column; flex:none; min-width:0 }
+  .ep-nav:not(.drawer-open) .ep-nav-foot{ display:none }
   .ep-nav.drawer-open .gap{ display:none }
+  /* a grab handle, so the sheet reads as something you can pull through */
+  .ep-nav.drawer-open::before{ content:''; display:block; width:38px; height:4px; border-radius:2px; margin:-4px auto 8px;
+    background:color-mix(in oklch,var(--ink) 28%,transparent); flex:none }
+  .ep-nav.drawer-open .teams{ display:flex; flex-direction:column }
+  .ep-nav.drawer-open .trow{ flex-direction:row; padding:9px 10px 9px 14px; gap:9px }
   .ep-nav.drawer-open .sep, .ep-nav.drawer-open .grouplbl,
   .ep-nav.drawer-open .ptitle{ display:block }
   .ep-nav.drawer-open a.item, .ep-nav.drawer-open button.item{

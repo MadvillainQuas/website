@@ -70,7 +70,7 @@
         const fix = (B && B.snapToValue) ? B.snapToValue(+l.x, +l.y, three)
                                          : { x: +l.x, y: +l.y, moved: false };
         out.push({ x: fix.x, y: fix.y, moved: fix.moved,
-                   made: /_made$/.test(e.t), three });
+                   made: /_made$/.test(e.t), three, gameId: e.gameId != null ? e.gameId : gid, team: e.team, pid: e.pid });
       });
     }
     return out;
@@ -255,6 +255,71 @@
       t3:    'M ' + f(a32[0]) + ' ' + f(a32[1]) + A(0, a32r[0], a32r[1]) + ' L ' + W + ' ' + f(yEdge) + ' V ' + H + ' H 0 V ' + f(yEdge) + ' Z'
     };
   }
+  /* ---- the zones as a table ---------------------------------------------
+     The twelve areas melded into the eight people talk about (the two corners are one
+     "corner 3"), then the larger cuts: left / centre / right, the rim against jump shots
+     (everything outside the paint), all mid-range, all threes, and every shot. Each row
+     carries the share of attempts, attempts and makes and misses per game, FG% and eFG%.
+     Games are the caller's count -- the chart cannot know how many games a player played
+     without a shot -- and per-game columns are left out when it is not given. */
+  const ALL = ['ra', 'paint', 'bl', 'br', 'wl', 'wr', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'];
+  const GROUPS = [
+    { k: 'rim',   label: 'at the rim',        zones: ['ra'],           kind: 'paint' },
+    { k: 'paint', label: 'paint (not rim)',   zones: ['paint'],        kind: 'paint' },
+    { k: 'base',  label: 'baseline mid',      zones: ['bl', 'br'],     kind: 'mid' },
+    { k: 'wingm', label: 'wing mid',          zones: ['wl', 'wr'],     kind: 'mid' },
+    { k: 'topm',  label: 'top mid',           zones: ['tm'],           kind: 'mid' },
+    { k: 'c3',    label: 'corner 3',          zones: ['c3l', 'c3r'],   kind: 'three' },
+    { k: 'w3',    label: 'wing 3',            zones: ['w3l', 'w3r'],   kind: 'three' },
+    { k: 't3',    label: 'top 3',             zones: ['t3'],           kind: 'three' }
+  ];
+  const BIG = [
+    { k: 'left',   label: 'left side',                    zones: ['bl', 'wl', 'c3l', 'w3l'] },
+    { k: 'centre', label: 'centre',                       zones: ['ra', 'paint', 'tm', 't3'] },
+    { k: 'right',  label: 'right side',                   zones: ['br', 'wr', 'c3r', 'w3r'] },
+    { k: 'atrim',  label: 'rim & paint',                  zones: ['ra', 'paint'] },
+    { k: 'jump',   label: 'jump shots (outside the paint)', zones: ['bl', 'br', 'wl', 'wr', 'tm', 'c3l', 'c3r', 'w3l', 'w3r', 't3'] },
+    { k: 'mid',    label: 'all mid-range',                zones: ['bl', 'br', 'wl', 'wr', 'tm'] },
+    { k: 'three',  label: 'all threes',                   zones: ['c3l', 'c3r', 'w3l', 'w3r', 't3'] },
+    { k: 'all',    label: 'every shot',                   zones: ALL }
+  ];
+  function zoneRows(shots, games) {
+    const C = dims();
+    const per = {};
+    ALL.forEach(k => { per[k] = { att: 0, made: 0, m3: 0 }; });
+    shots.forEach(sh => {
+      const k = zoneOf(sh.x * C.W, sh.y * C.H, !!sh.three);
+      const z = per[k]; if (!z) return;
+      z.att++; if (sh.made) { z.made++; if (sh.three) z.m3++; }
+    });
+    const total = shots.length;
+    const row = g => {
+      const att = g.zones.reduce((n, k) => n + per[k].att, 0);
+      const made = g.zones.reduce((n, k) => n + per[k].made, 0);
+      const m3 = g.zones.reduce((n, k) => n + per[k].m3, 0);
+      return { k: g.k, label: g.label, kind: g.kind || null, att, made, miss: att - made, m3,
+               share: total ? 100 * att / total : null,
+               attG: games ? att / games : null, madeG: games ? made / games : null, missG: games ? (att - made) / games : null,
+               fg: att ? 100 * made / att : null, efg: att ? 100 * (made + 0.5 * m3) / att : null };
+    };
+    return { groups: GROUPS.map(row), big: BIG.map(row), total, games: games || 0 };
+  }
+  function zoneTableHTML(rows) {
+    const f1 = v => v == null ? '\u2014' : v.toFixed(1);
+    const f0 = v => v == null ? '\u2014' : v.toFixed(0);
+    const g = rows.games > 0;
+    const head = '<tr><th class="l">zone</th><th>shots</th><th>% of shots</th>' + (g ? '<th>att / g</th><th>made / g</th><th>missed / g</th>' : '<th>made</th><th>missed</th>') +
+                 '<th>fg%</th><th>efg%</th></tr>';
+    const tr = r => '<tr' + (r.att ? '' : ' class="none"') + '><td class="l">' + r.label + '</td><td>' + r.att + '</td><td>' + f1(r.share) + '</td>' +
+      (g ? '<td>' + f1(r.attG) + '</td><td>' + f1(r.madeG) + '</td><td>' + f1(r.missG) + '</td>' : '<td>' + r.made + '</td><td>' + r.miss + '</td>') +
+      '<td>' + f0(r.fg) + '</td><td>' + f0(r.efg) + '</td></tr>';
+    return '<div class="sc-tablewrap"><table class="sc-table">' +
+      '<thead>' + head + '</thead><tbody>' + rows.groups.map(tr).join('') + '</tbody>' +
+      '<thead><tr><th class="l" colspan="' + (g ? 8 : 7) + '">the larger cuts</th></tr>' + head + '</thead><tbody>' + rows.big.map(tr).join('') + '</tbody>' +
+      '</table></div>' +
+      '<div class="sc-note">eFG% counts a three as one and a half makes \u00b7 % of shots is the share of every located attempt' + (g ? ' \u00b7 per game over ' + rows.games + (rows.games === 1 ? ' game' : ' games') : '') + '</div>';
+  }
+
   /* a club colour the marks can be seen in on this theme's ground (white on white was the
      alternative); the team-colour module knows the ground, the fallback is the colour itself */
   function markColour(hex) {
@@ -311,9 +376,10 @@
         ? '\u25cf made \u00b7 \u2715 missed \u00b7 ' + shots.length + ' located shot' + (shots.length === 1 ? '' : 's') + ', ' + made + ' made' + (o.note ? ' \u00b7 ' + o.note : '') +
           ' \u00b7 zones tinted against their own break-even (paint 58%, mid-range 40%, three 35%); fewer than ' + floor + ' attempts stays grey'
         : 'No located shots yet \u2014 a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.') + '</div>' +
-      (shots.length ? chips : '');
+      (shots.length ? chips : '') +
+      (shots.length ? zoneTableHTML(zoneRows(shots, o.games)) : '');
     return { zones: z, attempts: shots.length };
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, renderZones, markColour, ZONES };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, markColour, ZONES, GROUPS, BIG };
 }));

@@ -150,7 +150,7 @@ async function teamShots(team) {
     const shots = await window.EpinoiaShotChart.gather({
       fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
     });
-    window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5,
+    window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length,
       note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games') });
   } catch (e) { host.appendChild(el('div', 'empty', 'The shot chart could not be drawn.')); }
 }
@@ -320,6 +320,12 @@ async function teamStats(team, kind) {
     });
   host.appendChild(tiles);
 
+  /* SHOT ZONES, RANKED IN THE LEAGUE. Every located shot of every side in the scoped
+     competitions, cut into the chart's zones; this club's share, rate per 100 possessions,
+     per-game attempts and makes and eFG% in each, each one a percentile among the teams. */
+  const zh = el('div'); zh.appendChild(el('div', 'ffhead', 'shot zones')); host.appendChild(zh);
+  zoneStats(zh, S, team).catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')));
+
   /* every player on the roster, ranked within their own team */
   const meta = await D.playerMeta(S.players.map(p => p.id));
   S.players.forEach(p => Object.assign(p, meta[p.id] || {}));
@@ -334,6 +340,76 @@ async function teamStats(team, kind) {
       playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
     });
   }
+}
+
+/* ------------------------------------------------------------- shot zones --- */
+const zoneCache = {};
+async function zoneStats(host, S, team) {
+  const SC = window.EpinoiaShotChart, SE = window.EpinoiaSeason, D = window.EpinoiaData;
+  if (!SC || !SE || !S || !S.games || !S.games.length) { host.appendChild(el('div', 'empty', 'No located shots yet.')); return; }
+  const key = S.games.map(g => g.id).sort().join(',');
+  let rowsByTeam = zoneCache[key];
+  if (!rowsByTeam) {
+    const holding = el('div', 'empty', 'reading every shot in the competition\u2026'); host.appendChild(holding);
+    const evs = await D.events(S.games.map(g => g.id));
+    holding.remove();
+    const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+    const all = await SC.gather({ fetchEvents: async () => Object.values(byG), gameIds: S.games.map(g => g.id), playerId: null });
+    /* which club each shot belongs to: the game's home or away side */
+    const sideTeam = {}; S.games.forEach(g => { sideTeam[g.id] = [g.home_team_id, g.away_team_id]; });
+    const perTeam = {};
+    all.forEach(sh => {
+      const tid = (sideTeam[sh.gameId] || [])[+sh.team];
+      if (!tid) return;
+      (perTeam[tid] = perTeam[tid] || []).push(sh);
+    });
+    rowsByTeam = {};
+    S.teams.forEach(tm => {
+      const shots = perTeam[tm.id] || [];
+      const gp = tm.gp || S.games.filter(g => g.home_team_id === tm.id || g.away_team_id === tm.id).length || 1;
+      const zr = SC.zoneRows(shots, gp);
+      const poss = tm.poss || null;
+      const flat = { id: tm.id, name: tm.name };
+      zr.groups.concat(zr.big).forEach(r => {
+        flat[r.k + '_share'] = r.share; flat[r.k + '_efg'] = r.efg; flat[r.k + '_fg'] = r.fg;
+        flat[r.k + '_attG'] = r.attG; flat[r.k + '_madeG'] = r.madeG;
+        flat[r.k + '_att100'] = poss ? 100 * r.att / poss : null;
+        flat[r.k + '_rows'] = r;
+      });
+      rowsByTeam[tm.id] = flat;
+    });
+    zoneCache[key] = rowsByTeam;
+  }
+  const mine = rowsByTeam[team.id];
+  if (!mine) { host.appendChild(el('div', 'empty', 'No located shots for this club yet.')); return; }
+  const teams = Object.values(rowsByTeam);
+  const groups = SC.GROUPS.concat(SC.BIG);
+  const keys = [];
+  groups.forEach(g => ['share', 'att100', 'attG', 'madeG', 'efg'].forEach(m => keys.push(g.k + '_' + m)));
+  const ranks = SE.percentiles(teams, keys, []);
+  const pctOf = k => { const t = ranks.get(k); return t ? t.get(team.id) : null; };
+  const heat = p => {
+    if (p == null) return '';
+    if (p >= 90) return 'background:color-mix(in oklch,var(--lume) 34%,transparent)';
+    if (p >= 75) return 'background:color-mix(in oklch,var(--lume) 20%,transparent)';
+    if (p >= 60) return 'background:color-mix(in oklch,var(--lume) 10%,transparent)';
+    if (p >= 40) return '';
+    if (p >= 25) return 'background:color-mix(in oklch,var(--amber) 12%,transparent)';
+    if (p >= 10) return 'background:color-mix(in oklch,var(--flare) 14%,transparent)';
+    return 'background:color-mix(in oklch,var(--flare) 24%,transparent)';
+  };
+  const f1 = v => v == null ? '\u2014' : (+v).toFixed(1);
+  const cell = (k, v, f) => { const p = pctOf(k); return '<td class="heat" style="' + heat(p) + '">' + (f || f1)(v) + (p == null ? '' : '<span class="pctl">' + Math.round(p) + '</span>') + '</td>'; };
+  const head = '<tr><th class="l">zone</th><th>% of shots</th><th>att / 100 poss</th><th>att / g</th><th>made / g</th><th>efg%</th></tr>';
+  const tr = g => { const r = mine[g.k + '_rows']; return '<tr' + (r.att ? '' : ' class="none"') + '><td class="l">' + g.label + '</td>' +
+    cell(g.k + '_share', r.share) + cell(g.k + '_att100', mine[g.k + '_att100']) + cell(g.k + '_attG', r.attG) + cell(g.k + '_madeG', r.madeG) + cell(g.k + '_efg', r.efg, v => v == null ? '\u2014' : (+v).toFixed(0)) + '</tr>'; };
+  const wrap = el('div');
+  wrap.innerHTML = '<div class="sc-tablewrap"><table class="sc-table">' +
+    '<thead>' + head + '</thead><tbody>' + SC.GROUPS.map(tr).join('') + '</tbody>' +
+    '<thead><tr><th class="l" colspan="6">the larger cuts</th></tr>' + head + '</thead><tbody>' + SC.BIG.map(tr).join('') + '</tbody></table></div>' +
+    '<div class="sc-note">every located shot in the competition' + (teamScopeKind !== 'all' ? ' (' + (KIND_LABEL[teamScopeKind] || teamScopeKind).toLowerCase() + ')' : '') +
+    ' \u00b7 the small number is the percentile among the ' + teams.length + ' teams (higher is more, or better) \u00b7 att / 100 = attempts per 100 of the club\u2019s own possessions</div>';
+  host.appendChild(wrap);
 }
 
 /* ------------------------------------------------------- lineups & WOWY --- */
