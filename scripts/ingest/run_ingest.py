@@ -817,7 +817,7 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
     for src in sources:
         try:
             rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
-                                               "&select=external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash")
+                                               "&select=external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id")
         except Exception as exc:
             print(f"   (live lookup failed for {src['code']}: {exc})"); continue
         today = now.date().isoformat(); yday = (now - timedelta(days=1)).date().isoformat()
@@ -852,10 +852,26 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     finished: set[str] = set()
     unchanged_since: dict[str, float] = {}      # when each game's payload last changed (stale-final rule)
     end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
+    fast_every = max(1, min(10, int(getattr(args, "broadcast_every", 2) or 2)))
     due, next_tip, recheck, exit_code = [], None, 0.0, 0
-    print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s")
+    # THE BROADCAST HEARTBEAT. A game somebody has armed (games.broadcast_until in the future,
+    # set from the control room) is read every couple of seconds so a scorebug on a stream
+    # follows the table; everything else keeps the ten-second cadence. The armed set is
+    # re-read every 20 s so pressing the button takes effect within a poll or two.
+    armed: set[str] = set(); armed_check = 0.0; slow_due = 0.0
+    def armed_games():
+        try:
+            rows = sb.select("games", f"broadcast_until=gt.{datetime.now(timezone.utc).isoformat()}&select=id")
+            return {str(x["id"]) for x in rows}
+        except Exception:
+            return set()
+    print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s ({fast_every} s while a game is armed for broadcast)")
     while time.time() < end:
         now = datetime.now(timezone.utc)
+        if time.time() >= armed_check:
+            was = armed; armed = armed_games(); armed_check = time.time() + 20
+            if armed != was:
+                print(f"{now.strftime('%H:%M:%S')}Z broadcast heartbeat: {len(armed)} armed game(s)")
         if time.time() >= recheck:
             due, next_tip = live_due(sb, fiba, now)
             due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
@@ -865,8 +881,15 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             recheck = time.time() + 120
             print(f"{now.strftime('%H:%M:%S')}Z {len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
                   ((": " + ", ".join(f"{r.get('home_name') or r['external_id']} v {r.get('away_name') or ''}" for _, r in due[:6])) if due else ""))
+        # the slow set is read on the ordinary cadence; an armed game is read every pass
+        slow_pass = time.time() >= slow_due
+        if slow_pass:
+            slow_due = time.time() + every
         for src, r in due:
             xid = str(r["external_id"])
+            is_armed = str(r.get("game_id") or "") in armed
+            if not slow_pass and not is_armed:
+                continue
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
             t_obs = time.time()
@@ -890,7 +913,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             else:
                 unchanged_since[xid] = time.time()
             # a play in this payload happened between the previous poll and this fetch
-            observed = (int(t_obs * 1000), int((every + (time.time() - t_obs)) * 1000))
+            observed = (int(t_obs * 1000), int(((fast_every if is_armed else every) + (time.time() - t_obs)) * 1000))
             run = runs[src["code"]]; run["games_fetched"] += 1
             raw_ref = None
             try:
@@ -908,7 +931,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 finished.add(xid)
         due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
         if due:
-            time.sleep(every); continue
+            hot = any(str(r.get("game_id") or "") in armed for _, r in due)
+            time.sleep(fast_every if hot else every); continue
         # nothing on: wait for the next tip-off if this pass can still reach it (short naps - the
         # 2-minute recheck notices a schedule change or a game that goes live early)
         wait = ((next_tip - datetime.now(timezone.utc)).total_seconds() - LIVE_BEFORE_TIP) if next_tip else None
@@ -946,6 +970,7 @@ def main() -> int:
     ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games live or due to tip (the frequent pass)")
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)
+    ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
     args = ap.parse_args()
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")

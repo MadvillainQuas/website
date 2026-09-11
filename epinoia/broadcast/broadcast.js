@@ -1440,9 +1440,19 @@ window.EpinoiaBroadcast = {
     Promise.race([ready, new Promise(r => setTimeout(r, REVEAL_MAX_MS))]).then(reveal);
 
     if (game.status !== 'final') {
+      /* A FEDERATION-FED GAME has no scorer on the socket: the ingest worker writes its
+         store, every two seconds while the game is armed for broadcast (games.broadcast_until,
+         set from the control room), every ten otherwise. The layer polls at the fast cadence
+         either way -- a poll that finds nothing new costs nothing on air. */
+      let fed = false;
+      try {
+        const ext = await api('external_games?game_id=eq.' + encodeURIComponent(gameId) + '&select=external_id&limit=1');
+        fed = !!(ext && ext.length);
+      } catch (_) { fed = false; }
       sub = L.subscriber({
         gameId, mode: 'supabase',
         supabase: window.epinoiaClient ? epinoiaClient() : null,
+        pollMs: fed ? 2000 : undefined, pollNow: fed,
         onSnapshot(s) { merge(s.game, s.events, s.removed, true); render(); },
         onFrame(f) { merge(f.game, f.events, f.removed, f.full); render(); },
         onStatus() { render(); }

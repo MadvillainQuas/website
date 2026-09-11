@@ -668,6 +668,9 @@ async function offerToScore() {
          account was refused, the request failed, or the code never ran. */
       console.info('[epinoia] "score this game" hidden: may_score_game returned',
                    ok, '— signed in as', (storedToken() ? 'yes' : 'no'));
+      /* not a scorer -- but a club's manager, or anyone who may stream a federation-fed
+         game, still gets the way to the graphics */
+      offerToBroadcast(token);
       return;
     }
     cta.href = '../score/?g=' + encodeURIComponent(gameId);
@@ -679,6 +682,27 @@ async function offerToScore() {
   } finally { scoreChecking = false; }
 }
 
+
+/* THE BROADCAST BUTTON WITHOUT THE SCORING ONE. A FIBA LiveStats game is scored at the
+   federation's table, so may_score_game says no to almost everybody -- and yet the people
+   streaming it need the control room. may_broadcast_game (0112) adds the two clubs'
+   managers; whoever passes gets the caret with the broadcast items alone. */
+let broadcastShown = false;
+async function offerToBroadcast(token) {
+  const cta = document.getElementById('scoreCta');
+  if (!cta || scoreShown || broadcastShown || !gameId || !S || S.status === 'final') return;
+  try {
+    const ok = await withRetry(() => rpcCall('may_broadcast_game', { p_game: gameId }, token));
+    if (ok !== true) return;
+    cta.href = '../broadcast/control/?g=' + encodeURIComponent(gameId);
+    cta.textContent = 'broadcast this game \u2192';
+    cta.target = '_blank'; cta.rel = 'noopener';
+    const wrap = document.getElementById('ctaWrap');
+    if (wrap) wrap.classList.remove('hide'); else cta.classList.remove('hide');
+    buildCtaMenu({ broadcastOnly: true });
+    broadcastShown = true;
+  } catch (_) { /* no button: the same silence as the scorer's */ }
+}
 
 /* ---------------------------------------------------------------------------
    PRIMING A FIXTURE FOR BROADCAST.
@@ -701,7 +725,7 @@ async function offerToScore() {
    sees this is here to do; broadcasting is a minority of a minority, and it
    must not cost the majority a decision on the way past.
    --------------------------------------------------------------------------- */
-function buildCtaMenu() {
+function buildCtaMenu(o) {
   const menu = document.getElementById('ctaMenu');
   const more = document.getElementById('ctaMore');
   if (!menu || !more || menu.dataset.built === '1') return;
@@ -711,12 +735,15 @@ function buildCtaMenu() {
   const items = [
     ['../broadcast/control/?g=' + g, 'Prime for broadcast',
      'Lay out the graphics before tip — they draw the real teams and crests now, ' +
-     'and start moving on the first basket.'],
+     'and start moving on the first basket.' + (S.fed ? ' Opening the control room arms the live heartbeat for this FIBA LiveStats game.' : '')],
     ['../broadcast/?g=' + g + '&live=1&pos=bl', 'Open the graphics layer',
      'The transparent page to add as a browser source in OBS or vMix.'],
+    ['../broadcast/help/?g=' + g, 'How to set up a broadcast',
+     'The full walkthrough: arming the game, the control room, OBS, vMix, the scenes.']
+  ].concat(o && o.broadcastOnly ? [] : [
     ['../score/?g=' + g, S.status === 'live' ? 'Continue scoring' : 'Open the scoring app',
      'The statistician’s screen.']
-  ];
+  ]);
   menu.innerHTML = items.map(([href, title, note]) =>
     '<a href="' + href + '" target="_blank" rel="noopener">' + B.esc(title) +
     '<small>' + B.esc(note) + '</small></a>').join('');

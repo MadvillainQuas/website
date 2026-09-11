@@ -443,6 +443,13 @@ function publisher(opts) {
 
 function subscriber(opts) {
   const { gameId, mode, supabase, onSnapshot, onFrame, onStatus } = opts;
+  /* A FED GAME NEVER SENDS A FRAME: its store is written by the ingest worker, not by a
+     scorer on a socket, so the only way its changes reach a reader is a poll. A caller that
+     knows this asks for polling from the start (pollNow) at its own cadence (pollMs) -- the
+     broadcast layer asks for two seconds on an armed game -- rather than waiting out the
+     stale timer and then polling at the fallback rate. */
+  const pollEvery = Math.max(500, +opts.pollMs || POLL_MS);
+  const pollNow = !!opts.pollNow;
   const tx = makeTransport(gameId, mode, supabase);   // a reader writes nothing
 
   let state = null;          // last known clock state
@@ -484,12 +491,13 @@ function subscriber(opts) {
     await resync('initial');
     stopListen = tx.listen(applyFrame, s => setStatus(s === 'live' ? 'live' : 'connecting'));
     if (tx.kind === 'local') setStatus('live');
+    if (pollNow && !pollTimer) pollTimer = setInterval(() => resync('poll'), pollEvery);
     // degradation ladder: if nothing arrives for STALE_MS, poll instead of pretending
     watchdog = setInterval(() => {
       if (Date.now() - lastTraffic > STALE_MS) {
         if (status !== 'delayed') setStatus('delayed');
-        if (!pollTimer) pollTimer = setInterval(() => resync('poll'), POLL_MS);
-      } else if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        if (!pollTimer) pollTimer = setInterval(() => resync('poll'), pollEvery);
+      } else if (pollTimer && !pollNow) { clearInterval(pollTimer); pollTimer = null; }
     }, 2000);
   }
 

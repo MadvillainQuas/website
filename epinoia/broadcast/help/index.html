@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co">
+<title>Broadcast setup · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=292">
+<link rel="stylesheet" href="../../kit/nav.css?v=292">
+<style>
+  .doc{max-width:860px;margin:0 auto;padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*10)}
+  .doc h1{font-family:var(--f-score);font-size:44px;line-height:1;margin:0 0 6px;text-transform:uppercase}
+  .doc .lede{font-family:var(--f-ui);font-size:15px;color:var(--ink-2);max-width:60ch;margin:0 0 28px;line-height:1.5}
+  .doc h2{font-family:var(--f-score);font-size:26px;text-transform:uppercase;margin:38px 0 10px;padding-top:18px;border-top:1px solid var(--rule)}
+  .doc h3{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);margin:22px 0 8px}
+  .doc p,.doc li{font-family:var(--f-ui);font-size:14px;line-height:1.6;color:var(--ink)}
+  .doc p{margin:0 0 12px} .doc ul,.doc ol{margin:0 0 14px;padding-left:22px} .doc li{margin:0 0 6px}
+  .doc code{font-family:var(--f-data);font-size:12.5px;background:color-mix(in oklch,var(--ink) 8%,transparent);padding:2px 6px;border-radius:4px;word-break:break-all}
+  .doc pre{font-family:var(--f-data);font-size:12px;background:color-mix(in oklch,var(--ink) 8%,transparent);padding:12px 14px;border-radius:8px;overflow-x:auto;margin:0 0 14px}
+  .step{border:1px solid var(--rule);border-radius:12px;padding:16px 18px;margin:0 0 14px;background:color-mix(in oklch,var(--panel) 70%,transparent)}
+  .step .n{font-family:var(--f-score);font-size:30px;color:var(--lume);line-height:1;margin-bottom:6px}
+  .step h3{margin-top:0}
+  .note{border-left:3px solid var(--amber);padding:8px 12px;margin:0 0 14px;background:color-mix(in oklch,var(--amber) 8%,transparent)}
+  .note p{margin:0}
+  table.t{border-collapse:collapse;width:100%;margin:0 0 16px;font-family:var(--f-data);font-size:12.5px}
+  table.t th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule)}
+  table.t td{padding:8px 10px;border-bottom:1px solid color-mix(in oklch,var(--rule) 60%,transparent);vertical-align:top;color:var(--ink)}
+  table.t td:first-child{white-space:nowrap}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+  .toc a{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;border:1px solid var(--rule);border-radius:999px;padding:6px 11px}
+  .toc a:hover{color:var(--lume);border-color:var(--lume)}
+  .check li{list-style:none;position:relative;padding-left:26px}
+  .check li::before{content:'\2610';position:absolute;left:0;top:0;color:var(--lume);font-size:16px;line-height:1.3}
+  .bar{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--rule)}
+  .wm{font-family:var(--f-score);font-size:19px;background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  .bar a.back{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="bar"><a href="../../" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a><span class="ep-micro">broadcast setup</span><a class="back" id="backToControl" href="../control/">← control room</a></div>
+  <div class="doc">
+    <h1>Setting up a broadcast</h1>
+    <p class="lede">Everything you need to put Epinoia's graphics on a stream: the live scorebug, lower thirds, the team comparison, the final board and the squad screens, drawn from the same numbers as the box score and moving by themselves. Works with OBS, vMix, Wirecast, Streamlabs and anything else that can show a web page.</p>
+
+    <div class="toc">
+      <a href="#need">what you need</a><a href="#arm">1 · arm the game</a><a href="#control">2 · the control room</a>
+      <a href="#obs">3 · add the layer in OBS</a><a href="#others">vMix · Wirecast · Streamlabs</a><a href="#scenes">the scenes</a>
+      <a href="#fiba">FIBA LiveStats games</a><a href="#scored">games scored in Epinoia</a><a href="#json">data for Vizrt · XPression</a>
+      <a href="#trouble">troubleshooting</a><a href="#checklist">match-day checklist</a>
+    </div>
+
+    <h2 id="need">What you need</h2>
+    <ul>
+      <li><b>An Epinoia account with the right to broadcast the game.</b> That is a league admin, a manager of either club (from the club portal), or a statistician assigned to the game. Sign in on the site first; the buttons only appear to accounts that may use them.</li>
+      <li><b>Streaming software that can show a web page.</b> OBS Studio (free) is the one this guide walks through; the same URL works in vMix, Wirecast, Streamlabs Desktop, CasparCG and Singular.</li>
+      <li><b>The game's page on Epinoia.</b> Every fixture has one — from the fixtures list, the league home or a club's profile. The broadcast button lives there.</li>
+      <li><b>For a FIBA LiveStats game:</b> nothing extra. The league's feed is read for you. For a game scored in the Epinoia app, the statistician's phone or laptop does the scoring as usual.</li>
+    </ul>
+
+    <h2 id="arm">Step 1 · Arm the game for broadcast</h2>
+    <div class="step"><div class="n">1</div>
+      <p>Open the game's page on Epinoia while signed in. Above the scoreboard you will see <b>score this game →</b> (for a game you may score) or <b>broadcast this game →</b> (for a federation-fed game, or if you manage a club in it). Press the caret beside it and choose <b>Prime for broadcast</b>. That opens the <b>control room</b> for this fixture in a new tab.</p>
+      <p>You can do this any time before tip-off — the graphics draw the real teams, crests and colours from the fixture alone, so you can lay everything out in the afternoon and leave it. Nothing needs a ball to have been thrown.</p>
+      <p>For a <b>FIBA LiveStats</b> game the control room also <b>arms the live heartbeat</b>: while it is open, the league's feed is read every couple of seconds and the graphics follow it. The arming lasts four hours and renews itself while the control room stays open, so keep that tab open for the game (it can sit behind OBS). See <a href="#fiba">FIBA LiveStats games</a> below.</p>
+    </div>
+
+    <h2 id="control">Step 2 · The control room</h2>
+    <div class="step"><div class="n">2</div>
+      <p>The control room is the page you drive the graphics from. It shows the fixture, a preview of whatever is on air, and a tile for every scene. The important controls:</p>
+      <ul>
+        <li><b>position</b> and <b>scale</b> — where the scorebug sits on the picture (bottom left is the broadcast convention) and how big it is. The preview updates as you change them.</li>
+        <li><b>take</b> on a tile — puts that scene on air on every layer that is listening. <b>clear</b> takes everything off.</li>
+        <li><b>the live layer URL</b> — one address that shows whatever the control room has taken. This is the URL to give your streaming software, so you change scenes here and never touch OBS during the game.</li>
+        <li><b>per-scene URLs</b> — every tile also has its own fixed address (a scorebug that is always the scorebug, a squad screen that is always the squad screen). Use these if you would rather switch scenes inside OBS with hotkeys.</li>
+        <li><b>OBS scene collection / vMix preset / Wirecast sheet</b> — one-click exports that build the sources for you. The OBS one imports as a ready-made scene with every graphic already placed.</li>
+      </ul>
+      <p>The tag at the top right says <b>live layer connected</b> once the control room can talk to the layers. If it says not connected, the fixed URLs still work — only the take/clear buttons need the connection.</p>
+    </div>
+
+    <h2 id="obs">Step 3 · Add the layer in OBS Studio</h2>
+    <div class="step"><div class="n">3</div>
+      <h3>the quick way</h3>
+      <ol>
+        <li>In the control room press <b>OBS scene collection</b>. A small JSON file downloads.</li>
+        <li>In OBS: <b>Scene Collection → Import…</b>, pick the file, then switch to the imported collection (Scene Collection menu). A scene called <b>Epinoia graphics</b> appears with a browser source for the live layer and one for each fixed scene.</li>
+        <li>Drag the browser source you want above your camera in the Sources list. The background is transparent, so only the graphic shows.</li>
+      </ol>
+      <h3>the manual way</h3>
+      <ol>
+        <li>Sources → <b>+</b> → <b>Browser</b>. Name it "Epinoia live layer".</li>
+        <li><b>URL</b>: copy the live layer URL from the control room. It looks like <code>https://prophesyscouting.co.uk/epinoia/broadcast/?g=…&amp;live=1&amp;pos=bl</code>.</li>
+        <li><b>Width 1920, Height 1080</b> (or your canvas size). <b>FPS 30</b> is plenty.</li>
+        <li>Leave <b>Custom CSS</b> as it is (OBS's default line makes the page background transparent, which is what you want).</li>
+        <li><b>Untick "Shutdown source when not visible"</b> — otherwise OBS unloads the page whenever it is hidden and it has to reconnect when you switch back.</li>
+        <li><b>Tick "Refresh browser when scene becomes active"</b> if you switch scenes a lot; it is harmless.</li>
+        <li>OK. The scorebug appears in the corner you chose. Resize with the red handles if you must, but the <b>scale</b> control in the control room does the same thing without blurring.</li>
+      </ol>
+      <div class="note"><p>OBS renders browser sources in its own copy of Chromium. If a graphic looks wrong there but right in your normal browser, right-click the source → <b>Refresh</b>. An update to the graphics only reaches OBS on a refresh.</p></div>
+    </div>
+
+    <h2 id="others">vMix, Wirecast, Streamlabs and others</h2>
+    <ul>
+      <li><b>vMix</b> — press <b>vMix preset</b> in the control room and open the file, or add an input of type <b>Web Browser</b> with the live layer URL at 1920×1080. Tick <b>transparent background</b>.</li>
+      <li><b>Wirecast</b> — <b>Wirecast sheet</b> gives every URL; add a <b>Web Page</b> source per line.</li>
+      <li><b>Streamlabs Desktop</b> — same as OBS: a <b>Browser Source</b> with the live layer URL, 1920×1080, shutdown-when-not-visible off.</li>
+      <li><b>CasparCG / Singular / vizrt HTML</b> — point the HTML engine at the same URL. Every graphic is drawn at the render size you give it and scales with the <code>scale</code> parameter.</li>
+      <li><b>A hardware mixer that only takes a key + fill</b> — use <code>&amp;chroma=00ff00</code> on the URL to paint the background a key colour instead of transparent, and key it in the mixer.</li>
+    </ul>
+
+    <h2 id="scenes">The scenes</h2>
+    <table class="t">
+      <tr><th>scene</th><th>what it shows</th><th>when</th></tr>
+      <tr><td>scorebug</td><td>both crests, the score, the period and clock, team fouls and timeouts; the last play beneath it</td><td>whenever the game is on — the default</td></tr>
+      <tr><td>lower</td><td>a lower third for one player: face or cutout, number, name, tonight's line</td><td>a substitution, a big play; add <code>&amp;side=0</code> or <code>1</code> for the team and <code>&amp;pid=…</code> for a specific player (otherwise the leading scorer)</td></tr>
+      <tr><td>compare</td><td>the two teams side by side: shooting, rebounds, turnovers, the four factors</td><td>quarter breaks, half time</td></tr>
+      <tr><td>squads</td><td>a full-screen squad list for one side, with faces and positions</td><td>pre-game, the starting fives</td></tr>
+      <tr><td>final</td><td>the final board with the result and the players of the game</td><td>at the end</td></tr>
+      <tr><td>blank</td><td>nothing</td><td>to clear the picture without removing the source</td></tr>
+    </table>
+    <p>Every scene URL accepts <code>pos</code> (bl, bc, br, tl, tc, tr, c), <code>scale</code> (0.5 to 2), <code>home</code> / <code>away</code> (override a colour as <code>rrggbb</code>), <code>safe=0</code> (drop the title-safe margin) and <code>chroma</code>. The live layer (<code>live=1</code>) ignores <code>scene</code> and shows whatever the control room has taken.</p>
+
+    <h2 id="fiba">FIBA LiveStats games</h2>
+    <p>Games that a federation scores in FIBA LiveStats are read into Epinoia by the ingest worker. Normally that happens every ten seconds — fine for a box score, visibly late on a scorebug. So a game can be <b>armed</b>:</p>
+    <ul>
+      <li>Opening the control room (or the caret's <b>Prime for broadcast</b>) as a club or league admin arms the game for four hours and re-arms it every half hour while the control room stays open.</li>
+      <li>While armed, the worker reads the game's feed every <b>two seconds</b> and the graphics layer polls the store at the same rate. Expect the scorebug to trail the arena's own scoreboard by <b>two to five seconds</b> — the feed itself is a few seconds behind the table, and that part is the federation's.</li>
+      <li>The clock on the scorebug follows the feed: it moves each time a reading arrives rather than ticking on its own, because a LiveStats clock is not broadcast continuously.</li>
+      <li>Nothing else changes: the same scenes, the same control room, the same URLs. The statistician is at the federation's table; you only stream.</li>
+    </ul>
+    <div class="note"><p>Keep the control room tab open for the whole game. If it is closed, the arming runs out after four hours and the graphics fall back to the ten-second read. You can re-open it at any time to re-arm.</p></div>
+
+    <h2 id="scored">Games scored in the Epinoia app</h2>
+    <p>If the statistician scores the game in Epinoia's own scoring app, nothing needs arming. Every tap is pushed to the graphics the moment it is recorded and the clock ticks on the layer itself, so the scorebug is as live as the table. The scoring app is the third item under the caret on the game page.</p>
+
+    <h2 id="json">Data for Vizrt, Chyron, XPression, vMix data sources</h2>
+    <p>Systems that fill their own templates can poll the same state as a JSON document instead of showing the page:</p>
+    <pre>GET https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/broadcast?g=&lt;game-id&gt;</pre>
+    <p>The document carries the two teams, the score, period and clock, fouls, timeouts, the last play, both box scores and the players of the game, under stable field names that do not change during a season. Poll it every one to three seconds. The same document is what the page draws from, so a template and the layer can never disagree.</p>
+
+    <h2 id="trouble">Troubleshooting</h2>
+    <table class="t">
+      <tr><th>symptom</th><th>cause and fix</th></tr>
+      <tr><td>Nothing shows in OBS</td><td>Check the URL has <code>?g=</code> with the game id (copy it from the control room rather than typing it). Right-click the source → Refresh. Make sure the source is above the camera in the list.</td></tr>
+      <tr><td>The scorebug shows but never moves</td><td>For a LiveStats game: the game is not armed — open the control room signed in as an admin of the league or club, and check the "heartbeat" tag says armed. For an Epinoia-scored game: the statistician's app is not connected; the app shows its own connection light.</td></tr>
+      <tr><td>The score is right, the clock is behind</td><td>Normal on a LiveStats game: the clock follows the feed's readings. It ticks live only on games scored in Epinoia.</td></tr>
+      <tr><td>Wrong colours or crest</td><td>Club colours come from the crest a club published. Override for tonight with <code>&amp;home=rrggbb</code> / <code>&amp;away=rrggbb</code> on the URL, or fix the club's colour in the club portal.</td></tr>
+      <tr><td>The graphic is cut off at the edge</td><td>Your canvas is not 1920×1080, or the source was resized. Set the source to the canvas size and use <code>scale</code> instead of resizing.</td></tr>
+      <tr><td>Take / clear do nothing</td><td>The control room's live tag says not connected: the layer and the control room talk over a live channel that needs the internet on both. The fixed per-scene URLs still work; switch scenes in OBS instead.</td></tr>
+      <tr><td>A change to the graphics is not showing</td><td>OBS caches pages. Right-click the source → Refresh, or tick "Refresh browser when scene becomes active".</td></tr>
+    </table>
+
+    <h2 id="checklist">Match-day checklist</h2>
+    <ul class="check">
+      <li>Signed in on Epinoia as a league admin, a club manager or the assigned statistician.</li>
+      <li>Game page open; <b>Prime for broadcast</b> pressed; the control room open in its own tab and left open.</li>
+      <li>For a LiveStats game: the control room's heartbeat tag reads <b>armed</b>.</li>
+      <li>The live layer added in OBS at the canvas size, "shutdown when not visible" off, above the camera.</li>
+      <li>Position and scale checked on the preview against the real floor and the real lighting.</li>
+      <li>Crests and colours read correctly; overrides added if a kit clashes with the floor.</li>
+      <li>A test take: scorebug on, lower third on, clear — all seen in OBS.</li>
+      <li>At the end: take the <b>final</b> board, then <b>clear</b>.</li>
+    </ul>
+  </div>
+</div>
+<script src="../../config.js?v=292" defer></script>
+<script src="help.js?v=292" defer></script>
+<script src="../../nav.js?v=292" defer></script>
+</body>
+</html>

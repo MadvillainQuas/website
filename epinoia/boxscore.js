@@ -825,12 +825,18 @@ function advHTML(d){
     {l:'tov%', k:'tovp', max:30, hb:false, f:f1},
     /* possessions and each team's own pace (per 40); the header carries the game pace */
     {l:'possessions', k:'possessions', max:110, hb:null, f:f0}, {l:'pace / 40', k:'paceOwn', max:100, hb:null, f:f1}];
+  /* ONE CHART FOR EVERY ROW. The four factors, the additional metrics and the situational
+     points all read as the same mirrored pair: the home side grows leftwards from the centre,
+     the away side rightwards, each capped at the row's own maximum, with a hard end on each
+     bar so the eye reads a length rather than a glow. */
+  const mirror = (label, h, a, max, fmt, hWin, aWin) =>
+    '<div class="mrrow"><span class="ffval'+(hWin?' winner':'')+'">'+fmt(h)+'</span>'+
+      '<div><div class="mrbars"><div class="l"><i style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
+      '<div class="r"><i style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
+      '<span class="ffval r'+(aWin?' winner':'')+'">'+fmt(a)+'</span></div>';
   const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
     const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
-    return '<div class="ffrow"><span class="ffval'+(hWin?' winner':'')+'">'+x.f(h)+'</span>'+
-      '<div class="ffmid"><div class="ffbar"><i style="width:'+Math.min(100,h/x.max*100)+'%;background:'+c0+'"></i></div>'+
-      '<div class="ffbar"><i style="width:'+Math.min(100,a/x.max*100)+'%;background:'+c1+'"></i></div><div class="fflabel">'+x.l+'</div></div>'+
-      '<span class="ffval r'+(aWin?' winner':'')+'">'+x.f(a)+'</span></div>'; }).join('');
+    return mirror(x.l, h, a, x.max, x.f, hWin, aWin); }).join('');
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+'</div>';
   // 2. true shot attempts strip
@@ -853,15 +859,11 @@ function advHTML(d){
     {l:'dreb %', k:'drebp', max:100, f:f1}, {l:'tsa / 100', k:'tsaPer100', max:120, f:f1}];
   const mrRows = MR.map(x=>{ if(x.sep) return '<div class="mrsep">— '+x.sep+' —</div>';
     const h=TA[0][x.k], a=TA[1][x.k];
-    return '<div class="mrrow"><span class="ffval'+(h>a?' winner':'')+'">'+x.f(h)+'</span>'+
-      '<div><div class="mrbars"><div class="l"><i style="width:'+Math.min(100,h/x.max*100)+'%;background:'+c0+'"></i></div>'+
-      '<div class="r"><i style="width:'+Math.min(100,a/x.max*100)+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+x.l+'</div></div>'+
-      '<span class="ffval r'+(a>h?' winner':'')+'">'+x.f(a)+'</span></div>'; }).join('');
+    return mirror(x.l, h, a, x.max, x.f, h>a, a>h); }).join('');
   const SIT = [['paint pts','paint'],['transition pts','fast'],['2nd chance pts','sc'],['pts off turnovers','pot'],['bench pts','bench'],['biggest lead','lead']];
-  const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const tot=h+a||1;
-    return '<div class="mrrow"><span class="ffval'+(h>a?' winner':'')+'">'+h+'</span>'+
-      '<div><div class="tug"><i style="width:'+(h/tot*100)+'%;background:'+c0+'"></i><i style="width:'+(a/tot*100)+'%;background:'+c1+'"></i></div><div class="mrlabel">'+l+'</div></div>'+
-      '<span class="ffval r'+(a>h?' winner':'')+'">'+a+'</span></div>'; }).join('');
+  /* counts: the row's larger value is the full bar, so the two are read against each other */
+  const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
+    return mirror(l, h, a, max, v=>String(v), h>a, a>h); }).join('');
   const mrCard = '<div class="glass ffcard"><h3>additional metrics</h3>'+mrRows+'<div class="mrsep">— situational —</div>'+sitRows+'</div>';
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,

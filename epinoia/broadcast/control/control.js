@@ -25,6 +25,7 @@
 const qp = new URLSearchParams(location.search);
 const CFG = window.EPINOIA_CONFIG || {};
 const gameId = (qp.get('g') || qp.get('game') || '').trim();
+{ const hl = document.getElementById('helpLink'); if (hl && gameId) hl.href = '../help/?g=' + encodeURIComponent(gameId); }
 
 const $ = s => document.querySelector(s);
 /* Everything written into a note goes through this. A scene URL carries the
@@ -107,7 +108,42 @@ async function connect() {
     if (!sb) return;
     chan = sb.channel('bcast:' + gameId);
     chan.subscribe(st => { joined = (st === 'SUBSCRIBED'); paintLive(); });
+    armHeartbeat();
+    setInterval(armHeartbeat, 30 * 60 * 1000);      // re-armed while the room stays open
   } catch (_) { /* the fixed URLs still work, which is the whole point */ }
+}
+
+/* THE HEARTBEAT. A game scored in FIBA LiveStats reaches the graphics only as fast as the
+   ingest worker reads the feed. Arming the game (games.broadcast_until, four hours, renewed
+   every half hour while this page is open) has the worker read it every couple of seconds
+   and the layer poll at the same rate. On a game scored in the Epinoia app the arming is
+   harmless and the tag says so: those graphics are pushed on every tap regardless. */
+let armedUntil = null, fedGame = null;
+async function armHeartbeat() {
+  const tag = $('#hbTag');
+  if (!sb || !tag) return;
+  try {
+    if (fedGame == null) {
+      const { data } = await sb.from('external_games').select('external_id').eq('game_id', gameId).limit(1);
+      fedGame = !!(data && data.length);
+    }
+    const { data: sess } = await sb.auth.getSession();
+    if (!sess || !sess.session) {
+      tag.textContent = fedGame ? 'heartbeat: sign in as a club or league admin to arm the live feed' : 'heartbeat: not needed (scored in Epinoia)';
+      tag.classList.remove('on'); return;
+    }
+    const { data, error } = await sb.rpc('arm_broadcast', { p_game: gameId, p_minutes: 240 });
+    if (error) {
+      tag.textContent = /may not|42501/.test(error.message || '') ? 'heartbeat: this account may not arm this game' : 'heartbeat: ' + (error.message || 'could not arm');
+      tag.classList.remove('on'); return;
+    }
+    armedUntil = data ? new Date(data) : null;
+    tag.textContent = (fedGame ? 'heartbeat armed' : 'armed (not needed: scored in Epinoia)') +
+      (armedUntil ? ' until ' + armedUntil.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+    tag.classList.toggle('on', !!fedGame);
+  } catch (e) {
+    tag.textContent = 'heartbeat: ' + String(e.message || e).slice(0, 80); tag.classList.remove('on');
+  }
 }
 
 function publish(scene, opts) {

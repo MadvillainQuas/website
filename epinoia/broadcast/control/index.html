@@ -141,6 +141,8 @@
   .msg{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
     border-left:2px solid var(--rule-2);padding-left:11px;margin:calc(var(--u)*2) 0}
   code{font-family:var(--f-micro);font-size:9px;color:var(--lume);word-break:break-all}
+  .hd .help{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--lume);text-decoration:none;border:1px solid var(--lume);border-radius:999px;padding:5px 10px}
+  .hd .help:hover{background:color-mix(in oklch,var(--lume) 14%,transparent)}
 </style>
 </head>
 <body>
@@ -150,6 +152,8 @@
     <span class="fx" id="fx">—</span>
     <span class="fxready" id="fxReady">reading the fixture…</span>
     <span class="live" id="liveTag">layer not connected</span>
+    <span class="live" id="hbTag" title="a FIBA LiveStats game is read every two seconds while armed">heartbeat: …</span>
+    <a class="help" id="helpLink" href="../help/" target="_blank" rel="noopener">how to set up a broadcast ↗</a>
   </div>
 
   <div class="bar">
@@ -253,6 +257,6 @@
 <script src="../../config.js?v=281" defer></script>
 <script src="../../vendor/supabase.js?v=239" defer></script>
 <script src="mixers.js?v=239" defer></script>
-<script src="control.js?v=239" defer></script>
+<script src="control.js?v=292" defer></script>
 </body>
 </html>
