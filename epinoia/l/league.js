@@ -467,6 +467,13 @@ async function renderTeamStats() {
       'No team statistics yet — these fill in as games are finalised in the scorer.'));
     return;
   }
+  /* the shot zones ride on the same rows: the logs are read once (cached) and the table is
+     drawn when they are in, so its "shot zones" view is never a column of dashes */
+  const holding = el('div', 'empty', 'reading every shot\u2026'); board.appendChild(holding);
+  try {
+    if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) await window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData);
+  } catch (_) { /* the table still draws; the zones view shows dashes */ }
+  holding.remove();
   window.EpinoiaTable.render({
     host: board, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',

@@ -159,7 +159,7 @@ const P = [
 const T = [
   { k:'rank', l:'#',    g:['id'], fmt:(r,i)=>String(i+1), sort:r=>r.__i },
   { k:'name', l:'TEAM', g:['id'], fmt:r=>r.name, text:true },
-  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense'], fmt:r=>f0(r.gp) },
+  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense','zones'], fmt:r=>f0(r.gp) },
 
   { k:'ppg',    l:'PPG',  g:['basic'], fmt:r=>f1(r.ppg),  heat:1, lead:1 },
   { k:'papg',   l:'OPP',  g:['basic'], fmt:r=>f1(r.papg), heat:1, low:1 },
@@ -225,6 +225,22 @@ const T = [
   { k:'ast_to',  l:'A/TO', g:['basic','totals'], fmt:r=>f2(r.ast_to), heat:1 },
   { k:'ast_pct', l:'AST%', g:['totals'], fmt:r=>f1(r.ast_pct), heat:1 }
 ];
+/* SHOT ZONES: every zone of the chart (shotchart.js) and the larger cuts, five measures each
+   -- share of shots, attempts per 100 possessions, attempts and makes per game, eFG%. The rows
+   carry them under z_<zone>_<measure> once the page has run attachZoneStats; a table drawn
+   without that shows dashes. The key list is duplicated from shotchart.js on purpose: this
+   file must not depend on that one being loaded first. */
+const ZONE_KEYS = [['rim', 'RIM'], ['paint', 'PAINT'], ['base', 'BASE MID'], ['wingm', 'WING MID'], ['topm', 'TOP MID'],
+                   ['c3', 'CORNER 3'], ['w3', 'WING 3'], ['t3', 'TOP 3'],
+                   ['left', 'LEFT'], ['centre', 'CENTRE'], ['right', 'RIGHT'], ['atrim', 'RIM+PAINT'], ['jump', 'JUMP'],
+                   ['mid', 'ALL MID'], ['three', 'ALL 3'], ['all', 'ALL']];
+ZONE_KEYS.forEach(([z, l]) => {
+  T.push({ k:'z_' + z + '_share',  l:l + ' %SH',  g:['zones'], fmt:r=>f1(r['z_' + z + '_share']),  heat:1 });
+  T.push({ k:'z_' + z + '_att100', l:l + ' /100', g:['zones'], fmt:r=>f1(r['z_' + z + '_att100']), heat:1 });
+  T.push({ k:'z_' + z + '_attG',   l:l + ' A/G',  g:['zones'], fmt:r=>f1(r['z_' + z + '_attG']),   heat:1 });
+  T.push({ k:'z_' + z + '_madeG',  l:l + ' M/G',  g:['zones'], fmt:r=>f1(r['z_' + z + '_madeG']),  heat:1 });
+  T.push({ k:'z_' + z + '_efg',    l:l + ' eFG',  g:['zones'], fmt:r=>f1(r['z_' + z + '_efg']),    heat:1 });
+});
 
 /* presets: the first is the default, and is deliberately the beginner's view */
 const PRESETS = {
@@ -248,6 +264,7 @@ const PRESETS = {
     ['scoring',  'scoring types'],
     ['defense',  'defence'],
     ['totals',   'totals'],
+    ['zones',    'shot zones'],
     ['*',        'everything']
   ]
 };

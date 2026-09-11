@@ -320,6 +320,46 @@
       '<div class="sc-note">eFG% counts a three as one and a half makes \u00b7 % of shots is the share of every located attempt' + (g ? ' \u00b7 per game over ' + rows.games + (rows.games === 1 ? ' game' : ' games') : '') + '</div>';
   }
 
+  /* ---- the zones on a season's team rows ------------------------------------
+     ONE READ, EVERY TEAM. The season aggregation (data.js season()) has the games and the
+     team rows but no shot locations; those live in the event logs. This fetches the logs
+     once for a set of games, cuts every side's located shots into the zones, and writes the
+     numbers onto each team row under z_<zone>_<measure>, which is what the full table's
+     "shot zones" columns and the club profile's block both read. Cached per set of games. */
+  const attachCache = {};
+  async function attachZoneStats(S, D) {
+    if (!S || !S.games || !S.games.length || !S.teams || !D || !D.events) return {};
+    const key = S.games.map(g => g.id).sort().join(',');
+    let perTeam = attachCache[key];
+    if (!perTeam) {
+      const evs = await D.events(S.games.map(g => g.id));
+      const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+      const all = await gather({ fetchEvents: async () => Object.values(byG), gameIds: S.games.map(g => g.id), playerId: null });
+      const side = {}; S.games.forEach(g => { side[g.id] = [g.home_team_id, g.away_team_id]; });
+      perTeam = {};
+      all.forEach(sh => {
+        const tid = (side[sh.gameId] || [])[+sh.team];
+        if (tid) (perTeam[tid] = perTeam[tid] || []).push(sh);
+      });
+      attachCache[key] = perTeam;
+    }
+    const out = {};
+    S.teams.forEach(tm => {
+      const shots = perTeam[tm.id] || [];
+      const gp = tm.gp || S.games.filter(g => g.home_team_id === tm.id || g.away_team_id === tm.id).length || 1;
+      const zr = zoneRows(shots, gp);
+      const poss = tm.poss || null;
+      zr.groups.concat(zr.big).forEach(r => {
+        tm['z_' + r.k + '_share'] = r.share; tm['z_' + r.k + '_att100'] = poss ? 100 * r.att / poss : null;
+        tm['z_' + r.k + '_attG'] = r.attG; tm['z_' + r.k + '_madeG'] = r.madeG;
+        tm['z_' + r.k + '_fg'] = r.fg; tm['z_' + r.k + '_efg'] = r.efg; tm['z_' + r.k + '_att'] = r.att;
+      });
+      tm.z_located = shots.length;
+      out[tm.id] = zr;
+    });
+    return out;
+  }
+
   /* a club colour the marks can be seen in on this theme's ground (white on white was the
      alternative); the team-colour module knows the ground, the fallback is the colour itself */
   function markColour(hex) {
@@ -377,9 +417,9 @@
           ' \u00b7 zones tinted against their own break-even (paint 58%, mid-range 40%, three 35%); fewer than ' + floor + ' attempts stays grey'
         : 'No located shots yet \u2014 a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.') + '</div>' +
       (shots.length ? chips : '') +
-      (shots.length ? zoneTableHTML(zoneRows(shots, o.games)) : '');
+      (shots.length && o.table !== false ? zoneTableHTML(zoneRows(shots, o.games)) : '');
     return { zones: z, attempts: shots.length };
   }
 
-  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, markColour, ZONES, GROUPS, BIG };
+  return { gather, bin, render, shade, zones, zoneOf, zonePaths, zoneRows, zoneTableHTML, renderZones, attachZoneStats, markColour, ZONES, GROUPS, BIG };
 }));

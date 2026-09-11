@@ -139,7 +139,10 @@ body.nav-drawer-open{ overflow:hidden }
    separately from a measured value, because the two panels are different
    lengths and letting the taller one set the height leaves a hole under the
    shorter one. */
-.ep-nav .navdeck{ overflow:hidden; transition:height .34s cubic-bezier(.4,0,.2,1) }
+/* flex:none, because the deck is a flex item of the scroller now: with overflow hidden its
+   minimum height is nothing, so it was quietly shrunk to fit and the scroller never overflowed
+   -- twenty clubs, eight visible, no way to reach the rest */
+.ep-nav .navdeck{ overflow:hidden; flex:none; transition:height .34s cubic-bezier(.4,0,.2,1) }
 /* THREE PANELS: countries, leagues, pages. The deck is three screens wide and
    slides a third at a time, which is why the percentages are thirds rather
    than the halves this started with. */
