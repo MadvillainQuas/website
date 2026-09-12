@@ -1760,6 +1760,41 @@ window.EP_KEY = EP_KEY;
    thing to do about it is export the log, and that needs somebody to decide to. */
 let saveBroken = false, saveChecks = 0;
 
+/* A GAME IN PROGRESS IS NOT OVERWRITTEN BY A PAGE THAT HAS NOT LOADED IT.
+
+   The scorer boots with `S = newState()` — blank, phase 'setup' — and the saved
+   game is NOT read back automatically. It waits behind a `resume` control in the
+   bar, deliberately, because the old prompt fired before the page had drawn and
+   destroyed the game on "no".
+
+   Which leaves a window in which S is blank and the phone still holds a whole
+   game, and anything calling save() in that window writes the blank one over it.
+   Something did: adoptVideo polls every 1500 ms, fires as soon as S is truthy —
+   which it is immediately — and called save() to persist the video row it had
+   just read. On a fixture with a video attached, one reload was enough. No tap,
+   no prompt, nothing on screen. And because injectSavedGame skips a saved state
+   whose phase is 'setup', the resume control did not come back on the NEXT load
+   either: the game was gone and so was the door to it.
+
+   The guard is the invariant rather than a list of callers: a state in setup may
+   never be written over a stored state that is in play. Nothing legitimate needs
+   to — starting a new game REMOVES the key (see #newGame) rather than saving a
+   blank over it, and discarding removes it too. The cost is that squad entry for
+   a NEW game is not persisted while an old one is still stored, which is the
+   situation where the stored one is worth more than the typing, and the bar is
+   already showing it with a discard button. */
+let savedInPlay = (function () {
+  try {
+    const r = localStorage.getItem(EP_KEY);
+    if (!r) return false;
+    const p = JSON.parse(r);
+    return !!(p && p.phase && p.phase !== 'setup' && (p.events || []).length);
+  } catch (_) { return false; }
+}());
+/* the discard control in the bar removes the key, so the protection lifts */
+window.epForgetSaved = function () { savedInPlay = false; };
+let shrinkSaid = false;
+
 function saveBanner(msg){
   let el = document.getElementById('saveWarn');
   if(!el){
@@ -1785,6 +1820,18 @@ function saveBanner(msg){
 }
 
 function save(){
+  if(savedInPlay && S && S.phase === 'setup'){
+    /* Said once, to the console rather than the screen: the bar is already
+       showing the stored game and offering to resume or discard it, which is a
+       better account of the situation than a banner would be. */
+    if(!shrinkSaid){
+      shrinkSaid = true;
+      try{ console.warn('[save] refusing to write a blank state over the stored game — resume or discard it first'); }catch(_){ }
+    }
+    return;
+  }
+  /* Past setup, this page IS the game; the stored copy is its own. */
+  if(S && S.phase && S.phase !== 'setup') savedInPlay = false;
   let str = null;
   try{
     str = JSON.stringify(S);
@@ -6654,6 +6701,6 @@ window.describeSaved = function (saved) {
 <script src="../live.js?v=311" defer></script>
 <script src="../video.js?v=309" defer></script>
 <script src="sync.js?v=240" defer></script>
-<script src="bootstrap.js?v=315" defer></script>
+<script src="bootstrap.js?v=316" defer></script>
 </body>
 </html>

@@ -418,7 +418,16 @@
         S.video.tipOffsetMs = row.tip_offset_ms != null ? +row.tip_offset_ms
                                                         : (S.video.tipOffsetMs || null);
         S.video.trimMs = row.trim_ms != null ? row.trim_ms : (S.video.trimMs || 0);
-        if (typeof window.save === 'function') window.save();
+        /* NOT WHILE THE PAGE IS STILL BLANK. This fires 1500 ms after load, and
+           the scorer boots with a blank S in phase 'setup' — the saved game is
+           not read back until somebody presses resume. Saving here wrote that
+           blank state over a whole recorded game, with no tap and nothing on
+           screen, on any fixture that had a video attached. save() refuses it
+           now as well; this is the call site that should never have asked.
+
+           Nothing is lost by waiting: this exists only to persist S.video, and
+           nothing reads S.video before a game starts. */
+        if (S.phase !== 'setup' && typeof window.save === 'function') window.save();
 
         /* RECONCILE, DO NOT JUST ADOPT. A scorer that tipped off while the
            wifi was down, and was then reloaded, holds the only copy of the
@@ -754,12 +763,19 @@
       const load = mk('resume', '#93f2bf');
       load.title = 'pick this game back up where it was left';
       load.addEventListener('click', () => {
-        /* Loading a saved game over a NAMED fixture is how one game's events
-           end up published into another, so it is refused rather than
-           explained away. */
-        if (isFixture) {
-          alert('This page is open on a specific fixture. Open the scorer ' +
-                'without a fixture in the address to pick up a saved game.');
+        /* Loading a saved game over a NAMED fixture is how one game's events end
+           up published into another, so a saved game that does not say it
+           belongs to THIS fixture is still refused. One that does say so is the
+           statistician's own game, and refusing it closed the only recovery
+           route a crash leaves open on a hall's dead wifi — loadRecorded pulls
+           the league's copy, and the league is exactly what is unreachable. */
+        if (isFixture && saved.fixtureId !== gameId) {
+          alert(saved.fixtureId
+            ? 'That saved game belongs to a different fixture. Open the scorer ' +
+              'without a fixture in the address to pick it up.'
+            : 'This page is open on a specific fixture, and the saved game does ' +
+              'not say which fixture it belongs to. Open the scorer without a ' +
+              'fixture in the address to pick it up.');
           return;
         }
         try { window.applySaved(saved); wrap.remove(); }
@@ -775,6 +791,9 @@
         if (!ok) return;
         try { localStorage.removeItem(window.EP_KEY || 'epinoia_v1');
               localStorage.removeItem('epinoia_v1_game'); } catch (_) {}
+        /* save() refuses to write a blank state over a stored game; there is no
+           longer a stored game, so it must stop refusing. */
+        try { window.epForgetSaved && window.epForgetSaved(); } catch (_) {}
         wrap.remove();
       });
 
@@ -1579,6 +1598,17 @@
        the worse of the two failures. The interval is left running on purpose. */
     if (unverified) return;
     clearInterval(timer);
+
+    /* WHICH FIXTURE THIS GAME IS. Recorded so that a statistician whose page
+       crashed can pick their own game back up from the same address. Before
+       this the saved state said nothing about where it came from, so `resume`
+       had to refuse every fixture outright — loading one game's log into
+       another is how a league ends up with a match report of the wrong game —
+       and the recovery route on the device was the one route the crash had
+       already closed. A saved game with no fixtureId is still refused, which is
+       every game recorded before today. */
+    try { if (S.fixtureId !== gameId) { S.fixtureId = gameId; window.save && window.save(); } }
+    catch (_) { /* a game that cannot be stamped is scored anyway */ }
 
     if (!window.EpinoiaSync) { say('sync.js missing', '#ff5f6b'); return; }
     const sb = (mode === 'supabase' && window.epinoiaClient) ? window.epinoiaClient() : null;

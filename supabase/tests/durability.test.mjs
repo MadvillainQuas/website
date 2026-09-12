@@ -293,5 +293,61 @@ const frameOf = (events, state) => ({
      !/unverified = true;[\s\S]{0,400}halt\(\)/.test(bs));
 }
 
+/* ---------------------------------------------------------------------------
+   A BLANK PAGE MUST NOT OVERWRITE A GAME IN PROGRESS.
+
+   The scorer boots with `S = newState()` -- blank, phase 'setup' -- and the
+   saved game is deliberately NOT read back: it waits behind a `resume` control
+   in the bar, because the old modal fired before the page had drawn and
+   destroyed the game on "no".
+
+   That leaves a window where S is blank and the phone still holds a whole game,
+   and anything calling save() in it writes the blank one over the real one.
+   adoptVideo did: it polls every 1500 ms, fires as soon as S is truthy -- which
+   it is immediately -- and saved to persist the video row it had just read. On a
+   fixture with a video attached, ONE reload was enough, with no tap and nothing
+   on screen. And because injectSavedGame skips a saved state whose phase is
+   'setup', the resume control did not return on the next load either: the game
+   was gone and so was the door back to it.
+
+   Two guards, because either alone would leave the other route open, plus the
+   recovery the crash used to close.
+   --------------------------------------------------------------------------- */
+{
+  const fs4 = require('node:fs');
+  const sc4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
+  const bs4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+
+  ok('the page knows at boot whether the phone already holds a game',
+     /let savedInPlay = \(function \(\) \{[\s\S]{0,400}p\.phase !== 'setup' && \(p\.events \|\| \[\]\)\.length/.test(sc4));
+  ok('...and save refuses to write a blank state over it',
+     /function save\(\)\{\s*\n\s*if\(savedInPlay && S && S\.phase === 'setup'\)\{/.test(sc4) &&
+     /shrinkSaid = true;[\s\S]{0,260}\n\s*return;\n\s*\}/.test(sc4));
+  ok('...saying so once, to the console, because the bar already shows the game',
+     /refusing to write a blank state over the stored game/.test(sc4) &&
+     /if\(!shrinkSaid\)\{/.test(sc4));
+  ok('...and the protection lifts the moment this page IS a game',
+     /if\(S && S\.phase && S\.phase !== 'setup'\) savedInPlay = false;/.test(sc4));
+  ok('...and when the stored game is discarded',
+     /window\.epForgetSaved = function \(\) \{ savedInPlay = false; \};/.test(sc4) &&
+     /window\.epForgetSaved && window\.epForgetSaved\(\)/.test(bs4));
+
+  ok('the call site that should never have asked no longer asks',
+     /if \(S\.phase !== 'setup' && typeof window\.save === 'function'\) window\.save\(\);/.test(bs4));
+  ok('...and nothing else in adoptVideo saves unconditionally',
+     !/S\.video\.trimMs = row\.trim_ms[\s\S]{0,80}\n\s*if \(typeof window\.save === 'function'\) window\.save\(\);/.test(bs4));
+
+  /* And the recovery route the crash used to close. */
+  ok('a scored fixture records which fixture it is',
+     /if \(S\.fixtureId !== gameId\) \{ S\.fixtureId = gameId;/.test(bs4));
+  ok('...so resume accepts the statistician\'s own game back',
+     /if \(isFixture && saved\.fixtureId !== gameId\) \{/.test(bs4));
+  ok('...and still refuses one that belongs to a different fixture',
+     /belongs to a different fixture/.test(bs4));
+  ok('...and one that does not say, which is every game recorded before today',
+     /not say which fixture it belongs to/.test(bs4) &&
+     /saved\.fixtureId\s*\n?\s*\?/.test(bs4));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

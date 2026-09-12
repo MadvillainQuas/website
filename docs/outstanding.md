@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -182,6 +182,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 10. Stop the local copy of a live game being overwritten within 1.5s of a reload
 
 **critical** / days · `scorer`
+
+> **STATUS - DONE 2026-09-12 - three changes. (a) adoptVideo no longer saves while S.phase is setup. (b) save() refuses outright to write a setup-phase state over a stored game that is in play, which is the invariant rather than a list of callers; nothing legitimate needs to, because starting a new game REMOVES the key rather than saving a blank over it, and the discard control calls window.epForgetSaved() to lift the protection. The suggested events-length high-water mark was NOT used: a missed shrink site would stop saving silently, which is worse than the fault. (c) a scored fixture now stamps S.fixtureId, so the resume control accepts the statistician's own game back on the same address while still refusing a game from another fixture, and one with no fixtureId at all - which is every game recorded before today. Browser-verified both ways: a blank save over a recorded game is refused and says so once, and ordinary setup-phase saving still writes when there is nothing to protect. Tests in supabase/tests/durability.test.mjs.**
 
 **Why.** A recovery route exists — guardAgainstOverwrite plus offerTakeover plus loadRecorded — but the local copy is destroyed before it can run, and the guard needs the network the crash usually took away. On reload with 520 events in localStorage, adoptVideo's 1500ms timer fires the moment S is truthy (it already is, a blank newState in phase 'setup'), and if the fixture has a game_videos row it calls window.save() and writes the BLANK state over the 520-event game. No user action required. Only up to 3s later does the guard run, and if the count query fails at that instant the latch (item 5) kills it forever. Both copies are then gone. The escape hatch's resume control holds the saved object in a closure but refuses to apply it on a fixture, and the stamp that would make it decidable — epinoia_v1_game, written at bootstrap.js:1047 — is read by nothing anywhere in the repo.
 
