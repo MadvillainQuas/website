@@ -2539,6 +2539,25 @@ function cancelStep(){
       toast('back to ' + flowSteps(p)[p.step]);
       return;
     }
+    /* A FOUL IS NOT A DRAFT. Everything else this window can be holding was
+       entered seconds ago as part of a play still being described, and throwing
+       it away is cheap to redo. A foul has already changed the player's count,
+       the team's count and therefore when the bonus starts, and it is the one
+       thing in here a referee said out loud. Since the legend used to point at
+       this exit for "no free throws", it is also the one most likely to be hit
+       by somebody who meant the opposite — so it asks. */
+    if(p.kind==='foul' && p.foulIdx!=null && steps.length===1 && steps[0]===p.foulIdx){
+      const fev = evById(p.foulIdx), fid = p.foulIdx, self = p;
+      askConfirm('delete the foul on ' + (fev && fev.pid ? pname(fev.pid) : 'the bench') + '?',
+        ()=>{
+          /* the window may have expired while the question was on screen, and the
+             scorer may already be inside a new one — only close our own */
+          if(ui.pending === self){ ui.pending = null; ui.foulType = null; }
+          removeEventKeep(fid);
+          save(); renderAll(); toast('foul deleted');
+        });
+      return;
+    }
     // the first step of the flow, or no flow at all → cancel it entirely
     const id = steps[0]; const ev = id!=null ? evById(id) : null;
     ui.pending=null; ui.foulType=null;
@@ -2617,7 +2636,20 @@ function helpSpec(){
     } else if(p.kind==='foul'){
       k('tap opponent','free throw — missed','red');
       k(IS_TOUCH?'press opponent':'hold opponent 1.5s','free throw — made','grn');
-      k('✕','no free throws','x');
+      /* THE EXIT THAT MEANS "NO FREE THROWS" IS THE GREEN ONE.
+
+         This line read "✕ — no free throws", and ✕ on a foul window with nothing
+         after it deletes the foul. A defensive personal not in the bonus is the
+         commonest foul in a game, it opens exactly this window, and the legend
+         named the delete as the way out of it. The toast said "cancelled: foul
+         on #12 smith" and was gone in two seconds; the badge quietly dropped
+         back. By the fourth a player with five fouls is still on the floor and
+         the team count is short, which is what decides when the bonus starts.
+
+         The green disc is already on screen — renderX unhides it for any pending
+         — so naming it costs nothing and is what the scorer wanted all along. */
+      k(DONEK(),'no free throws — keep the foul','grn');
+      k(CANCK(),'delete the foul','x');
     }
     return L;
   }

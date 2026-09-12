@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 9, 11, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 9, 11, 12, 13, 14, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -272,6 +272,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 17. Stop ✕ deleting the foul it was advertised to cancel
 
 **critical** / hours · `scorer`
+
+> **STATUS - DONE 2026-09-12 - the legend now names the green disc as "no free throws - keep the foul" and the cross as "delete the foul", and the delete asks first, naming the player. Tests in supabase/tests/scorer-foul.test.mjs, which runs the shipped cancelStep. Browser-verified in the practice game.**
 
 **Why.** A defensive personal foul not in the bonus is the commonest foul in a game. It opens a kind:'foul' window with one step and no flow, and the legend at index.html:2537-2540 names exactly one exit: '✕ — no free throws'. cancelStep then falls through every guard and reaches removeEventKeep(steps[0]) — the foul itself is erased. The toast reads 'cancelled: foul on #12 smith' and is gone in 2.2s; the player's foul badge silently drops back. By Q4 a player with five fouls is still on the floor and the team-foul count driving the bonus is one light. The window never expires on its own either (the clock is stopped, so tick keeps pushing expires), so the scorer is parked in a window whose only advertised exit destroys their work.
 

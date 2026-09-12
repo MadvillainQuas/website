@@ -266,6 +266,20 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: The exit that says "no free throws"
+        # the foul window's legend named the delete as the way out of it, so the
+        # commonest foul in a game was routinely erased by a scorer who meant
+        # "no free throws". Nothing said so: the badge just dropped back, and by
+        # the fourth a player with five fouls was still on the floor.
+        run: node supabase/tests/scorer-foul.test.mjs
+
+      - name: A second device takes over the game it is given
+        # loadRecorded pulled the log but not the five that started, so a device
+        # taking over replayed real substitutions against the five its own picker
+        # had defaulted to -- and every plus-minus, stint and lineup row in the
+        # game was then computed against a lineup that never took the floor.
+        run: node supabase/tests/takeover.test.mjs
+
       - name: Clock cam decoder, on rendered scoreboards
         # renders seven-segment boards through what a sports hall does to a
         # picture -- dim, flickering, banded, blurred, angled, dot-matrix, and
