@@ -239,6 +239,13 @@ jobs:
         # one, so this checks the ENGINE's box score, not just the event shapes
         run: node supabase/tests/livestats.test.mjs
 
+      - name: A fed game lands where it happened
+        # the LiveStats chain has four links in three languages — the poll stamp,
+        # the tip anchor, the position arithmetic and the clip window — and nothing
+        # checked that they compose. Asserts the property the design rests on (the
+        # tip cancels) and that a clip still contains the shot at either cadence.
+        run: node supabase/tests/videosync.test.mjs
+
       - name: A live event survives the trip to the layer
         # broadcast.js re-applied its database-row flattener to events that had
         # already been flattened, so on air a substitution lost who went on and

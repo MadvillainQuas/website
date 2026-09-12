@@ -49,7 +49,10 @@ const eq = (name, got, want) => {
    drift away from the code it is about */
 import { readFileSync } from 'node:fs';
 const src = readFileSync(path.join(ROOT, 'epinoia', 'broadcast', 'broadcast.js'), 'utf8');
-const m = src.match(/const rowToEvent = ([\s\S]*?);\n/);
+/* Tolerant of CRLF. This repo's checkout rewrites line endings, and anchoring on
+   a bare newline made the test pass or fail depending on whether git had last
+   touched the file — which is a test that reports on the wrong thing. */
+const m = src.match(/const rowToEvent = ([\s\S]*?);[\r\n]/);
 if (!m) { console.error('could not find rowToEvent in broadcast.js'); process.exit(1); }
 const rowToEvent = eval('(' + m[1] + ')');
 

@@ -631,6 +631,58 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     return True
 
 
+def _elapsed_ms(row: dict) -> int:
+    """How much basketball had been played by this row, from its period and the clock left in it."""
+    try:
+        per = max(1, int(row.get("period") or 1))
+        clock = max(0, int(row.get("clock") or 0))
+    except Exception:
+        return 0
+    played = 0
+    for q in range(1, per):
+        played += 600_000 if q <= 4 else 300_000
+    full = 600_000 if per <= 4 else 300_000
+    return played + max(0, full - min(full, clock))
+
+
+def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) -> dict | None:
+    """Whether a game's FIRST write may carry the poll stamp, and with what error.
+
+    THE FIRST WRITE IS THE ONE THAT CARRIES THE TIP, and the tip is the row everything
+    else is measured against: auto_video reads its payload.wall to set tip_wall, and
+    epinoia/video.js needs BOTH an event's wall and tip_wall before it will use the
+    device clock at all. So a tip with no stamp does not cost one play — it turns the
+    whole game back to insert times, for every clip and every highlight.
+
+    But a first write can just as easily be a game the lane only found at half-time,
+    forty minutes of plays arriving in one batch. Stamping those with `now` would put
+    every one of them on the same frame and say so confidently.
+
+    The log itself tells us which it is: if the last row is only a couple of minutes
+    into the first period, everything in the batch happened within the last couple of
+    minutes and `now` is a fair stamp for all of it. The error bar is widened to say
+    exactly how fair — the poll's own error plus however much game the batch spans —
+    and epinoia/game/video.js already surfaces the worst of those to the person
+    deciding whether a clip is worth cutting.
+
+    Note that a stamp which is slightly LATE costs nothing in placement: tip_at is
+    derived from tip_wall, so the same error lands in the gap and in the offset from
+    tip, and cancels. What must not happen is a batch wide enough that its rows
+    disagree with each other, which is what fresh_ms bounds.
+
+    Ninety seconds, because epinoia/game/video.js reports the WORST error in the log as
+    the game's accuracy, and a generous bound here would let one early batch speak for a
+    game that is otherwise timed to ten seconds."""
+    if not stamp or not rows:
+        return None
+    span = _elapsed_ms(rows[-1])
+    if span > fresh_ms:
+        return None
+    out = dict(stamp)
+    out["wall_err"] = int(stamp.get("wall_err") or 0) + int(span)
+    return out
+
+
 def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict, observed: tuple | None = None) -> None:
     """Translate the FIBA payload into game_events and finalise the game (roadmap Phase B).
     `pids` maps "<teamcode>:<pno>" -> players.id (from Platform.ensure_game_people).
@@ -702,10 +754,23 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
             for r in rows[len(existing):]:
                 if "wall" not in (r.get("payload") or {}):
                     r["payload"] = {**(r.get("payload") or {}), **stamp}
+        elif stamp and not existing:
+            # The first sight of this game. Stamp it only if the log is still short
+            # enough that one stamp is honest for all of it — see first_write_stamp.
+            fw = first_write_stamp(rows, stamp)
+            if fw:
+                for r in rows:
+                    if "wall" not in (r.get("payload") or {}):
+                        r["payload"] = {**(r.get("payload") or {}), **fw}
+                how_first = f", first write stamped (±{fw['wall_err'] // 1000}s)"
+            else:
+                how_first = ", first write unstamped (log already deep)"
+        else:
+            how_first = ""
         sb.delete("game_events", f"game_id=eq.{game_id}")
         for i in range(0, len(rows), 400):
             sb.insert("game_events", rows[i:i + 400])
-        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else "")
+        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else (locals().get("how_first") or ""))
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0

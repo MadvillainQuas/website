@@ -48,6 +48,7 @@ const bootstrap = rd('epinoia', 'score', 'bootstrap.js');
 const sql       = rd('supabase', 'migrations', '0082_game_video.sql');
 const tabjs     = rd('epinoia', 'game', 'video.js');
 const pvjs      = rd('epinoia', 'p', 'video.js');
+const videojs   = rd('epinoia', 'video.js');
 const syncjs    = rd('epinoia', 'score', 'sync.js');
 
 let pass = 0, fail = 0;
@@ -118,8 +119,18 @@ ok('gapText says it in words a person can act on',
    all at 0:00, which is the version of this bug that ships. */
 ok('the game tab warns instead of listing when there is no anchor',
    /hasAnchor/.test(tabjs) && /has not been lined up/.test(tabjs));
-ok("the profile panel simply does not appear without an anchor",
-   /g\.video && V\(\)\.hasAnchor\(g\.video\) && V\(\)\.logIsTimed\(g\.events\)/.test(pvjs));
+/* THE RULE, NOT THE EXPRESSION. This matched one exact line, and went red when a
+   third way of placing a play arrived: a clock track read off the scoreboard in
+   the footage, which puts a play in the video without needing a wall-clock anchor
+   at all. The guard is now "(an anchor OR a track) AND (a timed log OR a track)",
+   which is the same refusal with one more way of saying yes. What must stay true
+   is that the panel consults BOTH an anchor and whether the log is timed — a
+   bulk-imported season satisfies neither and would fill the panel with ninety
+   plays on one frame. */
+ok('the profile panel weighs an anchor and a timed log before it renders',
+   /hasAnchor\(g\.video\)/.test(pvjs) && /logIsTimed\(g\.events\)/.test(pvjs));
+ok('...and a game with no footage at all never reaches it',
+   /g\.video &&/.test(pvjs));
 
 /* ---- 2b. a log that was imported in bulk carries no time of day ----------- */
 console.log('\nan imported log is refused rather than stacked on one frame');
@@ -318,9 +329,22 @@ ok('plays come out in video order',
 const three = idx.find(p => p.t === 'p3_made');
 ok('a three sits where its wall clock says',
    three.ms === 900000 + 120000, String(three.ms));
+/* THE RUN-UP IS THE TABLE'S FIGURE PLUS THE LEEWAY.
+
+   This used to assert the table's 9,500 ms on its own, and went red the day
+   LEEWAY_MS was added — every seek deliberately lands a further two seconds early,
+   on the reasoning that a position is an estimate and one that is late cuts the
+   shot off while one that is early shows the play with a breath before it. The
+   code was right and the test had simply not been told.
+
+   So the leeway is read out of the source rather than repeated here: the assertion
+   is about the ARITHMETIC — run-up = table + leeway, and the tail untouched — which
+   is the part that must not break, while the two constants stay free to be tuned. */
+const LEEWAY = +((videojs.match(/const LEEWAY_MS = (\d+)/) || [])[1]);
+ok('the leeway is a real, forward-looking cushion', LEEWAY >= 1000, String(LEEWAY));
 ok('...and its clip starts before it, not on it',
-   three.start === three.ms - 9500 && three.end === three.ms + 4500,
-   three.start + '..' + three.end);
+   three.start === three.ms - (9500 + LEEWAY) && three.end === three.ms + 4500,
+   three.start + '..' + three.end + ' (leeway ' + LEEWAY + ')');
 /* A basket six seconds into the footage — a warm-up shot, or a stream that
    went up as the ball did — wants nine and a half seconds of run-up it cannot
    have. It gets what there is rather than a negative seek. */
@@ -520,7 +544,7 @@ ok('a player profile reads the same rows for the games their club played',
    /game_videos\?game_id=in\./.test(playerjs) &&
    /EpinoiaPlayerVideo\.render/.test(playerjs));
 ok('...and the panel only appears when the plays can actually be found',
-   /g\.video && V\(\)\.hasAnchor\(g\.video\) && V\(\)\.logIsTimed\(g\.events\)/.test(pvjs));
+   /hasAnchor\(g\.video\)/.test(pvjs) && /logIsTimed\(g\.events\)/.test(pvjs));
 
 /* ---- attaching a recording BEFORE the game, from the bottom menu ---------- */
 console.log('\nthe pre-game path: paste the link, say where the tip is, then score');

@@ -407,7 +407,25 @@ const DEFAULT_ROLL = [7000, 4500];
    with a breath before it. Two seconds early is never wrong. */
 const LEEWAY_MS = 2000;
 
-function clipOf(t) { const r = ROLL[t] || DEFAULT_ROLL; return [r[0] + LEEWAY_MS, r[1]]; }
+/* A PLAY WE ARE LESS SURE OF NEEDS MORE ROOM IN FRONT OF IT.
+
+   A fed play is stamped with the poll that SAW it, and payload.wall_err says how
+   far back it could really have happened — a whole poll interval. At the ordinary
+   ten-second live cadence that eats the entire run-up: the clip can open a second
+   and a half before the shot, which shows the ball going in and nothing of how it
+   was made. The number is already on the row; spending it here is what turns a
+   technically-correct position into a clip worth watching.
+
+   Capped, because the error can legitimately be large — a first write covering a
+   minute and a half of play carries that minute and a half — and a three-minute
+   run-up is not a highlight, it is the game. Past the cap the honest answer is the
+   accuracy figure the tab already shows, not a longer clip. */
+const ERR_ROOM_MAX = 15000;
+function clipOf(t, errMs) {
+  const r = ROLL[t] || DEFAULT_ROLL;
+  const err = (errMs != null && isFinite(+errMs) && +errMs > 0) ? Math.min(+errMs, ERR_ROOM_MAX) : 0;
+  return [r[0] + LEEWAY_MS + err, r[1]];
+}
 
 /* ------------------------------------------- plays that nobody tapped live --
    A PLAY PLACED BY HAND DID NOT HAPPEN WHEN IT WAS TYPED.
@@ -718,7 +736,7 @@ function index(events, video, opts) {
     if (tp == null && (row.since == null || gap == null)) continue;
     const pos = tp != null ? tp : gap + row.since;
     if (pos < 0) continue;
-    const [pre, post] = clipOf(e.t);
+    const [pre, post] = clipOf(e.t, e.wall_err);
     out.push({
       /* placed by the clock overlay rather than by wall clock */
       byClock: tp != null,
