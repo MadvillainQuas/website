@@ -217,5 +217,40 @@ const frameOf = (events, state) => ({
      /finalise\(\)[\s\S]{0,220}maybeRoster\(S\)/.test(sync));
 }
 
+/* ---------------------------------------------------------------------------
+   A SAVE THAT FAILS HAS TO SAY SO.
+
+   save() was one setItem inside a bare catch that threw the error away, called on
+   every tap. When it starts failing it fails hundreds of times and says nothing:
+   the screen keeps drawing a perfect game, every number on it is right, and
+   nothing has reached the phone since whenever the store filled up. The
+   statistician finds out by reloading — which is what they do when something else
+   goes wrong, which is exactly when this is most likely to have happened.
+
+   The quota is shared, too: this origin also serves the analyser, and every
+   scratch game leaves an eplive: key behind.
+   --------------------------------------------------------------------------- */
+{
+  const fs2 = require('node:fs');
+  const sc = fs2.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
+
+  ok('a failed save is reported rather than swallowed',
+     /catch\(e\)\{[\s\S]{0,200}saveBroken = true;[\s\S]{0,120}saveBanner\(/.test(sc));
+  ok('...with a notice that names the only useful thing to do about it',
+     /NOT BEING SAVED ON THIS PHONE/.test(sc) && /export the play-by-play now/.test(sc));
+  ok('...and a button wired to the export',
+     /b\.onclick = \(\) => \{ try\{ downloadJSON\(\); \}/.test(sc));
+  ok('the notice does not stack on every subsequent tap',
+     /if\(!saveBroken\)\{\s*\n?\s*saveBroken = true;/.test(sc));
+  ok('...and it clears if saving starts working again',
+     /if\(saveBroken\)\{[\s\S]{0,200}el\.remove\(\)/.test(sc));
+  ok('the write is read back periodically, for a store that accepts and does not keep',
+     /saveChecks % 40/.test(sc) && /written but not stored/.test(sc));
+  ok('...but not on every tap, because that copies the whole game',
+     !/const back = localStorage\.getItem\(EP_KEY\);\s*\n\s*if\(back == null[\s\S]{0,40}\}\s*\n\s*if\(saveBroken/.test(sc));
+  ok('stale live-transport keys are swept on boot, since they share the same quota',
+     /sweepLiveKeys/.test(sc) && /k\.indexOf\('eplive:'\) === 0 && k !== keep/.test(sc));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

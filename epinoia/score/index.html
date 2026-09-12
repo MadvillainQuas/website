@@ -1740,7 +1740,87 @@ const EP_TRAIN = new URLSearchParams(location.search).get('train') === '1';
 const EP_GUIDE = new URLSearchParams(location.search).get('guide') !== '0';
 const EP_KEY = EP_TRAIN ? 'epinoia_v1_demo' : 'epinoia_v1';
 window.EP_KEY = EP_KEY;
-function save(){ try{ localStorage.setItem(EP_KEY, JSON.stringify(S)); }catch(e){} }
+/* ==================== saving, and saying when it fails ====================
+   THE ONLY COPY OF A GAME IN PROGRESS IS THIS ONE.
+
+   save() was a single setItem inside a bare catch that threw the error away. It
+   is called on every tap, so when it starts failing it fails hundreds of times
+   and says nothing: the screen keeps drawing a perfect game, every number on it
+   is right, and nothing has reached the phone since whenever it filled up. The
+   statistician finds out by reloading — which is what they do when something
+   else goes wrong, which is the moment this is most likely to have happened.
+
+   And the quota is shared. This origin also serves the analyser, which writes
+   large keys of its own, and every scratch game leaves an eplive: entry behind.
+   Whichever fills it, the failure here is identical and silent.
+
+   So: a throw is reported, not eaten, and once in a while the write is read back
+   to catch the rarer case of a store that accepts and does not keep. The notice
+   is deliberately loud and does not go away by itself, because the only useful
+   thing to do about it is export the log, and that needs somebody to decide to. */
+let saveBroken = false, saveChecks = 0;
+
+function saveBanner(msg){
+  let el = document.getElementById('saveWarn');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'saveWarn';
+    el.style.cssText = [
+      'position:fixed','left:0','right:0','bottom:0','z-index:2147483000',
+      'background:#7a0c16','color:#fff','padding:10px 12px',
+      'font:700 12px/1.4 ui-sans-serif,system-ui,sans-serif','letter-spacing:.02em',
+      'display:flex','gap:10px','align-items:center','justify-content:space-between',
+      'box-shadow:0 -6px 18px rgba(0,0,0,.4)'
+    ].join(';');
+    const t = document.createElement('span');
+    t.id = 'saveWarnText';
+    const b = document.createElement('button');
+    b.textContent = 'export now';
+    b.style.cssText = 'flex:none;background:#fff;color:#7a0c16;border:0;border-radius:999px;padding:8px 14px;font:700 12px ui-sans-serif,system-ui,sans-serif;cursor:pointer';
+    b.onclick = () => { try{ downloadJSON(); }catch(_){ } };
+    el.appendChild(t); el.appendChild(b);
+    document.body.appendChild(el);
+  }
+  document.getElementById('saveWarnText').textContent = msg;
+}
+
+function save(){
+  let str = null;
+  try{
+    str = JSON.stringify(S);
+    localStorage.setItem(EP_KEY, str);
+    /* Reading the whole thing back costs a copy of the game, so it is not done on
+       every tap — a throw is the way this actually fails, and that is free to
+       catch. This is for the store that lies. */
+    if((++saveChecks % 40) === 0){
+      const back = localStorage.getItem(EP_KEY);
+      if(back == null || back.length !== str.length) throw new Error('written but not stored');
+    }
+    if(saveBroken){
+      saveBroken = false;
+      const el = document.getElementById('saveWarn');
+      if(el) el.remove();
+      toast('saving again');
+    }
+  }catch(e){
+    if(!saveBroken){
+      saveBroken = true;
+      saveBanner('THIS GAME IS NOT BEING SAVED ON THIS PHONE \u2014 export the play-by-play now, and keep this tab open.');
+      try{ console.error('[save]', e); }catch(_){ }
+    }
+  }
+}
+
+/* A scratch game leaves its live-transport key behind, and they accumulate in the
+   same five megabytes the real game needs. Dropped on boot: anything belonging to
+   a game this page is not scoring is somebody else's finished business. */
+(function sweepLiveKeys(){
+  try{
+    const keep = 'eplive:' + (new URLSearchParams(location.search).get('g') || '');
+    Object.keys(localStorage).filter(k => k.indexOf('eplive:') === 0 && k !== keep)
+      .forEach(k => { try{ localStorage.removeItem(k); }catch(_){ } });
+  }catch(_){ /* a browser that refuses to enumerate is a browser we leave alone */ }
+}());
 /* The saved game moved key when Courtside became Epinoia. A statistician with a
    game open at that moment must not lose it, so the old key is read through
    once and carried over — renaming a storage key is a silent data loss unless
@@ -6525,6 +6605,6 @@ window.describeSaved = function (saved) {
 <script src="../live.js?v=310" defer></script>
 <script src="../video.js?v=309" defer></script>
 <script src="sync.js?v=239" defer></script>
-<script src="bootstrap.js?v=239" defer></script>
+<script src="bootstrap.js?v=313" defer></script>
 </body>
 </html>
