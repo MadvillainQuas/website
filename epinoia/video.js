@@ -456,7 +456,46 @@ function cumElapsed(e) {
   return s + (PLEN(per) - Math.max(0, Math.min(PLEN(per), e.clock || 0)));
 }
 
+/* HOW MUCH REAL TIME A SECOND OF GAME CLOCK COSTS, measured from the rows that
+   do know when they happened.
+
+   A play with neighbours on BOTH sides is interpolated between them, and that
+   absorbs every stoppage between the two by construction. A play with only one
+   neighbour has to be projected, and projecting needs a rate — game clock and
+   real time do not run together. Forty minutes of basketball inside a
+   ninety-minute broadcast is about 2:1, and it is nowhere near uniform: a free
+   throw pair, a timeout and a foul all cost real time and no game clock at all.
+
+   So the rate is taken from the log itself: the first and last rows that carry a
+   real position, which is the longest baseline available. Bounded to a sane
+   band, because a nonsense rate is worse than no rate — under 1 would mean the
+   game ran faster than the clock on the wall, and over 4 would mean a broadcast
+   four times the length of the game it covers, which is a different recording. */
+function paceOf(rows) {
+  let first = null, last = null;
+  for (const r of rows) {
+    if (r.since == null || r.guessed) continue;
+    if (!first) first = r;
+    last = r;
+  }
+  if (!first || !last || first === last) return null;
+  const dg = cumElapsed(last.e) - cumElapsed(first.e);
+  const dr = last.since - first.since;
+  if (!(dg > 0) || !(dr > 0)) return null;
+  const p = dr / dg;
+  return (p >= 1 && p <= 4) ? p : null;
+}
+
+/* Beyond this much game clock from its only neighbour, a play is not placed at
+   all. Ten minutes is a whole quarter: the accumulated stoppage error over one
+   is larger than any clip window, and by then the position is a guess dressed as
+   an answer. An absent row is interpolated by nothing and shown by nothing,
+   which is the honest outcome — the alternative is a viewer sent to the wrong
+   quarter by a list that looked authoritative. */
+const LONE_REACH_MS = 600000;
+
 function fillGaps(rows) {
+  const pace = paceOf(rows);
   for (let i = 0; i < rows.length; i++) {
     if (rows[i].since != null) continue;
     let before = null, after = null;
@@ -470,11 +509,18 @@ function fillGaps(rows) {
       const frac = span > 0 ? Math.max(0, Math.min(1, (mine - a) / span)) : 0.5;
       rows[i].since = before.since + (after.since - before.since) * frac;
       rows[i].guessed = true;
-    } else if (before) {
-      rows[i].since = before.since + (mine - cumElapsed(before.e));
-      rows[i].guessed = true;
-    } else if (after) {
-      rows[i].since = after.since - (cumElapsed(after.e) - mine);
+    } else if (before || after) {
+      /* ONE NEIGHBOUR, SO A PROJECTION — AT THE MEASURED RATE, AND NOT FOR EVER.
+         Both branches used to add the game-clock difference straight onto the
+         neighbour's position, which says a second of stopped clock costs no real
+         time. It is the case that matters most right now: when a feed correction
+         un-times the early part of a log, every surviving stamp is LATER than the
+         gap, so every unplaced play in the first half has exactly one neighbour
+         and all of them were being projected backwards at 1:1. */
+      const anchor = before || after;
+      const d = mine - cumElapsed(anchor.e);          // signed: negative looking back
+      if (Math.abs(d) > LONE_REACH_MS) continue;      // too far to place honestly
+      rows[i].since = anchor.since + d * (pace || 1);
       rows[i].guessed = true;
     }
   }

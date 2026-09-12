@@ -377,5 +377,106 @@ console.log('\nand a blank box is not an offset of zero');
      V.gapMs(real) - V.gapMs(clobbered) === 11 * 60000);
 }
 
+/* ---------------------------------------------------------------------------
+   A PLAY WITH ONE NEIGHBOUR IS PROJECTED, AND THE RATE IS NOT 1:1.
+
+   A play with neighbours on both sides is interpolated between them, which
+   absorbs every stoppage between the two by construction. A play with only one
+   has to be projected — and both single-sided branches added the game-clock
+   difference straight onto the neighbour's position, which says a second of
+   stopped clock costs no real time. Forty minutes of basketball inside a
+   ninety-minute broadcast runs nearer 2:1, and nowhere near uniformly: a free
+   throw pair, a timeout and a foul all cost real time and no game clock at all.
+
+   This is the case that matters most tonight. When a feed correction un-times
+   the early part of a log, every surviving stamp is LATER than the gap — so
+   every unplaced play in the first half has exactly one neighbour, and all of
+   them were being projected backwards at 1:1. Measured on tonight's fixtures:
+   logs down to 8-32% stamped, with the losses concentrated at the front.
+   --------------------------------------------------------------------------- */
+console.log('\na play with one neighbour, and the rate that is not 1:1');
+
+{
+  /* The shape tonight's damage actually makes: the first half un-timed, the
+     second half stamped, and a broadcast running at about 2:1 against the game
+     clock. Q1 and Q2 carry no wall; Q3 and Q4 do. */
+  const STREAM2 = Date.parse('2026-09-12T18:00:00Z');
+  const TIP2 = Date.parse('2026-09-12T18:10:00Z');
+  const PACE = 2;                        // two seconds of footage per second of clock
+
+  const evs = [];
+  let seq = 0;
+  for (let q = 1; q <= 4; q++) {
+    for (let i = 0; i < 10; i++) {
+      const clock = 600000 - i * 60000;
+      const cum = (q - 1) * 600000 + (600000 - clock);
+      const e = { seq: ++seq, t: 'p2_made', team: 0, pid: 'h4', period: q, clock: clock,
+                  created_at: new Date(TIP2 + cum * PACE).toISOString() };
+      /* the stamps that survived: the second half only */
+      if (q >= 3) e.wall = TIP2 + cum * PACE;
+      evs.push(e);
+    }
+  }
+  const row = {
+    provider: 'youtube',
+    stream_started_at: new Date(STREAM2).toISOString(),
+    tip_at: new Date(TIP2).toISOString(),
+    tip_wall: TIP2,
+  };
+
+  const placed = V.index(evs, row, { label: e => e.t });
+  const byId = {};
+  placed.forEach(pl => { byId[pl.id] = pl; });
+
+  /* A Q1 play 30 minutes of game clock before the first stamp is beyond the
+     reach of a single neighbour and is left out rather than invented. */
+  ok('a play far beyond its only neighbour is not placed at all',
+     byId[1] === undefined, JSON.stringify(byId[1] || null));
+
+  /* One close enough IS placed, and at the measured pace rather than 1:1. The
+     first stamped play is the start of Q3: cum 1200000, at 2x. A play 4 minutes
+     of game clock earlier sits 8 minutes of footage earlier, not 4. */
+  const q2late = evs.find(e => e.period === 2 && e.clock === 240000);   // cum 960000
+  const got = byId[q2late.seq];
+  if (got) {
+    const firstStamped = evs.find(e => e.wall != null);
+    const gap = (TIP2 - STREAM2);
+    const truth = gap + (960000 * PACE);
+    const oneToOne = gap + (1200000 * PACE) - (1200000 - 960000);
+    ok('...and one within reach is placed at the measured pace',
+       Math.abs(got.ms - truth) < 1000,
+       'got ' + Math.round(got.ms / 1000) + 's, truth ' + Math.round(truth / 1000) +
+       's, 1:1 would have said ' + Math.round(oneToOne / 1000) + 's');
+    ok('...which is nowhere near what 1:1 would have said',
+       Math.abs(oneToOne - truth) > 120000,
+       'the two answers differ by ' + Math.round(Math.abs(oneToOne - truth) / 1000) + 's');
+    ok('...and it is flagged as a guess, not stated flat',
+       got.approx === true, JSON.stringify({ approx: got.approx }));
+  } else {
+    ok('...and one within reach is placed at the measured pace', false, 'not placed at all');
+  }
+
+  /* The stamped half is untouched by any of this. */
+  const q3first = evs.find(e => e.period === 3 && e.clock === 600000);
+  ok('a play that knows its own time is placed exactly, and not guessed',
+     byId[q3first.seq] && byId[q3first.seq].approx === false,
+     JSON.stringify(byId[q3first.seq] || null));
+}
+
+{
+  const vj = readFileSync(path.join(ROOT, 'epinoia', 'video.js'), 'utf8');
+  ok('the pace is measured from rows that know, not from guesses',
+     /if \(r\.since == null \|\| r\.guessed\) continue;/.test(vj));
+  ok('...and a nonsense rate is refused rather than used',
+     /return \(p >= 1 && p <= 4\) \? p : null;/.test(vj));
+  ok('...falling back to 1:1 only when nothing can be measured',
+     /anchor\.since \+ d \* \(pace \|\| 1\)/.test(vj));
+  ok('a lone neighbour has a reach, and a quarter is past it',
+     /const LONE_REACH_MS = 600000;/.test(vj) &&
+     /if \(Math\.abs\(d\) > LONE_REACH_MS\) continue;/.test(vj));
+  ok('...and the two single-sided branches are now one, so they cannot drift apart',
+     /\} else if \(before \|\| after\) \{/.test(vj));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
