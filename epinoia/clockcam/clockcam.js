@@ -41,6 +41,23 @@ let scores = { home: null, away: null };
 let lastDurable = 0, lastPost = 0;
 let camTrack = null, camFail = '', wake = null, grab = 0;
 
+/* WHICH PHONE THIS IS.
+
+   Two phones boxed on the same game is a setup mistake that fails silently: both
+   call themselves 'cam', so nothing downstream can tell them apart, and the clock
+   quietly alternates between two readings of the same board. It is not something
+   to arbitrate automatically -- the answer is always "somebody stop one of them"
+   -- so what is needed is for the control room to be able to SAY so, and for that
+   it needs to know one phone from another. Kept on the phone, so it survives a
+   reload and does not count as a second phone when somebody refreshes. */
+const PHONE_ID = (() => {
+  try {
+    let v = localStorage.getItem('cc:id');
+    if (!v) { v = 'p' + Math.random().toString(36).slice(2, 9); localStorage.setItem('cc:id', v); }
+    return v;
+  } catch (_) { return 'p' + Math.random().toString(36).slice(2, 9); }
+})();
+
 /* ------------------------------------------------------------ session --- */
 async function boot() {
   try { sb = await window.epinoiaClient(); } catch (_) { sb = null; }
@@ -111,7 +128,7 @@ function hello() {
   const st = CLK.stats;
   try {
     chan.send({ type: 'broadcast', event: 'frame', payload: {
-      phone: true, hello: true, sending,
+      phone: true, hello: true, sending, phoneId: PHONE_ID,
       reading: clockMs, period, running, locked,
       health: {
         cam: camLive() ? 'live' : (camFail || 'no camera'),
@@ -523,7 +540,7 @@ function publish(force) {
   if (!force && clockMs === lastSentMs && now - lastSentAt < 1500) return;
   const state = { game_id: gameId, period, clock_ms: Math.round(clockMs), running, updated_at: new Date(now).toISOString(), source: 'cam' };
   if ($('#sendScore').checked && scores.home != null && scores.away != null) { state.score_home = scores.home; state.score_away = scores.away; }
-  try { chan.send({ type: 'broadcast', event: 'frame', payload: { cam: true, phone: true, sending: true, state } }); sent++; lastSentMs = clockMs; lastSentAt = now; } catch (_) {}
+  try { chan.send({ type: 'broadcast', event: 'frame', payload: { cam: true, phone: true, sending: true, phoneId: PHONE_ID, state } }); sent++; lastSentMs = clockMs; lastSentAt = now; } catch (_) {}
   durable(state, now);
   paintStatus();
 }

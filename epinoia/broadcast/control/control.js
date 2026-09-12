@@ -197,6 +197,9 @@ function kpFromFeed() {
    frames on the game's channel marked phone:true (a hello every few seconds while the app is
    open on this game; readings while it sends), and the card says which. */
 let phoneAt = 0, phoneLast = null, phoneSending = false, phoneHealth = null;
+/* phoneId -> { at, sending }. Two phones on one game is a silent failure at the
+   table and an unsettled clock on the stream; naming the number is the fix. */
+const phones = new Map();
 function phoneUrl() {
   return location.origin + location.pathname.replace(/broadcast\/control\/?$/, '') + 'clockcam/?g=' + encodeURIComponent(gameId);
 }
@@ -216,6 +219,7 @@ function phoneCardInit() {
 }
 function phoneSeen(f) {
   phoneAt = Date.now(); phoneSending = !!f.sending || !!(f.state && f.state.source === 'cam');
+  if (f.phoneId) phones.set(f.phoneId, { at: Date.now(), sending: !!f.sending || !!(f.state && f.state.source === 'cam') });
   if (f.state && f.state.clock_ms != null) phoneLast = { ms: f.state.clock_ms, period: f.state.period, running: f.state.running, at: Date.now() };
   else if (f.reading != null) phoneLast = { ms: f.reading, period: f.period, running: !!f.running, at: Date.now() };
   if (f.health) phoneHealth = f.health;
@@ -228,8 +232,15 @@ function phoneSeen(f) {
    knows is a clock that will not settle. The thumbnail above and the refusal rate
    here are the two things that say so while there is still time to walk over. */
 function phoneHealthLine() {
-  const h = phoneHealth; if (!h) return '';
+  const h = phoneHealth;
   const bits = [];
+  /* forget a phone that has said nothing for half a minute: a phone put away is
+     not a phone fighting for the clock */
+  const now = Date.now();
+  for (const [id, p] of phones) if (now - p.at > 30000) phones.delete(id);
+  const live = [...phones.values()].filter(p => p.sending).length;
+  if (live > 1) bits.push(live + ' phones are sending on this game \u2014 stop all but one, or the clock will not settle');
+  if (!h) return bits.join(' \u00b7 ');
   if (h.cam && h.cam !== 'live') bits.push(h.cam);
   if (h.hidden) bits.push('the app is in the background — the picture is frozen');
   else if (!h.awake) bits.push('the screen is not being held awake');
