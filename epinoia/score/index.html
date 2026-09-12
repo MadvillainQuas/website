@@ -6702,5 +6702,35 @@ window.describeSaved = function (saved) {
 <script src="../video.js?v=309" defer></script>
 <script src="sync.js?v=241" defer></script>
 <script src="bootstrap.js?v=317" defer></script>
+<!-- ── the scorer keeps itself on the phone ───────────────────────────────────
+     /epinoia/sw.js is the push worker and caches nothing on purpose, which is
+     right for a page whose job is showing what is happening now. But it
+     registers at scope '/epinoia/', a scope covers everything beneath it, and
+     its fetch handler answers a failed request with a page reading "Nothing is
+     stored on this phone". For a statistician that is false and it is the worst
+     page there is: the whole game IS on the phone, and the hall's wifi dropping
+     is the ordinary case. They reload out of habit when something looks wrong —
+     which is when the wifi has gone — and the app is replaced by a notice
+     saying their game does not exist.
+
+     A more specific scope wins, so this one takes the scorer and leaves the
+     rest of the site exactly as it was. Registered last, after everything the
+     app needs, so a failure here can never delay the page it is protecting. -->
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  /* localhost is a secure context too, and it is the only place this gets
+     exercised before it reaches a hall. */
+  var ok = location.protocol === 'https:' ||
+           location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!ok) return;
+  window.addEventListener('load', function () {
+    /* updateViaCache 'none' so the worker script itself is never served from
+       the HTTP cache — otherwise a fix to it could sit undelivered for a day. */
+    navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' })
+      .catch(function (e) { try { console.warn('[sw]', e); } catch (_) {} });
+  });
+}());
+</script>
 </body>
 </html>

@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 and 21 are done, plus the whole LiveStats-to-footage video
+items 1 through 21 are all done - every critical item on the list, and the high ones down to 21, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -86,6 +86,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 3. Give the scorer its own service worker so a wifi drop does not serve a dead page
 
 **critical** / days · `scorer`
+
+> **STATUS - DONE 2026-09-12 - epinoia/score/sw.js, registered at scope ./ from score/index.html; the more specific scope displaces the push worker for the scorer and leaves the rest of the site's deliberate no-cache decision alone. The precache list is NOT hard-coded as the item suggested: every asset carries a ?v= stamp, so a written list would go stale the first time one was bumped, silently, because the app still works online. Install fetches the page and caches what it declares - src/href attributes plus url() from the inline @font-face block - so the list maintains itself. Cache-first for versioned assets, with an ignoreSearch fallback so a deploy this phone never saw still opens a half-recorded game. Cross-origin and non-GET are untouched, so the API can never come from a cache. PROVEN: with the dev server stopped, the scorer loads completely - all four scripts, fonts, squads, clock. 19 entries cached automatically. Tests in supabase/tests/durability.test.mjs.**
 
 **Why.** Verified: epinoia/sw.js caches nothing and its fetch handler returns a hard-coded 503 reading 'Nothing is stored on this phone'. nav.js and me/me.js register it at scope '/epinoia/', which covers '/epinoia/score/'. So any statistician whose phone has ever opened an Epinoia page gets that dead page — for index.html and every script — the moment hall wifi drops, while epinoia_v1 holds the entire first half. The message is false, it is shown to somebody mid-game, and it discourages the one thing that would help. The app described as offline-first is not offline-capable at all.
 

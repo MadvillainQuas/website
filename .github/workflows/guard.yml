@@ -266,6 +266,13 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: The scorer keeps itself on the phone
+        # the push worker registers at scope /epinoia/, which covers the scorer,
+        # and answers a failed request with "Nothing is stored on this phone" --
+        # false, and shown to a statistician at the exact moment the hall's wifi
+        # drops and they reload out of habit.
+        run: node supabase/tests/durability.test.mjs
+
       - name: One hung request does not take the game with it
         # a hall's access point fails by accepting the connection and then going
         # silent, and nothing limited a fetch -- so the publisher's chain stopped

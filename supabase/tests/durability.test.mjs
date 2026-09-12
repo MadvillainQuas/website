@@ -394,5 +394,72 @@ const frameOf = (events, state) => ({
      /if \(!wrap\(\)\) \{[\s\S]{0,220}setTimeout\(\(\) => clearInterval\(t\), 15000\);/.test(bs5));
 }
 
+/* ---------------------------------------------------------------------------
+   THE OFFLINE PAGE TOLD THE STATISTICIAN THEIR GAME DID NOT EXIST.
+
+   /epinoia/sw.js is the push worker and caches nothing on purpose — "a live
+   score served from yesterday's cache would be worse than no app at all", which
+   is right for a page whose job is showing what is happening now. But it
+   registers at scope '/epinoia/', a scope covers everything beneath it, and its
+   fetch handler answers a failed request with a hard-coded page reading
+   "Nothing is stored on this phone".
+
+   For a statistician that sentence is false and it is the worst page there is.
+   The whole game IS on the phone — the log lives in localStorage and the network
+   is a publishing detail — and a hall's wifi dropping is the ordinary case. They
+   reload out of habit when something looks wrong, which is exactly when the wifi
+   has gone, and the app is replaced by a notice saying their game is not there.
+
+   A more specific scope wins, so the scorer has its own.
+   --------------------------------------------------------------------------- */
+{
+  const fs7 = require('node:fs');
+  const sw = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sw.js'), 'utf8');
+  const sc7 = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
+
+  ok('the scorer registers a worker of its own',
+     /navigator\.serviceWorker\.register\('sw\.js', \{ scope: '\.\/'/.test(sc7));
+  ok('...at a scope more specific than the push worker\'s, which is what displaces it',
+     /scope: '\.\/'/.test(sc7) && !/scope: '\/epinoia\/'/.test(sc7));
+  ok('...and the worker script itself is never served from the HTTP cache',
+     /updateViaCache: 'none'/.test(sc7));
+  ok('...registered on load, after everything the app needs',
+     /window\.addEventListener\('load', function \(\) \{[\s\S]{0,300}serviceWorker\.register/.test(sc7));
+  ok('...and on localhost too, or it could never be exercised before a hall',
+     /location\.hostname === 'localhost'/.test(sc7));
+
+  /* The list maintains itself: every asset carries a ?v= stamp that changes on
+     deploy, and a hand-written precache list would go stale the first time one
+     was bumped — silently, because the app still works online. */
+  ok('what is cached is read off the page rather than listed here',
+     /function declared\(html\)/.test(sw) && /const res = await fetch\(SHELL, \{ cache: 'reload' \}\)/.test(sw));
+  ok('...including the fonts, which are declared in an inline @font-face block',
+     /url\\\(\\s\*\(\['"\]\?\)/.test(sw) || /url\\\(/.test(sw));
+  ok('...and one missing icon does not leave the phone with no application',
+     /declared\(html\)\.map\(u => c\.add\(u\)\.catch\(\(\) => \{\}\)\)/.test(sw));
+
+  ok('a navigation that fails is answered with the real application',
+     /const hit = await caches\.match\(SHELL\);\s*\n\s*return hit \|\| nothingYet\(\);/.test(sw));
+  /* Scoped to the response it actually serves: the header comment quotes the
+     old message on purpose, to say what was wrong with it. */
+  const served = sw.slice(sw.indexOf('const nothingYet'), sw.indexOf("self.addEventListener('fetch'"));
+  ok('...and the fallback says where the game actually is',
+     /A game already in progress is kept on the/.test(served) &&
+     !/Nothing is stored on this phone/.test(served));
+
+  /* The one thing a service worker in front of a live score must never do. */
+  ok('nothing off this origin is touched, so the API can never come from a cache',
+     /if \(url\.origin !== self\.location\.origin\) return;/.test(sw));
+  ok('...and neither is anything that is not a GET',
+     /if \(req\.method !== 'GET'\) return;/.test(sw));
+
+  ok('a version this phone never saw falls back to the one it has',
+     /ignoreSearch: true/.test(sw) && /bootstrap\.js\?v=318/.test(sw));
+  ok('...and a cached asset is refreshed behind the answer, so a deploy lands next time',
+     /e\.waitUntil\(fetch\(req\)\.then/.test(sw));
+  ok('old versions of this cache are cleared on activate',
+     /n\.indexOf\('epinoia-scorer-'\) === 0/.test(sw));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
