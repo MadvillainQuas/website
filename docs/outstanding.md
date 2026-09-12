@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-items 1 through 24 are all done - every critical item on the list, and the high ones down to 21, plus the whole LiveStats-to-footage video
+items 1 through 25 are all done - every critical item on the list, and the high ones down to 21, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -396,6 +396,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 25. Make an asserted clock act sticky so a misreading camera cannot take it back in three seconds
 
 **high** / hours · `clock`
+
+> **STATUS - DONE 2026-09-12 - NOT by adding an assert timer, which was the suggestion. The real fault is that HANDOVER_MS (3s) was SHORTER than the cadence of the thing it measures: the keeper restates every 5s (control.js kp._lastPub > 5000) and a camera publishes every 1.5s, so the window had always lapsed by the time the keeper spoke again and the documented rule - "the source actually driving keeps the clock until it goes quiet" - was unachievable for a keeper. Raised to 8s, which clears the 5s restatement with room for a late frame and still frees the clock within 8s when a keeper genuinely stops. Both halves tested at the real cadences in supabase/tests/clockauthority.test.mjs; the new assertions fail against the 3s window with the camera holding the clock twelve seconds after the human took it.**
 
 > **STATUS — PARTLY — assert exists as of 2026-09-12 (a deliberate keeper tap wins at once). Making it STICKY afterwards is still to do.**
 

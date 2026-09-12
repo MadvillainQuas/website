@@ -125,6 +125,75 @@ console.log('\nwho is driving the clock');
 }
 
 /* ---------------------------------------------------------------------------
+   AND A DELIBERATE ACT HAS TO SURVIVE THE NEXT CAMERA READING.
+
+   The rule above says the source actually driving keeps the clock until it goes
+   quiet. The window that decided "quiet" was three seconds — shorter than the
+   cadence of the thing it was measuring. The clock keeper restates itself every
+   FIVE seconds and a camera publishes every one and a half, so:
+
+     t=0.0  keeper taps start        -> assert, keeper has the clock
+     t=1.5  camera reads the board   -> contested, ignored
+     t=3.0  the window lapses
+     t=3.0+ camera reads             -> not contested, the camera takes it
+     t=5.0  keeper restates          -> now the challenger, and ignored
+
+   A person who reached for the keeper BECAUSE the camera was misreading got
+   three seconds, and then the misreading camera had the clock back and kept it.
+   The one case the assert rule exists for was the case it could not hold.
+
+   These run at the real cadences, so they take about twenty seconds.
+   --------------------------------------------------------------------------- */
+console.log('\nand a deliberate act survives the next camera reading');
+
+{
+  const { pub, sub } = await pair();
+  /* A person takes the clock, and then keeps it the way the control room keeps
+     it: a restatement every five seconds, no further taps. A camera on the
+     board reads every second and a half throughout. */
+  pub.pushState(clockOf('keeper', 480000, { assert: true }));
+  await wait(150);
+  eq('the tap takes the clock', sub.clockSource(), 'keeper');
+
+  const cam = setInterval(() => pub.pushState(clockOf('cam', 471000)), 1500);
+  const keeper = setInterval(() => pub.pushState(clockOf('keeper', 470000)), 5000);
+  await wait(12000);
+  clearInterval(cam); clearInterval(keeper);
+  await wait(200);
+
+  eq('...and a keeper that keeps restating still has it twelve seconds later',
+     sub.clockSource(), 'keeper');
+  eq('...with the keeper\'s time on air, not the camera\'s', sub.state.clock_ms, 470000);
+  sub.stop();
+}
+
+{
+  const { pub, sub } = await pair();
+  /* But a keeper that genuinely stops — a closed tab, somebody who walked away
+     — must still lose it, or a camera reading the hall's board could never take
+     over at all. That is the other half of the same rule. */
+  pub.pushState(clockOf('keeper', 480000, { assert: true }));
+  await wait(150);
+  const cam = setInterval(() => pub.pushState(clockOf('cam', 465000)), 1500);
+  await wait(L.HANDOVER_MS + 2500);
+  clearInterval(cam);
+  await wait(200);
+  eq('a keeper that stops restating loses it to the camera', sub.clockSource(), 'cam');
+  eq('...and the camera\'s time is on air', sub.state.clock_ms, 465000);
+  sub.stop();
+}
+
+{
+  /* The window has to clear the keeper's own cadence or the rule is unworkable,
+     so the relationship is pinned rather than left to a comment. */
+  const KEEPER_RESTATE_MS = 5000;      // control.js: kp._lastPub > 5000
+  yes('the handover window clears the keeper\'s restatement with room to spare',
+      L.HANDOVER_MS > KEEPER_RESTATE_MS + 1500, String(L.HANDOVER_MS));
+  yes('...and is still short enough that a dead keeper frees the clock quickly',
+      L.HANDOVER_MS <= 10000, String(L.HANDOVER_MS));
+}
+
+/* ---------------------------------------------------------------------------
    AND WHETHER ANYBODY IS STILL DRIVING IT.
 
    clockMs() stops running a dead source forward, so it cannot count down to zero

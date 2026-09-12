@@ -675,7 +675,31 @@ function subscriber(opts) {
      carries assert and takes the clock at once: a person reaching for the keeper
      while a camera is misreading is the one case where the human must win, and
      they should not have to wait three seconds to be heard. */
-  const HANDOVER_MS = 3000;
+  /* EIGHT SECONDS, BECAUSE THE KEEPER RESTATES ITSELF EVERY FIVE.
+
+     This was three, and three is shorter than the cadence of the thing it is
+     measuring. The rule above says the source actually driving keeps the clock
+     until it goes quiet — but `contested` asks whether the incumbent has spoken
+     within HANDOVER_MS, the clock keeper only restates every five seconds
+     (control.js), and a camera publishes every second and a half. So the window
+     had always expired by the time the keeper spoke again:
+
+       t=0.0  keeper taps start        -> assert, keeper has the clock
+       t=1.5  camera reads the board   -> contested, ignored
+       t=3.0  the window lapses
+       t=3.0+ camera reads             -> not contested, CAMERA TAKES THE CLOCK
+       t=5.0  keeper restates          -> now IT is the challenger, and ignored
+
+     A person deliberately reaching for the keeper because the camera is
+     misreading got three seconds of it, and then the misreading camera had the
+     clock back and kept it — restating every five seconds into a window that
+     the camera refreshed every one and a half. The one case the assert rule
+     exists for was the case it could not hold.
+
+     Eight clears the keeper's five with room for a late frame, and still lets a
+     camera take over from a keeper that has genuinely stopped — a closed tab, a
+     person who walked away — within eight seconds, which on air is a moment. */
+  const HANDOVER_MS = 8000;
   const clockFields = ['clock_ms', 'running', 'updated_at', 'at', 'period', 'source'];
   function adoptState(next, viaFrame) {
     if (!next) return;
@@ -867,5 +891,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, diffLog, logKey, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 3000, VERSION: '1.1.0' };
+return { publisher, subscriber, diffLog, logKey, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 8000, VERSION: '1.1.0' };
 }));
