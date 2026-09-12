@@ -769,9 +769,30 @@ async function load() {
      a handful anywhere on the platform), it has no date window to fall out of,
      and the two results are merged by id. A live game cannot be missed now
      however many fixtures surround it. */
-  let gs, live = [];
+  /* AND SO DO THE GAMES ABOUT TO BE PLAYED, FOR THE SAME REASON.
+
+     The paragraph above fixed this for status='live' and stopped there. But
+     tipoff_at.desc puts next May at the top for every league with more than
+     sixty fixtures still to come, and a game tipping in twenty minutes falls
+     off the end of the window just as surely as one already under way — it is
+     simply scheduled rather than live, so the live query does not rescue it.
+
+     Found by building the lineups badge: a fixture whose starting fives had
+     just been confirmed, twenty minutes from tip, was not on the strip at all.
+     The badge cannot fire on a card that was never fetched, and the twenty
+     minutes before a tip-off is exactly when somebody is looking.
+
+     A window rather than a count: everything from an hour ago to three hours
+     ahead, which covers a card that should read LINEUPS IN, one whose game has
+     just finished, and a tip-off that has slipped. Tiny, and merged by id like
+     the live one. */
+  const NEAR_BACK_MS = 60 * 60 * 1000, NEAR_FWD_MS = 3 * 60 * 60 * 1000;
+  const nearFrom = new Date(Date.now() - NEAR_BACK_MS).toISOString();
+  const nearTo = new Date(Date.now() + NEAR_FWD_MS).toISOString();
+
+  let gs, live = [], near = [];
   try {
-    [gs, live] = await Promise.all([
+    [gs, live, near] = await Promise.all([
       api(sel),
       /* starters as well, so a game reached only by this query carries the same
          fields as one from the list above. It is live, so the badge says LIVE
@@ -780,10 +801,18 @@ async function load() {
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
-          '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => [])
+          '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => []),
+      api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
+          'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
+          'competitions(name,seasons(leagues(slug,name)))' +
+          '&status=in.(scheduled,finalising,final)' +
+          '&tipoff_at=gte.' + encodeURIComponent(nearFrom) +
+          '&tipoff_at=lte.' + encodeURIComponent(nearTo) +
+          '&order=tipoff_at.asc&limit=40').catch(() => [])
     ]);
     const seen = new Set(gs.map(g => g.id));
-    live.forEach(g => { if (!seen.has(g.id)) gs.push(g); });
+    live.forEach(g => { if (!seen.has(g.id)) { gs.push(g); seen.add(g.id); } });
+    near.forEach(g => { if (!seen.has(g.id)) { gs.push(g); seen.add(g.id); } });
   }
   catch (e) {
     if (!lastKey) {           // keep whatever is on screen if a refresh fails

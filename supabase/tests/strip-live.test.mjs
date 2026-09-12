@@ -340,10 +340,40 @@ console.log('\nthe lineups are the team news');
   ok('the primed class is added beside is-upcoming, not instead of it',
      (SRC.match(/'is-upcoming is-primed'/g) || []).length >= 2);
 
-  /* Both queries return the same shape, or the next reader of this file gets
-     caught by a row that is missing a column depending on how it arrived. */
-  ok('both game queries select starters',
-     (SRC.match(/select=id,tipoff_at,status,venue,home_score,away_score,starters,/g) || []).length === 2);
+  /* EVERY query returns the same shape, or the next reader of this file gets
+     caught by a row missing a column depending on how it arrived. There are
+     three: the list, live games, and games about to be played. */
+  {
+    const qs = (SRC.match(/games\?select=id,tipoff_at,status/g) || []).length;
+    const withStarters =
+      (SRC.match(/select=id,tipoff_at,status,venue,home_score,away_score,starters,/g) || []).length;
+    ok('every game query selects starters', qs >= 3 && withStarters === qs,
+       withStarters + ' of ' + qs + ' queries');
+  }
+
+  /* AND A GAME ABOUT TO BE PLAYED IS ACTUALLY FETCHED.
+
+     The list is ordered tipoff_at.desc and capped, so for a league with more
+     than sixty fixtures still to come, next May sits at the top and tonight
+     falls off the end. The file already says so and fixed it for status='live'
+     — but a fixture twenty minutes from tip is scheduled, not live, so the live
+     query does not rescue it.
+
+     Found by building the badge above: a game whose starting fives had just been
+     confirmed was not on the strip at all. A badge cannot fire on a card that
+     was never fetched, and the twenty minutes before a tip-off is exactly when
+     somebody is looking. */
+  ok('games near their tip-off get their own query',
+     /status=in\.\(scheduled,finalising,final\)/.test(SRC) &&
+     /tipoff_at=gte\.' \+ encodeURIComponent\(nearFrom\)/.test(SRC));
+  ok('...as a window either side of now, not a count',
+     /NEAR_BACK_MS = 60 \* 60 \* 1000, NEAR_FWD_MS = 3 \* 60 \* 60 \* 1000/.test(SRC));
+  ok('...merged by id like the live one, without re-adding what is already there',
+     /near\.forEach\(g => \{ if \(!seen\.has\(g\.id\)\) \{ gs\.push\(g\); seen\.add\(g\.id\); \} \}\);/.test(SRC));
+  ok('...and the live merge now records what it added, or the third pass duplicates it',
+     /live\.forEach\(g => \{ if \(!seen\.has\(g\.id\)\) \{ gs\.push\(g\); seen\.add\(g\.id\); \} \}\);/.test(SRC));
+  ok('...and a failing third query cannot take the strip down with it',
+     (SRC.match(/\.catch\(\(\) => \[\]\)/g) || []).length >= 2);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
