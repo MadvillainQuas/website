@@ -456,9 +456,17 @@ function tick() {
   const predNow = CLK.predict(now0);
   const tenths = predNow != null && predNow < 60000;
   const b = binarise(tenths ? ring[ring.length - 1] : stack(ring), inv, adj);
+  /* Under a minute the newest frame is read on its own, because averaging three
+     frames of a board changing ten times a second averages three different
+     numbers. But that also switches off the defence against flicker in the last
+     minute of a quarter, which is the minute that matters most -- so if the fresh
+     frame will not read, the stack is tried anyway. A blurred tenth is not a
+     danger here: it lands a few hundred milliseconds the wrong side of where the
+     clock should be, and the physics refuses anything that rises at all. */
   if ($('#pcMode').checked) { postCrop(); thumb('clock', b, 'to the PC'); return; }
   const now = now0;
-  const ms = readClock(b, predNow);
+  let ms = readClock(b, predNow);
+  if (ms == null && tenths && ring.length > 1) ms = readClock(binarise(stack(ring), inv, adj), predNow);
   thumb('clock', b, ms == null ? null : fmt(ms));
   if (ms != null) {
     lastReadAt = now; hunt = null;
