@@ -530,12 +530,29 @@ ok('a link the platform cannot seek into is refused before anything is written',
    /would be stored but no play could/.test(gamejs.replace(/\s+/g, ' ')));
 /* The attach panel is the RECORDING path, so it writes an offset and never a
    stream start — the other half of migration 0090. */
+/* These asked for the exact spelling of the args object, which is a fragile way
+   to state either property — the offset became conditional (a blank box is not
+   an offset of zero; see videosync.test.mjs) and both facts still held while
+   both assertions failed. Asked as properties now. */
 ok('the game page attaches an offset, not an invented stream start',
-   /p_tip_offset_ms: tipMs, p_trim_ms: 0/.test(gamejs) &&
-   !/p_stream_start: started/.test(gamejs));
+   /p_tip_offset_ms = tipMs/.test(gamejs) && !/p_stream_start/.test(gamejs));
 ok('...with the link and the offset in ONE call, so a row cannot hold one without the other',
-   /p_provider: parsed\.provider, p_ref: parsed\.ref,\s*\n\s*p_tip_offset_ms: tipMs/
-     .test(gamejs.replace(/\r/g, '')));
+   (() => {
+     const flat = gamejs.replace(/\r/g, '');
+     const at = flat.indexOf('const args = { p_game: gameId, p_url: raw');
+     if (at < 0) return false;
+     const call = flat.indexOf("rpcCallRaw('set_game_video'", at);
+     if (call < 0) return false;
+     /* the offset is put on that same object, before the one call that sends it */
+     /* Scoped to the attach: game.js also adjusts trim through the same RPC
+        later on, so a count across the whole file is not the property. */
+     const between = flat.slice(at, call);
+     return /args\.p_tip_offset_ms = tipMs;/.test(between) &&
+            !/rpcCallRaw\(/.test(between);
+   })());
+ok('...and a blank jump-ball box sends no offset at all, rather than zero',
+   /const tipMs = blankOffset \? null : \(mm \* 60 \+ ss\) \* 1000;/.test(gamejs) &&
+   /if \(tipMs != null\) args\.p_tip_offset_ms = tipMs;/.test(gamejs));
 ok('...and still recovers the tip from the log, which is what places each play',
    /rpcCallRaw\('anchor_video_from_log'/.test(gamejs));
 
