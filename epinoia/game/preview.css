@@ -226,3 +226,42 @@
   .pv-prose p{ font-size:13.5px; line-height:1.65 }
   .pv-map{ aspect-ratio:4/3 }
 }
+
+/* ---------------------------------------------------------- the starting five ---
+   The circles, the court and the faces are modern.css's — the game page loads it
+   already, and the preview borrowing them is what makes this read as the same game
+   rather than a second design that happens to sit above it. Only the frame around
+   them is here, plus the two things that differ: no stat line under a player who
+   has not played yet, and a court sized for two side by side rather than one. */
+.pv-fives{
+  display:grid; gap:18px;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+}
+.pv-five{
+  border:1px solid var(--line,rgba(147,242,191,.14)); border-radius:12px;
+  padding:14px 12px 4px; background:rgba(255,255,255,.02);
+}
+.pv-fivehead{
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:10px; font-weight:600;
+  letter-spacing:.18em; text-transform:uppercase; text-align:center; margin-bottom:6px;
+}
+.pv-fivenote{
+  font-size:13px; color:var(--ink-3,rgba(230,255,241,.6)); margin:0 0 14px;
+}
+/* the court is smaller here than in the box score: two of them share the width, and
+   nothing on them needs reading at a glance the way a live lineup does */
+.pv-five .mv-court{ width:min(100%,320px); margin:0 auto 26px }
+.pv-five .mv-p{ width:92px; margin-left:-46px }
+/* close to the box score's own 62px: the name that stands in for a missing
+   photograph is set at a fixed size, and shrinking the circle much below this
+   starts clipping it */
+.pv-five .mv-p .sq-face{ width:58px; height:58px }
+.pv-five .mv-p .mv-nm{ font-size:11px }
+/* no hover lift and no pointer: these are not buttons here, there is nothing to open */
+.pv-five .mv-p{ cursor:default }
+.pv-five .mv-p:hover .sq-face{ transform:none }
+@media (max-width:560px){
+  .pv-five .mv-court{ width:min(100%,260px) }
+  .pv-five .mv-p{ width:74px; margin-left:-37px }
+  .pv-five .mv-p .sq-face{ width:50px; height:50px }
+}

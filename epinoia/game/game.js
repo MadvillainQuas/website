@@ -380,8 +380,11 @@ function squadsHTML(d) {
 }
 /* the faces: approved photographs, fetched once per game and swapped in where they exist */
 let squadPhotoCache = null;
-async function squadPhotos() {
-  const host = document.getElementById('csBody');
+async function squadPhotos(hostEl) {
+  /* The host is a parameter because the preview wants the same faces. It renders
+     into #view rather than the box score's body, and the cache and the markup are
+     the same on both, so there was nothing to write twice. */
+  const host = hostEl || document.getElementById('csBody');
   if (!host) return;
   const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return;
@@ -2251,6 +2254,17 @@ async function renderPreview() {
     return solid.concat(mine.filter(p => p.gp < MIN).sort(rank)).slice(0, 2);
   };
 
+  /* The confirmed starting five, in the order the table listed them. Reads the
+     roster snapshot rather than the club's published squad: the snapshot is who
+     actually turned up, which is the whole reason it is written. */
+  const startingFive = t => {
+    const ids = (S.starters && S.starters[t]) || [];
+    const team = (S.teams && S.teams[t]) || {};
+    const byId = {};
+    (team.players || []).forEach(p => { byId[p.id] = p; });
+    return ids.map(id => byId[id]).filter(Boolean);
+  };
+
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
@@ -2262,9 +2276,19 @@ async function renderPreview() {
     slugA: home.slug || null, slugB: away.slug || null,
     teamA: teamRow(m.homeTeamId), teamB: teamRow(m.awayTeamId),
     starsA: starsOf(m.homeTeamId), starsB: starsOf(m.awayTeamId),
+    /* WHO IS STARTING, once a table has confirmed it. A fed game publishes its
+       squads and its starting five in pre-game setup, and those land on the row
+       before the first action does — so the preview can name the ten players who
+       will be on the floor, which is the most interesting thing about a fixture
+       in the half hour before it. Empty until then, and the section simply does
+       not render. */
+    startersA: startingFive(0), startersB: startingFive(1),
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
     competition: S.competition, leagueSlug: S.leagueSlug
   });
+
+  /* The starting five get their photographs, the same ones the box score uses. */
+  squadPhotos($('#view')).catch(() => { /* names stay */ });
 
   txt($('#ctx'), (S.competition || 'Fixture') + ' · ' +
       (home.name || S.teams[0].name) + ' v ' + (away.name || S.teams[1].name));

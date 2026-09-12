@@ -51,6 +51,78 @@ const one  = v => (num(v) == null ? '—' : (+v).toFixed(1));
    reports the record and stays quiet about tendencies. */
 const MIN_GP = 3;
 
+/* ------------------------------------------------------------ the starting five ---
+   WHO IS STARTING, AS SOON AS THE TABLE HAS SAID SO.
+
+   A LiveStats table confirms its starting five in pre-game setup, minutes before
+   the ball goes up, and that is the single most interesting fact about a fixture
+   in the half hour before it. It used to arrive and go straight past: the ingest
+   wrote the roster and marked the game live in the same breath, so the preview was
+   already gone by the time anybody could have read it.
+
+   The circles are the ones the modern box score uses — same face, same number,
+   same court, the classes live in modern.css which this page already loads — so
+   the preview and the live view are plainly the same game rather than two designs
+   that happen to be adjacent. No stat line under them, because there are no stats
+   yet; that is the whole point of the graphic.
+
+   The five are dealt onto the spots in the order the table listed them, which is
+   the scoresheet's own order. Guessing at positions from a name and a number would
+   be inventing information on the one screen whose job is to report what is known. */
+const SLOTS = [
+  /* fractions of the half court (boxscore.js COURT: 1500 wide, 1400 deep, ring at
+     the top). Kept in step with the same table in game/modern.js. */
+  { x: 0.50, y: 0.84 },
+  { x: 0.19, y: 0.62 },
+  { x: 0.81, y: 0.62 },
+  { x: 0.29, y: 0.31 },
+  { x: 0.71, y: 0.22 }
+];
+
+const surname = n => {
+  const s = String(n || '').trim().split(/\s+/);
+  return s.length > 1 ? s[s.length - 1] : (s[0] || '');
+};
+
+function fiveCircles(players, colour) {
+  return (players || []).slice(0, 5).map((p, i) => {
+    const slot = SLOTS[Math.min(SLOTS.length - 1, i)];
+    return '<div class="mv-p floor" data-pid="' + esc(p.id) + '"' +
+      ' style="left:' + (slot.x * 100).toFixed(1) + '%;top:' + (slot.y * 100).toFixed(1) + '%"' +
+      ' aria-label="' + esc(p.name) + '">' +
+      '<span class="mv-shadow"></span>' +
+      '<span class="sq-face" style="--c:' + esc(colour) + '"><span class="sq-nm">' + esc(p.name) + '</span></span>' +
+      (p.num !== '' && p.num != null ? '<span class="mv-num">' + esc(p.num) + '</span>' : '') +
+      '<span class="mv-nm">' + esc(surname(p.name)) + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function sideHTML(players, colour, name) {
+  const B = (typeof globalThis !== 'undefined') && globalThis.EpinoiaBox;
+  const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '';
+  return '<div class="pv-five" style="--c:' + esc(colour) + '">' +
+    '<div class="pv-fivehead" style="color:' + esc(colour) + '">' + esc(name) + '</div>' +
+    '<div class="mv-court">' + court + '<div class="mv-five">' + fiveCircles(players, colour) + '</div></div>' +
+    '</div>';
+}
+
+/* Both fives, or nothing. Half a lineup is a graphic that raises a question it
+   cannot answer, and a fixture where only one table has finished its setup is a
+   normal state a few minutes before a tip. */
+function startersHTML(ctx) {
+  const A = ctx.startersA || [], B = ctx.startersB || [];
+  if (A.length < 5 || B.length < 5) return '';
+  return '<section class="pv-sec">' +
+    '<h2>Starting five</h2>' +
+    '<p class="pv-fivenote">Confirmed at the table. Tip-off is ' + esc(whenText(ctx.tipoff).time.toLowerCase()) + '.</p>' +
+    '<div class="pv-fives">' +
+      sideHTML(A, ctx.colourA, ctx.nameA) +
+      sideHTML(B, ctx.colourB, ctx.nameB) +
+    '</div>' +
+  '</section>';
+}
+
 /* ------------------------------------------------------------ four factors ---
    The four things that decide a basketball game, in the order Dean Oliver
    weighted them. `low` marks the ones where a smaller number is better, so a
@@ -340,6 +412,8 @@ function render(ctx) {
       '</div>' +
       (ctx.competition ? '<div class="pv-comp">' + esc(ctx.competition) + '</div>' : '') +
     '</div>' +
+
+    startersHTML(ctx) +
 
     '<section class="pv-sec">' +
       '<h2>How to get there</h2>' +

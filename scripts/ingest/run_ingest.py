@@ -710,9 +710,23 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     g = sb.select("games", f"id=eq.{game_id}&select=status")
     if g and g[0].get("status") == "final":
         return                                              # a finalised log is closed (insert trigger refuses)
+    # A GAME IS NOT LIVE BECAUSE SOMEBODY OPENED THE SCORING APP.
+    #
+    # This said 'live' the moment the feed published, which for LiveStats is when the
+    # table opens the game — squads entered, starting five confirmed, ball not yet up.
+    # Every listing, strip and game page then showed a live 0-0 with a running clock
+    # for a fixture that had not started, which is the same fault epinoia/score/sync.js
+    # calls out and refuses on the scorer's side ("A GAME IS NOT LIVE UNTIL IT HAS
+    # TIPPED"). The two paths now agree.
+    #
+    # The roster and the starting five are still written straight away, because that is
+    # the genuinely useful thing about a feed publishing early: the preview can show who
+    # is starting before the ball goes up. One action in the log flips it to live, and
+    # LiveStats emits from the jump ball, so the flip lands within a poll.
+    has_play = bool(T["events"])
     sb.patch("games", f"id=eq.{game_id}", {"roster_snapshot": T["roster_snapshot"], "starters": T["starters"],
                                            "tip_winner": T["tip_winner"], "arrow_init": T["arrow_init"], "period": T["period"],
-                                           "status": "live"})
+                                           "status": "live" if has_play else "scheduled"})
     rows = game_rows(game_id, T["events"])
     # LIVE GAMES GROW: if the existing log is a prefix of the new one, append only the tail — the
     # game page's gap check (last_seq) then pulls just the new rows, like a scorer's frames.

@@ -238,5 +238,48 @@ ok('no map is drawn when there is nowhere to point at',
 }
 
 
+/* ---------------------------------------------------------- the starting five ---
+   A LiveStats table confirms its starting five in pre-game setup, minutes before
+   the ball goes up, and that is the most interesting fact about a fixture in the
+   half hour before it. It used to arrive and go straight past, because the ingest
+   wrote the roster and marked the game live in the same breath.
+
+   Both fives or nothing: half a lineup is a graphic that raises a question it
+   cannot answer, and one table finishing its setup before the other is an ordinary
+   state a few minutes before a tip. */
+console.log('\nthe starting five');
+{
+  const base = { nameA: 'Harbour Blues', nameB: 'Marble Whites',
+                 colourA: '#93f2bf', colourB: '#8ff5ff',
+                 tipoff: '2026-09-12T13:00:00Z', venue: 'Copper Box', competition: 'Division One' };
+  const five = pre => [1, 2, 3, 4, 5].map(i => ({ id: pre + i, name: pre + i + ' Player', num: String(i + 3) }));
+
+  ok('a fixture with no confirmed lineups says nothing about them',
+     !P.render(base).includes('Starting five'));
+  ok('...and neither does one where only one table has finished',
+     !P.render(Object.assign({}, base, { startersA: five('a'), startersB: [] })).includes('Starting five'));
+  ok('...nor one with four names',
+     !P.render(Object.assign({}, base, { startersA: five('a').slice(0, 4), startersB: five('b') })).includes('Starting five'));
+
+  const html = P.render(Object.assign({}, base, { startersA: five('a'), startersB: five('b') }));
+  ok('both fives confirmed puts the graphic up', html.includes('Starting five'));
+  ok('...with ten circles on two courts',
+     (html.match(/class="mv-p floor"/g) || []).length === 10 &&
+     (html.match(/class="mv-court"/g) || []).length === 2,
+     (html.match(/class="mv-p floor"/g) || []).length + ' circles');
+  ok('...carrying the pid the photo loader keys on',
+     /data-pid="a1"/.test(html) && /data-pid="b5"/.test(html));
+  ok('...the jersey number and the surname', /class="mv-num">4</.test(html) && /class="mv-nm">Player</.test(html));
+  ok('...and it leads the page, ahead of how to get there',
+     html.indexOf('Starting five') < html.indexOf('How to get there'));
+  /* the circles are modern.css's, not a second set: if these class names drift the
+     preview quietly loses its styling and still renders */
+  ok('it reuses the box score\'s own circle, court and face classes',
+     /mv-court/.test(html) && /mv-five/.test(html) && /sq-face/.test(html) && /mv-shadow/.test(html));
+  ok('a name with one word does not produce an empty label',
+     /class="mv-nm">Solo</.test(P.render(Object.assign({}, base,
+       { startersA: [{ id: 'x', name: 'Solo', num: '9' }].concat(five('a').slice(1)), startersB: five('b') }))));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
