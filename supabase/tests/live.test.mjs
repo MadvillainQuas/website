@@ -192,5 +192,28 @@ console.log('\na full snapshot is authoritative');
   eq('a snapshot replaces rather than merges', viewer.map(e => e.id), [1, 2]);
 }
 
+console.log('\na clock nobody is driving stops rather than running out');
+{
+  /* The layers extrapolate the last stamped reading forward, which is exactly
+     right for the second between readings and exactly wrong once the source has
+     gone: a phone whose battery dies at 8:00 of the third used to leave every
+     layer on the stream counting steadily down to 0:00 and sitting there, with
+     nothing to say the clock had stopped being a clock. Past the cap the graphics
+     hold the last time anybody actually saw. */
+  const CAP = L.CLOCK_RUN_ON_MS;
+  const base = 480000;                                  // 8:00 on the board
+  const run = agoMs => {
+    const stamped = Date.now() - agoMs;
+    const since = Date.now() - stamped;
+    return Math.max(0, base - Math.min(Math.max(0, since), CAP));
+  };
+  eq('a reading a second old still ticks', Math.round(run(1000) / 1000), 479);
+  eq('a reading ten seconds old still ticks', Math.round(run(10000) / 1000), 470);
+  eq('a source gone a minute holds at the cap', run(60000), base - CAP);
+  eq('a source gone ten minutes holds at the same place', run(600000), base - CAP);
+  eq('and never runs out mid-period', run(3600000) > 0, true);
+  eq('the cap is clear of every healthy cadence', CAP > L.STALE_MS, true);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

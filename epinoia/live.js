@@ -36,6 +36,9 @@ const G = (typeof globalThis !== 'undefined') ? globalThis
 const FRAME_MS   = 250;    // coalescing window
 const POLL_MS    = 3000;   // fallback cadence when the socket is down
 const STALE_MS   = 12000;  // no traffic for this long => degrade (> 2 heartbeats)
+/* how far a stamped clock may be run forward with no fresh reading behind it:
+   past this the source is gone and the graphics hold rather than invent */
+const CLOCK_RUN_ON_MS = 20000;
 const RETRY_MAX  = 30000;
 
 /* ============================================================================
@@ -581,8 +584,29 @@ function subscriber(opts) {
       if (!state) return 0;
       if (!state.running) return state.clock_ms != null ? state.clock_ms : state.clockMs || 0;
       const base = state.clock_ms != null ? state.clock_ms : state.clockMs || 0;
+      /* A CLOCK NOBODY IS DRIVING MUST STOP, NOT RUN OUT.
+
+         This ran the last reading forward by however long ago it was, with no
+         limit. That is right for the second or two between readings, which is what
+         it is for. It is wrong when the source dies: a phone whose battery goes at
+         8:00 of the third left every layer on the stream counting steadily down to
+         0:00 and sitting there, through the rest of the quarter, with nothing to
+         say the clock had stopped being a clock.
+
+         Every source that stamps updated_at refreshes far faster than this -- the
+         clock cam at most a second and a half, the keeper on every tap, a feed
+         every two seconds -- so the cap can only ever bind when there is no longer
+         anybody there. It is set to the same twenty seconds after which a camera's
+         authority lapses: if a feed exists it takes the clock back at that moment,
+         and if one does not, the graphics hold the last time anybody actually saw
+         rather than inventing the rest of the quarter. A clock frozen at 8:00 is
+         obviously broken to whoever is producing the stream. One reading 0:00 in
+         the middle of a period just looks like the game.
+
+         A state with no updated_at -- the scoring app's, which ticks locally
+         between transitions -- is unaffected: `since` is zero and always was. */
       const since = (Date.now() + offset) - new Date(state.updated_at || state.at || Date.now()).getTime();
-      return Math.max(0, base - Math.max(0, since));
+      return Math.max(0, base - Math.min(Math.max(0, since), CLOCK_RUN_ON_MS));
     },
     resync,
     stop() {
@@ -593,5 +617,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, VERSION: '1.1.0' };
+return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, VERSION: '1.1.0' };
 }));
