@@ -252,5 +252,46 @@ const frameOf = (events, state) => ({
      /sweepLiveKeys/.test(sc) && /k\.indexOf\('eplive:'\) === 0 && k !== keep/.test(sc));
 }
 
+/* ---------------------------------------------------------------------------
+   "COULD NOT ASK" IS NOT "NO".
+
+   gateScorer decided with `allowed = !error && data === true`, under a catch that
+   set it false — so a transport error was indistinguishable from "you may not
+   score this game". Hall wifi drops while the page is loading, which is the normal
+   case after the crash that flaky connection caused, and the statistician is told
+   the fixture in their hands is not theirs: sync halted (one-way, by design) and a
+   full-screen notice at a z-index above the escape hatch, so the saved game is
+   physically unreachable behind it. Nothing recovered when the wifi came back.
+
+   Three states now, and the middle one keeps scoring without publishing.
+   --------------------------------------------------------------------------- */
+{
+  const fs3 = require('node:fs');
+  const bs = fs3.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+
+  ok('the question has three answers, not two',
+     /async function mayScoreThis\(sb\)/.test(bs) &&
+     /if \(error\) return null;/.test(bs));
+  ok('signed out is a real no, and answered without asking the server',
+     /if \(!session\) return false;/.test(bs));
+  ok('a thrown call is "could not ask", not "no"',
+     /catch \(_\) \{ return null; \}/.test(bs));
+  ok('only a definite no refuses',
+     /if \(verdict === false\) \{[\s\S]{0,160}refuse\('This fixture is not yours to score'/.test(bs));
+  ok('an unanswered question lets the scorer run',
+     /unverified = true;[\s\S]{0,220}return true;/.test(bs));
+  ok('...and says so on the badge rather than pretending',
+     /offline \u00b7 not verified/.test(bs));
+  ok('...publishes nothing while it is unknown',
+     /if \(unverified\) return;\s*\n\s*clearInterval\(timer\);/.test(bs));
+  ok('...and keeps asking until somebody answers',
+     /function verifyLater\(sb\)/.test(bs) && /\}, 20000\);/.test(bs));
+  ok('a later yes starts publishing, a later no refuses',
+     /if \(v === true\) \{[\s\S]{0,200}unverified = false;/.test(bs) &&
+     /\} else if \(v === false\) \{[\s\S]{0,200}refuse\(/.test(bs));
+  ok('and halt() is never reached on the unverified path — it is documented one-way',
+     !/unverified = true;[\s\S]{0,400}halt\(\)/.test(bs));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -1536,6 +1536,11 @@
       if (tries > 1800) { clearInterval(timer); say('not attached', '#ff5f6b'); }  // ~15 min
       return;
     }
+    /* Nothing goes out while the right to score this fixture is unknown. The game
+       is being kept on the phone and will publish the moment somebody answers;
+       until then a phantom score from a device that may not be entitled to one is
+       the worse of the two failures. The interval is left running on purpose. */
+    if (unverified) return;
     clearInterval(timer);
 
     if (!window.EpinoiaSync) { say('sync.js missing', '#ff5f6b'); return; }
@@ -1764,6 +1769,44 @@
     return false;
   }
 
+  /* true / false / null, where null means the question could not be put. The
+     three are genuinely different and collapsing them is what caused the fault
+     described in gateScorer. */
+  async function mayScoreThis(sb) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return false;                 // signed out is a real answer
+      const { data, error } = await sb.rpc('may_score_game', { p_game: gameId });
+      if (error) return null;
+      return data === true;
+    } catch (_) { return null; }
+  }
+
+  let unverified = false, verifyTimer = null;
+
+  /* Keep asking. Twenty seconds is slow enough to cost nothing on a bad
+     connection and fast enough that a statistician who reconnects at the end of a
+     time-out is publishing again before the ball is back in play. */
+  function verifyLater(sb) {
+    if (verifyTimer) return;
+    verifyTimer = setInterval(async () => {
+      if (refused) { clearInterval(verifyTimer); verifyTimer = null; return; }
+      const v = await mayScoreThis(sb);
+      if (v === true) {
+        clearInterval(verifyTimer); verifyTimer = null;
+        unverified = false;
+        say('verified — publishing', '#93f2bf');
+      } else if (v === false) {
+        clearInterval(verifyTimer); verifyTimer = null;
+        unverified = false;
+        refuse('This fixture is not yours to score',
+          'Scoring a real fixture needs a statistician assigned to it, or an ' +
+          'administrator of its league. If that should be you, ask the league to ' +
+          'add your email address to the game.');
+      }
+    }, 20000);
+  }
+
   async function gateScorer() {
     /* The practice game is the one thing that needs no credentials at all. */
     if (TRAINING) return true;
@@ -1776,19 +1819,34 @@
     }
 
     if (isFixture) {
-      let allowed = false;
-      try {
-        const { data: { session } } = await sb.auth.getSession();
-        if (session) {
-          const { data, error } = await sb.rpc('may_score_game', { p_game: gameId });
-          allowed = !error && data === true;
-        }
-      } catch (_) { allowed = false; }
-      if (allowed) return true;
-      return refuse('This fixture is not yours to score',
-        'Scoring a real fixture needs a statistician assigned to it, or an ' +
-        'administrator of its league. If that should be you, ask the league to ' +
-        'add your email address to the game.');
+      const verdict = await mayScoreThis(sb);
+      if (verdict === true) return true;
+      if (verdict === false) {
+        return refuse('This fixture is not yours to score',
+          'Scoring a real fixture needs a statistician assigned to it, or an ' +
+          'administrator of its league. If that should be you, ask the league to ' +
+          'add your email address to the game.');
+      }
+
+      /* COULD NOT ASK IS NOT THE SAME AS NO.
+
+         This was `allowed = !error && data === true` with a catch that set it
+         false, so a transport error was indistinguishable from "you may not score
+         this game". Hall wifi drops while the page is loading — which is the
+         normal case after the crash that flaky connection caused — and the
+         statistician is told the fixture in their hands is not theirs, sync is
+         halted (one-way, by design), and a full-screen notice goes up at a
+         z-index above the escape hatch, so the saved game is physically
+         unreachable behind it. Nothing recovers when the wifi comes back.
+
+         So there is a third state. The scorer runs — it is built to work with no
+         network and the log is on the phone either way — but nothing is published
+         until somebody has actually answered the question, and the question keeps
+         being asked. A yes attaches. A definite no refuses, as it always did. */
+      unverified = true;
+      say('offline · not verified — scoring, not publishing', '#ffd166');
+      verifyLater(sb);
+      return true;
     }
 
     /* No fixture named: this is the picker. It lists a league's games and

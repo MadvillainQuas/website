@@ -14,11 +14,10 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 5, 6, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
-list). Item 4 — gateScorer treating a transport error as a refusal — was
-deliberately deferred rather than attempted hours before six live fixtures; it is
-the next one to take.
+list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
+live fixtures were imminent and has since been done.
 
 ## The headline
 
@@ -99,6 +98,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 4. Stop gateScorer treating an unanswered question as a refusal
 
 **critical** / hours · `scorer`
+
+> **STATUS — DONE 2026-09-12 — gateScorer now returns three states. A transport error or a thrown call is 'could not ask', which lets the scorer run, publishes nothing, says so on the badge and re-asks every 20s; only a clean `data === false` (or being signed out) refuses. halt() is not reached on that path. Tests in supabase/tests/durability.test.mjs.**
 
 **Why.** Verified at bootstrap.js:1767: `allowed = !error && data === true` with a catch that sets allowed=false. A transport error is indistinguishable from 'you may not score this'. Hall wifi drops at 28 minutes, the PWA is relaunched or the tab is killed for memory, the RPC fails, and refuse() calls EpinoiaSync.halt() (permanent, per sync.js:305), sets refused=true which kills the takeover guard and every video write, and mounts a full-screen panel at z-index 2147483600 — above the escape-hatch bar, so the saved-game control is physically unreachable behind it. The statistician is told they are not authorised to score the game in their hands, and nothing recovers when the wifi returns.
 
