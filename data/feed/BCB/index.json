@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-12T19:42:55.432710+00:00",
+"updated": "2026-09-12T20:29:11.829985+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2531,11 +2531,11 @@
 "id": "2886986",
 "home": "Loughborough Riders",
 "away": "Oaklands Wolves",
-"homeScore": 62,
-"awayScore": 65,
-"status": "live",
+"homeScore": 79,
+"awayScore": 93,
+"status": "final",
 "date": "2026-09-12T17:30:00+00:00",
-"hash": "1bb3d3bde26bd2f971d503cb90ff2175a4118524",
+"hash": "9a310bb5bbc3e5045cab42191b5e66ded6a49d15",
 "venue": "Netball Centre Loughborough University",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886986.json",
 "updated": "2026-09-12T19:42:32.881646+00:00"
