@@ -164,6 +164,8 @@
   .ccd{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;line-height:1.7;color:var(--ink-3)}
   .ccurl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
   .ccurl code{font-family:var(--f-data);font-size:11px;word-break:break-all;color:var(--ink-2)}
+  .ccshot{display:block;max-width:220px;width:100%;max-height:90px;object-fit:contain;object-position:left;image-rendering:pixelated;border:1px solid rgba(148,163,184,.3);border-radius:6px;margin:6px 0;background:#000}
+  .ccshot.hide{display:none}
 </style>
 </head>
 <body>
@@ -237,7 +239,10 @@
       <div class="cctext">
         <div class="cch">Point a phone at the hall's scoreboard.</div>
         <div class="ccd">Scan the code (or open the link) on the phone, sign in, box the clock digits, press <b>connect &amp; send</b>. The layers take the phone's clock over the feed's the moment it starts reading. Add it to the phone's home screen from the app's <b>install</b> button and it opens like any other app.</div>
-        <div class="ccurl"><code id="ccUrl">…</code><button class="ep-btn ghost" id="ccCopy" type="button">copy link</button></div>
+        <div class="ccurl"><code id="ccUrl">…</code><button class="ep-btn ghost" id="ccCopy" type="button">copy link</button>
+          <button class="ep-btn ghost" id="ccPeriodMinus" type="button" title="tell the phone it is the previous period">P−</button>
+          <button class="ep-btn ghost" id="ccPeriodPlus" type="button" title="tell the phone it is the next period">P+</button></div>
+        <img class="ccshot hide" id="ccShot" alt="what the phone's camera has boxed">
         <div class="ccd" id="ccLast"></div>
       </div>
     </div>
@@ -316,6 +321,6 @@
 <script src="../../live.js?v=295" defer></script>
 <script src="../../vendor/qrcode.js?v=1" defer></script>
 <script src="mixers.js?v=239" defer></script>
-<script src="control.js?v=296" defer></script>
+<script src="control.js?v=298" defer></script>
 </body>
 </html>

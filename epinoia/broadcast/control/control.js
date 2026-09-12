@@ -166,7 +166,7 @@ async function kpConnect() {
     /* the room reads the game the way a layer does: to seed the keeper and to re-base it */
     feedSub = window.EpinoiaLive.subscriber({
       gameId, mode: 'supabase', supabase: sb, pollMs: 2000, pollNow: !!fedGame,
-      onSnapshot: () => kpFromFeed(), onFrame: f => { if (f.phone) phoneSeen(f); if (!f.keeper && !f.phone) kpFromFeed(); }
+      onSnapshot: () => kpFromFeed(), onFrame: f => { if (f.phone) phoneSeen(f); else if (!f.keeper && !f.phoneCmd) kpFromFeed(); }
     });
   } catch (_) { /* the keeper still runs, unsynced */ }
   kpTimer = setInterval(() => {
@@ -192,7 +192,7 @@ function kpFromFeed() {
    The pairing is a URL with the game in it, drawn as a code. Presence and readings arrive as
    frames on the game's channel marked phone:true (a hello every few seconds while the app is
    open on this game; readings while it sends), and the card says which. */
-let phoneAt = 0, phoneLast = null, phoneSending = false;
+let phoneAt = 0, phoneLast = null, phoneSending = false, phoneHealth = null;
 function phoneUrl() {
   return location.origin + location.pathname.replace(/broadcast\/control\/?$/, '') + 'clockcam/?g=' + encodeURIComponent(gameId);
 }
@@ -205,13 +205,34 @@ function phoneCardInit() {
   }
   const cp = kpEl('ccCopy');
   if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(url); cp.textContent = 'copied'; setTimeout(() => { cp.textContent = 'copy link'; }, 1500); } catch (_) { /* the link is on screen */ } };
+  const pm = kpEl('ccPeriodMinus'), pp = kpEl('ccPeriodPlus');
+  if (pm) pm.onclick = () => phoneSetPeriod(Math.max(1, ((phoneLast && phoneLast.period) || 1) - 1));
+  if (pp) pp.onclick = () => phoneSetPeriod(Math.min(6, ((phoneLast && phoneLast.period) || 1) + 1));
   setInterval(phonePaint, 1000);
 }
 function phoneSeen(f) {
   phoneAt = Date.now(); phoneSending = !!f.sending || !!(f.state && f.state.source === 'cam');
   if (f.state && f.state.clock_ms != null) phoneLast = { ms: f.state.clock_ms, period: f.state.period, running: f.state.running, at: Date.now() };
   else if (f.reading != null) phoneLast = { ms: f.reading, period: f.period, running: !!f.running, at: Date.now() };
+  if (f.health) phoneHealth = f.health;
+  if (f.shot) { const im = kpEl('ccShot'); if (im) { im.src = f.shot; im.classList.remove('hide'); } }
   phonePaint();
+}
+
+/* WHAT THE PHONE IS LOOKING AT. A box drawn slightly off the digits does not fail
+   loudly -- it reads a bit less often and refuses a bit more, and the first anyone
+   knows is a clock that will not settle. The thumbnail above and the refusal rate
+   here are the two things that say so while there is still time to walk over. */
+function phoneHealthLine() {
+  const h = phoneHealth; if (!h) return '';
+  const bits = [];
+  if (h.cam && h.cam !== 'live') bits.push(h.cam);
+  if (h.hidden) bits.push('the app is in the background — the picture is frozen');
+  else if (!h.awake) bits.push('the screen is not being held awake');
+  if (h.refused >= 25) bits.push(h.refused + '% of readings refused — check the box is tight on the digits');
+  else if (h.refused) bits.push(h.refused + '% refused');
+  if (h.sent) bits.push(h.sent + ' sent');
+  return bits.join(' · ');
 }
 function phonePaint() {
   const st = kpEl('ccPhone'), last = kpEl('ccLast'); if (!st) return;
@@ -219,7 +240,17 @@ function phonePaint() {
   if (!phoneAt || age > 20000) { st.textContent = 'no phone connected'; st.classList.remove('on'); if (last) last.textContent = ''; return; }
   st.textContent = phoneSending ? 'phone connected \u00b7 sending the clock' : 'phone connected \u00b7 open on this game, not sending yet';
   st.classList.add('on');
-  if (last) last.textContent = phoneLast ? ('last reading P' + phoneLast.period + ' ' + kpFmt(phoneLast.ms) + (phoneLast.running ? ' running' : ' stopped') + ' \u00b7 ' + Math.round((Date.now() - phoneLast.at) / 1000) + ' s ago') : 'waiting for a reading';
+  if (last) {
+    const read = phoneLast ? ('last reading P' + phoneLast.period + ' ' + kpFmt(phoneLast.ms) + (phoneLast.running ? ' running' : ' stopped') + ' \u00b7 ' + Math.round((Date.now() - phoneLast.at) / 1000) + ' s ago') : 'waiting for a reading';
+    const health = phoneHealthLine();
+    last.textContent = read + (health ? ' \u00b7 ' + health : '');
+  }
+}
+
+/* tell the phone which period it is, from here */
+function phoneSetPeriod(p) {
+  if (!kpChan || !kpJoined) return;
+  try { kpChan.send({ type: 'broadcast', event: 'frame', payload: { phoneCmd: { period: p } } }); } catch (_) {}
 }
 
 function kpWire() {

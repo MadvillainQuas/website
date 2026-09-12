@@ -159,7 +159,7 @@ def main():
     prev_ms = prev_t = None
     period, period_len = 1, CK.PERIOD_S
     locked = False; provisional = None; label_prev = None
-    running = False; last_change_t = None; pending_up = None
+    running = False; last_change_t = None; held = None; steady = None
     started = time.time(); n = 0
     every = 1.0 / max(0.25, args.fps)
     next_t = time.time()
@@ -217,21 +217,53 @@ def main():
             misses += 1
             continue
         ms = r['ms']
-        # PHYSICS FIRST. Inside a period the clock never runs up; a reading a few seconds ahead of
-        # the last one is a misread nine times in ten (a 3 read as an 8, a colon lost), and one of
-        # those pushed to the layer is a visible wobble. Held back until the next read agrees.
-        if locked and prev_ms is not None and prev_ms + 300 < ms < prev_ms + 60000:
-            if pending_up is not None and abs(pending_up - ms) <= 1500:
-                pass                                              # twice running: the table did put time back
+        # PHYSICS FIRST, AND IN BOTH DIRECTIONS.
+        #
+        # This used to hold back only readings that jumped UP, on the reasoning that a clock
+        # inside a period never runs up. True, but incomplete: a clock inside a period does not
+        # jump DOWN five minutes either, and a 9 misread as a 3 does exactly that. Holding one
+        # and waving the other through is the worst of both, because the one that goes straight
+        # to air is the one that moves the clock furthest.
+        #
+        # So the question is the same either way: could a clock that read prev_ms then be
+        # reading ms now? It may have fallen by up to the time that has passed, with slack for
+        # frames we did not get; it may have stood still; it may not have risen. Anything else
+        # is held until the board keeps saying it -- three readings spanning most of a second,
+        # which is a new period or the table correcting itself, and is not a misread.
+        #
+        # The browser clock cam runs exactly this rule (epinoia/clockcam/clock.js), and a test
+        # over a quarter of deliberately bad frames keeps it honest.
+        if locked and prev_ms is not None and dt:
+            slack = min(5.0, max(1.0, 0.5 * dt))
+            fits = -0.4 <= (prev_ms - ms) / 1000.0 <= dt + slack
+            if not fits:
+                if held is not None:
+                    h_ms, h_t, h_n, h_first = held
+                    h_dt = t - h_t
+                    h_slack = min(5.0, max(1.0, 0.5 * h_dt))
+                    if -0.4 <= (h_ms - ms) / 1000.0 <= h_dt + h_slack:
+                        held = (ms, t, h_n + 1, h_first)
+                        if h_n + 1 < 3 or (t - h_first) < 0.7:
+                            misses += 1; continue
+                        held = None          # three readings agreeing over most of a second
+                    else:
+                        held = (ms, t, 1, t); misses += 1; continue
+                else:
+                    held = (ms, t, 1, t); misses += 1; continue
             else:
-                pending_up = ms; misses += 1
-                continue
-        pending_up = None
+                held = None
         if not locked:
             runs = (provisional is not None and provisional[0] > ms and abs((provisional[0] - ms) / 1000.0 - (t - provisional[1])) <= 2.5)
-            if label_now or runs:
+            # how long this exact value has been on the board, measured from the FIRST frame that
+            # showed it -- not from the previous frame, which at this cadence is always a fraction
+            # of a second ago. Measured the old way a stopped clock could never be locked on to.
+            if steady is None or steady[0] != ms:
+                steady = (ms, t)
+            still = (t - steady[1]) > 1.2
+            if label_now or runs or still:
                 locked = True
-                print('  locked on the clock at %s (%s)' % (CK.fmt_clock(ms), 'period label' if label_now else 'running value'))
+                print('  locked on the clock at %s (%s)' % (CK.fmt_clock(ms),
+                      'period label' if label_now else ('running value' if runs else 'held still')))
             else:
                 provisional = (ms, t)
                 continue

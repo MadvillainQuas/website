@@ -81,13 +81,64 @@ async function openGame() {
   paintBoxes();
   setInterval(tick, 250);
   chan = sb.channel('game:' + gameId);
+  chan.on('broadcast', { event: 'frame' }, m => onFrame(m && m.payload));
   chan.subscribe(st => { joined = (st === 'SUBSCRIBED'); paintStatus(); });
-  /* a hello every five seconds while the app is open on this game, so the control room can
-     say "phone connected" before the first reading and show the last one after */
-  setInterval(() => {
-    if (!chan || !joined) return;
-    try { chan.send({ type: 'broadcast', event: 'frame', payload: { phone: true, hello: true, sending, reading: clockMs, period, running } }); } catch (_) {}
-  }, 5000);
+  setInterval(hello, 5000);
+  hello();
+}
+
+/* ------------------------------------------------------------- telemetry ---
+   A hello every five seconds while the app is open on this game, so the control
+   room can say "phone connected" before the first reading and show the last one
+   after. It carries a PICTURE of what the phone is looking at, because the one
+   thing the person in the control room cannot otherwise know is whether the box
+   at the table is on the right digits -- and a box that is slightly off does not
+   announce itself, it just reads less often and refuses more. A hundred and sixty
+   pixels wide at middling quality is two or three kilobytes; every five seconds
+   that is nothing next to the readings themselves. */
+function peek() {
+  try {
+    const v = $('#cam'); if (!v.videoWidth || !boxes.clock) return null;
+    const m = boxToVideo(boxes.clock); if (!m || m.sw < 2 || m.sh < 2) return null;
+    const c = document.createElement('canvas');
+    c.width = 160; c.height = Math.max(20, Math.min(120, Math.round(160 * m.sh / m.sw)));
+    c.getContext('2d').drawImage(v, m.sx, m.sy, m.sw, m.sh, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.5);
+  } catch (_) { return null; }
+}
+function hello() {
+  if (!chan || !joined) return;
+  const st = CLK.stats;
+  try {
+    chan.send({ type: 'broadcast', event: 'frame', payload: {
+      phone: true, hello: true, sending,
+      reading: clockMs, period, running, locked,
+      health: {
+        cam: camLive() ? 'live' : (camFail || 'no camera'),
+        awake: !!wake, hidden: !!document.hidden, sent,
+        refused: st.reads ? Math.round(100 * st.refused / st.reads) : 0,
+        boxes: Object.keys(boxes).filter(k => boxes[k]).join(',')
+      },
+      shot: peek()
+    } });
+  } catch (_) {}
+}
+
+/* ---------------------------------------------------------- being driven ---
+   The control room knows which period it is -- from the scorer, or the feed, or
+   the person sitting in it -- and the phone at the table often does not. Rather
+   than making somebody walk over, the control room can set it from there. Nothing
+   else is accepted: the clock itself is the camera's to read. */
+function onFrame(f) {
+  if (!f || f.phone) return;
+  const cmd = f.phoneCmd;
+  if (!cmd) return;
+  if (cmd.period != null) {
+    const p = Math.max(1, Math.min(6, cmd.period | 0));
+    if (p !== period) { period = p; resetLock(); paintRead(); }
+    $('#boxHint').textContent = 'The control room set this to period ' + p + '.';
+    publish(true);
+  }
 }
 
 /* ------------------------------------------------------------ install --- */
