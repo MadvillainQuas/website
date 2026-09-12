@@ -239,6 +239,20 @@ jobs:
         # one, so this checks the ENGINE's box score, not just the event shapes
         run: node supabase/tests/livestats.test.mjs
 
+      - name: Clock cam decoder, on rendered scoreboards
+        # renders seven-segment boards through what a sports hall does to a
+        # picture -- dim, flickering, banded, blurred, angled, dot-matrix, and
+        # the colon that blinks off -- and holds the decoder to a read rate and,
+        # far more importantly, a ceiling on readings that are WRONG.
+        run: node supabase/tests/clockcam.decode.test.mjs
+
+      - name: Clock cam, what reaches the broadcast
+        # a misread that drops the clock used to go straight to air. This runs a
+        # quarter of deliberately bad frames through the physics and asserts that
+        # nothing wrong is ever published, while real jumps -- a new period, the
+        # table correcting itself -- still land.
+        run: node supabase/tests/clockcam.clock.test.mjs
+
       - name: LiveStats round trip on real games
         # takes real scored games, re-expresses them in FIBA's vocabulary,
         # imports them back and compares every player's line.

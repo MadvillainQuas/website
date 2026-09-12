@@ -32,9 +32,14 @@ let sb = null, user = null, gameId = (qp.get('g') || '').trim(), game = null;
 let chan = null, joined = false, sending = false, sent = 0;
 let boxes = { clock: null, home: null, away: null };     // fractions of the video frame
 let drawing = null, dragFrom = null;
-let period = 1, running = false, clockMs = null, prevMs = null, prevAt = 0, pendingUp = null, locked = false, provisional = null;
+let period = 1, running = false, clockMs = null, locked = false;
+/* the physics -- what a clock is allowed to do between two frames -- lives in
+   clock.js, where a test can run a whole bad quarter through it. See the note at
+   the top of that file for why a jump DOWN is as suspect as a jump up. */
+const CLK = window.CCClock.makeClock();
 let scores = { home: null, away: null };
 let lastDurable = 0, lastPost = 0;
+let camTrack = null, camFail = '', wake = null;
 
 /* ------------------------------------------------------------ session --- */
 async function boot() {
@@ -100,11 +105,79 @@ document.addEventListener('DOMContentLoaded', () => {
 async function startCamera() {
   const v = $('#cam');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      /* 15fps rather than whatever the phone fancies: the reader looks four times
+         a second, and a camera running at 60 for ninety minutes is a warm phone
+         with a flat battery by the third quarter. */
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 }, frameRate: { ideal: 15, max: 30 } },
+      audio: false
+    });
     v.srcObject = stream;
+    camTrack = stream.getVideoTracks()[0] || null;
+    camFail = '';
     await v.play();
-  } catch (e) { $('#rSt').textContent = 'camera: ' + (e.message || 'not available'); }
+    /* KEEP THE CAMERA HONEST ABOUT A SCOREBOARD. Left alone a phone hunts: it
+       refocuses on the crowd between the phone and the board, and it meters for
+       the dark hall, which blows the LED digits into one white blob. Asking for
+       continuous focus and exposure is the most any browser will allow, and on
+       the phones that allow it, it is the difference between a board that reads
+       and one that does not. Every one of these is optional -- ask for what the
+       track says it can do and never for anything else. */
+    if (camTrack && camTrack.getCapabilities) {
+      try {
+        const caps = camTrack.getCapabilities() || {}, adv = [];
+        const wants = { focusMode: 'continuous', exposureMode: 'continuous', whiteBalanceMode: 'continuous' };
+        Object.keys(wants).forEach(k => { const c = caps[k]; if (c && c.indexOf && c.indexOf(wants[k]) >= 0) adv.push({ [k]: wants[k] }); });
+        if (adv.length) await camTrack.applyConstraints({ advanced: adv });
+      } catch (_) { /* the picture is fine without it */ }
+    }
+    /* a camera can be taken away mid-game -- a call comes in, another app grabs
+       it, iOS suspends the tab. Losing it silently is the failure nobody notices
+       until the clock has been frozen for a quarter. */
+    if (camTrack) camTrack.addEventListener('ended', () => { camTrack = null; camFail = 'the camera stopped'; paintStatus(); });
+  } catch (e) {
+    camTrack = null; camFail = 'camera: ' + (e.message || 'not available');
+    $('#rSt').textContent = camFail;
+  }
 }
+
+/* the camera is live if we hold a track that is neither ended nor muted AND the
+   video element is actually delivering pixels */
+function camLive() {
+  const v = $('#cam');
+  return !!(camTrack && camTrack.readyState === 'live' && v && v.videoWidth > 0);
+}
+async function ensureCamera() {
+  if (camLive()) return;
+  await startCamera();
+  paintStatus();
+}
+
+/* ---------------------------------------------------------- stay awake ---
+   A phone locks its screen after thirty seconds of nobody touching it, and a
+   locked screen is a stopped camera. Without this the clock cam works until the
+   person puts the phone down, which is the moment they were always going to put
+   it down -- it is on a clamp pointing at a scoreboard. */
+async function keepAwake(on) {
+  try {
+    if (on && !wake && navigator.wakeLock) {
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', () => { wake = null; });
+    } else if (!on && wake) { const w = wake; wake = null; await w.release(); }
+  } catch (_) { wake = null; }
+}
+
+/* WHEN THE PAGE IS HIDDEN THE PICTURE FREEZES BUT THE READER DOES NOT.
+   Every quarter-second it would read the same frozen frame again, agree with
+   itself, and publish a clock that stopped when the person switched apps -- and
+   the layers would take it, because a camera reading is the authority. So
+   reading stops with the page, and the camera and the lock are both taken back
+   when it returns. */
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden) return;
+  await ensureCamera();
+  if (sending) keepAwake(true);
+});
 
 /* -------------------------------------------------------------- boxes --- */
 function stageRect() { return $('#stage').getBoundingClientRect(); }
@@ -135,36 +208,61 @@ function wire() {
   $('#boxClock').onclick = () => arm('clock');
   $('#boxHome').onclick = () => arm('home');
   $('#boxAway').onclick = () => arm('away');
-  $('#boxClear').onclick = () => { boxes = { clock: null, home: null, away: null }; localStorage.removeItem('cc:' + gameId); locked = false; prevMs = null; paintBoxes(); };
+  $('#boxClear').onclick = () => { boxes = { clock: null, home: null, away: null }; localStorage.removeItem('cc:' + gameId); resetLock(); paintBoxes(); };
   stage.addEventListener('pointerdown', e => { if (!drawing) return; dragFrom = toFrac(e); stage.setPointerCapture(e.pointerId); });
   stage.addEventListener('pointermove', e => { if (!drawing || !dragFrom) return; drawing.cur = toFrac(e); paintBoxes(); });
   const finish = e => {
     if (!drawing || !dragFrom) return;
     const to = toFrac(e);
     const b = { x: Math.min(dragFrom.x, to.x), y: Math.min(dragFrom.y, to.y), w: Math.abs(to.x - dragFrom.x), h: Math.abs(to.y - dragFrom.y) };
-    if (b.w > 0.03 && b.h > 0.02) { boxes[drawing.kind] = b; localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); locked = false; prevMs = null; }
+    if (b.w > 0.03 && b.h > 0.02) { boxes[drawing.kind] = b; localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); resetLock(); }
     ['boxClock', 'boxHome', 'boxAway'].forEach(id => $('#' + id).classList.remove('on'));
     $('#boxHint').textContent = 'Boxes are kept for this game on this phone. Re-draw one any time.';
     drawing = null; dragFrom = null; paintBoxes();
   };
   stage.addEventListener('pointerup', finish); stage.addEventListener('pointercancel', finish);
   window.addEventListener('resize', paintBoxes);
-  $('#go').onclick = () => { sending = !sending; $('#go').classList.toggle('on', sending); $('#go').textContent = sending ? 'sending — tap to stop' : 'connect & send'; paintStatus(); };
+  $('#go').onclick = () => { sending = !sending; $('#go').classList.toggle('on', sending); $('#go').textContent = sending ? 'sending — tap to stop' : 'connect & send'; keepAwake(sending); if (sending) ensureCamera(); paintStatus(); };
   $('#pDown').onclick = () => { period = Math.max(1, period - 1); publish(true); paintRead(); };
-  $('#pUp').onclick = () => { period = Math.min(6, period + 1); prevMs = null; locked = false; publish(true); paintRead(); };
+  $('#pUp').onclick = () => { period = Math.min(6, period + 1); resetLock(); publish(true); paintRead(); };
   $('#pcMode').onchange = () => { $('#pcHint').classList.toggle('hide', !$('#pcMode').checked); };
   $('#pcHint').classList.add('hide');
 }
 
 /* ------------------------------------------------------------ reading --- */
 const work = document.createElement('canvas');
+
+/* THE BOX IS DRAWN ON THE PICTURE, NOT ON THE VIDEO.
+
+   The stage shows the camera with object-fit: cover, which scales the frame to
+   fill the box and throws away the overhang. So a rectangle at the middle of the
+   stage is only the middle of the VIDEO when the two have the same shape. The
+   stage is 4:3 and the camera is ASKED for 4:3, but "ideal" is a request, not a
+   promise: plenty of phones hand back 1280x720 regardless, and on those every
+   box was being read from the wrong part of the frame -- shifted and squashed,
+   with no clue on screen that anything was wrong, because the overlay is drawn
+   on the stage where the person put it.
+
+   So the cover mapping is done properly: work out how the browser fitted the
+   frame, then take the box back through that fit into video pixels. */
+function boxToVideo(box) {
+  const v = $('#cam'), r = stageRect();
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh || !r.width || !r.height || !box) return null;
+  const k = Math.max(r.width / vw, r.height / vh);
+  const offX = (r.width - vw * k) / 2, offY = (r.height - vh * k) / 2;
+  return {
+    sx: (box.x * r.width - offX) / k, sy: (box.y * r.height - offY) / k,
+    sw: (box.w * r.width) / k, sh: (box.h * r.height) / k
+  };
+}
 function cropOf(box, w) {
   const v = $('#cam'); if (!v.videoWidth || !box) return null;
-  const sw = box.w * v.videoWidth, sh = box.h * v.videoHeight;
-  const W = w || 240, H = Math.max(24, Math.round(W * sh / sw));
+  const m = boxToVideo(box); if (!m || m.sw < 2 || m.sh < 2) return null;
+  const W = w || 240, H = Math.max(24, Math.round(W * m.sh / m.sw));
   work.width = W; work.height = H;
   const g = work.getContext('2d', { willReadFrequently: true });
-  g.drawImage(v, box.x * v.videoWidth, box.y * v.videoHeight, sw, sh, 0, 0, W, H);
+  g.drawImage(v, m.sx, m.sy, m.sw, m.sh, 0, 0, W, H);
   return g.getImageData(0, 0, W, H);
 }
 /* THE DECODER LIVES IN decode.js, and the test renders scoreboards at it.
@@ -187,35 +285,25 @@ function thumb(kind, b, text) {
 }
 function fmt(ms) { if (ms == null) return '–:––'; const s = Math.ceil(ms / 1000); return ms < 60000 ? (ms / 1000).toFixed(1) : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
+function resetLock() { CLK.reset(); locked = false; }
+
 function tick() {
   if (!boxes.clock) return;
+  /* a hidden page is a frozen picture, and a frozen picture read four times a
+     second is a stopped clock published with total confidence */
+  if (document.hidden) return;
+  if (!camLive()) { if (sending) ensureCamera(); return; }
   const inv = $('#invert').checked ? true : null, adj = +$('#thr').value || 0;
   const img = cropOf(boxes.clock); if (!img) return;
   const b = binarise(img, inv, adj);
   if ($('#pcMode').checked) { postCrop(); thumb('clock', b, 'to the PC'); return; }
-  const ms = readClock(b);
-  thumb('clock', b, ms == null ? null : fmt(ms));
   const now = Date.now();
+  const ms = readClock(b, CLK.predict(now));
+  thumb('clock', b, ms == null ? null : fmt(ms));
   if (ms != null) {
-    if (!locked) {
-      const runs = provisional && provisional.ms > ms && Math.abs((provisional.ms - ms) / 1000 - (now - provisional.at) / 1000) <= 2.5;
-      const same = provisional && provisional.ms === ms && now - provisional.at > 1200;
-      if (runs || same) { locked = true; } else { provisional = { ms, at: now }; paintRead(); return; }
-    }
-    if (prevMs != null && prevMs + 300 < ms && ms < prevMs + 60000) {
-      if (pendingUp != null && Math.abs(pendingUp - ms) <= 1500) { pendingUp = null; }
-      else { pendingUp = ms; return; }
-    }
-    pendingUp = null;
-    if (prevMs != null) {
-      const dt = (now - prevAt) / 1000, down = (prevMs - ms) / 1000;
-      if (down > 0.2 && Math.abs(down - dt) <= Math.max(1.0, 0.6 * dt)) running = true;
-      else if (ms === prevMs && now - prevAt > 1600) running = false;
-      else if (ms > prevMs + 1500) running = false;
-    }
-    if (ms !== prevMs) { prevAt = now; }
-    prevMs = ms; clockMs = ms;
-    publish(false);
+    const out = CLK.consider(ms, now);
+    locked = CLK.locked; running = CLK.running;
+    if (out) { clockMs = out.ms; publish(out.force); }
   }
   if ($('#sendScore').checked) {
     ['home', 'away'].forEach(k => { if (!boxes[k]) return; const im = cropOf(boxes[k], 120); if (!im) return; const bb = binarise(im, inv, adj); const v = readScore(bb); thumb(k, bb, v); if (v != null) scores[k] = v; });
@@ -232,7 +320,25 @@ function publish(force) {
   const state = { game_id: gameId, period, clock_ms: Math.round(clockMs), running, updated_at: new Date(now).toISOString(), source: 'cam' };
   if ($('#sendScore').checked && scores.home != null && scores.away != null) { state.score_home = scores.home; state.score_away = scores.away; }
   try { chan.send({ type: 'broadcast', event: 'frame', payload: { cam: true, phone: true, sending: true, state } }); sent++; lastSentMs = clockMs; lastSentAt = now; } catch (_) {}
+  durable(state, now);
   paintStatus();
+}
+
+/* A DURABLE COPY, EVERY FEW SECONDS.
+
+   Broadcast frames reach whoever is listening at the time and nobody else. A
+   layer opened at the start of the third quarter, a club's own page, the fixture
+   strip on somebody's website -- all of them begin by reading game_state, and
+   for a game whose clock comes from a phone that row was never written. The PC
+   reader has always kept it up to date; this is the same thing from the phone,
+   through an RPC that can only ever set the clock, so a club manager entitled to
+   broadcast cannot reach the score with it. */
+async function durable(state, now) {
+  if (now - lastDurable < 5000 || !sb) return;
+  lastDurable = now;
+  try {
+    await sb.rpc('broadcast_clock', { p_game: gameId, p_period: state.period, p_clock_ms: state.clock_ms, p_running: state.running });
+  } catch (_) { /* the live frames are the path that matters; this is the safety net */ }
 }
 async function postCrop() {
   if (!sending || !sb || !boxes.clock) return;
@@ -246,11 +352,21 @@ async function postCrop() {
 }
 function paintRead() {
   $('#rPer').textContent = 'P' + period;
-  const c = $('#rClk'); c.textContent = fmt(clockMs != null ? clockMs : (provisional ? provisional.ms : null)); c.classList.toggle('run', running);
+  const c = $('#rClk'); c.textContent = fmt(locked && clockMs != null ? clockMs : CLK.raw); c.classList.toggle('run', running);
   $('#rSc').textContent = ($('#sendScore').checked && scores.home != null && scores.away != null) ? scores.home + ' – ' + scores.away : '';
 }
 function paintStatus() {
-  $('#rSt').textContent = (joined ? 'live channel connected' : 'connecting…') + ' · ' + (sending ? ($('#pcMode').checked ? 'posting crops to the PC' : 'sending readings') : 'not sending') + (sent ? ' · ' + sent + ' sent' : '') + (locked ? '' : ' · waiting for the clock to run');
+  const bits = [];
+  bits.push(joined ? 'live channel connected' : 'connecting…');
+  if (camFail) bits.push(camFail);
+  bits.push(sending ? ($('#pcMode').checked ? 'posting crops to the PC' : 'sending readings') : 'not sending');
+  if (sent) bits.push(sent + ' sent');
+  if (!locked) bits.push('waiting for the clock to run');
+  /* what the reader is throwing away is worth showing: a box that is slightly
+     wrong reads often and is refused often, and that is the only symptom */
+  else { const st = CLK.stats; if (st.refused && st.reads) bits.push(Math.round(100 * st.refused / st.reads) + '% refused'); }
+  if (wake) bits.push('screen held awake');
+  $('#rSt').textContent = bits.join(' · ');
 }
 
 window.__clockcam = { binarise, glyphs, readClock, readScore, segDigit };
