@@ -42,18 +42,34 @@ const rows = Array.from({ length: 2400 }, (_, i) => ({
   payload: i % 5 === 0 ? { tag: 'transition' } : {}
 }));
 
-const sb = {
+/* The squad as this device holds it: the frozen roster_snapshot loadFixture
+   returned, which is the same one the other device wrote its starters against. */
+const squads = () => [
+  { name: 'home', players: [0,1,2,3,4,5,6,7].map(i => ({ id: 'h' + i, name: 'home ' + i, num: i })) },
+  { name: 'away', players: [0,1,2,3,4,5,6,7].map(i => ({ id: 'a' + i, name: 'away ' + i, num: i })) }
+];
+/* The table matters now: loadRecorded reads game_state for the clock AND games
+   for the three things the log cannot tell it — who started, who won the tip and
+   which way the arrow was pointing. */
+const client = game => ({
   from: table => ({
     select: () => ({
       eq: () => ({
         order: () => ({ range: async (a, b) => ({ data: rows.slice(a, b + 1), error: null }) }),
-        maybeSingle: async () => ({ data: { period: 3, clock_ms: 412000, running: true } })
+        maybeSingle: async () => ({ data: table === 'games'
+          ? game
+          : { period: 3, clock_ms: 412000, running: true } })
       })
     })
   })
-};
+});
+const sb = client({ starters: [['h2','h3','h4','h5','h6'], ['a1','a2','a3','a4','a5']],
+                    tip_winner: 1, arrow_init: 0 });
 const S = { phase: 'pregame', events: [], redo: [{ junk: 1 }], evSeq: 0,
-            period: 1, clockMs: 600000, running: true, teams: [] };
+            period: 1, clockMs: 600000, running: true, teams: squads(),
+            /* what the picker on THIS device defaulted to: the first five */
+            starters: [['h0','h1','h2','h3','h4'], ['a0','a1','a2','a3','a4']],
+            tipWinner: null, arrowInit: null };
 let built = 0, saved = 0, rendered = 0;
 
 const loadRecorded = new Function('epinoiaClient', 'gameId', 'S', 'window',
@@ -78,6 +94,59 @@ ok('any pending redo is cleared, because it belonged to a different history',
    S.redo.length === 0);
 ok('the player map, the save and the redraw all happen',
    built === 1 && saved === 1 && rendered === 1);
+
+/* ---- the log says who subbed; it does not say who started ---------------- */
+/* derive() seeds onCourt from S.starters and the arrow from S.tipWinner /
+   S.arrowInit, then replays the substitutions on top. Pulling the recorded log
+   without those three replays real subs against an invented five — and the five
+   on a fresh device is whatever the picker defaulted to, which is the first
+   players in the squad.
+
+   That is not a display bug. One wrong starter is on court for every possession
+   until they are subbed, so every plus-minus, stint, lineup row and on/off number
+   in the game is computed against a lineup that never took the floor. */
+ok('the five that actually started is taken from the league copy, not this device',
+   JSON.stringify(S.starters) ===
+   JSON.stringify([['h2','h3','h4','h5','h6'], ['a1','a2','a3','a4','a5']]),
+   JSON.stringify(S.starters));
+ok('...and who won the tip', S.tipWinner === 1, String(S.tipWinner));
+ok('...and which way the arrow was pointing', S.arrowInit === 0, String(S.arrowInit));
+
+/* A reverted fixture can hold starters belonging to a squad this device is not
+   holding. Putting an unknown id on court would be worse than the default five,
+   so the ids are checked against the squad before they are trusted. */
+{
+  const S2 = { phase: 'pregame', events: [], redo: [], evSeq: 0, period: 1,
+               clockMs: 600000, running: true, teams: squads(),
+               starters: [['h0','h1','h2','h3','h4'], ['a0','a1','a2','a3','a4']],
+               tipWinner: null, arrowInit: null };
+  const strange = client({ starters: [['x1','x2','x3','x4','x5'], ['y1','y2','y3','y4','y5']],
+                           tip_winner: 0, arrow_init: 1 });
+  const load2 = new Function('epinoiaClient', 'gameId', 'S', 'window',
+    lift(src, 'async function loadRecorded()') + '\n' + 'return loadRecorded;')(
+      () => strange, 'g2', S2, { buildPmap: () => {}, save: () => {}, renderAll: () => {} });
+  await load2();
+  ok('starters belonging to another squad are refused, not put on court',
+     JSON.stringify(S2.starters) ===
+     JSON.stringify([['h0','h1','h2','h3','h4'], ['a0','a1','a2','a3','a4']]),
+     JSON.stringify(S2.starters));
+}
+
+/* And a fixture that never recorded them — an older game, a reverted one — must
+   leave what this device has alone rather than blanking the five. */
+{
+  const S3 = { phase: 'pregame', events: [], redo: [], evSeq: 0, period: 1,
+               clockMs: 600000, running: true, teams: squads(),
+               starters: [['h0','h1','h2','h3','h4'], ['a0','a1','a2','a3','a4']],
+               tipWinner: 1, arrowInit: 0 };
+  const empty = client({ starters: null, tip_winner: null, arrow_init: null });
+  const load3 = new Function('epinoiaClient', 'gameId', 'S', 'window',
+    lift(src, 'async function loadRecorded()') + '\n' + 'return loadRecorded;')(
+      () => empty, 'g3', S3, { buildPmap: () => {}, save: () => {}, renderAll: () => {} });
+  await load3();
+  ok('a fixture with nothing recorded leaves the five on this device alone',
+     S3.starters[0][0] === 'h0' && S3.tipWinner === 1 && S3.arrowInit === 0);
+}
 
 /* ---- the guard has to survive the connection it exists to survive --------- */
 /* guardAgainstOverwrite counts the league's copy of the log before publishing, and

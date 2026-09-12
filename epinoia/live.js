@@ -475,7 +475,7 @@ function subscriber(opts) {
   let state = null;          // last known clock state
   let offset = 0;            // serverNow - Date.now()
   let lastSeq = 0;
-  let lastTraffic = Date.now();
+  let lastTraffic = Date.now(), clockTraffic = Date.now();
   let status = 'connecting';
   let stopListen = null, pollTimer = null, watchdog = null, retry = 1000;
   let maxSeq = 0;            // the highest event sequence held, for the cheap poll
@@ -541,10 +541,29 @@ function subscriber(opts) {
   }
   function applyFrame(f) {
     if (!f) return;
-    /* only a frame that carries the game (events, state, a sequence) counts as traffic: a
-       phone saying hello every few seconds must not stop the poll ladder from noticing that
-       the scorer has gone quiet */
-    if (f.events || f.state || f.seq != null || f.full) lastTraffic = Date.now();
+    /* ONLY THE SCORER'S OWN FRAMES COUNT AS THE SCORER BEING ALIVE.
+
+       The clause used to include f.state, and the reasoning above it -- a phone
+       saying hello must not stop the ladder noticing a dark scorer -- was exactly
+       right and the code did not implement it. The clock keeper restates the clock
+       every five seconds and the clock cam publishes a reading every second and a
+       half, and BOTH of those frames carry state. So on any game where the control
+       room is keeping the clock or a camera is on the board -- which is every game
+       worth broadcasting -- the statistician's tablet could die at 8:00 of the
+       third and this never noticed. lastTraffic was refreshed by the keeper,
+       STALE_MS never elapsed, the watchdog never fired, the ladder never dropped to
+       polling, and the status stayed 'live' over a feed where the score had stopped
+       moving. The clock kept ticking on air the whole time, which is precisely what
+       makes it convincing.
+
+       Every publisher frame carries a seq (flush, pushState, pushSnapshot all
+       stamp one); no keeper or cam frame does. So seq is the thing that means
+       "the game is still being recorded", and state alone is not. */
+    if (f.events || f.seq != null || f.full) lastTraffic = Date.now();
+    /* Clock freshness is tracked separately rather than thrown away: a layer that
+       wants to say "clock live, score stale" -- which is the honest thing to put on
+       air in exactly this situation -- needs both ages, not one merged one. */
+    if (f.state) clockTraffic = Date.now();
     // a gap in the sequence means we missed a frame — resync rather than drift
     if (f.seq != null && lastSeq && f.seq > lastSeq + 1) { resync('gap'); return; }
     if (f.seq != null) lastSeq = f.seq;
@@ -583,7 +602,7 @@ function subscriber(opts) {
       /* Only a frame arriving over the socket proves the scorer is live.
          A successful poll just means the store answered — that is 'delayed',
          never 'live', or a dark scorer would look healthy. */
-      if (why === 'initial') { lastTraffic = Date.now(); setStatus('live'); }
+      if (why === 'initial') { lastTraffic = clockTraffic = Date.now(); setStatus('live'); }
       else if (status === 'offline') setStatus('delayed');
     } catch (_) { setStatus('offline'); }
   }
@@ -629,6 +648,16 @@ function subscriber(opts) {
       if (!at) return false;
       return ((Date.now() + offset) - at) > CLOCK_RUN_ON_MS;
     },
+    /** HOW LONG SINCE THE GAME ITSELF WAS HEARD FROM, in ms.
+
+        Distinct from clockAge() on purpose. A game with a clock keeper or a clock
+        cam on it has two independent sources, and they fail independently: the
+        common bad case is a dead statistician under a live clock, which reads as a
+        perfectly healthy stream with a frozen score. A consumer that wants to be
+        honest about that can compare the two. */
+    logAge() { return Date.now() - lastTraffic; },
+    /** how long since anybody stated the clock, in ms */
+    clockAge() { return Date.now() - clockTraffic; },
     /** the whole point: a smooth clock with zero bandwidth */
     clockMs() {
       if (!state) return 0;

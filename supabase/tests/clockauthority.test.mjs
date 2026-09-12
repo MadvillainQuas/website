@@ -37,6 +37,7 @@ const eq = (name, got, want) => {
   if (ok) { pass++; console.log('  PASS  ' + name); }
   else { fail++; console.error('  FAIL  ' + name + '\n        got ' + JSON.stringify(got) + ', wanted ' + JSON.stringify(want)); }
 };
+const yes = (name, cond) => eq(name, !!cond, true);
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 let n = 0;
@@ -45,8 +46,20 @@ async function pair() {
   const pub = L.publisher({ gameId, mode: 'local' });
   const sub = L.subscriber({ gameId, mode: 'local', onFrame: () => {} });
   await wait(250);
-  return { pub, sub };
+  return { pub, sub, gameId };
 }
+/* A keeper and a clock cam do NOT publish through the publisher: they post a bare
+   frame on the game channel carrying a state and nothing else -- no seq, no
+   events. That difference is the whole of what the tests below turn on, so they
+   post the real shape rather than going through pushState, which would stamp a
+   seq the real thing has never had. */
+function rawFrame(gameId, payload) {
+  const ch = new BroadcastChannel('eplive:' + gameId);
+  ch.postMessage(payload);
+  ch.close();
+}
+const keeperFrame = ms => ({ keeper: true, state: {
+  clock_ms: ms, running: true, source: 'keeper', updated_at: new Date().toISOString() } });
 const clockOf = (src, ms, extra) => Object.assign(
   { clock_ms: ms, running: true, source: src, updated_at: new Date().toISOString() }, extra || {});
 
@@ -154,6 +167,64 @@ console.log('\nand whether anybody is still driving it');
 {
   const { sub } = await pair();
   eq('a subscriber with no state at all is not stale either', sub.clockStale(), false);
+}
+
+/* ---------------------------------------------------------------------------
+   A LIVE CLOCK IS NOT A LIVE SCORER.
+
+   The degradation ladder exists to notice that the statistician has gone dark:
+   no traffic for STALE_MS and the status drops to 'delayed', polling starts, and
+   whoever is watching is told the feed is not what it was. It was defeated by
+   its own clock. The keeper restates itself every five seconds and the camera
+   reads every second and a half, and both of those frames carry a state -- which
+   the ladder counted as traffic. So on every game worth broadcasting, the ones
+   with a control room or a camera on the board, the tablet could die at 8:00 of
+   the third and nothing noticed: status stayed 'live', the clock kept ticking on
+   air, and the score simply stopped moving.
+
+   The clock is still tracked, separately, because "clock live, score stale" is
+   the honest thing to say and it needs both ages rather than one merged one.
+   --------------------------------------------------------------------------- */
+console.log('\na live clock is not a live scorer');
+
+{
+  const { pub, sub, gameId } = await pair();
+  pub.pushState(clockOf('keeper', 480000));
+  /* a stretch with nothing at all from the scorer, so the two ages are far
+     enough apart that neither assertion can be satisfied by timing noise */
+  await wait(1400);
+  const t0 = sub.logAge();
+  rawFrame(gameId, keeperFrame(479000));
+  rawFrame(gameId, keeperFrame(478000));
+  await wait(300);
+  yes('a keeper frame does not pass for the scorer being alive', sub.logAge() > t0 + 250);
+  yes('...but it is counted as the clock being alive', sub.clockAge() < 600);
+  sub.stop();
+}
+
+{
+  const { pub, sub, gameId } = await pair();
+  rawFrame(gameId, keeperFrame(479000));
+  await wait(400);
+  const dark = sub.logAge();
+  pub.pushEvents([{ id: 1, t: 'shot', period: 1, clock: 479000 }]);
+  await pub.flushNow();
+  await wait(200);
+  yes('a frame from the scorer itself does count', sub.logAge() < dark);
+  sub.stop();
+}
+
+{
+  const { sub, gameId } = await pair();
+  /* The real thing at real speed: nothing but the control room's clock for longer
+     than the ladder's patience. The wait is the test -- STALE_MS is not injected
+     or shortened, because a shortened one would not prove the shipped number. */
+  const beat = setInterval(() => rawFrame(gameId, keeperFrame(470000)), 800);
+  await wait(L.STALE_MS + 3500);
+  clearInterval(beat);
+  eq('a scorer that dies under a live clock is noticed', sub.status, 'delayed');
+  yes('...and the clock is still known to be fresh', sub.clockAge() < 2000);
+  sub.stop();
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

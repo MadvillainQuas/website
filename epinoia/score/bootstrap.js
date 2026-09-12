@@ -548,6 +548,43 @@
         S.clockMs = st.clock_ms != null ? st.clock_ms : S.clockMs;
       }
     } catch (_) { /* the log alone is enough to score from */ }
+
+    /* THE LOG SAYS WHO SUBBED. IT DOES NOT SAY WHO STARTED.
+
+       derive() seeds onCourt from S.starters and the possession arrow from
+       S.tipWinner / S.arrowInit, then replays the substitutions on top. Pulling
+       the recorded log without those three means replaying real subs against an
+       invented five — and this device's five is whatever the picker defaulted
+       to, which is the first players in the squad.
+
+       The damage is not a display bug. One wrong starter is on court for every
+       possession until they are subbed, so every plus-minus, every stint, every
+       lineup row and every on/off number in the game is computed against a
+       lineup that was never on the floor. And if the starter is wrong at the
+       other end too, the arrow points the wrong way at the next held ball.
+
+       claimFixture wrote all three against the same frozen roster_snapshot that
+       loadFixture just handed us, so the ids line up by construction. They are
+       still checked before being trusted: a fixture whose snapshot was reverted
+       could hold starters belonging to a squad this device is not holding, and
+       putting an unknown id on court would be worse than the default five. */
+    try {
+      const { data: g } = await sb.from('games')
+        .select('starters,tip_winner,arrow_init').eq('id', gameId).maybeSingle();
+      if (g) {
+        const known = new Set();
+        (S.teams || []).forEach(t => (t.players || []).forEach(pl => known.add(pl.id)));
+        const five = g.starters;
+        const sane = Array.isArray(five) && five.length === 2 &&
+                     Array.isArray(five[0]) && Array.isArray(five[1]) &&
+                     five[0].length && five[1].length &&
+                     five[0].concat(five[1]).every(id => known.has(id));
+        if (sane) S.starters = [five[0].slice(), five[1].slice()];
+        else if (five) console.warn('[takeover] recorded starters do not match this squad');
+        if (g.tip_winner != null) S.tipWinner = g.tip_winner;
+        if (g.arrow_init != null) S.arrowInit = g.arrow_init;
+      }
+    } catch (_) { /* the five on screen is the fallback, as it was before */ }
     /* Never inherit a RUNNING clock: two devices both ticking is how the game
        clock ends up ahead of the hall's. Whoever takes over starts it. */
     S.running = false;

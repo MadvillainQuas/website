@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 9, 11, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -165,6 +165,8 @@ The strategic correction that should govern the build order: the digital scoresh
 
 **critical** / hours · `scorer`
 
+> **STATUS - DONE 2026-09-12 - loadRecorded now reads starters, tip_winner and arrow_init from games and applies them, with the ids checked against the squad this device is holding so a reverted snapshot cannot put an unknown player on court. Tests in supabase/tests/takeover.test.mjs.**
+
 **Why.** loadRecorded (bootstrap.js:499) rebuilds S.events from game_events and reads period/clock from game_state, but never reads games.starters, games.tip_winner or games.arrow_init — all three of which claimFixture wrote at tip. S.starters stays whatever THIS device picked, and the picker defaults to the first five of the roster. derive() seeds onCourt and the stint accumulator directly from S.starters and replays subs from there, so a single wrong starter puts the wrong player on court for every possession until their first substitution, shifting every lineup, every plus/minus, every minutes total and every on/off split for the game. Nothing warns — the box score looks complete and the analytics underneath it are quietly wrong, which is precisely the data the platform exists to produce. S.tipWinner and S.arrowInit are likewise unset, so the alternating-possession arrow starts from null and is wrong all game.
 
 **What.** In loadRecorded (bootstrap.js:499), alongside the game_state read at 527, select starters, tip_winner and arrow_init from games and apply them before calling buildPmap(): `if (g.starters) S.starters = g.starters; if (g.tip_winner != null) S.tipWinner = g.tip_winner; if (g.arrow_init != null) S.arrowInit = g.arrow_init;`. Player ids match because loadFixture already returned the frozen roster_snapshot, which is the same snapshot claimFixture wrote the starters against.
@@ -188,6 +190,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 11. Stop a clock keeper or clock cam masking a dead scorer
 
 **critical** / hours · `transport`
+
+> **STATUS - DONE 2026-09-12 - the bare f.state clause is gone from the traffic test, so only a frame carrying a seq counts as the scorer being alive; clock freshness is tracked separately and exposed as sub.clockAge() alongside sub.logAge(). The end-to-end degradation is asserted at real speed in supabase/tests/clockauthority.test.mjs.**
 
 **Why.** live.js:547 refreshes lastTraffic on any frame carrying f.state, and the comment above it says a phone saying hello must not stop the ladder noticing a dark scorer. But keeper frames (control.js:155, every 5s) and cam reading frames (clockcam.js:551, every ~1.5s) both carry state. So when the statistician's tablet dies at 8:00 of Q3 while the control room keeps the clock, Date.now() - lastTraffic never exceeds STALE_MS, the watchdog never fires, status never degrades to 'delayed', pollTimer is never armed, and no consumer ever reads the durable store again. On air the clock keeps ticking perfectly and the score freezes for the rest of the game with nothing anywhere saying why — the worst failure mode a scorebug has, because it looks healthy. The sibling line at 555 already gets this right.
 
