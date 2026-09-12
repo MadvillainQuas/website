@@ -723,7 +723,12 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     # the genuinely useful thing about a feed publishing early: the preview can show who
     # is starting before the ball goes up. One action in the log flips it to live, and
     # LiveStats emits from the jump ball, so the flip lands within a poll.
-    has_play = bool(T["events"])
+    # Deliberately generous about what counts as started, because the two mistakes are
+    # not symmetrical: showing a preview for a minute longer than necessary costs
+    # nothing, and showing a fixture as scheduled while it is being played is the fault
+    # this change would otherwise introduce. A log with anything in it, a score on the
+    # board, or a period past the first — any one of them and the ball has gone up.
+    has_play = bool(T["events"]) or bool(T["home_score"]) or bool(T["away_score"]) or (T["period"] or 1) > 1
     sb.patch("games", f"id=eq.{game_id}", {"roster_snapshot": T["roster_snapshot"], "starters": T["starters"],
                                            "tip_winner": T["tip_winner"], "arrow_init": T["arrow_init"], "period": T["period"],
                                            "status": "live" if has_play else "scheduled"})
