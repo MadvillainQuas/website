@@ -266,6 +266,13 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: One hung request does not take the game with it
+        # a hall's access point fails by accepting the connection and then going
+        # silent, and nothing limited a fetch -- so the publisher's chain stopped
+        # for the browser's own timeout, minutes, with the badge still saying
+        # live. Runs the shipped wrapper against a server that never answers.
+        run: node supabase/tests/fetch-deadline.test.mjs
+
       - name: A correction does not delete the game it was correcting
         # the durable write fired the upsert and the delete together and let the
         # server order them -- and the upsert ignores duplicates, so arriving

@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 and 20 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20 and 21 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -336,6 +336,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 21. Put a hard deadline on every Supabase fetch so one hung request cannot stall the game
 
 **high** / days · `transport`
+
+> **STATUS - DONE 2026-09-12 - epinoiaClient passes a wrapped fetch with a 15s AbortController. Scoped by an ALLOWLIST (/rest/v1/ and /realtime/v1/) rather than the blanket the item suggested: the same client does storage uploads, where a reel off a phone is legitimately minutes, and sb.functions.invoke("finalise-game"), which computes a season's awards and writes a match report. A blanket deadline would have broken both. The caller's own signal is COMBINED with ours rather than replaced, or .abortSignal() and auth cancellation would have been silently disabled. Proven at the real fifteen seconds against a server that accepts and never answers: supabase/tests/fetch-deadline.test.mjs.**
 
 **Why.** Every frame goes through `chain = chain.then(() => deliver(frame))` and deliver awaits tx.send with no timeout anywhere; config.js sets no custom fetch and no AbortController. A sports-hall access point that accepts the TCP connection and then stops responding — a captive-portal re-auth, a saturated uplink, an AP handover — leaves that fetch open for the browser's own timeout, minutes on Chrome and effectively unbounded on some iOS builds. Nothing after it on the chain runs. And the health signal cannot see it: flush() has already spliced the buffer into the queued frame and nothing has failed yet, so pending() returns ~0 and the badge keeps painting green 'live', while the broadcast half already went out so the public page keeps updating too. The statistician has every signal that the game is being saved and nothing is being written. It surfaces at the final whistle, when the finalise gate refuses.
 

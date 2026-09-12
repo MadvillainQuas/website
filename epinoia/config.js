@@ -106,13 +106,71 @@ window.epinoiaLogoUrl = function (path) {
          p.split('/').map(encodeURIComponent).join('/');
 };
 
+/* ============================================================================
+   A HUNG REQUEST MUST NOT TAKE THE GAME WITH IT.
+
+   Every frame the scorer publishes goes through one promise chain, on purpose:
+   a retraction must not overtake the write that replaces it. That chain is only
+   as quick as the request at its head, and nothing was putting a limit on one.
+
+   A sports hall's access point does not usually fail by refusing a connection.
+   It accepts the TCP handshake and then stops answering -- a captive portal
+   wanting re-authentication, a saturated uplink, a handover between two APs
+   with the same name. The fetch then sits open for the BROWSER's timeout, which
+   is minutes on Chrome and on some iOS builds is effectively forever. For all
+   of that time the chain is stopped, every subsequent play queues behind it, the
+   badge still says live because the socket is a different connection, and the
+   statistician has no reason to think anything is wrong.
+
+   Fifteen seconds is far past any healthy round trip and far short of minutes.
+   An abort is CHEAP here and that is what makes the number safe to pick: the
+   rejected send is caught by deliver(), the frame goes on the backlog, and it is
+   retried in order -- and every durable write is idempotent, the event upsert on
+   conflict and the state row on game_id, so a write that actually landed before
+   the abort costs nothing when it is sent again.
+
+   Only the game's own traffic. Storage moves files -- a reel off a phone is
+   legitimately minutes -- and an edge function may be finalising a game, which
+   computes a season's awards and writes a match report. Neither is in front of
+   a live score, and a deadline on either would break something that works. */
+const FETCH_DEADLINE_MS = 15000;
+const DEADLINED = /\/(rest|realtime)\/v1\//;
+
+function deadlinedFetch(u, o) {
+  const url = typeof u === 'string' ? u : ((u && u.url) || '');
+  if (!DEADLINED.test(url)) return fetch(u, o);
+
+  const ctl = new AbortController();
+  const t = setTimeout(() => { try { ctl.abort(); } catch (_) {} }, FETCH_DEADLINE_MS);
+
+  /* supabase-js passes its own signal on some paths (.abortSignal(), auth's
+     own cancellation). Replacing it outright would quietly disable those, so
+     ours is combined with whatever the caller already had. */
+  const caller = o && o.signal;
+  let signal = ctl.signal;
+  if (caller) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
+      signal = AbortSignal.any([caller, ctl.signal]);
+    } else if (caller.aborted) {
+      try { ctl.abort(); } catch (_) {}
+    } else {
+      caller.addEventListener('abort', () => { try { ctl.abort(); } catch (_) {} }, { once: true });
+    }
+  }
+
+  return fetch(u, Object.assign({}, o, { signal }))
+    .then(r => { clearTimeout(t); return r; },
+          e => { clearTimeout(t); throw e; });
+}
+
 window.epinoiaClient = function () {
   const c = window.EPINOIA_CONFIG;
   if (window.__sb) return window.__sb;
   if (!c.supabaseAnonKey || !window.supabase) return null;
   window.__sb = window.supabase.createClient(c.supabaseUrl, c.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    realtime: { params: { eventsPerSecond: 20 } }
+    realtime: { params: { eventsPerSecond: 20 } },
+    global: { fetch: deadlinedFetch }
   });
   return window.__sb;
 };
