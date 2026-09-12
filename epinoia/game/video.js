@@ -266,7 +266,17 @@ function render() {
   /* a clock was read (not score changes alone): the runs exist, so minutes and fives can be placed */
   const clocked = hasTrack && v.clock_track.mode !== 'score' && V().runsFromTrack(v.clock_track).length > 0;
   if (!clocked && st.tab !== 'events') st.tab = 'events';
+  /* WHETHER ANY PLAY CAN BE PLACED, which is not the same question as whether
+     EVERY play can. A partially-covering clock track over a bulk-imported log
+     answers yes here and no for most of the game; index() now decides that per
+     play, so this only governs whether the list is offered at all. */
   const timed = !channelOnly && (hasTrack || V().logIsTimed(ctx.events));
+  /* ...and when the two disagree, the notice has to say which plays are in the
+     list. Offering "312 plays" for a game whose second half cannot be placed is
+     how a viewer concludes the feature is broken rather than partial. */
+  const partial = timed && hasTrack && Array.isArray(ctx.events) &&
+                  ctx.events.length >= 20 && !V().logIsTimed(ctx.events) &&
+                  !ctx.events.some(e => e && e.wall != null);
   const list = timed ? selected() : [];
   const lined = (V().hasAnchor(v) || hasTrack) && timed;
 
@@ -274,6 +284,12 @@ function render() {
   const body = host.querySelector('.vidbody');
 
   body.innerHTML =
+      (partial && list.length
+        ? '<div class="vidwarn">This play-by-play was <b>imported in bulk</b>, so its events carry ' +
+          'no time of day. The plays below are the ones the <b>clock reading</b> of the broadcast ' +
+          'could place; any the reading did not cover are not listed, because their only other ' +
+          'timestamp is the moment the file was imported.</div>'
+        : '') +
       (lined ? '' : channelOnly
         ? '<div class="vidwarn">This is the league channel, live. It plays whatever ' +
           'is on air now and cannot be wound back to a particular play — there is ' +

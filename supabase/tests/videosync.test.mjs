@@ -231,5 +231,101 @@ console.log('\nand the one input the identity cannot survive being wrong');
      (tip - sched) < 90 * 60_000);
 }
 
+/* ---------------------------------------------------------------------------
+   A PARTIAL CLOCK TRACK MUST NOT SWITCH OFF THE BULK-IMPORT REFUSAL.
+
+   logIsTimed asks whether a log's timestamps span roughly as much real time as
+   the game covers. A bulk import fails it: every row was inserted inside one
+   transaction, so created_at says when the CSV was loaded, not when the ball
+   went in. The game page has always refused to place plays in that case and says
+   so in as many words -- "imported in bulk rather than scored live".
+
+   But it asked `hasTrack || logIsTimed(events)`, one decision for the whole
+   game. A clock track covering PART of it -- a vision pass that read the first
+   half and lost the overlay after the break, which is the ordinary way an OCR
+   pass ends -- turned the refusal off for every play the track does not reach,
+   and those fell through to gap + since: the import instant. The guard was
+   written for exactly that log and was never consulted about those rows.
+   --------------------------------------------------------------------------- */
+console.log('\na partial clock track and an imported log');
+
+{
+  /* A full game imported in one transaction: every row's created_at is the same
+     minute, and not one carries a device stamp. */
+  const IMPORT = Date.parse('2026-09-05T22:00:00Z');
+  const STREAM2 = Date.parse('2026-09-05T18:50:00Z');
+  const imported = [];
+  for (let q = 1; q <= 4; q++) {
+    for (let i = 0; i < 12; i++) {
+      imported.push({
+        seq: imported.length + 1, t: 'p2_made', team: 0, pid: 'h4',
+        period: q, clock: 600000 - i * 45000,
+        created_at: new Date(IMPORT + imported.length * 40).toISOString(),
+      });
+    }
+  }
+  ok('the fixture really is a bulk import by the page\'s own test',
+     V.logIsTimed(imported) === false, 'logIsTimed said ' + V.logIsTimed(imported));
+  ok('...and carries no device stamp anywhere',
+     imported.every(e => e.wall == null));
+
+  /* A track that read the first half and then lost the overlay. */
+  const samples = [];
+  for (let q = 1; q <= 2; q++) {
+    for (let i = 0; i <= 10; i++) {
+      samples.push({ t: (q - 1) * 1500 + i * 60, period: q, clock: 600000 - i * 55000 });
+    }
+  }
+  const row = {
+    provider: 'youtube',
+    stream_started_at: new Date(STREAM2).toISOString(),
+    tip_at: new Date(STREAM2 + 10 * 60000).toISOString(),
+    tip_wall: STREAM2 + 10 * 60000,
+    clock_track: { mode: 'clock', samples: samples },
+  };
+
+  const placed = V.index(imported, row, { label: e => e.t });
+  const byPeriod = {};
+  placed.forEach(pl => {
+    const q = (imported.find(e => (e.seq) === pl.id) || {}).period;
+    byPeriod[q] = (byPeriod[q] || 0) + 1;
+  });
+
+  ok('the plays the reading covers are still offered',
+     (byPeriod[1] || 0) + (byPeriod[2] || 0) > 0,
+     JSON.stringify(byPeriod));
+  ok('...and the ones it does not are left out, not placed on the import instant',
+     (byPeriod[3] || 0) === 0 && (byPeriod[4] || 0) === 0,
+     JSON.stringify(byPeriod));
+  ok('...so nothing in the list claims a position it cannot support',
+     placed.every(pl => pl.byClock === true),
+     JSON.stringify(placed.filter(pl => !pl.byClock).slice(0, 3)));
+
+  /* And the page says which plays are in the list, rather than offering a
+     count that silently omits half the game. */
+  const gv = readFileSync(path.join(ROOT, 'epinoia', 'game', 'video.js'), 'utf8');
+  ok('the page tells the viewer the list is only what the reading covered',
+     /the plays below are the ones the <b>clock reading<\/b>/i.test(gv) ||
+     /The plays below are the ones the/.test(gv));
+}
+
+{
+  /* The refusal needs POSITIVE evidence. logIsTimed compares a span against the
+     game clock covered, so on a short log it returns false for want of anything
+     to span -- which is not a bulk import, and must not cost that log its
+     placements. */
+  const one = [{ seq: 1, t: 'p3_made', team: 0, pid: 'h4', period: 1, clock: 540000,
+                 created_at: new Date(TIP + 60000).toISOString() }];
+  ok('a one-event log is not mistaken for an import',
+     V.index(one, videoRow(TIP), { label: e => e.t }).length === 1,
+     JSON.stringify(V.index(one, videoRow(TIP), { label: e => e.t })));
+
+  const av2 = readFileSync(path.join(ROOT, 'epinoia', 'video.js'), 'utf8');
+  ok('...because the refusal wants all three signs of one',
+     /const looksImported = !timedByDevice && events\.length >= 20 && !logIsTimed\(events\);/.test(av2));
+  ok('...and a log with a device stamp anywhere was scored live, whatever its span',
+     /!timedByDevice &&/.test(av2));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

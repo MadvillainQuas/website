@@ -712,6 +712,39 @@ function index(events, video, opts) {
                         events.some(e => deviceStamp(e) != null);
   const mode = timedByDevice ? 'device' : 'insert';
 
+  /* AND WHETHER ITS TIMES MEAN ANYTHING AT ALL.
+
+     logIsTimed asks whether the log's stamps span roughly as much real time as
+     the game covers. A bulk import fails it: every row was inserted inside one
+     transaction, so created_at says when the CSV was loaded, not when the ball
+     went in. The game page has always refused to place plays in that case, and
+     says so in as many words: "imported in bulk rather than scored live".
+
+     But the page asked `hasTrack || logIsTimed(events)`, one decision for the
+     whole game. A clock track that covers PART of it — a vision pass that read
+     the first half and lost the overlay after the break, which is the ordinary
+     way an OCR pass ends — switched the refusal off for every play the track
+     does not reach, and those fell through to `gap + since`, i.e. to the import
+     instant. Measured: three separate fourth-quarter plays all placed at
+     4:10:00 in the footage, each with a confident m:ss, byClock false and no
+     '~'. The guard was written for exactly that log and was not consulted about
+     those rows.
+
+     So it is asked per play instead. A play the track can vouch for is placed by
+     the track; a play it cannot is placed by wall clock only if the log's wall
+     clock means something. Neither, and it is left out rather than invented.
+
+     POSITIVE EVIDENCE, THOUGH, NOT MERELY A FAILED TEST. logIsTimed compares the
+     span of the stamps against the game clock covered, so it needs a game's
+     worth of log before its answer means anything — on one event it returns
+     false because there is nothing to span, which is not a bulk import. And a
+     log carrying a device stamp anywhere was scored live whatever its span, as
+     the paragraph above already argues. So the refusal wants all three: no
+     device stamp anywhere, enough of a log to have judged, and a judgement that
+     the stamps do not cover the game. */
+  const looksImported = !timedByDevice && events.length >= 20 && !logIsTimed(events);
+  const wallMeansSomething = !looksImported;
+
   const rows = [];
   for (const e of events) {
     /* Descriptors are not plays. A 'loc', a 'tag' and a 'stype' each decorate
@@ -734,6 +767,9 @@ function index(events, video, opts) {
     const e = row.e;
     const tp = row.trackPos;
     if (tp == null && (row.since == null || gap == null)) continue;
+    /* see wallMeansSomething: an untracked play in an untimed log has no
+       honest position, and the import instant is not one */
+    if (tp == null && !wallMeansSomething) continue;
     const pos = tp != null ? tp : gap + row.since;
     if (pos < 0) continue;
     const [pre, post] = clipOf(e.t, e.wall_err);
