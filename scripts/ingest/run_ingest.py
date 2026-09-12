@@ -754,20 +754,67 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         # A corrected feed = replace (the platform's own model). The stamps already earned are
         # carried across by matching the old rows in order - one Genius correction three plays
         # back must not un-time the whole game.
+        #
+        # PID IS NOT PART OF THE KEY, AND THAT MATTERS.
+        #
+        # It used to be. pid is the only component of that key which is a PLATFORM id
+        # rather than feed data: ensure_game_people mints player rows, and a pid that
+        # is re-minted or re-resolved between two polls changes for every event that
+        # names a player while the play itself has not moved at all. The carry then
+        # matches nothing, and because the branch below only stamps rows past
+        # len(existing), every row before that point is left permanently unstamped -
+        # they cannot be re-stamped on any later pass, so one bad replace un-times the
+        # whole game so far and every replace after it has nothing left to carry. A
+        # ratchet, not a blip.
+        #
+        # Watched on 2026-09-12: a live fixture went from 98 stamped of 98 to 3 of 120
+        # in one rewrite (every row's created_at identical, so the whole log was
+        # replaced), and the 117 rows before the tail can never be placed in footage
+        # again. Translating that same feed afresh and comparing field by field found t,
+        # team, period and clock IDENTICAL across all 144 rows - so the four fields that
+        # describe the play are stable, and the one that is not describes our database.
+        #
+        # (t, team, period, clock) identifies a play within one game's log well enough,
+        # and the list is popped in order so two rows sharing all four still take their
+        # own stamps. Dropping pid can only ever match MORE rows than before.
         carry = {}
         for e in existing:
             p = e.get("payload") or {}
             if p.get("wall") is not None:
-                carry.setdefault((e["t"], e.get("team"), e.get("pid"), e["period"], e["clock"]), []).append(
+                carry.setdefault((e["t"], e.get("team"), e["period"], e["clock"]), []).append(
                     {"wall": p["wall"], "wall_err": p.get("wall_err"), "created_at": e.get("created_at")})
         kept = 0
         for r in rows:
-            k = (r["t"], r["team"], r["pid"], r["period"], r["clock"])
+            k = (r["t"], r["team"], r["period"], r["clock"])
             if carry.get(k):
                 c = carry[k].pop(0)
                 r["payload"] = {**(r.get("payload") or {}), "wall": c["wall"], **({"wall_err": c["wall_err"]} if c.get("wall_err") is not None else {})}
                 if c.get("created_at"):
                     r["created_at"] = c["created_at"]
+                kept += 1
+        # AND BY POSITION, FOR ANYTHING THE KEY STILL MISSED.
+        #
+        # The comment above says "matching the old rows in order", which is what this
+        # finally does. A correction usually revises a handful of plays and leaves the
+        # rest where they were, so a row at the same index whose play still reads the
+        # same is the same play whatever its key does. Belt and braces, and it is the
+        # difference between losing a stamp and losing every stamp before the tail.
+        if kept < len(existing):
+            for i, r in enumerate(rows):
+                if i >= len(existing):
+                    break
+                if "wall" in (r.get("payload") or {}):
+                    continue
+                e = existing[i]
+                ep = e.get("payload") or {}
+                if ep.get("wall") is None:
+                    continue
+                if (e["t"], e.get("team"), e["period"], e["clock"]) != (r["t"], r["team"], r["period"], r["clock"]):
+                    continue
+                r["payload"] = {**(r.get("payload") or {}), "wall": ep["wall"],
+                                **({"wall_err": ep["wall_err"]} if ep.get("wall_err") is not None else {})}
+                if e.get("created_at"):
+                    r["created_at"] = e.get("created_at")
                 kept += 1
         how_first = ""
         if stamp and existing:
@@ -785,10 +832,32 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 how_first = f", first write stamped (±{fw['wall_err'] // 1000}s)"
             else:
                 how_first = ", first write unstamped (log already deep)"
-        sb.delete("game_events", f"game_id=eq.{game_id}")
+        # REWRITTEN IN PLACE, NOT DELETED AND REBUILT.
+        #
+        # This was `delete everything, then insert everything`, two requests with no
+        # transaction around them - so between them the game had NO play-by-play at
+        # all. Not a theoretical window: caught on 2026-09-12 at 17:4x, a live fixture
+        # reading 82 events one moment and ZERO the next, with games.home_score still
+        # saying 2-16. Anything reading the log in that gap - the public game page, the
+        # box score, the broadcast endpoint, finalise-game - saw a game that had not
+        # been played. It self-heals a second later, which is exactly why nobody had
+        # seen it.
+        #
+        # game_events is unique on (game_id, seq) and the translator numbers events
+        # 1..N, so the whole log can be upserted over itself: every row that still
+        # exists is updated in place, every new row is inserted, and nothing is ever
+        # absent. Only a log that got SHORTER needs a delete, and then only of the
+        # surplus tail rather than of the game.
+        #
+        # The same shape as the fix in epinoia/live.js for the browser transport, in
+        # the other direction: there the retraction has to land before the write, here
+        # the write has to land before the retraction. In both cases the rule is that
+        # there must be no instant at which the league's copy of the game is empty.
         for i in range(0, len(rows), 400):
-            sb.insert("game_events", rows[i:i + 400])
-        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else how_first)
+            sb.upsert("game_events", rows[i:i + 400], "game_id,seq")
+        if existing and len(rows) < len(existing):
+            sb.delete("game_events", f"game_id=eq.{game_id}&seq=gt.{len(rows)}")
+        how = f"{len(rows)} events written" + (f" (log rewritten in place, {kept} stamps kept)" if existing else how_first)
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0
