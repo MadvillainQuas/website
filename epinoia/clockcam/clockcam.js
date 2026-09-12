@@ -30,7 +30,7 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
 
 let sb = null, user = null, gameId = (qp.get('g') || '').trim(), game = null;
 let chan = null, joined = false, sending = false, sent = 0;
-let boxes = { clock: null, home: null, away: null };     // fractions of the video frame
+let boxes = { clock: null, home: null, away: null, period: null };   // fractions of the video frame
 let drawing = null, dragFrom = null;
 let period = 1, running = false, clockMs = null, locked = false;
 /* the physics -- what a clock is allowed to do between two frames -- lives in
@@ -241,7 +241,7 @@ function paintBoxes() {
   const c = $('#ov'), r = stageRect();
   c.width = Math.round(r.width * devicePixelRatio); c.height = Math.round(r.height * devicePixelRatio);
   const g = c.getContext('2d'); g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); g.clearRect(0, 0, r.width, r.height);
-  const colours = { clock: '#93f2bf', home: '#ffd166', away: '#8ff5ff' };
+  const colours = { clock: '#93f2bf', home: '#ffd166', away: '#8ff5ff', period: '#d0a0ff' };
   Object.keys(boxes).forEach(k => {
     const b = boxes[k]; if (!b) return;
     g.strokeStyle = colours[k]; g.lineWidth = 2; g.setLineDash([]);
@@ -256,11 +256,13 @@ function paintBoxes() {
 }
 function wire() {
   const stage = $('#stage');
-  const arm = kind => { drawing = { kind, cur: null }; ['boxClock', 'boxHome', 'boxAway'].forEach(id => $('#' + id).classList.remove('on')); $('#box' + kind[0].toUpperCase() + kind.slice(1)).classList.add('on'); $('#boxHint').textContent = 'Now drag a rectangle round the ' + (kind === 'clock' ? 'clock digits' : kind + ' score digits') + '.'; };
+  const BOXIDS = ['boxClock', 'boxHome', 'boxAway', 'boxPeriod'];
+  const arm = kind => { drawing = { kind, cur: null }; BOXIDS.forEach(id => $('#' + id).classList.remove('on')); $('#box' + kind[0].toUpperCase() + kind.slice(1)).classList.add('on'); $('#boxHint').textContent = 'Now drag a rectangle round the ' + (kind === 'clock' ? 'clock digits' : kind === 'period' ? 'period number' : kind + ' score digits') + '.'; };
   $('#boxClock').onclick = () => arm('clock');
   $('#boxHome').onclick = () => arm('home');
   $('#boxAway').onclick = () => arm('away');
-  $('#boxClear').onclick = () => { boxes = { clock: null, home: null, away: null }; localStorage.removeItem('cc:' + gameId); resetLock(); paintBoxes(); };
+  $('#boxPeriod').onclick = () => arm('period');
+  $('#boxClear').onclick = () => { boxes = { clock: null, home: null, away: null, period: null }; localStorage.removeItem('cc:' + gameId); resetLock(); paintBoxes(); };
   stage.addEventListener('pointerdown', e => { if (!drawing) return; dragFrom = toFrac(e); stage.setPointerCapture(e.pointerId); });
   stage.addEventListener('pointermove', e => { if (!drawing || !dragFrom) return; drawing.cur = toFrac(e); paintBoxes(); });
   const finish = e => {
@@ -268,7 +270,7 @@ function wire() {
     const to = toFrac(e);
     const b = { x: Math.min(dragFrom.x, to.x), y: Math.min(dragFrom.y, to.y), w: Math.abs(to.x - dragFrom.x), h: Math.abs(to.y - dragFrom.y) };
     if (b.w > 0.03 && b.h > 0.02) { boxes[drawing.kind] = b; localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); resetLock(); }
-    ['boxClock', 'boxHome', 'boxAway'].forEach(id => $('#' + id).classList.remove('on'));
+    BOXIDS.forEach(id => $('#' + id).classList.remove('on'));
     $('#boxHint').textContent = 'Boxes are kept for this game on this phone. Re-draw one any time.';
     drawing = null; dragFrom = null; paintBoxes();
   };
@@ -423,7 +425,33 @@ function tick() {
   if ($('#sendScore').checked) {
     ['home', 'away'].forEach(k => { if (!boxes[k]) return; const im = cropOf(boxes[k], 120); if (!im) return; const bb = binarise(im, inv, adj); const v = readScore(bb); thumb(k, bb, v); if (v != null) scores[k] = v; });
   }
+  readPeriod(inv, adj);
   paintRead();
+}
+
+/* --------------------------------------------------------- the period ---
+   Boxing the period number is optional, and worth it. The clock cam otherwise
+   relies on somebody at the table remembering to press P+ between quarters, and
+   the one time nobody does, the stream carries the wrong period for ten minutes
+   while the clock beside it is perfectly right -- which looks worse than both
+   being wrong. The board already knows.
+
+   Three readings agreeing before it moves, for the same reason the clock wants
+   three: a single frame is a photograph, not a fact. And a period is only ever
+   allowed to be 1 to 6, which throws away most of what a misread produces. */
+let perSeen = null;
+function readPeriod(inv, adj) {
+  if (!boxes.period) return;
+  const im = cropOf(boxes.period, 90); if (!im) return;
+  const bb = binarise(im, inv, adj);
+  const v = readScore(bb);
+  thumb('period', bb, v == null ? null : 'P' + v);
+  if (!(v >= 1 && v <= 6)) { perSeen = null; return; }
+  if (perSeen && perSeen.v === v) perSeen.n++; else perSeen = { v, n: 1 };
+  if (perSeen.n >= 3 && v !== period) {
+    period = v; resetLock(); paintRead(); publish(true);
+    $('#boxHint').textContent = 'The board says period ' + v + '.';
+  }
 }
 
 /* ------------------------------------------------------------ sending --- */
