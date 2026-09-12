@@ -41,6 +41,7 @@
    ============================================================================ */
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -127,6 +128,111 @@ ok('the running heuristic keeps the CONFIGURED value on purpose',
    /fast = bool\(observed and observed\[1\] is not None and observed\[1\] <= 6000\)/.test(src));
 ok('...and says why, so nobody widens it to match the stamp',
    /would make a slow pass look like a fast one/.test(src));
+
+/* ---------------------------------------------------------------------------
+   A LIVE GAME IS TIMED WHICHEVER LANE SEES IT.
+
+   Only live_keeper passed `observed`. The half-hourly discovery pass wrote live
+   games too, unstamped, and those rows could never be stamped later: the live
+   lane's next poll finds the log already that long and stamps only what is past
+   it. When discovery saw a game first, the unstamped row was the tip, and a game
+   with no tip stamp has no tip_wall and falls back to insert times throughout.
+
+   And a tail on a log with no stamps at all took the configured interval as its
+   error bar, however long ago the log was really written. The log's own
+   created_at says when that was.
+
+   Run against the real write_event_log, on a real LiveStats payload, with the
+   database faked.
+   --------------------------------------------------------------------------- */
+console.log('\na live game is timed whichever lane sees it');
+
+{
+  const HARNESS = [
+    'import sys, json, io, time',
+    'from datetime import datetime, timezone',
+    'from types import SimpleNamespace as NS',
+    'sys.path.insert(0, sys.argv[1])',
+    'import run_ingest as R',
+    'spec = json.load(sys.stdin)',
+    "feed = json.load(io.open(spec['feed'], encoding='utf-8'))",
+    "T = R.translate(feed, lambda team, pno: '%s:%s' % (team, pno))",
+    "rows = R.game_rows('g', T['events'])",
+    'class SB:',
+    '    def __init__(self, existing): self.existing, self.inserted, self.upserted = existing, [], []',
+    '    def select(self, table, q):',
+    "        return [{'status': 'live'}] if table == 'games' else (self.existing if table == 'game_events' else [])",
+    '    def patch(self, *a): pass',
+    '    def delete(self, *a): pass',
+    '    def function(self, *a): return 200, {}',
+    "    def upsert(self, table, rw, oc): self.upserted.extend(rw) if table == 'game_events' else None",
+    "    def insert(self, table, rw): self.inserted.extend(rw) if table == 'game_events' else None",
+    'iso = lambda ms: datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()',
+    'out = {}',
+    'for c in spec["cases"]:',
+    '    now = int(time.time() * 1000)',
+    '    existing = []',
+    "    for r in rows[:c['n']]:",
+    "        e = dict(r, payload=dict(r.get('payload') or {}), created_at=iso(now - c['written_ago_ms']))",
+    "        if c.get('wall_ago_ms') is not None: e['payload'].update(wall=now - c['wall_ago_ms'], wall_err=10500)",
+    '        existing.append(e)',
+    '    sb = SB(existing)',
+    "    observed = (now, 30000 + 400)",
+    "    R.write_event_log(sb, {'adapter': 'fiba', 'code': 'x'}, NS(raw=feed, status='live', external_id='x'), 'g', {}, observed)",
+    "    tl = sb.inserted",
+    "    out[c['name']] = {'tail': len(tl), 'stamped': sum(1 for r in tl if 'wall' in (r.get('payload') or {})),",
+    "                      'errs': sorted({(r.get('payload') or {}).get('wall_err') for r in tl if 'wall' in (r.get('payload') or {})}),",
+    "                      'rows': len(rows)}",
+    'try:',
+    "    out['helper'] = [R.discovery_observed(NS(status=st), time.time() - 0.2, 30) for st in ('live', 'final', 'scheduled')]",
+    'except AttributeError:',
+    "    out['helper'] = None",
+    'sys.stdout.write("@@" + json.dumps(out))',
+  ].join('\n');
+
+  const feedPath = path.join(ROOT, 'supabase', 'tests', 'fixtures', 'feedtiming', 'feed.json');
+  const cases = [
+    { name: 'recent', n: 150, written_ago_ms: 20000 },
+    { name: 'old', n: 150, written_ago_ms: 240000 },
+    { name: 'minute', n: 150, written_ago_ms: 100000 },
+    { name: 'walled', n: 150, written_ago_ms: 5000, wall_ago_ms: 50000 },
+  ];
+  let got = null;
+  for (const exe of ['python3', 'python']) {
+    const r = spawnSync(exe, ['-c', HARNESS, path.join(ROOT, 'scripts', 'ingest')],
+                        { input: JSON.stringify({ feed: feedPath, cases }), encoding: 'utf8',
+                          env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) });
+    if (r.status === 0 && r.stdout.includes('@@')) { got = JSON.parse(r.stdout.split('@@').pop()); break; }
+    if (r.stderr && /Traceback/.test(r.stderr)) { ok('write_event_log runs', false, r.stderr.slice(-800)); break; }
+  }
+  if (!got) ok('a python to run write_event_log with', false);
+  else {
+    const c = got;
+    const near = (v, want, slack) => Math.abs(v - want) <= slack;
+    ok('a tail on an unstamped log written 20 s ago is stamped',
+       c.recent.tail > 0 && c.recent.stamped === c.recent.tail, JSON.stringify(c.recent));
+    ok('...with the configured bar, which is the wider of the two',
+       c.recent.errs.length === 1 && c.recent.errs[0] === 30400, JSON.stringify(c.recent.errs));
+    ok('a tail on an unstamped log last written 100 s ago carries 100 s, not the configured 30',
+       c.minute.errs.length === 1 && near(c.minute.errs[0], 100000, 2000), JSON.stringify(c.minute.errs));
+    ok('...and one last written four minutes ago is left unstamped rather than claimed',
+       c.old.tail > 0 && c.old.stamped === 0, JSON.stringify(c.old));
+    ok('a stamped log still measures from its newest stamp, not from created_at',
+       c.walled.errs.length === 1 && near(c.walled.errs[0], 50000, 2000), JSON.stringify(c.walled.errs));
+
+    const h = c.helper;
+    ok('the discovery lane builds `observed` for a live game',
+       Array.isArray(h) && Array.isArray(h[0]) && near(h[0][1], 30200, 150), JSON.stringify(h));
+    ok('...and nothing for a finished or scheduled one', Array.isArray(h) && h[1] === null && h[2] === null);
+  }
+
+  const lane = src.slice(src.indexOf('live_set = []'), src.indexOf('if not args.dry_run:', src.indexOf('live_set = []')));
+  ok('both of the discovery lane\'s writes pass it',
+     (lane.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)\)/g) || []).length === 2 &&
+     !/write_platform\(sb, src, b, run\)\s*$/m.test(src), (lane.match(/write_platform\([^)]*\)/g) || []).join(' | '));
+  ok('...each timed from just before its own fetch',
+     (lane.match(/t_obs = time\.time\(\)\s*\n\s*try:\s*\n\s*b = adapter\.fetch/g) || []).length === 2);
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -645,6 +645,35 @@ def _elapsed_ms(row: dict) -> int:
     return played + max(0, full - min(full, clock))
 
 
+def _iso_ms(s) -> int | None:
+    try:
+        return int(datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp() * 1000) if s else None
+    except Exception:
+        return None
+
+
+def discovery_observed(b, t_obs: float, every_s: float) -> tuple | None:
+    """`observed` for a write made by the discovery lane, or None.
+
+    A LIVE GAME IS TIMED WHICHEVER LANE SEES IT. Only live_keeper used to pass
+    `observed`, so every row the half-hourly discovery pass wrote for a live game went
+    in unstamped - and could never be stamped afterwards, because the live lane's next
+    poll finds the log already that long and stamps only rows past it. When discovery
+    was the first to see a game at all, the unstamped row was the TIP, and without a tip
+    stamp auto_video writes no tip_wall and the whole game falls back to insert times.
+    That is not rare: GitHub drops scheduled runs, and on 2026-09-12 none fired between
+    17:48 and 19:22 UTC.
+
+    Same shape as live_keeper's: the poll instant, and the configured interval plus the
+    fetch as the error. write_event_log widens that to what the log itself knows, and
+    declines past three minutes, so a lane that last saw this game half an hour ago
+    stamps nothing it cannot bound. Finished and scheduled games get nothing: a backfill
+    has no moment of observation worth the name."""
+    if getattr(b, "status", None) != "live":
+        return None
+    return (int(t_obs * 1000), int((every_s + (time.time() - t_obs)) * 1000))
+
+
 def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) -> dict | None:
     """Whether a game's FIRST write may carry the poll stamp, and with what error.
 
@@ -769,6 +798,16 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         err = int(observed[1])
         newest = max((int((e.get("payload") or {}).get("wall")) for e in existing
                       if (e.get("payload") or {}).get("wall") is not None), default=None)
+        # NO ROW STAMPED IS NOT NOTHING KNOWN. A log written by a lane that passed no
+        # `observed` (or rewritten unstamped) still records when it was last written, and
+        # every play in this tail arrived after that write saw the feed. So the latest
+        # created_at bounds the error the same way the newest wall does - loosely, never
+        # tightly: a carried row keeps its older created_at, which only widens the bar.
+        # Without it, a tail on an unstamped log took the configured interval as its bar
+        # however long ago the log was actually written.
+        if newest is None:
+            newest = max((ms for ms in (_iso_ms(e.get("created_at")) for e in existing) if ms is not None),
+                         default=None)
         if newest is not None:
             real = int(observed[0]) - newest
             if real > err:
@@ -1282,6 +1321,7 @@ def main() -> int:
                             print(f"    (fixture {g.external_id}: {exc})")
             live_set = []
             for g in todo:
+                t_obs = time.time()
                 try:
                     b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league
@@ -1310,7 +1350,7 @@ def main() -> int:
                 entries[g.external_id] = entry
                 if sb:
                     try:
-                        write_platform(sb, src, b, run)
+                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every))
                     except Exception as exc:
                         print(f"    (platform write failed: {exc})")
                 if args.fixture_out:
@@ -1326,6 +1366,7 @@ def main() -> int:
                 time.sleep(args.live_every)
                 still = []
                 for g in live_set:
+                    t_obs = time.time()
                     try:
                         b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                     except Exception as exc:
@@ -1344,7 +1385,7 @@ def main() -> int:
                     entries[g.external_id] = entry_for(b, prev, raw_ref, g)
                     if sb:
                         try:
-                            write_platform(sb, src, b, run)
+                            write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every))
                         except Exception as exc:
                             print(f"    (platform write failed: {exc})")
                     print(f"    ~ {b.home_name} {entries[g.external_id]['homeScore']}-{entries[g.external_id]['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
