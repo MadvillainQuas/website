@@ -2,8 +2,10 @@
    A CORRECTED FEED MUST NOT EMPTY THE GAME, OR UN-TIME IT.
 
    When the Genius feed revises something, run_ingest cannot append — the
-   existing log is no longer a prefix of the new one — so it rewrites. Two faults
-   in how it did that, both watched happening on live fixtures on 2026-09-12.
+   existing log is no longer a prefix of the new one — so it rewrites. Three
+   faults, all watched happening on live fixtures on 2026-09-12.
+
+   Caught three times in fifteen minutes, not twice: 82 -> 0, 114 -> 0, 154 -> 0.
 
    1. THE GAME WENT EMPTY. It was `delete everything, then insert everything`:
       two requests with no transaction around them, so between them the game had
@@ -24,9 +26,10 @@
       permanently unstamped: it cannot be re-stamped on any later pass, and every
       replace after it has nothing left to carry. A ratchet.
 
-      Measured the same evening: three of four live games ended with their whole
-      log un-timed (0 of 92, 20 of 104, 28 of 145), while the one game that never
-      received a correction kept 251 of 251. Translating a feed afresh and
+      Measured the same evening: all four live games ended up largely un-timed.
+      One of them held 251 of 251 for as long as it went uncorrected and then
+      dropped to 67 of 325 the moment it was, which is the clearest statement of
+      the mechanism there is. Translating a feed afresh and
       comparing field by field found t, team, period and clock IDENTICAL across
       all 144 rows — so the four fields describing the PLAY are stable, and the
       one that broke the carry describes our database.
@@ -89,6 +92,41 @@ ok('the fresh stamp still only goes to rows past the old length',
    /for r in rows\[len\(existing\):\]:/.test(src));
 ok('...which is why the carry has to work, and is said so',
    /A\s*\n?\s*# ratchet, not a blip\./.test(src) || /ratchet, not a blip/.test(src));
+
+console.log('\nand the error bar says what it means');
+
+/* observed[1] is built in live_keeper as the CONFIGURED interval plus the fetch
+   duration, and the comment there is right about the meaning while the
+   arithmetic is not: the previous poll of THIS game was not `every` seconds ago,
+   because live_keeper walks the due set in one serialised loop doing a fetch and
+   a whole write pass per game before sleeping.
+
+   Measured across four simultaneous live games, 46 intervals: median 37.9 s
+   against a claimed 10.5 s, 40 of 46 wider than claimed, worst 18.9x. Every row
+   of a batch is stamped with the poll's instant, so the earliest play in it is
+   that much earlier than its stamp — and video.js spends wall_err as run-up when
+   it cuts a clip, so an understated bar puts the play in front of its own
+   window. The page prints the number too: "plays placed to within +/-N s". */
+ok('the stamp widens its error to the real gap when the log knows better',
+   /const newest = max/.test(src) === false &&   /* python, not js */
+   /newest = max\(\(int\(\(e\.get\("payload"\) or \{\}\)\.get\("wall"\)\)/.test(src));
+ok('...which is the previous poll of this game, by definition',
+   /the newest\s*\n?\s*# wall in the existing log IS when this game was last polled/.test(src));
+ok('...and never narrows it', /if real > err:\s*\n\s*err = real/.test(src));
+ok('...covering a pass handover, which the loop cannot see at all',
+   /a process that has already exited/.test(src));
+ok('past three minutes it declines to stamp rather than claim a bound it has not got',
+   /if err <= 180_000:/.test(src) &&
+   /an unstamped row is better than a confidently wrong one/.test(src));
+ok('the measurement that justifies it is recorded',
+   /median 37\.9 s against a claimed 10\.5 s/.test(src));
+
+/* And the one other reader of observed[1] asks a different question. */
+ok('the running heuristic keeps the CONFIGURED value on purpose',
+   /DELIBERATELY THE CONFIGURED INTERVAL/.test(src) &&
+   /fast = bool\(observed and observed\[1\] is not None and observed\[1\] <= 6000\)/.test(src));
+ok('...and says why, so nobody widens it to match the stamp',
+   /would make a slow pass look like a fast one/.test(src));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

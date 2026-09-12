@@ -739,9 +739,45 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     same_prefix = len(existing) <= len(rows) and all(
         e["seq"] == r["seq"] and e["t"] == r["t"] and e.get("team") == r["team"] and e.get("pid") == r["pid"] and e["period"] == r["period"] and e["clock"] == r["clock"]
         for e, r in zip(existing, rows))
+    # THE ERROR BAR IS WHAT THE LOG SAYS IT IS, NOT WHAT THE SCHEDULE HOPED.
+    #
+    # observed[1] is built in live_keeper as the CONFIGURED interval plus this
+    # fetch's duration. The comment there is right about what it means - "a play
+    # in this payload happened between the previous poll and this fetch" - and
+    # the arithmetic does not implement it: the previous poll of THIS game was
+    # not `every` seconds ago. live_keeper walks the due set in one serialised
+    # for-loop, doing a fetch and then the whole of write_platform per game
+    # before sleeping, so the real spacing is a function of how many games are
+    # live.
+    #
+    # Measured on 2026-09-12 across four simultaneous live games, 46 intervals:
+    # median 37.9 s against a claimed 10.5 s, and 40 of the 46 wider than
+    # claimed, the worst by 18.9x (198.5 s real against 10.5 s claimed). Every
+    # row of that poll's batch is stamped with the poll's instant, so the
+    # earliest play in a batch is that far EARLIER than its stamp - and
+    # epinoia/video.js spends wall_err as run-up when it cuts a clip, so an
+    # understated bar puts the play in front of its own clip window. The page
+    # also prints it: "plays placed to within +/-N s".
+    #
+    # No new bookkeeping is needed to fix it, because the log already knows. Every
+    # stamped row carries the instant of the poll that wrote it, so the newest
+    # wall in the existing log IS when this game was last polled - which also
+    # covers the case the loop could never know about, a pass handover, where the
+    # previous poll belongs to a process that has already exited.
     stamp = None
-    if observed and observed[1] is not None and observed[1] <= 180_000:
-        stamp = {"wall": int(observed[0]), "wall_err": int(observed[1])}
+    if observed and observed[1] is not None:
+        err = int(observed[1])
+        newest = max((int((e.get("payload") or {}).get("wall")) for e in existing
+                      if (e.get("payload") or {}).get("wall") is not None), default=None)
+        if newest is not None:
+            real = int(observed[0]) - newest
+            if real > err:
+                err = real
+        # Past three minutes nothing here can honestly bound when the play
+        # happened, and an unstamped row is better than a confidently wrong one:
+        # video.js interpolates it from its neighbours and marks it approximate.
+        if err <= 180_000:
+            stamp = {"wall": int(observed[0]), "wall_err": err}
     if existing and same_prefix:
         tail = rows[len(existing):]
         if stamp:
@@ -874,6 +910,11 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     # smoother and no less honest than one that jumps. A stopped clock (a timeout, a dead ball)
     # shows as stopped on the next read.
     prev = _CLOCK_SEEN.get(game_id)
+    # DELIBERATELY THE CONFIGURED INTERVAL, not the measured one the stamp above
+    # now uses. This asks "are we on the broadcast heartbeat?", which is a
+    # question about how this pass was configured; widening it to the real gap
+    # would make a slow pass look like a fast one and start ticking clocks that
+    # are not being read often enough to tick.
     fast = bool(observed and observed[1] is not None and observed[1] <= 6000)
     moving = bool(live and fast and prev and prev[0] is not None and clock_ms < prev[0] and (time.time() - prev[1]) < 15)
     _CLOCK_SEEN[game_id] = (clock_ms if live else None, time.time())
