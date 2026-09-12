@@ -33,6 +33,7 @@
      node supabase/tests/videosync.test.mjs
    ============================================================================ */
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -140,6 +141,81 @@ ok('the stamp carries how far back the play could have been',
 ok('a first-write stamp widens that by the span of the batch it covers',
    (POLL + 2000 + 90000) > (POLL + 2000),
    'run_ingest.first_write_stamp adds the batch span to wall_err');
+
+/* ---------------------------------------------------------------------------
+   AND THE ONE INPUT THE IDENTITY CANNOT SURVIVE BEING WRONG.
+
+       position = play_wall - stream_start
+
+   The tip cancels, which is the whole elegance of it. stream_start does not. It
+   is the single number every clip on a game is measured from, and auto_video was
+   storing a PROMISE in it.
+
+   liveBroadcastDetails.startTimestamp -- what YouTube's player endpoint returns,
+   and the only route to a start time from a datacenter without an API key --
+   carries the SCHEDULED start while a stream is still upcoming. Measured against
+   the live service on 2026-09-12: two fixtures' streams returned status
+   LIVE_STREAM_OFFLINE, isUpcoming true, and a startTimestamp exactly equal to
+   their scheduled slot. The worker had run the day before and written those into
+   game_videos.stream_started_at -- a column whose own comment called it "the
+   stream's real start" -- for six fixtures.
+
+   The Falkirk game the same afternoon showed what that costs. The row said the
+   stream started at 12:30; at 13:14 YouTube was still saying "this live event
+   will begin in a few moments". Forty-four minutes of error and climbing, and
+   the gap is tip_at minus stream_start, so every clip in that game would have
+   been placed forty-four minutes too late in the footage and offered as right.
+
+   Nothing would have caught it either: gapLooksOdd only questions a gap over
+   ninety minutes, and a genuine double-header legitimately has one.
+   --------------------------------------------------------------------------- */
+console.log('\nand the one input the identity cannot survive being wrong');
+
+{
+  const av = readFileSync(path.join(ROOT, 'scripts', 'ingest', 'auto_video.py'), 'utf8');
+
+  ok('a scheduled start is returned under its own name, not as a start',
+     /d\["scheduled_at"\] = lb\.get\("startTimestamp"\)/.test(av));
+  ok('...and started_at is only taken when the stream is live or has ended',
+     /started = bool\(lb\.get\("isLiveNow"\)\) or bool\(vd\.get\("isLive"\)\) or bool\(d\["ended_at"\]\)/.test(av));
+  ok('...with LIVE_STREAM_OFFLINE counted as upcoming, which is what it means',
+     /upcoming = bool\(vd\.get\("isUpcoming"\)\) or \(st == "LIVE_STREAM_OFFLINE"\)/.test(av));
+  ok('...so the five-minute cache miss finally does what it was written to do',
+     /a stream not yet started has no start time; ask again after five minutes/.test(av));
+  ok('the Data API path takes actualStartTime, which is actual by definition',
+     /d\["started_at"\] = lsd\.get\("actualStartTime"\)/.test(av) &&
+     /d\["scheduled_at"\] = lsd\.get\("scheduledStartTime"\)/.test(av));
+
+  /* The six rows already in production hold a schedule, so filling the column
+     only when empty is not enough — it was never empty. */
+  ok('a stored start is CORRECTED once the real one is known, not just filled',
+     /elif want and abs\(\(want - have\)\.total_seconds\(\)\) > 1:/.test(av));
+  ok('...and one positively identified as the schedule is withdrawn',
+     /patch\["stream_started_at"\] = None/.test(av) &&
+     /was the scheduled time, not a real start/.test(av));
+  ok('...only on that positive match, so a temporary 400 cannot drop a real start',
+     /abs\(\(sched - have\)\.total_seconds\(\)\) <= 1/.test(av));
+  ok('...which is the same rule this file already applies to a tip it cannot justify',
+     /A WRONG ANCHOR IS WORSE THAN NONE/.test(av));
+}
+
+{
+  /* What the error actually does to a clip, in the numbers of that afternoon:
+     a stream scheduled for 12:30 that really opened at 13:15, a tip at 13:20. */
+  const sched = Date.parse('2026-09-12T12:30:00Z');
+  const real  = Date.parse('2026-09-12T13:15:00Z');
+  const tip   = Date.parse('2026-09-12T13:20:00Z');
+  const play  = tip + 8 * 60_000;                       // a basket eight minutes in
+
+  /* gapMs + the since term, which is what clipOf composes. */
+  const posWith = start => (tip - start) + (play - tip);
+  eq('placed from the real start, the basket is 13 minutes into the stream',
+     Math.round(posWith(real) / 60000), 13);
+  eq('placed from the scheduled one it is 58, which is 45 minutes of nothing',
+     Math.round(posWith(sched) / 60000), 58);
+  ok('and the old ninety-minute doubt check would not have said a word',
+     (tip - sched) < 90 * 60_000);
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
