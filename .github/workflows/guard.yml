@@ -239,6 +239,12 @@ jobs:
         # one, so this checks the ENGINE's box score, not just the event shapes
         run: node supabase/tests/livestats.test.mjs
 
+      - name: The simulator cannot reach a real game
+        # `simulate a full game` empties the log, which on a real fixture makes the
+        # next publish retract every row already written — and the button sat two
+        # along from `end game` behind one confirm.
+        run: node supabase/tests/scorer-simulate.test.mjs
+
       - name: A fed game lands where it happened
         # the LiveStats chain has four links in three languages — the poll stamp,
         # the tip anchor, the position arithmetic and the clip window — and nothing

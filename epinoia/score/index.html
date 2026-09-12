@@ -4062,8 +4062,12 @@ function wireGame(){
   $('#btnVid').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openVideo(); });
   $('#btnDetails').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openDetails(); });
   $('#btnHelp').addEventListener('click', ()=>{ $('#sheet').classList.remove('open'); openHelp(); });
-  $('#btnSim').addEventListener('click', ()=>{ $('#sheet').classList.remove('open');
-    askConfirm('simulate a full game? are you sure? this replaces the current game with test data', simulateGame); });
+  /* the practice game only — see simulateGame. orderSheet already skips a node
+     that is not there, so the sheet needs no other change. */
+  const _sim = $('#btnSim');
+  if(_sim && !EP_TRAIN){ _sim.remove(); }
+  else if(_sim){ _sim.addEventListener('click', ()=>{ $('#sheet').classList.remove('open');
+    askConfirm('simulate a full game? are you sure? this replaces the current game with test data', simulateGame); }); }
   $('#btnEnd').addEventListener('click', ()=>{
     $('#sheet').classList.remove('open');
     askConfirm('end the game?', endGame);
@@ -5852,6 +5856,25 @@ function renderFinal(){
 /* ==================== game simulator (test data) ==================== */
 function simulateGame(){
   if(!S || S.phase!=='game') return;
+  /* NOT ON A REAL FIXTURE. EVER.
+
+     This wipes the log to fill it with test data: S.events=[] and a fresh evSeq.
+     On a fixture that is being scored for real, the next publish compares what
+     has been sent against what is now held, finds they disagree from the very
+     first id, and asks the database to DELETE every row it had already written —
+     which the policy permits, because the statistician is exactly who is allowed
+     to retract on an unfinished game. Several hundred rows of a league game,
+     gone, with the simulator's invention written over the top.
+
+     It sat two buttons from `end game` in the in-play sheet behind a single
+     confirm. The button is now removed from any page that is not the practice
+     game, and this is the floor under that: a stray call from anywhere — a
+     console, a future menu, a mis-wired listener — cannot reach a real log.
+
+     Note that leaving evSeq alone would NOT have been enough. diffLog matches
+     from index 0, so an emptied array disagrees at the first id however the new
+     ones are numbered, and every previously-sent row is retracted regardless. */
+  if(!EP_TRAIN){ toast('the simulator only runs on the practice game'); return; }
   let seed = (S.evSeq||1)*7919+13; const rand=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
   const pick = a => a[Math.floor(rand()*a.length)];
   // wipe the current game but keep teams / starters / colours
