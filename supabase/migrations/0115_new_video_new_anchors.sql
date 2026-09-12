@@ -130,18 +130,38 @@ grant execute on function public.set_game_video(uuid, text, text, text, text,
   timestamptz, timestamptz, int, boolean, boolean, bigint, bigint, bigint, int)
   to authenticated;
 
+/* A security definer function runs with its OWNER's rights. The CLI now applies
+   migrations through a temporary login role; pin both functions to postgres so
+   whichever role ran this file, the RPC can still read and write game_videos. */
+alter function public.video_is_same(text, text, text, text, text, text) owner to postgres;
+alter function public.set_game_video(uuid, text, text, text, text,
+  timestamptz, timestamptz, int, boolean, boolean, bigint, bigint, bigint, int) owner to postgres;
+
 -- ============================================================================
 -- SELF-TEST — through the real function, as a real admin, on a game with no video.
 --
 -- A migration has no auth.uid(), and may_attach_video refuses a caller it cannot
 -- name, so the claim of an existing platform admin is forged for the calls (the
--- way 0092 and 0114 do). The test row is removed on the way out, error or not.
+-- way 0092 and 0114 do).
+--
+-- EVERYTHING HAPPENS INSIDE A BLOCK THAT IS ALWAYS ROLLED BACK. The first version
+-- of this test switched to the authenticated role, then used RESET ROLE to get
+-- the table owner's rights back for the setup and the clean-up. Under the CLI's
+-- temporary login role RESET ROLE lands on that login role, not on postgres, and
+-- it may not touch game_videos: the push failed with "permission denied", and the
+-- clean-up in the handler would have hidden any real failure behind the same
+-- error. So the row is seeded BEFORE the switch, and the block ends by raising a
+-- private code that its own handler swallows. Rolling back that subtransaction
+-- undoes the rows, the SET LOCAL ROLE and the forged claim together, with no
+-- privilege needed. Any other error, including every assertion below, is not
+-- caught and fails the migration with its own message.
 -- ============================================================================
 do $test$
 declare
   gid   uuid;
   actor uuid;
   v     public.game_videos;
+  who   text := current_user || ' (session ' || session_user || ')';
 begin
   if not public.video_is_same('https://youtu.be/AAAAAAAAAAA', 'youtube', 'AAAAAAAAAAA',
                               'https://www.youtube.com/watch?v=AAAAAAAAAAA', 'youtube', 'AAAAAAAAAAA') then
@@ -161,8 +181,8 @@ begin
     raise exception '0115: an id against a row with none was called the same, which cannot be known';
   end if;
 
-  /* a finished game first: the test row is inserted and removed inside this
-     transaction, but a live page subscribed to game_videos would still be told */
+  /* a finished game first: nothing here is ever committed, but a finished game
+     is the one nobody is watching while the migration runs */
   select g.id into gid from public.games g
    where not exists (select 1 from public.game_videos w where w.game_id = g.id)
    order by (g.status = 'final') desc
@@ -174,16 +194,15 @@ begin
   end if;
 
   begin
-    perform set_config('request.jwt.claims', json_build_object('sub', actor, 'role', 'authenticated')::text, true);
-    set local role authenticated;
+    /* a recording with an offset, a stream start, a trim and a track read off it,
+       seeded with the migration's own rights before anything switches role */
+    insert into public.game_videos (game_id, url, provider, video_ref, label,
+                                    stream_started_at, tip_at, tip_wall, tip_offset_ms, trim_ms, clock_track)
+    values (gid, 'https://youtu.be/__t115aaaaa', 'youtube', '__t115aaaaa', '__t115',
+            now() - interval '20 minutes', now(), 1789238080000, 465000, 1500,
+            '{"samples":[{"t":1,"period":1,"clock_ms":600000}]}'::jsonb);
 
-    /* a recording with an offset, a tip on the log's clock, then a track read off it */
-    v := public.set_game_video(p_game => gid, p_url => 'https://youtu.be/__t115aaaaa', p_provider => 'youtube',
-                               p_ref => '__t115aaaaa', p_tip_offset_ms => 465000, p_tip_wall => 1789238080000);
-    reset role;
-    update public.game_videos set clock_track = '{"samples":[{"t":1,"period":1,"clock_ms":600000}]}'::jsonb,
-                                  stream_started_at = now() - interval '20 minutes', trim_ms = 1500
-     where id = v.id;
+    perform set_config('request.jwt.claims', json_build_object('sub', actor, 'role', 'authenticated')::text, true);
     set local role authenticated;
 
     /* the same video by another spelling of its link: everything is kept */
@@ -217,15 +236,18 @@ begin
       raise exception '0115: a new video''s own offset was not stored (%)', v.tip_offset_ms;
     end if;
 
-    reset role;
-    perform set_config('request.jwt.claims', '', true);
-    delete from public.game_videos where game_id = gid and video_ref like '__t115%';
-  exception when others then
-    reset role;
-    perform set_config('request.jwt.claims', '', true);
-    delete from public.game_videos where game_id = gid and video_ref like '__t115%';
-    raise;
+    raise exception using errcode = 'P0115', message = '0115 passed; rolling its test rows back';
+  exception
+    when sqlstate 'P0115' then
+      null;
+    when others then
+      /* rolled back all the same; say which role it ran as, since that is what
+         the first version of this test tripped over */
+      raise exception '% [ran as %]', sqlerrm, who;
   end;
 
+  if exists (select 1 from public.game_videos where video_ref like '\_\_t115%') then
+    raise exception '0115: the test rows outlived their rollback';
+  end if;
   raise notice '0115 ok: the same video keeps its anchors, a different one starts clean, the tip-off stays';
 end $test$;

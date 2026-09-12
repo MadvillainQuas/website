@@ -756,9 +756,17 @@ console.log('\na new video does not inherit the old one\'s clock');
   ok('...while the tip-off, a fact about the game, is kept whatever the video',
      /tip_at\s*=\s*coalesce\(tip_final, game_videos\.tip_at\)/.test(m) &&
      /tip_wall\s*=\s*coalesce\(p_tip_wall, game_videos\.tip_wall\)/.test(m));
-  ok('...proved through the real function as a real admin, and cleaned up on the way out',
-     /set local role authenticated/.test(m) && /raise exception '0115: a different video kept a clock track/.test(m) &&
-     /exception when others then[\s\S]{0,200}delete from public\.game_videos where game_id = gid and video_ref like '__t115%'/.test(m));
+  ok('...proved through the real function as a real admin',
+     /set local role authenticated/.test(m) && /raise exception '0115: a different video kept a clock track/.test(m));
+  /* The first push of 0115 failed: the test used RESET ROLE to regain the owner's
+     rights, and under the CLI's temporary login role that lands on a role that may
+     not touch game_videos. The test now never needs the rights back. */
+  ok('...inside a block that always rolls back, so it never needs the owner\'s rights again',
+     /raise exception using errcode = 'P0115'/.test(m) && /when sqlstate 'P0115' then/.test(m) &&
+     !/^\s*reset role;/m.test(m));
+  ok('...and the functions are owned by postgres whichever role applied the file',
+     /alter function public\.set_game_video\([\s\S]{0,120}\) owner to postgres;/.test(m) &&
+     /alter function public\.video_is_same\([^)]*\) owner to postgres;/.test(m));
 
   const HARNESS = [
     'import sys, json, types',
