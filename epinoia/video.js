@@ -574,6 +574,35 @@ function stopsFromRuns(runs) {
 }
 /* where in the video a (period, clock) sits, by the runs: inside a run it is arithmetic;
    in a stoppage it is the whistle that began it; null when the period has no runs */
+/* A GAP BETWEEN TWO RUNS IS NOT AUTOMATICALLY A STOPPAGE, and how much clock
+   went missing across it says which it was.
+
+   If the clock STOOD still, the reading either side of the gap is the same, and
+   the moment a play "happened" is the whistle that stopped it — the end of the
+   first run, which is what this always returned.
+
+   But the clock also keeps running through a stretch the overlay cannot be read
+   in: a full-screen replay, a scorebug graphic over the corner, a camera cut to
+   the bench. runsFromTrack breaks a run when two readings are more than thirty
+   seconds apart or the clock did not fall by about the time between them, so an
+   unreadable-but-running stretch leaves two runs whose clocks do NOT meet. Every
+   play in it was then placed on the last readable frame, and so were all the
+   others — a minute of basketball collapsed onto one instant.
+
+   The two cases are told apart by the clock itself. Standing still: c1 and the
+   next c0 agree. Running through: the clock fell by roughly the real time that
+   passed, so the fall is the measure of how far through the gap a given clock
+   value sits. */
+const GAP_STOOD_MS = 1500;
+
+/* And how far outside the read runs a position may be projected at all.
+   Beyond this the projection crosses stoppages nobody read, at a second of
+   footage per second of clock, and the error is unbounded — the audit case was
+   six minutes. Declining is cheap here in a way it is not elsewhere: index()
+   falls back to the wall-clock arithmetic for a play the track will not vouch
+   for, so the play keeps a position, just not this one's opinion of it. */
+const RUN_REACH_MS = 120000;
+
 function positionFromRuns(runs, period, clockMs) {
   const R = runs.filter(r => r.period === period).sort((x, y) => x.t0 - y.t0);
   if (!R.length) return null;
@@ -581,11 +610,23 @@ function positionFromRuns(runs, period, clockMs) {
     const r = R[i];
     if (clockMs <= r.c0 && clockMs >= r.c1) return (r.t0 + (r.c0 - clockMs) / 1000) * 1000;
     const next = R[i + 1];
-    if (next && clockMs < r.c1 && clockMs > next.c0) return r.t1 * 1000;      // the clock stood here
+    if (next && clockMs < r.c1 && clockMs > next.c0) {
+      const fell = r.c1 - next.c0;            // clock lost across the gap
+      if (fell <= GAP_STOOD_MS) return r.t1 * 1000;   // it stood: the whistle is the moment
+      /* it ran, unread: place proportionally through the gap */
+      const frac = Math.max(0, Math.min(1, (r.c1 - clockMs) / fell));
+      return (r.t1 + (next.t0 - r.t1) * frac) * 1000;
+    }
   }
   const first = R[0], last = R[R.length - 1];
-  if (clockMs > first.c0) return Math.max(0, first.t0 - (clockMs - first.c0) / 1000) * 1000;
-  if (clockMs < last.c1) return (last.t1 + (last.c1 - clockMs) / 1000) * 1000;
+  if (clockMs > first.c0) {
+    if (clockMs - first.c0 > RUN_REACH_MS) return null;
+    return Math.max(0, first.t0 - (clockMs - first.c0) / 1000) * 1000;
+  }
+  if (clockMs < last.c1) {
+    if (last.c1 - clockMs > RUN_REACH_MS) return null;
+    return (last.t1 + (last.c1 - clockMs) / 1000) * 1000;
+  }
   return null;
 }
 /* the readings themselves, for a period the runs do not cover */

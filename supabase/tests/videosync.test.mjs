@@ -478,5 +478,128 @@ console.log('\na play with one neighbour, and the rate that is not 1:1');
      /\} else if \(before \|\| after\) \{/.test(vj));
 }
 
+/* ---------------------------------------------------------------------------
+   A GAP IN THE CLOCK TRACK IS NOT AUTOMATICALLY A STOPPAGE.
+
+   A clock track is a thousand readings of the overlay; what they describe is a
+   few dozen stretches where the clock ran and the whistles between them. Between
+   two runs the code returned the end of the first — the whistle — which is right
+   when the clock STOOD still.
+
+   But the clock also keeps running through a stretch the overlay cannot be read
+   in: a full-screen replay, a graphic over the corner, a cut to the bench.
+   runsFromTrack breaks a run when two readings are over thirty seconds apart or
+   the clock did not fall by about the time between them, so an
+   unreadable-but-running stretch leaves two runs whose clocks do NOT meet. Every
+   play in that stretch was placed on the last readable frame — a minute of
+   basketball collapsed onto one instant, and each row tagged byClock with no
+   '~' on it.
+
+   The clock itself tells the two apart: standing still, the readings either side
+   agree; running through, it fell by about the real time that passed.
+   --------------------------------------------------------------------------- */
+console.log('\na gap in the clock track, read for what it is');
+
+{
+  /* Two runs with a 60 s hole. Case one: the clock STOOD (both sides read 9:00),
+     so the whistle at the end of the first run is the moment. */
+  const stood = { mode: 'clock', samples: [], runs: [
+    { period: 1, t0: 100, t1: 160, c0: 600000, c1: 540000 },
+    { period: 1, t0: 220, t1: 280, c0: 540000, c1: 480000 },
+  ] };
+  /* A true stoppage leaves the clock reading the SAME either side, so no clock
+     value falls strictly between the runs: a play at that value sits inside the
+     first run and lands on its end, which IS the whistle. */
+  eq('a clock that stood places the play at the whistle',
+     V.positionFromRuns(stood.runs, 1, 540000), 160 * 1000);
+
+  /* The gap branch is reached when the clocks ALMOST meet -- a second of misread
+     either side -- and that is still a stoppage, not a running clock. */
+  const nearly = { runs: [
+    { period: 1, t0: 100, t1: 160, c0: 600000, c1: 540000 },
+    { period: 1, t0: 220, t1: 280, c0: 539000, c1: 480000 },
+  ] };
+  eq('...and a second of misread across the gap is still a stoppage',
+     V.positionFromRuns(nearly.runs, 1, 539500), 160 * 1000);
+
+  /* Case two: the clock RAN through the hole — 9:00 at the end of the first run,
+     8:00 at the start of the second, and 60 s of footage between them. A play at
+     8:30 sits half way through the hole, not on its front edge. */
+  const ran = { runs: [
+    { period: 1, t0: 100, t1: 160, c0: 600000, c1: 540000 },
+    { period: 1, t0: 220, t1: 280, c0: 480000, c1: 420000 },
+  ] };
+  const mid = V.positionFromRuns(ran.runs, 1, 510000);      // half of 9:00 -> 8:00
+  eq('a clock that ran through an unread stretch is placed across it',
+     Math.round(mid / 1000), 190);
+  ok('...which is not the front edge of the gap', Math.round(mid / 1000) !== 160,
+     'got ' + Math.round(mid / 1000) + 's');
+  eq('...and the ends of the hole still land on the runs either side',
+     Math.round(V.positionFromRuns(ran.runs, 1, 539999) / 1000), 160);
+}
+
+{
+  /* Outside the runs entirely, the projection crosses stoppages nobody read at a
+     second of footage per second of clock. Bounded now: index() falls back to the
+     wall-clock arithmetic for a play the track will not vouch for. */
+  const R = [{ period: 1, t0: 600, t1: 660, c0: 300000, c1: 240000 }];
+  ok('a clock just outside the runs is still projected',
+     V.positionFromRuns(R, 1, 330000) != null);
+  ok('...and one far outside is declined rather than guessed',
+     V.positionFromRuns(R, 1, 590000) === null,
+     String(V.positionFromRuns(R, 1, 590000)));
+  ok('...on the late side too',
+     V.positionFromRuns(R, 1, 60000) === null,
+     String(V.positionFromRuns(R, 1, 60000)));
+
+  const vj = readFileSync(path.join(ROOT, 'epinoia', 'video.js'), 'utf8');
+  const va = readFileSync(path.join(ROOT, 'epinoia', 'videoanchor.js'), 'utf8');
+  ok('the reach is named and reasoned about', /const RUN_REACH_MS = 120000;/.test(vj));
+  ok('...and the stoppage test with it', /const GAP_STOOD_MS = 1500;/.test(vj));
+  /* videoanchor.js carries a fallback for pages that do not load video.js, and
+     its header insists the two place a play the same way. */
+  ok('the standalone fallback is bounded the same way',
+     /const REACH_MS = 120000;/.test(va) &&
+     /The same bound as RUN_REACH_MS in epinoia\/video\.js/.test(va));
+  ok('...and no longer claims the clock simply runs on',
+     /"The clock runs on" is true of the clock and not of the game/.test(va));
+}
+
+/* ---------------------------------------------------------------------------
+   THE KEY MUST NOT BE SPENT ON THE FIRST EVENING.
+
+   Adding YOUTUBE_API_KEY switches on find_with_api, which calls YouTube's search.
+   Google's quota page gives a project 100 search.list calls a day, separate from
+   the 10,000 units everything else shares. write_platform calls attach() on every
+   poll of a live game, attach() stops only once a video row exists, and nothing
+   remembered an empty search — so one live game the channel feed failed to match
+   searched on every poll and spent the day's hundred calls in about seventeen
+   minutes, leaving every other game that day unfindable.
+
+   Exercised against the real function with HTTP mocked: ninety polls of an
+   unmatched game made ninety searches before and make one now, and a quota
+   refusal holds the search off across other games until YouTube's reset.
+   --------------------------------------------------------------------------- */
+console.log('\nthe search allowance is rationed');
+
+{
+  const av = readFileSync(path.join(ROOT, 'scripts', 'ingest', 'auto_video.py'), 'utf8');
+  ok('a search that found nothing is remembered per fixture',
+     /_SEARCH_SEEN\[seen_key\] = \(time\.time\(\), None\)/.test(av));
+  ok('...and not repeated for twenty minutes', /SEARCH_RETRY_S = 20 \* 60/.test(av) &&
+     /time\.time\(\) - hit\[0\] < SEARCH_RETRY_S/.test(av));
+  ok('...keyed on the fixture, so a different game still gets its own search',
+     /seen_key = \(\(home or ""\)\.lower\(\), \(away or ""\)\.lower\(\), tip\.date\(\)\.isoformat\(\)\)/.test(av));
+  ok('a quota refusal switches the search off rather than hammering it',
+     /if r\.status_code == 403 and re\.search\(r"quota\|dailyLimit\|rateLimit"/.test(av) &&
+     /_SEARCH_DEAD_UNTIL = _next_quota_reset\(\)/.test(av));
+  ok('...until YouTube resets it, at midnight Pacific',
+     /ZoneInfo\("America\/Los_Angeles"\)/.test(av));
+  ok('...and only the SEARCH: stream starts come from a separate pool and keep working',
+     /It is finding broadcasts that dies, not timing them/.test(av) &&
+     !/_SEARCH_DEAD_UNTIL/.test(av.slice(av.indexOf('def watch_details'), av.indexOf('def _instant') > av.indexOf('def watch_details') ? av.indexOf('def _instant') : av.indexOf('def watch_details') + 4000)));
+  ok('the quota figure is cited to its source', /determine_quota_cost/.test(av));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

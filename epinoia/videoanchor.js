@@ -421,8 +421,25 @@ function positionFromTrack(track, period, clockMs) {
     const frac = span > 0 ? (before.clock_ms - clockMs) / span : 0;
     return (before.t + (after.t - before.t) * frac) * 1000;
   }
-  if (before) return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;   // past the last reading: the clock runs on
-  if (after) return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  /* OUTSIDE THE READINGS, AND ONLY SO FAR.
+     "The clock runs on" is true of the clock and not of the game: past the last
+     reading the projection crosses every stoppage nobody read, at a second of
+     footage per second of clock, and the error grows without bound. Two minutes
+     is as far as that is worth trusting, and declining costs little — the caller
+     falls back to the wall-clock arithmetic for a play this track will not vouch
+     for, so the play keeps a position, just not this function's opinion of it.
+
+     The same bound as RUN_REACH_MS in epinoia/video.js, which carries the map
+     when both files are loaded; these two must place a play the same way. */
+  const REACH_MS = 120000;
+  if (before) {
+    if (before.clock_ms - clockMs > REACH_MS) return null;
+    return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;
+  }
+  if (after) {
+    if (clockMs - after.clock_ms > REACH_MS) return null;
+    return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  }
   return null;
 }
 

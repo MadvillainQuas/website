@@ -292,9 +292,53 @@ def _iso_dur_s(d: str) -> int:
     return (int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + int(m.group(3) or 0)) if m else 0
 
 
+# ------------------------------------------------------------------ the search, rationed
+# THE SEARCH HAS ITS OWN SMALL ALLOWANCE, AND THIS WAS SPENDING IT EVERY TEN SECONDS.
+#
+# YouTube's quota page (developers.google.com/youtube/v3/determine_quota_cost, read
+# 2026-09-12) gives a project "100 search.list calls" a day, separate from the 10,000
+# units every other endpoint shares. write_platform calls attach() on EVERY poll of a
+# live game, attach() returns early only once a game_videos row exists, and nothing
+# remembered that a search had just come back empty. So one live game the channel feed
+# failed to match searched again on every poll: the day's hundred calls gone in about
+# seventeen minutes at the ordinary cadence, and every other game that day left with no
+# way to be found.
+#
+# The damage stops there, which is worth knowing: videos.list draws on the separate
+# 10,000-unit pool, so watch_details can still read a stream's real start after the
+# search allowance is gone. It is finding broadcasts that dies, not timing them.
+#
+# So a miss is remembered per fixture for twenty minutes - a broadcast does not appear
+# between two polls, and six tries across a two-hour window is plenty - and a quota
+# refusal switches the search off until YouTube resets it rather than hammering a door
+# that has said no. In-process on purpose: the live lane is one long pass, which is where
+# the loop was, and a fresh process starting clean is harmless.
+SEARCH_RETRY_S = 20 * 60
+_SEARCH_SEEN: dict = {}
+_SEARCH_DEAD_UNTIL = 0.0
+
+
+def _next_quota_reset() -> float:
+    """YouTube resets quotas at midnight Pacific time."""
+    try:
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo("America/Los_Angeles"))
+        nxt = (now + timedelta(days=1)).replace(hour=0, minute=0, second=5, microsecond=0)
+        return nxt.timestamp()
+    except Exception:
+        return time.time() + 3600          # no tz data: look again in an hour
+
+
 def find_with_api(key: str, home: str, away: str, tip: datetime, channel_id: str | None, words: str = "") -> dict | None:
+    global _SEARCH_DEAD_UNTIL
     if not key or not tip:
         return None
+    if time.time() < _SEARCH_DEAD_UNTIL:
+        return None
+    seen_key = ((home or "").lower(), (away or "").lower(), tip.date().isoformat())
+    hit = _SEARCH_SEEN.get(seen_key)
+    if hit and time.time() - hit[0] < SEARCH_RETRY_S:
+        return hit[1]
     after = (tip - timedelta(days=4)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     before = (tip + timedelta(days=3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     params = {"part": "snippet", "type": "video", "maxResults": 25, "q": f"{home} {away} {words}".strip(), "order": "relevance",
@@ -303,9 +347,14 @@ def find_with_api(key: str, home: str, away: str, tip: datetime, channel_id: str
         params["channelId"] = channel_id
     try:
         r = requests.get(f"{API}/search", params=params, timeout=30)
+        if r.status_code == 403 and re.search(r"quota|dailyLimit|rateLimit", r.text or "", re.I):
+            _SEARCH_DEAD_UNTIL = _next_quota_reset()
+            print("    (YouTube search allowance spent; not searching again until it resets)")
+            return None
         items = r.json().get("items") or [] if r.status_code == 200 else []
         ids = [it["id"]["videoId"] for it in items if it.get("id", {}).get("videoId")]
         if not ids:
+            _SEARCH_SEEN[seen_key] = (time.time(), None)
             return None
         r = requests.get(f"{API}/videos", params={"part": "snippet,contentDetails,liveStreamingDetails", "id": ",".join(ids), "key": key}, timeout=30)
         vids = r.json().get("items") or [] if r.status_code == 200 else []
@@ -328,7 +377,9 @@ def find_with_api(key: str, home: str, away: str, tip: datetime, channel_id: str
             best_s, best = s, {"video_id": v["id"], "url": f"https://www.youtube.com/watch?v={v['id']}", "title": sn.get("title"),
                                "live": bool(lsd.get("actualStartTime")), "started_at": lsd.get("actualStartTime"),
                                "ended_at": lsd.get("actualEndTime"), "duration_s": dur, "how": "api"}
-    return best if best_s >= 1.6 else None
+    result = best if best_s >= 1.6 else None
+    _SEARCH_SEEN[seen_key] = (time.time(), result)
+    return result
 
 
 # ------------------------------------------------------------------ attach
