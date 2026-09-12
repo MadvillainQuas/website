@@ -329,6 +329,14 @@ jobs:
         # Skips cleanly when the project is unreachable.
         run: node supabase/tests/livestats.roundtrip.mjs
 
+      - name: A corrected feed does not empty the game, or un-time it
+        # the rewrite was delete-everything-then-insert-everything with no
+        # transaction: caught twice in five minutes on live fixtures reading ZERO
+        # events mid-game while the score row still showed 2-16. And the stamp
+        # carry keyed on pid, a platform id that moves as substitutes appear, so
+        # three of four live games ended with their whole log un-timed.
+        run: node supabase/tests/ingest-replace.test.mjs
+
       - name: JSON API
         # exercises the deployed function over HTTP with a real key.
         # Skips cleanly when EPINOIA_API_KEY is not set, so a fork without
