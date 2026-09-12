@@ -603,8 +603,13 @@ function subscriber(opts) {
          obviously broken to whoever is producing the stream. One reading 0:00 in
          the middle of a period just looks like the game.
 
-         A state with no updated_at -- the scoring app's, which ticks locally
-         between transitions -- is unaffected: `since` is zero and always was. */
+         The scoring app is the one worth checking, because it publishes clock
+         TRANSITIONS rather than a clock every second, and a quiet stretch of a
+         quarter can pass with nothing happening. It is safe: stateOf() stamps
+         updated_at on every state it sends, and the publisher's heartbeat sends
+         one every five seconds whether or not anything happened, precisely so a
+         viewer who joined mid-gap has something to correct against. Five seconds
+         against a twenty-second cap leaves three heartbeats of room. */
       const since = (Date.now() + offset) - new Date(state.updated_at || state.at || Date.now()).getTime();
       return Math.max(0, base - Math.min(Math.max(0, since), CLOCK_RUN_ON_MS));
     },
