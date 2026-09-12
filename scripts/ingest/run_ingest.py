@@ -750,6 +750,7 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 if c.get("created_at"):
                     r["created_at"] = c["created_at"]
                 kept += 1
+        how_first = ""
         if stamp and existing:
             for r in rows[len(existing):]:
                 if "wall" not in (r.get("payload") or {}):
@@ -765,12 +766,10 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 how_first = f", first write stamped (±{fw['wall_err'] // 1000}s)"
             else:
                 how_first = ", first write unstamped (log already deep)"
-        else:
-            how_first = ""
         sb.delete("game_events", f"game_id=eq.{game_id}")
         for i in range(0, len(rows), 400):
             sb.insert("game_events", rows[i:i + 400])
-        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else (locals().get("how_first") or ""))
+        how = f"{len(rows)} events written" + (f" (log replaced, {kept} stamps kept)" if existing else how_first)
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0
