@@ -136,5 +136,56 @@ const foulPending = () => ({ kind: 'foul', team: 0, pid: 'p12', anchorIdx: 41,
   ok('...and the shot it was attached to is untouched', h.events.has(40));
 }
 
+/* ---------------------------------------------------------------------------
+   AND HOW MANY FREE THROWS IT PREDICTS.
+
+   The same window decides, from the team-foul count, whether the foul is in the
+   penalty and therefore whether to prompt for two shots. It read
+
+       teamFoulsNow(D, team) >= 4
+
+   which looks right sitting next to a header that prints "bonus" at four, and
+   is not: addEvent ends with renderAll(), and renderAll reassigns D = derive(),
+   so the foul just recorded is ALREADY in that count. On a team's fourth team
+   foul the test passed, the sub-bar drew "ft 1 · ft 2" and the app said "free
+   throw 1 of 2". FIBA Art. 41 penalises from the fifth. A statistician
+   following the prompt taps the fouled player twice and puts up to two points
+   on the board that were never scored -- and the score is the one number
+   everybody in the hall is checking.
+
+   The header threshold is a different statement ("the next foul shoots") and is
+   correct at four, so the two legitimately differ by one. Both are pinned here
+   so that neither gets "fixed" to match the other.
+   --------------------------------------------------------------------------- */
+console.log('\nand how many free throws it predicts');
+
+/* the shipped expression, evaluated against a stubbed count -- not a copy of it */
+const ftExpSrc = (src.match(/ftExp: (kind===\x27tech\x27[^}]*?)\};/) || [])[1];
+ok('the free-throw prediction is where it was', !!ftExpSrc, 'expression not found');
+
+const predict = (kind, teamFouls) => new Function('kind', 'teamFoulsNow', 'D', 'team',
+  'return (' + ftExpSrc + ');')(kind, () => teamFouls, {}, 0);
+
+/* D already counts the foul being recorded, so "teamFouls" here is the count
+   INCLUDING it: 5 means this is the team's fifth of the period. */
+ok('a first team foul awards none', predict('personal', 1) === 0);
+ok('the fourth awards none -- this is the one that was wrong',
+   predict('personal', 4) === 0, 'got ' + predict('personal', 4));
+ok('the fifth is the penalty, and shoots two', predict('personal', 5) === 2);
+ok('and so is everything after it', predict('personal', 9) === 2);
+ok('a technical is one shot whatever the count',
+   predict('tech', 1) === 1 && predict('tech', 7) === 1);
+ok('an unsportsmanlike is two whatever the count',
+   predict('unsport', 1) === 2 && predict('unsport', 7) === 2);
+ok('a disqualifying is two whatever the count',
+   predict('disq', 1) === 2 && predict('disq', 7) === 2);
+
+/* The header says something different and must keep saying it. */
+const header = src.slice(src.indexOf('function renderCols()'),
+                         src.indexOf('function renderCols()') + 1800);
+ok('the header still calls it the bonus once four have been committed',
+   /fouls>=4\?' <span class="bonus">bonus<\/span>'/.test(header));
+ok('...and still warns on the third', /fouls===3\?' <span class="bonus">\+1\u2192bonus/.test(header));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

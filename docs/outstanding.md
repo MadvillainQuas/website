@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 9, 11, 12, 13, 14, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -260,6 +260,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 16. Fix the free-throw prediction firing one team foul early
 
 **critical** / hours · `scorer`
+
+> **STATUS - DONE 2026-09-12 - the threshold is >= 5, with a comment saying D already counts the foul being recorded and that the header threshold of 4 is a different statement and correct. Both are pinned in supabase/tests/scorer-foul.test.mjs so neither gets "fixed" to match the other.**
 
 **Why.** index.html:3869 computes ftExp with `teamFoulsNow(D,team)>=4`, but the foul was added ten lines earlier and addEvent ends with renderAll(), which reassigns D = derive() — so the count is POST-increment. On a team's FOURTH team foul the test passes, the sub-bar draws a 'ft 1 · ft 2' step bar and the app toasts 'free throw 1 of 2'. FIBA Art. 41 penalises from the FIFTH; the fourth awards none. A scorer following the prompt taps the fouled player twice and puts up to two points on the board that were never scored. The score is the one number everyone in the hall checks, so it becomes a mid-game argument rather than a quiet data error.
 

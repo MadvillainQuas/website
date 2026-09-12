@@ -3977,8 +3977,25 @@ function tap(team,pid){
         toast('offensive foul — turnover, '+pname(pid));
         foulAlert(pid); break;
       }
+      /* THE PENALTY STARTS ON THE FIFTH, AND D ALREADY HOLDS THIS ONE.
+
+         This read >= 4, which looks right next to the header that prints
+         "bonus" at 4 and is not. addEvent ends with renderAll(), and renderAll
+         reassigns D = derive() — so by the time this line runs the foul just
+         recorded is already in the count. On a team's FOURTH team foul the
+         test passed, the sub-bar drew a "ft 1 · ft 2" step bar and the app
+         said "free throw 1 of 2". FIBA Art. 41 penalises from the fifth; the
+         fourth awards none. A statistician following the prompt taps the
+         fouled player twice and puts up to two points on the board that were
+         never scored — and the score is the one number everybody in the hall
+         is checking, so it surfaces as an argument at the table rather than as
+         a quiet error in the data.
+
+         The header threshold at renderCols is CORRECT at >= 4 and must stay
+         there: it means "the next foul shoots", which is true once four have
+         been committed. The two legitimately differ by one. */
       ui.pending={kind:'foul',team,pid,anchorIdx:i,foulIdx:i,expires:Date.now()+WIN_MS,at:originAt(i),steps:[i],
-        ftExp: kind==='tech'?1:(kind==='unsport'||kind==='disq'?2:(teamFoulsNow(D,team)>=4?2:0))};
+        ftExp: kind==='tech'?1:(kind==='unsport'||kind==='disq'?2:(teamFoulsNow(D,team)>=5?2:0))};
       ui.foulType=null; foulAlert(pid); break; }
     case 'timeout': return;
   }
