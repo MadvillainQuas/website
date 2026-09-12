@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -252,6 +252,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 15. Hold a screen wake lock in the scoring app
 
 **critical** / hours · `scorer`
+
+> **STATUS - DONE 2026-09-12 - keepAwake lifted into bootstrap.js with its OWN showScreen wrapper rather than a line inside the legend's: that one is installed from inside a mount() that waits on an element, and the screen staying on must not be contingent on a caption measuring itself. The two compose in either order. Held only while the game screen is up, read off the DOM rather than the argument, re-taken on visibilitychange because the UA drops it on every backgrounding and restores nothing. Guarded for every iOS before 16.4. Tests in supabase/tests/durability.test.mjs. NOTE the grant itself could not be exercised in the in-app browser, which reports visibilityState hidden and so refuses every request with NotAllowedError - which did confirm the refusal is swallowed without throwing.**
 
 > **STATUS — NOT the clock cam — the clock cam holds one as of 2026-09-12. This is the SCORING app, which still has none.**
 

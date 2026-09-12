@@ -1943,6 +1943,81 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 
+  /* ================================================ keeping the screen on ===
+     FORTY MINUTES IN THE HAND, AND THE PHONE DECIDING OTHERWISE.
+
+     The clock cam asks for a wake lock. The scoring app -- the one actually
+     held for the length of a game -- asked for nothing. iOS auto-lock defaults
+     to thirty seconds and a statistician's hands leave the screen for every
+     stretch of play with no event in it, which in a semi-pro game is routinely
+     twenty to forty seconds. So the phone locks, and the next thing that
+     happens is a wake, a passcode or a Face ID, and a re-orient, with the game
+     still going on in front of them. Dozens of times a game, every one of them
+     a window in which something is missed.
+
+     Only while the game screen is up: a locked phone on the setup screen or a
+     finished game's box score is the phone behaving correctly.
+
+     The lock is its own wrapper around showScreen rather than a line inside the
+     legend's, because the legend's wrapper is installed from inside a mount()
+     that depends on an element being present -- and the screen staying on must
+     not be contingent on a caption measuring itself. The two compose in either
+     order; whichever installs second wraps the first, and carries the other's
+     marker forward so neither installer wraps twice. */
+  (function keepTheScreenOn() {
+    if (!('wakeLock' in navigator)) return;      // every iOS before 16.4, and more
+    let wake = null;
+
+    async function keepAwake(on) {
+      try {
+        if (on && !wake) {
+          wake = await navigator.wakeLock.request('screen');
+          /* The UA releases on its own terms and does not tell us twice. */
+          wake.addEventListener('release', () => { wake = null; });
+        } else if (!on && wake) { const w = wake; wake = null; await w.release(); }
+      } catch (_) { wake = null; }
+    }
+
+    /* Read off the DOM rather than the argument: showScreen is also called with
+       'game' when the game screen is ALREADY up (beginGame does exactly that),
+       and something else may have changed screens without going through it. */
+    const onGame = () => {
+      const g = document.getElementById('game');
+      return !!(g && !g.classList.contains('hidden'));
+    };
+    const sync = () => { keepAwake(onGame()); };
+
+    const wrap = () => {
+      if (typeof window.showScreen !== 'function' || window.showScreen.__wakeWrapped) return false;
+      const inner = window.showScreen;
+      const wrapped = function () {
+        const r = inner.apply(this, arguments);
+        sync();
+        return r;
+      };
+      wrapped.__wakeWrapped = true;
+      if (inner.__csWrapped) wrapped.__csWrapped = true;
+      window.showScreen = wrapped;
+      return true;
+    };
+    if (!wrap()) {
+      const t = setInterval(() => { if (wrap()) clearInterval(t); }, 300);
+      setTimeout(() => clearInterval(t), 15000);
+    }
+
+    /* THE LOCK DOES NOT SURVIVE BEING BACKGROUNDED, and nothing restores it.
+       A statistician who checks a message, answers a call, or puts the phone
+       face down for a timeout comes back to a screen that will lock again in
+       thirty seconds -- which is the same fault, arrived at from the other
+       direction, and it is the one that would have made this look like it
+       half-worked. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') sync();
+      else wake = null;                 // the UA has already dropped it
+    });
+    sync();
+  }());
+
   /* ---------------------------------------------------------------------- */
   if (TRAINING) setUpTraining();
 

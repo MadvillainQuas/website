@@ -349,5 +349,50 @@ const frameOf = (events, state) => ({
      /saved\.fixtureId\s*\n?\s*\?/.test(bs4));
 }
 
+/* ---------------------------------------------------------------------------
+   THE PHONE MUST NOT LOCK ITSELF IN THE MIDDLE OF A GAME.
+
+   The clock cam asks for a wake lock. The scoring app -- the one actually held
+   for forty minutes of live play -- asked for nothing. iOS auto-lock defaults to
+   thirty seconds, and a statistician's hands leave the screen for every stretch
+   of play with no event in it, which in a semi-pro game is routinely twenty to
+   forty seconds. Every lock costs a wake, a passcode or a Face ID and a
+   re-orient, with the game still going on in front of them.
+
+   Two halves, and the second is the one that would have made this look like it
+   half-worked: the UA drops the lock on every backgrounding and restores
+   nothing, so a scorer who glances at a message comes back to a phone that
+   locks again thirty seconds later.
+   --------------------------------------------------------------------------- */
+{
+  const fs5 = require('node:fs');
+  const bs5 = fs5.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+
+  ok('the scoring app asks the phone to stay awake',
+     /navigator\.wakeLock\.request\('screen'\)/.test(bs5));
+  ok('...guarded, because every iOS before 16.4 has no such thing',
+     /if \(!\('wakeLock' in navigator\)\) return;/.test(bs5));
+  ok('...and a refusal is swallowed rather than thrown at a game in progress',
+     /catch \(_\) \{ wake = null; \}/.test(bs5));
+  ok('only while the game screen is up',
+     /const onGame = \(\) => \{[\s\S]{0,160}!g\.classList\.contains\('hidden'\)/.test(bs5));
+  ok('...read off the DOM, not the argument, because beginGame calls showScreen(\'game\') again',
+     /showScreen is also called with/.test(bs5));
+  ok('the lock is re-taken when the app comes back to the front',
+     /visibilitychange[\s\S]{0,200}visibilityState === 'visible'\) sync\(\);/.test(bs5));
+  ok('...and the dropped sentinel is let go of when it goes away',
+     /else wake = null;\s*\/\/ the UA has already dropped it/.test(bs5));
+
+  /* It composes with the legend's wrapper, in either order. The legend's is
+     installed from inside a mount() that waits on an element being present, and
+     the screen staying on must not be contingent on a caption measuring itself. */
+  ok('it wraps showScreen under its own marker',
+     /wrapped\.__wakeWrapped = true;/.test(bs5));
+  ok('...and carries the legend\'s marker forward so neither installer wraps twice',
+     /if \(inner\.__csWrapped\) wrapped\.__csWrapped = true;/.test(bs5));
+  ok('...and keeps retrying until showScreen exists, then stops',
+     /if \(!wrap\(\)\) \{[\s\S]{0,220}setTimeout\(\(\) => clearInterval\(t\), 15000\);/.test(bs5));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
