@@ -138,9 +138,28 @@ Deno.serve(async (req: Request) => {
      a template polling at 200ms intervals needs what it is at the moment of
      the request, or every graphic on air runs a fraction of a second behind. */
   let clockMs = st?.clock_ms ?? 0;
+  let clockStale = false;
   if (st?.running && st.updated_at) {
-    const since = Date.now() - new Date(st.updated_at).getTime();
-    clockMs = Math.max(0, clockMs - Math.max(0, since));
+    const since = Math.max(0, Date.now() - new Date(st.updated_at).getTime());
+    /* A CLOCK NOBODY IS DRIVING STOPS, IT DOES NOT RUN OUT.
+
+       Running the last reading forward is right for the fraction of a second
+       between readings, which is what it is for, and wrong the moment the source
+       stops: uncapped, a scorer who closed the tab at 8:00 of the third leaves
+       every template bound to this endpoint counting down to 0:00 a few minutes
+       later and sitting there. Nothing in the payload said the clock had stopped
+       being a clock, and 0:00 mid-period does not read as broken, it reads as
+       the game.
+
+       The same twenty seconds the browser transport uses (CLOCK_RUN_ON_MS in
+       epinoia/live.js), so a template and a layer never disagree about the clock.
+       Every source refreshes far faster: the scoring app heartbeats every five
+       seconds, the clock cam sends at most a second and a half apart, a feed
+       every two. `stale` is published alongside so a template can dim the clock,
+       or a producer can see why it has stopped. */
+    const RUN_ON_MS = 20000;
+    clockStale = since > RUN_ON_MS;
+    clockMs = Math.max(0, clockMs - Math.min(since, RUN_ON_MS));
   }
 
   const card = (t: number, pid: string) => {
@@ -190,7 +209,11 @@ Deno.serve(async (req: Request) => {
     },
     clock: {
       period, periodLabel: periodLabel(period),
-      ms: clockMs, display: mmss(clockMs), running: !!st?.running
+      ms: clockMs, display: mmss(clockMs), running: !!st?.running,
+      /* true when nothing has driven the clock for longer than it can honestly be
+         run forward: the time shown is the last anybody actually saw */
+      stale: clockStale,
+      updatedAt: st?.updated_at ?? null
     },
     possessionArrow: st?.arrow ?? game.arrow_init ?? null,
     possession: st?.possession ?? null,
