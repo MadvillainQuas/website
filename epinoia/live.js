@@ -488,14 +488,46 @@ function subscriber(opts) {
      scoreboard, sends the real thing. When one of those has spoken in the last twenty seconds
      its clock fields are kept and the feed's are not allowed to overwrite them; everything
      else in the polled state (score, fouls, possession) is still taken. */
-  let authority = null;        // { source, until }
+  let authority = null;        // { source, until, at }
   const AUTHORITY_MS = 20000;
+  /* TWO SOURCES ON ONE CLOCK MUST NOT TAKE TURNS.
+
+     A control room can have a keeper tapping and a camera on the board at the
+     same time, and both publish continuously -- the keeper re-states itself every
+     five seconds, the camera reads every second and a half. Whichever frame
+     landed last won, so the clock alternated between a human's taps and a
+     camera's readings several times a minute, sliding a little each way. On air
+     that is a clock that will not settle, and nothing anywhere said why.
+
+     So the source that is actually driving keeps the clock until it goes quiet.
+     A rival only gets it after this long without a word from the incumbent, which
+     a camera at a frame and a half never is and a keeper's five-second restatement
+     always is -- so a camera on the board beats a keeper who has stopped tapping,
+     which is the right way round.
+
+     The exception is a DELIBERATE ACT. A tap on start or stop, a time typed in,
+     carries assert and takes the clock at once: a person reaching for the keeper
+     while a camera is misreading is the one case where the human must win, and
+     they should not have to wait three seconds to be heard. */
+  const HANDOVER_MS = 3000;
   const clockFields = ['clock_ms', 'running', 'updated_at', 'at', 'period', 'source'];
   function adoptState(next, viaFrame) {
     if (!next) return;
     const src = next.source;
     if (viaFrame && (src === 'keeper' || src === 'cam')) {
-      authority = { source: src, until: Date.now() + AUTHORITY_MS };
+      const now = Date.now();
+      const contested = authority && authority.source !== src && now - (authority.at || 0) < HANDOVER_MS;
+      if (contested && !next.assert) {
+        /* somebody else is driving and has not gone quiet: take everything this
+           frame carries except its opinion of the clock */
+        if (state) {
+          const kept = {};
+          clockFields.forEach(k => { if (k in state) kept[k] = state[k]; });
+          state = Object.assign({}, state, next, kept);
+        }
+        return;
+      }
+      authority = { source: src, until: now + AUTHORITY_MS, at: now };
       state = Object.assign({}, state || {}, next);
       return;
     }
@@ -622,5 +654,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, VERSION: '1.1.0' };
+return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 3000, VERSION: '1.1.0' };
 }));

@@ -145,18 +145,22 @@ function kpPaint() {
   tag.textContent = kp.active ? 'clock: you are keeping it' : src === 'cam' ? 'clock: the camera is keeping it' : 'clock: from the feed (snapshot)';
   tag.classList.toggle('on', kp.active || src === 'cam');
 }
-function kpPublish() {
+/* `assert` marks a DELIBERATE act -- a tap on start or stop, a time typed in --
+   as opposed to the five-second restatement that keeps the clock alive while
+   nothing is happening. Only the deliberate one takes the clock off a camera that
+   is already driving it; see adoptState in live.js. */
+function kpPublish(assert) {
   if (!kpChan || !kpJoined) return;
   try {
     kpChan.send({ type: 'broadcast', event: 'frame', payload: { keeper: true, state: {
       game_id: gameId, period: kp.period, clock_ms: Math.round(kpNow()), running: kp.running,
-      updated_at: new Date().toISOString(), source: 'keeper' } } });
+      updated_at: new Date().toISOString(), source: 'keeper', assert: !!assert } } });
   } catch (_) { /* the next tick tries again */ }
 }
 function kpSet(ms, running) {
   kp.clock_ms = Math.max(0, Math.min(kp.period <= 4 ? 600000 : 300000, Math.round(ms)));
   kp.at = Date.now(); kp.running = !!running; kp.active = true;
-  kpPublish(); kpPaint();
+  kpPublish(true); kpPaint();
 }
 async function kpConnect() {
   if (!sb || !gameId || !window.EpinoiaLive) return;

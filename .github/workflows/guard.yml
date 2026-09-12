@@ -239,6 +239,13 @@ jobs:
         # one, so this checks the ENGINE's box score, not just the event shapes
         run: node supabase/tests/livestats.test.mjs
 
+      - name: Who is driving the clock
+        # a keeper and a camera both publish continuously, and whichever frame
+        # landed last used to win -- so the on-air clock alternated between them
+        # several times a minute. Runs the real subscriber over the real local
+        # transport, so it exercises adoptState rather than a copy of its rule.
+        run: node supabase/tests/clockauthority.test.mjs
+
       - name: Clock cam decoder, on rendered scoreboards
         # renders seven-segment boards through what a sports hall does to a
         # picture -- dim, flickering, banded, blurred, angled, dot-matrix, and
