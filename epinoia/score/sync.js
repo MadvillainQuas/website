@@ -27,6 +27,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 'use strict';
 
+/* content keys, one per published event, in order -- see diffLog in live.js */
 let pub = null, sentIds = [], gameId = null, attached = false, lastPub = '', sb = null,
     lastScorePub = '', scoreConfirmedLive = false, onRevoked = null;
 
@@ -93,7 +94,15 @@ function stateOf(S) {
    earlier in the log, which a length comparison cannot detect at all.
 
    EpinoiaLive.diffLog compares identities instead, so append, undo, redo and
-   a mid-log edit are all one code path. */
+   a mid-log edit are all one code path.
+
+   What it remembers between drains is a list of CONTENT keys, not ids: the
+   commonest correction of all -- relabelling a foul, fixing which player scored,
+   flipping a rebound -- is made by mutating the event in place, so the id and
+   the position are both untouched and an id-only comparison found nothing to
+   publish. The wrong version then stood on air and in the durable log for the
+   rest of the game, while the scorer's own screen corrected itself at once,
+   which is exactly what made it invisible from the table. */
 function drain(S) {
   if (!pub || halted) return;
   const d = root.EpinoiaLive.diffLog(sentIds, S.events || []);

@@ -266,6 +266,13 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: A correction does not delete the game it was correcting
+        # the durable write fired the upsert and the delete together and let the
+        # server order them -- and the upsert ignores duplicates, so arriving
+        # first made it a no-op for every row the delete then removed. Correcting
+        # one action mid-game deleted every row after it and wrote none back.
+        run: node supabase/tests/retraction-order.test.mjs
+
       - name: A correction belongs where it happened, not where it was typed
         # the log travels by sequence number, so a play added back into the first
         # quarter replayed after the final buzzer everywhere except the device it

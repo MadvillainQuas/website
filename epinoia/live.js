@@ -62,13 +62,54 @@ const RETRY_MAX  = 30000;
    the middle of the log with one rule, and its cost is a loop over an array we
    already hold.
    ============================================================================ */
-function diffLog(sentIds, events) {
-  const ids = (events || []).map(e => (e.id != null ? e.id : e.seq));
+/* THE IDENTITY OF AN EVENT IS WHAT IT SAYS, NOT ONLY WHICH ONE IT IS.
+
+   Comparing ids alone catches append, undo, redo and an insertion in the middle
+   — everything that changes the SHAPE of the log. It is blind to the correction
+   a statistician makes most often, which changes nothing about the shape: an
+   edit in place. Relabelling a foul from personal to shooting, fixing which
+   player scored, flipping a rebound from offensive to defensive — all of them
+   keep the event's id and its position, so the diff found nothing to publish
+   and the wrong version stood on air and in the durable log for the rest of the
+   game. The scorer's own screen corrected itself immediately, which is what
+   made it invisible from the table.
+
+   So the key is the id followed by the content. Two details in how it is built
+   matter:
+
+     * the keys are SORTED. The edit path does `delete ev.off; delete ev.kind;
+       Object.assign(ev, ...)`, which reorders an object's keys without changing
+       a thing about it. Against a plain JSON.stringify that would retract and
+       republish the whole tail every time somebody opened an action and saved
+       it unchanged.
+
+     * the id comes FIRST, separated by a NUL, which cannot occur in an integer.
+       That is what lets the retraction list be read back out of the keys: the
+       delete is by sequence number, and only this function knows both. */
+function logKey(e) {
+  const id = e.id != null ? e.id : e.seq;
+  const ks = Object.keys(e).filter(k => k !== 'id' && k !== 'seq').sort();
+  let s = '';
+  for (let i = 0; i < ks.length; i++) {
+    const v = e[ks[i]];
+    if (v === undefined) continue;
+    s += ks[i] + '\u0001' + (v === null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v))) + '\u0002';
+  }
+  return id + '\u0000' + s;
+}
+
+function diffLog(sentKeys, events) {
+  const evs = events || [];
+  const ids = evs.map(logKey);
   let i = 0;
-  while (i < sentIds.length && i < ids.length && sentIds[i] === ids[i]) i++;
+  while (i < sentKeys.length && i < ids.length && sentKeys[i] === ids[i]) i++;
   return {
-    added:   (events || []).slice(i),
-    removed: sentIds.slice(i),
+    added:   evs.slice(i),
+    /* numbers, because the durable delete is `in ('seq', ...)` */
+    removed: sentKeys.slice(i).map(k => {
+      const j = String(k).indexOf('\u0000');
+      return j < 0 ? +k : +String(k).slice(0, j);
+    }),
     ids
   };
 }
@@ -209,21 +250,55 @@ function supabaseTransport(gameId, sb, onError) {
       const ch = channel || (channel = sb.channel('game:' + gameId));
       ch.send({ type: 'broadcast', event: 'frame', payload: frame });
       const jobs = [];
+
+      /* THE RETRACTION GOES FIRST, AND IT GOES ALONE.
+
+         A retracted event must leave the durable log too, or finalise would
+         rebuild the game from a row the statistician has already taken back —
+         the public page would self-correct and the FINAL box score would not.
+         Deleting is allowed only for whoever may score the game, and only while
+         it is unfinished; the policy enforces both.
+
+         It used to be pushed onto the same jobs array as the upsert, AFTER it,
+         and both were fired together with Promise.allSettled. So the two
+         requests left in the same tick and the server decided their order,
+         directly contradicting the local transport, which has always applied
+         retractions first and says why.
+
+         The order is not a nicety here. A correction republishes the tail from
+         the point it changed, reusing those sequence numbers, and the upsert
+         runs with ignoreDuplicates — which means that if it arrives while the
+         old rows are still there it is a no-op for every one of them. The
+         delete then removes the rows it did not replace. A mid-log time
+         correction in a game with three hundred actions after it therefore
+         deleted three hundred rows and wrote none of them back, deterministicly,
+         and the only place the game still existed intact was the phone.
+
+         Awaited, so the rows are gone before anything tries to insert them, and
+         a refused delete abandons the frame rather than letting the upsert run
+         into rows it will silently decline to replace. */
+      if (frame.removed && frame.removed.length) {
+        /* In chunks, because this is a query string: a correction early in a
+           long game retracts everything after it, and a single `in` list of
+           several hundred sequence numbers is a URL long enough to be refused
+           outright by the edge in front of PostgREST. */
+        for (let i = 0; i < frame.removed.length; i += 200) {
+          const { error } = await sb.from('game_events').delete()
+            .eq('game_id', gameId).in('seq', frame.removed.slice(i, i + 200));
+          if (error) {
+            try { onError && onError(error, frame); } catch (_) {}
+            console.warn('[live] retraction refused:', error.message || error);
+            return false;
+          }
+        }
+      }
+
       if (frame.events && frame.events.length) {
         jobs.push(sb.from('game_events').upsert(frame.events.map(e => {
           const { id, seq, t, team, pid, period, clock, ...rest } = e;
           return { game_id: gameId, seq: whole(seq != null ? seq : id), t, team: whole(team),
                    pid, period: whole(period), clock: whole(clock), payload: rest };
         }), { onConflict: 'game_id,seq', ignoreDuplicates: true }));
-      }
-      /* A retracted event must leave the durable log too, or finalise would
-         rebuild the game from a row the statistician has already taken back —
-         the public page would self-correct and the FINAL box score would not.
-         Deleting is allowed only for whoever may score the game, and only
-         while it is unfinished; the policy enforces both. */
-      if (frame.removed && frame.removed.length) {
-        jobs.push(sb.from('game_events').delete()
-          .eq('game_id', gameId).in('seq', frame.removed));
       }
       /* game_state's clock_ms, period, score and last_seq are all `int` too, so
          a fractional clock refused this write for exactly the same reason —
@@ -701,5 +776,5 @@ function subscriber(opts) {
   };
 }
 
-return { publisher, subscriber, diffLog, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 3000, VERSION: '1.1.0' };
+return { publisher, subscriber, diffLog, logKey, FRAME_MS, POLL_MS, STALE_MS, CLOCK_RUN_ON_MS, HANDOVER_MS: 3000, VERSION: '1.1.0' };
 }));

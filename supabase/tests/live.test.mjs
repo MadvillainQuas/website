@@ -29,6 +29,11 @@ const ok = (name, cond, detail) => {
 };
 
 const ev = (id, extra) => Object.assign({ id, t: 'p2_made', team: 0, pid: 'h4' }, extra || {});
+/* What the publisher remembers between drains is no longer a list of ids but a
+   list of CONTENT keys, because an edit in place -- relabelling a foul, fixing
+   which player scored -- keeps both the id and the position and was therefore
+   invisible. sent() builds what a previous drain would have stored. */
+const sent = (...evs) => evs.map(e => L.logKey(typeof e === 'number' ? ev(e) : e));
 
 console.log('\ndiffLog — what changed since we last published');
 
@@ -38,43 +43,70 @@ eq('and retracts nothing',
    L.diffLog([], [ev(1), ev(2)]).removed, []);
 
 eq('an append publishes only the new one',
-   L.diffLog([1, 2], [ev(1), ev(2), ev(3)]).added.map(e => e.id), [3]);
+   L.diffLog(sent(1, 2), [ev(1), ev(2), ev(3)]).added.map(e => e.id), [3]);
 
 {
-  const d = L.diffLog([1, 2, 3], [ev(1), ev(2)]);
+  const d = L.diffLog(sent(1, 2, 3), [ev(1), ev(2)]);
   eq('an undo retracts the last event', d.removed, [3]);
   eq('and adds nothing', d.added, []);
 }
 
 {
   /* the case the old code broke on: undo, then score something else */
-  const d = L.diffLog([1, 2, 3], [ev(1), ev(2), ev(4)]);
+  const d = L.diffLog(sent(1, 2, 3), [ev(1), ev(2), ev(4)]);
   eq('after an undo the replacement IS published', d.added.map(e => e.id), [4]);
   eq('and the retracted event is named', d.removed, [3]);
 }
 
 {
   /* a redo puts it back */
-  const d = L.diffLog([1, 2], [ev(1), ev(2), ev(3)]);
+  const d = L.diffLog(sent(1, 2), [ev(1), ev(2), ev(3)]);
   eq('a redo republishes the event', d.added.map(e => e.id), [3]);
 }
 
 {
   /* edit mode inserts earlier in the log — invisible to a length comparison */
-  const d = L.diffLog([1, 2, 3], [ev(1), ev(9), ev(2), ev(3)]);
+  const d = L.diffLog(sent(1, 2, 3), [ev(1), ev(9), ev(2), ev(3)]);
   eq('an insert republishes the tail', d.added.map(e => e.id), [9, 2, 3]);
   eq('and retracts what it displaced', d.removed, [2, 3]);
 }
 
 {
-  const d = L.diffLog([1, 2, 3], [ev(1), ev(2), ev(3)]);
+  const d = L.diffLog(sent(1, 2, 3), [ev(1), ev(2), ev(3)]);
   ok('an unchanged log publishes nothing',
      !d.added.length && !d.removed.length);
 }
 
 {
+  /* THE CORRECTION THAT CHANGES NOTHING ABOUT THE SHAPE OF THE LOG.
+
+     Relabelling a foul from personal to shooting, fixing which player scored,
+     flipping a rebound offensive to defensive: the scorer does all three by
+     mutating the event in place, so the id and the position are untouched. An
+     id-only diff found nothing to publish, and the wrong version stood on air
+     and in the durable log for the rest of the game -- while the scorer's own
+     screen corrected itself immediately, which is what made it invisible from
+     the table. */
+  const before = sent(1, ev(2, { t: 'foul', kind: 'personal' }), 3);
+  const d = L.diffLog(before, [ev(1), ev(2, { t: 'foul', kind: 'shooting' }), ev(3)]);
+  eq('an edit in place is published', d.added.map(e => e.id), [2, 3]);
+  eq('...and the version it replaces is retracted', d.removed, [2, 3]);
+}
+
+{
+  /* The edit path does `delete ev.off; delete ev.kind; Object.assign(ev, ...)`,
+     which reorders an object's keys without changing anything about it. Opening
+     an action and saving it unchanged must not retract the rest of the game. */
+  const before = sent(ev(1, { off: true, kind: 'x' }));
+  const reordered = { t: 'p2_made', team: 0, kind: 'x', id: 1, pid: 'h4', off: true };
+  const d = L.diffLog(before, [reordered]);
+  ok('a saved-but-unchanged action publishes nothing',
+     !d.added.length && !d.removed.length);
+}
+
+{
   /* clearing the whole log */
-  const d = L.diffLog([1, 2, 3], []);
+  const d = L.diffLog(sent(1, 2, 3), []);
   eq('every event is retracted', d.removed, [1, 2, 3]);
 }
 

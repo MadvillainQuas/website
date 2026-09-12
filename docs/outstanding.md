@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 8, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -140,6 +140,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 7. Delete before upsert in the Supabase transport, and make diffLog content-aware
 
 **critical** / hours · `transport`
+
+> **STATUS - DONE 2026-09-12 - (a) the delete is awaited BEFORE the upsert, and a refused delete abandons the frame rather than letting ignoreDuplicates silently decline to replace rows that are about to be removed; it is also chunked at 200, because a correction early in a long game makes an `in` list long enough to be refused as a URL. (b) diffLog compares CONTENT keys, not ids - the key is the id, a NUL, then the fields sorted, so an edit in place is published while merely reordering an object's keys (which the edit path does) is not. Tests: supabase/tests/retraction-order.test.mjs (5 assertions fail against the pre-fix send) and the diffLog section of live.test.mjs. Verified in the browser: relabelling a foul now reaches the durable store.**
 
 **Why.** Two coupled defects that together lose corrections permanently. (a) send() pushes the events upsert into jobs first and the delete second, then fires both with Promise.allSettled — so both requests leave in the same tick and the server orders them, contradicting the publisher's own comment at live.js:89-92 that retractions must apply first. Because ignoreDuplicates makes the upsert a no-op for rows that still exist, a mid-log time correction deterministically truncates the durable log from the correction point. (b) diffLog compares ids positionally only, so an in-place edit that keeps its id and position — correcting a foul from personal to shooting, fixing which player scored, flipping a rebound to offensive — generates no frame at all. The 10s snapshot broadcasts the corrected object so the live view self-heals and looks right all game, but ignoreDuplicates means the durable row keeps its old payload forever, and finalise-game rebuilds the permanent box score from that row.
 

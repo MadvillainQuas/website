@@ -59,7 +59,7 @@ ok('the sheet tolerates the missing button',
 /* ---- why "just do not reset evSeq" was not the fix ------------------------ */
 console.log('\nand the reason the obvious fix was not one');
 
-const sent = [1, 2, 3, 4, 5];
+const sent = [1, 2, 3, 4, 5].map(id => L.logKey({ id }));
 const emptiedThenRefilledFromScratch = [{ id: 1 }];          // evSeq reset to 0
 const emptiedThenRefilledContinuing  = [{ id: 6 }];          // evSeq left alone
 ok('emptying the log retracts everything when ids restart',
