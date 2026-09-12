@@ -84,6 +84,45 @@ function stateOf(S) {
   };
 }
 
+let snapPass = 0, healing = false;
+
+/* ============================================================================
+   ASKING THE LEAGUE HOW MUCH OF THE GAME IT ACTUALLY HAS.
+
+   The ten-second snapshot used to write the whole log to the database as well
+   as broadcasting it, which was pure waste six times a minute — and also, by
+   accident, the only thing repairing a durable write that had been lost. It is
+   not lost often: a refused frame is backlogged and retried in order, and a
+   reload republishes from nothing. But "not often" over a season of six games a
+   Saturday is a box score that cannot be reproduced, found weeks later by the
+   finalise gate refusing to close a game.
+
+   So the repair is kept and the waste is not. Once a minute this asks for a
+   COUNT — head:true, so no rows come back and it costs a few hundred bytes —
+   and sends the log again only if the server is short. The upsert ignores
+   duplicates, so a short server gets exactly the rows it is missing and a
+   healthy one gets a single no-op write.
+
+   Deliberately one-directional. A server holding MORE than this device is a
+   different situation entirely — another device is scoring this game — and it
+   belongs to guardAgainstOverwrite in bootstrap.js, which halts rather than
+   heals. This must never be the thing that decides that question.
+   ============================================================================ */
+async function healDurable(S) {
+  if (healing || halted || !pub || !sb || !gameId) return;
+  const mine = (S.events || []).length;
+  if (!mine) return;
+  healing = true;
+  try {
+    const { count, error } = await sb.from('game_events')
+      .select('seq', { count: 'exact', head: true }).eq('game_id', gameId);
+    if (error || count == null || count >= mine) return;
+    console.warn('[sync] durable log short: ' + count + ' of ' + mine + ' — resending');
+    pub.pushEvents((S.events || []).map(e => Object.assign({ seq: e.id }, e)), []);
+  } catch (_) { /* the next pass asks again */ }
+  finally { healing = false; }
+}
+
 /* Publish whatever changed since last time — including what was taken back.
 
    This used to be a high-water mark on the array's LENGTH, which quietly broke
@@ -392,6 +431,8 @@ const api = {
         if (!S || !S.events || !S.events.length) return;
         pub.pushSnapshot(S.events.map(e => Object.assign({ seq: e.id }, e)),
                          stateOf(S), rosterOf(S));
+        /* Once a minute, not every pass: see healDurable. */
+        if ((++snapPass % 6) === 0) healDurable(S);
       } catch (e) { /* never let sync break scoring */ }
     }, 10000));
 

@@ -42,18 +42,30 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 function fakeDb(opts = {}) {
   const log = [];
   const sb = {
-    channel: () => ({ send: () => {}, subscribe: () => {}, unsubscribe: () => {} }),
-    from: () => ({
-      upsert: async rows => { await wait(5); log.push({ op: 'upsert', seqs: rows.map(r => r.seq) });
-        return { error: opts.upsertError || null }; },
+    channel: () => ({
+      send: f => { log.push({ op: 'broadcast', full: !!(f && f.payload && f.payload.full),
+                              events: ((f && f.payload && f.payload.events) || []).length }); },
+      subscribe: () => {}, unsubscribe: () => {}
+    }),
+    /* the table matters: game_events takes an array of rows, game_state one object */
+    from: table => ({
+      upsert: async rows => {
+        await wait(5);
+        log.push(Array.isArray(rows)
+          ? { op: 'upsert', table, seqs: rows.map(r => r.seq) }
+          : { op: 'state', table, clock: rows && rows.clock_ms });
+        return { error: (table === 'game_events' ? opts.upsertError : null) || null };
+      },
       delete: () => ({
         eq: () => ({
-          in: async (col, vals) => { await wait(5); log.push({ op: 'delete', seqs: vals.slice() });
+          in: async (col, vals) => { await wait(5); log.push({ op: 'delete', table, seqs: vals.slice() });
             return { error: opts.deleteError || null }; }
         })
       })
     })
   };
+  /* what actually reached the database, with the socket traffic set aside */
+  log.db = () => log.filter(l => l.op !== 'broadcast');
   return { sb, log };
 }
 
@@ -73,13 +85,14 @@ console.log('\nthe retraction goes first');
   await p.pushEvents(evs, [40, 41, 42, 43, 44]);
   await wait(120);
 
-  ok('both the delete and the write happened', log.length === 2, JSON.stringify(log.map(l => l.op)));
-  ok('...and the delete was first', log[0] && log[0].op === 'delete',
-     JSON.stringify(log.map(l => l.op)));
+  const db = log.db();
+  ok('both the delete and the write happened', db.length === 2, JSON.stringify(db.map(l => l.op)));
+  ok('...and the delete was first', db[0] && db[0].op === 'delete',
+     JSON.stringify(db.map(l => l.op)));
   ok('...retracting exactly the rows being replaced',
-     JSON.stringify(log[0].seqs) === JSON.stringify([40, 41, 42, 43, 44]));
+     JSON.stringify(db[0].seqs) === JSON.stringify([40, 41, 42, 43, 44]));
   ok('...and the write puts every one of them back',
-     JSON.stringify(log[1].seqs) === JSON.stringify([40, 41, 42, 43, 44]));
+     JSON.stringify(db[1].seqs) === JSON.stringify([40, 41, 42, 43, 44]));
 }
 
 {
@@ -93,14 +106,15 @@ console.log('\nthe retraction goes first');
   await p.pushEvents(many.map(seq => ({ seq, id: seq, t: 'to', team: 0, period: 1, clock: 1 })), many);
   await wait(200);
 
-  const deletes = log.filter(l => l.op === 'delete');
+  const db = log.db();
+  const deletes = db.filter(l => l.op === 'delete');
   ok('a long retraction is broken into several requests', deletes.length === 3,
      'got ' + deletes.length);
   ok('...none of them longer than the chunk', deletes.every(d => d.seqs.length <= 200));
   ok('...and between them they name every row once',
      JSON.stringify(deletes.flatMap(d => d.seqs)) === JSON.stringify(many));
   ok('...all of them before the write',
-     log.findIndex(l => l.op === 'upsert') === deletes.length);
+     db.findIndex(l => l.op === 'upsert') === deletes.length);
 }
 
 {
@@ -125,7 +139,85 @@ console.log('\nthe retraction goes first');
   await p.pushEvents([{ seq: 12, id: 12, t: 'p3_made', team: 1, pid: 'a7', period: 2, clock: 300000 }], []);
   await wait(120);
   ok('an ordinary append is still a single write',
-     log.length === 1 && log[0].op === 'upsert', JSON.stringify(log.map(l => l.op)));
+     log.db().length === 1 && log.db()[0].op === 'upsert',
+     JSON.stringify(log.db().map(l => l.op)));
+}
+
+/* ---------------------------------------------------------------------------
+   A SNAPSHOT IS FOR THE SOCKET, NOT FOR POSTGRES.
+
+   sync.js publishes the whole log every ten seconds, and says why: somebody
+   opening the public page at the start of the third quarter needs the whole
+   game, over the BROADCAST, with no credentials and no table read.
+
+   The durable write did not know a snapshot from a delta and fired the events
+   upsert for it too. Every ten seconds, for the rest of the game, the complete
+   log went to the database again — at eight hundred events, eight hundred rows
+   of conflict checking and eighty kilobytes off a phone on a hall's uplink, six
+   times a minute, to change nothing, because ignoreDuplicates makes it a no-op
+   for every row already there, which by then is all of them.
+   --------------------------------------------------------------------------- */
+console.log('\na snapshot is for the socket');
+
+{
+  const { sb, log } = fakeDb();
+  const p = pubOn(sb);
+  const evs = Array.from({ length: 40 }, (_, i) => ({
+    seq: i + 1, id: i + 1, t: 'p2_made', team: 0, pid: 'h4', period: 1, clock: 600000 - i * 1000 }));
+  await p.pushSnapshot(evs, { clock_ms: 400000, running: false }, null);
+  await wait(150);
+
+  const casts = log.filter(l => l.op === 'broadcast');
+  ok('the whole log still reaches the socket', casts.length === 1 && casts[0].events === 40,
+     JSON.stringify(casts));
+  ok('...marked as a snapshot, which is what a late joiner reads', casts[0].full === true);
+  ok('...and none of it is written to the database again',
+     !log.some(l => l.op === 'upsert'), JSON.stringify(log.map(l => l.op)));
+}
+
+{
+  /* The delta is what makes the log durable and must be untouched. */
+  const { sb, log } = fakeDb();
+  const p = pubOn(sb);
+  await p.pushEvents([{ seq: 7, id: 7, t: 'p3_made', team: 1, pid: 'a9', period: 2, clock: 300000 }], []);
+  await wait(150);
+  ok('a delta is still written', log.some(l => l.op === 'upsert'),
+     JSON.stringify(log.map(l => l.op)));
+  ok('...and still broadcast', log.some(l => l.op === 'broadcast' && l.full === false));
+}
+
+{
+  /* A snapshot still carries the state row, which is how a viewer's clock and
+     score correct themselves — only the event log is spared. */
+  const { sb, log } = fakeDb();
+  const p = pubOn(sb);
+  await p.pushSnapshot([{ seq: 1, id: 1, t: 'period_start', period: 1, clock: 600000 }],
+                       { clock_ms: 123000, running: true }, null);
+  await wait(150);
+  ok('a snapshot still writes the durable state row, which is how a clock corrects itself',
+     log.some(l => l.op === 'state' && l.clock === 123000),
+     JSON.stringify(log.db()));
+  ok('...and still no event rows', !log.some(l => l.op === 'upsert'));
+}
+
+/* And the repair that the wasteful write was accidentally providing is now
+   deliberate, in sync.js: a COUNT once a minute, and a resend only if short. */
+{
+  const fs6 = require('node:fs');
+  const sy = fs6.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sync.js'), 'utf8');
+
+  ok('the repair asks for a count rather than sending the log',
+     /select\('seq', \{ count: 'exact', head: true \}\)/.test(sy));
+  ok('...once a minute, not on every snapshot pass',
+     /if \(\(\+\+snapPass % 6\) === 0\) healDurable\(S\);/.test(sy));
+  ok('...and sends nothing when the server is not short',
+     /if \(error \|\| count == null \|\| count >= mine\) return;/.test(sy));
+  ok('...resending through the ordinary upsert, which ignores what is already there',
+     /pub\.pushEvents\(\(S\.events \|\| \[\]\)\.map/.test(sy));
+  ok('...never overlapping itself on a slow connection',
+     /if \(healing \|\| halted/.test(sy) && /finally \{ healing = false; \}/.test(sy));
+  ok('...and it is one-directional: a server holding MORE is the takeover guard\'s question',
+     /belongs to guardAgainstOverwrite/.test(sy));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

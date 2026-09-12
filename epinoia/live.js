@@ -293,7 +293,28 @@ function supabaseTransport(gameId, sb, onError) {
         }
       }
 
-      if (frame.events && frame.events.length) {
+      /* A SNAPSHOT IS FOR THE SOCKET, NOT FOR POSTGRES.
+
+         sync.js publishes the whole log every ten seconds, and its comment says
+         exactly why: somebody who opens the public page at the start of the
+         third quarter needs the whole game, over the BROADCAST, with no
+         credentials and no table read. That is the snapshot's entire purpose and
+         it is served by the ch.send above.
+
+         This did not know a snapshot from a delta, so it fired the durable
+         upsert for it as well. Every ten seconds, for the rest of the game, the
+         complete event log was written to the database again: at eight hundred
+         events that is eight hundred rows of conflict checking and eighty
+         kilobytes off a phone on a sports hall's uplink, six times a minute,
+         to change nothing — ignoreDuplicates makes the whole write a no-op for
+         every row that is already there, which by then is all of them.
+
+         The delta frames are what make the log durable, and a refused one is
+         backlogged and retried in order. The accidental self-heal this was
+         providing is replaced by a deliberate one in sync.js, which asks the
+         server how many rows it holds once a minute and only sends anything if
+         the answer is short. */
+      if (frame.events && frame.events.length && !frame.full) {
         jobs.push(sb.from('game_events').upsert(frame.events.map(e => {
           const { id, seq, t, team, pid, period, clock, ...rest } = e;
           return { game_id: gameId, seq: whole(seq != null ? seq : id), t, team: whole(team),

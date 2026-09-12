@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 and 20 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -322,6 +322,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 20. Stop the 10-second snapshot re-upserting the whole event log to Postgres
 
 **high** / days · `transport`
+
+> **STATUS - DONE 2026-09-12 - the durable upsert is gated on !frame.full, so the ten-second snapshot reaches the socket (its whole purpose) without rewriting the event log to Postgres six times a minute. The state row is still written, which is how a late joiner's clock and score correct themselves. The accidental self-heal is replaced by a deliberate one in sync.js: once a minute it asks for a COUNT with head:true and resends only if the server is short, one-directional because a server holding MORE is guardAgainstOverwrite's question and that one halts rather than heals. Tests in supabase/tests/retraction-order.test.mjs.**
 
 **Why.** sync.js pushes a full snapshot every 10 seconds, and its doc comment explains why: a viewer joining mid-game needs the whole log over the BROADCAST, with no credentials and no database read. But pushSnapshot routes the frame through the same tx.send, and supabaseTransport.send has no idea a snapshot is different — it fires the game_events upsert for it exactly as for a delta. So every ten seconds the entire log is written to Postgres again. At 800 events and ~180 bytes a row that is a ~145KB request body six times a minute on a phone sharing a hall AP with the crowd, achieving nothing, since deltas and the backlog already own durability. It is serialised onto the same chain as the tap-driven frames, so each snapshot delays every tap behind it, and it is the single most likely thing to trigger a stalled publisher. It scales with the length of the game, so it is worst in overtime.
 
