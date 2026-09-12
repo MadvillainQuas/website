@@ -34,6 +34,7 @@
    ============================================================================ */
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -599,6 +600,136 @@ console.log('\nthe search allowance is rationed');
      /It is finding broadcasts that dies, not timing them/.test(av) &&
      !/_SEARCH_DEAD_UNTIL/.test(av.slice(av.indexOf('def watch_details'), av.indexOf('def _instant') > av.indexOf('def watch_details') ? av.indexOf('def _instant') : av.indexOf('def watch_details') + 4000)));
   ok('the quota figure is cited to its source', /determine_quota_cost/.test(av));
+}
+
+/* ---------------------------------------------------------------------------
+   THE WORKER PLACES A PLAY WHERE THE PAGE DOES, OR NOT AT ALL.
+
+   ai_worker.wall_hints turns the log's stamps into video positions before a frame
+   is read: they narrow the reader onto the right stretch of footage, and when the
+   picture has no readable clock they BECOME the track (wall_track). The page
+   prefers a saved track to its own arithmetic, so a wrong hint outranks a right
+   answer for the life of the row.
+
+   It had its own arithmetic. It subtracted a play's stamp straight from
+   stream_started_at, ignored a typed tip_offset_ms, and filled a missing stamp
+   with created_at — the moment the row was written, which for a log a feed
+   correction rewrote is one instant for every play. Inert only because no video
+   had a stream start; YOUTUBE_API_KEY supplies them.
+
+   Run against the real Python function with the database faked, and compared
+   with video.js on the same rows — not with a copy of the formula.
+   --------------------------------------------------------------------------- */
+console.log('\nthe worker places plays by the page\'s arithmetic');
+
+{
+  const HARNESS = [
+    'import sys, json, types',
+    "sys.modules['requests'] = types.ModuleType('requests')",
+    'sys.path.insert(0, sys.argv[1])',
+    'import ai_worker as W',
+    'out = []',
+    'for case in json.load(sys.stdin):',
+    '    class DB:',
+    '        def select(self, table, q, case=case):',
+    "            return case['video'] if table == 'game_videos' else case['events']",
+    '    out.append(W.wall_hints(DB(), "g"))',
+    'sys.stdout.write("@@" + json.dumps(out))',
+  ].join('\n');
+
+  const pyRun = (cases) => {
+    for (const exe of ['python3', 'python']) {
+      const r = spawnSync(exe, ['-c', HARNESS, path.join(ROOT, 'scripts', 'worker')],
+                          { input: JSON.stringify(cases), encoding: 'utf8' });
+      if (r.status === 0 && r.stdout.includes('@@')) return JSON.parse(r.stdout.split('@@').pop());
+      if (r.status !== null && r.stderr && /Traceback/.test(r.stderr)) throw new Error(r.stderr);
+    }
+    throw new Error('no python to run ai_worker.wall_hints with');
+  };
+
+  const S0 = Date.parse('2026-09-12T18:50:00Z');         // YouTube's actualStartTime
+  const T0 = Date.parse('2026-09-12T19:00:00Z');         // the ball goes up
+  /* twenty plays a minute apart while the clock runs thirty seconds each, every
+     one stamped by the poll that saw it, four seconds late, claiming +-12 s */
+  const fed = (walls) => [
+    { seq: 1, t: 'period_start', period: 1, clock: 600000, created_at: '2026-09-12T23:59:59Z',
+      payload: { wall: walls(0), wall_err: 12000 } },
+    ...Array.from({ length: 20 }, (_, i) => ({
+      seq: i + 2, t: i % 2 ? 'p2_made' : 'p3_miss', period: 1, clock: 600000 - (i + 1) * 30000,
+      created_at: '2026-09-12T23:59:59Z',
+      payload: { wall: walls(i + 1), wall_err: 12000 } })),
+  ];
+  const liveWalls = k => T0 + 4000 + k * 60000;
+  const streamRow = { stream_started_at: new Date(S0).toISOString(), tip_at: new Date(liveWalls(0)).toISOString(),
+                      tip_wall: liveWalls(0), tip_offset_ms: null, trim_ms: 0 };
+  const recRow = { stream_started_at: null, tip_at: new Date(liveWalls(0)).toISOString(),
+                   tip_wall: liveWalls(0), tip_offset_ms: 7 * 60000, trim_ms: 0 };
+
+  const cases = [
+    /* 0 */ { video: [streamRow], events: fed(liveWalls) },
+    /* 1 */ { video: [recRow], events: fed(liveWalls) },
+    /* 2 */ { video: [Object.assign({}, recRow, { stream_started_at: new Date(S0).toISOString() })], events: fed(liveWalls) },
+    /* 3 */ { video: [streamRow], events: fed(liveWalls).map(e => Object.assign({}, e, { payload: {} })) },
+    /* 4 */ { video: [streamRow], events: fed(k => T0 + 3 * 3600000 + k * 400) },
+    /* 5 */ { video: [Object.assign({}, streamRow, { tip_wall: null })], events: fed(liveWalls) },
+    /* 6 */ { video: [Object.assign({}, streamRow, { tip_wall: null })],
+              events: fed(liveWalls).map((e, i) => i ? e : Object.assign({}, e, { payload: {} })) },
+    /* 7 */ { video: [streamRow], events: fed(k => liveWalls(k) + (k >= 12 ? 240000 : 0)) },
+    /* 8 */ { video: [streamRow], events: fed(liveWalls).map(e => Object.assign({}, e, { payload: { wall: e.payload.wall } })) },
+  ];
+
+  let got = null;
+  try { got = pyRun(cases); } catch (err) { ok('ai_worker.wall_hints runs', false, String(err.message || err).slice(-600)); }
+
+  if (got) {
+    const pageMs = (row, e) => V.videoMsOf({ wall: e.payload.wall, created_at: e.created_at }, row);
+    const agrees = (hints, row, events) => {
+      const want = new Map(events.map(e => [e.period + ':' + e.clock, pageMs(row, e)]));
+      return hints.length > 0 && hints.every(([ts, per, clk]) => Math.abs(ts * 1000 - want.get(per + ':' + clk)) < 1);
+    };
+
+    eq('a stream-anchored fed game: every play the page can place, the worker places',
+       got[0].length, fed(liveWalls).length);
+    ok('...at the same millisecond as video.js', agrees(got[0], streamRow, fed(liveWalls)),
+       JSON.stringify(got[0].slice(0, 3)));
+    eq('...which is the play\'s stamp less the stream start, the tip cancelling',
+       Math.round((got[0][5] || [NaN])[0] * 1000), liveWalls(5) - S0);
+
+    ok('a recording anchored by a typed offset is placed too (it used to be skipped)',
+       agrees(got[1], recRow, fed(liveWalls)), JSON.stringify(got[1].slice(0, 2)));
+    eq('...with tip-off at the typed seven minutes', Math.round((got[1][0] || [NaN])[0] * 1000), 7 * 60000);
+    ok('a typed offset outranks a stream start, as it does on the page',
+       got[1].length > 0 && JSON.stringify(got[2]) === JSON.stringify(got[1]));
+
+    eq('a log with no stamps places nothing: created_at is when a row was written', got[3].length, 0);
+    eq('a log whose stamps span eight seconds for ten minutes of clock places nothing', got[4].length, 0);
+
+    ok('a video row missing tip_wall takes it from the first period_start\'s stamp',
+       JSON.stringify(got[5]) === JSON.stringify(got[0]));
+    eq('...and with no stamp there either, nothing is placed', got[6].length, 0);
+
+    const g7 = got[7];
+    ok('an error bar is widened to the real spacing of the polls, not the configured one',
+       g7.filter(h => h[2] > 600000 - 12 * 30000 && h[2] < 600000).length === 11 &&
+       g7.filter(h => h[2] > 600000 - 12 * 30000 && h[2] < 600000).every(h => h[3] === 60000) &&
+       (g7.find(h => h[2] === 600000) || [])[3] === 12000, JSON.stringify(g7.slice(0, 3)));
+    ok('...and a play behind a four-minute hole in the polling is dropped, not guessed',
+       !g7.some(h => h[2] === 600000 - 12 * 30000) && g7.some(h => h[2] === 600000 - 13 * 30000));
+    ok('a scorer\'s tap with no wall_err keeps the generous default',
+       got[8].length === 21 && got[8].every(h => h[3] === 15000));
+  }
+
+  const aw = readFileSync(path.join(ROOT, 'scripts', 'worker', 'ai_worker.py'), 'utf8');
+  const fn = aw.slice(aw.indexOf('def wall_hints('), aw.indexOf('def wall_track('));
+  ok('the worker no longer reads created_at at all', !/created_at'\)/.test(fn) && !/select=[^']*created_at/.test(fn));
+
+  const gj = readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');
+  const tw = gj.slice(gj.indexOf('function tipWallMs()'), gj.indexOf('function tipInstantMs()'));
+  ok('the game page saves tip_wall only from a stamp on the plays\' own clock',
+     tw.length > 0 && !/created_at/.test(tw) && /ev\.wall/.test(tw));
+  ok('...while the stream and file anchors keep an insert time, for a log written live',
+     /function tipInstantMs\(\)[\s\S]{0,600}logIsTimed\(events\)/.test(gj) &&
+     (gj.match(/await tipInstantMsAsync\(\)/g) || []).length === 2 && !/tipWallMsAsync/.test(gj));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

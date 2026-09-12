@@ -361,48 +361,142 @@ def _iso_ms(s):
         return None
 
 
-def wall_hints(db, game_id, log_=None):
-    """Where the plays SHOULD sit in the footage, from the broadcast's own clock.
+# ---------------------------------------------------------------- the stamps, placed
+# A POLL THAT CANNOT BE BOUNDED TIGHTER THAN THIS PLACES NOTHING. run_ingest caps its
+# own error bar at the same three minutes, and repair_err withdraws a stamp past it.
+WALL_ERR_CAP_MS = 180000
+# A scorer's tap carries no wall_err: it was stamped at the tap, so its error is the
+# scorer's reaction plus the device clock. Generous, because nothing measures it.
+WALL_ERR_TAP_MS = 15000
 
-    A game scored live carries a wall stamp on every play (payload.wall from the ingest
-    worker's poll, tight to two seconds under the broadcast heartbeat; created_at from the
-    scoring app), and a stream attached while it was live carries when the stream started
-    (game_videos.stream_started_at, from the platform's own API). Subtracting the two places
-    every play in the video to within the stamp's error before a single frame is read.
 
-    Returns [(t_seconds, period, clock_ms, err_ms)] in video order, or [] when either side
-    is missing -- an uploaded recording with no start time, or a backfilled log."""
+def _num(x):
+    """A finite number from a JSON value, or None. PostgREST hands bigints back as numbers
+    and numerics as strings; a bool is not a timestamp."""
+    if x is None or isinstance(x, bool):
+        return None
     try:
-        v = db.select('game_videos', 'game_id=eq.%s&is_primary=eq.true&select=stream_started_at,trim_ms&limit=1' % game_id)
+        f = float(x)
+    except (TypeError, ValueError):
+        return None
+    return f if f == f and f not in (float('inf'), float('-inf')) else None
+
+
+def _game_elapsed_ms(period, clock_ms):
+    """Game time played by (period, clock): whole periods before it, plus what had run off."""
+    plen = lambda q: 600000 if q <= 4 else 300000
+    per = max(1, int(period))
+    return sum(plen(q) for q in range(1, per)) + plen(per) - max(0, min(plen(per), int(clock_ms)))
+
+
+def wall_hints(db, game_id, log_=None):
+    """Where the plays SHOULD sit in the footage, from the plays' own wall stamps.
+
+    THE SAME ARITHMETIC AS THE PAGE, or the two disagree about the same play. A play's
+    position is gapMs(v) + sinceTipMs(e, v) in epinoia/video.js:
+
+      gap    where tip-off is in the footage: tip_offset_ms when somebody read it off the
+             footage (it outranks everything, as it does on the page), else
+             tip_at - stream_started_at, both stamped by the database.
+      since  how long after tip-off the play happened: payload.wall - tip_wall, ONE clock
+             against itself (the ingest poll's, or the scoring device's), so a skewed
+             clock cancels instead of landing in the answer.
+
+    This used to subtract a play's stamp straight from stream_started_at. That compares
+    the ingest worker's clock with YouTube's across machines, ignores a typed offset
+    entirely, and -- the trap -- filled a missing stamp with created_at. created_at is
+    when the row was WRITTEN: a feed correction rewrites a whole log in one instant, so
+    every play in it got the same "time", the hints narrowed the reader onto four and a
+    half minutes of the wrong footage, nothing read, and wall_track saved a track that
+    put the whole game on one frame. The page prefers a track to its own arithmetic, so
+    that track would have outranked the correct answer for the life of the row. It was
+    inert only because no video had a stream start -- which YOUTUBE_API_KEY now supplies.
+
+    So a play with no stamp is not a hint. A missing tip_wall comes from the first
+    period_start's stamp (tipWallMs on the page does the same), never from an insert
+    time. A fed stamp's error bar is widened to the real spacing of the polls, which was
+    measured at up to 18.9x the configured interval; past three minutes the stamp is
+    dropped. And a log whose stamps span less real time than the game clock they cover
+    is not a timed log at all (logIsTimed on the page), so it places nothing.
+
+    Returns [(t_seconds, period, clock_ms, err_ms)] in video order, or [] when there is
+    nothing trustworthy to place by."""
+    say = log_ or (lambda *_a, **_k: None)
+    try:
+        v = db.select('game_videos', 'game_id=eq.%s&is_primary=eq.true&select=stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms&limit=1' % game_id)
     except Exception:
         v = []
-    if not v or not v[0].get('stream_started_at'):
+    if not v:
         return []
-    t0 = _iso_ms(v[0]['stream_started_at'])
-    if t0 is None:
-        return []
-    trim = (v[0].get('trim_ms') or 0) / 1000.0
+    v = v[0]
+    trim = _num(v.get('trim_ms')) or 0.0
+
+    off = _num(v.get('tip_offset_ms'))
+    if off is not None:
+        gap = off + trim
+    else:
+        tip, start = _iso_ms(v.get('tip_at')), _iso_ms(v.get('stream_started_at'))
+        if tip is None or start is None:
+            return []
+        gap = (tip - start) + trim
+
     try:
-        rows = db.select('game_events', 'game_id=eq.%s&select=seq,t,period,clock,payload,created_at&order=seq' % game_id)
+        rows = db.select('game_events', 'game_id=eq.%s&select=seq,t,period,clock,payload&order=seq' % game_id)
     except Exception:
         return []
-    out = []
+
+    tip_wall = _num(v.get('tip_wall'))
+    if tip_wall is None:
+        for e in rows:
+            if e.get('t') == 'period_start' and (e.get('period') or 1) == 1:
+                tip_wall = _num((e.get('payload') or {}).get('wall'))
+                break
+    if tip_wall is None:
+        say('  wall hints: none -- the tip-off carries no stamp on the plays\u2019 own clock')
+        return []
+
+    out, dropped = [], 0
+    last_poll = prev_poll = None
     for e in rows:
         t = e.get('t') or ''
         if t in ('loc', 'tag', 'stype') or e.get('period') is None or e.get('clock') is None:
             continue
         p = e.get('payload') or {}
-        wall = p.get('wall') if isinstance(p.get('wall'), (int, float)) else _iso_ms(e.get('created_at'))
+        wall = _num(p.get('wall'))
         if wall is None:
             continue
-        ts = (wall - t0) / 1000.0 + trim
+        claimed = _num(p.get('wall_err'))
+        if claimed is None:
+            err = WALL_ERR_TAP_MS
+        else:
+            # a poll stamp: the play happened somewhere since the PREVIOUS poll, however
+            # long ago that really was, whatever interval was configured
+            if wall != last_poll:
+                prev_poll, last_poll = last_poll, wall
+            spacing = (wall - prev_poll) if prev_poll is not None and wall > prev_poll else 0
+            if spacing > WALL_ERR_CAP_MS:
+                dropped += 1
+                continue
+            err = max(claimed, spacing)
+        ts = (gap + (wall - tip_wall)) / 1000.0
         if ts < 0 or ts > 8 * 3600:
             continue
-        err = p.get('wall_err') if isinstance(p.get('wall_err'), (int, float)) else 15000
         out.append((float(ts), int(e['period']), int(e['clock']), int(err)))
     out.sort()
-    if log_:
-        log_('  wall hints: %d plays placed by the broadcast clock' % len(out) + (' (\u00b1%.0f s typical)' % (sorted(h[3] for h in out)[len(out) // 2] / 1000.0) if out else ''))
+
+    if len(out) >= 2:
+        first = min(out, key=lambda h: _game_elapsed_ms(h[1], h[2]))
+        last = max(out, key=lambda h: _game_elapsed_ms(h[1], h[2]))
+        played = _game_elapsed_ms(last[1], last[2]) - _game_elapsed_ms(first[1], first[2])
+        span_ms = (out[-1][0] - out[0][0]) * 1000.0
+        if played >= 5 * 60000 and span_ms < played * 0.6:
+            say('  wall hints: none -- %d stamps span %.0f s of real time for %.0f s of game clock, '
+                'so they say when rows were written, not when plays happened' % (len(out), span_ms / 1000.0, played / 1000.0))
+            return []
+
+    say('  wall hints: %d plays placed by their stamps' % len(out)
+        + (' (\u00b1%.0f s typical)' % (sorted(h[3] for h in out)[len(out) // 2] / 1000.0) if out else '')
+        + (', %d dropped as unboundable' % dropped if dropped else ''))
     return out
 
 

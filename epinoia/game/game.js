@@ -1239,18 +1239,39 @@ async function saveClockTrack(track) {
    database's own answer (game_tip_wallclock). */
 let anchorFile = null, anchorVideoEl = null, anchorBusy = false;
 
+/* TWO QUESTIONS THAT USED TO SHARE ONE ANSWER.
+
+   tipWallMs is saved as tip_wall, and video.js subtracts it from every play's
+   own stamp: the poll's or the scoring device's clock, one clock against
+   itself. So it may only ever be a stamp on that same clock. It used to fall
+   back to the period_start's created_at, which is the DATABASE's clock and the
+   moment the row was WRITTEN — for a log a feed correction rewrote, the instant
+   of the rewrite, hours after the tip. Saved as tip_wall, that put every play
+   still carrying its poll stamp hours before tip-off: off the front of the
+   video, or on a smaller skew onto the wrong play with nothing to say so.
+   auto_video.tip_instant already refuses the same substitution; this matches it.
+
+   tipInstantMs is WHEN the ball went up on any honest clock, for comparing
+   with a stream's or a file's start time — both server-ish clocks, where an
+   insert time is as good as a stamp, but only for a log that was written live
+   (logIsTimed), exactly as tip_instant has it. */
 function tipWallMs() {
   const S = window.S;
   const ev = (S && S.events || []).find(e => e.t === 'period_start' && (e.period || 1) === 1);
-  if (ev) {
-    if (typeof ev.wall === 'number' && isFinite(ev.wall)) return ev.wall;
-    const t = ev.created_at || ev.at;
-    if (t && !isNaN(new Date(t).getTime())) return new Date(t).getTime();
-  }
-  return null;
+  return ev && typeof ev.wall === 'number' && isFinite(ev.wall) ? ev.wall : null;
 }
-async function tipWallMsAsync() {
-  const local = tipWallMs();
+function tipInstantMs() {
+  const stamp = tipWallMs();
+  if (stamp != null) return stamp;
+  const S = window.S, V = window.EpinoiaVideo;
+  const events = (S && S.events) || [];
+  const ev = events.find(e => e.t === 'period_start' && (e.period || 1) === 1);
+  const t = ev && (ev.created_at || ev.at);
+  if (!t || isNaN(new Date(t).getTime())) return null;
+  return V && V.logIsTimed(events) ? new Date(t).getTime() : null;
+}
+async function tipInstantMsAsync() {
+  const local = tipInstantMs();
   if (local != null) return local;
   try {
     const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/game_tip_wallclock', {
@@ -1280,7 +1301,7 @@ async function anchorFromStream() {
   if (!parsed || parsed.provider !== 'youtube') { note.textContent = 'paste the YouTube link first — only YouTube publishes a stream\u2019s start time'; return; }
   if (!CFG.youtubeApiKey) { note.textContent = 'needs a YouTube Data API key in epinoia/config.js (youtubeApiKey) — free, read-only'; return; }
   note.textContent = 'asking YouTube…';
-  const tip = await tipWallMsAsync();
+  const tip = await tipInstantMsAsync();
   if (tip == null) { note.textContent = 'this game has no recorded tip-off yet'; return; }
   const st = await A.youtubeStreamStart(parsed.ref, CFG.youtubeApiKey);
   if (!st) { note.textContent = 'YouTube has no start time for that video (not a live stream, or the key is wrong)'; return; }
@@ -1299,7 +1320,7 @@ async function anchorFromFile(file) {
   scanRow.classList.remove('hide');
   if (trackRow) trackRow.classList.remove('hide');
   note.textContent = 'reading the file\u2019s clock…';
-  const tip = await tipWallMsAsync();
+  const tip = await tipInstantMsAsync();
   const ct = await A.mp4CreationTime(file);
   if (!ct) { note.textContent = 'no recording time in this file (downloads usually strip it) — use the scoreboard below'; return; }
   if (tip == null) { note.textContent = 'file made ' + ct.at.toLocaleString() + ', but this game has no recorded tip-off yet'; return; }
