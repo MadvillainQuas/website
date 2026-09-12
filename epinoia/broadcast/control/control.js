@@ -229,6 +229,8 @@ function phoneHealthLine() {
   if (h.cam && h.cam !== 'live') bits.push(h.cam);
   if (h.hidden) bits.push('the app is in the background — the picture is frozen');
   else if (!h.awake) bits.push('the screen is not being held awake');
+  if (h.hunting) bits.push('the board has moved in the frame — the phone is looking for it');
+  if (h.nudged) bits.push('box nudged back ' + h.nudged + '×');
   if (h.refused >= 25) bits.push(h.refused + '% of readings refused — check the box is tight on the digits');
   else if (h.refused) bits.push(h.refused + '% refused');
   if (h.sent) bits.push(h.sent + ' sent');

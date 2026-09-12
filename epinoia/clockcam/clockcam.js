@@ -117,6 +117,7 @@ function hello() {
         cam: camLive() ? 'live' : (camFail || 'no camera'),
         awake: !!wake, hidden: !!document.hidden, sent,
         refused: st.reads ? Math.round(100 * st.refused / st.reads) : 0,
+        hunting: !!hunt, nudged,
         boxes: Object.keys(boxes).filter(k => boxes[k]).join(',')
       },
       shot: peek()
@@ -336,13 +337,62 @@ function thumb(kind, b, text) {
 }
 function fmt(ms) { if (ms == null) return '–:––'; const s = Math.ceil(ms / 1000); return ms < 60000 ? (ms / 1000).toFixed(1) : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
-function resetLock() { CLK.reset(); locked = false; ring = []; }
+function resetLock() { CLK.reset(); locked = false; ring = []; hunt = null; lastReadAt = 0; }
 
 /* the last few crops, so the reader can average across a board's flicker -- see
    stack() in decode.js for why that is the difference between a board that reads
    and one that does not */
 const RING = 3;
 let ring = [];
+let lastReadAt = 0, hunt = null, nudged = 0;
+
+/* ------------------------------------------------------- when it is nudged ---
+   A phone on a clamp for two hours gets knocked: somebody leans on the table, a
+   ball hits the stanchion, the clamp creeps. The board is still in shot, but the
+   box is no longer on the digits -- and nothing announces that. The readings
+   simply stop, the graphics go on ticking from the last clock they were given,
+   and the first anyone knows is that the clock on the stream has drifted away
+   from the one in the hall.
+
+   So when nothing has been read for a few seconds, the box goes looking. The
+   offsets are tried nearest-first, because a knock moves a phone a little; a
+   whole sweep takes about a second, and it repeats until it finds the digits or
+   somebody redraws the box by hand.
+
+   A FOUND READING HAS TO AGREE WITH THE CLOCK WE ALREADY HAD. Otherwise hunting
+   is a licence to wander: some offset somewhere will eventually read SOMETHING --
+   the shot clock, the period, half of two digits -- and the box would move there
+   and then have to be found again from further away. Matching the clock we last
+   believed is what makes this recovery rather than a search. */
+const HUNT_OFFSETS = (() => {
+  const step = [-0.06, -0.03, 0, 0.03, 0.06], out = [];
+  for (const dx of step) for (const dy of step) if (dx || dy) out.push({ dx, dy });
+  out.sort((a, b) => (a.dx * a.dx + a.dy * a.dy) - (b.dx * b.dx + b.dy * b.dy));
+  return out;
+})();
+function shifted(box, o) {
+  return { x: Math.max(0, Math.min(1 - box.w, box.x + o.dx)), y: Math.max(0, Math.min(1 - box.h, box.y + o.dy)), w: box.w, h: box.h };
+}
+function tryHunt(inv, adj, now) {
+  if (!boxes.clock) return;
+  if (!hunt) hunt = { i: 0 };
+  const pred = CLK.predict(now);
+  for (let n = 0; n < 6 && hunt.i < HUNT_OFFSETS.length; n++) {
+    const o = HUNT_OFFSETS[hunt.i++];
+    const box = shifted(boxes.clock, o);
+    const img = cropOf(box); if (!img) continue;
+    const got = readClock(binarise(img, inv, adj), pred);
+    if (got == null) continue;
+    if (pred != null && Math.abs(got - pred) > 30000) continue;   // not our clock
+    boxes.clock = box;
+    try { localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); } catch (_) {}
+    ring = []; hunt = null; lastReadAt = now; nudged++;
+    paintBoxes();
+    $('#boxHint').textContent = 'The board had moved in the frame \u2014 the box has been nudged back onto the digits.';
+    return;
+  }
+  if (hunt.i >= HUNT_OFFSETS.length) hunt = { i: 0 };
+}
 
 function tick() {
   if (!boxes.clock) return;
@@ -363,9 +413,12 @@ function tick() {
   const ms = readClock(b, CLK.predict(now));
   thumb('clock', b, ms == null ? null : fmt(ms));
   if (ms != null) {
+    lastReadAt = now; hunt = null;
     const out = CLK.consider(ms, now);
     locked = CLK.locked; running = CLK.running;
     if (out) { clockMs = out.ms; publish(out.force); }
+  } else if (sending && lastReadAt && now - lastReadAt > 6000) {
+    tryHunt(inv, adj, now);
   }
   if ($('#sendScore').checked) {
     ['home', 'away'].forEach(k => { if (!boxes[k]) return; const im = cropOf(boxes[k], 120); if (!im) return; const bb = binarise(im, inv, adj); const v = readScore(bb); thumb(k, bb, v); if (v != null) scores[k] = v; });
@@ -427,6 +480,8 @@ function paintStatus() {
   /* what the reader is throwing away is worth showing: a box that is slightly
      wrong reads often and is refused often, and that is the only symptom */
   else { const st = CLK.stats; if (st.refused && st.reads) bits.push(Math.round(100 * st.refused / st.reads) + '% refused'); }
+  if (hunt) bits.push('looking for the digits again');
+  if (nudged) bits.push('box nudged ' + nudged + '\u00d7');
   if (wake) bits.push('screen held awake');
   $('#rSt').textContent = bits.join(' · ');
 }
