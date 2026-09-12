@@ -190,11 +190,25 @@ console.log('\nand the one input the identity cannot survive being wrong');
      only when empty is not enough — it was never empty. */
   ok('a stored start is CORRECTED once the real one is known, not just filled',
      /elif want and abs\(\(want - have\)\.total_seconds\(\)\) > 1:/.test(av));
-  ok('...and one positively identified as the schedule is withdrawn',
+  /* The withdrawal turns on the stream being UPCOMING, not on the stored value
+     still matching a schedule we can see. YouTube stops quoting the schedule as
+     the slot approaches — which is exactly when the stale value is most likely
+     to be read. On 2026-09-12 the 13:00 fixture held 12:30 while the watch page
+     said "this live event will begin in a few moments", and there was no
+     scheduled time left to match it against. */
+  ok('...and one is withdrawn on the stream not having begun',
      /patch\["stream_started_at"\] = None/.test(av) &&
-     /was the scheduled time, not a real start/.test(av));
-  ok('...only on that positive match, so a temporary 400 cannot drop a real start',
-     /abs\(\(sched - have\)\.total_seconds\(\)\) <= 1/.test(av));
+     /but the stream has not begun/.test(av));
+  ok('...which is a positive statement, reported as its own fact',
+     /d\["upcoming"\] = upcoming and not started/.test(av) &&
+     /"upcoming": False/.test(av));
+  ok('...the Data API knows it too: a scheduled start and no actual one',
+     /d\["upcoming"\] = bool\(lsd\.get\("scheduledStartTime"\)\) and not lsd\.get\("actualStartTime"\)/.test(av));
+  ok('...so a video that is merely unreachable sets neither flag and is left alone',
+     /elif d\.get\("upcoming"\) and v\.get\("stream_started_at"\):/.test(av));
+  ok('...and a finished stream is not upcoming, so its anchor is safe',
+     /a stream that has ENDED is not upcoming/.test(av) &&
+     /or bool\(d\["ended_at"\]\)/.test(av));
   ok('...which is the same rule this file already applies to a tip it cannot justify',
      /A WRONG ANCHOR IS WORSE THAN NONE/.test(av));
 }

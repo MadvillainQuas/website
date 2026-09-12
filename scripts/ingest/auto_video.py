@@ -112,7 +112,7 @@ def watch_details(video_id: str) -> dict:
     if hit and (hit[1].get("started_at") or time.time() - hit[0] < 300):
         return hit[1]
     d = {"live": False, "started_at": None, "scheduled_at": None, "ended_at": None,
-         "duration_s": 0, "title": None}
+         "duration_s": 0, "title": None, "upcoming": False}
     # THE DATA API FIRST, WHEN THERE IS A KEY. From a datacenter address (GitHub's runners) YouTube
     # answers its own player endpoint and watch pages with a sign-in wall (LOGIN_REQUIRED /
     # 400 - seen 2026-09-07), so the official API is the one route to a stream's real start from
@@ -128,6 +128,7 @@ def watch_details(video_id: str) -> dict:
                 # actualStartTime is actual by definition; scheduledStartTime is the promise
                 d["started_at"] = lsd.get("actualStartTime"); d["ended_at"] = lsd.get("actualEndTime")
                 d["scheduled_at"] = lsd.get("scheduledStartTime")
+                d["upcoming"] = bool(lsd.get("scheduledStartTime")) and not lsd.get("actualStartTime")
                 d["live"] = bool(lsd) or bool(d["started_at"])
                 d["duration_s"] = _iso_dur_s((it.get("contentDetails") or {}).get("duration"))
                 _watch_cache[video_id] = (time.time(), d)
@@ -166,6 +167,7 @@ def watch_details(video_id: str) -> dict:
             # until the stream is live or has ended; only then is it a real start.
             started = bool(lb.get("isLiveNow")) or bool(vd.get("isLive")) or bool(d["ended_at"])
             upcoming = bool(vd.get("isUpcoming")) or (st == "LIVE_STREAM_OFFLINE")
+            d["upcoming"] = upcoming and not started
             if started and not upcoming:
                 d["started_at"] = lb.get("startTimestamp")
             else:
@@ -440,21 +442,30 @@ def complete(sb, game_id: str, log=print) -> bool:
                 log("    = stream start corrected: %s -> %s (%+d s)"
                     % (v.get("stream_started_at"), real, (want - have).total_seconds()))
                 patch["stream_started_at"] = real; patch["is_live"] = True
-        elif d.get("scheduled_at") and v.get("stream_started_at"):
+        elif d.get("upcoming") and v.get("stream_started_at"):
             # A WRONG ANCHOR IS WORSE THAN NONE, which is the rule this file already
-            # applies to a tip it can no longer justify. The stream has not started,
-            # and the time we are holding is the time YouTube says it is SCHEDULED
-            # for -- so it is positively identifiable as a promise rather than an
-            # observation, and it is withdrawn rather than left to place clips with.
-            # Only on that positive match: a video that has simply gone unreachable
-            # tells us nothing, and dropping a real start on a temporary 400 would
-            # be the same mistake in the other direction.
-            have = _instant(v.get("stream_started_at"))
-            sched = _instant(d["scheduled_at"])
-            if have and sched and abs((sched - have).total_seconds()) <= 1:
-                log("    = stream start withdrawn: %s was the scheduled time, not a real start"
-                    % v.get("stream_started_at"))
-                patch["stream_started_at"] = None
+            # applies to a tip it can no longer justify.
+            #
+            # The condition is the stream being UPCOMING, not the stored value
+            # happening to match a scheduled time we can still see. "isUpcoming"
+            # (or playabilityStatus LIVE_STREAM_OFFLINE) is a positive statement
+            # that the broadcast has not begun, and if it has not begun then
+            # whatever is in this column is not a real start -- whether or not
+            # YouTube is still quoting the schedule it came from. It stops doing
+            # so as the slot approaches, which is exactly when the stale value is
+            # most likely to be read: on 2026-09-12 the 13:00 fixture held 12:30
+            # while the watch page said "this live event will begin in a few
+            # moments", and by then there was no scheduled time left to match it
+            # against.
+            #
+            # Still a positive test, not an absence of one. A video that has
+            # simply gone unreachable sets neither flag and is left alone;
+            # dropping a real start on a temporary 400 would be the same mistake
+            # in the other direction. And a stream that has ENDED is not upcoming
+            # and carries endTimestamp, so a finished game's anchor is safe.
+            log("    = stream start withdrawn: %s, but the stream has not begun"
+                % v.get("stream_started_at"))
+            patch["stream_started_at"] = None
     if not v.get("tip_at"):
         tip_at, tip_wall = tip_instant(sb, game_id)
         if tip_at:
