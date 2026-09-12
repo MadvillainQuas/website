@@ -39,7 +39,7 @@ let period = 1, running = false, clockMs = null, locked = false;
 const CLK = window.CCClock.makeClock();
 let scores = { home: null, away: null };
 let lastDurable = 0, lastPost = 0;
-let camTrack = null, camFail = '', wake = null;
+let camTrack = null, camFail = '', wake = null, grab = 0;
 
 /* ------------------------------------------------------------ session --- */
 async function boot() {
@@ -79,7 +79,7 @@ async function openGame() {
   await startCamera();
   wire();
   paintBoxes();
-  setInterval(tick, 250);
+  setInterval(tick, 125);          // captured at 8/s, read at 4/s -- see RING
   chan = sb.channel('game:' + gameId);
   chan.on('broadcast', { event: 'frame' }, m => onFrame(m && m.payload));
   chan.subscribe(st => { joined = (st === 'SUBSCRIBED'); paintStatus(); });
@@ -323,7 +323,7 @@ function cropOf(box, w) {
    supabase/tests/clockcam.decode.test.mjs. Pulling them out of this file is what
    lets the browser and the bench run the SAME code instead of two copies that
    drift apart the first time one of them is fixed. */
-const { binarise, glyphs, segDigit, frameWidth, readClock, readScore } = window.CCDecode;
+const { binarise, stack, glyphs, segDigit, frameWidth, readClock, readScore } = window.CCDecode;
 
 function thumb(kind, b, text) {
   const host = $('#thumbs'); let wrap = host.querySelector('[data-k="' + kind + '"]');
@@ -336,17 +336,28 @@ function thumb(kind, b, text) {
 }
 function fmt(ms) { if (ms == null) return '–:––'; const s = Math.ceil(ms / 1000); return ms < 60000 ? (ms / 1000).toFixed(1) : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
-function resetLock() { CLK.reset(); locked = false; }
+function resetLock() { CLK.reset(); locked = false; ring = []; }
+
+/* the last few crops, so the reader can average across a board's flicker -- see
+   stack() in decode.js for why that is the difference between a board that reads
+   and one that does not */
+const RING = 3;
+let ring = [];
 
 function tick() {
   if (!boxes.clock) return;
   /* a hidden page is a frozen picture, and a frozen picture read four times a
      second is a stopped clock published with total confidence */
-  if (document.hidden) return;
-  if (!camLive()) { if (sending) ensureCamera(); return; }
+  if (document.hidden) { ring = []; return; }
+  if (!camLive()) { if (sending) ensureCamera(); ring = []; return; }
   const inv = $('#invert').checked ? true : null, adj = +$('#thr').value || 0;
   const img = cropOf(boxes.clock); if (!img) return;
-  const b = binarise(img, inv, adj);
+  ring.push(img); if (ring.length > RING) ring.shift();
+  /* captured at twice the rate it is read, so three frames span a third of a
+     second rather than most of one: the shorter the window, the less often a
+     digit changes inside it */
+  if ((grab = (grab + 1) % 2) !== 0) { if ($('#pcMode').checked) postCrop(); return; }
+  const b = binarise(stack(ring), inv, adj);
   if ($('#pcMode').checked) { postCrop(); thumb('clock', b, 'to the PC'); return; }
   const now = Date.now();
   const ms = readClock(b, CLK.predict(now));

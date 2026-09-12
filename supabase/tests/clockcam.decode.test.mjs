@@ -77,6 +77,22 @@ const CASES = [
   { name: 'blinking colon', opt: { colonOff: true }, colonOnly: true },
   { name: 'hall: dim+flicker+blur', opt: { dim: 0.45, flicker: 0.22, flickerDepth: 0.45, blur: 2, noise: 0.03 } },
   { name: 'hall: band+angle+noise', opt: { banding: 0.4, angle: 5, noise: 0.05 } },
+  /* THE SAME BOARDS, READ THE WAY THE APP READS THEM. Every LED board is pulse-width
+     modulated, so a single exposure misses segments outright; the app averages three
+     frames before reading. These rows are what a real phone gets, and the difference
+     on a flickering board is the difference between usable and not. */
+  { name: 'PWM flicker x3', opt: { flicker: 0.30, flickerDepth: 0.55 }, stack: 3 },
+  /* STRESS, NOT A TARGET. This drops nearly half the segments to a third of their
+     brightness INDEPENDENTLY of each other on every frame, which is worse than a
+     real board does: the lamps on a scoreboard share a driver, so PWM dims them
+     together -- which is the "dim" and "rolling band" cases, both of which read
+     perfectly. This one exists to show where the decoder gives up rather than to
+     be passed, and it is excluded from the per-case ceiling below for that reason.
+     What protects a broadcast at this severity is not the decoder but the physics
+     downstream: clockcam.clock.test.mjs runs a whole quarter at a worse error rate
+     than this and publishes nothing wrong. */
+  { name: 'heavy flicker x3', opt: { flicker: 0.45, flickerDepth: 0.7 }, stack: 3, stress: true },
+  { name: 'hall dim+flicker x3', opt: { dim: 0.45, flicker: 0.22, flickerDepth: 0.45, blur: 2, noise: 0.03 }, stack: 3 },
 ];
 
 const N = 12;   // renders per face per case
@@ -98,8 +114,12 @@ function runCase(c, hinted) {
   for (const [text, ms] of faces) {
     if (c.colonOnly && !text.includes(':')) continue;
     for (let i = 0; i < N; i++) {
-      const img = renderCrop(text, c.opt, rnd);
-      const b = D.binarise(img, c.opt.bright ? true : null, 0);
+      /* a case with `stack` renders that many frames and averages them, which is
+         what the app does: the PWM phase differs every frame, so a segment missing
+         from one is present in the others. See stack() in decode.js. */
+      const imgs = [];
+      for (let k = 0; k < (c.stack || 1); k++) imgs.push(renderCrop(text, c.opt, rnd));
+      const b = D.binarise(D.stack(imgs), c.opt.bright ? true : null, 0);
       /* the hint is the clock as it was four tenths ago -- what the app would
          actually be holding when this frame arrives */
       const got = D.readClock(b, hinted ? ms + 400 : undefined);
@@ -149,7 +169,8 @@ console.log('  ' + pad('', 24) + pad('  tracking', 18) + '|' + pad('  cold', 18)
 console.log('  ' + '-'.repeat(74));
 for (let i = 0; i < track.length; i++) {
   const t = track[i], k = cold[i];
-  console.log('  ' + pad(t.name, 24) + pct(t.readRate) + '   ' + pct(t.wrongRate) + '   |' + pct(k.readRate) + '   ' + pct(k.wrongRate) + '   ' + t.total);
+  const isStress = (CASES[i] || {}).stress;
+  console.log('  ' + pad(t.name + (isStress ? ' *' : ''), 24) + pct(t.readRate) + '   ' + pct(t.wrongRate) + '   |' + pct(k.readRate) + '   ' + pct(k.wrongRate) + '   ' + t.total);
   if (VERBOSE && t.wrongs.length) t.wrongs.forEach(w => console.log('        ! tracking: ' + w));
   if (VERBOSE && k.wrongs.length) k.wrongs.forEach(w => console.log('        ! cold:     ' + w));
 }
@@ -158,6 +179,9 @@ const tRead = (T.right + T.wrong) / T.total, tWrong = T.wrong / T.total;
 const kRead = (K.right + K.wrong) / K.total, kWrong = K.wrong / K.total;
 console.log('  ' + '-'.repeat(74));
 console.log('  ' + pad('OVERALL', 24) + pct(tRead) + '   ' + pct(tWrong) + '   |' + pct(kRead) + '   ' + pct(kWrong) + '   ' + T.total);
+console.log('  * a stress case: harsher than a real board, kept to show where the decoder');
+console.log('    gives up. Excluded from the per-case ceiling; the physics downstream is');
+console.log('    what protects a broadcast at that severity (clockcam.clock.test.mjs).');
 console.log('');
 
 /* ------------------------------------------------------------ the floor ---
@@ -173,8 +197,9 @@ let bad = [];
 if (tRead < FLOOR.trackRead) bad.push(`tracking read rate ${pct(tRead)} is below the floor ${pct(FLOOR.trackRead)}`);
 if (tWrong > FLOOR.trackWrong) bad.push(`tracking WRONG rate ${pct(tWrong)} is above the ceiling ${pct(FLOOR.trackWrong)}`);
 if (kWrong > FLOOR.coldWrong) bad.push(`cold WRONG rate ${pct(kWrong)} is above the ceiling ${pct(FLOOR.coldWrong)}`);
-for (const r of track) if (r.wrongRate > PER_CASE_WRONG) bad.push(`tracking "${r.name}" WRONG ${pct(r.wrongRate)} is above ${pct(PER_CASE_WRONG)}` + (r.wrongs.length ? ` (e.g. ${r.wrongs[0]})` : ''));
-for (const r of cold) if (r.wrongRate > PER_CASE_WRONG) bad.push(`cold "${r.name}" WRONG ${pct(r.wrongRate)} is above ${pct(PER_CASE_WRONG)}` + (r.wrongs.length ? ` (e.g. ${r.wrongs[0]})` : ''));
+const STRESS = new Set(CASES.filter(c => c.stress).map(c => c.name));
+for (const r of track) if (!STRESS.has(r.name) && r.wrongRate > PER_CASE_WRONG) bad.push(`tracking "${r.name}" WRONG ${pct(r.wrongRate)} is above ${pct(PER_CASE_WRONG)}` + (r.wrongs.length ? ` (e.g. ${r.wrongs[0]})` : ''));
+for (const r of cold) if (!STRESS.has(r.name) && r.wrongRate > PER_CASE_WRONG) bad.push(`cold "${r.name}" WRONG ${pct(r.wrongRate)} is above ${pct(PER_CASE_WRONG)}` + (r.wrongs.length ? ` (e.g. ${r.wrongs[0]})` : ''));
 
 if (bad.length) { console.error('FAIL\n  - ' + bad.join('\n  - ') + '\n'); process.exit(1); }
 console.log('  ok — the decoder holds its floor\n');
