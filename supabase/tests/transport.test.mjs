@@ -1,6 +1,6 @@
 /* A server that behaves the way a busy one does: refuses, then relents. */
 import { readFileSync } from 'node:fs';
-const src = readFileSync('C:/Users/Admin/Documents/website_repo/epinoia/data.js', 'utf8');
+const src = readFileSync(new URL('../../epinoia/data.js', import.meta.url), 'utf8');
 
 function lift(s, sig) {
   const from = s.indexOf(sig); if (from === -1) throw new Error('no ' + sig);

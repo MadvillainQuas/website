@@ -22,7 +22,7 @@
      node supabase/tests/takeover.test.mjs
    ============================================================================ */
 import { readFileSync } from 'node:fs';
-const src = readFileSync('C:/Users/Admin/Documents/website_repo/epinoia/score/bootstrap.js', 'utf8');
+const src = readFileSync(new URL('../../epinoia/score/bootstrap.js', import.meta.url), 'utf8');
 function lift(s, sig) {
   const from = s.indexOf(sig); if (from === -1) throw new Error('no ' + sig);
   let d = 0;
