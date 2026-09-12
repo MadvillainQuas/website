@@ -94,7 +94,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        # 24, not 20: report.test.mjs and awards.test.mjs import the Edge Functions' .ts
+        # files, which Node strips types from natively only from 22.6 (default from 23.6).
+        # On 20 the report suite died on ERR_UNKNOWN_FILE_EXTENSION, hidden until 5913f27
+        # let the job reach it. 24 is also what every suite is run with locally.
+        with: { node-version: '24' }
 
       - name: The Edge Function and the browser must run the same engine
         run: |
