@@ -56,7 +56,21 @@ const qp = new URLSearchParams(location.search);
 const CFG = window.EPINOIA_CONFIG || {};
 
 const gameId = (qp.get('g') || qp.get('game') || '').trim();
-let scene    = (qp.get('scene') || 'scorebug').toLowerCase();
+/* A LIVE LAYER STARTS BLANK, NOT ON A SCOREBUG.
+
+   ?live=1 means the control room decides what is on this source. Defaulting to
+   'scorebug' meant that until the room next took something — and a Supabase
+   broadcast has no retained message, so that could be minutes — the layer put a
+   scorebug up on its own. Refresh an OBS browser source during an interview and
+   a scorebug appears over it, from a page nobody asked to show one.
+
+   Blank is the honest starting state for a source whose content is somebody
+   else's to choose, and the room restates the scene every four seconds, so the
+   gap is at most that. A production that wants a permanent scorebug names it:
+   ?scene=scorebug without live=1 is the documented single-scene path, and an
+   explicit ?scene= alongside live=1 is still honoured as the opening graphic. */
+let scene    = (qp.get('scene') ||
+                (qp.get('live') === '1' ? 'blank' : 'scorebug')).toLowerCase();
 /* ?live=1 hands the choice of graphic to the control room. Without it the
    layer shows one scene for ever, which is the right behaviour for a
    production that would rather have one OBS source per graphic and never

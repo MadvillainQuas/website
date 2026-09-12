@@ -48,6 +48,8 @@
     display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left}
   .tile:hover{border-color:var(--lume)}
   .tile.on{border-color:var(--lume);box-shadow:inset 0 0 0 1px var(--lume)}
+    /* the room believes this should be on air and cannot prove it reached the layer; see restate() */
+    .tile.pending{border-color:#ffd166;box-shadow:inset 0 0 0 1px #ffd16655;background:rgba(255,209,102,.07)}
   .tile .t{font-family:var(--f-ui);font-weight:800;font-size:13px}
   .tile .d{font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3)}
   .tile .u{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);opacity:.7;
@@ -206,7 +208,7 @@
     <div class="kprow">
       <span class="kpp" id="kpPeriod">P1</span>
       <span class="kpc" id="kpClock">10:00</span>
-      <button class="ep-btn pri kpt" id="kpToggle" type="button" title="Space">start</button>
+      <button class="ep-btn pri kpt" id="kpToggle" type="button" title="Space, once you are keeping the clock">start</button>
       <button class="ep-btn ghost" id="kpMinus" type="button" title="a second earlier">−1 s</button>
       <button class="ep-btn ghost" id="kpPlus" type="button" title="a second later">+1 s</button>
       <span class="kpset"><input id="kpSetVal" type="text" placeholder="m:ss" style="width:64px"><button class="ep-btn ghost" id="kpSetBtn" type="button">set</button></span>
@@ -215,7 +217,7 @@
       <label class="kpf"><input id="kpFollow" type="checkbox" checked> follow the feed</label>
       <button class="ep-btn ghost" id="kpRelease" type="button" title="hand the clock back to the feed">release</button>
     </div>
-    <div class="kph">Tap <b>start</b> on the throw-in and <b>stop</b> on the whistle (or press Space). While you keep it, every layer runs from your taps; the feed only nudges the time when it disagrees by more than a second and a half. To read the hall's board with a camera instead, open the <a id="ccLink" href="../../clockcam/" target="_blank" rel="noopener" style="color:var(--lume)">clock cam on a phone</a> or run the PC reader (see the tutorial).</div>
+    <div class="kph">Tap <b>start</b> on the throw-in and <b>stop</b> on the whistle; once you are keeping it, Space does the same. Space does nothing until you have taken the clock, because taking it overrules every other source. While you keep it, every layer runs from your taps; the feed only nudges the time when it disagrees by more than a second and a half. To read the hall's board with a camera instead, open the <a id="ccLink" href="../../clockcam/" target="_blank" rel="noopener" style="color:var(--lume)">clock cam on a phone</a> or run the PC reader (see the tutorial).</div>
   </div>
 
   <div class="prev"><iframe id="prev" title="Preview of the graphic on air"></iframe></div>
@@ -321,6 +323,6 @@
 <script src="../../live.js?v=313" defer></script>
 <script src="../../vendor/qrcode.js?v=1" defer></script>
 <script src="mixers.js?v=239" defer></script>
-<script src="control.js?v=306" defer></script>
+<script src="control.js?v=313" defer></script>
 </body>
 </html>

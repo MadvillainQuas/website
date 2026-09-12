@@ -637,5 +637,70 @@ ok('merge carries the status through to game.status, not only S.phase',
 ok('...and forces the repaint rather than waiting for a clock that has stopped',
    /if \(g\.status !== game\.status\) lastJSON = '';/.test(layer));
 
+/* ---------------------------------------------------------------------------
+   WHAT IS ACTUALLY ON AIR, AND WHETHER THE ROOM CAN TELL.
+
+   Three faults that all end with the control room believing something that is
+   not true on the stream.
+
+   1. take() called publish() and threw the answer away. publish returns false
+      when the channel is not joined, and false on a throw, and take set the
+      key, repointed the preview and turned the tile green regardless. On the
+      single-source path -- Wirecast, Streamlabs, mimoLive, a hardware HTML
+      input, vMix overlay 1, everything this module's own help recommends -- the
+      broadcast channel is the only route to air, so a dropped socket meant the
+      operator saw the tile light and put nothing up.
+
+   2. A Supabase broadcast has no retained message, and the room published a
+      scene only from take() and clearAir(). A layer that reloaded -- an OBS
+      source refreshed, a machine restarted at half-time -- had nothing to catch
+      up from and no way to ask.
+
+   3. ?live=1 hands the choice of graphic to the room, and the layer defaulted
+      to 'scorebug' anyway. Refresh a browser source during an interview and a
+      scorebug appears over it, from a page nobody asked to show one.
+   --------------------------------------------------------------------------- */
+{
+  const ctl = rd('epinoia', 'broadcast', 'control', 'control.js');
+  const lay = rd('epinoia', 'broadcast', 'broadcast.js');
+  const idx = rd('epinoia', 'broadcast', 'control', 'index.html');
+
+  ok('a take records whether it actually left', /air\.out = publish\(scene, opts\);/.test(ctl));
+  ok('...and the tile is only green when it did',
+     /t\.classList\.toggle\('on', mine && air\.out\);/.test(ctl));
+  ok('...with a colour of its own for "this room cannot prove it"',
+     /t\.classList\.toggle\('pending', mine && !air\.out\);/.test(ctl) &&
+     /\.tile\.pending\{/.test(idx));
+  ok('...and the badge says so rather than saying connected',
+     /not reaching the layer/.test(ctl));
+  ok('the tile rebuild agrees with the same two states',
+     /k === air\.key \? \(air\.out \? ' on' : ' pending'\) : ''/.test(ctl));
+
+  ok('the room restates what it believes is on air', /function restate\(\)/.test(ctl));
+  ok('...every four seconds, so a reloaded layer is corrected within that',
+     /setInterval\(restate, 4000\);/.test(ctl));
+  ok('...and clearing air is remembered too, so a reload comes back clean',
+     /air = \{ scene: 'blank', opts: null, key: 'blank', out: false \};/.test(ctl));
+
+  ok('a live layer opens blank rather than inventing a scorebug',
+     /qp\.get\('live'\) === '1' \? 'blank' : 'scorebug'/.test(lay));
+  ok('...while an explicit ?scene= still wins, and the single-scene path is untouched',
+     /let scene\s+= \(qp\.get\('scene'\) \|\|/.test(lay));
+
+  /* And the key that could take the game clock by accident: a document-level
+     Space handler that excluded input, textarea and select but not <button> —
+     and every tile in the rundown has one, which keeps focus after a click.
+     kpSet publishes with assert:true, and an assert takes the clock at once. */
+  ok('Space no longer fires through a focused button',
+     /const KEEPS_SPACE = 'input,textarea,select,button,a\[href\]/.test(ctl));
+  ok('...and does nothing at all until the operator has taken the clock',
+     /if \(!kp\.active\) return;\s*\/\/ not keeping the clock: scroll the page/.test(ctl));
+  ok('...so it stops swallowing the page-scroll key as well',
+     ctl.indexOf('if (!kp.active) return;') <
+     ctl.indexOf('e.preventDefault(); kpSet(kpNow(), !kp.running);'));
+  ok('...and the help says what it now does',
+     /Space does nothing until you have taken the clock/.test(idx));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

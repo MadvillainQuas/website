@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-items 1 through 21 are all done - every critical item on the list, and the high ones down to 21, plus the whole LiveStats-to-footage video
+items 1 through 24 are all done - every critical item on the list, and the high ones down to 21, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -355,6 +355,8 @@ The strategic correction that should govern the build order: the digital scoresh
 
 **high** / hours · `broadcast`
 
+> **STATUS - DONE 2026-09-12 - the room remembers what it believes is on air and restates it every four seconds, and a ?live=1 layer now opens BLANK rather than inventing a scorebug (an explicit ?scene= still wins, and the documented single-scene path without live=1 is untouched). Verified in the browser: a layer opened after the take was showing the right scene within three seconds, from the restatement alone.**
+
 **Why.** scene defaults to 'scorebug' and only ever changes on an inbound frame. The control room publishes a frame ONLY from take() and clearAir(); Supabase broadcast has no retained message, there is no periodic restatement and no hello-from-the-layer handshake. So any reload of a ?live=1 source puts a scorebug up unbidden — an OBS refresh, a browser-source crash, a laptop waking, a vMix input restart, or the layer being added mid-game. The worst instance: the director pressed 'off air', the source reloads, and a full scorebug goes up over a picture the mixer believes is clean. The exposed paths are every mixer without a control API, which is exactly the path this module recommends for Wirecast, Streamlabs and hardware HTML inputs.
 
 **What.** (1) In control.js add `setInterval(() => { const [sc, sd] = currentKey.split(':'); publish(sc === 'blank' ? 'blank' : sc, sd ? {side: sd} : null); }, 4000)` inside connect() after the subscribe callback, and call the same restatement from the chan.subscribe handler whenever the status is SUBSCRIBED — it already holds currentKey. (2) In broadcast.js:59 make the default conditional: `let scene = (qp.get('scene') || (qp.get('live')==='1' ? 'blank' : 'scorebug')).toLowerCase();`.
@@ -367,6 +369,8 @@ The strategic correction that should govern the build order: the digital scoresh
 
 **high** / hours · `broadcast`
 
+> **STATUS - DONE 2026-09-12 - take() records publish()'s answer; the tile is green only when the frame actually left, amber when the room believes it should be up and cannot prove it, and the badge says "not reaching the layer - retrying" instead of "connected". The four-second restatement is the retry, so a take that did not leave lands as soon as the channel is back.**
+
 **Why.** publish() returns false when the channel is not joined and take() discards it entirely: it sets currentKey, repoints the preview iframe and toggles the .on class regardless. On the single-source path — Wirecast, Streamlabs, mimoLive, a hardware HTML input, vMix overlay 1, everything the module's own help recommends — a dropped socket means the director presses 'Top scorers', the tile lights, the preview shows the graphic, and nothing at all happens on air. The only contradicting signal is a small grey pill a director is not reading while a play finishes. clearAir() has the same hole, and a failed 'off air' is the most dangerous failed command in the set.
 
 **What.** Change take() to `const sent = publish(scene, opts); const driven = mxTake(currentKey);` and make mxTake return true when it actually issued a command. If neither succeeded, do NOT move the .on class: add a 'failed' class on the pressed tile with a label reading 'not sent — socket down', leave the previous tile .on, and flash #liveTag. Then queue it: keep a pendingKey and fire it from the chan.subscribe SUBSCRIBED handler, showing the tile as .pending meanwhile. Apply identical treatment to clearAir(). Gate the failed state on !sent && !driven so a mixer-driven path with #mxDrive unchecked does not read as a failure.
@@ -378,6 +382,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 24. Scope the control room's Space bar so it cannot seize the game clock by accident
 
 **high** / hours · `clock`
+
+> **STATUS - DONE 2026-09-12 - the Space handler now exempts every interactive element (button, a[href], [role=button], contenteditable - not just input/textarea/select) and does nothing at all unless the operator has already taken the clock, so it no longer swallows the page-scroll key either. Starting to keep the clock stays a deliberate act, which matters because kpSet publishes with assert:true and an assert takes the clock from a camera AT ONCE.**
 
 **Why.** control.js:287 is a document-level keydown handler excluding only input, textarea and select. <button> is not excluded, so after clicking any tile's take button (which takes focus) a Space press fires it — and Space is also the standard page-scroll key on a long page. kpSet sets kp.active and publishes with assert:true, which live.js adoptState treats as a DELIBERATE act that takes the clock away from a clock cam immediately with no handover delay. The room then re-publishes every 5s, holding authority permanently. One stray keypress starts or stops a clock on every layer on the stream that the hall's board is not running, locks out the camera reading the real board, and the only way back is a release button the director does not know they need. control.js:143-145 compounds it by painting 'clock: you are keeping it' purely from kp.active, never from feedSub.clockSource().
 

@@ -284,8 +284,33 @@ function kpWire() {
   on('kpPeriodUp', () => { kp.period = Math.min(6, kp.period + 1); kpSet(kp.period > 4 ? 300000 : 600000, false); });
   on('kpRelease', () => { kp.active = false; kp.running = false; kpPaint(); });
   const fl = kpEl('kpFollow'); if (fl) fl.onchange = () => { kp.follow = fl.checked; };
+  /* SPACE MUST NOT BE ABLE TO TAKE THE GAME CLOCK BY ACCIDENT.
+
+     This excluded input, textarea and select. It did not exclude <button>, and
+     every tile in the rundown has a take button — which keeps focus after it is
+     clicked. Space is also how a browser scrolls a long page, and this page is
+     long. So an operator who had just taken a graphic, or who was simply
+     scrolling, pressed Space and kpSet ran: which sets kp.active and publishes
+     with assert:true, and an assert takes the clock away from whatever was
+     driving it AT ONCE, by design, because a person reaching for the keeper
+     while a camera misreads is the one case where the human must win.
+
+     The result was the opposite of that design. The clock on air stopped or
+     started, and a camera reading the hall's board correctly was overruled by
+     somebody scrolling.
+
+     Two changes. Any interactive element keeps the key — Space is how a button
+     is pressed. And the shortcut only drives a clock this operator has ALREADY
+     taken: pressing it when the keeper is idle does nothing and, crucially,
+     does not preventDefault, so the page scrolls as it should. Starting to keep
+     the clock is a deliberate act and stays a deliberate act; it is the one
+     thing on this page that overrules every other source. */
+  const KEEPS_SPACE = 'input,textarea,select,button,a[href],[role="button"],' +
+                      '[contenteditable=""],[contenteditable="true"]';
   document.addEventListener('keydown', e => {
-    if (e.code !== 'Space' || e.target.closest('input,textarea,select')) return;
+    if (e.code !== 'Space') return;
+    if (e.target && e.target.closest && e.target.closest(KEEPS_SPACE)) return;
+    if (!kp.active) return;                 // not keeping the clock: scroll the page
     e.preventDefault(); kpSet(kpNow(), !kp.running);
   });
 }
@@ -338,22 +363,72 @@ function publish(scene, opts) {
   } catch (_) { return false; }
 }
 
-function paintLive() {
-  const tag = $('#liveTag');
-  tag.classList.toggle('on', joined);
-  tag.textContent = joined ? 'live layer connected' : 'live layer not connected';
-}
+function paintLive() { paintAir(); }
 
 /* ---- rendering ---------------------------------------------------------- */
 let currentKey = qp.get('scene') || 'scorebug';
 
+/* ================================================= WHAT IS ACTUALLY ON AIR ===
+   TWO FAULTS, ONE MECHANISM.
+
+   First: take() called publish() and threw the answer away. publish returns
+   false when the channel is not joined, and false on a throw, and take set
+   currentKey, repointed the preview and turned the tile green regardless. On
+   the single-source path — Wirecast, Streamlabs, mimoLive, a hardware HTML
+   input, vMix overlay 1, everything this module's own help recommends — the
+   broadcast channel is the ONLY route to air, so a dropped socket meant the
+   operator pressed take, saw the tile light and the preview change, and put
+   nothing on air. There was no way to tell from this page.
+
+   Second: a Supabase broadcast has no retained message. The room published a
+   scene only from take() and clearAir(), so a layer that reloaded — an OBS
+   source refreshed, a browser recovering, a machine restarted at half-time —
+   had nothing to catch up from and no way to ask.
+
+   One mechanism answers both. The room remembers what it believes is on air and
+   restates it every four seconds. A take that did not leave is retried until it
+   does; a layer that reconnects is corrected within four seconds; and the tile
+   tells the truth in the meantime, because the restatement reports whether it
+   got out.
+
+   Four seconds is chosen against what it costs: a few hundred bytes on a
+   channel that already carries the clock, against a graphic being wrong on air
+   for as long as nobody notices. */
+let air = { scene: null, opts: null, key: null, out: false };
+
+function paintAir() {
+  document.querySelectorAll('.tile').forEach(t => {
+    const mine = t.dataset.key === air.key;
+    t.classList.toggle('on', mine && air.out);
+    /* Green means it reached the layer. Amber means this room thinks it should
+       be up and cannot prove it — which is the state that used to read green. */
+    t.classList.toggle('pending', mine && !air.out);
+  });
+  const tag = $('#liveTag');
+  if (!tag) return;
+  if (air.scene && !air.out) {
+    tag.classList.remove('on');
+    tag.textContent = 'not reaching the layer — retrying';
+  } else {
+    tag.classList.toggle('on', joined);
+    tag.textContent = joined ? 'live layer connected' : 'live layer not connected';
+  }
+}
+
+function restate() {
+  if (!air.scene) return;
+  const out = publish(air.scene, air.opts);
+  if (out !== air.out) { air.out = out; paintAir(); }
+}
+setInterval(restate, 4000);
+
 function take(scene, opts) {
   currentKey = keyOf(scene, opts);
-  publish(scene, opts);
+  air = { scene: scene, opts: opts || null, key: currentKey, out: false };
+  air.out = publish(scene, opts);
   mxTake(currentKey);
   $('#prev').src = sceneURL(scene, false, opts);
-  document.querySelectorAll('.tile').forEach(t =>
-    t.classList.toggle('on', t.dataset.key === currentKey));
+  paintAir();
   const u = new URL(location.href);
   u.searchParams.set('scene', currentKey);
   history.replaceState(null, '', u);
@@ -364,8 +439,12 @@ function take(scene, opts) {
    button that means "clean" rather than a hunt for the visible eyeball. */
 async function clearAir() {
   currentKey = 'blank';
-  publish('blank', null);
-  document.querySelectorAll('.tile').forEach(t => t.classList.remove('on'));
+  /* Remembered like any other take, so "clean" is restated too. A layer that
+     reloads after the director cleared air must come back clean, not come back
+     showing whatever it had before. */
+  air = { scene: 'blank', opts: null, key: 'blank', out: false };
+  air.out = publish('blank', null);
+  document.querySelectorAll('.tile').forEach(t => { t.classList.remove('on'); t.classList.remove('pending'); });
   $('#prev').src = sceneURL('blank', false, null);
   if (mx && mx.drives && $('#mxDrive') && $('#mxDrive').checked) {
     try {
@@ -393,7 +472,7 @@ function render() {
     rows.forEach(([key, , title2, desc, opts]) => {
       const k = keyOf(key, opts);
       const tile = document.createElement('div');
-      tile.className = 'tile' + (k === currentKey ? ' on' : '');
+      tile.className = 'tile' + (k === air.key ? (air.out ? ' on' : ' pending') : '');
       tile.dataset.key = k;
       tile.innerHTML =
         '<div class="t">' + title2 + '</div>' +
