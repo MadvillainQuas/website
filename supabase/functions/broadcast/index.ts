@@ -229,12 +229,25 @@ Deno.serve(async (req: Request) => {
      bound template was told all was well.
 
      THE THRESHOLD IS MEASURED, NOT ASSUMED. The comment above says a feed
-     refreshes "every two" seconds, and that is what made this invisible: the
-     real spacing on a live fed game that evening was a median of 39.6 s and a
-     worst of 118.4 s across nineteen polls, because live_keeper serialises every
-     due game's fetch and its whole write pass before sleeping. Three minutes
-     leaves half again over the worst observed gap and still catches a dropped
-     cron or a dead pass inside one possession's worth of wall clock.
+     refreshes "every two" seconds, and believing that is what kept this
+     invisible. Measured across four simultaneous live fed games on 2026-09-12,
+     46 intervals: a median of 37.9 s, a worst of 77 s in ordinary running, and
+     one gap of 198.5 s. live_keeper serialises every due game's fetch AND its
+     whole write pass before sleeping, so the spacing is a function of how many
+     games are live, not of the configured interval.
+
+     Three minutes is 2.3x the worst ordinary gap, which is the margin that
+     matters. It also trips on that 198.5 s outlier, and that is deliberate
+     rather than a false positive: the outlier was the live lane handing over
+     between passes, during which nothing wrote the game for three and a half
+     minutes and this endpoint served a clock and score that far behind. A
+     scorebug three minutes out of date should say so. Showing it silently is
+     the fault being fixed.
+
+     If the ingest's cadence is ever made honest — a measured gap instead of the
+     configured one, and a freshness bound on the append path — this number can
+     come down with it. It is set by the slowest legitimate source, not by what
+     a broadcast would like.
 
      A finished game's row is legitimately old for ever, so it is exempt. */
   const SOURCE_DEAD_MS = 180000;

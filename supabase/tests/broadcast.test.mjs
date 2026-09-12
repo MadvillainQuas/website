@@ -738,7 +738,12 @@ ok('...and forces the repaint rather than waiting for a clock that has stopped',
   ok('...which is the only branch a fed game can ever trip',
      /the only one a FED game can ever answer/.test(fnsrc));
   ok('...with the threshold justified by a measurement, not a guess',
-     /median of 39\.6 s and a\s+worst of 118\.4 s/.test(fnsrc));
+     /46 intervals: a median of 37\.9 s/.test(fnsrc) &&
+     /a worst of 77 s in ordinary running/.test(fnsrc));
+  ok('...and the outlier it deliberately trips on is named as deliberate',
+     /that is deliberate\s+rather than a false positive/.test(fnsrc));
+  ok('...and it is tied to the ingest cadence that sets it, not to taste',
+     /It is set by the slowest legitimate source/.test(fnsrc));
   ok('a finished game is exempt, its row being legitimately old for ever',
      /game\.status !== 'final' && sourceAgeMs !== null/.test(fnsrc));
   ok('the running-clock run-on is unchanged, so smooth clocks stay smooth',
