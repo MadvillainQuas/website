@@ -607,5 +607,35 @@ ok('the scorebug came down in size rather than staying as it was',
    /\.bug \.sc\{font-weight:800;font-size:4vmin/.test(bcss) &&
    /\.bug \.clk\{font-weight:800;font-size:2\.9vmin/.test(bcss));
 
+/* ---------------------------------------------------------------------------
+   ONE SCENE MUST NOT TAKE THE WHOLE BROADCAST DOWN.
+
+   The officials scene read OFFICIAL_ROLES, which is defined in boxscore.js — a
+   file the layer page does not load. It loads config, supabase, engine, rt and
+   live, and nothing else. So ?scene=officials threw a ReferenceError on its first
+   paint, the boot's own catch swallowed it, and the scene listener, the pre-game
+   watcher and the subscriber were never created: a source blank for the whole game
+   with nothing in the log to say why.
+   --------------------------------------------------------------------------- */
+ok('the layer defines the officials table itself, rather than borrowing one it never loads',
+   /const OFFICIAL_ROLES = \[/.test(layer) && /\['shot_clock',\s*'shot clock'\]/.test(layer));
+ok('...and the layer page still does not load the box score',
+   !/boxscore\.js/.test(layerH));
+ok('a scene that throws is caught, and does not stop the boot',
+   /try \{\s*stage\.innerHTML = fn\(st\);/.test(layer) && /catch \(e\) \{[\s\S]*?stage\.innerHTML = \(SCENES\.blank/.test(layer));
+ok('an unknown scene blanks rather than putting a scorebug over the wrong shot',
+   /SCENES\[scene\] \|\| SCENES\.blank/.test(layer) && !/SCENES\[scene\] \|\| SCENES\.scorebug/.test(layer));
+ok('...and says so in the diagnostics under ?debug=1',
+   /diag\.textContent = 'scene ' \+ scene/.test(layer));
+
+/* ---- the buzzer --------------------------------------------------------- */
+/* Every final-state decision reads game.status. merge() set S.phase, which nothing
+   reads, and watchPregame stops the moment a game goes live — so a game that ended
+   while the layer was running stayed on Q4, including on the Final Score board. */
+ok('merge carries the status through to game.status, not only S.phase',
+   /if \(g\.status\) \{[\s\S]{0,200}game\.status = g\.status;/.test(layer));
+ok('...and forces the repaint rather than waiting for a clock that has stopped',
+   /if \(g\.status !== game\.status\) lastJSON = '';/.test(layer));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

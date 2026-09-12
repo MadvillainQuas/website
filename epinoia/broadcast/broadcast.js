@@ -1237,6 +1237,26 @@ function figures(text) {
       : '<span class="fg sep">' + esc(ch) + '</span>').join('');
 }
 
+/* THE CREW, NAMED. This table lives in boxscore.js too, and the layer does not
+   load boxscore.js — it loads config, supabase, engine, rt and live, and nothing
+   else. So the officials scene referred to an identifier that does not exist on
+   this page, threw a ReferenceError on its first paint, and took the whole boot
+   down with it: no scene listener, no pre-game watcher, no subscriber, a source
+   blank for the entire game and nothing in the log to say why.
+
+   A third copy of eight rows is cheaper than making every layer download the box
+   score to read them. */
+const OFFICIAL_ROLES = [
+  ['referee',          'referee'],
+  ['umpire1',          'umpire 1'],
+  ['umpire2',          'umpire 2'],
+  ['commissioner',     'commissioner'],
+  ['scorer',           'scorer'],
+  ['assistant_scorer', 'assistant scorer'],
+  ['timekeeper',       'timekeeper'],
+  ['shot_clock',       'shot clock']
+];
+
 /* ---- render ----------------------------------------------------------- */
 function render() {
   const st = buildState();
@@ -1252,8 +1272,27 @@ function render() {
     try {
       window.dispatchEvent(new CustomEvent('epinoia:state', { detail: st }));
     } catch (_) { /* a mixer's embedded engine may not have CustomEvent */ }
-    const fn = SCENES[scene] || SCENES.scorebug;
-    stage.innerHTML = fn(st);
+    /* A SCENE THAT THROWS MUST NOT TAKE THE SHOW WITH IT.
+
+       stage.innerHTML = fn(st) sat bare inside the render, and the boot's own catch
+       swallowed whatever came out of it — so one bad scene did not merely fail to
+       draw, it stopped the subscriber and the scene listener from ever being wired.
+       A source that is blank for a whole game with nothing in the log is the worst
+       shape this can fail in, because there is nothing to look at afterwards.
+
+       And an UNKNOWN scene name now blanks rather than falling back to the scorebug.
+       A director who types a name this build does not have wants nothing on air, not
+       a scoreboard over the wrong shot — the help page has documented scenes this
+       layer never had, so the mistake is one somebody will actually make. */
+    const fn = SCENES[scene] || SCENES.blank || (() => '');
+    try {
+      stage.innerHTML = fn(st);
+      if (!SCENES[scene]) throw new Error('unknown scene: ' + scene);
+    } catch (e) {
+      try { stage.innerHTML = (SCENES.blank ? SCENES.blank(st) : ''); } catch (_) { stage.innerHTML = ''; }
+      if (diag) diag.textContent = 'scene ' + scene + ': ' + (e && e.message || e);
+      try { console.error('[broadcast] scene ' + scene, e); } catch (_) {}
+    }
     wireFades();
     if (settled) stage.dataset.ready = '1';
   }
@@ -1530,7 +1569,24 @@ function merge(g, events, removed, full) {
   if (!S) return;
   if (g) {
     if (g.period != null) S.period = g.period;
-    if (g.status) S.phase = g.status === 'final' ? 'final' : 'game';
+    /* THE BUZZER HAS TO REACH THE LAYER.
+
+       This set S.phase, which nothing reads, and left game.status alone — and
+       game.status is what every final-state decision in here actually consults:
+       FINAL instead of Q4, FIN instead of a dim 0.0, the amber clock, the heading
+       on the Final Score board. It is written at boot and by the pre-game watcher,
+       and that watcher returns immediately once the game is live and clears its own
+       interval, so nothing updated it during play.
+
+       So a game that ended while the layer was running stayed on Q4 — including on
+       the Final Score graphic, which is the single most screenshotted image of the
+       night. Clearing lastJSON forces the repaint on this tick rather than waiting
+       for a clock that has stopped changing. */
+    if (g.status) {
+      if (g.status !== game.status) lastJSON = '';
+      game.status = g.status;
+      S.phase = g.status === 'final' ? 'final' : 'game';
+    }
     /* THE FIVE AND THE SQUADS CAN CHANGE AFTER THE LAYER LOADED: a statistician who names the
        starters at the last minute, a federation feed that publishes them at tip, a late
        roster addition. Before, only the pre-game watcher saw those; a layer opened during the

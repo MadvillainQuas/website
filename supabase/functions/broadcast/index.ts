@@ -249,8 +249,14 @@ Deno.serve(async (req: Request) => {
       officials: game.officials || {}
     },
     clock: {
-      period, periodLabel: periodLabel(period),
-      ms: clockMs, display: mmss(clockMs), running: !!st?.running,
+      /* the same substitution the browser layer makes, so a template bound to this
+         and a browser source in the same show never disagree at the buzzer */
+      period,
+      periodLabel: game.status === 'final' ? 'FINAL' : periodLabel(period),
+      ms: clockMs,
+      display: game.status === 'final' ? 'FIN' : mmss(clockMs),
+      final: game.status === 'final',
+      running: game.status === 'final' ? false : !!st?.running,
       /* true when nothing has driven the clock for longer than it can honestly be
          run forward: the time shown is the last anybody actually saw */
       stale: clockStale,
