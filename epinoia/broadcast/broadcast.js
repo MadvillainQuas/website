@@ -162,7 +162,15 @@ function buildState() {
      game reading "0.0" looks broken to the person laying it out — which is
      exactly who is looking at it then. A period that has not started shows its
      own length, which is what the board in the hall shows. */
-  let clockMs = smoothClock(sub ? sub.clockMs() : (S.clockMs || 0), !!(sub && sub.state && sub.state.running));
+  /* A clock nobody is driving must not go on ticking. clockMs() already stops
+     running a dead source forward, but the smoothing here keeps its own count
+     between readings — so against a frozen target it would tick away, snap back
+     when the gap passed a second and a half, and do it again, for the rest of the
+     period. Asking the transport whether anyone is still driving turns that
+     sawtooth into a clock that has plainly stopped, which is the honest picture
+     and the one a producer can act on. */
+  const clockDriven = !!(sub && sub.state && sub.state.running) && !(sub.clockStale && sub.clockStale());
+  let clockMs = smoothClock(sub ? sub.clockMs() : (S.clockMs || 0), clockDriven);
   const started = !!(sub && sub.state) || S.events.length > 0;
   if (!started && !clockMs && E.PLEN) clockMs = E.PLEN(period);
 

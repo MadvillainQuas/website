@@ -111,5 +111,50 @@ console.log('\nwho is driving the clock');
   eq('and the camera is still driving', sub.clockSource(), 'cam');
 }
 
+/* ---------------------------------------------------------------------------
+   AND WHETHER ANYBODY IS STILL DRIVING IT.
+
+   clockMs() stops running a dead source forward, so it cannot count down to zero
+   on air. But a graphics layer ticks its OWN clock between readings — that is what
+   makes it smooth — and against a frozen target it would tick away, snap back when
+   the gap grew past a second and a half, and do it again for the rest of the
+   period. A clock that sawtooths is worse than one that has plainly stopped, so
+   the transport says out loud when nothing is driving it.
+   --------------------------------------------------------------------------- */
+console.log('\nand whether anybody is still driving it');
+
+{
+  const { pub, sub } = await pair();
+  pub.pushState(clockOf('cam', 500000));
+  await wait(200);
+  eq('a clock that was just read is not stale', sub.clockStale(), false);
+}
+
+{
+  const { pub, sub } = await pair();
+  /* the same reading, stamped well beyond the run-on cap: the phone is gone */
+  pub.pushState({ clock_ms: 500000, running: true, source: 'cam',
+                  updated_at: new Date(Date.now() - (L.CLOCK_RUN_ON_MS + 5000)).toISOString() });
+  await wait(200);
+  eq('a running clock nobody has read for longer than the cap is stale', sub.clockStale(), true);
+  eq('...and the clock it reports has stopped at the cap, not run to zero',
+     sub.clockMs(), 500000 - L.CLOCK_RUN_ON_MS);
+}
+
+{
+  const { pub, sub } = await pair();
+  /* a STOPPED clock is meant to sit still; its age says nothing about anybody */
+  pub.pushState({ clock_ms: 500000, running: false, source: 'cam',
+                  updated_at: new Date(Date.now() - 600000).toISOString() });
+  await wait(200);
+  eq('a stopped clock is never stale, however old the reading', sub.clockStale(), false);
+  eq('...and it reports exactly what it was given', sub.clockMs(), 500000);
+}
+
+{
+  const { sub } = await pair();
+  eq('a subscriber with no state at all is not stale either', sub.clockStale(), false);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -611,6 +611,24 @@ function subscriber(opts) {
     get state() { return state; },
     /** who is driving the clock right now: 'keeper', 'cam', or 'feed' */
     clockSource() { return (authority && Date.now() < authority.until) ? authority.source : 'feed'; },
+    /** IS ANYBODY STILL DRIVING IT?
+
+        clockMs() stops running the last reading forward once it is older than
+        CLOCK_RUN_ON_MS, which keeps it from counting down to zero on a dead
+        source. But a consumer that ticks its OWN clock between readings — which
+        every graphics layer does, because that is what makes it smooth — has no
+        way to know the target has stopped moving, so it ticks away from a frozen
+        target, snaps back when the gap gets big enough, and does it again. A clock
+        that sawtooths on air is worse than one that has visibly stopped.
+
+        True only for a clock that claims to be RUNNING: a stopped clock is
+        supposed to sit still, and its age says nothing. */
+    clockStale() {
+      if (!state || !state.running) return false;
+      const at = new Date(state.updated_at || state.at || 0).getTime();
+      if (!at) return false;
+      return ((Date.now() + offset) - at) > CLOCK_RUN_ON_MS;
+    },
     /** the whole point: a smooth clock with zero bandwidth */
     clockMs() {
       if (!state) return 0;
