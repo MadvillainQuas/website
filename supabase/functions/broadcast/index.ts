@@ -11,8 +11,12 @@
    produces it server-side, from the same event log through the same engine.
 
      GET /functions/v1/broadcast?game=<uuid>
-     GET /functions/v1/broadcast?game=<uuid>&format=xml     for a system that
-                                                            will not take JSON
+     GET /functions/v1/broadcast?game=<uuid>&format=xml       nested, for a system
+                                                              that will not take JSON
+     GET /functions/v1/broadcast?game=<uuid>&format=flatxml   ONE ROW OF COLUMNS,
+                                                              which is what a vMix
+                                                              data source binds to
+     GET /functions/v1/broadcast?game=<uuid>&format=flat      the same row as JSON
 
    WHY THE CLOCK IS RETURNED AS BOTH A NUMBER AND A STRING. A template that
    wants to count down locally needs the milliseconds and the server's opinion
@@ -65,6 +69,34 @@ function toXML(o: any, name = 'state'): string {
   return `<${name}>${esc(o)}</${name}>`;
 }
 
+/* ONE FLAT ROW, BECAUSE THAT IS WHAT A TITLE BINDS TO.
+
+   The nested document above is the right shape for reading and the wrong shape
+   for vMix, XPression, Chyron and CasparCG, every one of which binds a title
+   field to a COLUMN of a row set. Handed {home:{score:61}} they offer the
+   integrator nothing to pick; handed home_score they offer a field. So the same
+   document is also served flattened to a single row of scalars -- underscored
+   path names, the five on court numbered p1..p5 -- which is the difference
+   between "there is an API" and "a producer can use it in the ten minutes before
+   tip-off".
+
+   A single row rather than a row per player: a scorebug is one title with many
+   fields, not a table. Anything wanting a table (a box score crawl) can read the
+   nested form and build its own. */
+function flatten(o: any, prefix = '', out: Record<string, unknown> = {}) {
+  if (o === null || o === undefined) { out[prefix] = ''; return out; }
+  if (Array.isArray(o)) {
+    o.forEach((v, i) => flatten(v, prefix ? `${prefix}_p${i + 1}` : `p${i + 1}`, out));
+    return out;
+  }
+  if (typeof o === 'object') {
+    for (const [k, v] of Object.entries(o)) flatten(v, prefix ? `${prefix}_${k}` : k, out);
+    return out;
+  }
+  out[prefix] = o;
+  return out;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -73,12 +105,21 @@ Deno.serve(async (req: Request) => {
   const format = (url.searchParams.get('format') || 'json').toLowerCase();
 
   const reply = (body: unknown, status = 200) => {
-    if (format === 'xml') {
-      return new Response('<?xml version="1.0" encoding="UTF-8"?>' + toXML(body), {
-        status, headers: { ...CORS, ...NOCACHE, 'Content-Type': 'application/xml; charset=utf-8' }
-      });
+    const xmlHead = { ...CORS, ...NOCACHE, 'Content-Type': 'application/xml; charset=utf-8' };
+    /* flatxml is the one a vMix XML data source wants: <data> with one <row> of
+       scalar columns. flat is the same row as JSON, as a one-element array,
+       which is what a JSON data source expects to iterate. */
+    if (format === 'flatxml') {
+      const row = flatten(body);
+      const cols = Object.entries(row).map(([k, v]) => toXML(v, k)).join('');
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><data><row>' + cols + '</row></data>',
+        { status, headers: xmlHead });
     }
-    return new Response(JSON.stringify(body, null, 2), {
+    if (format === 'xml') {
+      return new Response('<?xml version="1.0" encoding="UTF-8"?>' + toXML(body), { status, headers: xmlHead });
+    }
+    const out = format === 'flat' ? [flatten(body)] : body;
+    return new Response(JSON.stringify(out, null, 2), {
       status, headers: { ...CORS, ...NOCACHE, 'Content-Type': 'application/json' }
     });
   };
