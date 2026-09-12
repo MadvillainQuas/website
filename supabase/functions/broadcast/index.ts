@@ -180,8 +180,15 @@ Deno.serve(async (req: Request) => {
      the request, or every graphic on air runs a fraction of a second behind. */
   let clockMs = st?.clock_ms ?? 0;
   let clockStale = false;
+  /* How long since ANYTHING wrote this game's state. Every source rewrites the
+     row while it is driving the game, so this is the honest measure of whether
+     one is still there — and it is measured whether or not the clock claims to
+     be running, which the block below cannot do. */
+  const sourceAgeMs = st?.updated_at
+    ? Math.max(0, Date.now() - new Date(st.updated_at).getTime())
+    : null;
   if (st?.running && st.updated_at) {
-    const since = Math.max(0, Date.now() - new Date(st.updated_at).getTime());
+    const since = sourceAgeMs as number;
     /* A CLOCK NOBODY IS DRIVING STOPS, IT DOES NOT RUN OUT.
 
        Running the last reading forward is right for the fraction of a second
@@ -201,6 +208,38 @@ Deno.serve(async (req: Request) => {
     const RUN_ON_MS = 20000;
     clockStale = since > RUN_ON_MS;
     clockMs = Math.max(0, clockMs - Math.min(since, RUN_ON_MS));
+  }
+
+  /* AND WHETHER ANYBODY IS DRIVING IT AT ALL, which is a different question and
+     the only one a FED game can ever answer.
+
+     The block above is gated on st.running, and run_ingest.py writes
+     `running: moving` where moving requires the broadcast heartbeat AND the
+     clock to have come down between two reads — so on the ordinary cadence a
+     LiveStats-fed game is ALWAYS written running:false. Which means clockStale
+     could never once be true for a fed game: the single guard for "nobody is
+     driving this clock" was structurally disabled on exactly the games whose
+     liveness depends on a GitHub cron this repo's own comments record dropping
+     slots, and on a handover between long-running passes.
+
+     Watched happen on 2026-09-12: the 12:00 live-lane pass ended, the next took
+     a few minutes to start writing, and for seven minutes this endpoint served a
+     clock and a score seven minutes behind the feed with stale:false — because
+     running was false, so the freeze read as a legitimately stopped clock. Every
+     bound template was told all was well.
+
+     THE THRESHOLD IS MEASURED, NOT ASSUMED. The comment above says a feed
+     refreshes "every two" seconds, and that is what made this invisible: the
+     real spacing on a live fed game that evening was a median of 39.6 s and a
+     worst of 118.4 s across nineteen polls, because live_keeper serialises every
+     due game's fetch and its whole write pass before sleeping. Three minutes
+     leaves half again over the worst observed gap and still catches a dropped
+     cron or a dead pass inside one possession's worth of wall clock.
+
+     A finished game's row is legitimately old for ever, so it is exempt. */
+  const SOURCE_DEAD_MS = 180000;
+  if (game.status !== 'final' && sourceAgeMs !== null && sourceAgeMs > SOURCE_DEAD_MS) {
+    clockStale = true;
   }
 
   const card = (t: number, pid: string) => {
@@ -258,8 +297,12 @@ Deno.serve(async (req: Request) => {
       final: game.status === 'final',
       running: game.status === 'final' ? false : !!st?.running,
       /* true when nothing has driven the clock for longer than it can honestly be
-         run forward: the time shown is the last anybody actually saw */
+         run forward, OR when nothing has written this game at all for three
+         minutes — the second of which is the only one a fed game can trip */
       stale: clockStale,
+      /* published so a template can dim a clock in proportion, and so a producer
+         can see WHY it has stopped rather than guessing */
+      sourceAgeMs: sourceAgeMs,
       updatedAt: st?.updated_at ?? null
     },
     possessionArrow: st?.arrow ?? game.arrow_init ?? null,

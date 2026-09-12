@@ -702,5 +702,56 @@ ok('...and forces the repaint rather than waiting for a clock that has stopped',
      /Space does nothing until you have taken the clock/.test(idx));
 }
 
+/* ---------------------------------------------------------------------------
+   A FED GAME COULD NEVER REPORT A DEAD SOURCE.
+
+   The endpoint runs the last clock reading forward and sets stale when it has
+   run further than it honestly can. That whole block is gated on st.running —
+   and run_ingest.py writes `running: moving`, where moving needs the broadcast
+   heartbeat AND the clock to have come down between two reads, so on the
+   ordinary cadence a LiveStats-fed game is ALWAYS written running:false.
+
+   So clockStale could never once be true for a fed game. The single guard for
+   "nobody is driving this clock" was disabled on exactly the games whose
+   liveness depends on a GitHub cron this repo's own comments record dropping
+   slots, and on a handover between long-running passes.
+
+   Watched on 2026-09-12: the 12:00 pass ended, the next took minutes to start
+   writing, and for seven minutes the endpoint served a clock and score seven
+   minutes behind the feed with stale:false — the freeze reading as a
+   legitimately stopped clock, every bound template told all was well.
+
+   The threshold is measured rather than assumed. The old comment claimed a feed
+   refreshes "every two" seconds, which is what made this invisible; the real
+   spacing on a live fed game that evening was a median of 39.6 s and a worst of
+   118.4 s across nineteen polls.
+   --------------------------------------------------------------------------- */
+{
+  const fnsrc = rd('supabase', 'functions', 'broadcast', 'index.ts');
+
+  ok('the age of the state row is measured whatever the clock claims',
+     /const sourceAgeMs = st\?\.updated_at/.test(fnsrc) &&
+     !/if \(st\?\.running\) \{[\s\S]{0,80}const sourceAgeMs/.test(fnsrc));
+  ok('...and a game nothing has written for three minutes reads stale',
+     /const SOURCE_DEAD_MS = 180000;/.test(fnsrc) &&
+     /sourceAgeMs > SOURCE_DEAD_MS/.test(fnsrc));
+  ok('...which is the only branch a fed game can ever trip',
+     /the only one a FED game can ever answer/.test(fnsrc));
+  ok('...with the threshold justified by a measurement, not a guess',
+     /median of 39\.6 s and a\s+worst of 118\.4 s/.test(fnsrc));
+  ok('a finished game is exempt, its row being legitimately old for ever',
+     /game\.status !== 'final' && sourceAgeMs !== null/.test(fnsrc));
+  ok('the running-clock run-on is unchanged, so smooth clocks stay smooth',
+     /clockMs = Math\.max\(0, clockMs - Math\.min\(since, RUN_ON_MS\)\);/.test(fnsrc) &&
+     /const RUN_ON_MS = 20000;/.test(fnsrc));
+  ok('the age itself is published, so a template can dim in proportion',
+     /sourceAgeMs: sourceAgeMs,/.test(fnsrc));
+
+  /* flatten() walks the object, so the new field becomes a flat column for free
+     — which is the point of building the flat view that way. */
+  ok('...and reaches the flat row without a second list to maintain',
+     /for \(const \[k, v\] of Object\.entries\(o\)\) flatten\(v,/.test(fnsrc));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
