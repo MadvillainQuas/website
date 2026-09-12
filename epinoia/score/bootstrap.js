@@ -469,7 +469,6 @@
   async function guardAgainstOverwrite() {
     if (guarded || !isFixture || refused) return;
     if (typeof S === 'undefined' || !S || S.phase === 'setup') return;
-    guarded = true;
 
     const sb = window.epinoiaClient && epinoiaClient();
     if (!sb) return;
@@ -480,6 +479,23 @@
       if (res.error) return;                 // cannot tell: say nothing
       count = res.count || 0;
     } catch (_) { return; }
+
+    /* ONLY A READ THAT SUCCEEDED RETIRES THE GUARD.
+
+       This latched before the request was made, and three paths then returned
+       without clearing it: no client, an error in the response, a thrown fetch.
+       The poll calls this every three seconds and every one of those calls
+       returned at the first line for the rest of the session.
+
+       Which meant the guard was disabled by exactly the condition it exists to
+       survive. Hall wifi down when the page loads — the normal case after the
+       crash that flaky connection caused — and the device goes on to score a
+       parallel copy of a game the league already has, its ids colliding with the
+       durable rows, every one of them thrown away by the upsert while the badge
+       says live.
+
+       Latched here, after the count is in hand, it is retired only by an answer. */
+    guarded = true;
 
     const mine = (S.events || []).length;
     if (count <= mine) return;               // nothing recorded that we lack

@@ -79,5 +79,25 @@ ok('any pending redo is cleared, because it belonged to a different history',
 ok('the player map, the save and the redraw all happen',
    built === 1 && saved === 1 && rendered === 1);
 
+/* ---- the guard has to survive the connection it exists to survive --------- */
+/* guardAgainstOverwrite counts the league's copy of the log before publishing, and
+   stops if the server holds more than this device does. It latched its "already
+   ran" flag BEFORE making the request, and three paths then returned without
+   clearing it: no client, an error in the response, a thrown fetch. The three-second
+   poll then returned at the first line for the rest of the session.
+
+   So the guard was disabled by exactly the condition it is there for — hall wifi
+   down at page load, which is the normal case after the crash that flaky connection
+   caused. The device then scores a parallel copy of a game the league already has.
+
+   Only an answer may retire it. */
+ok('the overwrite guard latches only after the count is in hand',
+   src.indexOf('count = res.count || 0;') < src.indexOf('guarded = true;'),
+   'count at ' + src.indexOf('count = res.count || 0;') + ', latch at ' + src.indexOf('guarded = true;'));
+ok('...so a refused read leaves it armed for the next poll',
+   /if \(res\.error\) return;[\s\S]*?guarded = true;/.test(src));
+ok('...and so does a thrown one',
+   /catch \(_\) \{ return; \}[\s\S]*?guarded = true;/.test(src));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
