@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20 and 21 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 and 21 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -310,6 +310,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 19. Subscribe the publisher's realtime channel and await its send
 
 **high** / days · `transport`
+
+> **STATUS - DONE 2026-09-12 - one channel per transport, created lazily and joined on first use. Joined LAZILY rather than at construction as suggested, because listen() must bind its handler BEFORE subscribing or it can miss the first frames; publisher() and subscriber() each build their own transport so one instance is never both. listen() now reuses that object instead of reassigning it, which used to leave the first channel joined and unreferenced. The send result IS awaited, but a lost broadcast does NOT fail the frame - that was the suggestion and it is wrong: the durable write answers "does the league have this game" and a failure there backlogs everything behind it, so tying the broadcast to it would let a rate-limited channel stop every durable write for the rest of the game. It is retried once over the socket, then reported, and the frame stands; the ten-second snapshot repairs viewers anyway. Only an explicit "error"/"timed out" counts, so a supabase-js that answers nothing does not double every frame on the wire. Tests in supabase/tests/retraction-order.test.mjs.**
 
 **Why.** send() does `channel = sb.channel('game:'+gameId)` and never calls .subscribe(); the scorer creates a publisher only and never a subscriber, so listen() — the one place that subscribes — never runs. The bundled send() therefore takes the !canPush() branch on every frame: a console warning plus a fresh HTTPS POST to /realtime/v1/api/broadcast, the slowest path, from a phone on hall wifi, several times a second. The returned 'ok'|'error'|'timed out' is discarded because the call is not awaited, so a refused or oversized broadcast is invisible and viewers fall back entirely on the durable poll ladder — which is exactly the path that does not work when the scorer is signed out. Because it is fire-and-forget, the chain's ordering guarantee does not extend to the broadcast, so two POSTs can overlap and a retraction can reach a viewer after its replacement.
 

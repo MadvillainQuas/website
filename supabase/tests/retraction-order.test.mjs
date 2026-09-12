@@ -43,9 +43,14 @@ function fakeDb(opts = {}) {
   const log = [];
   const sb = {
     channel: () => ({
-      send: f => { log.push({ op: 'broadcast', full: !!(f && f.payload && f.payload.full),
-                              events: ((f && f.payload && f.payload.events) || []).length }); },
-      subscribe: () => {}, unsubscribe: () => {}
+      /* supabase-js answers 'ok' | 'error' | 'timed out'; the real one is
+         awaited now, so the fake has to answer like it. */
+      send: async f => {
+        log.push({ op: 'broadcast', full: !!(f && f.payload && f.payload.full),
+                   events: ((f && f.payload && f.payload.events) || []).length });
+        return opts.castAnswers ? opts.castAnswers.shift() || 'ok' : 'ok';
+      },
+      subscribe: () => { log.push({ op: 'subscribe' }); }, unsubscribe: () => {}
     }),
     /* the table matters: game_events takes an array of rows, game_state one object */
     from: table => ({
@@ -65,7 +70,7 @@ function fakeDb(opts = {}) {
     })
   };
   /* what actually reached the database, with the socket traffic set aside */
-  log.db = () => log.filter(l => l.op !== 'broadcast');
+  log.db = () => log.filter(l => l.op === 'upsert' || l.op === 'delete' || l.op === 'state');
   return { sb, log };
 }
 
@@ -218,6 +223,86 @@ console.log('\na snapshot is for the socket');
      /if \(healing \|\| halted/.test(sy) && /finally \{ healing = false; \}/.test(sy));
   ok('...and it is one-directional: a server holding MORE is the takeover guard\'s question',
      /belongs to guardAgainstOverwrite/.test(sy));
+}
+
+/* ---------------------------------------------------------------------------
+   THE PUBLISHER'S CHANNEL WAS NEVER JOINED.
+
+   send() did `channel || (channel = sb.channel(...))` and nothing subscribed
+   it, because subscribe lived in listen() and listen is only called by a
+   SUBSCRIBER — and the scorer builds a publisher and nothing else.
+
+   supabase-js does not fail on an unjoined channel. It falls back to a fresh
+   HTTPS POST to /realtime/v1/api/broadcast, one per frame, which is the slowest
+   path there is: several times a second, off a phone on a sports hall's uplink,
+   for the length of a game, carrying something the socket was sitting there
+   ready to take. And the answer — 'ok', 'error' or 'timed out' — was discarded,
+   so a broadcast that never left was indistinguishable from one that did.
+   --------------------------------------------------------------------------- */
+console.log('\nthe publisher joins the channel it is shouting down');
+
+{
+  const { sb, log } = fakeDb();
+  const p = pubOn(sb);
+  await p.pushEvents([{ seq: 1, id: 1, t: 'period_start', period: 1, clock: 600000 }], []);
+  await wait(120);
+  ok('the channel is subscribed, so the frame goes over the socket',
+     log.some(l => l.op === 'subscribe'), JSON.stringify(log.map(l => l.op)));
+  ok('...once, not on every frame', log.filter(l => l.op === 'subscribe').length === 1);
+}
+
+{
+  const { sb, log } = fakeDb();
+  const p = pubOn(sb);
+  for (let i = 0; i < 4; i++) {
+    await p.pushEvents([{ seq: i + 1, id: i + 1, t: 'to', team: 0, period: 1, clock: 1 }], []);
+  }
+  await wait(200);
+  ok('still once after several frames', log.filter(l => l.op === 'subscribe').length === 1,
+     String(log.filter(l => l.op === 'subscribe').length));
+}
+
+{
+  /* A broadcast that says it failed is retried over the socket. */
+  const { sb, log } = fakeDb({ castAnswers: ['error', 'ok'] });
+  const p = pubOn(sb);
+  const landed = await p.pushEvents([{ seq: 3, id: 3, t: 'p2_made', team: 0, pid: 'h4', period: 1, clock: 9 }], []);
+  await wait(150);
+  ok('a lost broadcast is sent again', log.filter(l => l.op === 'broadcast').length === 2,
+     String(log.filter(l => l.op === 'broadcast').length));
+  ok('...and the durable write still happened', log.db().some(l => l.op === 'upsert'));
+}
+
+{
+  /* But it must NOT fail the frame. The two halves answer different questions:
+     the durable write is whether the league has the game, and a failure there
+     backlogs everything behind it — correctly, because a game the database does
+     not have cannot be finalised. The broadcast is whether people watching right
+     now saw the play, and the ten-second snapshot repairs that by itself. Tying
+     the important half to the less important one would let a channel that is
+     rate limited or mid-reconnect stop every durable write for the rest of the
+     game. */
+  const { sb, log } = fakeDb({ castAnswers: ['error', 'error'] });
+  const p = pubOn(sb);
+  await p.pushEvents([{ seq: 4, id: 4, t: 'to', team: 1, period: 1, clock: 8 }], []);
+  await wait(150);
+  ok('a broadcast that stays lost does not stop the durable write',
+     log.db().some(l => l.op === 'upsert'), JSON.stringify(log.map(l => l.op)));
+  ok('...and is not retried for ever', log.filter(l => l.op === 'broadcast').length === 2,
+     String(log.filter(l => l.op === 'broadcast').length));
+}
+
+{
+  /* An answer of neither kind is a supabase-js that does not answer at all;
+     treating silence as failure would double every frame on the wire for a
+     whole game to fix a problem that may not exist. */
+  const { sb, log } = fakeDb({ castAnswers: [undefined, undefined] });
+  const p = pubOn(sb);
+  await p.pushEvents([{ seq: 5, id: 5, t: 'to', team: 0, period: 1, clock: 7 }], []);
+  await wait(150);
+  ok('a channel that answers nothing is taken at its word, not retried',
+     log.filter(l => l.op === 'broadcast').length === 1,
+     String(log.filter(l => l.op === 'broadcast').length));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

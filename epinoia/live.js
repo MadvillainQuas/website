@@ -227,7 +227,34 @@ async function writeState(sb, gameId, st) {
 
 /* supabase: broadcast for speed, table insert for durability */
 function supabaseTransport(gameId, sb, onError) {
-  let channel = null;
+  /* ONE CHANNEL, AND IT IS JOINED.
+
+     send() used to do `channel || (channel = sb.channel(...))` and nothing ever
+     subscribed it, because subscribe lives in listen() and listen is only
+     called by a SUBSCRIBER -- and the scorer builds a publisher and nothing
+     else. supabase-js does not fail on an unjoined channel; it falls back to a
+     fresh HTTPS POST to /realtime/v1/api/broadcast, one per frame, which is the
+     slowest path there is. Several times a second, off a phone on a sports
+     hall's uplink, for the length of a game, to deliver something the socket
+     was sitting there ready to carry.
+
+     Joined lazily rather than at construction, because listen() has to bind its
+     handler BEFORE subscribing or it can miss the first frames, and the
+     transport does not know at construction which half it is. publisher() and
+     subscriber() each build their own instance, so one is never both. */
+  let channel = null, joining = false;
+
+  function chan() {
+    if (!channel) channel = sb.channel('game:' + gameId);
+    return channel;
+  }
+  /* A publisher wants the socket open and has nothing to listen for. */
+  function joinForSending() {
+    if (joining || !channel) return;
+    joining = true;
+    try { channel.subscribe(); } catch (_) { joining = false; }
+  }
+
   return {
     kind: 'supabase',
     async snapshot() {
@@ -247,8 +274,14 @@ function supabaseTransport(gameId, sb, onError) {
     },
     async send(frame) {
       // hot path first — viewers should not wait on the write
-      const ch = channel || (channel = sb.channel('game:' + gameId));
-      ch.send({ type: 'broadcast', event: 'frame', payload: frame });
+      const ch = chan();
+      joinForSending();
+      /* Started here and awaited at the bottom, so the durable write still
+         runs alongside it rather than behind it. The result was thrown away
+         before, so a broadcast that never left was indistinguishable from one
+         that did. */
+      const cast = Promise.resolve(ch.send({ type: 'broadcast', event: 'frame', payload: frame }))
+        .catch(() => 'error');
       const jobs = [];
 
       /* THE RETRACTION GOES FIRST, AND IT GOES ALONE.
@@ -354,6 +387,38 @@ function supabaseTransport(gameId, sb, onError) {
         console.warn('[live] durable write refused:', first.message || first, first.details || '');
         return false;
       }
+
+      /* A LOST BROADCAST IS REPORTED, BUT IT DOES NOT FAIL THE FRAME.
+
+         The two halves of send() answer different questions. The durable write
+         is whether the league has the game: a failure there backlogs the frame
+         and everything after it queues behind, which is right, because a game
+         the database does not have is a game that cannot be finalised. The
+         broadcast is whether people watching right now saw the play, and the
+         ten-second snapshot repairs that on its own.
+
+         Making a broadcast failure fail the frame would tie the more important
+         half to the less important one: a channel that is refusing -- rate
+         limited, mid-reconnect -- would stop the backlog draining at all, and
+         with it every durable write for the rest of the game. So it is retried
+         once over the socket and then said out loud, and the frame stands. */
+      /* Only an explicit failure counts. supabase-js answers 'ok', 'error' or
+         'timed out'; anything else is a version that does not answer at all,
+         and treating silence as failure would double every frame on the wire
+         for the length of a game to fix a problem that may not exist. */
+      const lost = v => (v === 'error' || v === 'timed out');
+      let castOk = 'ok';
+      try { castOk = await cast; } catch (_) { castOk = 'error'; }
+      if (lost(castOk)) {
+        try {
+          castOk = await Promise.resolve(ch.send({ type: 'broadcast', event: 'frame', payload: frame }))
+            .catch(() => 'error');
+        } catch (_) { castOk = 'error'; }
+        if (lost(castOk)) {
+          console.warn('[live] broadcast not delivered (' + castOk +
+                       ') — viewers correct on the next snapshot');
+        }
+      }
       return true;
     },
     /* THE CHEAP POLL. A full snapshot is the whole log every time -- five hundred rows every
@@ -374,10 +439,15 @@ function supabaseTransport(gameId, sb, onError) {
       };
     },
     listen(onFrame, onStatus) {
-      channel = sb.channel('game:' + gameId);
-      channel.on('broadcast', { event: 'frame' }, m => onFrame(m.payload));
-      channel.subscribe(s => onStatus && onStatus(s === 'SUBSCRIBED' ? 'live' : 'connecting'));
-      return () => { try { sb.removeChannel(channel); } catch (_) {} };
+      /* The same object send() uses, not a second one: reassigning it left the
+         first channel joined and unreferenced on any page that did both. The
+         handler is bound before subscribing, which is the reason the join is
+         lazy rather than done at construction. */
+      const ch = chan();
+      ch.on('broadcast', { event: 'frame' }, m => onFrame(m.payload));
+      joining = true;
+      ch.subscribe(s => onStatus && onStatus(s === 'SUBSCRIBED' ? 'live' : 'connecting'));
+      return () => { try { sb.removeChannel(ch); } catch (_) {} channel = null; joining = false; };
     },
     async serverNow() {
       // one round trip; Date header is server-authoritative
