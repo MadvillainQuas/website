@@ -39,6 +39,61 @@ const fmtMin   = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 
 /* elapsed ms from tip to (period, clock) — the spine of every minutes calculation */
 function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
 
+/* ---------------------------------------------------------------------------
+   ONE ORDER, AND IT IS THE GAME'S.
+
+   The replay below is written against game time: `close(t, cum)` measures a
+   stint as cum minus where it started, lastIn holds the moment a player came
+   on, the possession arrow and the second-chance / points-off-turnover /
+   transition windows all compare one event's clock with the one before it.
+
+   The scorer's own array satisfies that, because "add a missed play" splices
+   at insertPos(cumEl(period, clock)). But the log does not travel in that
+   order. It travels by sequence number, and a retroactively added play takes
+   the HIGHEST id there is. game_events is keyed by seq, snapshot() and delta()
+   both order by seq, the public page sorts by id, the broadcast layer sorts by
+   seq, and finalise-game reads in seq order. So a play added at 7:41 of the
+   first quarter replays, everywhere except the device it was typed on, after
+   the final buzzer.
+
+   The per-player minutes survive that, because cum is read off the event's own
+   period and clock rather than its position. Everything measured BETWEEN events
+   does not. close(t, cum) is reached only by a substitution, so a sub replaying
+   after the buzzer closes whatever stint was open with a cum from the wrong end
+   of the game: measured on a real four-period log, one stint of 3:20 was clamped
+   to zero by the Math.max in close() and its minutes handed to the five that
+   came after it. Plus-minus went with it -- the player coming off +3, the player
+   coming on -3, both reported 0 -- along with the on-court team and opponent
+   totals every on/off number is built from, and the play-by-play read in entry
+   order rather than game order. The box score the statistician is looking at and
+   the one the league publishes stop agreeing, with nothing to say which is
+   right.
+
+   Sorted here because this function is the one funnel: every consumer and
+   finalise-game go through it. Equal clocks keep the order they arrived in --
+   which is what holds a run of free throws, all stamped at the same dead ball,
+   in the order they were actually shot -- so the tiebreak is the incoming
+   index and never the id, which would reorder exactly those. An already
+   ordered log is returned untouched, so the common case costs one pass and no
+   allocation. */
+function inGameOrder(evs) {
+  const n = evs.length;
+  const keys = new Array(n);
+  let ordered = true;
+  for (let i = 0; i < n; i++) {
+    const ev = evs[i];
+    keys[i] = cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1));
+    if (i && keys[i] < keys[i - 1]) ordered = false;
+  }
+  if (ordered) return evs;
+  const idx = new Array(n);
+  for (let i = 0; i < n; i++) idx[i] = i;
+  idx.sort((a, b) => (keys[a] - keys[b]) || (a - b));
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = evs[idx[i]];
+  return out;
+}
+
 /* ---------- accumulator factories ---------- */
 const mkOC  = () => ({ tFGA:0,tFGM:0,t3M:0,tFTA:0,tTOV:0,tOR:0,tDR:0,tPTS:0,
                        oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 });
@@ -109,7 +164,7 @@ function deriveGame(game) {
   const nm = makeNamer(game);
   const period  = game.period  != null ? game.period  : 1;
   const clockMs = game.clockMs != null ? game.clockMs : PLEN(period);
-  const events  = game.events || [];
+  const events  = inGameOrder(game.events || []);
 
   const d = {
     stats: {}, team: [mkT(), mkT()], score: [0, 0], perQ: [{}, {}], pbp: [],

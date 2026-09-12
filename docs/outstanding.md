@@ -14,7 +14,7 @@ because auditors report problems that are already solved a few lines below what 
 ## Progress
 
 Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
-1, 2, 4, 5, 6, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
+1, 2, 4, 5, 6, 8, 9, 11, 12, 13, 14, 16, 17 and 18 are done, plus the whole LiveStats-to-footage video
 sync chain and the starting-five preview graphic (neither of which was on this
 list). Item 4 — gateScorer treating a transport error as a refusal — was deferred while
 live fixtures were imminent and has since been done.
@@ -152,6 +152,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 8. Sort events by game clock inside deriveGame so retro-added plays are not replayed after the buzzer
 
 **critical** / hours · `integration`
+
+> **STATUS - DONE 2026-09-12 - deriveGame sorts into game order before replaying, stably, with the incoming index as the tiebreak so a run of free throws at one dead ball keeps the order it was shot in; an already ordered log is returned untouched and the caller's array is never reordered. NOTE the item overstated the damage: per-player MINUTES survive the old behaviour, because cum is read off the event's own period and clock rather than its position. What was destroyed is everything measured between events - a stint clamped to zero, plus-minus reported as 0 for both players in a missed substitution, on-court totals attributed to five who were not on the floor, and the play-by-play in entry order. Measured in supabase/tests/engine-order.test.mjs, which fails 8 assertions against the pre-fix engine.**
 
 **Why.** The scorer's log is ordered by game time — a normal tap pushes, but 'add a missed play' splices at insertPos(cumEl(period, clock)) with the highest id. The transport carries no position: the durable table is keyed by seq, snapshot() and delta() both .order('seq'), broadcast.js:1528 sorts by seq, game.js sorts by id, and finalise-game reads .order('seq'). So a play added retroactively at 7:41 of Q1 is replayed after the final buzzer. close(t, cum) sees cum jump backwards and clamps the stint to 0, lastIn minutes clamp to 0, the possession arrow and the second-chance/points-off-turnover/transition windows replay against the wrong neighbour, and ptsAst credits the wrong lastMade. The scorer's own screen is right and the public page, the on-air lineups and the permanent box score are wrong. It is also self-inconsistent on air: broadcast.js:1519 preserves the scorer's order while :1528 re-sorts, so the lineup graphic changes depending on which frame landed last.
 

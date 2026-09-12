@@ -266,6 +266,14 @@ jobs:
         # transport, so it exercises adoptState rather than a copy of its rule.
         run: node supabase/tests/clockauthority.test.mjs
 
+      - name: A correction belongs where it happened, not where it was typed
+        # the log travels by sequence number, so a play added back into the first
+        # quarter replayed after the final buzzer everywhere except the device it
+        # was typed on -- clamping a stint to zero, zeroing the plus-minus of both
+        # players in a missed substitution, and moving an opponent basket to five
+        # who were not on the floor for it.
+        run: node supabase/tests/engine-order.test.mjs
+
       - name: The exit that says "no free throws"
         # the foul window's legend named the delete as the way out of it, so the
         # commonest foul in a game was routinely erased by a scorer who meant
