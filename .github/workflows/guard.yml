@@ -239,6 +239,13 @@ jobs:
         # one, so this checks the ENGINE's box score, not just the event shapes
         run: node supabase/tests/livestats.test.mjs
 
+      - name: A live event survives the trip to the layer
+        # broadcast.js re-applied its database-row flattener to events that had
+        # already been flattened, so on air a substitution lost who went on and
+        # off (six names on a five-man card) and every offensive rebound was
+        # counted defensive. The scorebug was fine, which is why it was missed.
+        run: node supabase/tests/broadcast-liveevents.test.mjs
+
       - name: Who is driving the clock
         # a keeper and a camera both publish continuously, and whichever frame
         # landed last used to win -- so the on-air clock alternated between them

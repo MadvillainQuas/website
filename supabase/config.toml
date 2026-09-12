@@ -1,10 +1,22 @@
 # Supabase CLI config.
 #
 # Only settings that must differ from the CLI defaults belong here. Every
-# function not listed keeps the default verify_jwt = true, so adding this file
-# does not loosen anything that already exists — `contact`, `feeds`, `merch`,
-# `socials`, `api`, `broadcast`, `finalise-game` and `membership-sync` are all
-# unaffected.
+# function not listed keeps the default verify_jwt = true.
+#
+# THIS FILE HAD DRIFTED FROM WHAT IS ACTUALLY DEPLOYED, which is the dangerous
+# direction for it to drift in. It asserted that `api` and `ics` were unaffected
+# and therefore gated; both were in fact deployed with --no-verify-jwt, and both
+# answer an anonymous request today (api returns its endpoint list, ics asks for a
+# team). The risk was silent and one command away: deploying either of them FROM
+# THIS FILE would have turned the gateway check back on, and every API key call
+# and every subscribed team calendar would have started 401ing — calendar clients
+# do not surface a subscription error, so nobody would have reported it. The two
+# blocks below now say what is true.
+#
+# `broadcast` is the one that really is gated, and deliberately left so pending a
+# decision: it is the data source a graphics engine binds to, and a vMix data
+# source cannot send a header. The same argument the `share` block makes below
+# applies to it, but opening a public endpoint is not a change to make quietly.
 project_id = "hhvofgqqadtyvcjudhjx"
 
 # livestats is a read-only CORS shim in front of public Genius Sports feeds.
@@ -22,4 +34,21 @@ verify_jwt = false
 # instead: reads are by primary key only (the table has RLS on and no policy),
 # and writes require the project's anon key plus a size and shape check.
 [functions.share]
+verify_jwt = false
+
+# api is the public Network API. It carries its own authentication — a per-league
+# key sent as X-API-Key or ?key=, checked in the function, with its own rate limit
+# and attribution — and NONE of the call shapes its documentation describes carry
+# an Authorization header. Gating it at the gateway would mean the function never
+# runs and the entire key design is unreachable. It has always been deployed open;
+# this records that.
+[functions.api]
+verify_jwt = false
+
+# ics serves a team's fixtures as a calendar. A calendar client subscribes to a
+# URL and sends nothing else — there is no place to put a token, and a client that
+# gets a 401 simply stops updating without telling the person who subscribed. Like
+# share, the gateway cannot be the thing that guards this. It reads only fixtures
+# that are already public.
+[functions.ics]
 verify_jwt = false

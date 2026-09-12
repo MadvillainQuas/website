@@ -119,9 +119,31 @@ const api = async path => {
   return r.json();
 };
 
-const rowToEvent = r => Object.assign(
-  { id: r.seq, seq: r.seq, t: r.t, team: r.team, pid: r.pid,
-    period: r.period, clock: r.clock }, r.payload || {});
+/* A STORED EVENT AND A LIVE ONE ARRIVE IN DIFFERENT SHAPES.
+
+   A stored event is a database row: seven indexed columns and everything else --
+   whether a rebound was offensive, who came on and who came off, where a shot was
+   taken -- inside a `payload` column. Unpacking that is what this is for.
+
+   A LIVE event has already been unpacked, by the scorer that published it or by
+   live.js on the way through. Running it past here a second time kept the seven
+   fields named below and silently dropped the rest: a substitution lost `out` and
+   `in`, so nobody left the floor and the card showed six names; every offensive
+   rebound lost `off` and was counted as a defensive one; a shot lost `loc` and
+   `stype`, so the rim/mid/three split collapsed. And not transiently -- the
+   scorer republishes its whole log every ten seconds as a `full` frame, and that
+   path re-stripped every event in it.
+
+   It went unnoticed because a SCORE is derived from the event type alone, so the
+   scorebug was always right while every stat card during play was wrong.
+
+   The presence of a `payload` property is the honest test: only a row has one. */
+const rowToEvent = r => ('payload' in r)
+  ? Object.assign(
+      { id: r.seq, seq: r.seq, t: r.t, team: r.team, pid: r.pid,
+        period: r.period, clock: r.clock }, r.payload || {})
+  : Object.assign({}, r,
+      { id: r.id != null ? r.id : r.seq, seq: r.seq != null ? r.seq : r.id });
 
 const esc = s => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
