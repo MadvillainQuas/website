@@ -514,6 +514,6 @@ function paintStatus() {
   $('#rSt').textContent = bits.join(' · ');
 }
 
-window.__clockcam = { binarise, glyphs, readClock, readScore, segDigit };
+window.__clockcam = { binarise, glyphs, readClock, readScore, segDigit, boxToVideo, stageRect, CLK, get boxes() { return boxes; } };
 document.addEventListener('DOMContentLoaded', boot);
 }());
