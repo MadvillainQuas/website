@@ -167,104 +167,15 @@ function cropOf(box, w) {
   g.drawImage(v, box.x * v.videoWidth, box.y * v.videoHeight, sw, sh, 0, 0, W, H);
   return g.getImageData(0, 0, W, H);
 }
-/* the crop as bright digits on black: grey, Otsu, inverted if the board is the bright part */
-function binarise(img, forceInvert, thrAdj) {
-  const { width: W, height: H, data } = img;
-  const g = new Uint8Array(W * H); let sum = 0;
-  for (let i = 0; i < W * H; i++) { g[i] = (data[i * 4] * 0.3 + data[i * 4 + 1] * 0.5 + data[i * 4 + 2] * 0.2) | 0; sum += g[i]; }
-  const mean = sum / (W * H);
-  const hist = new Uint32Array(256); for (let i = 0; i < W * H; i++) hist[g[i]]++;
-  let total = W * H, sumAll = 0; for (let t = 0; t < 256; t++) sumAll += t * hist[t];
-  let wB = 0, sumB = 0, best = 0, thr = 128;
-  /* Otsu, taking the threshold as the midpoint between the two class means: on a clean board
-     the between-class variance is flat across the whole gap, and the first t on that plateau
-     is the dark mode itself -- which put the digits' own grey on the wrong side of the line */
-  for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = total - wB; if (!wF) break; sumB += t * hist[t]; const mB = sumB / wB, mF = (sumAll - sumB) / wF; const v = wB * wF * (mB - mF) * (mB - mF); if (v > best + 1e-9) { best = v; thr = Math.round((mB + mF) / 2); } }
-  thr = Math.max(8, Math.min(247, thr + (thrAdj || 0)));
-  const invert = forceInvert != null ? forceInvert : (mean > 128);     // bright board: the digits are the dark part
-  const out = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) out[i] = invert ? (g[i] < thr ? 1 : 0) : (g[i] > thr ? 1 : 0);
-  return { W, H, bits: out };
-}
-/* glyphs: runs of columns with ink, cut to their rows */
-function glyphs(b) {
-  const { W, H, bits } = b;
-  const col = new Uint16Array(W);
-  for (let x = 0; x < W; x++) { let n = 0; for (let y = 0; y < H; y++) n += bits[y * W + x]; col[x] = n; }
-  const runs = []; let x = 0;
-  while (x < W) {
-    if (col[x] > 0) { let s = x; while (x < W && col[x] > 0) x++; runs.push([s, x]); } else x++;
-  }
-  return runs.map(([x0, x1]) => {
-    let y0 = H, y1 = 0;
-    for (let y = 0; y < H; y++) for (let xx = x0; xx < x1; xx++) if (bits[y * W + xx]) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    const ink = col.slice(x0, x1).reduce((a, v) => a + v, 0);
-    return { x0, x1, y0, y1: y1 + 1, w: x1 - x0, h: y1 + 1 - y0, ink };
-  }).filter(g => g.h > 0);
-}
-const SEG = { '1111110': 0, '0110000': 1, '1101101': 2, '1111001': 3, '0110011': 4, '1011011': 5, '1011111': 6, '1110000': 7, '1111111': 8, '1111011': 9, '1110010': 7 };
-function segDigit(b, g, frameW) {
-  const { W, H, bits } = b;
-  /* A DIGIT IS READ IN A FULL-WIDTH FRAME. A 1, a 3 and a 7 have no left-hand segments, so
-     their ink is narrower than the digit cell and sits at its right edge; sampling the seven
-     regions over the ink alone puts the left regions on top of the bars and reads a 3 as an 8
-     or a 1. The frame is the width of a full digit (the median tall glyph on the line),
-     right-aligned on the ink when the ink is narrow. */
-  const fw = Math.max(g.w, frameW || g.w);
-  const x0 = g.w < fw * 0.85 ? g.x1 - fw : g.x0;
-  const sample = (fx0, fy0, fx1, fy1) => {
-    let n = 0, t = 0;
-    for (let y = g.y0 + Math.floor(fy0 * g.h); y < g.y0 + Math.ceil(fy1 * g.h); y++)
-      for (let x = Math.max(0, x0 + Math.floor(fx0 * fw)); x < Math.min(W, x0 + Math.ceil(fx1 * fw)); x++) { t++; n += bits[y * W + x]; }
-    return t ? n / t : 0;
-  };
-  // a: top, b: upper right, c: lower right, d: bottom, e: lower left, f: upper left, g: middle
-  const s = [sample(0.2, 0.0, 0.8, 0.16), sample(0.7, 0.12, 1.0, 0.45), sample(0.7, 0.55, 1.0, 0.88),
-             sample(0.2, 0.84, 0.8, 1.0), sample(0.0, 0.55, 0.3, 0.88), sample(0.0, 0.12, 0.3, 0.45), sample(0.2, 0.42, 0.8, 0.58)];
-  const key = s.map(v => v > 0.38 ? '1' : '0').join('');
-  if (SEG[key] != null) return SEG[key];
-  if (g.w < g.h * 0.3) return 1;                               // a bare stroke is a one whatever else it reads as
-  return null;
-}
-function frameWidth(gs) {
-  /* a digit cell is about half as wide as it is tall; a line of ones alone must not shrink it */
-  const ws = gs.map(g => g.w).sort((a, b) => a - b), hs = gs.map(g => g.h).sort((a, b) => a - b);
-  if (!ws.length) return 0;
-  return Math.max(ws[Math.floor(ws.length / 2)], Math.round(0.5 * hs[Math.floor(hs.length / 2)]));
-}
-function readClock(b) {
-  const gs = glyphs(b).filter(g => g.h >= b.H * 0.35);
-  if (!gs.length) return null;
-  const tall = gs.filter(g => g.h >= b.H * 0.5);
-  // separators: short things between tall ones (a colon, a dot); digits: the tall ones
-  const digits = []; let colonAt = -1, dotAt = -1;
-  const fw = frameWidth(tall);
-  gs.forEach(g => {
-    if (g.h >= b.H * 0.5) { digits.push(segDigit(b, g, fw)); }
-    else if (g.w < b.W * 0.08) { if (g.h > b.H * 0.25) colonAt = digits.length; else dotAt = digits.length; }
-  });
-  if (digits.some(d => d == null) || !digits.length) return null;
-  if (colonAt > 0 && digits.length - colonAt === 2) {            // M:SS or MM:SS
-    const m = +digits.slice(0, colonAt).join(''), s = +digits.slice(colonAt).join('');
-    if (s > 59) return null;
-    return (m * 60 + s) * 1000;
-  }
-  if (dotAt > 0 && digits.length - dotAt === 1) {                // SS.t under a minute
-    const s = +digits.slice(0, dotAt).join(''), t = digits[dotAt];
-    return s * 1000 + t * 100;
-  }
-  if (digits.length === 3 && colonAt < 0 && dotAt < 0) return (+digits.slice(0, 2).join('')) * 1000 + digits[2] * 100;   // "453" boards drop the dot
-  if (digits.length === 4 && colonAt < 0) { const m = +digits.slice(0, 2).join(''), s = +digits.slice(2).join(''); return s <= 59 ? (m * 60 + s) * 1000 : null; }
-  if (digits.length === 3 && colonAt < 0) { const m = digits[0], s = +digits.slice(1).join(''); return s <= 59 ? (m * 60 + s) * 1000 : null; }
-  return null;
-}
-function readScore(b) {
-  const gs = glyphs(b).filter(g => g.h >= b.H * 0.5);
-  if (!gs.length || gs.length > 3) return null;
-  const fw = frameWidth(gs);
-  const ds = gs.map(g => segDigit(b, g, fw));
-  return ds.some(d => d == null) ? null : +ds.join('');
-}
+/* THE DECODER LIVES IN decode.js, and the test renders scoreboards at it.
+
+   These six functions are pure arithmetic over a crop, which makes them the one
+   part of the clock cam that can be measured rather than eyeballed: see
+   supabase/tests/clockcam.decode.test.mjs. Pulling them out of this file is what
+   lets the browser and the bench run the SAME code instead of two copies that
+   drift apart the first time one of them is fixed. */
+const { binarise, glyphs, segDigit, frameWidth, readClock, readScore } = window.CCDecode;
+
 function thumb(kind, b, text) {
   const host = $('#thumbs'); let wrap = host.querySelector('[data-k="' + kind + '"]');
   if (!wrap) { wrap = el('div'); wrap.dataset.k = kind; wrap.appendChild(el('canvas')); wrap.appendChild(el('span')); host.appendChild(wrap); }
