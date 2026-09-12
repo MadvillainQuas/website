@@ -1,19 +1,19 @@
 {
- "updated": "2026-09-11T21:57:10.973489+00:00",
+ "updated": "2026-09-12T00:06:01.152317+00:00",
  "competitions": [
   {
    "code": "BCB",
    "label": "British Championship Basketball",
    "adapter": "fiba_livestats",
    "games": 222,
-   "updated": "2026-09-11T21:57:10.970881+00:00"
+   "updated": "2026-09-12T00:06:01.149702+00:00"
   },
   {
    "code": "SLB",
    "label": "Super League Basketball (M)",
    "adapter": "fiba_livestats",
    "games": 144,
-   "updated": "2026-09-11T21:52:40.702044+00:00"
+   "updated": "2026-09-12T00:02:13.711377+00:00"
   }
  ]
 }
