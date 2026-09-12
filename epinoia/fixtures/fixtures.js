@@ -249,8 +249,24 @@ function fixtureRow(g, stats, names) {
      does — the preview behind it has the map, the tip-off and a written read
      on the two clubs — so the row says so. */
   if (!final && !live) {
-    const flag = el('div', 'fxpreview');
-    flag.append(el('span', 'fxpvdot'), document.createTextNode('preview & info'));
+    /* AND WHEN THE FIVES ARE IN, THAT IS WHAT THE ROW SAYS.
+
+       A table confirms its starting fives in pre-game setup, minutes before the
+       ball goes up, and for those minutes it is the most newsworthy thing an
+       unplayed fixture carries — the question people arrive with, with a shelf
+       life of about twenty. Same slot, same weight, so the row does not change
+       shape; only the words and the colour of the dot.
+
+       BOTH fives, because "lineups" is plural and one side's is not the team
+       news. And the shape matters: a fed fixture gets starters written as
+       [[], []] well before either five is known, and an empty nested array is
+       truthy — `if (g.starters)` says yes to it. */
+    const f = g.starters;
+    const lineups = Array.isArray(f) && Array.isArray(f[0]) && Array.isArray(f[1]) &&
+                    f[0].length >= 5 && f[1].length >= 5;
+    const flag = el('div', 'fxpreview' + (lineups ? ' in' : ''));
+    flag.append(el('span', 'fxpvdot'),
+                document.createTextNode(lineups ? 'lineups in · preview' : 'preview & info'));
     foot.appendChild(flag);
   }
   row.appendChild(foot);
@@ -458,7 +474,7 @@ function watchLive(delay) {
     }
     GAMES = await D.all('games?competition_id=in.(' + comps.join(',') + ')' +
       '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
-      'home_team_id,away_team_id&order=tipoff_at.desc');
+      'starters,home_team_id,away_team_id&order=tipoff_at.desc');
 
     renderFilters();
     await render();

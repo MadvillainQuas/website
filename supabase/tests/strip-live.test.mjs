@@ -270,5 +270,81 @@ const state = (o) => Object.assign({
   M.LIVE.clear(); M.ROWS.clear();
 }
 
+/* ---------------------------------------------------------------------------
+   THE LINEUPS ARE THE TEAM NEWS.
+
+   A table confirms its starting fives in pre-game setup, minutes before the ball
+   goes up. The strip already knew that and used it only to poll faster: the card
+   still read PREVIEW & INFO, which is what it said the week before as well.
+
+   Who is starting is the question people arrive with, the answer has a shelf
+   life of about twenty minutes, and the card is the surface most of them see.
+
+   The shape matters more than it looks. A fed fixture gets `starters` written as
+   [[], []] — an empty shell — well before either five is known, and an empty
+   nested array is TRUTHY: `if (g.starters)` says yes to it. That is the shape
+   this test exists for.
+   --------------------------------------------------------------------------- */
+console.log('\nthe lineups are the team news');
+
+{
+  const L = lift(['statusOf', 'DONE', 'lineupsIn']);
+  const sched = f => ({ id: 'g', status: 'scheduled', starters: f });
+
+  ok('two named fives are the team news',
+     L.lineupsIn(sched([['a','b','c','d','e'], ['f','g','h','i','j']])) === true);
+
+  /* The shape the feed actually writes first, seen in production on 2026-09-12:
+     two empty arrays, truthy, and not a lineup. */
+  ok('an empty shell is not, however truthy it is',
+     L.lineupsIn(sched([[], []])) === false,
+     'starters [[],[]] was read as announced');
+  ok('...and nor is null or a missing column',
+     L.lineupsIn(sched(null)) === false && L.lineupsIn({ id: 'g', status: 'scheduled' }) === false);
+
+  /* "Lineups" is plural, and one side's is not the team news. They can land
+     separately, because the ingest writes what the feed has. */
+  ok('one side alone is not the team news',
+     L.lineupsIn(sched([['a','b','c','d','e'], []])) === false);
+  ok('...in either order',
+     L.lineupsIn(sched([[], ['f','g','h','i','j']])) === false);
+  ok('a short five is not a five',
+     L.lineupsIn(sched([['a','b','c','d'], ['f','g','h','i','j']])) === false);
+
+  /* Only before tip. Once a game is live, LIVE is the news; once it is done,
+     the score is. */
+  const five = [['a','b','c','d','e'], ['f','g','h','i','j']];
+  ok('a live game says LIVE, not that its lineups are in',
+     L.lineupsIn({ id: 'g', status: 'live', starters: five }) === false);
+  ok('...and a finished one says FT',
+     L.lineupsIn({ id: 'g', status: 'final', starters: five }) === false);
+  ok('...and a game being finalised is not a preview either',
+     L.lineupsIn({ id: 'g', status: 'finalising', starters: five }) === false);
+  ok('nothing at all is safe', L.lineupsIn(null) === false && L.lineupsIn(undefined) === false);
+
+  /* A card built once and a card repainted in place must agree — they are two
+     code paths for the same three pieces of state, and the strip repaints
+     rather than rebuilds precisely so a scroll is not interrupted. */
+  ok('card() and paint() read the one test, not two copies of it',
+     (SRC.match(/lineupsIn\(g\)/g) || []).length >= 2);
+  ok('...and share one spelling of the badge',
+     /const PRIMED_BADGE = 'LINEUPS IN';/.test(SRC) &&
+     (SRC.match(/PRIMED_BADGE/g) || []).length >= 3);
+  ok('paint() can put the badge up on a card already on screen',
+     /if \(!label\.querySelector\('\.dot'\) \|\| label\.textContent !== PRIMED_BADGE\)/.test(SRC));
+  ok('...and take it down again, dot and all',
+     /if \(label\.querySelector\('\.dot'\) \|\| label\.textContent !== want\)/.test(SRC));
+  ok('...and rewrite what the card invites you to press',
+     /const go = node\.querySelector\('\.go'\);/.test(SRC) &&
+     /primed \? ' \u00b7 lineups \u2197' : ' \u00b7 preview \u2197'/.test(SRC));
+  ok('the primed class is added beside is-upcoming, not instead of it',
+     (SRC.match(/'is-upcoming is-primed'/g) || []).length >= 2);
+
+  /* Both queries return the same shape, or the next reader of this file gets
+     caught by a row that is missing a column depending on how it arrived. */
+  ok('both game queries select starters',
+     (SRC.match(/select=id,tipoff_at,status,venue,home_score,away_score,starters,/g) || []).length === 2);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

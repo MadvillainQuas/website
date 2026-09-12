@@ -107,6 +107,14 @@
   .fxpvdot{width:5px;height:5px;border-radius:50%;background:var(--aqua);
     box-shadow:0 0 8px var(--aqua);flex:none}
   .fixture:hover .fxpreview{opacity:1}
+  /* The fives are named and the ball is minutes away: the lume rather than the
+     aqua, and full opacity without waiting for a hover, because this is the one
+     state in the slot that is news rather than a signpost. */
+  .fxpreview.in{color:var(--lume);opacity:1}
+  .fxpreview.in .fxpvdot{background:var(--lume);box-shadow:0 0 8px var(--lume);
+    animation:fxpv 1.6s ease-in-out infinite}
+  @keyframes fxpv{0%,100%{opacity:1}50%{opacity:.3}}
+  @media (prefers-reduced-motion:reduce){ .fxpreview.in .fxpvdot{animation:none} }
   .ldr{min-width:96px}
   .ldr .lk{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--ink-3)}
@@ -170,7 +178,7 @@
 <script src="../season.js?v=291" defer></script>
 <script src="../bpm.js?v=239" defer></script>
 <script src="../data.js?v=265" defer></script>
-<script src="fixtures.js?v=272" defer></script>
+<script src="fixtures.js?v=287" defer></script>
 <script src="../nav.js?v=285" defer></script>
 <script src="../xscroll.js?v=239" defer></script>
 </body>

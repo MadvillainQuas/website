@@ -218,6 +218,10 @@
 .cse[data-theme="light"] .ep-card .seam{ background:rgba(0,0,0,.14) }
 .ep-card.is-live::before{ background:#ff5f6b }
 .ep-card.is-upcoming::before{ background:var(--ep-accent-2) }
+/* THE LINEUPS ARE IN: a fixture minutes from tip-off, with both starting fives
+   named. The lume rather than the live red — this is "about to", not "now" —
+   and it overrides the upcoming accent it sits beside. */
+.ep-card.is-primed::before{ background:#93f2bf }
 
 .ep-card .meta{
   display:flex; align-items:baseline; justify-content:space-between; gap:6px;
@@ -227,6 +231,8 @@
 }
 .ep-card .meta .st{ flex:none; color:rgba(230,255,241,.6) }
 .ep-card.is-live .meta .st{ color:#ff5f6b }
+.ep-card.is-primed .meta .st{ color:#93f2bf }
+.ep-card.is-primed .meta .st .dot{ background:#93f2bf }
 .ep-card .meta .comp{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .ep-card .meta .st .dot{
   display:inline-block; width:4px; height:4px; border-radius:50%;
@@ -410,6 +416,11 @@
 .cse[data-theme="light"] .ep-card .meta{ color:rgba(13,31,23,.5) }
 .cse[data-theme="light"] .ep-card .meta .st{ color:rgba(13,31,23,.7) }
 .cse[data-theme="light"] .ep-card.is-live .meta .st{ color:#c8324a }
+/* The lume is unreadable on white, so the light theme takes a green dark enough
+   to carry 6.5px text against the card. */
+.cse[data-theme="light"] .ep-card.is-primed::before{ background:#0f7a4a }
+.cse[data-theme="light"] .ep-card.is-primed .meta .st{ color:#0b6b40 }
+.cse[data-theme="light"] .ep-card.is-primed .meta .st .dot{ background:#0b6b40 }
 .cse[data-theme="light"] .ep-card .meta .st .dot{ background:#c8324a }
 .cse[data-theme="light"] .ep-card .abbr{ color:rgba(13,31,23,.85) }
 .cse[data-theme="light"] .ep-card .tm.win .abbr{ color:#0f7a52 }

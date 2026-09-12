@@ -293,6 +293,36 @@ function fmtClock(ms) {
    again, so the reader is told what is true: it is finished. */
 const DONE = st => st === 'final' || st === 'finalising';
 
+/* ============================================ THE LINEUPS ARE THE TEAM NEWS ===
+   A table confirms its starting fives in pre-game setup, minutes before the
+   ball goes up — a LiveStats one during its own setup, the scoring app the
+   moment the statistician has picked them (primeFixture writes them without
+   touching status, because nothing has started). Until now the strip knew that
+   and used it only to poll faster: the card still read PREVIEW & INFO, which is
+   what it said the week before as well.
+
+   It is the most newsworthy thing a fixture card ever carries before tip-off.
+   Who is starting is the question people actually arrive with, the answer has a
+   shelf life of about twenty minutes, and the card is the one surface most of
+   them see. So it says so, and the press target is named for it: the preview
+   page draws the fives in the circles.
+
+   BOTH FIVES, because "lineups" is plural and one side's is not the team news.
+   They can land separately — the ingest writes what the feed has — and a card
+   claiming the lineups are in when half of them are is the kind of small lie
+   that teaches people not to trust the badge. The faster poll deliberately uses
+   a looser test (see primedNow): tightening the safety net early costs nothing,
+   whereas saying something early is what this avoids. */
+function lineupsIn(g) {
+  if (!g || statusOf(g) !== 'scheduled') return false;
+  const f = g.starters;
+  return Array.isArray(f) && Array.isArray(f[0]) && Array.isArray(f[1]) &&
+         f[0].length >= 5 && f[1].length >= 5;
+}
+
+/* One name for the badge and the link, so card() and paint() cannot drift. */
+const PRIMED_BADGE = 'LINEUPS IN';
+
 function statusOf(g) {
   const s = LIVE.get(g.id);
   if (g.status === 'scheduled' && s && s.status === 'live') return 'live';
@@ -317,7 +347,9 @@ function paint() {
     const g = ROWS.get(node.getAttribute('data-game'));
     if (!g) return;
     const st = statusOf(g), live = st === 'live', final = st === 'final';
-    const cls = 'ep-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
+    const primed = lineupsIn(g);
+    const cls = 'ep-card ' + (live ? 'is-live' : final ? 'is-final'
+                                   : primed ? 'is-upcoming is-primed' : 'is-upcoming');
     if (node.className !== cls) node.className = cls;
 
     const label = node.querySelector('.st');
@@ -328,9 +360,19 @@ function paint() {
           label.appendChild(el('span', 'dot'));
           label.appendChild(document.createTextNode('LIVE'));
         }
+      } else if (primed) {
+        /* textContent would read "LINEUPS IN" with the dot counted out of it,
+           so the dot's presence is what is compared. */
+        if (!label.querySelector('.dot') || label.textContent !== PRIMED_BADGE) {
+          label.textContent = '';
+          label.appendChild(el('span', 'dot'));
+          label.appendChild(document.createTextNode(PRIMED_BADGE));
+        }
       } else {
         const want = final ? 'FT' : 'PREVIEW & INFO';
-        if (label.textContent !== want) label.textContent = want;
+        if (label.querySelector('.dot') || label.textContent !== want) {
+          label.textContent = want;
+        }
       }
     }
 
@@ -359,6 +401,15 @@ function paint() {
         : fmtDate(g.tipoff_at);
       if (vn.textContent !== want) vn.textContent = want;
       vn.classList.toggle('clock', live && ms != null);
+    }
+
+    /* ...and what the card invites you to press. The lineups landing while the
+       strip is open is the ordinary case, not the exception. */
+    const go = node.querySelector('.go');
+    if (go) {
+      const want = live ? 'watch ↗' : final ? fmtTime(g.tipoff_at)
+        : fmtTime(g.tipoff_at) + (primed ? ' · lineups ↗' : ' · preview ↗');
+      if (go.textContent !== want) go.textContent = want;
     }
   });
   tickCadence();
@@ -561,8 +612,12 @@ function fmtTime(iso) {
 function card(g) {
   const phase = statusOf(g);
   const live = phase === 'live', final = phase === 'final';
+  const primed = lineupsIn(g);
   const a = document.createElement('a');
-  a.className = 'ep-card ' + (live ? 'is-live' : final ? 'is-final' : 'is-upcoming');
+  /* is-primed sits ALONGSIDE is-upcoming rather than replacing it, so every
+     rule an upcoming card already has still applies and this only adds. */
+  a.className = 'ep-card ' + (live ? 'is-live' : final ? 'is-final'
+                                   : primed ? 'is-upcoming is-primed' : 'is-upcoming');
   /* paint() finds its cards by this, and finds BOTH copies of each — the rail
      holds the list twice so the scroll can wrap invisibly. */
   a.setAttribute('data-game', g.id);
@@ -591,6 +646,13 @@ function card(g) {
      venue, a map and a written preview behind it, and "UPCOMING" said nothing
      about that. Saying so is the difference between a card people ignore until
      tip-off and one worth pressing the week before. */
+  /* The same pulsing dot LIVE uses, in the lume rather than the red: this is
+     "any minute now", which is the one other thing on a strip worth a glance
+     stopping for. Reduced motion already stills it (embed.css). */
+  else if (primed) {
+    st.appendChild(el('span', 'dot'));
+    st.appendChild(document.createTextNode(PRIMED_BADGE));
+  }
   else st.textContent = final ? 'FT' : 'PREVIEW & INFO';
   meta.appendChild(st);
   a.appendChild(meta);
@@ -638,8 +700,11 @@ function card(g) {
     : fmtDate(g.tipoff_at));
   if (live && ms != null) vn.classList.add('clock');
   when.appendChild(vn);
-  when.appendChild(el('span', null,
-    live ? 'watch ↗' : final ? fmtTime(g.tipoff_at) : fmtTime(g.tipoff_at) + ' · preview ↗'));
+  /* Classed so paint() can rewrite it when the lineups land under a strip that
+     is already on screen — which is when they land. */
+  when.appendChild(el('span', 'go',
+    live ? 'watch ↗' : final ? fmtTime(g.tipoff_at)
+      : fmtTime(g.tipoff_at) + (primed ? ' · lineups ↗' : ' · preview ↗')));
   a.appendChild(when);
   return a;
 }
@@ -708,7 +773,11 @@ async function load() {
   try {
     [gs, live] = await Promise.all([
       api(sel),
-      api('games?select=id,tipoff_at,status,venue,home_score,away_score,' +
+      /* starters as well, so a game reached only by this query carries the same
+         fields as one from the list above. It is live, so the badge says LIVE
+         either way — but two shapes of the same row is how the next reader of
+         this file gets caught. */
+      api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
           '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => [])
