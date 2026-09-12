@@ -246,6 +246,7 @@ def main():
                         if h_n + 1 < 3 or (t - h_first) < 0.7:
                             misses += 1; continue
                         held = None          # three readings agreeing over most of a second
+                        running = False; last_change_t = t
                     else:
                         held = (ms, t, 1, t); misses += 1; continue
                 else:
@@ -262,6 +263,7 @@ def main():
             still = (t - steady[1]) > 1.2
             if label_now or runs or still:
                 locked = True
+                running = bool(runs); last_change_t = t
                 print('  locked on the clock at %s (%s)' % (CK.fmt_clock(ms),
                       'period label' if label_now else ('running value' if runs else 'held still')))
             else:
@@ -269,14 +271,20 @@ def main():
                 continue
         misses = 0
         # running: it came down since the last reading at about the speed of time
+        # RUNNING IS "IT CAME DOWN", NOT "IT CAME DOWN BY EXACTLY THE RIGHT AMOUNT".
+        #
+        # The old test also required the fall to match the time since the last reading, which
+        # at two readings a second off a board showing whole seconds is a coin toss: half the
+        # readings repeat the same value and the arithmetic lands either side of its tolerance.
+        # The flag flickered between running and stopped on a clock that was plainly running,
+        # and every flicker is a layer pausing its own tick for a moment. Whether the reading is
+        # PLAUSIBLE is already settled above; all that is left to ask is which way it moved.
+        # Same rule as epinoia/clockcam/clock.js, so the two readers agree.
         if prev_ms is not None and dt:
-            came_down = (prev_ms - ms) / 1000.0
-            if came_down > 0.2 and abs(came_down - dt) <= max(1.0, 0.6 * dt):
+            if ms < prev_ms - 100:
                 running = True; last_change_t = t
             elif ms == prev_ms and (t - (last_change_t or 0)) > 1.6:
                 running = False
-            elif ms > prev_ms + 1500:
-                running = False                          # a reset: new period or a correction at the table
         prev_ms, prev_t = ms, t
         n += 1
         if pusher:

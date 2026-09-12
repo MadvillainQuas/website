@@ -409,10 +409,25 @@ function tick() {
      second rather than most of one: the shorter the window, the less often a
      digit changes inside it */
   if ((grab = (grab + 1) % 2) !== 0) { if ($('#pcMode').checked) postCrop(); return; }
-  const b = binarise(stack(ring), inv, adj);
+  const now0 = Date.now();
+  /* THE STACK MUST BE SHORTER THAN THE BOARD'S OWN TICK.
+
+     Averaging three frames works because a board showing whole seconds changes
+     once a second and the stack spans a quarter of one. Under a minute the board
+     switches to tenths and changes ten times a second, so all three frames hold
+     different numbers and the average is a blur of them -- which does not read as
+     any of the three. On 34.5 -> 34.4 -> 34.3 it came back 34.9.
+
+     So below a minute the newest frame is read on its own. The flicker that
+     averaging was there to beat costs a few more refused frames; a tenth that was
+     never on the board costs the last seconds of a quarter, which is the part
+     anybody watching is actually looking at. */
+  const predNow = CLK.predict(now0);
+  const tenths = predNow != null && predNow < 60000;
+  const b = binarise(tenths ? ring[ring.length - 1] : stack(ring), inv, adj);
   if ($('#pcMode').checked) { postCrop(); thumb('clock', b, 'to the PC'); return; }
-  const now = Date.now();
-  const ms = readClock(b, CLK.predict(now));
+  const now = now0;
+  const ms = readClock(b, predNow);
   thumb('clock', b, ms == null ? null : fmt(ms));
   if (ms != null) {
     lastReadAt = now; hunt = null;

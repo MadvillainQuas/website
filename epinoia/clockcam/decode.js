@@ -408,10 +408,50 @@ function readClock(b, hintMs) {
   let maxH = 0; for (const g of all) if (g.h > maxH) maxH = g.h;
   if (maxH < b.H * 0.22) return null;
 
+  /* A HALF-LIT DIGIT IS NOT A COLON.
+
+     Anything shorter than a digit used to be treated as a separator. But a digit
+     whose top half has dropped out -- a board with a dead lamp row, a box clipping
+     the tops, a leading 1 that is dim -- is also shorter than a digit, and it was
+     being quietly reclassified. On a board reading 10:03 the leading 1 went missing
+     that way and the remaining 0, 0 and 3 were read as 0:03: ten minutes wrong,
+     the same ten minutes wrong on every frame, which is exactly the shape of error
+     that survives corroboration and reaches the stream.
+
+     A colon is about four tenths of a digit's height and a decimal point about one.
+     Nothing real sits between half and two thirds, so anything that does is a digit
+     that has come apart, and the frame is refused rather than reinterpreted. */
+  /* A COLON IS TWO LAMPS WITH A GAP. A HALF-LIT DIGIT IS ONE STROKE.
+
+     Sorting these by height alone does not work in either direction. Too generous
+     and a digit whose top half has dropped out -- a dead lamp row, a box clipping
+     the tops, a dim leading 1 -- is quietly reclassified as a colon: on a board
+     reading 10:03 that lost the leading 1 exactly so, and the rest was read as
+     0:03. Ten minutes wrong, the same ten minutes wrong on every frame, which is
+     the shape of error that survives corroboration and reaches the stream. Too
+     strict and a real colon on a line of narrow digits (11:11, where the colon
+     measures just under half the digit height) is taken for a fifth digit and the
+     frame is thrown away.
+
+     Counting the bands of ink settles it without a threshold to tune: a colon has
+     two, a decimal point has one and is tiny, and anything else standing between
+     the digits is a digit that has come apart -- which will fail to decode, and
+     the frame will be refused for the right reason. */
+  const rowRuns = g => {
+    let runs = 0, on = false;
+    for (let y = g.y0; y < g.y1; y++) {
+      let ink = false;
+      for (let x = g.x0; x < g.x1 && !ink; x++) if (b.bits[y * b.W + x]) ink = true;
+      if (ink && !on) { runs++; on = true; } else if (!ink) on = false;
+    }
+    return runs;
+  };
   const digitGs = [], seps = [];
   for (const g of all) {
-    if (g.h >= maxH * 0.62) digitGs.push(g);
-    else if (g.h >= maxH * 0.06 && g.w <= maxH * 0.45) seps.push(g);
+    const narrow = g.w <= maxH * 0.45;
+    if (narrow && g.h <= maxH * 0.22) seps.push(g);                              // a decimal point
+    else if (narrow && g.h <= maxH * 0.62 && rowRuns(g) >= 2) seps.push(g);      // a colon
+    else digitGs.push(g);
   }
   if (!digitGs.length || digitGs.length > 4) return null;
 
@@ -438,7 +478,11 @@ function readClock(b, hintMs) {
     const mid = ((s.y0 + s.y1) / 2 - top) / band;
     const k = mid < 0.72 ? 'colon' : 'dot';
     const i = idxOf(s);
-    if (i > 0 && i < digitGs.length) { at = i; kind = k; }
+    /* a clock face does not begin or end with its separator. One that appears to
+       is a digit we have failed to see, so the frame is refused rather than read
+       as the shorter clock it now resembles. */
+    if (i <= 0 || i >= digitGs.length) return null;
+    at = i; kind = k;
   }
 
   const cands = [];

@@ -75,6 +75,16 @@ const CASES = [
   { name: 'small crop', opt: { W: 120 } },
   { name: 'loose box', opt: { fill: 0.55 } },
   { name: 'blinking colon', opt: { colonOff: true }, colonOnly: true },
+  /* A DEAD LAMP ROW. Half the digits come out as shapes that are not digits, and
+     one of them comes out the height and width of a colon. Before the separator
+     was told apart by counting its bands of ink, a 10:03 that lost its leading 1
+     that way was read as 0:03 -- ten minutes wrong, and the SAME ten minutes wrong
+     on every frame, which is the one kind of error that survives corroboration and
+     reaches the stream. The read rate here is expected to be poor. The WRONG rate
+     is what this case exists to hold at nothing. */
+  { name: 'dead middle lamps', opt: { drop: ['g'] }, broken: true },
+  { name: 'dead top lamps', opt: { drop: ['a'] }, broken: true },
+  { name: 'dead upper-left lamps', opt: { drop: ['f'] }, broken: true },
   { name: 'hall: dim+flicker+blur', opt: { dim: 0.45, flicker: 0.22, flickerDepth: 0.45, blur: 2, noise: 0.03 } },
   { name: 'hall: band+angle+noise', opt: { banding: 0.4, angle: 5, noise: 0.05 } },
   /* THE SAME BOARDS, READ THE WAY THE APP READS THEM. Every LED board is pulse-width
@@ -169,16 +179,25 @@ console.log('  ' + pad('', 24) + pad('  tracking', 18) + '|' + pad('  cold', 18)
 console.log('  ' + '-'.repeat(74));
 for (let i = 0; i < track.length; i++) {
   const t = track[i], k = cold[i];
-  const isStress = (CASES[i] || {}).stress;
-  console.log('  ' + pad(t.name + (isStress ? ' *' : ''), 24) + pct(t.readRate) + '   ' + pct(t.wrongRate) + '   |' + pct(k.readRate) + '   ' + pct(k.wrongRate) + '   ' + t.total);
+  const c = CASES[i] || {};
+  console.log('  ' + pad(t.name + (c.stress ? ' *' : c.broken ? ' †' : ''), 24) + pct(t.readRate) + '   ' + pct(t.wrongRate) + '   |' + pct(k.readRate) + '   ' + pct(k.wrongRate) + '   ' + t.total);
   if (VERBOSE && t.wrongs.length) t.wrongs.forEach(w => console.log('        ! tracking: ' + w));
   if (VERBOSE && k.wrongs.length) k.wrongs.forEach(w => console.log('        ! cold:     ' + w));
 }
 const T = sum(track), K = sum(cold);
-const tRead = (T.right + T.wrong) / T.total, tWrong = T.wrong / T.total;
-const kRead = (K.right + K.wrong) / K.total, kWrong = K.wrong / K.total;
+/* A BOARD WITH A DEAD LAMP ROW IS BROKEN HARDWARE, AND REFUSING IT IS THE RIGHT
+   ANSWER. Those cases are kept out of the read-rate floor -- counting them would
+   mean a reader that started GUESSING at broken boards scored better -- but they
+   stay under the wrongness ceiling, which is the whole reason they are here. */
+const BROKEN = new Set(CASES.filter(c => c.broken).map(c => c.name));
+const sumR = rs => sum(rs.filter(r => !BROKEN.has(r.name)));
+const TR = sumR(track), KR = sumR(cold);
+const tRead = (TR.right + TR.wrong) / TR.total, tWrong = T.wrong / T.total;
+const kRead = (KR.right + KR.wrong) / KR.total, kWrong = K.wrong / K.total;
 console.log('  ' + '-'.repeat(74));
 console.log('  ' + pad('OVERALL', 24) + pct(tRead) + '   ' + pct(tWrong) + '   |' + pct(kRead) + '   ' + pct(kWrong) + '   ' + T.total);
+console.log('  † broken hardware: refusing is the right answer, so these are outside the read');
+console.log('    floor but still under the wrongness ceiling.');
 console.log('  * a stress case: harsher than a real board, kept to show where the decoder');
 console.log('    gives up. Excluded from the per-case ceiling; the physics downstream is');
 console.log('    what protects a broadcast at that severity (clockcam.clock.test.mjs).');

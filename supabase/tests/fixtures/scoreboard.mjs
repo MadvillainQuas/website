@@ -71,6 +71,10 @@ function drawBoard(text, opt, rnd) {
     if (c.ch === '.') { put(c.x, dh - colonW, colonW, colonW, 1); continue; }
     const lit = SEGS[+c.ch] || '';
     for (const s of lit) {
+      /* a board with a dead lamp row: this segment is simply not there on any
+         digit, which is how a half-lit digit gets made -- and a half-lit digit
+         used to be mistaken for a colon */
+      if (opt.drop && opt.drop.indexOf(s) >= 0) continue;
       const [sx, sy, sw, sh] = R[s];
       /* PWM: a segment caught mid-cycle by a short exposure comes out dim */
       const v = opt.flicker ? (rnd() < opt.flicker ? 1 - opt.flickerDepth : 1) : 1;
