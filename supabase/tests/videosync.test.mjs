@@ -732,5 +732,91 @@ console.log('\nthe worker places plays by the page\'s arithmetic');
      (gj.match(/await tipInstantMsAsync\(\)/g) || []).length === 2 && !/tipWallMsAsync/.test(gj));
 }
 
+/* ---------------------------------------------------------------------------
+   A NEW VIDEO DOES NOT INHERIT THE OLD ONE'S CLOCK.
+
+   Pasting a different video over an attached one kept the old recording's
+   tip_offset_ms, stream start, trim and clock track (set_game_video coalesced
+   every column), so every play was placed at its second in footage nobody was
+   watching. Migration 0115 starts the footage anchors again when the video
+   changes; the worker must not write a track of the old footage onto the new
+   row afterwards, and a repointed video must be free to be read again.
+   --------------------------------------------------------------------------- */
+console.log('\na new video does not inherit the old one\'s clock');
+
+{
+  const m = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0115_new_video_new_anchors.sql'), 'utf8');
+  ok('0115 decides sameness by the provider id, else the link',
+     /create or replace function public\.video_is_same/.test(m) &&
+     /same := old\.id is null\s*\n\s*or public\.video_is_same\(old\.url, old\.provider, old\.video_ref, p_url, p_provider, p_ref\)/.test(m));
+  for (const col of ['stream_started_at', 'tip_offset_ms', 'trim_ms', 'is_live', 'clock_track']) {
+    ok('...and carries ' + col + ' only while it is the same footage',
+       new RegExp(col + '\\s*=\\s*case when same then ').test(m));
+  }
+  ok('...while the tip-off, a fact about the game, is kept whatever the video',
+     /tip_at\s*=\s*coalesce\(tip_final, game_videos\.tip_at\)/.test(m) &&
+     /tip_wall\s*=\s*coalesce\(p_tip_wall, game_videos\.tip_wall\)/.test(m));
+  ok('...proved through the real function as a real admin, and cleaned up on the way out',
+     /set local role authenticated/.test(m) && /raise exception '0115: a different video kept a clock track/.test(m) &&
+     /exception when others then[\s\S]{0,200}delete from public\.game_videos where game_id = gid and video_ref like '__t115%'/.test(m));
+
+  const HARNESS = [
+    'import sys, json, types',
+    'try:',
+    '    import requests',
+    'except ImportError:',
+    "    sys.modules['requests'] = types.ModuleType('requests')   # a bare CI python; nothing here calls it",
+    'sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2])',
+    'import ai_worker as AW',
+    'import run_ingest as RI',
+    'OLD, NEW = "https://youtu.be/AAAAAAAAAAA", "https://www.youtube.com/watch?v=BBBBBBBBBBB&t=1"',
+    'out = {}',
+    'class DB:',
+    '    def __init__(self): self.q = None',
+    '    def patch(self, table, q, body):',
+    '        self.q = q',
+    '        from urllib.parse import unquote',
+    '        return [{"id": 1}] if ("url=eq." not in q or unquote(q.split("url=eq.")[1].split("&")[0]) == NEW) else []',
+    'track = {"mode": "clock", "samples": [{"t": 1.0, "period": 1, "clock_ms": 600000}], "runs": []}',
+    'db = DB()',
+    'AW.write_track(db, "g", track, NEW); out["new_ok"] = True; out["q"] = db.q',
+    'try:',
+    '    AW.write_track(db, "g", track, OLD); out["old_written"] = True',
+    'except RuntimeError as e:',
+    '    out["old_written"] = False; out["old_msg"] = str(e)',
+    'class SB:',
+    '    def __init__(self, jobs): self.jobs, self.inserted = jobs, []',
+    '    def select(self, table, q):',
+    '        return [{"url": NEW, "clock_track": None}] if table == "game_videos" else self.jobs',
+    '    def insert(self, table, row): self.inserted.append(row)',
+    'a = SB([{"status": "done", "video_url": OLD}]); RI.enqueue_video_job(a, "g")',
+    'b = SB([{"status": "done", "video_url": NEW}]); RI.enqueue_video_job(b, "g")',
+    'out["requeued_for_new"] = len(a.inserted); out["requeued_same"] = len(b.inserted)',
+    'sys.stdout.write("@@" + json.dumps(out))',
+  ].join('\n');
+
+  let got = null;
+  for (const exe of ['python3', 'python']) {
+    const r = spawnSync(exe, ['-c', HARNESS, path.join(ROOT, 'scripts', 'worker'), path.join(ROOT, 'scripts', 'ingest')],
+                        { encoding: 'utf8', env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) });
+    if (r.status === 0 && r.stdout.includes('@@')) { got = JSON.parse(r.stdout.split('@@').pop()); break; }
+    if (r.stderr && /Traceback/.test(r.stderr)) { ok('the worker and ingest run', false, r.stderr.slice(-800)); break; }
+  }
+  if (got) {
+    ok('the worker writes a track onto the video it was read from', got.new_ok === true &&
+       /url=eq\.https%3A%2F%2Fwww\.youtube\.com%2Fwatch%3Fv%3DBBBBBBBBBBB%26t%3D1/.test(got.q), got.q);
+    ok('...and refuses once the row holds a different video, saying why',
+       got.old_written === false && /changed while this one was being read/.test(got.old_msg || ''), JSON.stringify(got));
+    ok('a done read of the OLD video does not stop the new one being read', got.requeued_for_new === 1);
+    ok('...while a done read of THIS video still does', got.requeued_same === 0);
+  } else if (!fail) ok('a python to run the worker with', false);
+
+  const aw = readFileSync(path.join(ROOT, 'scripts', 'worker', 'ai_worker.py'), 'utf8');
+  ok('the worker passes the job\'s own link when it saves the track',
+     /slim = write_track\(db, game_id, track, row\.get\('video_url'\)\)/.test(aw));
+  ok('...and its backfill counts a job only against the footage it was for',
+     /have = \[j for j in have if j\.get\('video_url'\) == url_of\.get\(j\['game_id'\]\)\]/.test(aw));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -23,6 +23,7 @@ the track without a signed-in person.
 """
 import os, sys, io, re, json, time, socket, argparse, subprocess, traceback, shutil
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 for _stream in (sys.stdout, sys.stderr):        # Windows consoles default to cp1252
     try:
@@ -585,14 +586,23 @@ def slim_track(track):
     return out
 
 
-def write_track(db, game_id, track):
+def write_track(db, game_id, track, video_url=None):
     slim = slim_track(track)
     if len(slim['samples']) > 20000:
         raise RuntimeError('track too long (%d readings)' % len(slim['samples']))
-    rows = db.patch('game_videos', 'game_id=eq.%s&is_primary=eq.true' % game_id,
-                    {'clock_track': slim, 'updated_at': now_iso()})
+    # ONLY ONTO THE FOOTAGE IT WAS READ FROM. A job takes the video row's link when it is
+    # queued and can run for an hour; if somebody pastes a different video meanwhile, a
+    # track of the old footage written onto the new row would place every play at the
+    # second it had in a video nobody is watching - and the page prefers a track to
+    # every other anchor. Migration 0115 clears a track when the link changes; this is
+    # the other half, for a track that arrives after.
+    q = 'game_id=eq.%s&is_primary=eq.true' % game_id
+    if video_url:
+        q += '&url=eq.%s' % quote(video_url, safe='')
+    rows = db.patch('game_videos', q, {'clock_track': slim, 'updated_at': now_iso()})
     if not rows:
-        raise RuntimeError('this game has no primary video row to hold the track')
+        raise RuntimeError('this game has no primary video row to hold the track'
+                           + (', or its video was changed while this one was being read' if video_url else ''))
     return slim
 
 
@@ -777,7 +787,7 @@ class Job(object):
                 log('  no readable overlay; placing %d plays by the wall stamps instead' % len(track['samples']))
             if not track.get('samples'):
                 raise RuntimeError('nothing readable: ' + (track.get('note') or 'the reader found no clock and no score it could match'))
-            slim = write_track(db, game_id, track)
+            slim = write_track(db, game_id, track, row.get('video_url'))
             periods = sorted({s['period'] for s in slim['samples']})
             result = {'samples': len(slim['samples']), 'periods': periods, 'mode': used,
                       'matched': track.get('matched'), 'seen': track.get('changes_seen'), 'fusion': track.get('fusion'),
@@ -897,7 +907,11 @@ def backfill(db, cfg):
     if not rows:
         return 0
     ids = ','.join(r['game_id'] for r in rows)
-    have = db.select('video_jobs', 'select=game_id,status&game_id=in.(%s)' % ids)
+    have = db.select('video_jobs', 'select=game_id,status,video_url&game_id=in.(%s)' % ids)
+    # a job counts against the footage it was for: a video pasted over a read one (0115
+    # clears its track) is new footage, and gets its own read
+    url_of = {r['game_id']: r['url'] for r in rows}
+    have = [j for j in have if j.get('video_url') == url_of.get(j['game_id'])]
     blocked = {j['game_id'] for j in have if j['status'] in ('queued', 'claimed', 'running', 'done')}
     tries = {}
     for j in have:

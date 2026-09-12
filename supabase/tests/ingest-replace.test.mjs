@@ -149,7 +149,11 @@ console.log('\na live game is timed whichever lane sees it');
 
 {
   const HARNESS = [
-    'import sys, json, io, time',
+    'import sys, json, io, time, types',
+    'try:',
+    '    import requests',
+    'except ImportError:',
+    "    sys.modules['requests'] = types.ModuleType('requests')   # a bare CI python; nothing here calls it",
     'from datetime import datetime, timezone',
     'from types import SimpleNamespace as NS',
     'sys.path.insert(0, sys.argv[1])',

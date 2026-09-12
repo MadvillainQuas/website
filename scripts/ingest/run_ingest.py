@@ -528,7 +528,10 @@ def enqueue_video_job(sb: Supabase, game_id: str) -> bool:
     vids = sb.select("game_videos", f"game_id=eq.{game_id}&is_primary=eq.true&select=url,clock_track&limit=1")
     if not vids or not vids[0].get("url") or vids[0].get("clock_track"):
         return False
-    jobs = sb.select("video_jobs", f"game_id=eq.{game_id}&select=status&order=requested_at.desc&limit=3")
+    jobs = sb.select("video_jobs", f"game_id=eq.{game_id}&select=status,video_url&order=requested_at.desc&limit=3")
+    # a job counts against the footage it was for; a different video pasted over (0115 clears
+    # the old track) is new footage and gets its own read
+    jobs = [j for j in jobs if j.get("video_url") == vids[0]["url"]]
     if any(j.get("status") in ("queued", "claimed", "running", "done") for j in jobs):
         return False
     if len([j for j in jobs if j.get("status") in ("failed", "cancelled")]) >= 2:
