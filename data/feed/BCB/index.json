@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-12T15:27:17.661140+00:00",
+"updated": "2026-09-12T17:53:14.156656+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2492,37 +2492,40 @@
 "id": "2887012",
 "home": "Essex Rebels",
 "away": "Worthing Thunder",
-"status": "scheduled",
+"homeScore": 14,
+"awayScore": 27,
+"status": "live",
 "date": "2026-09-12T17:30:00+00:00",
+"hash": "0c92c55c123d5e166e6c2517cef218e986f07d9d",
 "venue": "Essex Sports Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887012.json",
+"updated": "2026-09-12T17:52:48.977917+00:00"
 },
 {
 "id": "2887007",
 "home": "Portsmouth Force",
 "away": "Reading Rockets",
-"status": "scheduled",
+"homeScore": 8,
+"awayScore": 25,
+"status": "live",
 "date": "2026-09-12T17:30:00+00:00",
+"hash": "7cfaf8d43546f053b234485a56da2cf2690fd5c9",
 "venue": "Ravelin Sports Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887007.json",
+"updated": "2026-09-12T17:52:37.340802+00:00"
 },
 {
 "id": "2886997",
 "home": "Bristol Flyers II",
 "away": "Gloucester City Kings",
-"status": "scheduled",
+"homeScore": 22,
+"awayScore": 22,
+"status": "live",
 "date": "2026-09-12T17:30:00+00:00",
+"hash": "2a6d4b37eff387a47eb66fc9491f386699e49bda",
 "venue": "SGS College WISE Campus",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886997.json",
+"updated": "2026-09-12T17:52:22.714239+00:00"
 },
 {
 "id": "2886986",
@@ -2531,22 +2534,23 @@
 "status": "scheduled",
 "date": "2026-09-12T17:30:00+00:00",
 "venue": "Netball Centre Loughborough University",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 0,
+"awayScore": 0,
+"hash": "c4d92380adb49d72d0261153e45774e9e470d7cb",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886986.json"
 },
 {
 "id": "2887018",
 "home": "Yorkshire Dragons",
 "away": "Derby Trailblazers",
-"status": "scheduled",
+"homeScore": 41,
+"awayScore": 30,
+"status": "live",
 "date": "2026-09-12T17:15:00+00:00",
+"hash": "ca152fea6128cae774ea53d2e297a36bcbce25b8",
 "venue": "Inspire Leisure Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887018.json",
+"updated": "2026-09-12T17:53:01.379401+00:00"
 },
 {
 "id": "2887017",
