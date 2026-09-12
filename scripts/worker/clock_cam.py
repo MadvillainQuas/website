@@ -136,6 +136,8 @@ def main():
     ap.add_argument('--dry', action='store_true', help='read and print, push nothing')
     ap.add_argument('--minutes', type=float, default=0, help='stop after this many minutes (0 = until the source ends)')
     ap.add_argument('--start', type=float, default=0, help='for a file: start this many seconds in')
+    ap.add_argument('--period', type=int, default=0,
+                    help='start on this period (default: follow the board, or the game if the board is not in shot)')
     args = ap.parse_args()
 
     cfg = W.load_config(args.config)
@@ -157,7 +159,10 @@ def main():
     crop = strip = None
     misses = 0
     prev_ms = prev_t = None
-    period, period_len = 1, CK.PERIOD_S
+    period, period_len = (args.period or 1), CK.PERIOD_S
+    if period > 4:
+        period_len = CK.OT_S
+    last_period_poll = 0.0
     locked = False; provisional = None; label_prev = None
     running = False; last_change_t = None; held = None; steady = None
     started = time.time(); n = 0
@@ -188,7 +193,29 @@ def main():
         t = time.time()
         frame_i += 1
         if args.source == 'phone':
+            # THE PERIOD IS NOT IN THE PICTURE HERE. A phone in PC mode posts the clock crop and
+            # nothing else, so there is no period label to read off the board -- and with no label
+            # and no way to set one, this pushed "period 1" for the whole game, every game. The
+            # clock on the stream was right and the quarter beside it said Q1 into the fourth.
+            #
+            # So it follows the game itself: game_state is what the scoring app, the feed and the
+            # phone's own durable write all keep current, and asking for one column every fifteen
+            # seconds costs nothing. --period still wins for a game nothing else is driving.
             crop = (0, 0, frame.shape[1], frame.shape[0]); strip = None
+            if not args.period and pusher and t - last_period_poll > 15:
+                last_period_poll = t
+                try:
+                    r = requests.get(pusher.url + '/rest/v1/game_state',
+                                     headers=pusher.h, params={'game_id': 'eq.' + args.game, 'select': 'period'}, timeout=5)
+                    rows = r.json() if r.status_code < 300 else []
+                    p_new = int(rows[0]['period']) if rows and rows[0].get('period') else 0
+                    if 1 <= p_new <= 6 and p_new != period:
+                        period = p_new
+                        period_len = CK.PERIOD_S if period <= 4 else CK.OT_S
+                        prev_ms = None; locked = False; held = None; steady = None
+                        print('  the game says period %d' % period)
+                except Exception:
+                    pass
         elif crop is None or misses >= 6:
             loc = CK.locate(reader, frame, crop)
             if loc:

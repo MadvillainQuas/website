@@ -197,7 +197,12 @@ async function startCamera() {
    video element is actually delivering pixels */
 function camLive() {
   const v = $('#cam');
-  return !!(camTrack && camTrack.readyState === 'live' && v && v.videoWidth > 0);
+  /* MUTED IS NOT THE SAME AS ENDED, and this said it checked both while checking
+     one. When iOS suspends a backgrounded tab's camera the track stays 'live' and
+     goes muted: no new pixels arrive, the last frame sits there, and every check
+     here said the camera was fine. That is the exact state the reader must not
+     read in, because a frozen frame agrees with itself forever. */
+  return !!(camTrack && camTrack.readyState === 'live' && !camTrack.muted && v && v.videoWidth > 0);
 }
 async function ensureCamera() {
   if (camLive()) return;
@@ -346,7 +351,7 @@ function resetLock() { CLK.reset(); locked = false; ring = []; hunt = null; last
    and one that does not */
 const RING = 3;
 let ring = [];
-let lastReadAt = 0, hunt = null, nudged = 0;
+let lastReadAt = 0, hunt = null, nudged = 0, boxPending = false;
 
 /* ------------------------------------------------------- when it is nudged ---
    A phone on a clamp for two hours gets knocked: somebody leans on the table, a
@@ -377,8 +382,15 @@ function shifted(box, o) {
 }
 function tryHunt(inv, adj, now) {
   if (!boxes.clock) return;
-  if (!hunt) hunt = { i: 0 };
   const pred = CLK.predict(now);
+  /* WITHOUT A CLOCK TO CHECK AGAINST, HUNTING IS NOT RECOVERY, IT IS A SEARCH.
+     Some offset somewhere always reads SOMETHING -- the shot clock, the period,
+     the halves of two digits -- and with nothing to compare it to the box moves
+     there and is lost from further away than it started. So the box only ever
+     goes looking when we still know roughly what the clock should say. If even
+     that has been forgotten, the right answer is to re-acquire where we are. */
+  if (pred == null) { hunt = null; return; }
+  if (!hunt) hunt = { i: 0 };
   for (let n = 0; n < 6 && hunt.i < HUNT_OFFSETS.length; n++) {
     const o = HUNT_OFFSETS[hunt.i++];
     const box = shifted(boxes.clock, o);
@@ -386,8 +398,10 @@ function tryHunt(inv, adj, now) {
     const got = readClock(binarise(img, inv, adj), pred);
     if (got == null) continue;
     if (pred != null && Math.abs(got - pred) > 30000) continue;   // not our clock
-    boxes.clock = box;
-    try { localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); } catch (_) {}
+    /* Moved, but not written down yet: one reading is not proof the box is right,
+       and a box saved to this phone is what it will open on next time. It is kept
+       once the clock has locked on at the new place, which is proof. */
+    boxes.clock = box; boxPending = true;
     ring = []; hunt = null; lastReadAt = now; nudged++;
     paintBoxes();
     $('#boxHint').textContent = 'The board had moved in the frame \u2014 the box has been nudged back onto the digits.';
@@ -434,14 +448,46 @@ function tick() {
     const out = CLK.consider(ms, now);
     locked = CLK.locked; running = CLK.running;
     if (out) { clockMs = out.ms; publish(out.force); }
+    /* the nudged box has earned its place: the clock locked on at it */
+    if (boxPending && locked) {
+      boxPending = false;
+      try { localStorage.setItem('cc:' + gameId, JSON.stringify(boxes)); } catch (_) {}
+    }
   } else if (sending && lastReadAt && now - lastReadAt > 6000) {
     tryHunt(inv, adj, now);
   }
-  if ($('#sendScore').checked) {
-    ['home', 'away'].forEach(k => { if (!boxes[k]) return; const im = cropOf(boxes[k], 120); if (!im) return; const bb = binarise(im, inv, adj); const v = readScore(bb); thumb(k, bb, v); if (v != null) scores[k] = v; });
-  }
+  if ($('#sendScore').checked) readScores(inv, adj);
   readPeriod(inv, adj);
   paintRead();
+}
+
+/* ---------------------------------------------------------- the score ---
+   THE CLOCK HAS PHYSICS AND THE SCORE HAD NONE. A clock is checked against what a
+   clock can do between two frames; a score was taken from a single frame and sent
+   as it was. But a score is the easier thing to misread badly -- 8 and 0 differ by
+   one segment, 48 and 40 by one lamp -- and a wrong score on a stream is more
+   obvious than a wrong clock and stays until the next basket.
+
+   A score also has physics, just simpler ones: it only ever goes up, it goes up by
+   one, two or three, and it never moves twice in the same tenth of a second. So a
+   reading is believed when the same number arrives twice running, and a fall is
+   only believed when it keeps saying it -- the table correcting itself does
+   happen, and it looks exactly like a misread until it repeats. */
+let scoreSeen = { home: null, away: null };
+function readScores(inv, adj) {
+  ['home', 'away'].forEach(k => {
+    if (!boxes[k]) return;
+    const im = cropOf(boxes[k], 120); if (!im) return;
+    const bb = binarise(im, inv, adj);
+    const v = readScore(bb);
+    thumb(k, bb, v);
+    if (v == null) { scoreSeen[k] = null; return; }
+    const s = scoreSeen[k];
+    if (s && s.v === v) s.n++; else scoreSeen[k] = { v, n: 1 };
+    const n = scoreSeen[k].n, cur = scores[k];
+    const rising = cur == null || (v >= cur && v - cur <= 3);
+    if (rising ? n >= 2 : n >= 4) scores[k] = v;
+  });
 }
 
 /* --------------------------------------------------------- the period ---
@@ -501,9 +547,15 @@ async function durable(state, now) {
 async function postCrop() {
   if (!sending || !sb || !boxes.clock) return;
   const now = Date.now(); if (now - lastPost < 400) return; lastPost = now;
-  const v = $('#cam'); const b = boxes.clock;
-  const c = document.createElement('canvas'); c.width = 320; c.height = Math.max(40, Math.round(320 * (b.h * v.videoHeight) / (b.w * v.videoWidth)));
-  c.getContext('2d').drawImage(v, b.x * v.videoWidth, b.y * v.videoHeight, b.w * v.videoWidth, b.h * v.videoHeight, 0, 0, c.width, c.height);
+  /* THE SAME COVER MAPPING AS EVERY OTHER CROP. This path multiplied the box
+     straight by the video's own size, which is only the right rectangle when the
+     stage and the camera happen to share a shape. They often do not -- a phone
+     asked for 4:3 hands back 16:9 as often as not -- and then PC mode was posting
+     a picture of the wrong part of the board to a reader that had no way to know.
+     Fixing cropOf and leaving this was half a fix. */
+  const v = $('#cam'); const m = boxToVideo(boxes.clock); if (!m || m.sw < 2 || m.sh < 2) return;
+  const c = document.createElement('canvas'); c.width = 320; c.height = Math.max(40, Math.round(320 * m.sh / m.sw));
+  c.getContext('2d').drawImage(v, m.sx, m.sy, m.sw, m.sh, 0, 0, c.width, c.height);
   const url = c.toDataURL('image/jpeg', 0.7);
   try { await sb.from('cam_frames').upsert({ game_id: gameId, taken_at: new Date(now).toISOString(), crop: url, kind: 'clock', posted_by: user.id }, { onConflict: 'game_id' }); sent++; } catch (_) {}
   paintStatus();
