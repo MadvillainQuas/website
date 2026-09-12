@@ -11,6 +11,15 @@ when checked against the code, and at least one was wrong about production (see 
 one yourself before acting on it — the audit prompt asked for adversarial verification precisely
 because auditors report problems that are already solved a few lines below what they read.
 
+## Progress
+
+Items marked **STATUS — DONE** below were completed on 2026-09-12. As of that date:
+1, 2, 5, 6, 12, 13, 14 and 18 are done, plus the whole LiveStats-to-footage video
+sync chain and the starting-five preview graphic (neither of which was on this
+list). Item 4 — gateScorer treating a transport error as a refusal — was
+deliberately deferred rather than attempted hours before six live fixtures; it is
+the next one to take.
+
 ## The headline
 
 > Epinoia's analytics and transport engineering is already ahead of the commercial field, but four verified defects silently corrupt on-air stats, the permanent box score, and a statistician's ability to keep scoring when hall wifi drops — and three of the platform's public integration surfaces (api, broadcast, ics) return 401 to every call shape their own documentation describes, because config.toml never turned off the gateway JWT check.
@@ -103,6 +112,8 @@ The strategic correction that should govern the build order: the digital scoresh
 
 **critical** / hours · `scorer`
 
+> **STATUS — DONE 2026-09-12 — `guarded = true` moved to after the count read, so a refused or thrown request leaves the guard armed for the next poll. Test in supabase/tests/takeover.test.mjs. The scoring_session_id half of the suggestion was NOT done.**
+
 **Why.** Verified at bootstrap.js:472: `guarded = true` is set BEFORE anything is attempted, and three paths then return without clearing it (no client, res.error, thrown request). The 3s poll calls it forever and it returns at line 470 every time. Hall wifi down at page load — the normal case after the crash the same flaky connection caused — latches it for the session. The device then scores a parallel copy from evSeq 0, its ids collide with the durable rows, the upsert's ignoreDuplicates throws every one away silently, and maybeScore writes its own 0-0-onwards score onto the games row while the badge says 'live'.
 
 **What.** Move `guarded = true` from bootstrap.js:472 to immediately after `count = res.count || 0;` so only a successful read latches it. Then add the case counting structurally cannot see: in claimFixture (bootstrap.js:194-200) include a per-load `scoring_session_id: crypto.randomUUID()` in the patch, and in sync.js watchStatus (267) select it alongside status — when a successful read returns an id that is not this load's, call halt() and surface offerTakeover. Two devices starting together never trip a count comparison (both see 0 <= 0) and this catches them.
@@ -114,6 +125,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 6. Remove the simulate button from real fixtures — it DELETEs the durable event log
 
 **critical** / hours · `scorer`
+
+> **STATUS — DONE 2026-09-12 — the button is removed outside the practice game and simulateGame refuses as a floor under it. Note the suggested "leave evSeq alone" fix does NOT work: diffLog matches from index 0, so an emptied array retracts everything regardless. Test: supabase/tests/scorer-simulate.test.mjs.**
 
 **Why.** Verified: btnSim is an ordinary always-visible entry in the slide-up sheet (index.html:1569), listed in both SHEET_PREGAME and SHEET_INPLAY at 4398-4400, immediately before 'end game'. Its handler asks one askConfirm and runs simulateGame, which does S.events=[]; S.evSeq=0. diffLog then sees sentIds [1..520] against S.events [1], agrees at index 0 and stops, so removed = seqs 2..520 — and live.js:225 issues a real DELETE that the policy permits, because the scorer is precisely who may delete on an unfinished game. Five hundred and nineteen rows of a real game are removed from the league database in one frame and the simulator's fabricated events are inserted over the same seq range. Both copies gone, on the happy path.
 
@@ -201,6 +214,8 @@ The strategic correction that should govern the build order: the digital scoresh
 
 **critical** / hours · `broadcast`
 
+> **STATUS — DONE 2026-09-12 — OFFICIAL_ROLES copied into broadcast.js, the paint wrapped, and an unknown scene now blanks rather than falling back to the scorebug. Tests in supabase/tests/broadcast.test.mjs.**
+
 **Why.** Verified: broadcast.js:930 reads OFFICIAL_ROLES; the identifier is defined only in boxscore.js:270 and score/index.html, and broadcast/index.html loads config, vendor/supabase, engine, rt, live and broadcast — not boxscore. render() does stage.innerHTML = fn(st) with no try/catch. Two live outcomes: a fixed-URL source at ?scene=officials throws inside the first render, the boot catch swallows it, so listenForScenes, watchPregame and the subscriber are NEVER created and the source stays blank for the whole game with nothing in the log; or a director presses the tile mid-game, scene is set, lastJSON updated, then the paint throws — so the DOM keeps the previous graphic and the scorebug freezes on a stale score and clock until something else is taken. The tile is enabled whenever officials are entered, so both paths ship today.
 
 **What.** Copy the eight-row table into broadcast.js above SCENES (it is already duplicated twice, so a third literal is cheaper than widening the layer's download). Wrap the paint: `try { stage.innerHTML = fn(st); } catch (e) { if (debug) diag.textContent = 'scene ' + scene + ': ' + e.message; }`. Change the fallback at 1225 from `SCENES[scene] || SCENES.scorebug` to `|| SCENES.blank` and write 'unknown scene: ' + scene into #diag under ?debug=1 — an unrecognised name must never put a live graphic on air (the help page currently documents a scene called 'squads' when the key is 'squad', which today silently puts a scorebug up instead). Add a smoke check iterating Object.keys(SCENES) against a stub state and asserting a string comes back.
@@ -212,6 +227,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 14. Flip the layer to FINAL when a game ends while it is running
 
 **critical** / hours · `broadcast`
+
+> **STATUS — DONE 2026-09-12 — merge() carries g.status through to game.status and clears lastJSON to force the repaint; the edge function makes the same FINAL/FIN substitution so a bound template and a browser source cannot disagree.**
 
 **Why.** Every final-state decision in the layer reads game.status, which is written in exactly two places — boot, and watchPregame's poll that returns immediately if the status is already live and clears its own interval the moment it becomes live. So it never runs during play. merge() receives g.status from the snapshot and assigns it to S.phase, a field nothing reads. At the buzzer the scorebug shows a dim white 0.0 under 'Q4' instead of amber FIN, and the Final Score board — the single most-screenshotted graphic of the night — is headed Q4. The .clk.fin amber styling, written specifically so a still of a rerun cannot be read as a live game, never fires. The edge function has the mirror-image bug, so a vMix template bound to clock_display reads 0:00 while the HTML layer reads FIN.
 
@@ -262,6 +279,8 @@ The strategic correction that should govern the build order: the digital scoresh
 ### 18. Make save() verify its write and shout when localStorage is full
 
 **critical** / hours · `scorer`
+
+> **STATUS — DONE 2026-09-12 — a throw raises a sticky red banner with an export button, it does not stack, it clears on recovery, the write is read back every 40th save, and stale eplive: keys are swept on boot. Tests in supabase/tests/durability.test.mjs.**
 
 **Why.** save() is one setItem of the whole state blob inside a bare try/catch with no read-back, no flag and no banner, called on every tap. The origin is shared: prophesyscouting.co.uk also hosts index_9.html, which writes its own large keys into the same 5MB, and scratch/train sessions accumulate one uncollected eplive: key each. Whichever fills it, the failure is identical and silent — setItem throws, the catch eats it, the screen keeps drawing a perfect game, and nothing has been persisted since. supabase-js's session storage is on the same quota, so sign-in starts failing in the same minute. The operator finds out when the tab dies. live.js:234-248 already learned this exact lesson for durable writes; localStorage has not.
 
