@@ -311,8 +311,29 @@ function segDigit(b, g, frameW, skew, ext, dotty) {
      which of the seven are doing something. The absolute floor stays, because a
      blank cell has no brightest segment worth the name and must stay unread. */
   const smax = Math.max.apply(null, s);
-  if (smax < 0.22) return null;
-  const cut = Math.max(0.20, 0.45 * smax);
+  const smin = Math.min.apply(null, s);
+  if (smax < 0.12) return null;                       // nothing lit in this cell
+
+  /* THE LINE GOES BETWEEN THIS DIGIT'S OWN TWO CLUSTERS.
+
+     A fixed floor assumes a lit segment fills most of its sample region, which is
+     true of a board made of continuous bars and false of one made of separate
+     lamps: there a lit segment is about a fifth ink and the rest is the gaps
+     between the lamps. Against a floor of 0.20 a dot-matrix board's LIT segments
+     came in at 0.18 to 0.23 -- straddling it -- so digits came back as nonsense
+     patterns and the board read at almost nothing.
+
+     Every digit carries its own answer, though: its lit segments and its unlit
+     ones are two clusters, and the line belongs between them wherever they happen
+     to sit. That is scale-free, so it holds for a bright board, a dim one, a
+     distant one and a dot-matrix one without being told which it is.
+
+     The exception is a digit with no unlit segments -- an 8 -- where there is no
+     gap to split and the spread is just noise. A spread too small to be two
+     clusters means they are all lit. */
+  const range = smax - smin;
+  if (range < 0.35 * smax) return SEG['1111111'];     // an 8: nothing to split
+  const cut = smin + 0.45 * range;
 
   /* AND A SEGMENT TOO CLOSE TO CALL MAKES THE WHOLE DIGIT UNREADABLE.
 
@@ -326,12 +347,13 @@ function segDigit(b, g, frameW, skew, ext, dotty) {
      So every segment has to be clearly one thing or the other, measured against
      this digit's own spread between its brightest and dimmest. When one is not,
      the frame is dropped and the next one is along in an eighth of a second. */
-  const smin = Math.min.apply(null, s);
-  /* On a dot-matrix board a lit segment is mostly the gaps between its lamps, so
-     every reading sits closer to the line and demanding a clear margin refuses the
-     board outright. There the physics upstream is the guard instead. */
-  const margin = dotty ? 0 : 0.06 * Math.max(0.3, smax - smin);
-  if (margin) for (let i = 0; i < s.length; i++) if (Math.abs(s[i] - cut) < margin) return null;
+  /* and a segment sitting on the line is not a reading, it is a coin toss: a lamp
+     caught half-way through its cycle lands either side at random, and a 9 comes
+     back as a 2. Measured against this digit's own spread, so it means the same
+     thing on every board. Dot-matrix boards get a narrower margin because their
+     two clusters are closer together to begin with. */
+  const margin = (dotty ? 0.03 : 0.06) * Math.max(0.3, range);
+  for (let i = 0; i < s.length; i++) if (Math.abs(s[i] - cut) < margin) return null;
 
   const key = s.map(v => v > cut ? '1' : '0').join('');
   if (SEG[key] != null) return SEG[key];

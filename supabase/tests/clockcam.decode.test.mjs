@@ -190,7 +190,7 @@ console.log('');
    Wrongness is capped hard and per-case, because one case quietly rotting is
    exactly what an overall average hides. Cold wrongness is capped tighter than
    tracking wrongness: a wrong first reading is the one with nothing to catch it. */
-const FLOOR = { trackRead: 0.85, trackWrong: 0.010, coldWrong: 0.010 };
+const FLOOR = { trackRead: 0.88, trackWrong: 0.010, coldWrong: 0.010 };
 const PER_CASE_WRONG = 0.06;
 
 let bad = [];
