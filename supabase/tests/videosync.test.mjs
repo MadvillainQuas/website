@@ -327,5 +327,55 @@ console.log('\na partial clock track and an imported log');
      /!timedByDevice &&/.test(av2));
 }
 
+/* ---------------------------------------------------------------------------
+   AND A BLANK BOX IS NOT AN OFFSET OF ZERO.
+
+   The attach-video sheet read both jump-ball boxes as `+value || 0`, which
+   cannot tell an empty one from a typed nought, and sent the result
+   unconditionally. So pasting a link and leaving the time blank saved
+   tip_offset_ms = 0 — and zero is not a refusal, it is the claim that the ball
+   went up in the first frame of the recording. 0090's constraint accepts it
+   (0..43200000), and gapMs prefers tip_offset_ms over every other anchor,
+   unconditionally and for good reason: an offset was typed by somebody looking
+   at the footage.
+
+   One empty form therefore outranked the stream anchor for the life of the row
+   and placed every play as if the broadcast began at the jump ball — early by
+   the whole pre-game, five to twenty minutes on a league stream — with each
+   position stated in full confidence, because as far as the page could tell a
+   person had said so.
+   --------------------------------------------------------------------------- */
+console.log('\nand a blank box is not an offset of zero');
+
+{
+  const gj = readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');
+
+  ok('the sheet can tell an empty box from a typed nought',
+     /const blankOffset = String\(\(minEl && minEl\.value\) \|\| ''\)\.trim\(\) === '' &&/.test(gj));
+  ok('...and sends nothing at all when both are empty',
+     /const tipMs = blankOffset \? null : \(mm \* 60 \+ ss\) \* 1000;/.test(gj) &&
+     /if \(tipMs != null\) args\.p_tip_offset_ms = tipMs;/.test(gj));
+  ok('...which the RPC reads as "I did not say", not as zero',
+     /tip_offset_ms\s+= coalesce\(p_tip_offset_ms, game_videos\.tip_offset_ms\)/
+       .test(readFileSync(path.join(ROOT, 'supabase', 'migrations',
+                                    '0090_two_kinds_of_video.sql'), 'utf8')));
+
+  /* And a typed 0:00 still means the first frame, because it is a real answer. */
+  const trimOnly = { tip_offset_ms: 0, trim_ms: 0 };
+  eq('a typed 0:00 still places the tip at the first frame', V.gapMs(trimOnly), 0);
+  ok('...and the anchor still reads as one somebody typed',
+     V.anchorKind(trimOnly) === 'recording', String(V.anchorKind(trimOnly)));
+
+  /* What the old behaviour cost, in the numbers of a league stream: a broadcast
+     that went up eleven minutes before the ball. */
+  const real = { stream_started_at: new Date(TIP - 11 * 60000).toISOString(),
+                 tip_at: new Date(TIP).toISOString(), tip_wall: TIP, trim_ms: 0 };
+  eq('the stream anchor puts the tip eleven minutes in', V.gapMs(real), 11 * 60000);
+  const clobbered = Object.assign({}, real, { tip_offset_ms: 0 });
+  eq('...and a blank form used to overrule it with nought', V.gapMs(clobbered), 0);
+  ok('...which is the whole pre-game of error, silently',
+     V.gapMs(real) - V.gapMs(clobbered) === 11 * 60000);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

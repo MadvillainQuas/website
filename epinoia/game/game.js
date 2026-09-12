@@ -1381,9 +1381,31 @@ async function saveAttach(wrap) {
       'seek into it.';
     return;
   }
-  const mm = Math.max(0, +document.getElementById('vsMin').value || 0);
-  const ss = Math.min(59, Math.max(0, +document.getElementById('vsSec').value || 0));
-  const tipMs = (mm * 60 + ss) * 1000;
+  /* BLANK IS NOT ZERO, AND ZERO IS A REAL ANSWER.
+
+     Both boxes were read as `+value || 0`, which cannot tell them apart, and the
+     result was sent unconditionally. So pasting a link and leaving the jump-ball
+     time empty saved tip_offset_ms = 0 — and zero is not a refusal, it is the
+     claim that the ball went up in the first frame of the recording. The
+     database accepts it (0090's constraint is 0..43200000) and gapMs prefers
+     tip_offset_ms over every other anchor there is, unconditionally and for
+     good reason: an offset was typed by somebody looking at the footage.
+
+     Which means one empty form outranked the stream anchor for the life of the
+     row, placed every play as if the broadcast began at the jump ball — early
+     by the whole pre-game, five to twenty minutes on a league stream — and the
+     page stated each position with full confidence, because as far as it could
+     tell a person had told it so.
+
+     Empty now sends nothing, and set_game_video coalesces an absent argument to
+     whatever the row already held, which is the right reading of "I did not
+     say". A typed 0:00 still means the first frame. */
+  const minEl = document.getElementById('vsMin'), secEl = document.getElementById('vsSec');
+  const blankOffset = String((minEl && minEl.value) || '').trim() === '' &&
+                      String((secEl && secEl.value) || '').trim() === '';
+  const mm = Math.max(0, +((minEl && minEl.value) || 0) || 0);
+  const ss = Math.min(59, Math.max(0, +((secEl && secEl.value) || 0) || 0));
+  const tipMs = blankOffset ? null : (mm * 60 + ss) * 1000;
 
   const token = storedToken();
   save.disabled = true;
@@ -1402,7 +1424,8 @@ async function saveAttach(wrap) {
        handing it over makes every play a device-against-itself subtraction. */
     const tw = tipWallMs();
     const args = { p_game: gameId, p_url: raw, p_provider: parsed.provider, p_ref: parsed.ref,
-                   p_tip_offset_ms: tipMs, p_trim_ms: 0 };
+                   p_trim_ms: 0 };
+    if (tipMs != null) args.p_tip_offset_ms = tipMs;
     if (tw != null) args.p_tip_wall = Math.round(tw);
     let r = await rpcCallRaw('set_game_video', args, token);
     if (!r.ok) throw new Error((r.body && r.body.message) || 'refused');
