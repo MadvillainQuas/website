@@ -311,6 +311,9 @@ const BODIES = {
                      : '<div class="msg">The game flow charts could not be loaded.</div>',
   connections: () => window.EpinoiaConnections ? window.EpinoiaConnections.render(window.S)
                      : '<div class="msg">The connections could not be loaded.</div>',
+  /* second chances, breaks, turnovers, timeouts and assists, and the shots each produced */
+  events:      () => window.EpinoiaEvents ? window.EpinoiaEvents.render(window.S)
+                     : '<div class="msg">The events could not be loaded.</div>',
   /* Rendered rather than returned as a string: the video tab owns a player, a
      set of filters and a scroll position, and handing back HTML for the page
      to insert would throw all three away on every redraw. */
@@ -450,10 +453,10 @@ function bindBoxSwitch(el) {
 
 /* the same five, in the same order, with the same labels as renderFinal() --
    and then GAMEVIS's two, game flow and connections, which the scorer's final
-   screen does not carry (flow.js, connections.js) */
+   screen does not carry (flow.js, connections.js), and events (events.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full stats'], ['lineups', 'lineups'],
-              ['flow', 'game flow'], ['connections', 'connections']];
+              ['flow', 'game flow'], ['connections', 'connections'], ['events', 'events']];
 
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
@@ -1640,6 +1643,7 @@ function renderBody(d) {
     if (fTab === 'video') mountVideo(d);
     if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
     if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
+    if (fTab === 'events' && window.EpinoiaEvents) window.EpinoiaEvents.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }
@@ -1691,6 +1695,30 @@ window.addEventListener('epinoia:watchrun', e => {
   } catch (_) { /* an old browser keeps the tab switch without the address */ }
   /* pressed again for the same run, it plays again: the tab only re-seeks for a key it has not applied */
   if (window.EpinoiaVideoTab && window.EpinoiaVideoTab.state) window.EpinoiaVideoTab.state().runFocus = null;
+  fTab = 'video';
+  document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === 'video'));
+  lastBodyKey = '';
+  renderBody();
+  const host = document.getElementById('vidHost');
+  if (host && host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+});
+
+/* WATCH VIDEO, FROM ONE PLAY (the events tab's after-timeout list). The same route as a
+   shared ?vs= link; the video tab's filters are cleared first, because a play the current
+   filter hides cannot be found to play. */
+window.addEventListener('epinoia:watchplay', e => {
+  const seq = e && e.detail && e.detail.seq;
+  if (seq == null || !window.S || !window.S.video) return;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('vs', seq);
+    u.searchParams.delete('vr');
+    history.replaceState(null, '', u);
+  } catch (_) { /* the tab switch still happens */ }
+  if (window.EpinoiaVideoTab && window.EpinoiaVideoTab.state) {
+    const st = window.EpinoiaVideoTab.state();
+    st.current = null; st.filter = 'all'; st.pid = ''; st.team = ''; st.tab = 'events'; st.runFocus = null;
+  }
   fTab = 'video';
   document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === 'video'));
   lastBodyKey = '';

@@ -1,0 +1,169 @@
+/* ---------- events: what each kind of play turned into (events.js) ----------
+   Four situation colours, validated as a set on both card grounds (dataviz
+   validate_palette: light on #ffffff, dark on #0a1a13). Amber and green sit under
+   3:1 on the light card, which is why every mark they colour carries a text label
+   beside it. Half court and "all" are the neutral ink: they are the reference the
+   situations are read against, not a fifth identity. */
+.ev{ --ev-s1:#d95926; --ev-s2:#3987e5; --ev-s3:#199e70; --ev-s4:#c98500;
+  --ev-neutral:color-mix(in srgb,var(--text-primary) 55%,transparent);
+  --ev-track:color-mix(in srgb,var(--text-primary) 9%,transparent);
+  display:grid; gap:16px; min-width:0; position:relative }
+:root[data-theme="light"] .ev{ --ev-s1:#eb6834; --ev-s2:#2a78d6; --ev-s3:#1baf7a; --ev-s4:#eda100 }
+
+/* ---- team and side ---- */
+.ev-bar{ display:flex; flex-wrap:wrap; gap:10px 14px; justify-content:space-between; align-items:center }
+.ev-teams, .ev-seg{ display:inline-flex; padding:3px; gap:3px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-subtle); max-width:100% }
+.ev-teams button, .ev-seg button{ font:600 13px/1 var(--f-head); color:var(--text-secondary); background:none; border:0; border-radius:9px;
+  padding:9px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; min-width:0; white-space:nowrap; transition:background .15s ease,color .15s ease }
+.ev-teams button{ overflow:hidden; text-overflow:ellipsis }
+.ev-teams button i{ width:10px; height:10px; border-radius:50%; background:var(--c); flex:none }
+.ev-teams button:hover, .ev-seg button:hover{ color:var(--text-primary); background:var(--bg-glass) }
+.ev-teams button.on, .ev-seg button.on{ color:var(--text-bright); background:color-mix(in srgb,var(--text-primary) 12%,transparent) }
+.ev-teams button.on{ box-shadow:inset 0 -2px 0 var(--c) }
+.ev button:focus-visible{ outline:2px solid var(--text-bright); outline-offset:2px }
+
+.ev-lede{ margin:0; font-size:14px; line-height:1.55; color:var(--text-secondary); text-wrap:pretty }
+.ev-lede b{ color:var(--text-primary); font-weight:600 }
+
+/* ---- cards ---- */
+.ev-card{ background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--r-lg,20px); padding:16px; min-width:0 }
+.ev-head{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:12px }
+.ev-title{ margin:0; font:700 15px/1.3 var(--f-head); color:var(--text-bright); text-wrap:balance; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
+.ev-title small{ font:500 12px var(--f-head); color:var(--text-secondary) }
+.ev-sub{ margin:14px 0 8px; font:600 11px var(--f-head); text-transform:uppercase; letter-spacing:.08em; color:var(--text-secondary) }
+.ev-note{ margin:10px 0 0; font-size:11.5px; line-height:1.5; color:var(--text-secondary) }
+.ev-none{ margin:4px 0; font-size:12.5px; color:var(--text-muted) }
+.ev-sw{ width:10px; height:10px; border-radius:3px; background:var(--s); flex:none; display:inline-block }
+.ev-key{ margin:0; display:flex; flex-wrap:wrap; gap:4px 14px; font-size:11px; color:var(--text-secondary) }
+.ev-key span{ display:inline-flex; align-items:center; gap:6px }
+.ev-key i{ display:inline-block; width:10px; height:10px; border-radius:50% }
+.ev-key i.tick{ width:2px; height:12px; border-radius:1px; background:var(--text-primary) }
+.ev-key i.made{ background:var(--s) }
+.ev-key i.miss{ border:2px solid var(--s); box-sizing:border-box }
+.ev-key i.z0, .ev-key i.z1, .ev-key i.z2{ border-radius:2px }
+.ev-key i.z0{ background:var(--s) }
+.ev-key i.z1{ background:color-mix(in srgb,var(--s) 60%,var(--bg-card)) }
+.ev-key i.z2{ background:color-mix(in srgb,var(--s) 30%,var(--bg-card)) }
+
+/* ---- the situation table: a row is a button, and its bars are the chart ---- */
+.ev-cols, .ev-row{ display:grid; grid-template-columns:minmax(170px,1.5fr) minmax(76px,.6fr) minmax(150px,1.3fr) minmax(70px,.55fr) minmax(150px,1.2fr); gap:4px 18px; align-items:center }
+.ev-cols{ padding:0 12px 6px; font:600 10px var(--f-head); text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted) }
+.ev-rows{ display:grid; gap:4px }
+.ev-row{ width:100%; text-align:left; font:inherit; color:var(--text-primary); background:var(--bg-glass); border:1px solid transparent; border-radius:var(--r-sm,10px);
+  padding:10px 12px; cursor:pointer; position:relative; transition:background .15s ease,border-color .15s ease }
+.ev-row:hover{ background:color-mix(in srgb,var(--s) 10%,transparent) }
+.ev-row.on{ background:color-mix(in srgb,var(--s) 14%,transparent); border-color:color-mix(in srgb,var(--s) 55%,transparent) }
+.ev-row.ref{ margin-top:6px; border-top:1px dashed color-mix(in srgb,var(--text-primary) 18%,transparent); border-radius:0 0 var(--r-sm,10px) var(--r-sm,10px) }
+.ev-row.ref.on{ border-top-style:solid }
+.ev-row > span{ min-width:0 }
+.ev-row b{ font:700 15px/1.2 var(--f-mono); font-variant-numeric:tabular-nums; color:var(--text-bright) }
+.ev-row small{ display:block; font-size:11px; line-height:1.35; color:var(--text-secondary); margin-top:2px }
+.ev-name{ display:flex; gap:10px; align-items:flex-start }
+.ev-name .ev-sw{ margin-top:4px }
+.ev-name b{ font:600 14px/1.25 var(--f-head); color:var(--text-bright) }
+.ev-ppp{ display:grid; grid-template-columns:1fr auto; gap:0 10px; align-items:center }
+.ev-ppp small{ grid-column:1 / -1 }
+.ev-track{ position:relative; height:8px; border-radius:4px; background:var(--ev-track) }
+.ev-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--s) }
+.ev-tick{ position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; border-radius:1px; background:var(--text-primary) }
+.ev-efg.few b{ color:var(--text-muted) }
+.ev-stack{ display:flex; gap:2px; height:10px; border-radius:4px; overflow:hidden; background:var(--ev-track) }
+.ev-stack i{ display:block; min-width:3px; height:100% }
+.ev-stack .z0{ background:var(--s) }
+.ev-stack .z1{ background:color-mix(in srgb,var(--s) 60%,var(--bg-card)) }
+.ev-stack .z2{ background:color-mix(in srgb,var(--s) 30%,var(--bg-card)) }
+.ev-diet.none .ev-stack{ opacity:.5 }
+
+/* ---- the chosen situation ---- */
+.ev-detail{ border-color:color-mix(in srgb,var(--s) 40%,var(--border-subtle)) }
+.ev-figs{ margin:0; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:11px; color:var(--text-secondary) }
+.ev-figs span{ display:inline-flex; align-items:baseline; gap:5px }
+.ev-figs b{ font:700 17px var(--f-mono); color:var(--text-bright); font-variant-numeric:tabular-nums }
+.ev-grid{ display:grid; grid-template-columns:minmax(0,340px) minmax(0,1fr); gap:18px 26px; align-items:start }
+.ev-court svg{ display:block; width:100%; height:auto; border-radius:var(--r-md,12px); background:var(--bg-glass) }
+.ev-court .ev-key{ margin-top:8px }
+.ev-court.empty{ display:grid; place-items:center; min-height:200px; border-radius:var(--r-md,12px); background:var(--bg-glass); padding:16px; text-align:center }
+.ev-court.empty p{ margin:0; font-size:12.5px; color:var(--text-muted) }
+.ev-dot{ cursor:default }
+.ev-dot.made{ fill:var(--s); stroke:var(--bg-card); stroke-width:10 }
+.ev-dot.miss{ fill:none; stroke:var(--s); stroke-width:10; opacity:.85 }
+.ev-dot:hover{ stroke:var(--text-bright) }
+.ev-side-col > .ev-sub:first-child{ margin-top:0 }
+
+.ev-types, .ev-scorers, .ev-ato{ list-style:none; margin:0; padding:0; display:grid; gap:6px }
+.ev-types li{ display:grid; grid-template-columns:minmax(90px,.9fr) minmax(80px,1.4fr) 44px; gap:10px; align-items:center; font-size:12.5px }
+.ev-tlabel{ color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ev-tlabel::first-letter{ text-transform:uppercase }
+.ev-tbar{ position:relative; height:10px; border-radius:4px; background:var(--ev-track) }
+.ev-tbar i{ position:absolute; left:0; top:0; bottom:0; border-radius:4px }
+.ev-tbar i.att{ background:color-mix(in srgb,var(--s) 30%,var(--bg-card)) }
+.ev-tbar i.made{ background:var(--s) }
+.ev-tval{ font:600 12px var(--f-mono); color:var(--text-primary); text-align:right; font-variant-numeric:tabular-nums }
+.ev-zones{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:12px }
+.ev-zones span{ display:grid; gap:1px; padding:8px 10px; border-radius:var(--r-sm,8px); background:var(--bg-glass) }
+.ev-zones small{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary) }
+.ev-zones b{ font:700 15px var(--f-mono); color:var(--text-bright); font-variant-numeric:tabular-nums }
+.ev-zones em{ font-style:normal; font-size:11px; color:var(--text-secondary) }
+
+.ev-scorers li{ display:grid; grid-template-columns:minmax(96px,1fr) minmax(60px,1.1fr) 28px minmax(0,auto); gap:10px; align-items:center; font-size:12.5px }
+.ev-person{ color:var(--text-primary); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+a.ev-person:hover{ text-decoration:underline }
+.ev-sbar{ height:8px; border-radius:4px; background:var(--ev-track); overflow:hidden }
+.ev-sbar i{ display:block; height:100%; border-radius:4px; background:var(--s) }
+.ev-scorers b{ font:700 13px var(--f-mono); color:var(--text-bright); text-align:right; font-variant-numeric:tabular-nums }
+.ev-scorers small{ font-size:11px; color:var(--text-secondary); white-space:nowrap }
+
+.ev-ato li{ display:grid; grid-template-columns:62px minmax(0,170px) minmax(0,1fr) 34px auto; gap:10px; align-items:center; padding:8px 10px; border-radius:var(--r-sm,8px);
+  background:var(--bg-glass); border-left:3px solid color-mix(in srgb,var(--s) 35%,transparent); font-size:12.5px }
+.ev-ato li.scored{ border-left-color:var(--s) }
+.ev-when{ font:600 12px var(--f-mono); color:var(--text-secondary); font-variant-numeric:tabular-nums; white-space:nowrap }
+.ev-chip{ justify-self:start; max-width:100%; font-size:10.5px; padding:3px 8px; border-radius:10px; background:var(--ev-track); color:var(--text-secondary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.ev-chip.own{ color:var(--text-primary) }
+.ev-how{ color:var(--text-primary); min-width:0 }
+.ev-how::first-letter{ text-transform:uppercase }
+.ev-how small{ color:var(--text-secondary) }
+.ev-atopts{ font:700 14px var(--f-mono); text-align:right; color:var(--text-bright); font-variant-numeric:tabular-nums }
+.ev-ato li.blank .ev-atopts{ color:var(--text-muted) }
+.ev-watch{ font:600 11px var(--f-head); letter-spacing:.04em; text-transform:uppercase; color:var(--text-bright); background:none; cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--text-primary) 30%,transparent); border-radius:8px; padding:6px 10px; white-space:nowrap }
+.ev-watch:hover{ background:var(--text-bright); color:var(--bg-base); border-color:var(--text-bright) }
+
+/* ---- assisted and unassisted ---- */
+.ev-aline{ display:grid; grid-template-columns:minmax(120px,.8fr) minmax(0,2.2fr) 44px; gap:8px 16px; align-items:center; padding:6px 0 }
+.ev-alabel b{ display:block; font:600 14px var(--f-head); color:var(--text-bright) }
+.ev-alabel small{ font-size:11px; color:var(--text-secondary) }
+.ev-abar{ display:block; min-width:0 }
+.ev-stack.big{ height:24px; border-radius:4px; background:none; min-width:6px }
+.ev-stack.big i{ display:grid; place-items:center; font:700 11px var(--f-mono); color:var(--bg-base); font-variant-numeric:tabular-nums }
+.ev-stack.big .z2{ color:var(--text-bright) }
+.ev-stack.big .z1{ color:var(--text-bright) }
+.ev-apct{ font:700 15px var(--f-mono); color:var(--text-bright); text-align:right; font-variant-numeric:tabular-nums }
+.ev-assist > .ev-key{ margin:8px 0 2px }
+
+/* ---- the tooltip ---- */
+.ev-tip{ position:absolute; z-index:20; max-width:min(320px,90%); padding:7px 10px; border-radius:8px; pointer-events:none;
+  background:var(--text-bright); color:var(--bg-base); font-size:12px; line-height:1.4; box-shadow:0 6px 20px rgba(0,0,0,.25) }
+
+.ev-empty{ text-align:center; padding:40px 20px }
+.ev-empty p{ color:var(--text-muted); font-size:13px; margin:10px 0 0 }
+
+/* ---- a phone ---- */
+@media (max-width:760px){
+  .ev-cols{ display:none }
+  .ev-row{ grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name pts" "ppp efg" "diet diet"; gap:8px 14px; padding:11px 12px }
+  .ev-name{ grid-area:name } .ev-pts{ grid-area:pts; text-align:right } .ev-ppp{ grid-area:ppp } .ev-efg{ grid-area:efg; text-align:right } .ev-diet{ grid-area:diet }
+  .ev-name small{ display:none }
+  .ev-row.on .ev-name small{ display:block }
+  .ev-grid{ grid-template-columns:minmax(0,1fr) }
+  .ev-court{ max-width:380px; width:100%; justify-self:center }
+  .ev-ato li{ grid-template-columns:64px minmax(0,1fr) 30px; grid-template-areas:"when how pts" "chip chip watch" }
+  .ev-when{ grid-area:when } .ev-chip{ grid-area:chip } .ev-how{ grid-area:how } .ev-atopts{ grid-area:pts } .ev-watch{ grid-area:watch; justify-self:end }
+  .ev-ato li:not(:has(.ev-watch)){ grid-template-areas:"when how pts" "chip chip chip" }
+  .ev-aline{ grid-template-columns:minmax(0,1fr) 44px; grid-template-areas:"label pct" "bar bar" }
+  .ev-alabel{ grid-area:label } .ev-apct{ grid-area:pct } .ev-abar{ grid-area:bar }
+  .ev-scorers li{ grid-template-columns:minmax(0,1fr) minmax(50px,.8fr) 26px; }
+  .ev-scorers small{ grid-column:1 / -1; margin-top:-4px }
+  .ev-teams{ width:100% } .ev-teams button{ flex:1; justify-content:center; padding:9px 8px }
+}
+@media (prefers-reduced-motion:reduce){ .ev-row, .ev-teams button, .ev-seg button{ transition:none } }

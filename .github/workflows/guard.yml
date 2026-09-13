@@ -361,6 +361,11 @@ jobs:
         # possessions, assists and points assisted must be the engine's to the unit
         run: node supabase/tests/gameflow.test.mjs
 
+      - name: The events tab's situations are the box score's
+        # second-chance, off-turnover and fast-break points by the engine's own windows,
+        # on a hand-worked log and three real LiveStats games
+        run: node supabase/tests/events.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently
