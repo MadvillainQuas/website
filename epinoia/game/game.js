@@ -306,6 +306,11 @@ const BODIES = {
   shots:   d => B.shotChartHTML(d, 0) + B.shotChartHTML(d, 1),
   adv:     d => B.advHTML(d),
   lineups: () => B.lineupsHTML(),
+  /* GAMEVIS's Game Flow and Connections tabs, ported: both replay window.S themselves */
+  flow:        () => window.EpinoiaGameFlow ? window.EpinoiaGameFlow.render(window.S)
+                     : '<div class="msg">The game flow charts could not be loaded.</div>',
+  connections: () => window.EpinoiaConnections ? window.EpinoiaConnections.render(window.S)
+                     : '<div class="msg">The connections could not be loaded.</div>',
   /* Rendered rather than returned as a string: the video tab owns a player, a
      set of filters and a scroll position, and handing back HTML for the page
      to insert would throw all three away on every redraw. */
@@ -443,9 +448,12 @@ function bindBoxSwitch(el) {
   });
 }
 
-/* the same five, in the same order, with the same labels as renderFinal() */
+/* the same five, in the same order, with the same labels as renderFinal() --
+   and then GAMEVIS's two, game flow and connections, which the scorer's final
+   screen does not carry (flow.js, connections.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
-              ['adv', 'full stats'], ['lineups', 'lineups']];
+              ['adv', 'full stats'], ['lineups', 'lineups'],
+              ['flow', 'game flow'], ['connections', 'connections']];
 
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
@@ -1630,6 +1638,8 @@ function renderBody(d) {
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
+    if (fTab === 'flow' && window.EpinoiaGameFlow) window.EpinoiaGameFlow.mounted(el);
+    if (fTab === 'connections' && window.EpinoiaConnections) window.EpinoiaConnections.mounted(el);
     if (fTab === 'box') {
       bindBoxSwitch(el);
       if (boxMode === 'modern' && window.EpinoiaModernBox) { window.EpinoiaModernBox.mounted(el); setTimeout(squadPhotos, 0); }

@@ -356,6 +356,11 @@ jobs:
         # magic-link logins use. Skips cleanly until the probe account exists.
         run: node supabase/tests/authed.test.mjs
 
+      - name: Game flow and connections agree with the box score
+        # GAMEVIS's two tabs replay the log themselves; on a real LiveStats game their
+        # possessions, assists and points assisted must be the engine's to the unit
+        run: node supabase/tests/gameflow.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

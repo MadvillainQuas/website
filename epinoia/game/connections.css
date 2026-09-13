@@ -1,0 +1,75 @@
+/* ---------- connections: GAMEVIS's assist combinations, on the box score's tokens ---------- */
+.cx{ display:grid; gap:16px; min-width:0 }
+.cx [hidden]{ display:none !important }
+
+.cx-toggle{ justify-self:end; display:flex; gap:4px; padding:4px; max-width:100%;
+  border:1px solid var(--border-subtle); background:var(--bg-glass); border-radius:999px }
+.cx-toggle button{ border:none; background:none; color:var(--text-secondary); font-family:var(--f-head); font-size:11px; font-weight:600;
+  letter-spacing:.6px; text-transform:uppercase; padding:8px 16px; border-radius:999px; cursor:pointer }
+.cx-toggle button:hover{ color:var(--text-primary) }
+.cx-toggle button.on{ background:linear-gradient(135deg,var(--vis-t0,var(--team0)),color-mix(in srgb,var(--vis-t0,var(--team0)) 70%,transparent)); color:var(--bg-base); box-shadow:0 0 14px var(--team0-glow) }
+.cx-toggle button:focus-visible{ outline:2px solid var(--text-primary); outline-offset:2px }
+
+.cx-cards, .cx-tables{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; min-width:0 }
+.cx-tables{ grid-template-columns:minmax(0,1fr) }
+.cx-section{ background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--r-lg,20px); padding:16px; min-width:0 }
+.cx-head{ display:flex; justify-content:space-between; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-bottom:12px }
+.cx-head h3{ display:flex; align-items:center; gap:8px; margin:0; font-family:var(--f-head); font-size:15px; font-weight:700; color:var(--text-bright); min-width:0 }
+.cx-combos{ font-size:12px; color:var(--text-muted) }
+.cx-dot{ width:10px; height:10px; border-radius:50%; flex:none; display:inline-block }
+.cx-dot.home{ background:var(--vis-t0,var(--team0)); box-shadow:0 0 8px var(--team0-glow) }
+.cx-dot.away{ background:var(--vis-t1,var(--team1)); box-shadow:0 0 8px var(--team1-glow) }
+
+.cx-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px }
+.cx-card{ background:var(--bg-glass); border:1px solid var(--border-subtle); border-radius:var(--r-md,12px); padding:12px; min-width:0 }
+.cx-card-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; min-width:0 }
+.cx-players{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; font-size:13px; font-weight:600 }
+.cx-passer{ color:var(--aqua) }
+.cx-scorer{ color:var(--lume) }
+.cx-players a, .cx-table a{ text-decoration:none }
+.cx-players a:hover, .cx-table a:hover{ text-decoration:underline }
+.cx-arrow{ color:var(--text-muted) }
+.cx-stats{ display:flex; align-items:center; gap:14px }
+.cx-main{ text-align:center; flex:none }
+.cx-count{ font-family:var(--f-mono); font-size:26px; font-weight:700; line-height:1; color:var(--text-bright); font-variant-numeric:tabular-nums }
+.cx-label{ font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:4px }
+.cx-details{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; flex:1; min-width:0 }
+.cx-detail{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px; background:var(--bg-glass); border-radius:var(--r-sm,8px) }
+.cx-value{ font-family:var(--f-mono); font-size:13px; font-weight:700; color:var(--text-primary); font-variant-numeric:tabular-nums }
+.cx-dlabel{ font-size:9px; color:var(--text-muted); letter-spacing:.5px }
+.cx-value.three, .cx-num.three{ color:var(--emerald) }
+.cx-value.two, .cx-num.two{ color:var(--coral) }
+.cx-bar-track{ height:4px; margin-top:10px; border-radius:2px; background:color-mix(in srgb,var(--text-primary) 8%,transparent); overflow:hidden }
+.cx-bar{ height:100%; border-radius:2px }
+.cx-bar.home{ background:linear-gradient(90deg,var(--vis-t0,var(--team0)),color-mix(in srgb,var(--vis-t0,var(--team0)) 50%,transparent)) }
+.cx-bar.away{ background:linear-gradient(90deg,var(--vis-t1,var(--team1)),color-mix(in srgb,var(--vis-t1,var(--team1)) 50%,transparent)) }
+.cx-none{ color:var(--text-muted); font-size:13px; text-align:center; padding:16px }
+
+.cx-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch }
+.cx-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:520px }
+.cx-table th{ padding:10px; text-align:center; font-family:var(--f-head); font-size:11px; font-weight:600; letter-spacing:.5px;
+  color:var(--text-secondary); background:color-mix(in srgb,var(--vis-t0,var(--team0)) 12%,transparent); border-bottom:2px solid color-mix(in srgb,var(--vis-t0,var(--team0)) 35%,transparent) }
+.cx-table th:nth-child(-n+3){ text-align:left }
+.cx-table td{ padding:8px 10px; border-bottom:1px solid var(--border-subtle); color:var(--text-primary) }
+.cx-table tbody tr:nth-child(odd){ background:var(--bg-glass) }
+.cx-table td:nth-child(2), .cx-table td:nth-child(3){ font-weight:500; white-space:nowrap }
+.cx-num{ text-align:center; font-family:var(--f-mono); font-variant-numeric:tabular-nums }
+.cx-ast{ font-weight:700; color:var(--positive) }
+.cx-pts{ font-weight:700; color:var(--gold) }
+
+.cx-empty{ text-align:center; padding:48px 20px }
+.cx-empty h3{ font-family:var(--f-head); color:var(--text-muted); font-size:15px }
+.cx-empty p{ color:var(--text-muted); margin-top:12px; font-size:13px }
+
+:root[data-theme="light"] .cx-pts{ color:#a8700a }
+:root[data-theme="light"] .cx-value.three, :root[data-theme="light"] .cx-num.three{ color:#12925f }
+:root[data-theme="light"] .cx-value.two, :root[data-theme="light"] .cx-num.two{ color:#c2413b }
+
+@media (max-width:820px){
+  .cx-cards{ grid-template-columns:minmax(0,1fr) }
+}
+@media (max-width:420px){
+  .cx-section{ padding:12px }
+  .cx-grid{ grid-template-columns:minmax(0,1fr) }
+  .cx-toggle{ justify-self:stretch; justify-content:center }
+}

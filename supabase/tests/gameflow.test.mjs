@@ -1,0 +1,213 @@
+/* ============================================================================
+   GAME FLOW AND CONNECTIONS — GAMEVIS's two tabs, on the EPINOIA box score.
+
+   epinoia/game/flow.js and connections.js replay window.S the way GAMEVIS
+   replays a FIBA play-by-play page. These check the replay on a log small
+   enough to work out by hand, then on a real LiveStats game translated by the
+   ingest's own translator, where the tabs must agree with the engine's box
+   score about every point and every assist.
+
+     node supabase/tests/gameflow.test.mjs
+   ============================================================================ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
+
+const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+const require = createRequire(import.meta.url);
+const Flow = require(path.join(ROOT, 'epinoia', 'game', 'flow.js'));
+const Conn = require(path.join(ROOT, 'epinoia', 'game', 'connections.js'));
+const engineSrc = fs.readFileSync(path.join(ROOT, 'supabase', 'functions', '_shared', 'engine.js'), 'utf8');
+const E = await import('data:text/javascript;base64,' + Buffer.from(engineSrc).toString('base64'));
+
+let pass = 0, fail = 0;
+const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
+  else { fail++; console.log('  FAIL  ' + n + (d !== undefined ? '\n          ' + d : '')); } };
+const near = (a, b, e = 1e-9) => Math.abs(a - b) <= e;
+
+/* ---- a game small enough to do by hand ------------------------------------ */
+const player = (t, i, name) => ({ id: (t ? 'a' : 'h') + i, name, num: String(i) });
+const S = {
+  teams: [
+    { name: 'Leeds Force', players: [1, 2, 3, 4, 5, 6].map(i => player(0, i, ['', 'Ada Stone', 'Bea Moss', 'Cy Hart', 'Dee Lowe', 'Eve Park', 'Flo <b>Ray</b>'][i])) },
+    { name: 'Hull Pirates', players: [1, 2, 3, 4, 5, 6].map(i => player(1, i, ['', 'Gus Roe', 'Hal Fox', 'Ian Pike', 'Jo Kent', 'Kit Lane', 'Lou Dale'][i])) }
+  ],
+  starters: [['h1', 'h2', 'h3', 'h4', 'h5'], ['a1', 'a2', 'a3', 'a4', 'a5']],
+  events: []
+};
+const P1 = 600000;
+let seq = 0;
+const ev = (t, team, pid, clock, extra) => S.events.push(Object.assign({ seq: ++seq, t, team, pid, period: 1, clock }, extra || {}));
+ev('period_start', null, null, P1);
+ev('p2_made', 0, 'h1', 590000); ev('ast', 0, 'h2', 590000);            // 2-0, h2 -> h1 (2)
+ev('p3_made', 1, 'a1', 570000); ev('ast', 1, 'a2', 570000);            // 2-3, a2 -> a1 (3): lead change
+ev('p2_miss', 0, 'h3', 550000); ev('reb', 0, 'h4', 548000, { off: true });
+ev('p2_made', 0, 'h1', 547000);                                        // 4-3 putback, unassisted: lead change
+ev('to', 1, 'a1', 530000);                                             // away turnover
+ev('p3_made', 0, 'h1', 520000); ev('ast', 0, 'h2', 520000);            // 7-3, h2 -> h1 (3)
+ev('ast', 0, 'h3', 520000);                                            // a second assist on the same basket: ignored
+ev('sub', 0, null, 515000, { in: 'h6', out: 'h5' });
+ev('foul', 1, 'a3', 510000); ev('ft_made', 0, 'h1', 510000); ev('ft_made', 0, 'h1', 510000);   // 9-3
+ev('ft_miss', 1, 'a2', 500000);
+ev('p2_made', 0, 'h6', 490000); ev('ast', 1, 'a4', 490000);            // 11-3, an away "assist" on a home basket: ignored
+ev('p2_made', 1, 'a2', 480000);                                        // 11-5: ends home's run of 9
+
+console.log('\nthe flow points, worked out by hand');
+{
+  const F = Flow.compute(S);
+  const pts = F.points;
+  /* a point after every score, every field-goal attempt and every turnover:
+     h1 2, a1 3, h3 miss, h1 2, a1 TO, h1 3, h1 FT, h1 FT, h6 2, a2 2  (the FT miss and the OREB are not points) */
+  ok('one point per score, field-goal attempt and turnover', pts.length === 10, pts.length);
+  const last = pts[pts.length - 1];
+  ok('the running score is the game\'s', last.homePoints === 11 && last.awayPoints === 5, last.homePoints + '-' + last.awayPoints);
+  /* home: FGA 5 (h1,h3,h1,h1,h6), TOV 0, FTA 2, OREB 1 -> 0.96*(5+0+0.88-1)
+     away: FGA 2, TOV 1, FTA 1, OREB 0 -> 0.96*(2+1+0.44) */
+  ok('possessions are 0.96 x (FGA + TOV + 0.44 FTA - OREB)',
+     near(last.homePoss, 0.96 * 4.88) && near(last.awayPoss, 0.96 * 3.44), last.homePoss + ' ' + last.awayPoss);
+  ok('PPP is points over those possessions', near(last.homePPP, 11 / (0.96 * 4.88)) && near(last.awayPPP, 5 / (0.96 * 3.44)));
+  ok('EPA is (TO margin + OREB margin) x 1.05', near(last.epa, (1 - 0 + 1 - 0) * 1.05), last.epa);
+  const toPoint = pts[4];
+  ok('a turnover is counted in its own point (GAMEVIS counted it one point late)', toPoint.awayTov === 1 && near(toPoint.epa, 2.1), JSON.stringify(toPoint));
+  /* eFG home (4 made, 1 three, 5 FGA) = 90; away (2 made, 1 three, 2 FGA) = 125; FT rate home 2/5 = 40, away 0 */
+  ok('eFG% and FT-rate margins', near(last.efgMargin, 90 - 125) && near(last.ftRateMargin, 40), last.efgMargin + ' ' + last.ftRateMargin);
+  ok('elapsed is game seconds', pts[0].elapsed === 10 && last.elapsed === 120, pts[0].elapsed + ' ' + last.elapsed);
+
+  const s = F.summary;
+  ok('lead changes: home, away, home', s.leadChanges === 2, s.leadChanges);
+  ok('biggest runs are read off the margin, as GAMEVIS reads them', s.biggestHomeRun === 9 && s.biggestAwayRun === 3, s.biggestHomeRun + ' ' + s.biggestAwayRun);
+
+  ok('the home run of 9 is a team momentum run', F.teamRuns.length === 1 && F.teamRuns[0].teamIdx === 0 && F.teamRuns[0].points === 9,
+     JSON.stringify(F.teamRuns));
+  const tr = F.teamRuns[0];
+  ok('...shown as 9-0', tr.scoreDiff === '9-0');
+  ok('...with the lineup on the floor when it began', tr.lineup.slice().sort().join() === 'h1,h2,h3,h4,h5', tr.lineup.join());
+  ok('...and its top scorer, by surname', tr.topScorer === 'Stone' && tr.topScorerPoints === 7, tr.topScorer + ' ' + tr.topScorerPoints);
+  ok('...timed from its first basket to its last', tr.seconds === 57 && tr.duration === '0\'57"', tr.seconds + ' ' + tr.duration);
+  ok('a player with 6+ inside that run is a player run', F.playerRuns.length === 1 && F.playerRuns[0].pid === 'h1' && F.playerRuns[0].points === 7,
+     JSON.stringify(F.playerRuns));
+  ok('...showing the score before and after', F.playerRuns[0].startScore === '2-3' && F.playerRuns[0].endScore === '11-3',
+     F.playerRuns[0].startScore + ' ' + F.playerRuns[0].endScore);
+  ok('formatDuration is GAMEVIS\'s', Flow.formatDuration(83) === '1\'23"' && Flow.formatDuration(5) === '0\'05"');
+
+  /* out of order in the array, in order in the game: the engine's ordering wins */
+  const shuffled = Object.assign({}, S, { events: S.events.slice().reverse() });
+  const R = Flow.compute(shuffled);
+  ok('the log is replayed in game order, not array order',
+     R.points.length === 10 && R.points[0].homePoints === 2 && R.summary.leadChanges === 2);
+}
+
+console.log('\nthe charts');
+{
+  const html = Flow.render(S);
+  ok('all six charts and the summary strip are drawn', (html.match(/class="gf-card"/g) || []).length === 6 && /gf-summary/.test(html),
+     (html.match(/class="gf-card"/g) || []).length);
+  ok('...under GAMEVIS\'s titles', ['Player Scoring Runs', 'Team Momentum Runs', 'Scoring Development (Score Margin)',
+     'Expected Points Added (EPA)', 'Scoring Battle (eFG% + FT Rate)', 'Points Per Possession Development'].every(t => html.includes(t)));
+  ok('the margin line changes colour where it crosses zero', /class="gf-line home"/.test(html) && /class="gf-line away"/.test(html));
+  ok('a momentum marker carries its lineup and top scorer', /data-tip="Leeds Force: 9-0 in 0'57&quot;\n\nLineup:\nAda Stone, Bea Moss, Cy Hart, Dee Lowe, Eve Park\n\nTop: Stone \(7 pts\)"/.test(html));
+  ok('the summary strip reads 11 - 5, two lead changes, +2.1 EPA',
+     html.includes('>11 - 5<') && /Lead Changes<\/span><span class="gf-stat-value">2</.test(html) && html.includes('+2.1 pts'));
+  const evil = JSON.parse(JSON.stringify(S));
+  evil.teams[0].name = '<img src=x onerror=alert(1)>';
+  evil.teams[0].players[0].name = 'Ada <script>alert(1)</script>';
+  const bad = Flow.render(evil);
+  ok('names are escaped wherever they are drawn', !/<img src=x|<script>/.test(bad) && bad.includes('&lt;img'));
+  const a1 = Flow.symAxis(143, 5), a2 = Flow.symAxis(11, 4), a3 = Flow.symAxis(30, 10);
+  ok('an axis never carries more than a dozen gridlines', a1.step === 25 && a1.yMax === 150, JSON.stringify(a1));
+  ok('...keeps the GAMEVIS step when that is few enough, rounded out so zero is a line',
+     a2.step === 4 && a2.yMax === 12 && a3.step === 10 && a3.yMax === 30, JSON.stringify([a2, a3]));
+  ok('the margin axis labels zero', />0<\/text>/.test(html));
+  ok('a game without enough play-by-play says so', /Game flow is not available yet/.test(Flow.render({ teams: S.teams, starters: S.starters, events: S.events.slice(0, 2) })));
+  ok('...as does an empty one', /not available/.test(Flow.render({ teams: S.teams, events: [] })));
+}
+
+console.log('\nconnections, worked out by hand');
+{
+  const C = Conn.compute(S);
+  ok('two pairs, one a side', C.all.length === 2 && C.byTeam[0].length === 1 && C.byTeam[1].length === 1, JSON.stringify(C.all));
+  const h = C.byTeam[0][0];
+  ok('h2 -> h1: 2 assists, 5 points, a three and a two',
+     h.assister === 'h2' && h.scorer === 'h1' && h.count === 2 && h.points === 5 && h.threes === 1 && h.twos === 1, JSON.stringify(h));
+  ok('a second assist on one basket is not counted, and neither is the other side\'s', C.all.every(c => c.assister !== 'h3' && c.assister !== 'a4'));
+  ok('the most frequent pair first, and the bar scale is the game\'s', C.all[0] === h && C.maxCount === 2);
+  const html = Conn.render(S);
+  ok('cards and table are both drawn, cards showing', /class="cx-cards"/.test(html) && /class="cx-tables" hidden/.test(html));
+  ok('a card shows assists, PTS, PPP, 3PT and 2PT', /cx-count">2</.test(html) && />2\.50</.test(html));
+  ok('the bar is scaled against the busiest pair in the game', /cx-bar home" style="width:100\.0%"/.test(html) && /cx-bar away" style="width:50\.0%"/.test(html));
+  ok('non-uuid players are not linked to a profile', !/href="\.\.\/p\//.test(html));
+  const uu = JSON.parse(JSON.stringify(S));
+  const id = '0f1e2d3c-4b5a-4968-8776-655443322110';
+  uu.teams[0].players[1].id = id; uu.events.forEach(e => { if (e.pid === 'h2') e.pid = id; });
+  ok('a league player is linked to their profile', Conn.render(uu).includes('href="../p/?p=' + id + '"'));
+  Conn.setView('table');
+  ok('the chosen view survives a redraw', /class="cx-cards" hidden/.test(Conn.render(S)) && /class="cx-tables">/.test(Conn.render(S)));
+  Conn.setView('cards');
+  ok('a game with no assists says so', /No connection data available/.test(Conn.render({ teams: S.teams, events: S.events.filter(e => e.t !== 'ast') })));
+}
+
+/* ---- a real game, through the ingest's own translator ---------------------- */
+console.log('\na real LiveStats game agrees with the box score');
+{
+  const script = [
+    'import sys, json, io',
+    'sys.path.insert(0, sys.argv[1])',
+    'from translate.fiba_events import translate',
+    'raw = json.load(io.open(sys.argv[2], encoding="utf-8"))',
+    'T = translate(raw, lambda team, pno: "%s:%s" % (team, pno))',
+    'sys.stdout.write(json.dumps(T))',
+  ].join('\n');
+  let T = null;
+  for (const exe of ['python3', 'python']) {
+    const r = spawnSync(exe, ['-c', script, path.join(ROOT, 'scripts', 'ingest'),
+                              path.join(ROOT, 'supabase', 'tests', 'fixtures', 'feedtiming', 'feed.json')], { encoding: 'utf8', maxBuffer: 64 << 20 });
+    if (r.status === 0 && r.stdout) { T = JSON.parse(r.stdout); break; }
+  }
+  ok('the fixture translates', !!T);
+  if (T) {
+    const G = {
+      teams: T.roster_snapshot.teams, starters: T.starters, tipWinner: T.tip_winner, arrowInit: T.arrow_init,
+      period: T.period, clockMs: 0,
+      events: T.events.map(e => Object.assign({ id: 'e' + e.seq }, e, e.payload || {}))
+    };
+    const d = E.deriveGame(G);
+    const F = Flow.compute(G);
+    const last = F.points[F.points.length - 1];
+    ok('the last flow point is the box score\'s score', last.homePoints === d.score[0] && last.awayPoints === d.score[1],
+       last.homePoints + '-' + last.awayPoints + ' vs ' + d.score.join('-'));
+    const adv = [0, 1].map(t => E.teamAdv(G, d, t));
+    ok('the last point\'s possessions are the engine\'s', near(last.homePoss, adv[0].possessions, 1e-6) && near(last.awayPoss, adv[1].possessions, 1e-6),
+       last.homePoss + '/' + adv[0].possessions + ' ' + last.awayPoss + '/' + adv[1].possessions);
+    ok('every team run is 6+ and every player run sits inside one', F.teamRuns.every(r => r.points >= 6) &&
+       F.playerRuns.every(p => F.teamRuns.some(r => r.teamIdx === p.teamIdx && r.startElapsed === p.startElapsed && p.points <= r.points)));
+    const C = Conn.compute(G);
+    [0, 1].forEach(t => {
+      const ast = G.teams[t].players.reduce((a, p) => a + (d.stats[p.id] ? d.stats[p.id].ast : 0), 0);
+      const ptsAst = G.teams[t].players.reduce((a, p) => a + (d.stats[p.id] ? d.stats[p.id].ptsAst : 0), 0);
+      const n = C.byTeam[t].reduce((a, c) => a + c.count, 0);
+      const pts = C.byTeam[t].reduce((a, c) => a + c.points, 0);
+      ok('team ' + t + ': every assist is in a pair, worth the engine\'s points assisted', n === ast && pts === ptsAst,
+         n + '/' + ast + ' assists, ' + pts + '/' + ptsAst + ' points');
+    });
+    const html = Flow.render(G) + Conn.render(G);
+    ok('both tabs render the real game', /gf-summary/.test(html) && /cx-card/.test(html));
+  }
+}
+
+console.log('\nwired into the game page');
+{
+  const game = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');
+  const page = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'index.html'), 'utf8');
+  ok('the two tabs are offered', /\['flow', 'game flow'\]/.test(game) && /\['connections', 'connections'\]/.test(game));
+  ok('...drawn', /flow:\s+\(\) => window\.EpinoiaGameFlow/.test(game) && /connections: \(\) => window\.EpinoiaConnections/.test(game));
+  ok('...and bound after every redraw', /fTab === 'flow' && window\.EpinoiaGameFlow\) window\.EpinoiaGameFlow\.mounted\(el\)/.test(game) &&
+     /fTab === 'connections' && window\.EpinoiaConnections\) window\.EpinoiaConnections\.mounted\(el\)/.test(game));
+  ok('the page loads both modules and their styles before game.js',
+     ['flow.css', 'connections.css'].every(f => page.includes('href="' + f + '?v=')) &&
+     page.indexOf('src="flow.js?v=') > 0 && page.indexOf('src="connections.js?v=') > 0 &&
+     page.indexOf('src="connections.js?v=') < page.indexOf('src="game.js?v='));
+}
+
+console.log('\n' + pass + ' passed, ' + fail + ' failed');
+process.exit(fail ? 1 : 0);
