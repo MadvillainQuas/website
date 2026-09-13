@@ -90,7 +90,9 @@ ok('...and never over a stamp already carried',
 /* The ratchet is the reason this matters more than one lost stamp: the branch
    that hands out fresh stamps only reaches rows past the old length. */
 ok('the fresh stamp still only goes to rows past the old length',
-   /for r in rows\[len\(existing\):\]:/.test(src));
+   /for r in within_stamp\(rows\[len\(existing\):\], stamp\):/.test(src));
+ok('...and in both write paths only to rows one stamp can honestly cover',
+   /for r in within_stamp\(tail, stamp\):/.test(src) && /latest - _elapsed_ms\(r\) <= err \+ 3000/.test(src));
 ok('...which is why the carry has to work, and is said so',
    /A\s*\n?\s*# ratchet, not a blip\./.test(src) || /ratchet, not a blip/.test(src));
 
@@ -184,9 +186,12 @@ console.log('\na live game is timed whichever lane sees it');
     "    observed = (now, 30000 + 400)",
     "    R.write_event_log(sb, {'adapter': 'fiba', 'code': 'x'}, NS(raw=feed, status='live', external_id='x'), 'g', {}, observed)",
     "    tl = sb.inserted",
+    "    lat = max(R._elapsed_ms(r) for r in tl) if tl else 0",
+    "    e0 = next(((r.get('payload') or {}).get('wall_err') for r in tl if 'wall' in (r.get('payload') or {})), None)",
     "    out[c['name']] = {'tail': len(tl), 'stamped': sum(1 for r in tl if 'wall' in (r.get('payload') or {})),",
     "                      'errs': sorted({(r.get('payload') or {}).get('wall_err') for r in tl if 'wall' in (r.get('payload') or {})}),",
-    "                      'rows': len(rows)}",
+    "                      'rows': len(rows), 'span': (lat - min(R._elapsed_ms(r) for r in tl)) if tl else 0,",
+    "                      'honest': all(('wall' in (r.get('payload') or {})) == (e0 is not None and lat - R._elapsed_ms(r) <= e0 + 3000) for r in tl)}",
     'try:',
     "    out['helper'] = [R.discovery_observed(NS(status=st), time.time() - 0.2, 30) for st in ('live', 'final', 'scheduled')]",
     'except AttributeError:',
@@ -213,8 +218,14 @@ console.log('\na live game is timed whichever lane sees it');
   else {
     const c = got;
     const near = (v, want, slack) => Math.abs(v - want) <= slack;
-    ok('a tail on an unstamped log written 20 s ago is stamped',
-       c.recent.tail > 0 && c.recent.stamped === c.recent.tail, JSON.stringify(c.recent));
+    /* THE TAIL HERE COVERS A WHOLE STRETCH OF THE GAME, which is what a bulk re-add after a
+       lost rewrite batch looks like (2026-09-12: 348 and 541 rows, one instant each). One
+       poll stamp can only be honest for the plays within its bar of the latest. */
+    ok('a tail on an unstamped log written 20 s ago stamps its latest plays',
+       c.recent.tail > 0 && c.recent.stamped > 0, JSON.stringify(c.recent));
+    ok('...and only those: a play further back in game time than the bar is left unstamped',
+       c.recent.span > 33400 && c.recent.stamped < c.recent.tail && c.recent.honest === true, JSON.stringify(c.recent));
+    ok('...in every case, whatever the bar', [c.recent, c.minute, c.walled].every(x => x.honest === true));
     ok('...with the configured bar, which is the wider of the two',
        c.recent.errs.length === 1 && c.recent.errs[0] === 30400, JSON.stringify(c.recent.errs));
     ok('a tail on an unstamped log last written 100 s ago carries 100 s, not the configured 30',

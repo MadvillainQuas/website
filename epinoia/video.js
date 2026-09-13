@@ -494,6 +494,48 @@ function paceOf(rows) {
    quarter by a list that looked authoritative. */
 const LONE_REACH_MS = 600000;
 
+/* ONE STAMP CANNOT COVER MORE GAME THAN ITS ERROR BAR.
+
+   A poll stamps every row it writes with its own instant and says how far back
+   they could have happened (wall_err). Real time between two plays is never less
+   than the game time between them, so a row that is more than wall_err of game
+   clock before the latest row sharing its stamp cannot have happened within
+   wall_err of that stamp. Such a stamp is not a time for that row at all.
+
+   2026-09-12, measured against the footage: the old delete-then-insert rewrite lost
+   its later batches, the next poll re-added 348 plays (a40d3cef) and 541 plays
+   (8d63f891) as "new", and every one of them got that poll's instant with a
+   10.5 s bar -- first-quarter plays placed up to 78 minutes late, confidently.
+
+   So those rows are read as unstamped: fillGaps interpolates them from honest
+   neighbours (and marks them approximate), a clock track places them if it can,
+   and otherwise they are left out. Three seconds of slack for a clock that keys
+   in whole seconds and a statistician's reaction. */
+const BATCH_SLACK_MS = 3000;
+function distrustedStamps(events) {
+  const byWall = new Map();
+  for (const e of events || []) {
+    if (!e || e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
+    const w = deviceStamp(e);
+    if (w == null) continue;
+    let g = byWall.get(w);
+    if (!g) byWall.set(w, g = []);
+    g.push(e);
+  }
+  const out = new Set();
+  byWall.forEach(g => {
+    if (g.length < 2) return;
+    let latest = -Infinity, err = 0;
+    for (const e of g) {
+      latest = Math.max(latest, cumElapsed(e));
+      const x = +e.wall_err;
+      if (isFinite(x) && x > err) err = x;
+    }
+    for (const e of g) if (latest - cumElapsed(e) > err + BATCH_SLACK_MS) out.add(e);
+  });
+  return out;
+}
+
 function fillGaps(rows) {
   const pace = paceOf(rows);
   for (let i = 0; i < rows.length; i++) {
@@ -642,17 +684,86 @@ function positionFromSamples(track, period, clockMs) {
   if (after && after.clock_ms === clockMs) return after.t * 1000;
   if (before && after) {
     const span = before.clock_ms - after.clock_ms;
+    /* less footage between two readings than game clock between them cannot be one
+       stretch of the same game: one of the two is a misread, and neither is vouched for */
+    if (span > 0 && (after.t - before.t) * 1000 < span - 5000) return null;
     const frac = span > 0 ? (before.clock_ms - clockMs) / span : 0;
     return (before.t + (after.t - before.t) * frac) * 1000;
   }
-  if (before) return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;
-  if (after) return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  /* OUTSIDE THE READINGS, AND ONLY SO FAR -- the bound positionFromRuns and videoanchor.js
+     already keep. This fallback had none, and a track that read only the last two minutes
+     of a game placed the first quarter by projecting backwards from them, byClock, with
+     full confidence (106394dc, 2026-09-12: 215 plays). */
+  if (before) {
+    if (before.clock_ms - clockMs > RUN_REACH_MS) return null;
+    return (before.t + (before.clock_ms - clockMs) / 1000) * 1000;
+  }
+  if (after) {
+    if (clockMs - after.clock_ms > RUN_REACH_MS) return null;
+    return Math.max(0, (after.t - (clockMs - after.clock_ms) / 1000)) * 1000;
+  }
   return null;
+}
+
+/* A READING THE GAME COULD NOT HAVE PRODUCED IS NOT A READING.
+
+   The clock reader reads whatever clock is on screen. Before a game that is the
+   pre-game countdown, which looks exactly like a first-quarter clock: on 8d63f891
+   (2026-09-12) it put all 105 first-quarter plays between 0:15 and 0:31 of a video
+   whose tip was at 1:03:20. And a misread period digit lands a "Q1 2:22" in the
+   middle of the fourth quarter (106394dc). Each looked like the game clock, and the
+   page placed plays by them ahead of everything else.
+
+   When the video is anchored, every reading can be checked against physics. A
+   reading of (period, clock) says the game had run E of game time, and it sits
+   at footage time t, i.e. t - tip into the game in real time. Real time since the
+   tip can never be less than E, and in a real game does not run past about four
+   times E plus a half-time and change. Three minutes of slack below, because the
+   tip's own stamp can be a poll late; 35 minutes above, for the break. Readings
+   outside that window are dropped before any play is placed or any run is built.
+
+   With no anchor there is nothing to check against, and only the confidence rule below applies. */
+const SANE_BELOW_MS = 180000, SANE_ABOVE_MS = 35 * 60000, SANE_RATIO = 4, SANE_MIN_CONF = 0.3;
+const saneCache = new WeakMap();
+function saneTrack(track, video) {
+  if (!track || !Array.isArray(track.samples)) return track;
+  const gap = gapMs(video);
+  const hit = saneCache.get(track);
+  if (hit && hit.gap === gap) return hit.out;
+  const ok = (period, clockMs, tSec) => {
+    if (gap == null) return true;
+    const E = cumElapsed({ period, clock: clockMs });
+    const since = tSec * 1000 - gap;
+    return since >= E - SANE_BELOW_MS && since <= E * SANE_RATIO + SANE_ABOVE_MS;
+  };
+  /* ...and a reading its own reader was not sure of is not one either. The reader scores
+     every reading; on the tracks read so far the scores split cleanly, the real readings at
+     0.6 and above and the guesses under 0.1 (168 of 176 "first-quarter" readings on
+     8d63f891). 0.3 sits in the empty middle. A reading with no score is an older track's
+     and is kept. */
+  const sure = x => x.conf == null || !(+x.conf < SANE_MIN_CONF);
+  const samples = track.samples.filter(s => s && s.period != null && s.clock_ms != null && s.t != null &&
+                                            sure(s) && ok(s.period, s.clock_ms, s.t));
+  const runs = Array.isArray(track.runs)
+    ? track.runs.filter(r => ok(r.period, r.c0, r.t0) && ok(r.period, r.c1, r.t1))
+    : track.runs;
+  const out = Object.assign({}, track, { samples, runs, dropped: track.samples.length - samples.length });
+  saneCache.set(track, { gap, out });
+  return out;
 }
 function positionFromTrack(track, period, clockMs) {
   if (!track) return null;
-  const byRuns = positionFromRuns(runsFromTrack(track), period, clockMs);
-  return byRuns != null ? byRuns : positionFromSamples(track, period, clockMs);
+  const runs = runsFromTrack(track);
+  const byRuns = positionFromRuns(runs, period, clockMs);
+  if (byRuns != null) return byRuns;
+  /* A CLOCK TRACK THAT NEVER SAW A QUARTER'S CLOCK RUN HAS NOT READ THAT QUARTER.
+     The readings behind the runs are there to place a play just outside a run, not to
+     stand in for one: on 8d63f891 (2026-09-12) the reader never locked onto the first
+     quarter, and two stray "0:00" readings in the middle of it would have placed the
+     whole quarter by projection. A score track is different -- its readings ARE the
+     baskets -- so it keeps them. */
+  if (track.mode && /clock/.test(track.mode) && !runs.some(r => r.period === period)) return null;
+  return positionFromSamples(track, period, clockMs);
 }
 const positionFromTrackLocal = positionFromTrack;
 
@@ -765,8 +876,8 @@ function index(events, video, opts) {
      no tip-off anchor at all. Wall-clock placement below is the fallback for
      plays in a period the track did not read. */
   const A = (typeof globalThis !== 'undefined' ? globalThis : self).EpinoiaVideoAnchor;
-  const track = video && video.clock_track && Array.isArray(video.clock_track.samples) && video.clock_track.samples.length
-    ? video.clock_track : null;
+  const sane = video && video.clock_track ? saneTrack(video.clock_track, video) : null;
+  const track = sane && Array.isArray(sane.samples) && sane.samples.length ? sane : null;
   /* videoanchor.js carries the canonical positionFromTrack for the game page; a profile page
      does not load it, and a track-placed game there used to lose every play. Same arithmetic. */
   const posFromTrack = (A && A.positionFromTrack) ? A.positionFromTrack : positionFromTrackLocal;
@@ -833,6 +944,7 @@ function index(events, video, opts) {
   const wallMeansSomething = !looksImported;
 
   const rows = [];
+  const distrusted = distrustedStamps(events);
   for (const e of events) {
     /* Descriptors are not plays. A 'loc', a 'tag' and a 'stype' each decorate
        an event that is already in this list; including them would show the
@@ -846,7 +958,7 @@ function index(events, video, opts) {
     if (e.t === 'ast' && pairedAst[seqOf(e)]) continue;
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
-    rows.push({ e: e, since: sinceTipMs(e, video, mode), trackPos: byTrack(e) });
+    rows.push({ e: e, since: distrusted.has(e) ? null : sinceTipMs(e, video, mode), trackPos: byTrack(e) });
   }
   fillGaps(rows);
 
@@ -972,7 +1084,7 @@ function gapText(v) {
 return { parse, safeUrl, embedSrc, watchHref, gapMs, anchorKind, gapLooksOdd,
          runsFromTrack, stopsFromRuns, positionFromRuns, positionFromTrack, stints,
          hasAnchor, videoMsOf, sinceTipMs,
-         cumElapsed, logIsTimed,
+         cumElapsed, logIsTimed, distrustedStamps, saneTrack,
          liveEmbedSrc, providerFromServer,
          index, select, FILTERS, filterBy, stamp, gapText, clipOf, ROLL };
 }));

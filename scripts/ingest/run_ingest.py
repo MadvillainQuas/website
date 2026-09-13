@@ -677,6 +677,29 @@ def discovery_observed(b, t_obs: float, every_s: float) -> tuple | None:
     return (int(t_obs * 1000), int((every_s + (time.time() - t_obs)) * 1000))
 
 
+def within_stamp(rows: list, stamp: dict | None) -> list:
+    """The rows of one write that a single poll stamp can honestly cover.
+
+    ONE STAMP CANNOT COVER MORE GAME THAN ITS ERROR BAR. Real time between two plays is
+    never less than the game time between them, so a row keyed more than wall_err of game
+    clock before the latest row in the same write happened more than wall_err before this
+    poll, and the poll's instant is not its time. Those rows are left unstamped (the page
+    interpolates them, marked approximate); the rest take the stamp as before.
+
+    2026-09-12, measured against the footage: the old delete-then-insert rewrite lost
+   its later batches, the next poll re-added 348 plays (a40d3cef) and 541 plays
+   (8d63f891) as "new", and every one of them got that poll's instant with a
+   10.5 s bar -- first-quarter plays placed up to 78 minutes late, confidently.
+    In ordinary running a write holds the plays since the last poll, which span no more
+    game than the poll gap the bar was widened to, so nothing changes there. The 3 s is a
+    clock keyed in whole seconds plus a statistician's reaction."""
+    if not stamp or not rows:
+        return []
+    err = int(stamp.get("wall_err") or 0)
+    latest = max(_elapsed_ms(r) for r in rows)
+    return [r for r in rows if latest - _elapsed_ms(r) <= err + 3000]
+
+
 def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) -> dict | None:
     """Whether a game's FIRST write may carry the poll stamp, and with what error.
 
@@ -823,7 +846,7 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     if existing and same_prefix:
         tail = rows[len(existing):]
         if stamp:
-            for r in tail:
+            for r in within_stamp(tail, stamp):
                 r["payload"] = {**(r.get("payload") or {}), **stamp}
         for i in range(0, len(tail), 400):
             sb.insert("game_events", tail[i:i + 400])
@@ -896,7 +919,7 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 kept += 1
         how_first = ""
         if stamp and existing:
-            for r in rows[len(existing):]:
+            for r in within_stamp(rows[len(existing):], stamp):
                 if "wall" not in (r.get("payload") or {}):
                     r["payload"] = {**(r.get("payload") or {}), **stamp}
         elif stamp and not existing:

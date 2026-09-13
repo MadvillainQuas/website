@@ -270,11 +270,17 @@ console.log('\na partial clock track and an imported log');
   ok('...and carries no device stamp anywhere',
      imported.every(e => e.wall == null));
 
-  /* A track that read the first half and then lost the overlay. */
+  /* A track that read the first half and then lost the overlay.
+
+     Written as the worker writes one: clock_ms (this fixture said `clock`, which no
+     track has, and "passed" by placing plays at NaN), readings twenty seconds apart
+     so the clock's runs can be seen, and the first reading after the tip -- the tip
+     is ten minutes into this stream, and a reading before it is one video.js now
+     refuses as physically impossible (saneTrack). */
   const samples = [];
   for (let q = 1; q <= 2; q++) {
     for (let i = 0; i <= 10; i++) {
-      samples.push({ t: (q - 1) * 1500 + i * 60, period: q, clock: 600000 - i * 55000 });
+      samples.push({ t: 600 + (q - 1) * 1500 + i * 20, period: q, clock_ms: 600000 - i * 20000 });
     }
   }
   const row = {
@@ -824,6 +830,104 @@ console.log('\na new video does not inherit the old one\'s clock');
      /slim = write_track\(db, game_id, track, row\.get\('video_url'\)\)/.test(aw));
   ok('...and its backfill counts a job only against the footage it was for',
      /have = \[j for j in have if j\.get\('video_url'\) == url_of\.get\(j\['game_id'\]\)\]/.test(aw));
+}
+
+/* ---------------------------------------------------------------------------
+   WHAT THE FOOTAGE SAID ABOUT THE PLACEMENTS (2026-09-13).
+
+   Last night's three streamed games were checked against their own broadcasts:
+   the vision worker's scoreboard crops were read by eye at known video times and
+   agreed with the clock tracks, and plays the feed stamped promptly landed within
+   one to six seconds of the footage -- the stream-start arithmetic is right. What
+   was wrong was what the page trusted:
+
+     * one poll stamp on a batch of 348 / 541 plays spread over three quarters
+       (a lost rewrite batch re-added as "new"), first-quarter plays placed up
+       to 78 minutes late;
+     * a clock track's pre-game countdown read as the first-quarter clock, the
+       whole first quarter placed before the tip;
+     * low-confidence guesses (score < 0.1) used as readings;
+     * a track that read two minutes of the fourth quarter projected backwards
+       over the whole game, byClock, with no limit.
+
+   Each is refused now, and each is pinned here in the shape it arrived in.
+   --------------------------------------------------------------------------- */
+console.log('\nwhat the footage said about the placements');
+
+{
+  /* ---- one stamp, three quarters ---- */
+  const T0 = Date.parse('2026-09-12T17:33:43Z'), S0 = Date.parse('2026-09-12T16:30:23Z');
+  const batchWall = T0 + 112 * 60000;                  // 19:26, the final buzzer
+  const evs = [{ seq: 1, t: 'period_start', period: 1, clock: 600000, wall: T0, wall_err: 10500 }];
+  let n = 2;
+  for (let q = 2; q <= 4; q++) for (let c = 580000; c >= 0; c -= 20000) {
+    evs.push({ seq: n++, t: n % 3 ? 'p2_miss' : 'reb', period: q, clock: c, wall: batchWall, wall_err: 10500 });
+  }
+  const distrusted = V.distrustedStamps(evs);
+  const kept = evs.filter(e => e.wall === batchWall && !distrusted.has(e));
+  ok('a batch stamp is not a time for plays further back than its bar',
+     distrusted.size === evs.length - 1 - kept.length && kept.length >= 1 && kept.length <= 2, distrusted.size + ' distrusted, kept ' + kept.map(e => e.period + ':' + e.clock));
+  ok('...keeping only the latest plays in the batch', kept.every(e => e.period === 4 && e.clock <= 20000));
+  ok('...and never the tip, which has its own stamp', !distrusted.has(evs[0]));
+  const row = { provider: 'youtube', stream_started_at: new Date(S0).toISOString(), tip_at: new Date(T0).toISOString(), tip_wall: T0, trim_ms: 0 };
+  const placed = V.index(evs, row, { label: e => e.t });
+  ok('so no second-quarter play is placed at the final buzzer',
+     !placed.some(p => p.period === 2 && !p.approx && Math.abs(p.ms - (batchWall - S0)) < 60000),
+     JSON.stringify(placed.filter(p => p.period === 2).slice(0, 2)));
+  const honest = [{ seq: 1, t: 'p2_made', period: 1, clock: 590000, wall: T0 + 20000, wall_err: 12000 },
+                  { seq: 2, t: 'ast', period: 1, clock: 590000, wall: T0 + 20000, wall_err: 12000 },
+                  { seq: 3, t: 'p3_miss', period: 1, clock: 582000, wall: T0 + 20000, wall_err: 12000 }];
+  ok('an ordinary poll -- a few seconds of play under one stamp -- is left alone', V.distrustedStamps(honest).size === 0);
+}
+
+{
+  /* ---- the clock track, checked against physics ---- */
+  const S0 = Date.parse('2026-09-12T16:30:23Z'), TIP = S0 + 3800 * 1000;   // tip 1:03:20 into the stream
+  const row = { provider: 'youtube', stream_started_at: new Date(S0).toISOString(), tip_at: new Date(TIP).toISOString(), tip_wall: TIP, trim_ms: 0 };
+  const samples = [];
+  /* the pre-game countdown, read as Q1 with the reader unsure, forty minutes before the tip */
+  for (let i = 0; i < 20; i++) samples.push({ t: 1450 + i * 20, period: 1, clock_ms: 91000 - Math.min(i, 5) * 4000, conf: 0.002, how: 'candidates' });
+  /* the same countdown once with a confident read, also before the tip */
+  samples.push({ t: 1500, period: 1, clock_ms: 91000, conf: 0.5, how: 'lock' });
+  /* a confident stray "Q1 0:00" in the fourth quarter, 100 minutes after the tip (106394dc's
+     was 100 minutes on; 70 would still be allowed -- a first quarter can end that late after
+     a long enough stoppage, so the bound is 4 x game time + 35 minutes, not tighter) */
+  samples.push({ t: 3800 + 6000, period: 1, clock_ms: 0, conf: 1.0, how: 'candidates' });
+  /* the fourth quarter, read properly: 2:17 running down from 2:13:23 */
+  for (let i = 0; i <= 10; i++) samples.push({ t: 8003 + i * 5, period: 4, clock_ms: 137000 - i * 5000, conf: 0.9, how: 'candidates' });
+  const track = { mode: 'clock+score', samples };
+  const sane = V.saneTrack(track, row);
+  ok('readings before the tip are refused (a pre-game countdown is not the first quarter)',
+     !sane.samples.some(s => s.t < 3800 - 180), JSON.stringify(sane.samples.filter(s => s.t < 3800).slice(0, 2)));
+  ok('...a first-quarter reading 100 minutes after the tip is refused', !sane.samples.some(s => s.period === 1 && s.t > 7000));
+  ok('...readings the reader scored under 0.3 are refused',
+     V.saneTrack({ samples: [{ t: 10, period: 1, clock_ms: 590000, conf: 0.05 }, { t: 12, period: 1, clock_ms: 588000, conf: 0.8 }, { t: 14, period: 1, clock_ms: 586000 }] }, {}).samples.length === 2);
+  ok('...and the fourth quarter it did read is kept', sane.samples.filter(s => s.period === 4).length === 11);
+  const withTrack = Object.assign({}, row, { clock_track: track });
+  const firstQ = V.index([{ seq: 5, t: 'p2_made', period: 1, clock: 120000 }, { seq: 6, t: 'p2_made', period: 1, clock: 30000 }], withTrack, { label: e => e.t });
+  ok('a quarter the track never saw running places nothing by the track', firstQ.length === 0, JSON.stringify(firstQ));
+  const lateQ4 = V.index([{ seq: 7, t: 'p2_made', period: 4, clock: 120000 }], withTrack, { label: e => e.t });
+  ok('...while a fourth-quarter play inside the read stretch is placed by it',
+     lateQ4.length === 1 && lateQ4[0].byClock && Math.abs(lateQ4[0].ms - 8020000) <= 1000, JSON.stringify(lateQ4));
+  const earlyQ4 = V.index([{ seq: 8, t: 'p2_made', period: 4, clock: 540000 }], withTrack, { label: e => e.t });
+  ok('...and a fourth-quarter play seven minutes of clock before it is not projected back', earlyQ4.length === 0, JSON.stringify(earlyQ4));
+
+  /* score tracks keep their readings: each one is a basket */
+  const scoreTrack = { mode: 'score', samples: [{ t: 3900, period: 1, clock_ms: 536000, conf: 1 }, { t: 3930, period: 1, clock_ms: 510000, conf: 1 }] };
+  const sc = V.index([{ seq: 9, t: 'p2_made', period: 1, clock: 536000 }], Object.assign({}, row, { clock_track: scoreTrack }), { label: e => e.t });
+  ok('a score track still places its baskets', sc.length === 1 && sc[0].ms === 3900000, JSON.stringify(sc));
+  ok('two readings with less footage between them than clock are not interpolated across',
+     V.positionFromTrack({ samples: [{ t: 100, period: 2, clock_ms: 500000 }, { t: 110, period: 2, clock_ms: 300000 }] }, 2, 400000) === null);
+}
+
+{
+  /* ---- the worker's hints, and the ingest, under the same rule ---- */
+  const aw = readFileSync(path.join(ROOT, 'scripts', 'worker', 'ai_worker.py'), 'utf8');
+  ok('the vision worker refuses batch stamps as hints too',
+     /ONE STAMP CANNOT COVER MORE GAME THAN ITS ERROR BAR/.test(aw) && /g\[0\] - _game_elapsed_ms\(e\['period'\], e\['clock'\]\) > g\[1\] \+ 3000/.test(aw));
+  const ri = readFileSync(path.join(ROOT, 'scripts', 'ingest', 'run_ingest.py'), 'utf8');
+  ok('and the ingest no longer writes them', /def within_stamp\(rows: list, stamp: dict \| None\) -> list:/.test(ri) &&
+     (ri.match(/within_stamp\(/g) || []).length >= 3);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

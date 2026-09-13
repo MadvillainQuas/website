@@ -458,6 +458,16 @@ def wall_hints(db, game_id, log_=None):
 
     out, dropped = [], 0
     last_poll = prev_poll = None
+    # ONE STAMP CANNOT COVER MORE GAME THAN ITS ERROR BAR (epinoia/video.js distrustedStamps):
+    # rows sharing a wall that sit further back in game time than the bar allows are not hints
+    shared = {}
+    for e in rows:
+        w = _num((e.get('payload') or {}).get('wall'))
+        if w is None or e.get('period') is None or e.get('clock') is None or (e.get('t') or '') in ('loc', 'tag', 'stype'):
+            continue
+        g = shared.setdefault(w, [0, 0])
+        g[0] = max(g[0], _game_elapsed_ms(e['period'], e['clock']))
+        g[1] = max(g[1], _num((e.get('payload') or {}).get('wall_err')) or 0)
     for e in rows:
         t = e.get('t') or ''
         if t in ('loc', 'tag', 'stype') or e.get('period') is None or e.get('clock') is None:
@@ -465,6 +475,10 @@ def wall_hints(db, game_id, log_=None):
         p = e.get('payload') or {}
         wall = _num(p.get('wall'))
         if wall is None:
+            continue
+        g = shared.get(wall)
+        if g and g[0] - _game_elapsed_ms(e['period'], e['clock']) > g[1] + 3000:
+            dropped += 1
             continue
         claimed = _num(p.get('wall_err'))
         if claimed is None:

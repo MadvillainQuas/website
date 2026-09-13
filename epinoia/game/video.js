@@ -113,7 +113,9 @@ function stintsOf() {
   stintedKey = key;
   const starters = (ctx.S && ctx.S.starters) || null;
   const raw = V().stints(ctx.events, starters);
-  const place = (period, clock) => V().positionFromTrack(v.clock_track, period, clock);
+  /* the same cleaned readings index() places plays by (video.js saneTrack) */
+  const track = V().saneTrack ? V().saneTrack(v.clock_track, v) : v.clock_track;
+  const place = (period, clock) => V().positionFromTrack(track, period, clock);
   const span = x => Object.assign({}, x, {
     ms: (x.c0 - x.c1),
     start: place(x.period, x.c0), end: place(x.period, x.c1),
@@ -362,7 +364,8 @@ function render() {
      a tip-off anchor is needed when one is present */
   const hasTrack = !!(v.clock_track && Array.isArray(v.clock_track.samples) && v.clock_track.samples.length);
   /* a clock was read (not score changes alone): the runs exist, so minutes and fives can be placed */
-  const clocked = hasTrack && v.clock_track.mode !== 'score' && V().runsFromTrack(v.clock_track).length > 0;
+  const clocked = hasTrack && v.clock_track.mode !== 'score' &&
+    V().runsFromTrack(V().saneTrack ? V().saneTrack(v.clock_track, v) : v.clock_track).length > 0;
   if (!clocked && (st.tab === 'minutes' || st.tab === 'lineups')) st.tab = 'events';
   const runsHere = !!root0().EpinoiaGameFlow;
   if (!runsHere && st.tab === 'runs') st.tab = 'events';
