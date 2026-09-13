@@ -399,6 +399,9 @@ function paintLog(rows) {
     const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
     const kinds = [...new Set(compRows.map(c => c.kind || 'league'))];
     let scopeKind = 'all';
+    /* the label the events panel names its rows for: computed here, apart from
+       any markup, and escaped by the panel itself */
+    const fullName = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
     const paintScope = async kind => {
       scopeKind = kind;
       const ids = compRows.filter(c => kind === 'all' || (c.kind || 'league') === kind).map(c => c.id);
@@ -412,6 +415,20 @@ function paintLog(rows) {
       } catch (e) { console.warn('[season]', e); }
       paintTiles(mine);
       paintBars(mine, field);
+      /* ---- events ----
+         The season's situations (second chance, transition, off turnovers,
+         after timeout, half court) and assisted baskets, read from the same
+         scoped rows as the bars above and ranked against the same field. Its
+         own try: a panel that cannot draw must never reach boot's catch, which
+         wipes the season table and the game log. */
+      try {
+        const evHost = $('#events');
+        if (evHost && window.EpinoiaSitPanel) {
+          window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
+          const en = $('#eventsNote');
+          if (en) en.textContent = kind === 'all' ? '' : (KIND_LABEL[kind] || kind);
+        }
+      } catch (e) { console.warn('[events]', e); }
       const bn = $('#barNote');
       if (bn && kind !== 'all') bn.textContent = (bn.textContent || '').replace(/ \u00b7 .*$/, '') + ' \u00b7 ' + (KIND_LABEL[kind] || kind);
       document.querySelectorAll('#compScope .ep-tab').forEach(b => b.classList.toggle('on', b.dataset.k === kind));

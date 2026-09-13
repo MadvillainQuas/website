@@ -5,33 +5,15 @@
    The box score already says how many points came off an offensive rebound, off
    a turnover and on the break. It does not say what those plays LOOKED like:
    which shots they produced, how well they were made, who took them. This tab
-   is that, for five situations and the assisted / unassisted split:
+   is that, for five situations, the assisted / unassisted split, and every
+   player's own line across all of them.
 
-     second chance   the engine's window: opened by the side's own offensive
-                     rebound, shut by its basket, a made free throw, its
-                     turnover, a defensive rebound or a new period
-     transition      the engine's rule: tagged 'transition', or within eight
-                     seconds of a defensive rebound or a steal
-     off turnovers   the engine's window: opened by the other side's turnover
-     after timeout   the first play after a timeout, to the end of that
-                     possession (so a putback off the set counts)
-     half court      a chance that was none of the four
-
-   THE FIRST THREE ARE THE BOX SCORE'S NUMBERS TO THE POINT. Each shot, free
-   throw and turnover is stamped with the window state deriveGame holds at that
-   moment, by a walk that copies deriveGame's own flag rules rather than a second
-   opinion of what a second chance is. So "second chance: 14" here and "2nd
-   chance pts 14" on the box score are one answer, and supabase/tests/
-   events.test.mjs holds them equal on a real game. The consequence worth
-   knowing: the engine shuts a window on the FIRST made free throw of a trip, so
-   the second free throw is not in it — here or there.
-
-   A CHANCE is epinoia/possessions.js's: a trip down the floor that ends in a
-   shot, a turnover or a trip to the line; an offensive rebound starts a new one.
-   Points per chance divides a situation's points by the chances whose first
-   action (shot, free throw or turnover) was in it. After-timeout plays are
-   counted per possession, because the question asked of them is what the set
-   produced, second chances included.
+   THE NUMBERS ARE epinoia/situations.js's. That file holds the rules (the
+   engine's own second-chance, off-turnover and transition windows, chances from
+   possessions.js, the after-timeout set) because the same calculator also
+   writes the per-game lines the season tables and profiles read; this file only
+   draws them. compute() is kept here as a pass-through for the tests and any
+   caller that already used it.
 
    Defence is the other side's offence, read against this side.
    ============================================================================ */
@@ -41,32 +23,13 @@
   else root.EpinoiaEvents = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
-/* possessions.js: a global on the page, a module in node */
-const Poss = () => root.EpinoiaPossessions ||
-  (typeof require === 'function' ? require('../possessions.js') : null);
-
-const PLEN = p => (p <= 4 ? 600000 : 300000);
-/* engine.js's cumEl, unguarded like it: a play with no clock compares as NaN there too */
-function cumEl(p, clk) { let s = 0; for (let q = 1; q < p; q++) s += PLEN(q); return s + (PLEN(p) - clk); }
-/* engine.js's inGameOrder: by game time, ties in log order */
-function inGameOrder(evs) {
-  const keyed = evs.map((ev, i) => ({ ev, i, k: cumEl(ev.period || 1, ev.clock != null ? ev.clock : PLEN(ev.period || 1)) }));
-  keyed.sort((a, b) => (a.k - b.k) || (a.i - b.i));
-  return keyed.map(x => x.ev);
-}
+/* situations.js: a global on the page, a module in node */
+const Sit = () => root.EpinoiaSituations ||
+  (typeof require === 'function' ? require('../situations.js') : null);
+const compute = S => Sit().compute(S);
 
 const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const DESCRIPTOR = { loc: 1, tag: 1, stype: 1 };
-const FG = { p2_made: 2, p3_made: 3, p2_miss: 0, p3_miss: 0 };
-const FT = { ft_made: 1, ft_miss: 0 };
-const TRANSITION_MS = 8000;          // engine.js TRANSITION_MS
-
-/* engine.js isRim: the shot TYPE decides when it is decisive, location fills the gaps */
-const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
-const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
-                          'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
 
 const SITS = [
   { key: 'second',     name: 'Second chance', what: 'after an offensive rebound', slot: 1 },
@@ -78,249 +41,15 @@ const SITS = [
 ];
 const SIT = {}; SITS.forEach(s => { SIT[s.key] = s; });
 
-/* ---------------------------------------------------------------- compute --- */
-function bucket() {
-  return { chances: 0, pts: 0, fga: 0, fgm: 0, p3a: 0, p3m: 0, fta: 0, ftm: 0, tov: 0,
-           zones: { rim: { a: 0, m: 0 }, mid: { a: 0, m: 0 }, three: { a: 0, m: 0 } },
-           types: {}, scorers: {}, shots: [] };
-}
-
-function compute(S) {
-  const teams = (S && S.teams) || [{}, {}];
-  const names = {};
-  teams.forEach(tm => (tm.players || []).forEach(p => {
-    names[p.id] = p.name || (p.num != null && p.num !== '' ? '#' + p.num : '#?');
-  }));
-  const all = inGameOrder((S && S.events) || []);
-
-  /* the descriptors, read exactly as deriveGame reads them (a repeated tag or type toggles) */
-  const tags = {}, stypes = {}, locs = {};
-  all.forEach(ev => {
-    if (ev.t === 'tag') { const s = tags[ev.ref] = tags[ev.ref] || new Set(); s.has(ev.tag) ? s.delete(ev.tag) : s.add(ev.tag); }
-    else if (ev.t === 'stype') { stypes[ev.ref] = stypes[ev.ref] === ev.v ? null : ev.v; }
-    else if (ev.t === 'loc') { locs[ev.ref] = { x: ev.x, y: ev.y }; }
-  });
-  const zoneOf = ev => {
-    if (ev.t[1] === '3') return 'three';
-    const ty = (stypes[ev.id] || '').toLowerCase();
-    if (ty && RIM_TYPE.has(ty)) return 'rim';
-    if (ty && FAR_TYPE.has(ty)) return 'mid';
-    const l = locs[ev.id];
-    return ((l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'))) ? 'rim' : 'mid';
-  };
-
-  const plays = all.filter(ev => ev && !DESCRIPTOR[ev.t]);
-  const isAction = ev => (ev.t in FG || ev.t in FT || ev.t === 'to') && (ev.team === 0 || ev.team === 1);
-
-  /* ---- the engine's windows, stamped on every action ----
-     deriveGame scores a play BEFORE it updates the windows (its first switch,
-     then its second), so the stamp is taken first and the rules applied after,
-     line for line, including the assignments it makes without a guard. */
-  const flag = { sc: [false, false], pot: [false, false] };
-  const breakAt = [null, null];
-  const stamp = new Map();
-  plays.forEach(ev => {
-    if (isAction(ev)) {
-      const tg = tags[ev.id];
-      const quick = breakAt[ev.team] != null && (cumEl(ev.period, ev.clock) - breakAt[ev.team]) <= TRANSITION_MS;
-      stamp.set(ev, { second: flag.sc[ev.team], offTo: flag.pot[ev.team], transition: !!((tg && tg.has('transition')) || quick) });
-    }
-    switch (ev.t) {
-      case 'p2_made': case 'p3_made': case 'ft_made':
-        flag.sc[ev.team] = false; flag.pot[ev.team] = false; break;
-      case 'reb':
-        if (ev.off) flag.sc[ev.team] = true;
-        else { flag.sc = [false, false]; flag.pot = [false, false]; breakAt[ev.team] = cumEl(ev.period, ev.clock); }
-        break;
-      case 'stl': breakAt[ev.team] = cumEl(ev.period, ev.clock); break;
-      case 'to':
-        flag.sc[ev.team] = false; flag.pot[ev.team] = false;
-        flag.sc[1 - ev.team] = false; flag.pot[1 - ev.team] = true; break;
-      case 'period_start':
-        flag.sc = [false, false]; flag.pot = [false, false]; breakAt[0] = breakAt[1] = null; break;
-    }
-  });
-
-  /* ---- chances, and which one each action belongs to ----
-     possessions.js names a chance by its first event. An action belongs to the
-     latest chance of its own side that began at or before it, which is also
-     where an and-one's free throw lands (the chance is closed on the basket). */
-  const P = Poss();
-  const E = P ? P.enumerate({ events: plays }) : { chances: [], possessions: [] };
-  const at = new Map();
-  plays.forEach((ev, i) => { const k = ev.seq != null ? ev.seq : ev.id; if (!at.has(k)) at.set(k, i); });
-  const chances = E.chances.map(c => ({ c, start: at.has(c.startEventId) ? at.get(c.startEventId) : -1, acts: [] }));
-  const bySide = [chances.filter(x => x.c.team === 0), chances.filter(x => x.c.team === 1)];
-  const ptr = [-1, -1];
-  const actions = [];
-  plays.forEach((ev, i) => {
-    if (!isAction(ev)) return;
-    const list = bySide[ev.team];
-    while (ptr[ev.team] + 1 < list.length && list[ptr[ev.team] + 1].start <= i) ptr[ev.team]++;
-    const ch = ptr[ev.team] >= 0 ? list[ptr[ev.team]] : null;
-    const a = { ev, i, ch, stamp: stamp.get(ev) };
-    if (ch) ch.acts.push(a);
-    actions.push(a);
-  });
-  const live = chances.filter(x => x.acts.length);          // a chance with no action in it is the clock running out
-
-  /* ---- after a timeout ----
-     The play a timeout sets up is the chance of the first action after it --
-     unless that chance was already under way before the timeout (a timeout
-     between free throws), in which case, if the trip ended in a basket, it is
-     the inbound that follows. Nothing carries across a new period. */
-  const ato = new Map();                                     // chance -> { calledBy, timeout }
-  const nextLive = ch => { const k = live.indexOf(ch); return k >= 0 && k + 1 < live.length ? live[k + 1] : null; };
-  plays.forEach((ev, i) => {
-    if (ev.t !== 'timeout') return;
-    const first = actions.find(a => a.i > i);
-    if (!first || !first.ch) return;
-    if (plays.slice(i + 1, first.i).some(x => x.t === 'period_start')) return;
-    let ch = first.ch;
-    if (ch.acts[0].i < i) {
-      const last = ch.acts[ch.acts.length - 1].ev;
-      if (!(last.t === 'p2_made' || last.t === 'p3_made' || last.t === 'ft_made')) return;
-      ch = nextLive(ch);
-      if (!ch || ch.acts[0].ev.period !== ev.period) return;
-    }
-    if (!ato.has(ch)) ato.set(ch, { calledBy: ev.team === ch.c.team ? 'own' : ev.team == null ? 'official' : 'opp', timeout: ev });
-  });
-
-  /* ---- adding an action to a bucket ---- */
-  const add = (b, a) => {
-    const ev = a.ev;
-    if (ev.t in FG) {
-      const made = FG[ev.t] > 0, three = ev.t[1] === '3', z = zoneOf(ev);
-      b.fga++; b.zones[z].a++;
-      if (three) b.p3a++;
-      if (made) { b.fgm++; b.zones[z].m++; b.pts += FG[ev.t]; if (three) b.p3m++; }
-      const ty = stypes[ev.id] || '';
-      const key = (three ? 'three' : 'two') + '|' + ty;
-      const T = b.types[key] = b.types[key] || { three, type: ty, a: 0, m: 0 };
-      T.a++; if (made) T.m++;
-      const l = locs[ev.id];
-      b.shots.push({ id: ev.seq != null ? ev.seq : ev.id, x: l ? l.x : null, y: l ? l.y : null, made, three, zone: z,
-                     type: ty, pid: ev.pid || null, period: ev.period, clock: ev.clock });
-      if (ev.pid) { const s = b.scorers[ev.pid] = b.scorers[ev.pid] || { pid: ev.pid, pts: 0, fgm: 0, fga: 0 }; s.fga++; if (made) { s.fgm++; s.pts += FG[ev.t]; } }
-    } else if (ev.t in FT) {
-      b.fta++;
-      if (FT[ev.t]) { b.ftm++; b.pts++; if (ev.pid) { const s = b.scorers[ev.pid] = b.scorers[ev.pid] || { pid: ev.pid, pts: 0, fgm: 0, fga: 0 }; s.pts++; } }
-    } else if (ev.t === 'to') b.tov++;
-  };
-
-  const side = [0, 1].map(t => {
-    const B = { all: bucket(), second: bucket(), transition: bucket(), offTo: bucket(), ato: bucket(), half: bucket() };
-    const mine = live.filter(x => x.c.team === t);
-
-    /* the whole possession from an after-timeout chance on */
-    const atoChances = new Set();
-    const atoPlays = [];
-    mine.forEach(x => {
-      if (!ato.has(x) || atoChances.has(x)) return;      // a second timeout inside one set is still one set
-      const run = mine.filter(y => y.c.possession === x.c.possession && y.c.index >= x.c.index);
-      run.forEach(y => atoChances.add(y));
-      const acts = run.reduce((m, y) => m.concat(y.acts), []);
-      const lastAct = acts[acts.length - 1].ev;
-      const pts = acts.reduce((n, a) => n + (a.ev.t in FG ? FG[a.ev.t] : a.ev.t in FT ? FT[a.ev.t] : 0), 0);
-      const first = acts[0].ev;
-      atoPlays.push({ seq: first.seq != null ? first.seq : first.id, seqs: acts.map(a => (a.ev.seq != null ? a.ev.seq : a.ev.id)),
-                      period: first.period, clock: first.clock,
-                      calledBy: ato.get(x).calledBy, pts, chances: run.length,
-                      how: howEnded(lastAct, stypes, names), made: pts > 0 });
-      B.ato.chances++;
-      acts.forEach(a => add(B.ato, a));
-    });
-
-    mine.forEach(x => {
-      B.all.chances++;
-      x.acts.forEach(a => add(B.all, a));
-      const s0 = x.acts[0].stamp;
-      ['second', 'transition', 'offTo'].forEach(k => { if (s0[k]) B[k].chances++; });
-      if (!s0.second && !s0.transition && !s0.offTo && !atoChances.has(x)) {
-        B.half.chances++;
-        x.acts.forEach(a => add(B.half, a));
-      }
-    });
-    /* the box score's three, by the play's own stamp */
-    actions.forEach(a => {
-      if (a.ev.team !== t) return;
-      ['second', 'transition', 'offTo'].forEach(k => { if (a.stamp[k]) add(B[k], a); });
-    });
-
-    const total = B.all.pts;
-    const sits = {};
-    Object.keys(B).forEach(k => { sits[k] = finish(B[k], total, names); });
-    return { sits, ato: atoPlays, assists: null };
-  });
-
-  /* ---- assisted and unassisted: connections.js's pairing ----
-     An assist belongs to the last made field goal, if it was the same side's;
-     either way that basket is spent. */
-  const assisted = new Set();
-  const ftAssists = [0, 0];
-  let last = null;
-  plays.forEach(ev => {
-    if ((ev.t === 'p2_made' || ev.t === 'p3_made') && ev.pid) last = ev;
-    else if (ev.t === 'ast') {
-      if (ev.pid && last && last.team === ev.team) assisted.add(last);
-      else if (ev.team === 0 || ev.team === 1) ftAssists[ev.team]++;   // FIBA credits a pass that drew free throws
-      last = null;
-    }
-  });
-  [0, 1].forEach(t => {
-    const grp = () => ({ fgm: 0, pts: 0, zones: { rim: 0, mid: 0, three: 0 } });
-    const A = { ast: grp(), unast: grp() };
-    const by = {};
-    plays.forEach(ev => {
-      if (ev.team !== t || !(ev.t === 'p2_made' || ev.t === 'p3_made')) return;
-      const g = assisted.has(ev) ? A.ast : A.unast, v = FG[ev.t];
-      g.fgm++; g.pts += v; g.zones[zoneOf(ev)]++;
-      if (!ev.pid) return;
-      const p = by[ev.pid] = by[ev.pid] || { pid: ev.pid, name: names[ev.pid] || '#?', fgm: 0, unFgm: 0, unPts: 0, un3: 0 };
-      p.fgm++;
-      if (!assisted.has(ev)) { p.unFgm++; p.unPts += v; if (v === 3) p.un3++; }
-    });
-    A.ftAssists = ftAssists[t];
-    A.leaders = Object.values(by).filter(p => p.unFgm > 0)
-      .sort((a, b) => (b.unFgm - a.unFgm) || (b.unPts - a.unPts)).slice(0, 5);
-    side[t].assists = A;
-  });
-
-  return { side, names: [0, 1].map(t => (teams[t] && teams[t].name) || (t ? 'Away' : 'Home')) };
-}
-
-function finish(b, total, names) {
-  const types = Object.values(b.types).sort((x, y) => (y.a - x.a) || (y.m - x.m));
-  return {
-    chances: b.chances, pts: b.pts, fga: b.fga, fgm: b.fgm, p3a: b.p3a, p3m: b.p3m, fta: b.fta, ftm: b.ftm, tov: b.tov,
-    ppp: b.chances ? b.pts / b.chances : null,
-    efg: b.fga ? (b.fgm + 0.5 * b.p3m) / b.fga : null,
-    tovPct: b.chances ? b.tov / b.chances : null,
-    share: total ? b.pts / total : 0,
-    zones: b.zones, types, shots: b.shots,
-    scorers: Object.values(b.scorers).filter(s => s.pts > 0).map(s => Object.assign({ name: names[s.pid] || '#?' }, s))
-      .sort((x, y) => (y.pts - x.pts) || (y.fgm - x.fgm)).slice(0, 5)
-  };
-}
-
-/* game flow's surname: the last word, a suffix skipped */
-const surname = name => {
-  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
-  if (!w.length) return '';
-  return /^(jr\.?|sr\.?|ii|iii|iv)$/i.test(w[w.length - 1]) && w.length > 1 ? w[w.length - 2] : w[w.length - 1];
-};
-function howEnded(ev, stypes, names) {
-  const who = ev.pid && names[ev.pid] ? ' · ' + surname(names[ev.pid]) : '';
-  if (ev.t === 'to') return 'turnover' + who;
-  if (ev.t in FT) return (FT[ev.t] ? 'free throws' : 'missed free throw') + who;
-  const three = ev.t[1] === '3', ty = stypes[ev.id];
-  const shot = three ? (ty && ty !== 'jump shot' ? ty + ' three' : 'three') : (ty || 'two');
-  return (FG[ev.t] ? '' : 'missed ') + shot + who;
-}
-
 /* ----------------------------------------------------------------- render --- */
-/* the view survives a redraw (a live game redraws on every play) */
-const view = { team: 0, side: 'off', sit: 'second' };
+/* the view survives a redraw (a live game redraws on every play). pid is the
+   player whose breakdown is open; it belongs to the side on show, so a change
+   of team or of end shuts it rather than leave another side's player open. */
+const view = { team: 0, side: 'off', sit: 'second', pid: null };
+function setView(v) {
+  if (!('pid' in v) && (('team' in v && v.team !== view.team) || ('side' in v && v.side !== view.side))) view.pid = null;
+  return Object.assign(view, v);
+}
 let memo = { ref: null, len: -1, out: null };
 function computed(S) {
   const len = S && S.events ? S.events.length : 0;
@@ -399,12 +128,116 @@ function typesHTML(s) {
   }).join('') + '</ul>';
 }
 
-function scorersHTML(s) {
+const hasPlayer = (players, pid) => !!players && pid != null && Object.prototype.hasOwnProperty.call(players, pid);
+
+/* A name in a list, and beside it (never around it: the name may be a link to the
+   profile) a button that opens the player's breakdown in the players card. It
+   OPENS rather than toggles: tapped again from up here, it should take you back
+   down to the breakdown, not shut it out of sight. */
+function whoHTML(pid, name, players) {
+  const known = hasPlayer(players, pid);
+  return '<span class="ev-who">' + person(pid, name) +
+    (known ? '<button type="button" class="ev-pbtn' + (view.pid === pid ? ' on' : '') + '" data-evpid="' + esc(pid) + '" aria-label="Shots by situation: ' + esc(name) + '">Shots</button>' : '') +
+    '</span>';
+}
+
+function scorersHTML(s, players) {
   if (!s.scorers.length) return '<p class="ev-none">Nobody scored.</p>';
   const max = s.scorers[0].pts;
   return '<ol class="ev-scorers">' + s.scorers.map(p =>
-    '<li>' + person(p.pid, p.name) + '<span class="ev-sbar"><i style="width:' + (100 * p.pts / max).toFixed(1) + '%"></i></span>' +
+    '<li>' + whoHTML(p.pid, p.name, players) + '<span class="ev-sbar"><i style="width:' + (100 * p.pts / max).toFixed(1) + '%"></i></span>' +
     '<b>' + p.pts + '</b><small>' + p.fgm + '/' + p.fga + ' FG</small></li>').join('') + '</ol>';
+}
+
+/* ---------------------------------------------------------------- players ---
+   Every player of the side on show, one row each, and under the row that is
+   open the player's own line in every situation. The numbers are the side's
+   rules applied to one player (situations.js), so a player's second-chance
+   points here are the box score's second-chance points for that player. */
+const ZONES = [['rim', 'Rim', 'at the rim'], ['mid', 'Mid', 'mid-range'], ['three', '3PT', 'threes']];
+const MX_ROWS = [['all', 'All shots'], ['second', 'Second chance'], ['transition', 'Transition'],
+                 ['offTo', 'Off turnovers'], ['ato', 'After timeout'], ['half', 'Half court']];
+const FEW = 3;                                          // a percentage on fewer tries than this is greyed
+const few = n => (n < FEW ? ' class="few"' : '');
+const efgText = v => (v == null ? '–' : Math.round(100 * v) + '%');
+const share = (n, d) => Math.round(100 * n / d) + '%';
+
+function playersOf(D) {
+  /* points, then shots; a tie keeps the roster order situations.js gave them */
+  return Object.values(D.players || {}).sort((a, b) => (b.sits.all.pts - a.sits.all.pts) || (b.sits.all.fga - a.sits.all.fga));
+}
+
+/* how a row's shots (or baskets) split between rim, mid and three: one stacked
+   bar the width of its cell, the shares written beneath it */
+function splitBar(n, label, noun) {
+  const tot = n[0] + n[1] + n[2];
+  if (!tot) return '<span class="ev-stack"></span><small>no ' + noun + 's</small>';
+  const seg = i => (n[i] ? '<i class="z' + i + '" style="flex:' + n[i] + '" data-tip="' +
+    esc(label + ' · ' + ZONES[i][1] + ': ' + n[i] + ' of ' + tot + ' ' + noun + (tot === 1 ? '' : 's') + ' (' + share(n[i], tot) + ')') + '"></i>' : '');
+  return '<span class="ev-stack">' + seg(0) + seg(1) + seg(2) + '</span><small>' + n.map(x => Math.round(100 * x / tot)).join(' · ') + '%</small>';
+}
+
+function matrixHTML(p, colour, id) {
+  const nil = '<td><b class="nil">–</b></td>';
+  const sitRow = ([k, label]) => {
+    const s = p.sits[k];
+    const none = !(s.pts || s.fga || s.fta || s.tov);
+    return '<tr class="ev-mxsit' + (none ? ' zero' : '') + '" data-evk="' + k + '" style="--s:' + sitColour(k) + '">' +
+      '<th scope="row"><span class="ev-mxname"><i class="ev-sw"></i>' + label + '</span></th>' +
+      '<td><b>' + s.pts + '</b>' + (s.fta ? '<small>' + s.ftm + '/' + s.fta + ' FT</small>' : '') + '</td>' +
+      (s.fga ? '<td><b>' + s.fgm + '/' + s.fga + '</b></td><td><b' + few(s.fga) + '>' + efgText(s.efg) + '</b></td>' : nil + nil) +
+      ZONES.map(([z, Z]) => {
+        const q = s.zones[z];
+        return q.a ? '<td data-tip="' + esc(label + ' · ' + Z + ': ' + q.m + ' made of ' + q.a) + '"><b>' + q.m + '/' + q.a + '</b><small' + few(q.a) + '>' + share(q.m, q.a) + '</small></td>' : nil;
+      }).join('') +
+      '<td class="ev-mxbar">' + splitBar(ZONES.map(([z]) => s.zones[z].a), label, 'attempt') + '</td></tr>';
+  };
+  /* assisted or not is a property of a basket, so these rows count makes */
+  const made = p.ast.fgm + p.unast.fgm;
+  const madeRow = (k, label, g) =>
+    '<tr class="ev-mxmade' + (g.fgm ? '' : ' zero') + '" data-evk="' + k + '" style="--s:' + colour + '">' +
+      '<th scope="row"><span class="ev-mxname"><i class="ev-sw"></i>' + label + '</span></th>' +
+      '<td><b>' + g.pts + '</b></td>' +
+      '<td><b>' + g.fgm + '</b>' + (made ? '<small' + few(made) + '>' + share(g.fgm, made) + ' of makes</small>' : '') + '</td>' +
+      '<td><b' + (g.fgm ? '' : ' class="nil"') + '>' + (g.fgm ? (g.pts / g.fgm).toFixed(2) : '–') + '</b></td>' +
+      ZONES.map(([z, Z]) => {
+        const zm = p.ast.zones[z] + p.unast.zones[z];
+        return zm ? '<td data-tip="' + esc(Z + ': ' + g.zones[z] + ' of ' + zm + ' made ' + (zm === 1 ? 'basket' : 'baskets') + ' ' + label.toLowerCase() + ' (' + share(g.zones[z], zm) + ')') + '"><b>' + g.zones[z] + '</b><small' + few(zm) + '>' + share(g.zones[z], zm) + '</small></td>' : nil;
+      }).join('') +
+      '<td class="ev-mxbar">' + splitBar(ZONES.map(([z]) => g.zones[z]), label, 'basket') + '</td></tr>';
+  const head = (first, fg, efg) => '<tr><th scope="col">' + first + '</th><th scope="col">PTS</th><th scope="col">' + fg + '</th><th scope="col">' + efg + '</th>' +
+    ZONES.map(([, Z]) => '<th scope="col">' + Z + '</th>').join('') + '<th scope="col" class="ev-mxbar">Rim · mid · 3PT share</th></tr>';
+  return '<div class="ev-pmx" id="' + id + '">' +
+    '<div class="ev-mwrap"><table class="ev-mx">' +
+      '<caption class="ev-vh">' + esc(p.name) + ': shots in every situation, then made baskets assisted and unassisted</caption>' +
+      '<thead>' + head('Situation', 'FG', 'eFG%') + '</thead>' +
+      '<tbody>' + MX_ROWS.map(sitRow).join('') + '</tbody>' +
+      '<tbody class="ev-mxmade">' + head('Made baskets', 'Baskets', 'Per basket').replace('<tr>', '<tr class="ev-mxsub">') +
+        madeRow('ast', 'Assisted', p.ast) + madeRow('unast', 'Unassisted', p.unast) + '</tbody>' +
+    '</table></div>' +
+    '<p class="ev-note">The situations overlap (a break off a steal is transition and off a turnover at once), so they do not add up to all shots. ' +
+      'Assisted and unassisted count made baskets only, because a missed shot has no assist: those rows give baskets, their share of the player’s makes ' +
+      '(and, under each zone, of that zone’s makes) and points per basket, where the rows above give FG and eFG%. Grey percentages rest on fewer than three shots.</p>' +
+  '</div>';
+}
+
+function playersHTML(D, colour, pid) {
+  const list = playersOf(D);
+  if (!list.length) return '<p class="ev-none">No play in this game has a player’s name on it.</p>';
+  return '<ul class="ev-plist">' + list.map((p, i) => {
+    const s = p.sits.all, open = p.pid === pid, id = 'ev-pm-' + i;
+    const extra = [s.fta ? s.ftm + '/' + s.fta + ' FT' : '', s.tov ? s.tov + (s.tov === 1 ? ' turnover' : ' turnovers') : ''].filter(Boolean).join(' · ');
+    return '<li class="ev-pitem' + (open ? ' open' : '') + '"><div class="ev-phead">' +
+      '<button type="button" class="ev-prow" data-evpid="' + esc(p.pid) + '" aria-expanded="' + open + '"' + (open ? ' aria-controls="' + id + '"' : '') + '>' +
+        '<span class="ev-pname"><i class="ev-chev" aria-hidden="true"></i><span><b>' + esc(p.name) + '</b>' + (extra ? '<small>' + extra + '</small>' : '') + '</span></span>' +
+        '<span class="ev-ppts"><b>' + s.pts + '</b><small>pts</small></span>' +
+        '<span class="ev-pfg"><b>' + s.fgm + '/' + s.fga + '</b><small>FG</small></span>' +
+        '<span class="ev-pefg' + (s.fga < FEW ? ' few' : '') + '"><b>' + efgText(s.efg) + '</b><small>eFG</small></span>' +
+        dietHTML(s.zones, colour) +
+      '</button>' +
+      (UUID.test(p.pid) ? '<a class="ev-plink" href="../p/?p=' + encodeURIComponent(p.pid) + '" aria-label="Profile: ' + esc(p.name) + '">Profile</a>' : '') +
+    '</div>' + (open ? matrixHTML(p, colour, id) : '') + '</li>';
+  }).join('') + '</ul>';
 }
 
 /* WATCH VIDEO ONLY WHERE THE FOOTAGE HAS THE PLAY. The video tab lists what epinoia/video.js
@@ -441,7 +274,45 @@ function atoHTML(list, S, nm, o) {
   }).join('') + '</ol>';
 }
 
-function assistsHTML(A, colour) {
+/* EACH ZONE'S SHOOTING BESIDE HOW ITS MAKES WERE MADE. A miss cannot be assisted,
+   so there is no assisted eFG%: an assisted three that went in would read 150%
+   and every assisted shot would look like a make, because it was one. The
+   shooting columns are every attempt from the zone; the assisted and unassisted
+   columns split that zone's baskets, each with the zone's share of that group. */
+function assistZonesHTML(A) {
+  const Z = A.zones;
+  if (!Z) return '';
+  const all = { a: 0, m: 0, ast: 0, unast: 0 };
+  ZONES.forEach(([z]) => { ['a', 'm', 'ast', 'unast'].forEach(f => { all[f] += Z[z][f]; }); });
+  const groupCell = (n, tot, label) => '<td><b>' + n + '</b>' + (tot ? '<small' + few(tot) + '>' + share(n, tot) + ' of ' + label + '</small>' : '') + '</td>';
+  const row = (key, label, q, p3m, isAll) => {
+    const made = q.ast + q.unast;
+    const efg = q.a ? (q.m + 0.5 * p3m) / q.a : null;
+    return '<tr' + (isAll ? ' class="ev-azall"' : '') + ' data-evz="' + key + '">' +
+      '<th scope="row">' + label + '</th>' +
+      '<td><b' + (q.a ? '' : ' class="nil"') + '>' + (q.a ? q.m + '/' + q.a : '–') + '</b></td>' +
+      '<td><b' + (q.a ? few(q.a) : ' class="nil"') + '>' + (q.a ? share(q.m, q.a) : '–') + '</b></td>' +
+      '<td><b' + (q.a ? few(q.a) : ' class="nil"') + '>' + efgText(efg) + '</b></td>' +
+      (isAll ? '<td><b>' + q.ast + '</b></td><td><b>' + q.unast + '</b></td>'
+             : groupCell(q.ast, A.ast.fgm, 'assisted') + groupCell(q.unast, A.unast.fgm, 'unassisted')) +
+      '<td><b' + (made ? few(made) : ' class="nil"') + '>' + (made ? share(q.ast, made) : '–') + '</b></td></tr>';
+  };
+  const ppb = g => '<td><b' + (g.fgm ? '' : ' class="nil"') + '>' + (g.fgm ? (g.pts / g.fgm).toFixed(2) : '–') + '</b></td>';
+  return '<h4 class="ev-sub">By zone</h4>' +
+    '<div class="ev-mwrap"><table class="ev-mx az">' +
+      '<caption class="ev-vh">Shooting from each zone, and how its baskets were made</caption>' +
+      '<thead><tr><th scope="col">Zone</th><th scope="col">FG</th><th scope="col">FG%</th><th scope="col">eFG%</th>' +
+        '<th scope="col">Assisted</th><th scope="col">Unassisted</th><th scope="col">% assisted</th></tr></thead>' +
+      '<tbody>' + ZONES.map(([z, label]) => row(z, label, Z[z], z === 'three' ? Z[z].m : 0, false)).join('') +
+        row('all', 'All', all, Z.three.m, true) + '</tbody>' +
+      '<tfoot><tr data-evz="ppb"><th scope="row">Points per basket</th><td></td><td></td><td></td>' + ppb(A.ast) + ppb(A.unast) + '<td></td></tr></tfoot>' +
+    '</table></div>' +
+    '<p class="ev-note">There is no eFG% for assisted shots. Only a basket can be assisted, a miss cannot, so assisted shots have makes but no misses to set them against. ' +
+      'FG% and eFG% here are every attempt from the zone (a three counts one and a half); the assisted and unassisted columns say how that zone’s baskets were made, ' +
+      'with the zone’s share of each group under the count. Grey percentages rest on fewer than three shots.</p>';
+}
+
+function assistsHTML(A, colour, players) {
   const max = Math.max(1, A.ast.fgm, A.unast.fgm);
   const made = A.ast.fgm + A.unast.fgm;
   const line = (label, g) => {
@@ -459,9 +330,10 @@ function assistsHTML(A, colour) {
     line('Assisted', A.ast) + line('Unassisted', A.unast) +
     '<p class="ev-key"><span><i class="z0"></i>rim</span><span><i class="z1"></i>mid-range</span><span><i class="z2"></i>three</span><span>share of made baskets on the right</span></p>' +
     (A.ftAssists ? '<p class="ev-note">Plus ' + A.ftAssists + ' assist' + (A.ftAssists === 1 ? '' : 's') + ' on a pass that drew free throws, which the box score’s assists include.</p>' : '') +
+    assistZonesHTML(A) +
     '<h4 class="ev-sub">Most unassisted baskets</h4>' +
     (lead.length ? '<ol class="ev-scorers">' + lead.map(p =>
-      '<li>' + person(p.pid, p.name) + '<span class="ev-sbar"><i style="width:' + (100 * p.unFgm / top).toFixed(1) + '%"></i></span>' +
+      '<li>' + whoHTML(p.pid, p.name, players) + '<span class="ev-sbar"><i style="width:' + (100 * p.unFgm / top).toFixed(1) + '%"></i></span>' +
       '<b>' + p.unFgm + '</b><small>' + p.unPts + ' pts · ' + Math.round(100 * p.unFgm / p.fgm) + '% of their baskets</small></li>').join('') + '</ol>'
       : '<p class="ev-none">Every basket was assisted.</p>') +
   '</div>';
@@ -481,6 +353,8 @@ function inner(S) {
   const scale = Math.max(1.6, ...keys.map(k => D.sits[k].ppp || 0)) * 1.05;
   const sit = view.sit in D.sits ? view.sit : 'second';
   const s = D.sits[sit], colour = sitColour(sit);
+  const teamColour = 'var(--vis-t' + o + ',var(--team' + o + '))';
+  const pid = view.pid != null && hasPlayer(D.players, view.pid) ? view.pid : null;   // only a player of the side on show
   const lede = off
     ? '<b>' + me + '</b> on offence'
     : '<b>' + them + '</b> against <b>' + me + '</b>’s defence';
@@ -502,12 +376,17 @@ function inner(S) {
       '<div class="ev-grid">' + courtHTML(s, colour, namesOf(S)) +
         '<div class="ev-side-col"><h4 class="ev-sub">Shot types</h4>' + typesHTML(s) +
         '<div class="ev-zones">' + ['rim', 'mid', 'three'].map(z => '<span><small>' + (z === 'mid' ? 'mid-range' : z) + '</small><b>' + s.zones[z].m + '/' + s.zones[z].a + '</b><em>' + (s.zones[z].a ? Math.round(100 * s.zones[z].m / s.zones[z].a) + '%' : '–') + '</em></span>').join('') + '</div>' +
-        '<h4 class="ev-sub">Who scored</h4>' + scorersHTML(s) + '</div></div>' +
+        '<h4 class="ev-sub">Who scored</h4>' + scorersHTML(s, D.players) + '</div></div>' +
       (sit === 'ato' ? '<h4 class="ev-sub">Every play after a timeout</h4>' + atoHTML(D.ato, S, nm, o) : '') +
+    '</section>' +
+    '<section class="ev-card ev-players" style="--s:' + teamColour + '">' +
+      '<div class="ev-head"><h3 class="ev-title">Every player’s shots <small>' + attackers + (off ? '' : ' against ' + me) + '</small></h3>' +
+        '<p class="ev-key"><span><i class="z0"></i>rim</span><span><i class="z1"></i>mid-range</span><span><i class="z2"></i>three</span><span>tap a player for every situation</span></p></div>' +
+      playersHTML(D, teamColour, pid) +
     '</section>' +
     '<section class="ev-card">' +
       '<div class="ev-head"><h3 class="ev-title">Assisted and unassisted baskets <small>' + attackers + '</small></h3></div>' +
-      assistsHTML(D.assists, 'var(--vis-t' + o + ',var(--team' + o + '))') +
+      assistsHTML(D.assists, teamColour, D.players) +
     '</section>';
 }
 
@@ -569,18 +448,38 @@ function mounted(host) {
     tip.style.top = (above > 0 ? above : r.bottom - R.top + 8) + 'px';
   };
   const hide = () => { const w = wrap(), tip = w && w.querySelector('.ev-tip'); if (tip) tip.hidden = true; };
+  /* A player's row toggles that player's breakdown (one open at a time); a Shots button in a
+     list above opens it and brings the row up. The redraw replaces the buttons, so
+     the row gets the focus back, and a row tapped where it is stays where it is on
+     screen even when the breakdown that shut was above it. */
+  const openPlayer = b => {
+    const pid = b.dataset.evpid, fromRow = b.classList.contains('ev-prow');
+    const before = fromRow && b.getBoundingClientRect ? b.getBoundingClientRect().top : null;
+    view.pid = fromRow && view.pid === pid ? null : pid;
+    redraw();
+    const w = wrap();
+    const row = w && Array.prototype.find.call(w.querySelectorAll('.ev-prow'), x => x.dataset.evpid === pid);
+    if (!row) return;
+    if (row.focus) row.focus({ preventScroll: true });
+    if (!row.getBoundingClientRect) return;
+    const top = row.getBoundingClientRect().top;
+    if (fromRow) { if (before != null && Math.abs(top - before) > 1 && root.scrollBy) root.scrollBy(0, top - before); }
+    else if (top < 0 || top > (root.innerHeight || 800) * 0.8) row.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
   host.addEventListener('pointerover', e => { if (!wrap()) return; const m = tipOf(e); if (m && e.pointerType !== 'touch') show(m); });
   host.addEventListener('pointerout', e => { if (wrap() && tipOf(e) && e.pointerType !== 'touch') hide(); });
   host.addEventListener('click', e => {
     if (!wrap()) return;
-    const b = e.target.closest && e.target.closest('[data-evteam],[data-evside],[data-evsit],[data-evwatch]');
+    const b = e.target.closest && e.target.closest('[data-evteam],[data-evside],[data-evsit],[data-evwatch],[data-evpid]');
     if (b && wrap().contains(b)) {
       if (b.dataset.evwatch != null) {
         root.dispatchEvent(new CustomEvent('epinoia:watchplay', { detail: { seq: b.dataset.evwatch } }));
         return;
       }
-      if (b.dataset.evteam != null) view.team = +b.dataset.evteam;
-      if (b.dataset.evside != null) view.side = b.dataset.evside;
+      if (b.dataset.evpid != null) { openPlayer(b); return; }
+      /* another team or the other end: the open player was one of the side that was on show */
+      if (b.dataset.evteam != null && +b.dataset.evteam !== view.team) { view.team = +b.dataset.evteam; view.pid = null; }
+      if (b.dataset.evside != null && b.dataset.evside !== view.side) { view.side = b.dataset.evside; view.pid = null; }
       if (b.dataset.evsit != null) {
         view.sit = b.dataset.evsit;
         redraw();
@@ -598,5 +497,5 @@ function mounted(host) {
   });
 }
 
-return { compute, render, mounted, view, SITS, setView: v => Object.assign(view, v) };
+return { compute, render, mounted, view, SITS, setView };
 }));

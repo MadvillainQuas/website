@@ -328,6 +328,27 @@ async function teamStats(team, kind) {
   const zh = el('div'); zh.appendChild(el('div', 'ffhead', 'shot zones')); host.appendChild(zh);
   zoneStats(zh, S, team).catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')));
 
+  /* EVENTS, AT BOTH ENDS. What the club made of second chances, breaks, turnovers,
+     timeouts and half-court sets over the scoped season, and what opponents made of
+     the same against it -- from the season rows' ev_ / evd_ keys, ranked among
+     S.teams. Its own try, because anything thrown here would reach boot's catch and
+     blank the roster and the results. */
+  const evWrap = el('div'); evWrap.appendChild(el('div', 'ffhead', 'events'));
+  const evHost = el('div'); evWrap.appendChild(evHost); host.appendChild(evWrap);
+  try {
+    const clubLabel = team.name || team.short_name || '';
+    if (window.EpinoiaSitPanel) {
+      window.EpinoiaSitPanel.render({
+        host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
+        note: teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : ''
+      });
+    }
+  } catch (e) {
+    console.warn('[events]', e);
+    evHost.textContent = '';
+    evHost.appendChild(el('div', 'empty', 'The event splits could not be drawn.'));
+  }
+
   /* every player on the roster, ranked within their own team */
   const meta = await D.playerMeta(S.players.map(p => p.id));
   S.players.forEach(p => Object.assign(p, meta[p.id] || {}));

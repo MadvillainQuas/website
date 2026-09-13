@@ -35,16 +35,32 @@ const sgn = v => (v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(1))
 const sgn0 = v => (v == null ? '—' : (v > 0 ? '+' : '') + v);
 const pair = (m, a) => (m == null ? '—' : m + '-' + a);
 const pg   = (m, a) => (m == null ? '—' : Number(m).toFixed(1) + '-' + Number(a).toFixed(1));
+/* The events columns' own formatters. A split is null twice over -- a season with no games
+   carrying the splits, and a rate over no attempts -- so anything that is not a finite number
+   prints as a dash rather than as NaN. */
+const e0  = v => (v == null || !isFinite(v) ? '—' : String(v));
+const e1  = v => (v == null || !isFinite(v) ? '—' : Number(v).toFixed(1));
+const e2  = v => (v == null || !isFinite(v) ? '—' : Number(v).toFixed(2));
+const epg = (m, a) => (m == null || a == null || !isFinite(m) || !isFinite(a) ? '—'
+  : Number(m).toFixed(1) + '-' + Number(a).toFixed(1));
+
+/* the events presets, one per situation plus assisted against unassisted (columns further down) */
+const EV_SITS = [['second', 'second chance', 'Second chance'], ['transition', 'transition', 'Transition'],
+                 ['offTo', 'off turnovers', 'Off turnovers'], ['ato', 'after timeout', 'After timeout'],
+                 ['half', 'half court', 'Half court']];
+const EV_GROUPS = EV_SITS.map(([s]) => 'ev_' + s).concat('ev_assist');
 
 /* ------------------------------------------------------------- catalogue ---
    g      the groups this column belongs to (a preset is a set of groups)
    low    lower is better — the heat map must rank it in reverse
-   heat   include in the percentile heat map (identity columns must not be)   */
+   heat   include in the percentile heat map (identity columns must not be)
+   t      a longer name for the header's hover title and the column drawer, where a
+          short label alone is ambiguous (every events preset has its own PTS/G)   */
 const P = [
   { k:'jersey', l:'#',      g:['id'], fmt:r=>r.jersey||'', sort:r=>+r.jersey||999 },
   { k:'name',   l:'PLAYER', g:['id'], fmt:r=>r.name, text:true },
   { k:'teamName', l:'TEAM', g:['id'], fmt:r=>r.teamName||'', text:true },
-  { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'], fmt:r=>f0(r.gp), ord:{advanced:0} },
+  { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'].concat(EV_GROUPS), fmt:r=>f0(r.gp), ord:{advanced:0} },
 
   /* per game — the default view */
   { k:'mpg',  l:'MPG',  g:['basic'], fmt:r=>f1(r.mpg),  heat:1 },
@@ -179,7 +195,7 @@ const P = [
 const T = [
   { k:'rank', l:'#',    g:['id'], fmt:(r,i)=>String(i+1), sort:r=>r.__i },
   { k:'name', l:'TEAM', g:['id'], fmt:r=>r.name, text:true },
-  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense','z_rim','z_mid','z_three','z_cuts','z_rate'], fmt:r=>f0(r.gp) },
+  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense','z_rim','z_mid','z_three','z_cuts','z_rate'].concat(EV_GROUPS), fmt:r=>f0(r.gp) },
 
   { k:'ppg',    l:'PPG',  g:['basic'], fmt:r=>f1(r.ppg),  heat:1, lead:1 },
   { k:'papg',   l:'OPP',  g:['basic'], fmt:r=>f1(r.papg), heat:1, low:1 },
@@ -291,7 +307,95 @@ ZONE_KEYS.forEach(([z, l, cat]) => {
   T.push({ k:'z_' + z + '_efg',    l:l + ' eFG',  g:[cat, 'z_rate'], fmt:r=>f1(r['z_' + z + '_efg']),    heat:1 });
 });
 
+/* THE EVENTS SPLITS: second chance, transition, off turnovers, after timeout, half court, and
+   assisted against unassisted baskets, from season.js's ev_ keys (and, for a team, evd_: what
+   opponents did in the same situations against it). Every situation asks the same questions, so
+   its columns are generated, one list for both kinds: volume and share of the scoring, eFG%, the
+   rim / mid / three diet with the accuracy from each, free throws and turnovers. A team adds its
+   chances, how often it got into the situation and what each chance was worth, and the other end
+   in OPP columns ranked lower-is-better.
+
+   Opponent chances are only a thing to keep down where the situation is one a defence gives
+   away -- offensive rebounds, breaks, turnovers. Making a side play in the half court is the
+   point of defending, and after-timeout sets happen to both sides, so neither is ranked in
+   reverse there.
+
+   GP AND EV GP BOTH SHOW. The min-games filter reads gp, but every per-game number in these
+   presets is over ev_gp, the games that carry the splits; until every game of a season has been
+   finalised with them (or backfilled) the two differ, and a reader comparing a 20-game box score
+   with 14 games of splits needs to see that rather than be left to guess. */
+function evColumns(CAT, team) {
+  CAT.push({ k:'ev_gp', l:'EV GP', g:EV_GROUPS, fmt:r=>e0(r.ev_gp),
+             t:'games with the events splits (the per-game values in this preset are over these)' });
+  EV_SITS.forEach(([s, , name]) => {
+    const g = ['ev_' + s], p = 'ev_' + s + '_', d = 'evd_' + s + '_';
+    const chances = s === 'ato' ? 'possessions' : 'chances';
+    const conceded = s === 'second' || s === 'transition' || s === 'offTo';
+    const col = (k, l, t, x) => CAT.push(Object.assign({ k, l, g, t: name + ': ' + t, fmt:r=>e1(r[k]), heat:1 }, x));
+    if (team) {
+      col(p + 'ch_pg', 'CH/G', chances + ' per game');
+      col(p + 'freq',  'FREQ', s === 'ato' ? 'sets per 100 chances' : 'share of all chances');
+    }
+    col(p + 'ppg',    'PTS/G', 'points per game', { lead:1 });
+    col(p + 'pts_sh', '%PTS',  'share of all points');
+    if (team) col(p + 'ppp', 'PPP', 'points per ' + (s === 'ato' ? 'possession' : 'chance'), { fmt:r=>e2(r[p + 'ppp']) });
+    col(p + 'fgm_pg', 'FG/G', 'field goals made-attempted per game',
+        { fmt:r=>epg(r[p + 'fgm_pg'], r[p + 'fga_pg']), sort:r=>r[p + 'fgm_pg'], heat:0 });
+    col(p + 'efg',     'eFG%',    'effective field goal %');
+    col(p + 'rim_apg', 'RIM A/G', 'rim attempts per game');
+    col(p + 'rim_pct', 'RIM%',    'FG% at the rim');
+    col(p + 'rim_sh',  'RIM SH',  'share of attempts at the rim');
+    col(p + 'mid_apg', 'MID A/G', 'mid-range attempts per game');
+    col(p + 'mid_pct', 'MID%',    'FG% from mid-range');
+    col(p + 'mid_sh',  'MID SH',  'share of attempts from mid-range');
+    col(p + 'p3_apg',  '3PA/G',   'three-point attempts per game');
+    col(p + 'p3_pct',  '3P%',     'three-point %');
+    col(p + 'p3_sh',   '3 SH',    'share of attempts from three');
+    col(p + 'fta_pg',  'FTA/G',   'free throw attempts per game');
+    col(p + 'tov_pg',  'TOV/G',   'turnovers per game', { low:1 });
+    if (team) {
+      col(p + 'tov_pct', 'TOV%',     'turnovers per 100 ' + chances, { low:1 });
+      col(d + 'ch_pg',   'OPP CH/G', 'opponent ' + chances + ' per game', conceded ? { low:1 } : {});
+      col(d + 'ppg',     'OPP PTS',  'opponent points per game', { low:1 });
+      col(d + 'ppp',     'OPP PPP',  'opponent points per ' + (s === 'ato' ? 'possession' : 'chance'),
+          { fmt:r=>e2(r[d + 'ppp']), low:1 });
+      col(d + 'efg',     'OPP eFG',  'opponent effective field goal %', { low:1 });
+    }
+  });
+
+  /* Assisted or not is a property of a MADE basket, so there is no assisted eFG%: what sits
+     beside the assisted share of each zone's makes is that zone's accuracy over all its
+     attempts, and each group is read by points per basket and where its baskets came from. */
+  const g = ['ev_assist'];
+  const col = (k, l, t, x) => CAT.push(Object.assign({ k, l, g, t, fmt:r=>e1(r[k]), heat:1 }, x));
+  col('ev_ast_fgm_pg',   'AST FG/G', 'assisted baskets per game');
+  col('ev_unast_fgm_pg', 'UN FG/G',  'unassisted baskets per game');
+  col('ev_ast_sh',       '%AST',     'share of baskets that were assisted');
+  col('ev_ast_ppb',      'PPB AST',  'points per assisted basket', { fmt:r=>e2(r.ev_ast_ppb) });
+  col('ev_unast_ppb',    'PPB UN',   'points per unassisted basket', { fmt:r=>e2(r.ev_unast_ppb) });
+  col('ev_all_efg',      'eFG%',     'effective field goal %, every shot');
+  col('ev_all_rim_pct',  'RIM%',     'FG% at the rim, every shot');
+  col('ev_rim_astp',     'RIM %AST', 'share of rim makes that were assisted');
+  col('ev_all_mid_pct',  'MID%',     'FG% from mid-range, every shot');
+  col('ev_mid_astp',     'MID %AST', 'share of mid-range makes that were assisted');
+  col('ev_all_p3_pct',   '3P%',      'three-point %, every shot');
+  col('ev_p3_astp',      '3 %AST',   'share of made threes that were assisted');
+  col('ev_ast_rim_sh',   'A RIM SH', 'assisted baskets: share at the rim');
+  col('ev_ast_mid_sh',   'A MID SH', 'assisted baskets: share from mid-range');
+  col('ev_ast_p3_sh',    'A 3 SH',   'assisted baskets: share from three');
+  col('ev_unast_rim_sh', 'U RIM SH', 'unassisted baskets: share at the rim');
+  col('ev_unast_mid_sh', 'U MID SH', 'unassisted baskets: share from mid-range');
+  col('ev_unast_p3_sh',  'U 3 SH',   'unassisted baskets: share from three');
+  if (team) {
+    col('ev_ftast_pg', 'FT AST/G', 'assists on passes that drew free throws, per game');
+    col('evd_ast_sh',  'OPP %AST', 'share of opponent baskets that were assisted', { low:1 });
+  }
+}
+evColumns(P, false);
+evColumns(T, true);
+
 /* presets: the first is the default, and is deliberately the beginner's view */
+const EV_PRESETS = EV_SITS.map(([s, label]) => ['ev_' + s, 'events · ' + label]).concat([['ev_assist', 'events · assisted']]);
 const PRESETS = {
   player: [
     ['basic',      'per game'],
@@ -304,6 +408,7 @@ const PRESETS = {
     ['vs',         'opponent'],
     ['advanced',   'advanced'],
     ['misc',       'misc'],
+    ...EV_PRESETS,
     ['*',          'everything']
   ],
   team: [
@@ -319,6 +424,7 @@ const PRESETS = {
     ['z_three',  'zones: threes'],
     ['z_cuts',   'zones: the cuts'],
     ['z_rate',   'zones: rate / 100 + eFG%'],
+    ...EV_PRESETS,
     ['*',        'everything']
   ]
 };
@@ -469,6 +575,7 @@ function render(opts) {
       const on = shown.has(c.k);
       const b = el('button', 'ft-col' + (on ? ' on' : ''), c.l);
       b.type = 'button';
+      if (c.t) b.title = c.t;
       b.addEventListener('click', () => {
         if (shown.has(c.k)) { extra.delete(c.k); removed.add(c.k); }
         else { removed.delete(c.k); extra.add(c.k); }
@@ -673,7 +780,7 @@ function render(opts) {
          cell like "192-440" stretched its column and squeezed every other one,
          which is what threw PPG and DIFF out of proportion. */
       if (i >= 2) th.style.width = widths[c.k] + 'px';
-      th.title = c.l + (c.low ? ' — lower is better' : '');
+      th.title = (c.t ? c.l + ' — ' + c.t : c.l) + (c.low ? ' — lower is better' : '');
       /* a grip on the trailing edge, so a column can be widened by hand when
          the measured width is not what this particular reader wants */
       if (i >= 1) addGrip(th, c, t);

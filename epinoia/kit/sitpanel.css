@@ -1,0 +1,149 @@
+/* ============================================================================
+   THE EVENTS PANEL (epinoia/sitpanel.js) — on the player profile (p/) and the
+   club profile (t/), inside the page's own section.
+
+   Kit tokens only, so it is right in the light theme (the default), the dark
+   one, and a club's colours (body.themed remaps --lume to the club's ink and
+   the rules to its mixes). Labels in --f-micro, figures in --f-data with
+   tabular numbers, prose in --f-ui.
+
+   THE ZONE RAMP is one hue, --lume, stepped by mixing into the ground: rim at
+   full strength, mid at two thirds, 3PT at two fifths. Mixing into --ground
+   rather than toward black or white is what keeps the ORDER the same in both
+   themes — on the pale ground the rim is the darkest part, on the dark ground
+   the brightest; either way it is the one that stands out most, and the
+   faintest is the farthest from the basket. Every part is also named in words
+   beside its swatch, so nothing depends on telling the three apart by colour.
+   ============================================================================ */
+.sp{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+.sp-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;
+  padding:calc(var(--u)*1.5) 0 calc(var(--u)*1.25)}
+.sp-head .ep-tab{font-size:9.5px;padding:7px 12px}
+.sp-lede{margin:0;font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;
+  color:var(--ink-3);line-height:1.7}
+.sp-lede b{font-family:var(--f-ui);font-weight:700;font-size:12.5px;letter-spacing:0;color:var(--ink)}
+.sp-empty{padding:calc(var(--u)*3) 0;text-align:center;color:var(--ink-3);
+  font-family:var(--f-micro);font-size:10px;line-height:1.9}
+
+/* ---- the situation table ----
+   Its own sideways scroller (.ep-xscroll, panned by hand on a phone by
+   xscroll.js); the page never scrolls sideways. container-type lets the
+   breakdown under a tapped row size itself to the scroller's visible width
+   (100cqw) and stick to its left edge, so on a phone the tiles sit on screen
+   rather than stretched across the whole width of the table. */
+.sp-scroll{container-type:inline-size}
+.sp-tbl{border-collapse:collapse;width:100%;min-width:560px;font-family:var(--f-data);
+  font-size:11.5px;font-variant-numeric:tabular-nums}
+.sp-tbl.team{min-width:720px}
+.sp-tbl thead th{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:400;padding:8px 8px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--rule-2)}
+.sp-tbl td{padding:7px 8px;text-align:right;white-space:nowrap;vertical-align:middle;color:var(--ink);
+  border-bottom:1px solid var(--rule)}
+.sp-tbl .sp-k{text-align:left;font-weight:400}
+.sp-tbl tbody th.sp-k{padding:7px 8px 7px 0;border-bottom:1px solid var(--rule)}
+.sp-tbl .sp-mix{text-align:left;width:1%}
+
+.sp-row{cursor:pointer}
+/* tints as a background IMAGE, over whatever solid the cell already has — the
+   sticky first column keeps its ground under the tint */
+.sp-row:hover > *{background-image:linear-gradient(color-mix(in oklch,var(--lume) 6%,transparent),color-mix(in oklch,var(--lume) 6%,transparent))}
+.sp-row.on > *{background-image:linear-gradient(color-mix(in oklch,var(--lume) 11%,transparent),color-mix(in oklch,var(--lume) 11%,transparent))}
+.sp-row.ref > *{border-bottom-color:var(--rule-2)}
+.sp-row.none td{opacity:.5}
+
+.sp-open{background:none;border:0;margin:0;padding:2px 0;font:inherit;color:var(--ink);cursor:pointer;
+  font-family:var(--f-ui);font-weight:600;font-size:12.5px;text-align:left;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:8px}
+.sp-open::before{content:"";flex:none;width:0;height:0;border-left:5px solid var(--ink-3);
+  border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .2s var(--ease)}
+.sp-open[aria-expanded="true"]{color:var(--lume)}
+.sp-open[aria-expanded="true"]::before{transform:rotate(90deg);border-left-color:var(--lume)}
+.sp-open:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.sp-row.ref .sp-open{font-weight:800}
+
+/* ---- the league percentile beside a rate: same bands as the profile's bars ---- */
+.sp-pct{display:inline-block;min-width:22px;margin-left:6px;padding:2px 4px 1px;border-radius:2px;
+  font-family:var(--f-micro);font-size:7.5px;letter-spacing:.04em;line-height:1.3;text-align:center;
+  vertical-align:1px;color:var(--ink);--sp-b:var(--rule-2);
+  border:1px solid var(--sp-b);background:color-mix(in oklch,var(--sp-b) 16%,transparent)}
+.sp-pct.b3{--sp-b:var(--lume)}
+.sp-pct.b2{--sp-b:color-mix(in oklch,var(--lume) 60%,var(--amber))}
+.sp-pct.b1{--sp-b:var(--amber)}
+.sp-pct.b0{--sp-b:var(--flare)}
+
+/* ---- the shot mix: one thin bar, 2px gaps, every part named ---- */
+.sp-diet{display:block;min-width:156px}
+.sp-bar{display:flex;gap:2px;height:6px;max-width:100%}
+.sp-bar i{display:block;min-width:2px;border-radius:1px}
+.sp-bar .z-rim,   .sp-sw.z-rim  {background:var(--lume)}
+.sp-bar .z-mid,   .sp-sw.z-mid  {background:color-mix(in oklch,var(--lume) 66%,var(--ground))}
+.sp-bar .z-three, .sp-sw.z-three{background:color-mix(in oklch,var(--lume) 40%,var(--ground))}
+.sp-sw{display:inline-block;flex:none;width:7px;height:7px;border-radius:1px;vertical-align:0}
+.sp-dl{display:flex;flex-wrap:wrap;gap:2px 9px;margin-top:4px;font-family:var(--f-micro);font-size:7.5px;
+  letter-spacing:.06em;color:var(--ink-3);text-align:left;white-space:nowrap}
+.sp-dl span{display:inline-flex;align-items:center;gap:4px}
+.sp-diet.none .sp-dl{margin-top:0}
+
+/* ---- the breakdown under a tapped row ---- */
+.sp-tbl tr.sp-detail > td{padding:0;white-space:normal;text-align:left;border-bottom:1px solid var(--rule-2);
+  background:color-mix(in oklch,var(--lume) 4%,transparent)}
+.sp-in{position:sticky;left:0;box-sizing:border-box;width:100cqw;padding:10px 0 12px}
+.sp-dh{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--lume);margin:0 0 8px}
+.sp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:2px}
+.sp-tile{background:var(--panel);box-shadow:inset 0 0 0 1px var(--rule);padding:9px 10px 10px;min-width:0}
+.sp-tl{display:flex;align-items:center;gap:5px;font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+.sp-tile.z .sp-tl{color:var(--ink-2)}
+.sp-tv{margin-top:6px;font-family:var(--f-data);font-size:15px;line-height:1.1;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.sp-tv small{margin-left:5px;font-family:var(--f-micro);font-size:7px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3)}
+.sp-tm{margin-top:6px;font-family:var(--f-micro);font-size:8px;letter-spacing:.04em;line-height:1.9;color:var(--ink-3)}
+.sp-tm b{font-family:var(--f-data);font-weight:400;font-size:10.5px;letter-spacing:0;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+
+.sp-note{margin:9px 0 0;max-width:86ch;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.04em;
+  line-height:1.9;color:var(--ink-3)}
+
+/* ---- assisted and unassisted ---- */
+.sp-ast{margin-top:calc(var(--u)*2.5);padding-top:calc(var(--u)*2);border-top:1px solid var(--rule)}
+.sp-sub{margin:0 0 8px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--lume)}
+.sp-aline{display:grid;grid-template-columns:minmax(170px,250px) minmax(0,1fr);gap:4px 16px;
+  align-items:center;padding:7px 0;border-bottom:1px solid color-mix(in oklch,var(--rule) 60%,transparent)}
+.sp-al b{display:block;font-family:var(--f-ui);font-weight:700;font-size:12.5px;color:var(--ink)}
+.sp-al small{display:block;margin-top:2px;font-family:var(--f-micro);font-size:8px;letter-spacing:.04em;
+  line-height:1.8;color:var(--ink-3)}
+.sp-al em{font-style:normal;font-family:var(--f-data);font-size:10.5px;letter-spacing:0;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.sp-abar .sp-diet{min-width:0}
+.sp-abar .sp-bar{height:10px}
+.sp-ztbl{border-collapse:collapse;width:100%;max-width:460px;margin-top:12px;font-family:var(--f-data);
+  font-size:11px;font-variant-numeric:tabular-nums}
+.sp-ztbl th{font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:400;padding:6px 8px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--rule-2)}
+.sp-ztbl td{padding:6px 8px;text-align:right;color:var(--ink);border-bottom:1px solid var(--rule)}
+.sp-ztbl .sp-k{text-align:left;padding-left:0}
+.sp-ztbl tbody th.sp-k{color:var(--ink-2);border-bottom:1px solid var(--rule)}
+.sp-ztbl tbody th.sp-k .sp-sw{margin-right:6px}
+
+/* BELOW THE ZOOM STEP the table can be narrower than its columns, so the
+   situation names stay put while the numbers pan beside them. Only here: on
+   a wide screen nothing scrolls, and a solid cell would show against a club's
+   washed background for no reason. */
+@media (max-width:999px){
+  .sp-tbl .sp-k{position:sticky;left:0;z-index:1;background-color:var(--ground)}
+  .sp-tbl tr.sp-detail > td{position:static}
+}
+
+/* A PHONE: the page's own gutter, the tiles two across, the assisted line's
+   words above its bar rather than beside it. */
+@media (max-width:520px){
+  .sp{padding:0 calc(var(--u)*2) calc(var(--u)*2.5)}
+  .sp-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sp-aline{grid-template-columns:minmax(0,1fr)}
+  .sp-tv{font-size:13.5px}
+}

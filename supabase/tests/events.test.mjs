@@ -133,6 +133,41 @@ console.log('\nthe situations, worked out by hand');
     const ast = S.teams[t].players.reduce((n, p) => n + d.stats[p.id].ast, 0);
     ok('team ' + t + ': assisted baskets + free-throw assists = the box score\'s assists', C.side[t].assists.ast.fgm + C.side[t].assists.ftAssists === ast);
   });
+
+  /* every player's own line, by the side's rules */
+  const PL = C.side[0].players;
+  const za = (q, a, m) => !!q && q.a === a && q.m === m;
+  const h1 = PL.h1 && PL.h1.sits;
+  ok('Ada Stone: both jumpers missed from mid-range, both free throws made, 2 points',
+     h1 && h1.all.fga === 2 && h1.all.fgm === 0 && za(h1.all.zones.mid, 2, 0) && h1.all.fta === 2 && h1.all.ftm === 2 && h1.all.pts === 2, h1 && JSON.stringify(h1.all));
+  ok('...and ONE of the free throws is her second-chance point, as the engine credits it',
+     h1 && h1.second.fta === 1 && h1.second.ftm === 1 && h1.second.pts === 1 && h1.second.fga === 0 && h1.second.pts === d.stats.h1.sc, h1 && JSON.stringify(h1.second));
+  ok('Bea Moss\'s putback is her second chance: rim 1/1, 2 points',
+     za(PL.h2.sits.second.zones.rim, 1, 1) && PL.h2.sits.second.pts === 2 && PL.h2.sits.second.fga === 1, JSON.stringify(PL.h2.sits.second));
+  ok('Eve Park\'s three off the steal is her off-turnover line: 1/1, 3 points, eFG 150%',
+     za(PL.h5.sits.offTo.zones.three, 1, 1) && PL.h5.sits.offTo.pts === 3 && near(PL.h5.sits.offTo.efg, 1.5), JSON.stringify(PL.h5.sits.offTo));
+  ok('half court per player: Ada mid 0/2, Dee mid 0/1 (the jump shot in the paint), Flo rim 1/1',
+     za(h1.half.zones.mid, 2, 0) && h1.half.fga === 2 && h1.half.fta === 0 &&
+     za(PL.h4.sits.half.zones.mid, 1, 0) && PL.h4.sits.half.fga === 1 && za(PL.h6.sits.half.zones.rim, 1, 1) && PL.h6.sits.half.pts === 2);
+  ok('a player with nothing in a situation has a zero line there, not a missing one',
+     PL.h4.sits.second.fga === 0 && PL.h4.sits.second.efg === null && PL.h4.sits.ato.pts === 0);
+  ok('a player who did nothing has no line at all', !('a6' in C.side[1].players) && Object.keys(PL).length === 6, Object.keys(C.side[1].players).join());
+  [0, 1].forEach(t => {
+    const bad = S.teams[t].players.filter(p => C.side[t].players[p.id]).filter(p => {
+      const s = C.side[t].players[p.id].sits, x = d.stats[p.id];
+      return s.second.pts !== x.sc || s.offTo.pts !== x.pot || s.transition.pts !== x.fast || s.all.pts !== x.pts || s.all.fga !== x.p2a + x.p3a || s.all.zones.rim.a !== x.rimA;
+    }).map(p => p.id);
+    ok('team ' + t + ': every player\'s second-chance, off-turnover, transition and total points, FGA and rim attempts are the engine\'s', !bad.length, bad.join());
+  });
+  ok('Leeds baskets by zone: assisted rim 1; unassisted rim 2 and the three',
+     AL.ast.zones.rim === 1 && AL.ast.zones.mid === 0 && AL.ast.zones.three === 0 && AL.unast.zones.rim === 2 && AL.unast.zones.mid === 0 && AL.unast.zones.three === 1,
+     JSON.stringify([AL.ast.zones, AL.unast.zones]));
+  const zq = (q, a, m, ast, unast) => !!q && q.a === a && q.m === m && q.ast === ast && q.unast === unast;
+  ok('...beside every attempt from each zone: rim 3/3, mid 0/3, three 1/1',
+     zq(AL.zones.rim, 3, 3, 1, 2) && zq(AL.zones.mid, 3, 0, 0, 0) && zq(AL.zones.three, 1, 1, 0, 1), JSON.stringify(AL.zones));
+  ok('a player\'s own split: Cy Hart\'s layup was assisted, Bea Moss\'s putback and Eve Park\'s three were not',
+     PL.h3.ast.fgm === 1 && PL.h3.ast.zones.rim === 1 && PL.h3.unast.fgm === 0 &&
+     PL.h2.unast.zones.rim === 1 && PL.h2.ast.fgm === 0 && PL.h5.unast.p3m === 1 && PL.h5.unast.pts === 3 && PL.h5.ast.fgm === 0);
 }
 
 console.log('\nthe tab, drawn');
@@ -163,7 +198,89 @@ console.log('\nthe tab, drawn');
      (html.match(/class="ev-watch"/g) || []).length === 1 && /data-evwatch="30"/.test(html), (html.match(/data-evwatch="[^"]*"/g) || []).join());
   delete globalThis.EpinoiaVideo;
   ok('a game with no plays says so', /No plays yet/.test(Ev.render({ teams: S.teams, events: [] })));
-  Ev.setView({ team: 0, side: 'off', sit: 'second' });
+  Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
+}
+
+/* the numbers a row of a drawn table shows, in order (the <b>s; the <small>s are their captions) */
+const strip = x => x.replace(/<[^>]+>/g, '');
+const rowOf = (html, attr, k) => { const r = html.match(new RegExp('<tr[^>]*' + attr + '="' + k + '"[\\s\\S]*?</tr>')); return r ? r[0] : ''; };
+const nums = row => (row.match(/<b[^>]*>[^<]*<\/b>/g) || []).map(strip).join('|');
+
+console.log('\nevery player, tapped open');
+{
+  Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
+  let html = Ev.render(S);
+  const order = [...html.matchAll(/class="ev-prow" data-evpid="([^"]+)"/g)].map(m => m[1]);
+  ok('a players card with a row for each Leeds player who did anything, by points then shots', order.join() === 'h5,h1,h2,h3,h6,h4', order.join());
+  ok('...all shut: no breakdown drawn, and no profile link for a pid that is not a platform id',
+     (html.match(/aria-expanded="false"/g) || []).length === 6 && !/aria-expanded="true"/.test(html) && !/<table class="ev-mx">/.test(html) && !/ev-plink/.test(html));
+  ok('...each row reads points, FG and eFG with the rim · mid · three diet',
+     /data-evpid="h1" aria-expanded="false">[\s\S]*?<b>2<\/b><small>pts<\/small>[\s\S]*?<b>0\/2<\/b><small>FG<\/small>[\s\S]*?ev-pefg few"><b>0%<\/b>[\s\S]*?0 rim · 2 mid · 0 three/.test(html));
+  ok('who scored and most unassisted: a Shots button beside each name (2 + 3), none inside a link',
+     (html.match(/class="ev-pbtn" data-evpid=/g) || []).length === 5 && /class="ev-pbtn" data-evpid="h5"/.test(html));
+  ok('the card adds no court and leaves the counted classes alone',
+     (html.match(/class="ev-row[ "]/g) || []).length === 6 && !/ev-dot/.test(html) && !/<li class="(scored|blank)">/.test(html) && !/data-pid=|data-team-slot/.test(html));
+
+  Ev.setView({ pid: 'h1' });
+  html = Ev.render(S);
+  let mx = html.match(/<table class="ev-mx">[\s\S]*?<\/table>/g) || [];
+  ok('setView({pid}) opens exactly that player\'s breakdown, under that player\'s row',
+     mx.length === 1 && (html.match(/aria-expanded="true"/g) || []).length === 1 && /data-evpid="h1" aria-expanded="true" aria-controls="ev-pm-1"/.test(html) && /<li class="ev-pitem open">/.test(html) && /id="ev-pm-1"/.test(html));
+  const row = k => rowOf(mx[0] || '', 'data-evk', k);
+  ok('...eight rows: six situations, then assisted and unassisted', ['all', 'second', 'transition', 'offTo', 'ato', 'half', 'ast', 'unast'].every(k => row(k)) && /All shots[\s\S]*Second chance[\s\S]*Transition[\s\S]*Off turnovers[\s\S]*After timeout[\s\S]*Half court[\s\S]*Assisted[\s\S]*Unassisted/.test(mx[0] || ''));
+  ok('...all shots: 2 points (2/2 FT), 0/2, eFG 0%, no rim shots, mid 0/2, no threes', nums(row('all')) === '2|0/2|0%|–|0/2|–' && /2\/2 FT/.test(row('all')), nums(row('all')));
+  ok('...second chance: the one free throw inside the window', nums(row('second')) === '1|–|–|–|–|–' && /1\/1 FT/.test(row('second')), nums(row('second')));
+  ok('...half court: the two missed jumpers, greyed on so few', nums(row('half')) === '0|0/2|0%|–|0/2|–' && /<b class="few">0%<\/b>/.test(row('half')), nums(row('half')));
+  ok('...nothing in transition is a dimmed zero row', /class="ev-mxsit zero" data-evk="transition"/.test(mx[0] || ''));
+  ok('...made baskets: none, so nothing to split', nums(row('ast')) === '0|0|–|–|–|–' && nums(row('unast')) === '0|0|–|–|–|–', nums(row('ast')) + ' / ' + nums(row('unast')));
+  ok('...and the note says why those rows count makes', /a missed shot has no assist/.test(html));
+  ok('the Shots buttons know which player is open (Ada is in who scored on second chances)',
+     (html.match(/class="ev-pbtn on"/g) || []).length === 1 && /class="ev-pbtn on" data-evpid="h1"/.test(html));
+
+  Ev.setView({ pid: 'h5' });
+  html = Ev.render(S);
+  mx = html.match(/<table class="ev-mx">[\s\S]*?<\/table>/g) || [];
+  ok('Eve Park: the three off the turnover, 1/1 and eFG 150%', nums(row('offTo')) === '3|1/1|150%|–|–|1/1', nums(row('offTo')));
+  ok('...unassisted: 1 basket (100% of her makes), 3.00 points a basket, from three; assisted: none',
+     nums(row('unast')) === '3|1|3.00|–|–|1' && /100% of makes/.test(row('unast')) && nums(row('ast')) === '0|0|–|–|–|0', nums(row('unast')) + ' / ' + nums(row('ast')));
+  ok('...the shot distribution bar is all threes, with its share written', /data-evk="offTo"[\s\S]*?ev-mxbar"><span class="ev-stack"><i class="z2" style="flex:1"[^>]*><\/i><\/span><small>0 · 0 · 100%<\/small>/.test(mx[0] || ''));
+  ok('...and her Shots buttons show open', /class="ev-pbtn on" data-evpid="h5"/.test(html));
+
+  /* a platform player: the profile link sits beside the toggle, never inside a button */
+  const U = '6f845299-c63c-4fca-9c14-19092991ba8f';
+  const swap = v => (v === 'h1' ? U : v);
+  const SU = Object.assign({}, S, {
+    teams: S.teams.map(tm => Object.assign({}, tm, { players: tm.players.map(p => Object.assign({}, p, { id: swap(p.id) })) })),
+    events: S.events.map(e => Object.assign({}, e, { pid: swap(e.pid) }))
+  });
+  Ev.setView({ pid: U });
+  html = Ev.render(SU);
+  ok('a platform player keeps the profile link beside the row, and no link is inside a button',
+     html.includes('<a class="ev-plink" href="../p/?p=' + U + '"') && html.includes('data-evpid="' + U + '" aria-expanded="true"') &&
+     !/<button[^>]*>(?:(?!<\/button>)[\s\S])*<a /.test(html));
+
+  Ev.setView({ team: 0, side: 'off', pid: 'h1' });
+  Ev.setView({ team: 1 });
+  ok('another team shuts the open player', Ev.view.pid === null && !/aria-expanded="true"/.test(Ev.render(S)));
+  Ev.setView({ team: 0, pid: 'h1' });
+  Ev.setView({ side: 'def' });
+  ok('...and so does the other end', Ev.view.pid === null);
+  Ev.setView({ team: 0, side: 'off', pid: 'a1' });
+  html = Ev.render(S);
+  ok('a player of the other side is never drawn open', !/aria-expanded="true"/.test(html) && !/<table class="ev-mx">/.test(html));
+
+  Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
+  html = Ev.render(S);
+  const az = (html.match(/<table class="ev-mx az">[\s\S]*?<\/table>/) || [''])[0];
+  const zr = k => rowOf(az, 'data-evz', k);
+  ok('assisted and unassisted by zone: rim 3/3, 100%, eFG 100%, 1 assisted, 2 not, 33% assisted', nums(zr('rim')) === '3/3|100%|100%|1|2|33%', nums(zr('rim')));
+  ok('...mid 0/3 with no baskets to split', nums(zr('mid')) === '0/3|0%|0%|0|0|–', nums(zr('mid')));
+  ok('...3PT 1/1, eFG 150% (greyed: one shot), the make unassisted', nums(zr('three')) === '1/1|100%|150%|0|1|0%' && /<b class="few">150%<\/b>/.test(zr('three')), nums(zr('three')));
+  ok('...all 4/7, eFG 64%, 1 assisted and 3 not, 25% assisted', nums(zr('all')) === '4/7|57%|64%|1|3|25%', nums(zr('all')));
+  ok('...points per basket: 2.00 assisted, 2.33 unassisted', nums(zr('ppb')) === '2.00|2.33', nums(zr('ppb')));
+  ok('...each zone\'s share of each group\'s baskets', /100% of assisted/.test(zr('rim')) && /67% of unassisted/.test(zr('rim')) && /33% of unassisted/.test(zr('three')));
+  ok('...and a note on why there is no assisted eFG%', /There is no eFG% for assisted shots\. Only a basket can be assisted, a miss cannot/.test(html));
+  Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
 }
 
 /* ---- real games, through the ingest's own translator ----------------------- */
@@ -212,11 +329,36 @@ console.log('\nreal LiveStats games agree with the box score');
       ok(name + ' team ' + t + ': every situation is a subset of the whole',
          ['second', 'transition', 'offTo', 'ato', 'half'].every(k => s[k].chances <= s.all.chances && s[k].pts <= s.all.pts && s[k].fga <= s.all.fga));
     });
+    [0, 1].forEach(t => {
+      const PL = C.side[t].players;
+      const bad = [];
+      G.teams[t].players.forEach(p => {
+        const x = d.stats[p.id];
+        if (!x) return;
+        const q = PL[p.id];
+        if (!q) { if (x.pts || x.p2a || x.p3a || x.fta) bad.push(p.id + ' has no line'); return; }
+        const s = q.sits;
+        if (s.second.pts !== x.sc || s.offTo.pts !== x.pot || s.transition.pts !== x.fast) bad.push(p.id + ' sc/pot/fast ' + [s.second.pts, x.sc, s.offTo.pts, x.pot, s.transition.pts, x.fast].join(' '));
+        if (s.all.pts !== x.pts || s.all.fga !== x.p2a + x.p3a || s.all.zones.rim.a !== x.rimA) bad.push(p.id + ' pts/fga/rimA ' + [s.all.pts, x.pts, s.all.fga, x.p2a + x.p3a, s.all.zones.rim.a, x.rimA].join(' '));
+        if (q.ast.fgm + q.unast.fgm !== x.p2m + x.p3m) bad.push(p.id + ' ast+unast ' + [q.ast.fgm, q.unast.fgm, x.p2m + x.p3m].join(' '));
+      });
+      ok(name + ' team ' + t + ': every player\'s second-chance, off-turnover and fast-break points, points, FGA, rim attempts and baskets are the engine\'s',
+         !bad.length && Object.keys(PL).length > 0, bad.slice(0, 4).join('; '));
+    });
     const timeouts = G.events.filter(e => e.t === 'timeout').length;
     const atos = C.side[0].ato.length + C.side[1].ato.length;
     ok(name + ': no more after-timeout plays than timeouts (' + atos + ' of ' + timeouts + ')', atos <= timeouts && (timeouts === 0 || atos > 0));
-    const html = Ev.render(G);
+    Ev.setView({ team: 0, side: 'off', sit: 'second', pid: null });
+    let html = Ev.render(G);
     ok(name + ': the tab renders', /class="ev-rows"/.test(html) && /ev-assist/.test(html));
+    const rows = (html.match(/class="ev-prow"/g) || []).length;
+    const top = [...html.matchAll(/class="ev-prow" data-evpid="([^"]+)"/g)].map(m => m[1])[0];
+    Ev.setView({ pid: top });
+    html = Ev.render(G);
+    ok(name + ': a row per player who did anything (' + rows + '), and the top scorer opens with 8 rows and the zone table',
+       rows === Object.keys(C.side[0].players).length && (html.match(/<table class="ev-mx">/g) || []).length === 1 &&
+       (html.match(/data-evk="/g) || []).length === 8 && /<table class="ev-mx az">/.test(html));
+    Ev.setView({ pid: null });
   }
 }
 

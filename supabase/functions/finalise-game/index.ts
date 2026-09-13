@@ -24,6 +24,13 @@ import { bpmMvp } from '../_shared/awards.ts';
 import '../_shared/story.js';
 import { report as buildReport } from '../_shared/report.js';
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';
+// the situations (second chance, transition, off turnovers, after timeout, half
+// court, assisted or not) stored on every stats row. possessions.js FIRST and for
+// its side effect, like story.js above: situations.js finds the chance enumerator
+// on globalThis, and there is no require in Deno to fall back on. Without it the
+// chance-based numbers are all zero, which compute() reports as possessions:false.
+import '../_shared/possessions.js';
+import { compute as computeSituations, toStored as storedSituations } from '../_shared/situations.js';
 
 /* EVERY HEADER A BROWSER ACTUALLY SENDS HAS TO BE NAMED HERE.
 
@@ -171,11 +178,32 @@ Deno.serve(async (req) => {
   if (allowed.status === 'final') return json({ error: 'already final' }, 409);
 
   // ----------------------------------------------------------- load state ---
-  const [{ data: g }, { data: rows }, { data: state }] = await Promise.all([
+  /* THE LOG IS READ A THOUSAND ROWS AT A TIME. PostgREST caps a response at 1000
+     rows and says nothing when it does: a regulation LiveStats game is already
+     800 events, so an overtime one could come back cut short and be finalised
+     from its first thousand plays, the last minutes missing from every table.
+     Pages are ordered by seq (unique per game) and read until one comes back
+     short -- the same paging the backfills use, so the two cannot disagree.
+
+     A page that fails is a refusal, not a shorter log. Nothing has been locked
+     or deleted yet, so the game is left exactly as it was. */
+  const readEvents = async () => {
+    const out: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await admin.from('game_events').select('*').eq('game_id', gameId)
+        .order('seq').range(from, from + 999);
+      if (error) return { rows: out, error: error.message };
+      out.push(...(data ?? []));
+      if (!data || data.length < 1000) return { rows: out, error: null };
+    }
+  };
+  const [{ data: g }, log, { data: state }] = await Promise.all([
     admin.from('games').select('*').eq('id', gameId).single(),
-    admin.from('game_events').select('*').eq('game_id', gameId).order('seq'),
+    readEvents(),
     admin.from('game_state').select('*').eq('game_id', gameId).maybeSingle()
   ]);
+  if (log.error) return json({ error: 'the event log could not be read', detail: log.error }, 500);
+  const rows = log.rows;
 
   const events = (rows ?? []).map((r: any) =>
     ({ id: r.seq, seq: r.seq, t: r.t, team: r.team, pid: r.pid, period: r.period, clock: r.clock, ...(r.payload ?? {}) }));
@@ -214,19 +242,49 @@ Deno.serve(async (req) => {
   });
   if (blocking.length) return json({ error: 'sanity gate failed', blocking, warnings }, 422);
 
+  /* ------------------------------------------------------- the situations ---
+     Worked out from the same game object the box score was, by the same
+     situations.js the game page's EVENTS tab runs, and stored as one compact
+     line under `sit` on every row (epinoia/situations.js toStored has the
+     shape). The season tables and both profiles read nothing else.
+
+     NEVER ALLOWED TO STOP A FINALISE. The box score is the result; the splits
+     are a view of it. A throw here, or a run without the chance enumerator
+     (possessions:false, where every chance count would be a confident zero),
+     writes no `sit` at all rather than a wrong one, says so in the warnings,
+     and leaves the game for scripts/backfill_situations.mjs to fill in. */
+  let SIT: { teams: any[]; players: Record<string, any> } | null = null;
+  try {
+    const C = computeSituations(game);
+    if (C && C.possessions) SIT = storedSituations(C);
+    else {
+      console.warn(`[finalise] situations for ${gameId}: possessions.js did not load, no sit written`);
+      warnings.push('the events splits were not stored (no chance enumerator) — run the situations backfill');
+    }
+  } catch (e) {
+    console.warn(`[finalise] situations for ${gameId} failed:`, String(e));
+    warnings.push('the events splits could not be worked out — run the situations backfill');
+  }
+
   // ---------------------------------------------------------------- lock ---
   await admin.from('games').update({ status: 'finalising' }).eq('id', gameId);
 
   try {
     // ------------------------------------------------------------ rebuild ---
+    /* `sit` goes LAST and under that one nested key: the season views cast
+       top-level keys (ast, to, pts...) to int, so nothing new may sit beside
+       them. A player who did nothing has no line and gets no key; a side's line
+       is always there when the situations were worked out. */
     const playerRows = [0, 1].flatMap(t =>
       game.teams[t].players.map((p: any) => ({
         game_id: gameId, player_id: p.id, team_idx: t,
-        stats: { ...d.stats[p.id], adv: playerAdv(game, d, t, p, TA[t], TA[1 - t]) }
+        stats: { ...d.stats[p.id], adv: playerAdv(game, d, t, p, TA[t], TA[1 - t]),
+                 ...(SIT && SIT.players[p.id] ? { sit: SIT.players[p.id] } : {}) }
       })));
     const teamRows = [0, 1].map(t => ({
       game_id: gameId, team_idx: t,
-      stats: { ...d.team[t], adv: TA[t], perQ: d.perQ[t], score: d.score[t] }
+      stats: { ...d.team[t], adv: TA[t], perQ: d.perQ[t], score: d.score[t],
+               ...(SIT ? { sit: SIT.teams[t] } : {}) }
     }));
     const lineupRows = [0, 1].flatMap(t =>
       lineupAgg(d, t).map((l: any) => ({ game_id: gameId, team_idx: t, player_ids: l.ids, stats: l })));

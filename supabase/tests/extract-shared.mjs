@@ -61,7 +61,8 @@ const FILES = [
     src: join(repo, 'epinoia', 'season.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),
     global: 'EpinoiaSeason',
-    names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS']
+    names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS',
+            'SIT_FIELDS', 'SIT_AFIELDS']
   },
   /* The match-report writer, so the Edge Function that finalises a game can
      write the report with the SAME code the public page renders it with. If
@@ -79,6 +80,29 @@ const FILES = [
     out: join(repo, 'supabase', 'functions', '_shared', 'report.js'),
     global: 'EpinoiaReport',
     names: ['report', 'plain', 'headline', 'standfirst', 'five']
+  },
+  /* THE SITUATIONS: what second chances, breaks, turnovers and timeouts turned
+     into, per side and per player. finalise-game stores a compact copy of them on
+     every stats row, and the numbers have to be the ones the game page's EVENTS
+     tab shows, so it runs the same file.
+
+     possessions.js FIRST, and imported for its side effect: situations.js finds
+     the chance enumerator on globalThis (in Deno there is no require to fall back
+     on), and without it every chance-based number is zero. compute() reports
+     that as possessions:false rather than throwing, which is why finalise-game
+     checks the flag instead of trusting a clean return. */
+  {
+    src: join(repo, 'epinoia', 'possessions.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'possessions.js'),
+    global: 'EpinoiaPossessions',
+    names: ['enumerate', 'withVideo', 'summarise', 'OUTCOME', 'cumEl', 'LEAD_IN_MS', 'TAIL_MS']
+  },
+  {
+    src: join(repo, 'epinoia', 'situations.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'situations.js'),
+    global: 'EpinoiaSituations',
+    names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'KEYS', 'STAMPED',
+            'FIELDS', 'AFIELDS', 'VERSION', 'cumEl', 'inGameOrder']
   }
 ];
 

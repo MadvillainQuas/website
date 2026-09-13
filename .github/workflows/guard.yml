@@ -366,6 +366,14 @@ jobs:
         # on a hand-worked log and three real LiveStats games
         run: node supabase/tests/events.test.mjs
 
+      - name: Event splits are stored, rolled up and drawn from one contract
+        # finalise-game's stats.sit lines and the backfill (situations-store), the season
+        # rollup and table categories (sitstats), and the profile panel (sitpanel)
+        run: |
+          node supabase/tests/situations-store.test.mjs
+          node supabase/tests/sitstats.test.mjs
+          node supabase/tests/sitpanel.test.mjs
+
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer
         # changes and the extractor is not re-run, the public page silently

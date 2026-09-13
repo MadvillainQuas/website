@@ -15,10 +15,11 @@
 <title>Player · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=244">
-<link rel="stylesheet" href="../kit/table.css?v=244">
-<link rel="stylesheet" href="../video.css?v=244">
-<link rel="stylesheet" href="../kit/nav.css?v=244">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=245">
+<link rel="stylesheet" href="../kit/table.css?v=245">
+<link rel="stylesheet" href="../video.css?v=245">
+<link rel="stylesheet" href="../kit/nav.css?v=245">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=245">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -187,14 +188,21 @@
     <div id="bars"></div>
   </div>
 
+  <!-- EVENTS. The season's second chances, breaks, turnovers, timeouts and half-court
+       sets from the season rows (sitpanel.js); scoped with the percentile bars above. -->
+  <div class="sec" id="eventsSec">
+    <div class="sec-h"><span class="idx">02</span><h2>Events</h2><span class="note" id="eventsNote"></span></div>
+    <div id="events"></div>
+  </div>
+
   <div class="sec">
-    <div class="sec-h"><span class="idx">02</span><h2>Season</h2>
+    <div class="sec-h"><span class="idx">03</span><h2>Season</h2>
       <span class="note" id="seasonNote"></span></div>
     <div id="seasons"></div>
   </div>
 
   <div class="sec">
-    <div class="sec-h"><span class="idx">03</span><h2>Game log</h2>
+    <div class="sec-h"><span class="idx">04</span><h2>Game log</h2>
       <span class="note" id="logNote"></span></div>
     <div id="log"></div>
   </div>
@@ -204,17 +212,17 @@
        section on every profile in a league without cameras teaches people to
        scroll past this part of the page. -->
   <div class="sec" id="videosec" style="display:none">
-    <div class="sec-h"><span class="idx">03b</span><h2>On video</h2>
+    <div class="sec-h"><span class="idx">04b</span><h2>On video</h2>
       <span class="note" id="videoNote"></span></div>
     <div id="videopanel"></div>
   </div>
 
   <div class="sec">
-    <div class="sec-h"><span class="idx">04</span><h2>On the floor with</h2>
+    <div class="sec-h"><span class="idx">05</span><h2>On the floor with</h2>
       <span class="note" id="wowyNote"></span></div>
     <div id="onoff"></div>
     <div id="withpanel"></div>
-  </section>
+  </div>
 
   <!-- the season's shooting on the box score's court, zone by zone -->
   <section class="card">
@@ -222,7 +230,7 @@
       <h2>Shot chart</h2>
     </div>
     <div id="shotchart"></div>
-  </div>
+  </section>
 
   <div class="foot">
     <a href="../">← all games</a>
@@ -230,24 +238,25 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=244" defer></script>
-<script src="../follow.js?v=244" defer></script>
-<script src="../teamcolour.js?v=244" defer></script>
-<script src="../bpm.js?v=244" defer></script>
-<script src="../season.js?v=244" defer></script>
-<script src="../data.js?v=244" defer></script>
-<script src="../boxscore.js?v=244" defer></script>
-<script src="../shotchart.js?v=244" defer></script>
-<script src="../upload.js?v=244" defer></script>
-<script src="../lineups.js?v=244" defer></script>
-<script src="../wowy.js?v=244" defer></script>
-<script src="../withstats.js?v=244" defer></script>
-<script src="withui.js?v=244" defer></script>
-<script src="../fulltable.js?v=244" defer></script>
-<script src="../video.js?v=244" defer></script>
-<script src="video.js?v=244" defer></script>
-<script src="player.js?v=244" defer></script>
-<script src="../nav.js?v=244" defer></script>
-<script src="../xscroll.js?v=244" defer></script>
+<script src="../config.js?v=245" defer></script>
+<script src="../follow.js?v=245" defer></script>
+<script src="../teamcolour.js?v=245" defer></script>
+<script src="../bpm.js?v=245" defer></script>
+<script src="../season.js?v=245" defer></script>
+<script src="../data.js?v=245" defer></script>
+<script src="../boxscore.js?v=245" defer></script>
+<script src="../shotchart.js?v=245" defer></script>
+<script src="../upload.js?v=245" defer></script>
+<script src="../lineups.js?v=245" defer></script>
+<script src="../wowy.js?v=245" defer></script>
+<script src="../withstats.js?v=245" defer></script>
+<script src="withui.js?v=245" defer></script>
+<script src="../fulltable.js?v=245" defer></script>
+<script src="../video.js?v=245" defer></script>
+<script src="video.js?v=245" defer></script>
+<script src="../sitpanel.js?v=245" defer></script>
+<script src="player.js?v=245" defer></script>
+<script src="../nav.js?v=245" defer></script>
+<script src="../xscroll.js?v=245" defer></script>
 </body>
 </html>

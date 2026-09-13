@@ -43,6 +43,156 @@ const r2  = v => (v == null ? null : Math.round(v * 100) / 100);
 /* possessions, the same estimate the scorer uses */
 const POSS = (fga, fta, tov, oreb) => 0.96 * (num(fga) + num(tov) + 0.44 * num(fta) - num(oreb));
 
+/* ============================================================================
+   THE EVENTS SPLITS — second chances, transition, off turnovers, after
+   timeouts, half court, and assisted against unassisted baskets, over a season.
+
+   finalise-game (and the situations backfill) leaves one compact line under
+   `stats.sit` on every stats row: each situation a fixed-order array of counts,
+   in epinoia/situations.js's FIELDS order for a side and AFIELDS order for the
+   assisted and unassisted makes. SIT_FIELDS and SIT_AFIELDS below are those two
+   lists, copied rather than required -- this file is copied into the Edge
+   runtime on its own and must load without situations.js -- and
+   supabase/tests/sitstats.test.mjs holds the copies equal to the originals.
+   The counts are read BY NAME through those lists, never by a bare index.
+
+   COVERAGE IS THE SIDE'S LINE, NOT THE PLAYER'S. Only games finalised with the
+   splits (or backfilled) carry them, so every season has a mix. A team's ev_gp
+   is its games whose own side line is there; a player's is the games he played
+   (minutes > 0) whose side line is there. The player's own line cannot decide
+   it: a player who did nothing recordable gets no line at all, and his quiet
+   night is still a game. Counts are summed over covered games only -- on every
+   covered row, the way the box score's own sums run on every row, so a
+   season's "all shots" points are the box score's points over the same games --
+   and per game is divided by ev_gp, never by gp. Uncovered games would
+   otherwise read as nights of zero second-chance points.
+
+   NO COVERAGE IS NOT ZERO. With ev_gp 0 every ev_ key is null, so a season from
+   before the splits existed shows dashes and takes no percentile rank, rather
+   than ranking as a league of zeros. Rates are 0-100 from the summed counts, as
+   everywhere in this file; points per chance and per basket keep two places.
+
+   A side's line also carries chances (possessions, for after-timeout sets:
+   the question asked of a set is what the whole trip produced) and the
+   free-throw assists. A team's DEFENCE is the same key set with evd_ in place
+   of ev_, built from the OPPONENT's line in the same games -- a defence is only
+   describable by what was done against it -- with evd_gp as its coverage.
+
+   The accumulator is one flat typed array per row -- six situations of
+   thirteen counts, two groups of five, the free-throw assists -- and the output
+   key names are built once, here, not per row: a season page runs this over
+   every row of a competition, and a player page up to nine times.
+   ============================================================================ */
+const SIT_FIELDS  = ['pts', 'fgm', 'fga', 'p3m', 'p3a', 'rimM', 'rimA', 'midM', 'midA', 'ftm', 'fta', 'tov', 'ch'];
+const SIT_AFIELDS = ['fgm', 'pts', 'p3m', 'rimM', 'midM'];
+const SIT_KEYS    = ['all', 'second', 'transition', 'offTo', 'ato', 'half'];
+const SIT_GROUPS  = ['ast', 'unast'];
+const SIT_NF = SIT_FIELDS.length, SIT_NA = SIT_AFIELDS.length;
+const SIT_A0 = SIT_KEYS.length * SIT_NF;                      // where the assisted groups start
+const SIT_LEN = SIT_A0 + SIT_GROUPS.length * SIT_NA + 1;      // + the free-throw assists, last
+const SIT_ZERO = new Float64Array(SIT_LEN);                   // what an uncovered row reads
+const FI = {}; SIT_FIELDS.forEach((f, i) => { FI[f] = i; });
+const AI = {}; SIT_AFIELDS.forEach((f, i) => { AI[f] = i; });
+
+const isSit = x => !!(x && x.v === 1);
+const blankSit = () => ({ gp: 0, n: new Float64Array(SIT_LEN) });
+
+function addSit(n, sit) {
+  for (let k = 0; k < SIT_KEYS.length; k++) {
+    const v = sit[SIT_KEYS[k]];
+    if (!Array.isArray(v)) continue;                           // a player's missing situation is zeros
+    const o = k * SIT_NF, len = Math.min(v.length, SIT_NF);
+    for (let j = 0; j < len; j++) n[o + j] += num(v[j]);
+  }
+  for (let g = 0; g < SIT_GROUPS.length; g++) {
+    const v = sit[SIT_GROUPS[g]];
+    if (!Array.isArray(v)) continue;
+    const o = SIT_A0 + g * SIT_NA, len = Math.min(v.length, SIT_NA);
+    for (let j = 0; j < len; j++) n[o + j] += num(v[j]);
+  }
+  n[SIT_LEN - 1] += num(sit.ftAst);
+}
+
+/* the output names, once per prefix */
+const SIT_K_OUT = ['pts', 'ppg', 'pts_sh', 'fgm', 'fga', 'fgm_pg', 'fga_pg', 'fga_sh', 'fg_pct', 'efg',
+  'rimM', 'rimA', 'rim_apg', 'rim_pct', 'rim_sh', 'midM', 'midA', 'mid_apg', 'mid_pct', 'mid_sh',
+  'p3m', 'p3a', 'p3_apg', 'p3_pct', 'p3_sh', 'ftm', 'fta', 'fta_pg', 'ft_pct', 'tov', 'tov_pg',
+  'ch', 'ch_pg', 'ppp', 'freq', 'tov_pct'];
+const SIT_G_OUT = ['fgm', 'pts', 'p3m', 'rimM', 'midM', 'fgm_pg', 'pts_pg', 'ppb', 'rim_sh', 'mid_sh', 'p3_sh'];
+function sitNames(pre) {
+  const named = (base, list) => { const o = {}; list.forEach(s => { o[s] = base + s; }); return o; };
+  return {
+    gp: pre + 'gp',
+    K: SIT_KEYS.map(k => named(pre + k + '_', SIT_K_OUT)),
+    G: SIT_GROUPS.map(g => named(pre + g + '_', SIT_G_OUT)),
+    ast_sh: pre + 'ast_sh', rim_astp: pre + 'rim_astp', mid_astp: pre + 'mid_astp', p3_astp: pre + 'p3_astp',
+    ftast: pre + 'ftast', ftast_pg: pre + 'ftast_pg'
+  };
+}
+const SIT_EV = sitNames('ev_'), SIT_EVD = sitNames('evd_');
+
+/* with no coverage, a total, a per-game value and a rate are all null */
+const sitTot  = (v, gp) => (gp > 0 ? v : null);
+const sitPg   = (v, gp) => (gp > 0 ? r1(v / gp) : null);
+const sitRate = (a, b, gp) => (gp > 0 ? r1(pct(a, b)) : null);
+
+/* writes one prefix's keys onto a finished row; `side` adds what only a side's
+   line carries (chances, points per chance, the free-throw assists) */
+function sitOut(out, N, S, side) {
+  const gp = S ? S.gp : 0, n = S ? S.n : SIT_ZERO;
+  out[N.gp] = gp;
+  const allPts = n[FI.pts], allFga = n[FI.fga], allCh = n[FI.ch];
+  for (let k = 0; k < SIT_KEYS.length; k++) {
+    const o = k * SIT_NF, M = N.K[k];
+    const pts = n[o + FI.pts], fgm = n[o + FI.fgm], fga = n[o + FI.fga];
+    const p3m = n[o + FI.p3m], p3a = n[o + FI.p3a];
+    const rimM = n[o + FI.rimM], rimA = n[o + FI.rimA], midM = n[o + FI.midM], midA = n[o + FI.midA];
+    const ftm = n[o + FI.ftm], fta = n[o + FI.fta], tov = n[o + FI.tov];
+    out[M.pts] = sitTot(pts, gp); out[M.ppg] = sitPg(pts, gp); out[M.pts_sh] = sitRate(pts, allPts, gp);
+    out[M.fgm] = sitTot(fgm, gp); out[M.fga] = sitTot(fga, gp);
+    out[M.fgm_pg] = sitPg(fgm, gp); out[M.fga_pg] = sitPg(fga, gp); out[M.fga_sh] = sitRate(fga, allFga, gp);
+    out[M.fg_pct] = sitRate(fgm, fga, gp); out[M.efg] = sitRate(fgm + 0.5 * p3m, fga, gp);
+    out[M.rimM] = sitTot(rimM, gp); out[M.rimA] = sitTot(rimA, gp); out[M.rim_apg] = sitPg(rimA, gp);
+    out[M.rim_pct] = sitRate(rimM, rimA, gp); out[M.rim_sh] = sitRate(rimA, fga, gp);
+    out[M.midM] = sitTot(midM, gp); out[M.midA] = sitTot(midA, gp); out[M.mid_apg] = sitPg(midA, gp);
+    out[M.mid_pct] = sitRate(midM, midA, gp); out[M.mid_sh] = sitRate(midA, fga, gp);
+    out[M.p3m] = sitTot(p3m, gp); out[M.p3a] = sitTot(p3a, gp); out[M.p3_apg] = sitPg(p3a, gp);
+    out[M.p3_pct] = sitRate(p3m, p3a, gp); out[M.p3_sh] = sitRate(p3a, fga, gp);
+    out[M.ftm] = sitTot(ftm, gp); out[M.fta] = sitTot(fta, gp); out[M.fta_pg] = sitPg(fta, gp);
+    out[M.ft_pct] = sitRate(ftm, fta, gp);
+    out[M.tov] = sitTot(tov, gp); out[M.tov_pg] = sitPg(tov, gp);
+    if (side) {
+      const ch = n[o + FI.ch];
+      out[M.ch] = sitTot(ch, gp); out[M.ch_pg] = sitPg(ch, gp);
+      out[M.ppp] = gp > 0 ? r2(dv(pts, ch)) : null;
+      out[M.freq] = sitRate(ch, allCh, gp); out[M.tov_pct] = sitRate(tov, ch, gp);
+    }
+  }
+  /* assisted and unassisted: makes only, so shares of baskets and points per
+     basket, never an "assisted eFG%" -- a miss cannot be assisted */
+  for (let g = 0; g < SIT_GROUPS.length; g++) {
+    const o = SIT_A0 + g * SIT_NA, M = N.G[g];
+    const fgm = n[o + AI.fgm], pts = n[o + AI.pts];
+    out[M.fgm] = sitTot(fgm, gp); out[M.pts] = sitTot(pts, gp); out[M.p3m] = sitTot(n[o + AI.p3m], gp);
+    out[M.rimM] = sitTot(n[o + AI.rimM], gp); out[M.midM] = sitTot(n[o + AI.midM], gp);
+    out[M.fgm_pg] = sitPg(fgm, gp); out[M.pts_pg] = sitPg(pts, gp);
+    out[M.ppb] = gp > 0 ? r2(dv(pts, fgm)) : null;
+    out[M.rim_sh] = sitRate(n[o + AI.rimM], fgm, gp);
+    out[M.mid_sh] = sitRate(n[o + AI.midM], fgm, gp);
+    out[M.p3_sh]  = sitRate(n[o + AI.p3m], fgm, gp);
+  }
+  /* how much of each zone's makes came off a pass, over the zone's makes */
+  const a = SIT_A0, u = SIT_A0 + SIT_NA;
+  out[N.ast_sh]   = sitRate(n[a + AI.fgm],  n[a + AI.fgm]  + n[u + AI.fgm],  gp);
+  out[N.rim_astp] = sitRate(n[a + AI.rimM], n[a + AI.rimM] + n[u + AI.rimM], gp);
+  out[N.mid_astp] = sitRate(n[a + AI.midM], n[a + AI.midM] + n[u + AI.midM], gp);
+  out[N.p3_astp]  = sitRate(n[a + AI.p3m],  n[a + AI.p3m]  + n[u + AI.p3m],  gp);
+  if (side) {
+    out[N.ftast] = sitTot(n[SIT_LEN - 1], gp); out[N.ftast_pg] = sitPg(n[SIT_LEN - 1], gp);
+  }
+  return out;
+}
+
 /* ---------------------------------------------------------------- helpers ---
    A team_game_stats row's `stats` holds the scorer's team block, with the full
    box under `adv` (teamAdv output). This normalises the two shapes into one. */
@@ -64,7 +214,10 @@ function teamLine(stats) {
     midA: num(a.midA), midM: num(a.midM),
     paint: num(stats && stats.paint), fast: num(stats && stats.fast),
     sc: num(stats && stats.sc), pot: num(stats && stats.pot),
-    bench: num(stats && stats.bench), fouls: num(stats && stats.foulTot)
+    bench: num(stats && stats.bench), fouls: num(stats && stats.foulTot),
+    /* the events splits, passed through untouched: not a count, so no numeric
+       key list reads it; players() and teams() check its version themselves */
+    sit: (stats && stats.sit) || null
   };
 }
 
@@ -120,6 +273,14 @@ function players(pgs, tgs, meta) {
      'oFGA','oFGM','o3M','oFTA','oTOV','oOR','oDR','oPTS']
       .forEach(k => { A.oc[k] += num(oc[k]); });
 
+    /* the events splits: a game counts when his SIDE's line is there, whether
+       or not he has one of his own (see the block at the top) */
+    if (TT && isSit(TT.sit)) {
+      const E = A.ev || (A.ev = blankSit());
+      if (mins > 0) E.gp += 1;
+      if (isSit(s.sit)) addSit(E.n, s.sit);
+    }
+
     /* minute-weighted opportunity shares, accumulated per game.
        share = the fraction of the team's floor time this player was on for. */
     if (TT && OT && mins > 0) {
@@ -158,7 +319,8 @@ function blankPlayer(id) {
           oFGA:0,oFGM:0,o3M:0,oFTA:0,oTOV:0,oOR:0,oDR:0,oPTS:0 },
     den: { teamPoss:0, teamFgm:0, oppPoss:0, oppFga2:0, orebChance:0, drebChance:0 },
     teamAll: { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0, min:0 },
-    oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 } };
+    oppAll:  { pts:0,fga:0,fgm:0,fg3m:0,fta:0,tov:0,oreb:0,dreb:0 },
+    ev: null };                                  // the events splits, made on the first covered game
 }
 
 function finishPlayer(A, m) {
@@ -307,6 +469,7 @@ function finishPlayer(A, m) {
   out.diff_vs_oreb = dif('vs_oreb', 'vs_off_oreb');
   out.diff_vs_ftr  = dif('vs_ftr', 'vs_off_ftr');
   out.au = out.usg ? r2(out.ast_pct / out.usg) : null;   // assist-to-usage
+  sitOut(out, SIT_EV, A.ev, false);
   return Object.assign(out, m || {});
 }
 
@@ -327,6 +490,13 @@ function teams(tgs, gamesById) {
      'paint','fast','sc','pot','bench','fouls','minutes','possessions',
      'rimA','rimM','midA','midM']
       .forEach(k => { A[k] += num(T[k]); });
+
+    /* the events splits this side produced: its offence */
+    if (isSit(T.sit)) {
+      const E = A.ev || (A.ev = blankSit());
+      E.gp += 1;
+      addSit(E.n, T.sit);
+    }
 
     A.for += g.home_score != null
       ? (row.team_idx === 0 ? num(g.home_score) : num(g.away_score)) : num(T.pts);
@@ -349,6 +519,12 @@ function teams(tgs, gamesById) {
       if (!T) return o;
       ['pts','fgm','fga','fg3m','fg3a','ftm','fta','oreb','dreb','ast','stl','blk','tov','possessions']
         .forEach(k => { o[k] += num(T[k]); });
+      /* and the splits the opponent produced against it: its defence */
+      if (isSit(T.sit)) {
+        const E = A.evd || (A.evd = blankSit());
+        E.gp += 1;
+        addSit(E.n, T.sit);
+      }
       return o;
     }, { pts:0,fgm:0,fga:0,fg3m:0,fg3a:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,tov:0,possessions:0 });
   });
@@ -360,7 +536,7 @@ function blankTeam(id) {
   return { id, gp:0, pts:0, fgm:0, fga:0, fg3m:0, fg3a:0, ftm:0, fta:0,
     oreb:0, dreb:0, ast:0, stl:0, blk:0, tov:0, paint:0, fast:0, sc:0, pot:0,
     bench:0, fouls:0, minutes:0, possessions:0, rimA:0, rimM:0, midA:0, midM:0,
-    for:0, against:0, opp:[], oppAgg:null };
+    for:0, against:0, opp:[], oppAgg:null, ev:null, evd:null };
 }
 
 function finishTeam(A) {
@@ -370,7 +546,7 @@ function finishTeam(A) {
   const poss = A.possessions || POSS(A.fga, A.fta, A.tov, A.oreb);
   const oppPoss = O.possessions || POSS(O.fga, O.fta, O.tov, O.oreb);
 
-  return {
+  const out = {
     id: A.id, gp: A.gp,
     /* per game — the default */
     ppg: r1(A.for / g), papg: r1(A.against / g), diff: A.for - A.against,
@@ -420,6 +596,11 @@ function finishTeam(A) {
     ast_to: r2(dv(A.ast, A.tov)),
     ast_pct: r1(pct(A.ast, A.fgm))
   };
+  /* the events splits, both ends: what it made of each situation, and what
+     opponents made of the same situations against it */
+  sitOut(out, SIT_EV, A.ev, true);
+  sitOut(out, SIT_EVD, A.evd, true);
+  return out;
 }
 
 /* ------------------------------------------------------------ percentiles ---
@@ -504,7 +685,7 @@ function attachBPM(playerRows, teamRows, teamOfPlayer) {
   return playerRows;
 }
 
-return { players, teams, percentiles, teamLine, attachBPM, POSS };
+return { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS };
 }));
 
 /* ---------------------------------------------------------------------------
@@ -515,5 +696,5 @@ return { players, teams, percentiles, teamLine, attachBPM, POSS };
    so the Edge Function and the browser run one identical file.
    --------------------------------------------------------------------------- */
 const __api = globalThis.EpinoiaSeason;
-export const { players, teams, percentiles, teamLine, attachBPM, POSS } = __api;
+export const { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS } = __api;
 export default __api;
