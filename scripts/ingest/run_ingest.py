@@ -700,6 +700,14 @@ def within_stamp(rows: list, stamp: dict | None) -> list:
     return [r for r in rows if latest - _elapsed_ms(r) <= err + 3000]
 
 
+def _same_row(e: dict, r: dict) -> bool:
+    """Does a stored game_events row already hold exactly what this translation would write?
+    Every column the ingest writes, the payload whole (so a stamp that moved is a change)."""
+    return (e.get("seq") == r.get("seq") and e.get("t") == r.get("t") and e.get("team") == r.get("team")
+            and e.get("pid") == r.get("pid") and e.get("period") == r.get("period") and e.get("clock") == r.get("clock")
+            and (e.get("payload") or {}) == (r.get("payload") or {}))
+
+
 def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) -> dict | None:
     """Whether a game's FIRST write may carry the poll stamp, and with what error.
 
@@ -944,21 +952,42 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         # been played. It self-heals a second later, which is exactly why nobody had
         # seen it.
         #
-        # game_events is unique on (game_id, seq) and the translator numbers events
-        # 1..N, so the whole log can be upserted over itself: every row that still
-        # exists is updated in place, every new row is inserted, and nothing is ever
-        # absent. Only a log that got SHORTER needs a delete, and then only of the
-        # surplus tail rather than of the game.
+        # The next attempt upserted the whole log over itself, and that can never
+        # succeed: an upsert over an existing (game_id, seq) is an UPDATE, and
+        # game_events_no_update (0001, recreated unchanged in 0030) raises on every
+        # UPDATE for every role, the service role included. write_platform swallows the
+        # exception, so the first Genius correction of a live game would have frozen its
+        # log for the rest of the game - no new plays, no game_state, no finalise-game.
+        # The old chunks also failed a second way on 2026-09-12 (run 34708486251, 57 x
+        # "400 Client Error"): the carry above sets created_at on carried rows only, and
+        # PostgREST refuses a bulk insert whose objects do not share one key set.
         #
-        # The same shape as the fix in epinoia/live.js for the browser transport, in
-        # the other direction: there the retraction has to land before the write, here
-        # the write has to land before the retraction. In both cases the rule is that
-        # there must be no instant at which the league's copy of the game is empty.
-        for i in range(0, len(rows), 400):
-            sb.upsert("game_events", rows[i:i + 400], "game_id,seq")
-        if existing and len(rows) < len(existing):
-            sb.delete("game_events", f"game_id=eq.{game_id}&seq=gt.{len(rows)}")
-        how = f"{len(rows)} events written" + (f" (log rewritten in place, {kept} stamps kept)" if existing else how_first)
+        # So the rows that still read exactly as the database holds them - every column,
+        # stamps included - are not touched at all. From the first row that differs, the
+        # old rows are deleted (0030's forbid_event_delete lets a server role do that) and
+        # the new ones inserted, and when any of them carries created_at they all do. A
+        # correction a few plays back costs a few rows for the length of one request rather
+        # than the game; only a correction to the very first row still empties the log for
+        # that instant, and closing that needs a migration (a service-role function that
+        # deletes and inserts in one transaction), not this file. The rule stays the one
+        # from epinoia/live.js: there must be no instant at which the league's copy of the
+        # game is empty, beyond the rows a correction actually changed.
+        keep = 0
+        for e, r in zip(existing, rows):
+            if not _same_row(e, r):
+                break
+            keep += 1
+        fresh = rows[keep:]
+        if any("created_at" in r for r in fresh):
+            now_ts = now_iso()
+            for r in fresh:
+                r.setdefault("created_at", now_ts)
+        if existing and keep < len(existing):
+            sb.delete("game_events", f"game_id=eq.{game_id}&seq=gte.{existing[keep]['seq']}")
+        for i in range(0, len(fresh), 400):
+            sb.insert("game_events", fresh[i:i + 400])
+        how = f"{len(rows)} events written" + (f" (log rewritten from seq {keep + 1}, {len(fresh)} rows replaced, {kept} stamps kept)"
+                                               if existing else how_first)
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0

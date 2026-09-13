@@ -53,17 +53,19 @@ const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
 
 console.log('\nthe game is never empty');
 
-ok('the log is upserted over itself rather than deleted and rebuilt',
-   /sb\.upsert\("game_events", rows\[i:i \+ 400\], "game_id,seq"\)/.test(src));
-ok('...so there is no unconditional delete of the game left',
+/* THE IN-PLACE UPSERT THAT REPLACED IT COULD NEVER RUN: an upsert over an existing
+   (game_id, seq) is an UPDATE, and game_events refuses every UPDATE for every role. The
+   first Genius correction of a live game froze its log. A correction now keeps the rows
+   that still match, deletes from the first that differs, and inserts from there. */
+ok('a correction never writes an UPDATE: no upsert into game_events is left',
+   !/sb\.upsert\("game_events"/.test(src));
+ok('...there is no unconditional delete of the game left either',
    !/sb\.delete\("game_events", f"game_id=eq\.\{game_id\}"\)/.test(src));
-ok('...and only a log that got SHORTER deletes anything, and then only the surplus',
-   /if existing and len\(rows\) < len\(existing\):/.test(src) &&
-   /sb\.delete\("game_events", f"game_id=eq\.\{game_id\}&seq=gt\.\{len\(rows\)\}"\)/.test(src));
-ok('...which works because the rows are keyed on (game_id, seq)',
-   /"game_id,seq"/.test(src));
+ok('...it deletes from the first row that differs and inserts from there',
+   /sb\.delete\("game_events", f"game_id=eq\.\{game_id\}&seq=gte\.\{existing\[keep\]\['seq'\]\}"\)/.test(src) &&
+   /sb\.insert\("game_events", fresh\[i:i \+ 400\]\)/.test(src) && /if not _same_row\(e, r\):/.test(src));
 ok('...and the reason is written down where the next reader will need it',
-   /there must be no instant at which the league's copy of the game is empty/.test(src));
+   /there must be no instant at which the league's copy of the/.test(src));
 
 console.log('\nand it is not un-timed');
 
@@ -165,14 +167,17 @@ console.log('\na live game is timed whichever lane sees it');
     "T = R.translate(feed, lambda team, pno: '%s:%s' % (team, pno))",
     "rows = R.game_rows('g', T['events'])",
     'class SB:',
-    '    def __init__(self, existing): self.existing, self.inserted, self.upserted = existing, [], []',
+    '    def __init__(self, existing): self.existing, self.inserted, self.upserted, self.deleted, self.chunks = existing, [], [], [], []',
     '    def select(self, table, q):',
     "        return [{'status': 'live'}] if table == 'games' else (self.existing if table == 'game_events' else [])",
     '    def patch(self, *a): pass',
-    '    def delete(self, *a): pass',
+    "    def delete(self, table, q): self.deleted.append(q) if table == 'game_events' else None",
     '    def function(self, *a): return 200, {}',
     "    def upsert(self, table, rw, oc): self.upserted.extend(rw) if table == 'game_events' else None",
-    "    def insert(self, table, rw): self.inserted.extend(rw) if table == 'game_events' else None",
+    '    def insert(self, table, rw):',
+    "        if table == 'game_events':",
+    '            self.inserted.extend(rw)',
+    '            self.chunks.append({tuple(sorted(r.keys())) for r in rw})',
     'iso = lambda ms: datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()',
     'out = {}',
     'for c in spec["cases"]:',
@@ -182,6 +187,7 @@ console.log('\na live game is timed whichever lane sees it');
     "        e = dict(r, payload=dict(r.get('payload') or {}), created_at=iso(now - c['written_ago_ms']))",
     "        if c.get('wall_ago_ms') is not None: e['payload'].update(wall=now - c['wall_ago_ms'], wall_err=10500)",
     '        existing.append(e)',
+    "    if c.get('corrupt') is not None: existing[c['corrupt']]['clock'] = (existing[c['corrupt']]['clock'] or 0) + 1000",
     '    sb = SB(existing)',
     "    observed = (now, 30000 + 400)",
     "    R.write_event_log(sb, {'adapter': 'fiba', 'code': 'x'}, NS(raw=feed, status='live', external_id='x'), 'g', {}, observed)",
@@ -191,7 +197,9 @@ console.log('\na live game is timed whichever lane sees it');
     "    out[c['name']] = {'tail': len(tl), 'stamped': sum(1 for r in tl if 'wall' in (r.get('payload') or {})),",
     "                      'errs': sorted({(r.get('payload') or {}).get('wall_err') for r in tl if 'wall' in (r.get('payload') or {})}),",
     "                      'rows': len(rows), 'span': (lat - min(R._elapsed_ms(r) for r in tl)) if tl else 0,",
-    "                      'honest': all(('wall' in (r.get('payload') or {})) == (e0 is not None and lat - R._elapsed_ms(r) <= e0 + 3000) for r in tl)}",
+    "                      'honest': all(('wall' in (r.get('payload') or {})) == (e0 is not None and lat - R._elapsed_ms(r) <= e0 + 3000) for r in tl),",
+    "                      'upserted': len(sb.upserted), 'deleted': sb.deleted, 'uniform': all(len(k) == 1 for k in sb.chunks),",
+    "                      'first_seq': tl[0]['seq'] if tl else None}",
     'try:',
     "    out['helper'] = [R.discovery_observed(NS(status=st), time.time() - 0.2, 30) for st in ('live', 'final', 'scheduled')]",
     'except AttributeError:',
@@ -205,6 +213,8 @@ console.log('\na live game is timed whichever lane sees it');
     { name: 'old', n: 150, written_ago_ms: 240000 },
     { name: 'minute', n: 150, written_ago_ms: 100000 },
     { name: 'walled', n: 150, written_ago_ms: 5000, wall_ago_ms: 50000 },
+    /* Genius corrects the 121st play of a 150-play log */
+    { name: 'corrected', n: 150, written_ago_ms: 20000, corrupt: 120 },
   ];
   let got = null;
   for (const exe of ['python3', 'python']) {
@@ -234,6 +244,15 @@ console.log('\na live game is timed whichever lane sees it');
        c.old.tail > 0 && c.old.stamped === 0, JSON.stringify(c.old));
     ok('a stamped log still measures from its newest stamp, not from created_at',
        c.walled.errs.length === 1 && near(c.walled.errs[0], 50000, 2000), JSON.stringify(c.walled.errs));
+
+    const k = c.corrected;
+    ok('a correction writes no UPDATE: nothing is upserted into game_events, in any case',
+       k.upserted === 0 && [c.recent, c.minute, c.walled, c.old].every(x => x.upserted === 0), JSON.stringify(k));
+    ok('...it deletes from the corrected play on and re-inserts from there, leaving the 120 before it alone',
+       JSON.stringify(k.deleted) === JSON.stringify(['game_id=eq.g&seq=gte.121']) && k.first_seq === 121 && k.tail === k.rows - 120,
+       JSON.stringify({ deleted: k.deleted, first_seq: k.first_seq, tail: k.tail, rows: k.rows }));
+    ok('...and every inserted batch has one key set, so PostgREST cannot refuse it',
+       k.uniform === true && [c.recent, c.minute, c.walled, c.old].every(x => x.uniform === true));
 
     const h = c.helper;
     ok('the discovery lane builds `observed` for a live game',
