@@ -101,12 +101,41 @@ console.log('\nthe flow points, worked out by hand');
 console.log('\nthe charts');
 {
   const html = Flow.render(S);
-  ok('all six charts and the summary strip are drawn', (html.match(/class="gf-card"/g) || []).length === 6 && /gf-summary/.test(html),
-     (html.match(/class="gf-card"/g) || []).length);
+  ok('all six charts and the summary strip are drawn', (html.match(/class="gf-card[ "]/g) || []).length === 6 && /gf-summary/.test(html),
+     (html.match(/class="gf-card[ "]/g) || []).length);
   ok('...under GAMEVIS\'s titles', ['Player Scoring Runs', 'Team Momentum Runs', 'Scoring Development (Score Margin)',
      'Expected Points Added (EPA)', 'Scoring Battle (eFG% + FT Rate)', 'Points Per Possession Development'].every(t => html.includes(t)));
   ok('the margin line changes colour where it crosses zero', /class="gf-line home"/.test(html) && /class="gf-line away"/.test(html));
-  ok('a momentum marker carries its lineup and top scorer', /data-tip="Leeds Force: 9-0 in 0'57&quot;\n\nLineup:\nAda Stone, Bea Moss, Cy Hart, Dee Lowe, Eve Park\n\nTop: Stone \(7 pts\)"/.test(html));
+  /* THE RUNS READ AS TEXT. What GAMEVIS hid in a hover tooltip (and a phone never
+     showed) is a row under the strip, numbered to match its bar. */
+  const bars = html.match(/<span class="gf-bar [^"]+" data-run="[pm]\d+"/g) || [];
+  const rows = html.match(/<li class="gf-runrow [^"]+" data-run="[pm]\d+"/g) || [];
+  ok('every run is one bar and one row, under one id', bars.length === 2 && rows.length === 2 &&
+     bars.every(b => rows.some(r => r.endsWith(b.slice(b.indexOf('data-run'))))), bars.join(' | '));
+  ok('a team run row says the run, the team, and when on the game clock',
+     /data-run="m0"><span class="gf-runno">1<\/span><span class="gf-runbig">9–0<\/span><span class="gf-runmain"><b>Leeds Force<\/b><span class="gf-runwhen">Q1 9:07 – 8:10 · 0'57"<\/span>/.test(html));
+  ok('...its top scorer, the score either side, and the five on the floor',
+     html.includes('Top scorer <b>Stone</b> 7') && html.includes('2–3 → 11–3') &&
+     html.includes('On court: Ada Stone, Bea Moss, Cy Hart, Dee Lowe, Eve Park'));
+  ok('a player run row names the player in full, with the team',
+     /data-run="p0">[\s\S]*?<span class="gf-runbig">7<small> pts<\/small><\/span><span class="gf-runmain"><b>Ada Stone<\/b><span class="gf-runwhen">Leeds Force<\/span>/.test(html));
+  ok('home bars stand above the line, and are as wide as the run lasted',
+     /class="gf-bar home" data-run="m0"[^>]*style="--x:44\.17%;--w:47\.50%;/.test(html), (html.match(/class="gf-bar home" data-run="m0"[^>]*style="[^"]*"/) || [])[0]);
+  ok('the game clock is the box score\'s: remaining time, rounded up', Flow.clockText(1, 547000) === 'Q1 9:07' && Flow.clockText(5, 59100) === 'OT1 1:00');
+  {
+    /* two players each with 6 inside one home run share its width instead of overlapping */
+    const T = JSON.parse(JSON.stringify(S));
+    T.events = [
+      { t: 'period_start', period: 1, clock: P1 },
+      { t: 'p3_made', team: 0, pid: 'h1', period: 1, clock: 590000 }, { t: 'p3_made', team: 0, pid: 'h2', period: 1, clock: 570000 },
+      { t: 'p3_made', team: 0, pid: 'h1', period: 1, clock: 550000 }, { t: 'p3_made', team: 0, pid: 'h2', period: 1, clock: 530000 },
+      { t: 'p2_made', team: 1, pid: 'a1', period: 1, clock: 500000 }
+    ];
+    const two = Flow.render(T);
+    const xs = [...two.matchAll(/class="gf-bar home" data-run="p(\d)"[^>]*style="--x:([\d.]+)%;--w:([\d.]+)%/g)].map(m => [+m[2], +m[3]]);
+    ok('two player runs in one team run sit side by side, not on top of each other',
+       xs.length === 2 && Math.abs(xs[1][0] - (xs[0][0] + xs[0][1])) < 0.02 && Math.abs(xs[0][1] - xs[1][1]) < 0.02, JSON.stringify(xs));
+  }
   ok('the summary strip reads 11 - 5, two lead changes, +2.1 EPA',
      html.includes('>11 - 5<') && /Lead Changes<\/span><span class="gf-stat-value">2</.test(html) && html.includes('+2.1 pts'));
   const evil = JSON.parse(JSON.stringify(S));

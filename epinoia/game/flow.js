@@ -46,9 +46,9 @@
    there are at most a dozen lines.
 
    Everything is rebuilt from window.S whenever the log changes (game.js's body
-   key), so a live game's charts move with it. The interaction — tooltips that
-   open on hover, focus or a tap — is one delegated listener bound once by
-   mounted().
+   key), so a live game's charts move with it. The interaction — hovering or
+   tapping a run lights it in both the strip and the list beneath — is one
+   delegated listener bound once by mounted().
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -116,7 +116,8 @@ function compute(S) {
       const pts = run.players[pid];
       if (pts >= 6) {
         playerRuns.push({
-          pid, playerName: shortName(pid), team: teams[run.team].name || '', teamIdx: run.team, points: pts,
+          pid, playerName: shortName(pid), playerFull: fullName(pid), team: teams[run.team].name || '', teamIdx: run.team, points: pts,
+          startPeriod: run.startPeriod, startClock: run.startClock, endPeriod: run.endPeriod, endClock: run.endClock,
           startElapsed: run.startElapsed, endElapsed: run.endElapsed,
           seconds: duration, duration: formatDuration(duration),
           startScore: run.startHome + '-' + run.startAway, endScore: run.endHome + '-' + run.endAway
@@ -127,10 +128,12 @@ function compute(S) {
     run.order.forEach(pid => { if (run.players[pid] > topPts) { topPts = run.players[pid]; top = pid; } });
     teamRuns.push({
       team: teams[run.team].name || '', teamIdx: run.team, points: run.pts,
+      startPeriod: run.startPeriod, startClock: run.startClock, endPeriod: run.endPeriod, endClock: run.endClock,
       lineup: run.lineup, lineupNames: run.lineup.map(fullName),
       startElapsed: run.startElapsed, endElapsed: run.endElapsed,
       seconds: duration, duration: formatDuration(duration),
       scoreDiff: run.team === 0 ? run.pts + '-0' : '0-' + run.pts,
+      startScore: run.startHome + '-' + run.startAway, endScore: run.endHome + '-' + run.endAway,
       topScorer: top ? shortName(top) : '', topScorerPoints: topPts
     });
   };
@@ -175,12 +178,12 @@ function compute(S) {
         finalize();
         run = {
           team: t, pts, players: { [ev.pid]: pts }, order: [ev.pid],
-          startElapsed: elapsed,
+          startElapsed: elapsed, startPeriod: p, startClock: ev.clock != null ? ev.clock : PLEN(p),
           startHome: R[0].points - (t === 0 ? pts : 0), startAway: R[1].points - (t === 1 ? pts : 0),
           lineup: [...onCourt[t]]
         };
       }
-      run.endElapsed = elapsed;
+      run.endElapsed = elapsed; run.endPeriod = p; run.endClock = ev.clock != null ? ev.clock : PLEN(p);
       run.endHome = R[0].points; run.endAway = R[1].points;
     }
 
@@ -321,65 +324,101 @@ function symAxis(yMax, step) {
 }
 const sideCls = v => (v >= 0 ? 'gf-home' : 'gf-away');
 
-/* renderRunsMomentumChart: two tracks, home runs up from the centre line, away runs down */
+/* THE RUNS, MADE TO READ.
+
+   GAMEVIS pins a labelled block to each run's moment in the game, 55 to 150 pixels
+   wide whatever the run lasted. Runs a minute apart sat on top of one another, a
+   player's name was cut to four letters, and on a phone the track had to be dragged
+   sideways before any of it could be read.
+
+   So the chart does two jobs in two places. The STRIP says when and how big: one bar
+   per run, as wide as the run lasted and as tall as it was against the biggest run in
+   the chart, home above the line and away below, across the full width at any screen
+   size, each bar numbered. The LIST beneath says everything GAMEVIS kept in its
+   tooltip — the run, where it started and finished on the game clock, the score either
+   side of it, who scored most and the five on the floor — as text a phone can read, in
+   game order, under the same numbers. Hovering or tapping either lights the other. */
+const clockText = (period, ms) => {
+  const s = Math.ceil(Math.max(0, ms || 0) / 1000);                 // boxscore.js fmtClock
+  return (period <= 4 ? 'Q' + period : 'OT' + (period - 4)) + ' ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+};
+const whenText = r => {
+  const a = clockText(r.startPeriod, r.startClock), b = clockText(r.endPeriod, r.endClock);
+  return a + ' – ' + (r.endPeriod === r.startPeriod ? b.replace(/^\S+ /, '') : b);
+};
+const dash = score => String(score).replace('-', '–');
+
 function runsCharts(F, names) {
   const data = F.points;
   if (data.length < 2) return '';
   const maxElapsed = Math.max(...data.map(d => d.elapsed)) || 1;
   const maxPeriod = Math.max(...data.map(d => d.period));
-  let axis = '';
+  const pct = sec => Math.max(0, Math.min(100, sec / maxElapsed * 100));
+
+  let dividers = '', quarters = '';
   for (let p = 1; p <= maxPeriod; p++) {
-    const pct = Math.min(periodEnd(p) / maxElapsed * 100, 100);
-    axis += '<span class="gf-tl-label" style="left:' + pct.toFixed(2) + '%">' + (p <= 4 ? 'Q' + p : 'OT' + (p - 4)) + '</span>';
+    const a = pct(p === 1 ? 0 : periodEnd(p - 1)), b = pct(periodEnd(p));
+    if (p > 1) dividers += '<span class="gf-strip-div" style="left:' + a.toFixed(2) + '%"></span>';
+    if (b > a) quarters += '<span class="gf-strip-q" style="left:' + ((a + b) / 2).toFixed(2) + '%">' + (p <= 4 ? 'Q' + p : 'OT' + (p - 4)) + '</span>';
   }
-  const centre = r => ((r.startElapsed + r.endElapsed) / 2 / maxElapsed * 100).toFixed(2);
-  const widthFor = (r, min, max) => Math.min(max, Math.max(min, min + (r.seconds / 180) * (max - min)));
 
-  const playerMarkers = F.playerRuns.length
-    ? F.playerRuns.map(r => {
-        const h = Math.min(90, 50 + (r.points - 6) * 8);
-        const tip = r.playerName + ': ' + r.points + ' pts in ' + r.duration + '\n' + r.startScore + ' → ' + r.endScore;
-        return '<div class="gf-run ' + (r.teamIdx === 0 ? 'home' : 'away') + '" tabindex="0" role="button" aria-label="' + esc(tip) + '"' +
-          ' data-tip="' + esc(tip) + '" style="left:' + centre(r) + '%;height:' + h + 'px;width:' + widthFor(r, 55, 140).toFixed(0) + 'px">' +
-          '<span class="gf-run-player">' + esc(r.playerName) + '</span>' +
-          '<span class="gf-run-stats">' + r.points + ' pts</span>' +
-          '<span class="gf-run-duration">⏱ ' + r.duration + '</span></div>';
-      }).join('')
-    : '<div class="gf-none">No individual player runs (6+ pts) detected</div>';
+  const chart = (runs, kind, emptyText, rowHTML) => {
+    if (!runs.length) return '<p class="gf-none">' + emptyText + '</p>';
+    const maxPts = Math.max(7, ...runs.map(r => r.points));             // the biggest run fills the height
+    /* two players can each have 6+ inside ONE team run: same side, same stretch of
+       clock. They share its width side by side rather than drawing over each other. */
+    const groups = {};
+    runs.forEach(r => { const k = r.teamIdx + ':' + r.startElapsed + ':' + r.endElapsed; (groups[k] = groups[k] || []).push(r); });
+    /* a number that would land within 5% of the one before it on the same side goes up
+       (or down) a row, so neighbouring runs never print their numbers over each other */
+    const lastInRow = [[], []];
+    const bars = runs.map((r, i) => {
+      const g = groups[r.teamIdx + ':' + r.startElapsed + ':' + r.endElapsed], gi = g.indexOf(r);
+      const x0 = pct(r.startElapsed), span = Math.max(0, pct(r.endElapsed) - x0) / g.length;
+      const left = x0 + gi * span, cx = left + span / 2;
+      const rows = lastInRow[r.teamIdx];
+      let row = 0;
+      while (row < 2 && rows[row] != null && cx - rows[row] < 5) row++;
+      if (row === 2) row = 0;
+      rows[row] = cx;
+      const f = 0.3 + 0.7 * Math.min(1, (r.points - 6) / (maxPts - 6));
+      return '<span class="gf-bar ' + (r.teamIdx === 0 ? 'home' : 'away') + '" data-run="' + kind + i + '"' +
+        ' title="' + esc('#' + (i + 1) + '  ' + (kind === 'p' ? r.playerFull + ' ' + r.points + ' pts' : r.team + ' ' + dash(r.scoreDiff)) +
+                         ' · ' + whenText(r) + ' · ' + dash(r.startScore || '') + (r.startScore ? ' → ' + dash(r.endScore) : '')) + '"' +
+        ' style="--x:' + left.toFixed(2) + '%;--w:' + span.toFixed(2) + '%;--f:' + f.toFixed(3) + ';--row:' + row + '">' +
+        '<span class="gf-badge">' + (i + 1) + '</span></span>';
+    }).join('');
+    return '<div class="gf-strip" aria-hidden="true"><span class="gf-strip-mid"></span>' + dividers + bars + '</div>' +
+      '<div class="gf-strip-axis" aria-hidden="true">' + quarters + '</div>' +
+      '<ol class="gf-runlist">' + runs.map((r, i) =>
+        '<li class="gf-runrow ' + (r.teamIdx === 0 ? 'home' : 'away') + '" data-run="' + kind + i + '">' +
+          '<span class="gf-runno">' + (i + 1) + '</span>' + rowHTML(r) + '</li>').join('') +
+      '</ol>';
+  };
 
-  const teamMarkers = F.teamRuns.length
-    ? F.teamRuns.map(r => {
-        const h = Math.min(90, 55 + (r.points - 6) * 6);
-        const tip = r.team + ': ' + r.scoreDiff + ' in ' + r.duration + '\n\nLineup:\n' + r.lineupNames.join(', ') +
-                    '\n\nTop: ' + r.topScorer + ' (' + r.topScorerPoints + ' pts)';
-        return '<div class="gf-mom ' + (r.teamIdx === 0 ? 'home' : 'away') + '" tabindex="0" role="button" aria-label="' + esc(tip) + '"' +
-          ' data-tip="' + esc(tip) + '" style="left:' + centre(r) + '%;height:' + h + 'px;width:' + widthFor(r, 65, 150).toFixed(0) + 'px">' +
-          '<span class="gf-mom-score">' + r.scoreDiff + '</span>' +
-          '<span class="gf-mom-time">' + r.duration + '</span>' +
-          '<span class="gf-mom-top">' + esc(r.topScorer) + ' ' + r.topScorerPoints + 'pts</span></div>';
-      }).join('')
-    : '<div class="gf-none">No team momentum runs (6+ pts) detected</div>';
+  /* the score either side of a run is only known for a team run; a player run carries it too */
+  const score = r => '<span class="gf-runscore">' + dash(r.startScore) + ' → ' + dash(r.endScore) + '</span>';
+  const playerRow = r =>
+    '<span class="gf-runbig">' + r.points + '<small> pts</small></span>' +
+    '<span class="gf-runmain"><b>' + esc(r.playerFull) + '</b><span class="gf-runwhen">' + esc(r.team) + '</span></span>' +
+    '<span class="gf-runwhen gf-runclock">' + whenText(r) + ' · ' + r.duration + '</span>' + score(r);
+  const teamRow = r =>
+    '<span class="gf-runbig">' + dash(r.scoreDiff) + '</span>' +
+    '<span class="gf-runmain"><b>' + esc(r.team) + '</b><span class="gf-runwhen">' + whenText(r) + ' · ' + r.duration + '</span></span>' +
+    '<span class="gf-runtop">Top scorer <b>' + esc(r.topScorer) + '</b> ' + r.topScorerPoints + '</span>' +
+    score(r) +
+    '<span class="gf-runline">On court: ' + esc(r.lineupNames.join(', ')) + '</span>';
 
   const count = (list, t) => list.filter(r => r.teamIdx === t).length;
-  const track = (markers) =>
-    '<div class="gf-scroll"><div class="gf-runs-inner">' +
-      '<div class="gf-track">' +
-        '<span class="gf-track-label top">' + esc(firstWord(names[0])) + '</span>' +
-        '<span class="gf-track-label bottom">' + esc(firstWord(names[1])) + '</span>' +
-        '<div class="gf-track-centre"></div>' + markers +
-      '</div>' +
-      '<div class="gf-tl">' + axis + '</div>' +
-    '</div></div>';
+  const sideLegend = list => legend('▲ ' + esc(names[0]) + ' (' + count(list, 0) + ')', '▼ ' + esc(names[1]) + ' (' + count(list, 1) + ')');
 
-  return '<section class="gf-card">' +
-      '<div class="gf-card-head"><h3 class="gf-title">Player Scoring Runs (6+ consecutive pts)</h3>' +
-        legend(esc(names[0]) + ' (' + count(F.playerRuns, 0) + ')', esc(names[1]) + ' (' + count(F.playerRuns, 1) + ')') + '</div>' +
-      track(playerMarkers) +
+  return '<section class="gf-card gf-runs">' +
+      '<div class="gf-card-head"><h3 class="gf-title">Player Scoring Runs (6+ consecutive pts)</h3>' + sideLegend(F.playerRuns) + '</div>' +
+      chart(F.playerRuns, 'p', 'No individual player runs (6+ pts) detected', playerRow) +
     '</section>' +
-    '<section class="gf-card">' +
-      '<div class="gf-card-head"><h3 class="gf-title">Team Momentum Runs (6+ consecutive pts by lineup)</h3>' +
-        legend(esc(names[0]) + ' (' + count(F.teamRuns, 0) + ')', esc(names[1]) + ' (' + count(F.teamRuns, 1) + ')') + '</div>' +
-      track(teamMarkers) +
+    '<section class="gf-card gf-runs">' +
+      '<div class="gf-card-head"><h3 class="gf-title">Team Momentum Runs (6+ consecutive pts by lineup)</h3>' + sideLegend(F.teamRuns) + '</div>' +
+      chart(F.teamRuns, 'm', 'No team momentum runs (6+ pts) detected', teamRow) +
     '</section>';
 }
 
@@ -541,20 +580,33 @@ function inkTeams(host) {
   });
 }
 
-/* A run marker's tooltip opens on hover and on keyboard focus through CSS; a tap has
-   neither, so a tap toggles it. One listener on the host, which renderBody keeps. The
-   text drawn ON a solid marker is chosen against the club's colour, as the tabs do. */
+/* A run is drawn twice, as a bar and as a row, under one data-run id. Hovering either
+   lights both; a tap (a phone has no hover) pins them, and tapping a bar brings its row
+   into view. One set of listeners on the host, which renderBody keeps across redraws. */
 function mounted(host) {
   if (!host) return;
   inkTeams(host);
   if (host.__gfBound) return;
   host.__gfBound = true;
+  const runOf = e => { const m = e.target && e.target.closest && e.target.closest('[data-run]'); return m && host.contains(m) ? m : null; };
+  const mark = (id, cls, on) => host.querySelectorAll('[data-run="' + id + '"]').forEach(x => x.classList.toggle(cls, on));
+  host.addEventListener('pointerover', e => { const m = runOf(e); if (m) mark(m.dataset.run, 'hi', true); });
+  host.addEventListener('pointerout', e => {
+    const m = runOf(e);
+    if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) mark(m.dataset.run, 'hi', false);
+  });
   host.addEventListener('click', e => {
-    const m = e.target.closest && e.target.closest('.gf-run, .gf-mom');
-    host.querySelectorAll('.gf-run.open, .gf-mom.open').forEach(x => { if (x !== m) x.classList.remove('open'); });
-    if (m && host.contains(m)) m.classList.toggle('open');
+    const m = runOf(e);
+    const was = m && m.classList.contains('pin');
+    host.querySelectorAll('[data-run].pin').forEach(x => x.classList.remove('pin'));
+    if (!m || was) return;
+    mark(m.dataset.run, 'pin', true);
+    if (m.classList.contains('gf-bar')) {
+      const row = m.closest('.gf-card') && m.closest('.gf-card').querySelector('.gf-runrow[data-run="' + m.dataset.run + '"]');
+      if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   });
 }
 
-return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams };
+return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText };
 }));

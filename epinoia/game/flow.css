@@ -47,55 +47,52 @@
 .gf-empty{ text-align:center; padding:48px 20px }
 .gf-empty p{ color:var(--text-muted); margin-top:12px; font-size:13px }
 
-/* ---------- the two run tracks: home runs stand up from the centre line, away runs hang down ---------- */
-.gf-runs-inner{ min-width:640px; padding:0 4px }
-.gf-track{ position:relative; height:200px; margin-left:90px; background:var(--bg-glass); border-radius:var(--r-sm,8px) }
-.gf-track-centre{ position:absolute; left:0; right:0; top:50%; height:2px; background:color-mix(in srgb,var(--text-primary) 20%,transparent) }
-.gf-track-label{ position:absolute; left:-90px; width:85px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
-  text-align:right; padding-right:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.gf-track-label.top{ top:30px; color:var(--vis-t0,var(--team0)) }
-.gf-track-label.bottom{ bottom:30px; color:var(--vis-t1,var(--team1)) }
-.gf-tl{ position:relative; margin:4px 0 0 90px; height:24px; border-top:1px solid var(--border-subtle) }
-.gf-tl-label{ position:absolute; top:6px; transform:translateX(-50%); font-size:10px; color:var(--text-muted); font-family:var(--f-mono) }
-.gf-none{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; text-align:center; color:var(--text-muted); font-size:13px }
+/* ---------- the runs: a strip that fits any width, and a list that reads ---------- */
+.gf-runs{ --c0:var(--vis-t0,var(--team0)); --c1:var(--vis-t1,var(--team1)) }
+.gf-strip{ position:relative; height:180px; margin-top:4px; background:var(--bg-glass); border-radius:var(--r-sm,8px) }
+.gf-strip-mid{ position:absolute; left:0; right:0; top:50%; height:1px; background:color-mix(in srgb,var(--text-primary) 35%,transparent) }
+.gf-strip-div{ position:absolute; top:8px; bottom:8px; border-left:1px dashed color-mix(in srgb,var(--text-primary) 22%,transparent) }
+.gf-strip-axis{ position:relative; height:24px }
+.gf-strip-q{ position:absolute; top:5px; transform:translateX(-50%); font-family:var(--f-head); font-size:11px; font-weight:600; letter-spacing:.5px; color:var(--text-secondary) }
 
-.gf-run, .gf-mom{ position:absolute; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; justify-content:center;
-  font-family:var(--f-head); font-weight:600; font-size:10px; white-space:nowrap; cursor:pointer; z-index:5;
-  transition:transform .2s ease, box-shadow .2s ease, filter .2s ease; box-shadow:0 2px 8px rgba(0,0,0,.3); outline:none }
-.gf-run:hover, .gf-mom:hover, .gf-run:focus-visible, .gf-mom:focus-visible, .gf-run.open, .gf-mom.open{
-  z-index:10; transform:translateX(-50%) scale(1.05); box-shadow:0 4px 16px rgba(0,0,0,.45); filter:brightness(1.08) }
-.gf-run:focus-visible, .gf-mom:focus-visible{ outline:2px solid var(--text-primary); outline-offset:2px }
+/* a bar: as wide as the run lasted (never narrower than a finger-width sliver), as tall as it was */
+.gf-bar{ position:absolute; left:var(--x); width:max(8px,var(--w)); height:max(10px,calc(var(--f) * (50% - 44px)));
+  cursor:pointer; transition:filter .15s ease, box-shadow .15s ease }
+.gf-bar.home{ bottom:50%; background:var(--c0); border-radius:3px 3px 0 0 }
+.gf-bar.away{ top:50%; background:var(--c1); border-radius:0 0 3px 3px }
+.gf-badge{ position:absolute; left:50%; transform:translateX(-50%); min-width:20px; height:20px; padding:0 5px; border-radius:10px;
+  font-family:var(--f-mono); font-size:11px; font-weight:700; line-height:18px; text-align:center; white-space:nowrap;
+  background:var(--bg-card); color:var(--text-bright); border:1px solid currentColor; font-variant-numeric:tabular-nums }
+.gf-bar.home .gf-badge{ bottom:calc(100% + 3px + var(--row) * 21px); color:var(--c0) }
+.gf-bar.away .gf-badge{ top:calc(100% + 3px + var(--row) * 21px); color:var(--c1) }
+.gf-bar:hover, .gf-bar.hi, .gf-bar.pin{ filter:brightness(1.12); box-shadow:0 0 0 2px var(--bg-card), 0 0 0 4px var(--text-primary); z-index:2 }
+.gf-bar.hi .gf-badge, .gf-bar.pin .gf-badge{ background:var(--text-bright); color:var(--bg-base); border-color:var(--text-bright) }
 
-/* a player run: a solid marker in the club's colour, its text chosen against that colour */
-.gf-run{ border-radius:6px; padding:6px 8px; gap:2px; min-width:55px }
-.gf-run.home{ bottom:50%; background:linear-gradient(180deg,var(--vis-t0,var(--team0)),color-mix(in srgb,var(--vis-t0,var(--team0)) 85%,#000)); color:var(--gf-on0,var(--bg-base)); border:1px solid var(--vis-t0,var(--team0)) }
-.gf-run.away{ top:50%; background:linear-gradient(0deg,var(--vis-t1,var(--team1)),color-mix(in srgb,var(--vis-t1,var(--team1)) 85%,#000)); color:var(--gf-on1,var(--bg-base)); border:1px solid var(--vis-t1,var(--team1)) }
-.gf-run-player{ font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.5px; max-width:100%; overflow:hidden; text-overflow:ellipsis }
-.gf-run-stats{ font-size:10px; opacity:.9 }
-.gf-run-duration{ font-size:9px; opacity:.8; font-family:var(--f-mono) }
+.gf-runlist{ list-style:none; margin:10px 0 0; padding:0; display:grid; gap:6px }
+.gf-runrow{ --c:var(--c0); display:grid; grid-template-columns:24px 76px minmax(0,1.4fr) minmax(0,1.3fr) minmax(0,.9fr); align-items:center;
+  gap:3px 14px; padding:9px 12px; border-radius:var(--r-sm,8px); background:var(--bg-glass); border-left:3px solid var(--c);
+  font-size:13px; color:var(--text-primary); cursor:pointer; transition:background .15s ease }
+.gf-runrow.away{ --c:var(--c1) }
+.gf-runrow:hover, .gf-runrow.hi, .gf-runrow.pin{ background:color-mix(in srgb,var(--c) 16%,transparent) }
+.gf-runno{ width:22px; height:22px; border-radius:11px; display:grid; place-items:center; font-family:var(--f-mono); font-size:11px; font-weight:700;
+  color:var(--c); border:1px solid var(--c); font-variant-numeric:tabular-nums }
+.gf-runbig{ font-family:var(--f-mono); font-size:18px; font-weight:700; color:var(--c); white-space:nowrap; font-variant-numeric:tabular-nums }
+.gf-runbig small{ font-size:11px; font-weight:600; color:var(--text-secondary) }
+.gf-runmain{ display:flex; flex-direction:column; gap:1px; min-width:0 }
+.gf-runmain b{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.gf-runwhen{ font-size:12px; color:var(--text-secondary); font-variant-numeric:tabular-nums }
+.gf-runclock, .gf-runscore{ font-family:var(--f-mono); font-size:12px; color:var(--text-secondary); white-space:nowrap; font-variant-numeric:tabular-nums }
+.gf-runtop{ font-size:12px; color:var(--text-secondary); min-width:0 }
+.gf-runtop b{ color:var(--text-primary); font-weight:600 }
+.gf-runline{ grid-column:3 / -1; font-size:12px; color:var(--text-muted); line-height:1.45 }
+.gf-none{ padding:28px 12px; text-align:center; color:var(--text-muted); font-size:13px; background:var(--bg-glass); border-radius:var(--r-sm,8px) }
 
-/* a team momentum run: an outlined marker in the club's colour */
-.gf-mom{ border-radius:8px; padding:8px 10px; gap:3px; min-width:65px }
-.gf-mom.home{ bottom:50%; border:2px solid var(--vis-t0,var(--team0)); color:var(--vis-t0,var(--team0));
-  background:linear-gradient(180deg,color-mix(in srgb,var(--vis-t0,var(--team0)) 25%,transparent),color-mix(in srgb,var(--vis-t0,var(--team0)) 10%,transparent)) }
-.gf-mom.away{ top:50%; border:2px solid var(--vis-t1,var(--team1)); color:var(--vis-t1,var(--team1));
-  background:linear-gradient(0deg,color-mix(in srgb,var(--vis-t1,var(--team1)) 25%,transparent),color-mix(in srgb,var(--vis-t1,var(--team1)) 10%,transparent)) }
-.gf-mom-score{ font-size:14px; font-weight:800; font-family:var(--f-mono) }
-.gf-mom-time{ font-size:10px; opacity:.8 }
-.gf-mom-top{ font-size:10px; font-weight:600; padding-top:3px; border-top:1px solid color-mix(in srgb,currentColor 25%,transparent); max-width:100%; overflow:hidden; text-overflow:ellipsis }
-
-/* the tooltip: GAMEVIS's data-lineup card, for both kinds of marker, on hover, focus or tap */
-.gf-run[data-tip]::after, .gf-mom[data-tip]::after{
-  content:attr(data-tip); position:absolute; left:50%; transform:translateX(-50%);
-  background:var(--bg-elevated); color:var(--text-primary); border:1px solid var(--border-accent); border-radius:var(--r-sm,8px);
-  padding:8px 12px; font-family:var(--f-body); font-size:11px; font-weight:500; text-transform:none; letter-spacing:0;
-  white-space:pre-line; width:max-content; max-width:280px; text-align:center; line-height:1.45;
-  box-shadow:0 4px 20px rgba(0,0,0,.45); pointer-events:none; z-index:100;
-  opacity:0; visibility:hidden; transition:opacity .2s ease, visibility .2s ease }
-.gf-run.home::after, .gf-mom.home::after{ bottom:calc(100% + 8px) }
-.gf-run.away::after, .gf-mom.away::after{ top:calc(100% + 8px) }
-.gf-run:hover::after, .gf-mom:hover::after, .gf-run:focus-visible::after, .gf-mom:focus-visible::after,
-.gf-run.open::after, .gf-mom.open::after{ opacity:1; visibility:visible }
+@media (max-width:560px){
+  .gf-strip{ height:160px }
+  .gf-runrow{ grid-template-columns:24px 62px minmax(0,1fr); gap:2px 10px; padding:9px 10px }
+  .gf-runclock, .gf-runscore, .gf-runtop, .gf-runline{ grid-column:3 }
+  .gf-runbig{ font-size:16px }
+}
 
 @media (max-width:720px){
   .gf{ gap:14px }
@@ -107,5 +104,5 @@
   .gf-summary{ grid-template-columns:1fr }
 }
 @media (prefers-reduced-motion:reduce){
-  .gf-run, .gf-mom, .gf-run::after, .gf-mom::after{ transition:none }
+  .gf-bar, .gf-runrow{ transition:none }
 }
