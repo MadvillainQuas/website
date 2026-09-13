@@ -1,8 +1,15 @@
 // ============================================================================
 // ics — a club's fixtures as a calendar feed.
 //
-//   GET /functions/v1/ics?team=<slug or id>      every game of one club
-//   GET /functions/v1/ics?league=<slug>          every game in a league's competitions
+//   GET /functions/v1/ics/team/<slug or id>.ics   every game of one club
+//   GET /functions/v1/ics/league/<slug>.ics       every game in a league's competitions
+//   GET /functions/v1/ics?team=… / ?league=…      the same, the older query form (still served)
+//
+// THE PATH FORM IS THE ONE HANDED OUT. A calendar subscription URL that ends in .ics with no
+// query string is the shape every calendar client parses without surprises; Google's
+// subscribe link carries the feed URL inside its own query string, and a second `?` nested
+// in there is one more thing to go wrong. Supabase routes every sub-path of a function to
+// the function, so the path is read here rather than needing a second function.
 //
 // Public, unauthenticated, read-only: Google Calendar, Apple Calendar and Outlook fetch
 // this URL themselves (no headers), so the function is deployed with --no-verify-jwt and
@@ -16,17 +23,30 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' };
 const esc = (s: string) => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-const fold = (line: string) => {           // RFC 5545: lines at most 75 octets, folded with a leading space
-  const out: string[] = []; let s = line;
-  while (s.length > 74) { out.push(s.slice(0, 74)); s = ' ' + s.slice(74); }
-  out.push(s); return out.join('\r\n');
+/* RFC 5545: a content line is at most 75 OCTETS, continued on the next line after a space.
+   Counted in UTF-8 bytes, not characters: a club or venue name with accents or the en dash
+   in a score is wider in bytes than it looks, and a line split inside a multi-byte
+   character is not text any more. So the cut steps back to a character boundary. */
+const enc = new TextEncoder();
+const fold = (line: string) => {
+  const out: string[] = [];
+  let cur = '', bytes = 0, limit = 75;
+  for (const ch of line) {                  // iterates code points, so a surrogate pair stays whole
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) { out.push(cur); cur = ' '; bytes = 1; limit = 75; }
+    cur += ch; bytes += n;
+  }
+  out.push(cur); return out.join('\r\n');
 };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const url = new URL(req.url);
-  const team = (url.searchParams.get('team') ?? '').trim();
-  const league = (url.searchParams.get('league') ?? '').trim();
+  /* /…/ics/team/<key>.ics or /…/ics/league/<key>.ics, else the query form */
+  const m = url.pathname.match(/\/ics\/(team|league)\/([^/]+?)(?:\.ics)?\/?$/i);
+  const fromPath = (kind: string) => (m && m[1].toLowerCase() === kind ? decodeURIComponent(m[2]) : '');
+  const team = (fromPath('team') || url.searchParams.get('team') || '').trim();
+  const league = (fromPath('league') || url.searchParams.get('league') || '').trim();
   if (!team && !league) return new Response('team= or league= required', { status: 400, headers: cors });
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false } });

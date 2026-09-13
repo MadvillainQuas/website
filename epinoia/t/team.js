@@ -102,24 +102,47 @@ function oops(msg) {
     }
     /* THE FIXTURES IN YOUR CALENDAR. The ics function serves the club's games as a feed that
        calendars fetch themselves and keep fetching, so a moved tip-off or a new round arrives
-       on its own. Google subscribes from its "add by URL" screen; Apple and Outlook take the
-       webcal link. Finished games stay in it with the score.
+       on its own. Apple and Outlook take the webcal link. Finished games stay in it with the
+       score.
 
-       GOOGLE IS HANDED THE webcal:// FORM TOO. Its cid parameter reads a calendar id or a
-       feed address, and the form documented and used for a subscribable feed is webcal://;
-       an https:// address there can be taken for something it cannot fetch. Google turns
-       webcal into a plain http fetch, which Supabase answers with a 301 to https and the
-       feed (checked 2026-09-13), so both routes end at the same file. */
-    const ics = CFG.supabaseUrl + '/functions/v1/ics?team=' + encodeURIComponent(team.slug || team.id);
+       GOOGLE NO LONGER TAKES A PREFILLED LINK. Its calendar/r?cid=<feed> shortcut, in both
+       the https:// and the webcal:// form, answers "Unable to add calendar. Please check
+       the URL" for a feed that is public and valid (reported here 2026-09-13, and by others
+       for other feeds the same week). What still works is its own "From URL" screen with
+       the address pasted in. So the button copies the feed's address, opens that screen in
+       a new tab, and says under the buttons what to do there, with the address in a field
+       to copy by hand if the browser would not let the page write to the clipboard. */
+    const ics = CFG.supabaseUrl + '/functions/v1/ics/team/' + encodeURIComponent(team.slug || team.id) + '.ics';
     const webcal = ics.replace(/^https:/, 'webcal:');
     const gcal = el('a', 'ep-chip cal', 'add to Google Calendar');
-    gcal.href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(webcal);
+    gcal.href = 'https://calendar.google.com/calendar/r/settings/addbyurl';
     gcal.target = '_blank'; gcal.rel = 'noopener';
-    gcal.title = 'subscribe to every ' + team.name + ' fixture in Google Calendar';
+    gcal.title = 'copy the fixtures feed and open Google Calendar’s “From URL” screen';
     const ical = el('a', 'ep-chip cal', 'Apple / Outlook');
     ical.href = webcal;
     ical.title = 'subscribe in Apple Calendar or Outlook';
-    acts.append(gcal, ical);
+    const calNote = el('div', 'cal-note');
+    calNote.hidden = true;
+    const calMsg = el('span', 'cal-msg');
+    const calUrl = document.createElement('input');
+    calUrl.type = 'text'; calUrl.readOnly = true; calUrl.value = ics; calUrl.className = 'ep-input cal-url';
+    calUrl.setAttribute('aria-label', 'fixtures feed address');
+    calUrl.addEventListener('focus', () => calUrl.select());
+    calNote.append(calMsg, calUrl);
+    /* not preventDefault: the new tab opens from the click itself, so no popup blocker stops it */
+    gcal.addEventListener('click', () => {
+      const tell = copied => {
+        calMsg.textContent = copied
+          ? 'Feed address copied. In the Google Calendar tab, paste it into “URL of calendar” and press Add calendar.'
+          : 'Copy this address, then paste it into “URL of calendar” in the Google Calendar tab and press Add calendar.';
+        calNote.hidden = false;
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ics).then(() => tell(true), () => tell(false));
+        else tell(false);
+      } catch (_) { tell(false); }
+    });
+    acts.append(gcal, ical, calNote);
     $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
