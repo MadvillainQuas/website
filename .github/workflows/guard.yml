@@ -361,8 +361,9 @@ jobs:
         # changes and the extractor is not re-run, the public page silently
         # renders yesterday's numbers.
         #
-        # LAST ON PURPOSE. A failing step ends the job, and since 11 Sep boxscore.js
-        # carries work the scorer does not (pace on/off, the team-colour ink): running
-        # the extractor would DELETE it, so the check fails until the scorer catches up.
-        # Placed first, that one honest failure silenced every suite after it.
+        # LAST ON PURPOSE. A failing step ends the job: between 6 and 11 Sep boxscore.js/.css
+        # were edited by hand (pace on/off, club colours, mirrored bars), this check went
+        # red, and placed first that one honest failure silenced every suite after it.
+        # The scorer caught up on 13 Sep. Edit epinoia/score/index.html, never the
+        # generated files; viewer-only CSS goes in the extractor's appended section.
         run: node supabase/tests/extract-boxscore.mjs --check

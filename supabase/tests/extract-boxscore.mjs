@@ -151,6 +151,42 @@ function rebase(css) {
   return out;
 }
 
+/* THE GAME PAGE'S LIGHT THEME IS APPENDED HERE, NOT LIFTED FROM THE SCORER.
+
+   It re-points the scorer's own tokens at the kit's light palette under
+   :root[data-theme="light"]. It cannot live in the scorer's <style>: config.js
+   stamps data-theme="light" on every page unless a fan chose dark — the scorer
+   included — and the scorer does not load the kit tokens (--ground, --ink …)
+   these rules point at. Lifted from the scorer, it would repaint the scoring
+   surface mid-game with undefined colours. It is a viewer rule, like the shell
+   undo above it, so it is written here. */
+const VIEWER_LIGHT_THEME = `
+/* ---------- the light theme, for the game page's own tokens ----------
+   The game page predates the kit and names its colours itself (--bg-base, --txt, --dim …).
+   Under data-theme="light" each one is re-pointed at the kit's palette, so the page follows a
+   fan's choice like every other; the dark values above are untouched. */
+:root[data-theme="light"]{
+  --bg0:var(--ground); --bg1:var(--panel-2);
+  --glass-hi:rgba(0,0,0,.04); --glass-lo:rgba(0,0,0,.02);
+  --line:var(--rule); --line-hi:var(--rule-2);
+  --txt:var(--ink); --dim:var(--ink-2); --faint:var(--ink-3);
+  --lume:#0f8a5f; --aqua:#0b6f8a;
+  --red:#d13a49; --green:#12925f; --amber:#a8700a;
+  --bg-base:var(--ground); --bg-card:color-mix(in oklch,var(--panel) 94%,transparent); --bg-elevated:var(--panel-2); --bg-glass:rgba(0,0,0,.03);
+  --text-bright:var(--ink); --text-primary:var(--ink); --text-secondary:var(--ink-2); --text-muted:var(--ink-3);
+  --border-subtle:rgba(0,0,0,.08); --border-accent:color-mix(in oklch,var(--lume) 35%,transparent);
+  --positive:#12925f; --negative:#d13a49;
+}
+
+/* light: the tab strip and the scoreboard card, which kept their own dark values */
+:root[data-theme="light"] .tabrow{ background:#ffffff; border-color:rgba(13,31,23,.2) }
+:root[data-theme="light"] .tabbtn{ color:var(--text-secondary) }
+:root[data-theme="light"] .tabbtn:hover{ background:rgba(13,31,23,.05); color:var(--text-primary) }
+:root[data-theme="light"] .tabbtn.on{ color:#ffffff; box-shadow:none }
+:root[data-theme="light"] .bx-scorehead .bscore{ text-shadow:none }
+:root[data-theme="light"] .stchip, :root[data-theme="light"] .statchip{ background:rgba(13,31,23,.05); border-color:rgba(13,31,23,.18); color:var(--text-primary) }
+`;
+
 const styleStart = src.indexOf('<style>');
 const styleEnd   = src.indexOf('</style>', styleStart);
 if (styleStart < 0 || styleEnd < 0) { console.error('no <style> block in the scorer'); process.exit(1); }
@@ -182,7 +218,7 @@ html, body{
 }
 /* the two decorative backdrops stay pinned; they are painted, not laid out */
 body::before, body::after{ position:fixed; }
-`;
+` + VIEWER_LIGHT_THEME;
 
 /* The authoritative check that the extraction took the right extent is whether
    the result parses — with the engine's own parser, not a hand-rolled one.

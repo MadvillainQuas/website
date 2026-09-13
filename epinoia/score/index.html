@@ -774,6 +774,8 @@ table.bx th,table.adv th,.qstrip th,.benchsep,.thead .tsub{
 .pacepill{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;background:var(--bg-elevated);border:1px solid var(--border-subtle);
   border-radius:100px;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.8px;font-family:var(--f-head);font-weight:600;}
 .pacepill b{font-family:var(--f-mono);color:var(--gold);font-weight:700;}
+/* the clock must not change width as it ticks - a widening digit used to shove both team names */
+.pacepill{font-variant-numeric:tabular-nums;min-width:15.5em;justify-content:center;}
 /* chips: 0.15 fill / 0.4 border / full-strength text */
 .statchip{background:rgba(147,242,191,.06);border-color:var(--border-subtle);}
 .stchip.on,.tabbtn.on{font-weight:600;}
@@ -783,8 +785,15 @@ table.bx th,table.adv th,.qstrip th,.benchsep,.thead .tsub{
 .ffbar i,.mrbars i,.tug i,.lubar i,.cell .bar,.dcell .fill{transition:width .6s var(--ease-bar);}
 .ffbar,.mrbars .l,.mrbars .r,.tug,.lubar{background:var(--bg-elevated);}
 .ffbar{height:6px;} .mrbars{height:8px;} .tug{height:12px;}
-.mrbars .l i{background:linear-gradient(90deg,transparent,var(--team0)) !important;}
-.mrbars .r i{background:linear-gradient(90deg,var(--team1),transparent) !important;}
+/* SOLID, WITH AN END. The fade read as a glow rather than a length; a bar is a measurement, so
+   it is one colour to a hard tip, with a lighter cap on the tip and a visible track behind. */
+.mrbars .l,.mrbars .r{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text-primary) 10%,transparent)}
+.mrbars .l i{background:var(--team0) !important;}
+.mrbars .r i{background:var(--team1) !important;}
+.mrbars .l i::after,.mrbars .r i::after{content:'';position:absolute;top:0;bottom:0;width:3px;background:color-mix(in srgb,var(--text-bright) 80%,transparent)}
+.mrbars .l i::after{left:0} .mrbars .r i::after{right:0}
+.mrbars .l i[style*="width:0%"]::after,.mrbars .r i[style*="width:0%"]::after{display:none}
+.mrbars .l i{border-radius:3px 0 0 3px} .mrbars .r i{border-radius:0 3px 3px 0}
 .tug i:first-child{background:linear-gradient(90deg,color-mix(in srgb,var(--team0) 30%,transparent),var(--team0)) !important;}
 .tug i:last-child{background:linear-gradient(90deg,var(--team1),color-mix(in srgb,var(--team1) 30%,transparent)) !important;}
 .ffbar i{border-radius:3px;}
@@ -1478,6 +1487,25 @@ html, body{ height:100dvh; }
   #sheetBody{mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);
     -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
 }
+
+/* ---------- THE CLUBS' COLOURS, EVERYWHERE THE BOX SCORE NAMES A SIDE ----------
+   --team0/--team1 are set by the page (ink form on the light theme). A card knows its side
+   through its heading's data-team-slot, so the rules hang off that. */
+.bxteam h3[data-team-slot="0"], .advcard h3[data-team-slot="0"], .ffcard h3[data-team-slot="0"]{ color:var(--team0) }
+.bxteam h3[data-team-slot="1"], .advcard h3[data-team-slot="1"], .ffcard h3[data-team-slot="1"]{ color:var(--team1) }
+.bxteam:has(h3[data-team-slot="0"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="0"]) .statchip b{ color:var(--team0) }
+.bxteam:has(h3[data-team-slot="1"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="1"]) .statchip b{ color:var(--team1) }
+.bxteam:has(h3[data-team-slot="0"]) .statchip{ border-color:color-mix(in srgb,var(--team0) 35%,transparent); background:color-mix(in srgb,var(--team0) 8%,transparent) }
+.bxteam:has(h3[data-team-slot="1"]) .statchip{ border-color:color-mix(in srgb,var(--team1) 35%,transparent); background:color-mix(in srgb,var(--team1) 8%,transparent) }
+/* full stats: the bars under every cell are the side's colour; the on-court diff bars keep
+   green/red, which mean better/worse rather than whose */
+table.adv[data-team="0"] .cell .bar{ background:var(--team0) !important }
+table.adv[data-team="1"] .cell .bar{ background:var(--team1) !important }
+table.adv .cell .bar.mins{ opacity:.45 }
+table.adv .cell .bar.shooting{ opacity:.95 } table.adv .cell .bar.playmaking{ opacity:.8 } table.adv .cell .bar.rebounding{ opacity:.7 }
+table.adv .cell .bar.handling{ opacity:.6 } table.adv .cell .bar.defense{ opacity:.85 }
+table.adv[data-team="0"] th.sorted{ color:var(--team0) } table.adv[data-team="1"] th.sorted{ color:var(--team1) }
+.luname{ background:color-mix(in srgb,var(--team0) 12%,transparent); border-color:color-mix(in srgb,var(--team0) 30%,transparent) }
 </style>
 </head>
 <body>
@@ -5530,7 +5558,12 @@ function pbpHTML(d){
 }
 /* ---- final: shot charts ---- */
 function shotChartHTML(d,t){
-  const col = safeColour(S.teams[t].color, '#93f2bf');
+  const raw = safeColour(S.teams[t].color, '#93f2bf');
+  /* the club's colour as a mark on THIS theme's ground: a white club's white dots on the light
+     page were invisible; the team-colour module nudges it until it reads (the scorer has no
+     such module and keeps the colour as it is) */
+  const TCm = (typeof root !== 'undefined' && root.EpinoiaTeamColour) || (typeof window !== 'undefined' && window.EpinoiaTeamColour);
+  const col = (TCm && TCm.ink && TCm.ink(raw)) || raw;
   const shots = S.events.filter(e=>/^p[23]_/.test(e.t) && e.team===t);
   const withLoc = shots.filter(e=>d.locs[e.id]);
   /* Locations are stored NORMALISED (0..1 across the court's own box), which
@@ -5581,7 +5614,7 @@ function shotChartHTML(d,t){
      knowing where a shot came from. `plain` drops the lane ticks, which are
      detail this size cannot carry. */
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
-  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'" style="color:'+col+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
       (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+
@@ -5618,7 +5651,12 @@ function teamAdv(d,t){
     p3p: dv(T.fg3m,T.fg3a)*100, p3r: dv(T.fg3a,T.fga)*100,
     astPtsP: dv(T.ptsAst, T.pts-T.ftm)*100,
     tsaPer100: dv(T.tsa,T.possessions)*100,
-    pace: dv(T.possessions+O.possessions, 2) / Math.max(1,T.minutes/5) * 40
+    /* game pace: the two teams' possessions averaged, per 40 minutes of game clock
+       (T.minutes is five players' worth, so /5 is the game's elapsed minutes) */
+    pace: dv(T.possessions+O.possessions, 2) / Math.max(1,T.minutes/5) * 40,
+    /* this team's OWN pace — its possessions per 40 — which can differ from the
+       opponent's by a possession or two (end-of-period leftovers) */
+    paceOwn: T.possessions / Math.max(1,T.minutes/5) * 40
   });
 }
 function playerAdv(d,t,p,TT,OT,gameAvg){
@@ -5635,7 +5673,16 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
   const oc = s.oc;
   const ocPoss = 0.96*(oc.tFGA + oc.tTOV + 0.44*oc.tFTA - oc.tOR);
   const ocOppPoss = 0.96*(oc.oFGA + oc.oTOV + 0.44*oc.oFTA - oc.oOR);
+  /* pace on the floor / off it — both teams' possessions per 40, the game-pace definition;
+     off = the game's possessions and minutes less the player's; overtime is in TT.minutes */
+  const ocPossAvg = (ocPoss + ocOppPoss) / 2;
+  const gamePossAvg = ((TT.possessions || 0) + (OT.possessions || 0)) / 2;
+  const paceOn = mins > 0 ? ocPossAvg / mins * 40 : 0;
+  const offMin = Math.max(0, gameMinutes - mins);
+  const paceOff = offMin > 1 ? Math.max(0, gamePossAvg - ocPossAvg) / offMin * 40 : 0;
+  const pacePM = (paceOn > 0 && paceOff > 0) ? paceOn - paceOff : 0;
   const r = {
+    paceOn, paceOff, pacePM,
     id:p.id, num:p.num, name:p.name, min:mins, minTxt:fmtMin(s.min),
     fgm, ast:s.ast, pts:s.pts, ptsAst:s.ptsAst, tpc:s.pts+s.ptsAst,
     ppp: dv(s.pts,pPoss), usg, astPct,
@@ -5681,7 +5728,9 @@ const ADV_GROUPS = [
     {k:'ocOrtg',l:'ortg',diff:'ortg'},
     {k:'ocEfg',l:'efg',diff:'efg'},
     {k:'ocOreb',l:'orb%',diff:'orebp'},
-    {k:'ocTov',l:'tov%',diff:'tovp',inv:true,sep:true}]},
+    {k:'ocTov',l:'tov%',diff:'tovp',inv:true},
+    /* pace with the player on minus pace with them off (both teams' possessions per 40) */
+    {k:'pacePM',l:'pace±',pill:true,dec:1,sep:true}]},
   {key:'defcourt', label:'defensive on-court', cols:[
     {k:'ocDrtg',l:'drtg',diff:'ortg',inv:true},
     {k:'ocOppEfg',l:'opp efg',diff:'efg',inv:true},
@@ -5718,7 +5767,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       const hid = (advHidden.has(g.key)?'col-hidden ':'')+'g-'+g.key+' ';
       const sep = c.sep?'sep':'';
       const v = r[c.k];
-      if(c.pill) return '<td class="'+hid+sep+'"><span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(0)+'</span></td>';
+      if(c.pill) return '<td class="'+hid+sep+'"><span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(c.dec!=null?c.dec:0)+'</span></td>';
       if(c.diff){ const D=diffTxt(v,gameAvg[c.diff],c.inv); const eff = c.inv?-D.dff:D.dff;
         const w = Math.max(0,Math.min(100,50+(eff/15)*50)); const left=Math.min(50,w), right=Math.max(50,w);
         return '<td class="'+hid+sep+'"><span class="dcell"><span class="v '+D.cls+'">'+D.txt+'</span><span class="track"></span>'+
@@ -5729,7 +5778,7 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
       return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
-  return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
     '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
@@ -5855,12 +5904,21 @@ function advHTML(d){
   const FF = [
     {l:'ortg', k:'ortg', max:130, hb:true, f:f1}, {l:'efg%', k:'efg', max:70, hb:true, f:f1},
     {l:'fta rate', k:'ftr', max:50, hb:true, f:f1}, {l:'oreb%', k:'orebp', max:50, hb:true, f:f1},
-    {l:'tov%', k:'tovp', max:30, hb:false, f:f1}];
-  const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h; const hWin = x.hb?hw:aw, aWin = x.hb?aw:hw;
-    return '<div class="ffrow"><span class="ffval'+(hWin?' winner':'')+'">'+x.f(h)+'</span>'+
-      '<div class="ffmid"><div class="ffbar"><i style="width:'+Math.min(100,h/x.max*100)+'%;background:'+c0+'"></i></div>'+
-      '<div class="ffbar"><i style="width:'+Math.min(100,a/x.max*100)+'%;background:'+c1+'"></i></div><div class="fflabel">'+x.l+'</div></div>'+
-      '<span class="ffval r'+(aWin?' winner':'')+'">'+x.f(a)+'</span></div>'; }).join('');
+    {l:'tov%', k:'tovp', max:30, hb:false, f:f1},
+    /* possessions and each team's own pace (per 40); the header carries the game pace */
+    {l:'possessions', k:'possessions', max:110, hb:null, f:f0}, {l:'pace / 40', k:'paceOwn', max:100, hb:null, f:f1}];
+  /* ONE CHART FOR EVERY ROW. The four factors, the additional metrics and the situational
+     points all read as the same mirrored pair: the home side grows leftwards from the centre,
+     the away side rightwards, each capped at the row's own maximum, with a hard end on each
+     bar so the eye reads a length rather than a glow. */
+  const mirror = (label, h, a, max, fmt, hWin, aWin) =>
+    '<div class="mrrow"><span class="ffval'+(hWin?' winner':'')+'">'+fmt(h)+'</span>'+
+      '<div><div class="mrbars"><div class="l"><i style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
+      '<div class="r"><i style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
+      '<span class="ffval r'+(aWin?' winner':'')+'">'+fmt(a)+'</span></div>';
+  const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
+    const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
+    return mirror(x.l, h, a, x.max, x.f, hWin, aWin); }).join('');
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+'</div>';
   // 2. true shot attempts strip
@@ -5883,15 +5941,11 @@ function advHTML(d){
     {l:'dreb %', k:'drebp', max:100, f:f1}, {l:'tsa / 100', k:'tsaPer100', max:120, f:f1}];
   const mrRows = MR.map(x=>{ if(x.sep) return '<div class="mrsep">— '+x.sep+' —</div>';
     const h=TA[0][x.k], a=TA[1][x.k];
-    return '<div class="mrrow"><span class="ffval'+(h>a?' winner':'')+'">'+x.f(h)+'</span>'+
-      '<div><div class="mrbars"><div class="l"><i style="width:'+Math.min(100,h/x.max*100)+'%;background:'+c0+'"></i></div>'+
-      '<div class="r"><i style="width:'+Math.min(100,a/x.max*100)+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+x.l+'</div></div>'+
-      '<span class="ffval r'+(a>h?' winner':'')+'">'+x.f(a)+'</span></div>'; }).join('');
+    return mirror(x.l, h, a, x.max, x.f, h>a, a>h); }).join('');
   const SIT = [['paint pts','paint'],['transition pts','fast'],['2nd chance pts','sc'],['pts off turnovers','pot'],['bench pts','bench'],['biggest lead','lead']];
-  const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const tot=h+a||1;
-    return '<div class="mrrow"><span class="ffval'+(h>a?' winner':'')+'">'+h+'</span>'+
-      '<div><div class="tug"><i style="width:'+(h/tot*100)+'%;background:'+c0+'"></i><i style="width:'+(a/tot*100)+'%;background:'+c1+'"></i></div><div class="mrlabel">'+l+'</div></div>'+
-      '<span class="ffval r'+(a>h?' winner':'')+'">'+a+'</span></div>'; }).join('');
+  /* counts: the row's larger value is the full bar, so the two are read against each other */
+  const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
+    return mirror(l, h, a, max, v=>String(v), h>a, a>h); }).join('');
   const mrCard = '<div class="glass ffcard"><h3>additional metrics</h3>'+mrRows+'<div class="mrsep">— situational —</div>'+sitRows+'</div>';
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
@@ -5987,7 +6041,7 @@ function lineupsHTML(){
         '<td class="blk-n"><span class="netpill '+(l.net>=0?'pos':'neg')+'">'+(l.net>0?'+':'')+l.net.toFixed(1)+'</span></td>'+
         '<td class="'+(l.pm>0?'pos':(l.pm<0?'neg':''))+'">'+(l.pm>0?'+':'')+l.pm+'</td></tr>';
     }).join('') || '<tr><td colspan="16" style="text-align:left;color:var(--faint)">no lineup data yet</td></tr>';
-    return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'" style="color:'+safeColour(S.teams[t].color)+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
+    return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3><div class="tblwrap">'+
       '<table class="bx lu" style="min-width:980px"><tr><th style="text-align:left">lineup</th><th>min</th><th>poss</th><th>pts</th>'+
       '<th class="blk-o">ortg</th><th>efg%</th><th>tov%</th><th>orb%</th><th>ft rate</th>'+
       '<th class="blk-d">drtg</th><th>opp efg</th><th>tov frc</th><th>orb alwd</th><th>opp ftr</th>'+

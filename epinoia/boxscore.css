@@ -1475,6 +1475,25 @@ html, body{ height:100dvh; }
     -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
 }
 
+/* ---------- THE CLUBS' COLOURS, EVERYWHERE THE BOX SCORE NAMES A SIDE ----------
+   --team0/--team1 are set by the page (ink form on the light theme). A card knows its side
+   through its heading's data-team-slot, so the rules hang off that. */
+.bxteam h3[data-team-slot="0"], .advcard h3[data-team-slot="0"], .ffcard h3[data-team-slot="0"]{ color:var(--team0) }
+.bxteam h3[data-team-slot="1"], .advcard h3[data-team-slot="1"], .ffcard h3[data-team-slot="1"]{ color:var(--team1) }
+.bxteam:has(h3[data-team-slot="0"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="0"]) .statchip b{ color:var(--team0) }
+.bxteam:has(h3[data-team-slot="1"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="1"]) .statchip b{ color:var(--team1) }
+.bxteam:has(h3[data-team-slot="0"]) .statchip{ border-color:color-mix(in srgb,var(--team0) 35%,transparent); background:color-mix(in srgb,var(--team0) 8%,transparent) }
+.bxteam:has(h3[data-team-slot="1"]) .statchip{ border-color:color-mix(in srgb,var(--team1) 35%,transparent); background:color-mix(in srgb,var(--team1) 8%,transparent) }
+/* full stats: the bars under every cell are the side's colour; the on-court diff bars keep
+   green/red, which mean better/worse rather than whose */
+table.adv[data-team="0"] .cell .bar{ background:var(--team0) !important }
+table.adv[data-team="1"] .cell .bar{ background:var(--team1) !important }
+table.adv .cell .bar.mins{ opacity:.45 }
+table.adv .cell .bar.shooting{ opacity:.95 } table.adv .cell .bar.playmaking{ opacity:.8 } table.adv .cell .bar.rebounding{ opacity:.7 }
+table.adv .cell .bar.handling{ opacity:.6 } table.adv .cell .bar.defense{ opacity:.85 }
+table.adv[data-team="0"] th.sorted{ color:var(--team0) } table.adv[data-team="1"] th.sorted{ color:var(--team1) }
+.luname{ background:color-mix(in srgb,var(--team0) 12%,transparent); border-color:color-mix(in srgb,var(--team0) 30%,transparent) }
+
 
 /* ==========================================================================
    APPENDED BY THE EXTRACTOR — undo the scorer's application shell.
@@ -1523,22 +1542,3 @@ body::before, body::after{ position:fixed; }
 :root[data-theme="light"] .tabbtn.on{ color:#ffffff; box-shadow:none }
 :root[data-theme="light"] .bx-scorehead .bscore{ text-shadow:none }
 :root[data-theme="light"] .stchip, :root[data-theme="light"] .statchip{ background:rgba(13,31,23,.05); border-color:rgba(13,31,23,.18); color:var(--text-primary) }
-
-/* ---------- THE CLUBS' COLOURS, EVERYWHERE THE BOX SCORE NAMES A SIDE ----------
-   --team0/--team1 are set by the page (ink form on the light theme). A card knows its side
-   through its heading's data-team-slot, so the rules hang off that. */
-.bxteam h3[data-team-slot="0"], .advcard h3[data-team-slot="0"], .ffcard h3[data-team-slot="0"]{ color:var(--team0) }
-.bxteam h3[data-team-slot="1"], .advcard h3[data-team-slot="1"], .ffcard h3[data-team-slot="1"]{ color:var(--team1) }
-.bxteam:has(h3[data-team-slot="0"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="0"]) .statchip b{ color:var(--team0) }
-.bxteam:has(h3[data-team-slot="1"]) table.bx tr.oncourt td:nth-child(2), .bxteam:has(h3[data-team-slot="1"]) .statchip b{ color:var(--team1) }
-.bxteam:has(h3[data-team-slot="0"]) .statchip{ border-color:color-mix(in srgb,var(--team0) 35%,transparent); background:color-mix(in srgb,var(--team0) 8%,transparent) }
-.bxteam:has(h3[data-team-slot="1"]) .statchip{ border-color:color-mix(in srgb,var(--team1) 35%,transparent); background:color-mix(in srgb,var(--team1) 8%,transparent) }
-/* full stats: the bars under every cell are the side's colour; the on-court diff bars keep
-   green/red, which mean better/worse rather than whose */
-table.adv[data-team="0"] .cell .bar{ background:var(--team0) !important }
-table.adv[data-team="1"] .cell .bar{ background:var(--team1) !important }
-table.adv .cell .bar.mins{ opacity:.45 }
-table.adv .cell .bar.shooting{ opacity:.95 } table.adv .cell .bar.playmaking{ opacity:.8 } table.adv .cell .bar.rebounding{ opacity:.7 }
-table.adv .cell .bar.handling{ opacity:.6 } table.adv .cell .bar.defense{ opacity:.85 }
-table.adv[data-team="0"] th.sorted{ color:var(--team0) } table.adv[data-team="1"] th.sorted{ color:var(--team1) }
-.luname{ background:color-mix(in srgb,var(--team0) 12%,transparent); border-color:color-mix(in srgb,var(--team0) 30%,transparent) }
