@@ -103,14 +103,21 @@ function oops(msg) {
     /* THE FIXTURES IN YOUR CALENDAR. The ics function serves the club's games as a feed that
        calendars fetch themselves and keep fetching, so a moved tip-off or a new round arrives
        on its own. Google subscribes from its "add by URL" screen; Apple and Outlook take the
-       webcal link. Finished games stay in it with the score. */
+       webcal link. Finished games stay in it with the score.
+
+       GOOGLE IS HANDED THE webcal:// FORM TOO. Its cid parameter reads a calendar id or a
+       feed address, and the form documented and used for a subscribable feed is webcal://;
+       an https:// address there can be taken for something it cannot fetch. Google turns
+       webcal into a plain http fetch, which Supabase answers with a 301 to https and the
+       feed (checked 2026-09-13), so both routes end at the same file. */
     const ics = CFG.supabaseUrl + '/functions/v1/ics?team=' + encodeURIComponent(team.slug || team.id);
+    const webcal = ics.replace(/^https:/, 'webcal:');
     const gcal = el('a', 'ep-chip cal', 'add to Google Calendar');
-    gcal.href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(ics);
+    gcal.href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(webcal);
     gcal.target = '_blank'; gcal.rel = 'noopener';
     gcal.title = 'subscribe to every ' + team.name + ' fixture in Google Calendar';
     const ical = el('a', 'ep-chip cal', 'Apple / Outlook');
-    ical.href = ics.replace(/^https:/, 'webcal:');
+    ical.href = webcal;
     ical.title = 'subscribe in Apple Calendar or Outlook';
     acts.append(gcal, ical);
     $('#tname').parentNode.appendChild(acts);
