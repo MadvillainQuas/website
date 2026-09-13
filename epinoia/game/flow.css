@@ -85,12 +85,22 @@
 .gf-runtop{ font-size:12px; color:var(--text-secondary); min-width:0 }
 .gf-runtop b{ color:var(--text-primary); font-weight:600 }
 .gf-runline{ grid-column:3 / -1; font-size:12px; color:var(--text-muted); line-height:1.45 }
+.gf-watch{ grid-column:-2 / -1; grid-row:1; justify-self:end; display:inline-flex; align-items:center; gap:6px; padding:7px 12px;
+  border-radius:999px; border:1px solid var(--c); background:transparent; color:var(--c); cursor:pointer; white-space:nowrap;
+  font-family:var(--f-head); font-size:10.5px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; transition:background .15s ease, color .15s ease }
+.gf-watch:hover, .gf-watch:focus-visible{ background:var(--c); color:var(--gf-on-c,var(--bg-base)) }
+.gf-runrow.home .gf-watch{ --gf-on-c:var(--gf-on0,var(--bg-base)) }
+.gf-runrow.away .gf-watch{ --gf-on-c:var(--gf-on1,var(--bg-base)) }
+.gf-watch:focus-visible{ outline:2px solid var(--text-primary); outline-offset:2px }
+.gf-runrow:has(.gf-watch){ grid-template-columns:24px 76px minmax(0,1.4fr) minmax(0,1.3fr) minmax(0,.9fr) auto }
 .gf-none{ padding:28px 12px; text-align:center; color:var(--text-muted); font-size:13px; background:var(--bg-glass); border-radius:var(--r-sm,8px) }
 
 @media (max-width:560px){
   .gf-strip{ height:160px }
   .gf-runrow{ grid-template-columns:24px 62px minmax(0,1fr); gap:2px 10px; padding:9px 10px }
   .gf-runclock, .gf-runscore, .gf-runtop, .gf-runline{ grid-column:3 }
+  .gf-runrow:has(.gf-watch){ grid-template-columns:24px 62px minmax(0,1fr) }
+  .gf-watch{ grid-column:3; grid-row:auto; justify-self:start; margin-top:4px }
   .gf-runbig{ font-size:16px }
 }
 

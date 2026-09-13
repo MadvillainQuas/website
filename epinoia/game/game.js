@@ -1665,7 +1665,9 @@ function mountVideo(d) {
   const qp2 = new URLSearchParams(location.search);
   window.EpinoiaVideoTab.render({
     host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
-    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null, seq: qp2.get('vs') || null },
+    focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null, seq: qp2.get('vs') || null,
+             /* a run from the game flow tab (or a link carrying one): shown from its first basket */
+             run: qp2.get('vr') || null },
     /* the people who may attach a video may also nudge it; the same check */
     canEdit: vidShown,
     onTrim: nudgeVideo,
@@ -1673,6 +1675,29 @@ function mountVideo(d) {
             tipoff_at: S.meta && S.meta.tipoff_at || null }
   });
 }
+
+/* WATCH VIDEO, FROM A RUN. flow.js knows which run was pressed; this page owns the tabs.
+   The run goes into the address (?vr=, replaced not pushed, so Back still leaves the game)
+   so the video tab reads it the same way as a shared link, and the view moves to the
+   player so a phone does not land the viewer half a screen below it. */
+window.addEventListener('epinoia:watchrun', e => {
+  const key = e && e.detail && e.detail.key;
+  if (!key || !window.S || !window.S.video) return;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('vr', key);
+    u.searchParams.delete('vs');
+    history.replaceState(null, '', u);
+  } catch (_) { /* an old browser keeps the tab switch without the address */ }
+  /* pressed again for the same run, it plays again: the tab only re-seeks for a key it has not applied */
+  if (window.EpinoiaVideoTab && window.EpinoiaVideoTab.state) window.EpinoiaVideoTab.state().runFocus = null;
+  fTab = 'video';
+  document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === 'video'));
+  lastBodyKey = '';
+  renderBody();
+  const host = document.getElementById('vidHost');
+  if (host && host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+});
 
 /* "The clips land four seconds early" is one number on the video row —
    trim_ms — and this is the control for it. Cumulative, saved at once, and the
@@ -2395,7 +2420,7 @@ async function renderPreview() {
        where the numbers ARE the story as it happens. */
     if (window.EpinoiaReport) fTab = 'report';
     /* a link from a profile to one play opens straight on the video */
-    if (qp.get('vs') || qp.get('vp')) fTab = 'video';
+    if (qp.get('vs') || qp.get('vp') || qp.get('vr')) fTab = 'video';
     render();
     return;                       // finished: nothing left to listen for
   }

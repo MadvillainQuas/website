@@ -107,7 +107,9 @@ function compute(S) {
   const points = [];
   const playerRuns = [];
   const teamRuns = [];
-  let run = { team: null, pts: 0, players: {}, order: [] };
+  let run = { team: null, pts: 0, players: {}, order: [], baskets: [] };
+  /* the id a play has in the video index (epinoia/video.js index(): seq, else id) */
+  const idOf = ev => (ev.seq != null ? ev.seq : ev.id);
 
   const finalize = () => {
     if (run.team === null || run.pts < 6) return;
@@ -115,7 +117,11 @@ function compute(S) {
     run.order.forEach(pid => {
       const pts = run.players[pid];
       if (pts >= 6) {
+        const mine = run.baskets.filter(b => b.pid === pid);
         playerRuns.push({
+          /* A RUN HAS A NAME THAT SURVIVES A REDRAW: its first basket. A link to the video
+             carries it (?vr=), so it must not be a position in a list that grows. */
+          key: 'p' + mine[0].id + '-' + pid, ids: mine.map(b => b.id),
           pid, playerName: shortName(pid), playerFull: fullName(pid), team: teams[run.team].name || '', teamIdx: run.team, points: pts,
           startPeriod: run.startPeriod, startClock: run.startClock, endPeriod: run.endPeriod, endClock: run.endClock,
           startElapsed: run.startElapsed, endElapsed: run.endElapsed,
@@ -127,6 +133,7 @@ function compute(S) {
     let top = null, topPts = 0;
     run.order.forEach(pid => { if (run.players[pid] > topPts) { topPts = run.players[pid]; top = pid; } });
     teamRuns.push({
+      key: 'm' + run.baskets[0].id, ids: run.baskets.map(b => b.id),
       team: teams[run.team].name || '', teamIdx: run.team, points: run.pts,
       startPeriod: run.startPeriod, startClock: run.startClock, endPeriod: run.endPeriod, endClock: run.endClock,
       lineup: run.lineup, lineupNames: run.lineup.map(fullName),
@@ -174,10 +181,11 @@ function compute(S) {
         run.pts += pts;
         if (!(ev.pid in run.players)) { run.players[ev.pid] = 0; run.order.push(ev.pid); }
         run.players[ev.pid] += pts;
+        run.baskets.push({ id: idOf(ev), pid: ev.pid });
       } else {
         finalize();
         run = {
-          team: t, pts, players: { [ev.pid]: pts }, order: [ev.pid],
+          team: t, pts, players: { [ev.pid]: pts }, order: [ev.pid], baskets: [{ id: idOf(ev), pid: ev.pid }],
           startElapsed: elapsed, startPeriod: p, startClock: ev.clock != null ? ev.clock : PLEN(p),
           startHome: R[0].points - (t === 0 ? pts : 0), startAway: R[1].points - (t === 1 ? pts : 0),
           lineup: [...onCourt[t]]
@@ -348,7 +356,7 @@ const whenText = r => {
 };
 const dash = score => String(score).replace('-', '–');
 
-function runsCharts(F, names) {
+function runsCharts(F, names, watch) {
   const data = F.points;
   if (data.length < 2) return '';
   const maxElapsed = Math.max(...data.map(d => d.elapsed)) || 1;
@@ -392,7 +400,11 @@ function runsCharts(F, names) {
       '<div class="gf-strip-axis" aria-hidden="true">' + quarters + '</div>' +
       '<ol class="gf-runlist">' + runs.map((r, i) =>
         '<li class="gf-runrow ' + (r.teamIdx === 0 ? 'home' : 'away') + '" data-run="' + kind + i + '">' +
-          '<span class="gf-runno">' + (i + 1) + '</span>' + rowHTML(r) + '</li>').join('') +
+          '<span class="gf-runno">' + (i + 1) + '</span>' + rowHTML(r) +
+          /* WATCH VIDEO: the video tab, on this run, playing from its first basket to its last */
+          (watch ? '<button type="button" class="gf-watch" data-watch="' + esc(r.key) + '" aria-label="' +
+                   esc('Watch run ' + (i + 1) + ' on video') + '">▶ Watch video</button>' : '') +
+        '</li>').join('') +
       '</ol>';
   };
 
@@ -537,6 +549,10 @@ function pppChart(F, names) {
     yTitle('PPP') + endMark(hp, 'home') + endMark(ap, 'away'));
 }
 
+/* a video row that can be wound to a moment: a recording or an archived stream, not the
+   league channel's live edge (that has no video id to seek within) */
+const hasFootage = S => !!(S && S.video && S.video.url);
+
 function render(S) {
   const F = compute(S);
   const names = [0, 1].map(t => (S && S.teams && S.teams[t] && S.teams[t].name) || (t ? 'Away' : 'Home'));
@@ -550,7 +566,7 @@ function render(S) {
   const item = (label, value, cls) =>
     '<div class="gf-stat"><span class="gf-stat-label">' + label + '</span><span class="gf-stat-value' + (cls ? ' ' + cls : '') + '">' + value + '</span></div>';
   return '<div class="gf">' +
-    runsCharts(F, names) + marginChart(F, names) + epaChart(F, names) + battleChart(F, names) + pppChart(F, names) +
+    runsCharts(F, names, hasFootage(S)) + marginChart(F, names) + epaChart(F, names) + battleChart(F, names) + pppChart(F, names) +
     '<div class="gf-summary">' +
       item('Final Score', s.homePoints + ' - ' + s.awayPoints, s.homePoints > s.awayPoints ? 'gf-home' : 'gf-away') +
       item('Lead Changes', s.leadChanges) +
@@ -596,6 +612,14 @@ function mounted(host) {
     if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) mark(m.dataset.run, 'hi', false);
   });
   host.addEventListener('click', e => {
+    const w = e.target && e.target.closest && e.target.closest('.gf-watch');
+    if (w && host.contains(w)) {
+      /* the page owns the tabs (game.js), so this only says which run; it switches */
+      if (typeof root.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+        root.dispatchEvent(new CustomEvent('epinoia:watchrun', { detail: { key: w.dataset.watch } }));
+      }
+      return;
+    }
     const m = runOf(e);
     const was = m && m.classList.contains('pin');
     host.querySelectorAll('[data-run].pin').forEach(x => x.classList.remove('pin'));
@@ -608,5 +632,5 @@ function mounted(host) {
   });
 }
 
-return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText };
+return { compute, summarise, render, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage };
 }));

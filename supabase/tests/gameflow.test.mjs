@@ -224,6 +224,70 @@ console.log('\na real LiveStats game agrees with the box score');
   }
 }
 
+/* ---- a run, on video ----------------------------------------------------- */
+console.log('\na run goes to the video, first basket to last');
+{
+  /* a stream that started ten minutes before the tip, and every play stamped two seconds
+     after it happened, as the ingest's poll would */
+  const STREAM = Date.parse('2026-09-12T18:50:00Z'), TIP = Date.parse('2026-09-12T19:00:00Z');
+  const G = JSON.parse(JSON.stringify(S));
+  G.events.forEach(e => {
+    const el = (600000 - e.clock);                          // all in the first period
+    e.wall = TIP + el + 2000; e.wall_err = 10000;
+    e.id = e.seq;                                          // as the page loads them (game.js, live.js)
+  });
+  G.video = { provider: 'youtube', url: 'https://youtu.be/AbCdEfGhIjK', video_ref: 'AbCdEfGhIjK',
+              stream_started_at: new Date(STREAM).toISOString(), tip_at: new Date(TIP + 2000).toISOString(),
+              tip_wall: TIP + 2000, trim_ms: 0 };
+
+  const F = Flow.compute(G);
+  const tr = F.teamRuns[0], pr = F.playerRuns[0];
+  ok('a team run is named by its first basket, and lists its baskets', tr.key === 'm8' && JSON.stringify(tr.ids) === '[8,10,15,16,18]', tr.key + ' ' + JSON.stringify(tr.ids));
+  ok('a player run is named by his first basket in it, and lists only his', pr.key === 'p8-h1' && JSON.stringify(pr.ids) === '[8,10,15,16]', pr.key + ' ' + JSON.stringify(pr.ids));
+  ok('every run row offers WATCH VIDEO when the game has footage',
+     (Flow.render(G).match(/class="gf-watch" data-watch="(m8|p8-h1)"/g) || []).length === 2);
+  ok('...and none when it has no video to go to', !/gf-watch/.test(Flow.render(S)) &&
+     !/gf-watch/.test(Flow.render(Object.assign({}, G, { video: { live_src: 'https://www.youtube.com/embed/live_stream?channel=x' } }))));
+
+  /* the real video tab, on a page with nothing but a stage and a body in it */
+  globalThis.EpinoiaVideo = require(path.join(ROOT, 'epinoia', 'video.js'));
+  globalThis.EpinoiaEngine = E;
+  globalThis.EpinoiaGameFlow = Flow;
+  const Tab = require(path.join(ROOT, 'epinoia', 'game', 'video.js'));
+  const stage = { dataset: {}, innerHTML: '', querySelector: () => null };
+  const body = { innerHTML: '' };
+  const hostEl = {
+    set innerHTML(_) { /* mount(): the stage and body below stand in for what it writes */ },
+    querySelector: sel => sel === '.vidstage' ? stage : sel === '.vidbody' ? body : null,
+    querySelectorAll: () => []
+  };
+  const d = E.deriveGame(Object.assign({ period: 1, clockMs: 480000 }, G));
+  Tab.render({ host: hostEl, video: G.video, events: G.events, S: G, d, focus: { run: 'm8' } });
+
+  const plays = globalThis.EpinoiaVideo.index(G.events, G.video, { skipStructural: true });
+  ok('every basket of the run can be placed', tr.ids.every(id => plays.some(p => p.id === id)));
+  const mine = plays.filter(p => tr.ids.includes(p.id));
+  const want0 = Math.min(...mine.map(p => p.start)), want1 = Math.max(...mine.map(p => p.end));
+  const m = /embed\/AbCdEfGhIjK\?start=(\d+)&amp;autoplay=1[^"]*&amp;end=(\d+)/.exec(stage.innerHTML);
+  ok('the player opens at the run\'s first basket, playing', !!m && +m[1] === Math.floor(want0 / 1000), stage.innerHTML.slice(0, 200));
+  ok('...and stops after its last', !!m && +m[2] === Math.ceil(want1 / 1000), m && m[2] + ' vs ' + Math.ceil(want1 / 1000));
+  ok('...which is the first basket\'s position less its run-up', near(want0, 10 * 60000 + (600000 - 547000) + 2000 - (8500 + 2000 + 10000), 1),
+     String(want0));
+  ok('the runs list is showing, with this run marked as playing',
+     /class="viditem vidrun home on"[^>]*data-run="m8"/.test(body.innerHTML) && /data-runs="1">runs</.test(body.innerHTML));
+  ok('...the runs chip is on, beside the kinds of play', /class="vidchip on" data-runs="1"/.test(body.innerHTML));
+  ok('...and the Runs tab is offered with it', />Runs<\/button>/.test(body.innerHTML));
+  const st = Tab.state();
+  ok('a redraw for a new event does not rewind it', (() => {
+    const before = stage.innerHTML;
+    Tab.render({ host: hostEl, video: G.video, events: G.events, S: G, d, focus: { run: 'm8' } });
+    return stage.innerHTML === before && st.current === 'run@m8';
+  })());
+  Tab.render({ host: hostEl, video: G.video, events: G.events, S: G, d, focus: { run: 'p8-h1' } });
+  ok('asking for another run moves to it', Tab.state().current === 'run@p8-h1');
+  Tab.reset();
+}
+
 console.log('\nwired into the game page');
 {
   const game = fs.readFileSync(path.join(ROOT, 'epinoia', 'game', 'game.js'), 'utf8');

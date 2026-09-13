@@ -192,3 +192,25 @@
 .hln{ font-family:var(--f-micro); font-size:9px; color:var(--ink-3); margin-left:auto }
 .hlstatus{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; color:var(--lume); margin-top:8px; min-height:12px }
 .hlstatus a{ color:var(--lume) }
+
+/* ---- runs: the game flow tab's runs, as places in the footage ---- */
+.vidruns .vidsec{ list-style:none; border-top:0; }
+.vidrun{ grid-template-columns:auto auto minmax(0,1fr); align-items:center; border-left:3px solid var(--vis-t0,var(--team0,var(--v-lume))); }
+.vidrun.away{ border-left-color:var(--vis-t1,var(--team1,var(--v-lume))); }
+.vidrun-big{ font-family:var(--f-score,ui-monospace); font-size:17px; line-height:1; white-space:nowrap; min-width:52px;
+  color:var(--vis-t0,var(--team0,var(--v-ink))); font-variant-numeric:tabular-nums; }
+.vidrun.away .vidrun-big{ color:var(--vis-t1,var(--team1,var(--v-ink))); }
+.vidrun .vidtxt b{ font-weight:700; }
+.vidrun .vidq{ display:inline; }
+.vidrun-x{ font-size:11.5px; color:var(--v-dim); }
+.vidrun-x b{ color:var(--v-ink); font-weight:600; }
+.vidrun.off{ cursor:not-allowed; opacity:.55; }
+.vidrun.off:hover{ background:transparent; }
+.vidrun:focus-visible{ outline:2px solid var(--v-lume); outline-offset:-2px; }
+@media (max-width:560px){
+  .vidrun{ grid-template-columns:auto minmax(0,1fr); }
+  .vidrun .vidt{ grid-column:1; }
+  .vidrun-big{ grid-column:1; grid-row:2; font-size:15px; }
+  .vidrun .vidtxt{ grid-column:2; grid-row:1 / span 2; }
+  .vidrun .vidq{ display:inline; }
+}
