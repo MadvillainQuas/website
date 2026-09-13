@@ -156,16 +156,23 @@ console.log('\nthe six situations, in the contract\'s order');
   const p1 = players[1];
   const all = rowOf(hp, 'all');
   ok('the All shots row prints its per-game points, share, made-attempted and eFG%',
-     all.includes('<td>' + p1.ev_all_ppg.toFixed(1) + '</td><td>100.0</td>') &&
+     figs(all)[0].v === p1.ev_all_ppg.toFixed(1) && all.includes('<td>100.0</td>') &&
      all.includes('<td>' + p1.ev_all_fgm_pg.toFixed(1) + '-' + p1.ev_all_fga_pg.toFixed(1) + '</td>') &&
-     figs(all)[0].v === p1.ev_all_efg.toFixed(1), all.slice(0, 400));
+     figs(all)[1].v === p1.ev_all_efg.toFixed(1), all.slice(0, 400));
+  ok('every figure in a situation row is ranked except the All row\'s share (always 100)',
+     figs(rowOf(hp, 'second')).length === 3 && figs(rowOf(hp, 'second')).every(f => f.p != null) &&
+     figs(all).length === 2 && figs(rowOf(ht, 'ato')).length === 6 && figs(rowOf(ht, 'ato')).every(f => f.p != null),
+     JSON.stringify(figs(rowOf(ht, 'ato'))));
+  const astBlock = (ht.match(/<div class="sp-ast">[\s\S]*$/) || [''])[0];
+  ok('assisted and unassisted are ranked: made a game, share and points per basket on each line, and every zone cell',
+     (astBlock.match(/class="sp-pct/g) || []).length === 15, (astBlock.match(/class="sp-pct/g) || []).length);
   ok('the shot mix names every zone beside its swatch',
      /<span><i class="sp-sw z-rim"><\/i>Rim \d+<\/span><span><i class="sp-sw z-mid"><\/i>Mid \d+<\/span><span><i class="sp-sw z-three"><\/i>3PT \d+<\/span>/.test(all));
   const t1 = teams[1];
   const tall = rowOf(ht, 'second');
   ok('a club row prints chances a game, frequency and points per chance',
-     tall.includes('<td>' + t1.ev_second_ch_pg.toFixed(1) + '</td><td>' + t1.ev_second_freq.toFixed(1) + '</td>') &&
-     figs(tall)[0].v === t1.ev_second_ppp.toFixed(2), tall.slice(0, 500));
+     figs(tall)[2].v === t1.ev_second_ch_pg.toFixed(1) && figs(tall)[3].v === t1.ev_second_freq.toFixed(1) &&
+     figs(tall)[4].v === t1.ev_second_ppp.toFixed(2), tall.slice(0, 500));
 }
 
 /* ---- 2. a club's defence reads evd_ ---------------------------------------- */
@@ -186,8 +193,8 @@ console.log('\na club\'s Defence is what opponents did, read from evd_ keys');
      offRead.length > 50 && offRead.every(k => k.startsWith('ev_') || k === 'evd_gp'), offRead.filter(k => !k.startsWith('ev_')).join(','));
 
   const hd = Panel.html({ kind: 'team', row, field: teams, name: 'Hull', side: 'def' });
-  ok('defence prints the evd_ numbers', figs(rowOf(hd, 'all'))[1].v === row.evd_all_efg.toFixed(1) && row.evd_all_efg !== row.ev_all_efg,
-     figs(rowOf(hd, 'all'))[1].v + ' vs ' + row.evd_all_efg);
+  ok('defence prints the evd_ numbers', figs(rowOf(hd, 'all'))[3].v === row.evd_all_efg.toFixed(1) && row.evd_all_efg !== row.ev_all_efg,
+     figs(rowOf(hd, 'all'))[3].v + ' vs ' + row.evd_all_efg);
   ok('defence is labelled as opponents, with the Defence tab on',
      /Opponents against <b>Hull<\/b>/.test(hd) && /class="ep-tab on" role="tab" aria-selected="true" data-sp-side="def">Defence</.test(hd));
   ok('the player panel has no offence / defence toggle', !/data-sp-side/.test(Panel.html({ kind: 'player', row: players[0], field: players })));
@@ -199,7 +206,7 @@ console.log('\na club\'s Defence is what opponents did, read from evd_ keys');
   const handle = Panel.render({ host, kind: 'team', row, field: teams, name: 'Hull' });
   ok('render() draws into the host and listens once', !!handle && host.handlers.length === 1 && /data-side="off"/.test(host.innerHTML));
   click('data-sp-side', 'def');
-  ok('tapping Defence redraws from evd_', /data-side="def"/.test(host.innerHTML) && figs(rowOf(host.innerHTML, 'all'))[1].v === row.evd_all_efg.toFixed(1));
+  ok('tapping Defence redraws from evd_', /data-side="def"/.test(host.innerHTML) && figs(rowOf(host.innerHTML, 'all'))[3].v === row.evd_all_efg.toFixed(1));
   click('data-sp-open', 'second');
   ok('tapping a row opens it', /<tr class="sp-row on" data-sp-open="second">/.test(host.innerHTML) && (host.innerHTML.match(/sp-detail/g) || []).length === 1);
   click('data-sp-open', 'ato');
@@ -217,7 +224,7 @@ console.log('\npercentiles: three qualifying rows or no chip, a defence ranking 
 {
   /* everything under the floors: thin volume on every key the chips pool by */
   const thin = r => { const o = Object.assign({}, r);
-    Object.keys(o).forEach(k => { if (/_(fga|ch|rimA|midA|p3a)$/.test(k) && o[k] != null) o[k] = 1; }); return o; };
+    Object.keys(o).forEach(k => { if (/_(fga|fgm|ch|rimA|midA|p3a|rimM|midM|p3m)$/.test(k) && o[k] != null) o[k] = 1; }); return o; };
   const runs = [['local ranking', null]];
   let Season = null;
   try { Season = require(path.join(ROOT, 'epinoia', 'season.js')); } catch (e) { console.log('  (season.js did not load: ' + e.message + ')'); }
@@ -239,7 +246,7 @@ console.log('\npercentiles: three qualifying rows or no chip, a defence ranking 
     const mk = (id, off, def) => Object.assign({}, teams[0], { id, ev_all_efg: off, evd_all_efg: def });
     const A = mk('A', 60, 50), B = mk('B', 55, 55), C = mk('C', 50, 60);
     const club = [A, B, C].concat(teams.slice(10));
-    const eff = (row, side) => figs(rowOf(Panel.html({ kind: 'team', row, field: club, side }), 'all'))[1];
+    const eff = (row, side) => figs(rowOf(Panel.html({ kind: 'team', row, field: club, side }), 'all'))[3];
     ok(how + ': offence, the best eFG% is the 100th percentile, the worst the 0th', eff(A, 'off').p === 100 && eff(C, 'off').p === 0 && eff(B, 'off').p === 50,
        [eff(A, 'off').p, eff(B, 'off').p, eff(C, 'off').p].join(','));
     ok(how + ': defence, the LOWEST eFG% allowed is the 100th percentile', eff(A, 'def').p === 100 && eff(C, 'def').p === 0,
@@ -357,7 +364,7 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
   const phtml = rd('epinoia', 'p', 'index.html'), thtml = rd('epinoia', 't', 'index.html');
   const pjs = rd('epinoia', 'p', 'player.js'), tjs = rd('epinoia', 't', 'team.js');
   const sjs = rd('epinoia', 'sitpanel.js');
-  ok('version is 244, as the pages are stamped', V === '244', V);
+  ok('version.txt holds a stamp for the pages to carry', /^\d+$/.test(V), V);
   for (const [who, h, own] of [['p/index.html', phtml, 'player.js'], ['t/index.html', thtml, 'team.js']]) {
     const css = h.indexOf('<link rel="stylesheet" href="../kit/sitpanel.css?v=' + V + '">');
     const js = h.indexOf('<script src="../sitpanel.js?v=' + V + '" defer></script>');

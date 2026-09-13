@@ -71,6 +71,10 @@
 .sp-pct.b2{--sp-b:color-mix(in oklch,var(--lume) 60%,var(--amber))}
 .sp-pct.b1{--sp-b:var(--amber)}
 .sp-pct.b0{--sp-b:var(--flare)}
+/* in the situation table every figure carries one, so it sits under its number
+   rather than beside it: six chips side by side pushed the shot mix out of a
+   laptop-width card */
+.sp-tbl td.sp-fig .sp-pct{display:block;width:max-content;margin:3px 0 0 auto}
 
 /* ---- the shot mix: one thin bar, 2px gaps, every part named ---- */
 .sp-diet{display:block;min-width:156px}

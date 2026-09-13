@@ -80,11 +80,28 @@ const ZONES = [
   { z: 'three', label: '3PT', M: 'p3m',  A: 'p3a',  apg: 'p3_apg',  pct: 'p3_pct',  sh: 'p3_sh',  astp: 'p3_astp',  mult: 1.5 }
 ];
 
-/* the percentile floors described at the top, season totals per situation */
-const MIN = {
-  player: { fga: 10, zone: 5 },
-  team:   { fga: 20, zone: 10, ch: 10 }
-};
+/* THE PERCENTILE FLOOR. A rate from a handful of plays is noise, so a row is only
+   ranked, and only ranked against, when its volume in that situation reaches a
+   quarter of the league's typical (median) volume there, and never less than a
+   small minimum. Relative on purpose: the situations differ by an order of
+   magnitude. A club's season of after-timeout sets is a fraction of its second
+   chances, so one fixed floor (it was 20 attempts / 10 chances) hid every
+   after-timeout chip for the first month, while still letting a player's pair of
+   second-chance shots rank in a big situation. */
+const MIN = { player: 5, team: 3 };
+const REL = 0.25;
+const FLOORS = typeof WeakMap === 'function' ? new WeakMap() : null;
+function floorOf(field, volKey, kind) {
+  let byField = FLOORS ? FLOORS.get(field) : null;
+  if (FLOORS && !byField) { byField = new Map(); FLOORS.set(field, byField); }
+  const tag = volKey + '|' + kind;
+  if (byField && byField.has(tag)) return byField.get(tag);
+  const vols = (Array.isArray(field) ? field : []).map(r => r && r[volKey]).filter(v => fin(v) && v > 0).sort((a, b) => a - b);
+  const med = vols.length ? vols[Math.floor(vols.length / 2)] : 0;
+  const f = Math.max(MIN[kind], Math.ceil(REL * med));
+  if (byField) byField.set(tag, f);
+  return f;
+}
 
 const prefix = (kind, side) => (kind === 'team' && side === 'def' ? 'evd_' : 'ev_');
 
@@ -141,6 +158,14 @@ function rankIn(field, row, key, volKey, min, low) {
   return fin(p) ? { p, n: R.n } : null;
 }
 
+/* rank one figure on this panel's row: the floor comes from the volume key, the
+   direction from the side (a defence ranks low-is-good) unless flip turns it over */
+function rank(o, key, volKey, unit, flip) {
+  const min = floorOf(o.field, volKey, o.kind);
+  const low = flip ? !o.low : o.low;
+  return chip(rankIn(o.field, o.row, key, volKey, min, low), o, min + '+ ' + unit);
+}
+
 /* the small number beside a rate, banded the way the percentile bars are */
 function chip(r, o, floor) {
   if (!r) return '';
@@ -189,21 +214,27 @@ function head(o) {
     th('Shot mix', 'share of the attempts at the rim, from mid-range and from three', 'sp-mix') + '</tr>';
 }
 
+/* EVERY FIGURE IN A ROW IS RANKED, the volumes as well as the rates. A rate is
+   pooled by its own volume (eFG% by attempts, PPP by chances); a volume or a
+   share by the whole season's shooting, so a club with a thin sample does not
+   rank on how often something happened to it. The All row's share and frequency
+   are 100 for everyone and carry no rank. */
 function rowHTML(o, S) {
-  const row = o.row, base = o.pre + S.k + '_', on = o.open === S.k, M = MIN[o.kind];
+  const row = o.row, base = o.pre + S.k + '_', on = o.open === S.k;
   const fga = row[base + 'fga'];
   const cls = 'sp-row' + (S.k === 'all' ? ' ref' : '') + (on ? ' on' : '') + (fin(fga) && fga > 0 ? '' : ' none');
   const inSit = S.k === 'all' ? '' : ' in this situation';
-  const efg = chip(rankIn(o.field, row, base + 'efg', base + 'fga', M.fga, o.low), o, M.fga + '+ attempts' + inSit);
-  let cells = '<td>' + f1(row[base + 'ppg']) + '</td><td>' + f1(row[base + 'pts_sh']) + '</td>';
+  const whole = o.pre + 'all_fga', seasonShots = 'attempts in the season';
+  const fig = (v, c) => '<td class="sp-fig">' + v + c + '</td>';
+  let cells = fig(f1(row[base + 'ppg']), rank(o, base + 'ppg', whole, seasonShots)) +
+    (S.k === 'all' ? '<td>' + f1(row[base + 'pts_sh']) + '</td>' : fig(f1(row[base + 'pts_sh']), rank(o, base + 'pts_sh', whole, seasonShots)));
   if (o.kind === 'team') {
-    const ppp = chip(rankIn(o.field, row, base + 'ppp', base + 'ch', M.ch, o.low), o,
-      M.ch + (S.k === 'ato' ? '+ possessions' : '+ chances') + inSit);
-    cells += '<td>' + f1(row[base + 'ch_pg']) + '</td><td>' + f1(row[base + 'freq']) + '</td>' +
-      '<td class="sp-fig">' + f2(row[base + 'ppp']) + ppp + '</td>';
+    cells += fig(f1(row[base + 'ch_pg']), rank(o, base + 'ch_pg', whole, seasonShots)) +
+      (S.k === 'all' ? '<td>' + f1(row[base + 'freq']) + '</td>' : fig(f1(row[base + 'freq']), rank(o, base + 'freq', whole, seasonShots))) +
+      fig(f2(row[base + 'ppp']), rank(o, base + 'ppp', base + 'ch', (S.k === 'ato' ? 'possessions' : 'chances') + inSit));
   }
   cells += '<td>' + ma(row[base + 'fgm_pg'], row[base + 'fga_pg']) + '</td>' +
-    '<td class="sp-fig">' + f1(row[base + 'efg']) + efg + '</td>' +
+    fig(f1(row[base + 'efg']), rank(o, base + 'efg', base + 'fga', 'attempts' + inSit)) +
     '<td class="sp-mix">' + dietHTML(row, base, null, 'of the attempts') + '</td>';
   return '<tr class="' + cls + '" data-sp-open="' + S.k + '">' +
     '<th scope="row" class="sp-k"><button type="button" class="sp-open" aria-expanded="' + on + '">' +
@@ -215,14 +246,13 @@ function rowHTML(o, S) {
    well they went in (ranked), and how much of the situation's shooting it was;
    then the free throws and turnovers the situation also produced. */
 function detailHTML(o, S) {
-  const row = o.row, base = o.pre + S.k + '_', M = MIN[o.kind];
+  const row = o.row, base = o.pre + S.k + '_';
   const tile = (cls, label, value, meta) => '<div class="sp-tile' + cls + '"><div class="sp-tl">' + label + '</div>' +
     '<div class="sp-tv">' + value + '<small>per game</small></div>' + (meta ? '<div class="sp-tm">' + meta + '</div>' : '') + '</div>';
   const zones = ZONES.map(Z => {
-    const r = rankIn(o.field, row, base + Z.pct, base + Z.A, M.zone, o.low);
     return tile(' z', '<i class="sp-sw z-' + Z.z + '"></i>' + Z.label,
       ma(perGame(row[base + Z.M], o.gp), row[base + Z.apg]),
-      'FG <b>' + pc(row[base + Z.pct]) + '</b>' + chip(r, o, M.zone + '+ ' + Z.label + ' attempts' + (S.k === 'all' ? '' : ' in this situation')) +
+      'FG <b>' + pc(row[base + Z.pct]) + '</b>' + rank(o, base + Z.pct, base + Z.A, Z.label + ' attempts' + (S.k === 'all' ? '' : ' in this situation')) +
       '<br><b>' + pc(row[base + Z.sh]) + '</b> of the attempts');
   }).join('');
   const ft = tile(' aux', 'Free throws', ma(perGame(row[base + 'ftm'], o.gp), row[base + 'fta_pg']),
@@ -247,20 +277,29 @@ function assistHTML(o) {
                                   : (made > 0 && fin(uF) ? r1(100 * uF / made) : null));
   const groups = [['ast', 'Assisted'], ['unast', 'Unassisted']];
   const max = Math.max(0, ...groups.map(([g]) => (fin(row[pre + g + '_fgm_pg']) ? row[pre + g + '_fgm_pg'] : 0)));
+  /* Ranked like the table above: the per-game and share figures pooled by the
+     season's made baskets, points per basket by that group's own baskets. The
+     unassisted share is the assisted share read the other way up, so it ranks
+     from the same numbers turned over rather than from a key of its own. */
+  const all = pre + 'all_';
+  const made0 = all + 'fgm';
   const line = ([g, label]) => {
     const b = pre + g + '_', v = row[b + 'fgm_pg'];
     const width = max > 0 && fin(v) ? Math.max(2, 100 * v / max) : 0;
     return '<div class="sp-aline"><div class="sp-al"><b>' + label + '</b><small>' +
-      '<em>' + f1(v) + '</em> made per game · <em>' + pc(share(g)) + '</em> of baskets · ' +
-      '<em>' + f2(row[b + 'ppb']) + '</em> pts per basket</small></div>' +
+      '<em>' + f1(v) + '</em>' + rank(o, b + 'fgm_pg', made0, 'made baskets in the season') + ' made per game · ' +
+      '<em>' + pc(share(g)) + '</em>' + rank(o, pre + 'ast_sh', made0, 'made baskets in the season', g === 'unast') + ' of baskets · ' +
+      '<em>' + f2(row[b + 'ppb']) + '</em>' + rank(o, b + 'ppb', b + 'fgm', label.toLowerCase() + ' baskets') + ' pts per basket</small></div>' +
       '<div class="sp-abar">' + dietHTML(row, b, width, 'of the makes') + '</div></div>';
   };
-  const all = pre + 'all_';
+  /* a zone's eFG% is its FG% times what a make is worth, so one rank serves both */
   const zrow = Z => {
     const A = row[all + Z.A], Mk = row[all + Z.M];
     const efg = fin(A) && A > 0 && fin(Mk) ? r1(100 * Mk * Z.mult / A) : null;
+    const shot = rank(o, all + Z.pct, all + Z.A, Z.label + ' attempts');
     return '<tr><th scope="row" class="sp-k"><i class="sp-sw z-' + Z.z + '"></i>' + Z.label + '</th>' +
-      '<td>' + pc(row[pre + Z.astp]) + '</td><td>' + pc(row[all + Z.pct]) + '</td><td>' + pc(efg) + '</td></tr>';
+      '<td>' + pc(row[pre + Z.astp]) + rank(o, pre + Z.astp, all + Z.M, Z.label + ' makes') + '</td>' +
+      '<td>' + pc(row[all + Z.pct]) + shot + '</td><td>' + pc(efg) + shot + '</td></tr>';
   };
   return '<div class="sp-ast"><div class="sp-sub">Assisted and unassisted baskets' + (o.side === 'def' ? ' allowed' : '') + '</div>' +
     groups.map(line).join('') +
@@ -308,10 +347,8 @@ function html(opts) {
     field: Array.isArray(O.field) ? O.field : [],
     open: SIT_KEYS.indexOf(O.open) >= 0 ? O.open : null
   };
-  const M = MIN[kind];
-  const floors = kind === 'team'
-    ? 'PPP among teams with ' + M.ch + '+ chances, eFG% ' + M.fga + '+ attempts, a zone ' + M.zone + '+'
-    : 'among players with ' + M.fga + '+ attempts (' + M.zone + '+ in a zone)';
+  const floors = 'among ' + (kind === 'team' ? 'teams' : 'players') + ' with at least a quarter of the league’s usual volume ' +
+    'for that figure (never under ' + MIN[kind] + '); hover a number for its pool';
   return shell(top +
     '<div class="ep-xscroll sp-scroll"><table class="sp-tbl ' + kind + '">' +
       '<thead>' + head(o) + '</thead><tbody>' + SITS.map(S => rowHTML(o, S)).join('') + '</tbody></table></div>' +
