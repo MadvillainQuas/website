@@ -71,8 +71,17 @@ async function main() {
 
      The actual rule is can_read_game_detail: a final game's events are public,
      an unfinished one's are not. Both halves are asserted. */
+  /* ...EXCEPT A LIVE GAME IN A LEAGUE THAT PUBLISHES LIVE (leagues.public_live), whose
+     log is public while it is played: that is how a fan follows it. The probe picking
+     "any unfinished game" failed every evening a public league had a game on (2026-09-13,
+     all night) while the policy was doing exactly what it says. So an unfinished game is
+     sorted by its league's flag: hidden unless it is live in a public_live league, and
+     one that is must be readable. */
   const finalIds = await (await rest('games?select=id&status=eq.final&limit=1')).json().catch(() => []);
-  const openIds  = await (await rest('games?select=id&status=in.(scheduled,live)&limit=1')).json().catch(() => []);
+  const openAll  = await (await rest('games?select=id,status,competitions(seasons(leagues(public_live)))&status=in.(scheduled,live)&limit=200')).json().catch(() => []);
+  const liveIsPublic = g => g.status === 'live' && !!(g.competitions && g.competitions.seasons && g.competitions.seasons.leagues && g.competitions.seasons.leagues.public_live);
+  const openIds  = (Array.isArray(openAll) ? openAll : []).filter(g => !liveIsPublic(g));
+  const publicLive = (Array.isArray(openAll) ? openAll : []).find(liveIsPublic);
 
   if (finalIds?.[0]) {
     const pub = await rows(`game_events?game_id=eq.${finalIds[0].id}&select=id&limit=5`);
@@ -87,6 +96,10 @@ async function main() {
     ok('anon reads no events of an unfinished game', hid.n === 0, `rows=${hid.n}`);
   } else {
     console.log('  SKIP  no unfinished game to probe');
+  }
+  if (publicLive) {
+    const pl = await rows(`game_events?game_id=eq.${publicLive.id}&select=id&limit=5`);
+    ok('...but anon CAN follow a live game in a public_live league', pl.ok, `status ok=${pl.ok} rows=${pl.n}`);
   }
 
   console.log('\nwrites that must be refused:');
