@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-15T08:42:21.849188+00:00",
+"updated": "2026-09-15T16:48:59.323698+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2563,7 +2563,7 @@
 "id": "2887017",
 "home": "Signs Express Falkirk Fury",
 "away": "Newcastle Knights",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-12T13:00:00+00:00",
 "venue": "Grangemouth Sports Complex",
 "homeScore": null,
