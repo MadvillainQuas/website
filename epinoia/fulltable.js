@@ -500,9 +500,23 @@ function render(opts) {
   let sortDir = -1;
   let search = '';
   let minGames = opts.minGames != null ? opts.minGames : 0;
+  let minMinutes = 0;                     // the low-minutes cut, off until asked for
+  let teamPick = '';                      // one club, or every club
+  let posPick = '';                       // guards / wings / bigs, or every position
+  let byPos = false;                      // rank each column within the player's position
   let heat = opts.heat !== false;
   let extra = new Set();          // columns added by hand on top of the preset
   let removed = new Set();        // and ones taken away
+
+  const SE = () => (typeof window !== 'undefined' ? window.EpinoiaSeason : null);
+  /* the groups are cut over the whole table once, not per row (season.js positionGroups) */
+  let posMap = null;
+  const posGroups = () => {
+    const S = SE();
+    if (!posMap && S && S.positionGroups) posMap = S.positionGroups(rows);
+    return posMap;
+  };
+  const groupOf = r => { const m = posGroups(); return m ? (m.get(r.id) || null) : null; };
 
   const idCols = CAT.filter(c => c.g.includes('id'));
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
@@ -530,6 +544,39 @@ function render(opts) {
     mg.style.width = '78px'; mg.title = 'minimum games played';
     mg.addEventListener('input', () => { minGames = parseInt(mg.value, 10) || 0; draw(); });
     bar.append(el('span', 'ft-count', 'min gp'), mg);
+
+    /* THE LOW-MINUTES CUT. A season table's noise is almost all in the players who
+       barely played: a 2-for-2 night is a 100% shooter until somebody is asked to
+       have played. Thirty minutes is the usual first cut, and it is a switch rather
+       than a box to type in because that is the question people actually ask. */
+    const MIN_CUT = 30;
+    const cut = el('button', 'ep-btn', MIN_CUT + '+ min');
+    cut.type = 'button'; cut.style.cssText = 'font-size:9px;padding:8px 12px';
+    cut.title = 'hide players with fewer than ' + MIN_CUT + ' minutes on the season';
+    cut.addEventListener('click', () => {
+      minMinutes = minMinutes ? 0 : MIN_CUT;
+      cut.classList.toggle('pri', !!minMinutes); draw();
+    });
+    bar.appendChild(cut);
+
+    /* one club, or one position group, out of whoever is in the table */
+    const teamSel = el('select', 'ep-input');
+    teamSel.style.cssText = 'font-size:10px;max-width:160px';
+    teamSel.title = 'show one club';
+    const teamNames = [...new Set(rows.map(r => r.teamName).filter(Boolean))].sort();
+    [['', 'every club']].concat(teamNames.map(t => [t, t])).forEach(([v, l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l; teamSel.appendChild(o);
+    });
+    teamSel.addEventListener('change', () => { teamPick = teamSel.value; draw(); });
+    if (teamNames.length > 1) bar.appendChild(teamSel);
+
+    const posSel = el('select', 'ep-input');
+    posSel.style.cssText = 'font-size:10px;max-width:140px';
+    posSel.title = 'show one position group, by the calculated position corrected with the listed one';
+    const posOpts = [['', 'every position']].concat((SE() && SE().POS_GROUPS ? SE().POS_GROUPS : []).map(g => [g[0], g[1]]));
+    posOpts.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; posSel.appendChild(o); });
+    posSel.addEventListener('change', () => { posPick = posSel.value; draw(); });
+    if (posOpts.length > 1) bar.appendChild(posSel);
   }
 
   const heatBtn = el('button', 'ep-btn' + (heat ? ' pri' : ''), 'heat map');
@@ -539,6 +586,20 @@ function render(opts) {
     heat = !heat; heatBtn.classList.toggle('pri', heat); draw();
   });
   bar.appendChild(heatBtn);
+
+  /* ADJUSTED FOR POSITION: the same percentiles, taken within the player's own
+     position group rather than the whole competition, so a centre's assist rate is
+     read against centres. The colouring is the only thing that changes -- every
+     number in the table is what it was. */
+  if (!isTeam) {
+    const posBtn = el('button', 'ep-btn' + (byPos ? ' pri' : ''), 'adjust for position');
+    posBtn.type = 'button'; posBtn.style.cssText = 'font-size:9px;padding:8px 12px';
+    posBtn.title = 'shade each column against the player’s own position group';
+    posBtn.addEventListener('click', () => {
+      byPos = !byPos; posBtn.classList.toggle('pri', byPos); draw();
+    });
+    bar.appendChild(posBtn);
+  }
 
   const colsBtn = el('button', 'ep-btn', 'columns');
   colsBtn.type = 'button'; colsBtn.style.cssText = 'font-size:9px;padding:8px 12px';
@@ -601,14 +662,22 @@ function render(opts) {
 
   function view() {
     let v = rows.filter(r => (r.gp || 0) >= minGames);
+    if (minMinutes) v = v.filter(r => (r.min || 0) >= minMinutes);
+    if (teamPick) v = v.filter(r => r.teamName === teamPick);
+    if (posPick) v = v.filter(r => groupOf(r) === posPick);
     if (search) v = v.filter(r =>
       ((r.name || '') + ' ' + (r.teamName || '')).toLowerCase().includes(search));
     const c = CAT.find(x => x.k === sortKey) || CAT[3];
     v.sort((a, b) => {
       const x = sortVal(c, a), y = sortVal(c, b);
       if (c.text) return String(x || '').localeCompare(String(y || '')) * (sortDir === -1 ? 1 : -1);
-      const xa = x == null ? -Infinity : x, ya = y == null ? -Infinity : y;
-      return (ya - xa) * (sortDir === -1 ? 1 : -1);
+      /* A PLAYER WITH NO NUMBER SINKS, WHICHEVER WAY THE COLUMN IS SORTED. Sorting a
+         dash as minus infinity put every player who has not taken a three at the top
+         of "worst 3P%", which is not what anyone means by sorting a column: an empty
+         cell is not a low value, it is an absent one. */
+      const xn = x == null || !isFinite(x), yn = y == null || !isFinite(y);
+      if (xn || yn) return xn && yn ? 0 : (xn ? 1 : -1);
+      return (y - x) * (sortDir === -1 ? 1 : -1);
     });
     return v;
   }
@@ -759,7 +828,7 @@ function render(opts) {
     if (heat && window.EpinoiaSeason) {
       const keys = cols.filter(c => c.heat).map(c => c.k);
       const low  = cols.filter(c => c.heat && c.low).map(c => c.k);
-      ranks = window.EpinoiaSeason.percentiles(v, keys, low);
+      ranks = window.EpinoiaSeason.percentiles(v, keys, low, byPos ? groupOf : null);
     }
 
     const t = el('table', 'ft');

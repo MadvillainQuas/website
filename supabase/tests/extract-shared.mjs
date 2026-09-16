@@ -62,7 +62,7 @@ const FILES = [
     out: join(repo, 'supabase', 'functions', '_shared', 'season.js'),
     global: 'EpinoiaSeason',
     names: ['players', 'teams', 'percentiles', 'teamLine', 'attachBPM', 'POSS',
-            'SIT_FIELDS', 'SIT_AFIELDS']
+            'SIT_FIELDS', 'SIT_AFIELDS', 'positionValue', 'positionGroup', 'positionGroups', 'positionLabel', 'POS_GROUPS']
   },
   /* The match-report writer, so the Edge Function that finalises a game can
      write the report with the SAME code the public page renders it with. If

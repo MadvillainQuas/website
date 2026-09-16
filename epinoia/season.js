@@ -615,23 +615,91 @@ function finishTeam(A) {
    screen. Computed here rather than in the view so every page ranks the same
    way, and so a column that is better when LOW (turnovers, opponent rating)
    ranks correctly rather than backwards. */
-function percentiles(rows, keys, lowerIsBetter) {
+/* ---------------------------------------------------------------- position ---
+   WHAT POSITION A PLAYER ACTUALLY PLAYED, for ranking him against his own kind.
+
+   Two sources, and neither alone is enough. The LISTED position is what the club
+   typed into the roster, which is right about the shape of the player and says
+   nothing about the season he had; on this platform it is also often absent, and
+   never finer than G / F / C. The BPM POSITION is worked out from what he did --
+   rebounds, assists, blocks, steals and fouls as a share of his team's -- which
+   is the better witness to how he was used, and is already regressed towards the
+   middle by fifty minutes of prior so twelve minutes cannot make a centre of
+   anybody (bpm.js estimatePosition).
+
+   So the calculation leads and the listing corrects it: three parts estimate to
+   one part listed, and the listing is skipped entirely when there is none. The
+   number runs 1 (point guard) to 5 (centre), and the three groups below are the
+   ones this data can actually support -- with a couple of hundred players in a
+   competition, five buckets would rank a man against six others. */
+const LISTED_POS = { pg: 1, 'point guard': 1, g: 1.5, guard: 1.5, sg: 2, 'shooting guard': 2,
+  gf: 2.5, 'g/f': 2.5, wing: 3, sf: 3, 'small forward': 3, f: 3.5, forward: 3.5,
+  fc: 4.5, 'f/c': 4.5, pf: 4, 'power forward': 4, c: 5, centre: 5, center: 5, big: 5 };
+const POS_GROUPS = [['G', 'guards', 2.5], ['F', 'wings', 4], ['C', 'bigs', Infinity]];
+
+function positionValue(row) {
+  if (!row) return null;
+  const calc = (typeof row.bpm_pos === 'number' && isFinite(row.bpm_pos)) ? row.bpm_pos : null;
+  const listed = LISTED_POS[String(row.position || '').trim().toLowerCase()];
+  if (calc == null) return listed == null ? null : listed;
+  return listed == null ? calc : 0.75 * calc + 0.25 * listed;
+}
+/* the group a row belongs to, or null when there is nothing to go on */
+function positionGroup(row) {
+  const v = positionValue(row);
+  if (v == null) return null;
+  return (POS_GROUPS.find(g => v < g[2]) || POS_GROUPS[POS_GROUPS.length - 1])[0];
+}
+const positionLabel = g => { const f = POS_GROUPS.find(x => x[0] === g); return f ? f[1] : ''; };
+
+/* THE GROUPS ARE CUT WHERE THE COMPETITION ACTUALLY SPLITS, not at 2.5 and 4 on the
+   nominal scale. The calculated position is regressed towards the middle by fifty
+   minutes of prior, so a real league's values bunch: this one runs from 2.25 at the
+   tenth percentile to 3.7 at the ninetieth, and fixed cuts put five players in six
+   of nobody and everybody else in one bucket -- which is not a position adjustment,
+   it is the same pool with a different name. Thirds of the field keep the pools even
+   and the meaning intact: the third of the competition that plays most like guards,
+   the third that plays most like bigs, and the wings between them. Ties break by the
+   id so the cut is the same on every redraw. */
+function positionGroups(rows) {
+  const out = new Map();
+  const rank = (rows || []).map(r => ({ id: r.id, v: positionValue(r) })).filter(x => x.id != null && x.v != null);
+  if (rank.length < 3) return out;
+  rank.sort((a, b) => (a.v - b.v) || String(a.id).localeCompare(String(b.id)));
+  const n = rank.length, cut1 = Math.floor(n / 3), cut2 = Math.floor(2 * n / 3);
+  rank.forEach((x, i) => { out.set(x.id, i < cut1 ? 'G' : i < cut2 ? 'F' : 'C'); });
+  return out;
+}
+
+/* `groupOf` ranks a row only against the rows it shares a group with -- the
+   position adjustment. A group of fewer than three is left unranked, exactly as a
+   whole table of fewer than three is: a percentile over two players says nothing. */
+function percentiles(rows, keys, lowerIsBetter, groupOf) {
   const low = new Set(lowerIsBetter || []);
   const out = new Map();
+  const pools = new Map();                              // group key -> rows
+  rows.forEach(r => {
+    const g = groupOf ? groupOf(r) : '';
+    if (g == null) return;                              // no group, no rank
+    if (!pools.has(g)) pools.set(g, []);
+    pools.get(g).push(r);
+  });
   keys.forEach(k => {
-    const vals = rows.map(r => r[k]).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
-    if (vals.length < 3) return;                       // a rank over two players says nothing
     const table = new Map();
-    rows.forEach(r => {
-      const v = r[k];
-      if (v == null || !isFinite(v)) return;
-      let below = 0;
-      for (let i = 0; i < vals.length; i++) if (vals[i] < v) below++; else break;
-      let p = 100 * below / (vals.length - 1 || 1);
-      if (low.has(k)) p = 100 - p;
-      table.set(r.id, Math.max(0, Math.min(100, p)));
+    pools.forEach(pool => {
+      const vals = pool.map(r => r[k]).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
+      if (vals.length < 3) return;                     // a rank over two players says nothing
+      pool.forEach(r => {
+        const v = r[k];
+        if (v == null || !isFinite(v)) return;
+        let below = 0;
+        for (let i = 0; i < vals.length; i++) if (vals[i] < v) below++; else break;
+        let p = 100 * below / (vals.length - 1 || 1);
+        if (low.has(k)) p = 100 - p;
+        table.set(r.id, Math.max(0, Math.min(100, p)));
+      });
     });
-    out.set(k, table);
+    if (table.size) out.set(k, table);
   });
   return out;
 }
@@ -692,5 +760,6 @@ function attachBPM(playerRows, teamRows, teamOfPlayer) {
   return playerRows;
 }
 
-return { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS };
+return { players, teams, percentiles, teamLine, attachBPM, POSS, SIT_FIELDS, SIT_AFIELDS,
+         positionValue, positionGroup, positionGroups, positionLabel, POS_GROUPS };
 }));

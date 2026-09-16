@@ -163,6 +163,14 @@ const BAR_GROUPS = [
 const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov',
                  'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
 
+/* ADJUSTED FOR POSITION: the same bars, ranked inside his own position group.
+   A centre's assist rate against every player in the competition says only that he
+   is a centre; against other centres it says whether he passes. The group comes
+   from season.js positionGroup -- the calculated position corrected by the listed
+   one -- and the choice is remembered for the next profile opened. */
+let barsByPos = false;
+try { barsByPos = localStorage.getItem('epinoia_bars_pos') === '1'; } catch (_) { /* default */ }
+
 function paintBars(mine, field) {
   const host = $('#bars'); host.textContent = '';
   if (!mine || field.length < 3) {
@@ -170,9 +178,30 @@ function paintBars(mine, field) {
       'Percentiles appear once enough of the competition has played.'));
     return;
   }
+  const SE = window.EpinoiaSeason;
   const keys = BAR_GROUPS.flatMap(([, rows]) => rows.map(r => r[0]));
-  const ranks = window.EpinoiaSeason.percentiles(field, keys, BAR_LOW);
-  $('#barNote').textContent = 'vs ' + field.length + ' players';
+  const posMap = barsByPos && SE.positionGroups ? SE.positionGroups(field) : null;
+  const group = posMap ? (posMap.get(mine.id) || null) : null;
+  const ranks = SE.percentiles(field, keys, BAR_LOW, group ? (r => posMap.get(r.id) || null) : null);
+  const pool = group ? field.filter(r => posMap.get(r.id) === group) : field;
+  $('#barNote').textContent = 'vs ' + pool.length + ' ' +
+    (group ? (SE.positionLabel ? SE.positionLabel(group) : 'players') : 'players');
+
+  /* the switch sits above the bars, where the note it changes is */
+  const sw = el('div', 'barswitch');
+  const btn = el('button', 'ep-btn' + (barsByPos ? ' pri' : ''), 'adjust for position');
+  btn.type = 'button';
+  btn.title = group || !barsByPos
+    ? 'rank him against players of his own position rather than the whole competition'
+    : 'his position could not be worked out, so the bars stay against everybody';
+  btn.addEventListener('click', () => {
+    barsByPos = !barsByPos;
+    try { localStorage.setItem('epinoia_bars_pos', barsByPos ? '1' : '0'); } catch (_) { /* fine */ }
+    paintBars(mine, field);
+  });
+  sw.appendChild(btn);
+  if (barsByPos && !group) sw.appendChild(el('span', 'barswitch-note', 'no position for this player'));
+  host.appendChild(sw);
 
   const wrap = el('div', 'bars');
   BAR_GROUPS.forEach(([title, rows]) => {
