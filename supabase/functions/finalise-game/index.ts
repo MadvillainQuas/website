@@ -160,9 +160,32 @@ Deno.serve(async (req) => {
 
   if (!gameId) return json({ error: 'gameId required' }, 400);
 
-  // authorisation is evaluated as the CALLER, so RLS decides — not this code
-  const { data: allowed } = await (isWorker ? admin : caller).from('games').select('id,status').eq('id', gameId).maybeSingle();
+  /* SEEING A GAME IS NOT BEING ALLOWED TO CHANGE IT.
+
+     This used to be the whole check: read the row as the caller and carry on
+     if RLS returned it. But can_read_game (0005) makes every scheduled and
+     every final game public, and a live one too where the league has
+     public_live on — so a fan's account passed, and with this function's
+     service role could reopen any final game (deleting its box score and
+     lineups) or finalise somebody else's live one.
+
+     The read stays, because it is still how a game the caller cannot even see
+     is refused, and it brings back the status. The question that decides it is
+     the one the database already answers for every other write to a game:
+     may_score_game (a platform admin, an official on this game, an
+     administrator or statistician of its league) or can_manage_game (which
+     adds the creator of an ad-hoc game). Both are asked as the CALLER. A
+     failed call leaves data null, which is a refusal, not a pass. */
+  const { data: allowed } = await (isWorker ? admin : caller).from('games')
+    .select('id,status,competition_id').eq('id', gameId).maybeSingle();
   if (!allowed) return json({ error: 'not your game' }, 403);
+  if (!isWorker) {
+    const [{ data: scorer }, { data: manager }] = await Promise.all([
+      caller.rpc('may_score_game', { p_game: gameId }),
+      caller.rpc('can_manage_game', { p_game: gameId })
+    ]);
+    if (scorer !== true && manager !== true) return json({ error: 'not your game' }, 403);
+  }
 
   // --------------------------------------------------------------- reopen ---
   if (reopen) {
@@ -172,7 +195,15 @@ Deno.serve(async (req) => {
     await admin.from('lineup_stints').delete().eq('game_id', gameId);
     await admin.from('games').update({ status: 'live', finalised_at: null, finalised_by: null }).eq('id', gameId);
     await admin.from('audit_log').insert({ actor: user.id, action: 'reopen', subject: 'game', subject_id: gameId });
-    return json({ ok: true, status: 'live' });
+    /* The table counts final games only, so a reopened one has to leave it
+       until it is finalised again, which rebuilds it once more. Not fatal: the
+       game is reopened either way, and the response says the table is stale. */
+    const warnings: string[] = [];
+    if (allowed.competition_id) {
+      const { error } = await admin.rpc('recompute_standings', { p_competition: allowed.competition_id });
+      if (error) warnings.push('standings could not be rebuilt: ' + error.message);
+    }
+    return json({ ok: true, status: 'live', warnings });
   }
 
   if (allowed.status === 'final') return json({ error: 'already final' }, 409);

@@ -304,7 +304,9 @@ function mount(opts) {
      throwing over — the events are safely in either way. */
   async function finalise(gameId) {
     try {
-      const { error } = await opts.sb.functions.invoke('finalise-game', { body: { game_id: gameId } });
+      /* gameId, as the function reads it. This sent game_id, which the function
+         answered with 400 "gameId required", so no import was ever finalised. */
+      const { error } = await opts.sb.functions.invoke('finalise-game', { body: { gameId } });
       return !error;
     } catch (_) { return false; }
   }

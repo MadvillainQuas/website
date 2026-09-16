@@ -233,7 +233,12 @@ ok('the consoles were read and call something', uniq.length > 10, String(uniq.le
        body out of pg_proc and prepend the check, so the guard never appears in
        the function's own CREATE statement. A migration that names the function
        beside the guard helper is the record of that. */
-    const wrapped = migSrc.some(([, t]) => {
+    const wrapped = migSrc.some(([f, t]) => {
+      /* ...and only a wrap that comes AFTER the definition that ships. 0086
+         replaced recompute_standings with a body copied from before 0074's
+         wrap, which removed the guard, and this still passed on 0074 alone:
+         a wrap only guards the body that existed when it ran. */
+      if (f <= d.file) return false;
       /* The name must sit in the loop that DOES the wrapping — an `execute src`
          block — not merely somewhere in a migration that also mentions the
          guard. A first version accepted the latter, so removing a function from
