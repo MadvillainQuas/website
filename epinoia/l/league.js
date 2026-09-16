@@ -449,7 +449,11 @@ async function renderLeaders() {
     host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
     filename: (league.slug || 'league') + '-leaders',
     rows: S.players,
-    playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
+    playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
+    /* the same on-request RAPM as the season statistics page: every stint in the scope */
+    rapm: window.EpinoiaRAPM
+      ? (onProgress => window.EpinoiaRAPM.season(EpinoiaData, S.games.map(g => g.id), onProgress))
+      : null
   });
 }
 

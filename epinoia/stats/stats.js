@@ -53,7 +53,13 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
         host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
         filename: league.slug + '-season-stats',
         rows: S.players,
-        playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
+        playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
+        /* RAPM on request: it needs every stint of the scope, which means reading the
+           logs of every game in it, so it is not paid for by somebody who only wanted
+           points per game. The table's button calls this and puts the answer on the rows. */
+        rapm: window.EpinoiaRAPM
+          ? (onProgress => window.EpinoiaRAPM.season(D, S.games.map(g => g.id), onProgress))
+          : null
       });
     }
 

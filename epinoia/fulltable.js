@@ -167,6 +167,16 @@ const P = [
      bare "ON eFG% 54.1" told a reader nothing without the off number beside it;
      "+4.2" is the claim itself. The raw on and off values stay on the row for
      anything that wants them, they just are not columns any more. */
+  /* RAPM, FAR LEFT OF BOTH GROUPS AND EMPTY UNTIL ASKED FOR. It is the one number here
+     that cannot be added up from a box score -- it is a regression over every stint of the
+     competition -- so it is computed on the press of a button, and reads as dashes until
+     then. DRAPM is the raw coefficient: a defender's column is -1, so HIGHER IS BETTER. */
+  { k:'rapm',  l:'RAPM',  g:['onoff','advanced'], fmt:r=>sgn1(r.rapm),  heat:1, lead:1, ord:{onoff:-3, advanced:-3},
+    t:'regularized adjusted plus-minus, points per 100 possessions — press calc RAPM' },
+  { k:'orapm', l:'ORAPM', g:['onoff','advanced'], fmt:r=>sgn1(r.orapm), heat:1, ord:{onoff:-2, advanced:-2},
+    t:'the offensive half of RAPM' },
+  { k:'drapm', l:'DRAPM', g:['onoff','advanced'], fmt:r=>sgn1(r.drapm), heat:1, ord:{onoff:-1, advanced:-1},
+    t:'the defensive half of RAPM — higher is better defence' },
   { k:'diff_net',  l:'NET ±',   g:['onoff'], fmt:r=>sgn(r.diff_net),  heat:1, lead:1, signed:1 },
   { k:'diff_ortg', l:'ORTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_ortg), heat:1, signed:1 },
   { k:'diff_drtg', l:'DRTG ±',  g:['onoff'], fmt:r=>sgn(r.diff_drtg), heat:1, signed:1, low:1 },
@@ -599,6 +609,40 @@ function render(opts) {
       byPos = !byPos; posBtn.classList.toggle('pri', byPos); draw();
     });
     bar.appendChild(posBtn);
+  }
+
+  /* CALC RAPM. The page hands over a function that reads the season's logs and comes
+     back with a coefficient per player; this only asks for it, says how far along it is,
+     and puts the numbers on the rows. Pressed twice, it recomputes rather than refusing:
+     a scope may have changed under it. */
+  if (!isTeam && typeof opts.rapm === 'function') {
+    const rb = el('button', 'ep-btn', 'calc RAPM');
+    rb.type = 'button'; rb.style.cssText = 'font-size:9px;padding:8px 12px';
+    rb.title = 'read every stint of the competition and regress it: RAPM, ORAPM and DRAPM';
+    rb.addEventListener('click', async () => {
+      if (rb.disabled) return;
+      rb.disabled = true; rb.classList.remove('pri');
+      const say = t => { rb.textContent = t; };
+      say('reading…');
+      try {
+        const res = await opts.rapm((done, total) => say('reading ' + done + '/' + total));
+        const map = res && res.rapm ? res.rapm : res;
+        let hit = 0;
+        rows.forEach(r => {
+          const v = map && map.get ? map.get(r.id) : null;
+          if (!v) { r.rapm = r.orapm = r.drapm = null; return; }
+          r.rapm = v.rapm; r.orapm = v.orapm; r.drapm = v.drapm; hit++;
+        });
+        say('calc RAPM'); rb.classList.toggle('pri', hit > 0);
+        rb.title = hit + ' players from ' + ((res && res.stints) || 0) + ' stints' +
+          (res && res.lambda ? ', lambda ' + Math.round(res.lambda) : '');
+        draw();
+      } catch (e) {
+        console.warn('[rapm]', e);
+        say('calc RAPM'); rb.title = 'could not be computed: ' + (e && e.message ? e.message : e);
+      } finally { rb.disabled = false; }
+    });
+    bar.appendChild(rb);
   }
 
   const colsBtn = el('button', 'ep-btn', 'columns');
