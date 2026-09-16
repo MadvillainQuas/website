@@ -283,12 +283,17 @@ function assistHTML(o) {
      from the same numbers turned over rather than from a key of its own. */
   const all = pre + 'all_';
   const made0 = all + 'fgm';
+  /* A PLAYER'S ASSISTED SHARE RANKS THE OTHER WAY UP: a basket somebody else created is
+     the easier one, so the least assisted scoring is the rarer skill and takes the top of
+     the scale, and the unassisted share with it. A CLUB's is left alone -- there the same
+     number is ball movement, and a defence is already ranked by less allowed. */
+  const selfMade = o.kind === 'player';
   const line = ([g, label]) => {
     const b = pre + g + '_', v = row[b + 'fgm_pg'];
     const width = max > 0 && fin(v) ? Math.max(2, 100 * v / max) : 0;
     return '<div class="sp-aline"><div class="sp-al"><b>' + label + '</b><small>' +
       '<em>' + f1(v) + '</em>' + rank(o, b + 'fgm_pg', made0, 'made baskets in the season') + ' made per game · ' +
-      '<em>' + pc(share(g)) + '</em>' + rank(o, pre + 'ast_sh', made0, 'made baskets in the season', g === 'unast') + ' of baskets · ' +
+      '<em>' + pc(share(g)) + '</em>' + rank(o, pre + 'ast_sh', made0, 'made baskets in the season', (g === 'unast') !== selfMade) + ' of baskets · ' +
       '<em>' + f2(row[b + 'ppb']) + '</em>' + rank(o, b + 'ppb', b + 'fgm', label.toLowerCase() + ' baskets') + ' pts per basket</small></div>' +
       '<div class="sp-abar">' + dietHTML(row, b, width, 'of the makes') + '</div></div>';
   };
@@ -298,7 +303,7 @@ function assistHTML(o) {
     const efg = fin(A) && A > 0 && fin(Mk) ? r1(100 * Mk * Z.mult / A) : null;
     const shot = rank(o, all + Z.pct, all + Z.A, Z.label + ' attempts');
     return '<tr><th scope="row" class="sp-k"><i class="sp-sw z-' + Z.z + '"></i>' + Z.label + '</th>' +
-      '<td>' + pc(row[pre + Z.astp]) + rank(o, pre + Z.astp, all + Z.M, Z.label + ' makes') + '</td>' +
+      '<td>' + pc(row[pre + Z.astp]) + rank(o, pre + Z.astp, all + Z.M, Z.label + ' makes', selfMade) + '</td>' +
       '<td>' + pc(row[all + Z.pct]) + shot + '</td><td>' + pc(efg) + shot + '</td></tr>';
   };
   return '<div class="sp-ast"><div class="sp-sub">Assisted and unassisted baskets' + (o.side === 'def' ? ' allowed' : '') + '</div>' +

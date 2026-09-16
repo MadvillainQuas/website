@@ -368,19 +368,23 @@ function evColumns(CAT, team) {
      attempts, and each group is read by points per basket and where its baskets came from. */
   const g = ['ev_assist'];
   const col = (k, l, t, x) => CAT.push(Object.assign({ k, l, g, t, fmt:r=>e1(r[k]), heat:1 }, x));
+  /* A PLAYER'S ASSISTED SHARE RANKS THE OTHER WAY UP: a basket somebody else created is
+     the easier one, so the least assisted scoring is the rarer skill and takes the top of
+     the scale. A CLUB's is left as it is -- there the same number is ball movement. */
+  const selfMade = team ? {} : { low: 1 };
   col('ev_ast_fgm_pg',   'AST FG/G', 'assisted baskets per game');
   col('ev_unast_fgm_pg', 'UN FG/G',  'unassisted baskets per game');
-  col('ev_ast_sh',       '%AST',     'share of baskets that were assisted');
-  col('ev_ast_pts_sh',   '%PTS AST', 'share of the points scored that came off an assisted basket');
+  col('ev_ast_sh',       '%AST',     'share of baskets that were assisted', selfMade);
+  col('ev_ast_pts_sh',   '%PTS AST', 'share of the points scored that came off an assisted basket', selfMade);
   col('ev_ast_ppb',      'PPB AST',  'points per assisted basket', { fmt:r=>e2(r.ev_ast_ppb) });
   col('ev_unast_ppb',    'PPB UN',   'points per unassisted basket', { fmt:r=>e2(r.ev_unast_ppb) });
   col('ev_all_efg',      'eFG%',     'effective field goal %, every shot');
   col('ev_all_rim_pct',  'RIM%',     'FG% at the rim, every shot');
-  col('ev_rim_astp',     'RIM %AST', 'share of rim makes that were assisted');
+  col('ev_rim_astp',     'RIM %AST', 'share of rim makes that were assisted', selfMade);
   col('ev_all_mid_pct',  'MID%',     'FG% from mid-range, every shot');
-  col('ev_mid_astp',     'MID %AST', 'share of mid-range makes that were assisted');
+  col('ev_mid_astp',     'MID %AST', 'share of mid-range makes that were assisted', selfMade);
   col('ev_all_p3_pct',   '3P%',      'three-point %, every shot');
-  col('ev_p3_astp',      '3 %AST',   'share of made threes that were assisted');
+  col('ev_p3_astp',      '3 %AST',   'share of made threes that were assisted', selfMade);
   col('ev_ast_rim_sh',   'A RIM SH', 'assisted baskets: share at the rim');
   col('ev_ast_mid_sh',   'A MID SH', 'assisted baskets: share from mid-range');
   col('ev_ast_p3_sh',    'A 3 SH',   'assisted baskets: share from three');

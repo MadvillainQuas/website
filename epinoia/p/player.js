@@ -154,7 +154,14 @@ const BAR_GROUPS = [
                   ['diff_efg','eFG% ±'],['diff_tov','TOV% ±'],['diff_oreb','OREB% ±']]]
 ];
 /* the ones where a smaller number is the better performance */
-const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov'];
+/* ASSISTED% RANKS THE OTHER WAY UP. Every other bar here reads high-is-better, but a
+   basket somebody else created is the easier one to make: between two players shooting
+   the same percentage from the same distance, the one doing it off his own dribble is
+   the rarer player. So the LEAST assisted scoring takes the top percentile, and the bar
+   fills for the share he created himself. (For a CLUB the opposite is true — ball
+   movement — which is why this list is the player profile's alone.) */
+const BAR_LOW = ['tov_pct', 'diff_vs_efg', 'diff_drtg', 'diff_tov',
+                 'ev_ast_pts_sh', 'ev_rim_astp', 'ev_mid_astp', 'ev_p3_astp'];
 
 function paintBars(mine, field) {
   const host = $('#bars'); host.textContent = '';

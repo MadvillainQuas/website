@@ -255,6 +255,20 @@ console.log('\npercentiles: three qualifying rows or no chip, a defence ranking 
     ok(how + ': a defence chip says less allowed ranks higher', /less allowed ranks higher/.test(Panel.html({ kind: 'team', row: A, field: club, side: 'def' })));
     const twoClubs = [A, B].concat(teams.slice(10));
     ok(how + ': two qualifying clubs -> no chip', !/sp-pct/.test(Panel.html({ kind: 'team', row: A, field: twoClubs })));
+
+    /* A PLAYER'S ASSISTED SHARE IS RANKED THE OTHER WAY UP: creating your own is the
+       rarer skill. A club's is not -- there the same number is ball movement. */
+    const astChip = h => { const m = h.match(/<em>[^<]*<\/em><span class="sp-pct b\d"[^>]*>(\d+)<\/span> of baskets/); return m ? +m[1] : null; };
+    const pAst = v => Object.assign({}, players[1], { id: 'pa' + v, ev_ast_sh: v });
+    const pool = [pAst(20), pAst(50), pAst(80)];
+    const chipOf = v => astChip(Panel.html({ kind: 'player', row: pool.find(r => r.ev_ast_sh === v), field: pool }));
+    ok(how + ': the least assisted player is the 100th percentile, the most assisted the 0th',
+       chipOf(20) === 100 && chipOf(80) === 0, [chipOf(20), chipOf(50), chipOf(80)].join(','));
+    const tAst = v => Object.assign({}, teams[1], { id: 'ta' + v, ev_ast_sh: v });
+    const tpool = [tAst(20), tAst(50), tAst(80)];
+    const tChip = v => astChip(Panel.html({ kind: 'team', row: tpool.find(r => r.ev_ast_sh === v), field: tpool }));
+    ok(how + ': a club keeps it the usual way up -- the most assisted is the 100th percentile',
+       tChip(80) === 100 && tChip(20) === 0, [tChip(20), tChip(50), tChip(80)].join(','));
   }
   delete globalThis.EpinoiaSeason;
 }
