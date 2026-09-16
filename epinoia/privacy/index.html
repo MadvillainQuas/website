@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Epinoia">
+<!-- PUBLIC. No gate.js, no topnav.js. Signed out, a request goes through the
+     contact function; signed in, straight to submit_data_request (migration
+     0120, docs/replacement/foundations.md 7.6). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Privacy · Epinoia</title>
+<meta name="description" content="Your data protection rights on Epinoia: see, correct or erase your data, object, or complain, and how long each takes.">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 9px 1px;text-transform:uppercase}
+  .hide{display:none !important}
+
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(34px,7vw,60px);line-height:.88;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .lede{font-family:var(--f-ui);font-size:16px;line-height:1.6;color:var(--ink-2);
+    max-width:64ch;margin:calc(var(--u)*2) 0 0}
+  .hero .who{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-3);margin:calc(var(--u)*2) 0 0}
+  .hero .who a{color:var(--lume)}
+
+  .sec{border-bottom:1px solid var(--rule)}
+  .body{padding:calc(var(--u)*3);max-width:820px}
+  .lab{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+    margin:0 0 10px;padding:0}
+
+  /* the seven kinds: a radio each, the name bold, what it means underneath */
+  fieldset.kinds{border:0;margin:0 0 calc(var(--u)*3);padding:0;min-width:0}
+  .kind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  label.kind{display:flex;gap:10px;align-items:flex-start;background:var(--ground);padding:12px;cursor:pointer;min-width:0}
+  label.kind input{width:18px;height:18px;margin:2px 0 0;flex:none;accent-color:var(--lume);cursor:pointer}
+  label.kind b{display:block;font-family:var(--f-ui);font-weight:700;font-size:14.5px;color:var(--ink)}
+  label.kind small{display:block;font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3);margin-top:3px}
+  label.kind:has(input:checked){box-shadow:inset 3px 0 0 var(--lume);
+    background:color-mix(in oklch,var(--lume) 6%,var(--ground))}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:calc(var(--u)*2)}
+  label.f{display:flex;flex-direction:column;gap:6px;margin-bottom:calc(var(--u)*2);min-width:0}
+  label.f > span{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  label.f .ep-input{width:100%;max-width:none;box-sizing:border-box}
+  textarea.ep-input{min-height:150px;resize:vertical;line-height:1.7}
+  .count{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);text-align:right;margin-top:-8px}
+  .fine{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);margin:0 0 calc(var(--u)*2);max-width:70ch}
+  /* Not display:none: some bots fill anything hidden that way. */
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:calc(var(--u)*2)}
+  .act .ep-btn{min-height:46px}
+
+  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:10px 13px;
+    margin:calc(var(--u)*2) 0 0;border-left:2px solid var(--rule-2);color:var(--ink-2);max-width:70ch}
+  .msg a{color:inherit}
+  .msg.ok{border-left-color:var(--lume);color:var(--lume);background:color-mix(in oklch,var(--lume) 8%,transparent)}
+  .msg.err{border-left-color:var(--flare);color:var(--flare);background:color-mix(in oklch,var(--flare) 8%,transparent)}
+  .msg.warn{border-left-color:var(--amber);color:var(--amber);background:color-mix(in oklch,var(--amber) 8%,transparent)}
+
+  /* the receipt: the reference and the dates, big enough to write down */
+  .done{border:1px solid var(--rule-2);border-top:2px solid var(--lume);background:var(--panel);
+    padding:calc(var(--u)*2) calc(var(--u)*2.5);margin-top:calc(var(--u)*2);max-width:70ch}
+  .done .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+  .done .ref{font-family:var(--f-score);font-size:40px;line-height:1;color:var(--lume);margin:6px 0 0;letter-spacing:.04em}
+  .done p{font-size:14.5px;line-height:1.6;color:var(--ink-2);margin:calc(var(--u)*1.5) 0 0}
+
+  /* a signed-in person's own requests */
+  .mine{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:12px 0;border-top:1px solid var(--rule)}
+  .mine:first-child{border-top:none;padding-top:0}
+  .mine b{font-family:var(--f-ui);font-size:15px}
+  .mine small{display:block;font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3)}
+  .mine .st{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--lume);text-align:right}
+  .mine .st.wait{color:var(--amber)} .mine .st.end{color:var(--ink-3)}
+  .empty{font-family:var(--f-micro);font-size:10px;line-height:1.9;color:var(--ink-3);margin:0;max-width:70ch}
+
+  .faq{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  .faq > div{background:var(--ground);padding:12px 14px}
+  .faq .q{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);line-height:1.8}
+  .faq .a{font-size:14px;line-height:1.6;color:var(--ink-2)}
+  .prose p{font-size:14.5px;line-height:1.65;color:var(--ink-2);margin:0 0 calc(var(--u)*2);max-width:66ch}
+  .prose p b{color:var(--ink)}
+  .prose a{color:var(--aqua)}
+  .contact{border-left:2px solid var(--aqua);padding:10px 14px;margin:0 0 calc(var(--u)*2);
+    background:color-mix(in oklch,var(--aqua) 6%,transparent);font-size:14.5px;line-height:1.6;color:var(--ink);
+    max-width:66ch;word-break:break-word}
+  .contact small{display:block;font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+
+  @media (max-width:560px){
+    .topbar,.hero,.body,footer.foot{padding-left:16px;padding-right:16px}
+    .faq{grid-template-columns:minmax(0,1fr)}
+    .faq .q{padding-bottom:0} .faq .a{padding-top:4px}
+    .mine{grid-template-columns:minmax(0,1fr)}
+    .mine .st{text-align:left}
+    .done .ref{font-size:32px}
+  }
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">privacy</span>
+  </div>
+
+  <header class="hero">
+    <h1>Your data</h1>
+    <p class="lede">
+      What you can ask Epinoia to do with the personal data it holds about you,
+      how long each takes, and the form that reaches the person responsible for
+      data protection. Asking costs nothing.
+    </p>
+    <p class="who" id="who"></p>
+  </header>
+
+  <section class="sec" id="askSec" aria-labelledby="askH">
+    <div class="ep-hdr"><span class="idx">01</span><h2 id="askH">Make a request or a complaint</h2></div>
+    <form class="body" id="form" novalidate>
+      <fieldset class="kinds">
+        <legend class="lab">What do you want to do?</legend>
+        <div class="kind-grid">
+        <label class="kind"><input type="radio" name="kind" value="access" checked>
+          <span><b>See your data</b><small>A copy of what we hold about you, what we use it for, who we share it with and how long we keep it.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="rectification">
+          <span><b>Correct it</b><small>Put right something that is wrong, or complete something that is missing.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="erasure">
+          <span><b>Erase it</b><small>Delete your data where there is no longer a good reason to keep it.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="restriction">
+          <span><b>Restrict it</b><small>Keep your data but stop using it while something is checked or disputed.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="objection">
+          <span><b>Object</b><small>Stop a use of your data, such as publishing your player profile.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="portability">
+          <span><b>Take it elsewhere</b><small>The data you gave us, in a file another service can read.</small></span></label>
+        <label class="kind"><input type="radio" name="kind" value="complaint">
+          <span><b>Complain</b><small>About how your personal data has been collected, used or protected.</small></span></label>
+        </div>
+      </fieldset>
+
+      <div class="grid2">
+        <label class="f"><span>It is about</span>
+          <select class="ep-input" id="capacity">
+            <option value="self">Me</option>
+            <option value="guardian">My child, as their parent or guardian</option>
+            <option value="representative">Someone I represent (with their authority)</option>
+          </select></label>
+        <label class="f hide" id="tenantRow"><span>Who holds the data</span>
+          <select class="ep-input" id="tenant">
+            <option value="">Epinoia: your account and this site</option>
+          </select></label>
+      </div>
+
+      <div class="grid2" id="outFields">
+        <label class="f"><span>Your name</span>
+          <input class="ep-input" id="name" autocomplete="name" maxlength="120"></label>
+        <label class="f"><span>Your email</span>
+          <input class="ep-input" id="email" type="email" autocomplete="email" inputmode="email" maxlength="200"></label>
+      </div>
+      <p class="fine hide" id="asWho"></p>
+
+      <label class="f"><span>Details</span>
+        <textarea class="ep-input" id="details" maxlength="4000"
+                  placeholder="What you are asking for, and anything that helps us find your data: the league, the club, the name you played under."></textarea></label>
+      <div class="count"><span id="count">0</span> / 4000</div>
+
+      <!-- for the bots. A person never sees or focuses this. -->
+      <div class="hp" aria-hidden="true">
+        <label>Website<input id="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <div class="act"><button class="ep-btn pri" id="send" type="submit">Send the request</button></div>
+      <p class="fine" style="margin-top:calc(var(--u)*2)">
+        We use what you write here only to handle the request. We may ask you to
+        show who you are before we share or change anything, so that nobody else
+        can ask for your data.
+      </p>
+      <div id="msg" class="msg hide" role="alert"></div>
+      <div id="done" class="done hide" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <section class="sec hide" id="mineSec" aria-labelledby="mineH">
+    <div class="ep-hdr"><span class="idx">02</span><h2 id="mineH">Your requests</h2></div>
+    <div class="body"><div id="mine"></div></div>
+  </section>
+
+  <section class="sec" id="timeSec" aria-labelledby="timeH">
+    <div class="ep-hdr"><span class="idx">03</span><h2 id="timeH">How long it takes</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">A request</div>
+        <div class="a">We answer within one month of receiving it. If we need proof of who you are, the month starts when we have it.</div>
+        <div class="q">The clock stops</div>
+        <div class="a">If we have to ask what you mean or which data you want, the days until you reply do not count towards the month.</div>
+        <div class="q">Complex requests</div>
+        <div class="a">A complex request, or several at once, can take up to two further months. If it will, we tell you within the first month, and why.</div>
+        <div class="q">A complaint</div>
+        <div class="a">We acknowledge a complaint within 30 days, aim to resolve it within three months, and tell you what we did.</div>
+        <div class="q">Cost</div>
+        <div class="a">Nothing. We can refuse a request that is plainly unfounded or excessive, or charge a reasonable fee for it; if we do, we say why and how you can challenge it.</div>
+        <div class="q">For a child</div>
+        <div class="a">A parent or guardian can ask on a child&rsquo;s behalf. We may check that you are, and an older child may be asked too, because the data is theirs.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="rightsSec" aria-labelledby="rightsH">
+    <div class="ep-hdr"><span class="idx">04</span><h2 id="rightsH">What each right means</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">See your data</div>
+        <div class="a">A copy of the personal data we hold about you, with what we use it for, who we share it with, how long we keep it and where it came from.</div>
+        <div class="q">Correct it</div>
+        <div class="a">Inaccurate data corrected and incomplete data completed. A result or a box score is a record of what happened: we can correct your name on it, not change the game.</div>
+        <div class="q">Erase it</div>
+        <div class="a">Your data deleted when we no longer need it, when you withdraw a consent we relied on, or when you object and we have no overriding reason to keep it. Some records have to be kept for a time, such as safeguarding or discipline records, and we tell you which and why. Statistics stay, without your name. Erased data can remain in our encrypted backups until they expire, where nobody uses it.</div>
+        <div class="q">Restrict it</div>
+        <div class="a">We keep your data but stop using it, for example while we check whether it is accurate or consider an objection.</div>
+        <div class="q">Object</div>
+        <div class="a">To a use of your data that relies on our legitimate interests, such as a public player profile. We stop unless we have compelling reasons to continue. If it is marketing, we always stop.</div>
+        <div class="q">Take it elsewhere</div>
+        <div class="a">The data you gave us, where we use it with your consent or to provide a service to you, in a common format a computer can read.</div>
+        <div class="q">Complain</div>
+        <div class="a">About anything to do with how your personal data has been handled here. You can also complain to the regulator (below).</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="whoSec" aria-labelledby="whoH">
+    <div class="ep-hdr"><span class="idx">05</span><h2 id="whoH">Who is responsible</h2></div>
+    <div class="body prose">
+      <p>
+        <b>Epinoia</b> is responsible (the &ldquo;data controller&rdquo;) for your
+        account and for what this site does with your data. Where a governing
+        body or an independent league has registered you through Epinoia, that
+        organisation is responsible for its registrations, and you can choose it
+        in the form above.
+      </p>
+      <div class="contact hide" id="dpo"></div>
+      <p id="dpoNone">The form above reaches the person responsible for data protection at Epinoia.</p>
+      <div id="tenantContacts"></div>
+      <p>
+        If you are unhappy with how we handle a request or a complaint, you can
+        complain to the Information Commissioner&rsquo;s Office, the UK
+        regulator, at <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk</a>
+        or on 0303 123 1113. They usually ask you to raise it with us first.
+      </p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="../">&larr; Epinoia</a>
+    <a href="../me/">Your profile</a>
+    <a href="../contact/">Contact</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=254" defer></script>
+<script src="../access.js?v=254" defer></script>
+<script src="privacy.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
+</body>
+</html>

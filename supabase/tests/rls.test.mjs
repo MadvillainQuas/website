@@ -201,6 +201,157 @@ async function main() {
     ok('anon may read access_plans (the price list)', plans.ok, `HTTP ${plans.code}`);
   }
 
+  /* ---- organisations (migration 0119, docs/replacement/foundations.md) ------
+     Skipped as a block until 0119 is applied: PostgREST answers 404 (PGRST202)
+     for org_tree until then, and the tables below would not exist. */
+  console.log('\norganisations (0119): what a signed-out visitor can and cannot reach:');
+  const tree = await rest('rpc/org_tree', { method: 'POST', body: JSON.stringify({}) });
+  const treeBody = await tree.json().catch(() => null);
+  if (tree.status === 404 || treeBody?.code === 'PGRST202') {
+    console.log('  SKIP  0119 not applied yet (org_tree: HTTP ' + tree.status +
+                (treeBody?.code ? ', ' + treeBody.code : '') + ')');
+  } else {
+    ok('anon may call org_tree, and it answers a list', tree.ok && Array.isArray(treeBody),
+       `HTTP ${tree.status} ${JSON.stringify(treeBody)?.slice(0, 160)}`);
+    /* the public sees "affiliated" and the level, never the record behind it */
+    const leaked = (Array.isArray(treeBody) ? treeBody : [])
+      .filter(o => ['reference', 'note', 'settings', 'created_by', 'visible'].some(k => k in o));
+    ok('org_tree carries no affiliation number, note, tenant settings or author', leaked.length === 0,
+       `${leaked.length} rows`);
+
+    const orgRead = await rows('organisations?select=id,name,slug,kind,parent_id,path&limit=5');
+    ok('anon may read organisations (names and structure, like leagues)', orgRead.ok, `HTTP ${orgRead.code}`);
+    const hidden = await rows('organisations?select=id&visible=eq.false&limit=5');
+    ok('anon reads no hidden organisation', hidden.code !== 404 && hidden.n === 0, `HTTP ${hidden.code}, rows=${hidden.n}`);
+
+    /* refused outright (privileges revoked) or zero rows; a 404 would mean the
+       table is missing, which a working org_tree rules out */
+    const aff = await rows('org_affiliations?select=*&limit=5');
+    ok('anon reads no rows from org_affiliations', aff.code !== 404 && (!aff.ok || aff.n === 0),
+       `HTTP ${aff.code}, rows=${aff.n}`);
+
+    const wOrg = await write('organisations',
+      [{ kind: 'national_body', name: 'RLS probe', slug: 'rls-probe-' + Date.now() }]);
+    ok('anon cannot create an organisation', !wOrg.allowed, `HTTP ${wOrg.code}`);
+    const wAff = await write('org_affiliations', [{ org_id: ZERO, to_org_id: ZERO, kind: 'governing_body',
+                                                   season_label: '2026/27', valid_from: '2026-09-01' }]);
+    ok('anon cannot record an affiliation', !wAff.allowed, `HTTP ${wAff.code}`);
+
+    /* against a real row when one is readable: a refusal and "matched nothing"
+       are both quiet otherwise */
+    const realOrg = (await (await rest('organisations?select=id&limit=1')).json().catch(() => []))[0]?.id || ZERO;
+    const pOrg = await rest(`organisations?id=eq.${realOrg}`,
+      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ name: 'RLS probe' }) });
+    const changedOrg = pOrg.ok ? (await pOrg.json().catch(() => [])).length : 0;
+    ok(`anon cannot rename an organisation${realOrg !== ZERO ? ' (real row)' : ' (none to target)'}`,
+       !pOrg.ok || changedOrg === 0, `HTTP ${pOrg.status}, ${changedOrg} rows changed`);
+
+    for (const [fn, body] of [
+      ['organisation_admin', { p_org: null }],
+      ['platform_save_organisation', { p: { kind: 'national_body', name: 'RLS probe' } }],
+      ['platform_move_organisation', { p_org: ZERO, p_parent: ZERO }],
+      ['set_league_organiser', { p_league: ZERO, p_org: ZERO }],
+      ['set_team_club', { p_team: ZERO, p_club: ZERO, p_age_group: null, p_gender: null }],
+      ['record_affiliation', { p: { org_id: ZERO, to_org_id: ZERO, kind: 'governing_body', season_label: '2026/27' } }],
+      ['adopt_clubs', { p_league: ZERO, p_parent: null, p_pick: null }]]) {
+      const r = await rpc(fn, body);
+      ok(`anon cannot call ${fn}`, !r.allowed, `HTTP ${r.code}`);
+    }
+
+    const band = await rest('rpc/age_band_born',
+      { method: 'POST', body: JSON.stringify({ p_band: 18, p_start_year: 2026 }) });
+    const bandBody = await band.json().catch(() => null);
+    ok('anon may call age_band_born, and U18 in 2026/27 is 2008-09-01 to 2010-08-31',
+       band.ok && bandBody === '[2008-09-01,2010-09-01)', `HTTP ${band.status} ${JSON.stringify(bandBody)}`);
+
+    /* the tables that gained columns: select=* still answers, and the new
+       columns are readable like the rest of the row */
+    for (const [t, cols] of [['leagues', 'organiser_id'], ['teams', 'club_id,age_group,gender'],
+                             ['competitions', 'age_group,gender,level,born_from,born_to'],
+                             ['competition_teams', 'id,competition_id,team_id']]) {
+      const star = await rows(`${t}?select=*&limit=1`);
+      const named = await rows(`${t}?select=${cols}&limit=1`);
+      ok(`anon select=* on ${t} still works, and ${cols} can be read`, star.ok && named.ok,
+         `HTTP ${star.code} / ${named.code}`);
+    }
+
+    const realTeam = (await (await rest('teams?select=id&limit=1')).json().catch(() => []))[0]?.id || ZERO;
+    const pTeam = await rest(`teams?id=eq.${realTeam}`,
+      { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ club_id: ZERO, gender: 'open' }) });
+    const changedTeam = pTeam.ok ? (await pTeam.json().catch(() => [])).length : 0;
+    ok(`anon cannot attach a team to a club${realTeam !== ZERO ? ' (real team)' : ' (no teams to target)'}`,
+       !pTeam.ok || changedTeam === 0, `HTTP ${pTeam.status}, ${changedTeam} rows changed`);
+  }
+
+  /* ---- data rights (migration 0120, docs/replacement/foundations.md 3.3, 7.6) --
+     Skipped as a block until 0120 is applied, told by the public dpo_contact
+     setting it seeds: none of its RPCs is callable signed out, so there is no
+     anonymous call whose 404 would say "not applied" rather than "refused".
+     NOTHING HERE WRITES A REQUEST. A real one would sit in the live queue and
+     email the platform owner every time this ran, so the signed-out path is
+     proved by a submission the contact function must refuse for its kind, which
+     only a function that knows about privacy requests says. */
+  console.log('\ndata rights (0120): what a signed-out visitor can and cannot reach:');
+  const dpo = await rest('platform_settings?select=key,value&key=eq.dpo_contact');
+  const dpoBody = dpo.ok ? await dpo.json().catch(() => []) : [];
+  if (!Array.isArray(dpoBody) || dpoBody.length === 0) {
+    console.log('  SKIP  0120 not applied yet (no public dpo_contact setting: HTTP ' + dpo.status + ')');
+  } else {
+    ok('anon may read the dpo_contact setting (the privacy page shows it)', dpoBody.length === 1);
+
+    /* the restricted tables: not in the API at all. Asked for by name in public
+       (where they are not, or where the fallback's prefixed tables hold no
+       privilege), and through the restricted profile, which PostgREST does not
+       expose. Refused outright or zero rows; never rows. */
+    for (const t of ['data_requests', 'retention_schedule', 'restricted_data_requests', 'restricted_retention_schedule']) {
+      const r = await rows(`${t}?select=*&limit=5`);
+      ok(`anon reads nothing from ${t} in the public API`, !r.ok || r.n === 0, `HTTP ${r.code}, rows=${r.n}`);
+    }
+    for (const t of ['data_requests', 'retention_schedule']) {
+      const r = await rest(`${t}?select=*&limit=5`, { headers: { 'Accept-Profile': 'restricted' } });
+      const body = r.ok ? await r.json().catch(() => []) : [];
+      ok(`the restricted schema is not reachable through the API (${t})`,
+         !r.ok || (Array.isArray(body) && body.length === 0), `HTTP ${r.status}`);
+    }
+    const wReq = await write('data_requests', [{ kind: 'access', requester_name: 'RLS probe', requester_email: 'rls@example.invalid' }]);
+    ok('anon cannot insert a request into the table', !wReq.allowed, `HTTP ${wReq.code}`);
+
+    /* the RPCs: submit is for the signed in, intake for the service role, the
+       queue and its actions for platform admins, prune and the reminders for
+       the service role */
+    for (const [fn, body] of [
+      ['submit_data_request', { p_kind: 'access', p_details: 'RLS probe', p_tenant: null }],
+      ['my_data_requests', {}],
+      ['intake_data_request', { p: { kind: 'access', name: 'RLS probe', email: 'rls@example.invalid' } }],
+      ['privacy_queue', { p_tenant: null }],
+      ['update_data_request', { p_id: ZERO, p_action: 'acknowledge', p: {} }],
+      ['prune_audit_log', {}],
+      ['notify_data_requests', {}]]) {
+      const r = await rpc(fn, body);
+      ok(`anon cannot call ${fn}`, !r.allowed, `HTTP ${r.code}`);
+    }
+
+    /* P0.4: an audit row with another account as its actor, or none */
+    const wAudit = await write('audit_log', [{ actor: ZERO, action: 'privacy.request', subject: 'data_request' }]);
+    ok('anon cannot write an audit row', !wAudit.allowed, `HTTP ${wAudit.code}`);
+
+    /* signed out, a request goes through the contact function, which knows the
+       kinds. An unknown one is refused before anything is stored. */
+    const fnRes = await fetch(`${BASE}/functions/v1/contact`, {
+      method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'RLS probe', email: 'rls@example.invalid', body: '',
+                             privacy: { kind: 'rls-probe-not-a-kind', capacity: 'self' } })
+    }).catch(() => null);
+    const fnBody = fnRes ? await fnRes.json().catch(() => ({})) : {};
+    if (!fnRes || fnRes.status === 404) {
+      console.log('  SKIP  the contact function is not deployed (HTTP ' + (fnRes ? fnRes.status : 'unreachable') + ')');
+    } else {
+      ok('signed out, the contact function takes privacy requests (and refuses an unknown kind, storing nothing)',
+         fnRes.status === 400 && /access, erasure, rectification/.test(fnBody.error || ''),
+         `HTTP ${fnRes.status} ${JSON.stringify(fnBody).slice(0, 160)} (an older function answers "Say a little more")`);
+    }
+  }
+
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exitCode = fail ? 1 : 0;
 }

@@ -4,8 +4,9 @@
 
    The league console (../admin.js) is one administrator acting inside one
    league. This is the other half: the person who runs EPINOIA, acting across
-   all of them — accounts, leagues, clubs, moderation, keys, the audit trail
-   and the site-wide switches.
+   all of them — accounts, leagues, the organisations above them, clubs,
+   moderation, the privacy queue, keys, the audit trail and the site-wide
+   switches.
 
    IT DECIDES WHAT TO RENDER, NEVER WHAT IS ALLOWED. Every call is an RPC that
    authorises its own caller in the database (migration 0044), so hiding this
@@ -28,6 +29,7 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 
 let sb = null, me = null, isAdmin = false;
+let hashTabOpened = false;            // a #tab link has been followed this visit
 let leagues = [];                     // cached for the scope pickers
 const PAGE = 40;
 let acctOffset = 0, acctTotal = 0, acctQuery = '';
@@ -124,7 +126,14 @@ async function gate() {
   $('#locked').classList.remove('on');
   $('#console').classList.remove('hide');
   say('');
-  await Promise.all([loadOverview(), loadLeagues()]);
+  /* A link to one tab opens it, once per visit (gate runs again on every auth
+     event): the privacy reminders in the bell link to #priv (migration 0120). */
+  if (!hashTabOpened) {
+    const asked = (location.hash || '').replace(/^#/, '');
+    const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
+    if (tab) { hashTabOpened = true; tab.click(); }
+  }
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -139,7 +148,7 @@ function wire() {
          neither. */
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
-                     plans: loadPlans };
+                     plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -172,6 +181,20 @@ function wire() {
   $('#msgGo').addEventListener('click', loadModeration);
 
   $('#plNew').addEventListener('click', () => openPlanForm(null));
+
+  $('#orgNewKind').addEventListener('change', () => { if (orgs) fillOrgNew(); });
+  $('#orgNewName').addEventListener('input', () => {
+    if (!$('#orgNewSlug').dataset.touched) $('#orgNewSlug').value = orgSlugify($('#orgNewName').value);
+  });
+  $('#orgNewSlug').addEventListener('input', () => { $('#orgNewSlug').dataset.touched = '1'; });
+  $('#orgNewGo').addEventListener('click', newOrg);
+  $('#orgQ').addEventListener('input', () => { if (orgs) drawOrgTree(); });
+  $('#adGo').addEventListener('click', proposeClubs);
+
+  $('#prTenant').addEventListener('change', () => {
+    privTenant = $('#prTenant').value; privOpenId = null; $('#prDetail').textContent = ''; loadPrivacy(); });
+  $('#prClosed').addEventListener('change', () => { if (priv) drawPrivList(); });
+  $('#prGo').addEventListener('click', loadPrivacy);
 
   $('#auGo').addEventListener('click', () => { auOffset = 0; loadAudit(); });
   $('#auAction').addEventListener('change', () => {
@@ -1198,6 +1221,1100 @@ function drawLeaguePlans() {
   host.appendChild(wrap);
 }
 
+/* --------------------------------------------------------- organisations --- */
+/* THE ORGANISATION TREE (migration 0119; docs/replacement/foundations.md
+   sections 3.1, 3.2, 4 and 9). National bodies, regions, local league bodies
+   (associations), clubs, schools and partners, and what hangs on them: who runs
+   each league, which club or school each team belongs to with its age group and
+   gender, and each club's affiliations and accreditation.
+
+   One read, organisation_admin(), draws the whole tree; opening an organisation
+   reads it again with that id for its detail. NOTHING HERE GRANTS ANYBODY
+   ANYTHING yet (organisation roles are 0123).
+
+   THE RULES ARE THE DATABASE'S. Which kind sits under which, that nothing leaves
+   or joins a tenant, what an age group or a season label looks like: the pickers
+   below only offer what it will accept, so a refusal is rare, and when one comes
+   it is shown in the database's own words through rpc(). ORG_PARENT_KINDS is a
+   copy of org_kind_may_parent for the pickers, never a check. */
+let orgs = null;          // organisation_admin() as last read, with an index by id
+let orgOpenId = null;     // the organisation whose detail card is drawn
+let adoptFor = null;      // { league, parent } the drawn proposal was made for
+
+const ORG_KINDS = { national_body: 'national body', region: 'region', association: 'association',
+                    club: 'club', school: 'school', partner: 'partner' };
+const ORG_PARENT_KINDS = {
+  national_body: [null], region: ['national_body'], association: [null, 'national_body', 'region'],
+  club: ['national_body', 'region', 'association'], school: ['national_body', 'region', 'association'],
+  partner: ['national_body']
+};
+const ORGANISER_KINDS = ['national_body', 'region', 'association', 'partner'];
+const CLUB_KINDS = ['club', 'school'];
+const AFFILIATING_KINDS = ['association', 'club', 'school', 'partner'];
+const AFFILIATED_TO_KINDS = ['national_body', 'region', 'association'];
+const ORG_STATUSES = ['pending', 'active', 'suspended', 'lapsed', 'dissolved', 'merged'];
+const ORG_DEAD = ['dissolved', 'merged'];
+const AFF_KINDS = { governing_body: 'governing body (annual affiliation)', league_member: 'league member',
+                    season_invite: 'season invite' };
+const AFF_STATUSES = ['pending', 'active', 'lapsed', 'suspended', 'refused', 'withdrawn'];
+const ACCREDITATION = { none: 'none', level_1: 'Level 1', level_2: 'Level 2' };
+const AGE_GROUPS = [''].concat(Array.from({ length: 16 }, (_, i) => 'U' + (i + 8)), ['senior', 'masters', 'open']);
+const TEAM_GENDERS = ['', 'men', 'women', 'boys', 'girls', 'mixed', 'open'];
+const ADOPT_SKIPPED = {
+  not_a_team: 'not a team', not_in_league: 'no longer in this league',
+  already_linked: 'already belongs to a club', name_length: 'the name must be 2 to 120 characters',
+  bad_slug: 'the address is not valid', slug_taken: 'the address belongs to something that is not a club in this tenant'
+};
+
+/* The address the database would make from a name (org_slug_from), so the
+   create form shows it before it is saved. */
+const orgSlugify = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80).replace(/-+$/, '');
+const orgIndented = o => '  '.repeat(o.depth || 0) + o.name + ' (' + (ORG_KINDS[o.kind] || o.kind) + ')';
+const orgTrail = o => (o.path || []).slice(0, -1).map(id => orgs.byId[id] ? orgs.byId[id].name : '?').join(' › ');
+/* The season a date falls in, written 2026/27: BE's seasons turn on 1 September. */
+const seasonOf = iso => {
+  const d = iso ? new Date(iso + 'T12:00:00') : new Date();
+  const y = d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1;
+  return y + '/' + String((y + 1) % 100).padStart(2, '0');
+};
+
+function orgInput(value, max, placeholder, type) {
+  const i = el('input', 'ep-input');
+  if (type) i.type = type;          // before the value: a date input sanitises what it is given
+  i.value = value == null ? '' : String(value);
+  if (max) i.maxLength = max;
+  if (placeholder) i.placeholder = placeholder;
+  i.autocomplete = 'off';
+  return i;
+}
+function orgSelect(pairs, value) {
+  const s = el('select', 'ep-input');
+  pairs.forEach(([v, label]) => s.appendChild(new Option(label, v)));
+  s.value = value == null ? '' : value;
+  return s;
+}
+function orgField(label, input) {
+  const l = el('label', 'f');
+  l.append(el('span', null, label), input);
+  return l;
+}
+function orgSection(title, hint) {
+  const box = el('div', 'org-sec');
+  box.appendChild(el('div', 'ax-sub', title));
+  if (hint) box.appendChild(el('p', 'ax-hint', hint));
+  return box;
+}
+function orgButton(text, cls) {
+  const b = el('button', 'ep-btn mini' + (cls ? ' ' + cls : ''), text);
+  b.type = 'button';
+  return b;
+}
+
+async function loadOrgs() {
+  const { data, error } = await sb.rpc('organisation_admin', { p_org: null });
+  if (error) {
+    const missing = PLAN_MISSING(error);
+    $('#orgMissing').classList.toggle('hide', !missing);
+    $('#orgWrap').classList.toggle('hide', missing);
+    if (!missing) oops(error);
+    return;
+  }
+  $('#orgMissing').classList.add('hide');
+  $('#orgWrap').classList.remove('hide');
+  const d = data || {};
+  const list = d.organisations || [];
+  orgs = {
+    list,
+    byId: Object.fromEntries(list.map(o => [o.id, o])),
+    leagues: d.leagues || [],
+    counts: d.counts || {},
+    today: d.today || null
+  };
+  drawOrgTiles();
+  fillOrgNew();
+  fillAdopt();
+  if (orgOpenId && !orgs.byId[orgOpenId]) { orgOpenId = null; $('#orgDetail').textContent = ''; }
+  drawOrgTree();
+  if (orgOpenId) await openOrg(orgOpenId);
+}
+
+function drawOrgTiles() {
+  const c = orgs.counts;
+  const host = $('#orgTiles'); host.textContent = '';
+  [
+    [c.organisations, 'organisations'], [c.tenants, 'tenants'], [c.clubs, 'clubs and schools'],
+    [c.leagues_linked, 'leagues with an organiser', 'of ' + Number(c.leagues || 0)],
+    [c.teams_linked, 'teams with a club', 'of ' + Number(c.teams || 0)],
+    [c.affiliated, 'affiliated today'], [c.hidden, 'hidden from the public']
+  ].forEach(([v, label, sub]) => {
+    const n = Number(v || 0);
+    const tile = el('div', 'tile');
+    tile.append(el('div', 'n' + (n ? '' : ' dim'), String(n)), el('div', 'k', label));
+    if (sub) tile.appendChild(el('div', 'sub', sub));
+    host.appendChild(tile);
+  });
+}
+
+/* The parent picker offers only what the chosen kind may sit under. */
+function fillOrgNew() {
+  const kind = $('#orgNewKind').value;
+  const allowed = ORG_PARENT_KINDS[kind] || [];
+  const sel = $('#orgNewParent');
+  const was = sel.value;
+  sel.textContent = '';
+  if (allowed.includes(null)) sel.appendChild(new Option('— none: a tenant (data controller) of its own —', ''));
+  orgs.list.filter(o => allowed.includes(o.kind) && !ORG_DEAD.includes(o.status))
+    .forEach(o => sel.appendChild(new Option(orgIndented(o), o.id)));
+  if (!sel.options.length) {
+    sel.appendChild(new Option('nothing it can sit under yet: create a ' +
+      allowed.map(k => ORG_KINDS[k]).join(' or ') + ' first', ''));
+  }
+  if ([...sel.options].some(op => op.value === was)) sel.value = was;
+}
+
+async function newOrg() {
+  const kind = $('#orgNewKind').value;
+  const parent = $('#orgNewParent').value || null;
+  const name = ($('#orgNewName').value || '').trim();
+  const slug = ($('#orgNewSlug').value || '').trim();
+  if (name.length < 2) return say('An organisation needs a name of at least two characters.', 'err');
+  if (!parent && !(ORG_PARENT_KINDS[kind] || []).includes(null)) {
+    return say('Choose the organisation a ' + ORG_KINDS[kind] + ' sits under.', 'err');
+  }
+  if (!parent && !confirm('Create “' + name + '” as a tenant of its own?\n\n' +
+      'A tenant is a data controller: the people registered anywhere below it will be ' +
+      'its members, and it cannot later be moved inside another tenant from this page.')) return;
+  const payload = { kind, name };
+  if (parent) payload.parent_id = parent;
+  if (slug) payload.slug = slug;
+  $('#orgNewGo').disabled = true;
+  const id = await rpc('platform_save_organisation', { p: payload });
+  $('#orgNewGo').disabled = false;
+  if (!id) return;
+  say('Created ' + name + '.', 'ok');
+  $('#orgNewName').value = ''; $('#orgNewSlug').value = '';
+  delete $('#orgNewSlug').dataset.touched;
+  await loadOrgs();
+  openOrg(id);
+}
+
+function drawOrgTree() {
+  const q = ($('#orgQ').value || '').trim().toLowerCase();
+  const rows = q
+    ? orgs.list.filter(o => o.name.toLowerCase().includes(q) || o.slug.includes(q))
+    : orgs.list;
+  $('#orgCount').textContent = (q ? rows.length + ' of ' : '') + orgs.list.length +
+    ' organisation' + (orgs.list.length === 1 ? '' : 's');
+
+  const body = $('#orgBody'); body.textContent = '';
+  if (!rows.length) {
+    const td = body.insertRow().insertCell(); td.colSpan = 7;
+    td.appendChild(el('div', 'empty', q ? 'Nothing matches “' + q + '”.'
+      : 'No organisations yet. Start with the national body (or an independent league’s association) above.'));
+    return;
+  }
+  rows.forEach(o => {
+    const tr = body.insertRow();
+    if (ORG_DEAD.includes(o.status)) tr.style.opacity = '.55';
+    if (o.id === orgOpenId) tr.classList.add('org-on');
+
+    const c0 = tr.insertCell();
+    const indent = q ? 0 : (o.depth || 0) * 14;
+    const nm = el('div', 'nm');
+    if (indent) nm.appendChild(el('span', 'org-ind', '└ '));
+    nm.appendChild(document.createTextNode(o.name));
+    nm.style.paddingLeft = indent + 'px';
+    const meta = [o.slug];
+    if (!o.visible) meta.push('hidden');
+    if (q && o.depth) meta.push(orgTrail(o));
+    const mt = el('div', 'mt', meta.join(' · '));
+    mt.style.paddingLeft = indent + 'px';
+    c0.append(nm, mt);
+
+    tr.insertCell().appendChild(el('span', 'pill' + (o.parent_id ? '' : ' pa'),
+      (ORG_KINDS[o.kind] || o.kind) + (o.parent_id ? '' : ' · tenant')));
+    tr.insertCell().appendChild(el('span', 'pill' + (o.status === 'active' ? ' la'
+      : o.status === 'pending' ? '' : ' off'), o.status));
+
+    const c3 = tr.insertCell();
+    if (AFFILIATING_KINDS.includes(o.kind)) {
+      c3.appendChild(el('span', 'pill' + (o.affiliated ? ' la' : ''), o.affiliated
+        ? 'affiliated' + (o.accreditation && o.accreditation !== 'none' ? ' · ' + ACCREDITATION[o.accreditation] : '')
+        : 'not affiliated'));
+    } else {
+      c3.appendChild(el('span', 'mt', '—'));
+    }
+    const c4 = tr.insertCell(); c4.className = 'num'; c4.textContent = Number(o.leagues || 0);
+    const c5 = tr.insertCell(); c5.className = 'num'; c5.textContent = Number(o.teams || 0);
+
+    const ac = tr.insertCell(); ac.className = 'ac';
+    const open = orgButton(o.id === orgOpenId ? 'refresh' : 'open');
+    open.addEventListener('click', () => openOrg(o.id));
+    ac.appendChild(open);
+  });
+}
+
+async function openOrg(id) {
+  const d = await rpc('organisation_admin', { p_org: id });
+  if (!d) return;
+  const first = orgOpenId !== id;
+  orgOpenId = id;
+  drawOrgTree();
+  drawOrgDetail(d, first);
+}
+
+function drawOrgDetail(d, scroll) {
+  const o = d.organisation;
+  const host = $('#orgDetail'); host.textContent = '';
+  const card = el('div', 'org-card');
+
+  const head = el('div', 'row');
+  const title = el('div');
+  title.style.minWidth = '0';
+  title.append(
+    el('div', 'org-crumbs', (d.ancestors || []).length
+      ? (d.ancestors || []).map(a => a.name).join(' › ')
+      : 'a tenant: the top of its own tree, and the data controller for everything below it'),
+    el('div', 'org-title', o.name));
+  const sp = el('span'); sp.style.marginLeft = 'auto';
+  const close = orgButton('close');
+  close.addEventListener('click', () => { orgOpenId = null; host.textContent = ''; drawOrgTree(); });
+  head.append(title, sp, close);
+  card.appendChild(head);
+
+  card.appendChild(orgDetailsSection(o));
+  if (o.parent_id) card.appendChild(orgMoveSection(o));
+  if ((d.children || []).length) card.appendChild(orgChildrenSection(d.children));
+  if (ORGANISER_KINDS.includes(o.kind)) card.appendChild(orgLeaguesSection(o, d.leagues || []));
+  if (CLUB_KINDS.includes(o.kind)) card.appendChild(orgTeamsSection(o, d.teams || []));
+  if (AFFILIATING_KINDS.includes(o.kind) || (d.affiliations || []).length) {
+    card.appendChild(orgAffiliationsSection(o, d.affiliations || [], d.today || orgs.today));
+  }
+
+  host.appendChild(card);
+  if (scroll) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function orgDetailsSection(o) {
+  const box = orgSection('Details');
+  const parentKind = o.parent_id && orgs.byId[o.parent_id] ? orgs.byId[o.parent_id].kind : null;
+
+  const name = orgInput(o.name, 120);
+  const short = orgInput(o.short_name, 40);
+  const slug = orgInput(o.slug, 80);
+  /* only the kinds that may sit where it sits; what already sits below it is
+     the database's to check */
+  const kind = orgSelect(Object.keys(ORG_KINDS)
+    .filter(k => (ORG_PARENT_KINDS[k] || []).includes(parentKind))
+    .map(k => [k, ORG_KINDS[k]]), o.kind);
+  const status = orgSelect(ORG_STATUSES.map(s => [s, s]), o.status);
+  const merged = orgSelect([['', '— merged into —']].concat(orgs.list
+    .filter(x => x.tenant_id === o.tenant_id && x.id !== o.id && !(x.path || []).includes(o.id)
+                 && !ORG_DEAD.includes(x.status))
+    .map(x => [x.id, orgIndented(x)])), o.merged_into || '');
+  const mergedField = orgField('MERGED INTO', merged);
+  const syncMerged = () => mergedField.classList.toggle('hide', status.value !== 'merged');
+  status.addEventListener('change', syncMerged);
+  syncMerged();
+
+  const visLabel = el('label', 'sw');
+  const visible = el('input'); visible.type = 'checkbox'; visible.checked = o.visible !== false;
+  visLabel.append(visible, document.createTextNode(' shown to the public (a directory, org_tree)'));
+
+  const website = orgInput(o.website, 300, 'https://…');
+  const nation = orgSelect([['', '—'], ['ENG', 'England'], ['SCO', 'Scotland'], ['WAL', 'Wales'],
+                            ['NIR', 'Northern Ireland']], o.home_nation || '');
+  const country = orgInput(o.country || 'GB', 2);
+  const tz = orgInput(o.time_zone || 'Europe/London', 60);
+  const regno = orgInput(o.registered_no, 40, 'company, charity or CASC number');
+  const logo = orgInput(o.logo_path, 500);
+
+  const r1 = el('div', 'row');
+  r1.append(orgField('NAME', name), orgField('SHORT NAME', short), orgField('ADDRESS (SLUG)', slug));
+  const r2 = el('div', 'row');
+  r2.append(orgField('KIND', kind), orgField('STATUS', status), mergedField);
+  const r3 = el('div', 'row');
+  r3.append(orgField('WEBSITE', website), orgField('HOME NATION', nation), orgField('COUNTRY', country));
+  const r4 = el('div', 'row');
+  r4.append(orgField('TIME ZONE', tz), orgField('REGISTERED NUMBER', regno), orgField('LOGO PATH', logo));
+  box.append(r1, r2, r3, r4, visLabel);
+
+  let settings = null;
+  if (!o.parent_id) {
+    settings = el('textarea', 'ep-input');
+    settings.rows = 5;
+    settings.value = JSON.stringify(o.settings || {}, null, 2);
+    box.appendChild(orgField('TENANT SETTINGS (JSON)', settings));
+    box.appendChild(el('p', 'ax-hint',
+      'Only a tenant has settings. Allowed: minor_age (18), own_login_min_age (13), ' +
+      'publication_consent_age (16), age_cutoff ("09-01"), merge_min_fields (3), ' +
+      'import_special_category (false), sensitive_fields ([]), equality_condition ' +
+      '("explicit_consent"), dpo_contact. A key left out takes the default in brackets.'));
+  }
+
+  const row = el('div', 'row');
+  const save = orgButton('save details', 'pri');
+  row.appendChild(save);
+  box.appendChild(row);
+
+  save.addEventListener('click', async () => {
+    const payload = {
+      id: o.id, name: name.value, short_name: short.value, slug: slug.value, kind: kind.value,
+      status: status.value, visible: visible.checked, website: website.value,
+      home_nation: nation.value, country: country.value, time_zone: tz.value,
+      registered_no: regno.value, logo_path: logo.value
+    };
+    if (status.value === 'merged') {
+      if (!merged.value) return say('Choose the organisation it merged into.', 'err');
+      payload.merged_into = merged.value;
+    }
+    if (settings) {
+      try { payload.settings = JSON.parse(settings.value.trim() || '{}'); }
+      catch (_) { return say('The tenant settings are not valid JSON.', 'err'); }
+    }
+    if (slug.value.trim() !== o.slug &&
+        !confirm('Change the address of “' + o.name + '” from ' + o.slug + ' to ' +
+                 slug.value.trim() + '? Links to the old address stop working.')) return;
+    if (ORG_DEAD.includes(status.value) && status.value !== o.status &&
+        !confirm('Mark “' + o.name + '” as ' + status.value + '? Nothing new can be put under it, ' +
+                 'and a club that is ' + status.value + ' takes no teams.')) return;
+    save.disabled = true;
+    const id = await rpc('platform_save_organisation', { p: payload });
+    save.disabled = false;
+    if (!id) return;
+    say('Saved ' + payload.name.trim() + '.', 'ok');
+    loadOrgs();
+  });
+  return box;
+}
+
+function orgMoveSection(o) {
+  const box = orgSection('Where it sits',
+    'Moves it, and everything below it, under another organisation in the same tenant. ' +
+    'Leaving the tenant, or becoming one, changes who controls its data, and is not done here.');
+  const allowed = ORG_PARENT_KINDS[o.kind] || [];
+  const sel = orgSelect(orgs.list
+    .filter(x => x.tenant_id === o.tenant_id && allowed.includes(x.kind) && x.id !== o.id
+                 && !(x.path || []).includes(o.id) && (!ORG_DEAD.includes(x.status) || x.id === o.parent_id))
+    .map(x => [x.id, orgIndented(x)]), o.parent_id);
+  sel.style.flex = '1 1 240px';
+  const go = orgButton('move');
+  const row = el('div', 'row');
+  row.append(sel, go);
+  box.appendChild(row);
+  go.addEventListener('click', async () => {
+    if (!sel.value || sel.value === o.parent_id) return say('It already sits there.', 'ok');
+    const to = orgs.byId[sel.value];
+    const below = orgs.list.filter(x => x.id !== o.id && (x.path || []).includes(o.id)).length;
+    if (!confirm('Move “' + o.name + '”' + (below ? ' and the ' + below + ' organisation' +
+        (below === 1 ? '' : 's') + ' below it' : '') + ' under “' + (to ? to.name : '?') + '”?')) return;
+    go.disabled = true;
+    const r = await rpc('platform_move_organisation', { p_org: o.id, p_parent: sel.value });
+    go.disabled = false;
+    if (!r) return;
+    say('Moved ' + o.name + (r.descendants ? ', with ' + r.descendants + ' below it' : '') + '.', 'ok');
+    loadOrgs();
+  });
+  return box;
+}
+
+function orgChildrenSection(children) {
+  const box = orgSection('Directly below it');
+  const row = el('div', 'row');
+  children.forEach(c => {
+    const b = orgButton(c.name + ' · ' + (ORG_KINDS[c.kind] || c.kind) + (ORG_DEAD.includes(c.status) ? ' · ' + c.status : ''));
+    b.addEventListener('click', () => openOrg(c.id));
+    row.appendChild(b);
+  });
+  box.appendChild(row);
+  return box;
+}
+
+function orgLeaguesSection(o, list) {
+  const box = orgSection('Leagues it runs',
+    'Which organisation runs each league. It changes nobody’s rights yet; once organisation roles ' +
+    'arrive, the officers of an organisation that runs a league administer it.');
+  if (!list.length) box.appendChild(el('div', 'empty', 'It runs no league yet.'));
+  list.forEach(l => {
+    const row = el('div', 'row');
+    const t = el('div');
+    t.append(el('div', 'nm', l.name), el('div', 'mt', l.slug));
+    const sp = el('span'); sp.style.marginLeft = 'auto';
+    const un = orgButton('no longer runs it', 'danger');
+    un.addEventListener('click', async () => {
+      if (!confirm('Record that “' + o.name + '” no longer runs ' + l.name + '?')) return;
+      const r = await rpc('set_league_organiser', { p_league: l.id, p_org: null });
+      if (r) { say(l.name + ' has no organiser recorded now.', 'ok'); loadOrgs(); }
+    });
+    row.append(t, sp, un);
+    box.appendChild(row);
+  });
+
+  if (!ORG_DEAD.includes(o.status)) {
+    const others = orgs.leagues.filter(l => l.organiser_id !== o.id);
+    const sel = orgSelect([['', '— a league it runs —']].concat(others.map(l => [l.id,
+      l.name + (l.organiser_id ? ' (now run by ' + (orgs.byId[l.organiser_id] ? orgs.byId[l.organiser_id].name : '?') + ')' : '')])), '');
+    sel.style.flex = '1 1 240px';
+    const add = orgButton('runs this league');
+    const row = el('div', 'row');
+    row.append(sel, add);
+    box.appendChild(row);
+    add.addEventListener('click', async () => {
+      const l = others.find(x => x.id === sel.value);
+      if (!l) return say('Choose the league.', 'err');
+      if (l.organiser_id && !confirm(l.name + ' is recorded as run by “' +
+          (orgs.byId[l.organiser_id] ? orgs.byId[l.organiser_id].name : '?') + '”. Record “' + o.name + '” instead?')) return;
+      add.disabled = true;
+      const r = await rpc('set_league_organiser', { p_league: l.id, p_org: o.id });
+      add.disabled = false;
+      if (r) { say(l.name + ' is run by ' + o.name + '.', 'ok'); loadOrgs(); }
+    });
+  }
+  return box;
+}
+
+function orgTeamsSection(o, teams) {
+  const box = orgSection('Teams',
+    'A team is one side in one league. A club with a side in the NBL and another in a local league ' +
+    'has two teams here, with the same age group and gender.');
+  const ageOptions = AGE_GROUPS.map(a => [a, a || '— age group —']);
+  const genderOptions = TEAM_GENDERS.map(g => [g, g || '— gender —']);
+
+  if (!teams.length) {
+    box.appendChild(el('div', 'empty', 'No team belongs to it yet.'));
+  } else {
+    const wrap = el('div', 'scroll');
+    const t = el('table', 'tbl');
+    const hr = t.createTHead().insertRow();
+    ['Team', 'League', 'Age group', 'Gender', ''].forEach(h => hr.appendChild(el('th', null, h)));
+    const body = t.createTBody();
+    teams.forEach(tm => {
+      const tr = body.insertRow();
+      const c0 = tr.insertCell();
+      c0.append(el('div', 'nm', tm.name), el('div', 'mt', tm.slug));
+      tr.insertCell().appendChild(el('span', 'mt', tm.league_name || '— no league —'));
+      const age = orgSelect(ageOptions, tm.age_group || '');
+      const gender = orgSelect(genderOptions, tm.gender || '');
+      tr.insertCell().appendChild(age);
+      tr.insertCell().appendChild(gender);
+      const ac = tr.insertCell(); ac.className = 'ac';
+      const save = orgButton('save');
+      save.addEventListener('click', async () => {
+        save.disabled = true;
+        const r = await rpc('set_team_club', { p_team: tm.id, p_club: o.id,
+          p_age_group: age.value || null, p_gender: gender.value || null });
+        save.disabled = false;
+        if (r) { say(tm.name + ' saved.', 'ok'); loadOrgs(); }
+      });
+      const un = orgButton('unlink', 'danger');
+      un.addEventListener('click', async () => {
+        if (!confirm('Unlink ' + tm.name + ' from “' + o.name + '”? Its age group and gender are kept.')) return;
+        const r = await rpc('set_team_club', { p_team: tm.id, p_club: null,
+          p_age_group: tm.age_group || null, p_gender: tm.gender || null });
+        if (r) { say(tm.name + ' no longer belongs to ' + o.name + '.', 'ok'); loadOrgs(); }
+      });
+      ac.append(save, un);
+    });
+    wrap.appendChild(t);
+    box.appendChild(wrap);
+  }
+
+  if (ORG_DEAD.includes(o.status)) return box;
+  /* finding a team to add: the existing platform_teams search (0044) */
+  const find = el('div', 'row');
+  find.style.marginTop = '10px';
+  const q = orgInput('', 80, 'find a team to add');
+  q.classList.add('grow');
+  const go = orgButton('search');
+  find.append(q, go);
+  const results = el('div');
+  box.append(find, results);
+  const search = async () => {
+    const rows = await rpc('platform_teams', { p_search: q.value.trim() });
+    results.textContent = '';
+    if (!rows) return;
+    const mine = new Set(teams.map(x => x.id));
+    const list = rows.filter(r => !mine.has(r.id)).slice(0, 25);
+    if (!list.length) { results.appendChild(el('div', 'empty', 'No other team matches that.')); return; }
+    list.forEach(r => {
+      const row = el('div', 'row');
+      const t = el('div');
+      t.style.flex = '1 1 200px';
+      t.append(el('div', 'nm', r.name), el('div', 'mt', r.league_name + ' · ' + r.slug));
+      const age = orgSelect(ageOptions, '');
+      const gender = orgSelect(genderOptions, '');
+      age.style.flex = gender.style.flex = '0 1 130px';
+      const link = orgButton('add to ' + (o.short_name || o.name));
+      link.addEventListener('click', async () => {
+        link.disabled = true;
+        const out = await rpc('set_team_club', { p_team: r.id, p_club: o.id,
+          p_age_group: age.value || null, p_gender: gender.value || null });
+        link.disabled = false;
+        if (out) { say(r.name + ' now belongs to ' + o.name + '.', 'ok'); loadOrgs(); }
+      });
+      row.append(t, age, gender, link);
+      results.appendChild(row);
+    });
+  };
+  go.addEventListener('click', search);
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  return box;
+}
+
+function affiliationWords(r) {
+  return (r.warnings || []).length ? ' ' + r.warnings.join(' ') : '';
+}
+
+function orgAffiliationsSection(o, affs, today) {
+  const box = orgSection('Affiliations',
+    'Records, not rights. The annual affiliation to the governing body carries the Level 1 or 2 ' +
+    'accreditation; a league membership and a season invite are its relationships with local ' +
+    'leagues. The public sees only whether it is affiliated today, and at what level.');
+
+  /* a national body's list holds every club affiliated to it; a page of
+     editable rows that long helps nobody, so the newest seasons come first
+     (organisation_admin's order) and the rest are counted */
+  const SHOWN = 200;
+  if (!affs.length) {
+    box.appendChild(el('div', 'empty', 'No affiliation recorded.'));
+  } else {
+    if (affs.length > SHOWN) {
+      box.appendChild(el('p', 'ax-hint', 'Showing the first ' + SHOWN + ' of ' + affs.length +
+        ' affiliations; open a club to see or change one of the others.'));
+    }
+    const wrap = el('div', 'scroll');
+    const t = el('table', 'tbl');
+    const hr = t.createTHead().insertRow();
+    ['Season', 'Affiliation', 'Status', 'Accreditation', 'From', 'To', 'Number', '']
+      .forEach(h => hr.appendChild(el('th', null, h)));
+    const body = t.createTBody();
+    affs.slice(0, SHOWN).forEach(a => {
+      const tr = body.insertRow();
+      tr.insertCell().appendChild(el('span', 'nm', a.season_label));
+      const c1 = tr.insertCell();
+      c1.appendChild(el('div', 'nm', (AFF_KINDS[a.kind] || a.kind)));
+      c1.appendChild(el('div', 'mt', (a.direction === 'out' ? 'to ' + a.to_org_name : 'from ' + a.org_name) +
+        (a.season_name ? ' · ' + (a.league_name ? a.league_name + ' ' : '') + a.season_name : '') +
+        (a.in_force ? ' · in force today' : '')));
+      const status = orgSelect(AFF_STATUSES.map(s => [s, s]), a.status);
+      tr.insertCell().appendChild(status);
+      const c3 = tr.insertCell();
+      let accred = null;
+      if (a.kind === 'governing_body') {
+        accred = orgSelect(Object.entries(ACCREDITATION), a.accreditation);
+        c3.appendChild(accred);
+      } else {
+        c3.appendChild(el('span', 'mt', '—'));
+      }
+      const from = orgInput(a.valid_from, null, null, 'date');
+      const to = orgInput(a.valid_to, null, null, 'date');
+      const ref = orgInput(a.reference, 40);
+      ref.style.width = '96px';
+      tr.insertCell().appendChild(from);
+      tr.insertCell().appendChild(to);
+      tr.insertCell().appendChild(ref);
+      const ac = tr.insertCell(); ac.className = 'ac';
+      const save = orgButton('save');
+      save.addEventListener('click', async () => {
+        const p = { id: a.id, status: status.value, valid_from: from.value, valid_to: to.value || null,
+                    reference: ref.value };
+        if (accred) p.accreditation = accred.value;
+        save.disabled = true;
+        const r = await rpc('record_affiliation', { p });
+        save.disabled = false;
+        if (r) { say('Affiliation saved.' + affiliationWords(r), (r.warnings || []).length ? 'err' : 'ok'); loadOrgs(); }
+      });
+      ac.appendChild(save);
+    });
+    wrap.appendChild(t);
+    box.appendChild(wrap);
+  }
+
+  if (!AFFILIATING_KINDS.includes(o.kind) || ORG_DEAD.includes(o.status)) return box;
+
+  /* a new one */
+  box.appendChild(el('div', 'ax-sub', 'Record an affiliation'));
+  const toOrg = orgSelect([['', '— affiliated to —']].concat(orgs.list
+    .filter(x => AFFILIATED_TO_KINDS.includes(x.kind) && x.id !== o.id && !ORG_DEAD.includes(x.status))
+    .map(x => [x.id, orgIndented(x) + (x.tenant_id !== o.tenant_id ? ' · another tenant' : '')])), '');
+  const kind = orgSelect(Object.entries(AFF_KINDS), 'governing_body');
+  const label = orgInput(seasonOf(today), 7, '2026/27');
+  const season = orgSelect([['', '— the season —']], '');
+  const seasonField = orgField('SEASON INVITED TO', season);
+  const from = orgInput(today || '', null, null, 'date');
+  const to = orgInput('', null, null, 'date');
+  const status = orgSelect(AFF_STATUSES.map(s => [s, s]), 'active');
+  const accred = orgSelect(Object.entries(ACCREDITATION), 'none');
+  const accredField = orgField('ACCREDITATION', accred);
+  const ref = orgInput('', 40, 'affiliation number');
+  const note = orgInput('', 400);
+
+  const r1 = el('div', 'row');
+  r1.append(orgField('AFFILIATED TO', toOrg), orgField('KIND', kind), orgField('SEASON', label));
+  const r2 = el('div', 'row');
+  r2.append(seasonField, orgField('STATUS', status), accredField, orgField('NUMBER', ref));
+  const r3 = el('div', 'row');
+  r3.append(orgField('FROM', from), orgField('TO (OPTIONAL)', to), orgField('NOTE', note));
+  const r4 = el('div', 'row');
+  const add = orgButton('record', 'pri');
+  r4.appendChild(add);
+  box.append(r1, r2, r3, r4);
+
+  /* a season invite names a season of a league the organisation it is to runs;
+     if that organisation runs none yet, every league's seasons are offered and
+     the database says so when it is saved */
+  const fillSeasons = async () => {
+    season.textContent = '';
+    season.appendChild(new Option('— the season —', ''));
+    if (kind.value !== 'season_invite') return;
+    const runs = orgs.leagues.filter(l => toOrg.value && l.organiser_id === toOrg.value);
+    const pool = runs.length ? runs : orgs.leagues;
+    const names = Object.fromEntries(orgs.leagues.map(l => [l.id, l.name]));
+    let query = sb.from('seasons').select('id,name,league_id').order('name', { ascending: false }).limit(500);
+    if (runs.length) query = query.in('league_id', pool.map(l => l.id));
+    const { data, error } = await query;
+    if (error) return oops(error);
+    (data || []).forEach(s => season.appendChild(new Option((names[s.league_id] || '?') + ' · ' + s.name, s.id)));
+  };
+  const sync = () => {
+    seasonField.classList.toggle('hide', kind.value !== 'season_invite');
+    accredField.classList.toggle('hide', kind.value !== 'governing_body');
+    if (kind.value !== 'governing_body') accred.value = 'none';
+    fillSeasons();
+  };
+  kind.addEventListener('change', sync);
+  toOrg.addEventListener('change', () => { if (kind.value === 'season_invite') fillSeasons(); });
+  sync();
+
+  add.addEventListener('click', async () => {
+    if (!toOrg.value) return say('Choose the organisation it is affiliated to.', 'err');
+    if (kind.value === 'season_invite' && !season.value) return say('Choose the season it was invited to.', 'err');
+    const p = {
+      org_id: o.id, to_org_id: toOrg.value, kind: kind.value, season_label: label.value.trim(),
+      status: status.value, accreditation: accred.value, reference: ref.value, note: note.value,
+      valid_from: from.value, valid_to: to.value || null
+    };
+    if (kind.value === 'season_invite') p.season_id = season.value;
+    add.disabled = true;
+    const r = await rpc('record_affiliation', { p });
+    add.disabled = false;
+    if (!r) return;
+    say((r.created ? 'Affiliation recorded.' : 'That affiliation was already recorded for the season, and is updated.') +
+        affiliationWords(r), (r.warnings || []).length ? 'err' : 'ok');
+    loadOrgs();
+  });
+  return box;
+}
+
+/* ---- adopting a league's teams as clubs ----------------------------------- */
+function fillAdopt() {
+  const lg = $('#adLeague');
+  const wasL = lg.value;
+  lg.textContent = '';
+  lg.appendChild(new Option('— the league whose teams become clubs —', ''));
+  orgs.leagues.forEach(l => lg.appendChild(new Option(l.name +
+    (l.organiser_id && orgs.byId[l.organiser_id] ? ' (run by ' + orgs.byId[l.organiser_id].name + ')' : ''), l.id)));
+  if ([...lg.options].some(op => op.value === wasL)) lg.value = wasL;
+
+  const pa = $('#adParent');
+  const wasP = pa.value;
+  pa.textContent = '';
+  pa.appendChild(new Option('— the new clubs sit under —', ''));
+  orgs.list.filter(o => AFFILIATED_TO_KINDS.includes(o.kind) && !ORG_DEAD.includes(o.status))
+    .forEach(o => pa.appendChild(new Option(orgIndented(o), o.id)));
+  if ([...pa.options].some(op => op.value === wasP)) pa.value = wasP;
+}
+
+async function proposeClubs() {
+  const league = $('#adLeague').value;
+  if (!league) return say('Choose the league whose teams become clubs.', 'err');
+  const parent = $('#adParent').value || null;
+  const r = await rpc('adopt_clubs', { p_league: league, p_parent: parent, p_pick: null });
+  if (!r) return;
+  adoptFor = { league, parent };
+  drawAdopt(r.proposals || []);
+}
+
+function drawAdopt(proposals) {
+  const host = $('#adList'); host.textContent = '';
+  if (!proposals.length) {
+    host.appendChild(el('div', 'empty', 'Every team in this league already belongs to a club.'));
+    return;
+  }
+  const wrap = el('div', 'scroll');
+  const t = el('table', 'tbl');
+  const hr = t.createTHead().insertRow();
+  ['', 'Team', 'Club name', 'Address', 'What happens'].forEach(h => hr.appendChild(el('th', null, h)));
+  const body = t.createTBody();
+  const picks = [];
+  proposals.forEach(p => {
+    const tr = body.insertRow();
+    const tick = el('input'); tick.type = 'checkbox'; tick.checked = p.action !== 'conflict';
+    tr.insertCell().appendChild(tick);
+    const c1 = tr.insertCell();
+    c1.append(el('div', 'nm', p.team_name), el('div', 'mt', p.team_slug));
+    const name = orgInput(p.name, 120);
+    const slug = orgInput(p.slug, 80);
+    tr.insertCell().appendChild(name);
+    tr.insertCell().appendChild(slug);
+    const what = el('span', 'mt', p.action === 'create' ? 'a new club'
+      : p.action === 'link' ? 'joins ' + (p.existing ? p.existing.name : 'the club at that address')
+      : 'that address is ' + (p.existing ? p.existing.name + ' (' + (ORG_KINDS[p.existing.kind] || p.existing.kind) + ')' : 'taken') +
+        ': change it');
+    slug.addEventListener('input', () => { what.textContent = 'decided when applied: a club already at that address is joined'; });
+    tr.insertCell().appendChild(what);
+    picks.push({ tick, name, slug, team: p.team_id });
+  });
+  wrap.appendChild(t);
+  host.appendChild(wrap);
+
+  const row = el('div', 'row');
+  row.style.marginTop = '10px';
+  const apply = el('button', 'ep-btn pri', 'create and link the ticked teams');
+  apply.type = 'button';
+  row.appendChild(apply);
+  host.appendChild(row);
+
+  apply.addEventListener('click', async () => {
+    const chosen = picks.filter(x => x.tick.checked)
+      .map(x => ({ team_id: x.team, name: x.name.value.trim(), slug: x.slug.value.trim() }));
+    if (!chosen.length) return say('Tick the teams to adopt.', 'err');
+    const parent = $('#adParent').value || null;
+    if (!parent) return say('Choose the national body, region or association the new clubs sit under.', 'err');
+    const under = orgs.byId[parent];
+    if (!confirm('Adopt ' + chosen.length + ' team' + (chosen.length === 1 ? '' : 's') +
+        ' as clubs under “' + (under ? under.name : '?') + '”?\n\nA team whose address matches a club ' +
+        'already in that tenant joins it; the rest become new clubs.')) return;
+    apply.disabled = true;
+    const r = await rpc('adopt_clubs', { p_league: adoptFor ? adoptFor.league : $('#adLeague').value,
+                                         p_parent: parent, p_pick: chosen });
+    apply.disabled = false;
+    if (!r) return;
+    const created = (r.created || []).length, linked = (r.linked || []).length, skipped = r.skipped || [];
+    say(created + ' club' + (created === 1 ? '' : 's') + ' created, ' + linked + ' team' +
+        (linked === 1 ? '' : 's') + ' joined an existing club' +
+        (skipped.length ? '; ' + skipped.length + ' skipped: ' + skipped.map(s =>
+          ADOPT_SKIPPED[s.reason] || s.reason).join('; ') : '') + '.', skipped.length ? 'err' : 'ok');
+    await loadOrgs();
+    proposeClubs();
+  });
+}
+
+/* --------------------------------------------------------------- privacy --- */
+/* THE DATA-RIGHTS QUEUE (migration 0120; docs/replacement/foundations.md 7.6).
+   Requests to see, correct, erase, restrict, object to or take away personal
+   data, and complaints, each with its clock. One read, privacy_queue(tenant),
+   draws a controller's queue (null is Epinoia, the controller for fan
+   accounts); every action is update_data_request(id, action, details), which
+   audits it without the requester's name.
+
+   THE DATES ARE THE DATABASE'S. due_at, ack_due_at, the days left and the latest
+   date an extension may reach all come back computed (data_request_clock), so
+   this page never does month arithmetic of its own: the date picker's maximum
+   is the latest_extension it was given, and a refusal is shown in the
+   database's words through rpc(). Platform administrators only until the data
+   protection officer role arrives (0123). */
+let priv = null;          // privacy_queue() as last read
+let privOpenId = null;    // the request whose card is drawn
+let privTenant = '';      // '' is Epinoia
+
+const PRIV_KINDS = { access: 'access', rectification: 'correction', erasure: 'erasure', restriction: 'restriction',
+                     objection: 'objection', portability: 'portability', complaint: 'complaint' };
+const PRIV_STATUS = { received: 'received', awaiting_identity: 'waiting: identity', awaiting_clarification: 'waiting: clarification',
+                      in_progress: 'in progress', completed: 'completed', refused: 'refused', withdrawn: 'withdrawn' };
+const PRIV_CAPACITY = { self: 'about themselves', guardian: 'as a parent or guardian', representative: 'as a representative' };
+const PRIV_PAUSED = ['awaiting_identity', 'awaiting_clarification'];
+
+const londonDay = iso => iso ? new Date(iso).toLocaleDateString('en-GB',
+  { timeZone: 'Europe/London', day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const londonIsoDate = iso => {
+  if (!iso) return '';
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date(iso)).reduce((a, x) => { a[x.type] = x.value; return a; }, {});
+  return p.year + '-' + p.month + '-' + p.day;
+};
+const daysWords = n => n == null ? '' : n < 0 ? Math.abs(n) + ' day' + (n === -1 ? '' : 's') + ' overdue'
+  : n === 0 ? 'due today' : n + ' day' + (n === 1 ? '' : 's') + ' left';
+const daysClass = n => n == null ? '' : n < 0 ? 'pr-late' : n <= 7 ? 'pr-soon' : '';
+
+/* On the Overview: a line when anything in any queue is due within a week or
+   late. Quiet when 0120 is not on the server, or nothing needs doing. */
+async function loadPrivacyAttention() {
+  const host = $('#privAttention');
+  host.textContent = '';
+  const { data, error } = await sb.rpc('privacy_queue', { p_tenant: null });
+  if (error || !data) return;
+  const c = data.counts || {};
+  const inTenants = (data.tenants || []).reduce((n, t) => n + Number(t.open || 0), 0);
+  const bits = [];
+  if (c.ack_overdue) bits.push(c.ack_overdue + ' complaint' + (c.ack_overdue === 1 ? '' : 's') + ' not acknowledged in time');
+  if (c.overdue) bits.push(c.overdue + ' request' + (c.overdue === 1 ? '' : 's') + ' overdue');
+  if (c.ack_due_7d) bits.push(c.ack_due_7d + ' to acknowledge within a week');
+  if (c.due_7d) bits.push(c.due_7d + ' due within a week');
+  if (!bits.length && !c.open && !inTenants) return;
+  const note = el('div', 'note' + (c.overdue || c.ack_overdue ? ' bad' : ''),
+    'Privacy: ' + Number(c.open || 0) + ' open request' + (c.open === 1 ? '' : 's') + ' for Epinoia' +
+    (bits.length ? ' (' + bits.join(', ') + ')' : '') +
+    (inTenants ? '; ' + inTenants + ' open for other controllers' : '') + '. See the Privacy tab.');
+  host.appendChild(note);
+}
+
+async function loadPrivacy() {
+  const { data, error } = await sb.rpc('privacy_queue', { p_tenant: privTenant || null });
+  if (error) {
+    const missing = PLAN_MISSING(error);
+    $('#prMissing').classList.toggle('hide', !missing);
+    $('#prWrap').classList.toggle('hide', missing);
+    if (!missing) oops(error);
+    return;
+  }
+  $('#prMissing').classList.add('hide');
+  $('#prWrap').classList.remove('hide');
+  priv = data || {};
+  fillPrivTenants();
+  drawPrivTiles();
+  drawPrivList();
+  const open = privOpenId && (priv.requests || []).find(r => r.id === privOpenId);
+  if (open) drawPrivDetail(open, false);
+  else { privOpenId = null; $('#prDetail').textContent = ''; }
+  loadPrivacyAttention();
+}
+
+function fillPrivTenants() {
+  const sel = $('#prTenant');
+  sel.textContent = '';
+  sel.appendChild(new Option('Epinoia (fan accounts and this site) · ' + Number(priv.platform_open || 0) + ' open', ''));
+  (priv.tenants || []).forEach(t => sel.appendChild(new Option(t.name + ' · ' + Number(t.open || 0) + ' open', t.id)));
+  sel.value = privTenant;
+  if (sel.value !== privTenant) { privTenant = ''; sel.value = ''; }
+}
+
+function drawPrivTiles() {
+  const c = priv.counts || {};
+  const host = $('#prTiles'); host.textContent = '';
+  [
+    ['open', 'open', false], ['overdue', 'overdue', true], ['due_7d', 'due within 7 days', true],
+    ['ack_overdue', 'not acknowledged in time', true], ['ack_due_7d', 'to acknowledge within 7 days', true],
+    ['paused', 'clock stopped', false], ['unassigned', 'open, nobody assigned', true], ['closed', 'closed', false]
+  ].forEach(([k, label, urgent]) => {
+    const n = Number(c[k] || 0);
+    const tile = el('div', 'tile');
+    tile.append(el('div', 'n' + (!n ? ' dim' : urgent ? ' warn' : ''), String(n)), el('div', 'k', label));
+    host.appendChild(tile);
+  });
+}
+
+function drawPrivList() {
+  const all = priv.requests || [];
+  const showClosed = $('#prClosed').checked;
+  const rows = all.filter(r => showClosed || r.open);
+  $('#prCount').textContent = rows.length + ' of ' + all.length + ' request' + (all.length === 1 ? '' : 's');
+
+  const body = $('#prBody'); body.textContent = '';
+  if (!rows.length) {
+    const td = body.insertRow().insertCell(); td.colSpan = 7;
+    td.appendChild(el('div', 'empty', all.length
+      ? 'Nothing open. Tick “show closed” to see the requests already dealt with.'
+      : 'No requests or complaints for this controller yet.'));
+    return;
+  }
+  rows.forEach(r => {
+    const tr = body.insertRow();
+    if (!r.open) tr.style.opacity = '.6';
+    if (r.id === privOpenId) tr.classList.add('org-on');
+
+    const c0 = tr.insertCell();
+    c0.append(el('div', 'nm', (PRIV_KINDS[r.kind] || r.kind) + ' · ' + r.reference),
+              el('div', 'mt', 'received ' + londonDay(r.received_at)));
+    const c1 = tr.insertCell();
+    c1.append(el('div', null, r.requester_name),
+              el('div', 'mt', r.requester_email + (r.requester_has_account ? ' · has an account' : '') +
+                 (r.capacity !== 'self' ? ' · ' + (PRIV_CAPACITY[r.capacity] || r.capacity) : '')));
+    tr.insertCell().appendChild(el('span', 'pill' + (PRIV_PAUSED.includes(r.status) ? ' pa'
+      : r.status === 'in_progress' ? ' la' : r.open ? '' : ' st'), PRIV_STATUS[r.status] || r.status));
+
+    const c3 = tr.insertCell(); c3.className = 'num';
+    if (!r.ack_due_at) c3.textContent = '—';
+    else if (r.acknowledged_at) c3.append(el('div', null, londonDay(r.ack_due_at)), el('div', 'mt', 'acknowledged'));
+    else c3.append(el('div', r.open ? daysClass(r.ack_days_left) : '', londonDay(r.ack_due_at)),
+                   el('div', 'mt', r.open ? daysWords(r.ack_days_left) : ''));
+
+    const c4 = tr.insertCell(); c4.className = 'num';
+    c4.append(el('div', r.open ? daysClass(r.days_left) : '', londonDay(r.due_at)),
+              el('div', 'mt', !r.open ? 'closed ' + londonDay(r.closed_at)
+                : PRIV_PAUSED.includes(r.status) ? 'clock stopped' : daysWords(r.days_left) +
+                  (r.extended_until ? ' · extended' : '')));
+
+    tr.insertCell().appendChild(el('span', 'mt', r.assigned_email || 'nobody'));
+    const ac = tr.insertCell(); ac.className = 'ac';
+    const open = orgButton(r.id === privOpenId ? 'refresh' : 'open');
+    open.addEventListener('click', () => {
+      privOpenId = r.id;
+      drawPrivList();
+      drawPrivDetail(r, true);
+    });
+    ac.appendChild(open);
+  });
+}
+
+/* One call per action, then the queue is read again so every date on the page
+   is the database's answer to what just changed. */
+async function privAct(r, action, p, done) {
+  const out = await rpc('update_data_request', { p_id: r.id, p_action: action, p: p || {} });
+  if (!out) return false;
+  say(done + ' (' + (PRIV_STATUS[out.status] || out.status) + ', due ' + londonDay(out.due_at) + ').', 'ok');
+  privOpenId = r.id;
+  await loadPrivacy();
+  return true;
+}
+
+function drawPrivDetail(r, scroll) {
+  const host = $('#prDetail'); host.textContent = '';
+  const card = el('div', 'org-card');
+
+  const head = el('div', 'row');
+  const title = el('div'); title.style.minWidth = '0';
+  title.append(el('div', 'org-crumbs', (priv.tenant ? priv.tenant.name : 'Epinoia') + ' · ' + (r.open ? 'open' : 'closed')),
+               el('div', 'org-title', (PRIV_KINDS[r.kind] || r.kind) + ' · ' + r.reference));
+  const sp = el('span'); sp.style.marginLeft = 'auto';
+  const close = orgButton('close');
+  close.addEventListener('click', () => { privOpenId = null; host.textContent = ''; drawPrivList(); });
+  head.append(title, sp, close);
+  card.appendChild(head);
+
+  const dl = (pairs) => {
+    const d = el('dl', 'pr-dl');
+    pairs.filter(Boolean).forEach(([k, v, cls]) => { d.append(el('dt', null, k), el('dd', cls || null, v)); });
+    return d;
+  };
+
+  /* the request */
+  const who = orgSection('The request', 'Only here and in the queue: audit rows and emails carry the reference, never these.');
+  who.appendChild(dl([
+    ['From', r.requester_name],
+    ['Reply to', r.requester_email + (r.requester_has_account ? ' (signed in when asking)' : ' (not signed in: the address is not verified)')],
+    ['Made', PRIV_CAPACITY[r.capacity] || r.capacity],
+    ['Status', PRIV_STATUS[r.status] || r.status]
+  ]));
+  const words = el('div', 'body-x', r.details || '(no details given)');
+  words.style.marginTop = '10px';
+  who.appendChild(words);
+  card.appendChild(who);
+
+  /* the clock */
+  const clock = orgSection('The clock');
+  const stopped = PRIV_PAUSED.includes(r.status);
+  clock.appendChild(dl([
+    ['Received', londonDay(r.received_at)],
+    r.ack_due_at ? ['Acknowledge by', londonDay(r.ack_due_at) + (r.acknowledged_at ? ' · acknowledged ' + londonDay(r.acknowledged_at)
+      : r.open ? ' · ' + daysWords(r.ack_days_left) : ''), r.acknowledged_at || !r.open ? '' : daysClass(r.ack_days_left)]
+      : ['Acknowledged', r.acknowledged_at ? londonDay(r.acknowledged_at) : 'not yet'],
+    ['Identity confirmed', r.identity_confirmed_at ? londonDay(r.identity_confirmed_at) + ' (the month runs from here)' : 'not yet'],
+    ['Clock stopped', stopped ? 'since ' + londonDay(r.paused_at) + ', ' + r.paused_days_now + ' whole day' +
+      (r.paused_days_now === 1 ? '' : 's') + ' in all so far' : r.paused_days ? r.paused_days + ' day' + (r.paused_days === 1 ? '' : 's') + ' in all' : 'never'],
+    r.extended_until ? ['Extended to', londonDay(r.extended_until) + ': ' + (r.extension_reason || '')] : null,
+    ['Due', londonDay(r.due_at) + (r.open ? ' · ' + (stopped ? 'moves on while the clock is stopped' : daysWords(r.days_left)) : ''),
+      r.open && !stopped ? daysClass(r.days_left) : ''],
+    !r.open ? ['Closed', londonDay(r.closed_at) + ' as ' + (PRIV_STATUS[r.status] || r.status)] : null,
+    !r.open && r.outcome ? ['Outcome', r.outcome] : null
+  ]));
+  card.appendChild(clock);
+
+  if (r.open) card.appendChild(privActions(r, stopped));
+  host.appendChild(card);
+  if (scroll) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function privActions(r, stopped) {
+  const box = orgSection('Handle it', 'Each action is recorded in the audit log with the date and who did it.');
+
+  /* acknowledging, identity, and the clock */
+  const row = el('div', 'row');
+  if (!r.acknowledged_at) {
+    const b = orgButton('acknowledge', 'pri');
+    b.addEventListener('click', async () => { b.disabled = true; if (!await privAct(r, 'acknowledge', {}, 'Acknowledged')) b.disabled = false; });
+    row.appendChild(b);
+  }
+  if (!r.identity_confirmed_at) {
+    const b = orgButton('identity confirmed');
+    b.addEventListener('click', async () => {
+      if (!confirm('Record that the requester’s identity is confirmed?\n\nThe month starts again from today.')) return;
+      b.disabled = true; if (!await privAct(r, 'confirm_identity', {}, 'Identity confirmed')) b.disabled = false;
+    });
+    row.appendChild(b);
+  }
+  if (!r.identity_confirmed_at && r.status !== 'awaiting_identity') {
+    const b = orgButton('stop the clock: need identity');
+    b.addEventListener('click', async () => { b.disabled = true; if (!await privAct(r, 'pause', { reason: 'identity' }, 'Clock stopped for identity')) b.disabled = false; });
+    row.appendChild(b);
+  }
+  if (r.status !== 'awaiting_clarification') {
+    const b = orgButton('stop the clock: need clarification');
+    b.addEventListener('click', async () => { b.disabled = true; if (!await privAct(r, 'pause', { reason: 'clarification' }, 'Clock stopped for clarification')) b.disabled = false; });
+    row.appendChild(b);
+  }
+  if (stopped) {
+    const b = orgButton('restart the clock', 'pri');
+    b.addEventListener('click', async () => { b.disabled = true; if (!await privAct(r, 'resume', {}, 'Clock restarted')) b.disabled = false; });
+    row.appendChild(b);
+  }
+  box.appendChild(row);
+
+  /* extending: to a date no later than the database says */
+  const ext = el('div', 'row');
+  const until = orgInput(r.extended_until ? londonIsoDate(r.extended_until) : londonIsoDate(r.latest_extension), 10, null, 'date');
+  until.max = londonIsoDate(r.latest_extension);
+  const reason = orgInput(r.extension_reason || '', 400, 'why it needs longer: this is what the requester is told');
+  reason.classList.add('grow');
+  const extend = orgButton(r.extended_until ? 'change the extension' : 'extend');
+  extend.addEventListener('click', async () => {
+    if (!until.value) return say('Choose the date the extension runs to.', 'err');
+    if (!reason.value.trim()) return say('An extension needs its reason: the requester must be told why.', 'err');
+    extend.disabled = true;
+    if (!await privAct(r, 'extend', { until: until.value, reason: reason.value.trim() }, 'Extended to ' + until.value)) extend.disabled = false;
+  });
+  ext.append(orgField('EXTEND TO (LATEST ' + londonDay(r.latest_extension).toUpperCase() + ')', until), reason, extend);
+  box.appendChild(ext);
+
+  /* assigning */
+  const as = el('div', 'row');
+  const handler = orgSelect([['', '— nobody —']].concat((priv.handlers || []).map(h => [h.user_id, h.email])), r.assigned_to || '');
+  handler.style.flex = '1 1 220px';
+  const assign = orgButton('assign');
+  assign.addEventListener('click', async () => {
+    assign.disabled = true;
+    if (!await privAct(r, 'assign', { user_id: handler.value || null },
+        handler.value ? 'Assigned to ' + handler.options[handler.selectedIndex].text : 'Unassigned')) assign.disabled = false;
+  });
+  as.append(handler, assign);
+  box.appendChild(as);
+
+  /* closing */
+  const cl = el('div');
+  cl.style.marginTop = '6px';
+  const status = orgSelect([['completed', 'completed: done what was asked, or answered the complaint'],
+                            ['refused', 'refused: with the reasons given to the requester'],
+                            ['withdrawn', 'withdrawn by the requester']], 'completed');
+  const outcome = el('textarea', 'ep-input');
+  outcome.rows = 3; outcome.maxLength = 2000;
+  outcome.placeholder = 'The outcome: what was sent, corrected or erased, or why it was refused. Needed for completed and refused.';
+  const shut = orgButton('close the request', 'danger');
+  shut.addEventListener('click', async () => {
+    const text = outcome.value.trim();
+    if (status.value !== 'withdrawn' && !text) return say('Record the outcome before closing it.', 'err');
+    if (!confirm('Close ' + r.reference + ' as ' + status.value + '?\n\nNothing more can be recorded on it afterwards.')) return;
+    shut.disabled = true;
+    if (!await privAct(r, 'close', { status: status.value, outcome: text }, 'Closed as ' + status.value)) shut.disabled = false;
+  });
+  cl.append(orgField('CLOSE AS', status), outcome);
+  const clRow = el('div', 'row'); clRow.style.marginTop = '8px';
+  clRow.appendChild(shut);
+  cl.appendChild(clRow);
+  box.appendChild(cl);
+  return box;
+}
+
 /* -------------------------------------------------------------- settings --- */
 const SETTING_TEXT = {
   site_name:       'The name in the tab title and the wordmark alt text.',
@@ -1209,6 +2326,8 @@ const SETTING_TEXT = {
   merch_enabled:   'Off hides the merchandise section on every league page.',
   feeds_enabled:   'Off stops every partner feed delivering. Nothing is lost; it resumes.',
   contact_enabled: 'Off hides the contact form and refuses submissions.',
+  dpo_contact:     'Epinoia’s data protection contact, shown on the public privacy page ' +
+                   '(an address or a line of text). Empty: the page says its form reaches the right person.',
   analytics_access: 'free or members: whether the advanced analytics need a plan in ' +
                     'every league set to inherit. Changed on the Plans tab.',
   memberships_enabled: 'The memberships master switch. Off: nothing is gated anywhere, ' +

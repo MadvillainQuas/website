@@ -159,6 +159,31 @@
   .tbl .fee{display:flex;gap:5px;align-items:center}
   .tbl .fee .ep-input{width:66px;flex:none}
   .sw-cell .mt{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
+
+  /* ---- organisations (migration 0119). The detail card is built by
+     platform.js; aqua marks it as the one organisation being edited, the way
+     lume marks the plan form. ---- */
+  .org-card{border:1px solid var(--rule-2);border-left:3px solid var(--aqua);
+    padding:calc(var(--u)*2) calc(var(--u)*2.5);margin:calc(var(--u)*3) 0}
+  .org-title{font-family:var(--f-ui);font-weight:700;font-size:16px;color:var(--ink);word-break:break-word}
+  .org-crumbs{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3);
+    margin-bottom:3px;word-break:break-word}
+  .org-sec{border-top:1px solid var(--rule);padding-top:calc(var(--u)*2);margin-top:calc(var(--u)*2)}
+  .org-ind{color:var(--ink-3);font-weight:400}
+  .tbl tr.org-on td{background:color-mix(in oklch,var(--aqua) 8%,transparent)}
+  .org-card textarea.ep-input{width:100%;max-width:none;font-family:var(--f-data);font-size:11px;resize:vertical}
+  .tbl select.ep-input{font-size:11px;padding:4px 6px;max-width:none}
+  .tbl input[type=date].ep-input{min-width:0;width:128px}
+
+  /* ---- privacy (migration 0120). The detail card reuses .org-card; a date
+     that has passed is flare, one within a week amber. ---- */
+  .pr-late{color:var(--flare)} .pr-soon{color:var(--amber)}
+  .pr-dl{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:6px 14px;margin:0;
+    font-size:12.5px;line-height:1.55}
+  .pr-dl dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+  .pr-dl dd{margin:0;color:var(--ink);word-break:break-word}
+  .org-card input[type=date].ep-input{width:150px;flex:0 0 auto}
+  @media (max-width:560px){ .pr-dl{grid-template-columns:minmax(0,1fr)} .pr-dl dd{margin-bottom:6px} }
 </style>
 </head>
 <body>
@@ -194,9 +219,11 @@
         <button class="ep-tab on" data-p="over" role="tab">Overview</button>
         <button class="ep-tab" data-p="acct" role="tab">Accounts</button>
         <button class="ep-tab" data-p="lgs"  role="tab">Leagues</button>
+        <button class="ep-tab" data-p="orgs" role="tab">Organisations</button>
         <button class="ep-tab" data-p="plans" role="tab">Plans</button>
         <button class="ep-tab" data-p="clubs" role="tab">Clubs</button>
         <button class="ep-tab" data-p="mod"  role="tab">Moderation</button>
+        <button class="ep-tab" data-p="priv" role="tab">Privacy</button>
         <button class="ep-tab" data-p="keys" role="tab">Keys &amp; feeds</button>
         <button class="ep-tab" data-p="audit" role="tab">Audit</button>
         <button class="ep-tab" data-p="set"  role="tab">Settings</button>
@@ -213,6 +240,7 @@
       </p>
       <div id="tiles" class="tiles"></div>
       <div id="attention"></div>
+      <div id="privAttention"></div>
     </div>
 
     <div class="pane" id="pane-acct">
@@ -274,6 +302,75 @@
         <label class="sw"><input id="nlLive" type="checkbox" checked> live scores</label>
         <label class="sw"><input id="nlYouth" type="checkbox" checked> U18 protection</label>
         <button id="nlGo" class="ep-btn pri" type="button">create</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-orgs">
+      <!-- the only thing shown when migration 0119 is not on the server -->
+      <p id="orgMissing" class="note bad hide">Run migration 0119 first: the organisation tree is not on the server yet.</p>
+      <div id="orgWrap">
+        <p class="lead">
+          The structure above the leagues: national bodies, their regions, local
+          league bodies (associations), clubs, schools and partners. It records
+          who runs each league, which club or school each team belongs to, and
+          each club&rsquo;s affiliation and accreditation. Nothing here gives
+          anybody a permission yet. The public reads the tree, hidden
+          organisations left out, and sees only whether a club is affiliated and
+          at what level.
+        </p>
+        <div id="orgTiles" class="tiles"></div>
+
+        <h3>New organisation</h3>
+        <p class="lead">
+          A national body, or an independent league&rsquo;s own association,
+          stands on its own as a tenant: the data controller for everything
+          below it. Everything else sits inside one. Where it sits can be
+          changed later, but only within its tenant.
+        </p>
+        <div class="row">
+          <select id="orgNewKind" class="ep-input" style="flex:0 1 190px">
+            <option value="national_body">national body</option>
+            <option value="region">region</option>
+            <option value="association">association (local league body)</option>
+            <option value="club" selected>club</option>
+            <option value="school">school</option>
+            <option value="partner">partner</option>
+          </select>
+          <select id="orgNewParent" class="ep-input" style="flex:1 1 240px"></select>
+        </div>
+        <div class="row">
+          <input id="orgNewName" class="ep-input grow" placeholder="Leeds Rhinos Basketball Club" maxlength="120" autocomplete="off">
+          <input id="orgNewSlug" class="ep-input" placeholder="leeds-rhinos" maxlength="80" autocomplete="off">
+          <button id="orgNewGo" class="ep-btn pri" type="button">create</button>
+        </div>
+
+        <h3>The tree</h3>
+        <div class="row">
+          <input id="orgQ" class="ep-input grow" placeholder="filter by name or address" autocomplete="off">
+          <span class="sp" style="margin-left:auto"></span>
+          <span id="orgCount" class="ep-micro"></span>
+        </div>
+        <div class="scroll"><table class="tbl"><thead><tr>
+          <th>Organisation</th><th>Kind</th><th>Status</th><th>Affiliation</th>
+          <th class="num">Leagues</th><th class="num">Teams</th><th></th>
+        </tr></thead><tbody id="orgBody"></tbody></table></div>
+
+        <div id="orgDetail"></div>
+
+        <h3>Adopt a league&rsquo;s teams as clubs</h3>
+        <p class="lead">
+          Today a team is its own club. This proposes one club per team in a
+          league that has none, named after the team and carrying its crest,
+          for you to check before anything is written: rename a club (drop the
+          &ldquo;U18 Women&rdquo;), or give two teams the same address to make
+          them one club with two sides. Nothing is created until you apply.
+        </p>
+        <div class="row">
+          <select id="adLeague" class="ep-input" style="flex:1 1 220px"></select>
+          <select id="adParent" class="ep-input" style="flex:1 1 220px"></select>
+          <button id="adGo" class="ep-btn" type="button">propose</button>
+        </div>
+        <div id="adList"></div>
       </div>
     </div>
 
@@ -367,6 +464,53 @@
       <div id="msgList"></div>
     </div>
 
+    <div class="pane" id="pane-priv">
+      <!-- the only thing shown when migration 0120 is not on the server -->
+      <p id="prMissing" class="note bad hide">Run migration 0120 first: the privacy queue is not on the server yet.</p>
+      <div id="prWrap">
+        <p class="lead">
+          Requests to see, correct, erase, restrict or take away personal data,
+          objections, and complaints about how it was handled. They arrive from
+          the privacy page and the contact form, and each has a legal clock.
+          Epinoia is the controller for fan accounts; a national body or an
+          independent league that is a tenant has a queue of its own. Every
+          action is audited without the requester&rsquo;s name, address or words.
+        </p>
+        <div class="row">
+          <select id="prTenant" class="ep-input" style="flex:1 1 260px"></select>
+          <label class="sw"><input id="prClosed" type="checkbox"> show closed</label>
+          <button id="prGo" class="ep-btn mini" type="button">refresh</button>
+          <span class="sp" style="margin-left:auto"></span>
+          <span id="prCount" class="ep-micro"></span>
+        </div>
+        <div id="prTiles" class="tiles"></div>
+        <div class="scroll"><table class="tbl"><thead><tr>
+          <th>Request</th><th>From</th><th>Status</th><th>Acknowledge by</th><th>Due</th><th>Handler</th><th></th>
+        </tr></thead><tbody id="prBody"></tbody></table></div>
+
+        <div id="prDetail"></div>
+
+        <h3>How the clock runs</h3>
+        <div class="note">
+          A request is due one month after it arrives, or one month after identity
+          is confirmed, and confirming identity restarts that month. Waiting for
+          identity or for clarification stops the clock: each whole day it is
+          stopped is added when it restarts. A complex request can be extended by
+          up to two further months, with a reason the requester must be given
+          within the first month. A complaint must be acknowledged within 30 days;
+          its three months are Epinoia&rsquo;s own target, not the law&rsquo;s.
+        </div>
+        <div class="note">
+          The bell reminds whoever a request is assigned to seven days before each
+          date and on every day it is overdue, or every platform administrator
+          when nobody is assigned; email or push follows each person&rsquo;s own
+          profile settings. The ingest run sends them, so they wait for its next
+          pass. The Overview tab also says when something here is due within a
+          week or overdue.
+        </div>
+      </div>
+    </div>
+
     <div class="pane" id="pane-keys">
       <h3>API keys</h3>
       <p class="lead">
@@ -383,7 +527,8 @@
     <div class="pane" id="pane-audit">
       <p class="lead">
         Written by every privileged action on the platform since the first
-        migration, and until now readable from nowhere. Kept two years.
+        migration, and until now readable from nowhere. Kept two years; person,
+        role, organisation, privacy, merge and credential entries six.
       </p>
       <div class="row">
         <select id="auAction" class="ep-input" style="flex:1 1 220px"></select>
@@ -421,7 +566,8 @@
       <div class="row"><button id="recompute" class="ep-btn pri" type="button">recompute every competition</button></div>
 
       <h3>Prune the audit log</h3>
-      <p class="lead">Entries older than the retention window are removed. The floor is 30 days.</p>
+      <p class="lead">Entries older than the retention window are removed. The floor is 30 days,
+        and person, role, organisation, privacy, merge and credential entries always stay six years.</p>
       <div class="row">
         <label class="f" style="flex:0 0 130px"><span>KEEP DAYS</span>
           <input id="pruneDays" class="ep-input" type="number" min="30" max="3650" value="730"></label>

@@ -192,8 +192,79 @@ ok('the consoles were read and call something', uniq.length > 10, String(uniq.le
   };
   const app = read('epinoia', 'app', 'app.js');
   check('publish_team_logo', ['orphans'], app, 'club portal');
+  /* The Organisations tab (0119) draws everything from four jsonb answers; a
+     key renamed on one side would leave a panel silently empty. */
+  const plat = read('epinoia', 'admin', 'platform', 'platform.js');
+  check('organisation_admin', ['organisations', 'leagues', 'counts', 'today', 'organisation',
+                               'ancestors', 'children', 'affiliations', 'teams'], plat, 'platform console');
+  check('adopt_clubs', ['proposals', 'created', 'linked', 'skipped'], plat, 'platform console');
+  check('record_affiliation', ['warnings', 'created'], plat, 'platform console');
+  check('platform_move_organisation', ['descendants'], plat, 'platform console');
+  /* The Privacy tab (0120) draws the queue, its tiles, the tenant picker and
+     the handler picker from privacy_queue, and reports each action's answer. */
+  check('privacy_queue', ['requests', 'counts', 'tenants', 'handlers', 'platform_open', 'tenant',
+                          'reference', 'requester_email', 'requester_has_account', 'days_left', 'ack_days_left',
+                          'latest_extension', 'paused_days_now', 'assigned_email', 'open'], plat, 'platform console');
+  check('update_data_request', ['status', 'due_at'], plat, 'platform console');
   ok('a caller does not read a field its function never returns',
      problems.length === 0, problems.join('\n          '));
+}
+
+/* ---- the Organisations tab reaches every call it is the surface for ------- */
+{
+  /* foundations.md section 9, 0119: "a platform console Organisations tab: build
+     BE's tree, link leagues and clubs, record affiliations and accreditation".
+     Each of these has no other caller yet, so one dropped from the tab is a
+     function nobody can use. */
+  const want = ['organisation_admin', 'platform_save_organisation', 'platform_move_organisation',
+                'set_league_organiser', 'set_team_club', 'record_affiliation', 'adopt_clubs'];
+  if (migs.some(f => f.startsWith('0119'))) {
+    const absent = want.filter(fn => !calls.some(c => c.where === 'platform console' && c.fn === fn));
+    ok('the platform console calls every 0119 organisation RPC', absent.length === 0, absent.join(', '));
+  }
+}
+
+/* ---- the Privacy tab reaches the queue and every action ------------------- */
+{
+  /* foundations.md section 9, 0120: "a platform console Privacy tab (queue,
+     timers, actions)". privacy_queue is read with sb.rpc (so a missing
+     migration shows its own note), update_data_request through rpc(); both
+     spellings count, and every action the function takes must have a control. */
+  if (migs.some(f => f.startsWith('0120'))) {
+    const plat = read('epinoia', 'admin', 'platform', 'platform.js');
+    const reached = ['privacy_queue', 'update_data_request'].filter(fn =>
+      new RegExp("\\b(sb\\.)?rpc\\(\\s*'" + fn + "'").test(plat));
+    ok('the platform console calls privacy_queue and update_data_request', reached.length === 2, reached.join(', '));
+    const actions = ['acknowledge', 'confirm_identity', 'pause', 'resume', 'extend', 'assign', 'close'];
+    const missing = actions.filter(a => !new RegExp("privAct\\(r, '" + a + "'").test(plat));
+    ok('the Privacy tab has a control for every update_data_request action', missing.length === 0, missing.join(', '));
+    const body = (defined.get('update_data_request') || {}).body || '';
+    const unknown = actions.filter(a => !body.includes("'" + a + "'"));
+    ok('...and every one of those actions is one the function takes', unknown.length === 0, unknown.join(', '));
+  }
+}
+
+/* ---- the privacy reminders have a runner, and a tab to land on ------------- */
+{
+  /* foundations.md section 9, 0120: "nightly reminders". The ingest runner is
+     the nightly runner (section 5.2): a reminder function nobody calls reminds
+     nobody. Each reminder links to a console tab, which must exist and which
+     the console must open from the link. */
+  if (migs.some(f => f.startsWith('0120'))) {
+    /* PENDING, NOT PASSED. The runner hook (a 12-line call after each discovery
+       pass) was held back on 2026-09-16 because another session had uncommitted
+       work in run_ingest.py; until it lands the reminders are written by nothing,
+       and this says so on every run instead of failing or quietly passing. */
+    const runner = read('scripts', 'ingest', 'run_ingest.py');
+    if (/sb\.rpc\(\s*'notify_data_requests'/.test(runner)) ok('the ingest runner calls notify_data_requests', true);
+    else console.log('  PENDING  the ingest runner does not call notify_data_requests yet: privacy reminders are not being written');
+    const body = (defined.get('notify_data_requests') || {}).body || '';
+    const tab = (body.match(/'admin\/platform\/#([a-z]+)'/) || [])[1];
+    const html = read('epinoia', 'admin', 'platform', 'index.html');
+    const plat = read('epinoia', 'admin', 'platform', 'platform.js');
+    ok('a privacy reminder links to a console tab that exists, and the console opens a #tab link',
+       !!tab && html.includes('data-p="' + tab + '"') && /location\.hash/.test(plat), 'link #' + tab);
+  }
 }
 
 /* ---- every panel is actually wired ----------------------------------------- */

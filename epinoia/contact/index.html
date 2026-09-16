@@ -50,6 +50,11 @@
   .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
     margin-top:calc(var(--u)*3)}
   .count{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);text-align:right}
+  /* the privacy option: what it is, above the two choices it needs */
+  .pv{border-left:2px solid var(--aqua);padding:10px 14px;margin:0 0 calc(var(--u)*2);
+    background:color-mix(in oklch,var(--aqua) 6%,transparent)}
+  .pv p{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);margin:0 0 calc(var(--u)*1.5)}
+  .pv p a{color:var(--aqua)}
 </style>
 </head>
 <body>
@@ -67,6 +72,42 @@
     </p>
 
     <form id="form" novalidate>
+      <label class="f"><span>What is it about?</span>
+        <select class="ep-input" id="topic">
+          <option value="message" selected>A message: a league, a fixture, a number, running a competition</option>
+          <option value="privacy">A privacy request or complaint about personal data</option>
+        </select></label>
+
+      <!-- a privacy request goes to the data-rights queue, where its clock starts
+           (migration 0120); the rights and timers are explained on ../privacy/ -->
+      <div id="privacyBox" class="pv hide">
+        <p>
+          Ask for a copy of your data, a correction, erasure, a restriction or an
+          objection, or complain about how your data was handled. It goes to the
+          person responsible for data protection, and we reply within a month
+          (a complaint is acknowledged within 30 days).
+          <a href="../privacy/">Your rights and how long each takes</a>.
+        </p>
+        <div class="two">
+          <label class="f"><span>The request</span>
+            <select class="ep-input" id="pkind">
+              <option value="access">See my data (access)</option>
+              <option value="rectification">Correct my data</option>
+              <option value="erasure">Erase my data</option>
+              <option value="restriction">Restrict how my data is used</option>
+              <option value="objection">Object to how my data is used</option>
+              <option value="portability">Take my data elsewhere (portability)</option>
+              <option value="complaint">A complaint</option>
+            </select></label>
+          <label class="f"><span>It is about</span>
+            <select class="ep-input" id="pcap">
+              <option value="self">Me</option>
+              <option value="guardian">My child, as their parent or guardian</option>
+              <option value="representative">Someone I represent</option>
+            </select></label>
+        </div>
+      </div>
+
       <div class="two">
         <label class="f"><span>Your name</span>
           <input class="ep-input" id="name" autocomplete="name" maxlength="120"></label>
@@ -74,12 +115,12 @@
           <input class="ep-input" id="email" type="email" autocomplete="email"
                  inputmode="email" maxlength="200"></label>
       </div>
-      <label class="f"><span>Subject</span>
+      <label class="f" id="subjectRow"><span>Subject</span>
         <input class="ep-input" id="subject" maxlength="160"
                placeholder="optional, but it helps"></label>
-      <label class="f"><span>Message</span>
+      <label class="f"><span id="bodyLabel">Message</span>
         <textarea class="ep-input" id="body" maxlength="5000"></textarea></label>
-      <div class="count"><span id="count">0</span> / 5000</div>
+      <div class="count"><span id="count">0</span> / <span id="max">5000</span></div>
 
       <!-- for the bots. A person never sees or focuses this. -->
       <div class="hp" aria-hidden="true">
@@ -94,6 +135,7 @@
     <p class="note">
       Your address is used to reply and nothing else — no list, no forwarding.
       Messages are kept so they can be answered and are not published anywhere.
+      <a href="../privacy/" style="color:inherit">Privacy and your data</a>.
     </p>
   </div>
 </div>
