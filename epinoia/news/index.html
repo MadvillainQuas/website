@@ -15,11 +15,12 @@
 <title>News · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<script src="../mode.js?v=253"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="../kit/nav.css?v=253">
-<link rel="stylesheet" href="../kit/card.css?v=253">
-<link rel="stylesheet" href="../kit/news.css?v=253">
+<script src="../mode.js?v=254"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
+<link rel="stylesheet" href="../kit/card.css?v=254">
+<link rel="stylesheet" href="../kit/news.css?v=254">
+<link rel="stylesheet" href="../kit/access.css?v=254">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -62,6 +63,10 @@
   <!-- one article, or the archive: mode.js decided which from ?a= before any
        of this was painted, so opening an article no longer shows the archive's
        "Loading..." underneath it first. -->
+  <!-- a members-only league this viewer may not see: the paywall card, in place
+       of the article or the archive (news-page.js newsWall) -->
+  <div id="accessWall" class="hide"></div>
+
   <article id="one"></article>
 
   <div id="list" class="wrap">
@@ -76,11 +81,13 @@
   </footer>
 </div>
 
-<script src="../config.js?v=253" defer></script>
-<script src="../upload.js?v=253" defer></script>
-<script src="../newsblocks.js?v=253" defer></script>
-<script src="../news.js?v=253" defer></script>
-<script src="news-page.js?v=253" defer></script>
-<script src="../nav.js?v=253" defer></script>
+<script src="../config.js?v=254" defer></script>
+<!-- memberships: the paywall card, and a member's token on the news calls -->
+<script src="../access.js?v=254" defer></script>
+<script src="../upload.js?v=254" defer></script>
+<script src="../newsblocks.js?v=254" defer></script>
+<script src="../news.js?v=254" defer></script>
+<script src="news-page.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
 </body>
 </html>

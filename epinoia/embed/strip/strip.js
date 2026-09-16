@@ -184,8 +184,37 @@ function postHeight() {
 const abbr = t => ((t && (t.short_name || t.name)) || '???')
   .replace(/[^A-Za-z0-9 ]/g, '').trim().slice(0, 3).toUpperCase();
 
+/* A MEMBERS-ONLY LEAGUE refuses its live and finished games to an anonymous
+   read, so a member's strip was empty. Every read here goes through send(),
+   which adds EpinoiaAccess.authHeaders() — the member's token, and only for a
+   members-only league this viewer may see; {} for everything else, so an open
+   league's request is byte for byte what it always was. Asked per request, never
+   cached, so a sign-in or sign-out mid-page changes the very next poll.
+   A 401 with a token on it is a token the server no longer takes (it ran out
+   between the check and the request): not an answer about the games, so it is
+   asked once more anonymously, which is what the strip did before memberships.
+   Inside another site's iframe most browsers partition storage, so there the
+   strip usually sees nobody signed in — a members-only league shows its public
+   fixtures and nothing more, which is the league's choice. */
+function withAccess(headers) {
+  const A = window.EpinoiaAccess;
+  if (A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+  }
+  return headers;
+}
+async function send(url, init) {
+  const headers = withAccess(Object.assign({}, init.headers));
+  let r = await fetch(url, Object.assign({}, init, { headers }));
+  if (r.status === 401 && headers.Authorization) {
+    delete headers.Authorization;
+    r = await fetch(url, Object.assign({}, init, { headers }));
+  }
+  return r;
+}
+
 async function api(p) {
-  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
+  const r = await send(`${CFG.supabaseUrl}/rest/v1/${p}`,
     { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
   if (!r.ok) throw new Error(r.status);
   return r.json();
@@ -569,7 +598,7 @@ async function loadState(ids) {
             'last_seq,updated_at&game_id=in.(' + ids.join(',') + ')';
   let rows, serverNow;
   try {
-    const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${q}`,
+    const r = await send(`${CFG.supabaseUrl}/rest/v1/${q}`,
       { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
     if (!r.ok) return;
     serverNow = Date.parse(r.headers.get('date') || '') || Date.now();
@@ -736,7 +765,7 @@ function order(a, b) {
 /* the rules are read through a function rather than the table, so the answer is
    one row of slugs rather than a join the embed would have to unpick */
 async function rpc(fn, args) {
-  const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + fn, {
+  const r = await send(CFG.supabaseUrl + '/rest/v1/rpc/' + fn, {
     method: 'POST', cache: 'no-store',
     headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
                Accept: 'application/json' },
@@ -1059,8 +1088,18 @@ function wireDrag() {
 
 wireDrag();
 /* The site rule is resolved before the first load, so a club's site never shows
-   the whole platform for a moment and then narrows to one club. */
-siteConfig().catch(() => {}).then(() => load());
+   the whole platform for a moment and then narrows to one club. Then access, for
+   the league the strip settled on: until access.js knows this viewer may see a
+   members-only league it sends no token, so asking first is what lets a member's
+   first paint carry that league's games. No league, no question — the strip
+   across every league reads anonymously, and load() gives up after four
+   seconds whatever happens. */
+function accessReady() {
+  const A = window.EpinoiaAccess;
+  if (!wantLeague || !A || typeof A.load !== 'function') return null;
+  return Promise.resolve().then(() => A.load({ leagueSlug: wantLeague })).catch(() => null);
+}
+siteConfig().catch(() => {}).then(accessReady).then(() => load());
 /* The cadence follows the games rather than the clock: tight while anything
    is live, relaxed when nothing is. setTimeout rather than setInterval so the
    interval can change between ticks, and so a slow response can never queue a

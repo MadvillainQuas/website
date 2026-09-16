@@ -17,10 +17,28 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
    maintaining a near-copy is how they drift. */
 const WANT = new URLSearchParams(location.search).get('l') || '';
 let LEAGUE = null;              // resolved when WANT is set
+/* docs/memberships.md: set only on the league splash, and only when the server
+   has SAID this viewer may not see a members-only league */
+let WALL = { walled: false, fixturesPublic: true };
 
-async function api(p) {
+/* A MEMBERS-ONLY LEAGUE'S ROWS ARE REFUSED to an anonymous read, so a member's
+   reads carry their token. access.js decides when (a members-only league this
+   viewer may see) and returns {} otherwise — the hub and every open league send
+   exactly what they sent before. Asked per request, and a 401 on a token the
+   server no longer accepts is asked once more without it. */
+function withAuth(headers, anon) {
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+  }
+  return headers;
+}
+
+async function api(p, anon) {
+  const headers = withAuth({ apikey: CFG.supabaseAnonKey, Accept: 'application/json' }, anon);
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+    { cache: 'no-store', headers });
+  if (r.status === 401 && headers.Authorization) return api(p, true);
   if (!r.ok) throw new Error(r.status + ' ' + p.split('?')[0]);
   return r.json();
 }
@@ -30,13 +48,15 @@ async function api(p) {
    go through SECURITY DEFINER functions instead, because both have to return
    something narrower than the row they read — a shortlist without the minors
    on it, a socials row without the access token. */
-async function rpc(fn, args) {
+async function rpc(fn, args, anon) {
+  const headers = withAuth({ apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
+                             Accept: 'application/json' }, anon);
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, {
     method: 'POST', cache: 'no-store',
-    headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
-               Accept: 'application/json' },
+    headers,
     body: JSON.stringify(args || {})
   });
+  if (r.status === 401 && headers.Authorization) return rpc(fn, args, true);
   const j = await r.json().catch(() => null);
   if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));
   return j;
@@ -158,6 +178,9 @@ function gamesPicker(gs) {
 }
 
 async function games() {
+  /* behind a members-only league's wall with its fixtures private there is nothing
+     this viewer may be shown, so the timer below asks for nothing either */
+  if (WALL.walled && !WALL.fixturesPublic) return;
   let gs;
   try {
     let scope = '';
@@ -181,6 +204,10 @@ async function games() {
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
   }
+  /* Behind the wall only the fixtures are this viewer's. The database already
+     refuses the rest; this keeps the list honest where it has not (a league
+     previewed through the admins' access simulation, or before enforcement). */
+  if (WALL.walled) gs = gs.filter(g => g.status === 'scheduled');
 
   /* NOTHING CHANGED, NOTHING REDRAWN.
 
@@ -951,6 +978,57 @@ async function socials() {
   } catch (_) { /* a missing Instagram is not an error worth a red box */ }
 }
 
+/* ------------------------------------------------------------ memberships ---
+   A league's splash, and only a league's (the platform hub never asks).
+
+   A MEMBERS-ONLY LEAGUE KEEPS ITS SHOP WINDOW OPEN (docs/memberships.md §2): the
+   league's own identity, its clubs, its upcoming fixtures while it keeps those
+   public, its merchandise and the ways to take part. What happened on court —
+   results, the table, the leaders, the stars, Team of the Year, the news — is
+   refused by the database to anyone without membership, so those sections are
+   not drawn as a row of empty boxes; the paywall card leads the page instead.
+
+   Only on a KNOWN answer. An access check that fails, times out or is absent
+   draws the page exactly as it was drawn before memberships existed. */
+function joinCard(st) {
+  const A = window.EpinoiaAccess, card = $('#joinCard');
+  if (!card || !A || typeof A.joinHref !== 'function') return;
+  const on = !!(st && st.known && st.hasPlans);
+  if (on) card.href = A.joinHref({ leagueSlug: LEAGUE.slug, next: location.pathname + location.search });
+  card.classList.toggle('hide', !on);
+}
+
+/* A sign-in or sign-out while the page is open. The sections were fetched for
+   the old answer, so a changed one reloads rather than patching half a page. */
+function onAccessChange() {
+  const A = window.EpinoiaAccess;
+  if (!A || !LEAGUE) return;
+  const st = A.get(LEAGUE.id) || {};
+  joinCard(st);
+  if (st.known && (typeof A.canView === 'function' && !A.canView(LEAGUE.id)) !== WALL.walled) location.reload();
+}
+
+/* One access_state call, awaited before the sections that read on-court rows:
+   a member's reads need the token it enables, and a non-member's would come back
+   empty. Bounded by access.js (it gives up after four seconds and fails open). */
+async function leagueAccess() {
+  const A = window.EpinoiaAccess;
+  if (!LEAGUE || !A || typeof A.load !== 'function' || typeof A.get !== 'function') return WALL;
+  try { await A.load({ leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug }); } catch (_) { return WALL; }
+  const st = A.get(LEAGUE.id) || {};
+  joinCard(st);
+  if (typeof A.onChange === 'function') A.onChange(onAccessChange);
+  if (!st.known || typeof A.canView !== 'function' || A.canView(LEAGUE.id) ||
+      typeof A.paywallHTML !== 'function') return WALL;
+  WALL = { walled: true, fixturesPublic: st.fixturesPublic !== false };
+  $('#access').innerHTML = A.paywallHTML({ league: LEAGUE });
+  $('#accessSec').classList.remove('hide');
+  $('#seasonSec').classList.add('hide');              // the table and the leaders
+  $('#leagues').textContent = '';                     // ...and their embeds stop loading
+  if (!WALL.fixturesPublic) $('#gamesSec').classList.add('hide');
+  return WALL;
+}
+
 function renumber() {
   let n = 0;
   document.querySelectorAll('.sec').forEach(sec => {
@@ -1026,14 +1104,34 @@ function renumber() {
        error handling and none of them is allowed to take the page down with it;
        games() and the rest already report their own failures into their own
        section, which is the behaviour worth preserving here. */
+    /* MEMBERSHIPS (leagueAccess, above) change as little of this as they can.
+       The table and leaders embeds read for themselves, anonymously, and the
+       clubs and socials are public in every league, so those start at once as
+       they always did; so does the games list, which is simply read again once
+       the answer names a members-only league — with a member's token, or cut to
+       the fixtures behind the wall. Read again AFTER the first read settles, so
+       the anonymous answer can never land on top of the member's. The stars, Team
+       of the Year and the news have no second pass, so they start after the
+       answer: one access_state call, bounded at four seconds by access.js. */
     splash();
+    const gamesFirst = games().catch(() => null);
+    const clubsP = clubs().catch(() => null);
+    const socialsP = socials().catch(() => null);
+    const wall = await leagueAccess();
+    const AX = window.EpinoiaAccess;
+    const ast = (AX && typeof AX.get === 'function' && AX.get(LEAGUE.id)) || {};
+    /* not while memberships are switched off for the platform: the first,
+       anonymous read already had every game */
+    const gamesP = ast.known && ast.accessMode === 'members' && ast.membershipsEnabled !== false
+      ? gamesFirst.then(() => { gamesKey = ''; return games(); }).catch(() => null)
+      : gamesFirst;
     const [, roster, star] = await Promise.all([
-      games().catch(() => null),
-      clubs().catch(() => null),
-      stars().catch(() => null),
-      news().catch(() => null),
-      teamOfTheYear().catch(() => null),
-      socials().catch(() => null)
+      gamesP,
+      clubsP,
+      wall.walled ? null : stars().catch(() => null),
+      wall.walled ? null : news().catch(() => null),
+      wall.walled ? null : teamOfTheYear().catch(() => null),
+      socialsP
     ]);
     await merch(roster, star).catch(() => null);
     applySections();

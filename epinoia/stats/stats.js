@@ -13,6 +13,13 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
   try {
     const D = window.EpinoiaData;
     const { league, comp, comps } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
+    /* WHAT THIS VIEWER MAY SEE (docs/memberships.md): asked now, by id, and settled before the
+       table is drawn. The module gives up by itself after 4 s and answers open, and without it
+       on the page nothing here changes. */
+    const A = window.EpinoiaAccess;
+    const accessReady = (A && typeof A.load === 'function')
+      ? Promise.resolve().then(() => A.load({ leagueId: league.id })).catch(() => null)
+      : Promise.resolve(null);
     $('#ctx').textContent = league.name;
     $('#title').textContent = league.name + ' — season statistics';
     /* the route to team stats: the league page's Team Stats tab, for THIS league
@@ -21,6 +28,34 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     if (tl) tl.href = '../l/?l=' + encodeURIComponent(league.slug) +
       (qp.get('c') ? '&c=' + encodeURIComponent(qp.get('c')) : '') + '#teams';
     if (!comp) return fail('This league has no competitions yet.');
+
+    /* A MEMBERS-ONLY LEAGUE closed to this viewer: the card instead of the table, and no season
+       read behind it -- the database refuses those rows, and an empty table would look broken
+       rather than closed. Only on a known answer; anything else draws the table. */
+    await accessReady;
+    const shut = () => { const st = A && typeof A.get === 'function' ? A.get(league.id) : null;
+      return !!(st && st.known) && typeof A.canView === 'function' && !A.canView(league.id); };
+    const paywalled = shut();
+    /* THE ANSWER CAN MOVE UNDER A DRAWN PAGE (a sign-in elsewhere, an answer after the time
+       limit, the admin preview switch). The table relocks its own columns; the card is the one
+       thing this page decided, so only a change to it draws the page again, from the top. On a
+       change of account the new account's answer is waited for, not the empty state between. */
+    if (A && typeof A.onChange === 'function') {
+      const check = () => { if (shut() !== paywalled) location.reload(); };
+      try {
+        A.onChange(d => {
+          if (d && d.leagueId && d.leagueId !== league.id) return;
+          if (d && d.reason === 'auth' && typeof A.load === 'function') {
+            Promise.resolve().then(() => A.load({ leagueId: league.id })).then(check, () => {});
+          } else check();
+        });
+      } catch (_) { /* the page as drawn */ }
+    }
+    if (paywalled) {
+      const h = $('#tbl'); h.textContent = '';
+      if (typeof A.paywallHTML === 'function') h.innerHTML = A.paywallHTML({ league });
+      return;
+    }
 
     /* THE SAME SCOPE THE LEAGUE PAGE USES, for the same reason: this table was
        reading one competition, so a page titled "season statistics" showed a
@@ -52,6 +87,8 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
       window.EpinoiaTable.render({
         host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
         filename: league.slug + '-season-stats',
+        /* the table drops the premium columns itself when this league's analytics are locked */
+        leagueId: league.id, leagueSlug: league.slug,
         rows: S.players,
         playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
         /* RAPM on request: it needs every stint of the scope, which means reading the

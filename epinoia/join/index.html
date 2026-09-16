@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Epinoia">
+<!-- PUBLIC. No gate.js, no topnav.js. No Stripe.js either: checkout is a
+     redirect to the page the billing function returns, so no third-party
+     script ever runs on an Epinoia origin. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Membership · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:13px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 9px 1px;text-transform:uppercase}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(34px,7vw,60px);line-height:.88;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .lede{font-family:var(--f-ui);font-size:16px;line-height:1.6;color:var(--ink-2);
+    max-width:64ch;margin:calc(var(--u)*2) 0 0}
+  .hero .lg{font-family:var(--f-ui);font-size:15px;line-height:1.55;color:var(--ink);max-width:64ch;
+    margin:calc(var(--u)*2) 0 0;border-left:2px solid var(--lume);padding-left:12px}
+  .hero .who{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-3);margin:calc(var(--u)*2) 0 0}
+  .hero .who a{color:var(--lume)}
+
+  .sec{border-bottom:1px solid var(--rule)}
+  .ep-hdr .note{margin-left:auto;font-family:var(--f-micro);font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.08em}
+  .body{padding:calc(var(--u)*3)}
+  .empty{font-family:var(--f-micro);font-size:10px;line-height:1.9;color:var(--ink-3);margin:0;max-width:70ch}
+
+  /* the plans: one card per plan, league plans first. minmax(min(100%,…)) so a
+     single card never forces a phone page wider than the phone */
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  .plan{background:var(--ground);padding:calc(var(--u)*3);display:flex;flex-direction:column;min-width:0}
+  .plan.owned{box-shadow:inset 0 0 0 2px var(--lume)}
+  .plan .eyebrow{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-3)}
+  .plan h3{font-family:var(--f-ui);font-weight:800;font-size:20px;line-height:1.2;margin:6px 0 0;color:var(--ink)}
+  .plan .price{margin:calc(var(--u)*2) 0 0;display:flex;align-items:baseline;flex-wrap:wrap;gap:8px}
+  .plan .price b{font-family:var(--f-score);font-weight:400;font-size:46px;line-height:1;color:var(--lume)}
+  .plan .price span{font-family:var(--f-micro);font-size:10px;letter-spacing:.08em;color:var(--ink-2)}
+  .plan .vat{font-family:var(--f-micro);font-size:8.5px;line-height:1.8;color:var(--ink-3);margin-top:6px}
+  .plan .blurb{font-size:14px;line-height:1.55;color:var(--ink-2);margin:calc(var(--u)*2) 0 0}
+  .plan ul{margin:calc(var(--u)*2) 0 0;padding-left:18px}
+  .plan li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);margin-bottom:5px}
+  .plan li b{color:var(--ink);font-weight:400}
+  .plan .note-in{font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--lume);margin-top:calc(var(--u)*1.5)}
+  .plan .grow{flex:1}
+  .act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:calc(var(--u)*3)}
+  .act .ep-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}
+  .act .mine{font-family:var(--f-micro);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+  /* as specific as the kit's light-theme button rules, and later, so a disabled
+     button does not light up on hover in either theme */
+  .act .ep-btn[disabled], .act .ep-btn[disabled]:hover,
+  .order-row .ep-btn[disabled], .order-row .ep-btn[disabled]:hover{cursor:default;background:transparent;color:var(--ink-3);border-color:var(--rule-2);filter:none}
+
+  /* a member's own plans, above everything else */
+  .own{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;
+    padding:12px 0;border-top:1px solid var(--rule)}
+  .own:first-child{border-top:none;padding-top:0}
+  .own b{font-family:var(--f-ui);font-size:15px;display:block}
+  .own small{font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3);display:block}
+  .own .st{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--lume);display:block;margin-top:2px}
+  .own .st.bad{color:var(--flare)} .own .st.end{color:var(--amber)}
+
+  /* the step before the money: the law's summary, apart from the terms */
+  .pre-body{padding:calc(var(--u)*3);max-width:760px}
+  .summary{border:1px solid var(--rule-2);border-top:2px solid var(--lume);background:var(--panel);
+    padding:calc(var(--u)*2) calc(var(--u)*2.5)}
+  .summary .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+  .summary dl{display:grid;grid-template-columns:minmax(110px,150px) minmax(0,1fr);gap:12px 18px;margin:12px 0 0}
+  .summary dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);padding-top:4px}
+  .summary dd{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink)}
+  .consent{display:flex;gap:12px;align-items:flex-start;margin-top:calc(var(--u)*3);
+    font-size:15px;line-height:1.55;color:var(--ink);cursor:pointer}
+  .consent input{width:22px;height:22px;margin:1px 0 0;flex:none;accent-color:var(--lume);cursor:pointer}
+  .hint{margin:6px 0 0 34px;font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3)}
+  .order-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:calc(var(--u)*3)}
+  .order-row .ep-btn{min-height:48px}
+  .fine{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);margin:calc(var(--u)*2) 0 0;max-width:70ch}
+
+  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:10px 13px;
+    margin:calc(var(--u)*2) 0 0;border-left:2px solid var(--rule-2);color:var(--ink-2);max-width:70ch}
+  .msg a{color:inherit}
+  .msg.ok{border-left-color:var(--lume);color:var(--lume);background:color-mix(in oklch,var(--lume) 8%,transparent)}
+  .msg.err{border-left-color:var(--flare);color:var(--flare);background:color-mix(in oklch,var(--flare) 8%,transparent)}
+  .msg.warn{border-left-color:var(--amber);color:var(--amber);background:color-mix(in oklch,var(--amber) 8%,transparent)}
+
+  /* back from the payment page */
+  .joined h2{font-family:var(--f-score);font-weight:400;font-size:clamp(28px,6vw,46px);line-height:.95;
+    text-transform:uppercase;margin:0;color:var(--lume)}
+  .joined p{font-size:15px;line-height:1.6;color:var(--ink-2);max-width:62ch;margin:calc(var(--u)*1.5) 0 0}
+  .joined .act{margin-top:calc(var(--u)*2.5)}
+
+  /* free against members */
+  .cmp{width:100%;border-collapse:collapse}
+  .cmp th,.cmp td{padding:9px 10px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+  .cmp thead th{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:400;border-bottom-color:var(--rule-2)}
+  .cmp tbody th{font-family:var(--f-ui);font-weight:400;font-size:14px;line-height:1.45;color:var(--ink-2)}
+  .cmp tr.grp th{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink);padding-top:20px}
+  .cmp .c{text-align:center;width:88px;font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;white-space:nowrap}
+  .cmp .yes{color:var(--lume)} .cmp .no{color:var(--ink-3)} .cmp .part{color:var(--amber)}
+
+  .faq{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:1px;
+    background:var(--rule);border:1px solid var(--rule)}
+  .faq > div{background:var(--ground);padding:12px 14px}
+  .faq .q{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--lume);line-height:1.8}
+  .faq .a{font-size:14px;line-height:1.6;color:var(--ink-2)}
+
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+
+  @media (max-width:560px){
+    .topbar,.hero,.body,.pre-body,footer.foot{padding-left:16px;padding-right:16px}
+    .plan{padding:16px}
+    .summary{padding:14px 16px}
+    .summary dl{grid-template-columns:minmax(0,1fr);gap:2px}
+    .summary dd{margin-bottom:12px}
+    .faq{grid-template-columns:minmax(0,1fr)}
+    .faq .q{padding-bottom:0} .faq .a{padding-top:4px}
+    .cmp th,.cmp td{padding:8px 6px}
+    .cmp .c{width:62px}
+    .own{grid-template-columns:minmax(0,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">membership</span>
+  </div>
+
+  <header class="hero">
+    <h1>Membership</h1>
+    <p class="lede">
+      Box scores, tables and player pages are free on Epinoia. Membership adds the
+      analysis on top of them &mdash; where the points came from, where the shots
+      were taken, who plays well together &mdash; and, for a league that keeps its
+      games for its members, the league itself.
+    </p>
+    <p class="lg hide" id="lg"></p>
+    <p class="who" id="who"></p>
+  </header>
+
+  <!-- back from the payment page (?joined=1): waits for the payment service to
+       confirm, then offers the way back -->
+  <section class="sec joined hide" id="joinedSec" aria-labelledby="joinedH">
+    <div class="body" aria-live="polite">
+      <h2 id="joinedH" tabindex="-1">Confirming your membership</h2>
+      <p id="joinedP">Your payment went through. We are waiting for the payment service to confirm it &mdash; this usually takes a few seconds.</p>
+      <div class="act" id="joinedAct"></div>
+    </div>
+  </section>
+
+  <section class="sec hide" id="memberSec">
+    <div class="ep-hdr"><span class="idx">01</span><h2>You&rsquo;re a member</h2></div>
+    <div class="body">
+      <div id="mine"></div>
+      <div id="mineMsg" class="msg hide" role="alert"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="plansSec">
+    <div class="ep-hdr"><span class="idx">01</span><h2>Plans</h2><span class="note" id="plansNote"></span></div>
+    <div class="body">
+      <div id="plans"><p class="empty">Loading the plans&hellip;</p></div>
+      <div id="plansMsg" class="msg hide" role="alert"></div>
+    </div>
+  </section>
+
+  <!-- THE STEP BEFORE THE MONEY. Consumer Contracts Regulations 2013 reg 14 and
+       Sch 2, and DMCCA 2024 Sch 23 when it commences: the key facts shown apart
+       from the terms, directly before the order; two boxes the buyer ticks
+       themselves; a button that says it costs money and how much.
+       THE WORDING OF BOTH BOXES IS CONSENT VERSION 2026-09-a (CONSENT_VERSION in
+       join.js, and the billing function's confirmation email repeats it). Change
+       the words, the version and the email together, never one alone. -->
+  <section class="sec hide" id="preSec" aria-labelledby="preH">
+    <div class="ep-hdr"><span class="idx">02</span><h2 id="preH" tabindex="-1">Before you pay</h2></div>
+    <form class="pre-body" id="preForm" novalidate>
+      <div class="summary" role="group" aria-labelledby="sumK">
+        <div class="k" id="sumK">What you are agreeing to</div>
+        <dl>
+          <dt>Membership</dt><dd id="sumPlan"></dd>
+          <dt>Price</dt><dd id="sumPrice"></dd>
+          <dt>Renewal</dt><dd id="sumRenew"></dd>
+          <dt>Cancelling</dt><dd>Online, at any time, in one step: <b>Your profile</b>, then <b>Membership</b>, then <b>Cancel membership</b>. No email or phone call needed.</dd>
+          <dt>Your 14 days</dt><dd>Buying online normally gives you 14 days to change your mind. Your access starts the moment you pay, and once it has started you lose that right. Cancelling still stops the next payment.</dd>
+        </dl>
+      </div>
+
+      <label class="consent" for="cNow">
+        <input type="checkbox" id="cNow" required>
+        <span>Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.</span>
+      </label>
+      <label class="consent" for="cAdult">
+        <input type="checkbox" id="cAdult" required aria-describedby="adultHint">
+        <span>I am 18 or over.</span>
+      </label>
+      <p class="hint" id="adultHint">Under 18? A parent or guardian can buy a membership for a junior.</p>
+
+      <div class="order-row">
+        <button class="ep-btn pri" id="order" type="submit">Pay and join</button>
+        <button class="ep-btn" id="preBack" type="button">Choose a different plan</button>
+      </div>
+      <p class="fine">You pay on Stripe&rsquo;s secure checkout page. Your card details go to Stripe, never to Epinoia, and nothing is charged until you confirm there.</p>
+      <div id="preMsg" class="msg hide" role="alert"></div>
+    </form>
+  </section>
+
+  <section class="sec" id="compareSec">
+    <div class="ep-hdr"><span class="idx">02</span><h2>Free and members</h2></div>
+    <div class="body" id="compare">
+      <p class="empty">Everything that happened on court &mdash; box scores, play-by-play, season tables, club and player pages &mdash; is free in an open league. Membership adds the advanced analytics.</p>
+    </div>
+  </section>
+
+  <section class="sec" id="faqSec">
+    <div class="ep-hdr"><span class="idx">03</span><h2>Good to know</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">How do I cancel?</div>
+        <div class="a">From Your profile: under Membership, press Cancel membership. It is online, one step, and you can do it at any time.</div>
+        <div class="q">What does it cost?</div>
+        <div class="a">The price on the plan, every month or every year, until you cancel. It includes any VAT. There is nothing else to pay.</div>
+        <div class="q">The 14 days</div>
+        <div class="a">Buying online normally gives you 14 days to change your mind. Membership starts the moment you pay, so when you ask for it to start straight away you give that right up. Cancelling at any time still stops the next payment.</div>
+        <div class="q">Under 18</div>
+        <div class="a">Memberships are bought by adults. A parent or guardian can buy one for a junior.</div>
+        <div class="q">Who takes the payment?</div>
+        <div class="a">Stripe, on its own secure page. Epinoia never sees or stores your card number.</div>
+        <div class="q">Already a member?</div>
+        <div class="a">Sign in with the email address your membership is under and it is recognised on every page straight away.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="../">&larr; Epinoia</a>
+    <a href="../me/">Your profile</a>
+    <a href="../contact/">Contact</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=254" defer></script>
+<script src="../access.js?v=254" defer></script>
+<script src="join.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
+</body>
+</html>

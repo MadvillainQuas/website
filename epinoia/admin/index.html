@@ -16,9 +16,9 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="../kit/nav.css?v=253">
-<link rel="stylesheet" href="../kit/news.css?v=253">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
+<link rel="stylesheet" href="../kit/news.css?v=254">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -241,6 +241,65 @@
   .app-cell{background:var(--ground);padding:calc(var(--u)*1.5)}
   .app-hint{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);
     line-height:1.7;margin-top:4px}
+
+  /* ---- memberships & access (access-ui.js) ----
+     Every colour is a kit token, so the section reads the same in the light
+     default and in dark; the one place type sits ON an accent uses --on-accent. */
+  .ax-choice{display:flex;flex-direction:column;gap:9px;margin:4px 0 12px}
+  .ax-choice label{display:flex;gap:9px;align-items:flex-start;cursor:pointer;
+    font-family:var(--f-ui);font-weight:700;font-size:13px;color:var(--ink)}
+  .ax-choice input{margin-top:3px;flex:none}
+  .ax-choice small{display:block;font-family:var(--f-micro);font-weight:400;font-size:9px;
+    color:var(--ink-3);line-height:1.8;margin-top:2px;max-width:70ch}
+  .ax-hint{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.8;
+    max-width:72ch;margin:3px 0 10px}
+  .ax-note{font-family:var(--f-micro);font-size:9.5px;line-height:1.85;color:var(--ink-2);
+    padding:8px 11px;margin:0 0 10px;max-width:80ch;border-left:2px solid var(--amber);
+    background:color-mix(in oklch,var(--amber) 7%,transparent)}
+  /* the platform's memberships switch is off: the first thing in 06j, and louder
+     than a warning about one setting, because it qualifies every one of them */
+  .ax-note.ax-off{font-family:var(--f-ui);font-weight:700;font-size:13px;line-height:1.55;
+    color:var(--ink);border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);
+    border-left:3px solid var(--amber);padding:11px 14px;margin:0 0 calc(var(--u)*2)}
+  .ax-gap{border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);
+    border-left:3px solid var(--amber);padding:10px 14px;margin:0 0 calc(var(--u)*2);max-width:84ch;
+    background:color-mix(in oklch,var(--amber) 5%,transparent)}
+  .ax-gap-h{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--amber);margin-bottom:6px}
+  .ax-gap ol{margin:0;padding-left:18px;font-family:var(--f-micro);font-size:9.5px;
+    line-height:1.85;color:var(--ink-2)}
+  .ax-gap li{margin-bottom:5px}
+  .ax-gap li:last-child{margin-bottom:0}
+  .ax-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--ink-3);margin:calc(var(--u)*2) 0 7px}
+  .ax-form{border-left:2px solid var(--lume);padding:10px 0 2px 12px;margin:0 0 calc(var(--u)*2);
+    background:color-mix(in oklch,var(--lume) 4%,transparent)}
+  .ax-form .ax-sub:first-child{margin-top:0;color:var(--lume)}
+  .ax-form .ep-input{max-width:none}
+  .ax-form textarea.ep-input{resize:vertical;font-family:var(--f-ui);font-size:12.5px}
+  .ax-feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 14px}
+  .ax-k{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-3)}
+  .ax-v{font-family:var(--f-score);font-size:21px;line-height:1.1;margin-top:5px;color:var(--ink-2)}
+  .ax-v.ok{color:var(--lume)}
+  .ax-v.warn{color:var(--amber)}
+  .ax-scroll{overflow-x:auto;border:1px solid var(--rule);margin-bottom:calc(var(--u)*2)}
+  .ax-tbl{width:100%;border-collapse:collapse;min-width:540px;font-size:12px}
+  .ax-tbl th{font-family:var(--f-micro);font-size:8px;font-weight:400;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-3);text-align:left;padding:7px 9px;
+    border-bottom:1px solid var(--rule-2);white-space:nowrap}
+  .ax-tbl td{padding:8px 9px;border-bottom:1px solid var(--rule);vertical-align:top;
+    font-family:var(--f-ui);color:var(--ink)}
+  .ax-tbl tr:last-child td{border-bottom:0}
+  .ax-tbl tr.off td{opacity:.6}
+  /* an address broken mid-word is harder to read than a table that scrolls */
+  .ax-tbl .nm{font-weight:700;white-space:nowrap}
+  .ax-tbl .mt{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3);margin-top:2px}
+  .ax-st{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 7px;border:1px solid var(--rule-2);color:var(--ink-3);white-space:nowrap}
+  .ax-st.ok{color:var(--lume);border-color:color-mix(in oklch,var(--lume) 50%,transparent)}
+  .ax-st.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
+  #paidAccessPanel .row > .mt{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
 </style>
 </head>
 <body>
@@ -452,6 +511,12 @@
     </div>
 
     <div class="sec">
+      <div class="sec-h"><span class="idx">06j</span><h2>Memberships &amp; access</h2>
+        <span class="note">who can see the league, and what fans can buy</span></div>
+      <div class="body"><div id="paidAccessPanel"></div></div>
+    </div>
+
+    <div class="sec">
       <div class="sec-h"><span class="idx">07</span><h2>Import a played game</h2>
         <span class="note" id="imNote"></span></div>
       <div class="body"><div id="importPanel"></div></div>
@@ -558,32 +623,33 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=253" defer></script>
-<script src="../upload.js?v=253" defer></script>
-<script src="../vendor/supabase.js?v=253" defer></script>
-<script src="../livestats.js?v=253" defer></script>
-<script src="import-ui.js?v=253" defer></script>
-<script src="feed-ui.js?v=253" defer></script>
-<script src="schedule.js?v=253" defer></script>
-<script src="fixtures-ui.js?v=253" defer></script>
-<script src="formats-ui.js?v=253" defer></script>
-<script src="stream-ui.js?v=253" defer></script>
-<script src="bcastimg-ui.js?v=253" defer></script>
-<script src="officials-ui.js?v=253" defer></script>
-<script src="export-ui.js?v=253" defer></script>
-<script src="keys-ui.js?v=253" defer></script>
-<script src="feeds-ui.js?v=253" defer></script>
-<script src="../artwork.js?v=253" defer></script>
-<script src="merch-ui.js?v=253" defer></script>
-<script src="webhook-ui.js?v=253" defer></script>
-<script src="governance-ui.js?v=253" defer></script>
-<script src="awards-ui.js?v=253" defer></script>
-<script src="socials-ui.js?v=253" defer></script>
-<script src="../newsblocks.js?v=253" defer></script>
-<script src="news-ui.js?v=253" defer></script>
-<script src="appearance-ui.js?v=253" defer></script>
-<script src="embeds-ui.js?v=253" defer></script>
-<script src="admin.js?v=253" defer></script>
-<script src="../nav.js?v=253" defer></script>
+<script src="../config.js?v=254" defer></script>
+<script src="../upload.js?v=254" defer></script>
+<script src="../vendor/supabase.js?v=254" defer></script>
+<script src="../livestats.js?v=254" defer></script>
+<script src="import-ui.js?v=254" defer></script>
+<script src="feed-ui.js?v=254" defer></script>
+<script src="schedule.js?v=254" defer></script>
+<script src="fixtures-ui.js?v=254" defer></script>
+<script src="formats-ui.js?v=254" defer></script>
+<script src="stream-ui.js?v=254" defer></script>
+<script src="bcastimg-ui.js?v=254" defer></script>
+<script src="officials-ui.js?v=254" defer></script>
+<script src="export-ui.js?v=254" defer></script>
+<script src="keys-ui.js?v=254" defer></script>
+<script src="feeds-ui.js?v=254" defer></script>
+<script src="../artwork.js?v=254" defer></script>
+<script src="merch-ui.js?v=254" defer></script>
+<script src="webhook-ui.js?v=254" defer></script>
+<script src="governance-ui.js?v=254" defer></script>
+<script src="awards-ui.js?v=254" defer></script>
+<script src="socials-ui.js?v=254" defer></script>
+<script src="../newsblocks.js?v=254" defer></script>
+<script src="news-ui.js?v=254" defer></script>
+<script src="appearance-ui.js?v=254" defer></script>
+<script src="embeds-ui.js?v=254" defer></script>
+<script src="access-ui.js?v=254" defer></script>
+<script src="admin.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
 </body>
 </html>

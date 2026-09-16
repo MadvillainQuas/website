@@ -27,7 +27,65 @@ const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-let league = null, teams = [], loadToken = 0;
+let league = null, teams = [], loadToken = 0, current = null;
+
+/* ---------------------------------------------------------------- memberships ---
+   docs/memberships.md. This screen is the full WOWY, which is the members'; a
+   non-member gets a PREVIEW rather than a closed door, because the parts that are
+   already free elsewhere (the team rail, the subject chips and the on/off tiles,
+   which both profiles show) are the best argument for the rest:
+
+     01 On the floor with   a teaser in place of the individual split
+     02 On / off            unchanged
+     03 Combinations        capped at CATALOGUE.wowyPreviewMax players (wowy.js)
+
+   Analytics fail open: `preview` is true only once access.js has loaded and said
+   no. A members-only league the viewer may not see (a KNOWN answer) gets the
+   paywall card instead of the page. Without access.js nothing here changes. */
+let preview = false, walled = false;
+
+function accessState() {
+  const A = window.EpinoiaAccess;
+  if (!A || !league || typeof A.get !== 'function') return { A: null, st: {} };
+  return { A, st: A.get(league.id) || {} };
+}
+
+function showWall() {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.paywallHTML !== 'function') return false;
+  walled = true;
+  $('#wowyBody').classList.add('hide');
+  const w = $('#accessWall');
+  w.innerHTML = A.paywallHTML({ league });
+  w.classList.remove('hide');
+  return true;
+}
+
+function withTeaser() {
+  const A = window.EpinoiaAccess;
+  $('#withpanel').innerHTML = A.teaserHTML({
+    leagueSlug: league && league.slug,
+    title: 'On the floor with is for members',
+    lines: [
+      'One player’s own box score split by who shared the floor with him: his shooting, his creation and his mistakes, with any teammates you choose against without them.',
+      'The full combinations table: every on/off arrangement of up to five players, with ratings and the four factors at both ends.'
+    ]
+  });
+}
+
+/* A sign-in or sign-out while the page is open. Only a KNOWN change of answer is
+   acted on, so the state briefly reloading behind a sign-in costs nothing. */
+function onAccessChange() {
+  const { A, st } = accessState();
+  if (!A || !st.known) return;
+  const nowWalled = typeof A.canView === 'function' && !A.canView(league.id);
+  if (nowWalled !== walled) { location.reload(); return; }
+  const nowPreview = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+  if (nowPreview !== preview) {
+    preview = nowPreview;
+    if (current) select(current);           // a member now: panel 01 needs the event log it skipped
+  }
+}
 
 function note(host, msg) {
   const h = $(host);
@@ -44,14 +102,19 @@ async function fetchTeam(team) {
   if (!gs.length) return { games: [] };
 
   const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
+  /* THE EVENT LOG FEEDS PANEL 01 ONLY — EpinoiaWith.index below, read by
+     EpinoiaWithUI. The on/off tiles, the matrix and the roster all come from the
+     stints. A preview teases panel 01, so it skips the heaviest read on the page
+     (a season of events for every game this team played). */
+  const wantEvents = !preview;
   const [st, evs] = await Promise.all([
     D.stints(gs.map(g => g.id), team.id, byGame),
-    D.events(gs.map(g => g.id))
+    wantEvents ? D.events(gs.map(g => g.id)) : Promise.resolve([])
   ]);
 
   /* the on-court five is rebuilt by walking each game's log forward from its
      frozen starters, so every stat event knows the context it happened in */
-  const recs = window.EpinoiaWith.index(gs.map(g => ({
+  const recs = !wantEvents ? [] : window.EpinoiaWith.index(gs.map(g => ({
     starters: g.starters,
     events: evs.filter(e => e.gameId === g.id)
   })));
@@ -64,7 +127,7 @@ async function fetchTeam(team) {
   const roster = [...mins.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
   const meta = await D.playerMeta(roster);
 
-  return { games: gs, stints: st, recs, roster, meta };
+  return { games: gs, stints: st, recs, roster, meta, preview: !wantEvents };
 }
 
 function paint(team, d) {
@@ -85,7 +148,14 @@ function paint(team, d) {
 
   $('#subjNote').textContent = d.games.length + ' games · ' + d.stints.length +
     ' stints · ' + d.roster.length + ' players';
-  $('#comboNote').textContent = 'up to 5 players · 2⁵ arrangements';
+  /* d.preview, not the module flag: it is what THIS data was fetched for, so a
+     set without the event log is never drawn as the full page */
+  const A = window.EpinoiaAccess;
+  const cap = d.preview ? ((A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1) : 5;
+  $('#comboNote').textContent = d.preview
+    ? 'preview · ' + cap + (cap === 1 ? ' player' : ' players') + ' · members get up to 5'
+    : 'up to 5 players · 2⁵ arrangements';
+  if (d.preview) withTeaser();
 
   /* --- the subject picker ---------------------------------------------------
      The individual split needs one player as its subject and any number as his
@@ -121,22 +191,27 @@ function paint(team, d) {
       if (ids.indexOf(subject) === -1) return;
       ids.forEach(id => { if (id !== subject) mates.add(id); });
     });
-    window.EpinoiaWithUI.render({
-      host: '#withpanel', recs: d.recs, stints: d.stints,
-      playerId: subject, meta: d.meta, teammates: [...mates]
-    });
+    /* in a preview panel 01 keeps its teaser; the subject still drives panel 02 */
+    if (!d.preview) {
+      window.EpinoiaWithUI.render({
+        host: '#withpanel', recs: d.recs, stints: d.stints,
+        playerId: subject, meta: d.meta, teammates: [...mates]
+      });
+    }
     window.EpinoiaWowy.onOffTiles('#onoff', d.stints, subject);
   }
   drawSubject();
 
   window.EpinoiaWowy.render({
     host: '#wowy', stints: d.stints, meta: d.meta,
-    max: 5, preselect: d.roster.slice(0, 2)
+    max: 5, preselect: d.roster.slice(0, 2),
+    preview: d.preview, leagueSlug: league && league.slug
   });
 }
 
 async function select(team) {
   const token = ++loadToken;
+  current = team;
   $('#teamrail').querySelectorAll('button').forEach(b =>
     b.classList.toggle('on', b.dataset.id === team.id));
   /* the URL carries the team, so a chosen view is linkable and survives a
@@ -166,6 +241,21 @@ async function select(team) {
     const ctx = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
     league = ctx.league;
     window.__CS_LEAGUE_SLUG = league.slug;
+
+    /* Awaited, unlike the analytics on a box score: whether panel 01 fetches a
+       season of events at all depends on the answer, and access.js gives up after
+       four seconds and fails open, so the wait is bounded. */
+    const A = window.EpinoiaAccess;
+    if (A && typeof A.load === 'function') {
+      try { await A.load({ leagueId: league.id, leagueSlug: league.slug }); } catch (_) { /* fail open */ }
+      const { st } = accessState();
+      if (st.known && typeof A.canView === 'function' && !A.canView(league.id) && showWall()) {
+        if (typeof A.onChange === 'function') A.onChange(onAccessChange);
+        return;
+      }
+      preview = typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id);
+      if (typeof A.onChange === 'function') A.onChange(onAccessChange);
+    }
 
     teams = await D.all(`teams?league_id=eq.${league.id}` +
       `&select=id,name,short_name,slug,colour&order=name`);

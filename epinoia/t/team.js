@@ -18,9 +18,18 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 const n1 = (v, d = '—') => (v == null ? d : Number(v).toFixed(1));
 
-async function api(p) {
-  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+/* A MEMBERS-ONLY LEAGUE IS REFUSED BY ROW-LEVEL SECURITY, so a member's reads say who is
+   asking: access.js hands back a token only for a members-only league this viewer may see and
+   {} otherwise, so an open league's request is exactly what it was. A 401 with a token on it
+   is a token the server stopped accepting: asked once more anonymously, as it always was. */
+async function api(p, anon) {
+  const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous */ }
+  }
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`, { cache: 'no-store', headers });
+  if (r.status === 401 && headers.Authorization && !anon) return api(p, true);
   if (!r.ok) throw new Error(r.status + ' on ' + p.split('?')[0]);
   return r.json();
 }
@@ -28,6 +37,71 @@ async function api(p) {
 function oops(msg) {
   ['#roster', '#games', '#teamstats'].forEach(s => { const h = $(s); if (h) h.textContent = ''; });
   $('#games').appendChild(el('div', 'empty', msg));
+}
+
+/* ---------------------------------------------------------------- access ---
+   WHAT THIS VIEWER MAY SEE (docs/memberships.md), decided once from the club's league before
+   the first gated section is drawn, and read by every section as a flag. It starts open and
+   stays open unless access.js is on the page AND has an answer: analytics fail open, and the
+   members-only card needs a known "cannot view".
+
+   locked     true = no analytics: the events splits, the zones and the full WOWY are drawn
+              as teasers (the full tables drop their own premium columns)
+   paywall    a members-only league this viewer cannot see: the club's identity, crest,
+              venue and squad stay (the shop window, §2), the card stands where the record
+              and the statistics were, and nothing behind it is fetched -- the database would
+              refuse every row
+   fixtures   upcoming fixtures stay public in a members-only league while the league says so */
+const ACCESS = { locked: false, paywall: false, fixtures: true, slug: '' };
+const accessTeaser = o => { const A = window.EpinoiaAccess;
+  return A && typeof A.teaserHTML === 'function'
+    ? A.teaserHTML(Object.assign({ leagueSlug: ACCESS.slug }, o)) : ''; };
+
+function accessNow(A, lg) {
+  const st = typeof A.get === 'function' ? A.get(lg.id) : null;
+  return {
+    locked: typeof A.analyticsOk === 'function' && !A.analyticsOk(lg.id),
+    paywall: !!(st && st.known) && typeof A.canView === 'function' && !A.canView(lg.id),
+    st
+  };
+}
+
+/* THE ANSWER CAN MOVE UNDER A DRAWN PAGE: a sign-in or sign-out in another tab, an answer that
+   lands after the module's time limit, the admin preview switch. Nearly every section was drawn
+   from it, so a change to what was decided draws the page again from the top; an open league
+   never notices. On a change of account the module forgets what it held first, so the new
+   account's answer is waited for rather than read from the empty state in between. */
+function watchAccess(A, lg) {
+  if (typeof A.onChange !== 'function') return;
+  const drawn = ACCESS.locked + '|' + ACCESS.paywall;
+  const check = () => { const n = accessNow(A, lg); if (n.locked + '|' + n.paywall !== drawn) location.reload(); };
+  try {
+    A.onChange(d => {
+      if (d && d.leagueId && d.leagueId !== lg.id) return;
+      if (d && d.reason === 'auth' && typeof A.load === 'function') {
+        Promise.resolve().then(() => A.load({ leagueId: lg.id })).then(check, () => {});
+      } else check();
+    });
+  } catch (_) { /* the page as drawn */ }
+}
+
+function decideAccess(lg) {
+  const A = window.EpinoiaAccess;
+  if (!A || !lg || !lg.id) return;
+  ACCESS.slug = lg.slug || '';
+  const now = accessNow(A, lg);
+  ACCESS.locked = now.locked;
+  ACCESS.paywall = now.paywall;
+  watchAccess(A, lg);
+  if (!ACCESS.paywall) return;
+  const st = now.st;
+  ACCESS.fixtures = st.fixturesPublic !== false;
+  document.body.classList.add('paywalled');
+  const card = $('#paywall');
+  if (card && typeof A.paywallHTML === 'function') {
+    card.innerHTML = A.paywallHTML({ league: lg });
+    card.hidden = false;
+  }
 }
 
 (async function boot() {
@@ -152,8 +226,17 @@ function oops(msg) {
     else $('#leagueLink').style.display = 'none';
     document.title = team.name + ' · Epinoia';
 
-    await Promise.all([record(team), teamStats(team), venue(team),
-                       roster(team), games(team)]);
+    /* ACCESS FIRST FOR THE SECTIONS IT DECIDES, and only for those: the venue and the squad
+       are never gated, so they start at once, while the record, the statistics and the
+       results wait for the answer (by id: a slug would cost a leagues read first). The
+       module gives up by itself after 4 s and answers open. */
+    const A = window.EpinoiaAccess;
+    const accessReady = (A && typeof A.load === 'function' && lg.id)
+      ? Promise.resolve().then(() => A.load({ leagueId: lg.id })).catch(() => null)
+      : Promise.resolve(null);
+    await Promise.all([venue(team), roster(team),
+                       accessReady.then(() => { try { decideAccess(lg); } catch (_) { /* open */ }
+                         return Promise.all([record(team), teamStats(team), games(team)]); })]);
     teamShots(team);
     await lineupPanels(team);
     await videoPanel(team);
@@ -168,6 +251,7 @@ function oops(msg) {
    --------------------------------------------------------------------------- */
 async function teamShots(team) {
   const host = $('#teamshots');
+  if (ACCESS.paywall) return;
   if (!host || !window.EpinoiaShotChart || !window.EpinoiaData) return;
   try {
     const D = window.EpinoiaData;
@@ -180,9 +264,14 @@ async function teamShots(team) {
     const shots = await window.EpinoiaShotChart.gather({
       fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
     });
-    /* the chart alone: the zone numbers live in the team statistics block, ranked in the league */
+    /* the chart alone: the zone numbers live in the team statistics block, ranked in the league.
+       Without analytics, the marks without the zones, and a line saying what they would add. */
     window.EpinoiaShotChart.renderZones({ host, shots, colour: team.colour || '#93f2bf', minAttempts: 5, games: gs.length, table: false,
-      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games') });
+      note: 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games'), zones: !ACCESS.locked });
+    if (ACCESS.locked) {
+      host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+        lines: ['Twelve zones, each tinted against its own break-even.'] }));
+    }
   } catch (e) { host.appendChild(el('div', 'empty', 'The shot chart could not be drawn.')); }
 }
 
@@ -191,6 +280,7 @@ async function teamShots(team) {
    (p/video.js) in team mode: the whole side of each game, each man named. */
 async function videoPanel(team) {
   const D = window.EpinoiaData;
+  if (ACCESS.paywall) return;          // video rows are behind the wall (§2)
   if (!D || !window.EpinoiaPlayerVideo) return;
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
@@ -243,6 +333,7 @@ async function videoPanel(team) {
 }
 
 async function record(team) {
+  if (ACCESS.paywall) return;          // standings are behind the wall; the strip is hidden
   const st = await api(`standings?team_id=eq.${team.id}` +
     `&select=gp,w,l,pts_for,pts_against,diff,league_points,rank,streak&limit=1`);
   const wrap = $('#rec'); wrap.textContent = '';
@@ -266,6 +357,7 @@ const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'P
 
 async function teamStats(team, kind) {
   const host = $('#teamstats'); host.textContent = '';
+  if (ACCESS.paywall) return;          // the card stands in for this section
   const D = window.EpinoiaData;
   if (kind) teamScopeKind = kind;
   let S = null;
@@ -356,7 +448,14 @@ async function teamStats(team, kind) {
      competitions, cut into the chart's zones; this club's share, rate per 100 possessions,
      per-game attempts and makes and eFG% in each, each one a percentile among the teams. */
   const zh = el('div'); zh.appendChild(el('div', 'ffhead', 'shot zones')); host.appendChild(zh);
-  zoneStats(zh, S, team).catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')));
+  /* Without analytics the teaser stands in, and the zone read is never made: it fetches the
+     event log of every game in the competition, and saving that is half the point. */
+  if (ACCESS.locked) {
+    const tz = el('div');
+    tz.innerHTML = accessTeaser({ title: 'Shot zones, ranked in the league',
+      lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
+    zh.appendChild(tz);
+  } else zoneStats(zh, S, team).catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')));
 
   /* EVENTS, AT BOTH ENDS. What the club made of second chances, breaks, turnovers,
      timeouts and half-court sets over the scoped season, and what opponents made of
@@ -367,7 +466,10 @@ async function teamStats(team, kind) {
   const evHost = el('div'); evWrap.appendChild(evHost); host.appendChild(evWrap);
   try {
     const clubLabel = team.name || team.short_name || '';
-    if (window.EpinoiaSitPanel) {
+    if (ACCESS.locked) {
+      evHost.innerHTML = accessTeaser({ title: 'Events, at both ends',
+        lines: ['Second chances, transition, points off turnovers, after-timeout sets and the half court — what the club made of each, and what opponents made of the same.'] });
+    } else if (window.EpinoiaSitPanel) {
       window.EpinoiaSitPanel.render({
         host: evHost, kind: 'team', row: mine, field: S.teams, name: clubLabel, side: 'off',
         note: teamScopeKind !== 'all' ? (KIND_LABEL[teamScopeKind] || teamScopeKind) : ''
@@ -389,6 +491,8 @@ async function teamStats(team, kind) {
     T.render({
       host: sub, kind: 'player', sortKey: 'ppg', showMinGames: false,
       filename: (team.slug || 'team') + '-players',
+      /* the table drops the premium columns itself when the league's analytics are locked */
+      leagueId: (team.leagues || {}).id, leagueSlug: ACCESS.slug,
       rows: squad,
       playerHref: r => '../p/?p=' + encodeURIComponent(r.id)
     });
@@ -428,6 +532,7 @@ async function zoneStats(host, S, team) {
 /* All three panels read the same stints, fetched once. */
 async function lineupPanels(team) {
   const D = window.EpinoiaData;
+  if (ACCESS.paywall) return;          // stints are behind the wall; the sections are hidden
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id`);
@@ -477,11 +582,12 @@ async function lineupPanels(team) {
     }
     drawWowy();
 
-    /* the combination matrix, seeded with the two most-used players */
-    window.EpinoiaWowy.render({
+    /* the combination matrix, seeded with the two most-used players. Without analytics it
+       is the preview: wowy.js caps the subjects and adds its own teaser line. */
+    window.EpinoiaWowy.render(Object.assign({
       host: '#wowy', stints: st, meta, max: 4,
       preselect: order.slice(0, 2)
-    });
+    }, ACCESS.locked ? { preview: true, leagueSlug: ACCESS.slug } : {}));
 
     window.EpinoiaLineupUI.filterPanel({ host: '#lufilter', stints: st, meta });
     window.EpinoiaLineupUI.listPanel({ host: '#lulist', stints: st, meta });
@@ -902,6 +1008,16 @@ async function games(team) {
     `&select=id,tipoff_at,status,home_score,away_score,home_team_id,venue,competition_id,competitions(id,name,kind),` +
     `home:home_team_id(name,slug,short_name,colour,logo_path),away:away_team_id(name,slug,short_name,colour,logo_path)&order=tipoff_at.desc`);
   const host = $('#games'); host.textContent = '';
+  /* A MEMBERS-ONLY LEAGUE keeps its upcoming fixtures public while it says so (§2) -- a league
+     that wants people through the door must say when the doors open -- and the database
+     returns nothing else. The list opens on them and offers nothing that is not there. */
+  if (ACCESS.paywall) {
+    TG.show = 'upcoming';
+    if (!gs.length) {
+      host.appendChild(el('div', 'empty', ACCESS.fixtures ? 'No upcoming fixtures.' : 'Fixtures are shown to members.'));
+      return;
+    }
+  }
   if (!gs.length) { host.appendChild(el('div', 'empty', 'No games yet.')); return; }
   TG.rows = gs;
   paintGames(team);
@@ -930,7 +1046,7 @@ function paintGames(team) {
   const row2 = el('div', 'grow');
   [['all', 'all games'], ['results', 'results'], ['upcoming', 'upcoming']].forEach(([k, label]) =>
     row2.appendChild(chip(label, TG.show === k, () => { TG.show = k; })));
-  pick.appendChild(row2);
+  if (!ACCESS.paywall) pick.appendChild(row2);    // behind the wall there are only fixtures
   host.appendChild(pick);
 
   const done = st => st === 'final' || st === 'finalising';

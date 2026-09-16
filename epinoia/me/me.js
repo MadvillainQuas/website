@@ -2,9 +2,10 @@
 /* ============================================================================
    Your profile — a fan's side of Epinoia.
 
-   Favourite clubs and players, a colour, light or dark, and how the platform should keep you
-   posted. Everything saves as you change it (set_fan_prefs, 0106); the bell on every page and
-   the notify function read the same row.
+   Membership first (what you pay for or were given, Manage billing, Cancel membership; my_access,
+   0117), then favourite clubs and players, a colour, light or dark, and how the platform should
+   keep you posted. Preferences save as you change them (set_fan_prefs, 0106); the bell on every
+   page and the notify function read the same row.
    ============================================================================ */
 const CFG = window.EPINOIA_CONFIG;
 const $ = s => document.querySelector(s);
@@ -180,6 +181,210 @@ async function paintRecent() {
   });
 }
 
+/* ------------------------------------------------------------ membership --- */
+/* The fan's own memberships, from my_access (0117): each plan with where it
+   applies and what happens next, what a league has given them, and the two
+   buttons the join page's summary promises — Manage billing and Cancel
+   membership. Both open Stripe's Customer Portal through the billing function
+   (cancel:true deep-links straight to the cancel step), so no card detail and no
+   Stripe script ever touches this page. Before 0117 is applied the RPC does not
+   exist; the section then leaves quietly and the others close up their numbers.
+   Nothing here reads or writes fan_prefs. */
+const FEATURE_WORDS = { analytics: 'Advanced analytics', league: 'Members-only league' };
+const BILLING_NEXT = '/epinoia/me/';
+
+function renumberSections() {
+  let n = 0;
+  document.querySelectorAll('#body > section.sec').forEach(sec => {
+    if (sec.classList.contains('hide')) return;
+    const idx = sec.querySelector('.ep-hdr .idx');
+    if (idx) idx.textContent = String(++n).padStart(2, '0');
+  });
+}
+function longDate(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function featureWords(fs) {
+  return (Array.isArray(fs) ? fs : []).map(f => FEATURE_WORDS[f] || f).join(' and ') || 'Membership';
+}
+function memSay(text, kind, link) {
+  const m = $('#memMsg');
+  m.textContent = text || '';
+  if (text && link) { m.append(' '); const a = el('a', null, link.text); a.href = link.href; m.appendChild(a); }
+  m.className = 'msg ' + (kind || '');
+  m.classList.toggle('hide', !text);
+}
+
+/* What happens next, in the words a fan uses. `live` is whether the plan still
+   gives access; `cancellable` whether a cancel step makes sense (Stripe's cancel
+   flow wants a subscription that is still running and not already ending).
+
+   ENDING IS EITHER FLAG. A cancellation made in Stripe's portal on flexible
+   billing — the default for every subscription Checkout creates — sets only
+   cancel_at and leaves cancel_at_period_end false. Reading the one flag said
+   "Renews on" about a membership that was ending and offered Cancel again, which
+   Stripe then refuses. The end date is cancel_at when there is one. */
+function subState(s) {
+  const ending = !!s.cancel_at_period_end || !!s.cancel_at;
+  const iso = ending ? (s.cancel_at || s.current_period_end) : s.current_period_end;
+  const end = iso ? longDate(iso) : '';
+  if (s.status === 'active' || s.status === 'trialing') {
+    if (ending) {
+      return { text: end ? 'Cancelled. Your access ends on ' + end + '.' : 'Cancelled. Your access ends at the end of this period.', cls: 'end', live: true, cancellable: false };
+    }
+    if (s.status === 'trialing') {
+      return { text: end ? 'Free trial. The first payment is on ' + end + '.' : 'Free trial.', cls: '', live: true, cancellable: true };
+    }
+    return { text: end ? 'Renews on ' + end + '.' : 'Active.', cls: '', live: true, cancellable: true };
+  }
+  if (s.status === 'past_due' || s.status === 'unpaid' || s.status === 'incomplete') {
+    return { text: 'Payment problem: update your card in Manage billing.' + (ending && end ? ' It is set to end on ' + end + '.' : ''),
+             cls: 'bad', live: true, cancellable: s.status === 'past_due' && !ending };
+  }
+  if (s.status === 'paused') return { text: 'Paused.', cls: 'end', live: true, cancellable: false };
+  return { text: 'Ended.', cls: 'end', live: false, cancellable: false };
+}
+
+async function openBilling(subscriptionId, cancel, button) {
+  const buttons = [...document.querySelectorAll('#memberSec button')];
+  const label = button.textContent;
+  buttons.forEach(b => { b.disabled = true; });
+  button.textContent = 'Opening…';
+  memSay('');
+  const done = () => { buttons.forEach(b => { b.disabled = false; }); button.textContent = label; };
+
+  let token = '';
+  try { const { data } = await sb.auth.getSession(); token = (data && data.session && data.session.access_token) || ''; } catch (_) { token = ''; }
+  if (!token) {
+    done();
+    memSay('Your sign-in has expired. Sign in again and you will come straight back here.', 'err',
+           { text: 'Sign in', href: '../signin/?next=' + encodeURIComponent(BILLING_NEXT) });
+    return;
+  }
+
+  const body = { action: 'portal', cancel: !!cancel, next: BILLING_NEXT };
+  if (subscriptionId) body.subscriptionId = subscriptionId;
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), 20000) : null;
+  let status = 0, data = {};
+  try {
+    const r = await fetch(CFG.supabaseUrl + '/functions/v1/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body),
+      signal: ctl ? ctl.signal : undefined
+    });
+    status = r.status;
+    try { data = (await r.json()) || {}; } catch (_) { data = {}; }
+  } catch (_) {
+    status = 0;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
+  if (status === 200 && typeof data.url === 'string' && /^https:\/\//.test(data.url)) {
+    location.assign(data.url);            // Stripe's page; it sends them back here
+    return;
+  }
+  done();
+  const why = typeof data.error === 'string' ? data.error.replace(/[.\s]+$/, '') : '';
+  /* 503: Stripe is not switched on. A 404 without the function's own {error}:
+     the function is not deployed. Either way nothing has changed. */
+  if (status === 503 || (status === 404 && !why)) {
+    memSay('Billing is not open yet, so there is nothing to change. Your membership is exactly as it was.', 'warn');
+  } else if (status === 401) {
+    memSay('Your sign-in has expired. Sign in again and you will come straight back here.', 'err',
+           { text: 'Sign in', href: '../signin/?next=' + encodeURIComponent(BILLING_NEXT) });
+  } else if (status === 0) {
+    memSay('The billing page could not be reached. Check your connection and try again. Nothing has changed.', 'err');
+  } else {
+    memSay((cancel ? 'Cancelling' : 'Billing') + ' could not open: ' + (why || 'the payment service refused (' + status + ')') + '. Nothing has changed.', 'err');
+  }
+}
+
+function billingButton(text, subscriptionId, cancel) {
+  const b = el('button', 'ep-btn', text);
+  b.type = 'button';
+  b.addEventListener('click', () => openBilling(subscriptionId, cancel, b));
+  return b;
+}
+
+async function paintMembership() {
+  const sec = $('#memberSec'), host = $('#mem');
+  let res;
+  try { res = await sb.rpc('my_access'); } catch (e) { res = { error: { message: String((e && e.message) || e) }, status: 0 }; }
+  const err = res && res.error;
+  if (err && (err.code === 'PGRST202' || res.status === 404)) {
+    sec.classList.add('hide');            // 0117 not applied: no section at all
+    renumberSections();
+    return;
+  }
+  host.textContent = '';
+  if (err || !res.data || typeof res.data !== 'object') {
+    host.appendChild(el('p', 'mem-intro', 'Your membership could not be loaded just now. Reload the page to try again.'));
+    const foot = el('div', 'mem-foot');
+    const plans = el('a', 'ep-btn', 'See membership plans'); plans.href = '../join/';
+    foot.appendChild(plans);
+    host.appendChild(foot);
+    return;
+  }
+
+  const mine = res.data;
+  const subs = (Array.isArray(mine.subscriptions) ? mine.subscriptions : []).filter(Boolean);
+  const now = Date.now();
+  const grants = (Array.isArray(mine.grants) ? mine.grants : [])
+    .filter(g => g && !(g.expires_at && new Date(g.expires_at).getTime() <= now));
+  let anyLive = false;
+
+  subs.forEach(s => {
+    const st = subState(s);
+    if (st.live) anyLive = true;
+    const row = el('div', 'mem');
+    const tx = el('div');
+    tx.append(
+      el('b', null, s.plan_name || 'Membership'),
+      el('small', null, (s.league_id ? (s.league_name || 'One league') + ' only' : 'Every league') + ' · ' + featureWords(s.features)),
+      el('span', 'st' + (st.cls ? ' ' + st.cls : ''), st.text));
+    row.appendChild(tx);
+    if (st.live) {
+      const acts = el('div', 'mem-acts');
+      acts.appendChild(billingButton('Manage billing', s.id, false));
+      if (st.cancellable) acts.appendChild(billingButton('Cancel membership', s.id, true));
+      row.appendChild(acts);
+    }
+    host.appendChild(row);
+  });
+
+  grants.forEach(g => {
+    const row = el('div', 'mem');
+    const tx = el('div');
+    tx.append(
+      el('b', null, featureWords(g.features)),
+      el('small', null, 'Given by ' + (g.league_id ? (g.league_name || 'your league') : 'Epinoia') + (g.note ? ' · ' + g.note : '')),
+      el('span', 'st', g.expires_at ? 'Until ' + longDate(g.expires_at) + '.' : 'No end date.'));
+    row.appendChild(tx);
+    host.appendChild(row);
+  });
+
+  if (!subs.length && !grants.length) {
+    host.appendChild(el('p', 'mem-intro',
+      'You are not a member. Box scores, tables and player pages are free for everyone. ' +
+      'Membership adds the advanced analytics, and opens the leagues that keep their games for members.'));
+  }
+
+  const foot = el('div', 'mem-foot');
+  /* receipts and card details stay reachable after a plan has ended; the
+     function finds the right account from the most recent subscription */
+  if (!anyLive && (subs.length || mine.has_customer)) {
+    foot.appendChild(billingButton('Manage billing', subs.length ? subs[0].id : null, false));
+  }
+  const plans = el('a', 'ep-btn', subs.length || grants.length ? 'See all plans' : 'See membership plans');
+  plans.href = '../join/';
+  foot.appendChild(plans);
+  host.appendChild(foot);
+}
+
 /* ----------------------------------------------------------------- boot --- */
 (async function boot() {
   sb = window.epinoiaClient && window.epinoiaClient();
@@ -189,6 +394,8 @@ async function paintRecent() {
   $('#email').textContent = user.email || '';
   $('#nEmailTo').textContent = 'to ' + (user.email || 'the address you sign in with');
   $('#body').classList.remove('hide');
+  /* not awaited: the membership read never holds up (or breaks) the rest */
+  paintMembership().catch(() => { $('#memberSec').classList.add('hide'); renumberSections(); });
 
   const { data } = await sb.from('fan_prefs').select('*').maybeSingle();
   prefs = data || { theme: 'light', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,

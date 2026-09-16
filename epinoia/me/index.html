@@ -15,8 +15,8 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="../kit/nav.css?v=253">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -50,6 +50,36 @@
   .ntf small{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .ntf time{font-family:var(--f-micro);font-size:8px;color:var(--ink-3);white-space:nowrap;padding-top:4px}
   .hide{display:none}
+
+  /* membership: one row per plan or grant, the words on the left, the buttons
+     on the right (under the words on a phone) */
+  .mem-list{padding-top:calc(var(--u))}
+  .mem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;align-items:center;
+    padding:12px calc(var(--u)*3);border-top:1px solid var(--rule)}
+  .mem-list > .mem:first-child{border-top:none}
+  .mem b{font-family:var(--f-ui);font-size:15px;display:block;color:var(--ink)}
+  .mem small{font-family:var(--f-micro);font-size:9px;line-height:1.8;color:var(--ink-3);display:block}
+  .mem .st{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;line-height:1.8;color:var(--lume);display:block;margin-top:2px}
+  .mem .st.bad{color:var(--flare)}
+  .mem .st.end{color:var(--amber)}
+  .mem-acts,.mem-foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .mem-foot{padding:calc(var(--u)*1.5) calc(var(--u)*3) 0}
+  .mem-intro{margin:0;padding:calc(var(--u)*1.5) calc(var(--u)*3) 0;font-family:var(--f-ui);font-size:14px;line-height:1.55;color:var(--ink-2);max-width:64ch}
+  .mem-acts .ep-btn,.mem-foot .ep-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+  /* as specific as the kit's light-theme button rules, and later, so a busy
+     button does not light up on hover in either theme */
+  .mem-acts .ep-btn[disabled],.mem-acts .ep-btn[disabled]:hover,
+  .mem-foot .ep-btn[disabled],.mem-foot .ep-btn[disabled]:hover{cursor:default;background:transparent;color:var(--ink-3);border-color:var(--rule-2);filter:none}
+  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:10px 13px;max-width:70ch;
+    margin:calc(var(--u)*1.5) calc(var(--u)*3) 0;border-left:2px solid var(--rule-2);color:var(--ink-2)}
+  .msg a{color:inherit}
+  .msg.err{border-left-color:var(--flare);color:var(--flare);background:color-mix(in oklch,var(--flare) 8%,transparent)}
+  .msg.warn{border-left-color:var(--amber);color:var(--amber);background:color-mix(in oklch,var(--amber) 8%,transparent)}
+  @media (max-width:560px){
+    .mem{grid-template-columns:minmax(0,1fr);padding-left:16px;padding-right:16px}
+    .mem-foot,.mem-intro{padding-left:16px;padding-right:16px}
+    .msg{margin-left:16px;margin-right:16px}
+  }
 </style>
 </head>
 <body>
@@ -65,19 +95,29 @@
   </div>
 
   <div id="signedout" class="note hide">
-    You are not signed in. <a id="signinLink" href="../signin/?next=/epinoia/me/" style="color:var(--lume)">Sign in</a> with your email to follow clubs and players and choose how Epinoia keeps you posted.
+    You are not signed in. <a id="signinLink" href="../signin/?next=/epinoia/me/" style="color:var(--lume)">Sign in</a> with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.
   </div>
 
   <div id="body" class="hide">
+    <!-- Membership (my_access, 0117). me.js fills it; before the migration is
+         applied the RPC is missing and me.js hides the section and renumbers
+         the rest. Cancelling here is the "one step, online" the join page's
+         summary promises: Membership, then Cancel membership. -->
+    <section class="sec" id="memberSec" aria-labelledby="memberH">
+      <div class="ep-hdr"><span class="idx">01</span><h2 id="memberH">Membership</h2></div>
+      <div id="mem" class="mem-list"><div class="note">Loading your membership&hellip;</div></div>
+      <div id="memMsg" class="msg hide" role="alert"></div>
+    </section>
+
     <section class="sec">
-      <div class="ep-hdr"><span class="idx">01</span><h2>Your clubs</h2><span class="note" id="clubNote" style="padding:0;margin-left:auto"></span></div>
+      <div class="ep-hdr"><span class="idx">02</span><h2>Your clubs</h2><span class="note" id="clubNote" style="padding:0;margin-left:auto"></span></div>
       <div class="row"><span class="lbl">League</span><div id="leaguePick" class="chips" style="padding:0"></div></div>
       <div class="row"><span class="lbl">Clubs you follow — tap to follow or unfollow</span></div>
       <div id="teamPick" class="chips"></div>
     </section>
 
     <section class="sec">
-      <div class="ep-hdr"><span class="idx">02</span><h2>Your players</h2></div>
+      <div class="ep-hdr"><span class="idx">03</span><h2>Your players</h2></div>
       <div class="row">
         <input id="plq" class="ep-input" placeholder="Search a player by name" style="flex:1 1 240px">
       </div>
@@ -87,7 +127,7 @@
     </section>
 
     <section class="sec">
-      <div class="ep-hdr"><span class="idx">03</span><h2>Appearance</h2></div>
+      <div class="ep-hdr"><span class="idx">04</span><h2>Appearance</h2></div>
       <div class="row"><span class="lbl">Your colour</span><div id="swatches" style="display:flex;gap:8px;flex-wrap:wrap"></div>
         <input id="colour" type="color" class="ep-input" style="width:58px;padding:3px" title="any colour"></div>
       <div class="row"><span class="lbl">Light or dark, everywhere on Epinoia</span>
@@ -96,7 +136,7 @@
     </section>
 
     <section class="sec">
-      <div class="ep-hdr"><span class="idx">04</span><h2>Notifications</h2></div>
+      <div class="ep-hdr"><span class="idx">05</span><h2>Notifications</h2></div>
       <div class="row"><span class="lbl">How</span></div>
       <label class="opt"><input type="checkbox" id="nInapp"><div><b>On the site</b><span>the bell at the top right of every page</span></div></label>
       <label class="opt"><input type="checkbox" id="nEmail"><div><b>Email</b><span id="nEmailTo">to the address you sign in with</span></div></label>
@@ -111,14 +151,14 @@
     </section>
 
     <section class="sec">
-      <div class="ep-hdr"><span class="idx">05</span><h2>Recent</h2><button class="ep-chip" id="readAll" type="button" style="margin-left:auto">mark all read</button></div>
+      <div class="ep-hdr"><span class="idx">06</span><h2>Recent</h2><button class="ep-chip" id="readAll" type="button" style="margin-left:auto">mark all read</button></div>
       <div id="recent"></div>
     </section>
   </div>
 </div>
-<script src="../config.js?v=253" defer></script>
-<script src="../vendor/supabase.js?v=253" defer></script>
-<script src="me.js?v=253" defer></script>
-<script src="../nav.js?v=253" defer></script>
+<script src="../config.js?v=254" defer></script>
+<script src="../vendor/supabase.js?v=254" defer></script>
+<script src="me.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
 </body>
 </html>

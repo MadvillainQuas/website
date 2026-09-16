@@ -198,7 +198,7 @@ function lineupsHTML() {
 let runsIdx = null, runsKey = '';
 function runsOf() {
   const F = root0().EpinoiaGameFlow;
-  if (!F || !ctx.S) return null;
+  if (!F || !ctx.S || ctx.runsLocked) return null;
   const list = plays();
   if (runsIdx && runsKey === indexedKey) return runsIdx;
   runsKey = indexedKey;
@@ -367,7 +367,10 @@ function render() {
   const clocked = hasTrack && v.clock_track.mode !== 'score' &&
     V().runsFromTrack(V().saneTrack ? V().saneTrack(v.clock_track, v) : v.clock_track).length > 0;
   if (!clocked && (st.tab === 'minutes' || st.tab === 'lineups')) st.tab = 'events';
-  const runsHere = !!root0().EpinoiaGameFlow;
+  /* the runs are game flow's analysis, which is the members' when the page says the
+     analytics are locked (runsLocked): the tab, the chip and the list go together,
+     exactly as they do on a page where flow.js is not loaded at all */
+  const runsHere = !!root0().EpinoiaGameFlow && !ctx.runsLocked;
   if (!runsHere && st.tab === 'runs') st.tab = 'events';
   /* WHETHER ANY PLAY CAN BE PLACED, which is not the same question as whether
      EVERY play can. A partially-covering clock track over a bulk-imported log
@@ -794,7 +797,8 @@ function render_(opts) {
   if (!host) return;
   const fresh = !ctx || ctx.video !== opts.video || ctx.events !== opts.events;
   ctx = { video: opts.video, events: opts.events || [], S: opts.S, d: opts.d,
-          canEdit: !!opts.canEdit, onTrim: opts.onTrim || null, game: opts.game || null };
+          canEdit: !!opts.canEdit, onTrim: opts.onTrim || null, game: opts.game || null,
+          runsLocked: !!opts.runsLocked };
   if (opts.focus && opts.focus.pid != null) st.pid = opts.focus.pid;
   if (opts.focus && opts.focus.filter) st.filter = opts.focus.filter;
   /* A new game, or a log that has been replaced wholesale, invalidates both
@@ -805,7 +809,7 @@ function render_(opts) {
   render();
   /* a run from the game flow tab, or a link naming one (?vr=<key>), lands on it, playing;
      once per key, so the redraw a new event causes does not rewind it */
-  if (opts.focus && opts.focus.run && st.runFocus !== opts.focus.run) {
+  if (opts.focus && opts.focus.run && st.runFocus !== opts.focus.run && !ctx.runsLocked) {
     st.runFocus = opts.focus.run;
     playRun(opts.focus.run);
     return;

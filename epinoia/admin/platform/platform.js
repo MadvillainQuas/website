@@ -138,7 +138,8 @@ function wire() {
          account list are the two big queries here and most visits touch
          neither. */
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
-                     keys: loadKeys, audit: loadAudit, set: loadSettings };
+                     keys: loadKeys, audit: loadAudit, set: loadSettings,
+                     plans: loadPlans };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -169,6 +170,8 @@ function wire() {
   $('#clubQ').addEventListener('keydown', e => { if (e.key === 'Enter') loadClubs(); });
 
   $('#msgGo').addEventListener('click', loadModeration);
+
+  $('#plNew').addEventListener('click', () => openPlanForm(null));
 
   $('#auGo').addEventListener('click', () => { auOffset = 0; loadAudit(); });
   $('#auAction').addEventListener('change', () => {
@@ -736,6 +739,465 @@ async function loadAudit() {
   $('#auNext').disabled = auOffset + 100 >= auTotal;
 }
 
+/* ----------------------------------------------------------------- plans --- */
+/* MEMBERSHIPS ACROSS THE PLATFORM (docs/memberships.md). One read,
+   platform_access_admin(), and five things drawn from it: the master switch,
+   the analytics default, Epinoia's own plans, every league's access and
+   analytics override, and the totals.
+
+   THE MASTER SWITCH (memberships_enabled, shipped off). While it is off the
+   database gates nothing: every league is visible and the analytics are free,
+   whatever is configured below. Everything below can still be set up, and shows
+   what WILL apply — platform_access_admin() reports the configured analytics
+   default, not the effective one — so the words here say "when memberships are
+   on" rather than "straight away" while it is off. It is written through
+   platform_set_setting, the same audited setter the default uses.
+
+   The plan form is not built here. It is the same form the league console
+   uses (../access-ui.js), because the rules in it are the same wherever a plan
+   is written — pennies from pounds, the shape of a Stripe price id — and two
+   copies of a price parser is how a penny goes missing. The SAVE stays here,
+   so a refusal reads the way every other refusal on this page does. */
+let plans = null;
+
+const PLAN_MISSING = e => !!e && (e.code === 'PGRST202' ||
+  /schema cache|could not find the function/i.test(e.message || ''));
+const planPriced = p => p.has_price != null ? !!p.has_price : !!p.stripe_price_id;
+const planMoney = p => window.EpinoiaAccessUI
+  ? window.EpinoiaAccessUI.money(p.price_pennies, p.currency) + ' ' + window.EpinoiaAccessUI.per(p.interval)
+  : String(p.price_pennies) + 'p / ' + p.interval;
+const planFeatures = list => window.EpinoiaAccessUI
+  ? window.EpinoiaAccessUI.featureWords(list) : (list || []).join(' + ');
+
+/* The void RPCs (archive, fee) answer null on success, which rpc() above
+   cannot tell from a failure — so these report through the error instead. */
+async function wrote(call) {
+  const { error } = await call;
+  if (error) { oops(error); return false; }
+  return true;
+}
+
+async function loadPlans() {
+  const { data, error } = await sb.rpc('platform_access_admin');
+  if (error) {
+    const missing = PLAN_MISSING(error);
+    $('#plMissing').classList.toggle('hide', !missing);
+    $('#plWrap').classList.toggle('hide', missing);
+    if (!missing) oops(error);
+    return;
+  }
+  $('#plMissing').classList.add('hide');
+  $('#plWrap').classList.remove('hide');
+  const d = data || {};
+  plans = {
+    /* false is off. A server older than the switch leaves the key out, and
+       that server gates by the league settings alone — which is "on" — so a
+       missing key reads as on */
+    membershipsEnabled: d.memberships_enabled !== false,
+    analyticsDefault: d.analytics_default === 'members' ? 'members' : 'free',
+    plans: d.plans || [],
+    leagues: d.leagues || [],
+    totals: d.totals || {}
+  };
+  drawMasterSwitch();
+  drawPlanTiles();
+  drawAnalyticsDefault();
+  drawPlatformPlans();
+  drawLeagueAccess();
+  drawLeaguePlans();
+}
+
+/* platform plans somebody could actually buy today: active, priced, analytics */
+const buyablePlatformPlans = () => plans.plans.filter(p => !p.league_id &&
+  p.active !== false && planPriced(p) && (p.features || []).includes('analytics'));
+
+/* "Alpha, Beta and 3 more" — for a confirm that has to say who it affects */
+const someNames = (list, max = 8) => list.slice(0, max).map(l => l.name).join(', ') +
+  (list.length > max ? ' and ' + (list.length - max) + ' more' : '');
+const leagueCount = n => n + ' league' + (n === 1 ? '' : 's');
+
+function drawMasterSwitch() {
+  const host = $('#plSwitch'); host.textContent = '';
+  const on = plans.membershipsEnabled;
+  const closed = plans.leagues.filter(l => l.access_mode === 'members');
+  const inherit = plans.leagues.filter(l => (l.analytics_access || 'inherit') === 'inherit');
+  const memberAnalytics = plans.leagues.filter(l => l.analytics_access === 'members');
+  const defaultMembers = plans.analyticsDefault === 'members';
+  const buyable = buyablePlatformPlans();
+
+  const box = el('div', 'ms' + (on ? ' on' : ''));
+  const head = el('div', 'ms-h');
+  head.append(el('span', 'ms-k', 'Memberships:'), el('span', 'ms-v', on ? 'on' : 'off'));
+  box.appendChild(head);
+
+  box.appendChild(el('p', 'ms-d', on
+    ? 'Enforced across the platform. Members-only leagues hide what they play from ' +
+      'anyone who is not a member, given access or staff, and the analytics follow ' +
+      'the settings below.'
+    : 'Nothing is gated anywhere: every league is open to everyone and the advanced ' +
+      'analytics are free, whatever is set below or in a league’s console. Leagues ' +
+      'and plans can be set up now; it all applies once memberships are switched on. ' +
+      'Switch on last, once a plan can be bought and payments are live.'));
+
+  /* what applies now (on), or what would apply (off) */
+  const ul = el('ul');
+  ul.appendChild(el('li', null, leagueCount(closed.length) + ' set to members only' +
+    (closed.length ? ' (' + someNames(closed) + ')' : '') + '.'));
+  ul.appendChild(el('li', null, 'Analytics by default: ' +
+    (defaultMembers ? 'members only, in ' + leagueCount(inherit.length) + ' on inherit.' : 'free.')));
+  if (memberAnalytics.length) {
+    ul.appendChild(el('li', null, leagueCount(memberAnalytics.length) +
+      ' with the analytics set to members only by Epinoia (' + someNames(memberAnalytics) + ').'));
+  }
+  box.appendChild(ul);
+
+  const row = el('div', 'row');
+  const btn = el('button', 'ep-btn' + (on ? '' : ' pri'),
+    on ? 'switch memberships off' : 'switch memberships on');
+  btn.type = 'button';
+  row.appendChild(btn);
+  box.appendChild(row);
+  host.appendChild(box);
+
+  btn.addEventListener('click', async () => {
+    const value = !on;
+    const gatedAnalytics = defaultMembers || memberAnalytics.length > 0;
+    const q = value
+      ? 'Switch memberships ON for the whole platform?\n\n' +
+        'Everything configured starts being enforced, straight away:\n' +
+        '• ' + leagueCount(closed.length) + ' set to members only' +
+        (closed.length ? ' (' + someNames(closed) + ') will hide their results, box scores, live ' +
+          'games, statistics, standings, awards, news and video from anyone who is not a ' +
+          'member, given access, or the league’s staff.' : ': no league is closed yet.') + '\n' +
+        '• The analytics default is ' + (defaultMembers
+          ? 'MEMBERS ONLY: ' + leagueCount(inherit.length) + ' on inherit will show the advanced ' +
+            'analytics only to fans with an analytics plan, and a teaser to everyone else.'
+          : 'free: the analytics stay free in every league on inherit.') + '\n' +
+        (memberAnalytics.length ? '• ' + leagueCount(memberAnalytics.length) +
+          ' with members-only analytics set by Epinoia lock them too.\n' : '') +
+        (gatedAnalytics && !buyable.length ? '\nNO PLATFORM PLAN CAN BE BOUGHT YET: fans would ' +
+          'be shown a teaser with nothing to buy.\n' : '') +
+        '\nSwitch on only once a plan can be bought and payments are live.'
+      : 'Switch memberships OFF for the whole platform?\n\n' +
+        'Everything opens straight away: every league’s results, box scores and ' +
+        'statistics are visible to everyone, and the advanced analytics are free everywhere.\n\n' +
+        'Every setting is kept — ' + leagueCount(closed.length) + ' stay set to members only, the ' +
+        'analytics default stays ' + (defaultMembers ? 'members only' : 'free') + ', plans and ' +
+        'grants stay as they are — and applies again when memberships are switched back on.\n\n' +
+        'People paying keep paying until they cancel: decide in Stripe whether to pause, ' +
+        'cancel or refund them.';
+    if (!confirm(q)) return;
+    btn.disabled = true;
+    const out = await rpc('platform_set_setting', { p_key: 'memberships_enabled', p_value: value });
+    btn.disabled = false;
+    if (!out) return;
+    say(value
+      ? 'Memberships are on. Members-only leagues and the analytics settings are enforced from now.'
+      : 'Memberships are off. Every league is open and the analytics are free; the settings are kept.', 'ok');
+    loadPlans();
+  });
+}
+
+function drawPlanTiles() {
+  const t = plans.totals;
+  const host = $('#plTiles'); host.textContent = '';
+  [
+    [t.active_subscriptions, 'paying members', ''],
+    [t.past_due, 'payment failing', 'warn'],
+    [t.grants, 'complimentary', ''],
+    [plans.leagues.filter(l => l.access_mode === 'members').length, 'members-only leagues', ''],
+    [buyablePlatformPlans().length, 'platform plans on sale', '']
+  ].forEach(([v, label, tone]) => {
+    const n = Number(v || 0);
+    const tile = el('div', 'tile');
+    const num = el('div', 'n', String(n));
+    if (n && tone) num.classList.add(tone);
+    else if (!n) num.classList.add('dim');
+    tile.append(num, el('div', 'k', label));
+    host.appendChild(tile);
+  });
+}
+
+function drawAnalyticsDefault() {
+  const host = $('#plDefault'); host.textContent = '';
+  const cur = plans.analyticsDefault;
+  const on = plans.membershipsEnabled;
+  const inherit = plans.leagues.filter(l => (l.analytics_access || 'inherit') === 'inherit');
+  const buyable = buyablePlatformPlans();
+  /* while memberships are off a change here applies later, not now */
+  const when = on ? 'straight away' : 'once memberships are switched on';
+
+  host.appendChild(el('p', 'lead',
+    'Whether the advanced analytics — the events splits, zone shot charts, the game ' +
+    'flow, connections and events tabs, and the full WOWY screen — need a plan. It ' +
+    'applies to every league set to inherit: ' + inherit.length + ' of ' +
+    plans.leagues.length + ' right now. It is set to ' + (cur === 'members' ? 'members only' : 'free') +
+    (on ? '.' : ', but memberships are switched off, so the analytics are free everywhere until ' +
+      'they are switched on.') +
+    ' The analytics are drawn in the browser, so members only hides the ' +
+    'analysis, not the play-by-play it is built from.'));
+
+  const choice = el('div', 'ax-choice');
+  const radio = (value, title, words) => {
+    const lab = el('label');
+    const r = el('input'); r.type = 'radio'; r.name = 'plDefault'; r.value = value;
+    r.checked = cur === value;
+    const txt = el('span', null, title);
+    txt.appendChild(el('small', null, words));
+    lab.append(r, txt);
+    choice.appendChild(lab);
+    return r;
+  };
+  radio('free', 'Free', 'Every fan sees the advanced analytics in every league on inherit.');
+  const members = radio('members', 'Members',
+    'Fans need a plan that includes analytics. Everyone else sees a short teaser in ' +
+    'place of each one. Each league’s own staff still see everything.');
+  host.appendChild(choice);
+
+  if (!buyable.length) {
+    host.appendChild(el('div', 'note bad', cur === 'members'
+      ? 'The analytics are members only and no platform plan can be bought: none is ' +
+        'on sale with a Stripe price. Fans are shown a teaser with nothing to buy.'
+      : 'No platform plan can be bought yet. Create one with a Stripe price below ' +
+        'before switching to members, or fans get a teaser with nothing to buy.'));
+  }
+
+  const row = el('div', 'row');
+  const save = el('button', 'ep-btn pri', 'save default'); save.type = 'button';
+  row.appendChild(save);
+  host.appendChild(row);
+
+  save.addEventListener('click', async () => {
+    const value = members.checked ? 'members' : 'free';
+    if (value === cur) return say('The default is already ' + value + '. Nothing changed.', 'ok');
+    const names = inherit.slice(0, 8).map(l => l.name).join(', ') +
+      (inherit.length > 8 ? ' and ' + (inherit.length - 8) + ' more' : '');
+    const q = value === 'members'
+      ? 'Make the advanced analytics members only by default?\n\n' +
+        inherit.length + ' league' + (inherit.length === 1 ? '' : 's') + ' on inherit' +
+        (names ? ' (' + names + ')' : '') + ' will show the events splits, zone shot ' +
+        'charts, game flow, connections and events tabs, and the full WOWY only to fans ' +
+        'with an analytics plan and to each league’s staff. Everyone else sees a teaser ' +
+        'instead, ' + when + '.\n\nLeagues set to free stay free.' +
+        (buyable.length ? '' : '\n\nNO PLATFORM PLAN CAN BE BOUGHT YET: fans would be ' +
+          'shown a teaser with nothing to buy.')
+      : 'Make the advanced analytics free by default?\n\n' + inherit.length + ' league' +
+        (inherit.length === 1 ? '' : 's') + ' on inherit ' +
+        (on ? 'show them to everyone again, straight away'
+            : 'will keep showing them to everyone when memberships are switched on') +
+        '. People paying for analytics keep paying until they cancel: ' +
+        'decide in Stripe whether to cancel or refund them.';
+    if (!confirm(q)) return;
+    save.disabled = true;
+    const out = await rpc('platform_set_setting', { p_key: 'analytics_access', p_value: value });
+    save.disabled = false;
+    if (!out) return;
+    say((value === 'members'
+      ? 'The advanced analytics are now members only in every league on inherit.'
+      : 'The advanced analytics are now free in every league on inherit.') +
+      (on ? '' : ' Memberships are switched off, so this applies once they are switched on.'), 'ok');
+    loadPlans();
+  });
+}
+
+function openPlanForm(plan) {
+  const host = $('#plForm'); host.textContent = '';
+  const A = window.EpinoiaAccessUI;
+  if (!A) return say('access-ui.js did not load, so plans cannot be edited. Reload the page.', 'err');
+  const form = A.planForm({
+    plan, leagueId: null, features: ['analytics'], seller: 'platform', say,
+    cancel: () => { host.textContent = ''; },
+    save: async payload => {
+      payload.league_id = null;
+      payload.seller = 'platform';
+      payload.features = ['analytics'];
+      const id = await rpc('save_access_plan', { p: payload });
+      if (!id) return false;
+      host.textContent = '';
+      say(payload.id
+        ? '“' + payload.name + '” saved.' + (payload.active ? '' : ' It is not on sale.')
+        : '“' + payload.name + '” created.' +
+          (payload.stripe_price_id ? '' : ' Add its Stripe price id to put it on sale.'), 'ok');
+      loadPlans();
+      return true;
+    }
+  });
+  host.appendChild(form);
+  form.focusFirst();
+  form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function planStateWords(p) {
+  if (p.active === false) return 'off sale';
+  if (!planPriced(p)) return 'no Stripe price — cannot be bought';
+  return 'on sale';
+}
+
+function drawPlatformPlans() {
+  const host = $('#plList'); host.textContent = '';
+  const rows = plans.plans.filter(p => !p.league_id);
+  if (!rows.length) {
+    host.appendChild(el('div', 'empty', 'No platform plans yet.'));
+    return;
+  }
+  const wrap = el('div', 'scroll');
+  const t = el('table', 'tbl');
+  const hr = t.createTHead().insertRow();
+  ['Plan', 'Price', 'Stripe price', 'State', ''].forEach(h => hr.appendChild(el('th', null, h)));
+  const body = t.createTBody();
+  rows.forEach(p => {
+    const tr = body.insertRow();
+    if (p.active === false) tr.style.opacity = '.55';
+    const c0 = tr.insertCell();
+    c0.appendChild(el('div', 'nm', p.name));
+    c0.appendChild(el('div', 'mt', 'unlocks ' + planFeatures(p.features) +
+      ' · order ' + (p.sort || 0) + (p.blurb ? ' · ' + p.blurb : '')));
+    tr.insertCell().appendChild(el('span', 'mt', planMoney(p)));
+    tr.insertCell().appendChild(el('span', 'mt', p.stripe_price_id || '—'));
+    tr.insertCell().appendChild(el('span', 'pill' + (p.active === false ? '' :
+      planPriced(p) ? ' la' : ' pa'), planStateWords(p)));
+    const ac = tr.insertCell(); ac.className = 'ac';
+    const edit = el('button', 'ep-btn mini', 'edit'); edit.type = 'button';
+    edit.addEventListener('click', () => openPlanForm(p));
+    ac.appendChild(edit);
+    if (p.active !== false) {
+      const arch = el('button', 'ep-btn mini danger', 'take off sale'); arch.type = 'button';
+      arch.addEventListener('click', async () => {
+        const buyable = buyablePlatformPlans();
+        const last = plans.analyticsDefault === 'members' && buyable.length === 1 &&
+          buyable[0].id === p.id;
+        if (!confirm('Take “' + p.name + '” off sale?\n\nNobody new can buy it. People ' +
+                     'who already pay for it keep it until they cancel.' +
+                     (last ? '\n\nIt is the last platform plan on sale and the analytics are ' +
+                      'members only: fans will be shown a teaser with nothing to buy.' : ''))) return;
+        arch.disabled = true;
+        const done = await wrote(sb.rpc('archive_access_plan', { p_plan: p.id }));
+        arch.disabled = false;
+        if (!done) return;
+        say('“' + p.name + '” is off sale. People who already pay for it keep it.', 'ok');
+        loadPlans();
+      });
+      ac.appendChild(arch);
+    }
+  });
+  wrap.appendChild(t);
+  host.appendChild(wrap);
+}
+
+function drawLeagueAccess() {
+  const body = $('#plLeagues'); body.textContent = '';
+  if (!plans.leagues.length) {
+    const td = body.insertRow().insertCell(); td.colSpan = 6;
+    td.appendChild(el('div', 'empty', 'No leagues yet.'));
+    return;
+  }
+  plans.leagues.forEach(l => {
+    const tr = body.insertRow();
+    const c0 = tr.insertCell();
+    c0.appendChild(el('div', 'nm', l.name));
+    c0.appendChild(el('div', 'mt', l.slug));
+
+    const c1 = tr.insertCell();
+    const membersOnly = l.access_mode === 'members';
+    c1.appendChild(el('span', 'pill' + (membersOnly ? ' pa' : ''), membersOnly ? 'members only' : 'open'));
+    if (membersOnly) {
+      c1.appendChild(el('div', 'mt', l.fixtures_public === false ? 'fixtures private' : 'fixtures public'));
+      if (!plans.membershipsEnabled) c1.appendChild(el('div', 'mt', 'not enforced: memberships are off'));
+    }
+
+    const c2 = tr.insertCell();
+    const sel = el('select', 'ep-input');
+    [['inherit', 'inherit (' + plans.analyticsDefault + ')'], ['free', 'free'], ['members', 'members']]
+      .forEach(([v, label]) => sel.appendChild(new Option(label, v)));
+    const was = l.analytics_access || 'inherit';
+    sel.value = was;
+    sel.addEventListener('change', async () => {
+      const mode = sel.value;
+      const effective = mode === 'inherit' ? plans.analyticsDefault : mode;
+      const wasEffective = was === 'inherit' ? plans.analyticsDefault : was;
+      if (effective === 'members' && wasEffective !== 'members' &&
+          !confirm('Make the advanced analytics in ' + l.name + ' members only?\n\n' +
+                   'Fans without an analytics plan see a teaser in their place, ' +
+                   (plans.membershipsEnabled ? 'straight away.' : 'once memberships are switched on.') +
+                   (buyablePlatformPlans().length ? '' : '\n\nNo platform plan can be bought yet.'))) {
+        sel.value = was; return;
+      }
+      sel.disabled = true;
+      const out = await rpc('platform_set_league_analytics', { p_league: l.id, p_mode: mode });
+      sel.disabled = false;
+      if (!out) { sel.value = was; return; }
+      say('Analytics in ' + l.name + (mode === 'inherit'
+        ? ' now follow the platform default (' + plans.analyticsDefault + ').'
+        : ' are now ' + (mode === 'members' ? 'members only' : 'free') +
+          ', whatever the platform default.'), 'ok');
+      loadPlans();
+    });
+    c2.appendChild(sel);
+
+    const c3 = tr.insertCell(); c3.className = 'num'; c3.textContent = Number(l.active_members || 0);
+    const c4 = tr.insertCell(); c4.className = 'num';
+    c4.textContent = Array.isArray(l.plans) ? l.plans.length : Number(l.plans || 0);
+
+    /* platform_access_admin() carries each league's fee_percent, already
+       defaulted to 10 for a league that has never had one set, so the box
+       shows the fee that applies now — an empty box read as "no fee". The
+       placeholder only matters against a server older than that. */
+    const c5 = tr.insertCell();
+    const wrap = el('div', 'fee');
+    const fee = el('input', 'ep-input');
+    fee.type = 'number'; fee.min = '0'; fee.max = '100'; fee.step = '0.5';
+    fee.placeholder = '10';
+    const feeNow = l.fee_percent != null && isFinite(Number(l.fee_percent)) ? Number(l.fee_percent) : null;
+    if (feeNow != null) fee.value = String(feeNow);
+    fee.setAttribute('aria-label', 'Epinoia’s fee in ' + l.name + ', percent');
+    const go = el('button', 'ep-btn mini', 'save'); go.type = 'button';
+    go.addEventListener('click', async () => {
+      const n = Number(fee.value);
+      if (fee.value === '' || !isFinite(n) || n < 0 || n > 100) {
+        return say('A fee is a percentage from 0 to 100.', 'err');
+      }
+      go.disabled = true;
+      const done = await wrote(sb.rpc('platform_set_league_fee', { p_league: l.id, p_fee: n }));
+      go.disabled = false;
+      if (!done) return;
+      say('Epinoia’s fee in ' + l.name + ' is now ' + n + '%. It applies to checkouts ' +
+          'from now on; existing subscriptions keep the fee they started with.', 'ok');
+      loadPlans();
+    });
+    wrap.append(fee, go);
+    c5.appendChild(wrap);
+  });
+}
+
+function drawLeaguePlans() {
+  const host = $('#plLeaguePlans'); host.textContent = '';
+  const rows = plans.plans.filter(p => p.league_id);
+  if (!rows.length) {
+    host.appendChild(el('div', 'empty', 'No league sells a plan of its own yet.'));
+    return;
+  }
+  const wrap = el('div', 'scroll');
+  const t = el('table', 'tbl');
+  const hr = t.createTHead().insertRow();
+  ['League', 'Plan', 'Price', 'Sold by', 'State'].forEach(h => hr.appendChild(el('th', null, h)));
+  const body = t.createTBody();
+  rows.forEach(p => {
+    const tr = body.insertRow();
+    if (p.active === false) tr.style.opacity = '.55';
+    tr.insertCell().appendChild(el('span', 'nm', p.league_name || '—'));
+    const c1 = tr.insertCell();
+    c1.appendChild(el('div', 'nm', p.name));
+    c1.appendChild(el('div', 'mt', 'unlocks ' + planFeatures(p.features)));
+    tr.insertCell().appendChild(el('span', 'mt', planMoney(p)));
+    tr.insertCell().appendChild(el('span', 'mt',
+      p.seller === 'league' ? 'the league' : 'Epinoia'));
+    tr.insertCell().appendChild(el('span', 'pill' + (p.active === false ? '' :
+      planPriced(p) ? ' la' : ' pa'), planStateWords(p)));
+  });
+  wrap.appendChild(t);
+  host.appendChild(wrap);
+}
+
 /* -------------------------------------------------------------- settings --- */
 const SETTING_TEXT = {
   site_name:       'The name in the tab title and the wordmark alt text.',
@@ -746,7 +1208,19 @@ const SETTING_TEXT = {
   training_open:   'Off closes the training game the splash offers without a login.',
   merch_enabled:   'Off hides the merchandise section on every league page.',
   feeds_enabled:   'Off stops every partner feed delivering. Nothing is lost; it resumes.',
-  contact_enabled: 'Off hides the contact form and refuses submissions.'
+  contact_enabled: 'Off hides the contact form and refuses submissions.',
+  analytics_access: 'free or members: whether the advanced analytics need a plan in ' +
+                    'every league set to inherit. Changed on the Plans tab.',
+  memberships_enabled: 'The memberships master switch. Off: nothing is gated anywhere, ' +
+                       'whatever the leagues and the analytics default say. Changed on the Plans tab.'
+};
+
+/* Settings with a consequence, edited on the Plans tab with a confirm that
+   says what they do rather than by a bare control here. The words for the
+   current value, keyed by setting. */
+const PLANS_TAB_SETTINGS = {
+  analytics_access: v => v === 'members' ? 'members' : 'free',
+  memberships_enabled: v => v === true ? 'on' : 'off'
 };
 
 async function loadSettings() {
@@ -766,9 +1240,24 @@ async function loadSettings() {
     cell.appendChild(el('div', 'd', SETTING_TEXT[s.key] || ''));
 
     const v = s.value;
-    /* The value is jsonb, so the control follows the TYPE that is stored
-       rather than a per-key table that would drift from the database. */
-    if (typeof v === 'boolean') {
+    /* THE EXCEPTIONS TO "THE CONTROL FOLLOWS THE TYPE". analytics_access is
+       a string, so the rule below would give it a free text box — which would
+       store "member" as happily as "members", and flip the analytics for every
+       league on inherit without the confirm that says so. memberships_enabled
+       is a boolean, so it would get a bare checkbox that opens or closes every
+       members-only league on the platform in one click. Each has two legal
+       values and a consequence, and both live on the Plans tab. */
+    if (Object.prototype.hasOwnProperty.call(PLANS_TAB_SETTINGS, s.key)) {
+      const row = el('div', 'row'); row.style.margin = '4px 0 0';
+      row.appendChild(el('span', 'mt', 'now ' + PLANS_TAB_SETTINGS[s.key](v)));
+      const go = el('button', 'ep-btn mini', 'change on the Plans tab'); go.type = 'button';
+      go.addEventListener('click', () => {
+        const tab = document.querySelector('.ep-tab[data-p="plans"]');
+        if (tab) tab.click();
+      });
+      row.appendChild(go);
+      cell.appendChild(row);
+    } else if (typeof v === 'boolean') {
       const lab = el('label', 'sw');
       const box = el('input'); box.type = 'checkbox'; box.checked = v;
       box.addEventListener('change', () => save(s.key, box.checked));

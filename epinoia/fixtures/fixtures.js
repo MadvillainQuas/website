@@ -25,6 +25,9 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 
 let LEAGUE = null, TEAMS = new Map(), GAMES = [], LOGOS = new Map();
+/* docs/memberships.md: set only when the server has SAID this viewer may not see
+   a members-only league */
+let WALL = { walled: false, fixturesPublic: true };
 let teamFilter = qp.get('t') || '';        // team slug, or empty for all
 let stateFilter = qp.get('show') || 'all'; // all | results | upcoming
 
@@ -405,6 +408,47 @@ function watchAnnouncements() {
   });
 }
 
+/* ------------------------------------------------------------ memberships ---
+   A MEMBERS-ONLY LEAGUE KEEPS SAYING WHEN ITS DOORS OPEN. With its fixtures
+   public, the database still returns the games that have not started and refuses
+   the rest, so this page goes on listing what is to come and says, in one line,
+   where the results went — an empty "Results" filter with no explanation reads as
+   a broken page. With its fixtures private there is nothing to list, and the
+   paywall card takes the list's place.
+
+   Only on a KNOWN answer (the server said can_view = false). Without access.js,
+   or when the check fails, the page is exactly what it was. */
+async function leagueAccess() {
+  const A = window.EpinoiaAccess;
+  if (!LEAGUE || !A || typeof A.load !== 'function' || typeof A.get !== 'function') return WALL;
+  try { await A.load({ leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug }); } catch (_) { return WALL; }
+  if (typeof A.onChange === 'function') A.onChange(onAccessChange);
+  const st = A.get(LEAGUE.id) || {};
+  if (!st.known || typeof A.canView !== 'function' || A.canView(LEAGUE.id)) return WALL;
+  WALL = { walled: true, fixturesPublic: st.fixturesPublic !== false };
+  const banner = $('#accessBanner');
+  if (WALL.fixturesPublic && typeof A.teaserHTML === 'function') {
+    banner.innerHTML = A.teaserHTML({   // escaped by access.js
+      compact: true, leagueSlug: LEAGUE.slug,
+      title: 'Results and box scores for ' + LEAGUE.name + ' are for members. Upcoming fixtures stay free to everyone.'
+    });
+  } else if (!WALL.fixturesPublic && typeof A.paywallHTML === 'function') {
+    banner.innerHTML = A.paywallHTML({ league: LEAGUE });
+    document.querySelectorAll('.filters, #count, #list').forEach(n => n.classList.add('hide'));
+  } else return WALL;
+  banner.classList.remove('hide');
+  return WALL;
+}
+
+/* a sign-in or sign-out that changes the answer: the list was read for the old
+   one, so the page is read again rather than patched */
+function onAccessChange() {
+  const A = window.EpinoiaAccess;
+  if (!A || !LEAGUE) return;
+  const st = A.get(LEAGUE.id) || {};
+  if (st.known && (typeof A.canView === 'function' && !A.canView(LEAGUE.id)) !== WALL.walled) location.reload();
+}
+
 function watchLive(delay) {
   clearTimeout(liveTimer);
   const anyLive = GAMES.some(g => g.status === 'live' || g.status === 'finalising');
@@ -416,6 +460,17 @@ function watchLive(delay) {
           '&select=id,status,home_score,away_score');
         const by = new Map(fresh.map(g => [g.id, g]));
         let moved = false;
+        /* behind a members-only wall a fixture that tips off stops coming back —
+           the database refuses a live game — so it leaves the list rather than
+           sitting there reading "Tip-off" for the rest of the evening */
+        if (WALL.walled) {
+          const before = GAMES.length;
+          /* by status as well as by absence: the same answer where the database
+             refuses the row, and still right where it did not (the admins'
+             access simulation, or before enforcement) */
+          GAMES = GAMES.filter(g => by.has(g.id) && by.get(g.id).status === 'scheduled');
+          if (GAMES.length !== before) moved = true;
+        }
         GAMES.forEach(g => {
           const f = by.get(g.id);
           if (!f) return;
@@ -441,6 +496,9 @@ function watchLive(delay) {
     $('#foot').textContent = 'Epinoia Network · ' + LEAGUE.name;
     document.title = 'Fixtures · ' + LEAGUE.name;
     if (LEAGUE.colour_a) document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
+    /* asked alongside the clubs (which are public in every league), and answered
+       before the games are read: a member's read needs the token it enables */
+    const accessP = leagueAccess();
 
     (await D.all(`teams?league_id=eq.${LEAGUE.id}&select=id,name,short_name,slug,colour,logo_path`))
       .forEach(t => {
@@ -464,6 +522,9 @@ function watchLive(delay) {
       }
     } catch (_) { /* monograms all round */ }
 
+    /* behind the wall with the fixtures private too: nothing to list or to watch */
+    if ((await accessP).walled && !WALL.fixturesPublic) return;
+
     COMPS = (ctx.comps || []).slice();
     compFilter = qp.get('comp') && COMPS.some(c => c.id === qp.get('comp')) ? qp.get('comp') : '';
     const comps = COMPS.map(c => c.id);
@@ -475,6 +536,9 @@ function watchLive(delay) {
     GAMES = await D.all('games?competition_id=in.(' + comps.join(',') + ')' +
       '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
       'starters,home_team_id,away_team_id&order=tipoff_at.desc');
+    /* behind the wall only the fixtures are this viewer's; the database already
+       refuses the rest, and this keeps a simulated non-member's list the same */
+    if (WALL.walled) GAMES = GAMES.filter(g => g.status === 'scheduled');
 
     renderFilters();
     await render();

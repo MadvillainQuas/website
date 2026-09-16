@@ -56,6 +56,19 @@ jobs:
             exit 1
           fi
           echo "ok — no privileged credentials in client code"
+          # Stripe keys and webhook signing secrets belong in Edge Function secrets
+          # (npx supabase secrets set), never in a file: not in a page, not in the
+          # billing function, not in a test. A secret key moves money and a signing
+          # secret mints memberships. Same rule as above — a QUOTED literal with at
+          # least one character after the prefix, so prose naming sk_live_ and a
+          # startsWith('sk_test_') mode check do not fail the build. Tests that
+          # need a secret assemble a fake one from pieces. Every file type, and no
+          # -I: a source file git thinks is binary must not hide a key.
+          if grep -rnE --exclude-dir=vendor --exclude-dir=node_modules '["'"'"'`](sk|rk)_(live|test)_[A-Za-z0-9]|["'"'"'`]whsec_[A-Za-z0-9]' epinoia/ supabase/; then
+            echo "::error::a Stripe secret key, restricted key or webhook signing secret appears under epinoia/ or supabase/. It belongs in an Edge Function secret."
+            exit 1
+          fi
+          echo "ok — no Stripe secrets committed"
 
       - name: User text must never be interpolated as HTML
         run: |
@@ -223,6 +236,20 @@ jobs:
         # from the lines above them, or a field map that renames a key in the
         # JSON but not in the CSV header.
         run: node supabase/tests/feeds.test.mjs
+
+      - name: Membership payments
+        # the billing function's pure half: the Stripe-Signature check over the
+        # raw body, the exact Checkout / Portal / Connect request shapes on the
+        # pinned API version, what a re-fetched subscription writes, which
+        # deliveries send the one-off emails, and whose account may grant what.
+        # A mistake here takes money without granting access, or grants access
+        # nobody paid for — and neither shows up as an error.
+        run: node supabase/tests/billing.test.mjs
+
+      - name: Memberships in the browser
+        # analytics fail OPEN and a members-only league fails closed only on a
+        # known answer; the premium catalogue matches the real column keys
+        run: node supabase/tests/access.test.mjs
 
       - name: Official-vote CSV parsing and name folding
         # the two places a pasted spreadsheet breaks a naive parser: a club

@@ -13,11 +13,23 @@ const $  = s => document.querySelector(s);
 const el = (tag, cls, text) => { const n = document.createElement(tag);
   if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
-async function api(path) {
+/* A MEMBERS-ONLY LEAGUE IS REFUSED BY ROW-LEVEL SECURITY, so a member's reads say who is
+   asking. access.js decides when a token is worth sending (a members-only league this viewer
+   may see) and hands back {} otherwise, so an open league's request is exactly what it was.
+   Asked per call, because the answer lands after the first reads. A 401 with a token on it is
+   a token the server stopped accepting, not an answer about the rows: asked once more
+   anonymously, as the page always did. */
+async function api(path, anon) {
+  const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders(league && league.id) || {}); } catch (_) { /* anonymous */ }
+  }
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${path}`, {
     cache: 'no-store',
-    headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' }
+    headers
   });
+  if (r.status === 401 && headers.Authorization && !anon) return api(path, true);
   if (!r.ok) throw new Error(`${r.status} ${path.split('?')[0]}`);
   return r.json();
 }
@@ -31,11 +43,97 @@ let league = null, season = null, seasons = [], comps = [], comp = null;
    which a league admin sets. */
 let phases = [], cups = [], cupComp = null;
 
+/* WHAT THIS VIEWER MAY SEE (docs/memberships.md), decided once from access.js before the first
+   pane is drawn. Both start open and stay open unless the module is on the page AND has an
+   answer: analytics fail open, and the members-only card needs a known "cannot view".
+
+   ANALYTICS_LOCKED  the full tables drop their premium columns themselves (they are handed
+                     the league id); this page only skips the zone read they would have shown
+   PAYWALLED         a members-only league closed to this viewer: the name, the season and the
+                     card stay, the tabs go, and nothing behind them is fetched -- the database
+                     would refuse it. Upcoming fixtures stay under the card while the league
+                     keeps them public (§2): a league that wants people through the door must
+                     say when the doors open. */
+let ANALYTICS_LOCKED = false, PAYWALLED = false;
+
+function accessNow() {
+  const A = window.EpinoiaAccess;
+  if (!A || !league) return { locked: false, paywalled: false, st: null };
+  const st = typeof A.get === 'function' ? A.get(league.id) : null;
+  return {
+    locked: typeof A.analyticsOk === 'function' && !A.analyticsOk(league.id),
+    paywalled: !!(st && st.known) && typeof A.canView === 'function' && !A.canView(league.id),
+    st
+  };
+}
+
+function decideAccess() {
+  const A = window.EpinoiaAccess;
+  if (!A || !league) return;
+  const now = accessNow();
+  ANALYTICS_LOCKED = now.locked;
+  PAYWALLED = now.paywalled;
+  watchAccess();
+  if (!PAYWALLED) return;
+  const st = now.st;
+  document.body.classList.add('paywalled');
+  document.body.classList.toggle('fixtures-public', st.fixturesPublic !== false);
+  const card = $('#paywall');
+  if (card && typeof A.paywallHTML === 'function') {
+    card.innerHTML = A.paywallHTML({ league });
+    card.hidden = false;
+  }
+}
+
+/* THE ANSWER CAN MOVE UNDER A DRAWN PAGE: a sign-in or sign-out in another tab, an answer
+   that lands after the module's own time limit, the admin preview switch. Only a change to
+   what this page decided from does anything, so an open league never notices:
+     the card    the page is drawn again from the top -- every read behind the wall changes
+                 with it, and a reload is the one redraw that cannot miss one
+     analytics   the full tables relock themselves; opening them again re-draws the Team
+                 Stats pane, so the zone read it skipped is made
+   On a change of account the module forgets what it held first, so the new account's
+   answer is waited for rather than read from the empty state in between. */
+let accessWatched = false;
+function watchAccess() {
+  const A = window.EpinoiaAccess;
+  if (accessWatched || !A || typeof A.onChange !== 'function' || !league) return;
+  accessWatched = true;
+  const check = () => {
+    const now = accessNow();
+    if (now.paywalled !== PAYWALLED) { location.reload(); return; }
+    if (now.locked === ANALYTICS_LOCKED) return;
+    ANALYTICS_LOCKED = now.locked;
+    if (!ANALYTICS_LOCKED && !PAYWALLED && comp) renderTeamStats().catch(() => {});
+  };
+  try {
+    A.onChange(d => {
+      if (d && d.leagueId && d.leagueId !== league.id) return;
+      if (d && d.reason === 'auth' && typeof A.load === 'function') {
+        Promise.resolve().then(() => A.load({ leagueId: league.id })).then(check, () => {});
+      } else check();
+    });
+  } catch (_) { /* the page as drawn */ }
+}
+
+/* every pane a season change or a first load draws; behind the wall, only the fixtures */
+function renderPanes() {
+  if (PAYWALLED) return document.body.classList.contains('fixtures-public') ? renderFixtures() : Promise.resolve();
+  return Promise.all([renderTable(), renderFixtures(), renderLeaders(),
+                      renderTeamStats(), renderExtras()]);
+}
+
 async function boot() {
   try {
     const ls = await api(`leagues?slug=eq.${encodeURIComponent(wantLeague)}&select=*&limit=1`);
     if (!ls.length) return fail(`No league "${wantLeague}".`);
     league = ls[0];
+    /* asked now, by id, so it runs beside the seasons and competitions reads; the module
+       gives up by itself after 4 s and answers open */
+    const A = window.EpinoiaAccess;
+    const accessReady = (A && typeof A.load === 'function')
+      ? Promise.resolve().then(() => A.load({ leagueId: league.id })).catch(() => null)
+      : Promise.resolve(null);
     document.documentElement.style.setProperty('--team-a', league.colour_a || '#93f2bf');
     document.documentElement.style.setProperty('--team-b', league.colour_b || '#8ff5ff');
     $('#leagueName').textContent = league.name;
@@ -58,10 +156,13 @@ async function boot() {
     cupComp = cups.find(c => c.id === wantComp) || cups[0] || null;
     $('#ctx').textContent = league.name + ' · ' + season.name;
 
-    renderPhasePicker();
-    renderCupPicker();
-    await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
-                       renderTeamStats(), renderExtras()]);
+    await accessReady;
+    try { decideAccess(); } catch (_) { /* open */ }
+    if (!PAYWALLED) {
+      renderPhasePicker();
+      renderCupPicker();
+    }
+    await renderPanes();
     $('#foot').textContent = 'Epinoia Network · ' + league.name + ' · ' + season.name;
   } catch (e) {
     fail('Could not load: ' + e.message);
@@ -112,10 +213,9 @@ function renderSeasonPicker() {
       splitComps();
       comp = phases[0] || comps[0] || null;
       cupComp = cups[0] || null;
-      renderPhasePicker(); renderCupPicker();
+      if (!PAYWALLED) { renderPhasePicker(); renderCupPicker(); }
       if (!comp) return fail('That season has no competitions.');
-      await Promise.all([renderTable(), renderFixtures(), renderLeaders(),
-                         renderTeamStats(), renderExtras()]);
+      await renderPanes();
     });
     wrap.appendChild(b);
   });
@@ -448,6 +548,8 @@ async function renderLeaders() {
   window.EpinoiaTable.render({
     host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
     filename: (league.slug || 'league') + '-leaders',
+    /* the table drops the premium columns itself when this league's analytics are locked */
+    leagueId: league.id, leagueSlug: league.slug,
     rows: S.players,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
     /* the same on-request RAPM as the season statistics page: every stint in the scope */
@@ -472,15 +574,20 @@ async function renderTeamStats() {
     return;
   }
   /* the shot zones ride on the same rows: the logs are read once (cached) and the table is
-     drawn when they are in, so its "shot zones" view is never a column of dashes */
-  const holding = el('div', 'empty', 'reading every shot\u2026'); board.appendChild(holding);
-  try {
-    if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) await window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData);
-  } catch (_) { /* the table still draws; the zones view shows dashes */ }
-  holding.remove();
+     drawn when they are in, so its "shot zones" view is never a column of dashes.
+     WITHOUT ANALYTICS THE READ IS NOT MADE: it fetches the event log of every game in scope,
+     and the only thing it feeds is the zone columns the table drops for this viewer. */
+  if (!ANALYTICS_LOCKED) {
+    const holding = el('div', 'empty', 'reading every shot\u2026'); board.appendChild(holding);
+    try {
+      if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) await window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData);
+    } catch (_) { /* the table still draws; the zones view shows dashes */ }
+    holding.remove();
+  }
   window.EpinoiaTable.render({
     host: board, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',
+    leagueId: league.id, leagueSlug: league.slug,
     rows: S.teams,
     teamHref: r => r.slug ? '../t/?t=' + encodeURIComponent(r.slug) : null
   });

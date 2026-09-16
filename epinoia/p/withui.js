@@ -40,12 +40,29 @@ const ROWS = [
   ['AST / TO',     'ast_to', 2, true]
 ];
 
-/* opts: { host, recs, stints, playerId, meta, teammates } */
+/* opts: { host, recs, stints, playerId, meta, teammates, locked, leagueSlug }
+
+   locked: the teammate comparison is the members' (docs/memberships.md), so a
+   compact line saying so is drawn in its place. The page decides and passes the
+   flag; this file never reads the access state itself. Without access.js on the
+   page there is nothing to draw the line with, and the comparison is shown —
+   analytics fail open. */
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
   const W = window.EpinoiaWith;
   host.textContent = '';
+
+  const A = window.EpinoiaAccess;
+  if (opts.locked && A && typeof A.teaserHTML === 'function') {
+    const tease = el('div', 'with-tease');
+    tease.innerHTML = A.teaserHTML({   // escaped by access.js
+      compact: true, leagueSlug: opts.leagueSlug || null,
+      title: 'This player’s splits with and without each teammate are for members'
+    });
+    host.appendChild(tease);
+    return;
+  }
 
   const recs = opts.recs || [];
   const stints = opts.stints || [];

@@ -367,6 +367,10 @@
     if (TC && TC.ink) { const k = TC.ink(hex); if (k) return k; }
     return hex || '#93f2bf';
   }
+  /* ZONES: FALSE is the free chart (docs/memberships.md §6): the court and the makes and
+     misses, with no zone tints, labels, chips or table. The zone analysis is the paid part;
+     where a shot went is the box score's own chart over more games. Anything else -- the
+     option left out, or true -- draws exactly what this always drew. */
   function renderZones(o) {
     const host = typeof o.host === 'string' ? document.querySelector(o.host) : o.host;
     if (!host) return;
@@ -375,6 +379,7 @@
     const floor = o.minAttempts == null ? 3 : o.minAttempts;
     const shots = o.shots || [];
     const col = markColour(o.colour);
+    const dotsOnly = o.zones === false;
     const z = zones(shots);
     const dots = shots.map(sh => {
       const x = sh.x * C.W, y = sh.y * C.H, a = 14;
@@ -385,12 +390,12 @@
           '<line x1="' + (x - a).toFixed(1) + '" y1="' + (y + a).toFixed(1) + '" x2="' + (x + a).toFixed(1) + '" y2="' + (y - a).toFixed(1) + '"/></g>';
     }).join('');
     const paths = zonePaths();
-    const fills = ZONES.map(zz => {
+    const fills = dotsOnly ? '' : ZONES.map(zz => {
       const v = z[zz.k]; const h = heat(v.pct, zz.kind, v.att, floor);
       return '<path d="' + paths[zz.k] + '" fill="' + h.fill + '" fill-rule="evenodd" stroke="' + h.stroke + '" stroke-width="3" stroke-opacity=".35">' +
         '<title>' + zz.label + ': ' + v.made + ' of ' + v.att + (v.att ? ' \u00b7 ' + v.pct.toFixed(0) + '%' : '') + '</title></path>';
     }).join('');
-    const labels = ZONES.map(zz => {
+    const labels = dotsOnly ? '' : ZONES.map(zz => {
       const v = z[zz.k];
       const txt = v.att ? (v.made + '/' + v.att) : '\u2014';
       const pct = v.att ? v.pct.toFixed(0) + '%' : '';
@@ -414,10 +419,10 @@
     host.innerHTML = '<div class="sc-wrap">' + svg + '</div>' +
       '<div class="sc-note">' + (shots.length
         ? '\u25cf made \u00b7 \u2715 missed \u00b7 ' + shots.length + ' located shot' + (shots.length === 1 ? '' : 's') + ', ' + made + ' made' + (o.note ? ' \u00b7 ' + o.note : '') +
-          ' \u00b7 zones tinted against their own break-even (paint 58%, mid-range 40%, three 35%); fewer than ' + floor + ' attempts stays grey'
+          (dotsOnly ? '' : ' \u00b7 zones tinted against their own break-even (paint 58%, mid-range 40%, three 35%); fewer than ' + floor + ' attempts stays grey')
         : 'No located shots yet \u2014 a shot is placed on the court in the scorer, and the ones taken without a location cannot be charted.') + '</div>' +
-      (shots.length ? chips : '') +
-      (shots.length && o.table !== false ? zoneTableHTML(zoneRows(shots, o.games)) : '');
+      (shots.length && !dotsOnly ? chips : '') +
+      (shots.length && !dotsOnly && o.table !== false ? zoneTableHTML(zoneRows(shots, o.games)) : '');
     return { zones: z, attempts: shots.length };
   }
 

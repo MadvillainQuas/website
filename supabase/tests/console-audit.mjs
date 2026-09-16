@@ -76,7 +76,7 @@ const CONSOLES = [
                        ['epinoia', 'app', 'index.html']]
 ];
 const UI_MODULES = ['news-ui.js', 'feeds-ui.js', 'merch-ui.js', 'socials-ui.js',
-                    'formats-ui.js', 'appearance-ui.js'];
+                    'formats-ui.js', 'appearance-ui.js', 'access-ui.js'];
 
 const calls = [];      // { where, fn }
 for (const [name, jsPath] of CONSOLES.map(c => [c[0], c[1]])) {

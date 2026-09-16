@@ -15,9 +15,10 @@
 <title>League · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="../kit/table.css?v=253">
-<link rel="stylesheet" href="../kit/nav.css?v=253">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../kit/table.css?v=254">
+<link rel="stylesheet" href="../kit/nav.css?v=254">
+<link rel="stylesheet" href="../kit/access.css?v=254">
 <style>
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .pane{display:none} .pane.on{display:block}
@@ -102,6 +103,13 @@
   .phasepick .kindtag{margin-left:6px;font-size:7.5px;opacity:.7;letter-spacing:.1em}
   /* a points deduction, printed beside the total it has already been taken off */
   .dock{color:var(--flare);font-size:9px;margin-left:4px;vertical-align:super}
+  /* MEMBERS ONLY (league.js decideAccess): the card in place of the tabs; the league's name and
+     season stay above it, and its upcoming fixtures below it while the league keeps them public */
+  #paywall{padding:calc(var(--u)*3)}
+  .pw-fixtures{display:none}
+  body.paywalled .tabs-wrap, body.paywalled .pane{display:none}
+  body.paywalled.fixtures-public .pw-fixtures{display:flex}
+  body.paywalled.fixtures-public #pane-fixtures{display:block}
 </style>
 </head>
 <body>
@@ -119,6 +127,11 @@
   </div>
 
   <div id="seasonPick" class="pick seasonpick" style="display:none"></div>
+
+  <!-- MEMBERS ONLY. Filled and shown only when the league is closed to the viewer
+       (access.js); empty and hidden everywhere else. -->
+  <div id="paywall" hidden></div>
+  <div class="ep-hdr pw-fixtures"><h2>Upcoming fixtures</h2></div>
 
   <div class="tabs-wrap">
     <div class="ep-tabs" role="tablist">
@@ -152,17 +165,18 @@
   </footer>
 </div>
 
-<script src="../config.js?v=253" defer></script>
-<script src="../bpm.js?v=253" defer></script>
-<script src="../season.js?v=253" defer></script>
-<script src="../data.js?v=253" defer></script>
-<script src="../fulltable.js?v=253" defer></script>
-<script src="../rapm.js?v=253" defer></script>
-<script src="bracket.js?v=253" defer></script>
-<script src="../boxscore.js?v=253" defer></script>
-<script src="../shotchart.js?v=253" defer></script>
-<script src="league.js?v=253" defer></script>
-<script src="../nav.js?v=253" defer></script>
-<script src="../xscroll.js?v=253" defer></script>
+<script src="../config.js?v=254" defer></script>
+<script src="../access.js?v=254" defer></script>
+<script src="../bpm.js?v=254" defer></script>
+<script src="../season.js?v=254" defer></script>
+<script src="../data.js?v=254" defer></script>
+<script src="../fulltable.js?v=254" defer></script>
+<script src="../rapm.js?v=254" defer></script>
+<script src="bracket.js?v=254" defer></script>
+<script src="../boxscore.js?v=254" defer></script>
+<script src="../shotchart.js?v=254" defer></script>
+<script src="league.js?v=254" defer></script>
+<script src="../nav.js?v=254" defer></script>
+<script src="../xscroll.js?v=254" defer></script>
 </body>
 </html>

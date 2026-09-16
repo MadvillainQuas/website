@@ -472,6 +472,58 @@ function heatStyle(p) {
    against them after it was fixed here. xscroll.js sweeps for them all,
    including this wrap, and re-sweeps after a render. */
 
+/* ------------------------------------------------------- following access ---
+   THE ACCESS STATE CAN CHANGE UNDER A DRAWN TABLE: an answer arriving after access.js's own
+   time limit, or a sign-in or sign-out in another tab. Every table on the page follows it
+   through ONE subscription held here, never one per render.
+
+   One per render leaked. Pages re-render into a fresh host on every scope change, and a
+   listener only found out its host had gone when the next access event arrived -- which,
+   for somebody flicking between competitions on an open league, is never. Each render kept
+   its whole table (rows, closures, the detached DOM) alive behind a listener nobody would
+   call again. Now a table is let go once another render owns its host or its host has left
+   the document, checked on every render and on every access event, and the subscription
+   itself is handed back once there is no table left to follow it. */
+const following = new Set();      // { host, relock, seen }
+let accessSub = null;             // { off } while subscribed; off is null if the module gave none back
+
+const inPage = n => (typeof n.isConnected === 'boolean' ? n.isConnected
+  : !!(n.ownerDocument && n.ownerDocument.contains(n)));
+
+function sweepTables() {
+  following.forEach(t => {
+    if (t.host.__ftTable !== t) { following.delete(t); return; }   // re-rendered: the newer table owns the host
+    /* A HOST NOT YET IN THE PAGE IS KEPT: a caller may draw into a node and attach it
+       afterwards. One that has been in the page and left it is gone for good. */
+    if (inPage(t.host)) t.seen = true;
+    else if (t.seen) following.delete(t);
+  });
+  if (!following.size && accessSub && typeof accessSub.off === 'function') {
+    try { accessSub.off(); } catch (_) { /* already gone */ }
+    accessSub = null;
+  }
+}
+
+function followAccess(host, relock) {
+  const A = typeof window !== 'undefined' ? window.EpinoiaAccess : null;
+  if (!A || typeof A.onChange !== 'function') return;     // no module: the table as drawn, as before
+  const t = { host, relock, seen: false };
+  host.__ftTable = t;
+  following.add(t);
+  sweepTables();
+  if (accessSub) return;
+  try {
+    const off = A.onChange(() => {
+      sweepTables();
+      /* each table on its own: one that throws must not leave the rest drawn under the old answer */
+      [...following].forEach(x => { try { x.relock(); } catch (e) { console.warn('[fulltable] access', e); } });
+    });
+    /* kept even without a way to let go, so a module that hands back nothing is still
+       subscribed to once rather than once per render */
+    accessSub = { off: typeof off === 'function' ? off : null };
+  } catch (_) { accessSub = null; }
+}
+
 /* ------------------------------------------------------------- component --- */
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
@@ -525,6 +577,38 @@ function render(opts) {
   let removed = new Set();        // and ones taken away
 
   const SE = () => (typeof window !== 'undefined' ? window.EpinoiaSeason : null);
+
+  /* MEMBERS' ANALYTICS (docs/memberships.md §1, §6). The events splits and the zone columns
+     are sold; a viewer without them keeps the rest of the table exactly as it was, with those
+     columns gone from the table, the column drawer, "everything" and the CSV, and a preset
+     made of nothing else marked locked -- pressing it says what it is rather than opening an
+     empty view. The numbers are still on the rows (the browser computes them from free data,
+     §3): what is withheld is the presentation.
+
+     IT FAILS OPEN. No access.js on the page, no answer yet, or an error all read as unlocked,
+     so a table on a page that never loads the module is the table it always was. `locked` is
+     read again whenever the module says the state changed (sign-in, sign-out, a late answer). */
+  const ACC = () => (typeof window !== 'undefined' ? window.EpinoiaAccess : null);
+  const isLocked = () => { const A = ACC();
+    return !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(opts.leagueId)); };
+  let locked = isLocked();
+  const premium = k => { if (!locked) return false; const A = ACC();
+    return !!(A && typeof A.isPremiumColumn === 'function' && A.isPremiumColumn(k)); };
+  /* A PRESET IS LOCKED when the catalogue names it, or when every column it would show is
+     premium. The context columns (GP) do not count: GP rides in almost every preset, the
+     events and zone ones included, and one free GP column would otherwise keep a wholly
+     premium view "open" on a table of games played. "everything" is never locked -- it only
+     loses columns. */
+  const presetLocked = key => {
+    if (!locked || key === '*') return false;
+    const A = ACC(), C = A && A.CATALOGUE;
+    if (C && Array.isArray(C.presets) && C.presets.indexOf(key) !== -1) return true;
+    const context = C && Array.isArray(C.contextColumns) ? C.contextColumns : ['gp'];
+    const cols = CAT.filter(c => c.g.includes(key) && !c.g.includes('id') && context.indexOf(c.k) === -1);
+    return cols.length > 0 && cols.every(c => premium(c.k));
+  };
+  if (presetLocked(preset)) preset = presets[0][0];
+
   /* the groups are cut over the whole table once, not per row (season.js positionGroups) */
   let posMap = null;
   const posGroups = () => {
@@ -537,7 +621,7 @@ function render(opts) {
   const idCols = CAT.filter(c => c.g.includes('id'));
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
   const visible = () => idCols.concat(
-    CAT.filter(c => !c.g.includes('id') &&
+    CAT.filter(c => !c.g.includes('id') && !premium(c.k) &&
                     ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
        .map((c, i) => [c, i])
        .sort((a, b) => ((a[0].ord && a[0].ord[preset] != null ? a[0].ord[preset] : 1000 + a[1]) -
@@ -667,16 +751,57 @@ function render(opts) {
 
   /* ---- row 2: presets ---- */
   const pills = el('div', 'ft-pills');
-  presets.forEach(([key, label]) => {
-    const b = el('button', 'ft-pill' + (key === preset ? ' on' : ''), label);
-    b.type = 'button'; b.dataset.g = key;
-    b.addEventListener('click', () => {
-      preset = key; extra.clear(); removed.clear();
-      pills.querySelectorAll('.ft-pill').forEach(p => p.classList.toggle('on', p.dataset.g === key));
-      drawDrawer(); draw();
+  /* a padlock drawn rather than typed: no emoji font to depend on, and it takes the pill's
+     own colour in either theme */
+  const lockMark = () => {
+    const NS = 'http://www.w3.org/2000/svg';
+    const s = document.createElementNS(NS, 'svg');
+    [['class', 'ft-lock'], ['viewBox', '0 0 10 12'], ['width', '8'], ['height', '10'], ['aria-hidden', 'true']]
+      .forEach(([k, v]) => s.setAttribute(k, v));
+    s.style.cssText = 'margin-left:6px;vertical-align:-1px';
+    const arc = document.createElementNS(NS, 'path');
+    [['d', 'M2.7 5.2V3.6a2.3 2.3 0 0 1 4.6 0v1.6'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.4']]
+      .forEach(([k, v]) => arc.setAttribute(k, v));
+    const body = document.createElementNS(NS, 'rect');
+    [['x', '1'], ['y', '5.2'], ['width', '8'], ['height', '6.3'], ['rx', '1'], ['fill', 'currentColor']]
+      .forEach(([k, v]) => body.setAttribute(k, v));
+    s.append(arc, body);
+    return s;
+  };
+  /* THE TEASER SITS DIRECTLY ABOVE THE TABLE, made when a locked preset is pressed and taken
+     away again by any other preset. Never left in the page hidden: a stylesheet that gives
+     the teaser a display of its own would override [hidden] and show it to everybody. */
+  let teaserEl = null;
+  const hideTeaser = () => { if (teaserEl) { teaserEl.remove(); teaserEl = null; } };
+  const showTeaser = (key, label) => {
+    const A = ACC();
+    if (!A || typeof A.teaserHTML !== 'function') return;
+    if (!teaserEl) { teaserEl = el('div', 'ft-teaser'); host.insertBefore(teaserEl, wrap); }
+    teaserEl.innerHTML = A.teaserHTML({
+      leagueSlug: opts.leagueSlug, title: label,
+      lines: [/^z_/.test(key)
+        ? 'Every club’s shot profile zone by zone — share of shots, attempts per 100 possessions, makes and eFG% — ranked across the league.'
+        : 'Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, for every ' + (isTeam ? 'club at both ends.' : 'player.')]
     });
-    pills.appendChild(b);
-  });
+  };
+  function drawPills() {
+    pills.textContent = '';
+    presets.forEach(([key, label]) => {
+      const shut = presetLocked(key);
+      const b = el('button', 'ft-pill' + (key === preset ? ' on' : '') + (shut ? ' locked' : ''), label);
+      b.type = 'button'; b.dataset.g = key;
+      if (shut) { b.appendChild(lockMark()); b.title = label + ' — part of Epinoia analytics'; }
+      b.addEventListener('click', () => {
+        if (presetLocked(key)) { showTeaser(key, label); return; }
+        hideTeaser();
+        preset = key; extra.clear(); removed.clear();
+        pills.querySelectorAll('.ft-pill').forEach(p => p.classList.toggle('on', p.dataset.g === key));
+        drawDrawer(); draw();
+      });
+      pills.appendChild(b);
+    });
+  }
+  drawPills();
   host.appendChild(pills);
 
   /* ---- row 3: every column, toggleable ---- */
@@ -687,7 +812,7 @@ function render(opts) {
   function drawDrawer() {
     grid.textContent = '';
     const shown = new Set(visible().map(c => c.k));
-    CAT.filter(c => !c.g.includes('id')).forEach(c => {
+    CAT.filter(c => !c.g.includes('id') && !premium(c.k)).forEach(c => {
       const on = shown.has(c.k);
       const b = el('button', 'ft-col' + (on ? ' on' : ''), c.l);
       b.type = 'button';
@@ -717,7 +842,8 @@ function render(opts) {
     if (posPick) v = v.filter(r => groupOf(r) === posPick);
     if (search) v = v.filter(r =>
       ((r.name || '') + ' ' + (r.teamName || '')).toLowerCase().includes(search));
-    const c = CAT.find(x => x.k === sortKey) || CAT[3];
+    /* a locked column is not a sort either: ordering by it would print its ranking */
+    const c = (!premium(sortKey) && CAT.find(x => x.k === sortKey)) || CAT[3];
     v.sort((a, b) => {
       const x = sortVal(c, a), y = sortVal(c, b);
       if (c.text) return String(x || '').localeCompare(String(y || '')) * (sortDir === -1 ? 1 : -1);
@@ -971,6 +1097,17 @@ function render(opts) {
   }
 
   draw();
+
+  /* THE ACCESS STATE CAN CHANGE UNDER A DRAWN TABLE (followAccess, above render). Only a real
+     change redraws: an open league's table never notices an answer arriving. */
+  followAccess(host, () => {
+    const now = isLocked();
+    if (now === locked) return;
+    locked = now;
+    if (presetLocked(preset)) { preset = presets[0][0]; extra.clear(); removed.clear(); }
+    hideTeaser(); drawPills(); drawDrawer(); draw();
+  });
+
   return {
     redraw: draw,
     setRows(next) { rows = (next || []).map((r, i) => Object.assign({ __i: i }, r)); draw(); }

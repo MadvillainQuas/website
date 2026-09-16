@@ -52,3 +52,15 @@ verify_jwt = false
 # that are already public.
 [functions.ics]
 verify_jwt = false
+
+# billing takes membership payments through Stripe (docs/memberships.md §5). Its
+# webhook is called by Stripe, and Stripe cannot send a Supabase JWT — so, as with
+# share and api, the gateway cannot be the thing that guards it. The function
+# guards itself instead: the webhook trusts nothing until the Stripe-Signature
+# header has verified over the raw body against an endpoint secret, within five
+# minutes; the checkout, portal and connect actions check the caller's token
+# themselves and ask the database, through that same token, whether the caller
+# administers a league. Only `status` answers anyone, and it says no more than
+# whether payments are switched on.
+[functions.billing]
+verify_jwt = false

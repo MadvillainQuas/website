@@ -77,7 +77,30 @@ async function getCounted(path) {
 }
 
 function share(path, counted) {
-  const key = (counted ? 'C:' : 'G:') + path;
+  /* THE KEY CARRIES WHO IS ASKING. A member's read of a members-only league goes
+     out with their token and an anonymous one does not; sharing the two by path
+     alone would hand whichever finished first to both, so a member could be shown
+     the refused (empty) answer, or the reverse. Open leagues send no token, so
+     their key is exactly the path it always was.
+
+     Asked on every request, which is affordable: authHeaders() is one localStorage
+     read (parsed only when the stored value changes) and a walk of the handful of
+     league states this page loaded — no network, nothing awaited. It is asked in
+     the same synchronous stretch as the first attempt's headers in fetchWithRetry,
+     so the key and the request agree. The tail of the token is enough to tell two
+     accounts apart and keeps the bearer itself out of the key. A throw, or anything
+     that is not a string, reads as anonymous — what fetchWithRetry sends when the
+     same call throws there.
+     Written inline rather than as a helper because supabase/tests/transport.test.mjs
+     lifts share and fetchWithRetry out of this file on their own; a helper beside
+     them is a name the lifted copy does not have. */
+  let who = '';
+  try {
+    const A = typeof window !== 'undefined' ? window.EpinoiaAccess : null;
+    const h = (A && typeof A.authHeaders === 'function' && A.authHeaders()) || {};
+    if (typeof h.Authorization === 'string' && h.Authorization) who = 'A:' + h.Authorization.slice(-16) + ':';
+  } catch (_) { who = ''; }
+  const key = (counted ? 'C:' : 'G:') + who + path;
   if (inFlight.has(key)) return inFlight.get(key);
   const job = fetchWithRetry(path, counted).finally(() => inFlight.delete(key));
   inFlight.set(key, job);
@@ -87,15 +110,29 @@ function share(path, counted) {
 async function fetchWithRetry(path, counted) {
   const c = CFG();
   let wait = 400;
+  /* A MEMBERS-ONLY LEAGUE IS REFUSED BY ROW-LEVEL SECURITY, so a member's reads
+     have to say who is asking. EpinoiaAccess (access.js) decides whether a token
+     is worth sending — only for a members-only league this viewer may see — and
+     hands back {} otherwise, so an open league's request is byte-for-byte what it
+     was. Asked PER ATTEMPT, never cached at load: a sign-in, a sign-out or an
+     access state that lands mid-page must change the very next request.
+     Guarded by typeof because this file also runs under node in the tests, and
+     because a page without access.js must keep working unchanged. */
+  let dropAuth = false;
   for (let attempt = 0; ; attempt++) {
+    const headers = counted
+      ? { apikey: c.supabaseAnonKey, Accept: 'application/json',
+          Prefer: 'count=exact' }
+      : { apikey: c.supabaseAnonKey, Accept: 'application/json' };
+    const A = typeof window !== 'undefined' ? window.EpinoiaAccess : null;
+    if (!dropAuth && A && typeof A.authHeaders === 'function') {
+      try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+    }
     let r;
     try {
       r = await fetch(`${c.supabaseUrl}/rest/v1/${path}`, {
         cache: 'no-store',
-        headers: counted
-          ? { apikey: c.supabaseAnonKey, Accept: 'application/json',
-              Prefer: 'count=exact' }
-          : { apikey: c.supabaseAnonKey, Accept: 'application/json' }
+        headers
       });
     } catch (netErr) {
       /* A dropped connection is exactly the case retrying is for — a phone
@@ -111,6 +148,14 @@ async function fetchWithRetry(path, counted) {
          is a real answer meaning "walk it". */
       const tail = (r.headers.get('content-range') || '').split('/')[1];
       return { rows, total: (tail && tail !== '*') ? parseInt(tail, 10) : null };
+    }
+    /* A 401 WITH A TOKEN ON IT is a token the server no longer accepts (expired
+       between the check and the request, or signed out elsewhere). That is not
+       an answer about the rows, so it is asked once more anonymously — which is
+       exactly what the page did before memberships existed — rather than turned
+       into a broken page. Once only, and it does not spend a retry. */
+    if (r.status === 401 && headers.Authorization && !dropAuth) {
+      dropAuth = true; attempt--; continue;
     }
     if (!RETRY_STATUS.has(r.status) || attempt >= RETRIES) {
       throw new Error(`${r.status} on ${path.split('?')[0]}`);

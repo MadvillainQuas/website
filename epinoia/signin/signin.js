@@ -23,13 +23,29 @@ const $ = s => document.querySelector(s);
 const sb = window.epinoiaClient && window.epinoiaClient();
 const params = new URLSearchParams(location.search);
 
-/* where to go back to once signed in — same-origin paths only, because an
-   open redirect in a sign-in page is how phishing gets a real domain in the
-   address bar */
+/* Where to go back to once signed in: a same-origin path under /epinoia/ and
+   nothing else, because an open redirect in a sign-in page is how phishing gets
+   a real domain in the address bar. "Starts with one slash" was not enough:
+   browsers strip tabs and newlines out of a URL and read a backslash as a
+   slash, so '/%09/evil.com' once decoded, '/\evil.com' and
+   '/epinoia/..//evil.com' all used to leave the site. No control characters or
+   spaces, no backslash (raw or %5c), no '//' anywhere, and the browser's own
+   parser has the last word: resolved here, it must still be here.
+   Kept character for character the same as safePath in access.js and safeNext
+   in join.js; access.test.mjs reads this function out of this file and runs the
+   same attack strings through all three. */
+function safePath(n) {
+  const s = String(n == null ? '' : n);
+  if (s.indexOf('/epinoia/') !== 0) return '';
+  if (/[\x00-\x20\x7f\\]|%5c|\/\//i.test(s)) return '';
+  try {
+    const u = new URL(s, location.origin);
+    if (u.origin !== location.origin || u.pathname.indexOf('/epinoia/') !== 0) return '';
+  } catch (_) { return ''; }
+  return s;
+}
 function safeNext() {
-  const n = params.get('next') || '';
-  if (!n.startsWith('/') || n.startsWith('//')) return null;
-  return n;
+  return safePath(params.get('next')) || null;
 }
 
 function say(text, kind) {
@@ -225,8 +241,10 @@ $('#signout').addEventListener('click', async () => {
   const err = h.get('error_description') || h.get('error') || q.get('error_description');
   if (!err) return;
   say(decodeURIComponent(String(err).replace(/\+/g, ' ')), 'err');
+  /* keep only a next= this page would actually follow */
+  const next = safeNext();
   history.replaceState(null, '', location.pathname +
-    (q.get('next') ? '?next=' + encodeURIComponent(q.get('next')) : ''));
+    (next ? '?next=' + encodeURIComponent(next) : ''));
 })();
 
 /* arriving back from the emailed link */

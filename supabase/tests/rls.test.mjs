@@ -168,6 +168,39 @@ async function main() {
   const w7 = await write('game_officials', [{ game_id: ZERO, user_id: ZERO }]);
   ok('anon cannot make itself a game official', !w7.allowed, `HTTP ${w7.code}`);
 
+  /* ---- memberships (migration 0117, docs/memberships.md) -------------------
+     Skipped as a block until 0117 is applied: PostgREST answers 404 (PGRST202,
+     no such function) for access_state until then, and every assertion below
+     would pass or fail for the wrong reason against tables that do not exist. */
+  console.log('\nmemberships (0117): what a signed-out visitor can and cannot reach:');
+  const st = await rest('rpc/access_state', { method: 'POST', body: JSON.stringify({}) });
+  const stBody = await st.json().catch(() => null);
+  if (st.status === 404 || stBody?.code === 'PGRST202') {
+    console.log('  SKIP  0117 not applied yet (access_state: HTTP ' + st.status +
+                (stBody?.code ? ', ' + stBody.code : '') + ')');
+  } else {
+    ok('anon may call access_state, and it says signed out',
+       st.ok && stBody && stBody.signed_in === false,
+       `HTTP ${st.status} ${JSON.stringify(stBody)?.slice(0, 160)}`);
+
+    // answers about somebody else: service role only
+    const ff = await rpc('access_features_for', { p_user: ZERO, p_league: ZERO });
+    ok('anon cannot call access_features_for', !ff.allowed, `HTTP ${ff.code}`);
+
+    /* Refused outright (401/403, table privileges revoked) or zero rows: both
+       mean nothing came back. A 404 here would mean the table is missing, which
+       0117 being applied rules out, so it is not accepted as a pass. */
+    for (const t of ['access_subscriptions', 'access_grants', 'access_customers',
+                     'access_checkouts', 'billing_events', 'league_billing_accounts']) {
+      const r = await rows(`${t}?select=*&limit=5`);
+      ok(`anon reads no rows from ${t}`, r.code !== 404 && (!r.ok || r.n === 0),
+         `HTTP ${r.code}, rows=${r.n}`);
+    }
+
+    const plans = await rows('access_plans?select=id,name,price_pennies&limit=5');
+    ok('anon may read access_plans (the price list)', plans.ok, `HTTP ${plans.code}`);
+  }
+
   console.log(`\n${pass} passed, ${fail} failed\n`);
   process.exitCode = fail ? 1 : 0;
 }

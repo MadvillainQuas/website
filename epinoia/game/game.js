@@ -50,23 +50,36 @@ window.derive = () => E.deriveGame(window.S);
    between them to save fifteen lines would trade robustness for tidiness. */
 const API_RETRY = new Set([429, 500, 502, 503, 504]);
 
-async function api(p, attempt = 0) {
+/* A MEMBERS-ONLY LEAGUE'S GAME IS REFUSED BY ROW-LEVEL SECURITY to an anonymous
+   read, so a member's reads carry their token. access.js decides when that is
+   worth doing (a members-only league this viewer may see) and returns {} the
+   rest of the time, so an open league's request is exactly what it was. Asked on
+   every call rather than once: the answer changes when the access state lands or
+   the viewer signs in. `anon` is the one retry without the token after a 401 — a
+   token the server has stopped accepting is not a reason to show no box score. */
+async function api(p, attempt = 0, anon = false) {
+  const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+  }
   let r;
   try {
     r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-      { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+      { cache: 'no-store', headers });
   } catch (netErr) {
     if (attempt >= 3) throw netErr;
     await new Promise(res => setTimeout(res, 400 * Math.pow(2, attempt)));
-    return api(p, attempt + 1);
+    return api(p, attempt + 1, anon);
   }
   if (r.ok) return r.json();
+  if (r.status === 401 && headers.Authorization && !anon) return api(p, attempt, true);
   if (API_RETRY.has(r.status) && attempt < 3) {
     const ra = r.headers.get('retry-after');
     let hold = 400 * Math.pow(2, attempt);
     if (ra && /^\d+$/.test(ra.trim())) hold = Math.min(10000, +ra * 1000);
     await new Promise(res => setTimeout(res, hold));
-    return api(p, attempt + 1);
+    return api(p, attempt + 1, anon);
   }
   throw new Error(`${r.status} on ${p.split('?')[0]}`);
 }
@@ -110,7 +123,7 @@ async function loadStored() {
 
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),` +
-    `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(name,slug)))&limit=1`);
+    `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(id,name,slug)))&limit=1`);
   if (!gs.length) return null;
   const g = gs[0];
 
@@ -216,6 +229,8 @@ async function loadStored() {
     status: g.status,
     competition: [league.name, comp.name].filter(Boolean).join(' · ') || 'Friendly',
     leagueSlug: league.slug || null,
+    /* what access.js keys a league's membership state on */
+    leagueId: league.id || null,
     venue: g.venue,
     video: video,
     /* The scoresheet's context, in the shape matchDetailsHTML reads on both
@@ -475,6 +490,199 @@ function tabsFor(status) {
   return (v && (v.url || v.live_src)) ? base.concat([['video', 'video']]) : base;
 }
 
+/* ------------------------------------------------------------- memberships ---
+   docs/memberships.md. Two different things are decided here, and they fail in
+   opposite directions on purpose:
+
+     ANALYTICS (game flow, connections, events, the video tab's runs) are drawn
+     in the browser from the same free event log the box score needs, so nothing
+     is protected by hiding them on an error. They FAIL OPEN: locked only when
+     access.js has loaded and said no.
+     A MEMBERS-ONLY LEAGUE is refused by the database. The paywall card is drawn
+     only on a KNOWN answer (the server said can_view = false); an unknown state
+     never replaces a box score.
+
+   Every check is a typeof-guarded read of window.EpinoiaAccess, so a page
+   without access.js — or a database without the access_state RPC — draws
+   exactly what it drew before. The state is cached by access.js and read
+   synchronously, because a live game calls renderBody on every play. */
+const GATED_TABS_DEFAULT = ['flow', 'connections', 'events'];
+let walled = null;                  // the league whose paywall card is showing instead of the game
+let accessWatched = false;
+let drawnLocked = false;            // the analytics lock the body was last drawn under
+
+function gatedTabs() {
+  const A = window.EpinoiaAccess;
+  const t = A && A.CATALOGUE && A.CATALOGUE.gameTabs;
+  return Array.isArray(t) ? t : GATED_TABS_DEFAULT;
+}
+function analyticsLocked() {
+  const A = window.EpinoiaAccess;
+  const S = window.S;
+  return !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(S && S.leagueId));
+}
+/* the members-only answer, only when the server gave one */
+function leagueWalled(leagueId) {
+  const A = window.EpinoiaAccess, S = window.S;
+  const id = leagueId || (S && S.leagueId);
+  if (!A || !id || typeof A.get !== 'function' || typeof A.canView !== 'function') return false;
+  const st = A.get(id) || {};
+  if (!st.known || A.canView(id)) return false;
+  /* a fixture stays a public preview while the league keeps its fixtures public */
+  return !(S && S.status === 'scheduled' && st.fixturesPublic);
+}
+
+/* the server's known "may not view" for this game's league, whatever the game's status */
+function leagueRefused() {
+  const A = window.EpinoiaAccess, S = window.S;
+  const id = S && S.leagueId;
+  if (!A || !id || typeof A.get !== 'function' || typeof A.canView !== 'function') return false;
+  return !!((A.get(id) || {}).known && !A.canView(id));
+}
+
+/* The tab buttons are built once (renderShell), so the lock is a class and a label
+   toggled on them rather than a rebuild — a rebuild would lose nothing here, but
+   the same toggle has to run again whenever the access state changes. */
+function markLockedTabs() {
+  const locked = analyticsLocked();
+  const gated = gatedTabs();
+  document.querySelectorAll('#view .tabbtn[data-tab]').forEach(b => {
+    const on = locked && gated.indexOf(b.dataset.tab) !== -1;
+    b.classList.toggle('locked', on);
+    if (on) b.setAttribute('aria-label', b.textContent + ', members only');
+    else b.removeAttribute('aria-label');
+  });
+}
+
+function lockedTabHTML() {
+  const A = window.EpinoiaAccess, S = window.S || {};
+  return A.teaserHTML({
+    leagueSlug: S.leagueSlug || null,
+    title: 'Game flow, connections and events are for members',
+    lines: [
+      'Game flow: every scoring run and momentum swing, the margin minute by minute, expected points added and points per possession as the game went.',
+      'Connections: who assisted whom, how often each pair connected and the points and threes every pairing produced.',
+      'Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.'
+    ]
+  });
+}
+
+/* THE PAYWALL, in place of the game. The live transport is stopped with it: a
+   socket kept open behind a card would still be receiving the game it hides. */
+function showWall(league) {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.paywallHTML !== 'function') return false;
+  const S = window.S || {};
+  walled = league || { id: S.leagueId, slug: S.leagueSlug,
+                       name: (S.meta && S.meta.leagueName) || null };
+  if (sub && typeof sub.stop === 'function') { try { sub.stop(); } catch (_) { /* already gone */ } }
+  sub = null;
+  if (liveClock) { clearInterval(liveClock); liveClock = null; }
+  $('#view').innerHTML = A.paywallHTML({ league: walled });
+  setStatus('members');
+  return true;
+}
+
+function onAccessChange() {
+  /* signed in as a member on the paywall: the game has to be read again, with the
+     token, from the top — the load path is the one place that knows how. Checked
+     before window.S, because a row the database refused never set it. */
+  if (walled) {
+    /* only on a KNOWN yes: a state briefly unknown while access.js reloads it
+       after a sign-in must not turn into a reload of its own */
+    const A = window.EpinoiaAccess, st = (A && A.get(walled.id)) || {};
+    if (st.known && A.canView(walled.id)) location.reload();
+    return;
+  }
+  if (!window.S) return;
+  if (leagueWalled()) { showWall(); return; }
+  markLockedTabs();
+  if (!shellBuilt) return;                  // a preview has none of the gated tabs
+  /* ONLY A MOVED ANSWER REDRAWS. The first answer for an open league is "not
+     locked", which is what the body was drawn as; redrawing it anyway would
+     rebuild a table somebody may already be scrolling. */
+  const locked = analyticsLocked();
+  if (locked === drawnLocked) return;
+  if (fTab === 'video') { mountVideo(window.derive()); return; }   // redraws the list, keeps the player
+  if (gatedTabs().indexOf(fTab) === -1) { drawnLocked = locked; return; }   // nothing on this tab depends on it
+  lastBodyKey = '';
+  renderBody();
+}
+
+/* CAN A ROW THE DATABASE RETURNED STILL BE BEHIND THE WALL? Not for a real
+   viewer: RLS refuses a members-only game to a non-member, which is the
+   loadBehindWall path. Only the admins' preview switch (docs/memberships.md §6,
+   localStorage.epinoia_access_sim = 'locked') draws as a non-member over rows
+   the server sent, and only then is it worth holding the first paint for the
+   answer — so an open league's box score never waits on access_state. */
+function accessMayWall() {
+  if (!window.EpinoiaAccess) return false;
+  try { return localStorage.getItem('epinoia_access_sim') === 'locked'; } catch (_) { return false; }
+}
+
+function followAccess() {
+  const A = window.EpinoiaAccess;
+  if (accessWatched || !A || typeof A.onChange !== 'function') return;
+  accessWatched = true;
+  A.onChange(onAccessChange);
+}
+/* Loads the state for this game's league and follows it. Not awaited by the box
+   score: analytics fail open, so an open league draws at once and a locked tab
+   swaps to its teaser when the answer lands. */
+function watchAccess() {
+  const A = window.EpinoiaAccess, S = window.S;
+  if (!A || typeof A.load !== 'function' || !S) return Promise.resolve(null);
+  followAccess();
+  /* a friendly with no league still follows the platform's analytics default:
+     load({}) asks for the no-league answer rather than leaving the tabs open */
+  const which = (S.leagueId || S.leagueSlug)
+    ? { leagueId: S.leagueId || undefined, leagueSlug: S.leagueSlug || undefined } : {};
+  return Promise.resolve(A.load(which)).catch(() => null);
+}
+
+/* THE ROW WAS REFUSED. For an open league that means "not public, or does not
+   exist", and nothing here changes it. For a members-only league it is RLS
+   saying no to an anonymous read, and there are two ways on:
+
+     * the viewer is signed in: ask once more WITH their token. A member gets the
+       row back, which names the league, and from then on access.js supplies the
+       token to every read on the page;
+     * the link names its league (?l=slug): load that league's state, so a
+       non-member sees the paywall card rather than a message that reads as a
+       broken link.
+
+   Only reached when the anonymous read came back empty, so an open league's page
+   never pays for any of it. Returns the stored game, a { wall } marker, or null. */
+async function loadBehindWall() {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.load !== 'function' || typeof A.get !== 'function') return null;
+  let league = null;
+  const token = storedToken();
+  if (token) {
+    try {
+      const r = await fetch(CFG.supabaseUrl + '/rest/v1/games?id=eq.' + encodeURIComponent(gameId) +
+        '&select=competitions(seasons(leagues(id,slug,name)))&limit=1',
+        { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+      const rows = r.ok ? await r.json() : [];
+      const c = rows && rows[0] && rows[0].competitions;
+      league = (c && c.seasons && c.seasons.leagues) || null;
+    } catch (_) { /* treated as not found */ }
+  }
+  if (!league && qp.get('l')) {
+    try {
+      const ls = await api('leagues?slug=eq.' + encodeURIComponent(qp.get('l')) + '&select=id,slug,name&limit=1');
+      league = ls[0] || null;
+    } catch (_) { /* no league, no card */ }
+  }
+  if (!league || !league.id) return null;
+  try { await A.load({ leagueId: league.id, leagueSlug: league.slug }); } catch (_) { return null; }
+  const st = A.get(league.id) || {};
+  if (!st.known) return null;
+  if (typeof A.canView === 'function' && !A.canView(league.id)) return { wall: league };
+  /* may view: the token now rides on api(), so the ordinary load is asked again */
+  try { return await loadStored(); } catch (_) { return null; }
+}
+
 /* Rendering is split three ways on purpose.
 
    The advanced tab alone is ~107KB of HTML. Rebuilding the whole view on
@@ -515,6 +723,7 @@ function renderShell() {
       renderBody();
     };
   });
+  markLockedTabs();                     // a no-op until access.js has said analytics are locked
 
   txt($('#ctx'), (S.competition || 'Friendly') + ' · ' +
       S.teams[0].name + ' v ' + S.teams[1].name);
@@ -1284,13 +1493,27 @@ function tipInstantMs() {
 async function tipInstantMsAsync() {
   const local = tipInstantMs();
   if (local != null) return local;
-  try {
+  /* THE SAME WALL AS THE GAME. game_tip_wallclock answers only where can_read_game
+     does, and in a members-only league that is a member's token, not the anon key —
+     sent alone it came back empty and the automatic anchor silently gave up for
+     exactly the people allowed to use it. So it asks the way api() does: whatever
+     access.js hands back (nothing, for an open league), and once more anonymously
+     after a 401, because a token the server stopped accepting is not an answer. */
+  const ask = async anon => {
+    const headers = { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' };
+    const A = window.EpinoiaAccess;
+    if (!anon && A && typeof A.authHeaders === 'function') {
+      try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+    }
     const r = await fetch(CFG.supabaseUrl + '/rest/v1/rpc/game_tip_wallclock', {
-      method: 'POST', cache: 'no-store',
-      headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST', cache: 'no-store', headers,
       body: JSON.stringify({ p_game: gameId })
     });
-    const j = r.ok ? await r.json() : null;
+    if (r.status === 401 && headers.Authorization && !anon) return ask(true);
+    return r.ok ? r.json() : null;
+  };
+  try {
+    const j = await ask(false);
     return j && !isNaN(new Date(j).getTime()) ? new Date(j).getTime() : null;
   } catch (_) { return null; }
 }
@@ -1638,6 +1861,16 @@ function renderBody(d) {
   lastBodyKey = key;
   const el = $('#csBody');
   if (el) {
+    /* THE MEMBERS' TABS. The teaser goes in before anything is computed and the
+       page returns before the modules bind to it: flow, connections and events
+       replay the whole log to draw, and a locked tab should cost nothing. The
+       body key above does not know about access, which is why a change of access
+       state clears it (onAccessChange). */
+    drawnLocked = analyticsLocked();
+    if (gatedTabs().indexOf(fTab) !== -1 && drawnLocked) {
+      el.innerHTML = lockedTabHTML();
+      return;
+    }
     el.innerHTML = (BODIES[fTab] || BODIES.box)(d);
     linkifyPlayers(el); decorateTeams(el);
     if (fTab === 'video') mountVideo(d);
@@ -1667,11 +1900,15 @@ function mountVideo(d) {
     return;
   }
   const qp2 = new URLSearchParams(location.search);
+  drawnLocked = analyticsLocked();
   window.EpinoiaVideoTab.render({
     host: '#vidHost', video: S.video, events: S.events, S: S, d: d,
     focus: { pid: qp2.get('vp') || null, filter: qp2.get('vf') || null, seq: qp2.get('vs') || null,
              /* a run from the game flow tab (or a link carrying one): shown from its first basket */
              run: qp2.get('vr') || null },
+    /* the runs are the game flow tab's, so they are the members' too; the tab takes
+       the page's decision rather than reading access itself */
+    runsLocked: drawnLocked,
     /* the people who may attach a video may also nudge it; the same check */
     canEdit: vidShown,
     onTrim: nudgeVideo,
@@ -1848,7 +2085,7 @@ function decorateTeams(scope) {
 
 function render() {
   const S = window.S;
-  if (!S) return;
+  if (!S || walled) return;             // nothing is drawn over the paywall card
   /* the pid -> player lookup the renderers name people through; rebuilt every
      pass because a live sub can introduce a player who was not on the sheet */
   B.rebuildPmap();
@@ -1868,6 +2105,7 @@ function setStatus(s) {
 /* Only games that are not finished need a socket. Subscribing to a finished
    game would burn a realtime connection to learn nothing. */
 function goLive() {
+  if (walled) return;                   // a members-only game this viewer may not see: no socket
   sub = L.subscriber({
     gameId, mode,
     supabase: (mode === 'supabase' && window.epinoiaClient) ? epinoiaClient() : null,
@@ -2056,11 +2294,20 @@ function watchGameStatus() {
     if (!document.hidden && missedWhileHidden) { missedWhileHidden = false; pollStatus(); }
   });
   async function pollStatus() {
-    if (!window.S || window.S.status === 'final') return;
+    if (!window.S || window.S.status === 'final' || walled) return;
     let rows;
     try { rows = await api('games?id=eq.' + encodeURIComponent(gameId) + '&select=status&limit=1'); }
     catch (_) { return; }                 // a blip is not a verdict
     const now = rows && rows[0] && rows[0].status;
+    /* A FIXTURE THAT TIPS OFF IN A MEMBERS-ONLY LEAGUE stops coming back to a
+       non-member (the database shows the fixture, never the game), so a preview
+       left open turns into the paywall card here instead of sitting unchanged all
+       evening. Only on the server's known "may not view"; an open league's
+       missing row is left alone, as before. */
+    if (!now && Array.isArray(rows) && !rows.length && window.S.status === 'scheduled' && leagueRefused()) {
+      showWall();
+      return;
+    }
     if (!now || now === window.S.status) return;
     console.log('[status] ' + window.S.status + ' -> ' + now + ', reloading');
     location.reload();
@@ -2093,6 +2340,7 @@ function watchForVideo() {
        before YouTube hands out the URL, and stopping at the row would mean the
        link never arrived on a page anybody had open. */
     if (!window.S || window.S.status === 'final') return;
+    if (walled) { clearInterval(timer); return; }   // a shell rebuilt here would cover the paywall card
     if (window.S.video && window.S.video.url) return;
     let rows;
     try {
@@ -2109,6 +2357,7 @@ function watchForVideo() {
       if (++videoMisses >= 3) clearInterval(timer);
       return;
     }
+    if (walled) { clearInterval(timer); return; }   // the paywall went up while this was asking
     if (!rows.length || !rows[0].url) return;
     /* Keep a channel fallback's own fields — the row that has just arrived
        carries the anchor and the link; live_src is how the page was showing
@@ -2140,7 +2389,7 @@ function watchForVideo() {
 let backfilling = false;
 
 async function backfill(why) {
-  if (backfilling || !window.S || mode !== 'supabase') return;
+  if (backfilling || !window.S || walled || mode !== 'supabase') return;
   backfilling = true;
   try {
     const rows = await fetchLog();
@@ -2376,6 +2625,7 @@ async function renderPreview() {
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
 
+  if (walled) return;                   // the paywall went up meanwhile
   $('#view').innerHTML = window.EpinoiaPreview.render({
     nameA: home.name || S.teams[0].name, nameB: away.name || S.teams[1].name,
     colourA: B.safeColour(home.colour, '#93f2bf'),
@@ -2420,6 +2670,13 @@ async function renderPreview() {
   if (mode === 'supabase') {
     try { stored = await loadStored(); }
     catch (e) { return fail('Could not load this game: ' + e.message); }
+    /* refused: perhaps a members-only league (loadBehindWall); never for an open one */
+    if (!stored) stored = await loadBehindWall();
+    if (stored && stored.wall) {
+      followAccess();                        // a member signing in here reloads into the game
+      if (showWall(stored.wall)) return;
+      stored = null;
+    }
     if (!stored) return fail('This game is not public, or does not exist.');
   } else {
     /* a local scratch room has no database row — the publisher is the source */
@@ -2430,6 +2687,15 @@ async function renderPreview() {
   }
 
   window.S = stored;
+  /* THE LEAGUE'S MEMBERSHIP STATE, for the analytics tabs and a members-only league.
+     A live or final game waits for it only when it could be the difference
+     between the game and a paywall card, which is never true of an open league
+     (see accessMayWall). Everything else draws at once and follows the answer. */
+  const accessReady = mode === 'supabase' ? watchAccess() : Promise.resolve(null);
+  if (stored.status !== 'scheduled' && accessMayWall()) {
+    await accessReady;
+    if (leagueWalled() && showWall()) return;
+  }
   /* the clubs' listed positions steer where the modern view stands each player; they arrive a
      moment after the page, and the view is redrawn once if it is already showing */
   if (window.EpinoiaModernBox) {

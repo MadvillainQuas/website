@@ -20,22 +20,63 @@ const WANT = Q.get('l') || '';
 const SLUG = Q.get('a') || '';
 const PAGE = 24;
 
-async function api(p) {
+/* A members-only league's news is refused to an anonymous caller (news_public and
+   news_article check visibility inside), so a member's calls carry their token.
+   access.js decides when that is worth doing and returns {} otherwise, so an open
+   league's request is unchanged; a 401 on a token the server no longer accepts is
+   asked once more without it. */
+function withAuth(headers, anon) {
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
+  }
+  return headers;
+}
+async function api(p, anon) {
+  const headers = withAuth({ apikey: CFG.supabaseAnonKey, Accept: 'application/json' }, anon);
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+    { cache: 'no-store', headers });
+  if (r.status === 401 && headers.Authorization) return api(p, true);
   if (!r.ok) throw new Error(r.status + ' ' + p.split('?')[0]);
   return r.json();
 }
-async function rpc(fn, args) {
+async function rpc(fn, args, anon) {
+  const headers = withAuth({ apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
+                             Accept: 'application/json' }, anon);
   const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, {
     method: 'POST', cache: 'no-store',
-    headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
-               Accept: 'application/json' },
+    headers,
     body: JSON.stringify(args || {})
   });
+  if (r.status === 401 && headers.Authorization) return rpc(fn, args, true);
   const j = await r.json().catch(() => null);
   if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));
   return j;
+}
+
+/* A MEMBERS-ONLY LEAGUE'S NEWS IS THE MEMBERS'. On a KNOWN "may not view" the
+   paywall card replaces the archive (or the article), instead of "No news yet",
+   which would be untrue. Without access.js, or when the check fails, nothing
+   changes. Returns true when the card is up. */
+async function newsWall(league) {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.load !== 'function' || typeof A.get !== 'function') return false;
+  try { await A.load({ leagueId: league.id, leagueSlug: league.slug }); } catch (_) { return false; }
+  const st = A.get(league.id) || {};
+  const walled = !!(st.known && typeof A.canView === 'function' && !A.canView(league.id));
+  /* a sign-in or sign-out that changes the answer re-reads the page */
+  if (typeof A.onChange === 'function') {
+    A.onChange(() => {
+      const now = A.get(league.id) || {};
+      if (now.known && !A.canView(league.id) !== walled) location.reload();
+    });
+  }
+  if (!walled || typeof A.paywallHTML !== 'function') return false;
+  const w = $('#accessWall');
+  w.innerHTML = A.paywallHTML({ league });
+  w.classList.remove('hide');
+  ['#one', '#list', '#pager'].forEach(s => $(s).classList.add('hide'));
+  return true;
 }
 
 const imgUrl = p => /^https?:\/\//.test(p || '') ? p
@@ -71,6 +112,7 @@ const imgUrl = p => /^https?:\/\//.test(p || '') ? p
   $('#backLeague').href = back;
   $('#footLeague').href = back;
 
+  if (await newsWall(league)) return;
   if (SLUG) await one(league);
   else await all(league, 0);
 })();

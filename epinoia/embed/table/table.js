@@ -12,6 +12,14 @@
 
    Leaders read the same season intermediary every other page reads, so a
    number here and a number on the player's own profile cannot disagree.
+
+   A MEMBERS-ONLY LEAGUE refuses its standings and box scores to an anonymous
+   read, so this asks access.js about the league before reading anything: for a
+   member it then hands data.js the member's token (EpinoiaAccess.authHeaders(),
+   which data.js merges into every request), and for everybody else the reads
+   are the anonymous ones they always were. Inside another site's iframe most
+   browsers partition storage, so there the embed usually sees nobody signed in
+   and a members-only league stays empty — which is the league's choice.
    ============================================================================ */
 
 const CFG = window.EPINOIA_CONFIG;
@@ -19,7 +27,6 @@ const D = window.EpinoiaData;
 const qp = new URLSearchParams(location.search);
 const leagueSlug = qp.get('l') || 'demo-league';
 const kind = (qp.get('kind') || 'standings').toLowerCase();
-const stat = qp.get('stat') || 'ppg';
 const rows = Math.min(parseInt(qp.get('n'), 10) || 10, 25);
 
 /* ?theme=light for club sites that are not dark. One attribute, because the
@@ -89,9 +96,20 @@ const STATS = {
   bpg: ['BPG', r => f1(r.bpg)], ts:  ['TS%', r => f1(r.ts)],
   efg: ['eFG%', r => f1(r.efg)], mpg: ['MPG', r => f1(r.mpg)]
 };
+/* The ranking key is one of those, never the raw ?stat=. It used to sort by
+   whatever was asked for while labelling the column PPG, so ?stat=ev_second_ppg
+   ranked players by a members-only analytics column in a free, public embed —
+   and ?stat=constructor found Object's own constructor and broke the embed. */
+const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ? qp.get('stat') : 'ppg';
 
 (async function boot() {
   try {
+    /* access first, so the reads below carry a member's token where one is
+       needed; load() never rejects and gives up after four seconds */
+    const A = window.EpinoiaAccess;
+    if (A && typeof A.load === 'function') {
+      try { await A.load({ leagueSlug }); } catch (_) { /* read anonymously, as before */ }
+    }
     const { league, comp } = await D.context(leagueSlug, qp.get('c'));
     $('#title').textContent = league.name;
     if (!comp) return fail('No competition yet');
@@ -113,7 +131,7 @@ const STATS = {
                   r.gp, r.w, r.l, (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
         })));
     } else {
-      const [label, get] = STATS[stat] || STATS.ppg;
+      const [label, get] = STATS[stat];
       $('#sub').textContent = label + ' leaders';
       $('#more').href = new URL('../../stats/?l=' + encodeURIComponent(league.slug),
                                 location.href).href;

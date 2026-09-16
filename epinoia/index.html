@@ -15,12 +15,13 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
-<script src="mode.js?v=253"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="kit/nav.css?v=253">
-<link rel="stylesheet" href="kit/card.css?v=253">
-<link rel="stylesheet" href="kit/news.css?v=253">
-<link rel="stylesheet" href="kit/splash.css?v=253">
+<script src="mode.js?v=254"></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="kit/nav.css?v=254">
+<link rel="stylesheet" href="kit/card.css?v=254">
+<link rel="stylesheet" href="kit/news.css?v=254">
+<link rel="stylesheet" href="kit/splash.css?v=254">
+<link rel="stylesheet" href="kit/access.css?v=254">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
@@ -552,6 +553,15 @@
     </div>
   </div>
 
+  <!-- members only (league splash only) ---------------------------------
+       The paywall card, FIRST, for a members-only league whose server has said
+       this viewer may not see it (home.js leagueAccess, docs/memberships.md).
+       Hidden otherwise, which is every league as shipped. No numbered heading:
+       the card carries its own, and the sections below keep their numbering. -->
+  <div class="sec hide" id="accessSec">
+    <div id="access"></div>
+  </div>
+
   <!-- news (league splash only) -------------------------------------------
        ABOVE the clubs, because a league's front page leads with what has
        happened rather than with a directory. Up to five, and the section is
@@ -638,6 +648,12 @@
       <span class="note">sign-in required</span>
     </div>
     <div class="grid">
+      <!-- shown by home.js only on a league splash whose league has plans to buy -->
+      <a class="card hide" id="joinCard" href="join/">
+        <span class="k">Members</span>
+        <span class="t">Become a member</span>
+        <span class="d">This league's membership plans, what each one unlocks, and what stays free for everybody.</span>
+      </a>
       <a class="card" href="app/">
         <span class="k">Portal</span>
         <span class="t">Club sign-in</span>
@@ -689,26 +705,29 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=253" defer></script>
-<script src="follow.js?v=253" defer></script>
-<script src="teamcolour.js?v=253" defer></script>
-<script src="rt.js?v=253" defer></script>
+<script src="config.js?v=254" defer></script>
+<!-- memberships: the league splash's paywall card, its "Become a member" card and
+     a member's auth headers. Nothing is asked of the server on the platform hub. -->
+<script src="access.js?v=254" defer></script>
+<script src="follow.js?v=254" defer></script>
+<script src="teamcolour.js?v=254" defer></script>
+<script src="rt.js?v=254" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=253" defer></script>
-<script src="bpm.js?v=253" defer></script>
-<script src="data.js?v=253" defer></script>
-<script src="merch.js?v=253" defer></script>
-<script src="upload.js?v=253" defer></script>
-<script src="newsblocks.js?v=253" defer></script>
-<script src="news.js?v=253" defer></script>
-<script src="toty.js?v=253" defer></script>
-<script src="igtile.js?v=253" defer></script>
-<script src="socials.js?v=253" defer></script>
-<script src="music.js?v=253" defer></script>
-<script src="splash.js?v=253" defer></script>
-<script src="home.js?v=253" defer></script>
-<script src="nav.js?v=253" defer></script>
-<script src="xscroll.js?v=253" defer></script>
+<script src="season.js?v=254" defer></script>
+<script src="bpm.js?v=254" defer></script>
+<script src="data.js?v=254" defer></script>
+<script src="merch.js?v=254" defer></script>
+<script src="upload.js?v=254" defer></script>
+<script src="newsblocks.js?v=254" defer></script>
+<script src="news.js?v=254" defer></script>
+<script src="toty.js?v=254" defer></script>
+<script src="igtile.js?v=254" defer></script>
+<script src="socials.js?v=254" defer></script>
+<script src="music.js?v=254" defer></script>
+<script src="splash.js?v=254" defer></script>
+<script src="home.js?v=254" defer></script>
+<script src="nav.js?v=254" defer></script>
+<script src="xscroll.js?v=254" defer></script>
 </body>
 </html>

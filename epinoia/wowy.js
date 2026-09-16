@@ -33,7 +33,12 @@ function num(v, signed) {
   return td;
 }
 
-/* opts: { host, stints, meta, preselect, max, minMinutes } */
+/* opts: { host, stints, meta, preselect, max, minMinutes, preview, leagueSlug }
+
+   preview: the members' version is locked (docs/memberships.md), so the matrix
+   is capped at CATALOGUE.wowyPreviewMax players through the same MAX that
+   already disables the extra chips, with a one-line way to join under the bar.
+   The page decides and passes the flag; this file never reads access itself. */
 function render(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
@@ -45,7 +50,10 @@ function render(opts) {
     host.appendChild(el('div', 'empty', 'No lineup data yet — this fills in as games are finalised.'));
     return;
   }
-  const MAX = opts.max || 4;
+  const A = typeof window !== 'undefined' ? window.EpinoiaAccess : null;
+  const MAX = opts.preview
+    ? ((A && A.CATALOGUE && A.CATALOGUE.wowyPreviewMax) || 1)
+    : (opts.max || 4);
   let floor = opts.minMinutes == null ? 2 : opts.minMinutes;
 
   /* everyone who appears, most-used first — the order a person looks for a name */
@@ -58,10 +66,12 @@ function render(opts) {
   (opts.preselect || []).forEach(id => {
     if (picked.length < MAX && roster.indexOf(id) !== -1) picked.push(id);
   });
-  if (!picked.length) roster.slice(0, 2).forEach(id => picked.push(id));
+  /* capped by MAX too, so a preview (MAX 1) never opens holding two; the same two
+     as before on every page whose cap is 2 or more */
+  if (!picked.length) roster.slice(0, Math.min(2, MAX)).forEach(id => picked.push(id));
 
   const lead = el('p', 'lu-lead');
-  lead.textContent = 'Choose up to ' + MAX + ' players. Every combination of them being ' +
+  lead.textContent = 'Choose up to ' + MAX + (MAX === 1 ? ' player' : ' players') + '. Every combination of them being ' +
     'on or off the floor is worked out separately, so you can see what the team does ' +
     'with a pairing, with one of them, and with neither.';
   host.appendChild(lead);
@@ -75,6 +85,17 @@ function render(opts) {
   inp.style.width = '72px';
   const note = el('span', 'wl');
   bar.append(el('span', 'wl', 'dim under (minutes)'), inp, note);
+  /* the preview says what the full version is, in one line, where the cap bites */
+  if (opts.preview && A && typeof A.teaserHTML === 'function') {
+    const tease = el('div', 'wowy-tease');
+    tease.style.flex = '1 1 100%';          // its own line under the controls, on every page that hosts the bar
+    tease.innerHTML = A.teaserHTML({   // escaped by access.js
+      compact: true, leagueSlug: opts.leagueSlug || null,
+      title: 'A preview: ' + MAX + (MAX === 1 ? ' player' : ' players') + ' at a time. Members compare up to ' +
+             (opts.max || 4) + ' at once.'
+    });
+    bar.appendChild(tease);
+  }
   host.appendChild(bar);
 
   const wrap = el('div', 'ft-wrap');

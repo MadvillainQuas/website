@@ -16,8 +16,8 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=253">
-<link rel="stylesheet" href="../../kit/nav.css?v=253">
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=254">
+<link rel="stylesheet" href="../../kit/nav.css?v=254">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -122,6 +122,43 @@
     font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
     max-width:78ch;margin:calc(var(--u)*2) 0}
   .note.bad{border-left-color:var(--flare);background:color-mix(in oklch,var(--flare) 7%,transparent)}
+
+  /* ---- the memberships master switch, at the top of the Plans tab ----
+     Off is the quiet state (as shipped); on is the lit one, so the state reads
+     at a glance without the word. */
+  .ms{border:1px solid var(--rule-2);border-left:3px solid var(--ink-3);padding:12px 14px;
+    margin:0 0 calc(var(--u)*3);max-width:84ch;display:flex;flex-direction:column;gap:9px}
+  .ms.on{border-left-color:var(--lume);background:color-mix(in oklch,var(--lume) 5%,transparent)}
+  .ms-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .ms-k{font-family:var(--f-ui);font-weight:700;font-size:15px;color:var(--ink)}
+  .ms-v{font-family:var(--f-score);font-size:26px;line-height:1;color:var(--ink-2);text-transform:uppercase}
+  .ms.on .ms-v{color:var(--lume)}
+  .ms-d{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);margin:0;max-width:78ch}
+  .ms ul{margin:0;padding-left:18px;font-family:var(--f-micro);font-size:9.5px;line-height:1.85;color:var(--ink-2)}
+  .ms .row{margin:0}
+
+  /* ---- plans (the form itself is built by ../access-ui.js, shared with the
+     league console, so the few classes it uses are defined on both pages) ---- */
+  .ax-form{border-left:2px solid var(--lume);padding:10px 0 2px 12px;margin:0 0 calc(var(--u)*2);
+    background:color-mix(in oklch,var(--lume) 4%,transparent)}
+  .ax-form .ep-input{max-width:none}
+  .ax-form textarea.ep-input{resize:vertical;font-family:var(--f-ui);font-size:12.5px}
+  .ax-sub{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--ink-3);margin:calc(var(--u)*2) 0 7px}
+  .ax-form .ax-sub:first-child{margin-top:0;color:var(--lume)}
+  .ax-hint{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.8;
+    max-width:72ch;margin:3px 0 10px}
+  .ax-feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 14px}
+  .ax-choice{display:flex;flex-direction:column;gap:9px;margin:4px 0 12px}
+  .ax-choice label{display:flex;gap:9px;align-items:flex-start;cursor:pointer;
+    font-family:var(--f-ui);font-weight:700;font-size:13px;color:var(--ink)}
+  .ax-choice input{margin-top:3px;flex:none}
+  .ax-choice small{display:block;font-family:var(--f-micro);font-weight:400;font-size:9px;
+    color:var(--ink-3);line-height:1.8;margin-top:2px;max-width:70ch}
+  .tbl .ep-input{font-size:11px;padding:4px 6px;max-width:none}
+  .tbl .fee{display:flex;gap:5px;align-items:center}
+  .tbl .fee .ep-input{width:66px;flex:none}
+  .sw-cell .mt{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
 </style>
 </head>
 <body>
@@ -157,6 +194,7 @@
         <button class="ep-tab on" data-p="over" role="tab">Overview</button>
         <button class="ep-tab" data-p="acct" role="tab">Accounts</button>
         <button class="ep-tab" data-p="lgs"  role="tab">Leagues</button>
+        <button class="ep-tab" data-p="plans" role="tab">Plans</button>
         <button class="ep-tab" data-p="clubs" role="tab">Clubs</button>
         <button class="ep-tab" data-p="mod"  role="tab">Moderation</button>
         <button class="ep-tab" data-p="keys" role="tab">Keys &amp; feeds</button>
@@ -236,6 +274,61 @@
         <label class="sw"><input id="nlLive" type="checkbox" checked> live scores</label>
         <label class="sw"><input id="nlYouth" type="checkbox" checked> U18 protection</label>
         <button id="nlGo" class="ep-btn pri" type="button">create</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-plans">
+      <!-- the only thing shown when migration 0117 is not on the server: every
+           part below reads tables it creates -->
+      <p id="plMissing" class="note bad hide">Run the membership migration first.</p>
+      <div id="plWrap">
+        <h3>Memberships for the whole platform</h3>
+        <!-- the master switch: while it is off nothing below is enforced -->
+        <div id="plSwitch"></div>
+
+        <p class="lead">
+          What fans pay for, across the platform. Epinoia sells the analytics in
+          every league; each league can also go members-only and sell its own
+          plans. Nothing is sold until a plan has a Stripe price, and as shipped
+          every league is open and the analytics are free. Everything below can
+          be set up while memberships are off; none of it applies until they are
+          switched on above.
+        </p>
+        <div id="plTiles" class="tiles"></div>
+
+        <h3>Analytics by default</h3>
+        <div id="plDefault"></div>
+
+        <h3>Platform plans</h3>
+        <p class="lead">
+          Sold by Epinoia on its own Stripe account, and valid in every league.
+          A platform plan can only unlock the analytics: a league that goes
+          members-only does so for its own members, and Epinoia does not sell a
+          way past that.
+        </p>
+        <div class="row"><button id="plNew" class="ep-btn" type="button">new platform plan</button></div>
+        <div id="plForm"></div>
+        <div id="plList"></div>
+
+        <h3>Every league</h3>
+        <p class="lead">
+          A league decides whether it is open or members-only in its own console.
+          Its analytics setting is Epinoia&rsquo;s to decide, here: inherit follows
+          the default above. The fee is Epinoia&rsquo;s cut of plans a league sells
+          on its own Stripe account; a new fee applies to checkouts from then on,
+          and existing subscriptions keep the fee they started with.
+        </p>
+        <div class="scroll"><table class="tbl"><thead><tr>
+          <th>League</th><th>Access</th><th>Analytics</th><th class="num">Members</th>
+          <th class="num">Plans</th><th>Fee %</th>
+        </tr></thead><tbody id="plLeagues"></tbody></table></div>
+
+        <h3>League plans</h3>
+        <p class="lead">
+          For reference. A league edits its own plans in the league console, where
+          a platform admin can also choose to sell one on Epinoia&rsquo;s account.
+        </p>
+        <div id="plLeaguePlans"></div>
       </div>
     </div>
 
@@ -354,9 +447,10 @@
   </div>
 </div>
 
-<script src="../../config.js?v=253" defer></script>
-<script src="../../vendor/supabase.js?v=253" defer></script>
-<script src="platform.js?v=253" defer></script>
-<script src="../../nav.js?v=253" defer></script>
+<script src="../../config.js?v=254" defer></script>
+<script src="../../vendor/supabase.js?v=254" defer></script>
+<script src="../access-ui.js?v=254" defer></script>
+<script src="platform.js?v=254" defer></script>
+<script src="../../nav.js?v=254" defer></script>
 </body>
 </html>

@@ -65,8 +65,29 @@ const player = (p: any) => p ? {
   name: [p.first_name, p.last_name].filter(Boolean).join(' '), slug: p.slug
 } : null;
 
+/* ------------------------------------------------- members-only leagues --- */
+// docs/memberships.md §2. This function reads with the service role, which the
+// database lets through everything (it has to: finalise-game and this API read
+// a members-only league's own data for it). So the paywall for API callers is
+// decided HERE:
+//   * a key issued for a league keeps reading that league, open or not — the
+//     league chose to hand that key out;
+//   * a platform-wide key (league_id null) does not read members-only leagues
+//     at all: not in the list, not by slug, not a game by id.
+// Leagues are read with select('*') rather than naming access_mode, so this
+// keeps working if the function is deployed before migration 0117 (the column
+// is then simply absent and every league reads as open).
+// AND THE MASTER SWITCH (0117 memberships_enabled): while it is not the JSON
+// boolean true nothing is gated anywhere, so a members-mode league is an open
+// league here too. Read once per request, the same rule as the SQL function.
+const membersOnly = (l: any, ctx: Ctx) => ctx.membershipsOn && l?.access_mode === 'members';
+
+// Set by a route that served a members-only league's data; serve() then marks
+// the response private so no CDN or shared cache holds it.
+type Ctx = { private: boolean; membershipsOn: boolean };
+
 /* --------------------------------------------------------------- routes --- */
-async function route(parts: string[], url: URL, leagueScope: string | null) {
+async function route(parts: string[], url: URL, leagueScope: string | null, ctx: Ctx) {
   const limit = Math.min(
     Math.max(parseInt(url.searchParams.get('limit') || '', 10) || DEFAULT_LIMIT, 1),
     MAX_LIMIT);
@@ -77,21 +98,33 @@ async function route(parts: string[], url: URL, leagueScope: string | null) {
   // directly — there is deliberately no UI that mints one.
   const scoped = async (slug: string) => {
     const { data } = await admin.from('leagues')
-      .select('id,slug,name,colour_a,colour_b').eq('slug', slug).maybeSingle();
+      .select('*').eq('slug', slug).maybeSingle();
     if (!data) return { err: fail(404, 'no such league', 'try /v1/leagues') };
     if (leagueScope && data.id !== leagueScope) {
       return { err: fail(403, 'your key is not valid for that league') };
+    }
+    if (membersOnly(data, ctx)) {
+      if (!leagueScope) {
+        return { err: fail(403, 'that league is for members only',
+                           'ask the league for an API key issued for it') };
+      }
+      ctx.private = true;
     }
     return { league: data };
   };
 
   // /v1/leagues
   if (parts.length === 1 && parts[0] === 'leagues') {
-    let q = admin.from('leagues').select('slug,name,colour_a,colour_b').order('name');
+    let q = admin.from('leagues').select('*').order('name');
     if (leagueScope) q = q.eq('id', leagueScope);
     const { data, error } = await q;
     if (error) return fail(500, error.message);
-    return json({ leagues: data });
+    // a platform-wide key is not told about members-only leagues' data, and
+    // the list is the door to it; a league's own key sees its own league
+    const rows = (data || []).filter((l: any) => leagueScope || !membersOnly(l, ctx));
+    if (rows.some((l: any) => membersOnly(l, ctx))) ctx.private = true;
+    return json({ leagues: rows.map((l: any) =>
+      ({ slug: l.slug, name: l.name, colour_a: l.colour_a, colour_b: l.colour_b })) });
   }
 
   // /v1/leagues/{slug}/...
@@ -285,13 +318,26 @@ async function route(parts: string[], url: URL, leagueScope: string | null) {
       .eq('id', parts[1]).maybeSingle();
     if (!g) return fail(404, 'no such game');
 
-    // a key scoped to one league may not read another league's games
-    if (leagueScope) {
+    // a key scoped to one league may not read another league's games, and a
+    // platform-wide key may not read a members-only league's. The chain is
+    // looked up for every key now, not only scoped ones; an ad-hoc game (no
+    // competition) belongs to no league, as in can_read_game.
+    if (g.competition_id) {
       const { data: chain } = await admin.from('competitions')
         .select('seasons(league_id)').eq('id', g.competition_id).maybeSingle();
       const lid = (chain as any)?.seasons?.league_id;
-      if (lid && lid !== leagueScope) {
+      if (lid && leagueScope && lid !== leagueScope) {
         return fail(403, 'your key is not valid for that league');
+      }
+      if (lid) {
+        const { data: lg } = await admin.from('leagues').select('*').eq('id', lid).maybeSingle();
+        if (membersOnly(lg, ctx)) {
+          if (!leagueScope) {
+            return fail(403, 'that game is in a league for members only',
+                        'ask the league for an API key issued for it');
+          }
+          ctx.private = true;
+        }
       }
     }
     if (g.status !== 'final') {
@@ -395,8 +441,16 @@ Deno.serve(async (req) => {
                 401, meta);
   }
 
-  const res = await route(parts, url, v.league_id || null);
+  // the memberships master switch: a missing row (a deploy ahead of 0117) is
+  // off, like memberships_enabled(); a failed read refuses rather than guesses
+  const { data: sw, error: swErr } = await admin.from('platform_settings')
+    .select('value').eq('key', 'memberships_enabled').maybeSingle();
+  if (swErr) return fail(500, 'could not read the platform settings: ' + swErr.message);
+  const ctx: Ctx = { private: false, membershipsOn: sw?.value === true };
+  const res = await route(parts, url, v.league_id || null, ctx);
   const h = new Headers(res.headers);
+  // a members-only league's data is for the holder of this key, not for a CDN
+  if (ctx.private) h.set('Cache-Control', 'private, no-store');
   h.set('X-RateLimit-Limit', String(v.rate_limit));
   h.set('X-RateLimit-Remaining', String(Math.max(0, v.rate_limit - v.used)));
   h.set('X-RateLimit-Reset', String(Math.floor(new Date(v.resets_at).getTime() / 1000)));

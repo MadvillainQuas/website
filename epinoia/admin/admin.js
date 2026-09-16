@@ -603,6 +603,18 @@ function mountGovernance() {
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
   window.EpinoiaEmbedsUI.mount({ host: '#embedsPanel', sb, league,
                                  teams: byIdObj(), say });
+  /* MEMBERSHIPS & ACCESS gets the league as a function, not the object. The
+     keys, webhook and merch panels in render() were handed the value and kept
+     acting on the first league after a chip switched it; this one reads the
+     current league on every call and refuses a write if it no longer matches
+     the league it drew. Guarded because it is the newest script on the page
+     and a panel that did not load should not take the rest of this block
+     down with it. */
+  if (window.EpinoiaAccessUI) {
+    window.EpinoiaAccessUI.mount({ host: '#paidAccessPanel', sb, league: () => league,
+                                   say, oops, cfg: window.EPINOIA_CONFIG,
+                                   isPlatformAdmin: () => !!(who && who.is_platform_admin) });
+  }
 }
 
 /* The club picker beside the People form, which only means anything for the

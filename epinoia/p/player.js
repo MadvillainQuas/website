@@ -25,9 +25,30 @@ const ord = n => { const v = Math.round(n), t = v % 100;
   if (t >= 11 && t <= 13) return v + 'th';
   return v + ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th'); };
 
-async function api(p) {
-  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`,
-    { cache: 'no-store', headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+/* ---------------------------------------------------------------- access ---
+   WHAT THIS VIEWER MAY SEE (docs/memberships.md), decided once, from the league of the
+   player's current club, before the first gated section is drawn, and handed down as flags.
+   Both answers start open and stay open unless access.js is on the page AND has an answer:
+   analytics fail open, and the members-only card needs a known "cannot view". A free agent
+   has no league to ask about, so his page is never gated. */
+let ANALYTICS_LOCKED = false;
+let ACCESS_LEAGUE = { id: null, slug: '' };
+const accessTeaser = o => { const A = window.EpinoiaAccess;
+  return A && typeof A.teaserHTML === 'function'
+    ? A.teaserHTML(Object.assign({ leagueSlug: ACCESS_LEAGUE.slug }, o)) : ''; };
+
+/* A MEMBERS-ONLY LEAGUE IS REFUSED BY ROW-LEVEL SECURITY, so a member's reads say who is
+   asking: access.js hands back a token only for a members-only league this viewer may see and
+   {} otherwise, so an open league's request is exactly what it was. A 401 with a token on it
+   is a token the server stopped accepting: asked once more anonymously, as it always was. */
+async function api(p, anon) {
+  const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
+  const A = window.EpinoiaAccess;
+  if (!anon && A && typeof A.authHeaders === 'function') {
+    try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous */ }
+  }
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${p}`, { cache: 'no-store', headers });
+  if (r.status === 401 && headers.Authorization && !anon) return api(p, true);
   if (!r.ok) throw new Error(r.status + ' on ' + p.split('?')[0]);
   return r.json();
 }
@@ -179,7 +200,15 @@ function paintBars(mine, field) {
     return;
   }
   const SE = window.EpinoiaSeason;
-  const keys = BAR_GROUPS.flatMap(([, rows]) => rows.map(r => r[0]));
+  /* PREMIUM BARS ARE LEFT OUT, not drawn empty: an empty track reads as a bottom percentile.
+     The catalogue says which keys they are (today the assisted shares, from the events
+     splits); the group they came from says so in one line instead. */
+  const CAT = ANALYTICS_LOCKED && window.EpinoiaAccess ? window.EpinoiaAccess.CATALOGUE : null;
+  const premiumBar = k => !!CAT && (typeof CAT.barKeys === 'function' ? !!CAT.barKeys(k)
+    : Array.isArray(CAT.barKeys) && CAT.barKeys.indexOf(k) !== -1);
+  const groups = BAR_GROUPS.map(([title, rows]) =>
+    [title, rows.filter(r => !premiumBar(r[0])), rows.some(r => premiumBar(r[0]))]);
+  const keys = groups.flatMap(([, rows]) => rows.map(r => r[0]));
   const posMap = barsByPos && SE.positionGroups ? SE.positionGroups(field) : null;
   const group = posMap ? (posMap.get(mine.id) || null) : null;
   const ranks = SE.percentiles(field, keys, BAR_LOW, group ? (r => posMap.get(r.id) || null) : null);
@@ -204,7 +233,7 @@ function paintBars(mine, field) {
   host.appendChild(sw);
 
   const wrap = el('div', 'bars');
-  BAR_GROUPS.forEach(([title, rows]) => {
+  groups.forEach(([title, rows, held]) => {
     wrap.appendChild(el('div', 'bargroup', title));
     rows.forEach(([k, label]) => {
       const v = mine[k];
@@ -234,6 +263,12 @@ function paintBars(mine, field) {
       row.appendChild(val);
       wrap.appendChild(row);
     });
+    if (held) {
+      const line = el('div', 'barteaser');
+      line.innerHTML = accessTeaser({ compact: true, title: 'Assisted and self-created scoring',
+        lines: ['How much of the scoring came off a pass, by distance — part of Epinoia analytics.'] });
+      wrap.appendChild(line);
+    }
   });
   host.appendChild(wrap);
 }
@@ -329,6 +364,8 @@ function renderCareerRows(host, rows, pl) {
     host: '#seasons', kind: 'player', sortKey: 'gp', showMinGames: false, heat: false,
     filename: (pl.slug || 'player') + '-career',
     nameLabel: 'SEASON',
+    /* the table drops the premium columns itself when this league's analytics are locked */
+    leagueId: ACCESS_LEAGUE.id, leagueSlug: ACCESS_LEAGUE.slug,
     rows
   });
 }
@@ -391,6 +428,74 @@ function paintLog(rows) {
   t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
 }
 
+/* Every league he has a roster entry in, read once per page however many callers ask
+   (membersOnly and loadCareerAccess, below). Rosters are the shop window, so no league
+   refuses this read to anybody. A failed read is remembered as failed for this page: both
+   callers treat it as "no other leagues", which leaves the page as open as it was. */
+let rosterLeaguesP = null;
+function rosterLeagues(pl) {
+  if (!rosterLeaguesP) {
+    rosterLeaguesP = api(`roster_entries?player_id=eq.${pl.id}&select=teams(leagues(id))`)
+      .then(rows => [...new Set(rows.map(r => ((r.teams || {}).leagues || {}).id).filter(Boolean))]);
+  }
+  return rosterLeaguesP;
+}
+
+/* ---------------------------------------------------------- members only ---
+   A MEMBERS-ONLY LEAGUE (docs/memberships.md §2). The database already refuses this player's
+   games and season rows to a viewer who is not a member, so every section below would come
+   up empty and look broken; the card says why instead. Name, photo and club stay: squads and
+   player names are the league's shop window.
+
+   ONLY WHEN EVERY LEAGUE HE IS ROSTERED IN IS CLOSED TO THIS VIEWER. A player who also
+   appears in an open league keeps his page, and the closed league's rows simply do not come
+   back. The other leagues are only looked up once the current one has said no, so an open
+   league costs nothing here. Anything that cannot be told -- a failed read, a league the
+   module has no answer for -- leaves the page open, as every access check does. */
+async function membersOnly(pl, lgRow) {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.get !== 'function' || typeof A.canView !== 'function') return false;
+  const shut = id => { const s = A.get(id); return !!(s && s.known) && !A.canView(id); };
+  if (!shut(lgRow.id)) return false;
+  let others = [];
+  try {
+    others = (await rosterLeagues(pl)).filter(id => id !== lgRow.id);
+    await Promise.all(others.map(id =>
+      Promise.resolve().then(() => A.load({ leagueId: id })).catch(() => null)));
+  } catch (_) { return false; }
+  if (!others.every(shut)) return false;
+  document.body.classList.add('members-only');
+  const card = $('#paywall');
+  if (card && typeof A.paywallHTML === 'function') {
+    card.innerHTML = A.paywallHTML({ league: lgRow });
+    card.hidden = false;
+  }
+  return true;
+}
+
+/* THE REST OF HIS CAREER, BEFORE IT IS READ. A token rides on this page's reads only once
+   access.js has loaded a members-only league the viewer may see, and boot loads one league:
+   his current club's. A member looking at a player who came from another members-only
+   league would have that league's season rows and games refused -- the career table and the
+   game log quietly a season short. So those leagues are asked about too, before the career
+   is read. Only for somebody signed in: an anonymous viewer carries no token whatever the
+   answer, so for most readers this costs nothing, and an open league's answer is cached for
+   the next page. Never rejects, and bounded by access.js's own four-second limit. */
+async function loadCareerAccess(pl, lgRow) {
+  const A = window.EpinoiaAccess;
+  if (!A || typeof A.load !== 'function') return;
+  try {
+    /* sessionReady renews an expired token first, as load() does -- a member back at an
+       old tab is still a member */
+    const s = typeof A.sessionReady === 'function' ? await A.sessionReady()
+      : (typeof A.session === 'function' ? A.session() : null);
+    if (!s) return;
+    const others = (await rosterLeagues(pl)).filter(id => !lgRow || id !== lgRow.id);
+    await Promise.all(others.map(id =>
+      Promise.resolve().then(() => A.load({ leagueId: id })).catch(() => null)));
+  } catch (_) { /* the career as the current league's answer leaves it */ }
+}
+
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
   if (!want) return fail('No player specified.');
@@ -412,11 +517,63 @@ function paintLog(rows) {
     }
 
     const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,leagues(slug))&order=created_at.desc&limit=1`);
+      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,leagues(id,slug,name))&order=created_at.desc&limit=1`);
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
     if (team && team.leagues && team.leagues.slug) window.__CS_LEAGUE_SLUG = team.leagues.slug;
+
+    /* ---- access ----
+       ANSWERED BEFORE HIS CLUB'S GAMES ARE READ, not beside that read. data.js fixes a
+       request's headers the moment the request is made, and a token rides on it only once
+       access.js holds this league's answer -- so the games read that used to go out while
+       the answer was still on its way was always anonymous, row-level security refused it
+       in a members-only league, and a member got an empty season every time. Everything
+       read above (the player, his photo, his roster entry) is the shop window and does not
+       wait. Asked by id, since a slug would cost a leagues read first.
+       The wait is bounded: load() never rejects, gives up by itself after four seconds and
+       answers open, and an answer given on the league page a moment ago is cached, so an
+       open league's profile is held for one small request at most. */
+    const A = window.EpinoiaAccess;
+    const lgRow = (team && team.leagues && team.leagues.id) ? team.leagues : null;
+    if (A && typeof A.load === 'function') {
+      /* a free agent has no league to ask about, but the platform's analytics default still
+         applies to him: load({}) asks for the no-league answer (access_state's top-level
+         analytics_ok), so his bars follow the same switch as everybody else's */
+      try { await A.load(lgRow ? { leagueId: lgRow.id } : {}); } catch (_) { /* open, as every failure is */ }
+    }
+    if (A) {
+      const lockedNow = () => typeof A.analyticsOk === 'function' && !A.analyticsOk(lgRow ? lgRow.id : null);
+      const shutNow = () => { if (!lgRow || typeof A.get !== 'function' || typeof A.canView !== 'function') return false;
+        const s = A.get(lgRow.id); return !!(s && s.known) && !A.canView(lgRow.id); };
+      if (lgRow) ACCESS_LEAGUE = { id: lgRow.id, slug: lgRow.slug || '' };
+      ANALYTICS_LOCKED = lockedNow();
+      /* THE ANSWER CAN MOVE UNDER A DRAWN PAGE: a sign-in or sign-out in another tab, an answer
+         that lands after the module's time limit, the admin preview switch. The bars, the
+         events, the shot chart and the teammate panel were all drawn from it, so a change to
+         what was decided draws the page again from the top; an open league never notices. On a
+         change of account the new account's answer is waited for, not the empty state between.
+         Answers about his OTHER leagues (loadCareerAccess, membersOnly) are not this page's
+         decision and are ignored here, so loading them can never start a reload. */
+      const drawn = ANALYTICS_LOCKED + '|' + shutNow();
+      if (typeof A.onChange === 'function') {
+        const check = () => { if (lockedNow() + '|' + shutNow() !== drawn) location.reload(); };
+        try {
+          A.onChange(d => {
+            if (d && d.leagueId && (!lgRow || d.leagueId !== lgRow.id)) return;
+            if (d && d.reason === 'auth' && lgRow && typeof A.load === 'function') {
+              Promise.resolve().then(() => A.load({ leagueId: lgRow.id })).then(check, () => {});
+            } else check();
+          });
+        } catch (_) { /* the page as drawn */ }
+      }
+      /* the card is drawn in place of the statistics, and nothing behind it is fetched -- not
+         even the club's games, which the database would refuse every row of anyway */
+      if (lgRow && await membersOnly(pl, lgRow)) return;
+    }
+    /* his other leagues, for the career table and the game log: asked now so the answers
+       arrive while the season is being drawn, rather than after it (never rejects) */
+    const careerAccess = loadCareerAccess(pl, lgRow);
 
     /* ---- the season, from the shared intermediary ----
        Aggregated the same way as the leaders board, so the two cannot
@@ -465,7 +622,11 @@ function paintLog(rows) {
          wipes the season table and the game log. */
       try {
         const evHost = $('#events');
-        if (evHost && window.EpinoiaSitPanel) {
+        /* without analytics the section stays, with the teaser where the panel would be */
+        if (evHost && ANALYTICS_LOCKED) {
+          evHost.innerHTML = accessTeaser({ title: 'Events',
+            lines: ['Second chances, transition, points off turnovers, after-timeout sets, the half court and assisted baskets, ranked against the league.'] });
+        } else if (evHost && window.EpinoiaSitPanel) {
           window.EpinoiaSitPanel.render({ host: evHost, kind: 'player', row: mine, field, name: fullName });
           const en = $('#eventsNote');
           if (en) en.textContent = kind === 'all' ? '' : (KIND_LABEL[kind] || kind);
@@ -494,7 +655,10 @@ function paintLog(rows) {
        thing a profile is actually for, and it is built through the SAME
        intermediary as the current season so every column means what it means
        everywhere else — a career table assembled from a different query is how
-       a profile ends up disagreeing with the leaders board it links to. */
+       a profile ends up disagreeing with the leaders board it links to.
+       It waits for his other leagues' answers (started beside the season above),
+       and so does everything after it: the game log reads across them too. */
+    await careerAccess;
     await paintCareer(pl, mine, team);
 
     /* ---------------------------------------------------------------------------
@@ -520,7 +684,14 @@ function drawShotChart(shots, colour, games) {
   if (!host || !window.EpinoiaShotChart) return;
   /* THE BOX SCORE'S CHART, over the season: every located shot as a dot or a cross in the
      club's colour, the floor cut into zones with each zone's makes, attempts and percentage */
-  window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3, games: SHOT_GAMES });
+  /* without analytics: the same court and the same marks, no zones -- and a line saying
+     what the zones would add */
+  window.EpinoiaShotChart.renderZones({ host, shots: SHOTS, colour: SHOT_COLOUR || '#93f2bf', minAttempts: 3, games: SHOT_GAMES,
+    zones: !ANALYTICS_LOCKED });
+  if (ANALYTICS_LOCKED) {
+    host.insertAdjacentHTML('beforeend', accessTeaser({ compact: true, title: 'Shot zones',
+      lines: ['Twelve zones, each tinted against its own break-even, with a zone-by-zone table.'] }));
+  }
 }
 
 /* ---- on the floor with ----
@@ -674,9 +845,10 @@ function drawShotChart(shots, colour, games) {
           $('#wowyNote').textContent = st.length + ' stints · ' + mates.size + ' teammates' +
             (gs.length >= RECENT_GAMES ? ' · last ' + RECENT_GAMES + ' games' : '');
 
+          /* locked: withui.js draws its compact teaser in place of the teammate comparison */
           window.EpinoiaWithUI.render({
             host: '#withpanel', recs, stints: st, playerId: pl.id,
-            meta: mm, teammates: [...mates]
+            meta: mm, teammates: [...mates], locked: ANALYTICS_LOCKED, leagueSlug: ACCESS_LEAGUE.slug
           });
         }
       }
