@@ -125,6 +125,7 @@ function sitNames(pre) {
     K: SIT_KEYS.map(k => named(pre + k + '_', SIT_K_OUT)),
     G: SIT_GROUPS.map(g => named(pre + g + '_', SIT_G_OUT)),
     ast_sh: pre + 'ast_sh', rim_astp: pre + 'rim_astp', mid_astp: pre + 'mid_astp', p3_astp: pre + 'p3_astp',
+    ast_pts_sh: pre + 'ast_pts_sh', unast_pts_sh: pre + 'unast_pts_sh',
     ftast: pre + 'ftast', ftast_pg: pre + 'ftast_pg'
   };
 }
@@ -186,6 +187,13 @@ function sitOut(out, N, S, side) {
   out[N.rim_astp] = sitRate(n[a + AI.rimM], n[a + AI.rimM] + n[u + AI.rimM], gp);
   out[N.mid_astp] = sitRate(n[a + AI.midM], n[a + AI.midM] + n[u + AI.midM], gp);
   out[N.p3_astp]  = sitRate(n[a + AI.p3m],  n[a + AI.p3m]  + n[u + AI.p3m],  gp);
+  /* AND HOW MUCH OF THE SCORING CAME OFF A PASS: points from assisted baskets over
+     every point scored, free throws included -- "assisted %" as it is usually read.
+     Only a make can be assisted, so it is a share of what went in, never of what was
+     attempted, and the two shares do not reach 100 because free throws are in the
+     denominator and in neither group. */
+  out[N.ast_pts_sh]   = sitRate(n[a + AI.pts], allPts, gp);
+  out[N.unast_pts_sh] = sitRate(n[u + AI.pts], allPts, gp);
   if (side) {
     out[N.ftast] = sitTot(n[SIT_LEN - 1], gp); out[N.ftast_pg] = sitPg(n[SIT_LEN - 1], gp);
   }

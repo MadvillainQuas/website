@@ -134,10 +134,16 @@ function paintTiles(s) {
    both questions at once: how often he goes there, and how he does when he
    gets there. Those are different skills and they deserve different bars. */
 const BAR_GROUPS = [
-  ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE']]],
-  ['shooting',   [['rim_pct','RIM%'],   ['rim_apg','RIM ATT / G'],
-                  ['mid_pct','MID%'],   ['mid_apg','MID ATT / G'],
-                  ['p3_pct','3P%'],     ['p3_apg','3P ATT / G'],
+  ['scoring',    [['ppg','PTS / GAME'],['ts','TS%'],['efg','eFG%'],['usg','USAGE'],['ftr','FT RATE'],
+                  ['ev_ast_pts_sh','ASSISTED%']]],
+  /* ASSISTED% under each distance: of the shots he MADE there, how many came off a pass.
+     Only a make can be assisted -- nobody records the pass before a miss -- so it is a
+     share of makes, and the row above it is that distance's accuracy over every attempt.
+     ASSISTED% in scoring is the same question of his points: how much of what he scored
+     came off somebody's pass, free throws included in the total. */
+  ['shooting',   [['rim_pct','RIM%'],   ['rim_apg','RIM ATT / G'], ['ev_rim_astp','RIM ASSISTED%'],
+                  ['mid_pct','MID%'],   ['mid_apg','MID ATT / G'], ['ev_mid_astp','MID ASSISTED%'],
+                  ['p3_pct','3P%'],     ['p3_apg','3P ATT / G'],   ['ev_p3_astp','3P ASSISTED%'],
                   ['ft_pct','FT%'],     ['ft_apg','FT ATT / G']]],
   ['playmaking', [['ast_pct','ASSIST%'],['au','AST / USG'],['ast_to','AST / TO'],
                   ['tov_pct','TURNOVER%']]],

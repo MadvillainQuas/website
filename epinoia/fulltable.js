@@ -371,6 +371,7 @@ function evColumns(CAT, team) {
   col('ev_ast_fgm_pg',   'AST FG/G', 'assisted baskets per game');
   col('ev_unast_fgm_pg', 'UN FG/G',  'unassisted baskets per game');
   col('ev_ast_sh',       '%AST',     'share of baskets that were assisted');
+  col('ev_ast_pts_sh',   '%PTS AST', 'share of the points scored that came off an assisted basket');
   col('ev_ast_ppb',      'PPB AST',  'points per assisted basket', { fmt:r=>e2(r.ev_ast_ppb) });
   col('ev_unast_ppb',    'PPB UN',   'points per unassisted basket', { fmt:r=>e2(r.ev_unast_ppb) });
   col('ev_all_efg',      'eFG%',     'effective field goal %, every shot');

@@ -198,6 +198,7 @@ console.log('\na team over the season: sums over covered games, rates from the s
     ev_unast_fgm: 8, ev_unast_pts: 19, ev_unast_p3m: 3, ev_unast_rimM: 5, ev_unast_fgm_pg: 2.7, ev_unast_pts_pg: 6.3,
     ev_unast_ppb: 2.38, ev_unast_rim_sh: 62.5, ev_unast_p3_sh: 37.5,
     ev_ast_sh: 27.3, ev_rim_astp: 37.5, ev_mid_astp: null, ev_p3_astp: 0,
+    ev_ast_pts_sh: 19.4, ev_unast_pts_sh: 61.3,   /* of the 31 points the splits cover; the rest are free throws, in neither group */
     ev_ftast: 0, ev_ftast_pg: 0
   });
   same('defence: what Hull did against Leeds in the same three games', L, {
@@ -229,11 +230,12 @@ console.log('\na player over the season');
   ok('h1: the box score still counts g4, the splits do not (8 points in the box, 6 in the splits)', h1.pts === 8 && h1.ev_all_pts === 6);
   same('h3: every basket assisted, all at the rim, all in transition', P('h3'), {
     ev_ast_fgm: 3, ev_ast_sh: 100, ev_rim_astp: 100, ev_ast_ppb: 2, ev_unast_ppb: null, ev_ast_rim_sh: 100,
+    ev_ast_pts_sh: 100, ev_unast_pts_sh: 0,
     ev_transition_ppg: 2, ev_transition_pts_sh: 100, ev_half_pts: 0
   });
   same('h5: a three a game off a turnover, none assisted', P('h5'), {
     ev_all_pts: 9, ev_all_efg: 150, ev_offTo_pts_sh: 100, ev_offTo_p3_sh: 100,
-    ev_unast_fgm: 3, ev_unast_ppb: 3, ev_unast_p3_sh: 100, ev_ast_sh: 0, ev_p3_astp: 0
+    ev_unast_fgm: 3, ev_unast_ppb: 3, ev_unast_p3_sh: 100, ev_ast_sh: 0, ev_p3_astp: 0, ev_ast_pts_sh: 0, ev_unast_pts_sh: 100
   });
   same('a1: 3 of 6 from three, the make after a timeout and assisted', P('a1'), {
     ev_all_efg: 75, ev_all_p3_pct: 50, ev_all_p3_sh: 100, ev_ato_pts: 9, ev_ato_ppg: 3, ev_half_fga: 3,
