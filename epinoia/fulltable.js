@@ -57,7 +57,13 @@ const EV_GROUPS = EV_SITS.map(([s]) => 'ev_' + s).concat('ev_assist');
    t      a longer name for the header's hover title and the column drawer, where a
           short label alone is ambiguous (every events preset has its own PTS/G)   */
 const P = [
-  { k:'jersey', l:'#',      g:['id'], fmt:r=>r.jersey||'', sort:r=>+r.jersey||999 },
+  /* THE FIRST COLUMN COUNTS THE TABLE AS IT IS SORTED, the way the team table's
+     already does: sort by rebounds and the leading rebounder is 1. It used to hold
+     the jersey, which never moved however the table was sorted and left a reader
+     with no way of telling twelfth from thirtieth; the jersey now rides beside the
+     name, where a squad number belongs. Clicking this column puts the table back in
+     the order it arrived in. */
+  { k:'rank', l:'#', g:['id'], fmt:(r, i) => i + 1, sort:r=>r.__i },
   { k:'name',   l:'PLAYER', g:['id'], fmt:r=>r.name, text:true },
   { k:'teamName', l:'TEAM', g:['id'], fmt:r=>r.teamName||'', text:true },
   { k:'gp',  l:'GP',  g:['basic','totals','shooting','playmaking','defense','rebounding','onoff','vs','advanced','misc'].concat(EV_GROUPS), fmt:r=>f0(r.gp), ord:{advanced:0} },
@@ -918,6 +924,7 @@ function render(opts) {
         const td = el('td', i < 2 ? 'stick c' + i : '');
         if (c.k === 'name') {
           const cell = el('div', 'ft-name');
+          if (!isTeam && r.jersey) cell.appendChild(el('span', 'ft-jersey', r.jersey));
           if (r.colour || r.teamColour || r.logo || r.teamLogo) {
             const meta = { short_name: r.teamShort || (isTeam ? r.name : ''), name: isTeam ? r.name : (r.teamFull || ''),
                            colour: r.colour || r.teamColour, logo_path: r.logo || r.teamLogo || null };
