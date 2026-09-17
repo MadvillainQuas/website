@@ -31,6 +31,24 @@
   color:var(--ink-3,color-mix(in oklch,var(--ink) 50%,transparent)); letter-spacing:.12em;
   text-transform:uppercase; white-space:nowrap;
 }
+/* THE BAR'S SIZES AS CLASSES, NOT INLINE STYLES. fulltable.js used to set them with
+   style.cssText, which no stylesheet can override short of !important, so the phone
+   rules below had nothing to hold on to. Two classes deep, so they win over .ep-btn and
+   .ep-input on any page, whichever order the stylesheets load in. */
+.ft-bar .ft-btn{ font-size:9px; padding:8px 12px }
+.ft-bar .ft-sel{ font-size:10px; max-width:160px }
+.ft-bar .ft-sel.ft-possel{ max-width:140px }
+.ft-bar .ft-num{ width:78px }
+.ft-field{ display:inline-flex; align-items:center; gap:6px }
+.ft-tally{ margin-left:auto }
+.ft-lock{ margin-left:6px; vertical-align:-1px }
+/* the secondary controls: the bar's own items above the phone breakpoint, a
+   disclosure below it (the phone block at the end of this file) */
+.ft-more{ display:contents }
+.ft-filters{ display:none }
+/* the next page of rows */
+.ft-morerows{ display:block; margin:12px auto }
+.ft-morerows[hidden]{ display:none }
 
 /* preset pills — one row, quiet until chosen */
 .ft-pills{
@@ -102,6 +120,8 @@ table.ft thead th:hover{ color:var(--ink,var(--ink)) }
   position:absolute; top:0; right:-4px; bottom:0; width:9px;
   cursor:col-resize; z-index:5; touch-action:none;
 }
+/* the last column's grip stays inside the table: nothing past its edge to overhang */
+table.ft thead th:last-child .ft-grip{ right:0 }
 .ft-grip::after{
   content:''; position:absolute; top:22%; bottom:22%; left:4px; width:1px;
   background:var(--rule-2,color-mix(in oklch,var(--lume) 44%,transparent)); opacity:0; transition:opacity .12s;
@@ -180,6 +200,16 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
   font-family:var(--f-micro,ui-monospace,monospace); font-size:10px; line-height:2;
 }
 
+/* the phone's sticky header strip (fulltable.js): empty and out of the way above the breakpoint */
+.ft-head{ display:none }
+
+/* TWO PHONE BREAKPOINTS, ON PURPOSE. Every table.ft and .ft-wrap on the platform -- the
+   hand-built lineup, WOWY, roster and game-log tables included -- switches at 640px, as
+   it always has. The full table (fulltable.js, which marks its host .ft-host) switches
+   at 820px, the tab bar's (kit/nav.css): its phone form has a sticky header strip and
+   folded controls to go with the tab bar, which the hand-built tables do not, and moving
+   those to 820px took their native scrollbar and sticky header away at 641-820px. The
+   820px block at the end of this section is scoped to .ft-host for that reason. */
 @media (max-width:640px){
   table.ft{ font-size:11px }
   table.ft th.c1, table.ft td.c1{ width:132px }
@@ -222,13 +252,80 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
 
        Hidden on both axes. The browser has no scrollable surface here to
        claim, pan-y says vertical belongs to the page, and scrollLeft still
-       moves under script, which is all xscroll.js's drag needs. */
+       moves under script, which is all xscroll.js's drag needs.
+
+       pinch-zoom beside pan-y: a two-finger zoom over small figures is the reader's
+       to make, and it claims no single-finger axis. */
     overflow:hidden;
-    touch-action:pan-y;
+    touch-action:pan-y pinch-zoom;
     overscroll-behavior-x:contain;
   }
-  table.ft thead th{ position:static } /* and a sticky header eats too much of it */
+  /* A HEADER CELL IS ALWAYS A POSITIONED BOX, so a resize grip is anchored inside it.
+     position:static here let every grip anchor to .ep-frame instead, where they stacked
+     into one 9px strip down the whole page's right edge, outside the wrap's clipping and
+     taking vertical swipes. The pinned # and name cells stay sticky; the rest relative. */
+  table.ft thead th:not(.stick){ position:relative }
+  .ft-grip{ display:none }
 }
+
+/* THE FULL TABLE'S PHONE FORM, 820px and below. The first rules repeat the 640px block
+   above for .ft-host alone, so between 641 and 820px only the full table changes. */
+@media (max-width:820px){
+  .ft-host table.ft{ font-size:11px }
+  .ft-host table.ft th.c1, .ft-host table.ft td.c1{ width:132px }
+  .ft-host .ft-wrap{
+    max-height:none; overflow:hidden;
+    touch-action:pan-y pinch-zoom; overscroll-behavior-x:contain;
+  }
+  .ft-host table.ft thead th:not(.stick){ position:relative }
+  .ft-host .ft-grip{ display:none }
+  /* A 40px TAP TO SORT, in the strip fulltable.js draws and nowhere else: the hand-built
+     tables size their columns for 8px headings. A label longer than its column wraps
+     inside it rather than running under the next heading. */
+  .ft-head table.ft thead th{ font-size:9.5px; padding:15px 8px; white-space:normal; line-height:1.15 }
+  /* and a 40px row, so a player's name link is a target a thumb can pick out of a list */
+  .ft-host table.ft tbody td{ height:40px }
+
+  /* the sticky header strip: above the wrap, at the top of the page, panned with it */
+  .ft-head{
+    display:block; position:sticky; top:env(safe-area-inset-top,0px); z-index:6;
+    overflow:hidden; touch-action:pan-y pinch-zoom;
+    background:var(--panel);
+    box-shadow:0 3px 8px -4px rgba(0,0,0,.45);
+  }
+  .ft-head:empty{ display:none }
+
+  /* controls: search and one 'filters' button on the first row, the rest behind it */
+  .ft-bar{ padding:10px 12px }
+  .ft-bar .grow{ flex:1 1 140px; max-width:none; font-size:16px; min-height:44px; padding:8px 12px }
+  .ft-bar .ft-btn{ min-height:40px; font-size:10px; padding:0 12px }
+  .ft-filters{ display:inline-block }
+  .ft-tally{ order:2 }
+  .ft-more{ display:none; order:3; flex-basis:100%; flex-wrap:wrap; gap:8px; align-items:center }
+  .ft-more.open{ display:flex }
+  .ft-bar .ft-sel, .ft-bar .ft-sel.ft-possel{ flex:1 1 calc(50% - 4px); max-width:none; min-width:0;
+    font-size:16px; min-height:44px; padding:8px 10px }
+  .ft-bar .ft-num{ width:84px; font-size:16px; min-height:44px; padding:8px 10px }
+  .ft-count{ font-size:10px }
+
+  /* presets: one row that pans (xscroll.js drags it), fading at the right edge to say so */
+  .ft-pills{
+    flex-wrap:nowrap; overflow:hidden; position:relative;
+    touch-action:pan-y pinch-zoom; overscroll-behavior-x:contain;
+    padding:8px 40px 8px 12px;
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);
+            mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);
+  }
+  .ft-pill{ flex:none; min-height:40px; font-size:10px }
+
+  /* the column drawer: bigger targets, and a height of its own rather than 1000px of page */
+  .ft-cols{ padding:10px 12px; max-height:60vh; overflow-y:auto; overscroll-behavior:contain }
+  .ft-colgrid{ gap:6px }
+  .ft-col{ min-height:40px; font-size:9.5px; padding:0 10px }
+
+  .ft-morerows{ min-height:44px; width:calc(100% - 24px); max-width:360px; font-size:10px }
+}
+:root[data-theme="light"] .ft-head{ background:#ffffff }
 
 /* the crest in a table's name cell: the image on a white tile, the initials otherwise */
 .ft-crest{overflow:hidden;flex:none}

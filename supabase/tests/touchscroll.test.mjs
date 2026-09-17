@@ -54,15 +54,33 @@ console.log('\nno native scroller survives on a phone');
    being asserted — "NOT overflow-x:auto" in the prose reads to a regex exactly
    like the declaration it warns against. */
 const bare     = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
-const ftMobile = bare(tableCss).slice(bare(tableCss).indexOf('@media (max-width:640px)'));
-const ftAt     = ftMobile.indexOf('.ft-wrap{');
-const ftWrap   = ftMobile.slice(ftAt, ftMobile.indexOf('}', ftAt) + 1);
-ok('.ft-wrap hides overflow on both axes below 640px',
-   /overflow:hidden/.test(ftWrap), ftWrap.slice(0, 200));
+/* Two breakpoints (2026-09-17). Every .ft-wrap, the kit's scrollers and xscroll.js's
+   drag switch at 640px together; the full table's own boxes (inside .ft-host) switch at
+   820px, the tab bar's, in both the CSS and the drag. Whichever number, the CSS and the
+   drag must agree, or a band of widths gets a native scroller that is ALSO dragged. */
+const wrapIn = block => { const at = block.indexOf('.ft-wrap{');
+  return at < 0 ? '' : block.slice(at, block.indexOf('}', at) + 1); };
+const tBare    = bare(tableCss);
+const at640    = tBare.indexOf('@media (max-width:640px)');
+const at820    = tBare.indexOf('@media (max-width:820px)');
+const ftWrap   = wrapIn(tBare.slice(at640, at820 > at640 ? at820 : undefined));
+const ftHostWrap = wrapIn(tBare.slice(at820));
+ok('.ft-wrap hides overflow on both axes at the shared 640px phone breakpoint',
+   at640 > -1 && /overflow:hidden/.test(ftWrap), ftWrap.slice(0, 200));
 ok('...and does NOT re-open overflow-x',
    !/overflow-x:\s*(auto|scroll)/.test(ftWrap));
+/* pinch-zoom may ride along: it claims no single-finger axis */
 ok("...and names pan-y, so vertical is the page's in as many words",
-   /touch-action:\s*pan-y\s*;/.test(ftWrap));
+   /touch-action:\s*pan-y(\s+pinch-zoom)?\s*;/.test(ftWrap));
+ok("the full table's own .ft-wrap does the same at 820px, and only inside .ft-host",
+   at820 > -1 && /\.ft-host \.ft-wrap\{/.test(tBare.slice(at820)) &&
+   /overflow:hidden/.test(ftHostWrap) && /touch-action:\s*pan-y/.test(ftHostWrap), ftHostWrap);
+ok('xscroll.js drags every box at 640px...',
+   /'\(max-width:640px\)'/.test(xscroll));
+ok("...and the full table's boxes at 820px, found by .ft-host",
+   /'\(max-width:820px\)'/.test(xscroll) && /closest\('\.ft-host'\)/.test(xscroll));
+ok("the kit's phone override switches at 640px, with the shared table block",
+   /@media \(max-width:640px\)\{\s*\.ep-xscroll, \.ep-xtabs\{/.test(bare(kitCss)));
 
 /* The kit's two classes are declared for desktop first, so the phone block has
    to come AFTER them in the file — same specificity, file order decides. It is

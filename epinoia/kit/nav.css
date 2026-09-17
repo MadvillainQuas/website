@@ -415,7 +415,8 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
     border-left-color:transparent; border-top-color:var(--lume);
   }
   .ep-nav .tx{ font-size:7.5px; letter-spacing:.06em }
-  body.has-nav{ padding-left:0; padding-bottom:58px }
+  /* the bar grows by the home-indicator inset (padding-bottom above), so the page's foot does too */
+  body.has-nav{ padding-left:0; padding-bottom:calc(58px + env(safe-area-inset-bottom,0px)) }
 
   /* The deck still slides; it just runs along the bar instead of down it.
      Every container between the rail and a row has to become a row as well —

@@ -38,7 +38,10 @@
      wrapper around it: a redundant DOM level whose own scrollWidth equals its
      clientWidth, so it scrolls nothing while still taking the gesture.
      A box this file manages, or one a page built for this purpose, counts. */
-  const MANAGED = '.ep-xscroll, .ft-wrap, .ep-tw, .ep-xtabs';
+  /* .ft-head is the full table's sticky header strip and .ft-pills its preset row, both
+     panned by hand on a phone: left unmanaged, the sweep boxed the header strip's table
+     in an .ep-xscroll of its own that scrolled nothing and took the gesture. */
+  const MANAGED = '.ep-xscroll, .ft-wrap, .ep-tw, .ep-xtabs, .ft-head, .ft-pills';
   const scrolls = el => {
     if (!el) return false;
     if (el.matches && el.matches(MANAGED)) return true;
@@ -99,10 +102,30 @@
      fulltable.js, where it worked and where it was reachable by exactly one
      table out of the dozen that need it.
 
-     Only below 640px: above that a mouse has a scrollbar and a trackpad has
+     Only at phone width: above it a mouse has a scrollbar and a trackpad has
      two axes, and drag-to-pan would fight text selection and column sorting.
+
+     TWO WIDTHS, THE SAME TWO kit/table.css uses. Every box switches at 640px,
+     as it always has. A box inside the full table (fulltable.js marks its host
+     .ft-host) switches at 820px, the tab bar's breakpoint, because that table's
+     phone form starts there; the hand-built tables keep their native scrollbar
+     between 641 and 820px.
      ========================================================================== */
-  const PHONE = () => window.matchMedia('(max-width:640px)').matches;
+  const PHONE_Q = '(max-width:640px)', FULL_TABLE_Q = '(max-width:820px)';
+  const PHONE = box => {
+    const full = !!(box && typeof box.closest === 'function' && box.closest('.ft-host'));
+    return window.matchMedia(full ? FULL_TABLE_Q : PHONE_Q).matches;
+  };
+
+  /* A PAIRED BOX FOLLOWS. The full table's sticky header strip is a second box that
+     must sit at the same scrollLeft as the rows under it (fulltable.js sets __ftMirror
+     on both), and a 'scroll' listener alone was not seen to fire reliably on an
+     overflow:hidden box, so every write here copies across as it happens. */
+  const setX = (box, x) => {
+    box.scrollLeft = x;
+    const m = box.__ftMirror;
+    if (m && m.scrollLeft !== box.scrollLeft) m.scrollLeft = box.scrollLeft;
+  };
 
   /* MOMENTUM, BECAUSE 1:1 TRACKING ALONE READS AS SLOW.
 
@@ -137,7 +160,7 @@
         const dt = Math.min(32, now - prev); prev = now;
         const max = box.scrollWidth - box.clientWidth;
         const next = box.scrollLeft + vel * dt;
-        box.scrollLeft = Math.max(0, Math.min(max, next));
+        setX(box, Math.max(0, Math.min(max, next)));
         vel *= Math.pow(DECAY, dt / 16);
         /* stop at the ends rather than grinding against them */
         if (Math.abs(vel) < MIN_V || box.scrollLeft <= 0 || box.scrollLeft >= max) {
@@ -150,7 +173,7 @@
 
     box.addEventListener('pointerdown', e => {
       stopGlide();                       // a touch down catches a moving table
-      if (!PHONE()) return;
+      if (!PHONE(box)) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       pointerId = e.pointerId;
       startX = e.clientX; startY = e.clientY;
@@ -176,9 +199,23 @@
         vel = vel ? vel * 0.3 + v * 0.7 : v;
         lastX = e.clientX; lastT = now;
       }
-      box.scrollLeft = startScroll - (e.clientX - startX);
+      setX(box, startScroll - (e.clientX - startX));
       e.preventDefault();
     });
+
+    /* A SIDEWAYS WHEEL STILL PANS. An overflow:hidden box ignores the wheel, and between
+       641 and 820px the full table's box may be in a narrow desktop window with a trackpad;
+       only a gesture that is mostly horizontal is taken, so the page keeps every vertical one. */
+    box.addEventListener('wheel', e => {
+      if (!PHONE(box)) return;
+      const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0);
+      if (!dx || Math.abs(dx) <= Math.abs(e.shiftKey ? 0 : e.deltaY)) return;
+      const max = box.scrollWidth - box.clientWidth;
+      if (max <= 0) return;
+      stopGlide();
+      setX(box, Math.max(0, Math.min(max, box.scrollLeft + dx)));
+      e.preventDefault();
+    }, { passive: false });
 
     const release = e => {
       if (e && e.pointerId !== pointerId) return;

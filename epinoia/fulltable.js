@@ -476,6 +476,29 @@ function heatStyle(p) {
    against them after it was fixed here. xscroll.js sweeps for them all,
    including this wrap, and re-sweeps after a render. */
 
+/* ------------------------------------------------------------- phone mode ---
+   ONE BREAKPOINT FOR EVERYTHING A PHONE CHANGES. The bottom tab bar arrives at 820px
+   (kit/nav.css), and the table used to switch to its phone form at 640px: between the
+   two -- a landscape phone, a foldable's inner screen -- the tab bar was on while the
+   table was a 74vh box scrolling inside the page, the vertical-swipe trap the phone
+   form exists to remove. kit/table.css and xscroll.js use the same number for this
+   table's boxes (the host carries .ft-host); the hand-built tables and the kit's
+   scrollers still switch at 640px, so their 641-820px behaviour is what it was.
+
+   THE GRIPS ARE A MOUSE CONTROL. A 9px strip down a header's edge is not a target a
+   thumb can mean to hit, and on a phone they escaped the table altogether and ran down
+   the page's right edge, swallowing vertical swipes. So none are made for a coarse
+   pointer or at phone width. */
+const PHONE_MQ = '(max-width:820px)';
+const media = q => (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+  ? window.matchMedia(q) : null;
+const isPhone  = () => { const m = media(PHONE_MQ); return !!(m && m.matches); };
+const isCoarse = () => { const m = media('(pointer:coarse)'); return !!(m && m.matches); };
+/* the pinned # and name columns, the same numbers kit/table.css gives them */
+const W0 = 36, W1_WIDE = 170, W1_PHONE = 132;
+/* a pause in the typing, not every key: each draw sorts and ranks the whole table */
+const SEARCH_WAIT = 150;
+
 /* ------------------------------------------------------- following access ---
    THE ACCESS STATE CAN CHANGE UNDER A DRAWN TABLE: an answer arriving after access.js's own
    time limit, or a sign-in or sign-out in another tab. Every table on the page follows it
@@ -526,6 +549,49 @@ function followAccess(host, relock) {
        subscribed to once rather than once per render */
     accessSub = { off: typeof off === 'function' ? off : null };
   } catch (_) { accessSub = null; }
+}
+
+/* ---------------------------------------------------- following the breakpoint ---
+   CROSSING THE PHONE BREAKPOINT REDRAWS: a phone turned to landscape, or a window dragged
+   narrow, changes which header a table uses. ONE media listener for every table, for the
+   reason one access subscription is (above): a listener per render into a fresh host --
+   the league page's boards, on every scope change -- held its whole table alive on any
+   screen that never crossed the breakpoint to find out the table had gone. A table is let
+   go once another render owns its host or it has left the document, checked on every
+   render and every crossing, and the listener is handed back once no table is left. */
+const atWidth = new Set();        // { host, wrap, redraw, seen }
+let widthSub = null;              // { mq, fn } while listening
+
+function sweepWidths() {
+  atWidth.forEach(t => {
+    if (t.host.__ftWrap !== t.wrap) { atWidth.delete(t); return; }   // re-rendered
+    if (inPage(t.wrap)) t.seen = true;
+    else if (t.seen) atWidth.delete(t);
+  });
+  if (!atWidth.size && widthSub) {
+    const { mq, fn } = widthSub;
+    try {
+      if (mq.removeEventListener) mq.removeEventListener('change', fn);
+      else if (mq.removeListener) mq.removeListener(fn);
+    } catch (_) { /* already gone */ }
+    widthSub = null;
+  }
+}
+
+function followWidth(host, wrap, redraw) {
+  const mq = media(PHONE_MQ);
+  if (!mq) return;
+  atWidth.add({ host, wrap, redraw, seen: false });
+  sweepWidths();
+  if (widthSub) return;
+  const fn = () => {
+    sweepWidths();
+    [...atWidth].forEach(t => { try { t.redraw(); } catch (e) { console.warn('[fulltable] width', e); } });
+  };
+  if (mq.addEventListener) mq.addEventListener('change', fn);
+  else if (mq.addListener) mq.addListener(fn);
+  else return;
+  widthSub = { mq, fn };
 }
 
 /* ------------------------------------------------------------- component --- */
@@ -579,6 +645,16 @@ function render(opts) {
   let heat = opts.heat !== false;
   let extra = new Set();          // columns added by hand on top of the preset
   let removed = new Set();        // and ones taken away
+  const minGames0 = minGames, heat0 = heat;
+
+  /* ROWS IN PAGES, WHEN A PAGE ASKS FOR IT. Building every row of a 225-player table
+     is most of what a redraw costs, and on a phone nobody reads row 180 without having
+     searched for it. opts.pageSize draws that many and offers the next lot below the
+     table; a caller that does not pass it gets every row, as before. The heat map and
+     the sort still read the whole filtered table, so a colour or a rank never changes
+     as more rows are shown. */
+  const PAGE = opts.pageSize > 0 ? Math.floor(opts.pageSize) : Infinity;
+  let shown = PAGE;
 
   const SE = () => (typeof window !== 'undefined' ? window.EpinoiaSeason : null);
 
@@ -633,76 +709,107 @@ function render(opts) {
        .map(x => x[0]));
 
   host.textContent = '';
+  /* THE FULL TABLE'S PHONE FORM STARTS AT 820px, and kit/table.css and xscroll.js find
+     this table's boxes by this class; every hand-built table keeps the 640px switch */
+  host.classList.add('ft-host');
 
   /* ---- row 1: search, filters, switches ---- */
+  /* ON A PHONE THE SECONDARY CONTROLS FOLD BEHIND ONE BUTTON. Six wrapped rows of
+     switches and a nine-row wall of presets put the first row of the table 899px down a
+     780px screen. Everything but the search sits in .ft-more, and the stylesheet decides:
+     above the phone breakpoint .ft-more is display:contents, so its children are the
+     bar's own flex items and the desktop bar is the row it always was; below it, a block
+     the 'filters' button opens. Sizes live in kit/table.css as classes, not inline, so
+     the phone rules can reach them. */
   const bar = el('div', 'ft-bar');
   const q = el('input', 'ep-input grow');
   q.type = 'search';
   q.placeholder = isTeam ? 'find a team…' : 'find a player or team…';
-  q.addEventListener('input', () => { search = q.value.trim().toLowerCase(); draw(); });
+  let qTimer = null;
+  q.addEventListener('input', () => {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => { search = q.value.trim().toLowerCase(); shown = PAGE; draw(); }, SEARCH_WAIT);
+  });
   bar.appendChild(q);
 
+  const filtersBtn = el('button', 'ep-btn ft-btn ft-filters', 'filters');
+  filtersBtn.type = 'button'; filtersBtn.setAttribute('aria-expanded', 'false');
+  const more = el('div', 'ft-more');
+  filtersBtn.addEventListener('click', () => {
+    const open = more.classList.toggle('open');
+    filtersBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  bar.append(filtersBtn, more);
+  /* the button says how many filters are doing something, so a folded one is not forgotten */
+  const paintFilters = () => {
+    const n = (minGames !== minGames0 ? 1 : 0) + (minMinutes ? 1 : 0) + (teamPick ? 1 : 0) +
+              (posPick ? 1 : 0) + (byPos ? 1 : 0) + (heat !== heat0 ? 1 : 0);
+    filtersBtn.textContent = n ? 'filters · ' + n : 'filters';
+    filtersBtn.classList.toggle('pri', n > 0);
+  };
+
   if (!isTeam && opts.showMinGames !== false) {
-    const mg = el('input', 'ep-input');
+    const mg = el('input', 'ep-input ft-num');
     mg.type = 'number'; mg.min = '0'; mg.value = String(minGames);
-    mg.style.width = '78px'; mg.title = 'minimum games played';
-    mg.addEventListener('input', () => { minGames = parseInt(mg.value, 10) || 0; draw(); });
-    bar.append(el('span', 'ft-count', 'min gp'), mg);
+    mg.inputMode = 'numeric'; mg.title = 'minimum games played';
+    mg.addEventListener('input', () => { minGames = parseInt(mg.value, 10) || 0; shown = PAGE; draw(); });
+    /* the label and its box are one item, so a wrapping bar cannot put them on different rows */
+    const field = el('label', 'ft-field');
+    field.append(el('span', 'ft-count', 'min gp'), mg);
+    more.appendChild(field);
 
     /* THE LOW-MINUTES CUT. A season table's noise is almost all in the players who
        barely played: a 2-for-2 night is a 100% shooter until somebody is asked to
        have played. Thirty minutes is the usual first cut, and it is a switch rather
        than a box to type in because that is the question people actually ask. */
     const MIN_CUT = 30;
-    const cut = el('button', 'ep-btn', MIN_CUT + '+ min');
-    cut.type = 'button'; cut.style.cssText = 'font-size:9px;padding:8px 12px';
+    const cut = el('button', 'ep-btn ft-btn', MIN_CUT + '+ min');
+    cut.type = 'button';
     cut.title = 'hide players with fewer than ' + MIN_CUT + ' minutes on the season';
     cut.addEventListener('click', () => {
       minMinutes = minMinutes ? 0 : MIN_CUT;
-      cut.classList.toggle('pri', !!minMinutes); draw();
+      cut.classList.toggle('pri', !!minMinutes); shown = PAGE; draw();
     });
-    bar.appendChild(cut);
+    more.appendChild(cut);
 
     /* one club, or one position group, out of whoever is in the table */
-    const teamSel = el('select', 'ep-input');
-    teamSel.style.cssText = 'font-size:10px;max-width:160px';
+    const teamSel = el('select', 'ep-input ft-sel');
     teamSel.title = 'show one club';
     const teamNames = [...new Set(rows.map(r => r.teamName).filter(Boolean))].sort();
     [['', 'every club']].concat(teamNames.map(t => [t, t])).forEach(([v, l]) => {
       const o = document.createElement('option'); o.value = v; o.textContent = l; teamSel.appendChild(o);
     });
-    teamSel.addEventListener('change', () => { teamPick = teamSel.value; draw(); });
-    if (teamNames.length > 1) bar.appendChild(teamSel);
+    teamSel.addEventListener('change', () => { teamPick = teamSel.value; shown = PAGE; draw(); });
+    if (teamNames.length > 1) more.appendChild(teamSel);
 
-    const posSel = el('select', 'ep-input');
-    posSel.style.cssText = 'font-size:10px;max-width:140px';
+    const posSel = el('select', 'ep-input ft-sel ft-possel');
     posSel.title = 'show one position group, by the calculated position corrected with the listed one';
     const posOpts = [['', 'every position']].concat((SE() && SE().POS_GROUPS ? SE().POS_GROUPS : []).map(g => [g[0], g[1]]));
     posOpts.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; posSel.appendChild(o); });
-    posSel.addEventListener('change', () => { posPick = posSel.value; draw(); });
-    if (posOpts.length > 1) bar.appendChild(posSel);
+    posSel.addEventListener('change', () => { posPick = posSel.value; shown = PAGE; draw(); });
+    if (posOpts.length > 1) more.appendChild(posSel);
   }
 
-  const heatBtn = el('button', 'ep-btn' + (heat ? ' pri' : ''), 'heat map');
-  heatBtn.type = 'button'; heatBtn.style.cssText = 'font-size:9px;padding:8px 12px';
+  const heatBtn = el('button', 'ep-btn ft-btn' + (heat ? ' pri' : ''), 'heat map');
+  heatBtn.type = 'button';
   heatBtn.title = 'shade each column by percentile within the table';
   heatBtn.addEventListener('click', () => {
     heat = !heat; heatBtn.classList.toggle('pri', heat); draw();
   });
-  bar.appendChild(heatBtn);
+  more.appendChild(heatBtn);
 
   /* ADJUSTED FOR POSITION: the same percentiles, taken within the player's own
      position group rather than the whole competition, so a centre's assist rate is
      read against centres. The colouring is the only thing that changes -- every
      number in the table is what it was. */
   if (!isTeam) {
-    const posBtn = el('button', 'ep-btn' + (byPos ? ' pri' : ''), 'adjust for position');
-    posBtn.type = 'button'; posBtn.style.cssText = 'font-size:9px;padding:8px 12px';
+    const posBtn = el('button', 'ep-btn ft-btn' + (byPos ? ' pri' : ''), 'adjust for position');
+    posBtn.type = 'button';
     posBtn.title = 'shade each column against the player’s own position group';
     posBtn.addEventListener('click', () => {
       byPos = !byPos; posBtn.classList.toggle('pri', byPos); draw();
     });
-    bar.appendChild(posBtn);
+    more.appendChild(posBtn);
   }
 
   /* CALC RAPM. The page hands over a function that reads the season's logs and comes
@@ -710,8 +817,8 @@ function render(opts) {
      and puts the numbers on the rows. Pressed twice, it recomputes rather than refusing:
      a scope may have changed under it. */
   if (!isTeam && typeof opts.rapm === 'function') {
-    const rb = el('button', 'ep-btn', 'calc RAPM');
-    rb.type = 'button'; rb.style.cssText = 'font-size:9px;padding:8px 12px';
+    const rb = el('button', 'ep-btn ft-btn', 'calc RAPM');
+    rb.type = 'button';
     rb.title = 'read every stint of the competition and regress it: RAPM, ORAPM and DRAPM';
     rb.addEventListener('click', async () => {
       if (rb.disabled) return;
@@ -736,20 +843,20 @@ function render(opts) {
         say('calc RAPM'); rb.title = 'could not be computed: ' + (e && e.message ? e.message : e);
       } finally { rb.disabled = false; }
     });
-    bar.appendChild(rb);
+    more.appendChild(rb);
   }
 
-  const colsBtn = el('button', 'ep-btn', 'columns');
-  colsBtn.type = 'button'; colsBtn.style.cssText = 'font-size:9px;padding:8px 12px';
+  const colsBtn = el('button', 'ep-btn ft-btn', 'columns');
+  colsBtn.type = 'button';
   colsBtn.addEventListener('click', () => { drawer.hidden = !drawer.hidden; });
-  bar.appendChild(colsBtn);
+  more.appendChild(colsBtn);
 
-  const csv = el('button', 'ep-btn', 'csv');
-  csv.type = 'button'; csv.style.cssText = 'font-size:9px;padding:8px 12px';
+  const csv = el('button', 'ep-btn ft-btn', 'csv');
+  csv.type = 'button';
   csv.addEventListener('click', exportCsv);
-  bar.appendChild(csv);
+  more.appendChild(csv);
 
-  const count = el('span', 'ft-count'); count.style.marginLeft = 'auto';
+  const count = el('span', 'ft-count ft-tally');
   bar.appendChild(count);
   host.appendChild(bar);
 
@@ -761,8 +868,7 @@ function render(opts) {
     const NS = 'http://www.w3.org/2000/svg';
     const s = document.createElementNS(NS, 'svg');
     [['class', 'ft-lock'], ['viewBox', '0 0 10 12'], ['width', '8'], ['height', '10'], ['aria-hidden', 'true']]
-      .forEach(([k, v]) => s.setAttribute(k, v));
-    s.style.cssText = 'margin-left:6px;vertical-align:-1px';
+      .forEach(([k, v]) => s.setAttribute(k, v));   /* placed by .ft-lock in kit/table.css */
     const arc = document.createElementNS(NS, 'path');
     [['d', 'M2.7 5.2V3.6a2.3 2.3 0 0 1 4.6 0v1.6'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.4']]
       .forEach(([k, v]) => arc.setAttribute(k, v));
@@ -780,7 +886,7 @@ function render(opts) {
   const showTeaser = (key, label) => {
     const A = ACC();
     if (!A || typeof A.teaserHTML !== 'function') return;
-    if (!teaserEl) { teaserEl = el('div', 'ft-teaser'); host.insertBefore(teaserEl, wrap); }
+    if (!teaserEl) { teaserEl = el('div', 'ft-teaser'); host.insertBefore(teaserEl, head); }
     teaserEl.innerHTML = A.teaserHTML({
       leagueSlug: opts.leagueSlug, title: label,
       lines: [/^z_/.test(key)
@@ -800,13 +906,24 @@ function render(opts) {
         hideTeaser();
         preset = key; extra.clear(); removed.clear();
         pills.querySelectorAll('.ft-pill').forEach(p => p.classList.toggle('on', p.dataset.g === key));
-        drawDrawer(); draw();
+        drawDrawer(); draw(); revealPill();
       });
       pills.appendChild(b);
     });
+    revealPill();
+  }
+  /* ON A PHONE THE PRESETS ARE ONE ROW THAT PANS (kit/table.css), so the chosen one is
+     brought into the row when it has been left off either end of it */
+  function revealPill() {
+    if (!isPhone()) return;
+    const on = pills.querySelector('.ft-pill.on');
+    if (!on) return;
+    const l = on.offsetLeft, r = l + on.offsetWidth;
+    if (l < pills.scrollLeft || r > pills.scrollLeft + pills.clientWidth) pills.scrollLeft = Math.max(0, l - 12);
   }
   drawPills();
   host.appendChild(pills);
+  if (typeof window !== 'undefined' && window.epinoiaDragScroll) window.epinoiaDragScroll(pills);
 
   /* ---- row 3: every column, toggleable ---- */
   const drawer = el('div', 'ft-cols'); drawer.hidden = true;
@@ -831,11 +948,29 @@ function render(opts) {
   }
   drawDrawer();
 
+  /* THE PHONE'S STICKY HEADER. On a phone .ft-wrap is overflow:hidden (the axis trap,
+     kit/table.css), which makes it the sticky container for its own header -- and it
+     never scrolls vertically, so the column names left with the first twenty rows. The
+     header row is drawn instead into a table of its own in .ft-head, a strip BEFORE the
+     wrap whose ancestors all let it stick to the top of the page, and the strip is kept
+     at the wrap's scrollLeft: by xscroll.js on every pan (the __ftMirror pair) and by a
+     scroll listener as a backstop. Above the breakpoint the strip is empty and hidden and
+     the header is the table's own, sticky as before. */
+  const head = el('div', 'ft-head');
   const wrap = el('div', 'ft-wrap');
+  host.appendChild(head);
   host.appendChild(wrap);
+  wrap.__ftMirror = head; head.__ftMirror = wrap;
+  const syncHead = () => { if (head.scrollLeft !== wrap.scrollLeft) head.scrollLeft = wrap.scrollLeft; };
+  wrap.addEventListener('scroll', syncHead, { passive: true });
   /* the sweep catches this too, on its next pass; wiring it here as well means
      the first touch after a render does not depend on that pass having run */
-  if (window.epinoiaDragScroll) window.epinoiaDragScroll(wrap);
+  if (window.epinoiaDragScroll) { window.epinoiaDragScroll(wrap); window.epinoiaDragScroll(head); }
+
+  /* the next page of rows, under the table rather than inside its scroller */
+  const moreRows = el('button', 'ep-btn ft-btn ft-morerows');
+  moreRows.type = 'button'; moreRows.hidden = true;
+  host.appendChild(moreRows);
 
   const sortVal = (c, r) => (c.sort ? c.sort(r) : r[c.k]);
 
@@ -869,29 +1004,50 @@ function render(opts) {
 
      The header is measured too: "OPP OREB%" is wider than anything under it,
      and a clipped heading is worse than a slightly wide column. */
+  let fontWait = null;          // the one redraw waiting on the table's fonts
   const canvas = document.createElement('canvas');
   const ctx2d = canvas.getContext('2d');
-  function measure(cols, rows) {
+  function measure(cols, rows, phone) {
     const cs = getComputedStyle(document.body);
     const dataFont = '11.5px ' + (cs.getPropertyValue('--f-data') || 'monospace');
-    const headFont = '8px ' + (cs.getPropertyValue('--f-micro') || 'monospace');
+    /* the phone header is set larger (kit/table.css), so it is measured at that size */
+    const headFont = (phone ? '9.5px ' : '8px ') + (cs.getPropertyValue('--f-micro') || 'monospace');
+    /* NOT BEFORE THE FONT IS IN. A canvas asked to measure a web font that has not loaded
+       measures the fallback instead, and Martian Mono is a quarter wider than a system
+       monospace: measured live, "23.6" came out 44px wide and rendered at 47, so every
+       decimal column was an ellipsis. One redraw once the face arrives. */
+    const F = typeof document !== 'undefined' ? document.fonts : null;
+    if (!fontWait && F && typeof F.check === 'function' && typeof F.load === 'function') {
+      try {
+        if (!F.check(dataFont) || !F.check(headFont)) {
+          fontWait = Promise.all([F.load(dataFont), F.load(headFont)])
+            .then(() => { if (host.__ftWrap === wrap) draw(); }, () => {});
+        }
+      } catch (_) { /* measure with what there is */ }
+    }
     const PAD = 18;                 // 8px each side plus a hair of breathing room
     const MIN = 44, MAX = 96;
+    /* A PHONE HEADING IS MEASURED WITH ITS LETTER-SPACING (.1em of 9.5px, kit/table.css)
+       and may take a wider column than a figure may: at 9.5px "PTS CONTRIB/G" is past
+       96px, and capped there it ran under the next heading, which painted over it. The
+       desktop sizes are what they were. */
+    const HEAD_MAX = phone ? 120 : MAX, TRACK = phone ? 0.95 : 0;
     const out = {};
     /* a sample is enough — measuring 400 rows to find the widest costs more
        than the pixel or two of accuracy it buys */
     const sample = rows.length > 60 ? rows.slice(0, 60) : rows;
     cols.forEach((c, i) => {
-      if (i < 2) { out[c.k] = i === 0 ? 36 : 170; return; }
+      if (i < 2) { out[c.k] = i === 0 ? W0 : (phone ? W1_PHONE : W1_WIDE); return; }
       ctx2d.font = headFont;
-      let w = ctx2d.measureText(c.l).width;
+      const hw = ctx2d.measureText(c.l).width + String(c.l).length * TRACK;
+      let w = 0;
       ctx2d.font = dataFont;
       sample.forEach((r, idx) => {
         const txt = String(c.fmt(r, idx));
         const m = ctx2d.measureText(txt).width;
         if (m > w) w = m;
       });
-      out[c.k] = Math.max(MIN, Math.min(MAX, Math.ceil(w) + PAD));
+      out[c.k] = Math.max(MIN, Math.min(MAX, Math.ceil(w) + PAD), Math.min(HEAD_MAX, Math.ceil(hw) + PAD));
     });
     return out;
   }
@@ -989,26 +1145,115 @@ function render(opts) {
     th.appendChild(grip);
   }
 
+  const hasCrest = r => !!(r.colour || r.teamColour || r.logo || r.teamLogo);
+
+  function rowEl(r, idx, cols, ranks) {
+    const tr = el('tr');
+    cols.forEach((c, i) => {
+      const td = el('td', i < 2 ? 'stick c' + i : '');
+      if (c.k === 'name') {
+        const cell = el('div', 'ft-name');
+        if (hasCrest(r)) {
+          const meta = { short_name: r.teamShort || (isTeam ? r.name : ''), name: isTeam ? r.name : (r.teamFull || ''),
+                         colour: r.colour || r.teamColour, logo_path: r.logo || r.teamLogo || null };
+          let crest;
+          if (window.epinoiaCrest) crest = window.epinoiaCrest(meta, { cls: 'ft-crest' });
+          else { crest = el('span', 'ft-crest', (r.teamShort || '').slice(0, 3)); crest.style.background = meta.colour; }
+          cell.appendChild(crest);
+        }
+        const href = isTeam ? (opts.teamHref && opts.teamHref(r))
+                            : (opts.playerHref && opts.playerHref(r));
+        if (href) { const a = el('a', null, r.name); a.href = href; cell.appendChild(a); }
+        else cell.appendChild(el('span', null, r.name));
+        td.appendChild(cell);
+      } else {
+        td.textContent = c.fmt(r, idx);
+        if (c.lead) td.classList.add('lead');
+        if (heat && c.heat) {
+          const p = (ranks.get(c.k) || new Map()).get(r.id);
+          if (p != null) td.style.cssText = heatStyle(p);
+        }
+        if (c.signed && !heat) {
+          const n = r[c.k];
+          if (n > 0) td.classList.add('pos'); else if (n < 0) td.classList.add('neg');
+        }
+      }
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+
+  /* what the last draw put on screen, so "show more" can add rows without redrawing */
+  let last = null;              // { all, cols, ranks, tb }
+
+  const noun = n => isTeam ? (n === 1 ? ' team' : ' teams') : (n === 1 ? ' player' : ' players');
+  function paintCount(all) {
+    const on = Math.min(shown, all.length);
+    count.textContent = (on < all.length ? on + ' of ' + all.length : String(all.length)) + noun(all.length);
+  }
+  function paintMore(all) {
+    const rest = all.length - Math.min(shown, all.length);
+    moreRows.hidden = !(rest > 0);
+    if (rest > 0) moreRows.textContent = 'show ' + Math.min(PAGE, rest) + ' more';
+  }
+  function appendRows(from, to) {
+    const frag = document.createDocumentFragment();
+    for (let idx = from; idx < to; idx++) frag.appendChild(rowEl(last.all[idx], idx, last.cols, last.ranks));
+    last.tb.appendChild(frag);
+  }
+  moreRows.addEventListener('click', () => {
+    if (!last) return;
+    const from = Math.min(shown, last.all.length);
+    shown += PAGE;
+    appendRows(from, Math.min(shown, last.all.length));
+    paintCount(last.all); paintMore(last.all);
+  });
+
+  /* AFTER A SORT ON A PHONE, THE SORTED COLUMN IS BROUGHT ON SCREEN. Only a few columns
+     fit beside the pinned name, so a tap on a header that has half-scrolled away sorted
+     a column the reader could no longer see. */
+  function revealSorted() {
+    const th = head.querySelector('th.sorted');
+    /* the pinned # and name are always on screen: nothing to reveal, and measuring one
+       would pan a reader who had scrolled right back towards the start */
+    if (!th || th.classList.contains('stick')) return;
+    const pinned = W0 + W1_PHONE;
+    const l = th.offsetLeft, r = l + th.offsetWidth;
+    if (l >= wrap.scrollLeft + pinned && r <= wrap.scrollLeft + wrap.clientWidth) return;
+    wrap.scrollLeft = Math.max(0, l - pinned - 8);
+    head.scrollLeft = wrap.scrollLeft;
+  }
+
   function draw() {
-    const cols = visible();
-    const v = view();
-    count.textContent = v.length + (isTeam ? (v.length === 1 ? ' team' : ' teams')
-                                           : (v.length === 1 ? ' player' : ' players'));
-    wrap.textContent = '';
-    if (!v.length) {
+    paintFilters();
+    const phone = isPhone();
+    let cols = visible();
+    /* A PHONE DROPS THE TEAM COLUMN when the name cell already carries the club's crest:
+       it repeated the crest in 99px of a 360px screen. EVERY row's, not any row's: a club
+       with no colour or logo draws no crest, and its players would show no club at all.
+       The CSV keeps it (visible()). */
+    if (phone && rows.length && rows.every(hasCrest)) cols = cols.filter(c => c.k !== 'teamName');
+    const all = view();
+    const v = all.length > shown ? all.slice(0, shown) : all;
+    paintCount(all);
+    const keepX = phone ? wrap.scrollLeft : 0;
+    wrap.textContent = ''; head.textContent = '';
+    last = null; paintMore([]);
+    if (!all.length) {
       wrap.appendChild(el('div', 'ft-empty', rows.length
         ? 'Nothing matches that filter.'
         : 'No statistics yet — these fill in as games are finalised.'));
       return;
     }
 
-    /* percentiles are computed over the rows on screen, so a filtered table
-       ranks within what you are actually looking at — same as index_9 */
+    /* percentiles are computed over the rows the filters leave, so a filtered table
+       ranks within what you are actually looking at — same as index_9. Over ALL of
+       them, not the page on screen: a row's colour must not change when more are shown. */
     let ranks = new Map();
     if (heat && window.EpinoiaSeason) {
       const keys = cols.filter(c => c.heat).map(c => c.k);
       const low  = cols.filter(c => c.heat && c.low).map(c => c.k);
-      ranks = window.EpinoiaSeason.percentiles(v, keys, low, byPos ? groupOf : null);
+      ranks = window.EpinoiaSeason.percentiles(all, keys, low, byPos ? groupOf : null);
     }
 
     const t = el('table', 'ft');
@@ -1018,13 +1263,18 @@ function render(opts) {
        reconcile a computed table width against the declared column widths, and
        it hands the surplus to a single column — which is exactly how PPG ended
        up 124px wide against 52px everywhere else. Summing the columns and
-       stating the total leaves nothing to reconcile. */
-    const W0 = 36, W1 = 170;
-    const widths = measure(cols, v);
+       stating the total leaves nothing to reconcile. The name column is the
+       width kit/table.css gives it at this size, or the phone table was declared
+       38px wider than its columns and the surplus spread over every one. */
+    const W1 = phone ? W1_PHONE : W1_WIDE;
+    /* measured over the whole filtered table, not the page on screen: rows added by
+       'show more' reuse these widths, and a wider value further down must fit too */
+    const widths = measure(cols, all, phone);
     /* a width the reader set by hand wins over the measured one */
     Object.keys(held).forEach(k => { if (widths[k] != null) widths[k] = held[k]; });
     const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
     t.style.width = totalW + 'px';
+    const grips = !phone && !isCoarse();
 
     const thead = el('thead'), hr = el('tr');
     cols.forEach((c, i) => {
@@ -1034,57 +1284,51 @@ function render(opts) {
          cell like "192-440" stretched its column and squeezed every other one,
          which is what threw PPG and DIFF out of proportion. */
       if (i >= 2) th.style.width = widths[c.k] + 'px';
+      else if (phone) th.style.width = (i === 0 ? W0 : W1) + 'px';
       th.title = (c.t ? c.l + ' — ' + c.t : c.l) + (c.low ? ' — lower is better' : '');
       /* a grip on the trailing edge, so a column can be widened by hand when
          the measured width is not what this particular reader wants */
-      if (i >= 1) addGrip(th, c, t);
+      if (i >= 1 && grips) addGrip(th, c, t);
       th.addEventListener('click', () => {
         if (sortKey === c.k) sortDir = -sortDir;
         else { sortKey = c.k; sortDir = c.text ? 1 : -1; }
+        shown = PAGE;
         draw();
+        if (isPhone()) revealSorted();
       });
       hr.appendChild(th);
     });
-    thead.appendChild(hr); t.appendChild(thead);
+    thead.appendChild(hr);
+
+    if (phone) {
+      /* two tables, one set of columns: the header strip's and the body's widths come
+         from the same colgroup, since the body no longer has a header row to take them from */
+      const colgroup = () => {
+        const g = el('colgroup');
+        cols.forEach((c, i) => { const col = el('col');
+          col.style.width = (i === 0 ? W0 : i === 1 ? W1 : widths[c.k]) + 'px'; g.appendChild(col); });
+        return g;
+      };
+      const ht = el('table', 'ft');
+      ht.style.width = totalW + 'px';
+      ht.dataset.xscrolled = '1';            // never boxed by xscroll.js's sweep
+      ht.append(colgroup(), thead);
+      head.appendChild(ht);
+      t.appendChild(colgroup());
+    } else t.appendChild(thead);
 
     const tb = el('tbody');
-    v.forEach((r, idx) => {
-      const tr = el('tr');
-      cols.forEach((c, i) => {
-        const td = el('td', i < 2 ? 'stick c' + i : '');
-        if (c.k === 'name') {
-          const cell = el('div', 'ft-name');
-          if (r.colour || r.teamColour || r.logo || r.teamLogo) {
-            const meta = { short_name: r.teamShort || (isTeam ? r.name : ''), name: isTeam ? r.name : (r.teamFull || ''),
-                           colour: r.colour || r.teamColour, logo_path: r.logo || r.teamLogo || null };
-            let crest;
-            if (window.epinoiaCrest) crest = window.epinoiaCrest(meta, { cls: 'ft-crest' });
-            else { crest = el('span', 'ft-crest', (r.teamShort || '').slice(0, 3)); crest.style.background = meta.colour; }
-            cell.appendChild(crest);
-          }
-          const href = isTeam ? (opts.teamHref && opts.teamHref(r))
-                              : (opts.playerHref && opts.playerHref(r));
-          if (href) { const a = el('a', null, r.name); a.href = href; cell.appendChild(a); }
-          else cell.appendChild(el('span', null, r.name));
-          td.appendChild(cell);
-        } else {
-          td.textContent = c.fmt(r, idx);
-          if (c.lead) td.classList.add('lead');
-          if (heat && c.heat) {
-            const p = (ranks.get(c.k) || new Map()).get(r.id);
-            if (p != null) td.style.cssText = heatStyle(p);
-          }
-          if (c.signed && !heat) {
-            const n = r[c.k];
-            if (n > 0) td.classList.add('pos'); else if (n < 0) td.classList.add('neg');
-          }
-        }
-        tr.appendChild(td);
-      });
-      tb.appendChild(tr);
-    });
     t.appendChild(tb); wrap.appendChild(t);
+    last = { all, cols, ranks, tb };
+    appendRows(0, v.length);
+    paintMore(all);
+    /* a filter or a preset on a phone keeps the reader where they were sideways */
+    if (phone) { wrap.scrollLeft = keepX; head.scrollLeft = wrap.scrollLeft; }
   }
+
+  /* CROSSING THE BREAKPOINT REDRAWS (followWidth, above render): one listener for every table */
+  host.__ftWrap = wrap;
+  followWidth(host, wrap, () => { draw(); revealPill(); });
 
   function exportCsv() {
     const cols = visible(), v = view();
@@ -1113,9 +1357,9 @@ function render(opts) {
 
   return {
     redraw: draw,
-    setRows(next) { rows = (next || []).map((r, i) => Object.assign({ __i: i }, r)); draw(); }
+    setRows(next) { rows = (next || []).map((r, i) => Object.assign({ __i: i }, r)); shown = PAGE; draw(); }
   };
 }
 
-return { render, PLAYER_COLS: P, TEAM_COLS: T, PRESETS, heatStyle };
+return { render, PLAYER_COLS: P, TEAM_COLS: T, PRESETS, heatStyle, PHONE_MQ };
 }));

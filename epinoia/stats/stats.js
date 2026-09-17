@@ -88,6 +88,9 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
       S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
       window.EpinoiaTable.render({
         host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
+        /* fifty rows and a "show more": the whole league is a search away, and building
+           every row on each filter change is what made the page slow on a phone */
+        pageSize: 50,
         filename: league.slug + '-season-stats',
         /* the table drops the premium columns itself when this league's analytics are locked */
         leagueId: league.id, leagueSlug: league.slug,

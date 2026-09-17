@@ -293,7 +293,9 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .scopelab{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--ink-3)}
 .scopesel{font-size:12px;padding:5px 8px;max-width:100%;min-height:36px}
-@media (max-width:640px){ .scopesel{flex:1 1 auto;min-width:0} }
+/* on a phone the select takes the row, and 16px type so iOS does not zoom the page on focus.
+   Two classes deep: .ep-input (13px, max-width 260px) is declared further down this file. */
+@media (max-width:820px){ .scopebar .scopesel{flex:1 1 auto;min-width:0;max-width:none;font-size:16px;min-height:44px} }
 
 .ep-xscroll{
   overflow-x:auto; overflow-y:hidden;
@@ -346,18 +348,22 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
    starting over a table strands the reader mid-table. Three attempts at
    wording touch-action, three reports back from a real phone.
 
-   So below 640px there is nothing to arbitrate: overflow hidden on both axes
-   means no scrollable surface, pan-y hands vertical to the page in as many
-   words, and xscroll.js pans these sideways from pointer events — claiming
-   the gesture only once it has clearly gone horizontal, and releasing it
-   untouched the instant it has not.
+   So below the phone breakpoint there is nothing to arbitrate: overflow hidden
+   on both axes means no scrollable surface, pan-y hands vertical to the page in
+   as many words, and xscroll.js pans these sideways from pointer events —
+   claiming the gesture only once it has clearly gone horizontal, and releasing
+   it untouched the instant it has not. pinch-zoom stays the reader's.
+
+   640px, THE SAME NUMBER xscroll.js drags these at: a native scroller at a
+   width where the drag is also on would be panned by hand AND by the browser
+   at once. (Only the full table's own boxes switch at 820px, kit/table.css.)
 
    AFTER the base rules, not before: same specificity, so file order decides.
    --------------------------------------------------------------------------- */
 @media (max-width:640px){
   .ep-xscroll, .ep-xtabs{
     overflow:hidden;
-    touch-action:pan-y;
+    touch-action:pan-y pinch-zoom;
   }
   /* the edge fades are the only remaining hint that there is more sideways,
      so they stay — but the 'local' ones track scrollLeft and still work */

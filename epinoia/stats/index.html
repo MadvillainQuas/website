@@ -39,6 +39,34 @@
   body.league-themed .ep-frame > .ep-hdr::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;pointer-events:none;
     background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%)}
   body.league-themed #title{color:var(--league-a-ink)}
+  #ctx{min-width:0}
+
+  /* ON A PHONE (820px and below, where the tab bar is). THE HEADER WRAPS. Its two links
+     never did: nowrap, pushed right by margin-left:auto, beside a 26px title, so on a
+     360px phone "WOWY & lineups" ended at x=504 and laid the whole page out 504px wide,
+     the tab bar's menu button with it, off the screen. The title takes the first row and
+     the links share the next, each a 40px target. */
+  @media (max-width:820px){
+    .ep-frame > .ep-hdr{flex-wrap:wrap;row-gap:2px;align-items:center}
+    .ep-frame > .ep-hdr h2{flex:1 1 calc(100% - 40px);min-width:0;font-size:22px;line-height:1.05;overflow-wrap:anywhere}
+    .ep-frame > .ep-hdr .subpage{margin-left:0;padding:0 14px 0 0;min-height:40px;
+      display:inline-flex;align-items:center;font-size:10px}
+    /* the covering select gets the page's side gutter; it sat flush against the frame */
+    #tbl > .scopebar{padding:10px 12px;flex-wrap:nowrap;border-bottom:1px solid var(--rule)}
+    #tbl > .scopebar .scopelab{font-size:10px;flex:none}
+    /* A SAFETY NET, NOT THE FIX: whatever grows too wide later is clipped at the frame
+       rather than widening the page. clip, not hidden -- it makes no scroll container,
+       so the table's sticky header still sticks to the page. */
+    .ep-frame{overflow-x:clip;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+    /* THE BELL MOVES ABOVE THE TAB BAR: top right it covered the league name and, once the
+       page scrolls, the right end of the table's sticky header. Its panel opens upward. */
+    body.has-nav .ep-bell{top:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px) + 10px)}
+    body.has-nav .ep-bell .panel{top:auto;bottom:48px;max-height:min(60vh,520px)}
+  }
+  /* INSTALLED, the status bar is drawn over the page (black-translucent), so the page starts below it */
+  @media (display-mode:standalone){
+    body{padding-top:env(safe-area-inset-top,0px)}
+  }
 </style>
 </head>
 <body>
