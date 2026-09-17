@@ -58,7 +58,10 @@ DEFAULTS = {
     'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
 }
-VERSION = 'ai_worker/1.0'
+# 1.1 reads the whole broadcast when the wall stamps cover only one end of it, refuses a score
+# reading that matched almost nothing, and stores a coverage summary beside every track. It is a
+# different answer from 1.0's, which is why wants_reread() offers 1.0's games back to it once.
+VERSION = 'ai_worker/1.1'
 
 
 def now_iso():
@@ -390,7 +393,7 @@ def _game_elapsed_ms(period, clock_ms):
     return sum(plen(q) for q in range(1, per)) + plen(per) - max(0, min(plen(per), int(clock_ms)))
 
 
-def wall_hints(db, game_id, log_=None):
+def wall_hints(db, game_id, log_=None, context=None):
     """Where the plays SHOULD sit in the footage, from the plays' own wall stamps.
 
     THE SAME ARITHMETIC AS THE PAGE, or the two disagree about the same play. A play's
@@ -421,7 +424,13 @@ def wall_hints(db, game_id, log_=None):
     is not a timed log at all (logIsTimed on the page), so it places nothing.
 
     Returns [(t_seconds, period, clock_ms, err_ms)] in video order, or [] when there is
-    nothing trustworthy to place by."""
+    nothing trustworthy to place by.
+
+    `context`, when a dict is passed, is filled with what the CALLER needs to know about
+    the shape of those hints: how much of the game the log covers, how much of it the
+    surviving stamps cover, and which period the earliest of them sits in. read_track
+    narrows the reader's window by that (see the window comment there) and cannot work it
+    out for itself without fetching the whole log a second time."""
     say = log_ or (lambda *_a, **_k: None)
     try:
         v = db.select('game_videos', 'game_id=eq.%s&is_primary=eq.true&select=stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms&limit=1' % game_id)
@@ -509,6 +518,22 @@ def wall_hints(db, game_id, log_=None):
                 'so they say when rows were written, not when plays happened' % (len(out), span_ms / 1000.0, played / 1000.0))
             return []
 
+    # HOW MUCH OF THE GAME THESE STAMPS ACTUALLY REACH. The log's own last play says where
+    # the game ends; the earliest and latest surviving stamps say which part of it is
+    # covered. read_track narrows its window by these and by nothing else. Filled only for
+    # hints that survived every gate above, so a caller never narrows by stamps we refused.
+    if context is not None and out:
+        log_end = 0
+        for e in rows:
+            if (e.get('t') or '') in ('loc', 'tag', 'stype') or e.get('period') is None or e.get('clock') is None:
+                continue
+            log_end = max(log_end, _game_elapsed_ms(e['period'], e['clock']))
+        elapsed = [_game_elapsed_ms(h[1], h[2]) for h in out]
+        context['log_elapsed_ms'] = log_end
+        context['hint_first_elapsed_ms'] = min(elapsed)
+        context['hint_last_elapsed_ms'] = max(elapsed)
+        context['first_period'] = out[0][1]
+
     say('  wall hints: %d plays placed by their stamps' % len(out)
         + (' (\u00b1%.0f s typical)' % (sorted(h[3] for h in out)[len(out) // 2] / 1000.0) if out else '')
         + (', %d dropped as unboundable' % dropped if dropped else ''))
@@ -544,21 +569,116 @@ def wall_track(hints, video_path, CK=None):
     return track
 
 
-def read_track(video_path, pbp, cfg, mode, progress, should_stop, hints=None):
+# A STAMP MAY ONLY CLOSE THE END OF THE WINDOW IT ACTUALLY REACHES. Within two minutes of
+# game clock of the tip (or of the final buzzer) the stamps have plainly seen that end of
+# the game; further away than that they have not, and the footage beyond them is footage
+# nobody has looked at.
+HINT_REACH_MS = 120000
+
+
+def video_duration_s(video_path, cfg):
+    """How long the footage is, or None. Only used to say what fraction of it was read, so
+    a container the frame reader cannot measure costs a number in a summary and nothing else."""
+    try:
+        sp = cfg.get('skill_scripts')
+        if sp and sp not in sys.path:
+            sys.path.insert(0, sp)
+        import frames as FR   # noqa
+        cap = FR.open_video(video_path)
+        try:
+            return round(FR.video_info(cap)['duration_ms'] / 1000.0, 1)
+        finally:
+            cap.release()
+    except Exception:
+        return None
+
+
+def _accepts(fn, name):
+    """Does this function take a keyword of that name? The clock reader lives in the
+    playtype-vision skill, which is versioned separately from this worker, so a new
+    argument has to be offered rather than assumed."""
+    try:
+        import inspect
+        return name in inspect.signature(fn).parameters
+    except Exception:
+        return False
+
+
+def reading_window(hints, ctx):
+    """Which stretch of the footage the reader should look at, from the wall stamps.
+
+    THE STAMPS NARROW THE READ -- BUT ONLY AT THE ENDS THEY REACH.
+
+    This used to set both ends unconditionally: a minute and a half before the first stamp
+    to three minutes after the last. That is right when the stamps cover the game and
+    catastrophic when they do not, and after a feed correction they very often do not -- an
+    ingest rewrite that loses payload.wall leaves only the stamps written after it, which is
+    whatever was still to come.
+
+    106394dc (Loughborough Riders v Oaklands Wolves, 2026-09-12): the only surviving stamps
+    were the last 2:07 of the fourth quarter, so this read 7993-8530 s of an 8333.9 s
+    broadcast -- 537 seconds, 6% of it -- and the page then had readings for the end of the
+    fourth quarter and nothing else. The first two quarters were missing from the play list
+    entirely and the footer still said the game had been read.
+
+    a40d3cef (Yorkshire Dragons v Derby Trailblazers) is the same shape and is healthy today
+    only because its job ran when it had no wall hints at all; re-read under the old rule it
+    would have gone from 0-6118 to 5365-6118 and broken in the same way.
+
+    So each end is closed only by a stamp that reaches it. The nine games whose logs carry no
+    usable stamps are untouched: with no hints there is no window and the whole file is read.
+
+    Returns the kwargs for CK.run_auto -- {} means the whole file."""
+    window = {}
+    if not hints:
+        return window
+    ctx = ctx or {}
+    lo = max(0.0, min(h[0] for h in hints) - 90.0)
+    hi = max(h[0] for h in hints) + 180.0
+    first_e, last_e = ctx.get('hint_first_elapsed_ms'), ctx.get('hint_last_elapsed_ms')
+    log_e = ctx.get('log_elapsed_ms')
+    if first_e is not None and first_e <= HINT_REACH_MS:
+        window['start_s'] = lo
+    if last_e is not None and log_e is not None and (log_e - last_e) <= HINT_REACH_MS:
+        window['end_s'] = hi
+    return window
+
+
+def read_track(video_path, pbp, cfg, mode, progress, should_stop, hints=None, hint_ctx=None):
     CK = skill(cfg)
     def prog(i, n, s):
         what = s.get('text') or (s.get('read') and '%s-%s' % tuple(s['read'])) or s.get('note', '')
         progress('reading:' + s.get('stage', mode), i, n, what, extra={'t': s.get('t'), 'period': s.get('period'),
                  'accepted': bool(s.get('accepted')), 'score': [s.get('home'), s.get('away')] if s.get('home') is not None else None})
-    # THE STAMPS NARROW THE READ: the reader looks from a minute and a half before the first
-    # play to three minutes after the last, not through the pre-game and the empty hall after
-    window = {}
+    ctx = hint_ctx or {}
+    window = reading_window(hints, ctx)
     if hints:
-        lo = max(0.0, min(h[0] for h in hints) - 90.0); hi = max(h[0] for h in hints) + 180.0
-        window = {'start_s': lo, 'end_s': hi}
-        log('  reading %s\u2013%s of the footage (from the wall stamps)' % (time.strftime('%H:%M:%S', time.gmtime(lo)), time.strftime('%H:%M:%S', time.gmtime(hi))))
+        log('  reading %s\u2013%s of the footage (%s)' % (
+            time.strftime('%H:%M:%S', time.gmtime(window.get('start_s') or 0.0)),
+            time.strftime('%H:%M:%S', time.gmtime(window['end_s'])) if window.get('end_s') else 'the end',
+            'from the wall stamps' if len(window) == 2 else
+            'the wall stamps reach only %s of the game, so the other end is read in full'
+            % ('the end' if 'end_s' in window else 'the start' if 'start_s' in window else 'neither end')))
+        # AND THE READER STARTS IN WHATEVER PERIOD THE WINDOW OPENS IN. ClockTracker assumes
+        # period 1 until the overlay prints a label, so a read that begins in the fourth
+        # quarter can stamp "Q1" onto fourth-quarter clocks -- which is the misread period
+        # digit epinoia/video.js saneTrack had to start throwing away on this very game.
+        # Offered, not assumed: the skill's clock.py grows the argument on its own schedule.
+        p0 = ctx.get('first_period')
+        if p0 and window.get('start_s'):
+            if _accepts(CK.run_auto, 'start_period'):
+                window['start_period'] = int(p0)
+            else:
+                log('  (this machine\u2019s clock reader cannot be told the window opens in period %d; '
+                    'it will assume the first until the overlay labels one)' % int(p0))
     track = CK.run_auto(video_path, pbp=pbp, mode=mode, step=cfg['step_clock'], score_step=cfg['step_score'],
                         on_progress=prog, stop=should_stop, quiet=True, **window)
+    # WHAT WAS READ, AND OF HOW MUCH. The page's footer has to be able to say "6% of this
+    # broadcast was ever looked at" rather than "69 readings"; a separate video hub filters
+    # on it. Stashed on the track here and summarised into the stored JSON by slim_track.
+    track['read_window'] = {'start_s': round(float(window.get('start_s') or 0.0), 1),
+                            'end_s': round(float(window['end_s']), 1) if window.get('end_s') else None}
+    track['video_s'] = video_duration_s(video_path, cfg)
     # AND THEY CHECK THE READ: every play with both a reading and a stamp gives a difference;
     # the median is the stream's ingest delay (a constant), the spread says whether the read
     # holds together. Both are kept on the track for the page and the dashboard.
@@ -576,9 +696,89 @@ def read_track(video_path, pbp, cfg, mode, progress, should_stop, hints=None):
     return track
 
 
+# ---------------------------------------------------------------- is this reading worth storing?
+# A SCORE-MODE TRACK HAS TO EARN ITS PLACE, BECAUSE THE PAGE PREFERS IT TO EVERYTHING ELSE.
+#
+# In score mode the readings ARE the baskets: every observed change of the overlay is matched
+# against the log's own score sequence and becomes a (period, clock) at that second of footage.
+# When the overlay is read well that is the best anchor there is. When it is barely read at all
+# the result is still a track -- one reading, confidence zero -- and it was written anyway, where
+# it sat in front of every other way of placing a play for the life of the row.
+#
+# Calibrated on the tracks actually stored (2026-09-13):
+#     52bfe03b   1 of 6 changes matched, conf 0      -> refused (the game this ticket is about)
+#     7f424d2f   1 of 3 changes matched, conf 0.085  -> refused
+#     a40d3cef  44 of 62 (0.71)                      -> kept
+#     4e5b98e9  72 of 85 (0.85)                      -> kept
+#     4f60a6be  74 of 78 (0.95)                      -> kept
+#     c998d920  88 of 90 (0.98)                      -> kept
+SCORE_MIN_MATCHED = 5
+SCORE_MIN_SEEN_FRAC = 0.5
+SCORE_MIN_CONF = 0.3        # the same floor epinoia/video.js saneTrack applies to a reading
+
+
+def score_track_earns_it(track, pbp, CK):
+    """(ok, reason) for a score-mode track. reason is the sentence for the log and the job row."""
+    matched = int(track.get('matched') or 0)
+    seen = int(track.get('changes_seen') or 0)
+    samples = track.get('samples') or []
+    if matched < SCORE_MIN_MATCHED:
+        return False, 'only %d score change%s could be matched to the log (%d needed)' % (
+            matched, '' if matched == 1 else 's', SCORE_MIN_MATCHED)
+    if seen > 0 and matched < seen * SCORE_MIN_SEEN_FRAC:
+        return False, 'only %d of the %d score changes seen on the overlay belong to this game' % (matched, seen)
+    if not any((s.get('conf') is not None and float(s['conf']) >= SCORE_MIN_CONF) for s in samples):
+        return False, 'no reading was made with any confidence (all under %.1f)' % SCORE_MIN_CONF
+    # ...AND THE SCORE IT CLIMBED TO HAS TO BE A SCORE THIS GAME REACHED.
+    #
+    # Deliberately "did not go past the final score" rather than "equals the final score". A
+    # reading legitimately stops early: 4e5b98e9 read the overlay cleanly for all four quarters
+    # and the game then went to overtime, so its top reading is the end of the fourth and never
+    # the final score. Demanding equality would throw away a track that places 83 plays right.
+    # Reading HIGHER than the game ever got is the thing that cannot be explained -- a different
+    # fixture on the same channel, or a transposed pair -- and that is what is refused.
+    try:
+        final = None
+        for per, ms_, h, a in (CK.pbp_score_events(pbp) if pbp else []):
+            final = (h, a)
+        tops = [s['score'] for s in samples if isinstance(s.get('score'), (list, tuple)) and len(s['score']) == 2]
+        if final and tops:
+            top = max(tops, key=lambda p: (p[0] or 0) + (p[1] or 0))
+            if top[0] > final[0] or top[1] > final[1]:
+                return False, 'the overlay was read up to %d-%d, and this game finished %d-%d' % (
+                    top[0], top[1], final[0], final[1])
+    except Exception as exc:
+        log('  (could not check the read score against the log: %s)' % exc)
+    return True, '%d of %d score changes matched' % (matched, seen)
+
+
+def track_coverage(track):
+    """What this reading actually covers, stored beside it so a page (and the video hub) can say
+    so without re-deriving it. No migration: it lives inside the clock_track JSON."""
+    samples = track.get('samples') or []
+    win = track.get('read_window') or {}
+    dur = track.get('video_s')
+    lo = float(win.get('start_s') or 0.0)
+    hi = float(win.get('end_s')) if win.get('end_s') else (float(dur) if dur else None)
+    cov = {'worker': VERSION,
+           'read_from_s': round(lo, 1),
+           'read_to_s': round(hi, 1) if hi is not None else None,
+           'video_s': dur,
+           'samples': len(samples),
+           'sure_samples': len([s for s in samples if s.get('conf') is None or float(s['conf']) >= SCORE_MIN_CONF]),
+           'periods': sorted({s['period'] for s in samples if s.get('period') is not None})}
+    if dur and hi is not None and float(dur) > 0:
+        cov['read_frac'] = round(max(0.0, min(1.0, (hi - lo) / float(dur))), 3)
+    runs = track.get('runs') or []
+    cov['run_periods'] = sorted({r['period'] for r in runs if isinstance(r, dict) and r.get('period') is not None})
+    return cov
+
+
 def slim_track(track):
     """What the page stores: the readings and how they were made, not the diagnostics."""
-    keep = ('t', 'period', 'clock_ms', 'conf', 'how', 'err_ms')
+    # 'score' rides along now: in score mode the reading IS a score, and a track nobody can
+    # audit is a track nobody can argue with. Two small integers per sample.
+    keep = ('t', 'period', 'clock_ms', 'conf', 'how', 'err_ms', 'score')
     samples = [{k: s[k] for k in keep if k in s} for s in track.get('samples') or []]
     out = {'format': 'epinoia-clock-track/1', 'source': '%s via %s' % (track.get('source', 'clock.py'), VERSION),
            'mode': track.get('mode'), 'video': track.get('video'), 'samples': samples}
@@ -591,12 +791,16 @@ def slim_track(track):
     # THE CLOCK'S RUNS go with the readings: the page seeks by them and follows minutes by them
     if track.get('mode') != 'score':
         runs = track.get('runs')
-        if runs is None and hasattr(CK, 'runs_from_samples'):
-            runs = CK.runs_from_samples(samples)
+        # the skill module under whatever name it was imported as -- this referred to a bare CK
+        # that exists only inside skill(), so the fallback raised NameError instead of running
+        ck = sys.modules.get('clock')
+        if runs is None and ck is not None and hasattr(ck, 'runs_from_samples'):
+            runs = ck.runs_from_samples(samples)
         if runs:
             out['runs'] = runs
     if track.get('matched') is not None:
         out['matched'] = track['matched']; out['changes_seen'] = track.get('changes_seen')
+    out['coverage'] = track_coverage(dict(track, runs=out.get('runs')))
     return out
 
 
@@ -790,22 +994,38 @@ class Job(object):
             if mode == 'score' and not pbp:
                 raise RuntimeError('score mode needs the play-by-play, and this game has no archived FIBA log')
             self.report('reading', 0, 1, 'looking at the picture')
-            hints = wall_hints(db, game_id, log)
-            track = read_track(video_path, pbp, cfg, mode, self.report, self.stop, hints=hints)
+            hint_ctx = {}
+            hints = wall_hints(db, game_id, log, context=hint_ctx)
+            track = read_track(video_path, pbp, cfg, mode, self.report, self.stop, hints=hints, hint_ctx=hint_ctx)
             if self.stop():
                 raise KeyboardInterrupt('cancelled')
             used = track.get('mode')
+            # A SCORE READING THAT MATCHED ALMOST NOTHING IS NOT A READING. Refused before it is
+            # written, because once written the page prefers it to every other anchor; the wall
+            # stamps below are then given their ordinary chance at the game.
+            if used == 'score' and track.get('samples'):
+                okay, why = score_track_earns_it(track, pbp, skill(cfg))
+                if not okay:
+                    log('  score reading refused: %s' % why)
+                    track['refused'] = why
+                    track['samples'] = []
+            refused = track.get('refused')
             if not track.get('samples') and len(hints) >= 8:
                 # the picture gave nothing; the broadcast's own clock still places every play
+                window, dur = track.get('read_window'), track.get('video_s')
                 track = wall_track(hints, video_path, skill(cfg)); used = 'wall'
+                # what was LOOKED at is a fact about the job, not about which track won it
+                track['read_window'], track['video_s'] = window, dur
                 log('  no readable overlay; placing %d plays by the wall stamps instead' % len(track['samples']))
             if not track.get('samples'):
-                raise RuntimeError('nothing readable: ' + (track.get('note') or 'the reader found no clock and no score it could match'))
+                raise RuntimeError('nothing readable: ' + (refused or track.get('note') or
+                                                           'the reader found no clock and no score it could match'))
             slim = write_track(db, game_id, track, row.get('video_url'))
             periods = sorted({s['period'] for s in slim['samples']})
             result = {'samples': len(slim['samples']), 'periods': periods, 'mode': used,
                       'matched': track.get('matched'), 'seen': track.get('changes_seen'), 'fusion': track.get('fusion'),
-                      'probe': track.get('probe'), 'wall_check': track.get('wall_check'), 'wall_hints': len(hints)}
+                      'probe': track.get('probe'), 'wall_check': track.get('wall_check'), 'wall_hints': len(hints),
+                      'coverage': slim.get('coverage'), 'refused': refused}
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'mode_used': used, 'result': result,
                                                             'progress': dict(self.progress, stage='track saved')})
             log('  track saved: %d readings, periods %s, mode %s' % (result['samples'], periods, used))
@@ -907,17 +1127,77 @@ def setup(path):
 _last_backfill = 0.0
 
 
+# WHEN A TRACK THAT ALREADY EXISTS IS STILL WORTH READING AGAIN.
+#
+# The backfill asked only for rows with NO track, so a game read badly was read badly for ever:
+# 106394dc holds 69 readings covering 6% of its broadcast and would never have been looked at
+# again, because something is stored and 'done' is 'done'. Two reasons to go back:
+#
+#   the coverage is poor  -- the reading never saw most of the footage (the window bug above);
+#   an older worker wrote it -- this worker reads differently, so its answer is a different one.
+#
+# Neither reason can terminate on its own: a broadcast this worker genuinely cannot read will
+# store poor coverage again every time, and the backfill runs hourly. So the reasons say whether
+# a second look is WORTH taking and may_queue says how many are allowed -- two readings of one
+# piece of footage, after which its answer stands whatever it is.
+#
+# scripts/ingest/run_ingest.py has the same enqueue gate and wants the same relaxation. It is
+# being rewritten by another session as this is written, so it is deliberately left alone here
+# rather than edited into a conflict.
+REREAD_MIN_FRAC = 0.5
+REREAD_MAX_DONE = 2
+
+
+def wants_reread(track):
+    """(True, why) when a stored track is thin enough to be worth reading again with this worker."""
+    if not isinstance(track, dict) or not track:
+        return True, 'the reading that was stored is no longer on the row'
+    cov = track.get('coverage') or {}
+    worker = cov.get('worker')
+    if worker != VERSION:
+        return True, 'read by %s' % (worker or 'a worker that stored no coverage summary')
+    frac = cov.get('read_frac')
+    if frac is not None and float(frac) < REREAD_MIN_FRAC:
+        return True, 'only %d%% of the footage was read' % round(float(frac) * 100)
+    return False, ''
+
+
+def may_queue(track, statuses):
+    """(queue?, why) for one game's footage, given the status of every job already run against
+    THAT footage. The only place the backfill decides anything."""
+    if any(s in ('queued', 'claimed', 'running') for s in statuses):
+        return False, ''
+    # unchanged: two failures is enough, whatever the reason
+    if len([s for s in statuses if s in ('failed', 'cancelled')]) >= 2:
+        return False, ''
+    done = len([s for s in statuses if s == 'done'])
+    if not done:
+        return True, ''                      # never read: the original rule
+    again, why = wants_reread(track)
+    if not again:
+        return False, ''
+    if done >= REREAD_MAX_DONE:
+        return False, ''                     # read twice already; this answer stands
+    return True, why
+
+
 def backfill(db, cfg):
-    """Every final game with a stream attached and no clock track, tipped off within backfill_days,
-    gets a job -- so nothing needs a button, not even games that finished before the worker existed."""
+    """Every final game with a stream attached and no usable clock track, tipped off within
+    backfill_days, gets a job -- so nothing needs a button, not even games that finished before
+    the worker existed, and not even games an older worker read badly."""
     global _last_backfill
     if not cfg.get('backfill') or time.time() - _last_backfill < 3600:
         return 0
     _last_backfill = time.time()
     # 'Z', not '+00:00': a plus sign inside a URL query is a space
     since = datetime.fromtimestamp(time.time() - 86400 * float(cfg.get('backfill_days') or 21), timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    rows = db.select('game_videos', 'select=game_id,url,games!inner(status,tipoff_at)&is_primary=eq.true'
-                                    '&clock_track=is.null&url=neq.&games.status=eq.final&games.tipoff_at=gte.' + since)
+    # the clock_track comes back with the row now: whether a stored reading is worth repeating
+    # is a question about what is INSIDE that JSON, and PostgREST cannot weigh it. The whole
+    # column rather than clock_track->coverage, because a track with no coverage key at all is
+    # exactly the case this has to recognise -- a few megabytes once an hour for a few dozen
+    # games, against a game read badly staying read badly for ever.
+    rows = db.select('game_videos', 'select=game_id,url,clock_track,games!inner(status,tipoff_at)&is_primary=eq.true'
+                                    '&url=neq.&games.status=eq.final&games.tipoff_at=gte.' + since)
     if not rows:
         return 0
     ids = ','.join(r['game_id'] for r in rows)
@@ -926,22 +1206,24 @@ def backfill(db, cfg):
     # clears its track) is new footage, and gets its own read
     url_of = {r['game_id']: r['url'] for r in rows}
     have = [j for j in have if j.get('video_url') == url_of.get(j['game_id'])]
-    blocked = {j['game_id'] for j in have if j['status'] in ('queued', 'claimed', 'running', 'done')}
-    tries = {}
+    statuses = {}
     for j in have:
-        if j['status'] in ('failed', 'cancelled'):
-            tries[j['game_id']] = tries.get(j['game_id'], 0) + 1
-    n = 0
+        statuses.setdefault(j['game_id'], []).append(j['status'])
+    n, again = 0, 0
     for r in rows:
         g = r['game_id']
-        if g in blocked or tries.get(g, 0) >= 2:
+        queue, why = may_queue(r.get('clock_track'), statuses.get(g, []))
+        if not queue:
             continue
         requests.post('%s/rest/v1/video_jobs' % db.url, headers=dict(db.h, Prefer='return=minimal'),
                       json={'game_id': g, 'video_url': r['url'], 'mode_requested': 'auto', 'requested_via': 'worker'},
                       timeout=30).raise_for_status()
         n += 1
+        if why:
+            again += 1
+            log('  re-reading %s: %s' % (g[:8], why))
     if n:
-        log('queued %d final game(s) with a stream and no track' % n)
+        log('queued %d final game(s) with a stream: %d never read, %d worth reading again' % (n, n - again, again))
     return n
 
 
