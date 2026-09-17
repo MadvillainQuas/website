@@ -193,7 +193,7 @@ if (!existsSync(wfPath)) {
 }
 
 /* ---------------------------------------------------------------------- icons --- */
-/* THE ICONS ARE PNGs, one per density, from tools/build-android-icons.py. A missing density still
+/* THE ICONS ARE PNGs, one per density, from tools/build-brand-icons.py. A missing density still
    builds (Android scales another), so the cheap mistakes here are a size that is not the one the
    density needs, a leftover .xml of the same name in drawable/ or mipmap/ (a vector would then win
    on some phones and the old Λ come back), and a manifest or theme naming something that is gone. */
@@ -242,7 +242,7 @@ console.log('\n-- android/app/src/main/res: every icon at every density, and not
     + read(...RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml');
   ok('nothing still names the old flat background colour or the vector foreground',
      !/@color\/ic_launcher_background|@drawable\/ic_launcher_foreground/.test(iconXml));
-  ok('the logo the icons are built from is committed', !!pngSize('android', 'icon', 'epinoia-logo.png'));
+  ok('the mark the icons are built from is committed', !!pngSize('brand-source', 'mark.png'));
   ok('the store icon is a 512 px 32-bit PNG, as Play Console asks',
      sized(512, 'android', 'store', 'icon-512.png') && readFileSync(file('android', 'store', 'icon-512.png'))[25] === 6);
   ok('the download page and the app banners have the icon at 192 and 384 px',

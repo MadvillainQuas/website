@@ -478,8 +478,18 @@
 
      This layer is where the rail now starts, and the countries are one step
      in from it rather than the top of the tree. */
-  const htitle = el('a', 'ptitle', 'EPINOIΛ');
+  /* THE MARK ITSELF, at the head of the rail — the one place the drawn logo can
+     sit on every page without competing with a league's own crest: small, in
+     front of the logotype, the way a masthead carries a device. */
+  const htitle = el('a', 'ptitle');
   htitle.classList.add('epinoia-mark');
+  const hmark = el('img');
+  hmark.src = root + 'brand/mark-256.png';
+  hmark.alt = '';
+  hmark.width = 22;
+  hmark.height = 22;
+  hmark.className = 'ep-brandmark';
+  htitle.append(hmark, el('span', 'wm', 'EPINOIΛ'));
   htitle.href = root + 'home/';
   htitle.title = 'HOME — every league, today’s fixtures, the best players';
   if (atHome) { htitle.classList.add('on'); htitle.setAttribute('aria-current', 'page'); }

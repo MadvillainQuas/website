@@ -36,7 +36,7 @@ android/
     Channels.java                      creates epinoia_alerts and reports its importance
     NotificationSettingsActivity.java  the native settings screen (epinoia://notification-settings)
   app/src/main/res/                    icons and splash (PNG per density), colours, strings, themes
-  icon/epinoia-logo.png                the logo every icon is built from
+  (icons are built from brand-source/mark.png at the repository root)
   store/icon-512.png                   Play Console's store icon
 ```
 
@@ -48,10 +48,10 @@ Windows loses its executable bit.
 
 ## The icon
 
-Every icon PNG is generated from `icon/epinoia-logo.png` by `tools/build-android-icons.py`: the
+Every icon PNG is generated from `brand-source/mark.png` by `tools/build-brand-icons.py`: the
 launcher icon (adaptive, themed on Android 13+), the legacy icons for Android 6 and 7, the splash
 mark, the store icon and the download page's icon. To change the logo, replace that file, run the
-script from the repository root (`python tools/build-android-icons.py`, needs numpy, Pillow and
+script from the repository root (`python tools/build-brand-icons.py`, needs numpy, Pillow and
 scipy), raise `versionCode` in `epinoia/android/version.json`, and push. A new icon only reaches
 phones in a new APK. The notification icon, `drawable/ic_stat_epinoia.xml`, stays the Λ
 silhouette: a wordmark cannot be read at 24 dp.

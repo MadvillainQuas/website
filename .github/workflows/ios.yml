@@ -33,7 +33,7 @@ on:
     paths:
       - 'ios/**'
       - 'epinoia/ios/version.json'
-      - 'tools/build-ios-icons.py'
+      - 'tools/build-brand-icons.py'
       - '.github/workflows/ios.yml'
   workflow_dispatch:
 
@@ -90,11 +90,11 @@ jobs:
           props=$(sips -g pixelWidth -g pixelHeight -g hasAlpha "$icon")
           echo "$props"
           if ! grep -q 'pixelWidth: 1024' <<< "$props" || ! grep -q 'pixelHeight: 1024' <<< "$props"; then
-            echo "::error file=$icon::The App Store icon must be 1024x1024. Run python tools/build-ios-icons.py."
+            echo "::error file=$icon::The App Store icon must be 1024x1024. Run python tools/build-brand-icons.py."
             exit 1
           fi
           if grep -q 'hasAlpha: yes' <<< "$props"; then
-            echo "::error file=$icon::The App Store icon has an alpha channel, which App Store Connect rejects. Run python tools/build-ios-icons.py."
+            echo "::error file=$icon::The App Store icon has an alpha channel, which App Store Connect rejects. Run python tools/build-brand-icons.py."
             exit 1
           fi
 

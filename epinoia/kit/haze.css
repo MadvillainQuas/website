@@ -30,9 +30,18 @@
          one for going out at the far one. Each is confined to its own range,
          and outside it holds the settled frame — so a block in the middle of
          the screen is at full strength from both. */
-      animation: hz-near linear both, hz-far linear both;
+      /* IT HAS TO BE BLANK FIRST, OR IT IS NOT A POP. Fading gently across most
+         of the entry was too polite to notice: by the time a block cleared the
+         edge it was already half drawn, so nothing ever appeared to arrive.
+
+         Now nothing shows until the block is properly on screen (entry 10%) and
+         it is fully there by a little past halfway (55%) — blank, then present.
+         The easing does the rest: most of the travel is spent in the first part
+         of that window, so it lands and settles rather than sliding. */
+      animation: hz-near cubic-bezier(.17,.84,.32,1) both,
+                 hz-far cubic-bezier(.4,0,.7,.2) both;
       animation-timeline: view(), view();
-      animation-range: entry 0% entry 72%, exit 28% exit 100%;
+      animation-range: entry 10% entry 55%, exit 45% exit 92%;
       /* NO will-change here. A page can carry three hundred of these, and a
          compositor layer each would cost more memory than the effect is worth;
          a scroll-driven animation is already handled off the main thread. */
@@ -46,13 +55,19 @@
   }
 }
 
+/* OUT OF NOTHING: no opacity at all, sunk and slightly small, then up to full.
+   The opacity arrives ahead of the travel (1 by 55% of the animation) so the
+   block is solid while it is still settling the last few pixels — that is what
+   reads as landing rather than as sliding into place. */
 @keyframes hz-near{
-  from{ opacity:0; transform:translate3d(0, 26px, 0) scale(.988) }
+  from{ opacity:0; transform:translate3d(0, 52px, 0) scale(.94) }
+  55% { opacity:1 }
   to  { opacity:1; transform:none }
 }
 @keyframes hz-far{
   from{ opacity:1; transform:none }
-  to  { opacity:0; transform:translate3d(0, -20px, 0) scale(.992) }
+  45% { opacity:1 }
+  to  { opacity:0; transform:translate3d(0, -34px, 0) scale(.96) }
 }
 
 /* Nothing to fade into on paper. */

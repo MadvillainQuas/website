@@ -20,21 +20,27 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
      script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
-<script src="../appmode.js?v=288"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=288">
-<link rel="stylesheet" href="../kit/nav.css?v=288">
-<link rel="stylesheet" href="../kit/card.css?v=288">
-<link rel="stylesheet" href="../kit/home.css?v=288">
-<link rel="stylesheet" href="../kit/fxc.css?v=288">
-<link rel="stylesheet" href="stars.css?v=288">
-<link rel="stylesheet" href="leagues.css?v=288">
-<link rel="stylesheet" href="../kit/haze.css?v=288">
+<script src="../appmode.js?v=289"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=289">
+<link rel="stylesheet" href="../kit/nav.css?v=289">
+<link rel="stylesheet" href="../kit/card.css?v=289">
+<link rel="stylesheet" href="../kit/home.css?v=289">
+<link rel="stylesheet" href="../kit/fxc.css?v=289">
+<link rel="stylesheet" href="stars.css?v=289">
+<link rel="stylesheet" href="leagues.css?v=289">
+<link rel="stylesheet" href="../kit/haze.css?v=289">
 </head>
 <body data-haze>
 <div class="ep-frame hm">
 
   <header class="hm-hero">
-    <h1 class="wordmark epinoia-mark" aria-label="Epinoia">EPINOIΛ</h1>
+    <!-- THE REAL LOGOTYPE, not the site's approximation of it. Everywhere else
+         EPINOIΛ is set in epinoia-mark.woff2 — Archivo at logotype weight with a
+         flipped V for the lambda, built because no self-hosted face carries one.
+         It is a good stand-in at 11px in a rail; at 96px on the platform's front
+         door it is a stand-in, and the drawn wordmark is right there. -->
+    <h1 class="hm-word"><img src="../brand/wordmark-1280.png" alt="Epinoia"
+         width="1280" height="211" fetchpriority="high"></h1>
   </header>
 
   <!-- the 'Get the Android app' card, drawn by front.js for Android browsers only (never in the app,
@@ -107,23 +113,23 @@
     </div>
   </footer>
 </div>
-<script src="../config.js?v=288" defer></script>
-<script src="../season.js?v=288" defer></script>
-<script src="../bpm.js?v=288" defer></script>
-<script src="../data.js?v=288" defer></script>
-<script src="../teamcolour.js?v=288" defer></script>
-<script src="../rt.js?v=288" defer></script>
-<script src="../initials.js?v=288" defer></script>
-<script src="../globalgames.js?v=288" defer></script>
-<script src="../stars.js?v=288" defer></script>
-<script src="../country.js?v=288" defer></script>
-<script src="front.js?v=288" defer></script>
-<script src="daily.js?v=288" defer></script>
-<script src="stars-home.js?v=288" defer></script>
-<script src="leagues.js?v=288" defer></script>
+<script src="../config.js?v=289" defer></script>
+<script src="../season.js?v=289" defer></script>
+<script src="../bpm.js?v=289" defer></script>
+<script src="../data.js?v=289" defer></script>
+<script src="../teamcolour.js?v=289" defer></script>
+<script src="../rt.js?v=289" defer></script>
+<script src="../initials.js?v=289" defer></script>
+<script src="../globalgames.js?v=289" defer></script>
+<script src="../stars.js?v=289" defer></script>
+<script src="../country.js?v=289" defer></script>
+<script src="front.js?v=289" defer></script>
+<script src="daily.js?v=289" defer></script>
+<script src="stars-home.js?v=289" defer></script>
+<script src="leagues.js?v=289" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="../haze.js?v=288" defer></script>
-<script src="../nav.js?v=288" defer></script>
-<script src="../xscroll.js?v=288" defer></script>
+<script src="../haze.js?v=289" defer></script>
+<script src="../nav.js?v=289" defer></script>
+<script src="../xscroll.js?v=289" defer></script>
 </body>
 </html>

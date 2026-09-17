@@ -60,15 +60,15 @@ this repo is edited on. `project.yml` is the source; CI and a Mac both run `xcod
 
 ## The icon
 
-Every PNG is generated from `android/icon/epinoia-logo.png` by `tools/build-ios-icons.py`, with the
-same gradient refit as `tools/build-android-icons.py`, so the iPhone app, the Android app and the web
+Every PNG is generated from `brand-source/mark.png` by `tools/build-brand-icons.py`, with the
+same script that draws the Android and web icons, so the iPhone app, the Android app and the web
 app's icons share one blue. It writes the App Store icon, the launch mark and the download page's
 `epinoia/ios/icon-192.png` and `icon-384.png`. The store icon is a full square: iOS applies its own
 corner mask everywhere, and App Store Connect rejects a 1024 px icon with an alpha channel
 (ITMS-90717), so it is saved as plain RGB. CI checks both.
 
-To change the logo, replace `android/icon/epinoia-logo.png`, run both scripts from the repository
-root (`python tools/build-ios-icons.py`, needs numpy, Pillow and scipy), raise `build` in
+To change the logo, replace `brand-source/mark.png`, run the script from the repository
+root (`python tools/build-brand-icons.py`, needs numpy and Pillow), raise `build` in
 `epinoia/ios/version.json`, and push. A new icon only reaches phones in a new build.
 
 ## How notifications work
@@ -198,7 +198,7 @@ no comments on purpose: it is copied into the app as it is and parsed by App Sto
 
 `.github/workflows/ios.yml` (outside this folder) does everything, on `macos-26` with the newest
 stable Xcode. On every push that touches `ios/`, `epinoia/ios/version.json`,
-`tools/build-ios-icons.py` or the workflow:
+`tools/build-brand-icons.py` or the workflow:
 
 1. **Checks** the plists and asset catalog JSON parse, the store icon is 1024 px with no alpha,
    `aps-environment` is `production`, and `version.json` has a positive integer `build` and an
