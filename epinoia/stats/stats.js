@@ -20,6 +20,8 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const accessReady = (A && typeof A.load === 'function')
       ? Promise.resolve().then(() => A.load({ leagueId: league.id })).catch(() => null)
       : Promise.resolve(null);
+    /* the rail marks the league, and the page wears its colours (nav.js) */
+    window.__CS_LEAGUE_SLUG = league.slug;
     $('#ctx').textContent = league.name;
     $('#title').textContent = league.name + ' — season statistics';
     /* the route to team stats: the league page's Team Stats tab, for THIS league

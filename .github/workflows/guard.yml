@@ -270,6 +270,12 @@ jobs:
         # the site's requests alone; every function called exists
         run: node supabase/tests/notify-embed.test.mjs
 
+      - name: Every page about a league wears its colours
+        # fixtures, statistics, WOWY, news, a game and joining are painted by nav.js;
+        # club and player profiles keep their club's colours; a league's own accent
+        # wins; a page that changes league takes the last one's colours off
+        run: node supabase/tests/league-theme-pages.test.mjs
+
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
         # database (0126) share one rule, tested against the same names

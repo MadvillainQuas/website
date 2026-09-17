@@ -52,6 +52,12 @@
   if (atSplash) return;
 
   const here = location.pathname.replace(/\/index\.html$/, '/');
+  /* this file's own ?v= stamp, so a script it loads later is the same build */
+  const stamp = (() => {
+    const me = document.currentScript;
+    const m = me && /[?&]v=(\d+)/.exec(me.src || '');
+    return m ? '?v=' + m[1] : '';
+  })();
   /* Climb back to /epinoia/ by counting the directories below it, rather than
      assuming one. Subpages exist (stats/wowy/), and a hard-coded '../'
      silently pointed them at their parent, which resolved to a real URL and so
@@ -892,7 +898,7 @@
     if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
     try {
       const r = await fetch(cfg.supabaseUrl +
-        '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,logo_path,country,nav&order=name',
+        '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,colour_source,theme,logo_path,country,nav&order=name',
         { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
       if (!r.ok) throw new Error(String(r.status));
       leagues = await r.json();
@@ -909,6 +915,55 @@
     /* named before the leagues are drawn, so the header is never briefly blank */
     fillCountryHead(country === null ? '' : country);
     drawLeagues();
+    themeLeague();
+  }
+
+  /* ------------------------------------------------ the league's colours ---
+     EVERY PAGE ABOUT A LEAGUE WEARS THE LEAGUE'S COLOURS (0122's theme: --league-a/-b,
+     their inks, body.league-themed, and the kit's accent). The front page and the hub
+     paint them themselves (home.js, l/league.js). Every other page that is about one
+     league — its fixtures, statistics, WOWY, news, a game, joining it — is painted from
+     here, the one script all of them load, as soon as both the page's league and the
+     league's row are known: from ?l=, or from the __CS_LEAGUE_SLUG a page sets once it
+     has worked its league out. A league that picked its own accent in Appearance keeps
+     it, as on its hub.
+
+     NOT a club's page or a player's: those wear the CLUB's colours (teamcolour.js
+     apply). And not the platform's own tools (the console, the scorer, the broadcast
+     room, a profile), which are nobody's league. teamcolour.js is loaded only when a
+     page needs it and has not loaded it already, at this file's own stamp. */
+  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|join)\//;
+  const CLUB_PAGE = /\/epinoia\/(t|p)\//;
+  let themedFor = '';
+  let teamColour = null;
+  function loadTeamColour() {
+    if (window.EpinoiaTeamColour) return Promise.resolve(window.EpinoiaTeamColour);
+    if (!teamColour) {
+      teamColour = new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = root + 'teamcolour.js' + stamp;
+        s.onload = () => resolve(window.EpinoiaTeamColour || null);
+        s.onerror = () => resolve(null);
+        (document.head || document.documentElement).appendChild(s);
+      });
+    }
+    return teamColour;
+  }
+  function themeLeague() {
+    if (!LEAGUE_PAGE.test(here) || CLUB_PAGE.test(here)) return;
+    const l = pageLeague ? leagues.find(x => x.slug === pageLeague) : null;
+    const want = l ? l.slug : '';
+    if (want === themedFor) return;
+    themedFor = want;
+    loadTeamColour().then(TC => {
+      if (!TC || themedFor !== want) return;            // the page moved on while this loaded
+      if (typeof TC.clearLeague === 'function') TC.clearLeague();
+      if (!l || typeof TC.league !== 'function') return;
+      const ownAccent = l.theme && /^#[0-9a-f]{6}$/i.test(l.theme.accent || '') ? l.theme.accent : null;
+      Promise.resolve(TC.league(l, { keepAccent: !!ownAccent })).then(() => {
+        if (ownAccent && themedFor === want) document.documentElement.style.setProperty('--lume', ownAccent);
+      });
+    });
   }
 
   function drawLeagues() {
@@ -1245,6 +1300,7 @@
         if (l) { fillHeader(l); setView('league', false); }
         else { setView('root', false); }
         applyAuth();                 // role gating is league-scoped
+        themeLeague();               // and the page wears that league's colours
       }
     });
   } catch (e) { /* a page that froze the global keeps the rail it was built with */ }

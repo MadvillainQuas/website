@@ -201,6 +201,19 @@
     return true;
   }
 
+  /* Everything paintLeague set, taken off again: a page that changes the league it is about
+     must not keep wearing the last one's colours. --lume goes back to the kit's. */
+  const LEAGUE_PROPS = ['--league-a', '--league-b', '--league-a-ink', '--league-b-ink', '--league-on-a', '--league-on-b'];
+  function clearLeague() {
+    if (typeof document === 'undefined' || !document.body) return false;
+    const s = document.documentElement.style;
+    const was = document.body.classList.contains('league-themed');
+    LEAGUE_PROPS.forEach(p => s.removeProperty(p));
+    if (was) s.removeProperty('--lume');
+    document.body.classList.remove('league-themed');
+    return was;
+  }
+
   function league(row, opts) {
     if (!row || typeof document === 'undefined') return Promise.resolve(false);
     const src = row.colour_source;
@@ -286,5 +299,5 @@
     else syncEmbeds();
   }
 
-  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, colourway, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, clearLeague, colourway, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

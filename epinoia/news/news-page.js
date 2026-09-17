@@ -104,6 +104,8 @@ const imgUrl = p => /^https?:\/\//.test(p || '') ? p
   }
 
   document.title = 'News · ' + league.name;
+  /* the rail marks the league, and the page wears its colours (nav.js) */
+  window.__CS_LEAGUE_SLUG = league.slug;
   $('#leagueName').textContent = league.name;
   if (league.colour_a) {
     document.documentElement.style.setProperty('--team-a', league.colour_a);

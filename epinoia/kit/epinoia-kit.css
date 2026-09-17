@@ -574,6 +574,17 @@ body.league-themed .ep-tab.on,
 body.league-themed .ep-chip.on{ border-color:var(--league-a); color:var(--league-a-ink);
   background:color-mix(in oklch,var(--league-a) 18%,transparent) }
 :root[data-theme="light"] body.league-themed .ep-chip.on{ background:var(--league-a); border-color:var(--league-a); color:var(--league-on-a) }
+/* A LEAGUE PAGE'S HEADING. nav.js paints the league's colours on every page about one league
+   (its fixtures, statistics, WOWY, news, joining it, a game), and each of those opens with a
+   .hero: it takes the wash and the trim the front page and the hub give their own headings,
+   and its title the league's two inks in place of the platform's mint and aqua. (The front
+   page and the hub also trim theirs in their own stylesheets; the rules agree.) */
+body.league-themed .hero{ position:relative; border-bottom-color:transparent;
+  background:linear-gradient(120deg, color-mix(in srgb,var(--league-a) 26%,var(--ground)) 0%,
+                                     color-mix(in srgb,var(--league-a) 8%,var(--ground)) 55%, transparent 100%) }
+body.league-themed .hero::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; pointer-events:none;
+  background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%) }
+body.league-themed .hero h1{ background-image:linear-gradient(100deg,var(--league-a-ink),var(--league-b-ink)) }
 /* the trim: a band of the primary with the secondary's stripe at its end, as a club's page has */
 .league-trim{ display:none }
 body.league-themed .league-trim{ display:block; height:3px;
