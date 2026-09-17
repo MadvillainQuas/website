@@ -824,6 +824,23 @@ async function merch(roster, star) {
   if (ok) sec.classList.remove('hide');
 }
 
+/* THE PAGE'S COLOURWAY IN AN EMBED'S URL, so its first paint already matches: light or dark as the
+   page is, and the league's own colours when somebody vouched for them (0122). teamcolour.js then
+   keeps every embed on the page in step as the page changes (a reader's light/dark, colours read
+   from a logo after the page has painted). */
+function embedLook() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  let q = '&theme=' + (light ? 'light' : 'dark');
+  const L = LEAGUE || {};
+  const hex = v => /^#[0-9a-f]{6}$/i.test(v || '') ? v : null;
+  if ((L.colour_source === 'logo' || L.colour_source === 'manual') && hex(L.colour_a) &&
+      L.colour_a.toLowerCase() !== '#93f2bf') {
+    q += '&accent=' + encodeURIComponent(L.colour_a);
+    if (hex(L.colour_b)) q += '&accent2=' + encodeURIComponent(L.colour_b);
+  }
+  return q;
+}
+
 /* ------------------------------------------------------------ the splash ---
    A league's own front page: its table and its leaders, side by side, each a
    real embed rather than a bespoke copy — the same widget other sites get, so
@@ -840,8 +857,8 @@ function splash() {
   const table = 'l/?l=' + slug;
 
   const grid = el('div', 'splitgrid');
-  [['Table', 'embed/table/?l=' + slug + '&kind=standings&n=12', table],
-   ['Leaders', 'embed/table/?l=' + slug + '&kind=leaders&stat=ppg&n=10', table + '#leaders']]
+  [['Table', 'embed/table/?l=' + slug + '&kind=standings&n=12' + embedLook(), table],
+   ['Leaders', 'embed/table/?l=' + slug + '&kind=leaders&stat=ppg&n=10' + embedLook(), table + '#leaders']]
     .forEach(([title, src, href]) => {
       const card = el('div', 'embedcard');
       const h = el('div', 'embedhead');
@@ -1154,9 +1171,8 @@ function renumber() {
     applyTheme(LEAGUE.theme);
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
-    /* the strip is an embed with its own theme switch; it takes the page's */
-    const light = document.documentElement.getAttribute('data-theme') === 'light';
-    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + (light ? '&theme=light' : '');
+    /* the strip opens in the page's colourway, and teamcolour.js keeps it there */
+    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
 
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';

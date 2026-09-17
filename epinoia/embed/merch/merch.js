@@ -33,15 +33,8 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 const $ = s => document.querySelector(s);
 
-/* Appearance from the query string, validated before it is used: these strings
-   arrive from a URL on somebody else's page, and writing one unchecked into a
-   style is how a widget becomes an injection point. */
-(function appearance() {
-  const hex = v => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(v || '') ? v : null;
-  const a = hex(qp.get('accent'));
-  if (a) document.body.style.setProperty('--ep-accent', a);
-  if (qp.get('theme') === 'light') document.body.dataset.theme = 'light';
-})();
+/* Light or dark, the club's colours and the host page's colourway: ../theme.js, shared by every
+   embed. */
 
 async function api(path) {
   const r = await fetch(CFG.supabaseUrl + '/rest/v1/' + path,

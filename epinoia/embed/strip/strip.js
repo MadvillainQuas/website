@@ -83,7 +83,7 @@ async function siteConfig() {
   wantLeague = c.league_slug || '';
   wantTeam = c.team_slug || '';
   if (c.max_items && !limitFromUrl) limit = Math.min(c.max_items, 40);
-  if (c.theme === 'light') document.body.setAttribute('data-theme', 'light');
+  if (c.theme === 'light' && window.EpinoiaEmbedTheme && !window.EpinoiaEmbedTheme.isHostDriven()) window.EpinoiaEmbedTheme.setTheme('light');
 }
 /* THE POLL IS NOW THE SAFETY NET, NOT THE LIVE PATH.
 
@@ -117,51 +117,9 @@ const POLL_LIVE_MS = 4000;
    wifi. */
 const POLL_PRIMED_MS = 6000;
 
-/* Appearance from the query string.
-
-   ?theme=light for club sites that are not dark, and ?accent / ?accent2 for
-   their colours. Both are variable sets rather than second stylesheets, so a
-   club gets their own bar without us shipping a copy of the CSS per club.
-
-   A colour is validated before it is used: this string arrives from a URL on
-   somebody else's page, and writing it unchecked into a style is how a widget
-   becomes an injection point. Only #rgb / #rrggbb is accepted. */
-(function appearance() {
-  const q = new URLSearchParams(location.search);
-  /* LIGHT OR DARK: the reader's own choice on the bar wins, then the host page's ?theme=,
-     then dark. The choice is kept in this browser (localStorage is partitioned per host
-     site, which is right: a fan's choice on one club site is theirs on that site). */
-  const apply = t => {
-    if (t === 'light') document.body.setAttribute('data-theme', 'light');
-    else document.body.removeAttribute('data-theme');
-  };
-  let stored = null;
-  try { stored = localStorage.getItem('epinoia_embed_theme'); } catch (_) { stored = null; }
-  const start = stored === 'light' || stored === 'dark' ? stored : ((q.get('theme') || '').toLowerCase() === 'dark' ? 'dark' : 'light');
-  apply(start);
-  const tg = document.createElement('button');
-  tg.type = 'button'; tg.className = 'ep-theme';
-  const paint = t => { tg.textContent = t === 'light' ? '☾' : '☀'; tg.title = t === 'light' ? 'switch to dark' : 'switch to light'; tg.setAttribute('aria-label', tg.title); };
-  paint(start);
-  tg.addEventListener('click', () => {
-    const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    apply(next); paint(next);
-    try { localStorage.setItem('epinoia_embed_theme', next); } catch (_) { /* private mode */ }
-  });
-  document.addEventListener('DOMContentLoaded', () => { const host = document.querySelector('.ep-strip'); if (host) host.appendChild(tg); });
-  if (document.readyState !== 'loading') { const host = document.querySelector('.ep-strip'); if (host && !tg.parentNode) host.appendChild(tg); }
-
-  const hex = v => (/^#?[0-9a-f]{3}$|^#?[0-9a-f]{6}$/i.test(v || '')
-    ? (v[0] === '#' ? v : '#' + v) : null);
-  const a1 = hex(q.get('accent'));
-  const a2 = hex(q.get('accent2')) || a1;
-  if (a1) {
-    document.body.style.setProperty('--ep-accent', a1);
-    document.body.style.setProperty('--ep-accent-2', a2);
-  }
-  const g = hex(q.get('bg'));
-  if (g) document.body.style.setProperty('--ep-ground', g);
-})();
+/* APPEARANCE — light or dark, the accent colours, the reader's switch on the bar, and the host
+   page's colourway as it changes — is ../theme.js, shared with every other embed, so the strip
+   follows a club's dark mode or a league page's colours the same way the standings do. */
 
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
@@ -1099,7 +1057,28 @@ function accessReady() {
   if (!wantLeague || !A || typeof A.load !== 'function') return null;
   return Promise.resolve().then(() => A.load({ leagueSlug: wantLeague })).catch(() => null);
 }
-siteConfig().catch(() => {}).then(accessReady).then(() => load());
+/* THE LEAGUE, NAMED IN THE CORNER. A strip showing one league says which, bottom left, and the
+   name is the way to that league's page. On Epinoia's own pages it navigates the page; on a club's
+   site it opens a tab, as the plate does. A strip across every league names none. */
+async function leagueLabel() {
+  const a = $('#leagueLink');
+  if (!a || !wantLeague) return;
+  try {
+    const rows = await api('leagues?slug=eq.' + encodeURIComponent(wantLeague) + '&select=name,slug&limit=1');
+    const l = rows && rows[0];
+    if (!l || !l.name) return;
+    a.textContent = l.name;
+    a.title = l.name + ' — fixtures, table and statistics';
+    a.href = new URL('../../?l=' + encodeURIComponent(l.slug), location.href).href;
+    let ours = false;
+    try { ours = window.parent !== window && window.parent.location.origin === location.origin; }
+    catch (_) { ours = false; }            /* a club's site: its location is not ours to read */
+    a.target = ours ? '_top' : '_blank';
+    a.hidden = false;
+  } catch (_) { /* no name is better than a wrong one */ }
+}
+
+siteConfig().catch(() => {}).then(() => { leagueLabel(); return accessReady(); }).then(() => load());
 /* The cadence follows the games rather than the clock: tight while anything
    is live, relaxed when nothing is. setTimeout rather than setInterval so the
    interval can change between ticks, and so a slow response can never queue a

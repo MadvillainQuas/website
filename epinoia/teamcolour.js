@@ -213,5 +213,78 @@
     return fromImage(url).then(p => !!(p && p.primary && paintLeague(p.primary, p.secondary, opts)));
   }
 
-  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  /* -------------------------------------------------- the page's embeds wear its colours --- */
+  /* AN EMBED ON ONE OF OUR OWN PAGES LOOKS LIKE THAT PAGE. The fixture strip and the table and
+     leaders cards on a league's front page are iframes with their own light/dark and accent; left
+     alone they open in the platform's mint whatever the page around them is wearing. So the page's
+     colourway is sent to every embed frame on it (embed/theme.js listens):
+
+       theme     light or dark, as the page is
+       accent    the league's two colours on a league-themed page (--league-a/-b), a club's on a
+       accent2   club-themed one (--team-a/-b), nothing on the platform's own pages (the embed's
+                 default)
+
+     and sent again whenever that changes: the reader's light/dark, league colours read from a logo
+     after the page has painted, an embed added later. Only top-level pages send, and only to frames
+     of this origin, which are the only frames the message is for. */
+  function colourway() {
+    const root = document.documentElement, body = document.body;
+    const cs = getComputedStyle(root);
+    const pair = (cls, a, b) => body && body.classList.contains(cls) ? [cs.getPropertyValue(a), cs.getPropertyValue(b)] : null;
+    const p = pair('league-themed', '--league-a', '--league-b') || pair('themed', '--team-a', '--team-b');
+    const hexOf = v => { const c = parse(String(v || '').trim()); return c ? toHex(c) : null; };
+    return { epinoiaEmbed: 'colourway', theme: light() ? 'light' : 'dark',
+             accent: p ? hexOf(p[0]) : null, accent2: p ? hexOf(p[1]) : null };
+  }
+
+  function embedFrames() {
+    return [...document.querySelectorAll('iframe')].filter(f => {
+      try { const u = new URL(f.getAttribute('src') || '', location.href); return u.origin === location.origin && /\/embed\//.test(u.pathname); }
+      catch (_) { return false; }
+    });
+  }
+
+  function syncEmbeds() {
+    if (typeof document === 'undefined' || window.top !== window || !document.body || document.body.classList.contains('cse')) return;
+    let last = '';
+    const send = frame => {
+      try { if (frame.contentWindow) frame.contentWindow.postMessage(colourway(), location.origin); } catch (_) { /* not ready */ }
+    };
+    const wire = f => {
+      if (f.__epColourway) return;
+      f.__epColourway = true;
+      f.addEventListener('load', () => send(f));
+      send(f);
+    };
+    let queued = false;
+    const refresh = () => {
+      if (queued) return;
+      queued = true;
+      setTimeout(() => {
+        queued = false;
+        const frames = embedFrames();
+        frames.forEach(wire);
+        const key = JSON.stringify(colourway());
+        if (key !== last) { last = key; frames.forEach(f => send(f)); }
+      }, 60);
+    };
+    /* an embed that asks (it loaded before this page had anything to say) is answered */
+    window.addEventListener('message', ev => {
+      if (ev.origin !== location.origin || !ev.data || ev.data.epinoiaEmbed !== 'colourway?') return;
+      const f = embedFrames().find(x => x.contentWindow === ev.source);
+      if (f) send(f);
+    });
+    try {
+      new MutationObserver(refresh).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+      new MutationObserver(refresh).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    } catch (_) { /* no observer: the embeds keep the colourway they opened with */ }
+    refresh();
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncEmbeds);
+    else syncEmbeds();
+  }
+
+  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, colourway, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

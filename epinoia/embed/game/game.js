@@ -19,11 +19,8 @@ const E = window.EpinoiaEngine, L = window.EpinoiaLive;
 const qp = new URLSearchParams(location.search);
 const gameId = qp.get('g') || '';
 
-/* ?theme=light for club sites that are not dark. One attribute, because the
-   palette is a variable set rather than a second stylesheet. */
-if ((new URLSearchParams(location.search).get('theme') || '') === 'light') {
-  document.body.setAttribute('data-theme', 'light');
-}
+/* Light or dark, the club's colours and the host page's colourway: ../theme.js, shared by every
+   embed. */
 
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;

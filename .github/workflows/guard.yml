@@ -287,6 +287,12 @@ jobs:
         # quiet misparse is twenty wrong rows rather than one
         run: node supabase/tests/csv.test.mjs
 
+      - name: An embed wears the page it is on
+        # embed.js reads a club site's light/dark, background and brand colour and keeps the embed
+        # in step; Epinoia's pages send their league or club colours; embed/theme.js applies only
+        # what its own parent sends, readable on either ground; the strip names its league
+        run: node supabase/tests/embed-colourway.test.mjs
+
       - name: An approved image reaches the public bucket
         # every approval moves its file out of media-pending; storage refused every move until
         # 0123 ("new row violates row-level security policy"), so the consoles copy the bytes
