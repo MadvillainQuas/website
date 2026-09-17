@@ -155,7 +155,7 @@ function applyTheme(t) {
    Turning the card on also switches the account on (push.js does both), and the box
    is ticked to match, so the next save does not quietly send notify_push:false. */
 const PHONE_WORDS = {
-  on: 'On. What you choose below arrives on this phone, even when EPINOIΛ is closed.',
+  on: 'On. What you choose below arrives on this phone, even when Epinoia is closed.',
   off: 'Off on this phone.',
   denied: 'Blocked. Notifications are switched off for this site in this browser’s settings; allow them there, then come back to this page.',
   unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or EPINOIΛ from the Home Screen on an iPhone.',
@@ -347,7 +347,7 @@ async function paintDupes(st, app) {
     box.className = 'msg ' + (error ? 'err' : 'ok');
     box.textContent = error
       ? 'The others could not be turned off just now. Try again in a minute.'
-      : 'Done: those sign-ups are off, and this app keeps its own. If you open EPINOIΛ in Samsung Internet again, its profile page offers to turn notifications off there for good.';
+      : 'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its profile page offers to turn notifications off there for good.';
   };
   box.appendChild(b);
   box.className = 'msg warn';
@@ -435,7 +435,7 @@ function askSeen() {
   box.textContent = '';
   box.classList.remove('hide');
   const adv = document.createElement('div'); adv.className = 'adv';
-  const q = document.createElement('b'); q.textContent = 'Did a notification from EPINOIΛ just pop up on this phone?';
+  const q = document.createElement('b'); q.textContent = 'Did a notification from Epinoia just pop up on this phone?';
   const acts = document.createElement('div'); acts.className = 'phone-acts';
   acts.append(phoneButton('Yes, it did', 'ep-btn pri', () => {
     box.classList.add('hide');
@@ -731,7 +731,7 @@ async function paintMembership() {
     const tx = el('div');
     tx.append(
       el('b', null, featureWords(g.features)),
-      el('small', null, 'Given by ' + (g.league_id ? (g.league_name || 'your league') : 'EPINOIΛ') + (g.note ? ' · ' + g.note : '')),
+      el('small', null, 'Given by ' + (g.league_id ? (g.league_name || 'your league') : 'Epinoia') + (g.note ? ' · ' + g.note : '')),
       el('span', 'st', g.expires_at ? 'Until ' + longDate(g.expires_at) + '.' : 'No end date.'));
     row.appendChild(tx);
     host.appendChild(row);

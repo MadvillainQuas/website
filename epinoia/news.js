@@ -47,11 +47,6 @@ const when = (iso, opts) => {
   return d.toLocaleDateString(o.locale, { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
-/* THE MATCH REPORTS ARE SIGNED BY THE PLATFORM, and the platform is EPINOIΛ. Reports filed before
-   finalise-game said so carry "Epinoia match report" in the database; they read the same as new
-   ones. Anybody else's name is theirs, untouched. */
-const byline = name => String(name || '').replace(/^Epinoia(?=\s|$)/, 'EPINOIΛ');
-
 /* A colour from the headline, so two articles are not the same shade and the
    same article is the same shade every time. The same trick the club plates
    use, seeded by text rather than by a stored colour — an editorial team
@@ -165,7 +160,7 @@ function card(a, opts) {
      the worst combination. */
   const foot = el('div', 'club-foot');
   foot.append(el('span', 'club-name', when(a.published_at)),
-              el('span', 'club-ed', byline(a.author_name)));
+              el('span', 'club-ed', a.author_name || ''));
 
   link.append(plate, foot);
   return link;
@@ -207,5 +202,5 @@ async function mountHeadlines(o) {
   return true;
 }
 
-return { mountHeadlines, card, tint, when, byline };
+return { mountHeadlines, card, tint, when };
 }));

@@ -85,9 +85,9 @@ const MSG = Object.freeze({
   iosInstall: 'On iPhone and iPad, notifications only arrive through EPINOIΛ on your Home Screen. Tap Share, then Add to Home Screen, open EPINOIΛ from there and turn notifications on.',
   denied: 'Notifications are blocked for this site. Allow them in your browser’s site settings, then try again.',
   notConfigured: 'Notifications are not set up on this site yet.',
-  signedOut: 'Sign in first, so EPINOIΛ knows whose notifications to send.',
+  signedOut: 'Sign in first, so Epinoia knows whose notifications to send.',
   dismissed: 'Notifications were not allowed. Try again and choose Allow when your browser asks.',
-  worker: 'This browser would not start EPINOIΛ’s notification service. Reload the page and try again.',
+  worker: 'This browser would not start Epinoia’s notification service. Reload the page and try again.',
   subscribe: 'This browser could not sign up for notifications. Check that notifications are allowed for this site, then try again.',
   expired: 'Your sign-in has expired. Sign in again, then turn notifications on.',
   save: 'This phone could not be added to your account just now. Check your connection and try again.',
@@ -839,14 +839,14 @@ async function check(onStep) {
     add('permission', native.ok, native.label, native.detail);
     if (native.ok === false) return advise(native.title, SETTINGS[plat].slice(0, 2).concat(REOPEN));
   } else if (q === 'denied') {
-    add('permission', false, 'Notifications are blocked for EPINOIΛ on this phone');
+    add('permission', false, 'Notifications are blocked for Epinoia on this phone');
     return advise('Allow notifications, then run the check again', SETTINGS[plat].concat(app ? [REOPEN] : []));
   } else if (q !== 'granted') {
-    add('permission', false, 'EPINOIΛ has not been allowed to send notifications yet');
+    add('permission', false, 'Epinoia has not been allowed to send notifications yet');
     return advise('Turn notifications on', ['Tap Turn on above and choose Allow when the phone asks.',
       'If nothing asks, allow them in settings instead:'].concat(SETTINGS[plat], app ? [REOPEN] : []));
   } else {
-    add('permission', true, 'Notifications are allowed for EPINOIΛ');
+    add('permission', true, 'Notifications are allowed for Epinoia');
   }
 
   /* 3. the worker */
@@ -856,11 +856,11 @@ async function check(onStep) {
     try { reg = await whenActive(await nav.serviceWorker.register(SW_URL, { scope: SCOPE })); } catch (_) { reg = null; }
   }
   if (!reg || !reg.active || !reg.pushManager) {
-    add('worker', false, 'EPINOIΛ’s notification service is not running on this phone', MSG.worker);
-    return advise('Reload and try again', ['Close EPINOIΛ completely, open it again and run the check.']);
+    add('worker', false, 'Epinoia’s notification service is not running on this phone', MSG.worker);
+    return advise('Reload and try again', ['Close Epinoia completely, open it again and run the check.']);
   }
   const version = await pingWorker(reg, 3000);
-  add('worker', true, 'EPINOIΛ’s notification service is running', version ? 'version ' + version : 'an older version; it updates the next time EPINOIΛ is reopened');
+  add('worker', true, 'Epinoia’s notification service is running', version ? 'version ' + version : 'an older version; it updates the next time Epinoia is reopened');
 
   /* 4. the subscription (re-made when missing, or made with another key) */
   let sub = await currentSubscription(reg);
@@ -922,7 +922,7 @@ async function check(onStep) {
     const why = res.status === 429 ? 'A check has just run. Wait a few seconds and run it again.'
       : (res.text || res.error || MSG.testFailed) + (res.detail ? ' (' + String(res.detail).slice(0, 120) + ')' : '');
     add('delivery', false, 'The test push did not get through', why);
-    return advise(res.fix === 'server' ? 'This is on EPINOIΛ’s side, not your phone' : 'Try again in a minute',
+    return advise(res.fix === 'server' ? 'This is on Epinoia’s side, not your phone' : 'Try again in a minute',
                   [res.fix === 'server' ? 'Nothing on this phone needs changing. Try again later.' : 'If it keeps failing, tap Turn off, then Turn on, and run the check again.']);
   }
   add('delivery', true, serviceName(sub.endpoint) + ' accepted a test push for this phone');
@@ -936,20 +936,20 @@ async function check(onStep) {
   }
   if (!got.shown) {
     add('arrival', false, 'The test reached this phone, but the browser refused to show it', got.error || '');
-    return advise('Allow EPINOIΛ to show notifications', SETTINGS[plat]);
+    return advise('Allow Epinoia to show notifications', SETTINGS[plat]);
   }
   add('arrival', true, 'The test reached this phone at ' + clock(got.at || now()) + ' and was shown');
   /* the phone can receive; what is left is the account */
   if (steps.some(s => s.id === 'account' && s.ok === false)) {
     return advise(sess && sess.userId ? 'This phone works, but it is not on your account yet' : 'This phone works: sign in so it gets your notifications',
                   sess && sess.userId ? ['Run the check again in a minute. If it still fails, tap Turn off, then Turn on.']
-                                      : ['Sign in on this phone with the email you use for EPINOIΛ, then run the check again.']);
+                                      : ['Sign in on this phone with the email you use for Epinoia, then run the check again.']);
   }
   if (steps.some(s => s.id === 'channel' && s.ok === false)) {
     return advise('This phone works: switch on Phone and desktop alerts',
                   ['Tick Phone and desktop alerts below. Tests reach this phone either way, but real notifications are only sent while it is on.']);
   }
-  return advise('Everything on EPINOIΛ’s side works', [
+  return advise('Everything on Epinoia’s side works', [
     'If a notification titled “This phone can get notifications” did not appear just now, the phone is hiding them:'
   ].concat(SETTINGS[plat] || [], QUIET[plat] || []));
 }
@@ -1202,7 +1202,7 @@ async function checkNative(n, onStep) {
     const why = res.status === 429 ? 'A check has just run. Wait a few seconds and run it again.'
       : (res.text || res.error || MSG.testFailed) + (res.detail ? ' (' + String(res.detail).slice(0, 120) + ')' : '');
     add('delivery', false, 'The test push did not get through', why);
-    return advise(res.fix === 'server' ? 'This is on EPINOIΛ’s side, not your iPhone' : 'Try again in a minute',
+    return advise(res.fix === 'server' ? 'This is on Epinoia’s side, not your iPhone' : 'Try again in a minute',
                   [res.fix === 'server' ? 'Nothing on this iPhone needs changing. Try again later.' : 'If it keeps failing, tap Turn off, then Turn on, and run the check again.']);
   }
   add('delivery', true, 'Apple accepted a test push for this iPhone');
@@ -1217,13 +1217,13 @@ async function checkNative(n, onStep) {
   if (steps.some(s => s.id === 'account' && s.ok === false)) {
     return advise(sess && sess.userId ? 'This iPhone works, but it is not on your account yet' : 'This iPhone works: sign in so it gets your notifications',
                   sess && sess.userId ? ['Run the check again in a minute. If it still fails, tap Turn off, then Turn on.']
-                                      : ['Sign in on this iPhone with the email you use for EPINOIΛ, then run the check again.']);
+                                      : ['Sign in on this iPhone with the email you use for Epinoia, then run the check again.']);
   }
   if (steps.some(s => s.id === 'channel' && s.ok === false)) {
     return advise('This iPhone works: switch on Phone and desktop alerts',
                   ['Tick Phone and desktop alerts below. Tests reach this iPhone either way, but real notifications are only sent while it is on.']);
   }
-  return advise('Everything on EPINOIΛ’s side works', [
+  return advise('Everything on Epinoia’s side works', [
     'If a notification titled “This phone can get notifications” did not appear just now, the iPhone is hiding them:'
   ].concat(SETTINGS[plat], QUIET[plat]));
 }
@@ -1435,7 +1435,7 @@ function openSheet(doc, view, name, kind) {
     }, () => { if (sheet) done(); });
   }
   function seen() {
-    const d = el('p', null, 'EPINOIΛ just sent “Notifications are on” to this phone.'); d.id = 'ep-push-d';
+    const d = el('p', null, 'Epinoia just sent “Notifications are on” to this phone.'); d.id = 'ep-push-d';
     draw([head('Did a notification pop up?'), d],
          [button('Yes, it did', 'pri', done), button('No', null, hidden)]);
   }

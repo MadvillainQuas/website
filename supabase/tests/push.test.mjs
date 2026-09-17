@@ -883,7 +883,7 @@ const client = (url, o = {}) => {
   const page = await respond(L, { method: 'GET', mode: 'navigate', url: ORIGIN + '/epinoia/home/' });
   ok('fetch: a page load that fails offline gets the offline page, status 200, as HTML, never stored',
      page && page.status === 200 && /text\/html/.test(page.headers['Content-Type']) && /no-store/.test(page.headers['Cache-Control']) &&
-     /EPINOIΛ is offline/.test(page.body), page && JSON.stringify({ status: page.status, headers: page.headers }));
+     /Epinoia is offline/.test(page.body), page && JSON.stringify({ status: page.status, headers: page.headers }));
   ok('...light by default, dark when the phone is', /background:#f3faf6/.test(page.body) && /prefers-color-scheme:dark/.test(page.body));
   eq('fetch: a failed JSON read (not a page load) is not answered by the worker, so its caller sees a real network error',
      await respond(L, { method: 'GET', mode: 'cors', url: 'https://abc.supabase.co/rest/v1/games?select=id' }), null);

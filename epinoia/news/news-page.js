@@ -146,7 +146,7 @@ async function one(league) {
   $('#head').textContent = a.title;
   $('#leagueName').textContent = league.name +
     (a.published_at ? ' · ' + N.when(a.published_at) : '') +
-    (a.author_name ? ' · by ' + N.byline(a.author_name) : '');
+    (a.author_name ? ' · by ' + a.author_name : '');
 
   if (a.cover_path) {
     const fig = el('div', 'art-cover');

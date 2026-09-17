@@ -1,7 +1,7 @@
 {
   "name": "EPINOIΛ",
   "short_name": "EPINOIΛ",
-  "description": "Live scores, stats, video and news from the leagues on EPINOIΛ.",
+  "description": "Live scores, stats, video and news from the leagues on Epinoia.",
   "id": "/epinoia/",
   "start_url": "/epinoia/home/?source=pwa",
   "scope": "/epinoia/",

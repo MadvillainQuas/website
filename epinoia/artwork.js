@@ -151,7 +151,7 @@ const DESIGNS = {
       text(club.name, S.cx, S.y + S.h * 0.70, S.w * 0.085, ink, S.w) +
       rule(S.cx, S.y + S.h * 0.755, S.w * 0.5, ink) +
       text(club.season || '', S.cx, S.y + S.h * 0.82, S.w * 0.04, ink, S.w, 0.6) +
-      text('EPINOIΛ', S.cx, S.y + S.h * 0.93, S.w * 0.028, ink, S.w, 0.45);
+      text('Epinoia', S.cx, S.y + S.h * 0.93, S.w * 0.028, ink, S.w, 0.45);
   },
   /* A mug wrap is one long strip that meets itself, and the handle sits in the
      middle of one side — so the design is two copies, one per face, and the

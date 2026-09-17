@@ -678,7 +678,7 @@ function railHTML(T, st, label) {
     '<div class="railtop">' +
       (st.game.leagueLogo
         ? '<img class="lgmark" src="' + esc(st.game.leagueLogo) + '" alt="">'
-        : '<span class="lgword">' + esc(st.game.leagueShort || 'EPINOIΛ') + '</span>') +
+        : '<span class="lgword">' + esc(st.game.leagueShort || 'Epinoia') + '</span>') +
       '<span class="railrule"></span>' +
       crestHTML(T, 'lg') +
     '</div>' +

@@ -4,7 +4,8 @@
      1. news dates on a phone are numbers in the reader's own order (13/9/26 in Britain)
      2. a match report links the game it is about
      3. a league tapped in the phone's menu sheet opens that league (it closed the sheet instead)
-     4. the name the apps call themselves is EPINOIΛ, and the notification picture is the app logo
+     4. the apps call themselves EPINOIΛ (the website's own text says Epinoia, and the match
+        report is signed the way it was filed), and the notification picture is the app logo
      5. (the statistics table's scroll fix is held in touchscroll.test.mjs)
 
      node supabase/tests/phone-fixes.test.mjs
@@ -43,12 +44,12 @@ const newsCtx = (phone) => {
   const W = newsCtx(false);
   eq('a wider screen keeps the written date', W.when(iso, { locale: 'en-GB' }), '13 September 2026');
   eq('no date, or a broken one: nothing', [N.when(''), N.when('not a date')], ['', '']);
-  eq('the report byline reads EPINOIΛ, old and new; anybody else\'s name is untouched',
-     [N.byline('Epinoia match report'), N.byline(L + ' match report'), N.byline('Jo Epinoia-Smith'), N.byline(null)],
-     [L + ' match report', L + ' match report', 'Jo Epinoia-Smith', '']);
+  const news = rd('epinoia', 'news.js');
+  ok('a byline is printed as it was filed: nothing rewrites the stored name',
+     N.byline === undefined && !/byline/.test(news) && /el\('span', 'club-ed', a\.author_name \|\| ''\)/.test(news));
   const page = rd('epinoia', 'news', 'news-page.js');
-  ok('the article\'s meta line uses when() and byline()', /N\.when\(a\.published_at\)/.test(page) && /N\.byline\(a\.author_name\)/.test(page));
-  ok('finalise-game signs new reports EPINOIΛ match report', /author_name: 'EPINOIΛ match report'/.test(rd('supabase', 'functions', 'finalise-game', 'index.ts')));
+  ok('the article\'s meta line uses when(), and the author as stored', /N\.when\(a\.published_at\)/.test(page) && /' · by ' \+ a\.author_name/.test(page));
+  ok('finalise-game signs new reports Epinoia match report', /author_name: 'Epinoia match report'/.test(rd('supabase', 'functions', 'finalise-game', 'index.ts')));
 }
 
 /* ------------------------------------------------------------------ 2 --- */
@@ -104,7 +105,7 @@ console.log('\n-- EPINOIΛ, and its logo on notifications');
   const sw = rd('epinoia', 'sw.js');
   ok('sw.js: the notification picture is the app logo, and a notice with no title says EPINOIΛ',
      /const ICON = '\/epinoia\/brand\/epinoia-app-192\.png';/.test(sw) && /return \{ title: 'EPINOIΛ', body: t \};/.test(sw));
-  ok('...a new worker version, so phones take it', /const SW_VERSION = 'notifications-v2-2026-09-17-logo';/.test(sw));
+  ok('...a new worker version, so phones take it', /const SW_VERSION = 'notifications-v2-2026-09-17-offline';/.test(sw));
   const png = fs.readFileSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-app-192.png'));
   eq('the app logo for notifications is a 192px PNG', [png.readUInt32BE(16), png.readUInt32BE(20)], [192, 192]);
   const nav = rd('epinoia', 'nav.js');

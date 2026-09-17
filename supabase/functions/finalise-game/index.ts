@@ -436,7 +436,7 @@ Deno.serve(async (req) => {
           status: 'published',
           published_at: new Date().toISOString(),
           author_id: null,
-          author_name: 'EPINOIΛ match report',
+          author_name: 'Epinoia match report',
           updated_at: new Date().toISOString()
         }, { onConflict: 'league_id,slug' });
         if (error) warnings.push('the match report was not filed: ' + error.message);
