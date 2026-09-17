@@ -510,11 +510,12 @@ jobs:
           node supabase/tests/country.test.mjs
           node supabase/tests/app-shell.test.mjs
 
-      - name: Blocks arrive as you scroll to them
-        # reveal.js + kit/reveal.css: nothing is hidden unless the script is live (no
-        # IntersectionObserver, or reduced motion, leaves every block visible), nothing leaves
-        # the layout, late content joins in, and both pages are wired to it
-        run: node supabase/tests/reveal.test.mjs
+      - name: The draw distance at the edge of the screen
+        # haze.js + kit/haze.css: two bands fixed to the viewport in the page's own ground,
+        # lifting where there is nothing beyond them (the top of the page, the bottom, a page
+        # shorter than the window); nothing on the page is ever hidden, and they sit under the
+        # rail and the phone's bar
+        run: node supabase/tests/haze.test.mjs
 
       - name: Which clubs are in which competition
         # comps.js: a competition earns its own clubs list only when it brings clubs the main

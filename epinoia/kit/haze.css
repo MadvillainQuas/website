@@ -1,0 +1,53 @@
+/* ===========================================================================
+   DRAW DISTANCE — the CSS half of epinoia/haze.js.
+
+   Two bands fixed to the top and bottom of the viewport, painted in the page's
+   own background and fading to nothing, so content arrives out of the
+   distance instead of arriving at a hard edge. Both are created by the script;
+   a page that loads this stylesheet and not the script has no .ep-haze in it
+   and therefore nothing at all happens.
+
+   OVER THE CONTENT, UNDER THE FURNITURE: z-index 500 sits above the page and
+   below the rail (900) and the phone's bar (2000), both of which should stay
+   crisp — a menu you are about to press is not in the distance.
+
+   pointer-events:none, always: this must never eat a tap meant for a link
+   under it, which is the classic way a decorative overlay ruins a page.
+   =========================================================================== */
+
+.ep-haze{
+  position:fixed; left:0; right:0;
+  height:clamp(54px, 11vh, 132px);
+  pointer-events:none;
+  z-index:500;
+  opacity:0;                       /* the script writes this, every frame */
+  will-change:opacity;
+}
+
+/* The gradient is the page's own ground, so the band reads as depth rather
+   than as a grey wash laid over the top. --ground is themed per league, so
+   this follows a league's colours with nothing league-specific in here. */
+.ep-haze.top{
+  top:0;
+  background:linear-gradient(to bottom,
+    var(--ground) 0%,
+    color-mix(in oklch, var(--ground) 62%, transparent) 46%,
+    transparent 100%);
+}
+.ep-haze.bottom{
+  bottom:0;
+  background:linear-gradient(to top,
+    var(--ground) 0%,
+    color-mix(in oklch, var(--ground) 62%, transparent) 46%,
+    transparent 100%);
+}
+
+/* A browser without color-mix gets a plain two-stop fade rather than nothing:
+   the middle stop is the only part that needs it. */
+@supports not (color: color-mix(in oklch, red 50%, transparent)){
+  .ep-haze.top{ background:linear-gradient(to bottom, var(--ground), transparent) }
+  .ep-haze.bottom{ background:linear-gradient(to top, var(--ground), transparent) }
+}
+
+/* Printing has no viewport to fade at. */
+@media print{ .ep-haze{ display:none } }
