@@ -46,9 +46,6 @@
   background:
     radial-gradient(circle,color-mix(in oklch,var(--c) 60%,transparent) 1.1px,transparent 1.4px) 3px 3px/7px 7px,
     linear-gradient(200deg,color-mix(in oklch,var(--c) 46%,var(--panel)),color-mix(in oklch,var(--c) 22%,var(--panel)))}
-/* each club's second colour, as a stripe along its outer edge */
-.news-card.match .mt-half::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:var(--c2);opacity:.9}
-.news-card.match .mt-half.home::before{left:0} .news-card.match .mt-half.away::before{right:0}
 .news-card.match .mt-seam{position:absolute;inset:0;z-index:1;pointer-events:none;
   clip-path:polygon(57.4% 0, 58.6% 0, 42.6% 100%, 41.4% 100%);background:rgba(255,255,255,.22)}
 .news-card.match .mt-row{position:absolute;left:0;right:0;top:4%;bottom:38%;z-index:2;

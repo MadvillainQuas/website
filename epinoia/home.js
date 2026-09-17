@@ -943,14 +943,80 @@ async function leagueLogo() {
     const wm = document.querySelector('.wordmark');
     if (!wm) return;
     const img = el('img', 'lg-logo');
-    img.src = window.EpinoiaUpload.publicUrl(CFG, m.storage_path);
+    /* anonymous, so the logo can be read back from a canvas (media-public answers CORS with *):
+       dropFlatGround needs its pixels */
+    img.crossOrigin = 'anonymous';
     img.alt = '';
     /* a logo that fails to load leaves the name alone rather than a broken
        frame beside it */
-    img.addEventListener('error', () => img.remove());
+    img.addEventListener('error', () => { img.remove(); wm.parentNode.classList.remove('has-logo'); });
+    img.addEventListener('load', () => dropFlatGround(img), { once: true });
+    img.src = window.EpinoiaUpload.publicUrl(CFG, m.storage_path);
+    /* into the name's own row (.hero-head), never the hero: the tagline and the fixture strip
+       below stay full width */
     wm.parentNode.insertBefore(img, wm);
     wm.parentNode.classList.add('has-logo');
   } catch (_) { /* a missing logo is not an error worth showing anybody */ }
+}
+
+/* A LOGO DELIVERED ON A WHITE SQUARE. Many leagues' logos come as a JPEG or an opaque PNG/WebP
+   with the mark on white (BCB's is a round badge on a 512px white square), which on this page
+   reads as a white box pasted beside the name. When the image sits on a white ground (all four
+   corners opaque and near-white, and at least half its border; a round badge touches the square's
+   edges, so BCB's border is only 83% white), the white CONNECTED TO THE EDGE is
+   made transparent, flooded in from the border so that white INSIDE the mark (the lines through
+   BCB's ball) stays. The pixels bordering the removed ground are faded by how pale they are, so
+   no white halo is left round the mark. A logo that is already transparent, or that owns its
+   edge (a coloured badge to the corners), is left exactly as uploaded, and so is one this cannot
+   read. */
+function dropFlatGround(img) {
+  try {
+    const w0 = img.naturalWidth, h0 = img.naturalHeight;
+    if (!w0 || !h0) return;
+    const k = Math.min(1, 640 / Math.max(w0, h0));
+    const W = Math.max(1, Math.round(w0 * k)), H = Math.max(1, Math.round(h0 * k));
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0, W, H);
+    const data = cx.getImageData(0, 0, W, H);          /* throws on a tainted canvas: left as is */
+    const px = data.data;
+    const pale = p => px[p * 4 + 3] > 250 && Math.min(px[p * 4], px[p * 4 + 1], px[p * 4 + 2]) >= 236;
+
+    const edge = [];
+    for (let x = 0; x < W; x++) edge.push(x, (H - 1) * W + x);
+    for (let y = 1; y < H - 1; y++) edge.push(y * W, y * W + W - 1);
+    const lit = edge.filter(pale);
+    const corners = [0, W - 1, (H - 1) * W, H * W - 1];
+    if (!corners.every(pale) || lit.length < edge.length * 0.5) return;
+
+    const ground = new Uint8Array(W * H);
+    const stack = lit.slice();
+    let n = 0;
+    while (stack.length) {
+      const p = stack.pop();
+      if (ground[p] || !pale(p)) continue;
+      ground[p] = 1; n++;
+      const x = p % W, y = (p - x) / W;
+      if (x > 0) stack.push(p - 1);
+      if (x < W - 1) stack.push(p + 1);
+      if (y > 0) stack.push(p - W);
+      if (y < H - 1) stack.push(p + W);
+    }
+    if (n > W * H * 0.97) return;                       /* all ground: nothing left to show */
+
+    for (let p = 0; p < W * H; p++) {
+      if (ground[p]) { px[p * 4 + 3] = 0; continue; }
+      const x = p % W, y = (p - x) / W;
+      const touches = (x > 0 && ground[p - 1]) || (x < W - 1 && ground[p + 1]) ||
+                      (y > 0 && ground[p - W]) || (y < H - 1 && ground[p + W]);
+      if (!touches) continue;
+      const m = Math.min(px[p * 4], px[p * 4 + 1], px[p * 4 + 2]);
+      if (m > 150) px[p * 4 + 3] = Math.round(px[p * 4 + 3] * Math.min(1, (255 - m) / 105));
+    }
+    cx.putImageData(data, 0, 0);
+    img.src = cv.toDataURL('image/png');
+  } catch (_) { /* a canvas it may not read: the logo stays as uploaded */ }
 }
 
 /* The five most recent published articles, above everything else a league

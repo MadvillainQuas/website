@@ -144,6 +144,16 @@ ok('the front page themes itself before the chosen slots, keeping a chosen accen
 ok('the league hub themes itself too', /EpinoiaTeamColour\.league\(league,/.test(league));
 ok('...and loads the colour module before its own script',
    hub.indexOf('teamcolour.js') > 0 && hub.indexOf('teamcolour.js') < hub.indexOf('league.js?'));
+ok('the league logo joins the NAME\'s row, never the hero, so the fixture strip keeps its full width',
+   /<div class="hero-head"><div class="wordmark/.test(front) && /\.hero-head\.has-logo\{display:flex/.test(front) &&
+   !/\.hero\.has-logo/.test(front));
+ok('...sized in the name\'s own units, and above the name on a phone',
+   /\.lg-logo\{height:1\.72em/.test(front) && /@media \(max-width:560px\)\{\s*\.hero-head\.has-logo\{flex-direction:column/.test(front));
+ok('a logo on a white square loses only the white joined to its edge, and only when its corners are white',
+   /img\.crossOrigin = 'anonymous'/.test(home) && /corners\.every\(pale\)/.test(home) &&
+   /addEventListener\('load', \(\) => dropFlatGround\(img\), \{ once: true \}\)/.test(home));
+ok('match news cards carry no second-colour stripe down their edges',
+   !/mt-half::before/.test(read('epinoia', 'kit', 'news.css')));
 ok('both pages trim their heading in the league\'s colours',
    /body\.league-themed \.hero::after/.test(front) && /body\.league-themed \.ep-board::after/.test(hub));
 ok('the rail wears them only under body.league-themed', /body\.league-themed \.ep-nav::after\{/.test(navcss) &&
