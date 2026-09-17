@@ -595,7 +595,7 @@ async function venue(team) {
     host: '#venue', team, api, cfg: CFG
   });
   const note = $('#venueNote');
-  if (note) note.textContent = (out && out.photo) ? '' : 'illustrated';
+  if (note) note.textContent = (out && out.photo) ? '' : 'no photograph yet';
 }
 
 /* ------------------------------------------------------------------ roster ---

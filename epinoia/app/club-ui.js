@@ -112,6 +112,16 @@ function clubPanel(host, o) {
           ? window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, t.home_venue_image)
           : t.home_venue_image);
     preview.appendChild(img);
+  } else {
+    /* WHAT VISITORS SEE TODAY. With no photograph the public page shows a
+       stand-in court rather than an empty frame, so show the same picture
+       here — a club can then judge for itself whether it would rather have
+       its own hall up there. */
+    const img = el('img'); img.alt = ''; img.loading = 'lazy';
+    img.src = '../brand/court-800.jpg';
+    preview.append(img, el('p', 'note',
+      'No photograph yet, so your page shows this stand-in court. ' +
+      'Upload one and it takes its place.'));
   }
   band.appendChild(preview);
 

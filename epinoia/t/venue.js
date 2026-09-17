@@ -15,11 +15,10 @@
    Maps and directions sit over the corner, because the embed cannot give a
    route.
 
-   WHERE THERE IS NO PHOTOGRAPH THE ARENA IS DRAWN. That is every club right
+   WHERE THERE IS NO PHOTOGRAPH A COURT STANDS IN. That is every club right
    now. A placeholder that looks like a missing image makes a club look
-   neglected, so this is built in the same screenprint language as the club
-   cards — one ink, a halftone, paper grain — and reads as a deliberate
-   illustration rather than an absence.
+   neglected, so a real court is shown instead, washed in the club's own ink
+   and captioned as what it is — see "the court" below.
 
    THE CONTACT FORM NEVER LEARNS THE ADDRESS. It posts a team id; the Edge
    Function resolves the recipient from a table no browser can read. A club may
@@ -36,180 +35,52 @@
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-/* ------------------------------------------------------------- the arena ---
-   A BASKETBALL arena, which is a specific building and not a generic bowl.
+/* ------------------------------------------------------------ the court ---
+   WHERE THERE IS NO PHOTOGRAPH, A COURT STANDS IN. That is every club right
+   now, and a placeholder that looks like a missing image makes a club look
+   neglected.
 
-   The previous drawing was an ellipse of tiered seating around a lit oval,
-   which is a football ground — the shape says "pitch" before anything else
-   does. What makes an arena read as basketball is a short list, and all of it
-   is here: a RECTANGULAR floor in perspective with the markings anyone would
-   recognise (keys, three-point arcs, centre circle), a BACKBOARD AND RIM at
-   each end on its stanchion, and a CENTRE-HUNG SCOREBOARD, which no other
-   sport puts over the middle of the playing surface.
+   This used to be a drawing — an arena in one ink, with the floor markings
+   mapped from real FIBA dimensions. It was accurate and it still read as a
+   diagram of a building rather than a picture of one, so it is a photograph
+   instead: a public-domain (CC0) US Navy picture of a full court laid on a
+   flight deck, dusk behind it. It is unmistakably basketball, it is nobody's
+   home hall, and the caption says as much, so no club is credited with an
+   arena it does not have.
 
-   The court markings are not drawn by eye. A perspective map takes real court
-   coordinates — FIBA's 28m by 15m — and puts them on the picture, so the keys
-   are the right proportion of the floor and the arcs meet the sidelines where
-   they should. Drawing them freehand is what makes an illustration look almost
-   right, which is worse than looking stylised.
+   TWO WIDTHS, because a phone should not fetch a 1600px picture to fill a
+   card three inches wide, and it is washed in the club's own ink so it sits
+   in the same language as everything around it. */
+const COURT = { wide: 'brand/court.jpg', narrow: 'brand/court-800.jpg' };
 
-   Flat shapes only. This is a print, not a render, and a gradient would put it
-   in a different visual language from everything around it. */
-function arenaSVG(ink) {
-  const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 320 200');
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-  svg.setAttribute('aria-hidden', 'true');
-
-  const add = (tag, attrs) => {
-    const n = document.createElementNS(NS, tag);
-    Object.keys(attrs).forEach(k => n.setAttribute(k, attrs[k]));
-    svg.appendChild(n);
-    return n;
-  };
-  const stroke = (d, opacity, width) => add('path',
-    { d, fill: 'none', stroke: ink, 'stroke-width': width || 1,
-      opacity, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
-
-  /* ---- the perspective map -------------------------------------------------
-     u runs baseline to baseline (0 → 1), v runs far sideline to near (0 → 1).
-     Straight-line interpolation between a narrow far edge and a wide near one
-     is not true perspective, but at this size the difference is invisible and
-     the maths stays readable. */
-  const P = (u, v) => {
-    const xFar = 62 + u * 196, xNear = 22 + u * 276;
-    return [xFar + (xNear - xFar) * v, 118 + 60 * v];
-  };
-  const at = (u, v) => { const p = P(u, v); return p[0].toFixed(1) + ' ' + p[1].toFixed(1); };
-  const path = (pairs, close) =>
-    pairs.map(([u, v], i) => (i ? 'L' : 'M') + at(u, v)).join(' ') + (close ? ' Z' : '');
-  const arc = (cu, cv, ru, rv, a0, a1, n) => {
-    const out = [];
-    for (let i = 0; i <= n; i++) {
-      const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
-      out.push([cu + ru * Math.cos(a), cv + rv * Math.sin(a)]);
-    }
-    return out;
-  };
-
-  /* FIBA dimensions as fractions of the floor: 28m long, 15m wide. */
-  const L = 28, W = 15;
-  const KEY_D = 5.8 / L, KEY_HW = 2.45 / W;          // paint: 5.8m deep, 4.9m wide
-  const CIRC_U = 1.8 / L, CIRC_V = 1.8 / W;          // 1.8m radius circles
-  const BASKET_U = 1.575 / L;                        // rim centre from baseline
-  const ARC_U = 6.75 / L, ARC_V = 6.75 / W;          // three-point radius
-  const CORNER_V = 0.9 / W;                          // corner lines, 0.9m in
-  const CORNER_A = Math.asin((0.5 - CORNER_V) / ARC_V) * 180 / Math.PI;
-
-  /* ---- roof and rig --------------------------------------------------------
-     Two trusses and a lattice between them. An arena roof is flat and gridded,
-     not the pitched span a stadium has. */
-  stroke('M14 30 H306', 0.34, 1.4);
-  stroke('M26 44 H294', 0.28, 1.2);
-  let lattice = '';
-  for (let x = 26; x <= 294; x += 22) lattice += `M${x} 30 L${x + 11} 44 L${x + 22} 30 `;
-  stroke(lattice, 0.18, 0.9);
-
-  /* ---- the centre-hung scoreboard -----------------------------------------
-     The single object that says basketball before the floor is even read. Four
-     faces, hung on two cables over the middle of the court. */
-  stroke('M141 44 V57 M179 44 V57', 0.4, 1);
-  add('path', { d: 'M132 57 H188 L182 79 H138 Z', fill: ink, opacity: 0.22 });
-  stroke('M132 57 H188 L182 79 H138 Z', 0.75, 1.3);
-  stroke('M152 57 V79 M168 57 V79', 0.3, 0.9);              // the corner edges
-  // two score panels on the near face, unreadable and unmistakable
-  add('rect', { x: 137, y: 62, width: 12, height: 8, fill: ink, opacity: 0.6 });
-  add('rect', { x: 171, y: 62, width: 12, height: 8, fill: ink, opacity: 0.6 });
-  stroke('M138 79 H182', 0.5, 1);
-  stroke('M146 79 V83 M160 79 V84 M174 79 V83', 0.3, 0.9);  // the light ring beneath
-
-  /* ---- the bowl ------------------------------------------------------------
-     Rectangular and steep, converging on the floor. The ticks are the crowd;
-     the gaps in them are vomitories, which is what stops a stand reading as a
-     fence. */
-  const inner = s => [52 + s * 216, 116];
-  const outer = s => [4 + s * 312, 84];
-  add('path', {
-    d: `M${outer(0).join(' ')} L${outer(1).join(' ')} L${inner(1).join(' ')} L${inner(0).join(' ')} Z`,
-    fill: ink, opacity: 0.07
-  });
-  const VOMS = [[0.16, 0.20], [0.475, 0.525], [0.80, 0.84]];
-  let seats = '';
-  for (let i = 0; i <= 46; i++) {
-    const s = i / 46;
-    if (VOMS.some(([a, b]) => s > a && s < b)) continue;
-    const [x1, y1] = inner(s), [x2, y2] = outer(s);
-    seats += `M${x1.toFixed(1)} ${y1} L${x2.toFixed(1)} ${y2} `;
-  }
-  stroke(seats, 0.3, 1);
-  [0.34, 0.67].forEach(f => {                                 // the tier walkways
-    const a = inner(0), b = outer(0), c = inner(1), d = outer(1);
-    stroke(`M${(a[0] + (b[0] - a[0]) * f).toFixed(1)} ${(a[1] + (b[1] - a[1]) * f).toFixed(1)}` +
-           ` L${(c[0] + (d[0] - c[0]) * f).toFixed(1)} ${(c[1] + (d[1] - c[1]) * f).toFixed(1)}`,
-           0.24, 1);
-  });
-  // the near stand, cropped — we are sitting in it
-  stroke('M0 186 H320', 0.24, 1.2);
-  let near = '';
-  for (let x = 4; x <= 316; x += 9) near += `M${x} 186 V200 `;
-  stroke(near, 0.22, 1);
-
-  /* ---- the floor -----------------------------------------------------------
-     Lit, and marked. Every line below is a real court line placed by the
-     perspective map rather than by eye. */
-  add('path', { d: path([[0, 0], [1, 0], [1, 1], [0, 1]], true), fill: ink, opacity: 0.14 });
-  stroke(path([[0, 0], [1, 0], [1, 1], [0, 1]], true), 0.8, 1.4);       // sidelines
-  stroke(path([[0.5, 0], [0.5, 1]]), 0.6, 1.1);                          // halfway
-  stroke(path(arc(0.5, 0.5, CIRC_U, CIRC_V, 0, 360, 40), true), 0.6, 1.1); // centre circle
-
-  [0, 1].forEach(end => {
-    const flip = u => end ? 1 - u : u;                 // the far end is a mirror
-    const dir = end ? -1 : 1;
-
-    // the key, and the free-throw circle on top of it
-    stroke(path([[flip(0), 0.5 - KEY_HW], [flip(KEY_D), 0.5 - KEY_HW],
-                 [flip(KEY_D), 0.5 + KEY_HW], [flip(0), 0.5 + KEY_HW]]), 0.65, 1.1);
-    stroke(path(arc(flip(KEY_D), 0.5, CIRC_U, CIRC_V, 0, 360, 32), true), 0.55, 1);
-
-    /* the three-point line: two corner runs and the arc between them.
-       `dir` alone mirrors the arc — flipping the ANGLES as well would mirror it
-       twice and swing it back outside the court, which is exactly what it did
-       the first time round. */
-    const corner = ARC_U * Math.cos(CORNER_A * Math.PI / 180);
-    stroke(path([[flip(0), CORNER_V], [flip(BASKET_U + corner), CORNER_V]]), 0.6, 1.1);
-    stroke(path([[flip(0), 1 - CORNER_V], [flip(BASKET_U + corner), 1 - CORNER_V]]), 0.6, 1.1);
-    stroke(path(arc(flip(BASKET_U), 0.5, ARC_U * dir, ARC_V, -CORNER_A, CORNER_A, 30)), 0.6, 1.1);
-
-    /* the basket. Stanchion behind the baseline, arm over the floor, backboard,
-       rim, net — the silhouette that no other sport has. */
-    const base = P(flip(-0.075), 0.5);
-    const bb = P(flip(-0.012), 0.5);
-    stroke(`M${base[0].toFixed(1)} ${base[1].toFixed(1)} V${(base[1] - 34).toFixed(1)}`, 0.85, 2);
-    stroke(`M${base[0].toFixed(1)} ${(base[1] - 31).toFixed(1)} ` +
-           `L${bb[0].toFixed(1)} ${(base[1] - 31).toFixed(1)}`, 0.85, 1.6);
-    add('rect', { x: (bb[0] - (end ? 1.5 : 0)).toFixed(1), y: (base[1] - 39).toFixed(1),
-                  width: 1.8, height: 17, fill: ink, opacity: 0.5 });
-    stroke(`M${bb[0].toFixed(1)} ${(base[1] - 39).toFixed(1)} V${(base[1] - 22).toFixed(1)}`, 0.9, 2.2);
-    const rim = [bb[0] + dir * 7, base[1] - 25];
-    add('ellipse', { cx: rim[0].toFixed(1), cy: rim[1].toFixed(1), rx: 6.5, ry: 2.2,
-                     fill: 'none', stroke: ink, 'stroke-width': 1.5, opacity: 0.95 });
-    stroke(`M${(rim[0] - 6.5).toFixed(1)} ${rim[1].toFixed(1)} L${(rim[0] - 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} ` +
-           `M${rim[0].toFixed(1)} ${(rim[1] + 2.2).toFixed(1)} V${(rim[1] + 8).toFixed(1)} ` +
-           `M${(rim[0] + 6.5).toFixed(1)} ${rim[1].toFixed(1)} L${(rim[0] + 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} ` +
-           `M${(rim[0] - 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)} L${(rim[0] + 3).toFixed(1)} ${(rim[1] + 7).toFixed(1)}`,
-           0.55, 0.9);
-  });
-
-  return svg;
+/* Climb back to /epinoia/ by counting the directories below it rather than
+   assuming one — the same rule nav.js uses for the rail's links, so this keeps
+   working from a subpage. */
+function epinoiaRoot() {
+  const here = (typeof location !== 'undefined' && location.pathname) || '';
+  const seg = here.split('/epinoia/')[1] || '';
+  const parts = seg.split('/').filter(Boolean);
+  if (parts.length && parts[parts.length - 1].indexOf('.') !== -1) parts.pop();
+  return parts.length ? '../'.repeat(parts.length) : './';
 }
 
-function drawnPane(team) {
+function courtImage() {
+  const root = epinoiaRoot();
+  const img = document.createElement('img');
+  img.className = 'vphoto vstock';
+  img.src = root + COURT.wide;
+  img.srcset = root + COURT.narrow + ' 800w, ' + root + COURT.wide + ' 1600w';
+  img.sizes = '(max-width:760px) 100vw, 40vw';
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  return img;
+}
+
+function stockPane() {
   const pane = el('div', 'vpane');
-  const a = el('div', 'arena');
-  a.appendChild(arenaSVG(team.colour || '#93f2bf'));
-  pane.append(a, el('div', 'vtone'), el('div', 'vgrain'),
-              el('div', 'vcap', 'Illustrated — no photograph yet'));
+  pane.append(courtImage(), el('div', 'vwash'), el('div', 'vgrain'),
+              el('div', 'vcap', 'No photograph of this venue yet'));
   return pane;
 }
 
@@ -274,10 +145,10 @@ function photoPane(team, url) {
   img.src = url;
   img.alt = team.home_venue || 'The venue';
   img.loading = 'lazy';
-  /* a photograph that fails to load falls back to the drawing rather than
-     leaving a hole where the venue should be */
+  /* a photograph that fails to load falls back to the stand-in court rather
+     than leaving a hole where the venue should be */
   img.addEventListener('error', () => {
-    const replacement = drawnPane(team);
+    const replacement = stockPane();
     if (pane.parentNode) pane.parentNode.replaceChild(replacement, pane);
   });
   pane.append(img, el('div', 'vcap', team.home_venue || 'Home venue'));
@@ -632,7 +503,7 @@ async function render(opts) {
       if (rows && rows.length) {
         photoUrl = opts.cfg.supabaseUrl + '/storage/v1/object/public/media-public/' + rows[0].storage_path;
       }
-    } catch (_) { /* the drawing stands in */ }
+    } catch (_) { /* the stand-in court is shown */ }
 
     /* A club may also have supplied its own address for a photograph rather
        than uploading one (0049). The approved upload wins, because it has been
@@ -675,7 +546,7 @@ async function render(opts) {
     const hint = !addr && cc ? (COUNTRY[String(cc).toUpperCase()] || cc) : null;
     const query = [name, addr, hint].filter(Boolean).join(', ');
     const grid = el('div', 'vgrid');
-    grid.append(photoUrl ? photoPane(team, photoUrl) : drawnPane(team),
+    grid.append(photoUrl ? photoPane(team, photoUrl) : stockPane(),
                 mapPane(team, query));
     wrap.appendChild(grid);
     wrap.dataset.photo = photoUrl ? '1' : '';
@@ -688,5 +559,5 @@ async function render(opts) {
   return { photo: wrap.dataset.photo === '1' };
 }
 
-return { render, arenaSVG };
+return { render, stockPane };
 }));
