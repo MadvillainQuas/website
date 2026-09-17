@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<!-- THE GAME PAGE'S HEADER, BECAUSE THIS PAGE EMBEDS THE SAME PLAYER.
+
+     frame-src is what lets the recording appear at all, and it is named hosts
+     only: the four platforms epinoia/video.js can parse a link for, plus
+     'self'. frame-src does not fall back to default-src once declared, so
+     dropping 'self' here would quietly forbid framing anything of ours.
+     media-src carries the mp4 case, where the recording is a file rather than
+     an embed. Kept character for character with epinoia/game/index.html: two
+     copies of one policy that drift apart is how a tab works on one page and
+     is blocked on the other. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' data: https://*.supabase.co wss://*.supabase.co https://www.googleapis.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://player.vimeo.com https://www.facebook.com https://www.google.com">
+<title>Video hub · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<script src="../appmode.js?v=278"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=278">
+<!-- the paywall card, for a members-only league this viewer may not see -->
+<link rel="stylesheet" href="../kit/access.css?v=278">
+<link rel="stylesheet" href="../kit/nav.css?v=278">
+<!-- the player, the filters and the play list: the game page's own stylesheet,
+     loaded last so its chain of colour fallbacks resolves over the kit -->
+<link rel="stylesheet" href="../video.css?v=278">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .wm{font-family:var(--f-score);font-size:19px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 11px 1px;text-transform:uppercase}
+  .hero{padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .hero h1{font-family:var(--f-score);font-size:clamp(30px,6.5vw,54px);line-height:.88;margin:0;
+    text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3);line-height:2;
+    max-width:74ch;margin:calc(var(--u)*2) 0 0}
+
+  /* THE PICKERS ARE NATIVE SELECTS, ALL THREE OF THEM.
+     A league can have fifty read games and a club list as long again, and a
+     rail of chips at 375px becomes three lines of sideways scrolling before
+     the player is even on screen. The phone's own picker is one tap, reads the
+     league's colours from the page, and cannot overflow the gutter. */
+  .picks{display:flex;flex-direction:column;gap:10px;
+    padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .pickrow{display:flex;gap:10px;flex-wrap:wrap}
+  .pick{display:flex;flex-direction:column;gap:5px;flex:1 1 180px;min-width:0}
+  .pick.wide{flex:1 1 100%}
+  .pick label{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .pick select{width:100%;max-width:100%;box-sizing:border-box;
+    padding:9px 11px;border-radius:10px;border:1px solid var(--rule-2);
+    background:var(--panel);color:var(--ink);font-family:var(--f-ui);font-size:13.5px}
+  .pick select:disabled{opacity:.55}
+
+  /* what the reading of this broadcast can and cannot place */
+  .cover{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-3);
+    padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .cover.warn{color:var(--amber)}
+  .cover a{color:var(--lume)}
+
+  .stage{padding:calc(var(--u)*3)}
+  .msg{padding:calc(var(--u)*6) calc(var(--u)*3);text-align:center;color:var(--ink-3);
+    font-family:var(--f-micro);font-size:10.5px;line-height:2}
+  .msg b{color:var(--ink-2)}
+  footer.foot{padding:calc(var(--u)*4) calc(var(--u)*3);font-family:var(--f-micro);
+    font-size:9px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+  footer.foot a{color:var(--ink-3);text-decoration:none}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro"></span>
+  </div>
+
+  <div class="hero">
+    <h1>Video hub</h1>
+    <p>
+      Every game in this league whose broadcast has been read by the clock reader,
+      in one place: pick a game and the play-by-play becomes footage — jump to any
+      basket, any player's minutes, any run. Filter by club or competition first.
+    </p>
+  </div>
+
+  <!-- a members-only league this viewer may not see: the paywall card in place
+       of the hub, never a half-drawn page -->
+  <div id="accessWall" class="hide"></div>
+
+  <div class="picks" id="picks">
+    <div class="pickrow">
+      <span class="pick" id="compWrap"><label for="compPick">Competition</label>
+        <select id="compPick"></select></span>
+      <span class="pick" id="teamWrap"><label for="teamPick">Club</label>
+        <select id="teamPick"></select></span>
+    </div>
+    <div class="pickrow">
+      <span class="pick wide"><label for="gamePick">Game</label>
+        <select id="gamePick"></select></span>
+    </div>
+  </div>
+
+  <div class="cover" id="cover"></div>
+  <div class="stage"><div id="vidHost"><div class="msg">Loading the read games…</div></div></div>
+
+  <footer class="foot">
+    <a href="../home/">← Epinoia</a>
+    <a href="../fixtures/" id="fxLink">Fixtures</a>
+    <span id="foot">Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=278" defer></script>
+<!-- memberships: a member's auth headers, and the paywall card -->
+<script src="../access.js?v=278" defer></script>
+<script src="../follow.js?v=278" defer></script>
+<script src="../engine.js?v=278" defer></script>
+<script src="../data.js?v=278" defer></script>
+<script src="../video.js?v=278" defer></script>
+<!-- the tip-off in the footage itself (OCR, vendored — the CSP allows no CDN script) -->
+<script src="../videoanchor.js?v=278" defer></script>
+<!-- the game page's own video tab, rendered here against a game this page loads -->
+<script src="../game/video.js?v=278" defer></script>
+<!-- the runs the tab can play: game flow's analysis, from the same log -->
+<script src="../game/flow.js?v=278" defer></script>
+<script src="videohub.js?v=278" defer></script>
+<script src="../nav.js?v=278" defer></script>
+</body>
+</html>

@@ -517,6 +517,14 @@ jobs:
           node supabase/tests/compare.test.mjs
           node supabase/tests/scouting-page.test.mjs
 
+      - name: The video hub offers only broadcasts a play can be placed in
+        # the page's head (appmode first, the game page's frame-src, the script order), the
+        # listing query (a primary recording with readings in it AND a finished job), the
+        # judgement that keeps a reading out of the picker when it would pin every play onto
+        # one instant, what it says about a half-read one, one log fetched per chosen game,
+        # EpinoiaVideoTab reset before every render, and the rail's row starting hidden
+        run: node supabase/tests/videohub-page.test.mjs
+
       - name: Event splits are stored, rolled up and drawn from one contract
         # finalise-game's stats.sit lines and the backfill (situations-store), the season
         # rollup and table categories (sitstats), and the profile panel (sitpanel)

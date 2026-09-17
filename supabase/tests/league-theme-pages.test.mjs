@@ -38,9 +38,9 @@ console.log('\n-- which pages nav.js paints');
 const PAGE_RE = new RegExp((/const LEAGUE_PAGE = \/(.+)\/;/.exec(nav) || [])[1] || 'x^');
 const CLUB_RE = new RegExp((/const CLUB_PAGE = \/(.+)\/;/.exec(nav) || [])[1] || 'x^');
 const paints = p => PAGE_RE.test(p) && !CLUB_RE.test(p);
-eq('fixtures, statistics, WOWY, news, a game and joining are league pages',
-   ['/epinoia/fixtures/', '/epinoia/stats/', '/epinoia/stats/wowy/', '/epinoia/news/', '/epinoia/game/', '/epinoia/join/'].map(paints),
-   [true, true, true, true, true, true]);
+eq('fixtures, statistics, WOWY, news, a game, the video hub and joining are league pages',
+   ['/epinoia/fixtures/', '/epinoia/stats/', '/epinoia/stats/wowy/', '/epinoia/news/', '/epinoia/game/', '/epinoia/video/', '/epinoia/join/'].map(paints),
+   [true, true, true, true, true, true, true]);
 eq('a club\'s page and a player\'s page are not (they wear the club\'s colours)', ['/epinoia/t/', '/epinoia/p/'].map(paints), [false, false]);
 eq('the front page and the hub paint themselves, so nav.js leaves them', ['/epinoia/', '/epinoia/l/'].map(paints), [false, false]);
 eq('the platform\'s own tools stay the platform\'s',
@@ -55,9 +55,12 @@ ok('it paints once the leagues arrive, and again whenever a page names its leagu
 console.log('\n-- every league page tells nav.js which league it is');
 [['fixtures/fixtures.js', /window\.__CS_LEAGUE_SLUG = LEAGUE\.slug/], ['stats/stats.js', /window\.__CS_LEAGUE_SLUG = league\.slug/],
  ['stats/wowy/wowy.js', /window\.__CS_LEAGUE_SLUG = league\.slug/], ['news/news-page.js', /window\.__CS_LEAGUE_SLUG = league\.slug/],
- ['game/game.js', /window\.__CS_LEAGUE_SLUG = league\.slug/], ['join/join.js', /window\.__CS_LEAGUE_SLUG = SLUG/]]
+ ['game/game.js', /window\.__CS_LEAGUE_SLUG = league\.slug/], ['join/join.js', /window\.__CS_LEAGUE_SLUG = SLUG/],
+ /* the video hub keeps its league in a `root` alias, being a UMD module */
+ ['video/videohub.js', /root\.__CS_LEAGUE_SLUG = league\.slug/]]
   .forEach(([f, re]) => ok(f + ' names its league once it knows it', re.test(read('epinoia', ...f.split('/')))));
-['fixtures/index.html', 'stats/index.html', 'stats/wowy/index.html', 'news/index.html', 'game/index.html', 'join/index.html']
+['fixtures/index.html', 'stats/index.html', 'stats/wowy/index.html', 'news/index.html', 'game/index.html',
+ 'video/index.html', 'join/index.html']
   .forEach(f => ok(f + ' loads nav.js', /<script src="(\.\.\/)+nav\.js\?v=\d+" defer><\/script>/.test(read('epinoia', ...f.split('/')))));
 
 /* --------------------------------------------------- nav.js's painter --- */
@@ -166,7 +169,7 @@ console.log('\n-- each page\'s heading');
      /body\.league-themed \.hero\{[^}]*color-mix\(in srgb,var\(--league-a\)/.test(kit) &&
      /body\.league-themed \.hero::after\{[^}]*var\(--league-a\) 0 72%,var\(--league-b\) 72% 88%/.test(kit) &&
      /body\.league-themed \.hero h1\{ background-image:linear-gradient\(100deg,var\(--league-a-ink\),var\(--league-b-ink\)\) \}/.test(kit));
-  ['fixtures/index.html', 'stats/wowy/index.html', 'news/index.html', 'join/index.html']
+  ['fixtures/index.html', 'stats/wowy/index.html', 'news/index.html', 'video/index.html', 'join/index.html']
     .forEach(f => ok(f + ' opens with a .hero the kit trims', /class="hero"/.test(read('epinoia', ...f.split('/')))));
   const stats = read('epinoia', 'stats', 'index.html');
   ok('the statistics page, which has no .hero, trims its heading itself', /body\.league-themed \.ep-frame > \.ep-hdr\{/.test(stats) &&

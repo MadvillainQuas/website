@@ -313,6 +313,14 @@
       match: /\/epinoia\/t\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
+    /* THE VIDEO HUB IS THE ONE ROW THAT DEPENDS ON CONTENT RATHER THAN ON WHO
+       YOU ARE. Most leagues have no game whose broadcast has been read by the
+       clock reader, and a row leading to an empty page is worse than no row:
+       it advertises a feature the league does not have. So it starts hidden
+       like the role-gated rows do, and a probe of the league on screen
+       (probeLeague below) is what shows it. */
+    { href: 'video/',      ic: '▶', tx: 'video hub',  lg: true, key: 'video', probe: 'video',
+      match: /\/epinoia\/video\// },
     { label: 'take part', auth: true },
     /* SCORING IS THE ONE ROW THAT DOES NOT DISAPPEAR.
 
@@ -581,6 +589,11 @@
   const demoRows = [];         // [node, spec, demoHref] — rows that downgrade rather than hide
   const carriers = [];         // [anchor, base path] — links that take the league
   const navKeyed = [];         // [node, key] — rows a league may switch off
+  const probed = [];           // [node, kind] — rows shown once a probe finds the content
+  /* kind|slug -> true/false for this page's lifetime, and which questions are
+     already in flight, so browsing back and forth in the rail asks once */
+  const probeSaid = {};
+  const probeAsked = {};
 
   /* Anything at all: this row is not about the league on screen, because at
      the top level there is no league on screen. A platform administrator, or
@@ -604,6 +617,7 @@
     a.append(el('span', 'ic', it.ic), el('span', 'tx', it.tx));
     a.title = it.tx;
     if (it.auth) { a.hidden = true; gated.push([a, it.role || (() => true)]); }
+    if (it.probe) { a.hidden = true; probed.push([a, it.probe]); }
     if (it.key) navKeyed.push([a, it.key]);
     if (it.teams) {
       a.dataset.teamsRow = '1';
@@ -1358,7 +1372,7 @@
      apply). And not the platform's own tools (the console, the scorer, the broadcast
      room, a profile), which are nobody's league. teamcolour.js is loaded only when a
      page needs it and has not loaded it already, at this file's own stamp. */
-  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|join)\//;
+  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|video|join)\//;
   const CLUB_PAGE = /\/epinoia\/(t|p)\//;
   let themedFor = '';
   let teamColour = null;
@@ -1469,11 +1483,103 @@
          only, including turning a row back ON when browsing to a league that
          has not disabled it — an applyNav that could only hide would leave
          the previous league's switches on screen. */
-      if (!isGated(node)) node.hidden = off;
+      if (!isLatched(node)) node.hidden = off;
       else if (off) node.hidden = true;
     });
   }
-  const isGated = node => gated.some(g => g[0] === node);
+  /* A ROW WHOSE VISIBILITY IS SOMEBODY ELSE'S DECISION: the role gate, which
+     runs after this, or the content probe, which answers over the network.
+     applyNav may HIDE one (the league switched the page off) but must never
+     show one, or it would undo a gate that has not run yet. */
+  const isLatched = node => gated.some(g => g[0] === node) || probed.some(p => p[0] === node);
+
+  /* --------------------------------------------- what the league actually has ---
+     THE VIDEO HUB EXISTS FOR A LEAGUE THAT HAS READ VIDEO, AND FOR NO OTHER.
+
+     One question, asked of the league the rail is currently showing: is there a
+     single game here whose primary recording carries a clock track and whose
+     reading job finished? limit=1, no payload beyond the id, so the answer costs
+     one small round trip and is then remembered for the session — the rail is on
+     every page and a fan browsing five pages of a league must not ask five times.
+
+     WHAT IT DELIBERATELY DOES NOT ASK is whether the reading is any GOOD. That
+     needs every candidate's clock track, which is hundreds of kilobytes of
+     readings, and the hub itself judges each game properly when it opens. So the
+     rail's promise is "there is read video here", and the page is what says
+     whether it can be used. A league whose only readings are junk gets a row and
+     a page that tells the reader so, which is the honest pair.
+
+     FAILS CLOSED, like the role gate: no answer, a network error or a page with
+     no league at all leaves the row exactly as it was built, hidden.
+
+     ASKED ANONYMOUSLY, because the rail carries no session of its own and will
+     not load the auth library for a question this small. In a members-only
+     league row-level security answers "none" to that, so the row stays hidden
+     even for a member — the hub itself is still reachable by its address and
+     reads it properly with their token. Nothing is disclosed by the reverse. */
+  /* Function declarations rather than consts, all the way down: retarget() runs
+     while the rail is being built, long before this point in the file, and a
+     const here would still be in its dead zone when it called. */
+  function probeStore() { try { return window.sessionStorage || null; } catch (_) { return null; } }
+  function probeRemembered(key) {
+    const s = probeStore();
+    if (!s) return null;
+    try { const v = s.getItem('ep-nav-probe-' + key); return v === '1' ? true : v === '0' ? false : null; }
+    catch (_) { return null; }
+  }
+  function probeRemember(key, yes) {
+    const s = probeStore();
+    if (!s) return;
+    try { s.setItem('ep-nav-probe-' + key, yes ? '1' : '0'); } catch (_) { /* full, or private browsing */ }
+  }
+  function paintProbes() {
+    probed.forEach(([node, kind]) => {
+      node.hidden = probeSaid[kind + '|' + lg] !== true || node.dataset.navOff === '1';
+    });
+  }
+  /* the listing epinoia/video/videohub.js draws, reduced to "does one exist" */
+  function probeQuery(kind, slug) {
+    if (kind !== 'video') return null;
+    /* every embedded table named IN THE SELECT, which is what makes the !inner
+       filters below legal: PostgREST answers 400 (PGRST108) for a filter on a
+       table the select does not embed, and a 400 here is a row that never
+       appears rather than an error anybody sees. */
+    return 'games?select=id,competitions!inner(seasons!inner(leagues!inner(slug))),' +
+      'game_videos!inner(id),video_jobs!inner(status)' +
+      '&competitions.seasons.leagues.slug=eq.' + encodeURIComponent(slug) +
+      '&game_videos.is_primary=eq.true' +
+      '&game_videos.clock_track->samples->0=not.is.null' +
+      '&video_jobs.status=eq.done&limit=1';
+  }
+  function probeLeague() {
+    if (!probed.length) return;
+    const slug = lg;
+    if (!slug) { paintProbes(); return; }
+    probed.forEach(([, kind]) => {
+      const key = kind + '|' + slug;
+      if (probeSaid[key] !== undefined || probeAsked[key]) { paintProbes(); return; }
+      const held = probeRemembered(key);
+      if (held !== null) { probeSaid[key] = held; paintProbes(); return; }
+      const cfg = window.EPINOIA_CONFIG, q = probeQuery(kind, slug);
+      if (!cfg || !cfg.supabaseUrl || !q) return;
+      probeAsked[key] = true;
+      let asked;
+      try {
+        asked = fetch(cfg.supabaseUrl + '/rest/v1/' + q,
+          { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+      } catch (_) { return; }                 // no fetch at all: the row stays hidden
+      Promise.resolve(asked).then(r => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      }).then(rows => {
+        const yes = Array.isArray(rows) && rows.length > 0;
+        probeSaid[key] = yes;
+        probeRemember(key, yes);
+        paintProbes();
+        try { sizeDeck(false); } catch (_) { /* before the deck has been measured */ }
+      }).catch(() => { probeAsked[key] = false; });
+    });
+  }
 
   function markCurrent() {
     list.querySelectorAll('a[data-league-slug]').forEach(a => {
@@ -1489,6 +1595,10 @@
     pages.querySelectorAll('a.item').forEach(a => {
       a.classList.toggle('on', sameLeague && a.dataset.hereIs === '1');
     });
+    /* The rows that depend on what the league HAS are repointed here with
+       everything else, so browsing the rail into another league asks that
+       league's question rather than keeping the last one's answer. */
+    probeLeague();
   }
 
   /* --------------------------------------------------------------- account ---
