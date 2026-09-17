@@ -1,0 +1,307 @@
+name: android
+
+# THE EPINOIA ANDROID APP IS BUILT HERE, NEVER ON A PC. This PC has no JDK and no
+# Android SDK, and the repo is public, so the signing key must never sit next to a
+# checkout. The key lives in four GitHub secrets and is decoded into $RUNNER_TEMP
+# for the length of one job, then deleted.
+#
+# Two modes, chosen by whether the owner has set the signing secrets yet:
+#   signed    assembleRelease + bundleRelease, the APK's certificate must be listed
+#             in .well-known/assetlinks.json (or the app would open with a URL bar),
+#             and ONLY on main a release android-v<versionCode> with epinoia.apk and
+#             epinoia.aab. An existing tag is skipped with a warning, so an edit that
+#             only changes minShell rebuilds and publishes nothing.
+#   unsigned  assembleDebug, uploaded as the workflow artifact epinoia-debug-apk, plus
+#             an unsigned assembleRelease bundleRelease that is thrown away: release
+#             builds are the only ones that run lintVitalRelease and build the AAB, so
+#             this proves the release path before the key exists.
+#
+# epinoia/android/version.json is the single source of truth for versionCode and
+# versionName: Gradle reads it, this workflow reads it, the download page reads it.
+#
+# Versions verified 2026-09-17 against the real sources:
+#   actions/checkout v7, actions/setup-java v6, android-actions/setup-android v4,
+#   gradle/actions/setup-gradle v6, softprops/action-gh-release v3,
+#   actions/upload-artifact v7 (every major tag exists and runs on node24).
+#   setup-gradle v6's default "enhanced" cache is a proprietary component under
+#   Gradle's Terms of Use; cache-provider: basic (MIT, @actions/cache, since v6.1.0)
+#   is used instead, so no extra terms are accepted.
+#   Gradle 8.14.5 with AGP 8.13.2 (android/build.gradle pins the plugin; keep the two
+#   in step): AGP 8.13 needs Gradle 8.13+ and supports up to API 36.1, which covers
+#   compileSdk 36. JDK 17 is AGP 8's floor.
+#   build-tools 36.0.0 provides apksigner and aapt2.
+
+on:
+  push:
+    # '**' matches every branch. Naming branches at all also stops tag pushes from
+    # triggering a build, including the android-v* tags this workflow creates.
+    branches: ['**']
+    paths:
+      - 'android/**'
+      - 'epinoia/android/version.json'
+      - '.well-known/assetlinks.json'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+# A release creates a tag and uploads files. Two runs racing on one ref could both
+# see "no tag yet", so runs on the same ref queue instead of overlapping. Nothing is
+# cancelled: a half-finished release is worse than a slow one.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+# READ BY DEFAULT, WRITE ONLY WHERE THE RELEASE IS MADE. The one job publishes the
+# release, so it needs contents: write; nothing else in the workflow does.
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: uk.co.prophesyscouting.epinoia
+  GRADLE_VERSION: '8.14.5'
+  BUILD_TOOLS: '36.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      # THE TOKEN IS NOT LEFT IN .git/config. Gradle runs AGP and downloaded
+      # dependency code, and a write token there could push to main, which is the
+      # live site. The release step passes github.token itself, and ls-remote on
+      # this public repo needs no credentials.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # THE CHEAP CHECKS FIRST. Package names, version.json, the fingerprint format
+      # in assetlinks.json (keytool form, uppercase) and the keystore rules, before
+      # minutes of SDK and Gradle setup. ubuntu-latest ships Node.
+      - name: The Android app's configuration agrees with itself
+        run: node supabase/tests/android-config.test.mjs
+
+      # VERSION.JSON IS READ ONCE, HERE. A versionCode that is not a positive
+      # integer would give a tag like android-vnull, so the run stops first.
+      - name: Read the app version
+        id: version
+        run: |
+          code=$(jq -r '.versionCode' epinoia/android/version.json)
+          name=$(jq -r '.versionName' epinoia/android/version.json)
+          if ! [[ "$code" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error file=epinoia/android/version.json::versionCode must be a positive integer, got '$code'."
+            exit 1
+          fi
+          if [ -z "$name" ] || [ "$name" = "null" ]; then
+            echo "::error file=epinoia/android/version.json::versionName is missing."
+            exit 1
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Epinoia for Android $name (versionCode $code)"
+
+      # SECRETS CANNOT BE TESTED IN AN if: EXPRESSION, so this step turns "all four
+      # are set" into an output the later steps can branch on. Nothing is printed.
+      - name: Check for the owner's signing key
+        id: signing
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_B64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] \
+             && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "All four signing secrets are set: building a signed release."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Unsigned build::The signing secrets (ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) are not all set. Building a debug APK only; the release needs the owner's signing key (roadmap owner steps 6.3 and 6.4)."
+          fi
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ITS DEFAULT PACKAGE LIST NAMES "tools", WHICH THE SDK REPOSITORY NO LONGER HAS, and the
+      # step fails with "Failed to find package 'tools'" (first run, 17 Sep 2026). Only
+      # platform-tools is asked for; the platform and build-tools are installed below.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+          log-accepting-licenses: false
+
+      # APKSIGNER IS NOT ON THE RUNNER'S PATH. Installing a pinned build-tools gives
+      # a known apksigner and aapt2 at a fixed path, and the platform saves AGP from
+      # downloading it mid-build.
+      - name: Install the Android platform and build-tools
+        run: |
+          sdkmanager --install "platforms;android-36" "build-tools;${BUILD_TOOLS}"
+          test -x "$ANDROID_HOME/build-tools/${BUILD_TOOLS}/apksigner"
+
+      # NO GRADLE WRAPPER IS COMMITTED (gradle-wrapper.jar is binary), so the pinned
+      # Gradle comes from setup-gradle and runs as plain `gradle`.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          cache-provider: basic
+
+      # ------------------------------------------------------------ unsigned mode --
+      # The release tasks run too, unsigned (app/build.gradle leaves the release
+      # unsigned without the EPINOIA_* variables). Only the debug APK is kept; the
+      # release outputs exist to prove lintVitalRelease and the bundle pass now,
+      # not on the first run after the owner adds the key.
+      - name: Build the debug APK and check the release build
+        if: steps.signing.outputs.signed != 'true'
+        working-directory: android
+        run: gradle --no-daemon assembleDebug assembleRelease bundleRelease
+
+      - name: Upload the debug APK
+        if: steps.signing.outputs.signed != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: epinoia-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Say why nothing was released
+        if: steps.signing.outputs.signed != 'true'
+        run: |
+          echo "::warning title=No release::The debug APK is attached to this run as epinoia-debug-apk. A GitHub release needs the owner's signing key in the repository secrets."
+
+      # -------------------------------------------------------------- signed mode --
+      # THE KEYSTORE GOES TO $RUNNER_TEMP, NEVER THE CHECKOUT. Anything under the
+      # checkout is one careless `git add` from a public repo. tr strips the line
+      # breaks a Windows base64 paste carries, which base64 -d would reject.
+      - name: Decode the signing key
+        if: steps.signing.outputs.signed == 'true'
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d '\r\n' | base64 -d > "$RUNNER_TEMP/epinoia.jks"
+          if [ ! -s "$RUNNER_TEMP/epinoia.jks" ]; then
+            echo "::error::ANDROID_KEYSTORE_B64 decoded to an empty file. Re-run owner step 6.4."
+            exit 1
+          fi
+
+      - name: Build the signed APK and bundle
+        if: steps.signing.outputs.signed == 'true'
+        working-directory: android
+        env:
+          EPINOIA_KEYSTORE: ${{ runner.temp }}/epinoia.jks
+          EPINOIA_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          EPINOIA_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          EPINOIA_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease bundleRelease
+
+      # Fixed names, outside android/, so the release step and the download link
+      # (releases/latest/download/epinoia.apk) never depend on AGP's output layout.
+      - name: Collect the outputs
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          # -print -quit, not | head: the runner's bash has pipefail on, and head
+          # closing the pipe early can fail the step for no real reason.
+          apk=$(find android/app/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' -print -quit)
+          aab=$(find android/app/build/outputs/bundle/release -name '*.aab' -print -quit)
+          if [ -z "$apk" ] || [ -z "$aab" ]; then
+            echo "::error::The release build did not produce a signed APK and an AAB (apk='$apk', aab='$aab')."
+            exit 1
+          fi
+          cp "$apk" "$RUNNER_TEMP/out/epinoia.apk"
+          cp "$aab" "$RUNNER_TEMP/out/epinoia.aab"
+          ls -l "$RUNNER_TEMP/out"
+
+      # AN APP SIGNED WITH A KEY THE SITE DOES NOT LIST IS NOT A VERIFIED TWA: it
+      # opens with a URL bar and nothing tells anyone why. So the build fails here.
+      # apksigner prints lowercase hex with no colons; assetlinks.json uses the
+      # keytool form, uppercase and colon-separated, so the digest is converted.
+      # The listed entries are compared exactly as written, never uppercased here:
+      # a lowercase entry is wrong in the file and must fail (the config test above
+      # names it).
+      # aapt2 also confirms Gradle really took versionCode from version.json.
+      - name: Check the certificate is in assetlinks.json
+        if: steps.signing.outputs.signed == 'true'
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          tools="$ANDROID_HOME/build-tools/${BUILD_TOOLS}"
+          apk="$RUNNER_TEMP/out/epinoia.apk"
+          certs=$("$tools/apksigner" verify --print-certs "$apk")
+          # || true: with pipefail a grep that matches nothing would end the step
+          # before the error below could say what went wrong.
+          digests=$(printf '%s\n' "$certs" | { grep -E '^Signer #[0-9]+ certificate SHA-256 digest:' || true; } | awk '{print $NF}')
+          if [ -z "$digests" ]; then
+            echo "::error::apksigner printed no certificate SHA-256 digest for epinoia.apk."
+            exit 1
+          fi
+          listed=$(jq -r --arg pkg "$PACKAGE_NAME" '.[] | select(.target.namespace == "android_app" and .target.package_name == $pkg) | .target.sha256_cert_fingerprints[]' .well-known/assetlinks.json)
+          for hex in $digests; do
+            fp=$(printf '%s' "$hex" | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
+            if ! printf '%s\n' "$listed" | grep -qxF "$fp"; then
+              echo "::error file=.well-known/assetlinks.json::The APK is signed with SHA-256 $fp, which is not listed for $PACKAGE_NAME. Add it to sha256_cert_fingerprints (owner step 6.3 prints it)."
+              exit 1
+            fi
+            echo "ok - certificate $fp is listed in assetlinks.json"
+          done
+          dump=$("$tools/aapt2" dump badging "$apk")
+          badging=$(printf '%s\n' "$dump" | { grep -m 1 '^package:' || true; })
+          echo "$badging"
+          if ! printf '%s' "$badging" | grep -q "name='$PACKAGE_NAME' versionCode='$VERSION_CODE'"; then
+            echo "::error::The APK's package or versionCode does not match $PACKAGE_NAME / version.json versionCode $VERSION_CODE."
+            exit 1
+          fi
+
+      # ONE RELEASE PER versionCODE. Re-running without a new versionCode must
+      # succeed and publish nothing, so an existing tag is a warning, not a failure.
+      # git ls-remote exits 2 for "no such ref"; anything else unexpected stops the
+      # run rather than risk uploading over a published release.
+      - name: Check whether this version is already released
+        id: tag
+        if: steps.signing.outputs.signed == 'true' && github.ref == 'refs/heads/main'
+        env:
+          TAG: android-v${{ steps.version.outputs.code }}
+        run: |
+          set +e
+          git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Already released::Tag $TAG already exists, so nothing is published. Raise versionCode in epinoia/android/version.json to release a new app."
+          elif [ "$status" -eq 2 ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::git ls-remote failed (exit $status) while checking for tag $TAG."
+            exit 1
+          fi
+
+      - name: Publish the release
+        if: steps.signing.outputs.signed == 'true' && github.ref == 'refs/heads/main' && steps.tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: android-v${{ steps.version.outputs.code }}
+          target_commitish: ${{ github.sha }}
+          name: Epinoia for Android ${{ steps.version.outputs.name }}
+          body: |
+            Epinoia for Android ${{ steps.version.outputs.name }} (versionCode ${{ steps.version.outputs.code }}).
+            Install from https://prophesyscouting.co.uk/epinoia/android/ - the app shows the live website, needs a connection, and needs Chrome installed and enabled.
+          make_latest: 'true'
+          fail_on_unmatched_files: true
+          files: |
+            ${{ runner.temp }}/out/epinoia.apk
+            ${{ runner.temp }}/out/epinoia.aab
+
+      - name: Note that only main publishes releases
+        if: steps.signing.outputs.signed == 'true' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::notice title=Not main::Signed build verified on ${GITHUB_REF}. Releases are published only from main."
+
+      # Always, even after a failed build: the key must not outlive the job.
+      - name: Delete the signing key
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/epinoia.jks"
+          rm -rf "$RUNNER_TEMP/out"

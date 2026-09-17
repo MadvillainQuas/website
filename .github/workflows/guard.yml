@@ -6,7 +6,8 @@ name: guard
 
 on:
   push:
-    paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml']
+    paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml',
+            '.well-known/**', 'android/**', '.github/workflows/android.yml']
   pull_request:
   workflow_dispatch:
 
@@ -486,6 +487,12 @@ jobs:
           node supabase/tests/situations-store.test.mjs
           node supabase/tests/sitstats.test.mjs
           node supabase/tests/sitpanel.test.mjs
+
+      - name: The Android app's configuration agrees with itself
+        # the package name in assetlinks.json, the build file and the manifest; version.json;
+        # every fingerprint in keytool form (a lowercase paste would leave the app with a URL
+        # bar); the keystore decoded only to the runner's temp directory and never committed
+        run: node supabase/tests/android-config.test.mjs
 
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer

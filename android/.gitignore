@@ -1,0 +1,21 @@
+# BUILD OUTPUT AND MACHINE STATE never belong in the public repo.
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.cxx/
+captures/
+
+# A LOCAL GRADLE WRAPPER STAYS LOCAL. The jar is a binary and gradlew loses its executable bit
+# when committed from Windows; CI installs Gradle itself (see README.md).
+gradlew
+gradlew.bat
+gradle/wrapper/
+
+# SIGNING KEYS NEVER COME NEAR THIS FOLDER. Listed anyway, as a second lock.
+*.jks
+*.keystore
+*.p12
+google-services.json

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LEGACY ROUND LAUNCHER ICON, Android 7.1 launchers that ask for one: a dark disc and the Λ mark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#04100b"
+        android:pathData="M54,0 A54,54 0 1 1 54,108 A54,54 0 1 1 54,0 Z" />
+    <group
+        android:pivotX="54"
+        android:pivotY="55"
+        android:scaleX="1.2"
+        android:scaleY="1.2">
+        <path
+            android:fillColor="#93f2bf"
+            android:pathData="M54,30 L72,70 L64,70 L54,47.5 L44,70 L36,70 Z" />
+        <path
+            android:fillColor="#93f2bf"
+            android:pathData="M36,76 L72,76 L72,80 L36,80 Z" />
+    </group>
+</vector>

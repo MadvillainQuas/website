@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    THE EPINOIA APP'S MANIFEST. A Trusted Web Activity over https://prophesyscouting.co.uk,
+    written by hand from android-browser-helper's demos/twa-basic (2.7.3) and Bubblewrap's
+    template. The package comes from build.gradle's namespace, so there is no package="" here.
+    ${hostName} and ${launchUrl} are manifestPlaceholders from app/build.gradle.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- NOTIFICATIONS NEED ASKING FOR ON ANDROID 13+. The launcher asks natively on first launch,
+         because the JavaScript answer is unreliable on One UI 8 (android-browser-helper #563). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Below Android 8 a notification's own vibration is how Game alerts buzz. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- PACKAGE VISIBILITY, ANDROID 11+. Without this the launcher cannot see whether Chrome is
+         installed and enabled, and would always think it is missing. The library already
+         declares a https VIEW query; the Custom Tabs service query is for the fallback. -->
+    <queries>
+        <package android:name="com.android.chrome" />
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+        android:theme="@style/Theme.Epinoia.Launcher">
+
+        <!-- DIGITAL ASSET LINKS, APP SIDE. The site side is /.well-known/assetlinks.json. -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
+
+        <!-- THE LAUNCHER. configChanges keeps the notification pre-prompt alive through a
+             rotation instead of recreating the activity half-way through the launch. -->
+        <activity
+            android:name=".EpinoiaLauncherActivity"
+            android:label="@string/app_name"
+            android:alwaysRetainTaskState="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:exported="true">
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                android:value="${launchUrl}" />
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+                android:resource="@color/epinoia_ground_light" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR_DARK"
+                android:resource="@color/epinoia_ground_dark" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+                android:resource="@color/epinoia_ground_light" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR_DARK"
+                android:resource="@color/epinoia_ground_dark" />
+
+            <!-- THE TWA SPLASH, IN HOME'S COLOUR. It hands over from the system splash and fades
+                 out over 300 ms as HOME first paints. The file provider carries the image to Chrome. -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+                android:resource="@drawable/splash" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                android:resource="@color/epinoia_ground_light" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+                android:value="300" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
+                android:value="${applicationId}.fileprovider" />
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
+                android:value="customtabs" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
+                android:value="default" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- APP LINKS. Outside links under /epinoia open in the app once assetlinks.json
+                 verifies; the rest of the site stays in the browser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${hostName}"
+                    android:pathPrefix="/epinoia" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:exported="false"
+            android:excludeFromRecents="true">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="${launchUrl}" />
+        </activity>
+
+        <!-- THE LIBRARY'S HELPER ACTIVITIES ARE TRANSPARENT, SO THEY NAME THEIR OWN THEME.
+             The application theme is Theme.Epinoia.Launcher, and from Android 12 (values-v31)
+             that is opaque #f3faf6 for the system splash. Inherited, it would blank the whole
+             page behind Android's permission dialog. twa-basic and Bubblewrap get transparency
+             from a translucent application theme; here each helper says so itself. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.FocusActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- CHROME'S OWN PERMISSION PATH. When the site asks for notifications and the app has
+             none, Chrome starts this through the delegation service. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.NotificationPermissionRequestActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- THE NATIVE NOTIFICATION SETTINGS SCREEN. The site opens it with
+             intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end
+             Chrome only follows an intent:// link to an activity that is exported and BROWSABLE. -->
+        <activity
+            android:name=".NotificationSettingsActivity"
+            android:label="@string/settings_title"
+            android:theme="@style/Theme.Epinoia.Settings"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="epinoia"
+                    android:host="notification-settings" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+
+        <!-- NOTIFICATION DELEGATION. Declaring this service is what lets Chrome hand the site's
+             Web Push notifications to the app; the subclass re-posts them on Game alerts.
+             TrustedWebActivityService checks the caller itself, hence no permission. -->
+        <service
+            android:name=".EpinoiaDelegationService"
+            android:enabled="true"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <meta-data
+                android:name="android.support.customtabs.trusted.SMALL_ICON"
+                android:resource="@drawable/ic_stat_epinoia" />
+            <intent-filter>
+                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
