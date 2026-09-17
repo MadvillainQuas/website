@@ -356,6 +356,14 @@ jobs:
         # tip cancels) and that a clip still contains the shot at either cadence.
         run: node supabase/tests/videosync.test.mjs
 
+      - name: Two games that mapped to the wrong footage
+        # held as fixtures because the ways they broke are not ways anybody would
+        # think to invent: 106394dc read 6% of its broadcast and listed no first
+        # half at all, and 52bfe03b put 256 plays at 6:03:11 of a video one hour
+        # fifty-five long because 668 rows shared one insert instant. Runs the
+        # real rows through video.js and the real gates through ai_worker.py.
+        run: node supabase/tests/video-mapping.test.mjs
+
       - name: A live event survives the trip to the layer
         # broadcast.js re-applied its database-row flattener to events that had
         # already been flattened, so on air a substitution lost who went on and

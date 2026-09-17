@@ -512,11 +512,41 @@ const LONE_REACH_MS = 600000;
    and otherwise they are left out. Three seconds of slack for a clock that keys
    in whole seconds and a statistician's reaction. */
 const BATCH_SLACK_MS = 3000;
-function distrustedStamps(events) {
+
+/* AND AN INSERT TIME IS A BATCH STAMP TOO: THE WORST ONE THERE IS.
+
+   The rule above was written for the device stamp and only ever consulted that,
+   which left the fallback clock unguarded: a log with no tap stamps at all is
+   placed by created_at, and created_at is the moment a row was WRITTEN. One
+   ingest rewrite writes hundreds of rows inside a single transaction, so they
+   all carry one instant, and every one of them was placed on it.
+
+   52bfe03b (Milton Keynes Breakers v Loughborough Riders, 2026-09-13), measured:
+   784 rows share five insert instants. Twenty plays covering the first four
+   minutes of the game all sat at 13:28 of the footage, the first listed play
+   among them, so the tab opened on a passage where the score was 7-9 with 7:52
+   on the clock. A further 668 rows, re-inserted in bulk hours after the game,
+   shared one instant six hours into a video an hour and fifty-five long.
+
+   Same physics, same conclusion: a row more than the batch's error bar of game
+   clock behind the latest row sharing its stamp did not happen at that stamp,
+   so the stamp is not a time for it. The bar is wider here than for a tap,
+   because an insert time carries the coalescing frame, the network and any
+   retry with it: fifteen seconds of game clock is about the most one ordinary
+   write can honestly cover, and it leaves the last few plays of each batch
+   anchored so fillGaps has something real to interpolate between. */
+const INSERT_SLACK_MS = 15000;
+
+function distrustedStamps(events, mode) {
+  /* 'insert' groups by created_at, the clock index() will actually place by in
+     that mode; anything else groups by the tap stamp, as before. */
+  const byInsert = mode === 'insert';
+  const stampOf = byInsert ? (e => ms(e.created_at || e.at)) : deviceStamp;
+  const slack = byInsert ? INSERT_SLACK_MS : BATCH_SLACK_MS;
   const byWall = new Map();
   for (const e of events || []) {
     if (!e || e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
-    const w = deviceStamp(e);
+    const w = stampOf(e);
     if (w == null) continue;
     let g = byWall.get(w);
     if (!g) byWall.set(w, g = []);
@@ -528,10 +558,13 @@ function distrustedStamps(events) {
     let latest = -Infinity, err = 0;
     for (const e of g) {
       latest = Math.max(latest, cumElapsed(e));
-      const x = +e.wall_err;
+      /* An insert time has no error bar of its own, nothing measured it, so
+         the slack above is the whole allowance. A poll's wall_err is real and
+         is still honoured. */
+      const x = byInsert ? NaN : +e.wall_err;
       if (isFinite(x) && x > err) err = x;
     }
-    for (const e of g) if (latest - cumElapsed(e) > err + BATCH_SLACK_MS) out.add(e);
+    for (const e of g) if (latest - cumElapsed(e) > err + slack) out.add(e);
   });
   return out;
 }
@@ -540,26 +573,62 @@ function fillGaps(rows) {
   const pace = paceOf(rows);
   for (let i = 0; i < rows.length; i++) {
     if (rows[i].since != null) continue;
-    let before = null, after = null;
-    for (let j = i - 1; j >= 0; j--) if (rows[j].since != null) { before = rows[j]; break; }
-    for (let j = i + 1; j < rows.length; j++) if (rows[j].since != null) { after = rows[j]; break; }
+    /* A GUESS IS NOT AN ANCHOR, OR THE GUESS BECOMES THE GAME.
 
+       These two scans took any row that had a position, and by the time the
+       loop reached row i the rows behind it included the ones this same loop
+       had just invented. So a single honest stamp seeded a chain: row 200 was
+       projected from it, row 201 from row 200, row 202 from row 201, each hop
+       adding its own stoppage error, and forty minutes of basketball was laid
+       out at the projection's pace with nothing left to contradict it. The
+       LONE_REACH_MS bound below was supposed to stop a projection running away
+       and could not: every hop was inside ten minutes of its predecessor.
+
+       Only a row that knows when it happened may say where another one is.
+       Rows that no honest neighbour can reach are then left unplaced, which is
+       the point: 52bfe03b lists 138 of its 357 plays instead of stretching all
+       of them across footage the log cannot vouch for. Whoever reads the list
+       is told so by coverageNote below rather than left to assume.
+
+       (The forward scan cannot meet a guessed row, because the loop runs forwards, so
+       nothing ahead of i has been filled yet, but it is written the same way
+       so the rule does not depend on the direction of a loop.) */
+    let before = null, after = null;
+    for (let j = i - 1; j >= 0; j--) if (rows[j].since != null && !rows[j].guessed) { before = rows[j]; break; }
+    for (let j = i + 1; j < rows.length; j++) if (rows[j].since != null && !rows[j].guessed) { after = rows[j]; break; }
+
+    /* AND AN INTERPOLATION HAS TO ACTUALLY BRACKET THE ROW IN GAME TIME.
+
+       The neighbours are found by position in the LOG, on the reasonable-looking
+       assumption that a log runs in the order the game did. 52bfe03b does not:
+       the ingest rewrite renumbered it, so seq 205 is a foul at Q1 4:14 sitting
+       eighty rows after plays from Q1 4:11 onwards. Its honest neighbours either
+       side of those plays were therefore both at 5:46 of elapsed game time, a
+       span of zero, and the old code answered that with frac = 0.5 and gave
+       thirty-two plays covering ten minutes of basketball one identical position.
+       Clamping frac to [0,1] does the same, quietly, whenever the row is outside
+       its neighbours rather than between them.
+
+       So a bracket is required, and when there is not one the row is projected
+       from whichever neighbour is NEARER in game time, which is bounded by
+       LONE_REACH_MS and declines rather than inventing. */
     const mine = cumElapsed(rows[i].e);
-    if (before && after) {
-      const a = cumElapsed(before.e), b = cumElapsed(after.e);
-      const span = b - a;
-      const frac = span > 0 ? Math.max(0, Math.min(1, (mine - a) / span)) : 0.5;
-      rows[i].since = before.since + (after.since - before.since) * frac;
+    const a = before ? cumElapsed(before.e) : null;
+    const b = after ? cumElapsed(after.e) : null;
+    if (before && after && b > a && mine >= a && mine <= b) {
+      rows[i].since = before.since + (after.since - before.since) * ((mine - a) / (b - a));
       rows[i].guessed = true;
     } else if (before || after) {
-      /* ONE NEIGHBOUR, SO A PROJECTION — AT THE MEASURED RATE, AND NOT FOR EVER.
-         Both branches used to add the game-clock difference straight onto the
+      /* ONE USABLE NEIGHBOUR, SO A PROJECTION — AT THE MEASURED RATE, AND NOT FOR
+         EVER. Both branches used to add the game-clock difference straight onto the
          neighbour's position, which says a second of stopped clock costs no real
          time. It is the case that matters most right now: when a feed correction
          un-times the early part of a log, every surviving stamp is LATER than the
          gap, so every unplaced play in the first half has exactly one neighbour
          and all of them were being projected backwards at 1:1. */
-      const anchor = before || after;
+      const anchor = (before && after)
+        ? (Math.abs(mine - a) <= Math.abs(mine - b) ? before : after)
+        : (before || after);
       const d = mine - cumElapsed(anchor.e);          // signed: negative looking back
       if (Math.abs(d) > LONE_REACH_MS) continue;      // too far to place honestly
       rows[i].since = anchor.since + d * (pace || 1);
@@ -751,6 +820,33 @@ function saneTrack(track, video) {
   saneCache.set(track, { gap, out });
   return out;
 }
+
+/* THE SAME PHYSICS, ASKED OF A STAMP RATHER THAN OF A READING.
+
+   saneTrack refuses a clock reading the game could not have produced, and the
+   argument has nothing to do with where the number came from: a play that had
+   run E of game clock cannot sit more than about four times E plus an interval
+   after the tip, however confidently something stamped it. Only the tracks were
+   ever asked.
+
+   So the upper half of that window is asked of a wall or insert position too.
+   Not the lower half: a log can legitimately begin late: a scorer who joined
+   mid-quarter, a feed whose first poll covers ninety seconds of play, and
+   refusing those would throw away honest rows to catch nothing.
+
+   52bfe03b, measured: 668 rows re-inserted at 21:55 of the evening for a game
+   that tipped at 16:05 said their plays happened five hours and fifty minutes
+   after tip-off. Two hundred and fifty-six of them survived every other guard
+   and were listed at 6:03:11 of a video one hour fifty-five long. This refuses
+   all of them and costs one honestly-placed play elsewhere; the rows are then
+   interpolated from their neighbours, or left out.
+
+   A refused stamp is not a refused play. It returns null, which is the same
+   state as no stamp at all, so fillGaps still gets its chance at the row. */
+function stampIsPossible(e, sinceMs) {
+  if (sinceMs == null) return false;
+  return sinceMs <= cumElapsed(e) * SANE_RATIO + SANE_ABOVE_MS;
+}
 function positionFromTrack(track, period, clockMs) {
   if (!track) return null;
   const runs = runsFromTrack(track);
@@ -832,41 +928,50 @@ function stints(events, starters, opts) {
   return { players, lineups, known: true };
 }
 
+/* THE ASSIST RIDES ON THE BASKET. An assist is logged as its own event a beat
+   after the made shot it belongs to, at the same clock. On the page it is
+   the same moment of video, so the basket carries "ASSIST: X" — and in a
+   score-only game, where only baskets can be placed, the basket also stands
+   in for the assist itself (the assists filter finds it, the assister's
+   profile lists it).
+
+   Lifted out of index() so that coverageNote can count the rows this list is
+   MEANT to hold. A paired assist is not a missing play: it is on screen, on
+   its basket's row, and counting it as one would have the honest notice
+   report a shortfall that is not there. */
+const pidOf = e => (e.pid != null ? e.pid : (e.payload || {}).pid || null);
+const seqOf = e => (e.seq != null ? e.seq : e.id);
+function pairAssists(events) {
+  const assistOf = {};
+  const pairedAst = {};           // seq of every assist row that found its basket
+  const recent = [];
+  for (const e of (events || [])) {
+    if (e.t === 'p2_made' || e.t === 'p3_made') {
+      recent.push({ seq: seqOf(e), team: e.team, period: e.period, clock: e.clock, pid: pidOf(e) });
+      if (recent.length > 3) recent.shift();
+    } else if (e.t === 'ast' && pidOf(e) != null) {
+      for (let i = recent.length - 1; i >= 0; i--) {
+        const m = recent[i];
+        if (m.team === e.team && m.period === e.period && m.pid !== pidOf(e) &&
+            Math.abs((m.clock || 0) - (e.clock || 0)) <= 5000) {
+          assistOf[m.seq] = { pid: pidOf(e), seq: seqOf(e) };
+          pairedAst[seqOf(e)] = true;
+          break;
+        }
+      }
+    }
+  }
+  return { assistOf, pairedAst };
+}
+
 function index(events, video, opts) {
   const o = opts || {};
   const label = o.label || (e => e.t);
   const names = o.names || {};
   const out = [];
-  /* THE ASSIST RIDES ON THE BASKET. An assist is logged as its own event a beat
-     after the made shot it belongs to, at the same clock. On the page it is
-     the same moment of video, so the basket carries "ASSIST: X" — and in a
-     score-only game, where only baskets can be placed, the basket also stands
-     in for the assist itself (the assists filter finds it, the assister's
-     profile lists it). `names` maps a pid to a name; without one the tag still
-     says an assist happened. */
-  const pidOf = e => (e.pid != null ? e.pid : (e.payload || {}).pid || null);
-  const seqOf = e => (e.seq != null ? e.seq : e.id);
-  const assistOf = {};
-  const pairedAst = {};           // seq of every assist row that found its basket
-  {
-    const recent = [];
-    for (const e of events) {
-      if (e.t === 'p2_made' || e.t === 'p3_made') {
-        recent.push({ seq: seqOf(e), team: e.team, period: e.period, clock: e.clock, pid: pidOf(e) });
-        if (recent.length > 3) recent.shift();
-      } else if (e.t === 'ast' && pidOf(e) != null) {
-        for (let i = recent.length - 1; i >= 0; i--) {
-          const m = recent[i];
-          if (m.team === e.team && m.period === e.period && m.pid !== pidOf(e) &&
-              Math.abs((m.clock || 0) - (e.clock || 0)) <= 5000) {
-            assistOf[m.seq] = { pid: pidOf(e), seq: seqOf(e) };
-            pairedAst[seqOf(e)] = true;
-            break;
-          }
-        }
-      }
-    }
-  }
+  /* `names` maps a pid to a name; without one the tag still says an assist
+     happened. */
+  const { assistOf, pairedAst } = pairAssists(Array.isArray(events) ? events : []);
   if (!Array.isArray(events)) return out;
 
   /* A CLOCK TRACK PLACES PLAYS BY THE GAME CLOCK. When the video row carries
@@ -944,7 +1049,7 @@ function index(events, video, opts) {
   const wallMeansSomething = !looksImported;
 
   const rows = [];
-  const distrusted = distrustedStamps(events);
+  const distrusted = distrustedStamps(events, mode);
   for (const e of events) {
     /* Descriptors are not plays. A 'loc', a 'tag' and a 'stype' each decorate
        an event that is already in this list; including them would show the
@@ -958,7 +1063,10 @@ function index(events, video, opts) {
     if (e.t === 'ast' && pairedAst[seqOf(e)]) continue;
     if (o.skipStructural && (e.t === 'sub' || e.t === 'period_start' ||
                              e.t === 'jump' || e.t === 'game_end')) continue;
-    rows.push({ e: e, since: distrusted.has(e) ? null : sinceTipMs(e, video, mode), trackPos: byTrack(e) });
+    /* the stamp, unless a batch shared it or the game could not have produced it */
+    let since = distrusted.has(e) ? null : sinceTipMs(e, video, mode);
+    if (since != null && !stampIsPossible(e, since)) since = null;
+    rows.push({ e: e, since: since, trackPos: byTrack(e) });
   }
   fillGaps(rows);
 
@@ -1081,10 +1189,133 @@ function gapText(v) {
   return sign + stamp(Math.abs(g)) + ' before tip-off';
 }
 
+/* ------------------------------------------------------- what was actually read --
+   THE LINE UNDER THE LIST HAS TO DESCRIBE THE READING THAT WAS USED.
+
+   The footer counted the readings on the STORED track, and the stored track is
+   not what places anything: saneTrack throws away every reading the game could
+   not have produced, and index() places plays by what is left. On an honest
+   game the two numbers agree and the distinction never came up.
+
+   106394dc (Loughborough Riders v Oaklands Wolves, 2026-09-12) is where it
+   matters. Its job read 537 seconds of an 8,334-second broadcast: the last
+   two minutes of the fourth quarter, and the footer said "placed by the game
+   clock · 69 readings · checked", which is the sentence a fully-read game
+   shows. Ninety-six per cent of the footage had never been looked at, the list
+   began at Q3 1:57 with the first two quarters simply absent, and nothing on
+   the page said so. A reader had no way to tell a missing half from a half
+   with nothing in it.
+
+   So the note is built from the SANE track, and it says what is not there:
+   which periods of the log ended up with no play on screen at all, how many of
+   the log's plays could be placed, and, when the worker stored one, how much
+   of the footage the reading ever covered. The wording stays short because it
+   sits in a footer; `title` carries the full sentence for a hover.
+
+   Returns null only when there is nothing to describe (no log). The page keeps
+   its own ±accuracy line for an untracked game; this is the part that has to be
+   true whatever placed the plays.
+
+   NOT YET WIRED INTO epinoia/game/video.js, which another session owns: that
+   footer still counts v.clock_track.samples directly. It calls this instead the
+   moment both changes are in one tree. */
+const periodName = p => (p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4));
+
+function listOfNames(ps) {
+  const n = ps.map(periodName);
+  if (n.length <= 1) return n.join('');
+  return n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1];
+}
+
+function coverageNote(video, events, plays) {
+  const evs = (events || []).filter(e => e && e.t !== 'loc' && e.t !== 'tag' && e.t !== 'stype');
+  if (!evs.length) return null;
+
+  const raw = video && video.clock_track;
+  const sane = (raw && Array.isArray(raw.samples)) ? saneTrack(raw, video) : null;
+  const samples = (sane && sane.samples) || [];
+  const mode = (raw && raw.mode) || null;
+  const scoreOnly = mode === 'score' && samples.length > 0;
+  const dropped = sane ? (raw.samples.length - samples.length) : 0;
+
+  /* what the list is MEANT to hold, counted exactly as index() counts it */
+  const { pairedAst } = pairAssists(evs);
+  const wanted = new Map();
+  let total = 0;
+  for (const e of evs) {
+    if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made')) continue;
+    if (e.t === 'ast' && pairedAst[seqOf(e)]) continue;
+    const p = e.period || 1;
+    wanted.set(p, (wanted.get(p) || 0) + 1);
+    total++;
+  }
+  const got = new Map();
+  for (const p of (plays || [])) got.set(p.period || 1, (got.get(p.period || 1) || 0) + 1);
+  const listed = (plays || []).length;
+  const missing = [...wanted.keys()].filter(p => !got.get(p)).sort((a, b) => a - b);
+
+  /* how much of the footage the reading ever covered, when the worker said so */
+  const cov = (raw && raw.coverage) || null;
+  const readFrac = cov && isFinite(+cov.read_frac) ? +cov.read_frac : null;
+
+  let kind, head, why;
+  if (scoreOnly) {
+    kind = 'score';
+    head = 'placed by score changes · ' + samples.length + ' baskets · scoring plays only';
+    why = 'no clock on this broadcast: the score overlay was read instead, so each basket is placed ' +
+          'by its own score change and only scoring plays are listed';
+  } else if (mode === 'wall' && samples.length) {
+    kind = 'wall';
+    head = 'placed by the broadcast’s timestamps · ' + samples.length + ' plays';
+    why = 'no clock could be read off this broadcast, so every play is placed by the moment the live ' +
+          'log recorded it against the stream’s own start time';
+  } else if (samples.length) {
+    kind = 'clock';
+    head = 'placed by the game clock · ' + samples.length + ' readings' +
+           (raw.wall_check ? ' · checked' : '');
+    why = 'the clock overlay was read at these points in the footage; every play sits where its clock ' +
+          'was on screen' +
+          (raw.wall_check ? '; checked against the broadcast’s own timestamps on ' +
+            raw.wall_check.plays + ' plays' : '');
+  } else if (raw && Array.isArray(raw.samples) && raw.samples.length) {
+    /* a reading existed and none of it survived: say that rather than nothing */
+    kind = 'rejected';
+    head = 'the reading of this broadcast was discarded';
+    why = 'this game was read by the vision worker, but ' +
+          (raw.samples.length === 1 ? 'its one reading could not have come from this game'
+                                    : 'none of its ' + raw.samples.length + ' readings could have come from this game') +
+          ', so the plays are placed by their timestamps instead';
+  } else {
+    kind = 'stamps';
+    head = 'placed by the log’s own timestamps';
+    why = 'nothing was read off the picture, so every play sits where the log says it happened';
+  }
+
+  const parts = [head];
+  if (dropped > 0 && kind !== 'rejected') parts.push(dropped + ' readings discarded');
+  if (readFrac != null && readFrac < 0.95) parts.push(Math.round(readFrac * 100) + '% of the footage read');
+  if (missing.length) parts.push('nothing placed in ' + listOfNames(missing));
+  else if (listed < total) parts.push(listed + ' of ' + total + ' plays placed');
+
+  const tail = [];
+  if (missing.length) {
+    tail.push('No play in ' + listOfNames(missing) + ' could be placed in this footage at all, so ' +
+              (missing.length === 1 ? 'that period is' : 'those periods are') + ' missing from the list.');
+  }
+  if (listed < total) tail.push(listed + ' of the log’s ' + total + ' plays are listed; the rest had no ' +
+                               'position this footage can vouch for.');
+  if (readFrac != null && readFrac < 0.95) {
+    tail.push('The reader looked at ' + Math.round(readFrac * 100) + '% of the broadcast.');
+  }
+
+  return { kind, text: parts.join(' · '), title: [why + '.'].concat(tail).join(' '),
+           readings: samples.length, dropped, listed, total, missing, readFrac };
+}
+
 return { parse, safeUrl, embedSrc, watchHref, gapMs, anchorKind, gapLooksOdd,
          runsFromTrack, stopsFromRuns, positionFromRuns, positionFromTrack, stints,
          hasAnchor, videoMsOf, sinceTipMs,
-         cumElapsed, logIsTimed, distrustedStamps, saneTrack,
-         liveEmbedSrc, providerFromServer,
+         cumElapsed, logIsTimed, distrustedStamps, saneTrack, stampIsPossible,
+         liveEmbedSrc, providerFromServer, pairAssists, coverageNote,
          index, select, FILTERS, filterBy, stamp, gapText, clipOf, ROLL };
 }));
