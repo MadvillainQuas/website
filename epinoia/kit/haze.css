@@ -1,53 +1,59 @@
 /* ===========================================================================
    DRAW DISTANCE — the CSS half of epinoia/haze.js.
 
-   Two bands fixed to the top and bottom of the viewport, painted in the page's
-   own background and fading to nothing, so content arrives out of the
-   distance instead of arriving at a hard edge. Both are created by the script;
-   a page that loads this stylesheet and not the script has no .ep-haze in it
-   and therefore nothing at all happens.
+   THE FIRST ATTEMPT WAS A BAR AND IT LOOKED LIKE A BAR. Two fixed gradients in
+   the page's ground colour, top and bottom: on a light theme that is a white
+   strip across the screen, and nothing appears to come out of anything. The
+   fade has to be ON THE CONTENT, not painted over it.
 
-   OVER THE CONTENT, UNDER THE FURNITURE: z-index 500 sits above the page and
-   below the rail (900) and the phone's bar (2000), both of which should stay
-   crisp — a menu you are about to press is not in the distance.
+   So each block carries the fade itself, driven by where it is on the screen
+   rather than by a timer: it comes up out of nothing at the bottom edge,
+   settles as it crosses into the middle, and recedes at the top edge. Scroll
+   back and it runs backwards, because the animation's clock IS the scroll
+   position — there is no in/out state, no threshold, nothing to get stuck.
 
-   pointer-events:none, always: this must never eat a tap meant for a link
-   under it, which is the classic way a decorative overlay ruins a page.
+   IT IS THE BROWSER'S OWN SCROLL TIMELINE, so no script runs per frame: the
+   compositor drives it. A browser without animation-timeline matches none of
+   this and shows every block exactly as it would have anyway — which is the
+   whole reason the effect is written this way round rather than in JavaScript.
+
+   REDUCED MOTION TURNS IT OFF, rather than leaning on the kit's global
+   duration flattening: a scroll-driven animation has no duration to flatten,
+   so it has to be excluded by hand.
    =========================================================================== */
 
-.ep-haze{
-  position:fixed; left:0; right:0;
-  height:clamp(54px, 11vh, 132px);
-  pointer-events:none;
-  z-index:500;
-  opacity:0;                       /* the script writes this, every frame */
-  will-change:opacity;
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+
+    html.hz-on .hz{
+      /* two animations on one element: one for coming in at the near edge,
+         one for going out at the far one. Each is confined to its own range,
+         and outside it holds the settled frame — so a block in the middle of
+         the screen is at full strength from both. */
+      animation: hz-near linear both, hz-far linear both;
+      animation-timeline: view(), view();
+      animation-range: entry 0% entry 72%, exit 28% exit 100%;
+      /* NO will-change here. A page can carry three hundred of these, and a
+         compositor layer each would cost more memory than the effect is worth;
+         a scroll-driven animation is already handled off the main thread. */
+    }
+
+    /* A block taller than the screen can never be wholly inside it, so fading
+       by position would leave it permanently dimmed. haze.js does not tag
+       those — this is the second line of defence for one that grows after it
+       was tagged (a list that fills, a panel that opens). */
+    html.hz-on .hz.hz-tall{ animation: none; opacity: 1; transform: none }
+  }
 }
 
-/* The gradient is the page's own ground, so the band reads as depth rather
-   than as a grey wash laid over the top. --ground is themed per league, so
-   this follows a league's colours with nothing league-specific in here. */
-.ep-haze.top{
-  top:0;
-  background:linear-gradient(to bottom,
-    var(--ground) 0%,
-    color-mix(in oklch, var(--ground) 62%, transparent) 46%,
-    transparent 100%);
+@keyframes hz-near{
+  from{ opacity:0; transform:translate3d(0, 26px, 0) scale(.988) }
+  to  { opacity:1; transform:none }
 }
-.ep-haze.bottom{
-  bottom:0;
-  background:linear-gradient(to top,
-    var(--ground) 0%,
-    color-mix(in oklch, var(--ground) 62%, transparent) 46%,
-    transparent 100%);
+@keyframes hz-far{
+  from{ opacity:1; transform:none }
+  to  { opacity:0; transform:translate3d(0, -20px, 0) scale(.992) }
 }
 
-/* A browser without color-mix gets a plain two-stop fade rather than nothing:
-   the middle stop is the only part that needs it. */
-@supports not (color: color-mix(in oklch, red 50%, transparent)){
-  .ep-haze.top{ background:linear-gradient(to bottom, var(--ground), transparent) }
-  .ep-haze.bottom{ background:linear-gradient(to top, var(--ground), transparent) }
-}
-
-/* Printing has no viewport to fade at. */
-@media print{ .ep-haze{ display:none } }
+/* Nothing to fade into on paper. */
+@media print{ html.hz-on .hz{ animation:none; opacity:1; transform:none } }

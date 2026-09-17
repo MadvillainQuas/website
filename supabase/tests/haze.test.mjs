@@ -1,23 +1,24 @@
 /* ============================================================================
    epinoia/haze.js + kit/haze.css — the draw distance.
 
-   Two bands fixed to the top and bottom of the viewport, painted in the page's
-   own background, fading to nothing. Content comes out of the haze at the edge
-   of the screen and sinks back into it — no sections, nothing waiting its turn.
+   Content comes up out of nothing at the near edge of the screen, settles in
+   the middle and recedes at the far edge, driven by a scroll timeline rather
+   than by anything this repo runs per frame. haze.js only decides WHAT counts
+   as a block; the stylesheet does the rest.
 
-   WHAT MATTERS ENOUGH TO PIN:
+   TWO WRONG VERSIONS GOT HERE FIRST, and both are what this pins:
 
-     · the bands go away where there is nothing beyond them — at the top of the
-       page, at the bottom, and on a page shorter than the window. A haze that
-       never lifts is a vignette somebody forgot to turn off.
-     · nothing is ever hidden. This is paint over the content: no opacity on
-       anything real, no display, no visibility, and pointer-events:none so it
-       cannot eat a tap.
-     · it sits under the rail and under the phone's bar. A menu about to be
-       pressed is not in the distance.
+     1. fading whole SECTIONS in and out as they crossed the viewport. A
+        section can be taller than the screen, so it sat half-lit; and it put
+        every word one un-delivered callback away from invisible.
+     2. two fixed gradient bars in the page's ground colour. On a light theme
+        that is a white strip across the screen — nothing appeared to come out
+        of anything, because the fade was painted OVER the content rather than
+        being a property of it.
 
-   This replaced a per-section reveal that faded the sections themselves, which
-   put the page one un-delivered callback away from being blank.
+   So: blocks small enough to fit the screen, marked; anything taller walked
+   into; the furniture never touched; and if the browser never draws a frame,
+   the whole thing takes itself off the document.
    ============================================================================ */
 import { strict as assert } from 'node:assert';
 import { createRequire } from 'node:module';
@@ -36,133 +37,200 @@ const ok = (what, cond, saw) => {
   else { fail++; console.log('  FAIL  ' + what + (saw === undefined ? '' : '  — saw ' + JSON.stringify(saw))); }
 };
 const eq = (what, a, b) => ok(what, JSON.stringify(a) === JSON.stringify(b), a);
-const near = (what, a, b) => ok(what, Math.abs(Number(a) - b) < 0.02, a);
 
-/* ---------------------------------------------------------- a small DOM --- */
+/* ---------------------------------------------------------- a small DOM ---
+   Every element carries its own height, because height is the whole question
+   this file asks of the page. */
 class El {
-  constructor(name) { this.tagName = name; this.cls = new Set(); this.children = [];
-    this.parent = null; this.attrs = {}; this.style = {}; }
+  constructor(name, cls, h) {
+    this.tagName = name; this.cls = new Set(cls ? cls.split(' ') : []);
+    this.children = []; this.parent = null; this.attrs = {}; this.h = h || 0;
+    this.position = 'static';
+  }
   get classList() {
     const self = this;
-    return { add: (...c) => c.forEach(x => self.cls.add(x)),
-             remove: (...c) => c.forEach(x => self.cls.delete(x)),
-             contains: c => self.cls.has(c) };
+    return {
+      add: (...c) => c.forEach(x => self.cls.add(x)),
+      remove: (...c) => c.forEach(x => self.cls.delete(x)),
+      contains: c => self.cls.has(c),
+      toggle: (c, on) => { if (on) self.cls.add(c); else self.cls.delete(c); }
+    };
   }
   get className() { return [...this.cls].join(' '); }
-  set className(v) { this.cls = new Set(String(v).split(/\s+/).filter(Boolean)); }
   setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
   hasAttribute(k) { return k in this.attrs; }
-  appendChild(n) { n.parent = this; this.children.push(n); return n; }
-  remove() { if (this.parent) { this.parent.children = this.parent.children.filter(c => c !== this); this.parent = null; } }
+  append(...ns) { ns.forEach(n => { n.parent = this; this.children.push(n); }); return this; }
+  getBoundingClientRect() { return { height: this.h }; }
+  closest(sel) {
+    const want = String(sel).split(',').map(s => s.trim()).filter(s => s.startsWith('.')).map(s => s.slice(1));
+    for (let x = this; x; x = x.parent) if (want.some(w => x.cls.has(w))) return x;
+    return null;
+  }
+  all() { return this.children.flatMap(c => [c, ...c.all()]); }
 }
+const mk = (cls, h, ...kids) => new El('div', cls, h).append(...kids);
+/* the marks this file adds are not part of what a block is called */
+const names = list => list.map(n =>
+  n.className.split(' ').filter(c => c !== 'hz' && c !== 'hz-tall').join(' '));
 
-/* A page `docH` tall in a `vh` window, scrolled to `y`. */
 function world(o = {}) {
   const body = new El('body');
   const html = new El('html');
   if (o.splash) html.cls.add('m-splash');
-  html.scrollHeight = o.docH == null ? 3000 : o.docH;
-  body.scrollHeight = html.scrollHeight;
-  html.scrollTop = 0;
   const frames = [];
-  const listeners = {};
+  const timers = [];
 
   globalThis.document = {
     body, documentElement: html, readyState: 'complete',
-    createElement: t => new El(t),
-    addEventListener() {}
+    createElement: t => new El(t), querySelector: () => null, addEventListener() {}
   };
-  globalThis.requestAnimationFrame = fn => { frames.push(fn); return frames.length; };
-  globalThis.setTimeout = (fn) => fn && 0;
+  globalThis.innerHeight = o.vh == null ? 1000 : o.vh;
+  globalThis.requestAnimationFrame = o.noFrames ? undefined : (fn => { frames.push(fn); return frames.length; });
+  globalThis.setTimeout = fn => { timers.push(fn); return timers.length; };
   globalThis.clearTimeout = () => {};
-  globalThis.ResizeObserver = undefined;      // exercise the timer fallback
-  globalThis.innerHeight = o.vh == null ? 800 : o.vh;
-  globalThis.pageYOffset = 0;
-  globalThis.addEventListener = (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); };
-  globalThis.removeEventListener = (t, fn) => {
-    listeners[t] = (listeners[t] || []).filter(f => f !== fn);
+  globalThis.MutationObserver = class {
+    constructor(fn) { this.fn = fn; world.last = this; }
+    observe() { this.on = true; } disconnect() { this.on = false; }
   };
+  globalThis.addEventListener = () => {};
+  globalThis.removeEventListener = () => {};
+  globalThis.getComputedStyle = n => ({ position: n.position || 'static' });
 
   return {
-    body, html, listeners,
-    bands: () => body.children.filter(n => n.cls.has('ep-haze')),
-    band: side => body.children.find(n => n.cls.has('ep-haze') && n.cls.has(side)),
-    scrollTo(y) { globalThis.pageYOffset = y; (listeners.scroll || []).forEach(f => f()); frames.splice(0).forEach(fn => fn()); },
-    grow(h) { html.scrollHeight = body.scrollHeight = h; }
+    body, html,
+    hz: () => body.all().filter(n => n.cls.has('hz')).map(n => n.className),
+    runFrames() { frames.splice(0).forEach(fn => fn()); },
+    runTimers() { timers.splice(0).forEach(fn => fn()); },
+    mutate() { world.last.fn(); this.runFrames(); }
   };
 }
 
 const load = () => { delete require.cache[require.resolve(SRC)]; return require(SRC); };
 
-/* ------------------------------------------------------------ the bands --- */
-console.log('\n-- the two bands');
+/* ------------------------------------------------------- what gets marked -- */
+console.log('\n-- what counts as a block');
 {
-  const w = world({ docH: 3000, vh: 800 });     // 2200px of scrolling
+  /* a section 1800px tall holding three 300px cards, in a 1000px window: the
+     section is too tall to fade as one thing, the cards are not */
+  const w = world({ vh: 1000 });
   const H = load();
-  const h = H.mount();
+  const card = h => mk('card', h);
+  w.body.append(mk('sec', 1800, card(300), card(300), card(300)),
+                mk('sec', 400, card(120)));
+  const m = H.mount();
 
-  eq('one band at each edge', w.bands().map(n => n.className),
-     ['ep-haze top', 'ep-haze bottom']);
-  eq('...and neither is in the accessibility tree',
-     w.bands().map(n => n.getAttribute('aria-hidden')), ['true', 'true']);
-
-  near('at the top of the page there is no haze above you', w.band('top').style.opacity, 0);
-  near('...and the page below you is at full haze', w.band('bottom').style.opacity, 1);
-
-  w.scrollTo(H.RAMP / 2);
-  near('a little way down, the top band is coming in', w.band('top').style.opacity, 0.5);
-
-  w.scrollTo(1000);
-  near('mid-page, both edges are hazed', w.band('top').style.opacity, 1);
-  near('...both', w.band('bottom').style.opacity, 1);
-
-  w.scrollTo(2200);
-  near('at the very bottom there is nothing below to draw', w.band('bottom').style.opacity, 0);
-  near('...and everything above you is still hazed', w.band('top').style.opacity, 1);
-
-  h.stop();
-  eq('stopping takes both bands out of the page', w.bands().length, 0);
-}
-
-/* ------------------------------------------------------- nothing to draw -- */
-console.log('\n-- when there is no distance');
-{
-  const w = world({ docH: 700, vh: 800 });      // the page fits the window
-  const H = load();
-  H.mount();
-  eq('a page shorter than the window has neither band showing',
-     [w.band('top').style.opacity, w.band('bottom').style.opacity], ['0', '0']);
+  eq('the tall section is walked into, and its cards are what fade',
+     names(m.marked()), ['card', 'card', 'card', 'sec']);
+  ok('...so nothing taller than the screen is ever faded as one thing',
+     m.marked().every(n => n.getBoundingClientRect().height <= 1000 * H.FITS));
+  ok('the page is marked so the stylesheet applies', w.html.cls.has('hz-on'));
 }
 {
-  const w = world({ docH: 700, vh: 800 });
+  const w = world({ vh: 1000 });
   const H = load();
+  w.body.append(mk('ep-nav', 300, mk('item', 40)), mk('sec', 200));
+  const m = H.mount();
+  eq('the rail and everything in it is left alone', names(m.marked()), ['sec']);
+}
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  const stuck = mk('bar', 60); stuck.position = 'sticky';
+  w.body.append(stuck, mk('sec', 200));
+  eq('a sticky bar is left alone — it does not travel with the page',
+     names(H.mount().marked()), ['sec']);
+}
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  w.body.append(mk('sec', 200), mk('sec hz-never', 200), mk('sec', 200, mk('x', 50)));
+  const cls = H.mount().marked().map(n => n.className);
+  ok('a block that opts out is left alone, and so is what is inside it',
+     !cls.some(c => c.split(' ').some(k => k === 'hz-never' || k === 'x')), cls);
+}
+{
+  /* nothing to descend into: a single 5000px block is left alone rather than
+     dimmed for the whole time it is on screen */
+  const w = world({ vh: 1000 });
+  const H = load();
+  w.body.append(mk('slab', 5000));
+  eq('a tall block with nothing inside it is not faded', H.mount().marked().length, 0);
+}
+
+/* ------------------------------------------------------------ as it grows -- */
+console.log('\n-- as the page fills in');
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  const list = mk('list', 200);
+  w.body.append(mk('sec', 300, list));
+  const m = H.mount();
+  eq('what is there at load is marked', names(m.marked()), ['sec']);
+
+  list.append(mk('fx', 90), mk('fx', 90));     // the fixtures arrived
+  list.h = 900; list.parent.h = 1000;
+  w.mutate();
+  ok('and what arrives afterwards is marked too',
+     m.marked().some(n => n.cls.has('fx')), names(m.marked()));
+}
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  const box = mk('sec', 300);
+  w.body.append(box);
+  const m = H.mount();
+  box.h = 2000;                                 // it grew past the screen
+  w.mutate();
+  ok('a block that grows past the screen stops being faded', box.cls.has('hz-tall'));
+  box.h = 300;
+  w.mutate();
+  ok('...and is faded again when it shrinks back', !box.cls.has('hz-tall'));
+}
+
+/* ------------------------------------------------------------- the net ---- */
+console.log('\n-- when the browser never draws');
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  w.body.append(mk('sec', 200));
   H.mount();
-  w.grow(4000);                                  // the fixtures landed
-  w.scrollTo(0);
-  near('...until the page grows under it, and then the bottom one is back',
-     w.band('bottom').style.opacity, 1);
+  ok('before the net, the page is marked', w.html.cls.has('hz-on'));
+  w.runTimers();                                 // no frame was ever run
+  ok('the mark comes off, so not one rule in the stylesheet applies',
+     !w.html.cls.has('hz-on'));
+}
+{
+  const w = world({ vh: 1000 });
+  const H = load();
+  w.body.append(mk('sec', 200));
+  H.mount();
+  w.runFrames();                                 // the browser drew
+  w.runTimers();
+  ok('a browser that draws keeps the effect', w.html.cls.has('hz-on'));
 }
 {
   const w = world({ splash: true });
   const H = load();
-  H.mount();
-  eq('the water splash owns its own edges', w.bands().length, 0);
+  w.body.append(mk('sec', 200));
+  eq('the water splash owns its own edges', H.mount().marked().length, 0);
 }
 
 /* --------------------------------------------------------------- the CSS -- */
 console.log('\n-- the stylesheet');
 {
-  ok('the bands never take a tap meant for the page', /pointer-events:none/.test(CSS));
-  const z = Number((CSS.match(/z-index:(\d+)/) || [])[1]);
-  ok('...and sit under the rail (900) and the phone bar (2000)', z > 0 && z < 900, z);
-  ok('nothing on the page itself is hidden — no display or visibility rules here',
-     !/display:(?!none\s*\})/.test(CSS.replace(/@media print\{[^}]*\}/g, '')) &&
-     !/visibility\s*:/.test(CSS));
-  ok('the haze is the page’s own background, so a league’s colours carry',
-     /var\(--ground\)/.test(CSS));
-  ok('a browser without color-mix still gets a fade', /@supports not \(color: color-mix/.test(CSS));
-  ok('print has no viewport to fade at', /@media print\{ \.ep-haze\{ display:none \} \}/.test(CSS));
+  ok('the fade is on the content, not a bar painted over it',
+     !/position:fixed/.test(CSS) && /animation-timeline: view\(\)/.test(CSS));
+  ok('...driven by the scroll position, so nothing runs per frame',
+     /animation-range: entry .* exit /.test(CSS));
+  ok('every rule is behind html.hz-on, which only the script sets',
+     CSS.split('\n').filter(l => /^\s*html/.test(l)).every(l => l.includes('html.hz-on')));
+  ok('a browser without scroll-driven animations matches nothing',
+     /@supports \(animation-timeline: view\(\)\)/.test(CSS));
+  ok('reduced motion is excluded by hand, because there is no duration to flatten',
+     /prefers-reduced-motion: no-preference/.test(CSS));
+  ok('a block taller than the screen is never left half-lit',
+     /\.hz\.hz-tall\{ animation: none/.test(CSS));
+  ok('print shows everything', /@media print\{ html\.hz-on \.hz\{ animation:none/.test(CSS));
 }
 
 /* ------------------------------------------------------------ it is wired -- */
@@ -173,10 +241,8 @@ console.log('\n-- the two pages that use it');
    ['HOME', rd('epinoia', 'home', 'index.html'), '../haze.js', '../kit/haze.css']]
     .forEach(([who, html, js, css]) => {
       ok(who + ' asks for the haze', /<body data-haze>/.test(html));
-      ok(who + ' loads both halves',
-         html.includes(js + '?v=') && html.includes(css + '?v='));
-      ok(who + ' no longer loads the per-section reveal',
-         !/reveal\.(js|css)/.test(html));
+      ok(who + ' loads both halves', html.includes(js + '?v=') && html.includes(css + '?v='));
+      ok(who + ' no longer loads the per-section reveal', !/reveal\.(js|css)/.test(html));
     });
 }
 

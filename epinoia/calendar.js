@@ -38,9 +38,17 @@
 
 const GOOGLE_ADD = 'https://calendar.google.com/calendar/r/settings/addbyurl';
 const OUTLOOK_ADD = 'https://outlook.live.com/calendar/0/addfromweb';
-/* ICSx⁵ is the Android app that turns a feed into a real calendar on the phone. Free, open
-   source, no account. Its Play listing, and the same app is in the Galaxy Store. */
-const ICSX5 = 'https://play.google.com/store/apps/details?id=at.bitfire.icsdroid';
+/* ICSx⁵ is the Android app that turns a feed into a real calendar on the phone: open
+   source (GPL), no account, no advertising.
+
+   THE LINK IS F-DROID, NOT PLAY, AND THAT IS THE WHOLE POINT. The app is the same
+   either way, but its Play listing is £1.79 — the developer charges there and gives it
+   away on F-Droid, which is their business and not something this panel should pass on
+   to a supporter who only wants their club's fixtures. The words in the panel name the
+   Play price rather than hiding it, so anybody who would rather pay the developer knows
+   where to go — and anybody who will not install F-Droid is pointed at Google Calendar,
+   which is free and needs no app at all. */
+const ICSX5 = 'https://f-droid.org/packages/at.bitfire.icsdroid/';
 
 const g = k => root[k];
 
@@ -78,9 +86,9 @@ function routes(plat, url, name) {
   const android = {
     id: 'android',
     title: 'Android, including Samsung Calendar',
-    how: 'Samsung Calendar and the other Android calendar apps cannot follow a calendar link on their own. ICSx⁵ (free) does it for them: install it, tap Subscribe below, and the fixtures appear in Samsung Calendar and keep updating.',
+    how: 'Samsung Calendar and the other Android calendar apps cannot follow a calendar link on their own. ICSx⁵ does it for them: install it, tap Subscribe below, and the fixtures appear in Samsung Calendar and keep updating. Get it free from F‑Droid — the same app costs £1.79 on Google Play, which is the developer asking to be paid rather than anything this feed needs. If you would rather not install F‑Droid, Google Calendar below is free and needs no app at all.',
     action: { label: 'Subscribe on this phone', href: webcal },
-    extra: { label: 'Get ICSx⁵', href: ICSX5 }
+    extra: { label: 'Get ICSx⁵ free (F‑Droid)', href: ICSX5 }
   };
   const google = {
     id: 'google',
