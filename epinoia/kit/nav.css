@@ -170,10 +170,12 @@ body.nav-drawer-open{ overflow:hidden }
 /* the country panel's heading sits in a head beside its back chevron, so the
    chevron is in the same place at every level; the heading keeps its own type
    rather than the head's smaller link style. */
-/* the drawn mark in front of the logotype at the head of the rail */
-.ep-nav .ptitle{ display:flex; align-items:center; gap:8px }
-.ep-nav .ep-brandmark{ width:22px; height:22px; object-fit:contain; display:block; flex:none }
-@media (max-width:820px){ .ep-nav .ep-brandmark{ width:19px; height:19px } }
+/* the drawn mark in front of the logotype at the head of the rail. The sizing
+   is here; the LAYOUT is in the .ptitle block further down, because that one
+   comes later and sets display:block — declaring flex up here did nothing at
+   all and the mark sat on its own line above the word. */
+.ep-nav .ep-brandmark{ width:18px; height:18px; object-fit:contain; display:block; flex:none }
+@media (max-width:820px){ .ep-nav .ep-brandmark{ width:16px; height:16px } }
 .ep-nav .phead.titlehead{ align-items:center }
 .ep-nav .phead.titlehead .ptitle{ border-bottom:0; padding:0; margin:0; flex:1 1 auto; min-width:0 }
 /* a flag sits a shade larger than the geometric glyphs beside it */
@@ -193,7 +195,9 @@ body.nav-drawer-open{ overflow:hidden }
 
 /* ---- the root panel ------------------------------------------------------ */
 .ep-nav .ptitle{
-  display:block; text-decoration:none;
+  /* flex, so the drawn mark sits ON the line with the word rather than above
+     it; a heading with no mark is unaffected */
+  display:flex; align-items:center; gap:7px; text-decoration:none;
   font-family:var(--f-score,ui-monospace,monospace);
   font-size:15px; letter-spacing:.10em; text-transform:uppercase;
   color:var(--ink); padding:2px 14px 12px; margin-bottom:6px;

@@ -190,11 +190,16 @@ white.paste(Image.new('RGB', (bw, bw), (255, 255, 255)), ((96 - bw) // 2,) * 2, 
 written.append(save(white, 'epinoia/brand/epinoia-badge-96.png'))
 
 # ---- the two logos themselves, for the pages ---------------------------------------------------
-# Transparent, trimmed, at the widths the pages actually draw them: the wordmark is the hero on
-# HOME, the mark rides in the rail and anywhere a small brand stamp is wanted.
+# Transparent, trimmed, at the widths the pages draw them.
+#
+# NOTHING IS ENLARGED. The drawn wordmark is 1012 px wide inside its 1600 px sheet, so exporting
+# it at 1280 stretched it by a quarter and HOME's hero came out visibly soft. Every width here is
+# clamped to what the artwork actually has, and the page draws it at half that so a 2x screen has
+# a real pixel for each of its own.
 for px in (256, 512):
     written.append(save(marksq.resize((px, px), Image.LANCZOS), f'epinoia/brand/mark-{px}.png'))
-for px in (640, 1280):
+for px in (640, wordmark.width):
+    px = min(px, wordmark.width)
     h = max(1, round(wordmark.height * px / wordmark.width))
     written.append(save(wordmark.resize((px, h), Image.LANCZOS), f'epinoia/brand/wordmark-{px}.png'))
 

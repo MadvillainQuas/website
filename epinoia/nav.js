@@ -489,7 +489,11 @@
   hmark.width = 22;
   hmark.height = 22;
   hmark.className = 'ep-brandmark';
-  htitle.append(hmark, el('span', 'wm', 'EPINOIΛ'));
+  /* NO CLASS ON THE WORD. `wm` is the kit's wordmark CHIP (epinoia-kit.css:
+     a green gradient block with the score face on it) and putting it here drew
+     exactly that, next to the mark, in the wrong font and too wide for the
+     rail. The heading already carries epinoia-mark; the word needs nothing. */
+  htitle.append(hmark, el('span', null, 'EPINOIΛ'));
   htitle.href = root + 'home/';
   htitle.title = 'HOME — every league, today’s fixtures, the best players';
   if (atHome) { htitle.classList.add('on'); htitle.setAttribute('aria-current', 'page'); }

@@ -173,7 +173,7 @@ a.plain{color:inherit;text-decoration:none}
    the same 262px it used to occupy at 375px, and 560px from a tablet up. The
    view transition carries it between pages exactly as it carried the type. */
 .hm-hero .hm-word{margin:0;line-height:0}
-.hm-hero .hm-word img{display:block;margin:0 auto;width:min(74vw,560px);height:auto;
+.hm-hero .hm-word img{display:block;margin:0 auto;width:min(74vw,500px);height:auto;
   view-transition-name:ep-mark}
 /* on a phone the bell (40px at top 8px) sits over the hero's right edge, so the wordmark starts
    below it rather than squeezing sideways: 56px of logotype is 262px wide at 375px */
