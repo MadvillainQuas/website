@@ -790,11 +790,12 @@ async function loadMediaQueue() {
          it happens here, and the row is marked approved only if it worked.
 
          "already exists" counts as done: the file is where it needs to be. */
-      const mv = await sb.storage.from('media-pending')
-        .move(m.storage_path, m.storage_path, { destinationBucket: 'media-public' });
-      if (mv.error && !/exists/i.test(mv.error.message || '')) {
+      /* upload.js publishPending: the move, or a copy when storage refuses the move (it
+         refused every one until 0123 — see the note there) */
+      const pub = await window.EpinoiaUpload.publishPending(sb, m.storage_path);
+      if (!pub.ok) {
         ok.disabled = false;
-        return oops(new Error('could not publish the file: ' + mv.error.message));
+        return oops(new Error('could not publish the file: ' + pub.error.message));
       }
       const { data, error } = await sb.rpc('approve_media', { p_media: m.id });
       if (error) { ok.disabled = false; return oops(error); }

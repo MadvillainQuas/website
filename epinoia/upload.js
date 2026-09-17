@@ -370,5 +370,44 @@ function publicUrl(cfg, path) {
   return `${cfg.supabaseUrl}/storage/v1/object/public/media-public/${path}`;
 }
 
-return { prepare, upload, publicUrl, dominantColour, SIZES, MAX_BYTES };
+/* publishPending(sb, path) -> { ok, copied, error }
+
+   AN APPROVED IMAGE LEAVES THE PRIVATE BUCKET FOR THE PUBLIC ONE. Every queue that approves
+   (the platform console's moderation, the league console's Photographs, the club portal's
+   pending crest) calls this, and marks the row approved only when it answers ok.
+
+   THE STORAGE API'S MOVE IS AN UPDATE OF THE OBJECT'S ROW INTO THE OTHER BUCKET, so it needs an
+   update policy whose check admits the new bucket. The only update policy on these buckets
+   (0017's media_pending_replace) pins the row to media-pending, so every move was refused with
+   "new row violates row-level security policy" — reported 2026-09-17 approving a league logo from
+   the platform console, and true of every approval since approvals started moving files (0064).
+   0065 added a policy for INSERTING into the public bucket, which a move never does. 0123 adds
+   the missing update policy.
+
+   Until a database has 0123, and as a second route after, the bytes are COPIED when the move is
+   refused: downloaded from media-pending (the approver can read it), uploaded to media-public
+   (0065 lets whoever may approve write there), and the pending copy removed. "Already exists"
+   counts as done on either route: the file is where it needs to be. */
+async function publishPending(sb, path) {
+  const exists = e => /exist|duplicate/i.test((e && e.message) || '');
+  const mv = await sb.storage.from('media-pending')
+    .move(path, path, { destinationBucket: 'media-public' });
+  if (!mv.error || exists(mv.error)) return { ok: true, copied: false };
+
+  const dl = await sb.storage.from('media-pending').download(path);
+  if (dl.error || !dl.data) {
+    return { ok: false, error: new Error(mv.error.message + ' (and the copy could not read the file: ' +
+      ((dl.error && dl.error.message) || 'nothing came back') + ')') };
+  }
+  const up = await sb.storage.from('media-public')
+    .upload(path, dl.data, { contentType: dl.data.type || undefined, upsert: false });
+  if (up.error && !exists(up.error)) {
+    return { ok: false, error: new Error(mv.error.message + ' (and the copy could not write the file: ' + up.error.message + ')') };
+  }
+  /* the private copy is only tidiness now; failing to remove it publishes nothing wrong */
+  try { await sb.storage.from('media-pending').remove([path]); } catch (_) { /* left behind */ }
+  return { ok: true, copied: true };
+}
+
+return { prepare, upload, publicUrl, dominantColour, publishPending, SIZES, MAX_BYTES };
 }));

@@ -473,15 +473,12 @@ async function mountCrest() {
    which is the whole objective, and a retry after a half-finished move should
    not be an error. */
 async function moveToPublic(path) {
-  const { error } = await sb.storage.from('media-pending')
-    .move(path, path, { destinationBucket: 'media-public' });
-  if (!error) return;
-  /* "already exists" means the file is where it needs to be, which is the whole
-     objective — a retry after a half-finished move is not a failure. Anything
-     else is, and is raised rather than swallowed: a move that quietly did
+  /* upload.js publishPending: the move, or a copy when storage refuses the move (it refused
+     every one until 0123). "Already exists" means the file is where it needs to be, which is
+     the whole objective. Anything else is raised rather than swallowed: a move that quietly did
      nothing is how a row comes to claim a file it has not got. */
-  if (/exists/i.test(error.message || '')) return;
-  throw new Error(error.message || 'could not move the file to public storage');
+  const pub = await window.EpinoiaUpload.publishPending(sb, path);
+  if (!pub.ok) throw new Error((pub.error && pub.error.message) || 'could not move the file to public storage');
 }
 
 async function removeImage(ownerType, ownerId, kind) {

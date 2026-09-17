@@ -610,11 +610,14 @@ async function loadModeration() {
            crest approved from the platform page 404'd on the public site.
 
            "already exists" counts as done: the file is where it needs to be. */
-        const mv = await sb.storage.from('media-pending')
-          .move(m.storage_path, m.storage_path, { destinationBucket: 'media-public' });
-        if (mv.error && !/exists/i.test(mv.error.message || '')) {
+        /* upload.js publishPending: the move, or a copy when storage refuses the move (it
+           refused every one until 0123 — see the note there) */
+        const pub = window.EpinoiaUpload && window.EpinoiaUpload.publishPending
+          ? await window.EpinoiaUpload.publishPending(sb, m.storage_path)
+          : { ok: false, error: new Error('the uploader did not load') };
+        if (!pub.ok) {
           ok.disabled = false;
-          return say('Could not publish the file: ' + mv.error.message, 'err');
+          return say('Could not publish the file: ' + pub.error.message, 'err');
         }
         const r = await rpc('approve_media', { p_media: m.id });
         ok.disabled = false;
