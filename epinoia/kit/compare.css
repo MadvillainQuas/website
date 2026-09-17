@@ -1,0 +1,122 @@
+/* ============================================================================
+   THE COMPARE CHART — epinoia/compare.js on the kit's tokens.
+
+   Colour reaches the SVG through classes here, never through fill attributes, so
+   the light theme's darker accents (tokens.css, :root[data-theme="light"]) apply
+   without the chart knowing which theme is on. The five series are the kit's
+   neons in a fixed order; --good and --flare stay out because the table's heat
+   map already uses them for good and bad.
+
+   Text sizes are set on the SVG elements themselves (11px) and are not
+   overridden here: the viewBox is the host's CSS width, so 11 means 11.
+
+   On a phone the chart opens in a bottom sheet that clears the gesture area; on
+   a wider screen the same <dialog> is a centred panel.
+   ============================================================================ */
+
+.cmp{ display:grid; gap:10px; min-width:0; color:var(--ink) }
+.cmp-title{ font-family:var(--f-score); font-size:22px; line-height:1; color:var(--ink) }
+.cmp-note{ margin:0; font-family:var(--f-ui); font-size:12px; line-height:1.4; color:var(--ink-3) }
+
+/* ---------- the series ---------- */
+.cmp-s0{ --cmp-c:var(--lume) }
+.cmp-s1{ --cmp-c:var(--aqua) }
+.cmp-s2{ --cmp-c:var(--amber) }
+.cmp-s3{ --cmp-c:var(--violet) }
+.cmp-s4{ --cmp-c:var(--ink-2) }
+
+/* ---------- legend ---------- */
+.cmp-legend{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px }
+.cmp-chip{
+  display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%;
+  padding:3px 8px 3px 3px; border-radius:999px;
+  border:1px solid color-mix(in oklch, var(--cmp-c) 55%, transparent);
+  background:color-mix(in oklch, var(--cmp-c) 10%, transparent);
+  font-family:var(--f-ui); font-size:12px; line-height:1.2;
+}
+.cmp-chip-n{
+  flex:none; display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%;
+  background:var(--cmp-c); color:var(--on-accent);
+  font-family:var(--f-data); font-size:11px; font-weight:700;
+}
+.cmp-chip-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink) }
+.cmp-chip-lg{ flex:none; font-family:var(--f-micro); font-size:11px; letter-spacing:.04em; color:var(--ink-3) }
+
+/* ---------- controls ---------- */
+.cmp-controls{ display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center }
+.cmp-mode{ display:inline-flex; border:1px solid var(--rule-2); border-radius:3px; overflow:hidden }
+.cmp-mode-btn, .cmp-stat{
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  cursor:pointer; background:transparent; color:var(--ink-3);
+}
+.cmp-mode-btn{ border:0; padding:0 12px; min-height:32px }
+.cmp-mode-btn + .cmp-mode-btn{ border-left:1px solid var(--rule-2) }
+.cmp-mode-btn[aria-pressed="true"]{ background:var(--lume); color:var(--on-accent) }
+.cmp-stats{ display:flex; flex-wrap:wrap; gap:4px; min-width:0 }
+.cmp-stat{ padding:0 8px; min-height:28px; border-radius:2px; border:1px solid var(--rule) }
+.cmp-stat:hover, .cmp-mode-btn:hover{ color:var(--ink) }
+.cmp-stat.on{ color:var(--on-accent); background:var(--lume); border-color:var(--lume) }
+.cmp-stats[hidden]{ display:none }
+/* on a phone the chips sit under the chart, behind this button (compare.js statsHtml) */
+.cmp-statbox{ display:grid; gap:8px; min-width:0 }
+.cmp-fold{
+  justify-self:start; min-height:40px; padding:0 12px; border:1px solid var(--rule-2); border-radius:3px;
+  background:transparent; color:var(--ink-2); cursor:pointer;
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+}
+.cmp-fold::after{ content:' ▾' }
+.cmp-fold[aria-expanded="true"]::after{ content:' ▴' }
+.cmp-fold:hover{ color:var(--ink) }
+.cmp-mode-btn:focus-visible, .cmp-stat:focus-visible, .cmp-fold:focus-visible, .cmp-sheet-close:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px }
+
+/* ---------- the chart ---------- */
+.cmp-chart{ min-width:0; width:100%; overflow:hidden }
+.cmp-svg{ display:block; max-width:100%; height:auto; overflow:visible }
+.cmp-label{ fill:var(--ink-2); font-family:var(--f-micro); letter-spacing:.04em }
+.cmp-track{ fill:var(--panel-2) }
+.cmp-mid{ stroke:var(--rule-2); stroke-width:1; stroke-dasharray:2 3 }
+.cmp-zero{ stroke:var(--ink-2); stroke-width:1 }
+/* a CSS fill would beat the stub's fill="url(#hatch)" attribute, so the stub is left out */
+.cmp-bar:not(.cmp-nodata){ fill:var(--cmp-c) }
+.cmp-nodata{ stroke:var(--ink-3); stroke-width:1; stroke-dasharray:2 2 }
+.cmp-hatch{ stroke:var(--ink-3); stroke-width:1.5 }
+.cmp-num{ fill:var(--cmp-c); font-family:var(--f-data); font-weight:700 }
+.cmp-val{ fill:var(--ink); font-family:var(--f-data); font-variant-numeric:tabular-nums }
+.cmp-val-none{ fill:var(--ink-3) }
+.cmp-empty{ fill:var(--ink-3); font-family:var(--f-ui) }
+
+/* ---------- the sheet ---------- */
+.cmp-sheet{
+  padding:0; border:1px solid var(--rule-2); border-radius:6px;
+  background:var(--panel); color:var(--ink);
+  width:min(760px, calc(100vw - 32px)); max-height:min(86vh, 900px);
+  overflow:hidden;
+}
+.cmp-sheet[open]{ display:flex; flex-direction:column }
+.cmp-sheet::backdrop{ background:color-mix(in oklch, var(--ground) 72%, transparent) }
+.cmp-sheet-head{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px 10px 16px; border-bottom:1px solid var(--rule);
+}
+.cmp-sheet-title{ font-family:var(--f-score); font-size:22px; line-height:1 }
+.cmp-sheet-close{
+  min-width:44px; min-height:44px; border:0; background:transparent; cursor:pointer;
+  color:var(--ink-2); font-size:24px; line-height:1;
+}
+.cmp-sheet-close:hover{ color:var(--ink) }
+.cmp-sheet-body{ overflow:auto; overscroll-behavior:contain; padding:14px 16px 18px; min-height:0 }
+
+/* phones: a bottom sheet, full width, clear of the gesture bar */
+@media (max-width:559px){
+  .cmp-sheet{
+    width:100vw; max-width:100vw; max-height:88vh; margin:auto 0 0;
+    border-radius:12px 12px 0 0; border-bottom:0;
+  }
+  .cmp-sheet-body{ padding:12px 16px calc(18px + env(safe-area-inset-bottom)) }
+  .cmp-mode-btn{ min-height:40px }
+  .cmp-stat{ min-height:36px }
+}
+@media (prefers-reduced-motion:no-preference){
+  .cmp-sheet[open]{ animation:cmp-rise .22s var(--ease) }
+  @keyframes cmp-rise{ from{ transform:translateY(16px); opacity:0 } to{ transform:none; opacity:1 } }
+}

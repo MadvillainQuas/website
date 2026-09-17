@@ -467,6 +467,18 @@ jobs:
         # widening the page
         run: node supabase/tests/stats-mobile.test.mjs
 
+      - name: Global scouting works across every league
+        # global.js merges each league's trimmed season read (two leagues, one player: two rows,
+        # each ranked in its own league); fulltable.js's opt-in cross-league options (LEAGUE
+        # column, league select, locks, stat filters and their volume floors, picks and the
+        # compare tray, setRows league by league); compare.js's chart geometry (a bar per player
+        # and stat, no NaN, 11px text); and the scouting page's head, options and URL state
+        run: |
+          node supabase/tests/global.test.mjs
+          node supabase/tests/fulltable-global.test.mjs
+          node supabase/tests/compare.test.mjs
+          node supabase/tests/scouting-page.test.mjs
+
       - name: Event splits are stored, rolled up and drawn from one contract
         # finalise-game's stats.sit lines and the backfill (situations-store), the season
         # rollup and table categories (sitstats), and the profile panel (sitpanel)

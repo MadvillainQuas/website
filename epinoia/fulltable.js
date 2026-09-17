@@ -498,6 +498,42 @@ const isCoarse = () => { const m = media('(pointer:coarse)'); return !!(m && m.m
 const W0 = 36, W1_WIDE = 170, W1_PHONE = 132;
 /* a pause in the typing, not every key: each draw sorts and ranks the whole table */
 const SEARCH_WAIT = 150;
+/* the pinned rank column when it carries a pick button: a 44px target, not 36 */
+const W0_PICK = 44;
+
+/* ------------------------------------------------------------ stat filters ---
+   THE MULTI-STAT PREFILTER (opts.filters, global scouting). A line is a stat, >= or <=,
+   and a number read either as the stat's own value or as its percentile.
+
+   A RATE IS NOTHING WITHOUT ITS VOLUME. 100% from three on one attempt is the top of every
+   3P% list, so a filtered rate brings its volume with it: the player must have at least
+   max(the floor below, a quarter of the population's median volume) -- sitpanel.js's rule --
+   and the count says what that minimum came to. The percentile of a floored rate is taken
+   over the players who clear the floor, for the same reason.
+
+   Percentiles are the table's own (EpinoiaSeason.percentiles), so "80th percentile" always
+   means good: a lower-is-better column is already ranked the other way up. */
+const RATE_VOL = { fg_pct: 'fga_pg', p2_pct: 'fga_pg', efg: 'fga_pg', ts: 'fga_pg', p3_pct: 'p3a_pg',
+                   ft_pct: 'fta_pg', rim_pct: 'rim_apg', mid_pct: 'mid_apg', ast_to: 'apg' };
+const VOL_MIN  = { fga_pg: 2, p3a_pg: 1, fta_pg: 1, rim_apg: 1, mid_apg: 1, apg: 1 };
+/* volumes a filter needs that no column shows on its own (the FG / 3PT / FT pairs carry them) */
+const FILTER_EXTRA = [
+  { k: 'fga_pg', l: 'FGA/G', t: 'field goal attempts per game' },
+  { k: 'p3a_pg', l: '3PA/G', t: 'three-point attempts per game' },
+  { k: 'fta_pg', l: 'FTA/G', t: 'free throw attempts per game' }
+];
+/* quick sets: a name, what it asks for, and its lines [stat, op, mode, number] */
+const QUICK_SETS = [
+  ['shooters',       '3P% in the top fifth, on 3 threes a game',       [['p3_pct', 'ge', 'pct', 80], ['p3a_pg', 'ge', 'val', 3]]],
+  ['rim protectors', 'BLK% in the top sixth, holding the defensive glass', [['blk_pct', 'ge', 'pct', 85], ['dreb_pct', 'ge', 'pct', 50]]],
+  ['playmakers',     'AST% in the top fifth without giving it away',   [['ast_pct', 'ge', 'pct', 80], ['tov_pct', 'ge', 'pct', 40]]],
+  ['scorers',        'PPG in the top fifth at an average TS% or better', [['ppg', 'ge', 'pct', 80], ['ts', 'ge', 'pct', 50]]],
+  ['rebounders',     'TRB% in the top fifth',                           [['trb_pct', 'ge', 'pct', 80]]],
+  ['two-way',        'OBPM and DBPM both in the top third',             [['obpm', 'ge', 'pct', 67], ['dbpm', 'ge', 'pct', 67]]]
+];
+/* a regression that needs its players to share a floor: nothing on a cross-league table */
+const RAPM_KEYS = new Set(['rapm', 'orapm', 'drapm']);
+const fin = v => v != null && typeof v === 'number' && isFinite(v);
 
 /* ------------------------------------------------------- following access ---
    THE ACCESS STATE CAN CHANGE UNDER A DRAWN TABLE: an answer arriving after access.js's own
@@ -607,10 +643,17 @@ function render(opts) {
   const CAT = (isTeam ? T : P).map(c =>
     (c.k === 'name' && opts.nameLabel) ? Object.assign({}, c, { l: opts.nameLabel }) : c);
   const presets = PRESETS[isTeam ? 'team' : 'player'];
-  let rows = (opts.rows || []).map((r, i) => Object.assign({ __i: i }, r));
+  let rows = prep(opts.rows);
+  /* every row set the table is handed goes through here, the first and each setRows */
+  function prep(list) {
+    const out = (list || []).map((r, i) => Object.assign({ __i: i }, r));
+    derive(out);
+    return out;
+  }
   /* PER GAME OUTSIDE THE TOTALS VIEW. A season row carries totals; every column except the
      totals preset reads a per-game form of them, derived here so the heat map and the sort
      rank the per-game numbers rather than the totals behind them. */
+  function derive(rows) {
   if (!isTeam) rows.forEach(r => { r.poss_pg = (r.poss == null || !isFinite(r.poss)) ? null : r.poss / (r.gp || 1); });
   if (isTeam) rows.forEach(r => {
     const gp = r.gp || 1;
@@ -632,16 +675,49 @@ function render(opts) {
       r.efg_vs = r.efg_sh - r.pred_efg;
     } else { r.pred_efg = null; r.morey = null; r.efg_sh = null; r.efg_vs = null; }
   });
+  }
+
+  /* ---- the cross-league options (global scouting) ----
+     ALL OF THEM OPT-IN. A page that passes none of leagueColumn, leagueSelect, rankWithinLeague,
+     locked, filters, selectable, noRapm, searchLeagues or state gets the table it always had.
+
+     LEAGUES keys the team select by team id rather than by short name: SLB men and SLB women
+     share six short names (LEI, LON, MAN...), and a select of names would put both Leicester
+     sides behind one option. */
+  const LEAGUES = !isTeam && !!(opts.leagueColumn || opts.leagueSelect);
+  const S0 = opts.state && typeof opts.state === 'object' ? opts.state : {};
+  const SELECT = !!(opts.selectable && !isTeam);
+  const PICK_MAX = SELECT ? Math.max(1, Math.floor(opts.selectable.max) || 5) : 0;
+  const FILTERS = !!opts.filters;
+  const w0 = SELECT ? W0_PICK : W0;
 
   let preset = opts.preset || presets[0][0];
+  if (S0.preset && presets.some(p => p[0] === S0.preset)) preset = S0.preset;
   let sortKey = opts.sortKey || (isTeam ? 'ppg' : 'ppg');
   let sortDir = -1;
-  let search = '';
+  if (typeof S0.sort === 'string' && S0.sort) sortKey = S0.sort;
+  if (S0.dir === 1 || S0.dir === -1) sortDir = S0.dir;
+  let search = typeof S0.search === 'string' ? S0.search.trim().toLowerCase() : '';
   let minGames = opts.minGames != null ? opts.minGames : 0;
   let minMinutes = 0;                     // the low-minutes cut, off until asked for
-  let teamPick = '';                      // one club, or every club
+  let teamPick = S0.team != null ? String(S0.team) : '';   // one club, or every club
+  let leaguePick = S0.league != null ? String(S0.league) : '';   // one league, or every league
   let posPick = '';                       // guards / wings / bigs, or every position
   let byPos = false;                      // rank each column within the player's position
+  /* RANK WITHIN LEAGUE: percentiles and position groups taken per league, on by default on a
+     table with a league column. A +3 BPM means "above this league's average", so ranking it
+     against another league's players compares two different zeroes. */
+  const WITHIN_TOGGLE = !isTeam && !!(opts.leagueColumn || opts.rankWithinLeague != null);
+  let withinLeague = WITHIN_TOGGLE && (S0.withinLeague != null ? !!S0.withinLeague
+    : opts.rankWithinLeague != null ? !!opts.rankWithinLeague : !!opts.leagueColumn);
+  const within0 = opts.rankWithinLeague != null ? !!opts.rankWithinLeague : !!opts.leagueColumn;
+  /* QUALIFIED: rows that say whether their player has played enough (global.js marks them)
+     get a switch, on by default. Rows that do not say get nothing. */
+  const hasQualified = list => !isTeam && list.some(r => typeof r.qualified === 'boolean');
+  let qualRows = hasQualified(rows);
+  let qualOn = S0.qualified != null ? !!S0.qualified : true;
+  let filters = [];                       // [{ k, op:'ge'|'le', mode:'val'|'pct', x }]
+  const picked = new Map();               // id -> row, in the order picked
   let heat = opts.heat !== false;
   let extra = new Set();          // columns added by hand on top of the preset
   let removed = new Set();        // and ones taken away
@@ -655,8 +731,9 @@ function render(opts) {
      as more rows are shown. */
   const PAGE = opts.pageSize > 0 ? Math.floor(opts.pageSize) : Infinity;
   let shown = PAGE;
+  if (PAGE !== Infinity && S0.page > 1) shown = PAGE * Math.floor(S0.page);
 
-  const SE = () => (typeof window !== 'undefined' ? window.EpinoiaSeason : null);
+  const SE =() => (typeof window !== 'undefined' ? window.EpinoiaSeason : null);
 
   /* MEMBERS' ANALYTICS (docs/memberships.md §1, §6). The events splits and the zone columns
      are sold; a viewer without them keeps the rest of the table exactly as it was, with those
@@ -669,11 +746,22 @@ function render(opts) {
      so a table on a page that never loads the module is the table it always was. `locked` is
      read again whenever the module says the state changed (sign-in, sign-out, a late answer). */
   const ACC = () => (typeof window !== 'undefined' ? window.EpinoiaAccess : null);
-  const isLocked = () => { const A = ACC();
+  /* A PAGE OVER SEVERAL LEAGUES DECIDES FOR ITSELF (opts.locked, a function of a column key).
+     One league's answer cannot speak for a table mixing leagues, and hiding only the locked
+     leagues' cells would still print their order through a sort or a filter, so the page
+     says which columns are locked on it and they are gone for every row. */
+  const OWN_LOCK = typeof opts.locked === 'function';
+  const pageLocks = k => { try { return !!opts.locked(k); } catch (_) { return false; } };
+  const isLocked = () => { if (OWN_LOCK) return CAT.some(c => pageLocks(c.k)); const A = ACC();
     return !!(A && typeof A.analyticsOk === 'function' && !A.analyticsOk(opts.leagueId)); };
+  /* what is locked, as one string, so a change of WHICH columns (not only whether any) redraws */
+  const lockSig = () => OWN_LOCK ? CAT.filter(c => pageLocks(c.k)).map(c => c.k).join(',') : (isLocked() ? '*' : '');
   let locked = isLocked();
-  const premium = k => { if (!locked) return false; const A = ACC();
+  let lockKey = lockSig();
+  const premium = k => { if (!locked) return false; if (OWN_LOCK) return pageLocks(k); const A = ACC();
     return !!(A && typeof A.isPremiumColumn === 'function' && A.isPremiumColumn(k)); };
+  /* not drawn, not filtered on, not compared: a locked column, or RAPM where the page has none */
+  const absent = k => premium(k) || (!!opts.noRapm && RAPM_KEYS.has(k));
   /* A PRESET IS LOCKED when the catalogue names it, or when every column it would show is
      premium. The context columns (GP) do not count: GP rides in almost every preset, the
      events and zone ones included, and one free GP column would otherwise keep a wholly
@@ -682,31 +770,89 @@ function render(opts) {
   const presetLocked = key => {
     if (!locked || key === '*') return false;
     const A = ACC(), C = A && A.CATALOGUE;
-    if (C && Array.isArray(C.presets) && C.presets.indexOf(key) !== -1) return true;
+    /* the catalogue's list is the memberships' own lock; a page's own rule is read column by column */
+    if (!OWN_LOCK && C && Array.isArray(C.presets) && C.presets.indexOf(key) !== -1) return true;
     const context = C && Array.isArray(C.contextColumns) ? C.contextColumns : ['gp'];
     const cols = CAT.filter(c => c.g.includes(key) && !c.g.includes('id') && context.indexOf(c.k) === -1);
     return cols.length > 0 && cols.every(c => premium(c.k));
   };
   if (presetLocked(preset)) preset = presets[0][0];
 
-  /* the groups are cut over the whole table once, not per row (season.js positionGroups) */
+  /* the groups are cut over the whole table once, not per row (season.js positionGroups) --
+     or once per league when ranking within league, since a third of one league's players
+     are its guards whatever the other leagues look like */
   let posMap = null;
+  const byLeague = list => {
+    const m = new Map();
+    list.forEach(r => { const k = r.leagueId == null ? '' : String(r.leagueId);
+      if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
+    return m;
+  };
   const posGroups = () => {
     const S = SE();
-    if (!posMap && S && S.positionGroups) posMap = S.positionGroups(rows);
+    if (!posMap && S && S.positionGroups) {
+      if (withinLeague) {
+        posMap = new Map();
+        byLeague(rows).forEach(list => S.positionGroups(list).forEach((g, id) => posMap.set(id, g)));
+      } else posMap = S.positionGroups(rows);
+    }
     return posMap;
   };
   const groupOf = r => { const m = posGroups(); return m ? (m.get(r.id) || null) : null; };
+  /* the pools a percentile is taken over: the whole table, a position, a league, or both */
+  const rankGroup = () => {
+    if (withinLeague && byPos) return r => { const p = groupOf(r); return p == null ? null : String(r.leagueId) + ':' + p; };
+    if (withinLeague) return r => String(r.leagueId == null ? '' : r.leagueId);
+    return byPos ? groupOf : null;
+  };
+
+  /* THE LEAGUE COLUMN sits after GP in every preset, and is not in the column drawer:
+     on a table over several leagues a row without its league is not readable */
+  const LEAGUE_COL = opts.leagueColumn && !isTeam ? { k: 'leagueShort', l: 'LEAGUE', g: ['league'], text: true,
+    fmt: r => r.leagueShort || r.leagueName || '', sort: r => r.leagueShort || r.leagueName || '',
+    t: 'the league these numbers come from' } : null;
+  const colOf = k => CAT.find(x => x.k === k) || (LEAGUE_COL && k === LEAGUE_COL.k ? LEAGUE_COL : null);
 
   const idCols = CAT.filter(c => c.g.includes('id'));
   const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
-  const visible = () => idCols.concat(
-    CAT.filter(c => !c.g.includes('id') && !premium(c.k) &&
-                    ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
-       .map((c, i) => [c, i])
-       .sort((a, b) => ((a[0].ord && a[0].ord[preset] != null ? a[0].ord[preset] : 1000 + a[1]) -
-                        (b[0].ord && b[0].ord[preset] != null ? b[0].ord[preset] : 1000 + b[1])))
-       .map(x => x[0]));
+  const visible = () => {
+    const out = idCols.concat(
+      CAT.filter(c => !c.g.includes('id') && !absent(c.k) &&
+                      ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
+         .map((c, i) => [c, i])
+         .sort((a, b) => ((a[0].ord && a[0].ord[preset] != null ? a[0].ord[preset] : 1000 + a[1]) -
+                          (b[0].ord && b[0].ord[preset] != null ? b[0].ord[preset] : 1000 + b[1])))
+         .map(x => x[0]));
+    if (LEAGUE_COL) {
+      const gp = out.findIndex(c => c.k === 'gp');
+      out.splice(gp > -1 ? gp + 1 : idCols.length, 0, LEAGUE_COL);
+    }
+    return out;
+  };
+
+  /* ---- the stat filters' catalogue and arithmetic (RATE_VOL, above render) ---- */
+  const extraCols = isTeam ? [] : FILTER_EXTRA;
+  const fcol = k => CAT.find(x => x.k === k && x.heat) || extraCols.find(x => x.k === k) || null;
+  const filterStats = () => CAT.filter(c => c.heat && !c.g.includes('id') && !absent(c.k))
+    .concat(extraCols.filter(c => !CAT.some(x => x.k === c.k)));
+  const cleanLine = f => {
+    if (!f || typeof f !== 'object' || !fcol(f.k) || absent(f.k)) return null;
+    const x = f.x === '' || f.x == null ? null : Number(f.x);
+    return { k: f.k, op: f.op === 'le' ? 'le' : 'ge', mode: f.mode === 'pct' ? 'pct' : 'val', x: fin(x) ? x : null };
+  };
+  const liveLines = () => filters.filter(f => f.x != null && fcol(f.k) && !absent(f.k));
+  if (FILTERS && Array.isArray(S0.filters)) filters = S0.filters.map(cleanLine).filter(Boolean);
+  const quickSets = () => (FILTERS && opts.filters && Array.isArray(opts.filters.quick) ? opts.filters.quick
+    : (isTeam ? [] : QUICK_SETS)).filter(q => q[2].every(l => fcol(l[0]) && !absent(l[0])));
+
+  /* a quarter of the population's median volume, never below the stat's own floor, rounded
+     UP to the tenth the count prints, so the number a reader sees is the number applied */
+  function volFloor(pop, vk) {
+    const vols = pop.map(r => r[vk]).filter(v => fin(v) && v > 0).sort((a, b) => a - b);
+    const med = vols.length ? vols[Math.floor(vols.length / 2)] : 0;
+    return Math.max(VOL_MIN[vk] || 0, Math.ceil(0.25 * med * 10 - 1e-9) / 10);
+  }
+  let lastPop = null, lastFloors = [];   // what the last view() filtered over, and the minimums it applied
 
   host.textContent = '';
   /* THE FULL TABLE'S PHONE FORM STARTS AT 820px, and kit/table.css and xscroll.js find
@@ -725,10 +871,12 @@ function render(opts) {
   const q = el('input', 'ep-input grow');
   q.type = 'search';
   q.placeholder = isTeam ? 'find a team…' : 'find a player or team…';
+  if (opts.searchLeagues) q.placeholder = 'find a player, team or league…';
+  if (search) q.value = S0.search.trim();
   let qTimer = null;
   q.addEventListener('input', () => {
     clearTimeout(qTimer);
-    qTimer = setTimeout(() => { search = q.value.trim().toLowerCase(); shown = PAGE; draw(); }, SEARCH_WAIT);
+    qTimer = setTimeout(() => { search = q.value.trim().toLowerCase(); shown = PAGE; draw(); emit(); }, SEARCH_WAIT);
   });
   bar.appendChild(q);
 
@@ -742,12 +890,25 @@ function render(opts) {
   bar.append(filtersBtn, more);
   /* the button says how many filters are doing something, so a folded one is not forgotten */
   const paintFilters = () => {
+    const lines = FILTERS ? liveLines().length : 0;
     const n = (minGames !== minGames0 ? 1 : 0) + (minMinutes ? 1 : 0) + (teamPick ? 1 : 0) +
-              (posPick ? 1 : 0) + (byPos ? 1 : 0) + (heat !== heat0 ? 1 : 0);
+              (posPick ? 1 : 0) + (byPos ? 1 : 0) + (heat !== heat0 ? 1 : 0) +
+              (leaguePick ? 1 : 0) + (withinLeague !== within0 ? 1 : 0) + (qualRows && !qualOn ? 1 : 0) + lines;
     filtersBtn.textContent = n ? 'filters · ' + n : 'filters';
     filtersBtn.classList.toggle('pri', n > 0);
+    if (statBtn) {
+      statBtn.textContent = lines ? 'stat filters · ' + lines : 'stat filters';
+      statBtn.classList.toggle('pri', lines > 0);
+    }
+  };
+  let statBtn = null;                     // the stat filters' button, when the page has them
+  /* THE STATE A PAGE KEEPS IN ITS URL (opts.onState), handed over after every change of it */
+  const emit = () => {
+    if (typeof opts.onState !== 'function') return;
+    try { opts.onState(getState()); } catch (e) { console.warn('[fulltable] state', e); }
   };
 
+  let qualBtn = null, leagueSel = null, teamSel = null, teamAnchor = null;
   if (!isTeam && opts.showMinGames !== false) {
     const mg = el('input', 'ep-input ft-num');
     mg.type = 'number'; mg.min = '0'; mg.value = String(minGames);
@@ -772,22 +933,85 @@ function render(opts) {
     });
     more.appendChild(cut);
 
+    /* QUALIFIED PLAYERS ONLY, on by default where the rows say who qualifies: enough of the
+       team's games and minutes that a per-game number is a season's rather than a night's */
+    if (qualRows || LEAGUES) {
+      qualBtn = el('button', 'ep-btn ft-btn ft-qual' + (qualOn ? ' pri' : ''), 'qualified');
+      qualBtn.type = 'button';
+      qualBtn.title = 'only players with a third of their team’s games and five minutes a team game (30 at least)';
+      qualBtn.hidden = !qualRows;
+      qualBtn.addEventListener('click', () => {
+        qualOn = !qualOn; qualBtn.classList.toggle('pri', qualOn); shown = PAGE; draw(); emit();
+      });
+      more.appendChild(qualBtn);
+    }
+
+    /* one league, when the table spans several */
+    if (opts.leagueSelect) {
+      leagueSel = el('select', 'ep-input ft-sel ft-leaguesel');
+      leagueSel.title = 'show one league';
+      leagueSel.addEventListener('change', () => {
+        leaguePick = leagueSel.value; fillTeams(true); shown = PAGE; draw(); emit();
+      });
+      more.appendChild(leagueSel);
+    }
+
     /* one club, or one position group, out of whoever is in the table */
-    const teamSel = el('select', 'ep-input ft-sel');
+    teamSel = el('select', 'ep-input ft-sel');
     teamSel.title = 'show one club';
-    const teamNames = [...new Set(rows.map(r => r.teamName).filter(Boolean))].sort();
-    [['', 'every club']].concat(teamNames.map(t => [t, t])).forEach(([v, l]) => {
-      const o = document.createElement('option'); o.value = v; o.textContent = l; teamSel.appendChild(o);
-    });
-    teamSel.addEventListener('change', () => { teamPick = teamSel.value; shown = PAGE; draw(); });
-    if (teamNames.length > 1) more.appendChild(teamSel);
+    teamSel.addEventListener('change', () => { teamPick = teamSel.value; shown = PAGE; draw(); emit(); });
 
     const posSel = el('select', 'ep-input ft-sel ft-possel');
     posSel.title = 'show one position group, by the calculated position corrected with the listed one';
     const posOpts = [['', 'every position']].concat((SE() && SE().POS_GROUPS ? SE().POS_GROUPS : []).map(g => [g[0], g[1]]));
     posOpts.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; posSel.appendChild(o); });
     posSel.addEventListener('change', () => { posPick = posSel.value; shown = PAGE; draw(); });
+    teamAnchor = posSel;
+    fillLeagues(); fillTeams();
     if (posOpts.length > 1) more.appendChild(posSel);
+  }
+
+  /* THE LEAGUE AND CLUB LISTS ARE REBUILT whenever rows arrive (setRows), so a league that
+     lands after the first draw is in them. The club select is only put in the bar once there
+     are two clubs to choose between, as it always was. */
+  function fillSelect(sel, list, value) {
+    sel.textContent = '';
+    list.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); });
+    sel.value = value;
+  }
+  function fillLeagues() {
+    if (!leagueSel) return;
+    const m = new Map();
+    rows.forEach(r => { if (r.leagueId == null) return; const k = String(r.leagueId);
+      if (!m.has(k)) m.set(k, r.leagueShort || r.leagueName || k); });
+    /* A PICK NOT IN THE ROWS IS KEPT: restored from a URL, its league may simply not have
+       arrived yet. It filters to nothing until it does, and the select says so. */
+    if (leaguePick && !m.has(leaguePick)) m.set(leaguePick, 'loading…');
+    fillSelect(leagueSel, [['', 'every league']].concat([...m].sort((a, b) => a[1].localeCompare(b[1]))), leaguePick);
+  }
+  function fillTeams(dropUnknown) {
+    if (!teamSel) return;
+    let list;
+    if (!LEAGUES) list = [...new Set(rows.map(r => r.teamName).filter(Boolean))].sort().map(t => [t, t]);
+    else {
+      /* keyed by team id and labelled "LEI · SLB W"; one league's clubs once a league is chosen */
+      const m = new Map();
+      rows.forEach(r => {
+        if (r.teamId == null || (leaguePick && String(r.leagueId) !== leaguePick)) return;
+        const k = String(r.teamId);
+        if (!m.has(k)) m.set(k, (r.teamName || 'club') + (r.leagueShort ? ' · ' + r.leagueShort : ''));
+      });
+      list = [...m].sort((a, b) => a[1].localeCompare(b[1]));
+    }
+    /* a club from another league goes when a league is chosen; one not arrived yet is kept */
+    if (teamPick && !list.some(x => x[0] === teamPick)) {
+      if (dropUnknown) teamPick = ''; else list.push([teamPick, 'loading…']);
+    }
+    fillSelect(teamSel, [['', 'every club']].concat(list), teamPick);
+    if (list.length > 1 && teamSel.parentNode !== more) {
+      if (teamAnchor && teamAnchor.parentNode === more) more.insertBefore(teamSel, teamAnchor);
+      else more.appendChild(teamSel);
+    }
   }
 
   const heatBtn = el('button', 'ep-btn ft-btn' + (heat ? ' pri' : ''), 'heat map');
@@ -812,11 +1036,26 @@ function render(opts) {
     more.appendChild(posBtn);
   }
 
+  /* RANK WITHIN LEAGUE (above render's state): the colouring, the position groups and every
+     percentile a stat filter reads, taken per league. Only on a table that spans leagues. */
+  if (WITHIN_TOGGLE) {
+    const wb = el('button', 'ep-btn ft-btn ft-within' + (withinLeague ? ' pri' : ''), 'rank within league');
+    wb.type = 'button';
+    wb.title = 'percentiles against the player’s own league rather than every league in the table';
+    wb.setAttribute('aria-pressed', withinLeague ? 'true' : 'false');
+    wb.addEventListener('click', () => {
+      withinLeague = !withinLeague; posMap = null;
+      wb.classList.toggle('pri', withinLeague); wb.setAttribute('aria-pressed', withinLeague ? 'true' : 'false');
+      shown = PAGE; draw(); emit();
+    });
+    more.appendChild(wb);
+  }
+
   /* CALC RAPM. The page hands over a function that reads the season's logs and comes
      back with a coefficient per player; this only asks for it, says how far along it is,
      and puts the numbers on the rows. Pressed twice, it recomputes rather than refusing:
      a scope may have changed under it. */
-  if (!isTeam && typeof opts.rapm === 'function') {
+  if (!isTeam && typeof opts.rapm === 'function' && !opts.noRapm) {
     const rb = el('button', 'ep-btn ft-btn', 'calc RAPM');
     rb.type = 'button';
     rb.title = 'read every stint of the competition and regress it: RAPM, ORAPM and DRAPM';
@@ -850,6 +1089,126 @@ function render(opts) {
   colsBtn.type = 'button';
   colsBtn.addEventListener('click', () => { drawer.hidden = !drawer.hidden; });
   more.appendChild(colsBtn);
+
+  /* THE STAT FILTERS' DRAWER lives inside .ft-more, so on a phone it opens inside the
+     'filters' disclosure with everything else that narrows the table, and above the phone
+     breakpoint it is a full-width row of the bar (kit/table.css .ft-filt). */
+  const filt = FILTERS ? el('div', 'ft-filt') : null;
+  let fTimer = null;
+  const applyFilters = () => { shown = PAGE; draw(); emit(); };
+  if (FILTERS) {
+    statBtn = el('button', 'ep-btn ft-btn ft-statbtn', 'stat filters');
+    statBtn.type = 'button';
+    statBtn.setAttribute('aria-expanded', 'false');
+    statBtn.title = 'keep only players over or under a number, or a percentile, in several stats at once';
+    filt.hidden = true;
+    statBtn.addEventListener('click', () => {
+      filt.hidden = !filt.hidden;
+      statBtn.setAttribute('aria-expanded', filt.hidden ? 'false' : 'true');
+      if (!filt.hidden) drawFilters();
+    });
+    more.append(statBtn, filt);
+  }
+  function drawFilters() {
+    if (!filt) return;
+    filt.textContent = '';
+    const stats = filterStats();
+    const quick = quickSets();
+    if (quick.length) {
+      const qrow = el('div', 'ft-fquick');
+      qrow.appendChild(el('span', 'ft-count', 'quick'));
+      quick.forEach(([name, what, lines]) => {
+        const b = el('button', 'ft-col ft-fset', name);
+        b.type = 'button'; b.title = what;
+        b.addEventListener('click', () => {
+          filters = lines.map(([k, op, mode, x]) => ({ k, op, mode, x }));
+          drawFilters(); applyFilters();
+        });
+        qrow.appendChild(b);
+      });
+      if (filters.length) {
+        const clr = el('button', 'ft-col ft-fclear', 'clear');
+        clr.type = 'button';
+        clr.addEventListener('click', () => { filters = []; drawFilters(); applyFilters(); });
+        qrow.appendChild(clr);
+      }
+      filt.appendChild(qrow);
+    }
+    const list = el('div', 'ft-flines');
+    filters.forEach((f, i) => list.appendChild(filterLine(f, i, stats)));
+    filt.appendChild(list);
+    const add = el('button', 'ep-btn ft-btn ft-fadd', '+ add a filter');
+    add.type = 'button';
+    add.addEventListener('click', () => {
+      const first = stats.find(c => !filters.some(f => f.k === c.k)) || stats[0];
+      if (!first) return;
+      filters.push({ k: first.k, op: 'ge', mode: 'pct', x: null });
+      drawFilters();
+    });
+    filt.appendChild(add);
+    const note = el('div', 'ft-count ft-fnote');
+    filt.appendChild(note);
+    paintFloors();
+  }
+  function filterLine(f, i, stats) {
+    const line = el('div', 'ft-fline');
+    const sel = el('select', 'ep-input ft-fstat');
+    sel.setAttribute('aria-label', 'stat');
+    stats.forEach(c => { const o = document.createElement('option');
+      o.value = c.k; o.textContent = c.t ? c.l + ' — ' + c.t : c.l; sel.appendChild(o); });
+    sel.value = f.k;
+    sel.addEventListener('change', () => { f.k = sel.value; if (f.x != null) applyFilters(); else paintFilters(); });
+    const op = el('button', 'ep-btn ft-btn ft-fop', f.op === 'le' ? '≤' : '≥');
+    op.type = 'button';
+    op.setAttribute('aria-label', f.op === 'le' ? 'at most' : 'at least');
+    op.addEventListener('click', () => {
+      f.op = f.op === 'le' ? 'ge' : 'le';
+      op.textContent = f.op === 'le' ? '≤' : '≥';
+      op.setAttribute('aria-label', f.op === 'le' ? 'at most' : 'at least');
+      if (f.x != null) applyFilters();
+    });
+    const val = el('input', 'ep-input ft-fval');
+    val.type = 'text'; val.inputMode = 'decimal';
+    val.setAttribute('aria-label', 'number');
+    val.placeholder = f.mode === 'pct' ? '0-100' : 'value';
+    val.value = f.x == null ? '' : String(f.x);
+    const takeVal = () => {
+      const s = String(val.value || '').trim().replace(',', '.');
+      const x = s === '' ? null : Number(s);
+      f.x = fin(x) ? x : null;
+    };
+    val.addEventListener('input', () => {
+      clearTimeout(fTimer);
+      fTimer = setTimeout(() => { takeVal(); applyFilters(); }, SEARCH_WAIT);
+    });
+    val.addEventListener('change', () => { clearTimeout(fTimer); takeVal(); applyFilters(); });
+    const mode = el('button', 'ep-btn ft-btn ft-fmode', f.mode === 'pct' ? 'pctl' : 'value');
+    mode.type = 'button';
+    mode.title = 'the stat’s own value, or its percentile in the table';
+    mode.addEventListener('click', () => {
+      f.mode = f.mode === 'pct' ? 'val' : 'pct';
+      mode.textContent = f.mode === 'pct' ? 'pctl' : 'value';
+      val.placeholder = f.mode === 'pct' ? '0-100' : 'value';
+      if (f.x != null) applyFilters();
+    });
+    const x = el('button', 'ep-btn ft-btn ft-fx', '×');
+    x.type = 'button';
+    x.setAttribute('aria-label', 'remove this filter');
+    x.addEventListener('click', () => {
+      const had = f.x != null;
+      filters = filters.filter(g => g !== f);
+      drawFilters();
+      if (had) applyFilters(); else paintFilters();
+    });
+    line.append(sel, op, val, mode, x);
+    return line;
+  }
+  /* the volume minimums the last view applied, said once in the drawer and once in the count */
+  const floorText = () => lastFloors.map(fl => 'min ' + fl.label + ' ' + fl.x.toFixed(1) + ' for ' + fl.rates.join(', ')).join(' · ');
+  function paintFloors() {
+    const note = filt && filt.querySelector('div.ft-fnote');
+    if (note) note.textContent = floorText();
+  }
 
   const csv = el('button', 'ep-btn ft-btn', 'csv');
   csv.type = 'button';
@@ -906,7 +1265,7 @@ function render(opts) {
         hideTeaser();
         preset = key; extra.clear(); removed.clear();
         pills.querySelectorAll('.ft-pill').forEach(p => p.classList.toggle('on', p.dataset.g === key));
-        drawDrawer(); draw(); revealPill();
+        drawDrawer(); draw(); revealPill(); emit();
       });
       pills.appendChild(b);
     });
@@ -933,7 +1292,7 @@ function render(opts) {
   function drawDrawer() {
     grid.textContent = '';
     const shown = new Set(visible().map(c => c.k));
-    CAT.filter(c => !c.g.includes('id') && !premium(c.k)).forEach(c => {
+    CAT.filter(c => !c.g.includes('id') && !absent(c.k)).forEach(c => {
       const on = shown.has(c.k);
       const b = el('button', 'ft-col' + (on ? ' on' : ''), c.l);
       b.type = 'button';
@@ -972,17 +1331,178 @@ function render(opts) {
   moreRows.type = 'button'; moreRows.hidden = true;
   host.appendChild(moreRows);
 
+  /* ---- the compare tray (opts.selectable) ----
+     A PICK BUTTON IN THE RANK CELL, not a checkbox column: a new column would move the pinned
+     name's left edge and every width sum. The tray sticks to the bottom of the screen above the
+     tab bar and the gesture area (kit/table.css .ft-tray), lists the picks numbered in the
+     order the compare chart draws them, and hands them over with the stats on screen. */
+  const tray = SELECT ? el('div', 'ft-tray') : null;
+  if (SELECT) {
+    host.classList.add('ft-selectable');
+    tray.hidden = true;
+    tray.setAttribute('role', 'region');
+    tray.setAttribute('aria-label', 'players to compare');
+    host.appendChild(tray);
+  }
+  let trayNote = '';
+  /* THE BAR'S REAL HEIGHT, NOT A GUESS. The phone bar is 58px with a league's tab bar in it,
+     but on a page with no league (global scouting) nav.js draws the country row instead, which
+     measured 69.25px: a tray offset by 58px sat 11px under it, over the Compare button. So the
+     bar is measured (.ep-nav, border box, which already holds the home-indicator inset) into
+     --ep-nav-h, and the tray's own height into --ft-tray-h with body.ft-tray-open while it
+     shows, so the notification bell can be lifted clear of it (kit/table.css). Only a
+     selectable table does this; nav.js mounts after this script, so it is looked for when the
+     tray first paints. */
+  let barWatch = null;
+  function watchBars() {
+    const de = document.documentElement, body = document.body;
+    if (!de || !de.style || !body) return;
+    const nav = document.querySelector('.ep-nav');
+    /* rounded UP: offsetHeight rounds 69.25 down to 69 and leaves a sliver under the bar */
+    const hOf = n => Math.ceil(n.getBoundingClientRect ? n.getBoundingClientRect().height : n.offsetHeight || 0);
+    const setH = () => {
+      if (nav && hOf(nav)) de.style.setProperty('--ep-nav-h', hOf(nav) + 'px');
+      if (tray && !tray.hidden && hOf(tray)) de.style.setProperty('--ft-tray-h', hOf(tray) + 'px');
+    };
+    setH();
+    if (barWatch || !nav || typeof ResizeObserver !== 'function') return;
+    barWatch = new ResizeObserver(setH);
+    barWatch.observe(nav);
+    barWatch.observe(tray);
+  }
+  if (SELECT) { try { watchBars(); } catch (_) { /* measured again when the tray paints */ } }
+  const statKeys = () => visible().filter(c => c.heat && !absent(c.k)).map(c => c.k);
+  function paintPick(b, on, r) {
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', (on ? 'take ' : 'pick ') + (r.name || 'player') + (on ? ' out of the comparison' : ' to compare'));
+    const tr = b.parentNode && b.parentNode.parentNode;
+    if (tr && tr.classList) tr.classList.toggle('picked', on);
+  }
+  function togglePick(r) {
+    const id = String(r.id);           // picks are keyed as the button's data-id is: a string
+    if (picked.has(id)) { picked.delete(id); trayNote = ''; }
+    else if (picked.size >= PICK_MAX) { trayNote = PICK_MAX + ' players at most — take one out first'; }
+    else { picked.set(id, r); trayNote = ''; }
+    repaintPicks(); paintTray();
+  }
+  function repaintPicks() {
+    if (!last) return;
+    last.tb.querySelectorAll('button.ft-pick').forEach(b => {
+      const r = picked.get(b.dataset.id);
+      paintPick(b, !!r, r || { name: b.dataset.name });
+    });
+  }
+  function paintTray() {
+    if (!tray) return;
+    tray.textContent = '';
+    tray.hidden = picked.size === 0 && !trayNote;
+    const list = el('div', 'ft-traylist');
+    [...picked.values()].forEach((r, i) => {
+      const chip = el('span', 'ft-chip');
+      chip.dataset.n = String(i + 1);
+      chip.append(el('b', 'ft-chipn', String(i + 1)),
+                  el('span', 'ft-chipname', (r.name || 'player') + (r.leagueShort ? ' · ' + r.leagueShort : '')));
+      const x = el('button', 'ft-chipx', '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'take ' + (r.name || 'player') + ' out');
+      x.addEventListener('click', () => { picked.delete(String(r.id)); trayNote = ''; repaintPicks(); paintTray(); });
+      chip.appendChild(x);
+      list.appendChild(chip);
+    });
+    tray.appendChild(list);
+    if (trayNote) tray.appendChild(el('span', 'ft-count ft-traynote', trayNote));
+    const acts = el('div', 'ft-trayacts');
+    const clr = el('button', 'ep-btn ft-btn ft-trayclear', 'clear');
+    clr.type = 'button';
+    clr.addEventListener('click', () => { picked.clear(); trayNote = ''; repaintPicks(); paintTray(); });
+    const go = el('button', 'ep-btn ft-btn pri ft-compare', picked.size > 1 ? 'compare ' + picked.size : 'pick 2 to compare');
+    go.type = 'button';
+    go.disabled = picked.size < 2;
+    go.addEventListener('click', () => {
+      if (picked.size < 2 || typeof opts.onCompare !== 'function') return;
+      opts.onCompare(getSelected(), statKeys());
+    });
+    acts.append(clr, go);
+    tray.appendChild(acts);
+    if (document.body && document.body.classList) document.body.classList.toggle('ft-tray-open', !tray.hidden);
+    try { watchBars(); } catch (_) { /* the CSS fallback offsets stand */ }
+  }
+  function getSelected() { return [...picked.values()]; }
+
   const sortVal = (c, r) => (c.sort ? c.sort(r) : r[c.k]);
 
-  function view() {
+  /* THE POPULATION: every filter that decides who is in the table, before the stat filters
+     and the search. Heat and every percentile a stat filter reads are ranked over it. */
+  /* who counts at all (games, minutes, qualified), before any league, club or position is picked */
+  function basePopulation() {
     let v = rows.filter(r => (r.gp || 0) >= minGames);
     if (minMinutes) v = v.filter(r => (r.min || 0) >= minMinutes);
-    if (teamPick) v = v.filter(r => r.teamName === teamPick);
+    if (qualRows && qualOn) v = v.filter(r => r.qualified !== false);
+    return v;
+  }
+  function population() {
+    let v = basePopulation();
+    if (leaguePick) v = v.filter(r => String(r.leagueId) === leaguePick);
+    if (teamPick) v = v.filter(r => LEAGUES ? String(r.teamId) === teamPick : r.teamName === teamPick);
     if (posPick) v = v.filter(r => groupOf(r) === posPick);
+    return v;
+  }
+
+  /* percentiles over the population for the given keys; a rate with a volume floor is ranked
+     only among the players who clear it. `keep` (ids) stay in a floored pool whatever their
+     volume: a player being compared is ranked, not dropped, under a floor he misses */
+  function ranksOver(pop, keys, floors, keep) {
+    const S = SE();
+    const out = new Map();
+    if (!S || !keys.length) return out;
+    const grp = rankGroup();
+    keys.forEach(k => {
+      const c = fcol(k) || colOf(k);
+      const fl = floors && RATE_VOL[k] ? floors.find(x => x.vol === RATE_VOL[k]) : null;
+      const pool = fl ? pop.filter(r => (fin(r[fl.vol]) && r[fl.vol] >= fl.x) || (keep && keep.has(String(r.id)))) : pop;
+      const m = S.percentiles(pool, [k], c && c.low ? [k] : [], grp).get(k);
+      if (m) out.set(k, m);
+    });
+    return out;
+  }
+
+  function view() {
+    const pop = population();
+    let v = pop;
+    lastPop = pop; lastFloors = [];
+    const lines = FILTERS ? liveLines() : [];
+    if (lines.length) {
+      /* the volume floors first, one per volume however many of its rates are filtered */
+      const floors = [];
+      lines.forEach(f => {
+        const vk = RATE_VOL[f.k];
+        if (!vk || isTeam) return;
+        let fl = floors.find(x => x.vol === vk);
+        if (!fl) { fl = { vol: vk, label: (extraCols.find(c => c.k === vk) || colOf(vk) || { l: vk }).l, x: volFloor(pop, vk), rates: [] }; floors.push(fl); }
+        const lab = (fcol(f.k) || { l: f.k }).l;
+        if (fl.rates.indexOf(lab) === -1) fl.rates.push(lab);
+      });
+      lastFloors = floors;
+      const pctKeys = [...new Set(lines.filter(f => f.mode === 'pct').map(f => f.k))];
+      const pct = ranksOver(pop, pctKeys, floors);
+      floors.forEach(fl => { v = v.filter(r => fin(r[fl.vol]) && r[fl.vol] >= fl.x); });
+      lines.forEach(f => {
+        v = v.filter(r => {
+          const x = f.mode === 'pct' ? (pct.get(f.k) || new Map()).get(r.id) : r[f.k];
+          if (!fin(x)) return false;
+          return f.op === 'le' ? x <= f.x : x >= f.x;
+        });
+      });
+    }
     if (search) v = v.filter(r =>
-      ((r.name || '') + ' ' + (r.teamName || '')).toLowerCase().includes(search));
-    /* a locked column is not a sort either: ordering by it would print its ranking */
-    const c = (!premium(sortKey) && CAT.find(x => x.k === sortKey)) || CAT[3];
+      ((r.name || '') + ' ' + (r.teamName || '') +
+       (opts.searchLeagues ? ' ' + (r.leagueName || '') + ' ' + (r.leagueShort || '') : '')).toLowerCase().includes(search));
+    if (v === pop) v = v.slice();
+    /* a locked column is not a sort either: ordering by it would print its ranking.
+       A player table falls back to GP by key, not by place in the catalogue, so a column put
+       in front of it cannot quietly become the fallback. The team table's fourth column has
+       always been PPG (T has no TEAM column), and stays its fallback. */
+    const c = (!absent(sortKey) && colOf(sortKey)) || (isTeam ? CAT[3] : CAT.find(x => x.k === 'gp')) || CAT[3];
     v.sort((a, b) => {
       const x = sortVal(c, a), y = sortVal(c, b);
       if (c.text) return String(x || '').localeCompare(String(y || '')) * (sortDir === -1 ? 1 : -1);
@@ -1037,7 +1557,7 @@ function render(opts) {
        than the pixel or two of accuracy it buys */
     const sample = rows.length > 60 ? rows.slice(0, 60) : rows;
     cols.forEach((c, i) => {
-      if (i < 2) { out[c.k] = i === 0 ? W0 : (phone ? W1_PHONE : W1_WIDE); return; }
+      if (i < 2) { out[c.k] = i === 0 ? w0 : (phone ? W1_PHONE : W1_WIDE); return; }
       ctx2d.font = headFont;
       const hw = ctx2d.measureText(c.l).width + String(c.l).length * TRACK;
       let w = 0;
@@ -1166,6 +1686,14 @@ function render(opts) {
         if (href) { const a = el('a', null, r.name); a.href = href; cell.appendChild(a); }
         else cell.appendChild(el('span', null, r.name));
         td.appendChild(cell);
+      } else if (SELECT && c.k === 'rank') {
+        /* the rank stays the button's text: a pick is a press on the row's own number */
+        const b = el('button', 'ft-pick', c.fmt(r, idx));
+        b.type = 'button'; b.dataset.id = String(r.id); b.dataset.name = r.name || '';
+        td.appendChild(b); tr.appendChild(td);
+        paintPick(b, picked.has(String(r.id)), r);
+        b.addEventListener('click', e => { if (e && e.stopPropagation) e.stopPropagation(); togglePick(r); });
+        return;
       } else {
         td.textContent = c.fmt(r, idx);
         if (c.lead) td.classList.add('lead');
@@ -1189,7 +1717,11 @@ function render(opts) {
   const noun = n => isTeam ? (n === 1 ? ' team' : ' teams') : (n === 1 ? ' player' : ' players');
   function paintCount(all) {
     const on = Math.min(shown, all.length);
-    count.textContent = (on < all.length ? on + ' of ' + all.length : String(all.length)) + noun(all.length);
+    const floors = floorText();
+    count.textContent = (on < all.length ? on + ' of ' + all.length : String(all.length)) + noun(all.length) +
+      (floors ? ' · ' + floors : '');
+    count.classList.toggle('ft-floored', !!floors);
+    paintFloors();
   }
   function paintMore(all) {
     const rest = all.length - Math.min(shown, all.length);
@@ -1206,7 +1738,7 @@ function render(opts) {
     const from = Math.min(shown, last.all.length);
     shown += PAGE;
     appendRows(from, Math.min(shown, last.all.length));
-    paintCount(last.all); paintMore(last.all);
+    paintCount(last.all); paintMore(last.all); emit();
   });
 
   /* AFTER A SORT ON A PHONE, THE SORTED COLUMN IS BROUGHT ON SCREEN. Only a few columns
@@ -1217,7 +1749,7 @@ function render(opts) {
     /* the pinned # and name are always on screen: nothing to reveal, and measuring one
        would pan a reader who had scrolled right back towards the start */
     if (!th || th.classList.contains('stick')) return;
-    const pinned = W0 + W1_PHONE;
+    const pinned = w0 + W1_PHONE;
     const l = th.offsetLeft, r = l + th.offsetWidth;
     if (l >= wrap.scrollLeft + pinned && r <= wrap.scrollLeft + wrap.clientWidth) return;
     wrap.scrollLeft = Math.max(0, l - pinned - 8);
@@ -1249,11 +1781,21 @@ function render(opts) {
     /* percentiles are computed over the rows the filters leave, so a filtered table
        ranks within what you are actually looking at — same as index_9. Over ALL of
        them, not the page on screen: a row's colour must not change when more are shown. */
+    /* WITH STAT FILTERS ON, over the population they were applied to instead: a hand-picked
+       group of 80th-percentile shooters ranked among themselves would be painted average. */
     let ranks = new Map();
     if (heat && window.EpinoiaSeason) {
       const keys = cols.filter(c => c.heat).map(c => c.k);
       const low  = cols.filter(c => c.heat && c.low).map(c => c.k);
-      ranks = window.EpinoiaSeason.percentiles(all, keys, low, byPos ? groupOf : null);
+      const pool = FILTERS && liveLines().length && lastPop ? lastPop : all;
+      ranks = window.EpinoiaSeason.percentiles(pool, keys, low, rankGroup());
+      /* A RATE UNDER A VOLUME FLOOR IS COLOURED AS THE FILTER RANKED IT: among the players who
+         clear the floor, not beside 1-for-1 shooters. Otherwise a player kept by "3P% >= 80th"
+         could be painted 65th in the very column he was filtered on. */
+      if (FILTERS && lastFloors.length && lastPop) {
+        const floored = keys.filter(k => RATE_VOL[k] && lastFloors.some(fl => fl.vol === RATE_VOL[k]));
+        if (floored.length) ranksOver(lastPop, floored, lastFloors).forEach((m, k) => ranks.set(k, m));
+      }
     }
 
     const t = el('table', 'ft');
@@ -1272,7 +1814,7 @@ function render(opts) {
     const widths = measure(cols, all, phone);
     /* a width the reader set by hand wins over the measured one */
     Object.keys(held).forEach(k => { if (widths[k] != null) widths[k] = held[k]; });
-    const totalW = W0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
+    const totalW = w0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
     t.style.width = totalW + 'px';
     const grips = !phone && !isCoarse();
 
@@ -1284,7 +1826,7 @@ function render(opts) {
          cell like "192-440" stretched its column and squeezed every other one,
          which is what threw PPG and DIFF out of proportion. */
       if (i >= 2) th.style.width = widths[c.k] + 'px';
-      else if (phone) th.style.width = (i === 0 ? W0 : W1) + 'px';
+      else if (phone) th.style.width = (i === 0 ? w0 : W1) + 'px';
       th.title = (c.t ? c.l + ' — ' + c.t : c.l) + (c.low ? ' — lower is better' : '');
       /* a grip on the trailing edge, so a column can be widened by hand when
          the measured width is not what this particular reader wants */
@@ -1295,6 +1837,7 @@ function render(opts) {
         shown = PAGE;
         draw();
         if (isPhone()) revealSorted();
+        emit();
       });
       hr.appendChild(th);
     });
@@ -1306,7 +1849,7 @@ function render(opts) {
       const colgroup = () => {
         const g = el('colgroup');
         cols.forEach((c, i) => { const col = el('col');
-          col.style.width = (i === 0 ? W0 : i === 1 ? W1 : widths[c.k]) + 'px'; g.appendChild(col); });
+          col.style.width = (i === 0 ? w0 : i === 1 ? W1 : widths[c.k]) + 'px'; g.appendChild(col); });
         return g;
       };
       const ht = el('table', 'ft');
@@ -1347,17 +1890,83 @@ function render(opts) {
 
   /* THE ACCESS STATE CAN CHANGE UNDER A DRAWN TABLE (followAccess, above render). Only a real
      change redraws: an open league's table never notices an answer arriving. */
-  followAccess(host, () => {
-    const now = isLocked();
-    if (now === locked) return;
-    locked = now;
+  /* A PAGE'S OWN LOCK (opts.locked) is compared column by column, so a league arriving that
+     locks one more column redraws as surely as a sign-out does. A stat filter on a column that
+     has become locked goes with it: filtering by it would print its ranking. */
+  function relock() {
+    const now = isLocked(), sig = lockSig();
+    if (now === locked && sig === lockKey) return false;
+    locked = now; lockKey = sig;
+    const was = preset, nf = filters.length;
     if (presetLocked(preset)) { preset = presets[0][0]; extra.clear(); removed.clear(); }
-    hideTeaser(); drawPills(); drawDrawer(); draw();
-  });
+    filters = filters.filter(f => !absent(f.k));
+    hideTeaser(); drawPills(); drawDrawer();
+    if (filt && !filt.hidden) drawFilters();
+    /* the lock took the preset or a filter away: a page keeping the state in its URL must hear
+       it, or a reload restores the view the table no longer shows */
+    if (preset !== was || filters.length !== nf) emit();
+    return true;
+  }
+  followAccess(host, () => { if (relock()) draw(); });
+
+  function getState() {
+    return {
+      sort: sortKey, dir: sortDir, preset,
+      search: String(q.value || '').trim(),
+      filters: filters.filter(f => f.x != null).map(f => ({ k: f.k, op: f.op, mode: f.mode, x: f.x })),
+      league: leaguePick, team: teamPick, withinLeague,
+      page: PAGE === Infinity ? 1 : Math.max(1, Math.ceil(shown / PAGE)),
+      qualified: qualOn
+    };
+  }
 
   return {
     redraw: draw,
-    setRows(next) { rows = (next || []).map((r, i) => Object.assign({ __i: i }, r)); shown = PAGE; draw(); }
+    /* ROWS THAT ARRIVE IN PARTS (global scouting draws each league as it lands). Everything
+       derived from the rows is derived again -- per-game forms, position groups, the league and
+       club lists, the lock -- while the sort, the filters, the picks and the rows shown stay. */
+    setRows(next) {
+      rows = prep(next);
+      posMap = null;
+      qualRows = hasQualified(rows);
+      if (qualBtn) qualBtn.hidden = !qualRows;
+      const byId = new Map(rows.map(r => [String(r.id), r]));
+      [...picked.keys()].forEach(id => { if (byId.has(id)) picked.set(id, byId.get(id)); else picked.delete(id); });
+      fillLeagues(); fillTeams();
+      relock();
+      draw();
+      if (SELECT) paintTray();
+    },
+    getView: () => view(),
+    getPool: () => population(),
+    /* percentiles for the given stats (the visible preset's by default), over the population
+       and the current grouping, ranked as the heat colours and the stat filters rank them
+       (a floored rate among the players who clear its floor).
+       A PICK THE LEAGUE, CLUB OR POSITION SELECT HAS SINCE LEFT OUT is ranked over the table
+       before those selects instead: dropped into the picked league's pool he would be alone in
+       his own league's group (under three players, no rank, every bar 'no data'), or ranked
+       against a league he never played in. A player being compared always has a rank. */
+    getRanks(keys) {
+      const ks = (Array.isArray(keys) ? keys : statKeys()).filter(k => !absent(k));
+      const floors = FILTERS && liveLines().length ? (view(), lastFloors) : null;
+      const keep = new Set(picked.keys());
+      const pop = population();
+      const ids = new Set(pop.map(r => String(r.id)));
+      const out = ranksOver(pop, ks, floors, keep);
+      const outside = [...picked.values()].filter(r => !ids.has(String(r.id)));
+      if (!outside.length) return out;
+      const base = basePopulation();
+      const bids = new Set(base.map(r => String(r.id)));
+      outside.forEach(r => { if (!bids.has(String(r.id))) base.push(r); });
+      ranksOver(base, ks, floors, keep).forEach((m, k) => {
+        let into = out.get(k);
+        if (!into) { into = new Map(); out.set(k, into); }
+        outside.forEach(r => { if (m.has(r.id)) into.set(r.id, m.get(r.id)); });
+      });
+      return out;
+    },
+    getSelected,
+    getState
   };
 }
 

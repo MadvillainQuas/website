@@ -283,7 +283,41 @@ async function all(path, page = 1000) {
    path: statsForGames below already sums an arbitrary set of games, and the
    note there is the reason — the same code has to decide what a rebound is
    whoever asks, or two pages disagree. */
-async function season(competitionId) {
+/* ---------------------------------------------------- a trimmed player row ---
+   WHAT EpinoiaSeason.players() READS FROM A PLAYER'S STATS, and nothing else.
+
+   A player_game_stats row carries the scorer's whole per-game block, and more
+   than half of it is `adv` -- the advanced line the box score draws -- which
+   players() never reads (only teamLine reads an `adv`, and only from a TEAM row).
+   Measured on 17 Sep: 447 rows, `adv` about 657 bytes of each 1.6 kB. A page that
+   builds every league's season at once pays for that on every row, on a phone,
+   over mobile data.
+
+   So a trimmed read asks PostgREST for these keys by JSON path (`pts:stats->pts`)
+   and puts `stats` back together from them. A key the row does not have comes back
+   null and is left off, so the rebuilt object reads exactly as the stored one did:
+   players() coerces a missing count to 0 and tests `dq`, `oc` and `sit` for
+   presence. supabase/tests/global.test.mjs holds this list to every `s.<key>`
+   players() reads, and checks the rows come out identical with and without `adv`.
+   The Statistics page does not use it: it reads the whole row, as it always has. */
+const PLAYER_STAT_KEYS = Object.freeze(['min', 'pts', 'p2m', 'p2a', 'p3m', 'p3a', 'ftm', 'fta',
+  'or', 'dr', 'ast', 'stl', 'blk', 'to', 'pf', 'fd', 'pm', 'ptsAst',
+  'rimA', 'rimM', 'midA', 'midM', 'paint', 'fast', 'sc', 'pot', 'dq', 'oc', 'sit']);
+const TRIM_SELECT = 'game_id,player_uuid,player_id,team_idx,' +
+  PLAYER_STAT_KEYS.map(k => k + ':stats->' + k).join(',');
+
+/* one trimmed row back into the shape the untrimmed read returns */
+function untrim(r) {
+  const stats = {};
+  PLAYER_STAT_KEYS.forEach(k => { if (r[k] != null) stats[k] = r[k]; });
+  return { game_id: r.game_id, player_uuid: r.player_uuid, player_id: r.player_id,
+           team_idx: r.team_idx, stats };
+}
+
+/* opts.trim: read player rows without `adv` (see PLAYER_STAT_KEYS). Team rows are
+   read whole either way, because teamLine takes the team's box from its `adv`. */
+async function season(competitionId, opts) {
+  const trim = !!(opts && opts.trim);
   const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
   if (!list.length) return { games: [], players: [], teams: [], byId: {} };
   const scope = list.length === 1
@@ -298,11 +332,18 @@ async function season(competitionId) {
   const chunks = [];
   for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
 
-  const pgsParts = await Promise.all(chunks.map(c =>
-    all(`player_game_stats?game_id=in.(${c.join(',')})` +
-        `&select=game_id,player_uuid,player_id,team_idx,stats`)));
-  const tgsParts = await Promise.all(chunks.map(c =>
-    all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`)));
+  /* the player rows and the team rows together: neither needs the other to be
+     asked for, and waiting for the first before sending the second was a whole
+     round trip on every season (statsForGames below already asks for both at once) */
+  const [pgsParts, tgsParts] = await Promise.all([
+    Promise.all(chunks.map(c => trim
+      ? all(`player_game_stats?game_id=in.(${c.join(',')})&select=${TRIM_SELECT}`)
+          .then(rows => rows.map(untrim))
+      : all(`player_game_stats?game_id=in.(${c.join(',')})` +
+          `&select=game_id,player_uuid,player_id,team_idx,stats`))),
+    Promise.all(chunks.map(c =>
+      all(`team_game_stats?game_id=in.(${c.join(',')})&select=game_id,team_idx,stats`)))
+  ]);
 
   const pgs = pgsParts.flat(), tgs = tgsParts.flat();
   const byId = {};
@@ -416,17 +457,23 @@ async function events(gameIds) {
   });
 }
 
-/* names, jerseys and colours for a set of player ids — the stats carry none */
+/* names, jerseys and colours for a set of player ids — the stats carry none.
+
+   THE CHUNKS ARE ASKED FOR TOGETHER. They ran one after another, which on a
+   league of 237 players was six round trips in a row and 1.55 s of a 3.4 s page;
+   no chunk depends on another, so the wait is now the slowest one. The answers are
+   still folded in chunk order, so the object comes out exactly as it did. */
 async function playerMeta(ids) {
   if (!ids.length) return {};
   const out = {};
-  for (let i = 0; i < ids.length; i += 40) {
-    const c = ids.slice(i, i + 40);
-    const [ps, re] = await Promise.all([
-      all(`players?id=in.(${c.join(',')})&select=id,first_name,last_name,slug,photo_url`),
-      all(`roster_entries?player_id=in.(${c.join(',')})&active=eq.true` +
-          `&select=player_id,jersey,position,teams(id,name,short_name,slug,colour,logo_path)`)
-    ]);
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+  const answers = await Promise.all(chunks.map(c => Promise.all([
+    all(`players?id=in.(${c.join(',')})&select=id,first_name,last_name,slug,photo_url`),
+    all(`roster_entries?player_id=in.(${c.join(',')})&active=eq.true` +
+        `&select=player_id,jersey,position,teams(id,name,short_name,slug,colour,logo_path)`)
+  ])));
+  for (const [ps, re] of answers) {
     const byPlayer = {};
     re.forEach(r => { if (!byPlayer[r.player_id]) byPlayer[r.player_id] = r; });
     ps.forEach(p => {
@@ -490,5 +537,5 @@ function pickSeason(seasons, ref) {
 }
 
 return { get, all, season, statsForGames, stints, events, playerMeta, teamMeta,
-         context, pickSeason };
+         context, pickSeason, PLAYER_STAT_KEYS, untrim };
 }));

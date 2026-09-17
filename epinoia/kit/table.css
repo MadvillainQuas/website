@@ -339,3 +339,117 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
 :root[data-theme="light"] .ft-pill{ background:#ffffff; border:1px solid var(--rule-2); color:var(--ink-2) }
 :root[data-theme="light"] .ft-pill.on{ background:var(--lume); border-color:var(--lume); color:#ffffff }
 :root[data-theme="light"] table.ft td.stick, :root[data-theme="light"] table.ft th.stick{ background:#ffffff }
+
+/* ============================================================================
+   THE CROSS-LEAGUE OPTIONS (global scouting). Nothing below applies to a table
+   that does not ask for it: every rule hangs off a class fulltable.js only adds
+   when the page passes leagueSelect, filters or selectable.
+   ============================================================================ */
+
+/* ---------- stat filters: a full-width row of the bar, inside the phone disclosure ---------- */
+.ft-filt{ flex-basis:100%; order:5; padding:10px 0 4px; border-top:1px dashed var(--rule) }
+.ft-filt[hidden]{ display:none }
+.ft-fquick{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-bottom:8px }
+.ft-fquick .ft-count{ margin-right:4px }
+.ft-flines{ display:flex; flex-direction:column; gap:6px; max-width:720px }
+.ft-fline{ display:grid; grid-template-columns:minmax(0,1fr) 40px 96px 64px 40px; gap:6px; align-items:center }
+.ft-bar .ft-fstat{ font-size:10px; width:100%; min-width:0 }
+.ft-bar .ft-fval{ font-size:11px; width:100%; min-width:0; box-sizing:border-box }
+.ft-bar .ft-fop, .ft-bar .ft-fx{ padding:8px 0; text-align:center; font-size:12px }
+.ft-bar .ft-fmode{ padding:8px 0; text-align:center }
+.ft-bar .ft-fadd{ margin-top:8px }
+/* the volume minimum a filtered rate brought with it: amber, a caveat rather than an error */
+.ft-fnote{ display:block; margin-top:8px; white-space:normal; color:var(--amber); line-height:1.6 }
+.ft-fnote:empty{ display:none }
+.ft-tally.ft-floored{ white-space:normal; text-align:right }
+
+/* ---------- picks: the rank cell is the button ---------- */
+.ft-host.ft-selectable table.ft th.c0, .ft-host.ft-selectable table.ft td.c0{ width:44px }
+.ft-host.ft-selectable table.ft td.c0{ padding:0 }
+.ft-host.ft-selectable table.ft th.c1, .ft-host.ft-selectable table.ft td.c1{ left:44px }
+.ft-pick{
+  display:flex; align-items:center; justify-content:flex-end; gap:4px;
+  width:100%; height:31px; margin:0; padding:0 6px; border:0; border-radius:0;
+  background:transparent; color:var(--ink-3); cursor:pointer;
+  font:inherit; font-variant-numeric:tabular-nums lining-nums;
+}
+/* an empty box beside the number says the number can be pressed; filled once picked */
+.ft-pick::before{ content:''; flex:none; width:8px; height:8px; box-sizing:border-box;
+  border:1px solid currentColor; border-radius:2px }
+.ft-pick:hover{ color:var(--ink) }
+.ft-pick:focus-visible{ outline:2px solid var(--lume); outline-offset:-2px }
+.ft-pick[aria-pressed="true"]{ background:var(--lume); color:var(--on-accent); font-weight:700 }
+.ft-pick[aria-pressed="true"]::before{ background:currentColor }
+table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 16%,var(--ground)) }
+
+/* ---------- the compare tray: stuck to the foot of the screen while the table is on it ---------- */
+.ft-tray{
+  position:sticky; bottom:0; z-index:8;
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
+  margin-top:8px; padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));
+  background:var(--panel); border-top:1px solid var(--rule-2);
+  box-shadow:0 -6px 16px -8px rgba(0,0,0,.5);
+}
+.ft-tray[hidden]{ display:none }
+.ft-traylist{ display:flex; flex-wrap:wrap; gap:6px; flex:1 1 240px; min-width:0 }
+.ft-chip{
+  display:inline-flex; align-items:center; gap:6px; max-width:100%; min-height:32px;
+  padding:0 0 0 4px; border:1px solid var(--rule-2); border-radius:3px;
+  background:var(--ground); color:var(--ink); font-family:var(--f-ui,system-ui,sans-serif); font-size:12px;
+}
+/* the number the compare chart draws this player under, in the chart's series colours
+   (compare.js): never --good or --flare, which already mean good and bad in the heat map */
+.ft-chipn{ display:inline-grid; place-items:center; flex:none; width:20px; height:20px; border-radius:2px;
+  font-family:var(--f-micro,ui-monospace,monospace); font-size:9px; font-weight:400;
+  background:var(--lume); color:var(--on-accent) }
+.ft-chip[data-n="2"] .ft-chipn{ background:var(--aqua) }
+.ft-chip[data-n="3"] .ft-chipn{ background:var(--amber) }
+.ft-chip[data-n="4"] .ft-chipn{ background:var(--violet) }
+.ft-chip[data-n="5"] .ft-chipn{ background:var(--ink-2); color:var(--ground) }
+.ft-chipname{ min-width:0; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600 }
+.ft-chipx{ flex:none; min-width:32px; min-height:32px; border:0; background:transparent;
+  color:var(--ink-3); cursor:pointer; font-size:16px; line-height:1 }
+.ft-chipx:hover{ color:var(--ink) }
+.ft-traynote{ flex-basis:100%; white-space:normal; color:var(--amber) }
+.ft-trayacts{ display:flex; gap:8px; margin-left:auto }
+.ft-tray .ft-btn{ font-size:9px; padding:8px 12px }
+.ft-tray .ft-compare[disabled]{ opacity:.55; cursor:default; filter:none }
+
+@media (max-width:820px){
+  /* stat filters: the stat on a line of its own, then op / number / value-or-pctl / remove */
+  .ft-filt{ order:9 }
+  .ft-fline{ grid-template-columns:44px minmax(0,1fr) auto 44px; padding-bottom:8px; border-bottom:1px solid var(--rule) }
+  .ft-fline .ft-fstat{ grid-column:1 / -1 }
+  .ft-bar .ft-fstat, .ft-bar .ft-fval{ font-size:16px; min-height:44px; padding:8px 10px }
+  .ft-bar .ft-fop, .ft-bar .ft-fx{ min-height:44px; font-size:16px }
+  .ft-bar .ft-fmode{ min-height:44px; min-width:64px }
+  .ft-bar .ft-fadd{ width:100% }
+  .ft-fquick .ft-col{ min-height:40px; font-size:9.5px; padding:0 10px }
+  .ft-tally.ft-floored{ flex-basis:100%; text-align:left }
+
+  .ft-host .ft-pick{ height:40px }
+
+  /* ABOVE THE BAR. The bar (kit/nav.css) covers the gesture area itself; with no bar the tray
+     keeps the inset as its own padding. Its height is MEASURED (fulltable.js watchBars, into
+     --ep-nav-h): 58px plus the inset with a league's tab bar, but 69px on a page with no league,
+     where the country row shows instead. The 58px is only the fallback before the measure. */
+  body.has-nav .ft-tray{ bottom:var(--ep-nav-h, calc(58px + env(safe-area-inset-bottom,0px))); padding-bottom:10px }
+  /* the notification bell sits bottom right on these pages; while the tray shows, it goes above
+     the tray rather than over the Compare button */
+  body.has-nav.ft-tray-open .ep-bell{ top:auto;
+    bottom:calc(var(--ep-nav-h, calc(58px + env(safe-area-inset-bottom,0px))) + var(--ft-tray-h, 112px) + 10px) }
+  .ft-tray{ padding-left:12px; padding-right:12px }
+  /* one row of picks that pans, rather than five rows of screen */
+  .ft-traylist{ flex:1 1 100%; flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none }
+  .ft-traylist::-webkit-scrollbar{ display:none }
+  .ft-chip{ flex:none; min-height:40px }
+  .ft-chipname{ max-width:128px }
+  .ft-chipx{ min-width:40px; min-height:40px }
+  .ft-trayacts{ flex:1 1 100%; margin-left:0 }
+  .ft-tray .ft-btn{ min-height:40px; font-size:10px }
+  .ft-tray .ft-compare{ flex:1 1 auto }
+}
+
+:root[data-theme="light"] .ft-tray{ background:#ffffff; box-shadow:0 -6px 16px -8px rgba(13,31,23,.28) }
+:root[data-theme="light"] .ft-chip{ background:#ffffff }
+:root[data-theme="light"] table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 12%,#ffffff) }
