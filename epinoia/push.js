@@ -71,7 +71,7 @@ const MSG = Object.freeze({
   testFailed: 'The test could not be sent just now. Try again in a minute.',
   testOffline: 'The test could not be sent. Check your connection and try again.',
   testNotThisPhone: 'The test went to your other devices, but this phone is not on your account. Tap Check this phone to add it.',
-  testArrived: 'The test reached this phone and was shown. If you did not see it, tap Check this phone for the settings to look at.',
+  testArrived: 'The test reached this phone.',
   testNotShown: 'The test reached this phone, but it was not allowed to show. Tap Check this phone for the settings to change.',
   testNotArrived: 'The push service accepted the test, but it has not reached this phone yet. Tap Check this phone to find out why.',
   runCheck: 'Tap Check this phone to put it right.'
@@ -432,7 +432,9 @@ function platform() {
   const app = standalone();
   if (isIOS(nav)) return app ? 'ios-app' : 'ios-safari';
   if (/Android/i.test(ua)) {
-    if (/SamsungBrowser/i.test(ua)) return app ? 'android-app' : 'android-samsung';
+    /* Samsung Internet's installed app still has its notifications posted by Samsung Internet,
+       so its fixes are Samsung's, not App info's */
+    if (/SamsungBrowser/i.test(ua)) return app ? 'android-samsung-app' : 'android-samsung';
     return app ? 'android-app' : 'android-chrome';
   }
   return 'desktop';
@@ -443,9 +445,19 @@ const SETTINGS = Object.freeze({
   'android-chrome': ['In Chrome, tap ⋮ then Settings, then Site settings, then Notifications.',
                      'Find prophesyscouting.co.uk and set it to Allowed.',
                      'In Android Settings, open Apps, then Chrome, then Notifications: they must be on, including Sites.'],
-  'android-samsung': ['In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications.',
-                      'Allow prophesyscouting.co.uk.',
-                      'In Android Settings, open Apps, then Samsung Internet, then Notifications: they must be on.'],
+  /* A Samsung phone hides a notification that has been received and "shown" in three ways a
+     browser cannot see: a category set to Silent, the Brief pop-up style (a light round the
+     edge of the screen, nothing else), and a sleeping app. */
+  'android-samsung': ['In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications: allow prophesyscouting.co.uk.',
+                      'In the phone’s Settings, open Notifications, then App notifications, and turn on Samsung Internet.',
+                      'Tap Samsung Internet there and set every category, including prophesyscouting.co.uk, to Alert rather than Silent.',
+                      'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
+                      'In Settings, open Battery (or Battery and device care), then Background usage limits, and take Samsung Internet out of Sleeping apps and Deep sleeping apps.'],
+  'android-samsung-app': ['In the phone’s Settings, open Notifications, then App notifications, and turn on both Epinoia and Samsung Internet.',
+                          'Tap each of them there and set every category to Alert rather than Silent.',
+                          'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
+                          'In Settings, open Battery (or Battery and device care), then Background usage limits, and take Epinoia and Samsung Internet out of Sleeping apps and Deep sleeping apps.',
+                          'In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications: prophesyscouting.co.uk must be allowed.'],
   'ios-app': ['Open the Settings app, then Notifications, then Epinoia.', 'Turn on Allow Notifications, and choose Lock Screen and Banners.'],
   'ios-safari': ['Notifications only arrive through Epinoia on your Home Screen: tap Share, then Add to Home Screen, and open it from there.'],
   desktop: ['Click the icon to the left of the address, open the site settings for prophesyscouting.co.uk and allow Notifications.',
@@ -454,11 +466,21 @@ const SETTINGS = Object.freeze({
 const QUIET = Object.freeze({
   'android-app': ['Check the phone is not in Do Not Disturb, and that Battery for Epinoia (App info, then Battery) is not Restricted.'],
   'android-chrome': ['Check the phone is not in Do Not Disturb, and that Battery for Chrome (Settings, then Apps, then Chrome, then Battery) is not Restricted.'],
-  'android-samsung': ['Check the phone is not in Do Not Disturb, and that Battery for Samsung Internet is not Restricted.'],
+  'android-samsung': ['Check the phone is not in Do Not Disturb.'],
+  'android-samsung-app': ['Check the phone is not in Do Not Disturb.'],
   'ios-app': ['Check Focus or Do Not Disturb is off.'],
   'ios-safari': [],
   desktop: ['Check Focus assist or Do Not Disturb is off.']
 });
+
+/* THE FIX FOR A NOTIFICATION THAT ARRIVED BUT WAS NEVER SEEN. The browser reports a push
+   as shown once it has handed it to the phone; whether the phone then puts it on screen is
+   the phone's settings, and nothing tells the page. So after every test the person is asked
+   whether it popped up, and a no gets these steps for their phone, then another test. */
+function help() {
+  const plat = platform();
+  return { platform: plat, steps: (SETTINGS[plat] || []).concat(QUIET[plat] || []) };
+}
 
 /* A promise for the next receipt from this phone's worker with the given tag, and a
    way to stop listening. Resolves null when none arrives in time. */
@@ -858,13 +880,40 @@ function openSheet(doc, view, name, kind) {
       on.disabled = true; later.disabled = true; on.textContent = 'Turning on…';
       pending.then(r => {
         if (!sheet) return;
-        if (r.ok) return done();
+        if (r.ok) return verify();
         if (r.state === 'denied' || r.state === 'unsupported' || r.state === 'ios-install') return stop(r.message);
         ask(r.message);
       });
     });
     const later = button('Not now', null, () => close(true));
     draw(parts, [on, later]);
+  }
+  /* ON IS NOT DONE UNTIL THE PERSON HAS SEEN ONE. A test goes straight out, and the sheet
+     asks whether it popped up: a phone that hides it gets its own settings to change and
+     another test, instead of a "notifications are on" that turns out not to be true. */
+  function verify() {
+    const d = el('p', null, 'Sending a test notification to this phone…'); d.id = 'ep-push-d';
+    draw([head('Checking this phone'), d], []);
+    test().then(r => {
+      if (!sheet) return;
+      if (r.ok) return seen();
+      const m = el('p', 'ep-push-msg err', r.message); m.id = 'ep-push-d';
+      draw([head('Notifications are on, but the test did not arrive'), m],
+           [button('Try again', 'pri', verify), button('Close', null, () => close(false))]);
+    }, () => { if (sheet) done(); });
+  }
+  function seen() {
+    const d = el('p', null, 'Epinoia just sent “Notifications are on” to this phone.'); d.id = 'ep-push-d';
+    draw([head('Did a notification pop up?'), d],
+         [button('Yes, it did', 'pri', done), button('No', null, hidden)]);
+  }
+  function hidden() {
+    const d = el('p', null, 'It reached your phone, but a phone setting stopped it popping up. Change these, then send another:');
+    d.id = 'ep-push-d';
+    const ol = el('ol');
+    help().steps.forEach(s => ol.appendChild(el('li', null, s)));
+    draw([head('Your phone is hiding it'), d, ol],
+         [button('Send another test', 'pri', verify), button('Close', null, () => close(false))]);
   }
   function done() {
     const d = el('p', null, 'You’ll hear about ' + name + ' on this phone. ');
@@ -902,7 +951,7 @@ function openSheet(doc, view, name, kind) {
 }
 
 return {
-  state, enable, disable, test, sync, check, offer,
+  state, enable, disable, test, sync, check, offer, help,
   MESSAGES: MSG, SW_URL, SCOPE,
   _test: {
     env(e) { ENV = e || null; },

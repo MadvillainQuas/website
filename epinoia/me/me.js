@@ -244,24 +244,73 @@ function phoneAction(btn, busyText, run) {
   buttons.forEach(b => { b.disabled = true; });
   btn.textContent = busyText;
   phoneSay('');
-  Promise.resolve(pending)
+  /* resolves with the action's result once the card is usable again, so a caller can
+     start the next action (the test after turning on) without finding it busy */
+  return Promise.resolve(pending)
     .then(r => { if (r && r.message) phoneSay(r.message, r.ok ? 'ok' : 'err'); return r; },
-          () => { phoneSay('Something went wrong. Reload the page and try again.', 'err'); })
-    .then(() => {
+          () => { phoneSay('Something went wrong. Reload the page and try again.', 'err'); return null; })
+    .then(r => {
       buttons.forEach(b => { b.disabled = false; });
       btn.textContent = label;
       phoneBusy = false;
-      return paintPhone();
+      return paintPhone().then(() => r, () => r);
     });
-  return pending;
+}
+/* DID IT POP UP? The browser only knows it handed the test to the phone; a phone setting can
+   still hide it, and nothing tells the page. So every test ends with the question, and a no
+   gets this phone's own settings to change (push.js help) and another test straight away. */
+function phoneButton(text, cls, fn) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = cls; b.textContent = text; b.onclick = fn;
+  return b;
+}
+function askSeen() {
+  const box = $('#phoneCheck');
+  box.textContent = '';
+  box.classList.remove('hide');
+  const adv = document.createElement('div'); adv.className = 'adv';
+  const q = document.createElement('b'); q.textContent = 'Did a notification from Epinoia just pop up on this phone?';
+  const acts = document.createElement('div'); acts.className = 'phone-acts';
+  acts.append(phoneButton('Yes, it did', 'ep-btn pri', () => {
+    box.classList.add('hide');
+    phoneSay('Notifications work on this phone.', 'ok');
+  }), phoneButton('No', 'ep-btn', showHidden));
+  adv.append(q, acts);
+  box.appendChild(adv);
+}
+function showHidden() {
+  const P = window.EpinoiaPush;
+  const box = $('#phoneCheck');
+  box.textContent = '';
+  const adv = document.createElement('div'); adv.className = 'adv bad';
+  const t = document.createElement('b'); t.textContent = 'Your phone is hiding it';
+  const p = document.createElement('div');
+  p.textContent = 'It reached this phone, but a phone setting stopped it popping up. Change these, then send another:';
+  const ol = document.createElement('ol');
+  ((P && P.help && P.help().steps) || []).forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
+  const acts = document.createElement('div'); acts.className = 'phone-acts';
+  acts.append(phoneButton('Send another test', 'ep-btn pri', () => $('#pushTest').click()));
+  if (!$('#nEmail').checked) {
+    acts.append(phoneButton('Email me them as well', 'ep-btn', ev => {
+      $('#nEmail').checked = true; save();
+      ev.target.remove();
+      phoneSay('Notifications will also come by email, so nothing is missed while the phone is sorted.', 'ok');
+    }));
+  }
+  adv.append(t, p, ol, acts);
+  box.appendChild(adv);
 }
 function wirePhone() {
   const P = window.EpinoiaPush;
+  /* turning on is followed by a test at once: on is not done until one has been seen */
   $('#pushOn').onclick = () => phoneAction($('#pushOn'), 'Turning on…', () => P.enable().then(r => {
     if (r.ok) { $('#nPush').checked = true; prefs.notify_push = true; }
     return r;
-  }));
-  $('#pushTest').onclick = () => phoneAction($('#pushTest'), 'Sending…', () => P.test());
+  })).then(r => { if (r && r.ok) $('#pushTest').click(); });
+  $('#pushTest').onclick = () => {
+    $('#phoneCheck').classList.add('hide');
+    return phoneAction($('#pushTest'), 'Sending…', () => P.test()).then(r => { if (r && r.ok) askSeen(); });
+  };
   $('#pushOff').onclick = () => phoneAction($('#pushOff'), 'Turning off…', () => P.disable());
   $('#pushCheck').onclick = () => phoneAction($('#pushCheck'), 'Checking…', () => {
     paintCheck({ steps: [], running: true });
