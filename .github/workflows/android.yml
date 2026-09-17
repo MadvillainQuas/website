@@ -124,7 +124,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # ITS DEFAULT PACKAGE LIST NAMES "tools", WHICH THE SDK REPOSITORY NO LONGER HAS, and the
+      # step fails with "Failed to find package 'tools'" (first run, 17 Sep 2026). Only
+      # platform-tools is asked for; the platform and build-tools are installed below.
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+          log-accepting-licenses: false
 
       # APKSIGNER IS NOT ON THE RUNNER'S PATH. Installing a pinned build-tools gives
       # a known apksigner and aapt2 at a fixed path, and the platform saves AGP from
