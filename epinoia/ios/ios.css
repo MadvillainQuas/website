@@ -1,0 +1,22 @@
+/* ============================================================================
+   IOS — the iPhone page's own additions (/epinoia/ios/). Everything else it
+   wears is the Android download page's stylesheet (../android/android.css):
+   the same hero, steps, FAQ and show/hide matrix, so the two pages stay one
+   design.
+
+   ios.js adds to #page, beside android.css's in-app / ios / android / desktop
+   / update:
+     released   epinoia/ios/version.json says the app is on the App Store
+     native     the iPhone app told the page about itself (window.EpinoiaNative)
+
+   Like android.css, each rule here only HIDES, so every element keeps its own
+   display when it shows. Without ios.js nothing is released: the page is the
+   "coming soon" page with the Home Screen steps, which is true until it is not.
+   ============================================================================ */
+.ad:not(.released) .released-only{ display:none }
+.ad.released .soon-only{ display:none }
+.ad:not(.android) .android-only{ display:none }
+.ad:not(.native) .native-only{ display:none }
+
+/* an Android phone is sent to its own app, so the App Store button is not for it */
+.ad.android .store{ display:none }

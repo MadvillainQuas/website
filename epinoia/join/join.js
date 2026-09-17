@@ -574,6 +574,18 @@
   /* ---------------------------------------------------------------- boot --- */
   async function boot() {
     paintWho();
+    /* THE IPHONE APP SELLS NOTHING (App Store guideline 3.1.1): no plans, no prices, no
+       checkout, and no pointer to buying somewhere else. html.m-ios-app is appmode.js's. */
+    if (document.documentElement.classList.contains('m-ios-app')) {
+      const host = $('#plans');
+      host.textContent = '';
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'Memberships are not available in the iPhone app.';
+      host.appendChild(p);
+      show('#preSec', false);
+      return;
+    }
     const joinedReturn = params.get('joined') === '1';
     if (joinedReturn) waitForMembership();
 

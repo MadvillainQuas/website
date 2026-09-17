@@ -17,6 +17,7 @@
                            answer to "why is nothing arriving?" (docs/notifications.md §7)
      offer({name, kind})-> Promise<{shown, why, view?}>
      inApp()            -> boolean   inside the Epinoia Android app (roadmap Phase 7)
+     inIOSApp()         -> boolean   inside the Epinoia iPhone app (ios/), which pushes through APNs
      endpoint()         -> Promise<string>   this browser's push endpoint, '' when none
      settingsIntent     the link that opens the Android app's own notification settings
      settingsOpened()   call from a tap on that link: the launch report is not believed after it
@@ -32,6 +33,11 @@
    WHAT "ON" MEANS: this browser has granted permission AND holds a push
    subscription on the /epinoia/ service worker. Whether the account wants pushes
    at all is fan_prefs.notify_push, which enable() switches on.
+
+   THE IPHONE APP (ios/) has no Web Push at all: WKWebView has none. The app registers with
+   Apple itself and hands this page its token (window.EpinoiaNative), which is saved as the
+   phone instead of a subscription; every function above takes that path in the app, and
+   nothing changes anywhere else. See "the iPhone app" below.
 
    iOS ONLY DELIVERS WEB PUSH TO AN INSTALLED APP (16.4 and later): Safari in a tab
    has no PushManager at all, so an iPhone outside the Home Screen app is told how to
@@ -65,6 +71,10 @@ const FETCH_MS = 15000;
 /* The Android app's native notification settings screen (NotificationSettingsActivity). Chrome
    opens an intent: link only from a tap, and only inside the app is the package there. */
 const SETTINGS_INTENT = 'intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end';
+/* The iPhone app cancels a tap on this link and opens iOS's notification settings for itself. */
+const NATIVE_SETTINGS = 'epinoia://notification-settings';
+/* the iPhone app's address this page turned on (see "the iPhone app" below) */
+const IOS_ON_KEY = 'epinoia_ios_push';
 /* Android's NotificationManager.IMPORTANCE_HIGH: the lowest importance that pops up */
 const IMPORTANCE_HIGH = 4;
 /* the longest a delayed test waits on the server (notify caps it at the same) */
@@ -95,7 +105,11 @@ const MSG = Object.freeze({
   testArrived: 'The test reached this phone.',
   testNotShown: 'The test reached this phone, but it was not allowed to show. Tap Check this phone for the settings to change.',
   testNotArrived: 'The push service accepted the test, but it has not reached this phone yet. Tap Check this phone to find out why.',
-  runCheck: 'Tap Check this phone to put it right.'
+  runCheck: 'Tap Check this phone to put it right.',
+  nativeDenied: 'Notifications are turned off for EPINOIΛ in your iPhone’s settings. Tap Open notification settings, turn on Allow Notifications, then try again.',
+  nativeNoToken: 'Your iPhone did not get a notification address from Apple. Check it is online, then try again.',
+  nativeFailed: 'The EPINOIΛ app did not answer. Close it completely, open it again and try again.',
+  nativeOffKept: 'Notifications are off on this iPhone, but it could not be taken off your account just now. Try again when you are online.'
 });
 /* how long the check and the test wait for this phone's worker to say a push arrived */
 const RECEIPT_MS = 20000;
@@ -220,6 +234,9 @@ function inApp() {
    'denied', or the permission ('granted' / 'default'). Synchronous on purpose —
    enable() runs it inside the tap. */
 function quick() {
+  /* the iPhone app answers for iOS itself, and needs neither a worker nor a secure-context check */
+  const n = iosApp();
+  if (n) return nativePermission(n.permission);
   const nav = g('navigator');
   if (!nav) return 'unsupported';
   if (g('isSecureContext') === false) return 'unsupported';
@@ -240,6 +257,8 @@ async function registration() {
   try { return (await nav.serviceWorker.getRegistration(SCOPE)) || null; } catch (_) { return null; }
 }
 async function currentSubscription(reg) {
+  const n = iosApp();
+  if (n) return nativeSub(n);
   const r = reg || await registration();
   if (!r || !r.pushManager) return null;
   try { return (await r.pushManager.getSubscription()) || null; } catch (_) { return null; }
@@ -329,6 +348,7 @@ const okStatus = s => s >= 200 && s < 300;
    Chrome and Samsung Internet use Google's service), so the profile page reads this to offer
    turning the others off. */
 function clientKind() {
+  if (iosApp()) return 'ios';
   if (inApp()) return 'twa';
   if (standalone()) return /SamsungBrowser/i.test(String((g('navigator') || {}).userAgent || '')) ? 'samsung-app' : 'pwa';
   return 'tab';
@@ -433,6 +453,12 @@ async function subscribeWith(reg, fresh) {
    will not hand it over, so this browser takes a fresh subscription instead. */
 async function saveOrReplace(reg, sub, sess) {
   let st = await saveSubscription(sub, sess);
+  /* AN IPHONE KEEPS ITS TOKEN whoever signs in, so there is no fresh one to take: the account
+     signed in now takes this exact address over from the last one (0130), then saves it */
+  if (st === 403 && sub && sub.native) {
+    if (okStatus(await claimDevice(sub.endpoint, sess))) st = await saveSubscription(sub, sess);
+    return st;
+  }
   if (st === 403) {
     try {
       await sub.unsubscribe();
@@ -445,6 +471,9 @@ async function saveOrReplace(reg, sub, sess) {
 const result = (ok, st, message) => ({ ok: !!ok, state: st, message });
 
 async function enable() {
+  /* the iPhone app asks iOS itself, so there is no gesture to keep and no worker to start */
+  const n = iosApp();
+  if (n) return enableNative(n);
   /* --- everything decided before the first await: the tap is still ours --- */
   const q = quick();
   if (q === 'unsupported') return result(false, 'unsupported', MSG.unsupported);
@@ -497,6 +526,7 @@ async function enable() {
    caller (the profile page's channel box) asks for it with {notifyPush: false}. */
 async function disable(opts) {
   const o = opts || {};
+  if (iosApp()) return disableNative(iosApp(), o);
   const sess = await freshSession();
   const sub = await currentSubscription();
   let removed = true;
@@ -567,6 +597,7 @@ async function test(opts) {
 /* Which phone this is, for the settings a person has to find: an installed app and a
    browser tab keep their notification switch in different places. */
 function platform() {
+  if (iosApp()) return 'ios-native';
   const nav = g('navigator') || {};
   const ua = String(nav.userAgent || '');
   const app = standalone();
@@ -610,6 +641,10 @@ const SETTINGS = Object.freeze({
                           'In Settings, open Battery (or Battery and device care), then Background usage limits, and take EPINOIΛ and Samsung Internet out of Sleeping apps and Deep sleeping apps.',
                           'In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications: prophesyscouting.co.uk must be allowed.'],
   'ios-app': ['Open the Settings app, then Notifications, then EPINOIΛ.', 'Turn on Allow Notifications, and choose Lock Screen and Banners.'],
+  /* THE EPINOIA IPHONE APP: iOS posts its notifications itself, so its own settings are the switch */
+  'ios-native': ['Tap Open notification settings (or open the Settings app, then Notifications, then EPINOIΛ).',
+                 'Turn on Allow Notifications, and tick Lock Screen, Notification Centre and Banners.',
+                 'Turn on Sounds, so an alert is heard while the phone is locked.'],
   'ios-safari': ['Notifications only arrive through EPINOIΛ on your Home Screen: tap Share, then Add to Home Screen, and open it from there.'],
   desktop: ['Click the icon to the left of the address, open the site settings for prophesyscouting.co.uk and allow Notifications.',
             'Check your computer lets the browser show notifications (on Windows: Settings, then System, then Notifications).']
@@ -621,6 +656,8 @@ const QUIET = Object.freeze({
   'android-samsung': ['Check the phone is not in Do Not Disturb.'],
   'android-samsung-app': ['Check the phone is not in Do Not Disturb.'],
   'ios-app': ['Check Focus or Do Not Disturb is off.'],
+  'ios-native': ['Check Focus is off, or that EPINOIΛ is allowed in it (Settings, then Focus).',
+                 'Check Scheduled Summary is not holding EPINOIΛ back (Settings, then Notifications, then Scheduled Summary).'],
   'ios-safari': [],
   desktop: ['Check Focus assist or Do Not Disturb is off.']
 });
@@ -632,11 +669,12 @@ const QUIET = Object.freeze({
 function help() {
   const plat = platform();
   const out = { platform: plat, steps: (SETTINGS[plat] || []).concat(QUIET[plat] || []) };
-  if (plat === 'android-twa') out.action = settingsAction();
+  if (plat === 'android-twa' || plat === 'ios-native') out.action = settingsAction();
   return out;
 }
-/* the button that opens the app's own notification settings, for a page to draw */
-function settingsAction() { return { label: 'Open notification settings', href: SETTINGS_INTENT }; }
+/* the button that opens the app's own notification settings, for a page to draw: the Android
+   app's settings screen, or in the iPhone app a link the app turns into iOS's settings */
+function settingsAction() { return { label: 'Open notification settings', href: iosApp() ? NATIVE_SETTINGS : SETTINGS_INTENT }; }
 /* For the profile card in the app: the permission step's finding when Android is blocking
    pop-ups by the launch report, else null (not in the app, no report, all on, or a report
    made stale by a visit to the settings) */
@@ -681,6 +719,7 @@ function appPermission(q) {
 /* A promise for the next receipt from this phone's worker with the given tag, and a
    way to stop listening. Resolves null when none arrives in time. */
 function waitForReceipt(tag, ms) {
+  if (iosApp()) return nativeReceipt(tag, ms);
   const nav = g('navigator');
   const sw = nav && nav.serviceWorker;
   let stop = () => {};
@@ -748,6 +787,7 @@ async function deviceCheck(sub, sess) {
 const SERVICE = { 'fcm.googleapis.com': 'Google', 'android.googleapis.com': 'Google', 'web.push.apple.com': 'Apple',
                   'updates.push.services.mozilla.com': 'Mozilla' };
 function serviceName(endpoint) {
+  if (/^apns:/.test(String(endpoint || ''))) return 'Apple';
   let host = '';
   try { host = new URL(String(endpoint)).hostname; } catch (_) { return 'its push service'; }
   if (SERVICE[host]) return SERVICE[host];
@@ -766,6 +806,7 @@ function clock(t) {
    from the account) is put right, and said so. Never asks for permission: that needs
    the Turn on button's tap. onStep(steps) is called as each step lands. */
 async function check(onStep) {
+  if (iosApp()) return checkNative(iosApp(), onStep);
   const steps = [];
   const plat = platform();
   const report = (extra) => Object.assign({ ok: steps.length > 0 && steps.every(s => s.ok !== false), steps, platform: plat }, extra);
@@ -918,6 +959,7 @@ async function check(onStep) {
    telling the worker which one it replaced, and a browser handed from one account
    to another. Never prompts (permission is already granted). */
 async function sync() {
+  if (iosApp()) return syncNative(iosApp());
   if (quick() !== 'granted') return { ok: false, state: await state() };
   const reg = await registration();
   const sub = await currentSubscription(reg);
@@ -925,6 +967,264 @@ async function sync() {
   const sess = await freshSession();
   if (!sess || !sess.userId) return { ok: false, state: 'on' };
   return { ok: okStatus(await saveOrReplace(reg, sub, sess)), state: 'on' };
+}
+
+/* -------------------------------------------------------- the iPhone app --- */
+/* THE EPINOIA IPHONE APP (ios/README.md). WKWebView has no Web Push: no worker push, no
+   PushManager, no Notification. The app asks iOS itself, registers with Apple Push
+   Notification service, and tells this page what it knows through window.EpinoiaNative,
+   defined before any page script runs, only on this origin:
+
+     { platform: 'ios', build, version, permission, token, apnsEnv, call(name, args) }
+     permission  'default' | 'granted' | 'denied' | 'provisional' | 'ephemeral'
+     token       Apple's address for this iPhone, lower-case hex, or null
+     call        'push.status' | 'push.enable' | 'settings.open' | 'app.info' -> Promise
+
+   and events on window, 'epinoia-native' with detail {type: 'permission', ...} or
+   {type: 'push', tag, kind, shown, opened, at} when a notification is shown while the app
+   is open, or tapped.
+
+   This phone's subscription is the token, saved as the account's phone with the endpoint
+   apns:<apnsEnv>:<token> (0130); notify sends it through APNs. WHAT "ON" MEANS HERE: iOS
+   allows notifications AND this page turned them on (localStorage epinoia_ios_push holds the
+   endpoint). The flag is needed because an iPhone never hands its token back: turning off
+   removes the row and forgets the endpoint, and the token stays with the app. */
+function iosApp() {
+  const n = g('EpinoiaNative');
+  return n && n.platform === 'ios' && typeof n.call === 'function' ? n : null;
+}
+/* iOS's answer in the browser's words: provisional and ephemeral deliver, so they count as allowed */
+function nativePermission(p) {
+  if (p === 'denied') return 'denied';
+  return p === 'granted' || p === 'provisional' || p === 'ephemeral' ? 'granted' : 'default';
+}
+function nativeEndpoint(n, token) {
+  const t = String(token || '').toLowerCase();
+  if (!/^[0-9a-f]{64,200}$/.test(t)) return '';
+  return 'apns:' + (n && n.apnsEnv === 'sandbox' ? 'sandbox' : 'production') + ':' + t;
+}
+function nativeOn() {
+  const ls = storage();
+  try { return String((ls && ls.getItem(IOS_ON_KEY)) || ''); } catch (_) { return ''; }
+}
+function setNativeOn(ep) {
+  const ls = storage();
+  try { if (ls) { if (ep) ls.setItem(IOS_ON_KEY, ep); else ls.removeItem(IOS_ON_KEY); } } catch (_) { /* private mode: off next page */ }
+}
+function nativeSubFor(ep) {
+  return { endpoint: ep, native: true, toJSON: () => ({ endpoint: ep, keys: {} }) };
+}
+/* on: the address the app holds now (the token may have changed since), else the one turned on */
+function nativeSub(n) {
+  const on = nativeOn();
+  return on ? nativeSubFor(nativeEndpoint(n, n.token) || on) : null;
+}
+/* the object the app injects may be frozen: what it says is kept where it can be */
+function nativeRemember(n, r) {
+  try { if (r && typeof r.permission === 'string') n.permission = r.permission; } catch (_) { /* read-only */ }
+  try { if (r && (typeof r.token === 'string' || r.token === null)) n.token = r.token; } catch (_) { /* read-only */ }
+}
+async function nativeCall(n, name, args, ms) {
+  try { return (await withTimeout(Promise.resolve().then(() => n.call(name, args || {})), ms || 20000, null)) || null; }
+  catch (_) { return null; }
+}
+async function claimDevice(ep, sess) {
+  try {
+    const r = await call(cfg().supabaseUrl + '/rest/v1/rpc/push_claim_device', {
+      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ p_endpoint: ep })
+    });
+    return r.status;
+  } catch (_) { return 0; }
+}
+/* the address saved, the old one (a changed token) removed, and remembered as on */
+async function saveNative(ep, sess) {
+  const st = await saveOrReplace(null, nativeSubFor(ep), sess);
+  if (!okStatus(st)) return st;
+  const old = nativeOn();
+  if (old && old !== ep) await deleteSubscription(old, sess);
+  setNativeOn(ep);
+  return st;
+}
+
+async function enableNative(n) {
+  if (!signedIn()) return result(false, 'off', MSG.signedOut);
+  /* iOS asks the person the first time; after that the app just registers again */
+  const r = await nativeCall(n, 'push.enable', {}, 25000);
+  if (!r) return result(false, 'off', MSG.nativeFailed);
+  nativeRemember(n, r);
+  const perm = nativePermission(r.permission);
+  if (perm === 'denied') return result(false, 'denied', MSG.nativeDenied);
+  if (perm !== 'granted') return result(false, 'off', MSG.dismissed);
+  const ep = nativeEndpoint(n, r.token);
+  if (!ep) return result(false, 'off', MSG.nativeNoToken);
+  const sess = await freshSession();
+  if (!sess || !sess.userId) return result(false, 'off', MSG.expired);
+  const st = await saveNative(ep, sess);
+  if (st === 401) return result(false, 'off', MSG.expired);
+  if (!okStatus(st)) return result(false, 'off', MSG.save);
+  const p = await setNotifyPush(true, sess);
+  if (p === 401) return result(false, 'on', MSG.expired);
+  if (!okStatus(p)) return result(false, 'on', MSG.prefs);
+  return result(true, 'on', MSG.on);
+}
+
+async function disableNative(n, o) {
+  const sess = await freshSession();
+  const eps = [...new Set([nativeOn(), nativeEndpoint(n, n.token)].filter(Boolean))];
+  let removed = true;
+  if (sess) for (const ep of eps) removed = okStatus(await deleteSubscription(ep, sess)) && removed;
+  else removed = !eps.length;
+  setNativeOn('');
+  if (o.notifyPush === false && sess) await setNotifyPush(false, sess);
+  return result(true, await state(), removed ? MSG.off : MSG.nativeOffKept);
+}
+
+async function syncNative(n) {
+  if (quick() !== 'granted') return { ok: false, state: await state() };
+  if (!nativeOn()) return { ok: false, state: 'off' };
+  /* the token iOS holds today, which the app refreshes on every launch */
+  const r = await nativeCall(n, 'push.status', {}, 5000);
+  if (r) nativeRemember(n, r);
+  const sub = nativeSub(n);
+  const sess = await freshSession();
+  if (!sess || !sess.userId) return { ok: false, state: 'on' };
+  return { ok: okStatus(await saveNative(sub.endpoint, sess)), state: 'on' };
+}
+
+/* the app says a notification was shown while it is open: waitForReceipt's answer */
+function nativeReceipt(tag, ms) {
+  const add = g('addEventListener'), remove = g('removeEventListener');
+  let stop = () => {};
+  const promise = new Promise(resolve => {
+    if (typeof add !== 'function') { resolve(null); return; }
+    const on = ev => {
+      const d = ev && ev.detail;
+      if (d && d.type === 'push' && (!tag || d.tag === tag)) {
+        stop();
+        resolve({ type: 'epinoia-push', tag: d.tag, shown: d.shown !== false, at: Number(d.at) || now() });
+      }
+    };
+    const t = setTimeout(() => { stop(); resolve(null); }, ms);
+    stop = () => { clearTimeout(t); try { remove.call(root, 'epinoia-native', on); } catch (_) { /* gone */ } };
+    add.call(root, 'epinoia-native', on);
+  });
+  return { promise, cancel: () => stop() };
+}
+
+/* The check, in the iPhone app: the same questions in the order a notification travels, with
+   the app's own answers where a browser would have a worker and a subscription. */
+async function checkNative(n, onStep) {
+  const steps = [];
+  const plat = 'ios-native';
+  const report = extra => Object.assign({ ok: steps.length > 0 && steps.every(s => s.ok !== false), steps, platform: plat }, extra);
+  const add = (id, ok, label, detail) => {
+    steps.push({ id, ok, label, detail: detail || '' });
+    if (typeof onStep === 'function') { try { onStep(steps.slice()); } catch (_) { /* the page's problem */ } }
+  };
+  const advise = (title, lines) => report({ advice: { title, lines: (lines || []).filter(Boolean), action: settingsAction() } });
+
+  /* 1. the app */
+  add('browser', true, 'The EPINOIΛ app can receive notifications', n.version ? 'version ' + n.version + (n.build ? ' (' + n.build + ')' : '') : '');
+
+  /* 2. what iOS allows, asked now rather than as the page loaded */
+  const st = await nativeCall(n, 'push.status', {}, 5000);
+  if (st) nativeRemember(n, st);
+  const perm = nativePermission(n.permission);
+  if (perm === 'denied') {
+    add('permission', false, 'Notifications are turned off for EPINOIΛ on this iPhone');
+    return advise('Allow notifications, then run the check again', SETTINGS[plat]);
+  }
+  if (perm !== 'granted') {
+    add('permission', false, 'EPINOIΛ has not been allowed to send notifications yet');
+    return advise('Turn notifications on', ['Tap Turn on above and choose Allow when your iPhone asks.']);
+  }
+  add('permission', true, 'Notifications are allowed for EPINOIΛ');
+
+  /* 3. Apple's address for this iPhone: registered again when the app has none */
+  let ep = nativeEndpoint(n, n.token);
+  let made = '';
+  if (!ep) {
+    const r = await nativeCall(n, 'push.enable', {}, 25000);
+    if (r) nativeRemember(n, r);
+    ep = nativeEndpoint(n, n.token);
+    if (ep) made = 'registered just now: it had no address';
+  }
+  if (!ep) {
+    add('subscription', false, 'This iPhone has no notification address from Apple', MSG.nativeNoToken);
+    return advise('Check the phone is online', ['Check the iPhone has a connection, then run the check again.',
+      'If it keeps failing, close EPINOIΛ completely (swipe it away), open it again and run the check.']);
+  }
+  add('subscription', true, 'This iPhone is registered with Apple', made);
+
+  /* 4. the account */
+  const sess = await freshSession();
+  if (!sess || !sess.userId) {
+    add('account', false, 'You are not signed in on this iPhone', MSG.signedOut);
+  } else {
+    let row = await ownRow(ep, sess);
+    let fixed = '';
+    if (okStatus(row.status) && !row.row) {
+      const saved = await saveNative(ep, sess);
+      if (okStatus(saved)) { fixed = 'added just now: it was missing'; row = await ownRow(ep, sess); }
+    } else if (row.row) {
+      setNativeOn(ep);
+    }
+    if (row.row) add('account', true, 'This iPhone is on your account', fixed);
+    else add('account', false, 'This iPhone could not be added to your account', row.status === 401 ? MSG.expired : MSG.save);
+    const on = await accountPushOn(sess);
+    if (on === false) add('channel', false, 'Phone and desktop alerts are switched off on your account', 'Tick Phone and desktop alerts below; tests still arrive, real notifications do not.');
+    else if (on === true) add('channel', true, 'Phone and desktop alerts are on for your account');
+    if (row.row && row.row.last_push_at && row.row.last_push_status != null && !(row.row.last_push_status >= 200 && row.row.last_push_status < 300)) {
+      add('history', null, 'Before this check, the last notification to this iPhone was refused (' + row.row.last_push_status + ') at ' + clock(Date.parse(row.row.last_push_at)),
+          String(row.row.last_push_error || '').slice(0, 160));
+    }
+  }
+
+  /* 5. a push to this iPhone, through Apple */
+  let arrival = waitForReceipt('check', RECEIPT_MS);
+  let res = await deviceCheck(nativeSubFor(ep), sess);
+  if (!res.ok && res.fix === 'resubscribe') {
+    arrival.cancel();
+    const r = await nativeCall(n, 'push.enable', {}, 25000);
+    if (r) nativeRemember(n, r);
+    const next = nativeEndpoint(n, n.token);
+    if (next && next !== ep) {
+      if (sess && sess.userId) await saveNative(next, sess);
+      add('renewed', true, 'This iPhone’s address was out of date, so it registered again', res.text || '');
+      ep = next;
+      arrival = waitForReceipt('check', RECEIPT_MS);
+      res = await deviceCheck(nativeSubFor(ep), sess);
+    }
+  }
+  if (!res.ok) {
+    arrival.cancel();
+    const why = res.status === 429 ? 'A check has just run. Wait a few seconds and run it again.'
+      : (res.text || res.error || MSG.testFailed) + (res.detail ? ' (' + String(res.detail).slice(0, 120) + ')' : '');
+    add('delivery', false, 'The test push did not get through', why);
+    return advise(res.fix === 'server' ? 'This is on EPINOIΛ’s side, not your iPhone' : 'Try again in a minute',
+                  [res.fix === 'server' ? 'Nothing on this iPhone needs changing. Try again later.' : 'If it keeps failing, tap Turn off, then Turn on, and run the check again.']);
+  }
+  add('delivery', true, 'Apple accepted a test push for this iPhone');
+
+  /* 6. did it reach the app */
+  const got = await arrival.promise;
+  if (!got) {
+    add('arrival', false, 'The test has not reached this iPhone after ' + Math.round(RECEIPT_MS / 1000) + ' seconds');
+    return advise('The iPhone is not letting notifications through', ['Check the iPhone has a connection.'].concat(QUIET[plat], SETTINGS[plat]));
+  }
+  add('arrival', true, 'The test reached this iPhone at ' + clock(got.at || now()) + ' and was shown');
+  if (steps.some(s => s.id === 'account' && s.ok === false)) {
+    return advise(sess && sess.userId ? 'This iPhone works, but it is not on your account yet' : 'This iPhone works: sign in so it gets your notifications',
+                  sess && sess.userId ? ['Run the check again in a minute. If it still fails, tap Turn off, then Turn on.']
+                                      : ['Sign in on this iPhone with the email you use for EPINOIΛ, then run the check again.']);
+  }
+  if (steps.some(s => s.id === 'channel' && s.ok === false)) {
+    return advise('This iPhone works: switch on Phone and desktop alerts',
+                  ['Tick Phone and desktop alerts below. Tests reach this iPhone either way, but real notifications are only sent while it is on.']);
+  }
+  return advise('Everything on EPINOIΛ’s side works', [
+    'If a notification titled “This phone can get notifications” did not appear just now, the iPhone is hiding them:'
+  ].concat(SETTINGS[plat], QUIET[plat]));
 }
 
 /* ------------------------------------------------------------- the offer --- */
@@ -1007,12 +1307,21 @@ const CSS = [
    opens whether this is an Android browser and the app is out; a page without nav.js (a league
    website's embed) has no answer, and the sheet says nothing about the app. { href } or null. */
 function androidApp() {
+  const a = phoneApp();
+  return a && a.platform === 'android' ? { href: a.href } : null;
+}
+/* THE APP FOR THE PHONE IN HAND: the Android app on an Android browser, the iPhone app on an
+   iPhone (kind 'ios-app', once it is out), never the other one. { href, platform } or null. */
+function phoneApp() {
   const P = g('EpinoiaAppPromo');
   try {
     const p = P && typeof P.current === 'function' ? P.current() : null;
-    return p && p.kind === 'android' ? { href: P.href(p) } : null;
+    if (p && p.kind === 'android') return { href: P.href(p), platform: 'android' };
+    if (p && p.kind === 'ios-app') return { href: P.href(p), platform: 'iphone' };
+    return null;
   } catch (_) { return null; }
 }
+const APP_NAME = { android: 'the EPINOIΛ app for Android', iphone: 'the EPINOIΛ app for iPhone' };
 
 const BELL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>';
 
@@ -1088,9 +1397,9 @@ function openSheet(doc, view, name, kind) {
   function ask(message) {
     const d = el('p', null, lead); d.id = 'ep-push-d';
     const parts = [head('Get notified about ' + name + '?'), d];
-    const app = androidApp();
+    const app = phoneApp();
     if (app) {
-      const t = el('p', null, 'Alerts pop up most reliably in the EPINOIΛ app for Android. ');
+      const t = el('p', null, 'Alerts pop up most reliably in ' + APP_NAME[app.platform] + '. ');
       const a = el('a', null, 'Get the app'); a.href = app.href;
       t.appendChild(a);
       parts.push(t);
@@ -1146,9 +1455,9 @@ function openSheet(doc, view, name, kind) {
     /* in an Android browser, the way out of browser settings altogether: the app posts its
        alerts itself, on its own channel that pops up */
     const parts = [head('Your phone is hiding it'), d, ol];
-    const app = androidApp();
+    const app = phoneApp();
     if (app) {
-      parts.push(el('p', null, 'Or skip the browser’s settings: in the EPINOIΛ app for Android, alerts pop up on their own.'));
+      parts.push(el('p', null, 'Or skip the browser’s settings: in ' + APP_NAME[app.platform] + ', alerts pop up on their own.'));
       const a = el('a', 'ep-push-btn', 'Get the EPINOIΛ app');
       a.href = app.href;
       acts.push(a);
@@ -1168,6 +1477,16 @@ function openSheet(doc, view, name, kind) {
     draw([head('Get notified about ' + name + '?'), d], [button('Close', 'pri', () => close(true))]);
   }
   function install() {
+    /* ONCE THE IPHONE APP IS OUT, it is the answer: alerts through Apple, no Home Screen steps */
+    const app = phoneApp();
+    if (app && app.platform === 'iphone') {
+      const p = el('p', null, 'On iPhone, notifications come through the EPINOIΛ app. Get it free from the App Store, sign in, and follow ' + name + ' there.');
+      p.id = 'ep-push-d';
+      const a = el('a', 'ep-push-btn pri', 'Get the EPINOIΛ app');
+      a.href = app.href;
+      draw([head('Get notified about ' + name + '?'), p], [a, button('Not now', null, () => close(true))]);
+      return;
+    }
     const d = el('p', null, 'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:');
     d.id = 'ep-push-d';
     const ol = el('ol');
@@ -1193,12 +1512,16 @@ function openSheet(doc, view, name, kind) {
 
 return {
   state, enable, disable, test, sync, check, offer, help, inApp, endpoint, settingsOpened, appBlocked,
-  MESSAGES: MSG, SW_URL, SCOPE, settingsIntent: SETTINGS_INTENT,
+  inIOSApp: () => !!iosApp(),
+  MESSAGES: MSG, SW_URL, SCOPE,
+  /* read when used: in the iPhone app it is the app's own link, not the Android intent */
+  get settingsIntent() { return iosApp() ? NATIVE_SETTINGS : SETTINGS_INTENT; },
   _test: {
+    iosApp, nativeEndpoint, nativePermission, IOS_ON_KEY, NATIVE_SETTINGS,
     env(e) { ENV = e || null; },
     quick, keyBytes, sameKey, isIOS, iosVersion, decide, snoozed, snooze, storedSession,
     subscriptionRow, SNOOZE_KEY, SNOOZE_MS, platform, SETTINGS, QUIET, serviceName, RECEIPT_MS,
-    clientKind, launchState, launchStale, IMPORTANCE_HIGH, SETTINGS_OPENED_KEY, androidApp,
+    clientKind, launchState, launchStale, IMPORTANCE_HIGH, SETTINGS_OPENED_KEY, androidApp, phoneApp,
     close() { if (sheet) { sheet.remove(); sheet = null; } }
   }
 };

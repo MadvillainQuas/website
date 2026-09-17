@@ -25,15 +25,19 @@
                          with. If the pair does not match, every push is refused.
    ============================================================================ */
 
+import { isApns, parseApns, explainApns } from './apns.js';
+
 const SERVICES = [
   ['fcm', h => h === 'fcm.googleapis.com' || h === 'android.googleapis.com'],
   ['apple', h => h === 'web.push.apple.com' || h.endsWith('.push.apple.com')],
   ['mozilla', h => h === 'updates.push.services.mozilla.com' || h.endsWith('.push.services.mozilla.com')],
   ['windows', h => h.endsWith('.notify.windows.com')]
 ];
-export const SERVICE_NAMES = Object.freeze({ fcm: 'Google', apple: 'Apple', mozilla: 'Mozilla', windows: 'Microsoft' });
+export const SERVICE_NAMES = Object.freeze({ fcm: 'Google', apple: 'Apple', mozilla: 'Mozilla', windows: 'Microsoft', apns: 'Apple' });
 
 export function serviceOf(endpoint) {
+  /* the Epinoia iPhone app's own address (0130): Apple's, but through APNs, not Web Push */
+  if (isApns(endpoint)) return parseApns(endpoint) ? 'apns' : null;
   let u;
   try { u = new URL(String(endpoint)); } catch (_) { return null; }
   if (u.protocol !== 'https:' || u.port || u.username || u.password) return null;
@@ -43,7 +47,8 @@ export function serviceOf(endpoint) {
 }
 
 /* fix: null (nothing to do), 'resubscribe' (this phone signs up again), 'later', 'server' */
-export function explain(status, service) {
+export function explain(status, service, detail) {
+  if (service === 'apns') return explainApns(status, detail);
   const who = SERVICE_NAMES[service] || 'The push service';
   const s = Number(status) || 0;
   if (s >= 200 && s < 300) return { ok: true, fix: null, text: who + ' accepted it for this phone.' };

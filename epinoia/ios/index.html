@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme. appmode.js turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. No gate.js, no topnav.js. The usual CSP: this page asks nothing of anyone but
+     version.json next to it. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>EPINOIΛ for iPhone</title>
+<meta name="description" content="EPINOIΛ for iPhone: live scores, fixtures, statistics and game alerts from every league on EPINOIΛ, in an app of its own. Free on the App Store.">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<!-- FIRST, BLOCKING: the theme and app mode (html.m-app) before anything paints, so the app
+     never flashes the App Store button before it says "You are using the app". -->
+<script src="../appmode.js?v=276"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=276">
+<link rel="stylesheet" href="../kit/nav.css?v=276">
+<!-- the download pages share one stylesheet: the show/hide matrix, the hero, the steps -->
+<link rel="stylesheet" href="../android/android.css?v=276">
+<link rel="stylesheet" href="ios.css?v=276">
+</head>
+<body>
+<!-- WHAT SHOWS WHERE: ios.js puts classes on #page (in-app, ios, android, desktop, released,
+     update), appmode.js puts html.m-app on the root before paint, and android.css (plus
+     ios.css for released / not released) holds the matrix. Without JavaScript this is the plain
+     "coming to the App Store" page with the Home Screen steps. -->
+<div class="ep-frame ad" id="page">
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="EPINOIΛ">EPINOIΛ</span></a>
+    <span class="ep-micro">iphone</span>
+  </div>
+
+  <header class="ad-hero" id="hero">
+    <img class="ad-icon" src="icon-192.png" srcset="icon-384.png 2x" alt="" width="192" height="192">
+    <div class="ad-hero-tx">
+      <h1>EPINOIΛ for iPhone</h1>
+      <p class="lede">
+        EPINOIΛ in an app of its own: live scores, fixtures, statistics and news from
+        every league, with game alerts for the clubs and players you follow.
+      </p>
+      <ul class="perks" aria-label="What the app gives you">
+        <li>Its own icon</li>
+        <li>No browser bar</li>
+        <li>Game alerts</li>
+        <li>Free</li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- 01 · GET IT, or, inside the app, the app's own state ---------------------------------- -->
+  <section class="sec" id="getSec" aria-labelledby="getH">
+    <div class="ep-hdr"><span class="idx">01</span><h2 id="getH"><span class="out-only">Get the app</span><span class="in-only">The app</span></h2></div>
+    <div class="body">
+      <div class="getgrid out-only">
+        <div class="needs">
+          <p class="k">Good to know</p>
+          <ul>
+            <li><b>It shows the live website.</b> Everything in the app is EPINOIΛ as it is right
+              now, so it updates itself with the website.</li>
+            <li><b>It needs a connection.</b> Nothing is stored on the phone for offline use.</li>
+            <li><b>Sign in with your email.</b> The app sends you a code or a link, the same
+              account as on the website.</li>
+          </ul>
+        </div>
+        <div class="get" id="get">
+          <!-- THE APP STORE LINK arrives from version.json (appStoreId) once the app is out. -->
+          <a class="ep-btn pri dl store released-only" id="storeLink" href="https://apps.apple.com/" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
+            <span>Get it on the App Store</span>
+          </a>
+          <p class="dlmeta released-only" aria-live="polite">
+            <span class="hide" id="verWrap">Version <b id="ver"></b> · </span>Free · iPhone with iOS 16 or later
+          </p>
+          <p class="dlnote soon-only" role="status">
+            <b>Coming soon to the App Store.</b> Until then, add EPINOIΛ to your Home Screen:
+            it opens full screen, with game alerts. <a href="#homeScreen">Here is how</a>.
+          </p>
+          <p class="dlnote android-only">
+            This page is for iPhone. On an Android phone, <a href="../android/">get the Android app</a>.
+          </p>
+          <p class="dlnote desk-only">
+            On a computer? Open <b>prophesyscouting.co.uk/epinoia/ios</b> on your iPhone.
+          </p>
+        </div>
+      </div>
+
+      <!-- INSIDE THE APP: nothing to get (unless this build is older than minShell). -->
+      <div class="inapp in-only" id="inApp">
+        <p class="k">EPINOIΛ for iPhone</p>
+        <p class="big">You are using the app</p>
+        <p>
+          There is nothing to download. The app shows the live website, so every change to
+          EPINOIΛ reaches it the next time you open it.
+        </p>
+        <div class="upd upd-only">
+          <p class="k warn">Update needed</p>
+          <p>
+            This copy of the app is too old for some of EPINOIΛ's features. Update it from the
+            App Store: you stay signed in.
+          </p>
+          <a class="ep-btn pri dl" id="updBtn" href="https://apps.apple.com/" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
+            <span>Update the app</span>
+          </a>
+        </div>
+        <div class="rows native-only">
+          <div class="row"><span>App</span><b id="appBuild"></b></div>
+          <div class="row"><span>Game alerts</span><b id="alerts"></b></div>
+          <a class="ep-btn settings" id="settingsBtn" href="epinoia://notification-settings">Open notification settings</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 · ALERTS ------------------------------------------------------------------------- -->
+  <section class="sec out-only" id="alertsSec" aria-labelledby="alertsH">
+    <div class="ep-hdr"><span class="idx">02</span><h2 id="alertsH">Game alerts</h2></div>
+    <div class="body">
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>Sign in</h3>
+            <p>Open <b>EPINOIΛ</b>, tap <b>Sign in</b> and enter your email. Type the code from
+              the email, or open its link on the same iPhone.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Follow your clubs and players</h3>
+            <p>On a club's or a player's page, tap <b>Follow</b>, then <b>Turn on notifications</b>.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Allow notifications</h3>
+            <p>iOS asks the first time: choose <b>Allow</b>. Tip-off reminders, starting lineups,
+              half-time and full-time scores then arrive on the lock screen.</p>
+            <p class="aside">Chose Don't Allow? Open <span class="path">Settings › Notifications › EPINOIΛ</span>
+              and turn on <b>Allow Notifications</b>.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 03 · WITHOUT THE APP ---------------------------------------------------------------- -->
+  <section class="sec out-only" id="homeScreen" aria-labelledby="homeH">
+    <div class="ep-hdr"><span class="idx">03</span><h2 id="homeH"><span class="soon-only">Before the app: your Home Screen</span><span class="released-only">Without the app</span></h2></div>
+    <div class="body">
+      <p class="intro">Add EPINOIΛ to your Home Screen from Safari: it opens full screen, like an app.</p>
+      <ol class="mini">
+        <li>Open <a href="../home/">EPINOIΛ</a> in Safari.</li>
+        <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+        <li>Open EPINOIΛ from the new icon and turn notifications on from your <a href="../me/">Profile</a> page. Game alerts need iOS 16.4 or later.</li>
+      </ol>
+      <p class="fine released-only">If you use both, turn notifications off in the Home Screen copy (its Profile page), so alerts do not arrive twice.</p>
+    </div>
+  </section>
+
+  <!-- 04 · UPDATES ------------------------------------------------------------------------ -->
+  <section class="sec out-only" id="updSec" aria-labelledby="updH">
+    <div class="ep-hdr"><span class="idx">04</span><h2 id="updH">Updates</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">Website changes</div>
+        <div class="a">Reach the app the next time you open it. There is nothing to download, because the app shows the live website.</div>
+        <div class="q">A new app</div>
+        <div class="a">Rarely needed, and it comes through the App Store like any other app's update. When the website needs it, EPINOIΛ tells you inside the app.</div>
+        <div class="q">Privacy</div>
+        <div class="a">No adverts and no tracking. What the app holds is in the <a href="../privacy/#iosSec">privacy notice</a>.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="../home/">&larr; HOME</a>
+    <a href="../me/">Your profile</a>
+    <a href="../privacy/">Privacy</a>
+    <a href="../contact/">Contact</a>
+    <span>EPINOIΛ Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=276" defer></script>
+<script src="ios.js?v=276" defer></script>
+<script src="../nav.js?v=276" defer></script>
+</body>
+</html>

@@ -60,6 +60,8 @@
   .gbtn:hover{background:#f7f8f8;box-shadow:0 1px 3px rgba(0,0,0,.25)}
   .gbtn:disabled{opacity:.6;cursor:default}
   .gmark{display:flex;align-items:center}
+  /* the hidden attribute has to win over the display:flex above, or "hidden" hides nothing */
+  .gbtn[hidden], .or[hidden]{display:none}
   .or{display:flex;align-items:center;gap:12px;margin:calc(var(--u)*3) 0}
   .or::before,.or::after{content:'';flex:1;height:1px;background:var(--rule)}
   .or span{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;

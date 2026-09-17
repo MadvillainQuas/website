@@ -1,7 +1,7 @@
 # Notifications v2 — tip-off reminders, lineups, results and statlines, on the phone
 
 Written 2026-09-17. The contract for migrations `0121_notifications_v2.sql`,
-`0124_notify_halftime.sql`, `0125_push_delivery_status.sql` and `0128_push_client.sql`, the `notify` Edge
+`0124_notify_halftime.sql`, `0125_push_delivery_status.sql`, `0128_push_client.sql` and `0130_push_apns.sql` (the iPhone app, §8), the `notify` Edge
 Function, `epinoia/sw.js`, `epinoia/push.js`, `epinoia/follow.js`, the profile page
 and the game page's `show=starters` link. Inspiration: FotMob —
 a notification says exactly what happened and when, one tap lands on the thing it
@@ -336,3 +336,43 @@ encrypts a message a browser can read (decrypted with RFC 8291, verified against
 RFC's own example in `pushpayload.test.mjs`), and that a push service answers. It
 also counts registered phones by push service, and accepted and refused pushes in
 the last day. No personal data.
+
+---
+
+## 8. The iPhone app (`ios/`, `0130_push_apns.sql`, `_shared/apns.js`)
+
+Inside an app, a web page (WKWebView) gets no Web Push, so the EPINOIΛ iPhone app registers with
+Apple Push Notification service itself. It hands the page what it knows through
+`window.EpinoiaNative`, which it defines before any page script runs and only on this origin
+(the full contract is in `ios/README.md`). `push.js` takes that path first in every function
+(its section "the iPhone app"), and nothing changes anywhere else:
+
+- **The phone's row** is the same `push_subscriptions` row, with the endpoint
+  `apns:production:<hex token>` (`apns:sandbox:` for a development build), no Web Push keys and
+  `client = 'ios'`. 0130 lets `p256dh`/`auth` be null on such a row only, and checks its shape.
+- **On** means iOS allows notifications *and* this page turned them on (localStorage
+  `epinoia_ios_push`), because an iPhone keeps its token: turning off deletes the row and forgets
+  the endpoint.
+- **A phone that changes account** keeps its token, so the new account calls
+  `push_claim_device(endpoint)` (0130) after RLS refuses the upsert: it removes other accounts'
+  rows for exactly that address, then saves.
+- **Delivery.** `notify`'s `push()` sends an `apns:` row through `sendApns`. It is the same
+  payload (`payloadFor`), turned into APNs terms:
+  - title and body in `aps.alert`, `url`/`tag`/`kind` beside it
+  - `apns-collapse-id` = the web's topic, so a lineups alert replaces the reminder
+  - priority 10 unless urgency is low
+  - expiration from the TTL
+
+  Apple's `Unregistered`, `BadDeviceToken` and `DeviceTokenNotForTopic` come back as 410, so the
+  row is dropped where a dead browser subscription is.
+- **The provider token** is ES256, signed with the `.p8` key (`APNS_KEY_ID`, `APNS_TEAM_ID`,
+  `APNS_KEY_P8`, optional `APNS_TOPIC`). Its `iat` is rounded to the half hour, because Apple
+  refuses a token refreshed more often than every 20 minutes or older than an hour.
+- **Receipts.** The app reports a notification shown while it is open (`epinoia-native` event,
+  `{type: 'push', tag, shown}`), which is what `test()` and `check()` wait for.
+- **Settings.** `settingsIntent`, and the check's action, are `epinoia://notification-settings`,
+  which the app turns into iOS's notification settings for EPINOIΛ.
+- **The self-check.** `notify {diag: true}` also reports `apns`: a push to a made-up token is
+  refused `BadDeviceToken` when Apple accepts the key, `403` when it does not.
+
+Owner setup (the APNs key, the secrets) is `docs/ios-app.md` step 4.

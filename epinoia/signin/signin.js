@@ -353,14 +353,29 @@ async function googleAvailable() {
   } catch (_) { return false; }
 }
 
+/* THE IPHONE APP HAS NO GOOGLE BUTTON. Google refuses to sign anybody in inside an app's own web
+   view (403 disallowed_useragent), and the App Store asks an app that offers a social sign-in to
+   offer Sign in with Apple beside it (guideline 4.8); in the app, the email code is the way in.
+   appmode.js marks the app on the root before paint (html.m-ios-app). */
+function googleInIOSApp() {
+  try {
+    return document.documentElement.classList.contains('m-ios-app') ||
+      !!(window.EpinoiaNative && window.EpinoiaNative.platform === 'ios');
+  } catch (_) { return false; }
+}
+
 (async function setUpGoogle() {
   const btn = $('#google');
   const or = document.querySelector('.or');
-  if (!(await googleAvailable())) {
+  if (googleInIOSApp() || !(await googleAvailable())) {
     /* hidden rather than disabled: a greyed-out button invites a click and a
        question, where its absence invites neither */
     if (btn) btn.hidden = true;
     if (or) or.hidden = true;
+    /* in the iPhone app the page's opening line must not promise a Google button */
+    const lead = googleInIOSApp() ? document.querySelector('#out .lead') : null;
+    if (lead) lead.textContent = 'No password to choose, forget or have stolen: enter your email and ' +
+      'we send you a code that signs you in on this phone.';
     return;
   }
   btn.hidden = false;

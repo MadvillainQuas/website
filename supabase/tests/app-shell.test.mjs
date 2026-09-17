@@ -236,6 +236,11 @@ function page(url, o = {}) {
         if (o.versionJson instanceof Error) throw o.versionJson;
         return { ok: true, status: 200, json: async () => o.versionJson };
       }
+      /* o.iosJson: what ios/version.json answers (the iPhone app's release file) */
+      if (/ios\/version\.json$/.test(String(href)) && o.iosJson !== undefined) {
+        if (o.iosJson instanceof Error) throw o.iosJson;
+        return { ok: true, status: 200, json: async () => o.iosJson };
+      }
       throw new Error('offline');
     },
     addEventListener: (t, f) => { (winListeners[t] = winListeners[t] || []).push(f); },
@@ -254,6 +259,8 @@ function page(url, o = {}) {
   };
   ctx.window = ctx;
   if (o.app) ctx.epinoiaApp = true;
+  /* o.native: the iPhone app's window.EpinoiaNative */
+  if (o.native) ctx.EpinoiaNative = o.native;
   vm.createContext(ctx);
   vm.runInContext(NAV, ctx, { filename: 'nav.js' });
   const banners = () => body.children.filter(n => n.cls.has('ep-install'));
@@ -333,9 +340,10 @@ for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unrea
 });
 {
   const p = page('/epinoia/home/', { ua: UA.iphone });
+  await tick(); await tick(); await tick();
   p.later(2500);
   const b = p.banners()[0];
-  ok('iPhone: Add to Home Screen, exactly as before', !!b && !b.cls.has('ep-app-offer') && /Add EPINOIΛ to your home screen/.test(textOf(b))
+  ok('iPhone, its app not out (no answer): Add to Home Screen, exactly as before', !!b && !b.cls.has('ep-app-offer') && /Add EPINOIΛ to your home screen/.test(textOf(b))
      && /Add to Home Screen/.test(textOf(b)) && goOf(b).tagName === 'BUTTON', textOf(b));
 }
 {
@@ -361,7 +369,8 @@ for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unrea
   ok('...once a session: the next page reads the stored answer', !r.fetches.some(f => /version\.json/.test(f)), r.fetches.join());
   const i = page('/epinoia/home/', { ua: UA.iphone, versionJson: OUT });
   await tick(); await tick();
-  ok('an iPhone never asks', !i.fetches.some(f => /version\.json/.test(f)));
+  ok('an iPhone never asks the Android app\'s version.json, only the iPhone app\'s, once',
+     !i.fetches.some(f => /android\/version\.json/.test(f)) && i.fetches.filter(f => /ios\/version\.json$/.test(f)).length === 1, i.fetches.join());
 }
 
 console.log('\n-- the update notice');
@@ -440,7 +449,8 @@ console.log('\n-- the app, signposted on a phone (AppShell.promo, the rail\'s ro
   eq('promo: Android, not out yet -> nothing', at(UA.chromeAndroid, { released: false }), null);
   eq('promo: Android, a truthy non-boolean released -> nothing', at(UA.chromeAndroid, { released: 'yes' }), null);
   const i = at(UA.iphone);
-  ok('promo: iPhone -> the download page\'s Home Screen steps', i && i.kind === 'ios' && i.href === 'android/#iosSec' && i.row === 'add to home screen', JSON.stringify(i));
+  ok('promo: iPhone, its app not out -> the iPhone page\'s Home Screen steps, never the Android page',
+     i && i.kind === 'ios' && i.href === 'ios/#homeScreen' && i.row === 'add to home screen', JSON.stringify(i));
   eq('promo: iPhone already on the Home Screen -> nothing', at(UA.iphone, { standalone: true }), null);
   ok('promo: iPad asking for the desktop site -> the Home Screen steps',
      (S.promo({ ua: UA.ipadDesktop, platform: 'MacIntel', maxTouchPoints: 5, path: '/epinoia/home/' }) || {}).kind === 'ios');
@@ -526,8 +536,8 @@ const promoFrame = () => {
   const rows = byClass(p.body, 'app-row');
   const strips = byClass(f.frame, 'ep-appstrip');
   ok('iPhone: an "add to home screen" row and a strip, to the Home Screen steps',
-     rows.length === 1 && /add to home screen/.test(rows[0].textContent) && rows[0].href === '../android/#iosSec'
-     && strips.length === 1 && strips[0].href === '../android/#iosSec' && strips[0].dataset.kind === 'ios');
+     rows.length === 1 && /add to home screen/.test(rows[0].textContent) && rows[0].href === '../ios/#homeScreen'
+     && strips.length === 1 && strips[0].href === '../ios/#homeScreen' && strips[0].dataset.kind === 'ios');
   ok('...with the site mark, not the Android icon', strips[0] && strips[0].children[0].src === '../brand/epinoia-mark-192.png');
 }
 {
@@ -539,6 +549,110 @@ const promoFrame = () => {
 }
 
 /* ------------------------------------------------------------------ 3 --- */
+console.log('\n-- the iPhone app (epinoia/ios/version.json, window.EpinoiaNative)');
+{
+  const S = shellApi();
+  const IOS_OUT = { build: 2, version: '1.0.1', minShell: 1, appStoreId: '6700000001', released: true };
+  const at = (extra) => Object.assign({ ua: UA.iphone, platform: 'iPhone', maxTouchPoints: 5, path: '/epinoia/stats/' }, extra || {});
+
+  eq('installOffer: iPhone, its app out -> the iPhone app', S.installOffer(at({ iosReleased: true })), 'ios-app');
+  eq('installOffer: iPhone, a truthy non-boolean iosReleased -> Home Screen', S.installOffer(at({ iosReleased: 'yes' })), 'ios');
+  eq('installOffer: iPhone, the Android app out but not the iPhone one -> Home Screen, never the Android app', S.installOffer(at({ released: true })), 'ios');
+  eq('installOffer: the iPhone page itself -> none', S.installOffer(at({ iosReleased: true, path: '/epinoia/ios/' })), 'none');
+  eq('installOffer: the iPhone page, its app not out -> none too (the page has the Home Screen steps)', S.installOffer(at({ path: '/epinoia/ios/' })), 'none');
+  eq('installOffer: in the iPhone app -> none', S.installOffer(at({ iosReleased: true, app: true })), 'none');
+  eq('installOffer: Android, the iPhone app out -> still the Android rules', S.installOffer(env(UA.chromeAndroid, { iosReleased: true, path: '/epinoia/home/' })), 'web');
+
+  const v = S.cleanIosVersion(JSON.parse(rd('epinoia', 'ios', 'version.json')));
+  ok('cleanIosVersion reads the real epinoia/ios/version.json', v && Number.isInteger(v.build) && v.build > 0 && Number.isInteger(v.minShell) && /^\d+\.\d+\.\d+$/.test(v.version), JSON.stringify(v));
+  eq('cleanIosVersion: the trusted fields and the App Store link', S.cleanIosVersion(IOS_OUT),
+     { build: 2, version: '1.0.1', minShell: 1, appStoreId: '6700000001', appStore: 'https://apps.apple.com/app/id6700000001', released: true });
+  eq('cleanIosVersion: an id that is not digits never becomes a link', S.cleanIosVersion({ appStoreId: 'javascript:alert(1)', released: true }).appStore, null);
+  eq('cleanIosVersion: no id yet', S.cleanIosVersion({ appStoreId: null }).appStore, null);
+  eq('cleanIosVersion: released only when exactly true', S.cleanIosVersion({ released: 'true' }).released, false);
+  eq('cleanIosVersion: not an object', S.cleanIosVersion(null), null);
+
+  eq('appCard: iPhone, its app out', S.appCard(at(), IOS_OUT), { href: '../ios/', versionName: '1.0.1', platform: 'ios' });
+  eq('appCard: iPhone, the Android file says released -> null', S.appCard(at(), { versionCode: 1, versionName: '1.0.0', released: true }), null);
+  eq('appCard: iPhone, not out -> null', S.appCard(at(), Object.assign({}, IOS_OUT, { released: false })), null);
+
+  const p = S.promo(at({ iosReleased: true }));
+  ok('promo: iPhone, its app out -> the iPhone app, linking ios/ with its own icon',
+     p && p.kind === 'ios-app' && p.href === 'ios/' && p.icon === 'ios/icon-192.png' && p.row === 'get the app', JSON.stringify(p));
+  ok('promo: iPhone already on the Home Screen, its app out -> still nothing (it is an app)', S.promo(at({ iosReleased: true, app: true })) === null);
+  eq('promo: never on the iPhone page itself', S.promo(at({ iosReleased: true, path: '/epinoia/ios/' })), null);
+  const everyIphone = [at(), at({ released: true }), at({ iosReleased: true }), at({ standalone: false, released: true })].map(e => S.promo(e));
+  ok('promo: an iPhone is never pointed at the Android page or icon', everyIphone.every(x => !x || (!/android/.test(x.href) && !/android/.test(x.icon))), JSON.stringify(everyIphone));
+
+  eq('nativeShell: the iPhone app\'s build', S.nativeShell({ platform: 'ios', build: 4 }), { shell: 4, platform: 'ios' });
+  eq('nativeShell: not the iPhone app', S.nativeShell({ platform: 'android', build: 4 }), null);
+  eq('nativeShell: no build', S.nativeShell({ platform: 'ios' }), null);
+  ok('needsUpdate: iPhone app build 1 below ios minShell 2', S.needsUpdate(S.nativeShell({ platform: 'ios', build: 1 }), S.cleanIosVersion({ minShell: 2, version: '1.1.0' })));
+  ok('needsUpdate: build 2 = minShell 2 -> no', !S.needsUpdate(S.nativeShell({ platform: 'ios', build: 2 }), S.cleanIosVersion({ minShell: 2 })));
+
+  /* one fetch a session, kept apart from the Android app's */
+  const store = new Store({ epinoia_android_version: '{"versionCode":9,"versionName":"9.0.0","minShell":1,"released":true}' });
+  let n = 0;
+  const f = async u => { n++; return { ok: true, json: async () => IOS_OUT }; };
+  const [a1, a2] = await Promise.all([S.iosVersion('../ios/version.json', { store, fetch: f }), S.iosVersion('../ios/version.json', { store, fetch: f })]);
+  ok('iosVersion: asked twice at once, fetched once, even with the Android answer already stored', n === 1 && a1 && a1.version === '1.0.1' && a2 === a1, n);
+  ok('...kept under its own key, leaving the Android answer alone',
+     JSON.parse(store.getItem('epinoia_ios_version')).build === 2 && JSON.parse(store.getItem('epinoia_android_version')).versionCode === 9);
+  const again = await S.iosVersion('../ios/version.json', { store, fetch: f });
+  ok('...the next page reads the stored answer', n === 1 && again.appStore === 'https://apps.apple.com/app/id6700000001');
+  const androidAfter = await S.version('../android/version.json', { store, fetch: async () => { throw new Error('should not fetch'); } });
+  ok('...and the Android answer is still read from its own key', androidAfter && androidAfter.versionCode === 9);
+}
+{
+  const IOS_OUT = { build: 2, version: '1.0.1', minShell: 1, appStoreId: '6700000001', released: true };
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.iphone, platform: 'iPhone', touch: 5, iosJson: IOS_OUT, versionJson: OUT });
+  await tick(); await tick(); await tick();
+  p.later(2500);
+  const b = p.banners()[0];
+  ok('rail, iPhone, its app out: after 2.5 s, one banner offering the iPhone app', p.banners().length === 1 && b.cls.has('ep-app-offer')
+     && /Get the EPINOIΛ app for iPhone/.test(textOf(b)) && !/Android/.test(textOf(b)), textOf(b));
+  ok('...linking ../ios/ with the iPhone icon', goOf(b).href === '../ios/' && b.children[0].src === '../ios/icon-192.png');
+  ok('...and nothing about the Android app was fetched', !p.fetches.some(f => /android\/version\.json/.test(f)), p.fetches.join());
+}
+{
+  const f = promoFrame();
+  const IOS_OUT = { build: 2, version: '1.0.1', minShell: 1, released: true };
+  const p = page('/epinoia/t/?l=bcb', { ua: UA.iphone, platform: 'iPhone', touch: 5, frame: f.frame, iosJson: IOS_OUT });
+  await tick(); await tick(); await tick();
+  const rows = byClass(p.body, 'app-row');
+  const strips = byClass(f.frame, 'ep-appstrip');
+  ok('rail, iPhone, its app out: a "get the app" row and a strip, to ../ios/',
+     rows.length === 1 && /get the app/.test(rows[0].textContent) && rows[0].href === '../ios/'
+     && strips.length === 1 && strips[0].href === '../ios/' && strips[0].dataset.kind === 'ios-app', rows.map(r => r.href).join());
+  ok('...EpinoiaAppPromo hands push.js the same', p.ctx.EpinoiaAppPromo.current().kind === 'ios-app');
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/home/', { ua: UA.iphone, platform: 'iPhone', touch: 5, frame: f.frame, homeApp: true,
+                                     iosJson: { build: 2, version: '1.0.1', minShell: 1, released: true } });
+  await tick(); await tick(); await tick();
+  ok('HOME on an iPhone, its app out: the row, but no strip (HOME\'s own card says it)',
+     byClass(p.body, 'app-row').length === 1 && byClass(f.frame, 'ep-appstrip').length === 0);
+}
+{
+  const session = new Store({ epinoia_app: '1' });
+  const nat = { platform: 'ios', build: 1, version: '1.0.0', permission: 'granted', token: null, call: async () => ({}) };
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.iphone, app: true, session, native: nat,
+    iosJson: { build: 3, version: '1.2.0', minShell: 2, appStoreId: '6700000001', released: true } });
+  await tick(); await tick(); await tick();
+  const b = p.banners().find(n => n.cls.has('ep-update'));
+  ok('the iPhone app, build 1 < minShell 2: "Update the EPINOIΛ app"', !!b && /Update the EPINOIΛ app/.test(textOf(b)) && /1\.2\.0/.test(textOf(b)), p.banners().map(textOf).join(' | '));
+  ok('...linking the App Store listing, with the iPhone icon', goOf(b) && goOf(b).href === 'https://apps.apple.com/app/id6700000001' && b.children[0].src === '../ios/icon-192.png');
+  ok('...from ../ios/version.json, never the Android file', p.fetches.includes('../ios/version.json') && !p.fetches.some(f => /android\/version\.json/.test(f)), p.fetches.join());
+  const q = page('/epinoia/home/', { ua: UA.iphone, app: true, session: new Store({ epinoia_app: '1' }), native: Object.assign({}, nat, { build: 2 }),
+    iosJson: { build: 3, version: '1.2.0', minShell: 2, released: true } });
+  await tick(); await tick(); await tick();
+  ok('the iPhone app, build 2 = minShell 2: no notice', !q.banners().some(n => n.cls.has('ep-update')));
+  const r = page('/epinoia/ios/', { ua: UA.iphone, app: true, session: new Store({ epinoia_app: '1' }), native: nat, iosJson: { minShell: 5, released: true } });
+  await tick(); await tick();
+  ok('the iPhone page in an outdated iPhone app: no banner (the page says it)', !r.banners().some(n => n.cls.has('ep-update')));
+}
+
 console.log('\n-- HOME\'s Android app card');
 {
   const require = createRequire(import.meta.url);
@@ -553,9 +667,11 @@ console.log('\n-- HOME\'s Android app card');
     let calls = 0;
     const shell = shellApi();
     const real = shell.version;
-    const wrapped = Object.assign({}, shell, { version: (url, deps) => real(url, Object.assign({}, deps, {
-      fetch: async u => { calls++; o.url = u; if (o.versionJson instanceof Error) throw o.versionJson;
-        return { ok: true, json: async () => o.versionJson }; } })) });
+    const fake = async u => { calls++; o.url = u; if (o.versionJson instanceof Error) throw o.versionJson;
+      return { ok: true, json: async () => o.versionJson }; };
+    const wrapped = Object.assign({}, shell, {
+      version: (url, deps) => real(url, Object.assign({}, deps, { fetch: fake })),
+      iosVersion: (url, deps) => shell.iosVersion(url, Object.assign({}, deps, { fetch: fake })) });
     const done = await Home.paintApp({ host, doc, shell: wrapped, store,
       env: Object.assign({ ua, platform: o.platform || '', maxTouchPoints: o.touch || 0 }, o.env || {}) });
     const a = host.children[0];
@@ -586,9 +702,24 @@ console.log('\n-- HOME\'s Android app card');
     const r = await draw(UA.firefoxAndroid, { store: new Store({ epinoia_android_version: '{"versionCode":2,"versionName":"1.1.0","minShell":1,"released":true}' }), versionJson: { versionName: '9.9.9' } });
     ok('another Android browser (Firefox): the card, the session\'s stored version, no fetch', r.a && byClass(r.a, 'v')[0].textContent === 'v1.1.0' && r.calls === 0);
   }
+  {
+    const IOS_OUT = { build: 3, version: '1.0.2', minShell: 1, appStoreId: '6700000001', released: true };
+    const r = await draw(UA.iphone, { versionJson: IOS_OUT });
+    ok('iPhone, the iPhone app out: one card, to ../ios/, never ../android/', r.host.children.length === 1 && r.a.href === '../ios/', r.a && r.a.href);
+    ok('...saying the iPhone app, with its version', /Get the iPhone app/.test(r.a.textContent) && /for iPhone/.test(r.a.textContent)
+       && !/Android|Chrome/.test(r.a.textContent) && byClass(r.a, 'v')[0].textContent === 'v1.0.2', r.a.textContent);
+    ok('...from ../ios/version.json', r.url === '../ios/version.json', r.url);
+    const iPad = await draw(UA.ipadDesktop, { platform: 'MacIntel', touch: 5, versionJson: IOS_OUT });
+    ok('iPad asking for the desktop site: the iPhone app card too', iPad.a && iPad.a.href === '../ios/');
+    const not = await draw(UA.iphone, { versionJson: Object.assign({}, IOS_OUT, { released: false }) });
+    ok('iPhone, the iPhone app not out: no card', not.host.children.length === 0 && not.done === null && not.calls === 1);
+    const androidJson = await draw(UA.iphone, { versionJson: { versionCode: 1, versionName: '1.0.0', minShell: 1, released: true } });
+    ok('iPhone handed an Android release file: no card (only ios/version.json\'s shape counts)', androidJson.host.children.length === 0);
+    const real = await draw(UA.iphone, { versionJson: JSON.parse(rd('epinoia', 'ios', 'version.json')) });
+    ok('the real ios/version.json: an iPhone card exactly when it says released',
+       (real.host.children.length === 1) === (JSON.parse(rd('epinoia', 'ios', 'version.json')).released === true));
+  }
   for (const [name, ua, extra] of [
-    ['iPhone', UA.iphone, {}],
-    ['iPad (desktop mode)', UA.ipadDesktop, { platform: 'MacIntel', touch: 5 }],
     ['desktop', UA.desktop, {}],
     ['in the app (window.epinoiaApp)', UA.chromeAndroid, { env: { app: true } }],
     ['in the app (html.m-app)', UA.samsung, { env: { mApp: true } }]

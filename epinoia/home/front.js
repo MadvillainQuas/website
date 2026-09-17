@@ -151,8 +151,9 @@ function reScroll() {
 
 /* ------------------------------------------------------ the Android app ---
    div#homeApp: a "Get the Android app" card for an Android browser (Chrome, Samsung Internet or
-   any other) that is not the app, linking to the download page. Nothing inside the app, on an
-   iPhone or on a desktop. WHO GETS IT is nav.js's decision (window.EpinoiaAppShell.appCard), the
+   any other) that is not the app, linking to the download page, and on an iPhone the same card
+   for the iPhone app, linking to the iPhone page, once epinoia/ios/version.json says it is out.
+   Nothing inside an app or on a desktop. WHO GETS IT is nav.js's decision (window.EpinoiaAppShell.appCard), the
    same one that swaps the rail's install banner for the Android app, so the two never disagree;
    nav.js loads after this file but before DOMContentLoaded, so it is there when this runs, and
    a page without it simply has no card. The card is drawn when version.json answers (once a
@@ -172,14 +173,24 @@ function paintApp(deps) {
     ua: nav.userAgent || '', platform: nav.platform || '', maxTouchPoints: nav.maxTouchPoints || 0
   };
   env.href = BASE + 'android/';
-  /* NOT BEFORE THE FIRST RELEASE: the card waits for version.json, and draws only when it says
-     released: true. Not an Android browser, no answer, or not out yet: no card, and only an
-     Android browser asks at all. */
-  if (typeof shell.where !== 'function' || shell.where(env) !== 'android' || typeof shell.version !== 'function') {
-    return Promise.resolve(null);
-  }
+  env.iosHref = BASE + 'ios/';
   let store = d.store;
   if (store === undefined) { try { store = root.sessionStorage; } catch (_) { store = null; } }
+  const w = typeof shell.where === 'function' ? shell.where(env) : '';
+  /* AN IPHONE GETS THE IPHONE APP'S CARD, from its own release file, and never the Android one */
+  if (w === 'ios') {
+    if (typeof shell.iosVersion !== 'function') return Promise.resolve(null);
+    return shell.iosVersion(BASE + 'ios/version.json', { store }).then(ver => {
+      const card = shell.appCard(env, ver);
+      return card ? drawAppCard(doc, host, card) : null;
+    }, () => null);
+  }
+  /* NOT BEFORE THE FIRST RELEASE: the card waits for version.json, and draws only when it says
+     released: true. Not an Android browser or an iPhone, no answer, or not out yet: no card,
+     and only those two ask at all. */
+  if (w !== 'android' || typeof shell.version !== 'function') {
+    return Promise.resolve(null);
+  }
   return shell.version(BASE + 'android/version.json', { store }).then(ver => {
     const card = shell.appCard(env, ver);
     return card ? drawAppCard(doc, host, card) : null;
@@ -191,13 +202,16 @@ function drawAppCard(doc, host, card) {
   a.href = card.href;
   const t = el('span', 't');
   const v = el('span', 'v');
-  t.append(el('span', null, 'Get the Android app'), v);
+  const ios = card.platform === 'ios';
+  t.append(el('span', null, ios ? 'Get the iPhone app' : 'Get the Android app'), v);
   const go = el('span', 'go', '→');
   go.setAttribute('aria-hidden', 'true');
   a.append(
-    el('span', 'k', 'EPINOIΛ for Android'),
+    el('span', 'k', ios ? 'EPINOIΛ for iPhone' : 'EPINOIΛ for Android'),
     t,
-    el('span', 'd', 'Its own icon and window, and game alerts that pop up. It shows the live site, so it needs a connection and Chrome on the phone.'),
+    el('span', 'd', ios
+      ? 'Its own icon and window, and game alerts on your lock screen. Free on the App Store. It shows the live site, so it needs a connection.'
+      : 'Its own icon and window, and game alerts that pop up. It shows the live site, so it needs a connection and Chrome on the phone.'),
     go
   );
   if (card.versionName) v.textContent = 'v' + card.versionName;

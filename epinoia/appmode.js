@@ -24,10 +24,12 @@
       the reader chose dark), and theme-color to match, so a light page never
       flashes the dark bar and a dark reader on HOME (which ships #f3faf6) gets
       the dark one.
-   2. App detection: the epinoia_app sessionStorage flag, ?source=pwa|twa, the
-      Android launcher's own shell=/notif=/chan= (Chrome on Android), an
+   2. App detection: the epinoia_app sessionStorage flag, ?source=pwa|twa|ios, the
+      Android launcher's own shell=/notif=/chan= (Chrome on Android), the iPhone
+      app's window.EpinoiaNative (or its EpinoiaApp-iOS user agent), an
       android-app:// referrer, display-mode standalone, or iOS's
-      navigator.standalone. In the app: html.m-app, window.epinoiaApp = true,
+      navigator.standalone. In the app: html.m-app (and html.m-ios-app in the
+      iPhone app), window.epinoiaApp = true,
       the ground colour on the root (no white or black flash between pages;
       skipped where the tag carries data-no-ground), and the flag saved for
       the rest of the session.
@@ -53,6 +55,11 @@
       followed. /epinoia/ links, same-page anchors, downloads, modified or
       non-primary clicks, clicks a page script already handled, and links that
       name their own target are left exactly as they are.
+   6. AN IPHONE NEVER SEES THE ANDROID DOWNLOAD. On an iPhone or iPad, in a
+      browser or in either app, /epinoia/android/ is replaced with
+      /epinoia/ios/ before it paints (android/#iosSec, the old Home Screen
+      steps, becomes ios/#homeScreen). Runs before the app check, so a plain
+      Safari tab gets it too.
    ============================================================================ */
 (function () {
   var doc = document;
@@ -94,21 +101,49 @@
   try { ua = String((window.navigator && window.navigator.userAgent) || ''); } catch (_) { ua = ''; }
   var launcher = !!q && /^[1-9]\d*$/.test(param('shell') || '') && q.has('notif') && q.has('chan')
     && /Android/i.test(ua) && !/SamsungBrowser/i.test(ua);
+  /* THE IPHONE APP (ios/) says so itself: it defines window.EpinoiaNative before any page
+     script runs, on every page it shows, and only on this origin. Its user agent carries
+     EpinoiaApp-iOS/<build> as well, for a page that reads before the object exists. */
+  var nativeIOS = false;
+  try {
+    nativeIOS = !!(window.EpinoiaNative && window.EpinoiaNative.platform === 'ios')
+      || (/EpinoiaApp-iOS\/\d+/.test(ua) && /iPhone|iPad|iPod/.test(ua));
+  } catch (_) { nativeIOS = false; }
 
   var app = stored
-    || source === 'pwa' || source === 'twa'
+    || source === 'pwa' || source === 'twa' || source === 'ios'
+    || nativeIOS
     || launcher
     || referrer.indexOf('android-app://') === 0
     || media('(display-mode: standalone)')
     || !!(window.navigator && window.navigator.standalone === true);
 
   window.epinoiaApp = app;
+
+  /* ---- 6. AN IPHONE ON THE ANDROID PAGE GOES TO THE IPHONE PAGE, before anything is drawn:
+     an iPhone is never offered the Android download. The Home Screen steps' old anchor
+     (android/#iosSec, in links already sent) lands on the same steps there. iPadOS asking for
+     the desktop site says Macintosh with a touch screen. ---- */
+  var iphone = /iPhone|iPad|iPod/.test(ua);
+  try { iphone = iphone || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (_) { /* as it was */ }
+  if (iphone && /^\/epinoia\/android\/(index\.html)?$/.test(location.pathname || '')) {
+    root.style.display = 'none';
+    try {
+      location.replace('/epinoia/ios/' + (location.hash === '#iosSec' ? '#homeScreen' : (location.hash || '')));
+      return;
+    } catch (_) {
+      root.style.display = '';     // could not leave: the Android page beats a blank one
+    }
+  }
   if (!app) return;
 
   var me = doc.currentScript;
   var attr = function (k) { return me && me.getAttribute ? me.getAttribute(k) : null; };
 
   root.classList.add('m-app');
+  /* html.m-ios-app: what only the iPhone app hides (Google sign-in, which Google refuses inside
+     an app's web view; buying a membership, which the App Store only allows through Apple) */
+  if (nativeIOS) root.classList.add('m-ios-app');
   /* A PAGE THAT PAINTS ITS OWN GROUND OPTS OUT with data-no-ground. The scorer is always
      dark and paints on body; a background on html would stop body's from reaching the
      canvas, so the light mint would show round it when the page rubber-bands. */

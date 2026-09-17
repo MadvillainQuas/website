@@ -53,7 +53,18 @@
        needsUpdate(sh, ver) the launch's shell build is below version.json's minShell
        cleanVersion(json)   version.json reduced to the fields the site trusts
        version(url, deps)   version.json, fetched at most once a session (sessionStorage
-                            epinoia_android_version), never rejecting: null when unknown */
+                            epinoia_android_version), never rejecting: null when unknown
+
+     THE IPHONE APP (ios/) has its own file, epinoia/ios/version.json, and the same rules: an
+     iPhone is offered it ('ios-app' from installOffer, kind 'ios-app' from promo, HOME's card
+     with platform 'ios') only once that file says released: true (env.iosReleased), and until
+     then keeps the Home Screen steps, now on the iPhone page. An iPhone is never sent to the
+     Android page.
+       cleanIosVersion(json) ios/version.json reduced: { build, version, minShell, appStoreId,
+                            appStore, released }
+       iosVersion(url, deps) that file, once a session (sessionStorage epinoia_ios_version)
+       nativeShell(nat)     the iPhone app's window.EpinoiaNative as { shell: build }, for
+                            needsUpdate, or null */
   const AppShell = (() => {
     const VERSION_KEY = 'epinoia_android_version';
     const whole = v => {
@@ -78,25 +89,51 @@
         if (/^\/epinoia\/android(\/|$)/.test(String((env && env.path) || ''))) return 'none';
         return env.released === true ? 'android-app' : 'web';
       }
-      return w === 'ios' ? 'ios' : 'web';
+      /* AN IPHONE IS OFFERED THE IPHONE APP once epinoia/ios/version.json says it is out
+         (iosReleased), never the Android one; until then Add to Home Screen, as always */
+      if (w === 'ios') {
+        /* the iPhone page says all of it itself, the Home Screen steps included */
+        if (/^\/epinoia\/ios(\/|$)/.test(String((env && env.path) || ''))) return 'none';
+        return env.iosReleased === true ? 'ios-app' : 'ios';
+      }
+      return 'web';
     };
     const cleanVersion = j => {
       if (!j || typeof j !== 'object') return null;
       const name = typeof j.versionName === 'string' && /^\d+(\.\d+){1,3}$/.test(j.versionName) ? j.versionName : '';
       return { versionCode: whole(j.versionCode), versionName: name, minShell: whole(j.minShell), released: j.released === true };
     };
+    /* epinoia/ios/version.json reduced the same way: build, version, minShell, the App Store's
+       numeric id and released. appStore is the listing's https link, or null before there is one. */
+    const cleanIosVersion = j => {
+      if (!j || typeof j !== 'object') return null;
+      const name = typeof j.version === 'string' && /^\d+(\.\d+){1,3}$/.test(j.version) ? j.version : '';
+      const id = /^\d{6,12}$/.test(String(j.appStoreId == null ? '' : j.appStoreId)) ? String(j.appStoreId) : null;
+      const build = whole(j.build);
+      /* released needs a build too, so the Android file (versionCode, no build) is never read as the iPhone's */
+      return { build, version: name, minShell: whole(j.minShell), appStoreId: id,
+               appStore: id ? 'https://apps.apple.com/app/id' + id : null, released: j.released === true && build !== null && build > 0 };
+    };
     const appCard = (env, ver) => {
-      if (where(env) !== 'android') return null;
+      const w = where(env);
+      if (w === 'ios') {
+        const v = cleanIosVersion(ver);
+        if (!v || !v.released) return null;
+        return { href: (env && env.iosHref) || '../ios/', versionName: v.version, platform: 'ios' };
+      }
+      if (w !== 'android') return null;
       const v = cleanVersion(ver);
       if (!v || !v.released) return null;
       return { href: (env && env.href) || '../android/', versionName: v.versionName };
     };
     /* THE APP, SIGNPOSTED ON A PHONE. The standing links to the download page (the rail's
        row, the strip at the end of a page, the notification sheet's line): null on a desktop,
-       in the app, on the download page itself and on the staff tools; on an Android browser,
-       only once the app is out; on an iPhone, the page's Home Screen steps, unless Epinoia is
-       already opened from the Home Screen. href is relative to the rail's root. */
-    const NO_PROMO = /^\/epinoia\/(android|admin|app|edit|embed|broadcast|api|signin|join|score|clockcam)(\/|$)/;
+       in the app, on the download pages themselves and on the staff tools; on an Android
+       browser, the Android app, only once it is out; on an iPhone, the iPhone app once IT is out
+       (iosReleased), and until then the iPhone page's Home Screen steps, unless EPINOIΛ is
+       already opened from the Home Screen. An iPhone is never pointed at the Android page.
+       href is relative to the rail's root. */
+    const NO_PROMO = /^\/epinoia\/(android|ios|admin|app|edit|embed|broadcast|api|signin|join|score|clockcam)(\/|$)/;
     const promo = env => {
       const e = env || {};
       if (NO_PROMO.test(String(e.path || ''))) return null;
@@ -105,8 +142,12 @@
         return { kind: 'android', href: 'android/', icon: 'android/icon-192.png', row: 'get the app',
           title: 'Get the EPINOIΛ app', sub: 'Scores, fixtures and game alerts that pop up, in an app of its own.' };
       }
+      if (w === 'ios' && e.iosReleased === true) {
+        return { kind: 'ios-app', href: 'ios/', icon: 'ios/icon-192.png', row: 'get the app',
+          title: 'Get the EPINOIΛ app', sub: 'Scores, fixtures and game alerts on your iPhone, in an app of its own.' };
+      }
       if (w === 'ios' && e.standalone !== true) {
-        return { kind: 'ios', href: 'android/#iosSec', icon: 'brand/epinoia-mark-192.png', row: 'add to home screen',
+        return { kind: 'ios', href: 'ios/#homeScreen', icon: 'brand/epinoia-mark-192.png', row: 'add to home screen',
           title: 'EPINOIΛ on your iPhone', sub: 'Add it to your Home Screen: it opens full screen, with game alerts.' };
       }
       return null;
@@ -126,30 +167,44 @@
        (a new minShell reaches the app on its next launch, which is when an update could be
        installed anyway); a failure is not kept, so the next page tries again. Within one page
        the promise itself is shared. */
-    let pending = null;
+    /* THE IPHONE APP'S FILE is iosVersion(url, deps): the same once-a-session fetch, kept under
+       its own key and reduced by cleanIosVersion, with its own shared promise. */
+    const IOS_VERSION_KEY = 'epinoia_ios_version';
+    const pending = new Map();
     const version = (url, deps) => {
       const d = deps || {};
       const store = d.store;
+      const key = d.key || VERSION_KEY;
+      const clean = typeof d.clean === 'function' ? d.clean : cleanVersion;
       try {
-        const hit = cleanVersion(JSON.parse((store && store.getItem(VERSION_KEY)) || 'null'));
+        const hit = clean(JSON.parse((store && store.getItem(key)) || 'null'));
         if (hit) return Promise.resolve(hit);
       } catch (_) { /* a spoilt copy is fetched again */ }
-      if (pending && !d.fresh) return pending;
+      if (pending.has(key) && !d.fresh) return pending.get(key);
       const get = d.fetch || (typeof fetch === 'function' ? fetch : null);
       if (!get) return Promise.resolve(null);
-      pending = Promise.resolve()
+      const p = Promise.resolve()
         .then(() => get(url, { cache: 'no-store' }))
         .then(r => (r && r.ok ? r.json() : null))
         .then(j => {
-          const v = cleanVersion(j);
-          if (v) { try { store && store.setItem(VERSION_KEY, JSON.stringify(v)); } catch (_) { /* private mode */ } }
-          else pending = null;
+          const v = clean(j);
+          if (v) { try { store && store.setItem(key, JSON.stringify(v)); } catch (_) { /* private mode */ } }
+          else pending.delete(key);
           return v;
         })
-        .catch(() => { pending = null; return null; });
-      return pending;
+        .catch(() => { pending.delete(key); return null; });
+      pending.set(key, p);
+      return p;
     };
-    return { where, installOffer, appCard, promo, readShell, needsUpdate, cleanVersion, version, VERSION_KEY };
+    const iosVersion = (url, deps) => version(url, Object.assign({}, deps || {}, { key: IOS_VERSION_KEY, clean: cleanIosVersion }));
+    /* THE IPHONE APP SAYS WHICH BUILD IT IS through window.EpinoiaNative: { shell: build } in the
+       shape readShell gives the Android launcher's report, so needsUpdate reads both */
+    const nativeShell = nat => {
+      const n = nat && nat.platform === 'ios' ? whole(nat.build) : null;
+      return n !== null && n > 0 ? { shell: n, platform: 'ios' } : null;
+    };
+    return { where, installOffer, appCard, promo, readShell, needsUpdate, cleanVersion, version, VERSION_KEY,
+             cleanIosVersion, iosVersion, IOS_VERSION_KEY, nativeShell };
   })();
   window.EpinoiaAppShell = AppShell;
 
@@ -633,11 +688,15 @@
      which is the problem the Android app exists to solve. It is offered after the same 2.5 s
      as the iPhone's, whether or not the browser fired beforeinstallprompt, and never on the
      download page itself. ONLY ONCE IT IS OUT: until version.json says released: true, an
-     Android browser keeps the web-app offer. iPhone and desktop are exactly as they were. */
+     Android browser keeps the web-app offer. An iPhone gets the same treatment from the iPhone
+     app once epinoia/ios/version.json says it is out (showIosApp), and the Home Screen steps
+     until then; desktop is exactly as it was. */
   let installEvt = null, installBanner = null;
   /* set once version.json says the Android app is out (released: true); until then an
      Android browser is offered the web app, exactly as before the app existed */
   let appReleased = false;
+  /* the same for the iPhone app: set once epinoia/ios/version.json says released: true */
+  let iosReleased = false;
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const dismissed = () => { try { return (+localStorage.getItem('epinoia_install_dismissed') || 0) > Date.now() - 14 * 86400000; } catch (_) { return false; } };
@@ -645,7 +704,7 @@
     app: window.epinoiaApp === true,
     mApp: document.documentElement.classList.contains('m-app'),
     ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints,
-    path: location.pathname, released: appReleased
+    path: location.pathname, released: appReleased, iosReleased
   });
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});
@@ -656,6 +715,7 @@
     if (offer === 'none') return;
     if (!force && (dismissed() || window.innerWidth > 900)) return;
     if (offer === 'android-app') { showAndroidApp(); return; }
+    if (offer === 'ios-app') { showIosApp(); return; }
     if (!installEvt && !isIOS() && !force) return;
     installBanner = el('div', 'ep-install');
     const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
@@ -700,6 +760,22 @@
     installBanner.append(ic, tx, go, x);
     document.body.appendChild(installBanner);
   }
+  /* THE IPHONE APP, OFFERED to an iPhone once it is out: the same card and dismissal, pointing
+     at the iPhone page (its App Store button), never at the Android one */
+  function showIosApp() {
+    installBanner = el('div', 'ep-install ep-app-offer');
+    const ic = el('img'); ic.src = root + 'ios/icon-192.png'; ic.alt = '';
+    const tx = el('div', 'tx');
+    tx.appendChild(el('b', null, 'Get the EPINOIΛ app for iPhone'));
+    tx.appendChild(el('span', null, 'Scores, fixtures and your clubs one tap away, with game alerts. Free on the App Store.'));
+    const go = el('a', 'go', 'get it'); go.href = root + 'ios/';
+    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'not now';
+    const close = () => { try { localStorage.setItem('epinoia_install_dismissed', String(Date.now())); } catch (_) {} if (installBanner) installBanner.remove(); installBanner = null; };
+    go.addEventListener('click', close);
+    x.onclick = close;
+    installBanner.append(ic, tx, go, x);
+    document.body.appendChild(installBanner);
+  }
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(false); });
   window.addEventListener('appinstalled', () => { if (installBanner) { installBanner.remove(); installBanner = null; } });
   window.epinoiaInstall = () => showInstall(true);
@@ -707,7 +783,16 @@
   {
     const env = shellEnv();
     const offer = AppShell.installOffer(env);
-    if (offer === 'ios') setTimeout(() => showInstall(false), 2500);
+    if (offer === 'ios') {
+      /* AN IPHONE ASKS ios/version.json first (once a session, shared with HOME's card): the
+         iPhone app when it is out, the Home Screen steps when it is not or there is no answer */
+      let store = null;
+      try { store = window.sessionStorage; } catch (_) { store = null; }
+      AppShell.iosVersion(root + 'ios/version.json', { store }).then(ver => {
+        if (ver && ver.released === true) iosReleased = true;
+        setTimeout(() => showInstall(false), 2500);
+      });
+    }
     else if (offer === 'web' && AppShell.where(env) === 'android') {
       /* AN ANDROID BROWSER ASKS version.json (once a session, shared with HOME's card) whether
          the app is out. Not yet, or no answer: nothing on a timer, and beforeinstallprompt
@@ -732,10 +817,14 @@
   const promoReady = (() => {
     const env = shellEnv();
     const w = AppShell.where(env);
-    if (w === 'ios') return Promise.resolve(AppShell.promo(Object.assign(env, { standalone: standalone() })));
-    if (w !== 'android') return Promise.resolve(null);
+    if (w !== 'android' && w !== 'ios') return Promise.resolve(null);
     let store = null;
     try { store = window.sessionStorage; } catch (_) { store = null; }
+    if (w === 'ios') {
+      return AppShell.iosVersion(root + 'ios/version.json', { store })
+        .then(ver => AppShell.promo(Object.assign(env, { standalone: standalone(), iosReleased: !!ver && ver.released === true })),
+              () => AppShell.promo(Object.assign(env, { standalone: standalone() })));
+    }
     return AppShell.version(root + 'android/version.json', { store })
       .then(ver => AppShell.promo(Object.assign(env, { released: !!ver && ver.released === true })), () => null);
   })();
@@ -767,7 +856,7 @@
     promoNow = p;
     if (!p) return;
     navFoot.insertBefore(promoRow(p), adminRow);
-    if (p.kind === 'android' && document.getElementById('homeApp')) return;
+    if ((p.kind === 'android' || p.kind === 'ios-app') && document.getElementById('homeApp')) return;
     const frame = document.querySelector('.ep-frame') || document.querySelector('body > .wrap');
     if (!frame) return;
     const foot = Array.prototype.find.call(frame.children, c => c.tagName === 'FOOTER' || c.classList.contains('foot'));
@@ -783,16 +872,18 @@
      because an app that is too old stays too old until it is updated. Not on the download
      page, which says the same thing in its own words. */
   const UPDATE_DISMISSED = 'epinoia_update_dismissed';
-  function showUpdate(ver) {
+  function showUpdate(ver, ios) {
     const bar = el('div', 'ep-install ep-update');
     bar.setAttribute('role', 'status');
-    const ic = el('img'); ic.src = root + 'android/icon-192.png'; ic.alt = '';
+    const ic = el('img'); ic.src = root + (ios ? 'ios/' : 'android/') + 'icon-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
     tx.appendChild(el('b', null, 'Update the EPINOIΛ app'));
-    tx.appendChild(el('span', null, ver.versionName
-      ? 'Version ' + ver.versionName + ' is ready. Some things on the site need it.'
+    const name = ios ? ver.version : ver.versionName;
+    tx.appendChild(el('span', null, name
+      ? 'Version ' + name + ' is ready. Some things on the site need it.'
       : 'A new version is ready. Some things on the site need it.'));
-    const go = el('a', 'go', 'update'); go.href = root + 'android/';
+    /* the iPhone app updates from the App Store listing; its page links it */
+    const go = el('a', 'go', 'update'); go.href = ios && ver.appStore ? ver.appStore : root + (ios ? 'ios/' : 'android/');
     const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'later';
     const close = () => { try { sessionStorage.setItem(UPDATE_DISMISSED, String(ver.minShell)); } catch (_) {} bar.remove(); };
     x.onclick = close;
@@ -803,7 +894,19 @@
     let store = null;
     try { store = window.sessionStorage; } catch (_) { store = null; }
     if (!store || AppShell.where(shellEnv()) !== 'app') return;
-    if (/^\/epinoia\/android(\/|$)/.test(location.pathname)) return;
+    if (/^\/epinoia\/(android|ios)(\/|$)/.test(location.pathname)) return;
+    /* the iPhone app's build comes from the app itself, and its minShell from ios/version.json */
+    const nat = AppShell.nativeShell(window.EpinoiaNative);
+    if (nat) {
+      AppShell.iosVersion(root + 'ios/version.json', { store }).then(ver => {
+        if (!AppShell.needsUpdate(nat, ver)) return;
+        let gone = null;
+        try { gone = store.getItem(UPDATE_DISMISSED); } catch (_) { gone = null; }
+        if (gone === String(ver.minShell)) return;
+        showUpdate(ver, true);
+      });
+      return;
+    }
     const sh = AppShell.readShell(store);
     if (!sh || !(Number(sh.shell) > 0)) return;          // not the Android app: nothing to update
     AppShell.version(root + 'android/version.json', { store }).then(ver => {

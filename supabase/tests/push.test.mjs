@@ -1154,18 +1154,22 @@ console.log('\nwired into the pages');
   /* the Android app on the profile page (roadmap Phase 7 and 8) */
   ok('the card has Open notification settings and the locked-phone test, both hidden until me.js shows them',
      /<a class="ep-btn hide" id="pushSettings"/.test(page) && /<button class="ep-btn hide" id="pushTestLocked"/.test(page));
-  ok('...shown only in the app, the settings link taken from push.js',
-     /pushSettings: app,/.test(me) && /pushTestLocked: app && st === 'on'/.test(me) && /\$\('#pushSettings'\)\.href = P\.settingsIntent/.test(me));
+  ok('...shown only in an app (the locked test only in the Android one), the settings link taken from push.js',
+     /pushSettings: app \|\| iosApp,/.test(me) && /pushTestLocked: app && st === 'on'/.test(me) && /if \(app \|\| iosApp\) \$\('#pushSettings'\)\.href = P\.settingsIntent/.test(me));
   ok('...the locked-phone test asks for a 10 s delay and ends on "did it pop up?"',
      /P\.test\(\{ delay: 10 \}\)/.test(me) && /pending\.then\(r => \{ if \(r && r\.ok\) askSeen\(\); \}\)/.test(me));
   ok('...the check\'s advice and "your phone is hiding it" draw the settings action when push.js gives one',
      /if \(r\.advice\.action\)/.test(me) && /if \(h\.action\) acts\.append\(settingsLink\(h\.action\)\)/.test(me));
-  ok('the install button never shows in the app', /installBtn: !app && !standaloneApp\(\)/.test(me));
-  ok('...on an Android browser it offers the Android app (nav.js\'s own decision), labelled so, and goes to ../android/',
-     /const offerApp = !app && androidAppOffer\(\);/.test(me) && /S\.installOffer\(\{/.test(me) && /=== 'android-app'/.test(me) &&
-     /installBtn: !app && !standaloneApp\(\) && \(offerApp \? st !== 'on'/.test(me) &&
-     /android: 'Get the EPINOIΛ app for Android'/.test(me) && /\$\('#installBtn'\)\.textContent = offerApp \? INSTALL_WORDS\.android : INSTALL_WORDS\.web/.test(me) &&
-     /if \(androidAppOffer\(\)\) \{ location\.href = '\.\.\/android\/'; return; \}/.test(me));
+  ok('the install button never shows in either app', /installBtn: !app && !iosApp && !standaloneApp\(\)/.test(me));
+  ok('...it offers the phone\'s own app (nav.js\'s own decision), labelled so, and goes to its page: ../android/ or ../ios/',
+     /const offer = app \|\| iosApp \? null : appOffer\(\);/.test(me) && /S\.installOffer\(\{/.test(me) && /o === 'android-app' \|\| o === 'ios-app'/.test(me) &&
+     /released: meAppReleased, iosReleased: meIosReleased/.test(me) &&
+     /installBtn: !app && !iosApp && !standaloneApp\(\) && \(offerApp \? st !== 'on'/.test(me) &&
+     /android: 'Get the EPINOIΛ app for Android'/.test(me) && /ios: 'Get the EPINOIΛ app for iPhone'/.test(me) &&
+     /textContent = offer === 'ios-app' \? INSTALL_WORDS\.ios : offer === 'android-app' \? INSTALL_WORDS\.android : INSTALL_WORDS\.web/.test(me) &&
+     /if \(o === 'android-app'\) \{ location\.href = '\.\.\/android\/'; return; \}/.test(me) && /if \(o === 'ios-app'\) \{ location\.href = '\.\.\/ios\/'; return; \}/.test(me));
+  ok('...an iPhone asks the iPhone app\'s release file, an Android browser the Android one',
+     /S\.iosVersion\('\.\.\/ios\/version\.json', \{ store \}\)/.test(me) && /S\.version\('\.\.\/android\/version\.json', \{ store \}\)/.test(me));
   ok('the other sign-ups: only in the app with this phone on, the fan\'s own rows, deleted by id',
      /if \(st !== 'on' \|\| !sb\) \{ box\.classList\.add\('hide'\); return; \}\r?\n\s*const others = await otherSignups\(\);/.test(me) &&
      /\.from\('push_subscriptions'\)\.delete\(\)\.in\('id', others\.map\(r => r\.id\)\)/.test(me) &&
@@ -1243,8 +1247,238 @@ console.log('\nthe sheet points an Android browser at the app (nav.js EpinoiaApp
   T.env(null);
   const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'push.js'), 'utf8');
   const fnBody = name => src.slice(src.indexOf('function ' + name + '('), src.indexOf('\n  }\n', src.indexOf('function ' + name + '(')));
-  ok('the ask links the app when there is one', /const app = androidApp\(\);[\s\S]*Get the app[\s\S]*a\.href = app\.href/.test(fnBody('ask')));
-  ok('"your phone is hiding it" offers the app as a way out', /const app = androidApp\(\);[\s\S]*'Get the EPINOIΛ app'[\s\S]*a\.href = app\.href/.test(fnBody('hidden')));
+  ok('the ask links the app when there is one', /const app = phoneApp\(\);[\s\S]*APP_NAME\[app\.platform\][\s\S]*Get the app[\s\S]*a\.href = app\.href/.test(fnBody('ask')));
+  ok('"your phone is hiding it" offers the app as a way out', /const app = phoneApp\(\);[\s\S]*APP_NAME\[app\.platform\][\s\S]*'Get the EPINOIΛ app'[\s\S]*a\.href = app\.href/.test(fnBody('hidden')));
+  ok('an iPhone tab\'s install sheet offers the iPhone app once it is out, before the Home Screen steps',
+     /const app = phoneApp\(\);\s*if \(app && app\.platform === 'iphone'\)[\s\S]*Get the EPINOIΛ app[\s\S]*return;[\s\S]*Add to Home Screen/.test(fnBody('install')));
+}
+
+console.log('\nthe app for the phone in hand: the iPhone app on an iPhone, never the Android one');
+{
+  const promo = kind => ({ current: () => (kind ? { kind, href: kind === 'ios-app' ? 'ios/' : 'android/' } : null), href: p => '../' + p.href });
+  T.env({ EpinoiaAppPromo: promo('ios-app') });
+  eq('an iPhone with its app out: the iPhone app', T.phoneApp(), { href: '../ios/', platform: 'iphone' });
+  eq('...and androidApp() stays null there', T.androidApp(), null);
+  T.env({ EpinoiaAppPromo: promo('android') });
+  eq('an Android browser: the Android app', T.phoneApp(), { href: '../android/', platform: 'android' });
+  T.env({ EpinoiaAppPromo: promo('ios') });
+  eq('an iPhone before its app is out (Home Screen steps): nothing', T.phoneApp(), null);
+  T.env(null);
+  const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'push.js'), 'utf8');
+  ok('the words name the right app', /iphone: 'the EPINOIΛ app for iPhone'/.test(src) && /android: 'the EPINOIΛ app for Android'/.test(src));
+}
+
+/* ======================================================= the iPhone app === */
+console.log('\nthe iPhone app: notifications through Apple, via window.EpinoiaNative');
+{
+  const TOK = 'ab12'.repeat(16);
+  const TOK2 = 'cd34'.repeat(16);
+  /* the app's bridge: o.permission (before), o.answer (after push.enable), o.token, o.env */
+  const iphoneApp = (o = {}) => {
+    const b = browser(Object.assign({ ua: UA.iphone17 + ' EpinoiaApp-iOS/1', platform: 'iPhone', touch: 5, noSW: true, noPush: true, noNotification: true }, o));
+    const calls = [];
+    const listeners = new Set();
+    const nat = {
+      platform: 'ios', build: 1, version: '1.0.0', permission: o.nPermission || 'default', token: o.nToken === undefined ? null : o.nToken,
+      apnsEnv: o.apnsEnv || 'production',
+      call: async (name, args) => {
+        calls.push(name);
+        if (o.bridgeThrows) throw new Error('not allowed');
+        if (name === 'push.enable') {
+          if (o.enableAnswer) return o.enableAnswer;
+          return { permission: o.answer || 'granted', token: o.token === undefined ? TOK : o.token, apnsEnv: nat.apnsEnv };
+        }
+        if (name === 'push.status') return { permission: nat.permission, token: o.statusToken !== undefined ? o.statusToken : nat.token, apnsEnv: nat.apnsEnv };
+        return {};
+      }
+    };
+    return Object.assign(b, { nat, natCalls: calls, listeners,
+      emit: detail => [...listeners].forEach(fn => fn({ detail })) });
+  };
+  /* browser() installs its env through T.env; add the bridge and window events to it */
+  const withNative = (b) => {
+    const add = (t, fn) => { if (t === 'epinoia-native') b.listeners.add(fn); };
+    const remove = (t, fn) => { if (t === 'epinoia-native') b.listeners.delete(fn); };
+    T.env(Object.assign({}, b._env, { EpinoiaNative: b.nat, addEventListener: add, removeEventListener: remove }));
+    return b;
+  };
+  const app = (o = {}) => {
+    let captured = null;
+    const realEnv = T.env;
+    T.env = e => { captured = e; realEnv(e); };
+    const b = iphoneApp(o);
+    T.env = realEnv;
+    b._env = captured;
+    return withNative(b);
+  };
+
+  {
+    const b = app();
+    eq('quick(): iOS has not been asked yet -> default', T.quick(), 'default');
+    eq('state(): off, not ios-install (the app needs no Home Screen)', await P.state(), 'off');
+    eq('platform: the iPhone app', T.platform(), 'ios-native');
+    eq('client kind: ios (0130)', T.clientKind(), 'ios');
+    ok('inIOSApp() is true, inApp() (the Android app) is not', P.inIOSApp() === true && P.inApp() === false);
+    eq('settingsIntent in the app is the app\'s own link', P.settingsIntent, 'epinoia://notification-settings');
+    eq('help() carries the button into iOS settings', P.help().action, { label: 'Open notification settings', href: 'epinoia://notification-settings' });
+  }
+  {
+    const b = app();
+    signIn(b.ls);
+    const r = await P.enable();
+    eq('enable(): iOS asked through the app, Apple\'s token saved, on', r, { ok: true, state: 'on', message: P.MESSAGES.on });
+    eq('...one bridge call', b.natCalls, ['push.enable']);
+    const [up, pref] = b.calls.fetch;
+    eq('...the row: apns:production:<token>, no Web Push keys, client ios', up.body,
+       { user_id: 'u1', endpoint: 'apns:production:' + TOK, ua: UA.iphone17 + ' EpinoiaApp-iOS/1', client: 'ios' });
+    eq('...upserted on endpoint', [up.method, up.url, up.headers.Prefer],
+       ['POST', 'https://' + REF + '.supabase.co/rest/v1/push_subscriptions?on_conflict=endpoint', 'resolution=merge-duplicates']);
+    eq('...then notify_push on', pref.body, { p: { notify_push: true } });
+    eq('...no worker, no subscribe, no browser prompt', [b.calls.register.length, b.calls.subscribe.length, b.calls.perm], [0, 0, 0]);
+    eq('...remembered as on', b.ls.getItem(T.IOS_ON_KEY), 'apns:production:' + TOK);
+    b.nat.permission = 'granted'; b.nat.token = TOK;
+    eq('state(): on', await P.state(), 'on');
+    eq('endpoint(): the apns address, so the profile can tell this phone\'s row', await P.endpoint(), 'apns:production:' + TOK);
+  }
+  {
+    const b = app({ apnsEnv: 'sandbox' });
+    signIn(b.ls);
+    await P.enable();
+    eq('a development build saves a sandbox address', b.calls.fetch[0].body.endpoint, 'apns:sandbox:' + TOK);
+  }
+  {
+    const b = app({ token: TOK.toUpperCase() });
+    signIn(b.ls);
+    await P.enable();
+    eq('an upper-case token is saved lower case (0130 only takes lower-case hex)', b.calls.fetch[0].body.endpoint, 'apns:production:' + TOK);
+  }
+  {
+    const b = app({ answer: 'denied', token: null });
+    signIn(b.ls);
+    const r = await P.enable();
+    eq('iOS says no: denied, with the iPhone words, nothing saved', [r.state, r.message, b.calls.fetch.length], ['denied', P.MESSAGES.nativeDenied, 0]);
+  }
+  {
+    const b = app({ answer: 'provisional' });
+    signIn(b.ls);
+    ok('provisional delivers, so it counts as allowed', (await P.enable()).ok);
+  }
+  {
+    const b = app({ token: null });
+    signIn(b.ls);
+    const r = await P.enable();
+    eq('allowed but no token from Apple: off, and says so', [r.ok, r.state, r.message, b.calls.fetch.length], [false, 'off', P.MESSAGES.nativeNoToken, 0]);
+  }
+  {
+    const b = app({ token: 'nothex' });
+    signIn(b.ls);
+    eq('a token that is not hex is no token', (await P.enable()).message, P.MESSAGES.nativeNoToken);
+  }
+  {
+    const b = app({ bridgeThrows: true });
+    signIn(b.ls);
+    eq('the bridge refuses: a plain message, no throw', (await P.enable()).message, P.MESSAGES.nativeFailed);
+  }
+  {
+    const b = app();
+    eq('signed out: asked to sign in, iOS never asked', [(await P.enable()).message, b.natCalls.length], [P.MESSAGES.signedOut, 0]);
+  }
+  {
+    /* the phone was another account's: RLS refuses the upsert, the claim takes it over, the save goes through */
+    let saves = 0;
+    const b = app({ respond: (u) => (u.includes('push_subscriptions') ? (++saves === 1 ? 403 : 201) : u.includes('push_claim_device') ? 200 : 204) });
+    signIn(b.ls);
+    const r = await P.enable();
+    const urls = b.calls.fetch.map(f => f.url.replace('https://' + REF + '.supabase.co', ''));
+    ok('another account\'s iPhone: claimed (0130), saved, on', r.ok && urls[0].startsWith('/rest/v1/push_subscriptions') &&
+       urls[1] === '/rest/v1/rpc/push_claim_device' && urls[2].startsWith('/rest/v1/push_subscriptions'), urls.join(' '));
+    eq('...claiming exactly this address', b.calls.fetch[1].body, { p_endpoint: 'apns:production:' + TOK });
+  }
+  {
+    /* a token that changed since it was turned on: the new one saved, the old row removed */
+    const b = app({ token: TOK2 });
+    signIn(b.ls);
+    b.ls.setItem(T.IOS_ON_KEY, 'apns:production:' + TOK);
+    await P.enable();
+    const del = b.calls.fetch.find(f => f.method === 'DELETE');
+    ok('a changed token: the new address saved and the old row deleted', b.calls.fetch[0].body.endpoint === 'apns:production:' + TOK2 &&
+       del && decodeURIComponent(del.url).endsWith('endpoint=eq.apns:production:' + TOK) && b.ls.getItem(T.IOS_ON_KEY) === 'apns:production:' + TOK2,
+       JSON.stringify(b.calls.fetch.map(f => [f.method, f.url])));
+  }
+  {
+    const b = app({ nPermission: 'granted', nToken: TOK });
+    signIn(b.ls);
+    b.ls.setItem(T.IOS_ON_KEY, 'apns:production:' + TOK);
+    const r = await P.disable();
+    const del = b.calls.fetch.find(f => f.method === 'DELETE');
+    ok('disable(): the row goes, the flag goes, state off', r.ok && r.state === 'off' && !!del && b.ls.getItem(T.IOS_ON_KEY) === null, JSON.stringify(r));
+    eq('...and iOS keeps its permission (nothing to unsubscribe)', b.natCalls.includes('push.enable'), false);
+  }
+  {
+    const b = app({ nPermission: 'granted', nToken: TOK2, statusToken: TOK2 });
+    signIn(b.ls);
+    b.ls.setItem(T.IOS_ON_KEY, 'apns:production:' + TOK);
+    const r = await P.sync();
+    ok('sync(): the token iOS holds today is saved, the old one replaced', r.ok && r.state === 'on' && b.calls.fetch[0].body.endpoint === 'apns:production:' + TOK2 &&
+       b.ls.getItem(T.IOS_ON_KEY) === 'apns:production:' + TOK2);
+  }
+  {
+    const b = app({ nPermission: 'granted', nToken: TOK });
+    signIn(b.ls);
+    eq('sync() when this page never turned it on: off, nothing written', [(await P.sync()).state, b.calls.fetch.length], ['off', 0]);
+  }
+  {
+    const b = app({ nPermission: 'denied' });
+    eq('quick(): denied in iOS settings', T.quick(), 'denied');
+    eq('decide(): no sheet for a denied iPhone', await T.decide(), 'signed-out');
+    signIn(b.ls);
+    eq('...signed in: denied, still no sheet', await T.decide(), 'denied');
+  }
+  {
+    /* a test: the notification is shown while the app is open, and the app says so */
+    const b = app({ nPermission: 'granted', nToken: TOK,
+      json: (u) => (/functions\/v1\/notify$/.test(u) ? { ok: true, sent: 1, devices: [{ service: 'apns', ok: true, status: 200, thisPhone: true }] } : {}) });
+    signIn(b.ls);
+    b.ls.setItem(T.IOS_ON_KEY, 'apns:production:' + TOK);
+    const pending = P.test();
+    await new Promise(r => setTimeout(r, 20));
+    b.emit({ type: 'push', tag: 'test', kind: 'test', shown: true, opened: false, at: 1 });
+    const r = await pending;
+    eq('test(): arrived, from the app\'s own report', r.message, P.MESSAGES.testArrived);
+    const ask = b.calls.fetch.find(f => /functions\/v1\/notify$/.test(f.url));
+    eq('...asking notify with this phone\'s apns address', ask.body, { test: true, endpoint: 'apns:production:' + TOK });
+  }
+  {
+    const b = app({ nPermission: 'granted', nToken: TOK,
+      json: (u) => (/functions\/v1\/notify$/.test(u) ? { ok: true, status: 200, service: 'apns', text: 'Apple accepted it for this iPhone.' }
+                  : /push_subscriptions/.test(u) ? [{ id: 'r1', last_push_at: null, last_push_status: null, last_push_error: null }]
+                  : /fan_prefs/.test(u) ? [{ notify_push: true }] : {}) });
+    signIn(b.ls);
+    const pending = P.check();
+    await new Promise(r => setTimeout(r, 30));
+    b.emit({ type: 'push', tag: 'check', shown: true, at: Date.parse('2026-09-19T15:04:05') });
+    const r = await pending;
+    eq('check(): every step, in order', r.steps.map(s => [s.id, s.ok]),
+       [['browser', true], ['permission', true], ['subscription', true], ['account', true], ['channel', true], ['delivery', true], ['arrival', true]]);
+    eq('...on the iPhone app\'s platform, with the settings button', [r.platform, r.advice.action.href], ['ios-native', 'epinoia://notification-settings']);
+    const chk = b.calls.fetch.find(f => /functions\/v1\/notify$/.test(f.url));
+    eq('...the device check names the apns address and no keys', chk.body, { check: { endpoint: 'apns:production:' + TOK, keys: {} } });
+    ok('...no worker was registered', b.calls.register.length === 0);
+  }
+  {
+    const b = app({ nPermission: 'denied', nToken: TOK });
+    signIn(b.ls);
+    const r = await P.check();
+    ok('check(): notifications off in iOS settings stops at permission, with iOS\'s steps',
+       r.steps.length === 2 && r.steps[1].ok === false && r.advice.lines[0] === T.SETTINGS['ios-native'][0], JSON.stringify(r.steps));
+  }
+  T.env(null);
+  const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'push.js'), 'utf8');
+  ok('every public function takes the app\'s path first', ['enable', 'disable', 'check', 'sync'].every(fn => {
+    const body = src.slice(src.indexOf('async function ' + fn + '('), src.indexOf('async function ' + fn + '(') + 400);
+    return /iosApp\(\)/.test(body);
+  }));
+  ok('the object is only believed when it says platform ios and can be called', /n && n\.platform === 'ios' && typeof n\.call === 'function'/.test(src));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

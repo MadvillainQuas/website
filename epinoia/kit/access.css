@@ -44,6 +44,11 @@
 /* The primary link reads as a button, the secondary as a link: one thing to do
    and one way in for somebody who already did it. 40px tall so a thumb can hit
    it on a phone without zooming. */
+/* THE IPHONE APP SELLS NOTHING (App Store guideline 3.1.1: digital access is bought through
+   Apple's in-app purchase or not at all), so inside it (html.m-ios-app, appmode.js) no page
+   links to the join page's plans or opens Stripe's billing portal. Signing in still unlocks
+   what an account already holds. */
+html.m-ios-app .ep-lock-go, html.m-ios-app .billing-btn{ display:none !important }
 .ep-lock-go{
   display:inline-flex; align-items:center; justify-content:center; min-height:40px;
   padding:8px 16px; box-sizing:border-box;

@@ -7,7 +7,7 @@ name: guard
 on:
   push:
     paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml',
-            '.well-known/**', 'android/**', '.github/workflows/android.yml']
+            '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs']
   pull_request:
   workflow_dispatch:
 
@@ -263,6 +263,18 @@ jobs:
         # right page; push.js decides whether to offer notifications (never on iOS
         # outside the Home Screen app, never after "not now", never when blocked)
         run: node supabase/tests/push.test.mjs
+
+      - name: Notifications to the iPhone app, through Apple
+        # the provider token Apple accepts (ES256, r||s, refreshed on the half hour), a
+        # lineups alert replacing the reminder (collapse id = the web's topic), a dead token
+        # dropped like a dead browser (410), and notify sending an apns: row through APNs
+        run: node supabase/tests/apns.test.mjs
+
+      - name: The website's side of the iPhone app
+        # an iPhone never offered the Android download (the Android page swapped for the
+        # iPhone page before paint), the app recognised as the app, no Google button and no
+        # checkout inside it, the universal-links file, and the privacy notice
+        run: node supabase/tests/ios-web.test.mjs
 
       - name: Notification buttons on a league's own website
         # the button asks for permission inside the tap and never takes the site's own

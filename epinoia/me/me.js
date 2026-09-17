@@ -174,6 +174,8 @@ function standaloneApp() {
 }
 /* inside the Epinoia Android app (push.js decides: the launcher's report, never Samsung Internet) */
 const inAndroidApp = () => { try { return !!(window.EpinoiaPush && window.EpinoiaPush.inApp && window.EpinoiaPush.inApp()); } catch (_) { return false; } };
+/* inside the EPINOIΛ iPhone app (push.js: window.EpinoiaNative), which has iOS's own settings */
+const inIOSApp = () => { try { return !!(window.EpinoiaPush && window.EpinoiaPush.inIOSApp && window.EpinoiaPush.inIOSApp()); } catch (_) { return false; } };
 /* A link styled as the card's buttons, into the app's own notification settings screen. An
    intent: link only opens from a tap, and only the app's package answers it. */
 function settingsLink(action) {
@@ -193,38 +195,49 @@ function settingsTapped() { try { if (window.EpinoiaPush && window.EpinoiaPush.s
    ONLY ONCE THE APP IS OUT: version.json's released (asked once a session, shared with nav.js)
    sets meAppReleased and repaints the card; until then the button offers the web app. */
 let meAppReleased = false;
-function androidAppOffer() {
+/* THE SAME FOR AN IPHONE AND THE IPHONE APP (epinoia/ios/version.json): an iPhone is offered the
+   iPhone app once it is out, and never the Android one */
+let meIosReleased = false;
+/* 'android-app', 'ios-app' or null: the app this phone's browser is offered instead of the web app */
+function appOffer() {
   const S = window.EpinoiaAppShell;
-  if (!S || typeof S.installOffer !== 'function') return false;
+  if (!S || typeof S.installOffer !== 'function') return null;
   try {
-    return S.installOffer({
+    const o = S.installOffer({
       app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
       ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints, path: location.pathname,
-      released: meAppReleased
-    }) === 'android-app';
-  } catch (_) { return false; }
+      released: meAppReleased, iosReleased: meIosReleased
+    });
+    return o === 'android-app' || o === 'ios-app' ? o : null;
+  } catch (_) { return null; }
 }
 function askAppReleased() {
   const S = window.EpinoiaAppShell;
   if (!S || typeof S.version !== 'function' || typeof S.where !== 'function') return;
   try {
-    if (S.where({ app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
-      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints }) !== 'android') return;
+    const w = S.where({ app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
+      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints });
+    if (w !== 'android' && w !== 'ios') return;
     let store = null;
     try { store = window.sessionStorage; } catch (_) { store = null; }
-    S.version('../android/version.json', { store }).then(ver => {
+    const ask = w === 'ios' && typeof S.iosVersion === 'function'
+      ? S.iosVersion('../ios/version.json', { store })
+      : w === 'android' ? S.version('../android/version.json', { store }) : Promise.resolve(null);
+    ask.then(ver => {
       if (!ver || ver.released !== true) return;
-      meAppReleased = true;
+      if (w === 'ios') meIosReleased = true; else meAppReleased = true;
       if (!phoneBusy) paintPhone();
     }, () => {});
   } catch (_) { /* no offer is the safe answer */ }
 }
-const INSTALL_WORDS = { web: 'Add EPINOIΛ to your Home Screen', android: 'Get the EPINOIΛ app for Android' };
+const INSTALL_WORDS = { web: 'Add EPINOIΛ to your Home Screen', android: 'Get the EPINOIΛ app for Android', ios: 'Get the EPINOIΛ app for iPhone' };
 async function paintPhone() {
   const P = window.EpinoiaPush;
   const st = P ? await P.state() : 'unsupported';
   const app = inAndroidApp();
-  const offerApp = !app && androidAppOffer();
+  const iosApp = inIOSApp();
+  const offer = app || iosApp ? null : appOffer();
+  const offerApp = !!offer;
   $('#phoneCard').dataset.state = st;
   $('#phoneState').textContent = P ? PHONE_WORDS[st] : 'Notifications could not be loaded on this page. Reload to try again.';
   /* IN THE APP, "ON" IS ONLY THIS BROWSER'S SIDE. The JavaScript permission can read granted
@@ -235,12 +248,13 @@ async function paintPhone() {
     $('#phoneState').textContent = (st === 'on' ? 'On for this page, but Android is not' : PHONE_WORDS[st] + ' Android is also not') +
       ' letting EPINOIΛ pop up notifications (as of this launch). Tap Open notification settings to allow them.';
   }
-  if (app) $('#pushSettings').href = P.settingsIntent;
-  $('#installBtn').textContent = offerApp ? INSTALL_WORDS.android : INSTALL_WORDS.web;
+  if (app || iosApp) $('#pushSettings').href = P.settingsIntent;
+  $('#installBtn').textContent = offer === 'ios-app' ? INSTALL_WORDS.ios : offer === 'android-app' ? INSTALL_WORDS.android : INSTALL_WORDS.web;
   const show = {
     /* THE ANDROID APP: its own settings screen is always one tap away, and a test can be
-       sent after a wait, so it arrives with the phone locked (roadmap Phase 7) */
-    pushSettings: app,
+       sent after a wait, so it arrives with the phone locked (roadmap Phase 7). The iPhone
+       app has the settings link too (iOS's own notification settings for EPINOIΛ). */
+    pushSettings: app || iosApp,
     pushTestLocked: app && st === 'on',
     pushOn: st === 'off',
     pushTest: st === 'on',
@@ -251,7 +265,7 @@ async function paintPhone() {
     /* the Home Screen is the whole answer on an iPhone, and an offer worth making
        wherever the browser says it can install; an Android browser is offered the Android
        app instead, whether or not it fired beforeinstallprompt */
-    installBtn: !app && !standaloneApp() && (offerApp ? st !== 'on'
+    installBtn: !app && !iosApp && !standaloneApp() && (offerApp ? st !== 'on'
       : (st === 'ios-install' || (st !== 'on' && !!(window.epinoiaCanInstall && window.epinoiaCanInstall()))))
   };
   Object.keys(show).forEach(id => $('#' + id).classList.toggle('hide', !show[id]));
@@ -485,7 +499,9 @@ function wirePhone() {
     });
   });
   $('#installBtn').onclick = () => {
-    if (androidAppOffer()) { location.href = '../android/'; return; }
+    const o = appOffer();
+    if (o === 'android-app') { location.href = '../android/'; return; }
+    if (o === 'ios-app') { location.href = '../ios/'; return; }
     if (window.epinoiaInstall) window.epinoiaInstall();
   };
   $('#pushSettings').addEventListener('click', settingsTapped);
@@ -656,7 +672,9 @@ async function openBilling(subscriptionId, cancel, button) {
 }
 
 function billingButton(text, subscriptionId, cancel) {
-  const b = el('button', 'ep-btn', text);
+  const b = el('button', 'ep-btn billing-btn', text);
+  /* the iPhone app opens no payment pages (App Store guideline 3.1.1; kit/access.css says the same for paywalls) */
+  if (document.documentElement.classList.contains('m-ios-app')) b.style.display = 'none';
   b.type = 'button';
   b.addEventListener('click', () => openBilling(subscriptionId, cancel, b));
   return b;

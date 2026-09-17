@@ -9,7 +9,9 @@
 //   email  one message per person per run, listing everything new, via Resend
 //          (RESEND_API_KEY / CONTACT_FROM, the same pair the contact form uses)
 //   phone  a Web Push to every browser the person subscribed from
-//          (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT)
+//          (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT), and an APNs push to
+//          every Epinoia iPhone app they turned on, whose rows' endpoints start apns:
+//          (0130; APNS_KEY_ID / APNS_TEAM_ID / APNS_KEY_P8, _shared/apns.js)
 //
 // Each row is stamped emailed_at / pushed_at as it goes, so nothing is sent twice. A row
 // older than three days, or past its expires_at (a tip-off reminder after tip-off), is
@@ -42,12 +44,14 @@
 //   { diag: true }             anyone: whether this server can send at all — the VAPID
 //                              pair matches, this runtime encrypts a push a browser can
 //                              read, a push service answers — and how many phones are
-//                              registered, by push service. No personal data.
+//                              registered, by push service. No personal data. Also
+//                              whether Apple takes the iPhone app's key (apns).
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { payloadFor, webpushOptions, isExpired, testPayload, deviceUrl, crestUrl } from '../_shared/pushpayload.js';
 import { serviceOf, explain, decryptPush, makeReceiver, vapidSigned } from '../_shared/pushcheck.js';
+import { isApns, parseApns, sendApns, apnsConfig } from '../_shared/apns.js';
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -288,6 +292,8 @@ Deno.serve(async (req) => {
 /* One push, and what the push service said: never throws. status 0 is this server
    failing before a push service answered, with the error's message as the detail. */
 async function push(s: { endpoint: string; p256dh: string; auth: string }, payload: string, options: Record<string, unknown>) {
+  /* the iPhone app's row: through Apple Push Notification service, same answer shape */
+  if (isApns(s.endpoint)) return await sendApns(s.endpoint, payload, options, { get: (k: string) => Deno.env.get(k) });
   try {
     const r: any = await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, options);
     return { ok: true, status: Number(r?.statusCode) || 201, detail: '' };
@@ -357,7 +363,7 @@ async function sendTest(admin: any, userId: string, site: string, endpoint: stri
   for (const s of subs) {
     const r = await push(s, payload, { TTL: 300, urgency: 'high' });
     const service = serviceOf(s.endpoint);
-    const said = explain(r.status, service);
+    const said = explain(r.status, service, r.detail);
     outcomes.set(s.id, { status: r.status, error: r.ok ? null : r.detail });
     devices.push({ service, status: r.status, ok: r.ok, thisPhone: s.endpoint === endpoint, text: said.text, fix: said.fix,
                    detail: r.ok ? '' : r.detail });
@@ -378,8 +384,10 @@ async function checkPhone(admin: any, sub: any, userId: string | null, site: str
   const endpoint = typeof sub.endpoint === 'string' ? sub.endpoint : '';
   const keys = sub.keys && typeof sub.keys === 'object' ? sub.keys : {};
   const service = serviceOf(endpoint);
-  if (!service || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string'
-      || keys.p256dh.length > 200 || keys.auth.length > 100 || endpoint.length > 2000) {
+  /* the iPhone app holds an Apple token rather than Web Push keys (0130) */
+  const apple = service === 'apns';
+  if (!service || (!apple && (typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string'
+      || keys.p256dh.length > 200 || keys.auth.length > 100)) || endpoint.length > 2000) {
     return { ok: false, status: 0, service, error: 'not a push subscription from a browser this site knows' };
   }
   const now = Date.now();
@@ -397,7 +405,7 @@ async function checkPhone(admin: any, sub: any, userId: string | null, site: str
   const payload = JSON.stringify({ ...testPayload(site, now), title: 'This phone can get notifications',
                                    body: 'The check on your Epinoia profile reached this phone.', tag: 'check', kind: 'check' });
   const r = await push({ endpoint, p256dh: keys.p256dh, auth: keys.auth }, payload, { TTL: 120, urgency: 'high' });
-  const said = explain(r.status, service);
+  const said = explain(r.status, service, r.detail);
 
   /* where the subscription stands in the database, told only about itself */
   let saved: 'yours' | 'another account' | 'no' | 'unknown' = 'unknown';
@@ -421,8 +429,20 @@ async function diagnose(admin: any) {
   const outcome: Record<string, unknown> = {
     ok: false,
     vapid: { configured: !!(pub && priv), subject: /^(mailto:|https:\/\/)/.test(subject) ? 'ok' : 'not a mailto: or https: address' },
-    keyPair: 'not checked', encryption: 'not checked', transport: 'not checked', phones: null
+    keyPair: 'not checked', encryption: 'not checked', transport: 'not checked', apns: 'not checked', phones: null
   };
+  /* THE IPHONE APP (0130): its key is set, this runtime reaches Apple, and Apple takes the key.
+     A push to a token that cannot exist is refused 400 BadDeviceToken when the key is good,
+     403 when it is not, and never reaches anybody. Not part of ok: a site can run without it. */
+  const ac = apnsConfig((k: string) => Deno.env.get(k));
+  if (!ac.configured) {
+    outcome.apns = 'not configured: set APNS_KEY_ID, APNS_TEAM_ID and APNS_KEY_P8 for the iPhone app';
+  } else {
+    const a = await sendApns('apns:production:' + '0'.repeat(64), JSON.stringify({ title: 'Epinoia self-check' }), { TTL: 0 }, { config: ac });
+    outcome.apns = a.status === 410 && /BadDeviceToken/.test(a.detail)
+      ? 'ok (Apple accepted the key and refused a made-up iPhone, as it should)'
+      : 'BROKEN: ' + (a.detail || 'status ' + a.status);
+  }
   if (!pub || !priv) return outcome;
   try {
     webpush.setVapidDetails(subject, pub, priv);
