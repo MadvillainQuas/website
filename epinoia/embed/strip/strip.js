@@ -117,6 +117,12 @@ const POLL_LIVE_MS = 4000;
    least settled, because somebody has just walked into a hall and joined the
    wifi. */
 const POLL_PRIMED_MS = 6000;
+/* AT TIP-OFF, BEFORE THE FIVES. A fixture inside its tip window (half an hour before
+   its tipoff_at until three hours after, still scheduled) is when the scorer writes
+   its starters and its first heartbeat; the strip looks every 12 s then, not 20. */
+const POLL_TIP_MS = 12000;
+const TIP_BEFORE_MS = 30 * 60 * 1000;
+const TIP_AFTER_MS = 3 * 3600 * 1000;
 
 /* APPEARANCE — light or dark, the accent colours, the reader's switch on the bar, and the host
    page's colourway as it changes — is ../theme.js, shared with every other embed, so the strip
@@ -877,6 +883,10 @@ async function load() {
      referee. Worth watching closely; see POLL_PRIMED_MS. */
   primedNow = gs.some(g => statusOf(g) === 'scheduled' &&
     Array.isArray(g.starters) && (g.starters[0] || []).length >= 5);
+  const nowMs = Date.now();
+  tipNow = gs.some(g => statusOf(g) === 'scheduled' && g.tipoff_at &&
+    nowMs - new Date(g.tipoff_at).getTime() > -TIP_BEFORE_MS &&
+    nowMs - new Date(g.tipoff_at).getTime() < TIP_AFTER_MS);
   gs = gs.slice(0, Math.max(limit, liveCount));
 
   /* Rows first: paint() and statusOf() both read through this, and a frame can
@@ -1127,6 +1137,8 @@ siteConfig().catch(() => {}).then(() => { leagueLabel(); return accessReady(); }
 let pollTimer = null;
 /* Set by the last load: a scheduled fixture that already has its fives. */
 let primedNow = false;
+/* Set by the last load: a scheduled fixture inside its tip window. */
+let tipNow = false;
 
 /* ---------------------------------------------------------------------------
    A STRIP NOBODY CAN SEE ASKS FOR NOTHING.
@@ -1174,7 +1186,7 @@ if (typeof IntersectionObserver === 'function') {
 
 function schedule() {
   clearTimeout(pollTimer);
-  const wait = liveNow ? POLL_LIVE_MS : (primedNow ? POLL_PRIMED_MS : POLL_MS);
+  const wait = liveNow ? POLL_LIVE_MS : (primedNow ? POLL_PRIMED_MS : (tipNow ? POLL_TIP_MS : POLL_MS));
   pollTimer = setTimeout(async () => {
     /* Not "stop": reschedule without asking. A strip that cleared its timer
        would need something to start it again, and the two things that can —
