@@ -89,6 +89,10 @@ eq(pl.actions.length, 1, 'the payload carries the actions');
 eq(Object.keys(pl).sort(), ['actions', 'body', 'kind', 'renotify', 'tag', 'timestamp', 'title', 'url'],
    'exactly the keys epinoia/sw.js reads');
 eq(payloadFor({ kind: 'fixture' }, 'https://x.test/epinoia/', NOW).title, 'Epinoia', 'a missing title falls back');
+eq(payloadFor({ kind: 'announcement', title: 'x' }, 'https://x.test/epinoia', NOW).url, 'https://x.test/epinoia/home/',
+   'a row with no link opens HOME, never the splash at the site root');
+eq(payloadFor({ kind: 'announcement', title: 'x', link: '' }, 'https://x.test/epinoia/', NOW).url, 'https://x.test/epinoia/home/',
+   '...an empty link too');
 
 const opts = webpushOptions(row, NOW);
 eq(opts.TTL, 10800, 'web-push options: TTL to expiry');
@@ -123,7 +127,7 @@ eq(PP.deviceUrl(gameRow, SITE, { game_url: 'https://club.example/match' }, null)
 eq(PP.deviceUrl({ kind: 'announcement', link: '?l=slb-men' }, SITE, { home_url: 'https://club.example' }, null), 'https://club.example', 'an announcement opens the league\'s home page');
 eq(PP.deviceUrl({ kind: 'announcement', link: '?l=slb-men' }, SITE, null, null), SITE + '?l=slb-men', '...or Epinoia\'s league page');
 eq(PP.deviceUrl({ kind: 'test' }, SITE, { home_url: 'https://club.example/' }, null), 'https://club.example/', 'a test opens the home page');
-eq(PP.deviceUrl({ kind: 'test' }, SITE, null, null), SITE, '...or Epinoia\'s front page');
+eq(PP.deviceUrl({ kind: 'test' }, SITE, null, null), SITE + 'home/', '...or Epinoia\'s front page, HOME');
 const devPl = PP.payloadFor({ kind: 'result', game_id: G, ref: G, title: 'FT', link: 'game/?g=1' }, SITE, NOW, { url: 'https://club.example/match/1', icon: 'https://x.test/crest.png' });
 eq([devPl.url, devPl.icon], ['https://club.example/match/1', 'https://x.test/crest.png'], 'payloadFor takes a device\'s absolute url and the crest');
 const badPl = PP.payloadFor({ kind: 'result', game_id: G, ref: G, link: 'game/?g=1' }, SITE, NOW, { url: 'javascript:alert(1)', icon: 'http://x.test/c.png' });

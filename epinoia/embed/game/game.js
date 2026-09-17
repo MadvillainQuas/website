@@ -51,6 +51,18 @@ function postHeight() {
   } catch (_) {}
 }
 
+/* THE FULL BOX SCORE OPENS IN THE PAGE ON OUR OWN PAGES, in a tab on anybody else's. Framed by
+   an Epinoia page, a new window is a second copy of the site and a Back button that does
+   nothing; on a club's site the club keeps its visitor. The same same-origin test the fixture
+   strip uses: reading a foreign parent's location throws, and that throw is the answer. */
+(function fullTarget() {
+  let ours = false;
+  try { ours = window.parent !== window && window.parent.location.origin === location.origin; }
+  catch (_) { ours = false; }
+  const a = document.getElementById('full');
+  if (a) a.target = ours ? '_top' : '_blank';
+})();
+
 function fail(msg) {
   $('#host').textContent = '';
   $('#host').appendChild(el('div', 'ep-empty', msg));

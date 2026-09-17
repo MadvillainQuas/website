@@ -75,7 +75,15 @@
      as a property below: the assignment those pages already make
      (`window.__CS_LEAGUE_SLUG = league.slug`) rebuilds the rail itself. */
   const qp = new URLSearchParams(location.search);
-  let lg = qp.get('l') || (window.__CS_LEAGUE_SLUG || '');
+  /* THE PLATFORM'S OWN PAGES ARE NOBODY'S LEAGUE. HOME, the global fixtures and
+     global scouting reach across every league at once, so a stray ?l= in their
+     address (a shared link, a sign-in that came back with one) must not drill
+     the rail into a league or draw that league's tab bar over a page that is
+     not about it. */
+  const PLATFORM_PAGE = /\/epinoia\/(home|games|scouting)\//;
+  const onPlatform = PLATFORM_PAGE.test(here);
+  const atHome = /\/epinoia\/home\/$/.test(here);
+  let lg = onPlatform ? '' : (qp.get('l') || (window.__CS_LEAGUE_SLUG || ''));
   /* The league THIS PAGE is about, as opposed to the one the rail is currently
      showing. They are the same until somebody browses to another league in the
      rail without leaving the page, and then the "you are here" marks have to
@@ -247,14 +255,15 @@
   navScroll.appendChild(navdeck);
 
   /* ---- country panel: every country with a league in it ---- */
-  const ctitle = el('a', 'ptitle', 'Countries');
-  /* THE HEADING GOES TO THE COUNTRIES PAGE, not to the splash. Every other
-     panel title in this rail opens the thing the panel is a list OF — a
-     league's name opens that league — and this one pointed at the front door
-     instead, so the one heading that had somewhere obvious to go was the one
-     that sent you back out. */
-  ctitle.href = root + 'countries/';
-  ctitle.title = 'Every country, as a page';
+  const ctitle = el('a', 'ptitle', 'HOME');
+  /* THE HEADING IS HOME. It used to say Countries and open a second water page
+     listing them; HOME now lists every league grouped by country, above the
+     day's fixtures and the best players, so the heading of the list of
+     countries opens the page that is that list and more. Highlighted while
+     you are on it, like any row that names where you are. */
+  ctitle.href = root + 'home/';
+  ctitle.title = 'HOME — every league, today’s fixtures, the best players';
+  if (atHome) { ctitle.classList.add('on'); ctitle.setAttribute('aria-current', 'page'); }
   const clist = el('div', 'leagues');
   clist.appendChild(el('div', 'gempty', '…'));
   countryPanel.append(ctitle, clist);
@@ -315,7 +324,7 @@
   cback.title = 'All countries';
   cback.setAttribute('aria-label', 'Back to all countries');
   const cname = el('a', 'lname');
-  cname.href = root;
+  cname.href = root + 'home/#leagues';
   chead.append(cback, cname);
   rootPanel.insertBefore(chead, title);
   title.classList.add('hide');          // the country's name replaces it
@@ -445,7 +454,26 @@
      account, contact, the way out -- stays put in a foot beneath it. On a phone the sheet
      keeps the same shape: the list scrolls, the foot does not. */
   const navFoot = el('div', 'ep-nav-foot');
-  navFoot.append(adminRow, platRow);
+
+  /* THE WAY OUT IS HOME, and it is the FIRST row of the foot. It went back to
+     the splash, the water page, which has no rail, no fixtures and no way on
+     except through itself; HOME is the platform's front page on the web and in
+     the app alike, so the logotype means one place wherever it appears.
+
+     At the top of the foot rather than the bottom because of the phone sheet: a
+     drawer opened on a league page starts on that league's panel, and the only
+     other route to HOME, the panel heading, sits two panels back. The first row
+     of the foot is on screen the moment the sheet opens.
+
+     In the logotype, so the brand is never set in the rail's own face. */
+  const home = el('a', 'item home-row');
+  home.href = root + 'home/';
+  const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
+  home.append(el('span', 'ic', '⌂'), homeTx);
+  home.title = 'HOME';
+  home.setAttribute('aria-label', 'HOME');
+  if (atHome) { home.classList.add('on'); home.setAttribute('aria-current', 'page'); }
+  navFoot.append(home, adminRow, platRow);
 
   const acct = el('div', 'acct');
   const acctLink = el('a', 'item');
@@ -611,36 +639,47 @@
   contact.title = 'contact';
   navFoot.appendChild(contact);
 
-  /* THE WAY OUT IS EPINOIA, not Prophe(s)y. This rail is on the public half
-     of the site, and the row at the bottom of it should be the way back to
-     that half's own front page — the splash. The scouting side is reachable
-     from the splash's first deck, which is a better place for it: a link
-     labelled with the OTHER brand, at the foot of every league page, was
-     pointing most of the people who pressed it at a members-only sign-in.
-
-     In the logotype, so the brand is never set in the rail's own face. */
-  const home = el('a', 'item');
-  home.href = root;
-  const homeTx = el('span', 'tx epinoia-mark', 'EPINOIΛ');
-  home.append(el('span', 'ic', '←'), homeTx);
-  home.title = 'back to Epinoia';
-  navFoot.appendChild(home);
   /* ------------------------------------------------------------ the tab bar ---
      ON A PHONE THE BAR IS THE LEAGUE'S FIVE PLACES, NOT THE WHOLE RAIL. The rail's row-flow
      put the countries/leagues deck, the account, contact and the admin rows into one sideways
      scroller, so what showed at the bottom of the screen was whatever happened to be scrolled
      into view -- "admin controls · platform · your@email" -- and the pages a fan actually wants
-     were off to the left. This bar is fixed: home, fixtures, table, statistics, news, then
-     the menu, which opens the full rail as the sheet. Hidden above 820px; left out when the
-     page has no league to point at, where the old row does its job. */
+     were off to the left. This bar is fixed: league, fixtures, table, statistics, news, then
+     the menu, which opens the full rail as the sheet. Hidden above 820px.
+
+     THE LEAGUE'S FRONT PAGE IS "league", NOT "home". HOME is the platform's front page now,
+     and two tabs called home that open different pages is one too many. */
   const tabbar = el('div', 'ep-tabbar');
   const TABS = [
-    { key: 'home', ic: '⌂', tx: 'home', href: '', on: () => /\/epinoia\/$/.test(here) && !!qp.get('l') },
+    { key: 'home', ic: '◈', tx: 'league', href: '', on: () => /\/epinoia\/$/.test(here) && !!qp.get('l') },
     { key: 'fixtures' }, { key: 'table' }, { key: 'teams' }, { key: 'statistics' }, { key: 'news' }
   ];
+  /* A PAGE WITH NO LEAGUE GETS THE PLATFORM'S FIVE PLACES. The bar used to be removed there,
+     which left the sideways strip of country flags: the right thing for nobody, and on HOME,
+     the page the app opens on, the first thing a phone showed. These are the places that are
+     about every league at once, plus your own page. "leagues" is HOME's own section, so on
+     HOME it is a jump down the page rather than a reload. */
+  const PLATFORM_TABS = [
+    { key: 'home',     ic: '⌂', tx: 'home',     href: 'home/',         on: () => atHome },
+    { key: 'games',    ic: '▥', tx: 'games',    href: 'games/',        on: () => /\/epinoia\/games\//.test(here) },
+    { key: 'scouting', ic: '▦', tx: 'scouting', href: 'scouting/',     on: () => /\/epinoia\/scouting\//.test(here) },
+    { key: 'leagues',  ic: '◉', tx: 'leagues',  href: 'home/#leagues', on: () => false },
+    { key: 'profile',  ic: '☆', tx: 'profile',  href: 'me/',           on: () => /\/epinoia\/me\//.test(here) }
+  ];
+  function paintPlatformTabs() {
+    PLATFORM_TABS.forEach(t => {
+      const a = el('a', 'tab');
+      a.href = root + t.href;
+      a.dataset.tab = t.key;
+      a.append(el('span', 'ic', t.ic), el('span', 'tx', t.tx));
+      if (t.on()) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
+      tabbar.appendChild(a);
+    });
+    nav.classList.add('has-tabbar');
+  }
   function paintTabbar() {
     tabbar.textContent = '';
-    if (!lg) { nav.classList.remove('has-tabbar'); return; }
+    if (!lg) { paintPlatformTabs(); return; }
     TABS.forEach(t => {
       const spec = t.href !== undefined ? t : PAGES.find(p => p.key === t.key);
       if (!spec) return;
@@ -879,8 +918,8 @@
     const name = countryName(code);
     cname.textContent = '';
     cname.append(el('span', 'ic', flagOf(code)), marquee(name));
-    cname.title = name;
-    cname.href = root + 'countries/';
+    cname.title = name + ' — every league, by country, on HOME';
+    cname.href = root + 'home/#leagues';
   }
 
   cback.addEventListener('click', () => {
@@ -1291,6 +1330,9 @@
       configurable: true,
       get() { return lg; },
       set(v) {
+        /* a shared script that names a league on HOME, games or scouting is not the
+           page saying what it is about: those pages are about every league */
+        if (onPlatform) return;
         lg = v || '';
         try { paintTabbar(); } catch (_) { /* before the bar exists */ }
         pageLeague = lg;              // the page has just told us what it is about

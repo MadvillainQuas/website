@@ -15,6 +15,7 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-mark-180.png">
+<script src="appmode.js?v=272" data-water="front"></script>
 <script src="mode.js?v=272"></script>
 <link rel="stylesheet" href="kit/epinoia-kit.css?v=272">
 <link rel="stylesheet" href="kit/nav.css?v=272">
@@ -24,6 +25,11 @@
 <link rel="stylesheet" href="kit/access.css?v=272">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
+  /* the platform's wordmark, top left of a league's front page: the way back to HOME */
+  a.plain{color:inherit;text-decoration:none}
+  .hero .hm-home{display:inline-block;margin:calc(var(--u)*-2) 0 calc(var(--u)*2);line-height:1}
+  .hero .hm-home .wm{display:inline-block;padding-top:4px;padding-bottom:3px}
+  .hero .hm-home:hover .wm{filter:brightness(1.1)}
   .wordmark{font-family:var(--f-score);font-size:clamp(38px,9vw,74px);line-height:.86;
     text-transform:uppercase;background:linear-gradient(100deg,var(--lume),var(--aqua));
     -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -559,6 +565,8 @@
 
 
   <div class="hero">
+    <!-- THE WAY HOME. Class wm, not wordmark: home.js renames the .wordmark below to the league's name. -->
+    <a class="plain hm-home" href="home/"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
     <div class="hero-head"><div class="wordmark epinoia-mark" aria-label="Epinoia">EPINOIΛ</div></div>
     <div class="tagline">
       Live box scores, standings and season statistics.
@@ -747,6 +755,7 @@
 <script src="socials.js?v=272" defer></script>
 <script src="music.js?v=272" defer></script>
 <script src="splash.js?v=272" defer></script>
+<script src="stars.js?v=272" defer></script>
 <script src="home.js?v=272" defer></script>
 <script src="nav.js?v=272" defer></script>
 <script src="xscroll.js?v=272" defer></script>

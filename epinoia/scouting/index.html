@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme; appmode.js turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Epinoia">
+<!-- ==========================================================================
+     GLOBAL SCOUTING — A PLACEHOLDER UNTIL ITS RELEASE (roadmap Phase 5, R4).
+
+     The phone tab bar on every page without a league and the card on HOME
+     already point here, so the address has to land somewhere real before the
+     table exists: without this page one of the five bottom tabs opened GitHub
+     Pages' 404, which in the installed app has no navigation and no way back
+     but the system Back button. Phase 5 replaces this file whole.
+
+     NOINDEX, AND NOT IN THE SITEMAP, until the table ships: a "coming soon"
+     page is not something to ask a crawler for.
+     ========================================================================== -->
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Global scouting · Epinoia</title>
+<meta name="description" content="The statistics table across every league on Epinoia. Coming soon.">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<script src="../appmode.js?v=272"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=272">
+<link rel="stylesheet" href="../kit/nav.css?v=272">
+<style>
+  a.plain{color:inherit;text-decoration:none}
+  .sc{overflow-x:clip}
+  .sc-top{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
+  .sc-top .wm{background:linear-gradient(100deg,var(--lume),var(--aqua));color:#04100b;padding-top:3px;padding-bottom:1px;
+    view-transition-name:ep-mark}
+  .sc-soon{padding:calc(var(--u)*5) calc(var(--u)*3);max-width:62ch}
+  .sc-soon p{margin:0 0 calc(var(--u)*2);font-family:var(--f-micro);font-size:10px;line-height:1.9;color:var(--ink-3)}
+  .sc-soon .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+  .sc-links{display:flex;flex-wrap:wrap;gap:8px 20px}
+  .sc-links a{display:inline-flex;align-items:center;min-height:44px;font-family:var(--f-micro);font-size:10px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--lume)}
+  @media (max-width:820px){
+    .sc-top{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
+    .sc .ep-hdr{padding:calc(var(--u)*1.5) calc(var(--u)*2)}
+    .sc .ep-hdr h2{font-size:22px}
+    .sc-soon{padding:calc(var(--u)*3) calc(var(--u)*2)}
+    .ep-frame{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  }
+  @media (display-mode:standalone){
+    body{padding-top:env(safe-area-inset-top,0px)}
+  }
+</style>
+</head>
+<body>
+<div class="ep-frame sc">
+  <div class="sc-top">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">every league</span>
+  </div>
+  <div class="ep-hdr"><span class="idx">01</span><h2>Global scouting</h2></div>
+  <section class="sc-soon">
+    <p class="k">coming soon</p>
+    <p>The statistics table across every league at once: the top 50 in any stat, filters on several stats together, and players compared side by side.</p>
+    <p>Until then, each league's own statistics table is open from its page.</p>
+    <div class="sc-links">
+      <a href="../home/#leagues">Choose a league →</a>
+      <a href="../home/">Back to HOME</a>
+    </div>
+  </section>
+  <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
+</div>
+<script src="../config.js?v=272" defer></script>
+<script src="../nav.js?v=272" defer></script>
+</body>
+</html>

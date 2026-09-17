@@ -41,6 +41,18 @@ function postHeight() {
   try { parent.postMessage({ epinoiaEmbed: 'height', height: document.body.scrollHeight }, '*'); }
   catch (_) {}
 }
+
+/* THE FULL TABLE OPENS IN THE PAGE ON OUR OWN PAGES, in a tab on anybody else's. The league
+   front page frames the table and the leaders, and there a new window is a second copy of the
+   site and a Back button that does nothing; on a club's site the club keeps its visitor. The
+   same same-origin test the fixture strip uses: reading a foreign parent's location throws. */
+(function moreTarget() {
+  let ours = false;
+  try { ours = window.parent !== window && window.parent.location.origin === location.origin; }
+  catch (_) { ours = false; }
+  const a = document.getElementById('more');
+  if (a) a.target = ours ? '_top' : '_blank';
+})();
 function fail(m) {
   $('#host').textContent = '';
   $('#host').appendChild(el('div', 'ep-empty', m));

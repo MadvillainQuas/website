@@ -106,6 +106,35 @@ window.epinoiaLogoUrl = function (path) {
          p.split('/').map(encodeURIComponent).join('/');
 };
 
+/* A LEAGUE'S BADGE, WHEREVER GAMES FROM MORE THAN ONE LEAGUE SIT SIDE BY SIDE (HOME's daily
+   fixtures, the global fixtures page). An HTML string: span.lgb holding a small tile with the
+   league's logo, or its monogram on its own two colours where it has none, then its name.
+   Everything from the row is escaped. The tile's colours are the league's only when they came
+   from its logo or were set by hand: a 'default' colour_a is just the platform mint and would
+   make every league look like the same one. The img carries data-mono on its tile so a page can
+   swap in the monogram when the logo fails (the CSP forbids onerror="";
+   EpinoiaGlobalGames.wireBadges does it). opts: { cls, noName, small }. */
+window.epinoiaLeagueBadge = function (league, opts) {
+  const o = opts || {}; const l = league || {};
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
+  const name = String(l.name || l.slug || 'League').trim();
+  const words = name.split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w));
+  const mono = (words.length >= 2 ? words.slice(0, 3).map(w => w[0]).join('')
+    : name.slice(0, 3)).toUpperCase();
+  const own = l.colour_source === 'logo' || l.colour_source === 'manual';
+  const a = own && hex(l.colour_a), b = own && hex(l.colour_b);
+  const style = a ? ' style="--lgb-a:' + a + ';--lgb-b:' + (b || a) + '"' : '';
+  const url = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(l.logo_path) : null;
+  const tile = '<span class="lgb-tile" data-mono="' + esc(mono) + '"' + style + '>' +
+    (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async">'
+         : '<span class="lgb-mono">' + esc(mono) + '</span>') + '</span>';
+  const cls = 'lgb' + (o.small ? ' sm' : '') + (o.cls ? ' ' + esc(o.cls) : '');
+  return '<span class="' + cls + '"' + (o.noName ? ' title="' + esc(name) + '"' : '') + '>' + tile +
+    (o.noName ? '' : '<span class="lgb-name">' + esc(name) + '</span>') + '</span>';
+};
+
 /* ============================================================================
    A HUNG REQUEST MUST NOT TAKE THE GAME WITH IT.
 

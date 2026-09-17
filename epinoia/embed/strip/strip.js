@@ -72,6 +72,22 @@ function hostOfParent() {
   return '';
 }
 
+/* FRAMED BY ONE OF OUR OWN PAGES, OR BY SOMEBODY ELSE'S. The league front page frames this
+   strip, and there a card that opened a new window left the reader with two copies of Epinoia
+   and a Back button that did nothing, so on our own pages every link navigates the page itself
+   (_top). On a club's site it opens a tab (_blank), as it always has, so the club keeps its
+   visitor. Reading the parent's location throws across origins, and that throw IS the answer. */
+let framedByUsMemo = null;
+function framedByUs() {
+  if (framedByUsMemo !== null) return framedByUsMemo;
+  let ours = false;
+  try { ours = window.parent !== window && window.parent.location.origin === location.origin; }
+  catch (_) { ours = false; }            /* a club's site: its location is not ours to read */
+  framedByUsMemo = ours;
+  return ours;
+}
+const linkTarget = () => framedByUs() ? '_top' : '_blank';
+
 async function siteConfig() {
   if (wantLeague || wantTeam) return;     // the URL was explicit; leave it alone
   const host = hostOfParent();
@@ -615,7 +631,7 @@ function card(g) {
   /* paint() finds its cards by this, and finds BOTH copies of each — the rail
      holds the list twice so the scroll can wrap invisibly. */
   a.setAttribute('data-game', g.id);
-  a.target = '_blank'; a.rel = 'noopener';
+  a.target = linkTarget(); a.rel = 'noopener';
   a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
                    location.href).href;
 
@@ -1121,13 +1137,18 @@ async function leagueLabel() {
     a.textContent = l.name;
     a.title = l.name + ' — fixtures, table and statistics';
     a.href = new URL('../../?l=' + encodeURIComponent(l.slug), location.href).href;
-    let ours = false;
-    try { ours = window.parent !== window && window.parent.location.origin === location.origin; }
-    catch (_) { ours = false; }            /* a club's site: its location is not ours to read */
+    const ours = framedByUs();
     a.target = ours ? '_top' : '_blank';
     a.hidden = false;
   } catch (_) { /* no name is better than a wrong one */ }
 }
+
+/* THE PLATE IS THE WORDMARK, and the wordmark opens HOME: in this page on our own pages, in a
+   tab on a club's site. The markup says _blank, the safe answer before this has run. */
+(function plate() {
+  const p = $('#plate');
+  if (p) p.target = linkTarget();
+})();
 
 siteConfig().catch(() => {}).then(() => { leagueLabel(); return accessReady(); }).then(() => load());
 /* The cadence follows the games rather than the clock: tight while anything

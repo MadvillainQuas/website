@@ -2,35 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Moved to /epinoia/</title>
+<title>Moved to /epinoia/home/</title>
 <meta name="robots" content="noindex">
-<link rel="canonical" href="/epinoia/countries/">
+<link rel="canonical" href="/epinoia/home/#leagues">
 <!-- ==========================================================================
-     THIS ADDRESS MOVED TO /epinoia/countries/
+     THIS ADDRESS MOVED TO /epinoia/home/#leagues
 
-     It is kept because it is not ours to break. The embeds are lines of markup
-     sitting in other people's websites — a club pastes one in once and never
-     touches it again — and links to fixtures and box scores have been shared
-     into group chats and posted on club pages. Renaming the section was a
-     decision made here; a dead fixture strip on somebody's homepage would be a
+     It is kept because it is not ours to break. Links to it have been shared
+     into group chats and posted on club pages; renaming the section was a
+     decision made here, and a dead link on somebody else's page would be a
      consequence they never agreed to.
 
-     THE QUERY STRING IS CARRIED ACROSS, which is the whole point: an embed's
-     settings live in it, so ?l=slug&amp;n=24 has to arrive at the new address
-     intact or the strip lands with no league and shows nothing.
+     STRAIGHT TO HOME, NOT VIA /epinoia/countries/. That page is itself only a
+     redirect now (the leagues by country are a section of HOME), and two hops
+     is a second blank page for nobody's benefit. The query string is carried
+     across; the hash is always #leagues, because that is the section this
+     address meant.
 
      Both a script and a meta refresh, deliberately. The script is instant and
      uses replace() so Back does not bounce between the two addresses; the meta
      refresh is the fallback for anything that will not run it.
      ========================================================================== -->
-<meta http-equiv="refresh" content="0; url=/epinoia/countries/">
+<meta http-equiv="refresh" content="0; url=/epinoia/home/#leagues">
 <script>
   (function () {
-    location.replace('/epinoia/countries/' + location.search + location.hash);
+    location.replace('/epinoia/home/' + location.search + '#leagues');
   }());
 </script>
 </head>
 <body>
-<p>This page has moved to <a href="/epinoia/countries/">/epinoia/countries/</a>.</p>
+<p>This page has moved to <a href="/epinoia/home/#leagues">/epinoia/home/</a>.</p>
 </body>
 </html>

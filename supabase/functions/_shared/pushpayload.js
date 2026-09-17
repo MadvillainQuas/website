@@ -106,7 +106,9 @@ export function actionsFor(n) {
    the row's, {icon} the league's crest; an icon is only ever an https URL. */
 export function payloadFor(n, site, nowMs, extra) {
   const base = String(site || '').replace(/\/?$/, '/');
-  const link = String((n && n.link) || '').replace(/^\/+/, '');
+  /* A ROW WITH NO LINK OPENS HOME, not the site's root, which is the water splash: a tap that
+     opens a fresh window carries nothing that would keep an app off it (epinoia/sw.js HOME_PATH) */
+  const link = String((n && n.link) || 'home/').replace(/^\/+/, '');
   const created = n && n.created_at ? Date.parse(n.created_at) : NaN;
   const x = extra || {};
   const out = {
@@ -142,7 +144,8 @@ export function deviceUrl(n, site, cfg, external) {
   }
   const kind = n && n.kind;
   if (!game && (kind === 'announcement' || kind === 'test') && https(c.home_url)) return c.home_url;
-  return base + String((n && n.link) || '').replace(/^\/+/, '');
+  /* no link of its own: HOME, as payloadFor */
+  return base + String((n && n.link) || 'home/').replace(/^\/+/, '');
 }
 
 /* a crest as stored (a storage path in media-public, an https URL, or an early worker's

@@ -3,12 +3,12 @@
   "short_name": "Epinoia",
   "description": "Live scores, stats, video and news from the leagues on Epinoia.",
   "id": "/epinoia/",
-  "start_url": "/epinoia/?source=pwa",
+  "start_url": "/epinoia/home/?source=pwa",
   "scope": "/epinoia/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#04100b",
-  "theme_color": "#04100b",
+  "background_color": "#f3faf6",
+  "theme_color": "#f3faf6",
   "lang": "en-GB",
   "icons": [
     { "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -17,7 +17,8 @@
     { "src": "/epinoia/brand/epinoia-mark-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Fixtures", "url": "/epinoia/fixtures/", "icons": [{ "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192" }] },
+    { "name": "Home", "url": "/epinoia/home/", "icons": [{ "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192" }] },
+    { "name": "Fixtures", "url": "/epinoia/games/", "icons": [{ "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192" }] },
     { "name": "Your profile", "url": "/epinoia/me/", "icons": [{ "src": "/epinoia/brand/epinoia-mark-192.png", "sizes": "192x192" }] }
   ]
 }

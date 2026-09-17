@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme, and the colour the app's launch splash fades from. appmode.js
+     turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Epinoia">
+<!-- PUBLIC. No gate.js, no topnav.js. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Epinoia</title>
+<meta name="description" content="Live scores, fixtures, the best performing players and every league on Epinoia.">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
+     script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
+<script src="../appmode.js?v=272"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=272">
+<link rel="stylesheet" href="../kit/nav.css?v=272">
+<link rel="stylesheet" href="../kit/card.css?v=272">
+<link rel="stylesheet" href="../kit/home.css?v=272">
+<link rel="stylesheet" href="../kit/fxc.css?v=272">
+<link rel="stylesheet" href="stars.css?v=272">
+<link rel="stylesheet" href="leagues.css?v=272">
+</head>
+<body>
+<div class="ep-frame hm">
+
+  <header class="hm-hero">
+    <h1 class="wordmark epinoia-mark" aria-label="Epinoia">EPINOIΛ</h1>
+  </header>
+
+  <!-- daily fixtures ------------------------------------------------------
+       Live games first, then each league's next game, then the rest by time
+       (daily.js). The skeleton holds the rail's height until the cards land. -->
+  <section class="sec" id="fixtures" aria-labelledby="hmFixturesH">
+    <div class="sec-h"><span class="idx">01</span><h2 id="hmFixturesH">Daily fixtures</h2>
+      <a class="showall" href="../games/">all fixtures →</a></div>
+    <div class="hm-mount" id="homeDaily" aria-busy="true">
+      <div class="hm-skel fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+  </section>
+
+  <!-- best performing players ---------------------------------------------
+       Weekly and monthly across every league, on the league pages' stars
+       logic (stars-home.js); loaded after the fixtures. -->
+  <section class="sec" id="stars" aria-labelledby="hmStarsH">
+    <div class="sec-h"><span class="idx">02</span><h2 id="hmStarsH">Best performing players</h2>
+      <span class="note">by box plus/minus</span></div>
+    <div class="hm-mount" id="homeStars" aria-busy="true">
+      <div class="hm-skel st" aria-hidden="true">
+        <b><i></i><i></i><i></i></b>
+        <b><i></i><i></i><i></i></b>
+      </div>
+    </div>
+  </section>
+
+  <!-- leagues, by country -------------------------------------------------
+       /epinoia/countries/ lands here (#leagues); front.js scrolls back to it
+       once the sections above have grown. -->
+  <section class="sec" id="leagues" aria-labelledby="hmLeaguesH">
+    <div class="sec-h"><span class="idx">03</span><h2 id="hmLeaguesH">Leagues</h2></div>
+    <div class="hm-mount" id="homeLeagues" aria-busy="true">
+      <div class="hm-skel lg" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  </section>
+
+  <!-- global scouting ------------------------------------------------------ -->
+  <section class="sec" id="scouting" aria-label="Global scouting">
+    <a class="hm-scout" href="../scouting/">
+      <span class="k">every league, one table</span>
+      <span class="t">Global scouting</span>
+      <span class="d">The statistics table across all leagues: the top 50 in any stat, filters on several stats at once, and players compared side by side.</span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
+  </section>
+
+  <!-- the Android app's download card goes here in a later release (Phase 6); empty, it takes no room -->
+  <div id="homeApp"></div>
+
+  <!-- THE FOOT BAND: what only the water splash used to offer. "Sign in" hides itself for
+       somebody already signed in (front.js). -->
+  <footer class="hm-foot">
+    <h2 class="hm-foot-h">Take part</h2>
+    <ul class="hm-links">
+      <li><a class="pri" id="homeSignin" href="../signin/"><b>Sign in</b><span>follow clubs, get game alerts</span></a></li>
+      <li><a href="../score/"><b>Score a game</b><span>the statistician's app</span></a></li>
+      <li><a href="../score/?train=1"><b>Train / demo</b><span>no account needed</span></a></li>
+      <li><a href="../learn/"><b>Learn</b><span>how the scoring works</span></a></li>
+      <li><a href="../api/"><b>API</b><span>build on the data</span></a></li>
+      <li><a href="../embed/"><b>Embeds</b><span>scores on your site</span></a></li>
+      <li><a href="../contact/"><b>Contact</b><span>get in touch</span></a></li>
+    </ul>
+    <div class="hm-small">
+      <span>Epinoia Network</span>
+      <a href="../prophesy/">What Epinoia is for</a>
+      <a href="../privacy/">Privacy</a>
+    </div>
+  </footer>
+</div>
+<script src="../config.js?v=272" defer></script>
+<script src="../season.js?v=272" defer></script>
+<script src="../bpm.js?v=272" defer></script>
+<script src="../data.js?v=272" defer></script>
+<script src="../teamcolour.js?v=272" defer></script>
+<script src="../rt.js?v=272" defer></script>
+<script src="../globalgames.js?v=272" defer></script>
+<script src="../stars.js?v=272" defer></script>
+<script src="../country.js?v=272" defer></script>
+<script src="front.js?v=272" defer></script>
+<script src="daily.js?v=272" defer></script>
+<script src="stars-home.js?v=272" defer></script>
+<script src="leagues.js?v=272" defer></script>
+<script src="../nav.js?v=272" defer></script>
+<script src="../xscroll.js?v=272" defer></script>
+</body>
+</html>

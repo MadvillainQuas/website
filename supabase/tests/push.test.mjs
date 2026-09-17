@@ -656,7 +656,8 @@ const client = (url, o = {}) => {
   const three = W.notificationFor({ tag: 't', actions: [{ action: 'a', title: 'A' }, { action: 'b', title: 'B' }, { action: 'c', title: 'C' }, { action: '', title: 'bad' }] });
   eq('at most two actions', JSON.parse(JSON.stringify(three.options.actions)).map(a => a.action), ['a', 'b']);
   const empty = W.notificationFor(null);
-  eq('nothing at all still shows something', [empty.title, empty.options.body, empty.options.data.url], ['Epinoia', '', '/epinoia/']);
+  eq('nothing at all still shows something, and opens HOME', [empty.title, empty.options.body, empty.options.data.url], ['Epinoia', '', '/epinoia/home/']);
+  eq('HOME is its own path; the site root stays /epinoia/', [W.HOME_PATH, W.SITE_PATH], ['/epinoia/home/', '/epinoia/']);
   ok('a bad timestamp is left out rather than passed through', !('timestamp' in W.notificationFor({ timestamp: 'soon' }).options));
 
   eq('"See lineups" on a link that lacks show=starters gains it', W.actionUrl('lineups', 'starters', ORIGIN + '/epinoia/game/?g=1'), ORIGIN + '/epinoia/game/?g=1&show=starters');
@@ -728,8 +729,10 @@ const client = (url, o = {}) => {
   eq('a tap on the notice opens the notice\'s page', W.clickTarget(data, '', ORIGIN), ORIGIN + '/epinoia/game/?g=1');
   eq('an action it does not know opens the notice\'s page', W.clickTarget(data, 'mystery', ORIGIN), ORIGIN + '/epinoia/game/?g=1');
   eq('a relative link resolves under /epinoia/', W.clickTarget({ url: 'game/?g=2' }, '', ORIGIN), ORIGIN + '/epinoia/game/?g=2');
-  eq('no data: the front page', W.clickTarget(undefined, '', ORIGIN), ORIGIN + '/epinoia/');
-  eq('a javascript: link goes nowhere but home', W.clickTarget({ url: 'javascript:alert(1)' }, '', ORIGIN), ORIGIN + '/epinoia/');
+  eq('no data: HOME, never the splash', W.clickTarget(undefined, '', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('an empty url: HOME', W.clickTarget({ url: '' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('a javascript: link goes nowhere but HOME', W.clickTarget({ url: 'javascript:alert(1)' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('a league link still resolves under /epinoia/, not under HOME', W.clickTarget({ url: '?l=bcb' }, '', ORIGIN), ORIGIN + '/epinoia/?l=bcb');
 
   const other = client(ORIGIN + '/prophesy/', { focused: true });
   const hidden = client(ORIGIN + '/epinoia/fixtures/', { visible: false });

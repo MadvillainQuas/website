@@ -1,0 +1,53 @@
+/* ============================================================================
+   HOME — BEST PERFORMING PLAYERS (roadmap Phase 3).
+
+   The weekly and monthly podiums across every league, drawn by stars-home.js
+   into #homeStars with epinoia/stars.js. The star card, the star rows, their
+   top-10 toggle and the phone rails are already in kit/home.css (lifted from
+   the league front page); only what HOME's section adds belongs here: the
+   league tag on a card, and anything the cross-league rows need. Kit tokens
+   only, light and dark.
+   ============================================================================ */
+
+/* THE TOP TEN CLOSES, WHATEVER THE RAIL SAYS. On a phone the kit turns
+   .stargrid.starmore into a flex rail, and a class with a display beats a bare
+   [hidden] — which is how the league page's list once refused to close
+   (home.js). The kit repeats the [hidden] rule inside its media block; this one
+   is HOME's guarantee that a later rail rule cannot reopen it. */
+.hm-stars .stargrid.starmore[hidden]{display:none !important}
+
+/* "CLUB · LEAGUE" IS LONGER THAN A CLUB, and a flex item's minimum width is its
+   content's: a card on the rail grew to fit "Gloucester City Kings · BCB" on one line
+   (162px against its 128px basis), so the podium's cards came out three sizes. Letting
+   the card and its foot shrink puts the ellipsis back in charge. */
+.hm-stars .star,
+.hm-stars .star .club-foot{min-width:0}
+.hm-stars .star-team{display:block;max-width:100%}
+
+/* READABLE ON A PHONE. The lifted league-page rules take the top-10 band down to 6px and the
+   club line to 7px; HOME's fixture cards directly above keep 8.5px as their floor. Scoped to
+   .hm-stars so the league page's own copy is untouched (its parity fixture pins that markup,
+   not these sizes, but its look is not HOME's to change). Specificity: these tie or beat
+   .star.small .star-team and .stargrid .star-team, and stars.css loads after home.css. */
+.hm-stars .star.small .club-band span{font-size:7.5px;letter-spacing:.2em}
+.hm-stars .stargrid .star-team{font-size:8px}
+
+/* ---- PHONES: a thumb, not a cursor ------------------------------------------ */
+@media (max-width:820px){
+  /* the toggle is a 44px target without making the row it sits in any taller to look at */
+  .hm-stars .starrow-h{align-items:center}
+  .hm-stars .starrow-x{min-height:44px;padding:0 14px;margin:-8px 0;font-size:9.5px}
+}
+@media (max-width:720px){
+  /* THE RAILS SNAP CARD TO CARD. The kit's proximity snap lets a flick stop between two
+     cards; on HOME the rows are the thing being compared, so each throw lands on a card,
+     with the gutter kept as the snap edge. */
+  .hm-stars .stargrid{scroll-snap-type:x mandatory;scroll-padding-inline:calc(var(--u)*2);
+    overscroll-behavior-x:contain}
+  .hm-stars .stargrid .star{scroll-snap-align:start}
+}
+/* at 360px two podium cards and the edge of the third show, which is what says "swipe" */
+@media (max-width:400px){
+  .hm-stars .stargrid .star{flex-basis:128px}
+  .hm-stars .stargrid.starmore .star{flex-basis:108px}
+}

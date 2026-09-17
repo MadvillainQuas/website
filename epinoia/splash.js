@@ -263,7 +263,8 @@ async function leagues(api, cfg) {
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
   const a = el('a', 'seg league');
-  a.href = 'countries/';
+  /* HOME's leagues section, not the old countries page, which only redirects there now */
+  a.href = 'home/#leagues';
   a.setAttribute('aria-label', 'Browse the leagues by country');
   const crest = el('div', 'crest');
   crest.appendChild(el('span', 'mono', '◇'));

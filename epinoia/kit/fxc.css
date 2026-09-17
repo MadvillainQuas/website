@@ -1,0 +1,173 @@
+/* ============================================================================
+   THE FIXTURE CARD (.fxc) AND THE LEAGUE BADGE (.lgb) — roadmap Phase 2.
+
+   Used wherever games from more than one league sit together: HOME's daily
+   fixtures and /epinoia/games/. The card is built by
+   EpinoiaGlobalGames.card(); the badge's markup by window.epinoiaLeagueBadge
+   (config.js).
+
+   PORTED, NOT LOADED. The strip's scoreboard card (kit/embed.css .ep-card) is
+   the look: a rule along the top edge for the state, each club's colour washed
+   into its own side, a scoreboard face for the numbers. embed.css itself cannot
+   come onto a full page (it needs the .cse wrapper and forces .epinoia-mark),
+   so the card is redrawn here on kit tokens, which gives it the light theme
+   for free, and laid out for a phone rather than for a 178px strip:
+
+     [badge  League name ............. TOMORROW]
+     [crest  Home club .................. 18:30]
+     [crest  Away club ................ tip-off]
+     [venue ....................... preview →]
+
+   A live or final card carries the scores down the right in place of the time.
+
+   READABLE ON A PHONE. The strip's 6.5px labels were drawn for a desktop
+   widget; here nothing is smaller than 8.5px and club names are 13px. A card
+   narrower than 210px (two across a 360px phone) is a CONTAINER QUERY away
+   from its compact form: short club names, and the tip-off moved onto the
+   state line, so it never ellipsises a name to three letters.
+   ============================================================================ */
+
+/* ------------------------------------------------------------- the badge --- */
+.lgb{display:inline-flex;align-items:center;gap:7px;min-width:0;max-width:100%;vertical-align:middle}
+.lgb-tile{position:relative;flex:none;width:22px;height:22px;border-radius:3px;overflow:hidden;
+  display:grid;place-items:center;
+  background:linear-gradient(120deg,var(--lgb-a,var(--lume)),var(--lgb-b,var(--aqua)))}
+/* the logo sits on white, as the sidebar's plates do: league logos are drawn for paper */
+.lgb-tile img{width:100%;height:100%;object-fit:contain;display:block;background:#ffffff;padding:1px;box-sizing:border-box}
+.lgb-mono{font-family:var(--f-score);font-size:11px;line-height:1;color:#04100b;letter-spacing:0}
+/* a league's own colours can be anything, so its monogram is white with a shadow */
+.lgb-tile[style] .lgb-mono{color:#ffffff;text-shadow:0 1px 1px rgba(0,0,0,.55)}
+.lgb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.lgb.sm .lgb-tile{width:18px;height:18px}
+.lgb.sm .lgb-mono{font-size:9px}
+/* the large badge: a group header on the global page */
+.lgb.lg{gap:10px}
+.lgb.lg .lgb-tile{width:30px;height:30px}
+.lgb.lg .lgb-mono{font-size:14px}
+.lgb.lg .lgb-name{font-family:var(--f-ui);font-weight:800;font-size:14px;letter-spacing:.03em;color:var(--ink)}
+
+/* -------------------------------------------------------------- the card --- */
+.fxc{
+  container-type:inline-size;
+  position:relative;display:flex;flex-direction:column;min-width:0;
+  background:var(--panel);color:var(--ink);text-decoration:none;
+  border:1px solid var(--rule);border-radius:4px;overflow:hidden;
+  transition:border-color .14s ease,transform .14s ease,box-shadow .14s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+/* the state, as a rule along the top edge: aqua coming, red live, quiet when done */
+.fxc::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;z-index:2;
+  background:color-mix(in oklch,var(--aqua) 70%,transparent)}
+.fxc.is-live::before{background:var(--flare)}
+.fxc.is-final::before{background:var(--rule-2)}
+.fxc.is-live{border-color:color-mix(in oklch,var(--flare) 45%,var(--rule))}
+@media (hover:hover){
+  .fxc:hover{border-color:var(--lume);transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+}
+.fxc:active{border-color:var(--lume)}
+.fxc:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+
+.fxc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;
+  padding:7px 10px 5px}
+.fxc-lg{min-width:0;flex:1 1 auto;display:flex}
+.fxc-st{flex:none;margin-left:auto;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.fxc-st-t{display:none}
+.fxc.is-upcoming .fxc-st{color:var(--aqua)}
+.fxc.is-live .fxc-st{color:var(--flare)}
+.fxc-st .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--flare);
+  margin-right:5px;vertical-align:1px;animation:fxc-pulse 1.6s ease-in-out infinite}
+@keyframes fxc-pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){ .fxc-st .dot{animation:none} .fxc{transition:none} }
+
+/* THE TWO CLUBS. Each row is washed from the left in its club's colour (strip.js's --h and --a,
+   mixed into transparency so a white or a gold club reads on either theme), with a solid edge
+   of the colour where the strip had its diagonal. */
+.fxc-body{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:3px;
+  padding:2px 10px 8px}
+.fxc-tm{grid-column:1 / -1;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;
+  gap:8px;min-height:32px;padding:3px 6px 3px 7px;border-left:3px solid var(--rule-2);
+  background:linear-gradient(90deg,color-mix(in oklch,var(--h,var(--lume)) 20%,transparent),transparent 78%)}
+.fxc-tm.a{border-left-color:var(--a,var(--rule-2));
+  background:linear-gradient(90deg,color-mix(in oklch,var(--a,var(--aqua)) 20%,transparent),transparent 78%)}
+.fxc-tm.h{border-left-color:var(--h,var(--rule-2))}
+.fxc.is-upcoming .fxc-tm{grid-column:1}
+
+.fxc-crest{width:24px;height:24px;border-radius:3px;overflow:hidden;display:grid;place-items:center;
+  font-family:var(--f-score);font-size:11px;line-height:1;color:#04100b}
+.fxc-crest.has-img{background:#ffffff}
+.fxc-crest img{width:100%;height:100%;object-fit:contain;display:block}
+
+.fxc-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--f-ui);font-weight:700;font-size:13px;line-height:1.2;color:var(--ink)}
+.fxc-nm .short{display:none}
+.fxc-sc{font-family:var(--f-score);font-size:22px;line-height:1;font-variant-numeric:tabular-nums;
+  color:var(--ink);min-width:2ch;text-align:right}
+.fxc-tm.win .fxc-sc{color:var(--lume)}
+.fxc-tm.lose .fxc-nm,.fxc-tm.lose .fxc-sc{color:var(--ink-3)}
+.fxc.is-live .fxc-sc{color:var(--ink)}
+
+/* the tip-off, its own column beside the two clubs */
+.fxc-when{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:flex-end;
+  justify-content:center;gap:3px;padding-left:10px;border-left:1px solid var(--rule)}
+.fxc-when b{font-family:var(--f-score);font-weight:400;font-size:24px;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.fxc-when span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+.fxc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;
+  padding:6px 10px 7px;border-top:1px solid var(--rule);
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.fxc-vn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fxc-go{flex:none;color:var(--lume)}
+.fxc.is-live .fxc-go{color:var(--flare)}
+
+/* COMPACT: a card too narrow for a name and a time column (two across a phone). */
+@container (max-width:210px){
+  .fxc-top{padding:7px 8px 4px}
+  .fxc-body{padding:2px 8px 7px}
+  .fxc-tm{grid-template-columns:20px minmax(0,1fr) auto;gap:6px;padding:3px 4px 3px 5px}
+  .fxc-crest{width:20px;height:20px;font-size:10px}
+  .fxc-nm .full{display:none}
+  .fxc-nm .short{display:inline}
+  .fxc-sc{font-size:20px}
+  .fxc-when{display:none}
+  .fxc.is-upcoming .fxc-tm{grid-column:1 / -1}
+  .fxc-st-t{display:inline}
+  .fxc-foot{padding:5px 8px 6px}
+  .fxc-vn{display:none}
+  .fxc-go{margin-left:auto}
+}
+
+/* --------------------------------------------------------------- layouts ---
+   .fxc-rail: one row thrown sideways, card to card (HOME on a phone), a grid of
+   up to four across on a wide screen. .fxc-grid: two across on a phone,
+   filling the width above that (the global page). */
+.fxc-rail{display:grid;gap:calc(var(--u)*1.5);padding:0 calc(var(--u)*3) calc(var(--u)*3);
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+@media (max-width:720px){
+  .fxc-rail{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;
+    gap:calc(var(--u)*1.25);padding:2px calc(var(--u)*2) calc(var(--u)*2);
+    scroll-padding-left:calc(var(--u)*2)}
+  .fxc-rail::-webkit-scrollbar{display:none}
+  /* 78% of the phone: a card and a glimpse of the next, which is what says "swipe" */
+  .fxc-rail>.fxc{flex:0 0 min(78%,280px);scroll-snap-align:start}
+}
+.fxc-grid{display:grid;gap:calc(var(--u)*1.5);padding:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*2);
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+@media (max-width:560px){
+  .fxc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 12px 14px}
+}
+
+/* ------------------------------------------------------------ light theme --- */
+:root[data-theme="light"] .fxc{background:#ffffff;border-color:rgba(13,31,23,.18);
+  box-shadow:0 1px 3px rgba(13,31,23,.08)}
+:root[data-theme="light"] .fxc.is-live{border-color:color-mix(in oklch,var(--flare) 45%,rgba(13,31,23,.18))}
+@media (hover:hover){
+  :root[data-theme="light"] .fxc:hover{border-color:var(--lume);box-shadow:0 6px 18px rgba(13,31,23,.14)}
+}
+:root[data-theme="light"] .fxc-tm{background:linear-gradient(90deg,color-mix(in oklch,var(--h,var(--lume)) 14%,transparent),transparent 78%)}
+:root[data-theme="light"] .fxc-tm.a{background:linear-gradient(90deg,color-mix(in oklch,var(--a,var(--aqua)) 14%,transparent),transparent 78%)}
+:root[data-theme="light"] .lgb-tile img,
+:root[data-theme="light"] .fxc-crest.has-img{box-shadow:inset 0 0 0 1px rgba(13,31,23,.1)}

@@ -717,9 +717,9 @@
     };
 
     bar.append(
-      link('← Epinoia', '../', '#93f2bf'),
+      link('← Epinoia', '../home/', '#93f2bf'),
       link('league', '../l/', '#8ff5ff'),
-      link('box scores', '../', '#8ff5ff'),
+      link('box scores', '../games/', '#8ff5ff'),
       link('Prophesy Scouting', '/index.html', 'rgba(230,255,241,.6)')
     );
 

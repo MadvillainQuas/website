@@ -189,6 +189,10 @@ body.nav-drawer-open{ overflow:hidden }
   border-bottom:1px solid color-mix(in oklch,var(--lume) 18%,transparent);
 }
 .ep-nav .ptitle:hover{ color:var(--lume) }
+/* THE HOME HEADING, WHILE YOU ARE ON HOME. The rows mark where you are with the accent and a
+   bar down their left; a heading has no bar to spare, so it takes the accent alone, with the
+   hairline beneath it in the same colour. */
+.ep-nav .ptitle.on{ color:var(--lume); border-bottom-color:color-mix(in oklch,var(--lume) 45%,transparent) }
 .ep-nav .gempty{
   font-family:var(--f-micro,ui-monospace,monospace); font-size:9px;
   color:color-mix(in oklch,var(--ink) 40%,transparent); padding:8px 0 8px 14px;
@@ -553,6 +557,9 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-tabbar a .tx{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
   .ep-tabbar a.on{ color:var(--lume); border-top-color:var(--lume) }
+  /* the HOME row heads the foot in the open sheet, so a hairline sets it off from the account
+     rows beneath it (the admin rows carry their own hairline above) */
+  .ep-nav.drawer-open a.home-row{ border-bottom:1px solid color-mix(in oklch,var(--lume) 16%,transparent) }
   .ep-tabbar a:active{ background:color-mix(in oklch,var(--lume) 10%,transparent) }
   body.nav-drawer-open{ overflow:hidden }
 }

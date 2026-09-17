@@ -606,62 +606,16 @@ async function clubs() {
 
    A MINIMUM IS ENFORCED and stated. BPM over one quiet half is noise, and a
    podium built from noise is worse than an empty one, so a week needs a game
-   and twenty minutes, a month two games and sixty. */
-const STAR_WINDOWS = [
-  { key: 'month', label: 'Monthly stars', days: 30, minGames: 2, minMinutes: 60 },
-  { key: 'week',  label: 'Weekly stars',  days: 7,  minGames: 1, minMinutes: 20 }
-];
+   and twenty minutes, a month two games and sixty.
 
-const dayMs = 86400000;
-const shortDate = iso => { try { return new Date(iso).toLocaleDateString('en-GB',
-  { day: 'numeric', month: 'short' }); } catch (_) { return ''; } };
-
-/* One star card: rank as the mark, BPM across the band, name and club below. `small` is the
-   size ranks four to ten are drawn at under the podium. */
-function starCard(r, p, i, small) {
-      const m = r.meta[p.id] || {};
-      const team = r.teamsById.get(r.teamOf && r.teamOf.get(p.id)) || {};
-      const ink = team.colour || m.colour || '#93f2bf';
-
-      const a = el('a', 'club star' + (small ? ' small' : ''));
-      a.href = 'p/?p=' + encodeURIComponent(m.slug || '');
-      paintCard(a, ink, team.colour_2);
-      a.setAttribute('aria-label', (m.name || 'Player') + ', ' + (team.name || ''));
-
-      const plate = el('div', 'club-plate');
-      plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
-      ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
-
-      /* the rank is the mark, printed like the club monogram */
-      const mark = el('div', 'club-mark');
-      const rank = String(i + 1);
-      mark.append(el('span', 'club-mono ghost', rank), el('span', 'club-mono', rank));
-      plate.appendChild(mark);
-
-      /* BPM across the band, because it is why this player is on the podium */
-      const band = el('div', 'club-band');
-      band.appendChild(el('span', null,
-        (p.bpm > 0 ? '+' : '') + Number(p.bpm).toFixed(1) + ' BPM'));
-      plate.appendChild(band);
-      plate.appendChild(el('div', 'club-grain'));
-
-      const foot = el('div', 'club-foot star-foot');
-      const who = el('div', 'star-who');
-      who.append(el('span', 'star-name', m.name || 'Player'),
-                 el('span', 'star-team', team.name || m.teamFull || ''));
-      foot.appendChild(who);
-      foot.appendChild(el('span', 'club-ed',
-        (p.ppg != null ? p.ppg + 'p' : '') +
-        (p.rpg != null ? ' ' + p.rpg + 'r' : '') +
-        (p.apg != null ? ' ' + p.apg + 'a' : '')));
-
-      a.append(plate, foot);
-      return a;
-}
+   THE WINDOWS, THE CARD AND THE ROWS NOW LIVE IN epinoia/stars.js, shared with
+   HOME's best performing players across every league. This page's output is
+   held identical to what it drew before the move by supabase/tests/stars.test.mjs. */
 
 async function stars() {
   const sec = $('#starsSec');
-  if (!sec || !LEAGUE) return null;
+  const ST = window.EpinoiaStars;
+  if (!sec || !LEAGUE || !ST) return null;
 
   const comps = await leagueCompetitions(LEAGUE.id);
   if (!comps.length) return null;
@@ -682,78 +636,41 @@ async function stars() {
       .forEach(t => teamsById.set(t.id, t));
   } catch (_) { /* the podium still works with a colourless card */ }
 
-  const rows = [];
-  for (const w of STAR_WINDOWS) {
-    const from = latest - w.days * dayMs;
-    const inWindow = played.filter(g => {
-      const t = new Date(g.tipoff_at || 0).getTime();
-      return t >= from && t <= latest;
-    });
-    if (!inWindow.length) continue;
-
-    let agg;
-    try { agg = await D.statsForGames(inWindow); } catch (_) { continue; }
-
-    const eligible = (agg.players || [])
-      .filter(p => p.bpm != null && (p.gp || 0) >= w.minGames && (p.min || 0) >= w.minMinutes)
-      .sort((a, b) => b.bpm - a.bpm)
-      .slice(0, 10);                       /* three on the podium, ten on tap */
-    if (!eligible.length) continue;
-
-    const ids = eligible.map(p => p.id);
-    let meta = {};
-    try { meta = await D.playerMeta(ids); } catch (_) { meta = {}; }
-
-    rows.push({
-      w, top: eligible, meta, teamOf: agg.teamOfPlayer, teamsById,
-      games: inWindow.length,
-      span: shortDate(inWindow[inWindow.length - 1].tipoff_at) + ' – ' + shortDate(inWindow[0].tipoff_at)
-    });
-  }
-
-  if (!rows.length) return null;
-  sec.classList.remove('hide');
-  const host = sec.querySelector('#stars');
-  host.textContent = '';
-
-  rows.forEach(r => {
-    const head = el('div', 'starrow-h');
-    head.append(el('span', 'starrow-t', r.w.label.toUpperCase()),
-                el('span', 'starrow-s', r.span + ' · ' + r.games +
-                   (r.games === 1 ? ' game' : ' games') +
-                   ' · min ' + r.w.minGames + 'g/' + r.w.minMinutes + 'min'));
-    /* THE PODIUM OPENS TO A TOP TEN. The three cards are the glance; the head row, or the
-       button on it, opens the rest of the list underneath -- rank, name, club, BPM and the
-       line -- and closes it again. */
-    const more = r.top.length > 3;
-    const xb = el('button', 'starrow-x', 'top 10');
-    xb.type = 'button'; xb.setAttribute('aria-expanded', 'false');
-    if (more) head.appendChild(xb);
-    host.appendChild(head);
-
-    const grid = el('div', 'stargrid');
-    r.top.slice(0, 3).forEach((p, i) => grid.appendChild(starCard(r, p, i, false)));
-    host.appendChild(grid);
-
-
-    if (more) {
-      /* ranks four to ten: the same card, smaller, under the podium. Hidden by the attribute
-         and by a rule that says so (a class with display:grid beats [hidden] on its own,
-         which is how the list once refused to close). */
-      const list = el('div', 'stargrid starmore'); list.hidden = true;
-      r.top.slice(3).forEach((p, i) => list.appendChild(starCard(r, p, i + 3, true)));
-      host.appendChild(list);
-      const toggle = () => {
-        const open = list.hidden;
-        list.hidden = !open;
-        head.classList.toggle('open', open);
-        xb.setAttribute('aria-expanded', String(open));
-        xb.textContent = open ? 'top 3' : 'top 10';
-      };
-      head.classList.add('can-open');
-      head.addEventListener('click', toggle);
-    }
+  /* THE WIDEST WINDOW IS FETCHED ONCE AND THE NARROWER ONES ARE CUT FROM IT.
+     The week's games are a subset of the month's, yet each window used to
+     download its own box scores and its own names: data.js only shares
+     identical requests, so the same rows came down twice. Now one set of box
+     scores (only the keys the stars read) and one playerMeta call cover both. */
+  const widest = Math.max.apply(null, ST.WINDOWS.map(w => w.days));
+  const inRange = days => played.filter(g => {
+    const t = new Date(g.tipoff_at || 0).getTime();
+    return t >= latest - days * 86400000 && t <= latest;
   });
+  let box;
+  try { box = await ST.boxScores(inRange(widest).map(g => g.id)); } catch (_) { return null; }
+
+  const cut = [];
+  for (const w of ST.WINDOWS) {
+    const inWindow = inRange(w.days);
+    if (!inWindow.length) continue;
+    const agg = ST.computeWindow(box.pgs, box.tgs, inWindow);
+    const eligible = ST.pick(agg.players, w, 10);   /* three on the podium, ten on tap */
+    if (!eligible.length) continue;
+    cut.push({ w, inWindow, eligible, teamOf: agg.teamOfPlayer });
+  }
+  if (!cut.length) return null;
+
+  const ids = [...new Set(cut.flatMap(c => c.eligible.map(p => p.id)))];
+  let names = {};
+  try { names = await D.playerMeta(ids); } catch (_) { names = {}; }
+
+  const rows = cut.map(c => ({
+    w: c.w, top: c.eligible, meta: names, teamOf: c.teamOf, teamsById,
+    games: c.inWindow.length, span: ST.span(c.inWindow)
+  }));
+
+  sec.classList.remove('hide');
+  ST.render(sec.querySelector('#stars'), rows, { base: '' });
 
   /* The month's winner, handed to the merchandise section. It is the same row
      that just drew the first card on the podium, so the shop cannot end up

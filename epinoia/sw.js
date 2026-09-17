@@ -21,8 +21,14 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-devices';
+const SW_VERSION = 'notifications-v2-2026-09-17-home';
 const SITE_PATH = '/epinoia/';
+/* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
+   window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
+   tell it came from the app and keep it off the water page; HOME is right on the web and in
+   the app alike. SITE_PATH stays the site's root: relative links resolve under it, and
+   pickClient uses it to recognise a window that is already on Epinoia. */
+const HOME_PATH = '/epinoia/home/';
 const ICON = '/epinoia/brand/epinoia-mark-192.png';
 const BADGE = '/epinoia/brand/epinoia-mark-32.png';
 /* PUBLIC VALUES, COPIED FROM epinoia/config.js. A service worker cannot read
@@ -83,7 +89,7 @@ function actionUrl(kind, action, url) {
    arguments showNotification takes */
 function notificationFor(payload) {
   const d = payload && typeof payload === 'object' ? payload : {};
-  const url = typeof d.url === 'string' && d.url ? d.url : SITE_PATH;
+  const url = typeof d.url === 'string' && d.url ? d.url : HOME_PATH;
   const kind = typeof d.kind === 'string' ? d.kind : '';
   const tag = typeof d.tag === 'string' && d.tag ? d.tag : '';
   const actions = (Array.isArray(d.actions) ? d.actions : [])
@@ -152,16 +158,16 @@ self.addEventListener('message', e => {
 });
 
 /* --------------------------------------------------------------- the tap --- */
-/* Where a tap goes: the button's page, else the notice's page, else the front page.
-   Relative links resolve under /epinoia/; anything that is not http(s) goes home. */
+/* Where a tap goes: the button's page, else the notice's page, else HOME.
+   Relative links resolve under /epinoia/; anything that is not http(s) goes to HOME. */
 function clickTarget(data, action, origin) {
   const d = data && typeof data === 'object' ? data : {};
   const map = d.actions && typeof d.actions === 'object' ? d.actions : {};
   const raw = (action && typeof map[action] === 'string' && map[action]) ||
-              (typeof d.url === 'string' && d.url) || SITE_PATH;
-  const home = origin + SITE_PATH;
+              (typeof d.url === 'string' && d.url) || HOME_PATH;
+  const home = origin + HOME_PATH;
   try {
-    const u = new URL(raw, home);
+    const u = new URL(raw, origin + SITE_PATH);
     return /^https?:$/.test(u.protocol) ? u.href : home;
   } catch (_) { return home; }
 }
@@ -248,6 +254,6 @@ self.addEventListener('pushsubscriptionchange', e => {
 
 /* node only (push.test.mjs); a service worker has no `module` */
 if (typeof module === 'object' && module && module.exports) {
-  module.exports = { SW_VERSION, SITE_PATH, ICON, BADGE, SUPABASE_URL, SUPABASE_KEY, VAPID_PUBLIC_KEY,
+  module.exports = { SW_VERSION, SITE_PATH, HOME_PATH, ICON, BADGE, SUPABASE_URL, SUPABASE_KEY, VAPID_PUBLIC_KEY,
                      readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt, receipt };
 }
