@@ -111,11 +111,17 @@ final class WebViewController: UIViewController {
         }
         root.addSubview(offlineView)
 
+        // BELOW THE STATUS BAR, NOT UNDER IT. Not every page pads its top for the clock and the
+        // Dynamic Island (a team page's bar sat under them in the first simulator screenshots),
+        // so the web view starts at the safe area and the root view, painted the page's
+        // theme colour by applyTheme, fills the strip behind the status bar. Sideways the same
+        // holds for the notch in landscape. The bottom still runs to the edge: the site's bottom
+        // bar pads itself with env(safe-area-inset-bottom), which WebKit still reports there.
         NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: root.topAnchor),
+            webView.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             webView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            webView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            webView.leadingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.trailingAnchor),
             offlineView.topAnchor.constraint(equalTo: root.topAnchor),
             offlineView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             offlineView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
