@@ -212,6 +212,7 @@ console.log('\n-- android/app/src/main/res: every icon at every density, and not
     ['drawable', 'ic_launcher_background', 108],
     ['drawable', 'ic_launcher_monochrome', 108],
     ['drawable', 'splash', 108],
+    ['drawable', 'splash_system', 162],
     ['mipmap', 'ic_launcher', 48],
     ['mipmap', 'ic_launcher_round', 48]
   ];
@@ -234,14 +235,16 @@ console.log('\n-- android/app/src/main/res: every icon at every density, and not
   ok('the manifest names the launcher icons and the splash that exist',
      manifest.includes('android:icon="@mipmap/ic_launcher"') && manifest.includes('android:roundIcon="@mipmap/ic_launcher_round"')
      && /SPLASH_IMAGE_DRAWABLE"\s+android:resource="@drawable\/splash"/.test(manifest));
-  ok('the Android 12 splash uses the same splash drawable', v31.includes('@drawable/splash<'));
+  ok('the Android 12 system splash uses the sharper splash_system (it draws the canvas at 1.5x)',
+     v31.includes('windowSplashScreenAnimatedIcon">@drawable/splash_system<'));
   ok('the notification icon is still a white vector silhouette', existsSync(file(...RES, 'drawable', 'ic_stat_epinoia.xml')));
   const iconXml = manifest + v31 + read(...RES, 'mipmap-anydpi-v26', 'ic_launcher.xml')
     + read(...RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml');
   ok('nothing still names the old flat background colour or the vector foreground',
      !/@color\/ic_launcher_background|@drawable\/ic_launcher_foreground/.test(iconXml));
   ok('the logo the icons are built from is committed', !!pngSize('android', 'icon', 'epinoia-logo.png'));
-  ok('the store icon is 512 px', sized(512, 'android', 'store', 'icon-512.png'));
+  ok('the store icon is a 512 px 32-bit PNG, as Play Console asks',
+     sized(512, 'android', 'store', 'icon-512.png') && readFileSync(file('android', 'store', 'icon-512.png'))[25] === 6);
   ok('the download page and the app banners have the icon at 192 and 384 px',
      sized(192, 'epinoia', 'android', 'icon-192.png') && sized(384, 'epinoia', 'android', 'icon-384.png'));
   ok('the download page shows the app icon, not the site mark',

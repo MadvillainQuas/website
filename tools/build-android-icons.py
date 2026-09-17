@@ -22,10 +22,12 @@ WHERE EACH SIZE IS USED:
   drawable-*/ic_launcher_background.png   108 dp, the adaptive icon (wordmark included; the
                                           foreground layer is transparent)
   drawable-*/ic_launcher_monochrome.png   108 dp, the themed icon's alpha
-  drawable-*/splash.png                   108 dp with the icon at 52%: the TWA splash, the Android 12
-                                          system splash (which shows only a centred circle of 2/3,
-                                          so 52% keeps the rounded square whole) and the
-                                          notification prompt's header
+  drawable-*/splash.png                   108 dp with the icon at 52%: the TWA splash and the
+                                          notification prompt's header, both at that size
+  drawable-*/splash_system.png            the same picture at 1.5x the pixels, for the Android 12+
+                                          system splash: it draws the 108 dp canvas over 162 dp
+                                          and shows only a centred circle of 2/3 (52% keeps the
+                                          rounded square whole), so 108 dp of pixels came out soft
   mipmap-*/ic_launcher(_round).png        48 dp, Android 6 and 7, which have no masks
   android/store/icon-512.png              Play Console's store icon (Play applies its own mask)
   epinoia/android/icon-192/384.png        the download page and the site's app banners
@@ -133,8 +135,21 @@ visible = layer.crop((round(off), round(off), round(off + S), round(off + S)))  
 
 
 # ------------------------------------------------------------------------------------- shapes ---
-def shape_mask(size, frac, kind, ss=4):
-    n = size * ss
+SS = 8   # the shapes are cut at 8x and box-averaged down: exact coverage, no ringing past the edge
+
+
+def placed(size, frac, kind):
+    """The logo as a shape of side frac * size, centred on a transparent size x size canvas.
+
+    DRAWN FROM THE FULL-BLEED LAYER, NOT PASTED: every pixel the edge touches has the logo's own
+    blue under it, including the transparent ones around it. A pasted square of whole pixels on a
+    transparent-black canvas left the antialiased edge half black, a grey outline on the splash."""
+    n = size * SS
+    k = frac * n / S                                   # source pixels to supersampled pixels
+    big = round(E * k)
+    scaled = layer.resize((big, big), Image.LANCZOS)
+    x0 = round(big / 2 - n / 2)
+    rgb = scaled.crop((x0, x0, x0 + n, x0 + n))        # the layer bleeds 18 dp past the shape
     q, p = np.mgrid[0:n, 0:n] + 0.5
     half = frac * n / 2
     ax, ay = np.abs(p - n / 2), np.abs(q - n / 2)
@@ -144,14 +159,9 @@ def shape_mask(size, frac, kind, ss=4):
         rad = RADIUS * 2 * half
         ex, ey = np.maximum(ax - (half - rad), 0), np.maximum(ay - (half - rad), 0)
         m = (ax <= half) & (ay <= half) & (ex * ex + ey * ey <= rad * rad)
-    return Image.fromarray((m * 255).astype(np.uint8), 'L').resize((size, size), Image.LANCZOS)
-
-
-def placed(size, frac, kind):
-    inner = round(size * frac)
-    out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    out.paste(visible.resize((inner, inner), Image.LANCZOS), ((size - inner) // 2, (size - inner) // 2))
-    out.putalpha(shape_mask(size, frac, kind))
+    alpha = Image.fromarray((m * 255).astype(np.uint8), 'L').reduce(SS)
+    out = rgb.resize((size, size), Image.LANCZOS).convert('RGBA')
+    out.putalpha(alpha)
     return out
 
 
@@ -167,10 +177,12 @@ for name, k in DENSITIES.items():
     themed.putalpha(mono.resize((s108, s108), Image.LANCZOS))
     save(themed, f'{RES}/drawable-{name}/ic_launcher_monochrome.png')
     save(placed(s108, SPLASH, 'rounded'), f'{RES}/drawable-{name}/splash.png')
+    save(placed(round(162 * k), SPLASH, 'rounded'), f'{RES}/drawable-{name}/splash_system.png')
     save(placed(s48, 44 / 48, 'rounded'), f'{RES}/mipmap-{name}/ic_launcher.png')
     save(placed(s48, 44 / 48, 'circle'), f'{RES}/mipmap-{name}/ic_launcher_round.png')
 
-save(visible.resize((512, 512), Image.LANCZOS), 'android/store/icon-512.png')
+# Play Console asks for a 32-bit PNG
+save(visible.resize((512, 512), Image.LANCZOS).convert('RGBA'), 'android/store/icon-512.png')
 for px in (192, 384):
     save(visible.resize((px, px), Image.LANCZOS), f'epinoia/android/icon-{px}.png')
 print('written')

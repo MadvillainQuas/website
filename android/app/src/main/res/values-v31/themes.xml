@@ -5,9 +5,10 @@
         Android 12 draws a splash for every cold start from these attributes. Android skips the
         starting window for a translucent activity, so this version is opaque, and its window
         is the same #f3faf6 as the system splash, the TWA splash and HOME: the hand-over from one
-        to the next never flashes another colour. The icon is drawable/splash (a PNG per
-        density): the system shows only a centred circle of two-thirds of it, so the logo sits
-        at 52% of the canvas and its rounded corners stay whole.
+        to the next never flashes another colour. The icon is drawable/splash_system, the TWA
+        splash's picture at 1.5x the pixels: the system draws the 108 dp canvas over 162 dp, so
+        the 108 dp splash came out soft. It shows only a centred circle of two-thirds of the
+        canvas, so the logo sits at 52% and its rounded corners stay whole.
     -->
     <style name="Theme.Epinoia.Launcher" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/epinoia_ground_light</item>
@@ -16,7 +17,7 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowSplashScreenBackground">@color/epinoia_ground_light</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_system</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@color/epinoia_ground_light</item>
     </style>
 
