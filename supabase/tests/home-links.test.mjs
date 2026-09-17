@@ -263,13 +263,26 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
 /* ------------------------------------------------------------------ 3 --- */
 console.log('\n-- what other tests pin in nav.js is unchanged');
 ok('the worker registration call', NAV.includes("navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});"));
-ok('LEAGUE_PAGE', NAV.includes('const LEAGUE_PAGE = /\\/epinoia\\/(fixtures|stats|news|game|join)\\//;'));
+ok('LEAGUE_PAGE', NAV.includes('const LEAGUE_PAGE = /\\/epinoia\\/(fixtures|stats|news|game|video|join)\\//;'));
 ok('the splash skip', NAV.includes("const atSplash = document.documentElement.classList.contains('m-splash')\n                   && !!document.getElementById('splash');\n  if (atSplash) return;"));
 ok('drawLeagues(); themeLeague();', /drawLeagues\(\);\s*\n\s*themeLeague\(\);/.test(NAV));
 ok('nothing in the rail links to countries/ any more', !/'countries\/'/.test(NAV));
 {
-  const LP = /\/epinoia\/(fixtures|stats|news|game|join)\//;
+  const LP = /\/epinoia\/(fixtures|stats|news|game|video|join)\//;
   ok('HOME, games and scouting are not league pages', ['/epinoia/home/', '/epinoia/games/', '/epinoia/scouting/'].every(p => !LP.test(p)));
+  ok('the video hub is one', LP.test('/epinoia/video/'));
+}
+{
+  /* THE VIDEO HUB'S ROW IS NOT IN THE PHONE BAR and starts hidden in the rail:
+     most leagues have no read broadcast, and nav.js only shows the row once its
+     probe finds one (here fetch rejects, which is the offline case). */
+  const r = rail('/epinoia/stats/?l=bcb');
+  eq('the league tab bar is unchanged by the video hub', r.tabs.map(t => t.tx),
+     ['league', 'fixtures', 'table', 'teams', 'statistics', 'news']);
+  const video = r.nav && r.nav.all().find(n => n.tagName === 'A' && /\/video\//.test(n.href || ''));
+  ok('the video hub row exists in the rail', !!video, video && video.href);
+  ok('...and starts hidden, so a league with no read video never shows it', !!video && video.hidden === true);
+  ok('...pointing at the league it is showing', !!video && video.href === '../video/?l=bcb', video && video.href);
 }
 
 /* ------------------------------------------------------------------ 4 --- */
