@@ -42,13 +42,16 @@ const eq = (name, got, want) => {
 
 const HTML = rd('epinoia', 'scouting', 'index.html');
 const JS = rd('epinoia', 'scouting', 'scouting.js');
+/* The page's own stamp (stamp-assets.py bumps every file together, and --check keeps them equal),
+   so a stamp bump never breaks this test. */
+const V = (/\?v=(\d+)/.exec(HTML) || [])[1] || 'unstamped';
 
 /* ------------------------------------------------------------------ the head --- */
 console.log('\nthe page');
 {
   const head = HTML.slice(0, HTML.indexOf('</head>'));
   const firstScript = /<script\b[^>]*>/i.exec(head);
-  ok('appmode.js is the first script, in <head>', !!firstScript && /src="\.\.\/appmode\.js\?v=272"/.test(firstScript[0]));
+  ok('appmode.js is the first script, in <head>', !!firstScript && firstScript[0].includes('src="../appmode.js?v=' + V + '"'));
   ok('appmode.js is blocking (no defer, no async)', !!firstScript && !/\b(defer|async)\b/.test(firstScript[0]));
   ok('appmode.js comes before any stylesheet or meta tag that paints',
      head.indexOf('appmode.js') < head.indexOf('<link'));
@@ -60,21 +63,21 @@ console.log('\nthe page');
 
   const css = [...head.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
   ['epinoia-kit.css', 'nav.css', 'card.css', 'table.css', 'compare.css'].forEach(f =>
-    ok('stylesheet ' + f + ' at ?v=272', css.includes('../kit/' + f + '?v=272'), css.join(' ')));
+    ok('stylesheet ' + f + ' at ?v=' + V, css.includes('../kit/' + f + '?v=' + V), css.join(' ')));
+  const at = f => css.indexOf('../kit/' + f + '?v=' + V);
   ok('the kit comes before the table and compare sheets',
-     css.indexOf('../kit/epinoia-kit.css?v=272') < css.indexOf('../kit/table.css?v=272') &&
-     css.indexOf('../kit/table.css?v=272') < css.indexOf('../kit/compare.css?v=272'));
+     at('epinoia-kit.css') > -1 && at('epinoia-kit.css') < at('table.css') && at('table.css') < at('compare.css'));
 
   const scripts = [...HTML.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   ok('no inline script: every <script> has a src and no body', scripts.every(m => /\bsrc="/.test(m[1]) && !m[2].trim()));
   ok('no inline event handlers', !/\son[a-z]+\s*=/i.test(HTML));
 
   const body = HTML.slice(HTML.indexOf('</head>'));
-  const deferred = [...body.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1].replace(/\?v=272$/, ''));
+  const deferred = [...body.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1].replace('?v=' + V, ''));
   eq('deferred scripts, in order', deferred,
      ['../config.js', '../access.js', '../season.js', '../bpm.js', '../data.js', '../global.js',
       '../fulltable.js', '../compare.js', 'scouting.js', '../nav.js', '../xscroll.js']);
-  ok('every deferred script is stamped ?v=272', [...body.matchAll(/<script src="([^"]+)"/g)].every(m => /\?v=272$/.test(m[1])));
+  ok('every deferred script is stamped ?v=' + V, [...body.matchAll(/<script src="([^"]+)"/g)].every(m => m[1].endsWith('?v=' + V)));
 
   /* EVERY LOCAL FILE THE PAGE ASKS FOR IS IN THE REPO. appmode.js and home/ are Phase 1's (R2),
      which the roadmap releases before this page (R4, §5); on a branch without them they are
