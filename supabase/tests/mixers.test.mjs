@@ -178,8 +178,12 @@ const legacy = outage.map(e => { const c = Object.assign({}, e); delete c.wall; 
 const legacySpread = V.index(legacy, VID, { label: () => 'x' }).map(p => p.ms);
 ok('an older log still lines up, through created_at',
    legacySpread.length === 4 && legacySpread.every(v => v > 0));
-ok('...and shows exactly the flaw the device stamp fixes — all on one frame',
-   new Set(legacySpread).size === 1, legacySpread.join(','));
+/* Since the bulk-write guard covers insert times too (video.js distrustedStamps with
+   INSERT_SLACK_MS), a batch no longer collapses onto a single frame: rows written together
+   are spread by the slack. The flaw the device stamp fixes is still there, just smaller —
+   the tail of the batch shares an instant, and the spread is the guard's, not the game's. */
+ok('...and still shows the flaw the device stamp fixes: fewer distinct positions than plays',
+   new Set(legacySpread).size < legacySpread.length, legacySpread.join(','));
 
 /* ---- 4. the scorer stamps its own clock ---------------------------------- */
 console.log('\nthe scorer stamps the tap, not the insert');

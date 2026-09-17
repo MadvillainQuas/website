@@ -385,6 +385,8 @@ function render() {
                   !ctx.events.some(e => e && e.wall != null);
   const list = timed ? selected() : [];
   const lined = (V().hasAnchor(v) || hasTrack) && timed;
+  /* the honest account of what the reading covers, shared with the video hub (video.js) */
+  const note = (timed && typeof V().coverageNote === 'function') ? V().coverageNote(v, ctx.events, list) : null;
 
   if (!host.querySelector('.vidbody')) mount();
   const body = host.querySelector('.vidbody');
@@ -483,18 +485,13 @@ function render() {
         /* HOW SURE. A fed game's plays were stamped by a poll, so each carries
            how far back it could really have happened; a tapped game's plays
            carry no such number and the run-up covers the reaction time. */
-        (hasTrack && v.clock_track.mode === 'score'
-          ? '<span class="vidacc" title="no clock on this broadcast: the score overlay was read instead, so each basket is placed by its own score change and only scoring plays are listed">' +
-            'placed by score changes · ' + v.clock_track.samples.length + ' baskets · scoring plays only</span>'
-          : hasTrack && v.clock_track.mode === 'wall'
-          ? '<span class="vidacc" title="no clock could be read off this broadcast, so every play is placed by the moment the live log recorded it against the stream\u2019s own start time">' +
-            'placed by the broadcast\u2019s timestamps · ' + v.clock_track.samples.length + ' plays' +
-            (v.clock_track.samples.length && v.clock_track.samples[0].err_ms ? ' · ±' + Math.ceil(v.clock_track.samples[0].err_ms / 1000) + ' s' : '') + '</span>'
-          : hasTrack
-          ? '<span class="vidacc" title="the clock overlay was read at these points in the footage; every play sits where its clock was on screen' +
-            (v.clock_track.wall_check ? '; checked against the broadcast\u2019s own timestamps on ' + v.clock_track.wall_check.plays + ' plays' : '') + '">' +
-            'placed by the game clock · ' + v.clock_track.samples.length + ' readings' +
-            (v.clock_track.wall_check ? ' · checked' : '') + '</span>'
+        /* WHAT THE READING ACTUALLY COVERED, not how many readings were saved. This counted
+           v.clock_track.samples straight off the row, so a game whose reading covered four per
+           cent of the footage and placed nothing before the second half still read "placed by
+           the game clock, 69 readings, checked". EpinoiaVideo.coverageNote counts the readings
+           that survived the sanity pass and names the periods the list has nothing in. */
+        (note
+          ? '<span class="vidacc" title="' + esc(note.title) + '">' + esc(note.text) + '</span>'
           : (lined && accuracyMs() != null
           ? '<span class="vidacc" title="a fed game\'s plays are stamped by the ingest worker\'s poll; this is the poll interval">' +
             'plays placed to within ±' + Math.ceil(accuracyMs() / 1000) + ' s</span>' : '')) +
