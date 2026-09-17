@@ -2,9 +2,9 @@
 // notify — delivers what the bell already holds, beyond the bell.
 //
 // The fan-outs in the database (notify_fixture_windows, notify_lineups,
-// notify_game_final, post_announcement) write a notification row per person. This
-// function takes the rows nobody has been TOLD about yet and tells them the way they
-// asked in their profile:
+// notify_halftime, notify_game_final, post_announcement) write a notification row per
+// person. This function takes the rows nobody has been TOLD about yet and tells them
+// the way they asked in their profile:
 //
 //   email  one message per person per run, listing everything new, via Resend
 //          (RESEND_API_KEY / CONTACT_FROM, the same pair the contact form uses)
@@ -17,16 +17,32 @@
 // (grouping tag, TTL, urgency, topic, action buttons) is decided in
 // _shared/pushpayload.js, tested by supabase/tests/pushpayload.test.mjs.
 //
+// Every push records what the push service answered on the subscription's row
+// (last_push_at / last_push_status / last_push_error, 0123), so a phone that stops
+// receiving says why on its owner's profile page.
+//
 // WHO CALLS IT (docs/notifications.md §4): the database's minute tick through pg_net
 // (no user token — which is why config.toml deploys this with verify_jwt = false), the
 // ingest worker, finalise-game, the admin console, and fans. A caller without a
 // recognised token can only trigger delivery of rows already waiting for their own
 // owners, which any signed-in fan could always trigger; it is throttled per instance.
-// A signed-in fan may also ask for a test push to their own phones: { test: true }.
+//
+// THREE REQUESTS ARE ABOUT PHONES RATHER THAN ROWS (docs/notifications.md §7):
+//   { test: true, endpoint? }  signed in: a test push to every phone on the account,
+//                              and what each push service answered
+//   { check: subscription }    anyone: one test push to the subscription the caller
+//                              holds (only a known push service's endpoint, which only
+//                              that browser knows), and what the push service answered.
+//                              It proves the phone's half without the account's.
+//   { diag: true }             anyone: whether this server can send at all — the VAPID
+//                              pair matches, this runtime encrypts a push a browser can
+//                              read, a push service answers — and how many phones are
+//                              registered, by push service. No personal data.
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 import { payloadFor, webpushOptions, isExpired, testPayload } from '../_shared/pushpayload.js';
+import { serviceOf, explain, decryptPush, makeReceiver, vapidSigned } from '../_shared/pushcheck.js';
 
 const cors = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -41,6 +57,13 @@ const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, 
    so anything faster is somebody else, and there is nothing to gain by running again */
 let lastAnonRun = 0;
 const ANON_GAP_MS = 15000;
+/* the anonymous phone requests, per instance: a check per endpoint every 5 s and 30 a
+   minute in all; the self-check every 10 s */
+const checkSeen = new Map<string, number>();
+let checkWindow = { start: 0, count: 0 };
+let lastDiag = 0;
+
+const VAPID_SUBJECT = () => Deno.env.get('VAPID_SUBJECT') ?? 'mailto:hello@prophesyscouting.co.uk';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -52,13 +75,27 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch (_) { body = {}; }
 
-  const who = await caller(req, url, serviceKey);
   const site = (Deno.env.get('SITE_URL') ?? 'https://prophesyscouting.co.uk/epinoia/').replace(/\/?$/, '/');
+
+  /* ---------------------------------------------------- the self-check --- */
+  if (body && body.diag === true) {
+    const now = Date.now();
+    if (now - lastDiag < 10000) return json({ ok: false, error: 'a self-check has just run; try again in a few seconds' }, 429);
+    lastDiag = now;
+    return json(await diagnose(admin));
+  }
+
+  const who = await caller(req, url, serviceKey);
+
+  /* ------------------------------------------------ one phone's check --- */
+  if (body && body.check && typeof body.check === 'object') {
+    return json(await checkPhone(admin, body.check, who.userId, site));
+  }
 
   /* ------------------------------------------------------------- a test --- */
   if (body && body.test === true) {
     if (!who.userId) return json({ error: 'sign in first, then send yourself a test' }, 401);
-    return json(await sendTest(admin, who.userId, site));
+    return json(await sendTest(admin, who.userId, site, typeof body.endpoint === 'string' ? body.endpoint : ''));
   }
 
   if (!who.trusted && !who.userId) {
@@ -138,7 +175,7 @@ Deno.serve(async (req) => {
   if (!pub || !priv) {
     if (toPush.length) notes.push('VAPID keys not set: ' + toPush.length + ' push(es) waiting');
   } else {
-    webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:hello@prophesyscouting.co.uk', pub, priv);
+    webpush.setVapidDetails(VAPID_SUBJECT(), pub, priv);
     const users = [...new Set(toPush.map((n: any) => n.user_id))];
     const subs = users.length
       ? (await admin.from('push_subscriptions').select('id,user_id,endpoint,p256dh,auth').in('user_id', users)).data ?? []
@@ -146,26 +183,25 @@ Deno.serve(async (req) => {
     const byUser = new Map<string, any[]>();
     subs.forEach((s: any) => { const a = byUser.get(s.user_id) ?? []; a.push(s); byUser.set(s.user_id, a); });
     const dead: string[] = [];
+    const outcomes = new Map<string, { status: number; error: string | null }>();
     for (const n of toPush) {
       const mine = byUser.get(n.user_id) ?? [];
       const payload = JSON.stringify(payloadFor(n, site, Date.now()));
       const options = webpushOptions(n, Date.now());
       let sent = 0;
       for (const s of mine) {
-        try {
-          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, options);
-          sent++;
-        } catch (e: any) {
-          const code = e?.statusCode ?? 0;
-          if (code === 404 || code === 410) dead.push(s.id);        // the browser let the subscription go
-          else notes.push('push ' + code + ' for ' + n.user_id.slice(0, 8));
-        }
+        const r = await push(s, payload, options);
+        outcomes.set(s.id, { status: r.status, error: r.ok ? null : r.detail });
+        if (r.ok) sent++;
+        else if (r.status === 404 || r.status === 410) dead.push(s.id);        // the browser let the subscription go
+        else notes.push('push ' + r.status + ' for ' + n.user_id.slice(0, 8) + (r.detail ? ': ' + r.detail.slice(0, 80) : ''));
       }
       /* stamped whether or not a browser took it: a person with no live subscription would
          otherwise be retried every run forever */
       await stamp('pushed_at', [n.id]);
       if (sent) (out.pushed as number) += 1;
     }
+    await record(admin, outcomes, dead);
     if (dead.length) await admin.from('push_subscriptions').delete().in('id', [...new Set(dead)]);
   }
 
@@ -173,6 +209,34 @@ Deno.serve(async (req) => {
 });
 
 /* ------------------------------------------------------------------ helpers --- */
+
+/* One push, and what the push service said: never throws. status 0 is this server
+   failing before a push service answered, with the error's message as the detail. */
+async function push(s: { endpoint: string; p256dh: string; auth: string }, payload: string, options: Record<string, unknown>) {
+  try {
+    const r: any = await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, options);
+    return { ok: true, status: Number(r?.statusCode) || 201, detail: '' };
+  } catch (e: any) {
+    const status = Number(e?.statusCode) || 0;
+    const detail = String((status ? e?.body : e?.message) ?? e ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    return { ok: false, status, detail };
+  }
+}
+
+/* What each subscription's push service last answered. A project that has not had 0123
+   applied has no such columns, and delivery must not depend on them. */
+async function record(admin: any, outcomes: Map<string, { status: number; error: string | null }>, dead: string[]) {
+  const at = new Date().toISOString();
+  const gone = new Set(dead);
+  for (const [id, o] of outcomes) {
+    if (gone.has(id)) continue;
+    try {
+      await admin.from('push_subscriptions')
+        .update({ last_push_at: at, last_push_status: o.status, last_push_error: o.error })
+        .eq('id', id);
+    } catch (_) { /* before 0123 */ }
+  }
+}
 
 /* Who is calling. trusted = the service role or the ingest worker's privileged key;
    userId = a signed-in fan. Neither = the database tick or a stranger, who may only
@@ -198,26 +262,133 @@ async function caller(req: Request, url: string, serviceKey: string) {
 }
 
 /* A test push to one fan's own phones, straight away, whatever their notify_push says:
-   the profile page's "Send a test" is how they find out whether this phone works. */
-async function sendTest(admin: any, userId: string, site: string) {
+   the profile page's "Send a test" is how they find out whether this phone works.
+   endpoint: the phone asking, so the answer can say whether THAT phone is on the account. */
+async function sendTest(admin: any, userId: string, site: string, endpoint: string) {
   const pub = Deno.env.get('VAPID_PUBLIC_KEY'), priv = Deno.env.get('VAPID_PRIVATE_KEY');
-  if (!pub || !priv) return { ok: false, sent: 0, message: 'Phone notifications are not set up on this site yet.' };
+  if (!pub || !priv) return { ok: false, sent: 0, devices: [], message: 'Phone notifications are not set up on this site yet.' };
   const { data: subs } = await admin.from('push_subscriptions').select('id,endpoint,p256dh,auth').eq('user_id', userId);
-  if (!subs || !subs.length) return { ok: false, sent: 0, message: 'This account has no phone turned on yet. Turn notifications on first.' };
-  webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:hello@prophesyscouting.co.uk', pub, priv);
-  const payload = JSON.stringify(testPayload(site, Date.now()));
-  let sent = 0; const dead: string[] = [];
-  for (const s of subs) {
-    try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 300, urgency: 'high' });
-      sent++;
-    } catch (e: any) {
-      const code = e?.statusCode ?? 0;
-      if (code === 404 || code === 410) dead.push(s.id);
-    }
+  const thisPhone = !!endpoint && (subs ?? []).some((s: any) => s.endpoint === endpoint);
+  if (!subs || !subs.length) {
+    return { ok: false, sent: 0, devices: [], thisPhone: false,
+             message: 'This account has no phone turned on yet. Turn notifications on first.' };
   }
+  webpush.setVapidDetails(VAPID_SUBJECT(), pub, priv);
+  const payload = JSON.stringify(testPayload(site, Date.now()));
+  let sent = 0;
+  const dead: string[] = [];
+  const outcomes = new Map<string, { status: number; error: string | null }>();
+  const devices: any[] = [];
+  for (const s of subs) {
+    const r = await push(s, payload, { TTL: 300, urgency: 'high' });
+    const service = serviceOf(s.endpoint);
+    const said = explain(r.status, service);
+    outcomes.set(s.id, { status: r.status, error: r.ok ? null : r.detail });
+    devices.push({ service, status: r.status, ok: r.ok, thisPhone: s.endpoint === endpoint, text: said.text, fix: said.fix,
+                   detail: r.ok ? '' : r.detail });
+    if (r.ok) sent++;
+    else if (r.status === 404 || r.status === 410) dead.push(s.id);
+  }
+  await record(admin, outcomes, dead);
   if (dead.length) await admin.from('push_subscriptions').delete().in('id', dead);
-  return sent
-    ? { ok: true, sent, message: sent === 1 ? 'Sent. It should appear on your phone in a few seconds.' : 'Sent to ' + sent + ' devices.' }
-    : { ok: false, sent: 0, message: 'The phone did not accept it. Turn notifications off and on again on that phone.' };
+  const message = sent
+    ? (sent === 1 ? 'Sent. It should appear on your phone in a few seconds.' : 'Sent to ' + sent + ' devices.')
+    : 'The phone did not accept it. Turn notifications off and on again on that phone.';
+  return { ok: sent > 0, sent, devices, thisPhone, message };
+}
+
+/* One test push to the subscription the caller holds. Anonymous on purpose: it answers
+   "can THIS phone receive?" even when saving it to the account is what failed. */
+async function checkPhone(admin: any, sub: any, userId: string | null, site: string) {
+  const endpoint = typeof sub.endpoint === 'string' ? sub.endpoint : '';
+  const keys = sub.keys && typeof sub.keys === 'object' ? sub.keys : {};
+  const service = serviceOf(endpoint);
+  if (!service || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string'
+      || keys.p256dh.length > 200 || keys.auth.length > 100 || endpoint.length > 2000) {
+    return { ok: false, status: 0, service, error: 'not a push subscription from a browser this site knows' };
+  }
+  const now = Date.now();
+  if (now - checkWindow.start > 60000) checkWindow = { start: now, count: 0 };
+  if (checkWindow.count >= 30 || now - (checkSeen.get(endpoint) ?? 0) < 5000) {
+    return { ok: false, status: 429, service, error: 'a check has just run; try again in a few seconds' };
+  }
+  checkWindow.count++;
+  checkSeen.set(endpoint, now);
+  if (checkSeen.size > 500) checkSeen.clear();
+
+  const pub = Deno.env.get('VAPID_PUBLIC_KEY'), priv = Deno.env.get('VAPID_PRIVATE_KEY');
+  if (!pub || !priv) return { ok: false, status: 0, service, error: 'Phone notifications are not set up on this site yet.' };
+  webpush.setVapidDetails(VAPID_SUBJECT(), pub, priv);
+  const payload = JSON.stringify({ ...testPayload(site, now), title: 'This phone can get notifications',
+                                   body: 'The check on your Epinoia profile reached this phone.', tag: 'check', kind: 'check' });
+  const r = await push({ endpoint, p256dh: keys.p256dh, auth: keys.auth }, payload, { TTL: 120, urgency: 'high' });
+  const said = explain(r.status, service);
+
+  /* where the subscription stands in the database, told only about itself */
+  let saved: 'yours' | 'another account' | 'no' | 'unknown' = 'unknown';
+  try {
+    const { data } = await admin.from('push_subscriptions').select('id,user_id').eq('endpoint', endpoint).limit(1);
+    const row = (data ?? [])[0];
+    saved = !row ? 'no' : !userId ? 'unknown' : row.user_id === userId ? 'yours' : 'another account';
+    if (row) {
+      const o = new Map([[row.id, { status: r.status, error: r.ok ? null : r.detail }]]);
+      if (r.status === 404 || r.status === 410) await admin.from('push_subscriptions').delete().eq('id', row.id);
+      else await record(admin, o, []);
+    }
+  } catch (_) { /* the push itself is the answer */ }
+  return { ok: r.ok, status: r.status, service, text: said.text, fix: said.fix, detail: r.ok ? '' : r.detail, saved };
+}
+
+/* Whether this server can send at all, without anybody's phone. */
+async function diagnose(admin: any) {
+  const pub = Deno.env.get('VAPID_PUBLIC_KEY') ?? '', priv = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
+  const subject = VAPID_SUBJECT();
+  const outcome: Record<string, unknown> = {
+    ok: false,
+    vapid: { configured: !!(pub && priv), subject: /^(mailto:|https:\/\/)/.test(subject) ? 'ok' : 'not a mailto: or https: address' },
+    keyPair: 'not checked', encryption: 'not checked', transport: 'not checked', phones: null
+  };
+  if (!pub || !priv) return outcome;
+  try {
+    webpush.setVapidDetails(subject, pub, priv);
+    const h: any = webpush.getVapidHeaders('https://fcm.googleapis.com', subject, pub, priv, 'aes128gcm');
+    outcome.keyPair = (await vapidSigned(h.Authorization, pub)) ? 'match' : 'MISMATCH: the private key does not belong to the public key browsers subscribe with';
+  } catch (e) { outcome.keyPair = 'error: ' + String((e as any)?.message ?? e).slice(0, 200); }
+
+  const receiver = await makeReceiver();
+  const words = 'epinoia self-check ' + Date.now();
+  try {
+    const req: any = webpush.generateRequestDetails({ endpoint: 'https://fcm.googleapis.com/fcm/send/epinoia-self-check', keys: receiver.keys },
+                                                    words, { TTL: 60 });
+    const read = await decryptPush(new Uint8Array(req.body), receiver, receiver.authSecret);
+    outcome.encryption = read === words ? 'ok' : 'BROKEN: a browser could not read what this server encrypts';
+  } catch (e) { outcome.encryption = 'error: ' + String((e as any)?.message ?? e).slice(0, 200); }
+
+  /* a push to a subscription that cannot exist: a push service's refusal proves the
+     request left this server and was read; an exception without a status proves it did not */
+  const r = await push({ endpoint: 'https://fcm.googleapis.com/fcm/send/epinoia-self-check', p256dh: receiver.keys.p256dh, auth: receiver.keys.auth },
+                      'x', { TTL: 0 });
+  outcome.transport = r.status ? 'ok (Google answered ' + r.status + ' for a made-up phone, as it should)' : 'BROKEN: ' + r.detail;
+
+  try {
+    const { data } = await admin.from('push_subscriptions').select('endpoint,created_at,last_push_at,last_push_status');
+    const rows = data ?? [];
+    const by: Record<string, number> = {};
+    rows.forEach((s: any) => { const k = serviceOf(s.endpoint) ?? 'other'; by[k] = (by[k] ?? 0) + 1; });
+    const day = Date.now() - 86400000;
+    const recent = rows.filter((s: any) => s.last_push_at && Date.parse(s.last_push_at) > day);
+    outcome.phones = {
+      total: rows.length, byService: by,
+      addedLastDay: rows.filter((s: any) => Date.parse(s.created_at) > day).length,
+      pushedLastDay: { accepted: recent.filter((s: any) => s.last_push_status >= 200 && s.last_push_status < 300).length,
+                       refused: recent.filter((s: any) => !(s.last_push_status >= 200 && s.last_push_status < 300)).length }
+    };
+  } catch (_) {
+    try {
+      const { count } = await admin.from('push_subscriptions').select('id', { count: 'exact', head: true });
+      outcome.phones = { total: count ?? null };
+    } catch (_) { /* leave null */ }
+  }
+  outcome.ok = outcome.keyPair === 'match' && outcome.encryption === 'ok' && String(outcome.transport).startsWith('ok');
+  return outcome;
 }

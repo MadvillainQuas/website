@@ -4,9 +4,13 @@
    changed here is a new worker to the browser; this line is the one to bump.
 
    Registered by nav.js on every page and by push.js when a fan turns notifications
-   on (the same URL, /epinoia/sw.js, scope /epinoia/). It does three things:
+   on (the same URL, /epinoia/sw.js, scope /epinoia/). It does these things:
      push                    shows what the notify function sent — the title, the
-                             body, the lock-screen slot (tag), the buttons (actions)
+                             body, the lock-screen slot (tag), the buttons (actions) —
+                             and tells any open Epinoia page that it arrived, so the
+                             profile page's check can tell "never reached this phone"
+                             from "reached it, and the phone did not show it"
+     message                 answers the profile page's ping with this worker's version
      notificationclick       opens the page the notice is about, in a tab already on
                              Epinoia when there is one, else in a new window
      pushsubscriptionchange  when the browser rotates the subscription, takes a new
@@ -17,7 +21,7 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17';
+const SW_VERSION = 'notifications-v2-2026-09-17-receipts';
 const SITE_PATH = '/epinoia/';
 const ICON = '/epinoia/brand/epinoia-mark-192.png';
 const BADGE = '/epinoia/brand/epinoia-mark-32.png';
@@ -65,8 +69,9 @@ function actionUrl(kind, action, url) {
     const base = hash < 0 ? url : url.slice(0, hash);
     return base + (base.indexOf('?') < 0 ? '?' : '&') + 'show=starters' + (hash < 0 ? '' : url.slice(hash));
   }
-  /* "Box score" lands on the box score: a finished game otherwise opens on its report */
-  if (kind === 'result' && action === 'box' && !/[?&]tab=/.test(url)) {
+  /* "Box score" lands on the box score: a finished game otherwise opens on its report
+     (and a half-time notice tapped after full time is a finished game) */
+  if ((kind === 'result' || kind === 'halftime') && action === 'box' && !/[?&]tab=/.test(url)) {
     const hash = url.indexOf('#');
     const base = hash < 0 ? url : url.slice(0, hash);
     return base + (base.indexOf('?') < 0 ? '?' : '&') + 'tab=box' + (hash < 0 ? '' : url.slice(hash));
@@ -106,6 +111,20 @@ function notificationFor(payload) {
   return { title: typeof d.title === 'string' && d.title ? d.title : 'Epinoia', options };
 }
 
+/* Tells every open Epinoia page that a push arrived and whether the browser agreed to
+   show it. The profile page's check waits for this: a push that arrives and is shown,
+   yet never seen, is the phone's notification settings, not the site. Best effort — a
+   receipt never delays or blocks the notification itself. */
+function receipt(kind, tag, shown, error) {
+  let list;
+  try { list = self.clients.matchAll({ type: 'window', includeUncontrolled: true }); } catch (_) { return Promise.resolve(); }
+  return Promise.resolve(list).then(cs => (cs || []).forEach(c => {
+    if (c && typeof c.postMessage === 'function') {
+      try { c.postMessage({ type: 'epinoia-push', kind, tag, shown, error: error || '', at: Date.now(), version: SW_VERSION }); } catch (_) { /* gone */ }
+    }
+  })).catch(() => {});
+}
+
 self.addEventListener('push', e => {
   const n = notificationFor(readPayload(e.data));
   /* A browser that rejects an option (actions, vibrate) still shows the words: a
@@ -115,7 +134,20 @@ self.addEventListener('push', e => {
     .catch(() => self.registration.showNotification(n.title, {
       body: n.options.body, icon: n.options.icon, badge: n.options.badge,
       tag: n.options.tag, data: n.options.data
-    })));
+    }))
+    .then(() => receipt(n.options.data.kind, n.options.tag || '', true, ''),
+          err => receipt(n.options.data.kind, n.options.tag || '', false, String((err && err.message) || err || 'not shown'))));
+});
+
+/* the profile page asks which worker is running (a phone can hold on to an old one) */
+self.addEventListener('message', e => {
+  const d = e && e.data;
+  if (!d || d.type !== 'epinoia-ping') return;
+  const reply = { type: 'epinoia-pong', version: SW_VERSION, id: d.id || null };
+  try {
+    if (e.ports && e.ports[0]) e.ports[0].postMessage(reply);
+    else if (e.source && typeof e.source.postMessage === 'function') e.source.postMessage(reply);
+  } catch (_) { /* the page went away */ }
 });
 
 /* --------------------------------------------------------------- the tap --- */
@@ -216,5 +248,5 @@ self.addEventListener('pushsubscriptionchange', e => {
 /* node only (push.test.mjs); a service worker has no `module` */
 if (typeof module === 'object' && module && module.exports) {
   module.exports = { SW_VERSION, SITE_PATH, ICON, BADGE, SUPABASE_URL, SUPABASE_KEY, VAPID_PUBLIC_KEY,
-                     readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt };
+                     readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt, receipt };
 }

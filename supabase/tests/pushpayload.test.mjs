@@ -99,5 +99,74 @@ const tp = testPayload('https://x.test/epinoia', NOW);
 eq(tp.url, 'https://x.test/epinoia/me/', 'the test push opens the profile page');
 eq(tp.tag, 'test', 'the test push has its own slot');
 
+/* ---- half-time: the slot full time will take over ---- */
+const htClub = { kind: 'halftime', game_id: G, ref: G + ':ht', data: { audience: 'club', players: [{ id: P }] } };
+const htPlayer = { kind: 'halftime', game_id: G, ref: G + ':ht', data: { audience: 'player', players: [{ id: P }, { id: 'other' }] } };
+eq(tagFor(htClub), tagFor({ kind: 'result', game_id: G, ref: G }), 'a club follower\'s half-time sits in the result\'s slot, so full time replaces it');
+eq(tagFor(htPlayer), tagFor({ kind: 'player', game_id: G, ref: G + ':' + P }), 'a player follower\'s half-time sits in the first player\'s statline slot');
+eq(tagFor({ ...htPlayer, data: JSON.stringify(htPlayer.data) }), 'player:' + G + ':' + P, '...also when data arrives as JSON text');
+eq(tagFor({ kind: 'halftime', game_id: G, ref: G + ':ht', data: { audience: 'player', players: [] } }), 'result:' + G, 'a player notice with no players falls back to the result slot');
+eq(tagFor({ kind: 'halftime', game_id: G, ref: G + ':ht' }), 'result:' + G, 'no data: the result slot');
+eq(actionsFor({ kind: 'halftime' }), [{ action: 'box', title: 'Box score' }], 'half-time offers "Box score"');
+ok(/half-time/.test(tp.body), 'the test push mentions half-time among what will arrive');
+
+/* ============================================================================
+   pushcheck — the phone questions that need no phone (docs/notifications.md §7)
+   ============================================================================ */
+const PC = await import('../functions/_shared/pushcheck.js');
+
+eq(PC.serviceOf('https://fcm.googleapis.com/fcm/send/abc:def'), 'fcm', 'a Chrome or Android subscription is Google\'s');
+eq(PC.serviceOf('https://web.push.apple.com/QGuQyavXutnMH'), 'apple', 'an iPhone Home Screen app\'s is Apple\'s');
+eq(PC.serviceOf('https://updates.push.services.mozilla.com/wpush/v2/gAAAA'), 'mozilla', 'Firefox\'s is Mozilla\'s');
+eq(PC.serviceOf('https://wns2-par02p.notify.windows.com/w/?token=x'), 'windows', 'Edge on Windows is Microsoft\'s');
+eq(PC.serviceOf('https://example.com/push'), null, 'any other host is refused (a check is anonymous)');
+eq(PC.serviceOf('http://fcm.googleapis.com/fcm/send/x'), null, 'plain http is refused');
+eq(PC.serviceOf('https://fcm.googleapis.com:8443/fcm/send/x'), null, 'another port is refused');
+eq(PC.serviceOf('https://user:pw@fcm.googleapis.com/fcm/send/x'), null, 'credentials in the URL are refused');
+eq(PC.serviceOf('https://fcm.googleapis.com.evil.test/x'), null, 'a look-alike host is refused');
+eq(PC.serviceOf('not a url'), null, 'garbage is refused');
+
+eq(PC.explain(201, 'fcm'), { ok: true, fix: null, text: 'Google accepted it for this phone.' }, '201: accepted');
+eq(PC.explain(410, 'apple').fix, 'resubscribe', '410: expired, sign up again');
+eq(PC.explain(404, 'fcm').fix, 'resubscribe', '404: expired, sign up again');
+eq(PC.explain(403, 'fcm').fix, 'resubscribe', '403: a key mismatch, sign up again');
+eq(PC.explain(429, 'fcm').fix, 'later', '429: later');
+eq(PC.explain(503, 'fcm').fix, 'later', '5xx: later');
+eq(PC.explain(0, 'fcm').fix, 'server', '0: this server failed');
+
+/* RFC 8291 §5, the worked example, byte for byte: the decryptor reads the RFC's body */
+const RFC = {
+  body: 'DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN',
+  auth: 'BTBZMqHH6r4Tts7J_aSIgg',
+  uaPublic: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4',
+  uaPrivate: 'q1dXpw3UpT5VOmu_cf_v6ih07Aems3njxI-JWgLcM94',
+  plain: 'When I grow up, I want to be a watermelon'
+};
+const uaPub = PC.unb64u(RFC.uaPublic);
+const uaKey = await crypto.subtle.importKey('jwk', {
+  kty: 'EC', crv: 'P-256', d: RFC.uaPrivate, x: PC.b64u(uaPub.slice(1, 33)), y: PC.b64u(uaPub.slice(33, 65)), ext: true
+}, { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+eq(await PC.decryptPush(PC.unb64u(RFC.body), { privateKey: uaKey, publicRaw: uaPub }, PC.unb64u(RFC.auth)), RFC.plain,
+   'decryptPush reads RFC 8291\'s example message');
+const tampered = PC.unb64u(RFC.body); tampered[tampered.length - 1] ^= 1;
+eq(await PC.decryptPush(tampered, { privateKey: uaKey, publicRaw: uaPub }, PC.unb64u(RFC.auth)), null, '...and refuses it with one bit flipped');
+eq(await PC.decryptPush(PC.unb64u(RFC.body), { privateKey: uaKey, publicRaw: uaPub }, PC.unb64u('AAAAAAAAAAAAAAAAAAAAAA')), null, '...or with the wrong auth secret');
+
+const rcv = await PC.makeReceiver();
+ok(rcv.publicRaw.length === 65 && rcv.publicRaw[0] === 4 && PC.unb64u(rcv.keys.auth).length === 16, 'makeReceiver: an uncompressed P-256 key and a 16-byte secret');
+
+/* vapidSigned: a token signed by the matching private key passes, any other fails */
+const signer = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+const signerPub = PC.b64u(new Uint8Array(await crypto.subtle.exportKey('raw', signer.publicKey)));
+const jwtPart = o => PC.b64u(new TextEncoder().encode(JSON.stringify(o)));
+const unsigned = jwtPart({ typ: 'JWT', alg: 'ES256' }) + '.' + jwtPart({ aud: 'https://fcm.googleapis.com', exp: 1, sub: 'mailto:x@y.z' });
+const sig = PC.b64u(new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, signer.privateKey, new TextEncoder().encode(unsigned))));
+ok(await PC.vapidSigned('vapid t=' + unsigned + '.' + sig + ', k=' + signerPub, signerPub), 'vapidSigned: the matching pair passes');
+ok(await PC.vapidSigned('WebPush ' + unsigned + '.' + sig, signerPub), '...in the older WebPush header form too');
+const stranger = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+const strangerPub = PC.b64u(new Uint8Array(await crypto.subtle.exportKey('raw', stranger.publicKey)));
+ok(!(await PC.vapidSigned('vapid t=' + unsigned + '.' + sig + ', k=' + signerPub, strangerPub)), '...a different public key fails');
+ok(!(await PC.vapidSigned('Bearer nonsense', signerPub)), '...and a header without a token fails');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

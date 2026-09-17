@@ -13,6 +13,8 @@
      disable({notifyPush?: false}) -> Promise<{ok, state, message}>
      test()             -> Promise<{ok, message}>
      sync()             -> Promise<{ok, state}>   re-saves this phone's subscription
+     check(onStep?)     -> Promise<{ok, steps, advice, platform}>   the step-by-step
+                           answer to "why is nothing arriving?" (docs/notifications.md §7)
      offer({name, kind})-> Promise<{shown, why, view?}>
 
    WHAT "ON" MEANS: this browser has granted permission AND holds a push
@@ -67,8 +69,15 @@ const MSG = Object.freeze({
   testSent: 'A test notification is on its way. It should arrive within a few seconds.',
   testNone: 'The test reached no phone. Turn notifications off and on again here, then send another.',
   testFailed: 'The test could not be sent just now. Try again in a minute.',
-  testOffline: 'The test could not be sent. Check your connection and try again.'
+  testOffline: 'The test could not be sent. Check your connection and try again.',
+  testNotThisPhone: 'The test went to your other devices, but this phone is not on your account. Tap Check this phone to add it.',
+  testArrived: 'The test reached this phone and was shown. If you did not see it, tap Check this phone for the settings to look at.',
+  testNotShown: 'The test reached this phone, but it was not allowed to show. Tap Check this phone for the settings to change.',
+  testNotArrived: 'The push service accepted the test, but it has not reached this phone yet. Tap Check this phone to find out why.',
+  runCheck: 'Tap Check this phone to put it right.'
 });
+/* how long the check and the test wait for this phone's worker to say a push arrived */
+const RECEIPT_MS = 20000;
 
 /* ------------------------------------------------------------ environment --- */
 let ENV = null;
@@ -377,22 +386,295 @@ async function disable(opts) {
   return result(true, st, removed ? MSG.off : MSG.offKept);
 }
 
+/* A test through the account, exactly as real notifications travel: this phone saved
+   under the account first (sync), then a push to every phone on it. When this phone
+   was among them and its push service took it, the answer waits for this phone's
+   worker to say it arrived. */
 async function test() {
   const sess = await freshSession();
   if (!sess) return { ok: false, message: MSG.signedOut };
+  const reg = await registration();
+  const sub = await currentSubscription(reg);
+  if (sub && quick() === 'granted') await sync().catch(() => null);
+  const arrival = sub ? waitForReceipt('test', RECEIPT_MS) : null;
   let r;
   try {
     r = await call(cfg().supabaseUrl + '/functions/v1/notify', {
-      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ test: true })
+      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ test: true, endpoint: sub ? sub.endpoint : '' })
     });
-  } catch (_) { return { ok: false, message: MSG.testOffline }; }
+  } catch (_) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.testOffline }; }
   let data = {};
   try { data = (await r.json()) || {}; } catch (_) { data = {}; }
-  if (r.status === 401) return { ok: false, message: MSG.expired };
-  if (!r.ok) return { ok: false, message: MSG.testFailed };
+  if (r.status === 401) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.expired }; }
+  if (!r.ok) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.testFailed }; }
+  const devices = Array.isArray(data.devices) ? data.devices : [];
+  const mine = devices.find(d => d && d.thisPhone);
   const counts = [data.sent, data.pushed, data.delivered, data.test && data.test.sent].filter(n => typeof n === 'number');
-  if (counts.length && counts[0] === 0) return { ok: false, message: MSG.testNone };
-  return { ok: true, message: MSG.testSent };
+  if (!mine) {
+    if (arrival) arrival.cancel();
+    if (sub) return { ok: false, devices, message: MSG.testNotThisPhone };
+    if (counts.length && counts[0] === 0) return { ok: false, devices, message: MSG.testNone };
+    return { ok: true, devices, message: MSG.testSent };
+  }
+  if (!mine.ok) { if (arrival) arrival.cancel(); return { ok: false, devices, message: (mine.text || MSG.testNone) + ' ' + MSG.runCheck }; }
+  const got = arrival ? await arrival.promise : null;
+  if (got && got.shown) return { ok: true, devices, message: MSG.testArrived };
+  if (got) return { ok: false, devices, message: MSG.testNotShown };
+  return { ok: false, devices, message: MSG.testNotArrived };
+}
+
+/* ------------------------------------------------------------- the check --- */
+/* Which phone this is, for the settings a person has to find: an installed app and a
+   browser tab keep their notification switch in different places. */
+function platform() {
+  const nav = g('navigator') || {};
+  const ua = String(nav.userAgent || '');
+  const app = standalone();
+  if (isIOS(nav)) return app ? 'ios-app' : 'ios-safari';
+  if (/Android/i.test(ua)) {
+    if (/SamsungBrowser/i.test(ua)) return app ? 'android-app' : 'android-samsung';
+    return app ? 'android-app' : 'android-chrome';
+  }
+  return 'desktop';
+}
+const SETTINGS = Object.freeze({
+  'android-app': ['Press and hold the Epinoia icon on your Home Screen, then tap App info.',
+                  'Tap Notifications and turn them on, including every category under them.'],
+  'android-chrome': ['In Chrome, tap ⋮ then Settings, then Site settings, then Notifications.',
+                     'Find prophesyscouting.co.uk and set it to Allowed.',
+                     'In Android Settings, open Apps, then Chrome, then Notifications: they must be on, including Sites.'],
+  'android-samsung': ['In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications.',
+                      'Allow prophesyscouting.co.uk.',
+                      'In Android Settings, open Apps, then Samsung Internet, then Notifications: they must be on.'],
+  'ios-app': ['Open the Settings app, then Notifications, then Epinoia.', 'Turn on Allow Notifications, and choose Lock Screen and Banners.'],
+  'ios-safari': ['Notifications only arrive through Epinoia on your Home Screen: tap Share, then Add to Home Screen, and open it from there.'],
+  desktop: ['Click the icon to the left of the address, open the site settings for prophesyscouting.co.uk and allow Notifications.',
+            'Check your computer lets the browser show notifications (on Windows: Settings, then System, then Notifications).']
+});
+const QUIET = Object.freeze({
+  'android-app': ['Check the phone is not in Do Not Disturb, and that Battery for Epinoia (App info, then Battery) is not Restricted.'],
+  'android-chrome': ['Check the phone is not in Do Not Disturb, and that Battery for Chrome (Settings, then Apps, then Chrome, then Battery) is not Restricted.'],
+  'android-samsung': ['Check the phone is not in Do Not Disturb, and that Battery for Samsung Internet is not Restricted.'],
+  'ios-app': ['Check Focus or Do Not Disturb is off.'],
+  'ios-safari': [],
+  desktop: ['Check Focus assist or Do Not Disturb is off.']
+});
+
+/* A promise for the next receipt from this phone's worker with the given tag, and a
+   way to stop listening. Resolves null when none arrives in time. */
+function waitForReceipt(tag, ms) {
+  const nav = g('navigator');
+  const sw = nav && nav.serviceWorker;
+  let stop = () => {};
+  const promise = new Promise(resolve => {
+    if (!sw || typeof sw.addEventListener !== 'function') { resolve(null); return; }
+    const on = ev => {
+      const d = ev && ev.data;
+      if (d && d.type === 'epinoia-push' && (!tag || d.tag === tag)) { stop(); resolve(d); }
+    };
+    const t = setTimeout(() => { stop(); resolve(null); }, ms);
+    stop = () => { clearTimeout(t); try { sw.removeEventListener('message', on); } catch (_) { /* gone */ } };
+    sw.addEventListener('message', on);
+    try { if (typeof sw.startMessages === 'function') sw.startMessages(); } catch (_) { /* already started */ }
+  });
+  return { promise, cancel: () => stop() };
+}
+
+/* which worker is running, or '' when it does not answer */
+function pingWorker(reg, ms) {
+  return new Promise(resolve => {
+    const w = reg && reg.active;
+    const MC = g('MessageChannel');
+    if (!w || typeof w.postMessage !== 'function' || typeof MC !== 'function') { resolve(''); return; }
+    const ch = new MC();
+    const t = setTimeout(() => resolve(''), ms);
+    ch.port1.onmessage = ev => { clearTimeout(t); resolve((ev.data && ev.data.version) || ''); };
+    try { w.postMessage({ type: 'epinoia-ping', id: String(now()) }, [ch.port2]); } catch (_) { clearTimeout(t); resolve(''); }
+  });
+}
+
+async function ownRow(endpoint, sess) {
+  try {
+    const r = await call(cfg().supabaseUrl + '/rest/v1/push_subscriptions?select=id,last_push_at,last_push_status,last_push_error&endpoint=eq.' +
+                         encodeURIComponent(endpoint), { headers: headers(sess.token) });
+    if (r.status === 400) {                     // before 0125: the status columns are not there yet
+      const r2 = await call(cfg().supabaseUrl + '/rest/v1/push_subscriptions?select=id&endpoint=eq.' + encodeURIComponent(endpoint),
+                            { headers: headers(sess.token) });
+      return { status: r2.status, row: okStatus(r2.status) ? ((await r2.json()) || [])[0] || null : null };
+    }
+    return { status: r.status, row: okStatus(r.status) ? ((await r.json()) || [])[0] || null : null };
+  } catch (_) { return { status: 0, row: null }; }
+}
+async function accountPushOn(sess) {
+  try {
+    const r = await call(cfg().supabaseUrl + '/rest/v1/fan_prefs?select=notify_push&user_id=eq.' + encodeURIComponent(sess.userId),
+                         { headers: headers(sess.token) });
+    if (!okStatus(r.status)) return null;
+    const row = ((await r.json()) || [])[0];
+    return row ? !!row.notify_push : false;
+  } catch (_) { return null; }
+}
+async function deviceCheck(sub, sess) {
+  const j = (sub && typeof sub.toJSON === 'function') ? sub.toJSON() : sub;
+  try {
+    const h = { apikey: cfg().supabaseAnonKey, 'Content-Type': 'application/json' };
+    if (sess && sess.token) h.Authorization = 'Bearer ' + sess.token;
+    const r = await call(cfg().supabaseUrl + '/functions/v1/notify', {
+      method: 'POST', headers: h, body: JSON.stringify({ check: { endpoint: sub.endpoint || j.endpoint, keys: (j && j.keys) || {} } })
+    });
+    let data = {};
+    try { data = (await r.json()) || {}; } catch (_) { data = {}; }
+    return Object.assign({ http: r.status }, data);
+  } catch (_) { return { http: 0, ok: false, status: 0, text: MSG.testOffline }; }
+}
+const SERVICE = { 'fcm.googleapis.com': 'Google', 'android.googleapis.com': 'Google', 'web.push.apple.com': 'Apple',
+                  'updates.push.services.mozilla.com': 'Mozilla' };
+function serviceName(endpoint) {
+  let host = '';
+  try { host = new URL(String(endpoint)).hostname; } catch (_) { return 'its push service'; }
+  if (SERVICE[host]) return SERVICE[host];
+  if (/\.push\.apple\.com$/.test(host)) return 'Apple';
+  if (/\.notify\.windows\.com$/.test(host)) return 'Microsoft';
+  return 'its push service';
+}
+function clock(t) {
+  const d = new Date(t);
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+/* Every step, in the order a notification travels, each saying what it found; what can
+   be put right without a decision (an expired or mismatched sign-up, a phone missing
+   from the account) is put right, and said so. Never asks for permission: that needs
+   the Turn on button's tap. onStep(steps) is called as each step lands. */
+async function check(onStep) {
+  const steps = [];
+  const plat = platform();
+  const report = (extra) => Object.assign({ ok: steps.length > 0 && steps.every(s => s.ok !== false), steps, platform: plat }, extra);
+  const add = (id, ok, label, detail) => {
+    steps.push({ id, ok, label, detail: detail || '' });
+    if (typeof onStep === 'function') { try { onStep(steps.slice()); } catch (_) { /* the page's problem */ } }
+  };
+  const advise = (title, lines) => report({ advice: { title, lines: (lines || []).filter(Boolean) } });
+
+  /* 1. the browser */
+  const q = quick();
+  if (q === 'unsupported') {
+    add('browser', false, 'This browser cannot receive notifications', MSG.unsupported);
+    return advise('Use a browser that can', [/Android/i.test(String((g('navigator') || {}).userAgent || ''))
+      ? 'Open prophesyscouting.co.uk/epinoia/me/ in Chrome or Samsung Internet (not inside another app), then run the check again.'
+      : MSG.unsupported]);
+  }
+  if (q === 'ios-install') {
+    add('browser', false, 'On iPhone, notifications need Epinoia on your Home Screen', MSG.iosInstall);
+    return advise('Add Epinoia to your Home Screen', SETTINGS['ios-safari']);
+  }
+  add('browser', true, 'This browser can receive notifications');
+
+  /* 2. permission */
+  if (q === 'denied') {
+    add('permission', false, 'Notifications are blocked for Epinoia on this phone');
+    return advise('Allow notifications, then run the check again', SETTINGS[plat]);
+  }
+  if (q !== 'granted') {
+    add('permission', false, 'Epinoia has not been allowed to send notifications yet');
+    return advise('Turn notifications on', ['Tap Turn on above and choose Allow when the phone asks.',
+      'If nothing asks, allow them in settings instead:'].concat(SETTINGS[plat]));
+  }
+  add('permission', true, 'Notifications are allowed for Epinoia');
+
+  /* 3. the worker */
+  const nav = g('navigator');
+  let reg = await registration();
+  if (!reg || !reg.active) {
+    try { reg = await whenActive(await nav.serviceWorker.register(SW_URL, { scope: SCOPE })); } catch (_) { reg = null; }
+  }
+  if (!reg || !reg.active || !reg.pushManager) {
+    add('worker', false, 'Epinoia’s notification service is not running on this phone', MSG.worker);
+    return advise('Reload and try again', ['Close Epinoia completely, open it again and run the check.']);
+  }
+  const version = await pingWorker(reg, 3000);
+  add('worker', true, 'Epinoia’s notification service is running', version ? 'version ' + version : 'an older version; it updates the next time Epinoia is reopened');
+
+  /* 4. the subscription (re-made when missing, or made with another key) */
+  let sub = await currentSubscription(reg);
+  let made = '';
+  const key = keyBytes(vapid());
+  const had = sub && sub.options && sub.options.applicationServerKey;
+  if (sub && had && key && !sameKey(had, key)) {
+    try { await sub.unsubscribe(); } catch (_) { /* replaced below */ }
+    sub = null; made = 'renewed: it was signed up with an old key';
+  }
+  if (!sub) {
+    try { sub = await subscribeWith(reg, true); if (!made) made = 'signed up just now: it was not signed up'; } catch (_) { sub = null; }
+  }
+  if (!sub) {
+    add('subscription', false, 'This phone could not sign up for notifications', MSG.subscribe);
+    return advise('Allow notifications, then run the check again', SETTINGS[plat]);
+  }
+  add('subscription', true, 'This phone is signed up with ' + serviceName(sub.endpoint), made);
+
+  /* 5. the account */
+  const sess = await freshSession();
+  if (!sess || !sess.userId) {
+    add('account', false, 'You are not signed in on this phone', MSG.signedOut);
+  } else {
+    let row = await ownRow(sub.endpoint, sess);
+    let fixed = '';
+    if (okStatus(row.status) && !row.row) {
+      const st = await saveOrReplace(reg, sub, sess);
+      if (okStatus(st)) { fixed = 'added just now: it was missing'; sub = (await currentSubscription(reg)) || sub; row = await ownRow(sub.endpoint, sess); }
+    }
+    if (row.row) add('account', true, 'This phone is on your account', fixed);
+    else add('account', false, 'This phone could not be added to your account', row.status === 401 ? MSG.expired : MSG.save);
+    const on = await accountPushOn(sess);
+    if (on === false) add('channel', false, 'Phone and desktop alerts are switched off on your account', 'Tick Phone and desktop alerts below; tests still arrive, real notifications do not.');
+    else if (on === true) add('channel', true, 'Phone and desktop alerts are on for your account');
+    if (row.row && row.row.last_push_at && row.row.last_push_status != null && !(row.row.last_push_status >= 200 && row.row.last_push_status < 300)) {
+      add('history', false, 'The last notification to this phone was refused (' + row.row.last_push_status + ') at ' + clock(Date.parse(row.row.last_push_at)),
+          String(row.row.last_push_error || '').slice(0, 160));
+    }
+  }
+
+  /* 6. a push to this phone, through the push service */
+  let arrival = waitForReceipt('check', RECEIPT_MS);
+  let res = await deviceCheck(sub, sess);
+  if (!res.ok && res.fix === 'resubscribe') {
+    arrival.cancel();
+    try { await sub.unsubscribe(); } catch (_) { /* replaced below */ }
+    try { sub = await subscribeWith(reg, true); } catch (_) { sub = null; }
+    if (sub && sess && sess.userId) await saveOrReplace(reg, sub, sess);
+    if (sub) {
+      add('renewed', true, 'This phone’s sign-up was out of date, so it signed up again', res.text || '');
+      arrival = waitForReceipt('check', RECEIPT_MS);
+      res = await deviceCheck(sub, sess);
+    }
+  }
+  if (!res.ok) {
+    arrival.cancel();
+    const why = res.status === 429 ? 'A check has just run. Wait a few seconds and run it again.'
+      : (res.text || res.error || MSG.testFailed) + (res.detail ? ' (' + String(res.detail).slice(0, 120) + ')' : '');
+    add('delivery', false, 'The test push did not get through', why);
+    return advise(res.fix === 'server' ? 'This is on Epinoia’s side, not your phone' : 'Try again in a minute',
+                  [res.fix === 'server' ? 'Nothing on this phone needs changing. Try again later.' : 'If it keeps failing, tap Turn off, then Turn on, and run the check again.']);
+  }
+  add('delivery', true, serviceName(sub.endpoint) + ' accepted a test push for this phone');
+
+  /* 7. did it reach the phone */
+  const got = await arrival.promise;
+  if (!got) {
+    add('arrival', false, 'The test has not reached this phone after ' + Math.round(RECEIPT_MS / 1000) + ' seconds');
+    return advise('The phone is not letting notifications through in the background', [
+      'Check the phone has a connection.'].concat(QUIET[plat] || [], SETTINGS[plat] || []));
+  }
+  if (!got.shown) {
+    add('arrival', false, 'The test reached this phone, but the browser refused to show it', got.error || '');
+    return advise('Allow Epinoia to show notifications', SETTINGS[plat]);
+  }
+  add('arrival', true, 'The test reached this phone at ' + clock(got.at || now()) + ' and was shown');
+  return advise('Everything on Epinoia’s side works', [
+    'If a notification titled “This phone can get notifications” did not appear just now, the phone is hiding them:'
+  ].concat(SETTINGS[plat] || [], QUIET[plat] || []));
 }
 
 /* The profile page, on every visit with notifications on: this subscription saved
@@ -552,8 +834,8 @@ function openSheet(doc, view, name, kind) {
     (acts[0] || box).focus();
   }
   const lead = kind === 'player'
-    ? 'Reminders before ' + name + ' plays, whether they start, and their statline at full time, on this phone.'
-    : 'Tip-off reminders 2 days and 2 hours before, starting lineups and full-time results, on this phone.';
+    ? 'Reminders before ' + name + ' plays, whether they start, and their line at half-time and full time, on this phone.'
+    : 'Tip-off reminders 2 days and 2 hours before, starting lineups, the half-time score and the result, on this phone.';
 
   function ask(message) {
     const d = el('p', null, lead); d.id = 'ep-push-d';
@@ -609,12 +891,12 @@ function openSheet(doc, view, name, kind) {
 }
 
 return {
-  state, enable, disable, test, sync, offer,
+  state, enable, disable, test, sync, check, offer,
   MESSAGES: MSG, SW_URL, SCOPE,
   _test: {
     env(e) { ENV = e || null; },
     quick, keyBytes, sameKey, isIOS, iosVersion, decide, snoozed, snooze, storedSession,
-    subscriptionRow, SNOOZE_KEY, SNOOZE_MS,
+    subscriptionRow, SNOOZE_KEY, SNOOZE_MS, platform, SETTINGS, QUIET, serviceName, RECEIPT_MS,
     close() { if (sheet) { sheet.remove(); sheet = null; } }
   }
 };

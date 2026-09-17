@@ -92,6 +92,23 @@
   .phone .msg{margin:0}
   .phone .ep-btn[disabled],.phone .ep-btn[disabled]:hover{cursor:default;background:transparent;color:var(--ink-3);border-color:var(--rule-2);filter:none}
 
+  /* CHECK THIS PHONE (push.js check): each step a notification travels, found or not,
+     then what to do. The mark is a shape as well as a colour. */
+  .chk{display:grid;gap:10px;border-top:1px solid var(--rule);padding-top:12px}
+  .chk.hide{display:none}
+  .chk ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .chk li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start;font-family:var(--f-ui);font-size:14px;line-height:1.45;color:var(--ink)}
+  .chk li i{font-style:normal;font-weight:700;width:22px;height:22px;display:grid;place-items:center;border:1px solid var(--rule-2);font-size:12px;color:var(--ink-3)}
+  .chk li.ok i{border-color:var(--lume);color:var(--lume)}
+  .chk li.bad i{border-color:var(--flare);color:var(--flare)}
+  .chk li small{display:block;font-size:12px;color:var(--ink-3);overflow-wrap:anywhere}
+  .chk .adv{padding:10px 13px;border-left:2px solid var(--rule-2);display:grid;gap:6px}
+  .chk .adv.ok{border-left-color:var(--lume)}
+  .chk .adv.bad{border-left-color:var(--flare)}
+  .chk .adv b{font-size:14px}
+  .chk .adv ol{list-style:decimal;padding-left:20px;gap:4px}
+  .chk .adv li{display:list-item;font-size:13px;color:var(--ink-2)}
+
   /* a switch for each moment a fan can be told about; a real checkbox underneath
      (role=switch), so the keyboard, the label and a screen reader all work as before */
   input.sw{-webkit-appearance:none;appearance:none;flex:none;box-sizing:border-box;width:40px;height:24px;margin:0;border-radius:12px;
@@ -179,8 +196,10 @@
           <button class="ep-btn hide" id="pushTest" type="button">Send a test</button>
           <button class="ep-btn hide" id="pushOff" type="button">Turn off</button>
           <button class="ep-btn hide" id="installBtn" type="button">Add Epinoia to your Home Screen</button>
+          <button class="ep-btn hide" id="pushCheck" type="button">Check this phone</button>
         </div>
         <div id="phoneMsg" class="msg hide" role="status" aria-live="polite"></div>
+        <div class="chk hide" id="phoneCheck" aria-live="polite"></div>
       </div>
       <div class="row"><span class="lbl">How</span></div>
       <label class="opt"><input type="checkbox" id="nInapp"><div><b>On the site</b><span>the bell at the top right of every page</span></div></label>
@@ -191,6 +210,7 @@
       <label class="opt sub" id="oFix2d"><input type="checkbox" role="switch" class="sw" id="wFix2d"><div><b>2 days before</b><span>the day, the time and the venue</span></div></label>
       <label class="opt sub" id="oFix2h"><input type="checkbox" role="switch" class="sw" id="wFix2h"><div><b>2 hours before</b><span>a last reminder before tip-off</span></div></label>
       <label class="opt"><input type="checkbox" role="switch" class="sw" id="wLineups"><div><b>Starting lineups</b><span>both starting fives, as soon as the table confirms them</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wHalftime"><div><b>Half-time</b><span>the half-time score and top scorers, and the first-half line of players you follow</span></div></label>
       <label class="opt"><input type="checkbox" role="switch" class="sw" id="wResults"><div><b>Full-time results</b><span>the final score whenever a club or a game you follow plays</span></div></label>
       <label class="opt"><input type="checkbox" role="switch" class="sw" id="wPlayers"><div><b>Player statlines</b><span>points, rebounds and assists of players you follow, after each game</span></div></label>
       <label class="opt"><input type="checkbox" role="switch" class="sw" id="wPlayerGames"><div><b>Games of players you follow</b><span>reminders and lineups for a player&rsquo;s games when you don&rsquo;t follow their club</span></div></label>

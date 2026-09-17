@@ -114,22 +114,36 @@ function browser(o = {}) {
   const reg = { active: { state: 'activated' }, scope: 'https://site.example/epinoia/', pushManager };
   const navigator = { userAgent: o.ua || UA.android, platform: o.platform || 'Linux armv8l', maxTouchPoints: o.touch || 0 };
   if (o.standalone !== undefined) navigator.standalone = o.standalone;
+  const swListeners = new Set();
   if (!o.noSW) {
     navigator.serviceWorker = {
       register: async (url, opts) => { calls.register.push([url, opts]); if (o.registerThrows) throw new Error('SecurityError'); return reg; },
       getRegistration: async scope => { calls.getRegistration.push(scope); return o.registered === false ? undefined : reg; },
       ready: Promise.resolve(reg)
     };
+    /* o.receipts: the worker says pushes arrive (the page's message listener) */
+    if (o.receipts) {
+      navigator.serviceWorker.addEventListener = (t, fn) => { if (t === 'message') swListeners.add(fn); };
+      navigator.serviceWorker.removeEventListener = (t, fn) => { swListeners.delete(fn); };
+    }
   }
+  /* o.arrive(url, body) -> {tag, shown, error} | null: after a notify POST, what the worker reports */
+  const deliver = (url, body) => {
+    if (!o.arrive || !/\/functions\/v1\/notify$/.test(url)) return;
+    const r = o.arrive(url, body);
+    if (r) setTimeout(() => [...swListeners].forEach(fn => fn({ data: Object.assign({ type: 'epinoia-push', at: Date.parse('2026-09-19T15:04:05') }, r) })), 5);
+  };
   const Notification = o.noNotification ? undefined : {
     get permission() { return permission; },
     requestPermission() { calls.perm++; permission = o.answer || permission; return Promise.resolve(permission); }
   };
   const fetch = async (url, init = {}) => {
-    calls.fetch.push({ url, method: init.method || 'GET', headers: init.headers || {}, body: init.body ? JSON.parse(init.body) : undefined });
+    const body = init.body ? JSON.parse(init.body) : undefined;
+    calls.fetch.push({ url, method: init.method || 'GET', headers: init.headers || {}, body });
     const st = o.respond ? o.respond(url, init, calls.fetch.length) : 200;
     if (st === 'throw') throw new TypeError('Failed to fetch');
-    return { status: st, ok: st >= 200 && st < 300, json: async () => (o.json ? o.json(url) : {}) };
+    if (st >= 200 && st < 300) deliver(url, body);
+    return { status: st, ok: st >= 200 && st < 300, json: async () => (o.json ? o.json(url, body) : {}) };
   };
   const env = {
     navigator, Notification, PushManager: o.noPush ? undefined : function PushManager() {},
@@ -402,12 +416,40 @@ console.log('\ndisable(), test() and sync()');
   let r = await P.test();
   eq('a test is one POST to the notify function', [b.calls.fetch.length, b.calls.fetch[0].method, b.calls.fetch[0].url],
      [1, 'POST', 'https://' + REF + '.supabase.co/functions/v1/notify']);
-  eq('...saying {test: true}', b.calls.fetch[0].body, { test: true });
+  eq('...saying {test: true} (and no endpoint: this browser holds no subscription)', b.calls.fetch[0].body, { test: true, endpoint: '' });
   eq('...with the apikey and the fan\'s token', [b.calls.fetch[0].headers.apikey, b.calls.fetch[0].headers.Authorization], ['sb_publishable_test', 'Bearer ' + tok]);
-  eq('...and a sentence back', r, { ok: true, message: P.MESSAGES.testSent });
+  eq('...and a sentence back', r, { ok: true, devices: [], message: P.MESSAGES.testSent });
 
   b = android({ json: () => ({ sent: 0 }) }); signIn(b.ls);
-  eq('it reached nobody: says what to do', await P.test(), { ok: false, message: P.MESSAGES.testNone });
+  eq('it reached nobody: says what to do', await P.test(), { ok: false, devices: [], message: P.MESSAGES.testNone });
+
+  /* this phone holds a subscription: it is saved under the account first, named in the
+     request, and the answer waits for this phone's worker */
+  const EPT = 'https://fcm.googleapis.com/fcm/send/this-phone';
+  const mineOk = { sent: 1, devices: [{ service: 'fcm', status: 201, ok: true, thisPhone: true, text: 'Google accepted it for this phone.' }] };
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: url => /notify$/.test(url) ? mineOk : {}, arrive: () => ({ tag: 'test', shown: true }) });
+  signIn(b.ls);
+  r = await P.test();
+  eq('this phone: the subscription is re-saved, then the test names it', [b.calls.fetch.length, b.calls.fetch[0].url.includes('/rest/v1/push_subscriptions'), b.calls.fetch[1].body],
+     [2, true, { test: true, endpoint: EPT }]);
+  eq('...and when its worker says the test arrived and showed, it says so', r.message, P.MESSAGES.testArrived);
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: url => /notify$/.test(url) ? mineOk : {}, arrive: () => ({ tag: 'test', shown: false, error: 'not allowed' }) });
+  signIn(b.ls);
+  eq('arrived but not allowed to show: says so', (await P.test()).message, P.MESSAGES.testNotShown);
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) },
+                json: url => /notify$/.test(url) ? mineOk : {} });
+  signIn(b.ls);
+  eq('accepted but no word from the worker: says it has not arrived', (await P.test()).message, P.MESSAGES.testNotArrived);
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) },
+                json: url => /notify$/.test(url) ? { sent: 1, devices: [{ ok: true, thisPhone: false }] } : {} });
+  signIn(b.ls);
+  eq('the account\'s other phones got it, this one is not on the account: says so', (await P.test()).message, P.MESSAGES.testNotThisPhone);
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) },
+                json: url => /notify$/.test(url) ? { sent: 0, devices: [{ ok: false, status: 403, thisPhone: true, text: 'Google refused it.' }] } : {} });
+  signIn(b.ls);
+  eq('this phone refused: the push service\'s reason, and the way to fix it', (await P.test()).message, 'Google refused it. ' + P.MESSAGES.runCheck);
   b = android({ respond: () => 401 }); signIn(b.ls);
   eq('401: sign in again', await P.test(), { ok: false, message: P.MESSAGES.expired });
   b = android({ respond: () => 500 }); signIn(b.ls);
@@ -427,6 +469,99 @@ console.log('\ndisable(), test() and sync()');
   b = android({ permission: 'default' }); signIn(b.ls);
   r = await P.sync();
   ok('...and never prompts or writes when permission is not granted', !r.ok && !b.calls.fetch.length && b.calls.perm === 0);
+}
+
+/* ============================================================== check() === */
+console.log('\ncheck(): why nothing arrives');
+{
+  const ids = r => r.steps.map(s => s.id + ':' + (s.ok === true ? 'ok' : s.ok === false ? 'bad' : '?'));
+  const EPC = 'https://fcm.googleapis.com/fcm/send/checked';
+
+  let b = android({ ua: UA.android });
+  eq('platform: Chrome on Android in a tab', T.platform(), 'android-chrome');
+  b = android({ displayStandalone: true });
+  eq('...the installed app', T.platform(), 'android-app');
+  b = android({ ua: UA.android.replace('Chrome/128', 'SamsungBrowser/25.0 Chrome/128') });
+  eq('...Samsung Internet', T.platform(), 'android-samsung');
+  b = iphoneTab({ standalone: true, noPush: false, noNotification: false });
+  eq('...an iPhone Home Screen app', T.platform(), 'ios-app');
+  b = browser({ ua: UA.chrome });
+  eq('...a computer', T.platform(), 'desktop');
+  ok('every platform has settings to point at', ['android-app', 'android-chrome', 'android-samsung', 'ios-app', 'ios-safari', 'desktop']
+     .every(k => Array.isArray(T.SETTINGS[k]) && T.SETTINGS[k].length > 0));
+  ok('the installed Android app is sent to App info, a Chrome tab to Site settings',
+     /App info/.test(T.SETTINGS['android-app'].join(' ')) && /Site settings/.test(T.SETTINGS['android-chrome'].join(' ')));
+
+  b = android({ noPush: true });
+  let r = await P.check();
+  eq('a browser without push: one step, and where to go instead', [ids(r), r.ok, /Chrome or Samsung Internet/.test(r.advice.lines.join(' '))],
+     [['browser:bad'], false, true]);
+
+  b = android({ permission: 'denied' });
+  r = await P.check();
+  eq('blocked in a Chrome tab: the permission step fails, and Site settings is the fix',
+     [ids(r), r.advice.lines.some(l => /Site settings/.test(l))], [['browser:ok', 'permission:bad'], true]);
+  b = android({ permission: 'denied', displayStandalone: true });
+  r = await P.check();
+  ok('...blocked in the installed app: App info is the fix', r.advice.lines.some(l => /App info/.test(l)));
+  b = android({ permission: 'default' });
+  r = await P.check();
+  ok('never asked: told to tap Turn on, and it did not prompt by itself', /Turn on/.test(r.advice.lines[0]) && b.calls.perm === 0);
+
+  const rows = { row: [{ id: 'row1', last_push_at: null, last_push_status: null, last_push_error: null }] };
+  const answers = (over = {}) => (url, body) => {
+    if (/\/rest\/v1\/push_subscriptions\?select=/.test(url)) return (typeof over.rows === 'function' ? over.rows() : over.rows) || rows.row;
+    if (/\/rest\/v1\/fan_prefs\?select=notify_push/.test(url)) return over.prefs || [{ notify_push: true }];
+    if (/\/functions\/v1\/notify$/.test(url)) return (over.notify || (() => ({ ok: true, status: 201, service: 'fcm', text: 'Google accepted it for this phone.', saved: 'yours' })))(body);
+    return {};
+  };
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: answers(), arrive: (url, body) => body && body.check ? { tag: 'check', shown: true } : null });
+  signIn(b.ls);
+  let seen = 0;
+  r = await P.check(() => { seen++; });
+  eq('everything works: every step passes, in the order a notification travels',
+     ids(r), ['browser:ok', 'permission:ok', 'worker:ok', 'subscription:ok', 'account:ok', 'channel:ok', 'delivery:ok', 'arrival:ok']);
+  ok('...onStep heard each step as it landed', seen === r.steps.length, seen);
+  const checkCall = b.calls.fetch.find(f => /notify$/.test(f.url));
+  eq('...the device check sends this phone\'s own subscription', checkCall.body, { check: { endpoint: EPC, keys: { p256dh: 'P256-ked', auth: 'AUTH-ked' } } });
+  ok('...and the advice says what to look at if it still did not appear', r.ok && /Everything/.test(r.advice.title) && r.advice.lines.length > 1);
+  ok('...never asking for permission, never unsubscribing', b.calls.perm === 0 && b.calls.unsubscribe.length === 0);
+
+  /* the row appears once the check has saved it */
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: answers({ rows: () => b.calls.fetch.some(f => f.method === 'POST' && /on_conflict=endpoint/.test(f.url)) ? rows.row : [] }),
+                arrive: (url, body) => body && body.check ? { tag: 'check', shown: true } : null });
+  signIn(b.ls);
+  r = await P.check();
+  const acct = r.steps.find(s => s.id === 'account');
+  ok('a phone missing from the account is added, and the check says so',
+     acct && b.calls.fetch.some(f => f.method === 'POST' && /push_subscriptions\?on_conflict=endpoint/.test(f.url)) && /added just now/.test(acct.detail));
+
+  let n = 0;
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: answers({ notify: () => (++n === 1 ? { ok: false, status: 410, fix: 'resubscribe', text: 'Google says this phone’s sign-up has expired.' }
+                                                      : { ok: true, status: 201, service: 'fcm', text: 'ok' }) }),
+                arrive: (url, body) => body && body.check && body.check.endpoint !== EPC ? { tag: 'check', shown: true } : null });
+  signIn(b.ls);
+  r = await P.check();
+  ok('an expired sign-up is renewed on the spot and checked again',
+     b.calls.unsubscribe.includes(EPC) && b.calls.subscribe.length >= 1 && r.steps.some(s => s.id === 'renewed' && s.ok) && r.ok, JSON.stringify(ids(r)));
+
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, json: answers() });
+  signIn(b.ls);
+  const real = T.RECEIPT_MS;
+  r = await P.check();
+  eq('accepted but never heard from the worker: the arrival step fails with the background settings to check',
+     [r.steps[r.steps.length - 1].id, r.steps[r.steps.length - 1].ok, r.advice.lines.some(l => /Battery/.test(l))], ['arrival', false, true]);
+  ok('(no listener in this browser, so the wait ended at once rather than after ' + real + ' ms)', true);
+
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true, json: answers({ prefs: [{ notify_push: false }] }),
+                arrive: (url, body) => body && body.check ? { tag: 'check', shown: true } : null });
+  signIn(b.ls);
+  r = await P.check();
+  ok('the account\'s phone alerts switched off: named as the problem even though the test arrives',
+     r.steps.some(s => s.id === 'channel' && s.ok === false) && !r.ok);
 }
 T.env(null);
 
@@ -472,8 +607,8 @@ const client = (url, o = {}) => {
 };
 {
   const { W, listeners } = loadSW();
-  ok('install, fetch, activate, push, notificationclick and pushsubscriptionchange are all handled',
-     ['install', 'fetch', 'activate', 'push', 'notificationclick', 'pushsubscriptionchange'].every(t => typeof listeners[t] === 'function'));
+  ok('install, fetch, activate, push, notificationclick, pushsubscriptionchange and message are all handled',
+     ['install', 'fetch', 'activate', 'push', 'notificationclick', 'pushsubscriptionchange', 'message'].every(t => typeof listeners[t] === 'function'));
   eq('the public URL, key and VAPID key are config.js\'s, character for character',
      [W.SUPABASE_URL, W.SUPABASE_KEY, W.VAPID_PUBLIC_KEY], [CFG_URL, CFG_KEY, CFG_VAPID]);
   ok('the icon and the badge are real files', fs.existsSync(path.join(ROOT, W.ICON.replace(/^\//, ''))) && fs.existsSync(path.join(ROOT, W.BADGE.replace(/^\//, ''))),
@@ -511,6 +646,8 @@ const client = (url, o = {}) => {
   eq('"Box score" on a result opens the result\'s page on the box score tab (a final game otherwise opens on its report)',
      W.actionUrl('result', 'box', ORIGIN + '/epinoia/game/?g=1'), ORIGIN + '/epinoia/game/?g=1&tab=box');
   eq('...and a link that already names a tab is left alone', W.actionUrl('result', 'box', ORIGIN + '/epinoia/game/?g=1&tab=pbp'), ORIGIN + '/epinoia/game/?g=1&tab=pbp');
+  eq('"Box score" on a half-time notice opens the box score too (tapped after full time, the game opens on its report)',
+     W.actionUrl('halftime', 'box', ORIGIN + '/epinoia/game/?g=1&mode=supabase'), ORIGIN + '/epinoia/game/?g=1&mode=supabase&tab=box');
 
   eq('a text payload (not JSON) is shown as the body', W.readPayload({ json: () => { throw new SyntaxError('x'); }, text: () => 'plain words' }), { title: 'Epinoia', body: 'plain words' });
 
@@ -544,6 +681,26 @@ const client = (url, o = {}) => {
   await fire(second.listeners.push, { data: { json: () => ({ title: 'T', body: 'B', tag: 'x', actions: [{ action: 'box', title: 'Box score' }] }) } });
   ok('a browser that rejects the options still gets the words (retried without actions or vibrate)',
      second.calls.show.length === 2 && second.calls.show[1][1].body === 'B' && !('actions' in second.calls.show[1][1]) && !('vibrate' in second.calls.show[1][1]));
+
+  /* the receipt: every open page hears that a push arrived, and whether it showed */
+  const heard = [];
+  const page = { url: ORIGIN + '/epinoia/me/', postMessage: m => heard.push(m) };
+  const third = loadSW({ all: [page, { url: ORIGIN + '/epinoia/', noPost: true }] });
+  await fire(third.listeners.push, { data: { json: () => ({ title: 'This phone can get notifications', tag: 'check', kind: 'check' }) } });
+  eq('push: the open page hears it arrived and was shown (a client without postMessage is skipped)',
+     heard.map(m => [m.type, m.tag, m.kind, m.shown, typeof m.at, m.version]), [['epinoia-push', 'check', 'check', true, 'number', third.W.SW_VERSION]]);
+  const heard2 = [];
+  const failing = loadSW({ all: [{ url: ORIGIN + '/epinoia/me/', postMessage: m => heard2.push(m) }] });
+  failing.W.receipt('test', 'test', false, 'no permission');
+  await new Promise(res => setTimeout(res, 5));
+  eq('...and hears when the browser refused to show it, with the reason', heard2.map(m => [m.shown, m.error]), [[false, 'no permission']]);
+
+  /* the ping: which worker is running */
+  const replies = [];
+  third.listeners.message({ data: { type: 'epinoia-ping', id: 'p1' }, ports: [{ postMessage: m => replies.push(m) }] });
+  third.listeners.message({ data: { type: 'something-else' }, ports: [{ postMessage: m => replies.push(m) }] });
+  eq('message: a ping is answered on its port with the version, anything else is ignored', replies,
+     [{ type: 'epinoia-pong', version: third.W.SW_VERSION, id: 'p1' }]);
 }
 {
   const { W } = loadSW();
@@ -691,11 +848,19 @@ console.log('\nwired into the pages');
   const me = read('epinoia', 'me', 'me.js');
   ok('the profile page loads push.js, stamped, before me.js', /src="\.\.\/push\.js\?v=\d+"/.test(page) && page.indexOf('push.js?v=') < page.indexOf('src="me.js?v='));
   ok('...has the This phone card and its three buttons', ['id="phoneCard"', 'id="pushOn"', 'id="pushTest"', 'id="pushOff"'].every(s => page.includes(s)));
-  const switches = ['wFixtures', 'wFix2d', 'wFix2h', 'wLineups', 'wResults', 'wPlayers', 'wPlayerGames', 'wAnn'];
+  const switches = ['wFixtures', 'wFix2d', 'wFix2h', 'wLineups', 'wHalftime', 'wResults', 'wPlayers', 'wPlayerGames', 'wAnn'];
   ok('...a switch for every moment in §1', switches.every(id => new RegExp('role="switch" class="sw" id="' + id + '"').test(page)));
   ok('...and keeps the three channels', ['id="nInapp"', 'id="nEmail"', 'id="nPush"'].every(s => page.includes(s)));
-  ok('me.js saves the four new keys through collect()',
-     ['want_fixture_2d', 'want_fixture_2h', 'want_lineups', 'want_player_games'].every(k => new RegExp(k + ': \\$\\(').test(me)));
+  ok('me.js saves the five new keys through collect()',
+     ['want_fixture_2d', 'want_fixture_2h', 'want_lineups', 'want_player_games', 'want_halftime'].every(k => new RegExp(k + ': \\$\\(').test(me)));
+  ok('...reads want_halftime back, on by default, and saves when it changes',
+     /\$\('#wHalftime'\)\.checked = prefs\.want_halftime !== false/.test(me) && /'#wHalftime'\]\.forEach/.test(me));
+  ok('the card has Check this phone and a place for its findings', page.includes('id="pushCheck"') && page.includes('id="phoneCheck"'));
+  ok('...wired to push.js check(), drawn as each step lands, with text nodes only',
+     /\$\('#pushCheck'\)\.onclick = \(\) => phoneAction\(/.test(me) && /P\.check\(steps => paintCheck/.test(me) &&
+     /function paintCheck/.test(me) && !/innerHTML/.test(me.slice(me.indexOf('function paintCheck'), me.indexOf('function phoneAction'))));
+  ok('...shown wherever the browser can take notifications, blocked included',
+     /pushCheck: !!P && st !== 'unsupported' && st !== 'ios-install'/.test(me));
   ok('...and no longer subscribes by itself (push.js does)', !/enablePush|disablePush|serviceWorker\.register|pushManager/.test(me));
 
   const Pv = require(path.join(ROOT, 'epinoia', 'game', 'preview.js'));

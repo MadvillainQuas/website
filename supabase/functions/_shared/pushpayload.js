@@ -13,6 +13,9 @@
    is true now ("in 2 hours"), not keep yesterday's "in 2 days" underneath.
    Lineups, the result and each player's statline get slots of their own, because
    they are different news about the same game (FotMob stacks them the same way).
+   Half-time borrows the slot of the full-time notice that will supersede it: a club
+   follower's "HT" sits in the result's slot, a player follower's in the first
+   player's statline slot, so full time REPLACES half-time on the phone.
 
    TTL — how long the push service may hold a notification for a phone that is off
    or out of signal. A tip-off reminder delivered after tip-off is noise, so it
@@ -38,9 +41,22 @@ function gameOf(n) {
   return ref.split(':')[0] || '';
 }
 
+/* data may arrive parsed (supabase-js) or as the JSON text of a jsonb column */
+function dataOf(n) {
+  const d = n && n.data;
+  if (d && typeof d === 'object') return d;
+  if (typeof d === 'string') { try { const j = JSON.parse(d); return j && typeof j === 'object' ? j : {}; } catch (_) { return {}; } }
+  return {};
+}
+
 export function tagFor(n) {
   const kind = String((n && n.kind) || 'note');
   const game = gameOf(n);
+  if (game && kind === 'halftime') {
+    const d = dataOf(n);
+    const first = Array.isArray(d.players) && d.players[0] && d.players[0].id;
+    return d.audience === 'player' && first ? 'player:' + game + ':' + String(first) : 'result:' + game;
+  }
   if (game && (kind === 'fixture' || kind === 'lineups' || kind === 'result')) return kind + ':' + game;
   if (kind === 'player' && n.ref) return 'player:' + String(n.ref);
   return kind + ':' + String((n && (n.id || n.ref)) || '');
@@ -81,7 +97,7 @@ export function topicFor(tag) {
 export function actionsFor(n) {
   const kind = n && n.kind;
   if (kind === 'lineups') return [{ action: 'starters', title: 'See lineups' }];
-  if (kind === 'result') return [{ action: 'box', title: 'Box score' }];
+  if (kind === 'result' || kind === 'halftime') return [{ action: 'box', title: 'Box score' }];
   return [];
 }
 
@@ -112,7 +128,7 @@ export function testPayload(site, nowMs) {
   const base = String(site || '').replace(/\/?$/, '/');
   return {
     title: 'Notifications are on',
-    body: 'This is how tip-off reminders, starting lineups and full-time results will arrive on this phone.',
+    body: 'This is how tip-off reminders, starting lineups, half-time and full-time scores will arrive on this phone.',
     url: base + 'me/',
     tag: 'test',
     renotify: true,

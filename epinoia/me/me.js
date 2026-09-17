@@ -33,7 +33,9 @@ function collect() {
     want_fixtures: $('#wFixtures').checked, want_announcements: $('#wAnn').checked,
     /* notifications v2 (0121); a database without them ignores the keys */
     want_fixture_2d: $('#wFix2d').checked, want_fixture_2h: $('#wFix2h').checked,
-    want_lineups: $('#wLineups').checked, want_player_games: $('#wPlayerGames').checked
+    want_lineups: $('#wLineups').checked, want_player_games: $('#wPlayerGames').checked,
+    /* half-time (0124) */
+    want_halftime: $('#wHalftime').checked
   };
 }
 function save() {
@@ -179,6 +181,9 @@ async function paintPhone() {
     pushOn: st === 'off',
     pushTest: st === 'on',
     pushOff: st === 'on',
+    /* everywhere a browser can take notifications at all, blocked included: the check
+       says what is wrong and what to change */
+    pushCheck: !!P && st !== 'unsupported' && st !== 'ios-install',
     /* the Home Screen is the whole answer on an iPhone, and an offer worth making
        wherever the browser says it can install */
     installBtn: !standaloneApp() && (st === 'ios-install' || (st !== 'on' && !!(window.epinoiaCanInstall && window.epinoiaCanInstall())))
@@ -186,6 +191,47 @@ async function paintPhone() {
   Object.keys(show).forEach(id => $('#' + id).classList.toggle('hide', !show[id]));
   $('#phoneCard .phone-acts').classList.toggle('hide', !Object.values(show).some(Boolean));
   return st;
+}
+/* The check's findings (push.js check): a mark and a sentence per step, then what to
+   do. Built from text nodes only; nothing the network said is parsed as markup. */
+function paintCheck(r) {
+  const box = $('#phoneCheck');
+  box.textContent = '';
+  box.classList.remove('hide');
+  const list = document.createElement('ol');
+  (r.steps || []).forEach(s => {
+    const li = document.createElement('li');
+    li.className = s.ok === true ? 'ok' : s.ok === false ? 'bad' : '';
+    const mark = document.createElement('i');
+    mark.textContent = s.ok === true ? '✓' : s.ok === false ? '✕' : '·';
+    mark.setAttribute('aria-label', s.ok === true ? 'OK' : s.ok === false ? 'Problem' : 'Checking');
+    const text = document.createElement('div');
+    text.textContent = s.label;
+    if (s.detail) { const d = document.createElement('small'); d.textContent = s.detail; text.appendChild(d); }
+    li.append(mark, text);
+    list.appendChild(li);
+  });
+  if (r.running) {
+    const li = document.createElement('li');
+    const mark = document.createElement('i'); mark.textContent = '·';
+    const text = document.createElement('div');
+    text.textContent = (r.steps || []).some(s => s.id === 'delivery') ? 'Waiting for the test to reach this phone…' : 'Checking…';
+    li.append(mark, text);
+    list.appendChild(li);
+  }
+  box.appendChild(list);
+  if (r.advice && !r.running) {
+    const adv = document.createElement('div');
+    adv.className = 'adv ' + (r.ok ? 'ok' : 'bad');
+    const b = document.createElement('b'); b.textContent = r.advice.title;
+    adv.appendChild(b);
+    if (r.advice.lines && r.advice.lines.length) {
+      const ol = document.createElement('ol');
+      r.advice.lines.forEach(line => { const li = document.createElement('li'); li.textContent = line; ol.appendChild(li); });
+      adv.appendChild(ol);
+    }
+    box.appendChild(adv);
+  }
 }
 /* one action at a time; `run` is called synchronously so a permission prompt
    still has the tap behind it */
@@ -217,6 +263,13 @@ function wirePhone() {
   }));
   $('#pushTest').onclick = () => phoneAction($('#pushTest'), 'Sending…', () => P.test());
   $('#pushOff').onclick = () => phoneAction($('#pushOff'), 'Turning off…', () => P.disable());
+  $('#pushCheck').onclick = () => phoneAction($('#pushCheck'), 'Checking…', () => {
+    paintCheck({ steps: [], running: true });
+    return P.check(steps => paintCheck({ steps, running: true })).then(r => {
+      paintCheck(r);
+      return { ok: r.ok, message: '' };
+    });
+  });
   $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
   /* the account's channel: ticking it turns this browser on too (a tap, so the
      permission prompt can appear); unticking stops pushes on every device */
@@ -480,7 +533,7 @@ async function paintMembership() {
   const { data } = await sb.from('fan_prefs').select('*').maybeSingle();
   prefs = data || { theme: 'light', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,
                     notify_push: false, want_results: true, want_players: true, want_fixtures: true, want_announcements: true,
-                    want_fixture_2d: true, want_fixture_2h: true, want_lineups: true, want_player_games: true };
+                    want_fixture_2d: true, want_fixture_2h: true, want_lineups: true, want_player_games: true, want_halftime: true };
   if (!data) await sb.rpc('set_fan_prefs', { p: {} });
 
   $('#nInapp').checked = !!prefs.notify_inapp; $('#nEmail').checked = !!prefs.notify_email; $('#nPush').checked = !!prefs.notify_push;
@@ -489,9 +542,10 @@ async function paintMembership() {
   /* the v2 switches default on (0121), including on a row written before they existed */
   $('#wFix2d').checked = prefs.want_fixture_2d !== false; $('#wFix2h').checked = prefs.want_fixture_2h !== false;
   $('#wLineups').checked = prefs.want_lineups !== false; $('#wPlayerGames').checked = prefs.want_player_games !== false;
+  $('#wHalftime').checked = prefs.want_halftime !== false;
   paintFixtureSubs();
   ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn',
-   '#wFix2d', '#wFix2h', '#wLineups', '#wPlayerGames'].forEach(s => { $(s).onchange = () => { paintFixtureSubs(); save(); }; });
+   '#wFix2d', '#wFix2h', '#wLineups', '#wPlayerGames', '#wHalftime'].forEach(s => { $(s).onchange = () => { paintFixtureSubs(); save(); }; });
   wirePhone();
   /* not awaited: the card fills in while the rest of the page does. With
      notifications on, this browser's subscription is saved again under whoever is
