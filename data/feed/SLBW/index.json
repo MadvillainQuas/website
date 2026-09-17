@@ -2,7 +2,7 @@
 "code": "SLBW",
 "label": "Super League Basketball Women",
 "adapter": "fiba_livestats",
-"updated": "2026-09-17T01:23:33.585429+00:00",
+"updated": "2026-09-17T08:42:18.707368+00:00",
 "games": [
 {
 "id": "2874298",
@@ -10,7 +10,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2027-04-10T18:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874297",
@@ -18,7 +22,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2027-04-10T18:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874296",
@@ -26,7 +34,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2027-04-10T17:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874294",
@@ -34,7 +46,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2027-04-10T16:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874293",
@@ -42,7 +58,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2027-04-10T12:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874284",
@@ -50,7 +70,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2027-04-04T17:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874291",
@@ -58,7 +82,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2027-04-04T15:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874287",
@@ -66,7 +94,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2027-04-03T18:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2876635",
@@ -74,7 +106,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2027-04-03T18:00:00+00:00",
-"venue": "Oaklands College Sportszone"
+"venue": "Oaklands College Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874289",
@@ -82,7 +118,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2027-04-03T18:00:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874281",
@@ -90,7 +130,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2027-03-28T15:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874279",
@@ -98,7 +142,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2027-03-28T13:00:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874277",
@@ -106,7 +154,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2027-03-27T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874295",
@@ -114,7 +166,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2027-03-27T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874292",
@@ -122,7 +178,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2027-03-13T19:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874290",
@@ -130,7 +190,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2027-03-13T19:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874288",
@@ -138,7 +202,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2027-03-13T17:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874286",
@@ -146,7 +214,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2027-03-13T13:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2888503",
@@ -154,7 +226,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2027-03-07T18:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874285",
@@ -162,7 +238,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2027-03-07T14:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874282",
@@ -170,7 +250,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2027-03-06T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874280",
@@ -178,7 +262,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2027-03-06T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874278",
@@ -186,7 +274,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2027-03-06T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874275",
@@ -194,7 +286,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2027-02-21T17:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874276",
@@ -202,7 +298,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2027-02-21T16:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874274",
@@ -210,7 +310,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2027-02-20T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874273",
@@ -218,7 +322,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2027-02-20T19:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2891848",
@@ -226,7 +334,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2027-02-20T17:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874272",
@@ -234,7 +346,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2027-02-20T17:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874271",
@@ -242,7 +358,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2027-02-06T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874270",
@@ -250,7 +370,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2027-02-06T19:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874269",
@@ -258,7 +382,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2027-02-06T19:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874268",
@@ -266,7 +394,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2027-02-06T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874308",
@@ -514,7 +646,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2026-12-20T17:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874266",
@@ -522,7 +658,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2026-12-19T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874265",
@@ -530,7 +670,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2026-12-19T17:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2883661",
@@ -538,7 +682,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-12-19T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874264",
@@ -546,7 +694,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-12-19T13:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874263",
@@ -554,7 +706,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-12-13T18:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874262",
@@ -562,7 +718,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-12-13T17:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874261",
@@ -570,7 +730,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-12-12T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874260",
@@ -578,7 +742,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2026-12-12T19:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874259",
@@ -586,7 +754,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-12-06T18:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874258",
@@ -594,7 +766,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2026-12-06T16:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874257",
@@ -602,7 +778,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2026-12-05T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874256",
@@ -610,7 +790,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2026-12-05T17:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874253",
@@ -618,7 +802,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2026-12-05T13:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874283",
@@ -626,7 +814,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-11-29T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874251",
@@ -634,7 +826,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-11-28T19:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874249",
@@ -642,7 +838,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-11-28T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874246",
@@ -650,7 +850,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2026-11-28T18:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874245",
@@ -658,7 +862,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2026-11-28T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874243",
@@ -666,7 +874,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2026-11-22T17:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874241",
@@ -674,7 +886,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-11-21T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874239",
@@ -682,7 +898,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2026-11-21T19:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874237",
@@ -690,7 +910,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-11-21T13:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874255",
@@ -698,7 +922,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2026-11-07T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874254",
@@ -706,7 +934,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2026-11-07T19:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874252",
@@ -714,7 +946,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2026-11-07T19:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874250",
@@ -722,7 +958,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-11-07T19:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874248",
@@ -730,7 +970,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-11-07T13:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874244",
@@ -738,7 +982,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2026-11-01T17:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874247",
@@ -746,7 +994,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2026-11-01T14:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874242",
@@ -754,7 +1006,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2026-10-31T18:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874240",
@@ -762,7 +1018,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-10-31T17:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874238",
@@ -770,7 +1030,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2026-10-31T16:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874236",
@@ -778,7 +1042,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2026-10-24T18:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874233",
@@ -786,7 +1054,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-10-24T18:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874231",
@@ -794,7 +1066,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2026-10-24T18:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874229",
@@ -802,7 +1078,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-10-24T17:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874227",
@@ -810,7 +1090,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2026-10-24T15:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874223",
@@ -818,7 +1102,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2026-10-18T16:30:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874225",
@@ -826,7 +1114,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2026-10-18T15:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874221",
@@ -834,7 +1126,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-10-17T18:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874219",
@@ -842,7 +1138,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2026-10-17T16:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874217",
@@ -850,7 +1150,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2026-10-17T12:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874235",
@@ -858,7 +1162,11 @@
 "away": "Nottingham Wildcats",
 "status": "scheduled",
 "date": "2026-10-11T15:00:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874234",
@@ -866,7 +1174,11 @@
 "away": "Cardiff Met Archers",
 "status": "scheduled",
 "date": "2026-10-10T18:00:00+00:00",
-"venue": "Oaklands Sportszone"
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874232",
@@ -874,7 +1186,11 @@
 "away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2026-10-10T18:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874230",
@@ -882,7 +1198,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2026-10-10T16:00:00+00:00",
-"venue": "New City College Hackney"
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874228",
@@ -890,7 +1210,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2026-10-10T15:00:00+00:00",
-"venue": "Essex Sports Arena"
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874226",
@@ -898,7 +1222,11 @@
 "away": "Newcastle Eagles",
 "status": "scheduled",
 "date": "2026-10-04T15:00:00+00:00",
-"venue": "Netball Centre Loughborough University"
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874224",
@@ -906,7 +1234,11 @@
 "away": "Essex Rebels",
 "status": "scheduled",
 "date": "2026-10-04T15:00:00+00:00",
-"venue": "Playsport Arena"
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874222",
@@ -914,7 +1246,11 @@
 "away": "London Lions",
 "status": "scheduled",
 "date": "2026-10-04T12:00:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874220",
@@ -922,7 +1258,11 @@
 "away": "Oaklands Wolves",
 "status": "scheduled",
 "date": "2026-10-03T18:00:00+00:00",
-"venue": "Nottingham Wildcats Arena"
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2874218",
@@ -930,7 +1270,11 @@
 "away": "B. Braun Sheffield Hatters",
 "status": "scheduled",
 "date": "2026-10-03T12:30:00+00:00",
-"venue": "Archers Arena"
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 }
 ]
 }

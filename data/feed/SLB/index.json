@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball Men",
 "adapter": "fiba_livestats",
-"updated": "2026-09-17T01:20:11.043437+00:00",
+"updated": "2026-09-17T08:40:15.886541+00:00",
 "games": [
 {
 "id": "2882601",
@@ -1030,7 +1030,11 @@
 "away": "To be determined",
 "status": "scheduled",
 "date": "2027-01-10T17:30:00+00:00",
-"venue": "Cheshire Oaks Arena"
+"venue": "Cheshire Oaks Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882640",
@@ -1038,7 +1042,11 @@
 "away": "To be determined",
 "status": "scheduled",
 "date": "2027-01-10T16:00:00+00:00",
-"venue": "Copper Box Arena"
+"venue": "Copper Box Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882638",
@@ -1046,7 +1054,11 @@
 "away": "Leicester Riders",
 "status": "scheduled",
 "date": "2027-01-10T16:00:00+00:00",
-"venue": "Canon Medical Arena"
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882639",
@@ -1054,7 +1066,11 @@
 "away": "Bristol Flyers",
 "status": "scheduled",
 "date": "2027-01-10T15:00:00+00:00",
-"venue": "National Basketball Performance Centre"
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882637",
@@ -1062,7 +1078,11 @@
 "away": "Caledonia Gladiators",
 "status": "scheduled",
 "date": "2027-01-08T19:30:00+00:00",
-"venue": "Vertu Arena"
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882636",
@@ -1070,7 +1090,11 @@
 "away": "Liverpool Basketball",
 "status": "scheduled",
 "date": "2027-01-08T19:30:00+00:00",
-"venue": "TBC"
+"venue": "TBC",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2882521",
