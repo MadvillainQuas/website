@@ -1218,6 +1218,15 @@
   })();
   /* the rail is a fixed column; a resize changes what fits in it */
   window.addEventListener('resize', () => sizeDeck(false));
+  /* ...and so does a font arriving. On the desktop rail names wrap onto a second line
+     (nav.css), so a row's height depends on Silkscreen having loaded: a deck measured
+     against the fallback face would clip the bottom of the list or leave a gap under it.
+     loadingdone as well as ready, because ready can resolve before the rail's text has
+     asked for its font at all. */
+  if (document.fonts) {
+    document.fonts.ready.then(() => sizeDeck(false));
+    if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', () => sizeDeck(false));
+  }
 
   /* The assignment pages already make repoints the rail and drills it in, with
      no page edit. This is how a page that resolved its league from the network

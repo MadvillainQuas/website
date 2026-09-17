@@ -302,17 +302,38 @@ body.nav-drawer-open{ overflow:hidden }
 }
 .ep-nav .phead .lname:hover .lgo{ color:var(--lume); transform:translateX(2px) }
 
-/* SMALLER NAMES ON THE DESKTOP RAIL. Silkscreen is a wide pixel face: at 10px with .06em
-   tracking "Super League Basketball Women" is 252px in a 104px row, so it slid 148px and was
-   mostly somewhere else when you looked. At the face's own 8px grid with .02em it is 193px
-   and slides 89px, and most club names (London Lions, Surrey 89ers) now fit and stay still.
+/* ON THE DESKTOP RAIL A NAME STACKS INSTEAD OF SLIDING. Silkscreen is a wide pixel face: at
+   10px with .06em tracking "Super League Basketball Women" was 252px in a 104px row, so the
+   marquee slid it 148px and most of the name was somewhere else whenever you looked. Now the
+   rows use the face's own 8px grid with .02em tracking and wrap at word boundaries, so the
+   whole name is on screen at once:
+       SUPER LEAGUE
+       BASKETBALL WOMEN
    The kit's body zoom (1.25 from 1000px, 1.5 from 1200px) keeps 8px at 10-12 screen pixels.
-   The panel headings come down with it, 12.5px to 10.5px, still a step above the rows.
+   The panel headings come down with the rows (12.5px to 10.5px, still a step above them) and
+   stack too. A single word too long for the row breaks rather than overflowing, so nothing on
+   the desktop rail ever needs the marquee: its animation is switched off here.
+
+   The rows are taller now, and their height depends on the font having loaded, so nav.js
+   measures the deck again once the fonts are in.
+
+   Every pixel of width is another word per line, so the space beside the plate is pinned
+   here. Measured on the league page it was 19px: the row's 10px gap (.ep-nav a.item outranks
+   .lrow's 9px) plus a 9px margin from that page's own `.crest` rule, which reaches into the
+   rail. With 8px beside the plate and 4px at the right edge the name gets 121px instead of
+   104px, and "Super League Basketball Women" stacks in two lines instead of three.
+
    After the heading rules on purpose (same specificity, so the later rule wins), and desktop
-   only: the phone bar and the open drawer set their own sizes further down. */
+   only: the phone bar and the open drawer keep their one-line names and sizes further down. */
 @media (min-width:821px){
-  .ep-nav .marq > span{ font-size:8px; letter-spacing:.02em }
-  .ep-nav .phead .lname .marq > span{ font-size:10.5px; letter-spacing:.03em }
+  .ep-nav .marq > span{
+    display:block; white-space:normal; overflow-wrap:anywhere;
+    font-size:8px; letter-spacing:.02em; line-height:1.4;
+  }
+  .ep-nav .marq.scrolls > span{ animation:none }
+  .ep-nav .phead .lname .marq > span{ font-size:10.5px; letter-spacing:.03em; line-height:1.15 }
+  .ep-nav a.item.lrow, .ep-nav .teams a.item.trow{ gap:8px; padding-right:4px }
+  .ep-nav a.item.lrow > .crest, .ep-nav .teams a.item.trow > .ep-crest{ margin-right:0 }
 }
 
 /* ---- account ------------------------------------------------------------- */
