@@ -100,8 +100,24 @@ function routes(plat, url, name) {
   return [google, outlook, apple, file];
 }
 
+/* the chip's own glyph: a calendar, drawn in the line's colour like the follow bell's */
+const CAL_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+  '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>' +
+  '<rect x="7" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/></svg>';
+
 const CSS = [
-  '.ep-cal{flex-basis:100%;max-width:620px;margin-top:4px;border:1px solid var(--rule-2);background:var(--panel)}',
+  /* THE CHIP IS THE FOLLOW BELL'S SIBLING (epinoia-kit.css .ep-follow): the same 30px pill, the
+     same micro capitals, the same hover, and filled with the accent while the panel is open.
+     A plain .ep-chip button next to it came out as a white rectangle in the browser's own font. */
+  '.ep-cal-chip{display:inline-grid;grid-auto-flow:column;align-items:center;gap:7px;height:30px;',
+  'padding:0 13px 0 10px;border-radius:15px;border:1px solid var(--rule-2);background:transparent;',
+  'color:var(--ink-3);cursor:pointer;vertical-align:middle;line-height:1;',
+  'font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;transition:.2s}',
+  '.ep-cal-chip svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}',
+  '.ep-cal-chip:hover{color:var(--lume);border-color:var(--lume)}',
+  '.ep-cal-chip:focus-visible{outline:2px solid var(--lume);outline-offset:2px}',
+  '.ep-cal-chip.on{background:var(--lume);border-color:var(--lume);color:var(--on-accent,var(--ground))}',
+  '.ep-cal{flex-basis:100%;max-width:620px;margin-top:4px;border:1px solid var(--rule-2);border-top:2px solid var(--lume);background:var(--panel)}',
   '.ep-cal[hidden]{display:none}',
   '.ep-cal-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px 13px;border-bottom:1px solid var(--rule)}',
   '.ep-cal-h b{font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink)}',
@@ -118,8 +134,10 @@ const CSS = [
   '.ep-cal-go.ghost{background:transparent;color:var(--ink);border-color:var(--rule-2)}',
   '.ep-cal-go:focus-visible{outline:2px solid var(--lume);outline-offset:2px}',
   '.ep-cal-f{padding:11px 13px;display:grid;gap:6px;background:var(--panel-2,transparent)}',
-  '.ep-cal-url{width:100%;font-family:var(--f-data);font-size:11px}',
-  '.ep-cal-copy{align-self:start}',
+  /* the kit caps .ep-input at 260px, which cuts the address in half on a desktop */
+  '.ep-cal-url{width:100%;max-width:none;font-family:var(--f-data);font-size:11px}',
+  /* justify-self, not align-self: in a grid the button would otherwise stretch the row\'s width */
+  '.ep-cal-copy{justify-self:start}',
   '.ep-cal-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.04em;line-height:1.9;color:var(--ink-3)}',
   '.ep-cal-msg{font-size:12.5px;line-height:1.6;color:var(--lume);min-height:1em}'
 ].join('');
@@ -153,8 +171,11 @@ function mount(host, opts) {
   const nav = o.navigator || g('navigator');
   const plat = o.platform || platform(nav);
 
-  const chip = el('button', 'ep-chip cal', 'add to calendar');
+  const chip = el('button', 'ep-cal-chip');
   chip.type = 'button';
+  const icon = el('span', 'ep-cal-ic');
+  try { icon.innerHTML = CAL_SVG; } catch (_) { /* a document that will not take markup: the words alone */ }
+  chip.append(icon, el('span', null, 'add to calendar'));
   chip.setAttribute('aria-expanded', 'false');
   chip.title = 'subscribe to ' + name + ' in your calendar';
 
@@ -228,6 +249,7 @@ function mount(host, opts) {
   const show = on => {
     panel.hidden = !on;
     chip.setAttribute('aria-expanded', on ? 'true' : 'false');
+    chip.className = 'ep-cal-chip' + (on ? ' on' : '');
     if (!on) msg.textContent = '';
   };
   chip.addEventListener('click', () => show(panel.hidden));

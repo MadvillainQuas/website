@@ -332,9 +332,10 @@
   body.themed a.plain:hover{color:var(--team-a-ink)}
   .hero-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
   .hero .ep-follow.lbl{margin-top:0}
-  /* the "add to calendar" chip; the panel it opens brings its own styles (calendar.js) */
-  .ep-chip.cal{display:inline-flex;align-items:center;height:30px;padding:0 12px;text-decoration:none;
-    font:inherit;cursor:pointer}
+  /* the "add to calendar" chip and its panel bring their own styles (calendar.js). The hero
+     centres the crest against the name; with the panel open the hero is tall, and a centred
+     crest floats halfway down it, so everything goes to the top for as long as it is open. */
+  .hero:has(.ep-cal:not([hidden])){align-items:flex-start}
   /* MEMBERS ONLY (team.js decideAccess): the card stands where the record and the statistics
      were. Everything marked .pw-hide is what the database refuses to a non-member -- results,
      statistics, shots, lineups -- so it goes rather than sitting there empty; the crest, the
