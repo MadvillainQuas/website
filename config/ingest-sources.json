@@ -3,7 +3,7 @@
   "sources": [
     {
       "code": "SLB",
-      "label": "Super League Basketball (M)",
+      "label": "Super League Basketball Men",
       "adapter": "fiba_livestats",
       "league_id": null,
       "competition_id": null,
@@ -12,14 +12,54 @@
         12,
         24
       ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "slb-men",
+      "league_name": "Super League Basketball Men",
       "adapter_config": {
+        "code": "SLB",
+        "client_code": "SLB",
         "archive_raw": true,
         "store_pbp": false,
-        "pipeline_module": "bcb_scraper.fiba_livestats"
+        "auto_create": true,
+        "client_is_league": true,
+        "sync_clubs": true,
+        "youtube_channel": "UCAsCfBvGdjAxOzqGOcCxkzg"
       },
       "scheduleUrls": [
-        "https://www.superleaguebasketballm.co.uk/competitions/?WHurl=%2Fschedule%3FphaseName%3DRegular%20season%26poolNumber%3D0%26matchType%3DREGULAR%26roundNumber%3D-1%26"
-      ]
+        "https://hosted.wh.geniussports.com/SLB/en/schedule"
+      ],
+      "league_country": "GB"
+    },
+    {
+      "code": "SLBW",
+      "label": "Super League Basketball Women",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "slb-women",
+      "league_name": "Super League Basketball Women",
+      "adapter_config": {
+        "code": "SLBW",
+        "client_code": "WBBL",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "client_is_league": true,
+        "sync_clubs": true,
+        "youtube_channel": "UCCCT9UtlzXTDTQR5GFGRUZg"
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/WBBL/en/schedule"
+      ],
+      "league_country": "GB"
     },
     {
       "code": "BCB",

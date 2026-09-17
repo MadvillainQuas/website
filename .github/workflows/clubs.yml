@@ -1,0 +1,48 @@
+name: League clubs (codes + crests from the preview pages)
+
+# For every registry source with adapter_config.sync_clubs (config/ingest-sources.json): make or find
+# the league, the season's competitions and every club on their fixtures, keyed by the feed code the
+# live-stats preview page of an upcoming game gives, with the club's crest. A client whose hosted
+# schedule carries no club codes (Super League Basketball) would otherwise open its season with
+# crestless clubs until each one's first game. Players and head shots are not taken here: they come
+# from the game feed as games are played (the League ingest workflow).
+#
+# Daily, well before the ingest's first discovery pass (12:00 UTC), so clubs exist under their real
+# codes before any fixture is written against them. Run it by hand after adding a league.
+on:
+  schedule:
+    - cron: "40 6 * * *"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Only this registry code (optional)"
+        required: false
+      dry_run:
+        description: "Read the pages and print; write nothing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: league-clubs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  clubs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r scripts/requirements.txt
+      - name: Sync clubs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/ingest/sync_clubs.py \
+            ${{ github.event.inputs.source && format('--source "{0}"', github.event.inputs.source) || '' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}

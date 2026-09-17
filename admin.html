@@ -2612,7 +2612,9 @@
             const seen = new Set(), out = [];
             for (const s of lfSources) {
                 const code = gvNormalizeCode(s.code || ''); if (!code || seen.has(code)) continue; seen.add(code);
-                out.push({ code, label: (s.label || '').trim() || code, adapter: s.adapter || 'fiba_livestats',
+                // ...s first: fields this card does not edit (create_league, league_slug, league_name,
+                // league_country) survive a publish. Without create_league the worker stops writing the league.
+                out.push({ ...s, code, label: (s.label || '').trim() || code, adapter: s.adapter || 'fiba_livestats',
                     league_id: s.league_id || null, competition_id: s.competition_id || null,
                     poll_minutes: +s.poll_minutes || 30, active_window: [12, 24], enabled: s.enabled !== false,
                     adapter_config: Object.assign({ archive_raw: true, store_pbp: false, auto_create: true }, s.adapter_config || {}, { code }),

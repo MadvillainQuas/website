@@ -141,27 +141,74 @@ class Platform:
                     pass
         if not r:
             nm = (t.get("name") or "").strip().lower()
-            for row in (self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases") if self.sb else []):
+            real_code = (t.get("code") or "").strip()
+            for row in (self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases,external_ids,logo_path") if self.sb else []):
                 names = {row["name"].strip().lower()} | {a.strip().lower() for a in (row.get("aliases") or [])}
                 if nm in names:
                     r = row
-                    if not self.dry:
-                        self.sb.patch("teams", f"id=eq.{row['id']}", {"external_ids": {"fiba_livestats": code}})
+                    # Only a real feed code is written back. SLB's hosted schedule lists its clubs with no
+                    # code, and the slug stand-in would otherwise replace the club's real code on every
+                    # discovery pass until the next game put it back.
+                    if real_code and not self.dry:
+                        self.sb.patch("teams", f"id=eq.{row['id']}", {"external_ids": {**(row.get("external_ids") or {}), "fiba_livestats": real_code}})
                     break
         if not r and self.auto_create:
             self.log(f"  + team {t.get('name')} [{code}]")
-            r = self.insert("teams", {"league_id": league_id, "slug": slugify(t.get("name", code)), "name": (t.get("name") or code).strip(),
+            r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, slugify(t.get("name", code))), "name": (t.get("name") or code).strip(),
                                       "short_name": (t.get("shortName") or code)[:12], "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
                                       "aliases": [t["nameInternational"]] if t.get("nameInternational") and t["nameInternational"] != t.get("name") else []})
         self.cache["team"][key] = r
         return r
 
+    def free_team_slug(self, league_id: str, base: str) -> str:
+        """teams.slug is unique across the platform, and clubs share names across leagues: London Lions
+        run a men's and a women's Super League side, Oaklands Wolves play in BCB and SLB Women. The
+        first club keeps the plain slug; a later one in another league is suffixed with its league's
+        slug (london-lions-slb-women)."""
+        if not self.sb or not self.one("teams", f"slug=eq.{base}&select=id"):
+            return base
+        lg = self.one("leagues", f"id=eq.{league_id}&select=slug")
+        cand = f"{base}-{(lg or {}).get('slug') or 'league'}"
+        n = 2
+        while self.one("teams", f"slug=eq.{cand}&select=id"):
+            cand = f"{base}-{(lg or {}).get('slug') or 'league'}-{n}"; n += 1
+        return cand
+
+    def league_of(self, team: dict) -> str | None:
+        if team.get("league_id"):
+            return team["league_id"]
+        memo = self.cache.setdefault("team_league", {})
+        if team["id"] not in memo:
+            lg = self.sb.select("teams", f"id=eq.{team['id']}&select=league_id") if self.sb else []
+            memo[team["id"]] = lg[0]["league_id"] if lg else None
+        return memo[team["id"]]
+
+    def by_feed_key(self, team: dict, ext: str) -> dict | None:
+        """The player a "<teamcode>:<pno>" key was given to, IN THIS LEAGUE. The key is only a club code
+        and a slot, and codes repeat across leagues (LON is London Lions men and women, OAK is Oaklands
+        Wolves in BCB and SLB Women), so a player holding it counts only when they are on this club's
+        roster or on a roster of another club in the same league."""
+        if not self.sb or str(team.get("id", "")).startswith("dry-"):
+            return None
+        rows = self.sb.select("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name&limit=20")
+        if not rows:
+            return None
+        ids = ",".join(r["id"] for r in rows)
+        on = self.sb.select("roster_entries", f"player_id=in.({ids})&select=player_id,team_id,teams!inner(league_id)")
+        lid = self.league_of(team)
+        for want in (lambda e: e.get("team_id") == team["id"], lambda e: (e.get("teams") or {}).get("league_id") == lid):
+            hit = next((e["player_id"] for e in on if want(e)), None)
+            if hit:
+                return next(r for r in rows if r["id"] == hit)
+        return None
+
     def player(self, team: dict, team_code: str, pno: str, p: dict) -> dict | None:
         ext = f"{team_code}:{pno}"
-        if ext in self.cache["player"]:
-            return self.cache["player"][ext]
-        r = self.one("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name")
+        key = (team["id"], ext)
+        if key in self.cache["player"]:
+            return self.cache["player"][key]
+        r = self.by_feed_key(team, ext)
         first, last = full_name(p)
         if not r and self.sb:
             # THE SHARED MATCHER (matching.py = epinoia/match.js): the club's roster first, then anyone in
@@ -199,7 +246,7 @@ class Platform:
             aliases = [a for a in {p.get("name"), p.get("scoreboardName")} if a and a != (first + " " + last).strip()]
             r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first or "?", "last_name": last,
                                         "is_minor": False, "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
-        self.cache["player"][ext] = r
+        self.cache["player"][key] = r
         if r:
             self.photo(r, p)
         return r

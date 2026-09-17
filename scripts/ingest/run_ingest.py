@@ -234,21 +234,36 @@ def kind_of(name: str, overrides: dict | None = None) -> str:
 
 def season_match(name: str, season_name: str) -> bool:
     """Does a Genius phase name belong to this season? A name carrying a year RANGE (2025-2026,
-    2025/26) must carry ours; a name with a single year (BCB Trophy 2027, Pro Am 2026) may name
-    either end of ours. '2026' inside '2025-2026' is last season, not this one."""
+    2025/26, 25-26) must carry ours; a name with a single year (BCB Trophy 2027, Pro Am 2026) may name
+    either end of ours. '2026' inside '2025-2026' is last season, not this one. Super League
+    Basketball names its seasons short ('Championship 26-27'), so a range may start with two digits."""
     m = re.match(r"(\d{4})-(\d{2})$", season_name or "")
     if not m:
         return bool(season_name) and season_name in (name or "")
     y1 = int(m.group(1)); y2 = y1 + 1
-    ranges = re.findall(r"(\d{4})\s*[-/–]\s*(\d{2,4})", name or "")
+    century = str(y1)[:2]
+    ranges = re.findall(r"(?<!\d)(\d{4}|\d{2})\s*[-/–]\s*(\d{4}|\d{2})(?!\d)", name or "")
     if ranges:
         for a, b in ranges:
-            bb = int(b) if len(b) == 4 else int(str(y1)[:2] + b)
-            if int(a) == y1 and bb == y2:
+            aa = int(a) if len(a) == 4 else int(century + a)
+            bb = int(b) if len(b) == 4 else int(century + b)
+            if aa == y1 and bb == y2:
                 return True
         return False
     years = {int(y) for y in re.findall(r"(?<!\d)(\d{4})(?!\d)", name or "")}
     return bool(years & {y1, y2})
+
+
+def whole_season_url(url: str) -> str:
+    """A Genius hosted competition page lists only the CURRENT ROUND for some clients (SLB's
+    Championship 26-27 page shows 4 of its 173 fixtures, WBBL's 5 of 86); roundNumber=-1 lists the
+    whole season for every client (BCB's page is the same 182 games either way). Without it a
+    league's fixtures would only ever appear one round ahead."""
+    if "roundNumber=" in url:
+        return url
+    if "?" not in url:
+        return url + "?roundNumber=-1&"
+    return url + ("" if url.endswith(("?", "&")) else "&") + "roundNumber=-1&"
 
 
 def expand_competition_sources(sources: list[dict]) -> list[dict]:
@@ -257,7 +272,14 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
     carrying the competition's own schedule URL, name and kind. That is what gives Epinoia the
     separate team lists and tables a cup has, straight from the feed. Names that carry none of
     the league's own words (a client also hosting somebody else's event) are left alone unless
-    adapter_config.competitions_include names them; competitions_exclude drops any."""
+    adapter_config.competitions_include names them; competitions_exclude drops any.
+
+    adapter_config.client_is_league says the client hosts nothing but this league (SLB, WBBL),
+    whose phases are named 'Championship 26-27' or 'Betty Codona Cup 2026-27' with no league word
+    in them: every competition of the season is then the league's own. Such a client's bare page
+    shows whatever competition Genius last defaulted to - still last season's Championship when
+    the new one has already started - so when no competition of this season can be listed the
+    source is skipped for the pass instead of polling that page into this season."""
     out = []
     for src in sources:
         ac = src.get("adapter_config") or {}
@@ -270,7 +292,11 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
             comps = getattr(adapter, "last_competitions", None) or []
         except Exception as exc:
             print(f"   (competition list unavailable for {src.get('code')}: {exc})"); comps = []
+        whole_client = bool(ac.get("client_is_league"))
         if not comps:
+            if whole_client:
+                print(f"   {src.get('code')}: no competition list this pass - skipped (the bare page may be last season's)")
+                continue
             out.append(src); continue
         season = ac.get("season") or season_name_for()
         words = {w.lower() for w in re.findall(r"[A-Za-z]{3,}", f"{src.get('label', '')} {src.get('code', '')} {src.get('league_name', '')}")}
@@ -284,7 +310,7 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
             wanted = any(r.search(n) for r in inc)
             if not wanted:
                 in_season = season_match(n, season)
-                ours = any(w in n.lower() for w in words)
+                ours = whole_client or any(w in n.lower() for w in words)
                 wanted = in_season and ours
             # an all-star game or exhibition is not a phase with a table; only when asked for by name
             if wanted and kind_of(n, ac.get("competition_kinds")) == "friendly" and not any(r.search(n) for r in inc):
@@ -292,10 +318,13 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
             if wanted:
                 picked.append(c)
         if not picked:
+            if whole_client:
+                print(f"   {src.get('code')}: no {season} competition on the page yet - skipped")
+                continue
             out.append(src); continue
         print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{c['name']} [{kind_of(c['name'], ac.get('competition_kinds'))}]" for c in picked))
         for c in picked:
-            out.append({**src, "schedule_url": c["url"], "competition_label": c["name"],
+            out.append({**src, "schedule_url": whole_season_url(c["url"]), "competition_label": c["name"],
                         "competition_kind": kind_of(c["name"], ac.get("competition_kinds")), "competition_id": None,
                         "label": src.get("label"), "_parent_url": url})
     return out
