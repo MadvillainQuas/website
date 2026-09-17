@@ -1,0 +1,10 @@
+// THE ANDROID GRADLE PLUGIN IS PINNED HERE, once, for the whole project.
+//
+// 8.13.2 is the last 8.x release. It supports compileSdk 36 (API 36 needs AGP 8.9.1 or later,
+// 36.1 needs 8.13.0), runs on JDK 17 and needs Gradle 8.13 or later. There is no Gradle
+// wrapper in this repo (its jar is a binary), so CI must install Gradle 8.14.x itself; see
+// README.md. Moving to AGP 9 means Gradle 9 and its DSL changes: do it as its own change.
+
+plugins {
+    id 'com.android.application' version '8.13.2' apply false
+}

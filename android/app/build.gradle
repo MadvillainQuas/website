@@ -1,0 +1,98 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application'
+}
+
+// THE VERSION COMES FROM THE WEBSITE'S version.json, NEVER FROM THIS FILE.
+// epinoia/android/version.json is the single source of truth: the download page reads it, the
+// site compares its minShell with the shell= the launcher sends, and CI names the release tag
+// android-v<versionCode> from it. Reading it here means a version bump is one edit, in one place.
+def versionJson = file('../../epinoia/android/version.json')
+if (!versionJson.exists()) {
+    throw new GradleException("Missing ${versionJson}. The app's version lives in epinoia/android/version.json.")
+}
+def appVersion = new JsonSlurper().parse(versionJson)
+if (!(appVersion.versionCode instanceof Number) || !(appVersion.versionName instanceof String)) {
+    throw new GradleException("epinoia/android/version.json needs a numeric versionCode and a string versionName.")
+}
+
+// RELEASE SIGNING ONLY WHEN EVERY SECRET IS PRESENT.
+// CI decodes the keystore from GitHub secrets to a temp file and exports these four variables.
+// Without all four (a pull request, a fork, Android Studio on a fresh PC) the release build is
+// simply left unsigned, so the project still builds and nobody is tempted to commit a key.
+def signingEnv = [
+    keystore     : System.getenv('EPINOIA_KEYSTORE'),
+    storePassword: System.getenv('EPINOIA_STORE_PASSWORD'),
+    keyAlias     : System.getenv('EPINOIA_KEY_ALIAS'),
+    keyPassword  : System.getenv('EPINOIA_KEY_PASSWORD'),
+]
+def canSignRelease = signingEnv.values().every { it != null && !it.isEmpty() }
+
+// THE SITE THE APP IS BOUND TO. Used by the manifest (App Links host, launch URL) through
+// manifestPlaceholders, the way Bubblewrap-generated projects feed their manifest.
+def epinoiaHost = 'prophesyscouting.co.uk'
+def epinoiaLaunchUrl = "https://${epinoiaHost}/epinoia/home/?source=twa"
+
+android {
+    namespace 'uk.co.prophesyscouting.epinoia'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'uk.co.prophesyscouting.epinoia'
+        minSdk 23
+        targetSdk 36
+        versionCode = (appVersion.versionCode as int)
+        versionName = (appVersion.versionName as String)
+
+        manifestPlaceholders = [
+            hostName : epinoiaHost,
+            launchUrl: epinoiaLaunchUrl,
+        ]
+    }
+
+    signingConfigs {
+        if (canSignRelease) {
+            release {
+                storeFile file(signingEnv.keystore)
+                storePassword signingEnv.storePassword
+                keyAlias signingEnv.keyAlias
+                keyPassword signingEnv.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // NO R8. The app is a few small classes over androidbrowserhelper; shrinking saves
+            // about two megabytes and adds a way for the delegation override to break unseen.
+            minifyEnabled false
+            if (canSignRelease) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    // BuildConfig IS OFF BY DEFAULT IN AGP 8. The launcher needs BuildConfig.VERSION_CODE
+    // for the shell= parameter it sends to the site.
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // PINNED, NOT A RANGE. EpinoiaDelegationService overrides androidx.browser's notification
+    // path, so every bump must re-run the Phase 7 notification checks 1-4 on a real phone.
+    // 2.7.3 (Aug 2026) is the latest on Google's Maven, keeps minSdk 23 and brings
+    // androidx.browser 1.10.0.
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.3'
+
+    // NotificationManagerCompat and ContextCompat. The same version androidbrowserhelper 2.7.3
+    // declares, so Gradle resolves one copy.
+    implementation 'androidx.core:core:1.17.0'
+}

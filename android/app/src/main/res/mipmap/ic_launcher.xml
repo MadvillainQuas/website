@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    LEGACY LAUNCHER ICON, ANDROID 6 AND 7 (minSdk 23; adaptive icons start at 8). A vector, so no
+    PNGs are committed: with minSdk 23 the build keeps it as a VectorDrawable, which those versions
+    draw natively. A rounded dark square with the Λ mark enlarged, since no mask crops it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#04100b"
+        android:pathData="M20,0 L88,0 A20,20 0 0 1 108,20 L108,88 A20,20 0 0 1 88,108 L20,108 A20,20 0 0 1 0,88 L0,20 A20,20 0 0 1 20,0 Z" />
+    <group
+        android:pivotX="54"
+        android:pivotY="55"
+        android:scaleX="1.3"
+        android:scaleY="1.3">
+        <path
+            android:fillColor="#93f2bf"
+            android:pathData="M54,30 L72,70 L64,70 L54,47.5 L44,70 L36,70 Z" />
+        <path
+            android:fillColor="#93f2bf"
+            android:pathData="M36,76 L72,76 L72,80 L36,80 Z" />
+    </group>
+</vector>

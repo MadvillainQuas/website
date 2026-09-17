@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    THE KIT'S TOKENS, COPIED FROM epinoia/kit/epinoia-kit.css. "light" is the kit's light theme,
+    whose ground #f3faf6 is HOME's colour and so the colour of every splash; "dark" is the
+    default theme's ground. Keep these in step with the CSS by hand: they are few and rarely move.
+-->
+<resources>
+    <!-- light theme (:root[data-theme="light"]) -->
+    <color name="epinoia_ground_light">#f3faf6</color>
+    <color name="epinoia_panel_light">#ffffff</color>
+    <color name="epinoia_ink_light">#0d1f17</color>
+    <!-- rgba(13,31,23,.82) as ARGB -->
+    <color name="epinoia_ink2_light">#D10D1F17</color>
+    <color name="epinoia_lume_light">#0c7a54</color>
+    <color name="epinoia_on_accent_light">#ffffff</color>
+    <color name="epinoia_good_light">#12925f</color>
+    <color name="epinoia_bad_light">#d13a49</color>
+
+    <!-- dark theme (:root) -->
+    <color name="epinoia_ground_dark">#04100b</color>
+    <color name="epinoia_lume_dark">#93f2bf</color>
+
+    <!-- the adaptive launcher icon's background layer -->
+    <color name="ic_launcher_background">#04100b</color>
+</resources>

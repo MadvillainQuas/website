@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme. appmode.js turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Epinoia">
+<!-- PUBLIC. No gate.js, no topnav.js. THE ONE ADDITION TO THE USUAL CSP is api.github.com in
+     connect-src: android.js asks GitHub's public releases API for the file's real size, and
+     whether a release exists at all yet, because releases/latest/download/epinoia.apk is a
+     404 until the first signed build is published. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.github.com">
+<title>Epinoia for Android</title>
+<meta name="description" content="Download Epinoia for Android: live scores, fixtures, statistics and game alerts from every league on Epinoia, in an app of its own. Free.">
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
+<!-- FIRST, BLOCKING: the theme and app mode (html.m-app) before anything paints, so the app
+     never flashes the download button before it says "You are using the app". -->
+<script src="../appmode.js?v=272"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=272">
+<link rel="stylesheet" href="../kit/nav.css?v=272">
+<link rel="stylesheet" href="android.css?v=272">
+</head>
+<body>
+<!-- WHAT SHOWS WHERE is decided by classes on #page, set by android.js (in-app, webapp, ios,
+     android, desktop, shell, update, has-play), plus html.m-app from appmode.js before paint.
+     android.css holds the matrix. Without JavaScript the page is the plain download page. -->
+<div class="ep-frame ad" id="page">
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span class="ep-micro">android</span>
+  </div>
+
+  <header class="ad-hero" id="hero">
+    <img class="ad-icon" src="../brand/epinoia-mark-192.png" alt="" width="192" height="192">
+    <div class="ad-hero-tx">
+      <h1>Epinoia for Android</h1>
+      <p class="lede">
+        Epinoia in an app of its own: live scores, fixtures, statistics and news from
+        every league, with game alerts for the clubs you follow.
+      </p>
+      <ul class="perks" aria-label="What the app gives you">
+        <li>Its own icon</li>
+        <li>No browser bar</li>
+        <li>Game alerts</li>
+        <li>Free</li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- 01 · THE DOWNLOAD, or, inside the app, the app's own state ------------------------ -->
+  <section class="sec" id="getSec" aria-labelledby="getH">
+    <div class="ep-hdr"><span class="idx">01</span><h2 id="getH"><span class="out-only">Download</span><span class="in-only">The app</span></h2></div>
+    <div class="body">
+
+      <!-- The old Samsung Internet home-screen web app: the very install this app replaces. -->
+      <div class="callout webapp-only" role="note">
+        <p class="k">You are in the Samsung Internet web app</p>
+        <p>
+          The Android app replaces it. Install the app below, then come back to this icon one
+          last time: turn notifications off on your <b>Profile</b> page and remove the icon, so
+          alerts do not arrive twice.
+        </p>
+      </div>
+
+      <div class="getgrid out-only">
+        <!-- BEFORE THE BUTTON, ALWAYS: what the app is and what it needs (roadmap 1, Phase 6). -->
+        <div class="needs not-ios" id="needs">
+          <p class="k">Before you download</p>
+          <ul>
+            <li><b>It shows the live website.</b> Everything in the app is Epinoia as it is right
+              now, so it updates itself with the website.</li>
+            <li><b>It needs a connection.</b> Nothing is stored on the phone for offline use.</li>
+            <li><b>It needs Chrome installed and enabled,</b> even if you normally use Samsung
+              Internet. The app runs on Chrome, which gives it its game alerts.</li>
+          </ul>
+        </div>
+
+        <div class="get" id="get">
+          <!-- GOOGLE PLAY, once version.json's play is set (Phase 8). Then the file below becomes
+               the second choice. -->
+          <div class="play hide not-ios" id="play">
+            <a class="ep-btn pri dl" id="playLink" href="https://play.google.com/store/apps/details?id=uk.co.prophesyscouting.epinoia" rel="noopener">
+              <span>Get it on Google Play</span>
+            </a>
+            <p class="or">or, without Google Play</p>
+          </div>
+
+          <!-- THE HREF IS THE CONTRACT'S STABLE LINK, so the button works before android.js runs;
+               android.js swaps in version.json's apk. -->
+          <a class="ep-btn pri dl not-ios" id="dl" href="https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
+            <span id="dlText">Download for Android</span>
+          </a>
+          <p class="dlmeta not-ios" id="dlMeta" aria-live="polite">
+            <span class="hide" id="verWrap">Version <b id="ver"></b> · </span><span id="size">A small download</span> · Android 6.0 or later
+          </p>
+          <p class="dlnote hide not-ios" id="dlNote" role="status"></p>
+
+          <p class="dlnote ios-only">
+            This download is for Android phones. On an iPhone, add Epinoia to your Home Screen
+            instead: <a href="#iosSec">here is how</a>.
+          </p>
+          <p class="dlnote desk-only">
+            On a computer? Open <b>prophesyscouting.co.uk/epinoia/android</b> on your Android
+            phone and download it there.
+          </p>
+        </div>
+      </div>
+
+      <!-- INSIDE THE APP: nothing to download (unless this shell is older than minShell). -->
+      <div class="inapp in-only" id="inApp">
+        <p class="k">Epinoia for Android</p>
+        <p class="big">You are using the app</p>
+        <p>
+          There is nothing to download. The app shows the live website, so every change to
+          Epinoia reaches it the next time you open it.
+        </p>
+
+        <div class="upd upd-only">
+          <p class="k warn">Update needed</p>
+          <p>
+            This copy of the app is too old for some of Epinoia's features. Download the new
+            version: it installs over this one and keeps you signed in.
+          </p>
+          <a class="ep-btn pri dl" id="updBtn" href="https://github.com/MadvillainQuas/website/releases/latest/download/epinoia.apk">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="M6.5 10.5 12 16l5.5-5.5"/><path d="M4 20.5h16"/></svg>
+            <span>Update the app</span>
+          </a>
+        </div>
+
+        <!-- What the launcher said about this phone when the app was opened (shell, notif, chan). -->
+        <div class="rows shell-only">
+          <div class="row"><span>App</span><b id="shellBuild"></b></div>
+          <div class="row" id="alertsRow"><span>Game alerts</span><b id="alerts"></b></div>
+          <p class="asof">As of when the app was opened.</p>
+          <a class="ep-btn settings" id="settingsBtn" href="intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end">Open notification settings</a>
+        </div>
+
+        <p class="fine not-ios">
+          Keep Chrome enabled: the app runs on it. If you used the old Samsung Internet web app,
+          turn its notifications off on its Profile page and remove its icon, so alerts do not
+          arrive twice.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 · INSTALLING, written for a Samsung (roadmap Phase 6, "Download page") ----------- -->
+  <section class="sec out-only" id="stepsSec" aria-labelledby="stepsH">
+    <div class="ep-hdr"><span class="idx">02</span><h2 id="stepsH">Install it</h2></div>
+    <div class="body">
+      <p class="intro">Written for a Samsung. On other Android phones the steps are the same, and the settings may have slightly different names.</p>
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>Download</h3>
+            <p>Tap <b>Download for Android</b> above. If <span data-browser>your browser</span> warns
+              that this type of file can harm your device, choose <b>Download anyway</b>. When it
+              has finished, tap <b>Open</b>.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Allow &ldquo;Install unknown apps&rdquo;</h3>
+            <p>The first time, Android stops and asks. Tap <b>Settings</b>, turn on
+              <b>Allow from this source</b> for <span data-browser>your browser</span>, then go back.</p>
+            <p class="aside">If the phone says <b>Auto Blocker</b> stopped the install, open
+              <span class="path">Settings › Security and privacy › Auto Blocker</span>, turn it
+              off, install the app, then turn Auto Blocker back on.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Install</h3>
+            <p>Tap <b>Install</b>. If Play Protect asks to scan the app, choose <b>Scan app</b>,
+              then <b>Install</b>.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Open the app and allow notifications</h3>
+            <p>Open <b>Epinoia</b> from its new icon. A screen explains game alerts: tap
+              <b>Continue</b>, then choose <b>Allow</b> when Android asks about notifications.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Keep Chrome enabled</h3>
+            <p>The app runs on Chrome, even when Samsung Internet is your usual browser. If
+              <span class="path">Settings › Apps › Chrome</span> shows an <b>Enable</b> button, tap
+              it, and keep Chrome up to date in the Play Store.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Turn off the old web app's notifications</h3>
+            <p>If you added Epinoia to your home screen from Samsung Internet before, open that old
+              icon, go to your <b>Profile</b> page and turn notifications off, then remove the old
+              icon. Otherwise every alert arrives twice.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 03 · UPDATES ------------------------------------------------------------------------ -->
+  <section class="sec out-only" id="updSec" aria-labelledby="updH">
+    <div class="ep-hdr"><span class="idx">03</span><h2 id="updH">Updates</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">Website changes</div>
+        <div class="a">Reach the app the next time you open it. There is nothing to download, because the app shows the live website.</div>
+        <div class="q">A new app</div>
+        <div class="a">Rarely needed. When it is, Epinoia tells you inside the app. Download it from this page: it installs over the old one and keeps you signed in.</div>
+        <div class="q">Where the file comes from</div>
+        <div class="a">Epinoia's <a id="relLink" href="https://github.com/MadvillainQuas/website/releases" rel="noopener">releases on GitHub</a>, built from the website's own code and signed with Epinoia's key. Android only installs an update signed with the same key.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 · IPHONE ------------------------------------------------------------------------- -->
+  <section class="sec out-only" id="iosSec" aria-labelledby="iosH">
+    <div class="ep-hdr"><span class="idx">04</span><h2 id="iosH">On an iPhone</h2></div>
+    <div class="body">
+      <p class="intro">There is no iPhone app, and the download above will not open on one. Add Epinoia to your Home Screen instead: it opens full screen, like an app.</p>
+      <ol class="mini">
+        <li>Open <a href="../home/">Epinoia</a> in Safari.</li>
+        <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+        <li>Open Epinoia from the new icon and turn notifications on from your <a href="../me/">Profile</a> page. Game alerts need iOS 16.4 or later.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <a href="../home/">&larr; HOME</a>
+    <a href="../me/">Your profile</a>
+    <a href="../privacy/">Privacy</a>
+    <a href="../contact/">Contact</a>
+    <span>Epinoia Network</span>
+  </footer>
+</div>
+<script src="../config.js?v=272" defer></script>
+<script src="android.js?v=272" defer></script>
+<script src="../nav.js?v=272" defer></script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+/* ============================================================================
+   ANDROID — the download page's own styles (/epinoia/android/).
+
+   PHONE FIRST. Almost everybody who can use this page is holding an Android
+   phone, so the page is laid out for 360px and merely widens on a desktop.
+   The kit's tokens do the colours, which is how light and dark both work
+   without a single colour written here: every value below is a var().
+
+   A FILE, NOT A <style> BLOCK, so the page's CSP needs nothing new for style
+   and the stamp tool versions it like every other asset.
+   ============================================================================ */
+
+/* ---------- WHAT SHOWS WHERE ------------------------------------------------
+   ONE MATRIX, IN ONE PLACE. android.js puts classes on .ad (#page); appmode.js
+   puts m-app on <html> before the first paint. Each rule HIDES; nothing here
+   ever sets a display to show something, so every element keeps its own
+   display (flex, grid, inline) when it is visible.
+
+     .out-only     the download page proper: hidden in the app
+     .in-only      "You are using the app": shown only in the app
+     .webapp-only  the old Samsung Internet home-screen web app
+     .ios-only / .not-ios / .desk-only   by platform
+     .shell-only   the Android shell told us about itself (shell=, notif=, chan=)
+     .upd-only     that shell is older than version.json's minShell
+
+   WHY html.m-app IS READ HERE AND NOT ONLY IN JS. android.js is deferred, so
+   it runs after the first paint could already have drawn the big Download
+   button inside the app. appmode.js is blocking, so keying on its class hides
+   the button before it is ever seen. The one exception, the Samsung Internet
+   web app (also m-app), is only known from the user agent, so .webapp undoes
+   it a moment later. */
+html.m-app .ad:not(.webapp) .out-only,
+.ad.in-app .out-only{ display:none }
+html:not(.m-app) .ad:not(.in-app) .in-only,
+.ad.webapp .in-only{ display:none }
+.ad:not(.webapp) .webapp-only{ display:none }
+.ad:not(.ios) .ios-only{ display:none }
+.ad.ios .not-ios{ display:none }
+.ad:not(.desktop) .desk-only{ display:none }
+.ad:not(.shell) .shell-only{ display:none }
+.ad:not(.update) .upd-only{ display:none }
+
+/* ---------- the top bar (as the privacy page) ---------- */
+.ad a.plain{ color:inherit; text-decoration:none }
+.ad .topbar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:calc(var(--u)*2) calc(var(--u)*3); border-bottom:1px solid var(--rule) }
+.ad .wm{ font-family:var(--f-score); font-size:13px; text-transform:uppercase;
+  background:linear-gradient(100deg,var(--lume),var(--aqua)); color:var(--on-accent); padding:3px 9px 1px }
+
+/* ---------- the hero ---------- */
+.ad-hero{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:calc(var(--u)*3); align-items:center;
+  padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*4); border-bottom:1px solid var(--rule) }
+/* THE APP ICON, drawn from the same PNG the manifest installs, rounded the way a launcher
+   rounds it, so the thing on the page is the thing that lands on the home screen. */
+.ad-icon{ display:block; width:96px; height:96px; border-radius:22%;
+  box-shadow:0 0 0 1px var(--rule-2), 0 12px 32px color-mix(in oklch,var(--lume) 24%,transparent) }
+.ad-hero h1{ font-family:var(--f-score); font-weight:400; font-size:clamp(40px,8.5vw,64px); line-height:.86;
+  margin:0; text-transform:uppercase; letter-spacing:.01em;
+  background:linear-gradient(100deg,var(--lume),var(--aqua)); -webkit-background-clip:text; background-clip:text;
+  color:transparent }
+.ad-hero .lede{ font-family:var(--f-ui); font-size:16px; line-height:1.6; color:var(--ink-2);
+  max-width:60ch; margin:calc(var(--u)*2) 0 0 }
+.ad .perks{ display:flex; flex-wrap:wrap; gap:6px; list-style:none; margin:calc(var(--u)*2) 0 0; padding:0 }
+.ad .perks li{ font-family:var(--f-micro); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-2); border:1px solid var(--rule-2); padding:5px 9px; background:var(--panel) }
+
+/* ---------- sections ---------- */
+.ad .sec{ border-bottom:1px solid var(--rule) }
+.ad .body{ padding:calc(var(--u)*3) }
+.ad .k{ font-family:var(--f-micro); font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-3); margin:0 }
+.ad .intro{ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0 0 calc(var(--u)*2); max-width:66ch }
+/* Archivo, not Silkscreen: this is a sentence of advice, and a pixel face in capitals turns a
+   sentence into a label nobody reads. */
+.ad .fine{ font-family:var(--f-ui); font-size:13px; line-height:1.6; color:var(--ink-3);
+  margin:calc(var(--u)*2) 0 0; max-width:70ch }
+
+/* ---------- 01: what it needs, then the button ---------- */
+/* NEEDS FIRST, in reading order at every width: on a phone it sits above the button, on a
+   desktop to its left. Nobody should reach the download without passing it. */
+.ad .getgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*3); align-items:start }
+@media (min-width:900px){
+  .ad .getgrid{ grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) }
+}
+
+.ad .needs{ border:1px solid var(--rule-2); border-left:3px solid var(--amber);
+  background:color-mix(in oklch,var(--amber) 7%,var(--panel)); padding:14px 16px }
+.ad .needs .k{ color:var(--amber) }
+.ad .needs ul{ list-style:none; margin:10px 0 0; padding:0; display:grid; gap:9px }
+.ad .needs li{ position:relative; padding-left:20px; font-size:14.5px; line-height:1.55; color:var(--ink-2) }
+.ad .needs li::before{ content:""; position:absolute; left:2px; top:.6em; width:7px; height:7px; background:var(--amber) }
+.ad .needs li b{ color:var(--ink) }
+
+.ad .get{ min-width:0 }
+/* THE BUTTON. Big enough to hit with a thumb without looking, and the full width of a phone. */
+.ad .dl{ display:flex; align-items:center; justify-content:center; gap:12px; box-sizing:border-box;
+  width:100%; max-width:440px; min-height:64px; padding:14px 20px;
+  font-size:14px; letter-spacing:.06em; text-decoration:none; text-align:center }
+.ad .dl.pri{ box-shadow:0 10px 28px color-mix(in oklch,var(--lume) 30%,transparent) }
+.ad .dl svg{ width:22px; height:22px; flex:none; fill:none; stroke:currentColor; stroke-width:2.2;
+  stroke-linecap:round; stroke-linejoin:round }
+/* NOT RELEASED YET: the link is removed in android.js; this only makes it look inert. */
+.ad .dl.off{ pointer-events:none; opacity:.55; box-shadow:none }
+
+.ad .play .or{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ink-3); margin:14px 0 10px }
+
+.ad .dlmeta{ font-family:var(--f-micro); font-size:10px; line-height:1.9; letter-spacing:.04em;
+  color:var(--ink-3); margin:12px 0 0 }
+.ad .dlmeta b{ color:var(--ink); font-weight:400 }
+.ad .dlnote{ font-size:14px; line-height:1.6; color:var(--ink-2); margin:12px 0 0; max-width:52ch;
+  border-left:2px solid var(--rule-2); padding:2px 0 2px 12px }
+.ad .dlnote a{ color:var(--aqua) }
+.ad .dlnote b{ color:var(--ink); word-break:break-word }
+
+/* the old Samsung Internet web app */
+.ad .callout{ border:1px solid var(--rule-2); border-left:3px solid var(--aqua);
+  background:color-mix(in oklch,var(--aqua) 7%,var(--panel)); padding:14px 16px; margin:0 0 calc(var(--u)*3) }
+.ad .callout .k{ color:var(--aqua) }
+.ad .callout p:not(.k){ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:8px 0 0 }
+.ad .callout b{ color:var(--ink) }
+
+/* ---------- 01, inside the app ---------- */
+.ad .inapp{ border:1px solid var(--rule-2); border-top:3px solid var(--lume); background:var(--panel);
+  padding:18px; max-width:640px }
+.ad .inapp .k{ color:var(--lume) }
+.ad .inapp .big{ font-family:var(--f-score); font-size:clamp(30px,8vw,44px); line-height:.95; text-transform:uppercase;
+  color:var(--ink); margin:8px 0 0 }
+.ad .inapp p:not(.k):not(.big):not(.fine):not(.asof){ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:10px 0 0 }
+.ad .upd{ margin:16px 0 0; padding:14px 0 0; border-top:1px solid var(--rule) }
+.ad .upd .k.warn{ color:var(--amber) }
+.ad .upd .dl{ margin-top:14px }
+.ad .rows{ margin:16px 0 0 }
+.ad .row{ display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+  padding:10px 0; border-top:1px solid var(--rule) }
+.ad .row span{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3) }
+.ad .row b{ font-family:var(--f-ui); font-weight:700; font-size:14.5px; color:var(--ink); text-align:right }
+.ad .row b.good{ color:var(--good) }
+.ad .row b.bad{ color:var(--bad) }
+.ad .row b.meh{ color:var(--amber) }
+.ad .asof{ font-family:var(--f-micro); font-size:8.5px; letter-spacing:.06em; color:var(--ink-3);
+  margin:0; padding-top:6px; border-top:1px solid var(--rule) }
+.ad .settings{ display:inline-flex; align-items:center; justify-content:center; min-height:48px;
+  margin-top:14px; text-decoration:none }
+
+/* ---------- 02: the steps ---------- */
+/* NUMBERED BY CSS COUNTER, not by <ol>'s marker, so the number can be a big scoreboard
+   figure in its own column; the <ol> still tells a screen reader they are in order. */
+.ad .steps{ list-style:none; margin:0; padding:0; counter-reset:step; max-width:820px;
+  display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule) }
+.ad .steps > li{ counter-increment:step; display:grid; grid-template-columns:52px minmax(0,1fr); gap:12px;
+  background:var(--ground); padding:16px 16px 16px 10px }
+.ad .steps > li::before{ content:counter(step); font-family:var(--f-score); font-size:46px; line-height:.8;
+  color:var(--lume); text-align:center }
+.ad .steps h3{ font-family:var(--f-ui); font-weight:700; font-size:16.5px; line-height:1.3; margin:2px 0 6px; color:var(--ink) }
+.ad .steps p{ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0 }
+.ad .steps p + p{ margin-top:10px }
+.ad .steps b{ color:var(--ink) }
+.ad .steps .aside{ font-size:13.5px; color:var(--ink-3); border-left:2px solid var(--rule-2); padding-left:10px }
+.ad .path{ font-family:var(--f-data); font-size:12px; color:var(--ink); background:var(--panel-2);
+  padding:1px 5px; box-decoration-break:clone; -webkit-box-decoration-break:clone }
+
+/* ---------- 03: updates ---------- */
+.ad .faq{ display:grid; grid-template-columns:minmax(150px,220px) minmax(0,1fr); gap:1px; max-width:820px;
+  background:var(--rule); border:1px solid var(--rule) }
+.ad .faq > div{ background:var(--ground); padding:12px 14px }
+.ad .faq .q{ font-family:var(--f-micro); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--lume); line-height:1.8 }
+.ad .faq .a{ font-size:14px; line-height:1.6; color:var(--ink-2) }
+.ad .faq .a a{ color:var(--aqua) }
+
+/* ---------- 04: iPhone ---------- */
+.ad .mini{ margin:0; padding:0 0 0 22px; max-width:66ch }
+.ad .mini li{ font-size:14.5px; line-height:1.6; color:var(--ink-2); margin:0 0 8px; padding-left:4px }
+.ad .mini li::marker{ font-family:var(--f-score); font-size:18px; color:var(--lume) }
+.ad .mini a{ color:var(--aqua) }
+.ad .mini b{ color:var(--ink) }
+/* the in-page link from the download block lands clear of the top edge */
+.ad #iosSec{ scroll-margin-top:12px }
+
+/* ---------- foot ---------- */
+.ad footer.foot{ padding:calc(var(--u)*4) calc(var(--u)*3); font-family:var(--f-micro); font-size:9px;
+  color:var(--ink-3); display:flex; gap:16px; flex-wrap:wrap }
+.ad footer.foot a{ color:var(--ink-3); text-decoration:none }
+.ad footer.foot a:hover{ color:var(--lume) }
+
+/* ---------- light theme ---------- */
+/* The kit whitens every .ep-btn in the light theme; the Play and download buttons keep the
+   accent, and the soft glow under them is dropped because it reads as a smudge on a pale ground. */
+:root[data-theme="light"] .ad .dl.pri{ box-shadow:0 6px 18px rgba(13,31,23,.14) }
+:root[data-theme="light"] .ad .perks li{ background:#ffffff }
+:root[data-theme="light"] .ad .ad-icon{ box-shadow:0 0 0 1px var(--rule), 0 8px 22px rgba(13,31,23,.16) }
+
+/* ---------- phones ---------- */
+@media (max-width:560px){
+  /* 16px gutters, and room on the right of the bar for the bell (fixed, top right, 40px) */
+  .ad .topbar{ padding-left:16px; padding-right:64px }
+  .ad-hero, .ad .body, .ad footer.foot{ padding-left:16px; padding-right:16px }
+  .ad-hero{ grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*2); padding-top:calc(var(--u)*4); padding-bottom:calc(var(--u)*3) }
+  .ad-icon{ width:68px; height:68px }
+  .ad .dl{ max-width:none }
+  .ad .steps > li{ grid-template-columns:40px minmax(0,1fr); gap:10px; padding:14px 14px 14px 6px }
+  .ad .steps > li::before{ font-size:38px }
+  .ad .faq{ grid-template-columns:minmax(0,1fr) }
+  .ad .faq .q{ padding-bottom:0 }
+  .ad .faq .a{ padding-top:4px }
+}

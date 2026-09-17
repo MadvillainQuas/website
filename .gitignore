@@ -29,3 +29,14 @@ supabase/.branches/
 data/ingest-fixtures/*.raw.json
 data/ingest-raw/
 __pycache__/
+
+# Android app. THE SIGNING KEY NEVER ENTERS THIS REPO: it is public, and a leaked
+# key lets anyone ship an "update" to every installed Epinoia app. CI decodes the
+# key into $RUNNER_TEMP, outside the checkout. Build output and machine paths stay
+# local too.
+*.jks
+*.keystore
+android/.gradle/
+android/**/build/
+android/local.properties
+google-services.json

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    THE ONE FOLDER THE FILE PROVIDER SHARES: the rasterised splash image that androidbrowserhelper
+    writes to files/twa_splash/ and hands to Chrome, so Chrome can keep showing it while HOME loads.
+    Path and name exactly as LauncherActivity's javadoc and demos/twa-basic give them.
+-->
+<paths>
+    <files-path path="twa_splash/" name="twa_splash" />
+</paths>

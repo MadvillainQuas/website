@@ -1,0 +1,24 @@
+// THE EPINOIA ANDROID APP. One module, :app, a Trusted Web Activity over the live website.
+// Modelled on android-browser-helper's demos/twa-basic, but it pulls the published
+// androidbrowserhelper artifact from Google's Maven instead of building the library itself.
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// REPOSITORIES LIVE HERE ONLY. A module that declares its own repository fails the build,
+// so every dependency is resolved from the same two places on CI and in Android Studio.
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'epinoia'
+include ':app'

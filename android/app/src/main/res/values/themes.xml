@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        THE LAUNCHER, BELOW ANDROID 12: TRANSPARENT, as androidbrowserhelper's LauncherActivity
+        javadoc recommends. It is a trampoline: when the app is already running it only passes an
+        intent on and finishes, and a transparent window makes that invisible. The TWA splash
+        paints its own #f3faf6 background when a launch needs it.
+    -->
+    <style name="Theme.Epinoia.Launcher" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <!-- THE NATIVE SETTINGS SCREEN, in the kit's light colours. -->
+    <style name="Theme.Epinoia.Settings" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/epinoia_ground_light</item>
+        <item name="android:statusBarColor">@color/epinoia_ground_light</item>
+        <item name="android:navigationBarColor">@color/epinoia_ground_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorAccent">@color/epinoia_lume_light</item>
+    </style>
+</resources>
