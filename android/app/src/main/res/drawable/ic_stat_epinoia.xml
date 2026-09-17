@@ -3,7 +3,8 @@
     THE STATUS-BAR AND LOCK-SCREEN ICON: WHITE ON TRANSPARENT.
     Android draws a small icon from its alpha channel alone, so any opaque square (like the site's
     32px colour mark) shows as a blank white tile. This is the Λ-and-rule silhouette, scaled up to
-    fill the 24dp icon.
+    fill the 24dp icon. It stays the Λ although the launcher icon is the full wordmark, which could
+    not be read at 24dp.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"

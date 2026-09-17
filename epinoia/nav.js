@@ -664,7 +664,8 @@
      Protect, Chrome) better than a banner can. */
   function showAndroidApp() {
     installBanner = el('div', 'ep-install ep-app-offer');
-    const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
+    /* the app's own icon, not the site mark: it is what the phone will show once installed */
+    const ic = el('img'); ic.src = root + 'android/icon-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
     tx.appendChild(el('b', null, 'Get the Epinoia app for Android'));
     tx.appendChild(el('span', null, 'Scores, fixtures and your clubs one tap away, with game alerts that pop up.'));
@@ -710,7 +711,7 @@
   function showUpdate(ver) {
     const bar = el('div', 'ep-install ep-update');
     bar.setAttribute('role', 'status');
-    const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
+    const ic = el('img'); ic.src = root + 'android/icon-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
     tx.appendChild(el('b', null, 'Update the Epinoia app'));
     tx.appendChild(el('span', null, ver.versionName

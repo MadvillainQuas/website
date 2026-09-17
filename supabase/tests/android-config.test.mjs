@@ -192,6 +192,62 @@ if (!existsSync(wfPath)) {
   ok('secrets are never echoed', !/echo[^\n]*\$\{?(ANDROID_KEYSTORE_B64|ANDROID_KEYSTORE_PASSWORD|ANDROID_KEY_PASSWORD)/.test(code));
 }
 
+/* ---------------------------------------------------------------------- icons --- */
+/* THE ICONS ARE PNGs, one per density, from tools/build-android-icons.py. A missing density still
+   builds (Android scales another), so the cheap mistakes here are a size that is not the one the
+   density needs, a leftover .xml of the same name in drawable/ or mipmap/ (a vector would then win
+   on some phones and the old Λ come back), and a manifest or theme naming something that is gone. */
+console.log('\n-- android/app/src/main/res: every icon at every density, and nothing left over');
+{
+  const RES = ['android', 'app', 'src', 'main', 'res'];
+  const DENS = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+  const pngSize = (...p) => {
+    if (!existsSync(file(...p))) return null;
+    const b = readFileSync(file(...p));
+    if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47) return null;
+    return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  };
+  const sized = (want, ...p) => { const s = pngSize(...p); return !!s && s[0] === want && s[1] === want; };
+  const EXPECT = [
+    ['drawable', 'ic_launcher_background', 108],
+    ['drawable', 'ic_launcher_monochrome', 108],
+    ['drawable', 'splash', 108],
+    ['mipmap', 'ic_launcher', 48],
+    ['mipmap', 'ic_launcher_round', 48]
+  ];
+  for (const [kind, name, dp] of EXPECT) {
+    const bad = Object.entries(DENS).filter(([d, k]) => !sized(Math.round(dp * k), ...RES, kind + '-' + d, name + '.png'));
+    ok(kind + '/' + name + '.png at all five densities, ' + dp + ' dp each', bad.length === 0,
+       'wrong or missing: ' + bad.map(([d]) => d).join(', '));
+    ok('...and no ' + kind + '/' + name + '.xml left to shadow it',
+       !existsSync(file(...RES, kind, name + '.xml')) && !existsSync(file(...RES, kind, name + '.png')));
+  }
+  for (const f of ['ic_launcher.xml', 'ic_launcher_round.xml']) {
+    const x = read(...RES, 'mipmap-anydpi-v26', f);
+    ok('mipmap-anydpi-v26/' + f + ' layers the PNG background, an empty foreground and the themed PNG',
+       /<background android:drawable="@drawable\/ic_launcher_background"/.test(x)
+       && /<foreground android:drawable="@android:color\/transparent"/.test(x)
+       && /<monochrome android:drawable="@drawable\/ic_launcher_monochrome"/.test(x));
+  }
+  const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+  const v31 = read(...RES, 'values-v31', 'themes.xml');
+  ok('the manifest names the launcher icons and the splash that exist',
+     manifest.includes('android:icon="@mipmap/ic_launcher"') && manifest.includes('android:roundIcon="@mipmap/ic_launcher_round"')
+     && /SPLASH_IMAGE_DRAWABLE"\s+android:resource="@drawable\/splash"/.test(manifest));
+  ok('the Android 12 splash uses the same splash drawable', v31.includes('@drawable/splash<'));
+  ok('the notification icon is still a white vector silhouette', existsSync(file(...RES, 'drawable', 'ic_stat_epinoia.xml')));
+  const iconXml = manifest + v31 + read(...RES, 'mipmap-anydpi-v26', 'ic_launcher.xml')
+    + read(...RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml');
+  ok('nothing still names the old flat background colour or the vector foreground',
+     !/@color\/ic_launcher_background|@drawable\/ic_launcher_foreground/.test(iconXml));
+  ok('the logo the icons are built from is committed', !!pngSize('android', 'icon', 'epinoia-logo.png'));
+  ok('the store icon is 512 px', sized(512, 'android', 'store', 'icon-512.png'));
+  ok('the download page and the app banners have the icon at 192 and 384 px',
+     sized(192, 'epinoia', 'android', 'icon-192.png') && sized(384, 'epinoia', 'android', 'icon-384.png'));
+  ok('the download page shows the app icon, not the site mark',
+     /class="ad-icon" src="icon-192\.png" srcset="icon-384\.png 2x"/.test(read('epinoia', 'android', 'index.html')));
+}
+
 /* ----------------------------------------------------------------- .gitignore --- */
 console.log('\n-- .gitignore: keystores can never be committed');
 const ignore = read('.gitignore').split(/\r?\n/).map(l => l.trim());

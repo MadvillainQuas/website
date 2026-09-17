@@ -19,7 +19,4 @@
     <!-- dark theme (:root) -->
     <color name="epinoia_ground_dark">#04100b</color>
     <color name="epinoia_lume_dark">#93f2bf</color>
-
-    <!-- the adaptive launcher icon's background layer -->
-    <color name="ic_launcher_background">#04100b</color>
 </resources>
