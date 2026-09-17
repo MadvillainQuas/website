@@ -15,13 +15,13 @@
 <title>Team · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-mark-180.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=264">
-<link rel="stylesheet" href="../kit/table.css?v=264">
-<link rel="stylesheet" href="../kit/nav.css?v=264">
-<link rel="stylesheet" href="../video.css?v=264">
-<link rel="stylesheet" href="../kit/card.css?v=264">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=264">
-<link rel="stylesheet" href="../kit/access.css?v=264">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=265">
+<link rel="stylesheet" href="../kit/table.css?v=265">
+<link rel="stylesheet" href="../kit/nav.css?v=265">
+<link rel="stylesheet" href="../video.css?v=265">
+<link rel="stylesheet" href="../kit/card.css?v=265">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=265">
+<link rel="stylesheet" href="../kit/access.css?v=265">
 <style>
   .hero{display:flex;align-items:center;gap:16px;padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .badge{width:58px;height:58px;display:grid;place-items:center;font-family:var(--f-score);
@@ -44,6 +44,11 @@
   .rec div:last-child{border-right:none}
   .rec .v{font-family:var(--f-score);font-size:24px}
   .rec .l{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);margin-top:5px}
+  /* the club's fixture strip, between the record and the profile/video tabs */
+  .team-strip{padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .team-strip[hidden]{display:none}
+  .team-strip .stripframe{display:block;width:100%;height:132px;border:1px solid var(--rule);
+    border-radius:4px;overflow:hidden;background:var(--ground)}
   .fx{display:grid;grid-template-columns:80px 1fr auto 70px 30px;gap:10px;align-items:center;
     padding:10px calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .fx .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
@@ -350,6 +355,12 @@
 
   <div class="rec" id="rec"></div>
 
+  <!-- THE CLUB'S FIXTURE STRIP (embed/strip/?t=): its own games, nearest first, in the club's
+       colours; teamcolour.js keeps the embed in the page's light/dark and colours as they change. -->
+  <div class="team-strip" id="teamStrip" hidden>
+    <iframe class="stripframe" id="teamStripFrame" title="Fixtures" loading="lazy" scrolling="no"></iframe>
+  </div>
+
   <!-- MEMBERS ONLY. Filled and shown only when the club's league is closed to the viewer
        (access.js); empty and hidden everywhere else. -->
   <div id="paywall" hidden></div>
@@ -406,27 +417,27 @@
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../vendor/supabase.js?v=264" defer></script>
-<script src="../config.js?v=264" defer></script>
-<script src="../access.js?v=264" defer></script>
-<script src="../follow.js?v=264" defer></script>
-<script src="../teamcolour.js?v=264" defer></script>
-<script src="../bpm.js?v=264" defer></script>
-<script src="../season.js?v=264" defer></script>
-<script src="../data.js?v=264" defer></script>
-<script src="../lineups.js?v=264" defer></script>
-<script src="../wowy.js?v=264" defer></script>
-<script src="lineupui.js?v=264" defer></script>
-<script src="../fulltable.js?v=264" defer></script>
-<script src="../igtile.js?v=264" defer></script>
-<script src="../video.js?v=264" defer></script>
-<script src="../p/video.js?v=264" defer></script>
-<script src="venue.js?v=264" defer></script>
-<script src="../boxscore.js?v=264" defer></script>
-<script src="../shotchart.js?v=264" defer></script>
-<script src="../sitpanel.js?v=264" defer></script>
-<script src="team.js?v=264" defer></script>
-<script src="../nav.js?v=264" defer></script>
-<script src="../xscroll.js?v=264" defer></script>
+<script src="../vendor/supabase.js?v=265" defer></script>
+<script src="../config.js?v=265" defer></script>
+<script src="../access.js?v=265" defer></script>
+<script src="../follow.js?v=265" defer></script>
+<script src="../teamcolour.js?v=265" defer></script>
+<script src="../bpm.js?v=265" defer></script>
+<script src="../season.js?v=265" defer></script>
+<script src="../data.js?v=265" defer></script>
+<script src="../lineups.js?v=265" defer></script>
+<script src="../wowy.js?v=265" defer></script>
+<script src="lineupui.js?v=265" defer></script>
+<script src="../fulltable.js?v=265" defer></script>
+<script src="../igtile.js?v=265" defer></script>
+<script src="../video.js?v=265" defer></script>
+<script src="../p/video.js?v=265" defer></script>
+<script src="venue.js?v=265" defer></script>
+<script src="../boxscore.js?v=265" defer></script>
+<script src="../shotchart.js?v=265" defer></script>
+<script src="../sitpanel.js?v=265" defer></script>
+<script src="team.js?v=265" defer></script>
+<script src="../nav.js?v=265" defer></script>
+<script src="../xscroll.js?v=265" defer></script>
 </body>
 </html>

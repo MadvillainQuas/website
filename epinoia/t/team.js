@@ -225,6 +225,7 @@ function decideAccess(lg) {
     if (lg.slug) $('#leagueLink').href = '../l/?l=' + encodeURIComponent(lg.slug);
     else $('#leagueLink').style.display = 'none';
     document.title = team.name + ' · Epinoia';
+    teamStrip(team, lg);
 
     /* ACCESS FIRST FOR THE SECTIONS IT DECIDES, and only for those: the venue and the squad
        are never gated, so they start at once, while the record, the statistics and the
@@ -1002,6 +1003,25 @@ async function roster(team) {
 }
 
 
+/* THE CLUB'S FIXTURE STRIP, under the record: the same embed club websites carry, showing only
+   this club's games (?t=) with its league named in the corner (?l=). It opens in the page's light
+   or dark and, on a club-coloured page, the club's colours; teamcolour.js keeps it in step after. */
+function teamStrip(team, lg) {
+  const wrap = $('#teamStrip'), frame = $('#teamStripFrame');
+  if (!wrap || !frame || !team.slug) return;
+  const hex = v => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : null);
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  let src = '../embed/strip/?n=12&t=' + encodeURIComponent(team.slug) +
+    (lg && lg.slug ? '&l=' + encodeURIComponent(lg.slug) : '') + '&theme=' + (light ? 'light' : 'dark');
+  if (document.body.classList.contains('themed') && hex(team.colour)) {
+    src += '&accent=' + encodeURIComponent(team.colour) +
+      (hex(team.colour_2) ? '&accent2=' + encodeURIComponent(team.colour_2) : '');
+  }
+  frame.title = team.name + ' fixtures';
+  frame.src = src;
+  wrap.hidden = false;
+}
+
 let TG = { comp: '', show: 'all', rows: [] };
 async function games(team) {
   const gs = await api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
@@ -1055,6 +1075,16 @@ function paintGames(team) {
   if (TG.show === 'results') list = list.filter(g => done(g.status) || g.status === 'live');
   if (TG.show === 'upcoming') list = list.filter(g => g.status === 'scheduled')
                                        .sort((a, b) => new Date(a.tipoff_at || 0) - new Date(b.tipoff_at || 0));
+  /* THE NEXT GAME FIRST. The rows arrive newest tip-off first, which for a club with a season
+     listed put next spring's last fixture at the top and the game this weekend thirty rows down.
+     So: anything live, then what is still to come, soonest first, then the results, latest first.
+     A fixture with no date yet goes to the end of the ones to come. */
+  if (TG.show === 'all') {
+    const t = g => (g.tipoff_at ? new Date(g.tipoff_at).getTime() : Infinity);
+    const rank = g => (g.status === 'live' ? 0 : done(g.status) ? 2 : 1);
+    list.sort((a, b) => rank(a) - rank(b) ||
+      (rank(a) === 2 ? t(b) - t(a) : t(a) - t(b)));
+  }
   if (!list.length) { host.appendChild(el('div', 'empty', 'Nothing matches that.')); return; }
 
   list.forEach(g => {

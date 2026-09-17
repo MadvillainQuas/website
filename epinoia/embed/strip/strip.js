@@ -57,7 +57,8 @@ const qp = new URLSearchParams(location.search);
    fixture list it could have asked for by name.
    --------------------------------------------------------------------------- */
 let wantLeague = qp.get('l') || '';
-let wantTeam = '';
+/* ?t= names one club (its page on Epinoia shows the strip for it), as a club site's rule can */
+let wantTeam = qp.get('t') || '';
 let limit = Math.min(parseInt(qp.get('n'), 10) || 12, 40);
 const limitFromUrl = !!qp.get('n');
 
@@ -72,7 +73,7 @@ function hostOfParent() {
 }
 
 async function siteConfig() {
-  if (wantLeague) return;                 // the URL was explicit; leave it alone
+  if (wantLeague || wantTeam) return;     // the URL was explicit; leave it alone
   const host = hostOfParent();
   if (!host) return;
   let rows;
@@ -738,11 +739,47 @@ let lastKey = '';
    lastKey, which is a rendering fingerprint and not a place to keep facts. */
 let liveNow = false;
 
+/* THE STRIP ASKS FOR ITS OWN GAMES, NOT THE PLATFORM'S.
+
+   It used to fetch the sixty games with the latest tip-off anywhere on the platform and keep the
+   ones for its league or club. With a few leagues' full seasons listed (BCB, both Super Leagues:
+   more than 470 fixtures by September 2026) the latest sixty are next spring's, so a league's
+   strip showed March 2027 and a club's could show nothing at all. So the league or club is part
+   of the query: a club by its id, a league by its competitions, resolved once. The filters after
+   the fetch stay, as a second lock. */
+let scopeQ = null;
+async function scope() {
+  if (scopeQ !== null) return scopeQ;
+  const none = '&id=eq.00000000-0000-0000-0000-000000000000';
+  try {
+    if (wantTeam) {
+      const t = await api('teams?slug=eq.' + encodeURIComponent(wantTeam) + '&select=id&limit=1');
+      scopeQ = t && t[0] ? '&or=(home_team_id.eq.' + t[0].id + ',away_team_id.eq.' + t[0].id + ')' : none;
+    } else if (wantLeague) {
+      const cs = await api('competitions?select=id,seasons!inner(leagues!inner(slug))' +
+        '&seasons.leagues.slug=eq.' + encodeURIComponent(wantLeague));
+      scopeQ = cs && cs.length ? '&competition_id=in.(' + cs.map(c => c.id).join(',') + ')' : none;
+    } else {
+      scopeQ = '';
+    }
+  } catch (_) {
+    return '';                  // not remembered: the next load asks again, and the filters below still hold
+  }
+  return scopeQ;
+}
+
 async function load() {
-  let sel = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
+  const sc = await scope();
+  const FIELDS = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
     'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
-    'competitions(name,seasons(leagues(slug,name)))' +
-    '&status=in.(live,scheduled,final,finalising)&order=tipoff_at.desc&limit=60';
+    'competitions(name,seasons(leagues(slug,name)))';
+  /* WHAT IS NEXT, AND WHAT HAS JUST BEEN. The soonest fixtures still to come (from six hours ago,
+     so a game that tipped late or ran long is not dropped), and the latest results. order() below
+     puts whichever is nearest to now first. */
+  const sinceIso = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const upcoming = FIELDS + '&status=in.(scheduled,live,finalising)&tipoff_at=gte.' + encodeURIComponent(sinceIso) +
+    '&order=tipoff_at.asc&limit=40' + sc;
+  const recent = FIELDS + '&status=in.(final,finalising)&order=tipoff_at.desc&limit=30' + sc;
 
   /* LIVE GAMES ARE FETCHED SEPARATELY, AND ALWAYS.
 
@@ -779,8 +816,10 @@ async function load() {
 
   let gs, live = [], near = [];
   try {
-    [gs, live, near] = await Promise.all([
-      api(sel),
+    let next, past;
+    [next, past, live, near] = await Promise.all([
+      api(upcoming),
+      api(recent),
       /* starters as well, so a game reached only by this query carries the same
          fields as one from the list above. It is live, so the badge says LIVE
          either way — but two shapes of the same row is how the next reader of
@@ -788,16 +827,18 @@ async function load() {
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
-          '&status=eq.live&order=tipoff_at.asc&limit=40').catch(() => []),
+          '&status=eq.live&order=tipoff_at.asc&limit=40' + sc).catch(() => []),
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
           'competitions(name,seasons(leagues(slug,name)))' +
           '&status=in.(scheduled,finalising,final)' +
           '&tipoff_at=gte.' + encodeURIComponent(nearFrom) +
           '&tipoff_at=lte.' + encodeURIComponent(nearTo) +
-          '&order=tipoff_at.asc&limit=40').catch(() => [])
+          '&order=tipoff_at.asc&limit=40' + sc).catch(() => [])
     ]);
+    gs = next.slice();
     const seen = new Set(gs.map(g => g.id));
+    past.forEach(g => { if (!seen.has(g.id)) { gs.push(g); seen.add(g.id); } });
     live.forEach(g => { if (!seen.has(g.id)) { gs.push(g); seen.add(g.id); } });
     near.forEach(g => { if (!seen.has(g.id)) { gs.push(g); seen.add(g.id); } });
   }

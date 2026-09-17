@@ -201,5 +201,42 @@ ok('the strip names its league bottom left, as a link', /id="leagueLink" hidden/
 ok('...to the league\'s own page, in the page on Epinoia and a new tab on a club\'s site',
    /new URL\('\.\.\/\.\.\/\?l=' \+ encodeURIComponent\(l\.slug\), location\.href\)/.test(stripJs) && /a\.target = ours \? '_top' : '_blank'/.test(stripJs));
 
+console.log('\n-- the strip asks for its own games; a club\'s page carries one');
+ok('a strip takes one club by ?t=, and a URL-named club or league skips the site rule',
+   /let wantTeam = qp\.get\('t'\) \|\| ''/.test(stripJs) && /if \(wantLeague \|\| wantTeam\) return;/.test(stripJs));
+ok('...and puts the club or the league into the query, not only into a filter afterwards',
+   /'&or=\(home_team_id\.eq\.' \+ t\[0\]\.id \+ ',away_team_id\.eq\.' \+ t\[0\]\.id \+ '\)'/.test(stripJs) &&
+   /'&competition_id=in\.\(' \+ cs\.map\(c => c\.id\)\.join\(','\) \+ '\)'/.test(stripJs));
+ok('...fetching what is next (soonest first) and what has just been, not the platform\'s latest sixty',
+   /&status=in\.\(scheduled,live,finalising\)&tipoff_at=gte\.' \+ encodeURIComponent\(sinceIso\) \+\s+'&order=tipoff_at\.asc&limit=40' \+ sc/.test(stripJs) &&
+   /&status=in\.\(final,finalising\)&order=tipoff_at\.desc&limit=30' \+ sc/.test(stripJs) &&
+   !/order=tipoff_at\.desc&limit=60/.test(stripJs));
+const teamHtml = read('epinoia', 't', 'index.html'), teamJs = read('epinoia', 't', 'team.js');
+ok('a club\'s page carries its strip between the record and the profile/video tabs',
+   teamHtml.indexOf('id="rec"') < teamHtml.indexOf('id="teamStrip"') && teamHtml.indexOf('id="teamStrip"') < teamHtml.indexOf('id="ttabs"'));
+ok('...showing only that club\'s games, its league named, in the page\'s theme',
+   /'\.\.\/embed\/strip\/\?n=12&t=' \+ encodeURIComponent\(team\.slug\)/.test(teamJs) && /'&l=' \+ encodeURIComponent\(lg\.slug\)/.test(teamJs));
+{
+  /* the club page's order for "all games", run on a small season */
+  const m = /if \(TG\.show === 'all'\) \{([\s\S]*?)\n  \}/.exec(teamJs);
+  let got = null;
+  if (m) {
+    const now = Date.parse('2026-09-17T12:00:00Z');
+    const games = [
+      { id: 'may', status: 'scheduled', tipoff_at: '2027-05-01T15:00:00Z' },
+      { id: 'lastwk', status: 'final', tipoff_at: '2026-09-10T15:00:00Z' },
+      { id: 'sat', status: 'scheduled', tipoff_at: '2026-09-20T15:00:00Z' },
+      { id: 'tbc', status: 'scheduled', tipoff_at: null },
+      { id: 'live', status: 'live', tipoff_at: '2026-09-17T11:00:00Z' },
+      { id: 'aug', status: 'final', tipoff_at: '2026-08-30T15:00:00Z' },
+      { id: 'oct', status: 'scheduled', tipoff_at: '2026-10-02T18:30:00Z' }
+    ];
+    const run = new Function('list', 'done', 'now', m[1] + '\nreturn list;');
+    got = run(games.slice(), st => st === 'final' || st === 'finalising', now).map(g => g.id);
+  }
+  eq('...and its results & fixtures open on the next game: live, then soonest to latest, then results newest first',
+     got, ['live', 'sat', 'oct', 'may', 'tbc', 'lastwk', 'aug']);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
