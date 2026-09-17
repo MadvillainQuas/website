@@ -302,6 +302,19 @@ body.nav-drawer-open{ overflow:hidden }
 }
 .ep-nav .phead .lname:hover .lgo{ color:var(--lume); transform:translateX(2px) }
 
+/* SMALLER NAMES ON THE DESKTOP RAIL. Silkscreen is a wide pixel face: at 10px with .06em
+   tracking "Super League Basketball Women" is 252px in a 104px row, so it slid 148px and was
+   mostly somewhere else when you looked. At the face's own 8px grid with .02em it is 193px
+   and slides 89px, and most club names (London Lions, Surrey 89ers) now fit and stay still.
+   The kit's body zoom (1.25 from 1000px, 1.5 from 1200px) keeps 8px at 10-12 screen pixels.
+   The panel headings come down with it, 12.5px to 10.5px, still a step above the rows.
+   After the heading rules on purpose (same specificity, so the later rule wins), and desktop
+   only: the phone bar and the open drawer set their own sizes further down. */
+@media (min-width:821px){
+  .ep-nav .marq > span{ font-size:8px; letter-spacing:.02em }
+  .ep-nav .phead .lname .marq > span{ font-size:10.5px; letter-spacing:.03em }
+}
+
 /* ---- account ------------------------------------------------------------- */
 .ep-nav .acct{ display:flex; flex-direction:column }
 
