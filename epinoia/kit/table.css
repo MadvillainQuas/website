@@ -164,8 +164,6 @@ table.ft tbody tr:hover td.stick{
   letter-spacing:.005em; text-transform:capitalize;
 }
 .ft-name a:hover{ color:var(--lume,var(--lume)) }
-.ft-jersey{flex:none;min-width:14px;font-family:var(--f-data);font-size:9.5px;
-  color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right}
 .ft-crest{
   display:inline-grid; place-items:center; width:19px; height:19px;
   border-radius:2px; flex:none; color:var(--on-accent);

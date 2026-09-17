@@ -1,0 +1,92 @@
+/* ============================================================================
+   THE GAME PAGE IN THE SITE'S CLOTHES: its zoom, its league's colours, and the
+   percentile shading of its numbers.
+
+   The game page does not load the kit. boxscore.css is the scorer's own
+   stylesheet, and the kit's base rules would fight it (kit/access.css says the
+   same). So what every other page gets from epinoia-kit.css, this page gets from
+   here, in the kit's own terms. Loaded after every other stylesheet on the page.
+
+   ZOOM. The kit's two steps, exactly (epinoia-kit.css explains 1.25 from 1000px
+   and 1.5 from 1200px). The popover in the modern box score and the events tab's
+   tooltip are placed in screen pixels divided back by the zoom (modern.js place,
+   events.js show), so they stay beside what they describe.
+
+   THE LEAGUE'S COLOURS. nav.js themeLeague puts body.league-themed and
+   --league-a/-b on the page once game.js names the league (__CS_LEAGUE_SLUG,
+   teamcolour.js league()), and the accent every
+   stylesheet here reads, --lume, is already the league's ink. What the scorer's
+   stylesheet hard-codes in the platform's mint (hairlines, the ground's wash) or
+   in the home club's colour (the selected tab) is pointed at the league here, as
+   epinoia-kit.css does on the league's own pages. The clubs keep their colours
+   for everything that belongs to one side: names, scores, bars.
+
+   PERCENTILES (epinoia/gamepct.js). .gp-b0 to .gp-b6 are the statistics pages'
+   seven bands: red, amber, nothing either side of the middle, green. In --good
+   and --bad rather than --lume, because on a league or a club that plays in red
+   a good number must still be green.
+   ============================================================================ */
+@media (min-width:1000px){ body{ zoom:1.25 } }
+@media (min-width:1200px){ body{ zoom:1.5 } }
+
+/* ------------------------------------------------------ the league's colours --- */
+body.league-themed{
+  --line:color-mix(in oklch,var(--league-a) 24%,transparent);
+  --line-hi:color-mix(in oklch,var(--league-a) 48%,transparent);
+  --rule:color-mix(in oklch,var(--league-a) 24%,transparent);
+  --rule-2:color-mix(in oklch,var(--league-a) 48%,transparent);
+  --border-accent:color-mix(in oklch,var(--league-a) 35%,transparent);
+  background:
+    radial-gradient(1100px 620px at 12% -8%, color-mix(in srgb,var(--league-a) 20%,var(--bg-base)), transparent 62%),
+    radial-gradient(900px 520px at 100% 22%, color-mix(in srgb,var(--league-b) 10%,var(--bg-base)), transparent 60%),
+    var(--bg-base);
+  background-attachment:fixed;
+}
+/* the selected tab and switches: solid league colour, as the league's own tabs are */
+body.league-themed .tabbtn.on,
+:root[data-theme="light"] body.league-themed .tabbtn.on,
+body.league-themed .mv-switch button.on,
+body.league-themed .cx-toggle button.on{ background:var(--league-a); color:var(--league-on-a); box-shadow:none }
+/* cards and hairlines the scorer drew in mint */
+body.league-themed .glass{ border-color:color-mix(in oklch,var(--league-a) 16%,transparent) }
+body.league-themed table.bx td{ border-bottom-color:color-mix(in oklch,var(--league-a) 10%,transparent) }
+body.league-themed table.adv td{ border-bottom-color:color-mix(in oklch,var(--league-a) 8%,transparent) }
+body.league-themed table.adv th.grp{ border-bottom-color:color-mix(in oklch,var(--league-a) 14%,transparent) }
+body.league-themed table.adv .sep{ border-right-color:color-mix(in oklch,var(--league-a) 20%,transparent) }
+body.league-themed .lurow{ border-bottom-color:color-mix(in oklch,var(--league-a) 10%,transparent) }
+body.league-themed .pbprow:nth-child(odd){ background:color-mix(in oklch,var(--league-a) 5%,transparent) }
+body.league-themed .dcell .track{ background:color-mix(in oklch,var(--league-a) 12%,transparent) }
+body.league-themed .statchip,
+:root[data-theme="light"] body.league-themed .statchip{ background:color-mix(in oklch,var(--league-a) 8%,transparent);
+  border-color:color-mix(in oklch,var(--league-a) 26%,transparent) }
+
+/* --------------------------------------------------------------- percentiles --- */
+.gp-b6{ --gp:color-mix(in oklch,var(--good) 34%,transparent) }
+.gp-b5{ --gp:color-mix(in oklch,var(--good) 20%,transparent) }
+.gp-b4{ --gp:color-mix(in oklch,var(--good) 10%,transparent) }
+.gp-b2{ --gp:color-mix(in oklch,var(--amber) 16%,transparent) }
+.gp-b1{ --gp:color-mix(in oklch,var(--bad) 16%,transparent) }
+.gp-b0{ --gp:color-mix(in oklch,var(--bad) 30%,transparent) }
+.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp) }
+/* the player tables tint each column group (table.adv td.g-scoring …); a shaded cell's own
+   colour has to outrank that, and a middling one (band 3) keeps its group's tint */
+table.adv td.gp:is(.gp-b0,.gp-b1,.gp-b2,.gp-b4,.gp-b5,.gp-b6){ background:var(--gp) }
+/* a figure inside a line of text or a row: the shade sits behind it without moving it */
+b.gp, span.gp, em.gp, small.gp{ border-radius:3px; padding:0 .3em; margin:0 -.3em; -webkit-box-decoration-break:clone; box-decoration-break:clone }
+td.gp{ border-radius:0 }
+/* the percentile itself, the small number beside or under a figure */
+.gp-pc{ font-style:normal; font-weight:600; font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.04em; line-height:1;
+  color:var(--text-secondary) }
+
+/* the modern box score's popover: the tile is shaded, its percentile in the corner */
+.mv-cell{ position:relative }
+.mv-cell .gp-pc{ position:absolute; top:3px; right:4px; font-size:7px }
+.mv-gpnote{ font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted);
+  padding:8px 2px 0; line-height:1.5 }
+
+/* full stats: a side's figure in the four factors and the additional metrics, its percentile under it */
+.ffval.gp{ padding:2px 4px; border-radius:6px; text-align:center }
+.ffval .gp-pc{ display:block; margin-top:2px; font-size:7px }
+.tsacell .gp{ padding:0 4px; border-radius:6px }
+.tsacell .gp-pc{ margin-left:3px; vertical-align:super; font-size:8px }
+.gpnote{ text-align:left; padding-top:8px; font-size:10px }

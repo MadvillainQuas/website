@@ -456,6 +456,11 @@ jobs:
         # on a hand-worked log and three real LiveStats games
         run: node supabase/tests/events.test.mjs
 
+      - name: A game's numbers are shaded by their percentile against real games
+        # epinoia/gamepct.js + the preset tools/build-gamepct.mjs built: every coloured stat
+        # has a scale, the reading rules hold, and full stats and events shade on a real game
+        run: node supabase/tests/gamepct.test.mjs
+
       - name: Event splits are stored, rolled up and drawn from one contract
         # finalise-game's stats.sit lines and the backfill (situations-store), the season
         # rollup and table categories (sitstats), and the profile panel (sitpanel)

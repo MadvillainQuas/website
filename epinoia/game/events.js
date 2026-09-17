@@ -41,6 +41,27 @@ const SITS = [
 ];
 const SIT = {}; SITS.forEach(s => { SIT[s.key] = s; });
 
+/* ------------------------------------------------------------ percentiles ---
+   Points per chance, eFG%, turnover rate and each zone's shooting, read against
+   real games by epinoia/gamepct.js: the number takes its percentile's colour and
+   the percentile goes in its tooltip. On the defence view the numbers are the
+   other side's offence, so the direction turns round: a low points per chance
+   there is this side's success. Without gamepct.js on the page (the tests, a page
+   that does not load it) the markup is exactly what it was. */
+const GPx = () => root.EpinoiaGamePct || null;
+let gpOpts = { league: null, flip: false };
+const gpRate = (scope, key, ctx) => { const G = GPx(); return G ? G.rate(scope, key, ctx, gpOpts) : null; };
+/* an opening tag with the rating's colour class added to the classes it already had and, given
+   a label, the percentile as its tooltip (inside something that has a data-tip of its own, the
+   words go there instead: two tooltips on one number is one too many) */
+function gpOpen(tag, r, label, cls) {
+  const G = GPx();
+  const c = ((cls || '') + (G && r ? G.cls(r) : '')).trim();
+  return '<' + tag + (c ? ' class="' + c + '"' : '') + (G && r && label ? ' title="' + esc(label + ': ' + G.words(r)) + '"' : '') + '>';
+}
+/* the words for a data-tip that is already there */
+const gpTip = (r, label) => { const G = GPx(); return G && r ? ' · ' + label + ': ' + G.words(r) : ''; };
+
 /* ----------------------------------------------------------------- render --- */
 /* the view survives a redraw (a live game redraws on every play). pid is the
    player whose breakdown is open; it belongs to the side on show, so a change
@@ -81,16 +102,18 @@ function dietHTML(z, colour) {
 function rowHTML(key, s, base, scale) {
   const S0 = SIT[key], on = view.sit === key;
   const few = s.fga < 3;
+  const rp = gpRate('sit', key + '.ppp', { s }), re = few ? null : gpRate('sit', key + '.efg', { s }), rt = gpRate('sit', key + '.tov', { s });
   const tip = S0.name + ': ' + s.pts + ' pts on ' + s.chances + (key === 'ato' ? ' possessions' : ' chances') +
     (s.ppp != null ? ', ' + s.ppp.toFixed(2) + ' per ' + (key === 'ato' ? 'possession' : 'chance') : '') +
-    ' · FG ' + s.fgm + '/' + s.fga + ' · 3PT ' + s.p3m + '/' + s.p3a + ' · FT ' + s.ftm + '/' + s.fta + ' · ' + s.tov + ' turnovers';
+    ' · FG ' + s.fgm + '/' + s.fga + ' · 3PT ' + s.p3m + '/' + s.p3a + ' · FT ' + s.ftm + '/' + s.fta + ' · ' + s.tov + ' turnovers' +
+    gpTip(rp, 'points per ' + (key === 'ato' ? 'possession' : 'chance')) + gpTip(re, 'eFG%') + gpTip(rt, 'turnover rate');
   return '<button type="button" class="ev-row' + (on ? ' on' : '') + (key === 'all' ? ' ref' : '') + '" data-evsit="' + key + '" aria-pressed="' + on + '" style="--s:' + sitColour(key) + '" data-tip="' + esc(tip) + '">' +
     '<span class="ev-name"><i class="ev-sw"></i><span><b>' + S0.name + '</b><small>' + S0.what + '</small></span></span>' +
     '<span class="ev-pts"><b>' + s.pts + '</b><small>' + (key === 'all' ? 'points' : pct(s.share) + ' of points') + '</small></span>' +
     '<span class="ev-ppp"><span class="ev-track"><i class="ev-fill" style="width:' + (s.ppp == null ? 0 : Math.min(100, 100 * s.ppp / scale)).toFixed(1) + '%"></i>' +
       (key === 'all' || base == null ? '' : '<i class="ev-tick" style="left:' + Math.min(100, 100 * base / scale).toFixed(1) + '%"></i>') + '</span>' +
-      '<b>' + dec2(s.ppp) + '</b><small>' + s.chances + (key === 'ato' ? ' poss.' : ' chances') + '</small></span>' +
-    '<span class="ev-efg' + (few ? ' few' : '') + '"><b>' + (s.efg == null ? '–' : (100 * s.efg).toFixed(0) + '%') + '</b><small>' + s.fgm + '/' + s.fga + ' FG' + (few && s.fga ? ' · few shots' : '') + '</small></span>' +
+      gpOpen('b', rp) + dec2(s.ppp) + '</b><small>' + s.chances + (key === 'ato' ? ' poss.' : ' chances') + '</small></span>' +
+    '<span class="ev-efg' + (few ? ' few' : '') + '">' + gpOpen('b', re) + (s.efg == null ? '–' : (100 * s.efg).toFixed(0) + '%') + '</b><small>' + s.fgm + '/' + s.fga + ' FG' + (few && s.fga ? ' · few shots' : '') + '</small></span>' +
     dietHTML(s.zones, sitColour(key)) +
   '</button>';
 }
@@ -185,10 +208,13 @@ function matrixHTML(p, colour, id) {
     return '<tr class="ev-mxsit' + (none ? ' zero' : '') + '" data-evk="' + k + '" style="--s:' + sitColour(k) + '">' +
       '<th scope="row"><span class="ev-mxname"><i class="ev-sw"></i>' + label + '</span></th>' +
       '<td><b>' + s.pts + '</b>' + (s.fta ? '<small>' + s.ftm + '/' + s.fta + ' FT</small>' : '') + '</td>' +
-      (s.fga ? '<td><b>' + s.fgm + '/' + s.fga + '</b></td><td><b' + few(s.fga) + '>' + efgText(s.efg) + '</b></td>' : nil + nil) +
+      (s.fga ? '<td><b>' + s.fgm + '/' + s.fga + '</b></td><td>' +
+        gpOpen('b', s.fga < FEW ? null : gpRate('psit', k + '.efg', { s }), label + ' eFG%', s.fga < FEW ? 'few' : '') + efgText(s.efg) + '</b></td>' : nil + nil) +
       ZONES.map(([z, Z]) => {
         const q = s.zones[z];
-        return q.a ? '<td data-tip="' + esc(label + ' · ' + Z + ': ' + q.m + ' made of ' + q.a) + '"><b>' + q.m + '/' + q.a + '</b><small' + few(q.a) + '>' + share(q.m, q.a) + '</small></td>' : nil;
+        const rz = q.a < FEW ? null : gpRate('zone', 'player.' + k + '.' + z, { z: q });
+        return q.a ? '<td data-tip="' + esc(label + ' · ' + Z + ': ' + q.m + ' made of ' + q.a + gpTip(rz, Z + ' FG%')) + '"><b>' + q.m + '/' + q.a + '</b>' +
+          gpOpen('small', rz, '', q.a < FEW ? 'few' : '') + share(q.m, q.a) + '</small></td>' : nil;
       }).join('') +
       '<td class="ev-mxbar">' + splitBar(ZONES.map(([z]) => s.zones[z].a), label, 'attempt') + '</td></tr>';
   };
@@ -232,7 +258,7 @@ function playersHTML(D, colour, pid) {
         '<span class="ev-pname"><i class="ev-chev" aria-hidden="true"></i><span><b>' + esc(p.name) + '</b>' + (extra ? '<small>' + extra + '</small>' : '') + '</span></span>' +
         '<span class="ev-ppts"><b>' + s.pts + '</b><small>pts</small></span>' +
         '<span class="ev-pfg"><b>' + s.fgm + '/' + s.fga + '</b><small>FG</small></span>' +
-        '<span class="ev-pefg' + (s.fga < FEW ? ' few' : '') + '"><b>' + efgText(s.efg) + '</b><small>eFG</small></span>' +
+        '<span class="ev-pefg' + (s.fga < FEW ? ' few' : '') + '">' + gpOpen('b', s.fga < FEW ? null : gpRate('psit', 'all.efg', { s }), 'eFG%') + efgText(s.efg) + '</b><small>eFG</small></span>' +
         dietHTML(s.zones, colour) +
       '</button>' +
       (UUID.test(p.pid) ? '<a class="ev-plink" href="../p/?p=' + encodeURIComponent(p.pid) + '" aria-label="Profile: ' + esc(p.name) + '">Profile</a>' : '') +
@@ -288,11 +314,17 @@ function assistZonesHTML(A) {
   const row = (key, label, q, p3m, isAll) => {
     const made = q.ast + q.unast;
     const efg = q.a ? (q.m + 0.5 * p3m) / q.a : null;
+    /* a zone's eFG% moves with its FG% (a three's is one and a half times it), so the two share
+       the zone's colour; the All row's eFG% is the side's own */
+    const rated = q.a >= FEW;
+    const rFg = rated ? gpRate('zone', 'team.all.' + (isAll ? 'all' : key), { z: q }) : null;
+    const rEfg = !rated ? null : isAll ? gpRate('sit', 'all.efg', { s: { efg, fga: q.a } }) : rFg;
+    const shade = q.a ? (rated ? '' : 'few') : 'nil';
     return '<tr' + (isAll ? ' class="ev-azall"' : '') + ' data-evz="' + key + '">' +
       '<th scope="row">' + label + '</th>' +
       '<td><b' + (q.a ? '' : ' class="nil"') + '>' + (q.a ? q.m + '/' + q.a : '–') + '</b></td>' +
-      '<td><b' + (q.a ? few(q.a) : ' class="nil"') + '>' + (q.a ? share(q.m, q.a) : '–') + '</b></td>' +
-      '<td><b' + (q.a ? few(q.a) : ' class="nil"') + '>' + efgText(efg) + '</b></td>' +
+      '<td>' + gpOpen('b', rFg, label + ' FG%', shade) + (q.a ? share(q.m, q.a) : '–') + '</b></td>' +
+      '<td>' + gpOpen('b', rEfg, label + ' eFG%', shade) + efgText(efg) + '</b></td>' +
       (isAll ? '<td><b>' + q.ast + '</b></td><td><b>' + q.unast + '</b></td>'
              : groupCell(q.ast, A.ast.fgm, 'assisted') + groupCell(q.unast, A.unast.fgm, 'unassisted')) +
       '<td><b' + (made ? few(made) : ' class="nil"') + '>' + (made ? share(q.ast, made) : '–') + '</b></td></tr>';
@@ -343,6 +375,7 @@ function inner(S) {
   const C = computed(S);
   const t = view.team, off = view.side === 'off';
   const o = off ? t : 1 - t;                      // whose offence is on show
+  gpOpts = { league: S && S.leagueSlug, flip: !off };
   const D = C.side[o];
   const all = D.sits.all;
   const nm = C.names, me = esc(nm[t]), them = esc(nm[1 - t]), attackers = esc(nm[o]);
@@ -358,9 +391,13 @@ function inner(S) {
   const lede = off
     ? '<b>' + me + '</b> on offence'
     : '<b>' + them + '</b> against <b>' + me + '</b>’s defence';
+  /* a figure in the running text: wrapped only when there is a percentile to show */
+  const gpWrap = (r, text, label) => (r && GPx() ? gpOpen('span', r, label) + text + '</span>' : text);
+  const figPpp = gpRate('sit', sit + '.ppp', { s }), figEfg = s.fga < FEW ? null : gpRate('sit', sit + '.efg', { s }), figTov = gpRate('sit', sit + '.tov', { s });
   return controlsHTML(nm) +
-    '<p class="ev-lede">' + lede + ': ' + all.chances + ' chances, ' + all.pts + ' points, <b>' + dec2(all.ppp) + '</b> points per chance, ' +
-      (all.efg == null ? '' : (100 * all.efg).toFixed(1) + '% eFG, ') + pct(all.tovPct) + ' turnovers.</p>' +
+    '<p class="ev-lede">' + lede + ': ' + all.chances + ' chances, ' + all.pts + ' points, ' + gpOpen('b', gpRate('sit', 'all.ppp', { s: all }), 'points per chance') + dec2(all.ppp) + '</b> points per chance, ' +
+      (all.efg == null ? '' : gpWrap(gpRate('sit', 'all.efg', { s: all }), (100 * all.efg).toFixed(1) + '%', 'eFG%') + ' eFG, ') +
+      gpWrap(gpRate('sit', 'all.tov', { s: all }), pct(all.tovPct), 'turnover rate') + ' turnovers.</p>' +
     '<section class="ev-card">' +
       '<div class="ev-head"><h3 class="ev-title">Where ' + attackers + '’ points came from</h3>' +
         '<p class="ev-key"><span><i class="tick"></i>' + dec2(all.ppp) + ' per chance overall</span><span>shots: rim · mid · three</span></p></div>' +
@@ -371,11 +408,13 @@ function inner(S) {
     '</section>' +
     '<section class="ev-card ev-detail" style="--s:' + colour + '">' +
       '<div class="ev-head"><h3 class="ev-title"><i class="ev-sw"></i>' + SIT[sit].name + ' <small>' + attackers + (off ? '' : ' against ' + me) + '</small></h3>' +
-        '<p class="ev-figs"><span><b>' + s.pts + '</b>pts</span><span><b>' + dec2(s.ppp) + '</b>per ' + (sit === 'ato' ? 'poss.' : 'chance') + '</span>' +
-        '<span><b>' + (s.efg == null ? '–' : (100 * s.efg).toFixed(0) + '%') + '</b>eFG</span><span><b>' + s.ftm + '/' + s.fta + '</b>FT</span><span><b>' + pct(s.tovPct) + '</b>TO</span></p></div>' +
+        '<p class="ev-figs"><span><b>' + s.pts + '</b>pts</span><span>' + gpOpen('b', figPpp, 'points per ' + (sit === 'ato' ? 'possession' : 'chance')) + dec2(s.ppp) + '</b>per ' + (sit === 'ato' ? 'poss.' : 'chance') + '</span>' +
+        '<span>' + gpOpen('b', figEfg, 'eFG%') + (s.efg == null ? '–' : (100 * s.efg).toFixed(0) + '%') + '</b>eFG</span><span><b>' + s.ftm + '/' + s.fta + '</b>FT</span><span>' + gpOpen('b', figTov, 'turnover rate') + pct(s.tovPct) + '</b>TO</span></p></div>' +
       '<div class="ev-grid">' + courtHTML(s, colour, namesOf(S)) +
         '<div class="ev-side-col"><h4 class="ev-sub">Shot types</h4>' + typesHTML(s) +
-        '<div class="ev-zones">' + ['rim', 'mid', 'three'].map(z => '<span><small>' + (z === 'mid' ? 'mid-range' : z) + '</small><b>' + s.zones[z].m + '/' + s.zones[z].a + '</b><em>' + (s.zones[z].a ? Math.round(100 * s.zones[z].m / s.zones[z].a) + '%' : '–') + '</em></span>').join('') + '</div>' +
+        '<div class="ev-zones">' + ['rim', 'mid', 'three'].map(z => '<span><small>' + (z === 'mid' ? 'mid-range' : z) + '</small><b>' + s.zones[z].m + '/' + s.zones[z].a + '</b>' +
+          gpOpen('em', s.zones[z].a >= FEW ? gpRate('zone', 'team.' + sit + '.' + z, { z: s.zones[z] }) : null, (z === 'mid' ? 'mid-range' : z) + ' FG%') +
+          (s.zones[z].a ? Math.round(100 * s.zones[z].m / s.zones[z].a) + '%' : '–') + '</em></span>').join('') + '</div>' +
         '<h4 class="ev-sub">Who scored</h4>' + scorersHTML(s, D.players) + '</div></div>' +
       (sit === 'ato' ? '<h4 class="ev-sub">Every play after a timeout</h4>' + atoHTML(D.ato, S, nm, o) : '') +
     '</section>' +
@@ -441,11 +480,15 @@ function mounted(host) {
     if (!tip || !m) return;
     tip.textContent = m.getAttribute('data-tip');
     tip.hidden = false;
+    /* the rects are screen pixels and the page is zoomed on a desktop, the tip's left and top
+       are CSS pixels: k, read off the tab itself, turns the one into the other */
     const r = m.getBoundingClientRect(), R = w.getBoundingClientRect();
-    const x = Math.max(8, Math.min(R.width - tip.offsetWidth - 8, r.left - R.left + r.width / 2 - tip.offsetWidth / 2));
-    const above = r.top - R.top - tip.offsetHeight - 8;
+    const k = w.offsetWidth ? (R.width / w.offsetWidth) || 1 : 1;
+    const left = (r.left - R.left) / k, top = (r.top - R.top) / k, bottom = (r.bottom - R.top) / k;
+    const x = Math.max(8, Math.min(R.width / k - tip.offsetWidth - 8, left + r.width / k / 2 - tip.offsetWidth / 2));
+    const above = top - tip.offsetHeight - 8;
     tip.style.left = x + 'px';
-    tip.style.top = (above > 0 ? above : r.bottom - R.top + 8) + 'px';
+    tip.style.top = (above > 0 ? above : bottom + 8) + 'px';
   };
   const hide = () => { const w = wrap(), tip = w && w.querySelector('.ev-tip'); if (tip) tip.hidden = true; };
   /* A player's row toggles that player's breakdown (one open at a time); a Shots button in a

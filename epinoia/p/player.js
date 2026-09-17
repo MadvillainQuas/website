@@ -249,9 +249,10 @@ function paintBars(mine, field) {
       const track = el('div', 'bt');
       const fill = el('i');
       fill.style.width = (p == null ? 0 : Math.max(2, p)) + '%';
-      /* the same five-band scale the table's heat map uses */
+      /* the same five-band scale the table's heat map uses, in --good rather than --lume: this
+         page wears the club's colours (--lume is its ink), and a good number must stay green */
       fill.style.background = p == null ? 'var(--rule-2)'
-        : p >= 75 ? 'var(--lume)' : p >= 50 ? 'color-mix(in oklch,var(--lume) 70%,var(--amber))'
+        : p >= 75 ? 'var(--good)' : p >= 50 ? 'color-mix(in oklch,var(--good) 70%,var(--amber))'
         : p >= 25 ? 'var(--amber)' : 'var(--flare)';
       track.appendChild(fill);
       row.appendChild(track);

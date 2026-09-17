@@ -73,6 +73,7 @@
   let advByPid = {};          // pid -> playerAdv row, for the popover
   let posByPid = {};          // pid -> { n: estimate 1..5, src: 'bpm'|'listed'|'none', listed: text }
   let bpmByPid = {};
+  let teamAdvs = null;        // [home, away] teamAdv rows, what the percentiles read a player against
   let pinned = null;          // pid whose popover is pinned open
   let lastPopColour = null;
   /* a club colour as text or a border on the page's ground: the ink form on the light theme */
@@ -87,6 +88,7 @@
     advByPid = {}; posByPid = {}; bpmByPid = {};
     const listed = window.__rosterPos || {};
     const TA = [0, 1].map(t => { try { return B.teamAdv(d, t); } catch (_) { return null; } });
+    teamAdvs = TA;
     const gameAvg = {};
     if (TA[0] && TA[1]) {
       ['ortg', 'efg', 'orebp', 'tovp'].forEach(k => { gameAvg[k] = ((TA[0][k] || 0) + (TA[1][k] || 0)) / 2; });
@@ -240,6 +242,18 @@
     const b = bpmByPid[pid];
     const slot = SLOTS[Math.max(0, Math.min(4, Math.round((pos.n || 3)) - 1))];
     const cell = (l, v, cls) => '<div class="mv-cell' + (cls ? ' ' + cls : '') + '"><b>' + v + '</b><span>' + l + '</span></div>';
+    /* THE ADVANCED NUMBERS, EACH READ AGAINST REAL GAMES (gamepct.js): the cell takes the
+       percentile's colour and carries the percentile in its corner. A number with too little
+       behind it (a ts% on no shots) has none, and draws as before. A style rather than a
+       success (usage, pace) gets the percentile without a colour. */
+    const GPx = window.EpinoiaGamePct;
+    const ctx = GPx && teamAdvs && teamAdvs[t] && teamAdvs[1 - t] && a.min != null && x.oc
+      ? { a, x, TT: teamAdvs[t], OT: teamAdvs[1 - t] } : null;
+    const rcell = (l, v, k, fallback) => {
+      const r = ctx ? GPx.rate('player', k, ctx, { league: S.leagueSlug }) : null;
+      if (!r) return cell(l, v, fallback);
+      return '<div class="mv-cell' + GPx.cls(r) + '" title="' + esc(l + ': ' + GPx.words(r)) + '"><b>' + v + '</b><span>' + l + '</span>' + GPx.pcHTML(r) + '</div>';
+    };
     const href = /^[0-9a-f-]{36}$/i.test(pid) ? '../p/?p=' + encodeURIComponent(pid) : null;
     return '<div class="mv-pophead" style="--c:' + esc(colour) + '">' +
         '<span class="mv-popnum">' + esc(p.num || '') + '</span>' +
@@ -253,16 +267,17 @@
         cell('to', x.to || 0) + cell('pf', x.pf || 0) + cell('fd', x.fd || 0) + cell('+/-', pm, (x.pm > 0 ? 'pos' : x.pm < 0 ? 'neg' : '')) +
       '</div>' +
       '<div class="mv-sect">shooting &amp; usage</div><div class="mv-grid">' +
-        cell('ts%', f1(a.ts)) + cell('usg%', f1(a.usg)) + cell('ppp', a.ppp == null ? '—' : a.ppp.toFixed(2)) + cell('ft rate', f0(a.ftr)) +
-        cell('rim', (a.rimA || 0) + '<i>' + f0(a.rimP) + '%</i>') + cell('mid', (a.midA || 0) + '<i>' + f0(a.midP) + '%</i>') + cell('3pt', (a.p3a || 0) + '<i>' + f0(a.p3P) + '%</i>') + cell('pts + ast', a.tpc == null ? '—' : a.tpc) +
+        rcell('ts%', f1(a.ts), 'ts') + rcell('usg%', f1(a.usg), 'usg') + rcell('ppp', a.ppp == null ? '—' : a.ppp.toFixed(2), 'ppp') + rcell('ft rate', f0(a.ftr), 'ftr') +
+        rcell('rim', (a.rimA || 0) + '<i>' + f0(a.rimP) + '%</i>', 'rimP') + rcell('mid', (a.midA || 0) + '<i>' + f0(a.midP) + '%</i>', 'midP') + rcell('3pt', (a.p3a || 0) + '<i>' + f0(a.p3P) + '%</i>', 'p3P') + rcell('pts + ast', a.tpc == null ? '—' : a.tpc, 'tpc') +
       '</div>' +
       '<div class="mv-sect">rates</div><div class="mv-grid">' +
-        cell('ast%', f1(a.astPct)) + cell('to%', f1(a.tovP)) + cell('orb%', f1(a.orebP)) + cell('drb%', f1(a.drebP)) +
-        cell('stl%', f1(a.stlP)) + cell('blk%', f1(a.blkP)) + cell('a/u', a.au == null ? '—' : a.au.toFixed(2)) + cell('pace ±', a.pacePM == null ? '—' : (a.pacePM > 0 ? '+' : '') + f1(a.pacePM)) +
+        rcell('ast%', f1(a.astPct), 'astPct') + rcell('to%', f1(a.tovP), 'tovP') + rcell('orb%', f1(a.orebP), 'orebP') + rcell('drb%', f1(a.drebP), 'drebP') +
+        rcell('stl%', f1(a.stlP), 'stlP') + rcell('blk%', f1(a.blkP), 'blkP') + rcell('a/u', a.au == null ? '—' : a.au.toFixed(2), 'au') + rcell('pace ±', a.pacePM == null ? '—' : (a.pacePM > 0 ? '+' : '') + f1(a.pacePM), 'pacePM') +
       '</div>' +
       '<div class="mv-sect">on court</div><div class="mv-grid four">' +
-        cell('ortg', f1(a.ocOrtg)) + cell('drtg', f1(a.ocDrtg)) + cell('net', (a.net > 0 ? '+' : '') + f1(a.net), a.net > 0 ? 'pos' : a.net < 0 ? 'neg' : '') + cell('efg', f1(a.ocEfg)) +
-      '</div>';
+        rcell('ortg', f1(a.ocOrtg), 'ocOrtg') + rcell('drtg', f1(a.ocDrtg), 'ocDrtg') + rcell('net', (a.net > 0 ? '+' : '') + f1(a.net), 'net', a.net > 0 ? 'pos' : a.net < 0 ? 'neg' : '') + rcell('efg', f1(a.ocEfg), 'ocEfg') +
+      '</div>' +
+      (ctx ? '<div class="mv-gpnote">coloured by percentile against ' + esc(GPx.against({ league: GPx.leagueKey(S.leagueSlug) })) + '</div>' : '');
   }
 
   function popEl() {
@@ -287,18 +302,26 @@
     document.querySelectorAll('.mv-p.pinned').forEach(e => e.classList.remove('pinned')); }
 
   /* On a phone the card is a sheet along the bottom; on a desktop it sits beside the face,
-     flipped to whichever side has room, and never off the screen. */
+     flipped to whichever side has room, and never off the screen.
+
+     THE PAGE IS ZOOMED on a desktop (1.25 from 1000px, 1.5 from 1200px, as the rest of the
+     site). getBoundingClientRect and the window measure the screen; the card's own left, top
+     and size are its CSS pixels, which the zoom then scales. So the sums are done on the
+     screen and divided back by the card's scale, read off the card itself rather than
+     assumed, which is right at any zoom and in a browser that has none. */
   function place(el, anchor) {
     const phone = window.matchMedia('(max-width: 720px)').matches;
     el.classList.toggle('sheet', phone);
     if (phone) { el.style.left = el.style.top = ''; return; }
     const r = anchor.getBoundingClientRect();
-    const w = el.offsetWidth || 320, h = el.offsetHeight || 300;
-    let left = r.right + 12, top = r.top - 8;
-    if (left + w > window.innerWidth - 8) left = r.left - w - 12;
-    if (left < 8) left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
-    if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
-    el.style.left = left + 'px'; el.style.top = top + 'px';
+    const box = el.getBoundingClientRect();
+    const k = el.offsetWidth ? (box.width / el.offsetWidth) || 1 : 1;
+    const w = box.width || 320 * k, h = box.height || 300 * k, gap = 12 * k, edge = 8 * k;
+    let left = r.right + gap, top = r.top - edge;
+    if (left + w > window.innerWidth - edge) left = r.left - w - gap;
+    if (left < edge) left = Math.max(edge, Math.min(window.innerWidth - w - edge, r.left));
+    if (top + h > window.innerHeight - edge) top = Math.max(edge, window.innerHeight - h - edge);
+    el.style.left = (left / k) + 'px'; el.style.top = (top / k) + 'px';
   }
 
   let bound = false;

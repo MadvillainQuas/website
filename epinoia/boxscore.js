@@ -39,40 +39,40 @@ const ADV_GROUPS = [
     {k:'pts',l:'pts',f:v=>v.toFixed(0)},
     {k:'ptsAst',l:'+ast',f:v=>v.toFixed(0)},
     {k:'tpc',l:'tpc',f:v=>v.toFixed(0),bar:'mins'},
-    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',sep:true}]},
+    {k:'ppp',l:'ppp',f:v=>v.toFixed(2),bar:'shooting',sep:true,gp:1}]},
   {key:'usage', label:'usage', cols:[
-    {k:'usg',l:'usg',f:v=>v.toFixed(1),bar:'mins'},
-    {k:'au',l:'a/u',f:v=>v.toFixed(2),bar:'playmaking'},
+    {k:'usg',l:'usg',f:v=>v.toFixed(1),bar:'mins',gp:1},
+    {k:'au',l:'a/u',f:v=>v.toFixed(2),bar:'playmaking',gp:1},
     {k:'min',l:'min',f:(v,r)=>r.minTxt,bar:'mins',sep:true}]},
   {key:'shotdist', label:'shot distribution', cols:[
     {k:'rimA',l:'rim',f:v=>v.toFixed(0),shot:true},
-    {k:'rimP',l:'rim%',f:v=>v.toFixed(0)},
+    {k:'rimP',l:'rim%',f:v=>v.toFixed(0),gp:1},
     {k:'midA',l:'mid',f:v=>v.toFixed(0),shot:true},
-    {k:'midP',l:'mid%',f:v=>v.toFixed(0)},
+    {k:'midP',l:'mid%',f:v=>v.toFixed(0),gp:1},
     {k:'p3a',l:'3pt',f:v=>v.toFixed(0),shot:true},
-    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),sep:true}]},
+    {k:'p3P',l:'3pt%',f:v=>v.toFixed(0),sep:true,gp:1}]},
   {key:'offcourt', label:'offensive on-court', cols:[
-    {k:'ocOrtg',l:'ortg',diff:'ortg'},
-    {k:'ocEfg',l:'efg',diff:'efg'},
-    {k:'ocOreb',l:'orb%',diff:'orebp'},
-    {k:'ocTov',l:'tov%',diff:'tovp',inv:true},
+    {k:'ocOrtg',l:'ortg',diff:'ortg',gp:1},
+    {k:'ocEfg',l:'efg',diff:'efg',gp:1},
+    {k:'ocOreb',l:'orb%',diff:'orebp',gp:1},
+    {k:'ocTov',l:'tov%',diff:'tovp',inv:true,gp:1},
     /* pace with the player on minus pace with them off (both teams' possessions per 40) */
     {k:'pacePM',l:'pace±',pill:true,dec:1,sep:true}]},
   {key:'defcourt', label:'defensive on-court', cols:[
-    {k:'ocDrtg',l:'drtg',diff:'ortg',inv:true},
-    {k:'ocOppEfg',l:'opp efg',diff:'efg',inv:true},
-    {k:'ocOppOreb',l:'opp orb',diff:'orebp',inv:true},
-    {k:'ocTovF',l:'tov frc',diff:'tovp'},
-    {k:'net',l:'net',pill:true,sep:true}]},
+    {k:'ocDrtg',l:'drtg',diff:'ortg',inv:true,gp:1},
+    {k:'ocOppEfg',l:'opp efg',diff:'efg',inv:true,gp:1},
+    {k:'ocOppOreb',l:'opp orb',diff:'orebp',inv:true,gp:1},
+    {k:'ocTovF',l:'tov frc',diff:'tovp',gp:1},
+    {k:'net',l:'net',pill:true,sep:true,gp:1}]},
   {key:'individual', label:'individual', cols:[
-    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting'},
-    {k:'astPct',l:'ast%',f:v=>v.toFixed(1),bar:'playmaking'},
-    {k:'tovP',l:'to%',f:v=>v.toFixed(1),bar:'handling',invbar:true},
-    {k:'stlP',l:'stl%',f:v=>v.toFixed(1),bar:'defense'},
-    {k:'blkP',l:'blk%',f:v=>v.toFixed(1),bar:'defense'},
-    {k:'ftr',l:'ft rate',f:v=>v.toFixed(0),bar:'shooting'},
-    {k:'orebP',l:'orb%',f:v=>v.toFixed(1),bar:'rebounding'},
-    {k:'drebP',l:'drb%',f:v=>v.toFixed(1),bar:'rebounding'}]}
+    {k:'ts',l:'ts%',f:v=>v.toFixed(1),bar:'shooting',gp:1},
+    {k:'astPct',l:'ast%',f:v=>v.toFixed(1),bar:'playmaking',gp:1},
+    {k:'tovP',l:'to%',f:v=>v.toFixed(1),bar:'handling',invbar:true,gp:1},
+    {k:'stlP',l:'stl%',f:v=>v.toFixed(1),bar:'defense',gp:1},
+    {k:'blkP',l:'blk%',f:v=>v.toFixed(1),bar:'defense',gp:1},
+    {k:'ftr',l:'ft rate',f:v=>v.toFixed(0),bar:'shooting',gp:1},
+    {k:'orebP',l:'orb%',f:v=>v.toFixed(1),bar:'rebounding',gp:1},
+    {k:'drebP',l:'drb%',f:v=>v.toFixed(1),bar:'rebounding',gp:1}]}
 ];
 
 let advSort = {k:'min', dir:-1}, advHidden = new Set();
@@ -609,6 +609,12 @@ function playerAdv(d,t,p,TT,OT,gameAvg){
   return r;
 }
 
+function gpRate(scope,key,ctx){
+  const G = typeof globalThis!=='undefined' ? globalThis.EpinoiaGamePct : null;
+  const r = G ? G.rate(scope,key,ctx,{league:S.leagueSlug}) : null;
+  return r ? Object.assign(r,{cls:G.cls(r), pc:G.pcHTML(r), tip:G.words(r)}) : null;
+}
+
 function playerAdvTable(d,t,TA,gameAvg,ranges){
   const TT = TA[t], OT = TA[1-t];
   let rows = S.teams[t].players.map(p=>playerAdv(d,t,p,TT,OT,gameAvg)).filter(r=>r.min>0);
@@ -623,26 +629,32 @@ function playerAdvTable(d,t,TA,gameAvg,ranges){
   }).join('')+'</tr>';
   const head2 = '<tr><th class="name" data-k="name">player</th>'+ADV_GROUPS.map(g=>g.cols.map(c=>
     '<th class="'+(advHidden.has(g.key)?'col-hidden ':'')+(c.sep?'sep ':'')+(advSort.k===c.k?'sorted':'')+'" data-k="'+c.k+'">'+c.l+(advSort.k===c.k?(advSort.dir<0?' ▼':' ▲'):'')+'</th>').join('')).join('')+'</tr>';
+  let rated = false;
   const body = rows.map(r=>'<tr><td class="name"><small>'+esc(r.num)+'</small>'+esc(r.name)+'</td>'+
     ADV_GROUPS.map(g=>g.cols.map(c=>{
+      /* a rate's percentile shades its cell; the number and its bar are drawn as ever */
+      const R = c.gp ? gpRate('player',c.k,{a:r,x:d.stats[r.id],TT,OT}) : null;
+      if(R) rated = true;
       const hid = (advHidden.has(g.key)?'col-hidden ':'')+'g-'+g.key+' ';
       const sep = c.sep?'sep':'';
+      const td = '<td class="'+hid+sep+(R?R.cls:'')+'"'+(R?' title="'+esc(c.l+': '+R.tip)+'"':'')+'>';
       const v = r[c.k];
-      if(c.pill) return '<td class="'+hid+sep+'"><span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(c.dec!=null?c.dec:0)+'</span></td>';
+      if(c.pill) return td+'<span class="netpill '+(v>=0?'pos':'neg')+'">'+(v>0?'+':'')+v.toFixed(c.dec!=null?c.dec:0)+'</span></td>';
       if(c.diff){ const D=diffTxt(v,gameAvg[c.diff],c.inv); const eff = c.inv?-D.dff:D.dff;
         const w = Math.max(0,Math.min(100,50+(eff/15)*50)); const left=Math.min(50,w), right=Math.max(50,w);
-        return '<td class="'+hid+sep+'"><span class="dcell"><span class="v '+D.cls+'">'+D.txt+'</span><span class="track"></span>'+
+        return td+'<span class="dcell"><span class="v '+D.cls+'">'+D.txt+'</span><span class="track"></span>'+
           '<span class="fill '+(D.cls||'')+'" style="left:'+left+'%;width:'+(right-left)+'%;background:'+(D.cls==='pos'?'var(--green)':(D.cls==='neg'?'var(--red)':'rgba(170,255,215,.3)'))+'"></span></span></td>'; }
-      if(c.shot) return '<td class="'+hid+sep+'"><span class="cell"><span class="v">'+v+'</span><span class="bar shooting" style="width:'+Math.min(100,v/10*100)+'%"></span></span></td>';
+      if(c.shot) return td+'<span class="cell"><span class="v">'+v+'</span><span class="bar shooting" style="width:'+Math.min(100,v/10*100)+'%"></span></span></td>';
       if(c.bar){ let w = barW(v,c.k); if(c.invbar) w = 100-w;
-        return '<td class="'+hid+sep+'"><span class="cell"><span class="v">'+c.f(v,r)+'</span><span class="bar '+c.bar+'" style="width:'+w+'%"></span></span></td>'; }
-      return '<td class="'+hid+sep+'">'+c.f(v,r)+'</td>';
+        return td+'<span class="cell"><span class="v">'+c.f(v,r)+'</span><span class="bar '+c.bar+'" style="width:'+w+'%"></span></span></td>'; }
+      return td+c.f(v,r)+'</td>';
     }).join('')).join('')+'</tr>').join('');
   const chips = [...advHidden].map(k=>{ const g=ADV_GROUPS.find(x=>x.key===k); return '<span class="stchip" data-show="'+k+'">+ '+g.label+'</span>'; }).join('');
   return '<div class="glass bxteam advcard"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     (chips?'<div class="grpchips">'+chips+'</div>':'')+
     '<div class="tblwrap"><table class="adv" data-team="'+t+'">'+head1+head2+body+'</table></div>'+
-    '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)</div></div>';
+    '<div class="setup-note" style="text-align:left;padding-top:8px">on-court columns = diff vs game average · a/u = ast% ÷ usg% · possessions = 0.96 × (fga + tov + 0.44 fta − oreb)'+
+      (rated?' · shaded cells: the rate’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)':'')+'</div></div>';
 }
 
 function lineupAgg(d,t){
@@ -829,20 +841,26 @@ function advHTML(d){
      points all read as the same mirrored pair: the home side grows leftwards from the centre,
      the away side rightwards, each capped at the row's own maximum, with a hard end on each
      bar so the eye reads a length rather than a glow. */
-  const mirror = (label, h, a, max, fmt, hWin, aWin) =>
-    '<div class="mrrow"><span class="ffval'+(hWin?' winner':'')+'">'+fmt(h)+'</span>'+
+  /* each side's figure, shaded by its percentile when the page has the scales (gpRate) */
+  const tctx = t=>({T:TA[t], O:TA[1-t], c:d.team[t]});
+  const gpv = (r, txt, cls, label) => (r||cls) ? '<span class="'+cls+(r?r.cls:'')+'"'+(r?' title="'+esc(label+': '+r.tip)+'"':'')+'>'+txt+(r?r.pc:'')+'</span>' : txt;
+  let rated = false;
+  const rate = (k,t)=>{ const r = gpRate('team',k,tctx(t)); if(r) rated = true; return r; };
+  const mirror = (label, h, a, max, fmt, hWin, aWin, k) =>
+    '<div class="mrrow">'+gpv(k?rate(k,0):null, fmt(h), 'ffval'+(hWin?' winner':''), label)+
       '<div><div class="mrbars"><div class="l"><i style="width:'+Math.max(0,Math.min(100,h/max*100))+'%;background:'+c0+'"></i></div>'+
       '<div class="r"><i style="width:'+Math.max(0,Math.min(100,a/max*100))+'%;background:'+c1+'"></i></div></div><div class="mrlabel">'+label+'</div></div>'+
-      '<span class="ffval r'+(aWin?' winner':'')+'">'+fmt(a)+'</span></div>';
+      gpv(k?rate(k,1):null, fmt(a), 'ffval r'+(aWin?' winner':''), label)+'</div>';
   const ffRows = FF.map(x=>{ const h=TA[0][x.k], a=TA[1][x.k]; const hw = h>a, aw = a>h;
     const hWin = x.hb==null ? false : (x.hb?hw:aw), aWin = x.hb==null ? false : (x.hb?aw:hw);   // hb null = neither is "better"
-    return mirror(x.l, h, a, x.max, x.f, hWin, aWin); }).join('');
+    return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); }).join('');
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
-    '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+'</div>';
+    '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
+    (rated?'<div class="setup-note gpnote">shading and the small number: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor)</div>':'')+'</div>';
   // 2. true shot attempts strip
   const tsaCell = t=>{ const T=TA[t]; const win = TA[t].ts>TA[1-t].ts;
     return '<div class="tsacell'+(win?' winner':'')+'"><div class="fflabel" style="color:'+(t?c1:c0)+'">'+esc(tname(t))+'</div>'+
-      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span> · '+f1(T.ts)+'<span style="font-size:11px;color:var(--dim)">% ts</span></div>'+
+      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span> · '+gpv(rate('ts',t), f1(T.ts), '', 'true shooting %')+'<span style="font-size:11px;color:var(--dim)">% ts</span></div>'+
       '<div class="fm">'+T.fga+' fga + 0.44 × '+T.fta+' fta</div></div>'; };
   const tsaCard = '<div class="glass ffcard"><h3>true shot attempts</h3><div class="tsastrip">'+tsaCell(0)+tsaCell(1)+'</div></div>';
   // 3. mirrored metric rows (+ shot zones), then situational tug-of-war
@@ -859,11 +877,11 @@ function advHTML(d){
     {l:'dreb %', k:'drebp', max:100, f:f1}, {l:'tsa / 100', k:'tsaPer100', max:120, f:f1}];
   const mrRows = MR.map(x=>{ if(x.sep) return '<div class="mrsep">— '+x.sep+' —</div>';
     const h=TA[0][x.k], a=TA[1][x.k];
-    return mirror(x.l, h, a, x.max, x.f, h>a, a>h); }).join('');
+    return mirror(x.l, h, a, x.max, x.f, h>a, a>h, x.k); }).join('');
   const SIT = [['paint pts','paint'],['transition pts','fast'],['2nd chance pts','sc'],['pts off turnovers','pot'],['bench pts','bench'],['biggest lead','lead']];
   /* counts: the row's larger value is the full bar, so the two are read against each other */
   const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
-    return mirror(l, h, a, max, v=>String(v), h>a, a>h); }).join('');
+    return mirror(l, h, a, max, v=>String(v), h>a, a>h, k); }).join('');
   const mrCard = '<div class="glass ffcard"><h3>additional metrics</h3>'+mrRows+'<div class="mrsep">— situational —</div>'+sitRows+'</div>';
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
@@ -920,5 +938,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

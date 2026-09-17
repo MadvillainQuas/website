@@ -60,8 +60,9 @@ const P = [
   /* THE FIRST COLUMN COUNTS THE TABLE AS IT IS SORTED, the way the team table's
      already does: sort by rebounds and the leading rebounder is 1. It used to hold
      the jersey, which never moved however the table was sorted and left a reader
-     with no way of telling twelfth from thirtieth; the jersey now rides beside the
-     name, where a squad number belongs. Clicking this column puts the table back in
+     with no way of telling twelfth from thirtieth. The jersey is not shown in a stats
+     table at all (2026-09-17): a squad number says nothing about a season's numbers,
+     and the roster is where it belongs. Clicking this column puts the table back in
      the order it arrived in. */
   { k:'rank', l:'#', g:['id'], fmt:(r, i) => i + 1, sort:r=>r.__i },
   { k:'name',   l:'PLAYER', g:['id'], fmt:r=>r.name, text:true },
@@ -451,12 +452,15 @@ const PRESETS = {
 };
 
 /* index_9's percentile scale, in the kit's neons. Green is good at both ends
-   because the ranking is already reversed for lower-is-better columns. */
+   because the ranking is already reversed for lower-is-better columns.
+   GREEN IS --good, NOT --lume. On a league's pages and a club's, --lume is that
+   league's or club's own colour, so a side that plays in red had its best numbers
+   painted red, a shade away from the flare its worst ones get. */
 function heatStyle(p) {
   if (p == null) return '';
-  if (p >= 90) return 'background:color-mix(in oklch,var(--lume) 34%,transparent);color:var(--ink)';
-  if (p >= 75) return 'background:color-mix(in oklch,var(--lume) 20%,transparent)';
-  if (p >= 60) return 'background:color-mix(in oklch,var(--lume) 10%,transparent)';
+  if (p >= 90) return 'background:color-mix(in oklch,var(--good) 34%,transparent);color:var(--ink)';
+  if (p >= 75) return 'background:color-mix(in oklch,var(--good) 20%,transparent)';
+  if (p >= 60) return 'background:color-mix(in oklch,var(--good) 10%,transparent)';
   if (p >= 40) return '';
   if (p >= 25) return 'background:color-mix(in oklch,var(--amber) 12%,transparent)';
   if (p >= 10) return 'background:color-mix(in oklch,var(--flare) 14%,transparent)';
@@ -1050,7 +1054,6 @@ function render(opts) {
         const td = el('td', i < 2 ? 'stick c' + i : '');
         if (c.k === 'name') {
           const cell = el('div', 'ft-name');
-          if (!isTeam && r.jersey) cell.appendChild(el('span', 'ft-jersey', r.jersey));
           if (r.colour || r.teamColour || r.logo || r.teamLogo) {
             const meta = { short_name: r.teamShort || (isTeam ? r.name : ''), name: isTeam ? r.name : (r.teamFull || ''),
                            colour: r.colour || r.teamColour, logo_path: r.logo || r.teamLogo || null };
