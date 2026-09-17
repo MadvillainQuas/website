@@ -155,22 +155,27 @@ console.log('\n-- when the browser never reports back');
 {
   /* A window the compositor has stopped painting, or a tab never brought to
      the front: the observer is never called and every block would sit at
-     opacity 0. */
+     opacity 0 for ever.
+
+     MARKING THEM ARRIVED IS NOT THE FIX, and the live page proved it — the
+     same browser that never reports an intersection never advances a
+     transition either, so a block told to fade IN also stays at 0. The class
+     the stylesheet hangs on has to come off instead, which needs no frame. */
   const w = world();
   const R = load();
   const a = w.block('sec'), b = w.block('sec');
   R.mount({ root: w.body, selector: '.sec' });
-  eq('before the net, nothing is shown', [a.cls.has('rv-in'), b.cls.has('rv-in')], [false, false]);
+  ok('before the net, the page is marked and the blocks are hidden',
+     w.html.cls.has('rv-on') && a.cls.has('rv'));
   w.runTimers();
-  eq('after it, everything is', [a.cls.has('rv-in'), b.cls.has('rv-in')], [true, true]);
+  ok('after it, the mark is gone, so not one rule in the stylesheet applies',
+     !w.html.cls.has('rv-on'));
+  ok('...and the observers are let go', w.observers[0].off === true && w.mutators[0].on === false);
 
   const c = w.block('sec');
   w.mutators[0].fn(); w.runFrames();
-  ok('and a block that arrives later is shown too', c.cls.has('rv') && c.cls.has('rv-in'));
-
-  /* the observer was never disconnected, so a browser that wakes up takes over */
-  w.leaveAbove(a);
-  ok('a browser that wakes up takes over again', a.cls.has('rv-above') && !a.cls.has('rv-in'));
+  ok('a block that arrives afterwards is not enrolled into an effect that is off',
+     !c.cls.has('rv'));
 }
 {
   const w = world();
@@ -178,11 +183,9 @@ console.log('\n-- when the browser never reports back');
   const a = w.block('sec');
   R.mount({ root: w.body, selector: '.sec' });
   w.enter(a);
-  const b = w.block('sec');
   w.runTimers();
-  w.mutators[0].fn(); w.runFrames();
   ok('the net does not fire once the browser has reported anything',
-     !b.cls.has('rv-in'), b.className);
+     w.html.cls.has('rv-on') && w.observers[0].off !== true);
 }
 
 /* -------------------------------------------------------- it stands down -- */

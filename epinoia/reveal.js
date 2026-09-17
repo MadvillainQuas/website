@@ -15,8 +15,8 @@
       the browser has no IntersectionObserver, every block is simply visible —
       a broken animation must never cost somebody the page. And if the observer
       exists but is never CALLED — a window that has stopped painting, a tab
-      never brought to the front — a net a second and a half in shows
-      everything anyway (see it below; it is the one part of this worth being
+      never brought to the front — a net a second and a half in takes the whole
+      effect off again (see it below; it is the one part of this worth being
       paranoid about).
 
    2. LAYOUT NEVER MOVES. Only opacity and transform change, so a fixture list
@@ -70,7 +70,6 @@ function mount(opts) {
   if (!host || !selector || !usable()) return { refresh: function () {}, stop: function () {} };
 
   const seen = new WeakSet();
-  const enrolled = [];
   let settled = false;      // has the browser ever told us where anything is?
   let blind = false;        // ...and did we give up waiting?
 
@@ -100,9 +99,10 @@ function mount(opts) {
       const n = list[i];
       if (seen.has(n) || (n.closest && n.closest(NEVER))) continue;
       seen.add(n);
-      enrolled.push(n);
+      /* once the net has fired there is no effect left to enrol into: the
+         class the stylesheet needs is off the document */
+      if (blind) continue;
       n.classList.add('rv');
-      if (blind) n.classList.add('rv-in');
       io.observe(n);
     }
   }
@@ -116,15 +116,26 @@ function mount(opts) {
      which is what IntersectionObserver delivers on.
 
      So: if nothing has been reported by the time the page has had a second and
-     a half, show everything and keep watching. If the browser wakes up and
-     starts reporting, the normal behaviour resumes on the next scroll — the
-     observer was never disconnected. The cost of being wrong here is one page
-     that does not animate; the cost of not doing it is one page nobody can
-     read. */
+     a half, the whole effect is TAKEN OFF — html.rv-on goes, which is the one
+     thing every rule in reveal.css hangs on, and the page is left exactly as
+     it would be if this file had never loaded.
+
+     Marking the blocks as arrived instead is not enough, and the live page
+     proved it: the same browser that never delivers intersections never
+     advances a transition either, so a block told to fade to opacity 1 sits at
+     0 for ever. Taking the rule away needs no frame.
+
+     It does not come back. A browser that wakes up later would hide whatever
+     is off screen with no animation to explain it, and a page that reads
+     normally is worth more than an effect. The cost of being wrong here is one
+     page that does not animate; the cost of not doing it is one page nobody
+     can read. */
   setTimeout(function () {
     if (settled) return;
     blind = true;
-    enrolled.forEach(function (n) { n.classList.add('rv-in'); });
+    io.disconnect();
+    if (mo) mo.disconnect();
+    document.documentElement.classList.remove('rv-on');
   }, 1500);
 
   /* ONE PASS PER FRAME. Rendering appends in bursts; each burst is a single
