@@ -184,9 +184,18 @@ function rail(url, o = {}) {
   })) : [];
   const foot = nav && byClass(nav, 'ep-nav-foot')[0];
   const ptitles = nav ? byClass(nav, 'ptitle') : [];
-  const heading = ptitles.find(p => p.parent && p.parent.cls.has('countrypanel'));
+  /* the country panel's heading, wherever it sits inside that panel — it is in
+     a head beside a back chevron since the platform layer went in front */
+  const within = (n, c) => { for (let x = n; x; x = x.parent) if (x.cls.has(c)) return true; return false; };
+  const heading = ptitles.find(p => within(p, 'countrypanel'));
+  const homeTitle = ptitles.find(p => within(p, 'homepanel'));
+  const homeRows = nav
+    ? (byClass(nav, 'homepanel')[0] || { all: () => [] }).all()
+        .filter(n => n.tagName === 'A' && n.cls.has('item'))
+        .map(a => ({ href: a.href, tx: (byClass(a, 'tx')[0] || {}).textContent, on: a.cls.has('on') }))
+    : [];
   const cname = nav ? byClass(nav, 'lname').find(a => a.parent && a.parent.parent && a.parent.parent.cls.has('rootpanel')) : null;
-  return { ctx, nav, tabs, foot, heading, cname, hasTabbar: !!(nav && nav.cls.has('has-tabbar')) };
+  return { ctx, nav, tabs, foot, heading, homeTitle, homeRows, cname, hasTabbar: !!(nav && nav.cls.has('has-tabbar')) };
 }
 
 const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
@@ -207,6 +216,35 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
   ok('HOME: ...in the logotype, after a ⌂',
      first && first.children[0].textContent === '⌂' && first.children[1].cls.has('epinoia-mark') && first.children[1].textContent === 'EPINOIΛ');
   ok('HOME: the country header links to HOME\'s leagues', r.cname && r.cname.href === '../home/#leagues', r.cname && r.cname.href);
+}
+{
+  /* THE PLATFORM LAYER, in front of the countries: what belongs to no league.
+     Global scouting used to be a row in the foot, among the rows about YOU. */
+  const r = rail('/epinoia/home/');
+  ok('the rail starts with a home panel', !!r.homeTitle);
+  ok('...headed with the logotype, linking HOME',
+     r.homeTitle.href === '../home/' && r.homeTitle.cls.has('epinoia-mark'), r.homeTitle && r.homeTitle.href);
+  eq('...holding home, global fixtures, global scouting, then the leagues',
+     r.homeRows.map(x => x.tx), ['home', 'fixtures', 'scouting', 'leagues']);
+  eq('...pointing at HOME, global fixtures, global scouting and the leagues on HOME',
+     r.homeRows.map(x => x.href), ['../home/', '../games/', '../scouting/', '../home/#leagues']);
+  eq('...with the home row lit on HOME', r.homeRows.filter(x => x.on).map(x => x.tx), ['home']);
+  ok('the foot no longer carries a scouting row',
+     !r.foot.all().some(n => n.tagName === 'A' && /\/scouting\//.test(n.href || '')));
+}
+{
+  const r = rail('/epinoia/games/');
+  eq('global fixtures lights its own row in the home panel',
+     r.homeRows.filter(x => x.on).map(x => x.tx), ['fixtures']);
+}
+{
+  const r = rail('/epinoia/scouting/');
+  eq('global scouting lights its own row', r.homeRows.filter(x => x.on).map(x => x.tx), ['scouting']);
+}
+{
+  const r = rail('/epinoia/stats/wowy/?l=bcb');
+  eq('two folders down, the rows in the home panel climb with it',
+     r.homeRows.map(x => x.href), ['../../home/', '../../games/', '../../scouting/', '../../home/#leagues']);
 }
 {
   const r = rail('/epinoia/home/?l=bcb');

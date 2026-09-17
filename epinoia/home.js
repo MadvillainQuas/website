@@ -465,6 +465,42 @@ function leagueCompetitions(leagueId) {
   return p;
 }
 
+/* ---------------------------------------------------- the season's fields ---
+   WHICH CLUBS ARE IN WHICH COMPETITION, for the newest season only — last
+   season's entries are not this season's field and would put a club that has
+   since dropped out back on the page.
+
+   Three requests, once per page, cached the same way the competitions are: the
+   season's competitions, who is entered in them (competition_teams, which the
+   ingest maintains by the act of filing fixtures), and the fixtures themselves
+   — which say which competitions are actually being played. comps.js turns the
+   three into the answer. A failure anywhere gives null, and every caller falls
+   back to the plain league-wide list it showed before. */
+let fieldsCache = null;
+function seasonFields(leagueId) {
+  if (fieldsCache) return fieldsCache;
+  const p = (async () => {
+    const C = window.EpinoiaComps;
+    if (!C) return null;
+    const seasons = await api('seasons?league_id=eq.' + leagueId +
+      '&select=id&order=starts_on.desc&limit=1');
+    if (!seasons.length) return null;
+    const comps = await api('competitions?season_id=eq.' + seasons[0].id +
+      '&select=id,name,kind');
+    if (!comps.length) return null;
+    const ids = comps.map(c => c.id);
+    const [entries, gs] = await Promise.all([
+      C.entriesFor(api, ids),
+      api('games?competition_id=in.(' + ids.join(',') +
+          ')&select=competition_id,home_team_id,away_team_id&limit=4000').catch(() => [])
+    ]);
+    return C.read({ comps, entries, games: gs });
+  })();
+  p.catch(() => { fieldsCache = null; });
+  fieldsCache = p;
+  return p;
+}
+
 /* ------------------------------------------------------------- the clubs ---
    Every club in the league, each card a print rather than a tile.
 
@@ -491,50 +527,9 @@ function monogram(t) {
   return (t.name || '?').slice(0, 2).toUpperCase();
 }
 
-async function clubs() {
-  const sec = $('#clubsSec');
-  if (!sec || !LEAGUE) return;
-
-  let ts = [];
-  try {
-    ts = await api('teams?league_id=eq.' + LEAGUE.id +
-      '&select=id,name,short_name,slug,colour,colour_2,logo_path&order=name');
-  } catch (e) {
-    return [];                    // a league page without clubs is still a page
-  }
-  if (!ts.length) return [];
-
-  /* an approved logo, if the club has one. Nothing unapproved is ever shown —
-     that decision belongs to the moderation queue, not to this page. */
-  const logos = new Map();
-  try {
-    /* ORDERED, because "the first row that came back" is not a choice. A club
-       has one crest now — publishing a new one deletes the old — but this
-       query ran with no ORDER BY and took whichever row PostgREST happened to
-       return first, so any club that had ever uploaded twice could have shown
-       either. Newest first makes the answer the same every time. */
-    const rows = await api('media?owner_type=eq.team&kind=eq.logo&status=eq.approved' +
-      '&owner_id=in.(' + ts.map(t => t.id).join(',') + ')' +
-      '&select=owner_id,storage_path&order=created_at.desc');
-    rows.forEach(r => {
-      if (!logos.has(r.owner_id)) {
-        /* THE BUCKET BELONGS IN THE URL. This built
-              /storage/v1/object/public/team/<id>/logo-….webp
-           where the endpoint wants
-              /storage/v1/object/public/media-public/team/<id>/logo-….webp
-           so every club card would have asked for a path that cannot exist.
-           EpinoiaUpload.publicUrl has always built it correctly; this was a
-           second, hand-rolled copy of the same job. */
-        logos.set(r.owner_id, window.EpinoiaUpload
-          ? window.EpinoiaUpload.publicUrl(CFG, r.storage_path)
-          : CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path);
-      }
-    });
-  } catch (_) { /* monograms all round */ }
-
-  sec.classList.remove('hide');
-  $('#clubsNote').textContent = ts.length + (ts.length === 1 ? ' club' : ' clubs');
-
+/* THE GRID ITSELF, lifted out of clubs() so the competition buttons can
+   redraw it without re-fetching a thing. */
+function clubGrid(ts, logos) {
   const grid = el('div', 'clubgrid');
   ts.forEach((t, i) => {
     const a = el('a', 'club');
@@ -581,8 +576,94 @@ async function clubs() {
     a.append(plate, foot);
     grid.appendChild(a);
   });
-  sec.querySelector('#clubs').textContent = '';
-  sec.querySelector('#clubs').appendChild(grid);
+  return grid;
+}
+
+async function clubs() {
+  const sec = $('#clubsSec');
+  if (!sec || !LEAGUE) return;
+
+  let ts = [];
+  try {
+    ts = await api('teams?league_id=eq.' + LEAGUE.id +
+      '&select=id,name,short_name,slug,colour,colour_2,logo_path&order=name');
+  } catch (e) {
+    return [];                    // a league page without clubs is still a page
+  }
+  if (!ts.length) return [];
+
+  /* an approved logo, if the club has one. Nothing unapproved is ever shown —
+     that decision belongs to the moderation queue, not to this page. */
+  const logos = new Map();
+  try {
+    /* ORDERED, because "the first row that came back" is not a choice. A club
+       has one crest now — publishing a new one deletes the old — but this
+       query ran with no ORDER BY and took whichever row PostgREST happened to
+       return first, so any club that had ever uploaded twice could have shown
+       either. Newest first makes the answer the same every time. */
+    const rows = await api('media?owner_type=eq.team&kind=eq.logo&status=eq.approved' +
+      '&owner_id=in.(' + ts.map(t => t.id).join(',') + ')' +
+      '&select=owner_id,storage_path&order=created_at.desc');
+    rows.forEach(r => {
+      if (!logos.has(r.owner_id)) {
+        /* THE BUCKET BELONGS IN THE URL. This built
+              /storage/v1/object/public/team/<id>/logo-….webp
+           where the endpoint wants
+              /storage/v1/object/public/media-public/team/<id>/logo-….webp
+           so every club card would have asked for a path that cannot exist.
+           EpinoiaUpload.publicUrl has always built it correctly; this was a
+           second, hand-rolled copy of the same job. */
+        logos.set(r.owner_id, window.EpinoiaUpload
+          ? window.EpinoiaUpload.publicUrl(CFG, r.storage_path)
+          : CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + r.storage_path);
+      }
+    });
+  } catch (_) { /* monograms all round */ }
+
+  sec.classList.remove('hide');
+  $('#clubsNote').textContent = ts.length + (ts.length === 1 ? ' club' : ' clubs');
+
+  /* WHICH FIELD OF CLUBS. A league is not always one: BCB's Trophy is drawn
+     from twenty sides and its Championship from fourteen of them, so the grid
+     offers the choice — but ONLY when the competitions differ, because being
+     asked "Championship or Cup?" and getting the same ten clubs either way is
+     worse than not being asked. comps.js owns that judgement. */
+  let fields = null;
+  try { fields = await seasonFields(LEAGUE.id); } catch (_) { /* one list, then */ }
+  const groups = (fields && fields.split) ? fields.groups : [];
+  let picked = groups.length ? groups[0].id : '';
+
+  const host = sec.querySelector('#clubs');
+
+  const listFor = (id) => {
+    if (!id || !fields) return ts;
+    const want = fields.teamsOf(id);
+    const out = ts.filter(t => want.has(t.id));
+    /* a competition whose clubs all sit in another league (a shared cup does
+       this) would otherwise empty the grid; the whole league beats none */
+    return out.length ? out : ts;
+  };
+
+  function paint() {
+    const list = listFor(picked);
+    const g0 = groups.find(g => g.id === picked);
+    $('#clubsNote').textContent = list.length + (list.length === 1 ? ' club' : ' clubs') +
+      (g0 ? ' · ' + g0.name : '');
+    host.textContent = '';
+    if (groups.length) {
+      const row = el('div', 'gpick');
+      groups.forEach(g => {
+        const b = el('button', 'ep-chip' + (g.id === picked ? ' on' : ''), g.name);
+        b.type = 'button';
+        if (g.kind && KIND_LABEL[g.kind]) b.appendChild(el('small', 'kind', KIND_LABEL[g.kind]));
+        b.addEventListener('click', () => { picked = g.id; paint(); });
+        row.appendChild(b);
+      });
+      host.appendChild(row);
+    }
+    host.appendChild(clubGrid(list, logos));
+  }
+  paint();
 
   /* handed on to the merchandise section, which prints the same crests onto
      the same clubs — resolving the logos twice would be two chances to

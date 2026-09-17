@@ -205,8 +205,20 @@ async function players(opts) {
   if (!D || typeof D.season !== 'function') throw new Error('data.js has not loaded');
   aborted(signal);
 
-  /* 1. the leagues */
-  const all = await D.get('leagues?select=id,slug,name,initials,country,access_mode,colour_a,logo_path&order=name');
+  /* 1. the leagues.
+
+     `gender` is asked for but not depended on (0131): a browser holding this
+     file from cache against a database that has not taken the migration yet
+     would otherwise get a 400 and an empty scouting page, so the column is
+     dropped and the request repeated. Everything else here works without it —
+     a league with no stated gender simply shows under "all". */
+  const LEAGUE_COLS = 'id,slug,name,initials,country,access_mode,colour_a,logo_path';
+  let all;
+  try {
+    all = await D.get('leagues?select=' + LEAGUE_COLS + ',gender&order=name');
+  } catch (_) {
+    all = await D.get('leagues?select=' + LEAGUE_COLS + '&order=name');
+  }
   aborted(signal);
 
   /* 2. what this viewer may see, before any row is read */
@@ -240,6 +252,7 @@ async function players(opts) {
     const s = newest.get(l.id) || null;
     return {
       id: l.id, slug: l.slug, name: l.name, short: leagueShort(l), country: l.country || '',
+      gender: l.gender || '',
       colour: l.colour_a || null, logoPath: l.logo_path || null,
       seasonId: s ? s.id : null, seasonName: s ? s.name : '',
       competitionIds: s && Array.isArray(s.competitions) ? s.competitions.map(c => c.id).filter(Boolean) : [],

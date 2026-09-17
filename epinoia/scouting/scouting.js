@@ -62,6 +62,18 @@ const PARAM = { sort: 's', dir: 'dir', preset: 'view', search: 'q', filters: 'f'
   team: 'tm', withinLeague: 'wl', page: 'pg', qualified: 'ql' };
 const OWNED = Object.keys(PARAM).map(k => PARAM[k]);
 
+/* WHOSE GAME. Not part of the table's state — it decides which leagues' rows
+   are on the page at all, which is this page's business rather than
+   fulltable's — so it rides in its own parameter and writeState leaves it
+   alone (it only clears the ones it owns). */
+const WHO = ['men', 'women'];
+const WHO_PARAM = 'g';
+function readWho(search) {
+  const p = search instanceof URLSearchParams ? search : new URLSearchParams(search || '');
+  const v = (p.get(WHO_PARAM) || '').toLowerCase();
+  return WHO.indexOf(v) >= 0 ? v : '';
+}
+
 /* a stat filter line is key:op:mode:x, lines joined by commas (keys never hold either) */
 function encodeFilters(list) {
   return (Array.isArray(list) ? list : [])
@@ -293,7 +305,58 @@ function boot() {
     lockSet = G.lockedColumns(states);
   };
   const locked = k => lockSet.has(k);
-  const allRows = () => { const out = []; arrived.forEach(L => (byLeague.get(L.id) || []).forEach(r => out.push(r))); return out; };
+
+  /* ---- men's, women's, or all (0131) ----
+     A recruiter working a women's roster does not want SLB Men and BCB in the
+     same ranking. The leagues say which they are; a league that has not said
+     appears only under "all", because guessing from a name is how you end up
+     filing a women's league under men's.
+
+     The row is only drawn when it would DO something: if every league on the
+     page is one gender (or none has said), three buttons that all show the
+     same table is furniture. */
+  let who = readWho(root.location.search);
+  const genderOf = id => {
+    const L = (included || arrived).find(x => x.id === id);
+    return (L && L.gender) || '';
+  };
+  function paintWho() {
+    const host2 = $('#who');
+    if (!host2) return;
+    const list = included || arrived || [];
+    const kinds = new Set(list.map(L => L.gender).filter(Boolean));
+    host2.textContent = '';
+    if (kinds.size < 2) { host2.hidden = true; return; }   // nothing to choose between
+    host2.hidden = false;
+    [['', 'all'], ['men', 'men’s'], ['women', 'women’s']].forEach(([k, label]) => {
+      if (k && !kinds.has(k)) return;
+      const b = el('button', 'ep-chip' + (who === k ? ' on' : ''), label);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        if (who === k) return;
+        who = k;
+        try {
+          const p = new URLSearchParams(root.location.search);
+          if (k) p.set(WHO_PARAM, k); else p.delete(WHO_PARAM);
+          const q = p.toString();
+          root.history.replaceState(root.history.state, '',
+            root.location.pathname + (q ? '?' + q : '') + root.location.hash);
+        } catch (_) { /* a sandboxed frame still filters, it just is not in the URL */ }
+        paintWho(); paintStatus();
+        if (tbl) tbl.setRows(allRows());
+      });
+      host2.appendChild(b);
+    });
+  }
+
+  const allRows = () => {
+    const out = [];
+    arrived.forEach(L => {
+      if (who && (L.gender || genderOf(L.id)) !== who) return;
+      (byLeague.get(L.id) || []).forEach(r => out.push(r));
+    });
+    return out;
+  };
 
   /* ---- the URL ---- */
   let state = readState(root.location.search);
@@ -350,6 +413,7 @@ function boot() {
       included = (leagues || []).slice();
       excluded = ex || [];
       relock();
+      paintWho();
       paintStatus();
     },
     onLeague(rows, L) {

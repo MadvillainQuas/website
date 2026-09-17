@@ -428,9 +428,11 @@
 
   const navdeck = el('div', 'navdeck');
   const deck = el('div', 'deck');
-  /* THREE LEVELS: countries, then that country's leagues, then the league's
-     pages. All three live in the document at once so the deck can slide
-     between them; only one is ever in the tab order. */
+  /* FIVE LEVELS: the platform itself, then countries, then that country's
+     leagues, then the league's pages, then its clubs. All five live in the
+     document at once so the deck can slide between them; only one is ever in
+     the tab order. */
+  const homePanel = el('div', 'panel homepanel');
   const countryPanel = el('div', 'panel countrypanel');
   const rootPanel = el('div', 'panel rootpanel');
   const leaguePanel = el('div', 'panel leaguepanel');
@@ -439,7 +441,7 @@
      has been published), each a link to the club's profile. The list is fetched the first
      time the layer opens and kept for the page. */
   const teamsPanel = el('div', 'panel teamspanel');
-  deck.append(countryPanel, rootPanel, leaguePanel, teamsPanel);
+  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -455,7 +457,65 @@
   if (atHome) { ctitle.classList.add('on'); ctitle.setAttribute('aria-current', 'page'); }
   const clist = el('div', 'leagues');
   clist.appendChild(el('div', 'gempty', '…'));
-  countryPanel.append(ctitle, clist);
+  /* The way back to the platform layer. The heading stays the same link it has
+     always been — pressing HOME goes HOME, from here and from the panel above
+     it — and the chevron beside it is the one that only moves the rail. */
+  const chome = el('button', 'back', '‹');
+  chome.type = 'button';
+  chome.title = 'Back';
+  chome.setAttribute('aria-label', 'Back to the Epinoia menu');
+  chome.addEventListener('click', () => setView('home', true));
+  const cphead = el('div', 'phead titlehead');
+  cphead.append(chome, ctitle);
+  countryPanel.append(cphead, clist);
+
+  /* ---- home panel: the platform, before any league ----
+     WHAT BELONGS TO NO LEAGUE, IN ONE PLACE. Global fixtures and global
+     scouting are pages about every league at once; in the rail they used to
+     sit in the foot among the rows about YOU (your account, your consoles,
+     contact), which put "every league's fixtures" three inches below the
+     league you were reading and in the wrong half of the rail.
+
+     This layer is where the rail now starts, and the countries are one step
+     in from it rather than the top of the tree. */
+  const htitle = el('a', 'ptitle', 'EPINOIΛ');
+  htitle.classList.add('epinoia-mark');
+  htitle.href = root + 'home/';
+  htitle.title = 'HOME — every league, today’s fixtures, the best players';
+  if (atHome) { htitle.classList.add('on'); htitle.setAttribute('aria-current', 'page'); }
+
+  const hlist = el('div', 'pages');
+  const platformRow = (icon, text, href, hereRe, title) => {
+    const a = el('a', 'item' + (hereRe.test(here) ? ' on' : ''));
+    a.href = root + href;
+    a.append(el('span', 'ic', icon), el('span', 'tx', text));
+    a.title = title;
+    if (a.classList.contains('on')) a.setAttribute('aria-current', 'page');
+    return a;
+  };
+  hlist.append(
+    platformRow('⌂', 'home', 'home/', /\/epinoia\/home\/$/,
+                'HOME — every league, today’s fixtures, the best players'),
+    platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
+                'global fixtures: every league’s games on one page'),
+    platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
+                'global scouting: every league in one table'));
+
+  /* and on, into the leagues. A row rather than a bare chevron, because this is
+     the journey the rail exists for. */
+  const leaguesRow = el('a', 'item');
+  leaguesRow.href = root + 'home/#leagues';
+  leaguesRow.append(el('span', 'ic', '◉'), el('span', 'tx', 'leagues'),
+                    el('span', 'lgo', '›'));
+  leaguesRow.title = 'every league, by country';
+  leaguesRow.dataset.leaguesRow = '1';
+  leaguesRow.addEventListener('click', e => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setView(country === null ? 'country' : 'root', true);
+  });
+  hlist.appendChild(leaguesRow);
+  homePanel.append(htitle, hlist);
 
   /* ---- root panel: the title, then the leagues ---- */
   const title = el('a', 'ptitle', 'Leagues');
@@ -1024,15 +1084,11 @@
     bellTimer = setInterval(refresh, 60000);
   }
 
-  /* GLOBAL SCOUTING, IN THE FOOT, because it belongs to no league: every league's current season
-     in one table. Here it is on every page's rail and in the phone menu sheet; HOME (Phase 1,
-     home/front.js) links it as well once that page exists. */
-  const scouting = el('a', 'item' + (/\/epinoia\/scouting\//.test(here) ? ' on' : ''));
-  scouting.href = root + 'scouting/';
-  scouting.append(el('span', 'ic', '⌕'), el('span', 'tx', 'scouting'));
-  scouting.title = 'global scouting: every league in one table';
-  if (scouting.classList.contains('on')) scouting.setAttribute('aria-current', 'page');
-  navFoot.appendChild(scouting);
+  /* GLOBAL SCOUTING IS NOT DOWN HERE ANY MORE. It belongs to no league, which
+     is why it used to sit in the foot — but the foot is the half of the rail
+     about YOU, and "every league in one table" is not about you. It is now the
+     third row of the home panel, beside global fixtures, which is the layer
+     that holds everything belonging to no league. */
 
   const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
   contact.href = root + 'contact/';
@@ -1158,10 +1214,11 @@
      taller one would otherwise set the height and leave a hole beneath the
      shorter one. */
   function panelFor(view) {
-    return view === 'teams'  ? teamsPanel
-         : view === 'league' ? leaguePanel
-         : view === 'root'   ? rootPanel
-         : countryPanel;
+    return view === 'teams'   ? teamsPanel
+         : view === 'league'  ? leaguePanel
+         : view === 'root'    ? rootPanel
+         : view === 'country' ? countryPanel
+         : homePanel;
   }
 
   function sizeDeck(animate) {
@@ -1188,6 +1245,7 @@
        must never land on a link they cannot see. */
     if (changing && animate && !reduced()) {
       navdeck.classList.add('animating');
+      homePanel.setAttribute('aria-hidden', 'false');
       countryPanel.setAttribute('aria-hidden', 'false');
       rootPanel.setAttribute('aria-hidden', 'false');
       leaguePanel.setAttribute('aria-hidden', 'false');
@@ -1203,6 +1261,7 @@
   }
   function applyHidden() {
     const v = nav.dataset.view;
+    homePanel.setAttribute('aria-hidden', String(v !== 'home'));
     countryPanel.setAttribute('aria-hidden', String(v !== 'country'));
     rootPanel.setAttribute('aria-hidden', String(v !== 'root'));
     leaguePanel.setAttribute('aria-hidden', String(v !== 'league'));
@@ -1457,7 +1516,7 @@
        top, which is now the countries rather than a flat list of every league
        on the platform. */
     if (l) { fillHeader(l); applyNav(l); setView('league', false); }
-    else { setView(country === null ? 'country' : 'root', false); }
+    else { setView(country === null ? 'home' : 'root', false); }
     /* one more measure after the marquee pass has run, and only then is the
        rail allowed to animate — everything up to here is the page's opening
        position, not a change somebody made */

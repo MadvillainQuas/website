@@ -143,16 +143,18 @@ body.nav-drawer-open{ overflow:hidden }
    minimum height is nothing, so it was quietly shrunk to fit and the scroller never overflowed
    -- twenty clubs, eight visible, no way to reach the rest */
 .ep-nav .navdeck{ overflow:hidden; flex:none; transition:height .34s cubic-bezier(.4,0,.2,1) }
-/* THREE PANELS: countries, leagues, pages. The deck is three screens wide and
-   slides a third at a time, which is why the percentages are thirds rather
-   than the halves this started with. */
+/* FIVE PANELS: the platform, countries, that country's leagues, a league's
+   pages, its clubs. The deck is five screens wide and slides a fifth at a
+   time, so every percentage here is a fifth — they were quarters before the
+   platform layer was put in front, and thirds before the clubs. */
 .ep-nav .deck{
-  display:flex; width:400%; align-items:flex-start;
+  display:flex; width:500%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.ep-nav[data-view="root"] .deck{ transform:translateX(-25%) }
-.ep-nav[data-view="league"] .deck{ transform:translateX(-50%) }
-.ep-nav[data-view="teams"] .deck{ transform:translateX(-75%) }
+.ep-nav[data-view="country"] .deck{ transform:translateX(-20%) }
+.ep-nav[data-view="root"] .deck{ transform:translateX(-40%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-60%) }
+.ep-nav[data-view="teams"] .deck{ transform:translateX(-80%) }
 /* the clubs: a crest (or a monogram in the club's colour) beside each name */
 .ep-nav .teams .trow .ep-crest{ width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; overflow:hidden;
   font-family:var(--f-micro); font-size:7px; letter-spacing:.04em; color:#04100b; flex:none; margin-right:8px }
@@ -164,7 +166,12 @@ body.nav-drawer-open{ overflow:hidden }
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
 .ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
-.ep-nav .panel{ width:25%; flex:0 0 25%; min-width:0 }
+.ep-nav .panel{ width:20%; flex:0 0 20%; min-width:0 }
+/* the country panel's heading sits in a head beside its back chevron, so the
+   chevron is in the same place at every level; the heading keeps its own type
+   rather than the head's smaller link style. */
+.ep-nav .phead.titlehead{ align-items:center }
+.ep-nav .phead.titlehead .ptitle{ border-bottom:0; padding:0; margin:0; flex:1 1 auto; min-width:0 }
 /* a flag sits a shade larger than the geometric glyphs beside it */
 .ep-nav .crow .ic{ font-size:14px }
 .ep-nav .lname .ic{ font-size:13px; margin-right:2px }

@@ -85,6 +85,9 @@
   @media (display-mode:standalone){
     body{padding-top:env(safe-area-inset-top,0px)}
   }
+  /* whose game: one row of chips, the same shape as every other chip row */
+  .sc-who{display:flex;gap:6px;flex-wrap:wrap;padding:calc(var(--u)*2) calc(var(--u)*3) 0}
+  .sc-who[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -95,6 +98,9 @@
   </div>
   <div class="ep-hdr sc-hdr"><span class="idx">01</span><h2 id="title">Global scouting</h2>
     <p class="sc-lede">Every league's current season in one table, top 50 by the sorted stat. Filter on several stats at once, then pick up to five players to compare.</p></div>
+  <!-- men's / women's, drawn by scouting.js only when the leagues on the page
+       actually differ (0131; a league says which it is in its admin console) -->
+  <div id="who" class="sc-who" hidden></div>
   <div id="status" class="sc-status" role="status" aria-live="polite"></div>
   <section id="cmpPanel" class="sc-cmp" hidden aria-label="Player comparison"></section>
   <div id="tbl"><div class="sc-skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>

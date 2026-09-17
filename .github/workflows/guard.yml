@@ -510,6 +510,19 @@ jobs:
           node supabase/tests/country.test.mjs
           node supabase/tests/app-shell.test.mjs
 
+      - name: Blocks arrive as you scroll to them
+        # reveal.js + kit/reveal.css: nothing is hidden unless the script is live (no
+        # IntersectionObserver, or reduced motion, leaves every block visible), nothing leaves
+        # the layout, late content joins in, and both pages are wired to it
+        run: node supabase/tests/reveal.test.mjs
+
+      - name: Which clubs are in which competition
+        # comps.js: a competition earns its own clubs list only when it brings clubs the main
+        # competition does not have — BCB's Trophy does, SLB's cups do not (one of them only
+        # because its draw is half made), and a competition with entries but no fixtures is
+        # never offered at all
+        run: node supabase/tests/comps.test.mjs
+
       - name: Club initials on phones, and the phone fixes (news dates and game links, the league tap, EPINOIΛ)
         # initials.js gives every club in a league its own letters (a snapshot of the platform's
         # leagues, the loader's fallback before 0129, the portal field, the migration's shape);

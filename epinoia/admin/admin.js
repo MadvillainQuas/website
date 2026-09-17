@@ -221,12 +221,14 @@ async function loadLeague() {
      "not loaded" would have an administrator wipe a working link by pressing
      save on a form they never filled in. */
   const { data: row } = await sb.from('leagues')
-    .select('store_url,store_name').eq('id', league.id).maybeSingle();
+    .select('store_url,store_name,gender').eq('id', league.id).maybeSingle();
   if (row) {
     league.store_url = row.store_url;
     league.store_name = row.store_name;
+    league.gender = row.gender || '';
     $('#shopUrl').value = row.store_url || '';
     $('#shopName').value = row.store_name || '';
+    $('#lgGender').value = league.gender;
   }
 
   const { data, error } = await sb.from('seasons')
@@ -1298,6 +1300,18 @@ $('#grGo').addEventListener('click', async () => {
   if (error) return oops(error);
   say(data, /^no account/.test(data) ? 'err' : 'ok');
   if (!/^no account/.test(data)) { $('#grEmail').value = ''; loadMembers(); }
+});
+
+/* WHOSE COMPETITION THIS IS (0131). One value, saved on its own button rather
+   than on change, because a select that writes as it opens is a select that
+   writes when somebody is only looking. */
+$('#lgGenderGo').addEventListener('click', async () => {
+  const v = $('#lgGender').value || null;
+  const { data, error } = await sb.rpc('set_league_gender',
+    { p_league: league.id, p_gender: v });
+  if (error) return oops(error);
+  league.gender = v || '';
+  say('Saved: ' + data + '.', 'ok');
 });
 
 $('#shopGo').addEventListener('click', () =>

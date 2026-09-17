@@ -102,8 +102,29 @@ function renderFilters() {
     b.addEventListener('click', click);
     return b;
   };
+  /* THE CLUBS THAT PLAY IN WHAT IS BEING SHOWN. The chips used to be every club
+     in the league whatever competition was chosen, so picking BCB's Trophy
+     offered fourteen Championship sides that have no Trophy fixture, and
+     picking one of them produced an empty list with no explanation.
+
+     The set is read off the fixtures already in hand — no request, and it
+     follows the draw: a club added to the Trophy next week appears here the
+     moment its first tie is published. */
+  const inComp = compFilter
+    ? new Set(GAMES.filter(g => g.competition_id === compFilter)
+                   .reduce((a, g) => a.concat([g.home_team_id, g.away_team_id]), [])
+                   .filter(Boolean))
+    : null;
+  const clubs = [...TEAMS.values()]
+    .filter(t => !inComp || inComp.has(t.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  /* A club that has just been filtered out cannot stay chosen, or the list is
+     empty and the chip that would clear it is gone. */
+  if (teamFilter && !clubs.some(t => t.slug === teamFilter)) { teamFilter = ''; syncUrl(); }
+
   tp.appendChild(mk('All clubs', !teamFilter, () => { teamFilter = ''; syncUrl(); renderFilters(); render(); }));
-  [...TEAMS.values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
+  clubs.forEach(t => {
     tp.appendChild(mk(t.name, teamFilter === t.slug, () => {
       teamFilter = t.slug; syncUrl(); renderFilters(); render();
     }, t.colour));
