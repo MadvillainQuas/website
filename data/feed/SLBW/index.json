@@ -1,0 +1,936 @@
+{
+"code": "SLBW",
+"label": "Super League Basketball Women",
+"adapter": "fiba_livestats",
+"updated": "2026-09-17T01:23:33.585429+00:00",
+"games": [
+{
+"id": "2874298",
+"home": "Oaklands Wolves",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2027-04-10T18:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874297",
+"home": "B. Braun Sheffield Hatters",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2027-04-10T18:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874296",
+"home": "Leicester Riders",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-04-10T17:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874294",
+"home": "London Lions",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-04-10T16:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874293",
+"home": "Cardiff Met Archers",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-04-10T12:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874284",
+"home": "Nottingham Wildcats",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-04-04T17:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874291",
+"home": "Caledonia Gladiators",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2027-04-04T15:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874287",
+"home": "Newcastle Eagles",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-04-03T18:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2876635",
+"home": "Oaklands Wolves",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-04-03T18:00:00+00:00",
+"venue": "Oaklands College Sportszone"
+},
+{
+"id": "2874289",
+"home": "Manchester Basketball",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2027-04-03T18:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874281",
+"home": "Caledonia Gladiators",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-03-28T15:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874279",
+"home": "Manchester Basketball",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2027-03-28T13:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874277",
+"home": "Nottingham Wildcats",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2027-03-27T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874295",
+"home": "Essex Rebels",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-03-27T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874292",
+"home": "Oaklands Wolves",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-03-13T19:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874290",
+"home": "B. Braun Sheffield Hatters",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-03-13T19:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874288",
+"home": "London Lions",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2027-03-13T17:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874286",
+"home": "Cardiff Met Archers",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-03-13T13:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2888503",
+"home": "B. Braun Sheffield Hatters",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2027-03-07T18:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874285",
+"home": "Caledonia Gladiators",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2027-03-07T14:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874282",
+"home": "Newcastle Eagles",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2027-03-06T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874280",
+"home": "Nottingham Wildcats",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-03-06T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874278",
+"home": "Essex Rebels",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-03-06T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874275",
+"home": "Manchester Basketball",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2027-02-21T17:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874276",
+"home": "Leicester Riders",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-02-21T16:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874274",
+"home": "Newcastle Eagles",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-02-20T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874273",
+"home": "Oaklands Wolves",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2027-02-20T19:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2891848",
+"home": "Leicester Riders",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-02-20T17:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874272",
+"home": "London Lions",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-02-20T17:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874271",
+"home": "Newcastle Eagles",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2027-02-06T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874270",
+"home": "Oaklands Wolves",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-02-06T19:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874269",
+"home": "B. Braun Sheffield Hatters",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-02-06T19:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874268",
+"home": "Essex Rebels",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-02-06T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874308",
+"home": "Manchester Basketball",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2027-01-31",
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874318",
+"home": "London Lions",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874317",
+"home": "Essex Rebels",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874307",
+"home": "Nottingham Wildcats",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874306",
+"home": "Caledonia Gladiators",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-01-24",
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874316",
+"home": "Oaklands Wolves",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-01-23",
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874315",
+"home": "Cardiff Met Archers",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-01-23",
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874305",
+"home": "B. Braun Sheffield Hatters",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2027-01-23",
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874314",
+"home": "Leicester Riders",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2027-01-17",
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874313",
+"home": "Oaklands Wolves",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2027-01-16",
+"venue": "Oaklands Sportszone",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874312",
+"home": "London Lions",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2027-01-16",
+"venue": "New City College Hackney",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874304",
+"home": "Newcastle Eagles",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2027-01-16",
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874303",
+"home": "Nottingham Wildcats",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2027-01-16",
+"venue": "Nottingham Wildcats Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874311",
+"home": "Leicester Riders",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-01-10",
+"venue": "Netball Centre Loughborough University",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874302",
+"home": "Caledonia Gladiators",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2027-01-10",
+"venue": "Playsport Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874301",
+"home": "Manchester Basketball",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-01-10",
+"venue": "National Basketball Performance Centre",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874310",
+"home": "Cardiff Met Archers",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2027-01-09",
+"venue": "Archers Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874309",
+"home": "Essex Rebels",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2027-01-03",
+"venue": "Essex Sports Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874300",
+"home": "Newcastle Eagles",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2027-01-02",
+"venue": "Vertu Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874299",
+"home": "B. Braun Sheffield Hatters",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2027-01-02",
+"venue": "Canon Medical Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "2874267",
+"home": "Manchester Basketball",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-12-20T17:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874266",
+"home": "Nottingham Wildcats",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2026-12-19T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874265",
+"home": "London Lions",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2883661",
+"home": "Essex Rebels",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-12-19T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874264",
+"home": "Cardiff Met Archers",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-12-19T13:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874263",
+"home": "Leicester Riders",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-12-13T18:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874262",
+"home": "Manchester Basketball",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-12-13T17:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874261",
+"home": "Newcastle Eagles",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-12-12T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874260",
+"home": "B. Braun Sheffield Hatters",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2026-12-12T19:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874259",
+"home": "Leicester Riders",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-12-06T18:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874258",
+"home": "Caledonia Gladiators",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-12-06T16:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874257",
+"home": "Nottingham Wildcats",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2026-12-05T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874256",
+"home": "London Lions",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874253",
+"home": "Cardiff Met Archers",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2026-12-05T13:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874283",
+"home": "Essex Rebels",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-11-29T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874251",
+"home": "Oaklands Wolves",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-11-28T19:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874249",
+"home": "Nottingham Wildcats",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-11-28T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874246",
+"home": "Leicester Riders",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-11-28T18:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874245",
+"home": "Essex Rebels",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2026-11-28T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874243",
+"home": "Manchester Basketball",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2026-11-22T17:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874241",
+"home": "Newcastle Eagles",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-11-21T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874239",
+"home": "B. Braun Sheffield Hatters",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2026-11-21T19:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874237",
+"home": "Cardiff Met Archers",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-11-21T13:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874255",
+"home": "Newcastle Eagles",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-11-07T19:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874254",
+"home": "Oaklands Wolves",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2026-11-07T19:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874252",
+"home": "Nottingham Wildcats",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-11-07T19:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874250",
+"home": "B. Braun Sheffield Hatters",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-11-07T19:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874248",
+"home": "Cardiff Met Archers",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-11-07T13:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874244",
+"home": "Manchester Basketball",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-11-01T17:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874247",
+"home": "Caledonia Gladiators",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2026-11-01T14:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874242",
+"home": "Leicester Riders",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2026-10-31T18:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874240",
+"home": "London Lions",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874238",
+"home": "Essex Rebels",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874236",
+"home": "Newcastle Eagles",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2026-10-24T18:30:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874233",
+"home": "Oaklands Wolves",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-10-24T18:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874231",
+"home": "Nottingham Wildcats",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-10-24T18:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874229",
+"home": "Leicester Riders",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-10-24T17:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874227",
+"home": "Essex Rebels",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-10-24T15:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874223",
+"home": "Manchester Basketball",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2026-10-18T16:30:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874225",
+"home": "Caledonia Gladiators",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2026-10-18T15:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874221",
+"home": "B. Braun Sheffield Hatters",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-10-17T18:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874219",
+"home": "London Lions",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874217",
+"home": "Cardiff Met Archers",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-10-17T12:30:00+00:00",
+"venue": "Archers Arena"
+},
+{
+"id": "2874235",
+"home": "Newcastle Eagles",
+"away": "Nottingham Wildcats",
+"status": "scheduled",
+"date": "2026-10-11T15:00:00+00:00",
+"venue": "Vertu Arena"
+},
+{
+"id": "2874234",
+"home": "Oaklands Wolves",
+"away": "Cardiff Met Archers",
+"status": "scheduled",
+"date": "2026-10-10T18:00:00+00:00",
+"venue": "Oaklands Sportszone"
+},
+{
+"id": "2874232",
+"home": "B. Braun Sheffield Hatters",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-10-10T18:00:00+00:00",
+"venue": "Canon Medical Arena"
+},
+{
+"id": "2874230",
+"home": "London Lions",
+"away": "Caledonia Gladiators",
+"status": "scheduled",
+"date": "2026-10-10T16:00:00+00:00",
+"venue": "New City College Hackney"
+},
+{
+"id": "2874228",
+"home": "Essex Rebels",
+"away": "Leicester Riders",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00+00:00",
+"venue": "Essex Sports Arena"
+},
+{
+"id": "2874226",
+"home": "Leicester Riders",
+"away": "Newcastle Eagles",
+"status": "scheduled",
+"date": "2026-10-04T15:00:00+00:00",
+"venue": "Netball Centre Loughborough University"
+},
+{
+"id": "2874224",
+"home": "Caledonia Gladiators",
+"away": "Essex Rebels",
+"status": "scheduled",
+"date": "2026-10-04T15:00:00+00:00",
+"venue": "Playsport Arena"
+},
+{
+"id": "2874222",
+"home": "Manchester Basketball",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-10-04T12:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "2874220",
+"home": "Nottingham Wildcats",
+"away": "Oaklands Wolves",
+"status": "scheduled",
+"date": "2026-10-03T18:00:00+00:00",
+"venue": "Nottingham Wildcats Arena"
+},
+{
+"id": "2874218",
+"home": "Cardiff Met Archers",
+"away": "B. Braun Sheffield Hatters",
+"status": "scheduled",
+"date": "2026-10-03T12:30:00+00:00",
+"venue": "Archers Arena"
+}
+]
+}
