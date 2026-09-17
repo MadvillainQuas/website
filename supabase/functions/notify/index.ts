@@ -28,8 +28,13 @@
 // owners, which any signed-in fan could always trigger; it is throttled per instance.
 //
 // THREE REQUESTS ARE ABOUT PHONES RATHER THAN ROWS (docs/notifications.md §7):
-//   { test: true, endpoint? }  signed in: a test push to every phone on the account,
-//                              and what each push service answered
+//   { test: true, endpoint?, delay? }
+//                              signed in: a test push to every phone on the account,
+//                              and what each push service answered. delay: seconds to
+//                              wait first (10 at most), so the phone can be locked before
+//                              it arrives — a heads-up on a locked phone is what the
+//                              Android app's Game alerts channel is for; the answer then
+//                              carries delayed: the seconds it waited
 //   { check: subscription }    anyone: one test push to the subscription the caller
 //                              holds (only a known push service's endpoint, which only
 //                              that browser knows), and what the push service answered.
@@ -62,6 +67,8 @@ const ANON_GAP_MS = 15000;
 const checkSeen = new Map<string, number>();
 let checkWindow = { start: 0, count: 0 };
 let lastDiag = 0;
+/* the longest a delayed test waits before sending (push.js asks for 10) */
+const TEST_DELAY_MAX_S = 10;
 
 const VAPID_SUBJECT = () => Deno.env.get('VAPID_SUBJECT') ?? 'mailto:hello@prophesyscouting.co.uk';
 
@@ -95,7 +102,15 @@ Deno.serve(async (req) => {
   /* ------------------------------------------------------------- a test --- */
   if (body && body.test === true) {
     if (!who.userId) return json({ error: 'sign in first, then send yourself a test' }, 401);
-    return json(await sendTest(admin, who.userId, site, typeof body.endpoint === 'string' ? body.endpoint : ''));
+    /* the wait comes after the sign-in check, so only a signed-in fan can hold a request
+       open, and never for more than 10 s; anything that is not a positive number is none */
+    const delay = Math.min(Math.max(Number(body.delay) || 0, 0), TEST_DELAY_MAX_S);
+    if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    const out = await sendTest(admin, who.userId, site, typeof body.endpoint === 'string' ? body.endpoint : '');
+    /* delayed: the seconds actually waited, so push.js can tell this notify from one deployed
+       before the delay existed (which sends at once and answers without it). An extra field:
+       the answer is otherwise exactly sendTest's, as before. */
+    return json(delay > 0 ? { ...out, delayed: delay } : out);
   }
 
   if (!who.trusted && !who.userId) {

@@ -195,5 +195,26 @@ const strangerPub = PC.b64u(new Uint8Array(await crypto.subtle.exportKey('raw', 
 ok(!(await PC.vapidSigned('vapid t=' + unsigned + '.' + sig + ', k=' + signerPub, strangerPub)), '...a different public key fails');
 ok(!(await PC.vapidSigned('Bearer nonsense', signerPub)), '...and a header without a token fails');
 
+/* ---- the delayed test (roadmap Phase 7): notify/index.ts read as text, since Deno is not
+   here. The wait is capped at 10 s, comes only after the caller is known to be signed in
+   (a stranger cannot hold requests open), and sendTest's answer is unchanged. ---- */
+{
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../functions/notify/index.ts', import.meta.url), 'utf8');
+  const testBranch = src.slice(src.indexOf('if (body && body.test === true)'), src.indexOf('if (!who.trusted && !who.userId)'));
+  ok(/const TEST_DELAY_MAX_S = 10;/.test(src), 'notify: the delayed test waits 10 s at most');
+  ok(/Math\.min\(Math\.max\(Number\(body\.delay\) \|\| 0, 0\), TEST_DELAY_MAX_S\)/.test(testBranch),
+     '...a missing, negative or non-numeric delay is no wait, and a longer one is cut to the cap');
+  ok(testBranch.indexOf('if (!who.userId) return json(') >= 0 &&
+     testBranch.indexOf('if (!who.userId) return json(') < testBranch.indexOf('setTimeout(resolve, delay * 1000)'),
+     '...the wait comes after the sign-in check');
+  ok(testBranch.indexOf('setTimeout(resolve, delay * 1000)') < testBranch.indexOf('sendTest(admin, who.userId'),
+     '...and before the test is sent, whose answer keeps its shape');
+  ok(/const out = await sendTest\(admin, who\.userId, site, typeof body\.endpoint === 'string' \? body\.endpoint : ''\);/.test(testBranch),
+     '...sendTest is called exactly as before');
+  ok(/return json\(delay > 0 \? \{ \.\.\.out, delayed: delay \} : out\);/.test(testBranch),
+     '...and its answer is returned unchanged, with delayed: the seconds waited added only when it waited');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

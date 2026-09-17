@@ -260,6 +260,7 @@
       done();
       if (res.error) return refusal(res);
       $('#form').reset();
+      syncDeleteNote();
       $('#count').textContent = '0';
       receipt(res.data || {}, session.email || 'your account’s address');
       loadMine();
@@ -297,8 +298,42 @@
       return say('Your request was sent and will be read. We reply to ' + email + '.', 'ok');
     }
     $('#form').reset();
+    syncDeleteNote();
     $('#count').textContent = '0';
     receipt(out, email);
+  });
+
+  /* ------------------------------------------------- privacy/#delete --- */
+  function syncDeleteNote() {
+    const radio = document.querySelector('input[name="kind"][value="erasure"]');
+    const note = $('#deleteNote');
+    if (note) note.classList.toggle('hide', !(radio && radio.checked));
+  }
+  /* ACCOUNT DELETION STARTS HERE (roadmap Phase 8). Google Play asks for a web
+     address where deleting an account begins, and the one given is
+     privacy/#delete: the erasure kind is chosen and the note under the kinds
+     says what goes. The browser scrolls to #delete itself (the Erase it
+     choice); this only picks it, and does so again if the hash changes while
+     the page is open, as the link in the Android section does. Any other hash
+     leaves whatever the person chose alone. */
+  function chooseDelete() {
+    if (location.hash !== '#delete') return;
+    const radio = document.querySelector('input[name="kind"][value="erasure"]');
+    if (!radio) return;
+    radio.checked = true;
+    syncDeleteNote();
+    try { radio.focus({ preventScroll: true }); } catch (_) { /* focus is a courtesy */ }
+  }
+  chooseDelete();
+  window.addEventListener('hashchange', chooseDelete);
+  /* the note belongs to Erase it, not to having arrived at #delete: another
+     kind chosen, or the form reset after a send, puts it away again */
+  $('#form').addEventListener('change', syncDeleteNote);
+  /* the in-page link again while the hash is already #delete fires no
+     hashchange, so the click picks it (a different hash is left to hashchange) */
+  document.addEventListener('click', e => {
+    const a = e.target && e.target.closest ? e.target.closest('a[href="#delete"]') : null;
+    if (a && location.hash === '#delete') chooseDelete();
   });
 
   /* ------------------------------------------------------------- start --- */

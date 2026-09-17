@@ -15,13 +15,17 @@
                              Epinoia when there is one, else in a new window
      pushsubscriptionchange  when the browser rotates the subscription, takes a new
                              one and tells the database which row it replaces
-   No caching, no interception of fetches: the site is served exactly as before.
+     fetch                   page loads only: when one fails for want of a connection, a
+                             small offline page (status 200) instead of the browser's error.
+                             Every other request is left to the browser, so a JSON caller
+                             sees a real network error, never an HTML page
+   No caching: the site is served exactly as before.
 
    The decisions are small pure functions (notificationFor, actionUrl, clickTarget,
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-home';
+const SW_VERSION = 'notifications-v2-2026-09-17-app';
 const SITE_PATH = '/epinoia/';
 /* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
    window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
@@ -30,7 +34,10 @@ const SITE_PATH = '/epinoia/';
    pickClient uses it to recognise a window that is already on Epinoia. */
 const HOME_PATH = '/epinoia/home/';
 const ICON = '/epinoia/brand/epinoia-mark-192.png';
-const BADGE = '/epinoia/brand/epinoia-mark-32.png';
+/* THE BADGE IS A SILHOUETTE. Android draws a badge from its alpha channel alone, so the 32px
+   colour mark (an opaque rounded square) showed as a blank white tile in the status bar; this
+   is the Λ in white on a transparent ground. */
+const BADGE = '/epinoia/brand/epinoia-badge-96.png';
 /* PUBLIC VALUES, COPIED FROM epinoia/config.js. A service worker cannot read
    config.js (it runs without the page), so they are written in here; push.test.mjs
    fails if these and config.js ever disagree. The publishable key and the VAPID
@@ -40,16 +47,33 @@ const SUPABASE_KEY = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';
 const VAPID_PUBLIC_KEY = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
 
 self.addEventListener('install', () => self.skipWaiting());
-/* A fetch handler makes the app installable; it passes every request straight through. Nothing
-   is cached here on purpose: a live score served from yesterday's cache would be worse than no
-   app at all, and the pages already carry their own version stamps. */
+/* A fetch handler makes the app installable. Nothing is cached here on purpose: a live score
+   served from yesterday's cache would be worse than no app at all, and the pages already carry
+   their own version stamps.
+
+   ONLY A PAGE LOAD IS ANSWERED, and only when it fails. It used to be every GET: a Supabase
+   read that failed offline came back as a 503 HTML page, and code waiting for JSON reported a
+   parse error instead of "no connection". Requests the worker does not answer go to the
+   network exactly as if there were no worker. The offline page is status 200, as Chrome's
+   Trusted Web Activity quality checks ask of an offline launch, in light (the default) or
+   dark as the phone is set; it cannot read the site's own theme choice, which lives in the
+   page's storage. */
+function offlinePage() {
+  return new Response(
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><title>Offline · Epinoia</title>' +
+    '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;text-align:center;padding:16px;box-sizing:border-box;' +
+    'background:#f3faf6;color:#0d1f17;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}' +
+    'b{display:block;font-size:22px;font-weight:800}p{margin:8px 0 20px;opacity:.78;line-height:1.5}' +
+    'a{display:inline-block;padding:12px 22px;border-radius:12px;background:#0c7a54;color:#fff;font-weight:700;text-decoration:none}' +
+    '@media (prefers-color-scheme:dark){body{background:#04100b;color:#e6fff1}a{background:#93f2bf;color:#04100b}}</style>' +
+    '<body><div><b>Epinoia is offline</b><p>Nothing is stored on this phone. Connect, then try again.</p><a href="">Try again</a></div></body></html>',
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request).catch(() => new Response(
-    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<body style="margin:0;background:#04100b;color:#e6fff1;font-family:system-ui;display:grid;place-items:center;height:100vh;text-align:center">' +
-    '<div><div style="font-size:22px;font-weight:800">Epinoia is offline</div><div style="opacity:.7;margin-top:8px">Nothing is stored on this phone; connect and try again.</div></div></body>',
-    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
+  const req = e.request;
+  if (!req || req.method !== 'GET' || req.mode !== 'navigate') return;
+  e.respondWith(fetch(req).catch(() => offlinePage()));
 });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
@@ -255,5 +279,6 @@ self.addEventListener('pushsubscriptionchange', e => {
 /* node only (push.test.mjs); a service worker has no `module` */
 if (typeof module === 'object' && module && module.exports) {
   module.exports = { SW_VERSION, SITE_PATH, HOME_PATH, ICON, BADGE, SUPABASE_URL, SUPABASE_KEY, VAPID_PUBLIC_KEY,
-                     readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt, receipt };
+                     readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt, receipt,
+                     offlinePage };
 }

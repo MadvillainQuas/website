@@ -172,12 +172,57 @@ function phoneSay(text, kind) {
 function standaloneApp() {
   try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (_) { return false; }
 }
+/* inside the Epinoia Android app (push.js decides: the launcher's report, never Samsung Internet) */
+const inAndroidApp = () => { try { return !!(window.EpinoiaPush && window.EpinoiaPush.inApp && window.EpinoiaPush.inApp()); } catch (_) { return false; } };
+/* A link styled as the card's buttons, into the app's own notification settings screen. An
+   intent: link only opens from a tap, and only the app's package answers it. */
+function settingsLink(action) {
+  const a = document.createElement('a');
+  a.className = 'ep-btn';
+  a.textContent = action.label;
+  a.href = action.href;
+  a.style.textDecoration = 'none';
+  a.addEventListener('click', settingsTapped);
+  return a;
+}
+/* after a visit to the settings screen, Back returns to this session with the launch report
+   unchanged, so push.js stops believing it (the check then lets its live test decide) */
+function settingsTapped() { try { if (window.EpinoiaPush && window.EpinoiaPush.settingsOpened) window.EpinoiaPush.settingsOpened(); } catch (_) { /* a courtesy */ } }
+/* AN ANDROID BROWSER IS OFFERED THE ANDROID APP, not the web app (roadmap Phase 6), by the
+   same decision as nav.js's banner (EpinoiaAppShell.installOffer), so the two never disagree */
+function androidAppOffer() {
+  const S = window.EpinoiaAppShell;
+  if (!S || typeof S.installOffer !== 'function') return false;
+  try {
+    return S.installOffer({
+      app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
+      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints, path: location.pathname
+    }) === 'android-app';
+  } catch (_) { return false; }
+}
+const INSTALL_WORDS = { web: 'Add Epinoia to your Home Screen', android: 'Get the Epinoia app for Android' };
 async function paintPhone() {
   const P = window.EpinoiaPush;
   const st = P ? await P.state() : 'unsupported';
+  const app = inAndroidApp();
+  const offerApp = !app && androidAppOffer();
   $('#phoneCard').dataset.state = st;
   $('#phoneState').textContent = P ? PHONE_WORDS[st] : 'Notifications could not be loaded on this page. Reload to try again.';
+  /* IN THE APP, "ON" IS ONLY THIS BROWSER'S SIDE. The JavaScript permission can read granted
+     while Android blocks the app, so what Android said at launch is shown beside it (push.js
+     appBlocked, which stops believing the launch once the settings have been opened) */
+  const blocked = app && P && P.appBlocked ? P.appBlocked() : null;
+  if (blocked && st !== 'unsupported') {
+    $('#phoneState').textContent = (st === 'on' ? 'On for this page, but Android is not' : PHONE_WORDS[st] + ' Android is also not') +
+      ' letting Epinoia pop up notifications (as of this launch). Tap Open notification settings to allow them.';
+  }
+  if (app) $('#pushSettings').href = P.settingsIntent;
+  $('#installBtn').textContent = offerApp ? INSTALL_WORDS.android : INSTALL_WORDS.web;
   const show = {
+    /* THE ANDROID APP: its own settings screen is always one tap away, and a test can be
+       sent after a wait, so it arrives with the phone locked (roadmap Phase 7) */
+    pushSettings: app,
+    pushTestLocked: app && st === 'on',
     pushOn: st === 'off',
     pushTest: st === 'on',
     pushOff: st === 'on',
@@ -185,12 +230,94 @@ async function paintPhone() {
        says what is wrong and what to change */
     pushCheck: !!P && st !== 'unsupported' && st !== 'ios-install',
     /* the Home Screen is the whole answer on an iPhone, and an offer worth making
-       wherever the browser says it can install */
-    installBtn: !standaloneApp() && (st === 'ios-install' || (st !== 'on' && !!(window.epinoiaCanInstall && window.epinoiaCanInstall())))
+       wherever the browser says it can install; an Android browser is offered the Android
+       app instead, whether or not it fired beforeinstallprompt */
+    installBtn: !app && !standaloneApp() && (offerApp ? st !== 'on'
+      : (st === 'ios-install' || (st !== 'on' && !!(window.epinoiaCanInstall && window.epinoiaCanInstall()))))
   };
   Object.keys(show).forEach(id => $('#' + id).classList.toggle('hide', !show[id]));
   $('#phoneCard .phone-acts').classList.toggle('hide', !Object.values(show).some(Boolean));
+  paintDupes(st, app).catch(() => $('#phoneDupes').classList.add('hide'));
   return st;
+}
+
+/* TWO SIGN-UPS ON ONE PHONE, TWO OF EVERY NOTIFICATION. A fan who used the Samsung Internet
+   web app before installing the Android app still has its subscription, and notify pushes to
+   every subscription on the account. Inside the app, with this phone on, the others that may
+   be on this phone are named with a way to turn them off: Samsung Internet web app rows
+   (client samsung-app, 0128), any Samsung Internet row on the same push service however it
+   was labelled, and rows saved before 0128 said which client made them that came from an
+   Android phone on the same push service. Another app row ('twa') is never offered. The fan's own rows only: push_own
+   (0106) lets a fan read and delete theirs and nobody else's. Before 0128 there is no client
+   column, and the read is made again without it. */
+function endpointHost(e) { try { return new URL(String(e)).hostname; } catch (_) { return ''; } }
+async function otherSignups() {
+  const P = window.EpinoiaPush;
+  const mine = P && P.endpoint ? await P.endpoint() : '';
+  if (!mine) return [];
+  let res = await sb.from('push_subscriptions').select('id,endpoint,client,ua');
+  if (res.error) res = await sb.from('push_subscriptions').select('id,endpoint,ua');
+  if (res.error || !Array.isArray(res.data)) return [];
+  const host = endpointHost(mine);
+  /* any Samsung Internet row on the same push service counts, whatever it was labelled: a
+     Samsung Internet tab saves 'tab', and so does its web app when the display-mode test fails */
+  return res.data.filter(r => r && r.endpoint !== mine && r.client !== 'twa' &&
+    (r.client === 'samsung-app' || (endpointHost(r.endpoint) === host && /Android/i.test(r.ua || '') &&
+                                    (!r.client || /SamsungBrowser/i.test(r.ua || '')))));
+}
+/* THE OTHER SIDE OF IT, IN SAMSUNG INTERNET. Turning the others off from the app only deletes
+   rows: the Samsung Internet web app keeps its subscription, and its profile page used to save
+   it again on the next visit (sync), bringing every notification back twice. So in Samsung
+   Internet, once the account has the Android app (a 'twa' row, 0128), this page does not save
+   itself again and says why, with a button that unsubscribes this browser for good. Before
+   0128 the client read fails and nothing changes. Read once per page. */
+const samsungHere = () => { try { return /^android-samsung/.test(window.EpinoiaPush.help().platform); } catch (_) { return false; } };
+let appOnAccount = null;
+function accountHasApp() {
+  if (!sb || inAndroidApp() || !samsungHere()) return Promise.resolve(false);
+  if (!appOnAccount) {
+    appOnAccount = Promise.resolve(sb.from('push_subscriptions').select('client'))
+      .then(res => !res.error && Array.isArray(res.data) && res.data.some(r => r && r.client === 'twa'), () => false);
+  }
+  return appOnAccount;
+}
+async function paintDupes(st, app) {
+  const box = $('#phoneDupes');
+  if (!app) {
+    if (st !== 'on' || !(await accountHasApp())) { box.classList.add('hide'); return; }
+    box.textContent = '';
+    box.append('Your account has the Epinoia Android app. If it is on this phone, notifications come through it, and ' +
+               'with them on here as well every notification arrives twice. ');
+    const off = document.createElement('button');
+    off.type = 'button'; off.className = 'ep-btn'; off.textContent = 'Turn off notifications here';
+    off.style.marginTop = '8px'; off.style.display = 'block';
+    off.onclick = () => phoneAction(off, 'Turning off…', () => window.EpinoiaPush.disable());
+    box.appendChild(off);
+    box.className = 'msg warn';
+    return;
+  }
+  if (st !== 'on' || !sb) { box.classList.add('hide'); return; }
+  const others = await otherSignups();
+  box.textContent = '';
+  if (!others.length) { box.classList.add('hide'); return; }
+  const samsung = others.some(r => r.client === 'samsung-app' || /SamsungBrowser/i.test(r.ua || ''));
+  box.append((others.length === 1 ? 'Your account has another notification sign-up from an Android phone'
+                                  : 'Your account has ' + others.length + ' other notification sign-ups from Android phones') +
+             (samsung ? ', including Samsung Internet' : '') +
+             '. If they are on this phone, every notification arrives more than once. ');
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'ep-btn'; b.textContent = 'Turn off the others';
+  b.style.marginTop = '8px'; b.style.display = 'block';
+  b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Turning off…';
+    const { error } = await sb.from('push_subscriptions').delete().in('id', others.map(r => r.id));
+    box.className = 'msg ' + (error ? 'err' : 'ok');
+    box.textContent = error
+      ? 'The others could not be turned off just now. Try again in a minute.'
+      : 'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its profile page offers to turn notifications off there for good.';
+  };
+  box.appendChild(b);
+  box.className = 'msg warn';
 }
 /* The check's findings (push.js check): a mark and a sentence per step, then what to
    do. Built from text nodes only; nothing the network said is parsed as markup. */
@@ -229,6 +356,12 @@ function paintCheck(r) {
       const ol = document.createElement('ol');
       r.advice.lines.forEach(line => { const li = document.createElement('li'); li.textContent = line; ol.appendChild(li); });
       adv.appendChild(ol);
+    }
+    /* in the Android app, the button into its own notification settings (push.js check) */
+    if (r.advice.action) {
+      const acts = document.createElement('div'); acts.className = 'phone-acts';
+      acts.appendChild(settingsLink(r.advice.action));
+      adv.appendChild(acts);
     }
     box.appendChild(adv);
   }
@@ -287,9 +420,12 @@ function showHidden() {
   const p = document.createElement('div');
   p.textContent = 'It reached this phone, but a phone setting stopped it popping up. Change these, then send another:';
   const ol = document.createElement('ol');
-  ((P && P.help && P.help().steps) || []).forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
+  const h = (P && P.help && P.help()) || {};
+  (h.steps || []).forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
   const acts = document.createElement('div'); acts.className = 'phone-acts';
   acts.append(phoneButton('Send another test', 'ep-btn pri', () => $('#pushTest').click()));
+  /* in the Android app, straight into its own notification settings */
+  if (h.action) acts.append(settingsLink(h.action));
   if (!$('#nEmail').checked) {
     acts.append(phoneButton('Email me them as well', 'ep-btn', ev => {
       $('#nEmail').checked = true; save();
@@ -311,6 +447,16 @@ function wirePhone() {
     $('#phoneCheck').classList.add('hide');
     return phoneAction($('#pushTest'), 'Sending…', () => P.test()).then(r => { if (r && r.ok) askSeen(); });
   };
+  /* THE LOCKED-PHONE TEST (the Android app): the server waits 10 s before sending, the fan
+     locks the phone meanwhile, and a heads-up on the lock screen is the proof that Game alerts
+     pops up. The answer comes back once the phone is unlocked, and asks whether it popped up. */
+  $('#pushTestLocked').onclick = () => {
+    if (phoneBusy) return;
+    $('#phoneCheck').classList.add('hide');
+    const pending = phoneAction($('#pushTestLocked'), 'Lock the phone now…', () => P.test({ delay: 10 }));
+    phoneSay(P.MESSAGES.testDelayed, 'ok');
+    return pending.then(r => { if (r && r.ok) askSeen(); });
+  };
   $('#pushOff').onclick = () => phoneAction($('#pushOff'), 'Turning off…', () => P.disable());
   $('#pushCheck').onclick = () => phoneAction($('#pushCheck'), 'Checking…', () => {
     paintCheck({ steps: [], running: true });
@@ -319,7 +465,11 @@ function wirePhone() {
       return { ok: r.ok, message: '' };
     });
   });
-  $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
+  $('#installBtn').onclick = () => {
+    if (androidAppOffer()) { location.href = '../android/'; return; }
+    if (window.epinoiaInstall) window.epinoiaInstall();
+  };
+  $('#pushSettings').addEventListener('click', settingsTapped);
   /* the account's channel: ticking it turns this browser on too (a tap, so the
      permission prompt can appear); unticking stops pushes on every device */
   $('#nPush').onchange = () => {
@@ -599,7 +749,13 @@ async function paintMembership() {
   /* not awaited: the card fills in while the rest of the page does. With
      notifications on, this browser's subscription is saved again under whoever is
      signed in now (push.js sync), which heals a rotated or inherited one. */
-  paintPhone().then(st => { if (st === 'on' && window.EpinoiaPush) window.EpinoiaPush.sync().catch(() => {}); });
+  /* Not in Samsung Internet once the account has the Android app (accountHasApp): saving
+     it again is what brought back every notification twice. */
+  paintPhone().then(async st => {
+    if (st !== 'on' || !window.EpinoiaPush) return;
+    if (await accountHasApp().catch(() => false)) return;
+    window.EpinoiaPush.sync().catch(() => {});
+  });
   applyTheme(prefs.theme === 'dark' ? 'dark' : 'light');
   $('#themeDark').onclick = () => { applyTheme('dark'); save(); };
   $('#themeLight').onclick = () => { applyTheme('light'); save(); };

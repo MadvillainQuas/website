@@ -139,8 +139,14 @@
    a line of near-black on near-black */
 .club:hover .club-name{color:var(--ink-t,var(--ink-c));
   text-shadow:0 0 12px color-mix(in oklch,var(--ink-c) 40%,transparent)}
+/* THE CAPTION MAY SHRINK, and ellipsis when it must. It is nowrap, and a flex item's automatic
+   minimum is its whole text, so in a narrow card it could not give way: a news card in the third
+   row of a phone's news grid is 112px, "Epinoia match report" is 142px, and the caption ran out
+   of the card and pushed the league front page and the news page to 413px on a 390px phone.
+   Where the caption fits, which is everywhere else, min-width and overflow change nothing. */
 .club-ed{margin-left:auto;font-family:var(--f-micro);font-size:8px;
-  color:var(--ink-3);letter-spacing:.1em;white-space:nowrap}
+  color:var(--ink-3);letter-spacing:.1em;white-space:nowrap;
+  min-width:0;overflow:hidden;text-overflow:ellipsis}
 
 @media (prefers-reduced-motion:reduce){
   .club-plate,.club-mono.ghost{transition:none}

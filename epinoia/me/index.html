@@ -198,8 +198,15 @@
           <button class="ep-btn hide" id="pushOff" type="button">Turn off</button>
           <button class="ep-btn hide" id="installBtn" type="button">Add Epinoia to your Home Screen</button>
           <button class="ep-btn hide" id="pushCheck" type="button">Check this phone</button>
+          <!-- inside the Android app only: a test sent after 10 s (lock the phone first), and
+               the app's own notification settings screen (me.js sets the intent link) -->
+          <button class="ep-btn hide" id="pushTestLocked" type="button">Test with the phone locked</button>
+          <a class="ep-btn hide" id="pushSettings" style="text-decoration:none">Open notification settings</a>
         </div>
         <div id="phoneMsg" class="msg hide" role="status" aria-live="polite"></div>
+        <!-- the account's other subscriptions on this phone (the Samsung Internet web app):
+             each notification would otherwise arrive twice -->
+        <div id="phoneDupes" class="msg warn hide"></div>
         <div class="chk hide" id="phoneCheck" aria-live="polite"></div>
       </div>
       <div class="row"><span class="lbl">How</span></div>
@@ -223,6 +230,10 @@
       <div class="ep-hdr"><span class="idx">06</span><h2>Recent</h2><button class="ep-chip" id="readAll" type="button" style="margin-left:auto">mark all read</button></div>
       <div id="recent"></div>
     </section>
+
+    <!-- Deleting the account starts on the privacy page's erasure form, which is also the
+         deletion link Google Play lists (roadmap Phase 8). -->
+    <div class="note"><a id="deleteAccount" href="../privacy/#delete" style="color:var(--flare)">Delete my account</a></div>
   </div>
 </div>
 <script src="../config.js?v=272" defer></script>

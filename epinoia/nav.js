@@ -27,6 +27,100 @@
    and it is not persisted, so the next page decides again.
    ============================================================================ */
 (function () {
+  /* ------------------------------------------------------------ THE APP SHELL ---
+     window.EpinoiaAppShell: the decisions about the Android app that the rail's banners and
+     HOME's app card share (roadmap Phase 6), kept as plain functions of what they are handed
+     so supabase/tests/app-shell.test.mjs can hold them without a browser. Defined before
+     anything else in this file returns early, so it exists on every page that loads nav.js.
+
+       where(env)           'app' | 'ios' | 'android' | 'other'
+                            env = { app, mApp, ua, platform, maxTouchPoints }
+       installOffer(env)    what the install banner offers: 'none' in the app and on the
+                            download page itself, 'android-app' on an Android browser (the
+                            real app, not the web app), 'ios' (Add to Home Screen, as it
+                            always was), 'web' elsewhere (only on beforeinstallprompt)
+                            env adds { path }
+       appCard(env, ver)    HOME's card: null, or { href, versionName } on an Android browser
+       readShell(store)     sessionStorage epinoia_shell, as appmode.js stored it, or null
+       needsUpdate(sh, ver) the launch's shell build is below version.json's minShell
+       cleanVersion(json)   version.json reduced to the fields the site trusts
+       version(url, deps)   version.json, fetched at most once a session (sessionStorage
+                            epinoia_android_version), never rejecting: null when unknown */
+  const AppShell = (() => {
+    const VERSION_KEY = 'epinoia_android_version';
+    const whole = v => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isInteger(n) ? n : null;
+    };
+    const where = env => {
+      const e = env || {};
+      if (e.app === true || e.mApp === true) return 'app';
+      const ua = String(e.ua || '');
+      /* iPadOS asks for the desktop site and reports itself as a Mac with a touch screen */
+      if (/iPhone|iPad|iPod/i.test(ua) || (e.platform === 'MacIntel' && (e.maxTouchPoints || 0) > 1)) return 'ios';
+      /* Chrome, Samsung Internet, Firefox, Edge, Opera...: every Android browser says Android */
+      if (/Android/i.test(ua)) return 'android';
+      return 'other';
+    };
+    const installOffer = env => {
+      const w = where(env);
+      if (w === 'app') return 'none';
+      if (w === 'android') return /^\/epinoia\/android(\/|$)/.test(String((env && env.path) || '')) ? 'none' : 'android-app';
+      return w === 'ios' ? 'ios' : 'web';
+    };
+    const cleanVersion = j => {
+      if (!j || typeof j !== 'object') return null;
+      const name = typeof j.versionName === 'string' && /^\d+(\.\d+){1,3}$/.test(j.versionName) ? j.versionName : '';
+      return { versionCode: whole(j.versionCode), versionName: name, minShell: whole(j.minShell) };
+    };
+    const appCard = (env, ver) => {
+      if (where(env) !== 'android') return null;
+      const v = cleanVersion(ver);
+      return { href: (env && env.href) || '../android/', versionName: v ? v.versionName : '' };
+    };
+    const readShell = store => {
+      try {
+        const j = JSON.parse((store && store.getItem('epinoia_shell')) || 'null');
+        return j && typeof j === 'object' ? j : null;
+      } catch (_) { return null; }
+    };
+    const needsUpdate = (sh, ver) => {
+      const code = sh ? whole(sh.shell) : null;
+      const v = cleanVersion(ver);
+      return code !== null && code > 0 && !!v && v.minShell !== null && code < v.minShell;
+    };
+    /* ONE FETCH A SESSION. A good answer is kept in sessionStorage for the rest of the session
+       (a new minShell reaches the app on its next launch, which is when an update could be
+       installed anyway); a failure is not kept, so the next page tries again. Within one page
+       the promise itself is shared. */
+    let pending = null;
+    const version = (url, deps) => {
+      const d = deps || {};
+      const store = d.store;
+      try {
+        const hit = cleanVersion(JSON.parse((store && store.getItem(VERSION_KEY)) || 'null'));
+        if (hit) return Promise.resolve(hit);
+      } catch (_) { /* a spoilt copy is fetched again */ }
+      if (pending && !d.fresh) return pending;
+      const get = d.fetch || (typeof fetch === 'function' ? fetch : null);
+      if (!get) return Promise.resolve(null);
+      pending = Promise.resolve()
+        .then(() => get(url, { cache: 'no-store' }))
+        .then(r => (r && r.ok ? r.json() : null))
+        .then(j => {
+          const v = cleanVersion(j);
+          if (v) { try { store && store.setItem(VERSION_KEY, JSON.stringify(v)); } catch (_) { /* private mode */ } }
+          else pending = null;
+          return v;
+        })
+        .catch(() => { pending = null; return null; });
+      return pending;
+    };
+    return { where, installOffer, appCard, readShell, needsUpdate, cleanVersion, version, VERSION_KEY };
+  })();
+  window.EpinoiaAppShell = AppShell;
+
   if (document.querySelector('.ep-nav')) return;
 
   /* THE SPLASH HAS NO RAIL. /epinoia/ with no league asked for is the
@@ -498,17 +592,34 @@
      beforeinstallprompt and the banner's button hands that prompt to the person; on iPhone
      there is no such event and the banner explains the share sheet instead. Shown once a
      visit on a phone-sized screen that is not already the installed app; a dismissal is
-     remembered for a fortnight. window.epinoiaInstall() offers the same from a page. */
+     remembered for a fortnight. window.epinoiaInstall() offers the same from a page.
+
+     THE ANDROID APP CHANGES TWO THINGS (roadmap Phase 6). Inside any app (appmode.js's
+     html.m-app and window.epinoiaApp) there is no banner at all: you are already in it. And an
+     Android browser is offered the real app, a link to /epinoia/android/, instead of the web
+     app: on a Samsung the web app's alerts are posted by Samsung Internet and do not pop up,
+     which is the problem the Android app exists to solve. It is offered after the same 2.5 s
+     as the iPhone's, whether or not the browser fired beforeinstallprompt, and never on the
+     download page itself. iPhone and desktop are exactly as they were. */
   let installEvt = null, installBanner = null;
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const dismissed = () => { try { return (+localStorage.getItem('epinoia_install_dismissed') || 0) > Date.now() - 14 * 86400000; } catch (_) { return false; } };
+  const shellEnv = () => ({
+    app: window.epinoiaApp === true,
+    mApp: document.documentElement.classList.contains('m-app'),
+    ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints,
+    path: location.pathname
+  });
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});
   }
   function showInstall(force) {
     if (installBanner || standalone()) return;
+    const offer = AppShell.installOffer(shellEnv());
+    if (offer === 'none') return;
     if (!force && (dismissed() || window.innerWidth > 900)) return;
+    if (offer === 'android-app') { showAndroidApp(); return; }
     if (!installEvt && !isIOS() && !force) return;
     installBanner = el('div', 'ep-install');
     const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
@@ -535,11 +646,72 @@
     installBanner.append(ic, tx, go, x);
     document.body.appendChild(installBanner);
   }
+  /* THE ANDROID APP, OFFERED. The same card and the same fortnight's dismissal as the web-app
+     banner, but the button is a link: the download page explains the steps (unknown apps, Play
+     Protect, Chrome) better than a banner can. */
+  function showAndroidApp() {
+    installBanner = el('div', 'ep-install ep-app-offer');
+    const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
+    const tx = el('div', 'tx');
+    tx.appendChild(el('b', null, 'Get the Epinoia app for Android'));
+    tx.appendChild(el('span', null, 'Scores, fixtures and your clubs one tap away, with game alerts that pop up.'));
+    const go = el('a', 'go', 'get it'); go.href = root + 'android/';
+    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'not now';
+    const close = () => { try { localStorage.setItem('epinoia_install_dismissed', String(Date.now())); } catch (_) {} if (installBanner) installBanner.remove(); installBanner = null; };
+    go.addEventListener('click', close);
+    x.onclick = close;
+    installBanner.append(ic, tx, go, x);
+    document.body.appendChild(installBanner);
+  }
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(false); });
   window.addEventListener('appinstalled', () => { if (installBanner) { installBanner.remove(); installBanner = null; } });
   window.epinoiaInstall = () => showInstall(true);
   window.epinoiaCanInstall = () => !!installEvt;
-  if (isIOS()) setTimeout(() => showInstall(false), 2500);
+  {
+    const offer = AppShell.installOffer(shellEnv());
+    if (offer === 'ios' || offer === 'android-app') setTimeout(() => showInstall(false), 2500);
+  }
+
+  /* ------------------------------------------------------- update the app ---
+     THE ANDROID APP SAYS WHICH BUILD IT IS on every launch (shell=, kept by appmode.js in
+     sessionStorage epinoia_shell). Website changes never need a new app, so this appears only
+     when epinoia/android/version.json's minShell has been raised above that build: the site
+     has started to depend on something only a newer app does. version.json is fetched once a
+     session. Dismissed, it stays away for the rest of this launch and comes back on the next,
+     because an app that is too old stays too old until it is updated. Not on the download
+     page, which says the same thing in its own words. */
+  const UPDATE_DISMISSED = 'epinoia_update_dismissed';
+  function showUpdate(ver) {
+    const bar = el('div', 'ep-install ep-update');
+    bar.setAttribute('role', 'status');
+    const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
+    const tx = el('div', 'tx');
+    tx.appendChild(el('b', null, 'Update the Epinoia app'));
+    tx.appendChild(el('span', null, ver.versionName
+      ? 'Version ' + ver.versionName + ' is ready. Some things on the site need it.'
+      : 'A new version is ready. Some things on the site need it.'));
+    const go = el('a', 'go', 'update'); go.href = root + 'android/';
+    const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'later';
+    const close = () => { try { sessionStorage.setItem(UPDATE_DISMISSED, String(ver.minShell)); } catch (_) {} bar.remove(); };
+    x.onclick = close;
+    bar.append(ic, tx, go, x);
+    document.body.appendChild(bar);
+  }
+  (() => {
+    let store = null;
+    try { store = window.sessionStorage; } catch (_) { store = null; }
+    if (!store || AppShell.where(shellEnv()) !== 'app') return;
+    if (/^\/epinoia\/android(\/|$)/.test(location.pathname)) return;
+    const sh = AppShell.readShell(store);
+    if (!sh || !(Number(sh.shell) > 0)) return;          // not the Android app: nothing to update
+    AppShell.version(root + 'android/version.json', { store }).then(ver => {
+      if (!AppShell.needsUpdate(sh, ver)) return;
+      let gone = null;
+      try { gone = store.getItem(UPDATE_DISMISSED); } catch (_) { gone = null; }
+      if (gone === String(ver.minShell)) return;
+      showUpdate(ver);
+    });
+  })();
 
   /* --------------------------------------------------------------- the bell ---
      Top right of every page for a signed-in person: what the platform has to tell them, by

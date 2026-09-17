@@ -58,7 +58,8 @@ const UA = {
   iphone17: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
   iphone15: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1',
   ipadDesktop: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-  mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15'
+  mac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+  samsung: 'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36'
 };
 const REF = 'abcref';
 const TOKEN_KEY = 'sb-' + REF + '-auth-token';
@@ -145,9 +146,13 @@ function browser(o = {}) {
     if (st >= 200 && st < 300) deliver(url, body);
     return { status: st, ok: st >= 200 && st < 300, json: async () => (o.json ? o.json(url, body) : {}) };
   };
+  /* o.shell: what the Android app's launcher said (appmode.js keeps it in sessionStorage
+     epinoia_shell); o.search: the page's query string */
+  const ss = memStore();
+  if (o.shell) ss.setItem('epinoia_shell', JSON.stringify(o.shell));
   const env = {
     navigator, Notification, PushManager: o.noPush ? undefined : function PushManager() {},
-    localStorage: ls, fetch, AbortController: undefined,
+    localStorage: ls, sessionStorage: ss, location: { search: o.search || '' }, fetch, AbortController: undefined,
     matchMedia: q => ({ matches: !!(o.displayStandalone && /standalone/.test(q)) }),
     EPINOIA_CONFIG: { supabaseUrl: 'https://' + REF + '.supabase.co', supabaseAnonKey: 'sb_publishable_test' },
     EPINOIA_VAPID: o.vapid === undefined ? CFG_VAPID : o.vapid,
@@ -155,7 +160,7 @@ function browser(o = {}) {
   };
   if (o.now) env.now = o.now;
   T.env(env);
-  return { calls, ls, get sub() { return sub; }, makeSub };
+  return { calls, ls, ss, get sub() { return sub; }, makeSub };
 }
 /* the two kinds of browser the tests start from */
 const android = (o = {}) => browser(Object.assign({ ua: UA.android }, o));
@@ -284,8 +289,8 @@ console.log('\nenable(): permission, worker, subscription, the two writes');
   eq('...merging a duplicate rather than failing on it', up.headers.Prefer, 'resolution=merge-duplicates');
   eq('...with the apikey, the fan\'s token and JSON', [up.headers.apikey, up.headers.Authorization, up.headers['Content-Type']],
      ['sb_publishable_test', 'Bearer ' + tok, 'application/json']);
-  eq('...and the row: who, where, both keys, which browser', up.body,
-     { user_id: 'u1', endpoint: 'https://push.example/ep1', p256dh: 'P256-ep1', auth: 'AUTH-ep1', ua: UA.android });
+  eq('...and the row: who, where, both keys, which browser, which kind of client (0128)', up.body,
+     { user_id: 'u1', endpoint: 'https://push.example/ep1', p256dh: 'P256-ep1', auth: 'AUTH-ep1', ua: UA.android, client: 'tab' });
   eq('then notify_push is switched on', [pref.method, pref.url, pref.body],
      ['POST', 'https://' + REF + '.supabase.co/rest/v1/rpc/set_fan_prefs', { p: { notify_push: true } }]);
   eq('...with the same credentials', [pref.headers.apikey, pref.headers.Authorization], ['sb_publishable_test', 'Bearer ' + tok]);
@@ -295,6 +300,31 @@ console.log('\nenable(): permission, worker, subscription, the two writes');
   signIn(b.ls, { id: 'from-jwt', noUser: true });
   await P.enable();
   eq('a stored session without its user object: user_id from the token', b.calls.fetch[0].body.user_id, 'from-jwt');
+}
+{
+  /* THE CLIENT COLUMN BEFORE 0128: PostgREST answers 400 to a row naming a column it does not
+     know, and the phone must still be saved */
+  const b = android({ permission: 'default', answer: 'granted',
+                      respond: (u, init) => (u.includes('push_subscriptions') && JSON.parse(init.body).client ? 400 : 201) });
+  signIn(b.ls);
+  const r = await P.enable();
+  const saves = b.calls.fetch.filter(f => f.url.includes('push_subscriptions'));
+  ok('before 0128 (a 400 for the client column): the row is sent again without it, and turning on works',
+     r.ok && saves.length === 2 && saves[0].body.client === 'tab' && !('client' in saves[1].body) &&
+     saves[1].body.endpoint === saves[0].body.endpoint && b.calls.fetch.length === 3, JSON.stringify(b.calls.fetch.map(f => f.body)));
+
+  const b2 = android({ permission: 'default', answer: 'granted', respond: u => (u.includes('push_subscriptions') ? 400 : 201) });
+  signIn(b2.ls);
+  const r2 = await P.enable();
+  ok('...a 400 that is not about the column still fails after the one retry, and notify_push stays as it was',
+     !r2.ok && r2.message === P.MESSAGES.save && b2.calls.fetch.length === 2);
+
+  android(); eq('client: a browser tab', T.clientKind(), 'tab');
+  android({ displayStandalone: true }); eq('client: an installed web app', T.clientKind(), 'pwa');
+  iphoneTab({ standalone: true }); eq('client: an iPhone Home Screen app is an installed web app too', T.clientKind(), 'pwa');
+  android({ ua: UA.samsung, displayStandalone: true }); eq('client: Samsung Internet\'s installed web app', T.clientKind(), 'samsung-app');
+  android({ ua: UA.samsung }); eq('client: a Samsung Internet tab', T.clientKind(), 'tab');
+  android({ displayStandalone: true, shell: { shell: 1, notif: 1, chan: 4, at: 1 } }); eq('client: the Epinoia Android app', T.clientKind(), 'twa');
 }
 {
   const long = 'x'.repeat(260);
@@ -459,6 +489,31 @@ console.log('\ndisable(), test() and sync()');
   b = android();
   const r2 = await P.test();
   ok('signed out: nothing sent', !r2.ok && !b.calls.fetch.length && r2.message === P.MESSAGES.signedOut);
+
+  /* THE LOCKED-PHONE TEST: the server waits, so the request says how long */
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: url => /notify$/.test(url) ? Object.assign({ delayed: 10 }, mineOk) : {}, arrive: () => ({ tag: 'test', shown: true }) });
+  signIn(b.ls);
+  r = await P.test({ delay: 10 });
+  eq('test({delay: 10}) asks notify to wait 10 s', b.calls.fetch.find(f => /notify$/.test(f.url)).body, { test: true, endpoint: EPT, delay: 10 });
+  eq('...and, answered with delayed by a notify that waited, still hears the receipt', r.message, P.MESSAGES.testArrived);
+  /* a notify deployed before the delay: sent at once, answered without delayed */
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: url => /notify$/.test(url) ? mineOk : {}, arrive: () => ({ tag: 'test', shown: true }) });
+  signIn(b.ls);
+  r = await P.test({ delay: 10 });
+  eq('an old notify (no delayed in its answer): not ok, says it could not wait, so nobody is asked whether it popped up',
+     [r.ok, r.notDelayed, r.message], [false, true, P.MESSAGES.testNotDelayed]);
+  b = android({ permission: 'granted', sub: { endpoint: EPT, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: url => /notify$/.test(url) ? mineOk : {}, arrive: () => ({ tag: 'test', shown: true }) });
+  signIn(b.ls);
+  eq('...a plain test from the same notify is unaffected', (await P.test()).message, P.MESSAGES.testArrived);
+  b = android({ json: () => ({ sent: 1 }) }); signIn(b.ls);
+  await P.test({ delay: 45 });
+  eq('a longer delay is cut to 10', b.calls.fetch[0].body.delay, 10);
+  b = android({ json: () => ({ sent: 1 }) }); signIn(b.ls);
+  await P.test({ delay: 'soon' });
+  eq('a delay that is not a number is no delay: the body is the plain test', b.calls.fetch[0].body, { test: true, endpoint: '' });
 }
 {
   let b = android({ permission: 'granted', sub: { endpoint: 'https://push.example/s', key: T.keyBytes(CFG_VAPID) } });
@@ -579,6 +634,157 @@ console.log('\ncheck(): why nothing arrives');
   ok('an earlier refusal is shown for information, and a test that now works still reads as working',
      hist && hist.ok === null && /refused \(403\)/.test(hist.label) && r.ok && /Everything/.test(r.advice.title));
 }
+
+/* ======================================================= the Android app === */
+console.log('\nthe Epinoia Android app (a Trusted Web Activity on Chrome)');
+{
+  const ids = r => r.steps.map(s => s.id + ':' + (s.ok === true ? 'ok' : s.ok === false ? 'bad' : '?'));
+  const EPA = 'https://fcm.googleapis.com/fcm/send/in-the-app';
+  const INTENT = 'intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end';
+  /* the app: Chrome's user agent, display-mode standalone, and the launcher's report */
+  const twa = (shell, o = {}) => android(Object.assign({ displayStandalone: true, shell }, o));
+  const HIGH = { shell: 3, notif: 1, chan: 4, at: 1758300000000 };
+
+  eq('settingsIntent is the native settings screen\'s intent link', P.settingsIntent, INTENT);
+  eq('IMPORTANCE_HIGH is 4', T.IMPORTANCE_HIGH, 4);
+
+  twa(HIGH);
+  eq('platform: the launcher\'s report in this session makes it android-twa, not android-app', [T.platform(), P.inApp()], ['android-twa', true]);
+  android({ search: '?source=twa&shell=3' });
+  eq('...so does a launch with ?source=twa, before appmode.js has saved anything', [T.platform(), P.inApp()], ['android-twa', true]);
+  android({ ua: UA.samsung, displayStandalone: true, shell: HIGH });
+  eq('...never Samsung Internet, whatever its session holds (its web app is Samsung\'s to post)', [T.platform(), P.inApp()], ['android-samsung-app', false]);
+  android({ displayStandalone: true });
+  eq('...an installed web app without the launcher is still android-app', [T.platform(), P.inApp()], ['android-app', false]);
+  browser({ ua: UA.chrome, shell: HIGH });
+  ok('...and a computer is never the app', !P.inApp() && T.platform() === 'desktop');
+  android({ shell: 'not json' });
+  let threw = false;
+  try { T.launchState(); } catch (_) { threw = true; }
+  ok('a stored report that will not parse is no report, and nothing throws', !threw);
+
+  twa(HIGH);
+  const h = P.help();
+  const words = h.steps.join(' ');
+  ok('help(): Game alerts on Alert with pop-up, One UI\'s Detailed pop-up style, both batteries Unrestricted and never sleeping, Do Not Disturb',
+     /Game alerts/.test(words) && /Alert rather than Silent/.test(words) && /pop-up/.test(words) && /Detailed/.test(words) &&
+     /Epinoia, then Battery/.test(words) && /Unrestricted/.test(words) && /Chrome/.test(words) && /Sleeping apps/.test(words) &&
+     /Never sleeping apps/.test(words) && /Do Not Disturb/.test(words), words);
+  eq('...and the Open notification settings action', [h.platform, h.action], ['android-twa', { label: 'Open notification settings', href: INTENT }]);
+  android();
+  ok('a Chrome tab\'s help carries no such action', !('action' in P.help()));
+  ok('every platform, the app included, has settings to point at',
+     ['android-twa', 'android-app', 'android-chrome', 'android-samsung', 'android-samsung-app', 'ios-app', 'ios-safari', 'desktop']
+       .every(k => Array.isArray(T.SETTINGS[k]) && T.SETTINGS[k].length > 0 && Array.isArray(T.QUIET[k])));
+
+  /* the check trusts what Android told the launcher, not the JavaScript permission */
+  const answers = (url, body) => {
+    if (/\/rest\/v1\/push_subscriptions\?select=/.test(url)) return [{ id: 'rowA', last_push_at: null, last_push_status: null, last_push_error: null }];
+    if (/\/rest\/v1\/fan_prefs\?select=notify_push/.test(url)) return [{ notify_push: true }];
+    if (/\/functions\/v1\/notify$/.test(url)) return { ok: true, status: 201, service: 'fcm', text: 'Google accepted it for this phone.', saved: 'yours' };
+    return {};
+  };
+  const arrive = (url, body) => body && body.check ? { tag: 'check', shown: true } : null;
+
+  let b = twa({ shell: 3, notif: 0, chan: 4, at: 1 }, { permission: 'granted', sub: { endpoint: EPA, key: T.keyBytes(CFG_VAPID) } });
+  signIn(b.ls);
+  let r = await P.check();
+  let perm = r.steps.find(s => s.id === 'permission');
+  ok('notifications off for the app (notif=0) fail the permission step even though the page says granted',
+     perm && perm.ok === false && /turned off for the Epinoia app/.test(perm.label) && /as of this launch/.test(perm.label) && !r.ok, JSON.stringify(ids(r)));
+  ok('...the page\'s own permission is shown, for information only', /allowed/.test(perm.detail) && /app’s own setting is what counts/.test(perm.detail));
+  ok('...the check stops there, with the settings button and a prompt to reopen the app',
+     ids(r).join() === 'browser:ok,permission:bad' && r.advice.action && r.advice.action.href === INTENT &&
+     r.advice.lines.some(l => /open it again/.test(l)) && /reopen/.test(r.advice.title));
+  ok('...and nothing was asked, subscribed or sent', b.calls.perm === 0 && !b.calls.subscribe.length && !b.calls.fetch.length);
+
+  b = twa({ shell: 3, notif: 1, chan: 3, at: 1 }, { permission: 'granted' });
+  r = await P.check();
+  perm = r.steps.find(s => s.id === 'permission');
+  ok('Game alerts below HIGH (chan=3) fails: it sounds but does not pop up', perm.ok === false && /not to pop up/.test(perm.label) && /pop up/.test(r.advice.title));
+  b = twa({ shell: 3, notif: 1, chan: 2, at: 1 }, { permission: 'granted' });
+  ok('...Silent (chan=2) says Silent', /Silent/.test((await P.check()).steps.find(s => s.id === 'permission').label));
+  b = twa({ shell: 3, notif: 1, chan: 0, at: 1 }, { permission: 'granted' });
+  ok('...off (chan=0) says switched off', /switched off/.test((await P.check()).steps.find(s => s.id === 'permission').label));
+  b = twa({ shell: 3, notif: 1, chan: -1, at: 1 }, { permission: 'granted' });
+  r = await P.check();
+  ok('...a channel not created yet (chan=-1) says reopen', r.steps.find(s => s.id === 'permission').ok === false && /Reopen/.test(r.advice.title));
+
+  b = twa(HIGH, { permission: 'default', receipts: true, sub: { endpoint: EPA, key: T.keyBytes(CFG_VAPID) }, json: answers, arrive });
+  signIn(b.ls);
+  r = await P.check();
+  perm = r.steps.find(s => s.id === 'permission');
+  eq('on and HIGH at launch: the permission step passes although the page\'s permission reads "not asked", and the check goes on to the end',
+     ids(r), ['browser:ok', 'permission:ok', 'worker:ok', 'subscription:ok', 'account:ok', 'channel:ok', 'delivery:ok', 'arrival:ok']);
+  ok('...labelled as of this launch, with the page\'s permission beside it', /Game alerts pops up \(as of this launch\)/.test(perm.label) && /not asked/.test(perm.detail));
+  ok('...the advice names the app\'s settings and carries the button', r.ok && r.advice.action && r.advice.action.href === INTENT &&
+     r.advice.lines.some(l => /Game alerts/.test(l)));
+
+  b = twa(HIGH, { permission: 'granted', sub: { endpoint: EPA, key: T.keyBytes(CFG_VAPID) }, json: answers });
+  signIn(b.ls);
+  r = await P.check();
+  ok('accepted but never shown in the app: the arrival step fails with the app\'s battery and pop-up settings and the button',
+     r.steps[r.steps.length - 1].id === 'arrival' && r.steps[r.steps.length - 1].ok === false &&
+     r.advice.lines.some(l => /Chrome/.test(l) && /Unrestricted/.test(l)) && r.advice.action && r.advice.action.href === INTENT);
+
+  b = android({ search: '?source=twa', permission: 'denied' });
+  r = await P.check();
+  ok('launched without the launcher\'s report: the page\'s permission decides, the fix is the app\'s settings, and the button is there',
+     r.steps.find(s => s.id === 'permission').ok === false && /Game alerts/.test(r.advice.lines.join(' ')) && r.advice.action && r.advice.action.href === INTENT);
+
+  b = twa(HIGH, { permission: 'default', answer: 'granted' });
+  signIn(b.ls);
+  await P.enable();
+  eq('turning on in the app saves the row as client twa', b.calls.fetch[0].body.client, 'twa');
+
+  /* THE LAUNCH REPORT GOING STALE (1): launched with notif=0 ("Not now" at first launch), then
+     Turn on, and Android's own dialog allows it */
+  const OFF = { shell: 3, notif: 0, chan: 4, at: 1000 };
+  b = twa(OFF, { permission: 'default', answer: 'granted', receipts: true, json: answers, arrive,
+                 now: () => 5000 });
+  signIn(b.ls);
+  ok('launched with notif=0: the card is told Android blocks pop-ups', !!P.appBlocked() && /turned off/.test(P.appBlocked().label));
+  let en = await P.enable();
+  const after = JSON.parse(b.ss.getItem('epinoia_shell'));
+  eq('Turn on allowed through Android\'s dialog: the report now says notif=1, newer, channel and build kept',
+     [en.ok, after.notif, after.at, after.chan, after.shell], [true, 1, 5000, 4, 3]);
+  ok('...so the card no longer says blocked', P.appBlocked() === null);
+  r = await P.check();
+  eq('...and Check this phone goes on to the end instead of stopping at "turned off"',
+     ids(r), ['browser:ok', 'permission:ok', 'worker:ok', 'subscription:ok', 'account:ok', 'channel:ok', 'delivery:ok', 'arrival:ok']);
+
+  b = twa(OFF, { permission: 'granted', sub: { endpoint: EPA, key: T.keyBytes(CFG_VAPID) }, now: () => 5000 });
+  signIn(b.ls);
+  await P.enable();
+  eq('a permission that already read granted (it can, while Android blocks) proves nothing: the report is left alone',
+     JSON.parse(b.ss.getItem('epinoia_shell')).notif, 0);
+  b = android({ permission: 'default', answer: 'granted', shell: OFF, ua: UA.samsung, now: () => 5000 });
+  signIn(b.ls);
+  await P.enable();
+  ok('...and outside the app nothing is written', JSON.parse(b.ss.getItem('epinoia_shell')).notif === 0);
+
+  /* (2): the settings screen opened from the button, fixed there, Back into the same session */
+  let clockNow = 2000;
+  b = twa({ shell: 3, notif: 1, chan: 2, at: 1000 }, { permission: 'granted', receipts: true, sub: { endpoint: EPA, key: T.keyBytes(CFG_VAPID) },
+                                                       json: answers, arrive, now: () => clockNow });
+  signIn(b.ls);
+  ok('Game alerts Silent at launch: blocked, and not stale', !!P.appBlocked() && T.launchStale() === false);
+  clockNow = 3000;
+  P.settingsOpened();
+  eq('settingsOpened() remembers the tap in this session', b.ss.getItem(T.SETTINGS_OPENED_KEY), '3000');
+  ok('...the launch report is now stale, and the card stops saying blocked', T.launchStale() === true && P.appBlocked() === null);
+  r = await P.check();
+  perm = r.steps.find(s => s.id === 'permission');
+  ok('...Check this phone marks the permission step neither pass nor fail, saying the settings may have changed',
+     perm.ok === null && /may have changed since Epinoia opened/.test(perm.label) && /test below decides/.test(perm.detail));
+  eq('...and goes on, so the live test decides', ids(r),
+     ['browser:ok', 'permission:?', 'worker:ok', 'subscription:ok', 'account:ok', 'channel:ok', 'delivery:ok', 'arrival:ok']);
+  ok('...ending on the app\'s advice with the button, not "reopen"', r.ok && r.advice.action && !/reopen/i.test(r.advice.title));
+  b.ss.setItem('epinoia_shell', JSON.stringify({ shell: 3, notif: 1, chan: 2, at: 4000 }));
+  ok('a launch after the visit (a newer report) is believed again', T.launchStale() === false && !!P.appBlocked());
+  b = android({ permission: 'granted', displayStandalone: true });
+  ok('an installed web app (no launch report) is never "blocked" by this', P.appBlocked() === null);
+}
 T.env(null);
 
 /* ============================================================== sw.js === */
@@ -629,12 +835,50 @@ const client = (url, o = {}) => {
      [W.SUPABASE_URL, W.SUPABASE_KEY, W.VAPID_PUBLIC_KEY], [CFG_URL, CFG_KEY, CFG_VAPID]);
   ok('the icon and the badge are real files', fs.existsSync(path.join(ROOT, W.ICON.replace(/^\//, ''))) && fs.existsSync(path.join(ROOT, W.BADGE.replace(/^\//, ''))),
      W.ICON + ' ' + W.BADGE);
-  eq('icon 192, badge 32', [W.ICON, W.BADGE], ['/epinoia/brand/epinoia-mark-192.png', '/epinoia/brand/epinoia-mark-32.png']);
+  eq('icon 192, and the badge is the white silhouette', [W.ICON, W.BADGE], ['/epinoia/brand/epinoia-mark-192.png', '/epinoia/brand/epinoia-badge-96.png']);
+  {
+    /* Android draws a badge from its alpha alone: every pixel white, the ground transparent */
+    const png = fs.readFileSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-badge-96.png'));
+    const ihdr = png.indexOf('IHDR');
+    eq('the badge is a 96x96 PNG with an alpha channel (RGBA)',
+       [png.slice(1, 4).toString(), png.readUInt32BE(ihdr + 4), png.readUInt32BE(ihdr + 8), png[ihdr + 13]], ['PNG', 96, 96, 6]);
+  }
   ok('it carries a version line, so a deploy is a new worker', /SW_VERSION = 'notifications-v2-/.test(swSrc));
-  let responded = null;
-  listeners.fetch({ request: { method: 'POST' }, respondWith: p => { responded = p; } });
-  ok('fetch: a POST is not touched', responded === null);
-  ok('fetch: a GET is still passed straight through (never cached)', /e\.respondWith\(fetch\(e\.request\)\.catch/.test(swSrc) && !/caches\./.test(swSrc));
+  ok('...bumped for the app (the badge and the fetch handler changed)', W.SW_VERSION !== 'notifications-v2-2026-09-17-home', W.SW_VERSION);
+  ok('fetch: nothing is ever cached', !/caches\./.test(swSrc));
+}
+{
+  /* ONLY A FAILED PAGE LOAD GETS THE OFFLINE PAGE, and with status 200 */
+  const swCtx = st => {
+    const listeners = {};
+    const self = { addEventListener: (t, fn) => { listeners[t] = fn; }, skipWaiting: () => {}, location: { origin: ORIGIN },
+                   registration: {}, clients: { claim: async () => {} } };
+    const ctx = vm.createContext({
+      self, module: { exports: {} }, URL, atob, console, setTimeout,
+      fetch: async () => { if (st.offline) throw new TypeError('Failed to fetch'); return { ok: true, status: 200, from: 'network' }; },
+      Response: function Response(body, init) { this.body = body; this.status = init.status; this.headers = init.headers; }
+    });
+    vm.runInContext(swSrc, ctx, { filename: 'sw.js' });
+    return listeners;
+  };
+  const respond = async (listeners, request) => {
+    let p = null;
+    listeners.fetch({ request, respondWith: x => { p = x; } });
+    return p === null ? null : await p;
+  };
+  let L = swCtx({ offline: true });
+  const page = await respond(L, { method: 'GET', mode: 'navigate', url: ORIGIN + '/epinoia/home/' });
+  ok('fetch: a page load that fails offline gets the offline page, status 200, as HTML, never stored',
+     page && page.status === 200 && /text\/html/.test(page.headers['Content-Type']) && /no-store/.test(page.headers['Cache-Control']) &&
+     /Epinoia is offline/.test(page.body), page && JSON.stringify({ status: page.status, headers: page.headers }));
+  ok('...light by default, dark when the phone is', /background:#f3faf6/.test(page.body) && /prefers-color-scheme:dark/.test(page.body));
+  eq('fetch: a failed JSON read (not a page load) is not answered by the worker, so its caller sees a real network error',
+     await respond(L, { method: 'GET', mode: 'cors', url: 'https://abc.supabase.co/rest/v1/games?select=id' }), null);
+  eq('fetch: nor is a script or image (no-cors)', await respond(L, { method: 'GET', mode: 'no-cors', url: ORIGIN + '/epinoia/nav.js?v=1' }), null);
+  eq('fetch: a POST is not touched', await respond(L, { method: 'POST', mode: 'cors', url: ORIGIN + '/x' }), null);
+  L = swCtx({ offline: false });
+  const online = await respond(L, { method: 'GET', mode: 'navigate', url: ORIGIN + '/epinoia/home/' });
+  ok('fetch: online, a page load is the network\'s own response, passed straight through', online && online.from === 'network');
 }
 {
   const { W } = loadSW();
@@ -644,7 +888,7 @@ const client = (url, o = {}) => {
     tag: 'lineups:' + G, renotify: true, kind: 'lineups', timestamp: 1758301500000, actions: [{ action: 'starters', title: 'See lineups' }] });
   eq('a lineups payload becomes the notification the contract describes', JSON.parse(JSON.stringify(n)), {
     title: 'Lineups are in: Rockets v Lions',
-    options: { body: 'Rockets: Baker, Salih, Cole, Diaz, Eze\nLions: …', icon: '/epinoia/brand/epinoia-mark-192.png', badge: '/epinoia/brand/epinoia-mark-32.png',
+    options: { body: 'Rockets: Baker, Salih, Cole, Diaz, Eze\nLions: …', icon: '/epinoia/brand/epinoia-mark-192.png', badge: '/epinoia/brand/epinoia-badge-96.png',
       vibrate: [80, 40, 80], data: { url, kind: 'lineups', actions: { starters: url } },
       tag: 'lineups:' + G, renotify: true, timestamp: 1758301500000, actions: [{ action: 'starters', title: 'See lineups' }] } });
 
@@ -884,6 +1128,59 @@ console.log('\nwired into the pages');
   ok('...shown wherever the browser can take notifications, blocked included',
      /pushCheck: !!P && st !== 'unsupported' && st !== 'ios-install'/.test(me));
   ok('...and no longer subscribes by itself (push.js does)', !/enablePush|disablePush|serviceWorker\.register|pushManager/.test(me));
+
+  /* the Android app on the profile page (roadmap Phase 7 and 8) */
+  ok('the card has Open notification settings and the locked-phone test, both hidden until me.js shows them',
+     /<a class="ep-btn hide" id="pushSettings"/.test(page) && /<button class="ep-btn hide" id="pushTestLocked"/.test(page));
+  ok('...shown only in the app, the settings link taken from push.js',
+     /pushSettings: app,/.test(me) && /pushTestLocked: app && st === 'on'/.test(me) && /\$\('#pushSettings'\)\.href = P\.settingsIntent/.test(me));
+  ok('...the locked-phone test asks for a 10 s delay and ends on "did it pop up?"',
+     /P\.test\(\{ delay: 10 \}\)/.test(me) && /pending\.then\(r => \{ if \(r && r\.ok\) askSeen\(\); \}\)/.test(me));
+  ok('...the check\'s advice and "your phone is hiding it" draw the settings action when push.js gives one',
+     /if \(r\.advice\.action\)/.test(me) && /if \(h\.action\) acts\.append\(settingsLink\(h\.action\)\)/.test(me));
+  ok('the install button never shows in the app', /installBtn: !app && !standaloneApp\(\)/.test(me));
+  ok('...on an Android browser it offers the Android app (nav.js\'s own decision), labelled so, and goes to ../android/',
+     /const offerApp = !app && androidAppOffer\(\);/.test(me) && /S\.installOffer\(\{/.test(me) && /=== 'android-app'/.test(me) &&
+     /installBtn: !app && !standaloneApp\(\) && \(offerApp \? st !== 'on'/.test(me) &&
+     /android: 'Get the Epinoia app for Android'/.test(me) && /\$\('#installBtn'\)\.textContent = offerApp \? INSTALL_WORDS\.android : INSTALL_WORDS\.web/.test(me) &&
+     /if \(androidAppOffer\(\)\) \{ location\.href = '\.\.\/android\/'; return; \}/.test(me));
+  ok('the other sign-ups: only in the app with this phone on, the fan\'s own rows, deleted by id',
+     /if \(st !== 'on' \|\| !sb\) \{ box\.classList\.add\('hide'\); return; \}\r?\n\s*const others = await otherSignups\(\);/.test(me) &&
+     /\.from\('push_subscriptions'\)\.delete\(\)\.in\('id', others\.map\(r => r\.id\)\)/.test(me) &&
+     /r\.client === 'samsung-app'/.test(me) && page.includes('id="phoneDupes"'));
+  ok('...read again without client before 0128', /select\('id,endpoint,client,ua'\);\s*if \(res\.error\) res = await sb\.from\('push_subscriptions'\)\.select\('id,endpoint,ua'\)/.test(me));
+  {
+    /* the filter itself, run on rows */
+    const src = me.slice(me.indexOf('function endpointHost'), me.indexOf('/* THE OTHER SIDE OF IT'));
+    const MINE = 'https://fcm.googleapis.com/fcm/send/app';
+    const rows = [
+      { id: 'self', endpoint: MINE, client: 'twa', ua: UA.android },
+      { id: 'sam-app', endpoint: 'https://fcm.googleapis.com/fcm/send/1', client: 'samsung-app', ua: UA.samsung },
+      { id: 'sam-tab', endpoint: 'https://fcm.googleapis.com/fcm/send/2', client: 'tab', ua: UA.samsung },
+      { id: 'old-android', endpoint: 'https://fcm.googleapis.com/fcm/send/3', client: null, ua: UA.android },
+      { id: 'chrome-tab', endpoint: 'https://fcm.googleapis.com/fcm/send/4', client: 'tab', ua: UA.android },
+      { id: 'other-app', endpoint: 'https://fcm.googleapis.com/fcm/send/5', client: 'twa', ua: UA.android },
+      { id: 'desktop', endpoint: 'https://fcm.googleapis.com/fcm/send/6', client: null, ua: UA.chrome },
+      { id: 'firefox', endpoint: 'https://updates.push.services.mozilla.com/x', client: null, ua: UA.android }
+    ];
+    const ctx = vm.createContext({ URL, window: { EpinoiaPush: { endpoint: async () => MINE } },
+      sb: { from: () => ({ select: async () => ({ data: rows, error: null }) }) } });
+    vm.runInContext(src + '\nthis.otherSignups = otherSignups;', ctx);
+    eq('the others offered: Samsung Internet rows however labelled and unlabelled Android rows on the same service; never this app, another app, a Chrome tab, a computer or another service',
+       (await ctx.otherSignups()).map(r => r.id), ['sam-app', 'sam-tab', 'old-android']);
+  }
+  ok('in Samsung Internet, once the account has the app: no sync, and a button that unsubscribes this browser',
+     /\.select\('client'\)\)/.test(me) && /r\.client === 'twa'/.test(me) && /if \(await accountHasApp\(\)\.catch\(\(\) => false\)\) return;\r?\n\s*window\.EpinoiaPush\.sync\(\)/.test(me) &&
+     /\/\^android-samsung\/\.test\(window\.EpinoiaPush\.help\(\)\.platform\)/.test(me) &&
+     /phoneAction\(off, 'Turning off…', \(\) => window\.EpinoiaPush\.disable\(\)\)/.test(me));
+  ok('the card in the app says when Android blocks pop-ups, from push.js appBlocked',
+     /const blocked = app && P && P\.appBlocked \? P\.appBlocked\(\) : null;/.test(me) && /as of this launch/.test(me));
+  ok('the settings links (the card\'s and the advice\'s) and the follow sheet\'s tell push.js they were opened',
+     /\$\('#pushSettings'\)\.addEventListener\('click', settingsTapped\)/.test(me) && /a\.addEventListener\('click', settingsTapped\)/.test(me) &&
+     /EpinoiaPush\.settingsOpened\(\)/.test(me) && /a\.addEventListener\('click', settingsOpened\)/.test(read('epinoia', 'push.js')));
+  const body = page.slice(page.indexOf('<div id="body"'), page.indexOf('<script src="../config.js'));
+  ok('Delete my account links to the privacy page\'s erasure form, inside the signed-in body',
+     /<a id="deleteAccount" href="\.\.\/privacy\/#delete"[^>]*>Delete my account<\/a>/.test(body));
 
   const Pv = require(path.join(ROOT, 'epinoia', 'game', 'preview.js'));
   const five = pre => [1, 2, 3, 4, 5].map(i => ({ id: pre + i, name: pre + i + ' Player', num: String(i) }));

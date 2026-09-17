@@ -144,7 +144,9 @@
           <span><b>See your data</b><small>A copy of what we hold about you, what we use it for, who we share it with and how long we keep it.</small></span></label>
         <label class="kind"><input type="radio" name="kind" value="rectification">
           <span><b>Correct it</b><small>Put right something that is wrong, or complete something that is missing.</small></span></label>
-        <label class="kind"><input type="radio" name="kind" value="erasure">
+        <!-- #delete: the account-deletion address given to Google Play
+             (privacy/#delete) lands here, and privacy.js chooses this kind -->
+        <label class="kind" id="delete"><input type="radio" name="kind" value="erasure">
           <span><b>Erase it</b><small>Delete your data where there is no longer a good reason to keep it.</small></span></label>
         <label class="kind"><input type="radio" name="kind" value="restriction">
           <span><b>Restrict it</b><small>Keep your data but stop using it while something is checked or disputed.</small></span></label>
@@ -155,6 +157,13 @@
         <label class="kind"><input type="radio" name="kind" value="complaint">
           <span><b>Complain</b><small>About how your personal data has been collected, used or protected.</small></span></label>
         </div>
+        <p class="fine hide" id="deleteNote" style="margin:calc(var(--u)*1.5) 0 0">
+          To delete your Epinoia account, send this with Erase it chosen. We delete
+          the account and what it holds: your email address, your name, what you
+          follow and your notification subscriptions. If a record has to be kept,
+          we tell you which and why; statistics stay, without your name. Signed in,
+          the request comes from the account; signed out, give the address it uses.
+        </p>
       </fieldset>
 
       <div class="grid2">
@@ -267,6 +276,30 @@
         regulator, at <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk</a>
         or on 0303 123 1113. They usually ask you to raise it with us first.
       </p>
+    </div>
+  </section>
+
+  <!-- Roadmap Phase 8: what Google Play's Data safety form and review read.
+       Keep it in step with that form. -->
+  <section class="sec" id="androidSec" aria-labelledby="androidH">
+    <div class="ep-hdr"><span class="idx">06</span><h2 id="androidH">Epinoia on Android</h2></div>
+    <div class="body">
+      <div class="faq">
+        <div class="q">What the app is</div>
+        <div class="a">The Epinoia app for Android shows this website, full screen, in Chrome. It is the same site with the same account, so everything on this page applies to it. The app itself adds a notification channel for game alerts and a screen for its notification settings, and keeps nothing about you of its own.</div>
+        <div class="q">Your account</div>
+        <div class="a">Your email address; your name, if you give it or sign in with Google; the clubs and players you follow and what you want to be told about; and, if you turn notifications on, your phone&rsquo;s notification subscription (its push address and keys, which browser or app it belongs to, and whether the latest notification was delivered) and the notifications sent to it.</div>
+        <div class="q">Players, including children</div>
+        <div class="a">Clubs and leagues enter their players&rsquo; records: names, shirt numbers, teams, birth years (including for players under 18, who are marked as minors) and a photograph once it is approved. You can ask to see, correct or erase such a record with the form above, as a parent or guardian if it is about your child.</div>
+        <div class="q">Email</div>
+        <div class="a">Emails we send you, such as notifications you choose to have by email, go through Resend, which delivers them for us and uses your address for nothing else.</div>
+        <div class="q">Ads and tracking</div>
+        <div class="a">None. There are no adverts, no advertising or analytics trackers, and nothing about you is sold or shared for marketing.</div>
+        <div class="q">Notifications</div>
+        <div class="a">Optional. The app asks once; you can say no, and turn them on or off at any time in the app&rsquo;s notification settings or in Android&rsquo;s settings for the app.</div>
+        <div class="q">Delete your account</div>
+        <div class="a">Choose Erase it in the form above and send it; <a href="#delete">this link</a> chooses it for you.</div>
+      </div>
     </div>
   </section>
 

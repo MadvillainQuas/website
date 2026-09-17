@@ -13,7 +13,9 @@
      plain tab · ?source=pwa · ?source=twa · android-app:// referrer ·
      display-mode standalone · the stored flag · ?l=bcb · empty ?l= ·
      #access_token and ?code= kept · shell/notif/chan stored ·
-     the news archive not redirected · HOME not redirected · theme
+     the news archive not redirected · HOME not redirected · theme ·
+     in the app, links outside /epinoia/ opened in a browser tab (and
+     everything that must be left alone left alone)
 
      node supabase/tests/appmode.test.mjs
    ============================================================================ */
@@ -55,16 +57,19 @@ function load(url, o = {}) {
   const replaced = [];
   const ss = new Store(o.session);
   const ls = new Store(o.local);
+  const listeners = {};
   const ctx = {
-    URLSearchParams,
+    URLSearchParams, URL,
     JSON, Number, Date, isFinite, String,
     document: {
       documentElement: root,
       referrer: o.referrer || '',
       currentScript: script,
-      querySelector: sel => (sel === 'meta[name="theme-color"]' && !o.noMeta ? meta : null)
+      querySelector: sel => (sel === 'meta[name="theme-color"]' && !o.noMeta ? meta : null),
+      addEventListener: (t, f, opt) => { (listeners[t] = listeners[t] || []).push({ f, opt }); }
     },
     location: {
+      href: u.href, origin: u.origin,
       pathname: u.pathname, search: u.search, hash: u.hash,
       replace: to => { replaced.push({ to, hiddenFirst: root.style.display === 'none' }); }
     },
@@ -75,7 +80,23 @@ function load(url, o = {}) {
   };
   ctx.window = ctx;
   vm.runInNewContext(SRC, ctx, { filename: 'appmode.js' });
-  return { ctx, cls, attrs, root, meta, replaced, ss };
+  return { ctx, cls, attrs, root, meta, replaced, ss, listeners };
+}
+
+/* A link, and a click on it (or on a child of it) as the document's listeners see it. */
+function link(href, attrs = {}) {
+  const a = { tagName: 'A', nodeType: 1, attrs: Object.assign({}, href == null ? {} : { href }, attrs) };
+  a.getAttribute = k => (k in a.attrs ? a.attrs[k] : null);
+  a.setAttribute = (k, v) => { a.attrs[k] = String(v); };
+  a.hasAttribute = k => k in a.attrs;
+  a.closest = sel => (sel === 'a[href]' && 'href' in a.attrs ? a : null);
+  return a;
+}
+function click(r, target, ev = {}) {
+  const e = Object.assign({ type: 'click', target, button: 0, defaultPrevented: false,
+    metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }, ev);
+  (r.listeners.click || []).forEach(l => l.f(e));
+  return target;
 }
 
 /* ---------------------------------------------------------------- a tab --- */
@@ -220,6 +241,63 @@ function load(url, o = {}) {
 {
   const r = load('/epinoia/home/', { noMeta: true });
   ok('a page with no theme-color meta does not throw', r.attrs['data-theme'] === 'light');
+}
+
+/* --------------------------------------------- links out of /epinoia/ in the app --- */
+{
+  const tab = load('/epinoia/stats/?l=bcb');
+  ok('a plain tab attaches no click listener (nothing changes for a website visitor)', !(tab.listeners.click || []).length);
+
+  const r = load('/epinoia/stats/?l=bcb', { session: { epinoia_app: '1' } });
+  ok('in the app: exactly one document click listener', (r.listeners.click || []).length === 1, (r.listeners.click || []).length);
+
+  const out = click(r, link('/index_9.html'));
+  ok('in the app: a same-origin link outside /epinoia/ gets target=_blank rel=noopener',
+     out.attrs.target === '_blank' && out.attrs.rel === 'noopener', JSON.stringify(out.attrs));
+  const abs = click(r, link('https://prophesyscouting.co.uk/allstats.html'));
+  ok('...written as an absolute URL too', abs.attrs.target === '_blank');
+  const up = click(r, link('../../'));
+  ok('...and a relative climb out of /epinoia/ (../../ from stats/ is the site root)', up.attrs.target === '_blank', JSON.stringify(up.attrs));
+  const relKept = click(r, link('/', { rel: 'nofollow' }));
+  ok('...an existing rel keeps its tokens and gains noopener', relKept.attrs.rel === 'nofollow noopener', relKept.attrs.rel);
+
+  const child = link('/index_9.html');
+  const span = { nodeType: 1, closest: sel => child.closest(sel) };
+  click(r, span);
+  ok('a click on an element inside the link is handled', child.attrs.target === '_blank');
+  const txt = link('/index_9.html');
+  click(r, { nodeType: 3, parentNode: { nodeType: 1, closest: sel => txt.closest(sel) } });
+  ok('a click whose target is a text node is handled', txt.attrs.target === '_blank');
+
+  [
+    ['an /epinoia/ link', link('/epinoia/home/')],
+    ['a relative link inside /epinoia/', link('../games/')],
+    ['/epinoia with no slash', link('/epinoia')],
+    ['a same-page anchor', link('#leagues')],
+    ['a download', link('/files/report.pdf', { download: '' })],
+    ['a link that already has a target', link('/index_9.html', { target: '_self' })],
+    ['another origin', link('https://example.com/')],
+    ['mailto:', link('mailto:hello@example.com')],
+    ['javascript:', link('javascript:void(0)')],
+    ['an <a> with no href', link(null)]
+  ].forEach(([name, a]) => {
+    const before = JSON.stringify(a.attrs);
+    click(r, a);
+    ok('left alone: ' + name, JSON.stringify(a.attrs) === before, JSON.stringify(a.attrs));
+  });
+  [
+    ['ctrl-click', { ctrlKey: true }], ['cmd-click', { metaKey: true }], ['shift-click', { shiftKey: true }],
+    ['alt-click', { altKey: true }], ['middle click', { button: 1 }], ['a click a page script prevented', { defaultPrevented: true }]
+  ].forEach(([name, ev]) => {
+    const a = link('/index_9.html');
+    click(r, a, ev);
+    ok('left alone: ' + name, !('target' in a.attrs));
+  });
+
+  const onSplash = load('/epinoia/?source=twa', { water: 'front' });
+  ok('the splash redirect still attaches the listener (it is harmless) and still redirects',
+     onSplash.replaced.length === 1 && (onSplash.listeners.click || []).length === 1);
+  ok('appmode.js adds no other listener', Object.keys(r.listeners).join() === 'click', Object.keys(r.listeners).join());
 }
 
 /* ------------------------------------------------------------ the markup --- */

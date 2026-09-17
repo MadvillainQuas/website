@@ -462,6 +462,22 @@ jobs:
         # has a scale, the reading rules hold, and full stats and events shade on a real game
         run: node supabase/tests/gamepct.test.mjs
 
+      - name: HOME, the app mode and the global fixtures, stars and leagues
+        # appmode.js (the installed app never paints the water splash; links outside /epinoia/
+        # leave the app), every wordmark and the sidebar lead to HOME, the global games merge
+        # and daily pick, the stars refactor held identical to the league page's saved output,
+        # country grouping, and the app shell's banner / app card / update notice decisions
+        run: |
+          node supabase/tests/appmode.test.mjs
+          node supabase/tests/home-links.test.mjs
+          node supabase/tests/globalgames.test.mjs
+          node supabase/tests/stars.test.mjs
+          node supabase/tests/country.test.mjs
+          node supabase/tests/app-shell.test.mjs
+
+      - name: Email sign-in inside the Android app, and the privacy page's deletion path
+        run: node supabase/tests/app-signin.test.mjs
+
       - name: The Statistics table works on a phone
         # fulltable.js on a coarse pointer: no resize grips, the sticky header strip, pages of
         # 50 with show more, debounced search, and the stats header that wraps instead of

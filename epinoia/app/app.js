@@ -628,17 +628,158 @@ async function renderRoster() {
   });
 }
 
+/* >>> THE CODE FROM THE EMAIL, INSIDE THE APP (roadmap Phase 6).
+
+   A magic link's first stop is *.supabase.co, which no App Link covers, so a
+   link tapped in Gmail finishes in the phone's default browser: that browser
+   ends up signed in and the app does not. The same email also carries a code
+   (the Magic Link template's {{ .Token }}), so inside the app (appmode.js:
+   window.epinoiaApp, html.m-app) the form offers a field for it once the email
+   has gone, and verifyOtp puts the session in the app that asked for it. The
+   link still works, and outside the app none of this is ever drawn.
+
+   Built from script rather than markup because one block serves all four
+   sign-in forms. Kept character for character the same in signin/signin.js,
+   app/app.js, admin/admin.js and admin/platform/platform.js; app-signin.test.mjs
+   checks that and then runs it. The names are long on purpose: these files are
+   classic scripts sharing one global scope with a dozen others.
+
+   A code sign-in fires onAuthStateChange exactly as the link does, so each page
+   carries on down its own post-sign-in path. Nothing here renders the page. */
+let emailCodeResend = null;
+
+function emailCodeInApp() {
+  return !!window.epinoiaApp || document.documentElement.classList.contains('m-app');
+}
+
+/* Called after a send succeeds. Outside the app it returns null and the page
+   says what it always said; inside, it shows the field (once) after `after`
+   and returns it. `resend(email)` is the page's own send, rate limits and all. */
+function offerEmailCode(after, email, resend) {
+  if (!emailCodeInApp() || !after || !after.parentNode) return null;
+  emailCodeResend = resend;
+  let box = document.getElementById('emailCodeBox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'emailCodeBox';
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-labelledby', 'emailCodeHint');
+    box.style.cssText = 'flex-direction:column;gap:10px;margin:14px 0;max-width:360px';
+
+    const hint = document.createElement('p');
+    hint.id = 'emailCodeHint';
+    hint.style.cssText = 'margin:0;font-size:14px;line-height:1.6;color:var(--ink-2)';
+
+    const lab = document.createElement('label');
+    lab.htmlFor = 'emailCodeIn';
+    lab.textContent = 'Code from the email';
+    lab.style.cssText = 'font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;' +
+      'text-transform:uppercase;color:var(--ink-3)';
+
+    /* 16px or a phone zooms the page on focus; numeric so the keypad is
+       digits; one-time-code so the keyboard can offer the code it saw */
+    const input = document.createElement('input');
+    input.id = 'emailCodeIn';
+    input.className = 'ep-input';
+    input.type = 'text';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'one-time-code');
+    input.setAttribute('pattern', '[0-9]*');
+    input.setAttribute('maxlength', '12');
+    input.setAttribute('aria-describedby', 'emailCodeHint');
+    input.style.cssText = 'font-size:16px;letter-spacing:.3em;max-width:220px';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+    const go = document.createElement('button');
+    go.id = 'emailCodeGo';
+    go.type = 'button';
+    go.className = 'ep-btn pri';
+    go.textContent = 'Verify';
+    const again = document.createElement('button');
+    again.id = 'emailCodeAgain';
+    again.type = 'button';
+    again.className = 'ep-btn';
+    again.textContent = 'Send a new code';
+    row.append(go, again);
+    box.append(hint, lab, input, row);
+
+    go.addEventListener('click', () => verifyEmailCode(box));
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') verifyEmailCode(box); });
+    again.addEventListener('click', async () => {
+      if (typeof emailCodeResend !== 'function' || again.disabled) return;
+      again.disabled = true;
+      try { await emailCodeResend(box.getAttribute('data-email') || ''); }
+      finally { again.disabled = false; }
+    });
+    after.parentNode.insertBefore(box, after.nextSibling);
+  }
+  box.setAttribute('data-email', email);
+  box.querySelector('#emailCodeHint').textContent =
+    'Enter the 6-digit code from the email, or open the link on this phone. ' +
+    'It went to ' + email + '.';
+  box.style.display = 'flex';
+  return box;
+}
+
+async function verifyEmailCode(box) {
+  const input = box.querySelector('#emailCodeIn');
+  const go = box.querySelector('#emailCodeGo');
+  const email = box.getAttribute('data-email') || '';
+  /* a code pasted as "123 456" is still the code */
+  const token = String(input.value || '').replace(/\D/g, '');
+  if (!/^[0-9]{6,10}$/.test(token)) {
+    input.focus();
+    return say('Enter the 6-digit code from the email, or open the link on this phone.', 'warn');
+  }
+  if (go.disabled) return;
+  go.disabled = true;
+  const label = go.textContent;
+  go.textContent = 'checking…';
+  let error = null;
+  try {
+    const res = await sb.auth.verifyOtp({ email, token, type: 'email' });
+    error = res && res.error;
+  } catch (e) {
+    error = e || new Error('The code could not be checked.');
+  }
+  go.disabled = false;
+  go.textContent = label;
+  if (error) {
+    const m = String(error.message || error);
+    /* Supabase says "Token has expired or is invalid" for both, and an older
+       email's code is refused the same way once a newer one has been sent */
+    if (/expired|invalid|not found/i.test(m)) {
+      return say('That code is wrong or has expired. Use the code in the newest ' +
+                 'email, or send a new one.', 'err');
+    }
+    if (/rate|limit|too many/i.test(m)) {
+      return say('Too many tries for now. Wait a minute, then try again.', 'err');
+    }
+    return say(m, 'err');
+  }
+  input.value = '';
+  box.style.display = 'none';
+  say('Signed in.', 'ok');
+}
+/* <<< THE CODE FROM THE EMAIL */
+
 /* ---------------- actions ---------------- */
-$('#send').addEventListener('click', async () => {
-  const email = $('#email').value.trim();
+/* The resend under the code field passes the address the code went to. */
+async function sendLink(to) {
+  const email = typeof to === 'string' ? to : $('#email').value.trim();
   if (!email) return say('Enter your email first.', 'warn');
   $('#send').disabled = true;
   const { error } = await sb.auth.signInWithOtp({
     email, options: { emailRedirectTo: location.href }
   });
   $('#send').disabled = false;
+  if (!error && offerEmailCode($('#send').closest('.row') || $('#send'), email, sendLink)) {
+    return say('Email sent to ' + email + '. Open the link in it on this phone, or enter its code below.', 'ok');
+  }
   say(error ? error.message : 'Link sent — check your inbox, then come back here.', error ? 'err' : 'ok');
-});
+}
+$('#send').addEventListener('click', () => sendLink());
 
 $('#out').addEventListener('click', async () => {
   await (window.epinoiaSignOut ? window.epinoiaSignOut(sb) : sb.auth.signOut());

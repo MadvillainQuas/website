@@ -43,6 +43,15 @@
       app. The root is hidden FIRST because the navigation is asynchronous and
       the document keeps parsing meanwhile: hidden, splash.css never lays the
       pool out and never fetches its pool-*.jpg backgrounds.
+   5. THE REST OF THE SITE OPENS IN A BROWSER TAB. The Android app verifies the
+      whole origin, so a link from /epinoia/ to the Prophesy scouting pages (or
+      anything else on prophesyscouting.co.uk outside /epinoia/) would open
+      full-screen inside the app, with no way back to it but Back. One click
+      listener on the document, attached here and doing nothing until a click,
+      gives such a link target="_blank" rel="noopener" at the moment it is
+      followed. /epinoia/ links, same-page anchors, downloads, modified or
+      non-primary clicks, clicks a page script already handled, and links that
+      name their own target are left exactly as they are.
    ============================================================================ */
 (function () {
   var doc = document;
@@ -122,5 +131,29 @@
     } catch (_) {
       root.style.display = '';     // could not leave: showing the splash beats a blank app
     }
+  }
+
+  /* ---- 5. OUTSIDE /epinoia/, A BROWSER TAB. Bubble phase, so a page's own handler that
+     called preventDefault (and navigates itself, or not at all) is seen and respected. The
+     browser reads the target after the click has been dispatched, so setting it here is in
+     time for this very click. Only the PATH decides: an <a> with no href, a javascript: or
+     mailto: link, or another origin never gets here. ---- */
+  if (doc.addEventListener) {
+    doc.addEventListener('click', function (e) {
+      if (e.defaultPrevented || (e.button && e.button !== 0)
+          || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var n = e.target;
+      if (n && n.nodeType === 3) n = n.parentNode;
+      var a = n && n.closest ? n.closest('a[href]') : null;
+      if (!a || a.hasAttribute('download') || a.getAttribute('target')) return;
+      var href = a.getAttribute('href') || '';
+      if (href.charAt(0) === '#') return;
+      var u;
+      try { u = new URL(href, location.href); } catch (_) { return; }
+      if (u.origin !== location.origin || /^\/epinoia(\/|$)/.test(u.pathname)) return;
+      a.setAttribute('target', '_blank');
+      var rel = a.getAttribute('rel') || '';
+      if (!/(^|\s)noopener(\s|$)/i.test(rel)) a.setAttribute('rel', (rel ? rel + ' ' : '') + 'noopener');
+    });
   }
 }());

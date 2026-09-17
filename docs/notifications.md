@@ -1,7 +1,7 @@
 # Notifications v2 — tip-off reminders, lineups, results and statlines, on the phone
 
 Written 2026-09-17. The contract for migrations `0121_notifications_v2.sql`,
-`0124_notify_halftime.sql` and `0125_push_delivery_status.sql`, the `notify` Edge
+`0124_notify_halftime.sql`, `0125_push_delivery_status.sql` and `0128_push_client.sql`, the `notify` Edge
 Function, `epinoia/sw.js`, `epinoia/push.js`, `epinoia/follow.js`, the profile page
 and the game page's `show=starters` link. Inspiration: FotMob —
 a notification says exactly what happened and when, one tap lands on the thing it
@@ -162,7 +162,10 @@ as a club follower, and `want_players` whether player lines are sent at all.
   as it goes, dead subscriptions (404/410) removed, email batches unchanged. Every
   push's answer is recorded on its subscription (0125).
 - `{test: true, endpoint}` answers per device: `devices: [{service, status, ok,
-  thisPhone, text, fix}]`, and whether the asking phone is on the account.
+  thisPhone, text, fix}]`, and whether the asking phone is on the account. With
+  `delay: n` it first waits `min(n, 10)` seconds (signed-in callers only), so the test
+  can arrive on a locked phone (§5, the Android app), and adds `delayed: <seconds>` to
+  the answer.
 - `{check: {endpoint, keys}}` (anyone) and `{diag: true}` (anyone) are §7's.
 
 ## 5. The phone (`epinoia/sw.js`, `epinoia/push.js`, `epinoia/follow.js`, `epinoia/me/`)
@@ -190,6 +193,82 @@ as a club follower, and `want_players` whether player lines are sent at all.
 - `sw.js` also tells every open Epinoia page when a push arrives
   (`{type: 'epinoia-push', kind, tag, shown, error, at, version}`) and answers a ping
   (`{type: 'epinoia-ping'}` on a MessageChannel port) with its version.
+- `sw.js`'s **badge** is `brand/epinoia-badge-96.png`, the Λ in white on a transparent
+  ground: Android draws a badge from its alpha channel alone, and the old 32px colour
+  mark showed as a blank white square. Its **fetch handler** answers only page loads
+  (`request.mode === 'navigate'`) that fail for want of a connection, with a small
+  offline page at status 200; every other request is left to the browser, so a Supabase
+  read that fails offline is a real network error, not a 503 HTML page.
+
+### The Android app
+
+The Epinoia Android app (`android/`, roadmap Phase 6) is a Trusted Web Activity forced
+onto Chrome. Delivery is unchanged: the same Web Push subscription, `notify`, tags,
+receipts and check. What changes is **who posts the notification**.
+
+- **Delegation.** Chrome receives the push and, because the app declares a
+  `DelegationService`, hands the notification to the app instead of posting it itself.
+  `EpinoiaDelegationService` re-posts it on the app's own channel, `epinoia_alerts`
+  (**Game alerts**, `IMPORTANCE_HIGH`, vibration, public on the lock screen). androidx's
+  own copy would go onto a channel at `IMPORTANCE_DEFAULT`, which sounds but never pops
+  up. So in the app, Settings → Apps → Epinoia → Notifications governs every
+  notification, not Chrome's or Samsung Internet's site settings.
+- **Launch state, trusted over JavaScript.** On a phone, `Notification.permission` can
+  read `granted` while Android blocks the app (android-browser-helper #563, One UI 8).
+  So every launch URL carries the native answer:
+  `/epinoia/home/?source=twa&shell=<versionCode>&notif=<0|1>&chan=<importance>`, where
+  `notif` is `areNotificationsEnabled()` and `chan` is Game alerts' importance (4 HIGH and
+  5 MAX pop up, 3 sounds only, 1–2 silent, 0 off, -1 not created). `appmode.js` keeps it in
+  sessionStorage `epinoia_shell` (`{shell, notif, chan, at}`) for the rest of the session.
+  It is true **as of this launch**: a change made in Android settings shows after the app
+  is closed and opened again. Two things make it stale sooner. When `enable()` gets a
+  permission that was not granted before the tap, it came from Android's own dialog, so
+  `enable()` writes `notif: 1` and a new `at` back into `epinoia_shell`. And a tap on
+  **Open notification settings** stores sessionStorage `epinoia_settings_opened`
+  (`EpinoiaPush.settingsOpened()`); a report whose `at` is older than that is no longer
+  believed (Back from the settings screen returns to the same session).
+- **The profile card in the app** says so when the launch report has Android blocking
+  pop-ups (`EpinoiaPush.appBlocked()`), even while the page's own state reads On.
+- **`push.js` in the app.** `inApp()` is true when `epinoia_shell` is in this session or
+  the page was launched with `?source=twa`, on Android, and never in Samsung Internet
+  (whose installed web app still posts through Samsung Internet). `platform()` is then
+  `android-twa`, and `help()` returns its steps: Game alerts on Alert with pop-up and the
+  lock screen; One UI's Notification pop-up style on Detailed; the Epinoia and Chrome
+  batteries Unrestricted and neither in Sleeping or Deep sleeping apps; Do Not Disturb.
+  `help()` also returns `action: {label: 'Open notification settings', href}`, and
+  `settingsIntent` is that href:
+  `intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end`,
+  which opens the app's native `NotificationSettingsActivity` (channel importance, Do
+  Not Disturb, background restriction, with buttons into Android settings). The follow
+  sheet's "Your phone is hiding it" and the profile page's draw that button in the app.
+- **The native settings screen** only opens from a tap, and only inside the app (the
+  package must be installed); a browser tab never shows the button.
+- **The delayed test.** `test({delay: 10})` sends `{test: true, endpoint, delay: 10}`, and
+  `notify` waits `min(delay, 10)` seconds before sending (after checking the caller is
+  signed in; the answer is `sendTest`'s plus `delayed: <seconds>`). The profile page shows
+  **Test with the phone locked** in the app: the fan locks the phone, and a heads-up on
+  the lock screen is the proof that Game alerts pops up. A `notify` deployed before this
+  ignores `delay`, sends at once and answers without `delayed`; `test()` then returns
+  `{ok: false, notDelayed: true}` saying the test could not wait, and the page does not
+  ask whether it popped up.
+- **Which client saved a subscription (0128).** `push_subscriptions.client` is `tab`,
+  `pwa` (an installed web app, iPhone Home Screen included), `twa` (the Android app) or
+  `samsung-app` (Samsung Internet's installed web app); null on rows saved before 0128.
+  `push.js` writes it on every save and, while the column does not exist yet, sends the
+  row again without it when PostgREST answers 400.
+- **Two of every notification.** A fan who used the Samsung Internet web app before
+  installing the app keeps that subscription, and `notify` pushes to all of an account's
+  subscriptions; both endpoints are Google's, so nothing else tells them apart. In the
+  app, with this phone on, the profile page lists the account's `samsung-app` rows, any
+  row from Samsung Internet on the same push service whatever its client, and rows with
+  no client from an Android phone on the same push service (never another `twa` row), and
+  **Turn off the others** deletes them (the fan's own rows, through 0106's `push_own`).
+  Deleting a row does not unsubscribe Samsung Internet, so its profile page, once the
+  account has a `twa` row, no longer saves itself again (`sync()`) and instead offers
+  **Turn off notifications here**, which unsubscribes that browser. Before 0128 the
+  `client` read fails and it syncs as before.
+- The profile page also carries **Delete my account**, a link to
+  `privacy/#delete` (Google Play's account-deletion rule), for every signed-in fan.
 
 ## 6. The lineups link
 
@@ -222,6 +301,27 @@ Android notification switch), Samsung Internet, an iPhone Home Screen app (Setti
 Notifications → Epinoia), or a computer. When every step passes and the fan still saw
 nothing, the phone is hiding notifications, and the check says which switches to
 look at.
+
+**In the Android app** (`android-twa`, §5) the permission step is decided by what
+Android told the launcher, not by `Notification.permission`:
+
+| launch said | permission step | advice |
+|---|---|---|
+| `notif=0` | fails: "Notifications are turned off for the Epinoia app (as of this launch)" | allow them, then close and reopen the app |
+| `notif=1`, `chan` 0–3 | fails: Game alerts switched off, Silent, or set not to pop up | set Game alerts to pop up, then reopen |
+| `notif=1`, `chan=-1` | fails: Game alerts is not set up yet | reopen the app |
+| `notif=1`, `chan` ≥ 4 | passes, whatever the page's permission reads | the check goes on |
+| anything, but the settings screen was opened since | neither: "Your notification settings may have changed since Epinoia opened" | the check goes on; the live test decides |
+| neither (a page not opened by the launcher) | the page's permission, as elsewhere | the app's settings |
+
+The page's own permission is shown in the step's detail, for information only. In the
+app every piece of advice carries `action` (**Open notification settings**), which the
+profile page draws as a button, and a failed permission step always ends with the
+prompt to close and reopen the app, because the answer is only refreshed on a launch.
+The arrival step's advice names the app's steps, Chrome's battery included: Chrome
+receives each push before the app shows it. **Test with the phone locked** (§5) is the
+last proof: a check reports a push as shown once the app has posted it, and only a
+heads-up on a locked phone shows that the channel pops up.
 
 `notify {check: {endpoint, keys}}` sends one test push to the subscription the
 caller holds and returns `{ok, status, service, text, fix, detail, saved}`. It is

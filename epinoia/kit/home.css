@@ -247,8 +247,33 @@ a.plain{color:inherit;text-decoration:none}
 @media (max-width:720px){ .hm-scout{margin:calc(var(--u)*2);padding:calc(var(--u)*2.5)} }
 :root[data-theme="light"] .hm-scout{background:#ffffff;box-shadow:0 1px 3px rgba(13,31,23,.08)}
 
-/* ---- THE APP-DOWNLOAD SLOT: empty until the Android release, and then it takes no room. ---- */
+/* ---- THE ANDROID APP CARD (front.js paintApp) ------------------------------
+   Only an Android browser that is not the app gets one; everywhere else the slot stays empty
+   and takes no room. It is the scouting card's shape, so the two read as one family, with the
+   accent bar turned the other way (aqua into lume) and a version tag beside the title once
+   version.json has answered. */
 #homeApp:empty{display:none}
+#homeApp{border-bottom:1px solid var(--rule)}
+.hm-app{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;
+  margin:calc(var(--u)*3);padding:calc(var(--u)*3);min-height:112px;
+  border:1px solid var(--rule-2);background:var(--panel);color:inherit;text-decoration:none;
+  position:relative;overflow:hidden;transition:border-color .15s ease,background .15s ease}
+.hm-app::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--aqua),var(--lume))}
+.hm-app:hover{border-color:var(--aqua);background:color-mix(in oklch,var(--aqua) 7%,var(--panel))}
+.hm-app:focus-visible{outline:2px solid var(--aqua);outline-offset:2px}
+.hm-app .k{grid-column:1;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--aqua)}
+.hm-app .t{grid-column:1;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;
+  font-family:var(--f-score);font-size:clamp(24px,5.5vw,34px);line-height:.95;
+  text-transform:uppercase;color:var(--ink)}
+.hm-app .v{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;line-height:1;
+  color:var(--ink-3);border:1px solid var(--rule-2);padding:3px 6px}
+.hm-app .v:empty{display:none}
+.hm-app .d{grid-column:1;font-family:var(--f-micro);font-size:9.5px;line-height:1.8;color:var(--ink-3);max-width:60ch}
+.hm-app .go{grid-column:2;grid-row:1 / span 3;font-family:var(--f-score);font-size:30px;color:var(--aqua)}
+@media (max-width:720px){ .hm-app{margin:calc(var(--u)*2);padding:calc(var(--u)*2.5)} }
+:root[data-theme="light"] .hm-app{background:#ffffff;box-shadow:0 1px 3px rgba(13,31,23,.08)}
 
 /* ---- THE FOOT BAND ---------------------------------------------------------
    Everything only the water splash used to offer: sign in, the scoring deck,

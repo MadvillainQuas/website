@@ -149,6 +149,61 @@ function reScroll() {
   catch (_) { el.scrollIntoView(true); }
 }
 
+/* ------------------------------------------------------ the Android app ---
+   div#homeApp: a "Get the Android app" card for an Android browser (Chrome, Samsung Internet or
+   any other) that is not the app, linking to the download page. Nothing inside the app, on an
+   iPhone or on a desktop. WHO GETS IT is nav.js's decision (window.EpinoiaAppShell.appCard), the
+   same one that swaps the rail's install banner for the Android app, so the two never disagree;
+   nav.js loads after this file but before DOMContentLoaded, so it is there when this runs, and
+   a page without it simply has no card. The card is drawn at once and the version is added when
+   version.json answers (once a session, shared with nav.js's update notice); no answer, no
+   version, the card still works.
+
+   deps (for the tests): { host, shell, env, store, doc } */
+function paintApp(deps) {
+  const d = deps || {};
+  const doc = d.doc || (typeof document !== 'undefined' ? document : null);
+  const host = d.host || (doc && doc.getElementById('homeApp'));
+  const shell = d.shell || root.EpinoiaAppShell;
+  if (!doc || !host || !shell || typeof shell.appCard !== 'function') return Promise.resolve(null);
+  const nav = root.navigator || {};
+  const env = d.env || {
+    app: root.epinoiaApp === true,
+    mApp: !!(doc.documentElement && doc.documentElement.classList && doc.documentElement.classList.contains('m-app')),
+    ua: nav.userAgent || '', platform: nav.platform || '', maxTouchPoints: nav.maxTouchPoints || 0
+  };
+  env.href = BASE + 'android/';
+  const card = shell.appCard(env, null);
+  if (!card) return Promise.resolve(null);
+
+  const el = (t, c, x) => { const n = doc.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+  const a = el('a', 'hm-app');
+  a.href = card.href;
+  const t = el('span', 't');
+  const v = el('span', 'v');
+  t.append(el('span', null, 'Get the Android app'), v);
+  const go = el('span', 'go', '→');
+  go.setAttribute('aria-hidden', 'true');
+  a.append(
+    el('span', 'k', 'Epinoia for Android'),
+    t,
+    el('span', 'd', 'Its own icon and window, and game alerts that pop up. It shows the live site, so it needs a connection and Chrome on the phone.'),
+    go
+  );
+  host.textContent = '';
+  host.appendChild(a);
+  fadeIn(a);
+
+  let store = d.store;
+  if (store === undefined) { try { store = root.sessionStorage; } catch (_) { store = null; } }
+  if (typeof shell.version !== 'function') return Promise.resolve(a);
+  return shell.version(BASE + 'android/version.json', { store }).then(ver => {
+    const c = shell.appCard(env, ver);
+    if (c && c.versionName) v.textContent = 'v' + c.versionName;
+    return a;
+  }, () => a);
+}
+
 /* ------------------------------------------------------------ sections --- */
 function quiet(host, name) {
   host.textContent = '';
@@ -183,6 +238,7 @@ function boot() {
   root.addEventListener('epinoia:auth', paintFoot);
   root.addEventListener('storage', e => { if (e.key && e.key.indexOf('-auth-token') !== -1) paintFoot(); });
   watchReader();
+  try { paintApp(); } catch (e) { console.warn('[home] app card', e); }
 
   const fixtures = run('fixtures');
   const leagues = run('leagues').then(reScroll);
@@ -204,5 +260,5 @@ if (typeof document !== 'undefined' && typeof location !== 'undefined') {
   }
 }
 
-return { register, fadeIn, now: NOW };
+return { register, fadeIn, paintApp, now: NOW };
 }));

@@ -11,11 +11,23 @@
      state()            -> Promise<'unsupported'|'ios-install'|'denied'|'off'|'on'>
      enable()           -> Promise<{ok, state, message}>   call it straight from a tap
      disable({notifyPush?: false}) -> Promise<{ok, state, message}>
-     test()             -> Promise<{ok, message}>
+     test({delay?})     -> Promise<{ok, message}>   delay: seconds the server waits first (10 at most)
      sync()             -> Promise<{ok, state}>   re-saves this phone's subscription
      check(onStep?)     -> Promise<{ok, steps, advice, platform}>   the step-by-step
                            answer to "why is nothing arriving?" (docs/notifications.md §7)
      offer({name, kind})-> Promise<{shown, why, view?}>
+     inApp()            -> boolean   inside the Epinoia Android app (roadmap Phase 7)
+     endpoint()         -> Promise<string>   this browser's push endpoint, '' when none
+     settingsIntent     the link that opens the Android app's own notification settings
+     settingsOpened()   call from a tap on that link: the launch report is not believed after it
+     appBlocked()       -> null | {label}   in the app, Android blocking pop-ups by the launch report
+
+   THE ANDROID APP (a Trusted Web Activity on Chrome) posts every notification itself, on
+   its own "Game alerts" channel: Chrome receives the push and hands it over. So in the app
+   the switches that matter are the app's, not Chrome's site settings, and the JavaScript
+   permission is not to be trusted (it can say "granted" while Android blocks the app).
+   The app says what Android says on every launch (?notif=&chan=, kept by appmode.js in
+   sessionStorage epinoia_shell), and the check believes that instead.
 
    WHAT "ON" MEANS: this browser has granted permission AND holds a push
    subscription on the /epinoia/ service worker. Whether the account wants pushes
@@ -50,6 +62,13 @@ const SNOOZE_KEY = 'epinoia_push_offer_snoozed';
 const SNOOZE_MS = 14 * 86400000;
 const READY_MS = 10000;
 const FETCH_MS = 15000;
+/* The Android app's native notification settings screen (NotificationSettingsActivity). Chrome
+   opens an intent: link only from a tap, and only inside the app is the package there. */
+const SETTINGS_INTENT = 'intent://notification-settings#Intent;scheme=epinoia;package=uk.co.prophesyscouting.epinoia;end';
+/* Android's NotificationManager.IMPORTANCE_HIGH: the lowest importance that pops up */
+const IMPORTANCE_HIGH = 4;
+/* the longest a delayed test waits on the server (notify caps it at the same) */
+const MAX_DELAY_S = 10;
 
 const MSG = Object.freeze({
   unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or Epinoia from the Home Screen on an iPhone.',
@@ -71,6 +90,8 @@ const MSG = Object.freeze({
   testFailed: 'The test could not be sent just now. Try again in a minute.',
   testOffline: 'The test could not be sent. Check your connection and try again.',
   testNotThisPhone: 'The test went to your other devices, but this phone is not on your account. Tap Check this phone to add it.',
+  testDelayed: 'The test is on its way. Lock the phone or go to the Home Screen now: it is sent in 10 seconds.',
+  testNotDelayed: 'The test was sent straight away (the server is not updated yet), so it could not wait for the phone to lock.',
   testArrived: 'The test reached this phone.',
   testNotShown: 'The test reached this phone, but it was not allowed to show. Tap Check this phone for the settings to change.',
   testNotArrived: 'The push service accepted the test, but it has not reached this phone yet. Tap Check this phone to find out why.',
@@ -131,6 +152,56 @@ function standalone() {
   } catch (_) { return false; }
 }
 
+/* ------------------------------------------------------ the Android app --- */
+function sessionStore() { try { return g('sessionStorage') || null; } catch (_) { return null; } }
+/* What the app's launcher said about itself on this launch (appmode.js keeps it):
+   {shell, notif, chan, at}, or null when this page was not opened by the app */
+function launchState() {
+  const ss = sessionStore();
+  if (!ss) return null;
+  try {
+    const j = JSON.parse(ss.getItem('epinoia_shell') || 'null');
+    return j && typeof j === 'object' ? j : null;
+  } catch (_) { return null; }
+}
+/* THE LAUNCH REPORT GOES STALE. It is what Android said when the app opened, and two things
+   change the answer without a new launch: Android's own permission dialog allowing
+   notifications (enable() writes that back into the report), and a visit to the app's
+   notification settings screen, after which Back returns to this same session. The second
+   cannot be read back, so a tap on the settings button is remembered (settingsOpened) and a
+   report older than it is no longer believed. */
+const SETTINGS_OPENED_KEY = 'epinoia_settings_opened';
+function settingsOpened() {
+  const ss = sessionStore();
+  try { if (ss) ss.setItem(SETTINGS_OPENED_KEY, String(now())); } catch (_) { /* then the report is believed */ }
+}
+function launchStale() {
+  const sh = launchState();
+  const ss = sessionStore();
+  if (!sh || !ss) return false;
+  let t = 0;
+  try { t = Number(ss.getItem(SETTINGS_OPENED_KEY)) || 0; } catch (_) { t = 0; }
+  return t > 0 && t > (Number(sh.at) || 0);
+}
+function launchSource() {
+  const loc = g('location');
+  try { return new URLSearchParams(String((loc && loc.search) || '')).get('source') || ''; } catch (_) { return ''; }
+}
+/* a whole number from what the launcher sent, else null */
+function whole(v) {
+  if (v === '' || v == null || typeof v === 'boolean') return null;
+  const n = Number(v);
+  return Number.isInteger(n) ? n : null;
+}
+/* INSIDE THE EPINOIA ANDROID APP: the launcher's report is in this session, or this page was
+   launched with ?source=twa. Never Samsung Internet: the app is forced onto Chrome, and a
+   Samsung Internet web app carrying a copied launch URL is still Samsung's to post. */
+function inApp() {
+  const ua = String((g('navigator') || {}).userAgent || '');
+  if (!/Android/i.test(ua) || /SamsungBrowser/i.test(ua)) return false;
+  return !!launchState() || launchSource() === 'twa';
+}
+
 /* Everything that can be known without waiting: 'unsupported', 'ios-install',
    'denied', or the permission ('granted' / 'default'). Synchronous on purpose —
    enable() runs it inside the tap. */
@@ -158,6 +229,12 @@ async function currentSubscription(reg) {
   const r = reg || await registration();
   if (!r || !r.pushManager) return null;
   try { return (await r.pushManager.getSubscription()) || null; } catch (_) { return null; }
+}
+
+/* this browser's push endpoint, so the profile page can tell this phone's row from the others */
+async function endpoint() {
+  const sub = await currentSubscription();
+  return (sub && sub.endpoint) || '';
 }
 
 async function state() {
@@ -220,18 +297,28 @@ const headers = token => ({
   Authorization: 'Bearer ' + token,
   'Content-Type': 'application/json'
 });
-async function call(url, init) {
+async function call(url, init, ms) {
   const f = g('fetch');
   if (typeof f !== 'function') throw new Error('no network');
   const AC = g('AbortController');
   const ctl = typeof AC === 'function' ? new AC() : null;
-  const t = ctl ? setTimeout(() => { try { ctl.abort(); } catch (_) { /* gone */ } }, FETCH_MS) : null;
+  const t = ctl ? setTimeout(() => { try { ctl.abort(); } catch (_) { /* gone */ } }, ms || FETCH_MS) : null;
   try {
     return await f.call(root, url, ctl ? Object.assign({}, init, { signal: ctl.signal }) : init);
   } finally { if (t) clearTimeout(t); }
 }
 const okStatus = s => s >= 200 && s < 300;
 
+/* WHICH KIND OF CLIENT MADE THE SUBSCRIPTION (0128): the Android app, Samsung Internet's
+   installed web app, any other installed web app, or a browser tab. Two of these on one phone
+   means every notification arrives twice, and the push endpoint cannot tell them apart (both
+   Chrome and Samsung Internet use Google's service), so the profile page reads this to offer
+   turning the others off. */
+function clientKind() {
+  if (inApp()) return 'twa';
+  if (standalone()) return /SamsungBrowser/i.test(String((g('navigator') || {}).userAgent || '')) ? 'samsung-app' : 'pwa';
+  return 'tab';
+}
 function subscriptionRow(sub, userId) {
   const j = (sub && typeof sub.toJSON === 'function') ? sub.toJSON() : (sub || {});
   const keys = (j && j.keys) || {};
@@ -241,17 +328,26 @@ function subscriptionRow(sub, userId) {
     endpoint: (sub && sub.endpoint) || j.endpoint,
     p256dh: keys.p256dh,
     auth: keys.auth,
-    ua: String(nav.userAgent || '').slice(0, 200)
+    ua: String(nav.userAgent || '').slice(0, 200),
+    client: clientKind()
   };
 }
-/* the status, or 0 when the request never got an answer */
+/* the status, or 0 when the request never got an answer. BEFORE 0128 the client column is
+   not there and PostgREST answers 400 to a row that names it, so the row is sent again
+   without it: a phone is never refused over a deploy order. */
 async function saveSubscription(sub, sess) {
+  const post = row => call(cfg().supabaseUrl + '/rest/v1/push_subscriptions?on_conflict=endpoint', {
+    method: 'POST',
+    headers: Object.assign(headers(sess.token), { Prefer: 'resolution=merge-duplicates' }),
+    body: JSON.stringify(row)
+  });
   try {
-    const r = await call(cfg().supabaseUrl + '/rest/v1/push_subscriptions?on_conflict=endpoint', {
-      method: 'POST',
-      headers: Object.assign(headers(sess.token), { Prefer: 'resolution=merge-duplicates' }),
-      body: JSON.stringify(subscriptionRow(sub, sess.userId))
-    });
+    const row = subscriptionRow(sub, sess.userId);
+    const r = await post(row);
+    if (r.status === 400 && 'client' in row) {
+      delete row.client;
+      return (await post(row)).status;
+    }
     return r.status;
   } catch (_) { return 0; }
 }
@@ -344,9 +440,21 @@ async function enable() {
   if (!signedIn()) return result(false, 'off', MSG.signedOut);
 
   const N = g('Notification');
+  const before = N.permission;
   const perm = await requestPermission(N);
   if (perm === 'denied') return result(false, 'denied', MSG.denied);
   if (perm !== 'granted') return result(false, 'off', MSG.dismissed);
+  /* In the app, a permission that was not granted before the tap and is now came from
+     Android's own dialog (Chrome asks through the app): notifications are on for the app, so
+     the launch report's notif=0 is out of date. The channel is left as reported; the
+     launcher created it on this launch and the dialog does not change it. */
+  if (before !== 'granted' && inApp()) {
+    const sh = launchState();
+    if (sh) {
+      const ss = sessionStore();
+      try { if (ss) ss.setItem('epinoia_shell', JSON.stringify(Object.assign({}, sh, { notif: 1, at: now() }))); } catch (_) { /* the check says reopen */ }
+    }
+  }
 
   const nav = g('navigator');
   let reg;
@@ -389,25 +497,43 @@ async function disable(opts) {
 /* A test through the account, exactly as real notifications travel: this phone saved
    under the account first (sync), then a push to every phone on it. When this phone
    was among them and its push service took it, the answer waits for this phone's
-   worker to say it arrived. */
-async function test() {
+   worker to say it arrived.
+
+   test({delay: 10}) asks the server to wait that many seconds (10 at most) before sending,
+   so the phone can be locked first: a heads-up on a locked phone is the real test of the
+   Android app's Game alerts channel. The answer then comes after the wait, so every
+   timeout here is lengthened by it. A notify deployed before the delay existed ignores it
+   and sends at once; it is told apart by the missing `delayed` in its answer, and the result
+   is then {ok: false, notDelayed: true} with a sentence saying so. */
+async function test(opts) {
+  const o = opts || {};
+  const delay = Math.max(0, Math.min(MAX_DELAY_S, Math.floor(Number(o.delay) || 0)));
   const sess = await freshSession();
   if (!sess) return { ok: false, message: MSG.signedOut };
   const reg = await registration();
   const sub = await currentSubscription(reg);
   if (sub && quick() === 'granted') await sync().catch(() => null);
-  const arrival = sub ? waitForReceipt('test', RECEIPT_MS) : null;
+  const arrival = sub ? waitForReceipt('test', RECEIPT_MS + delay * 1000) : null;
+  const ask = { test: true, endpoint: sub ? sub.endpoint : '' };
+  if (delay) ask.delay = delay;
   let r;
   try {
     r = await call(cfg().supabaseUrl + '/functions/v1/notify', {
-      method: 'POST', headers: headers(sess.token), body: JSON.stringify({ test: true, endpoint: sub ? sub.endpoint : '' })
-    });
+      method: 'POST', headers: headers(sess.token), body: JSON.stringify(ask)
+    }, FETCH_MS + delay * 1000);
   } catch (_) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.testOffline }; }
   let data = {};
   try { data = (await r.json()) || {}; } catch (_) { data = {}; }
   if (r.status === 401) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.expired }; }
   if (!r.ok) { if (arrival) arrival.cancel(); return { ok: false, message: MSG.testFailed }; }
   const devices = Array.isArray(data.devices) ? data.devices : [];
+  /* A notify deployed before the delay existed sent it at once, while the person was still
+     reading, so it proves nothing about a locked phone: say so rather than ask whether it
+     popped up. The new notify answers with delayed: the seconds it waited. */
+  if (delay && typeof data.delayed !== 'number') {
+    if (arrival) arrival.cancel();
+    return { ok: false, notDelayed: true, devices, message: MSG.testNotDelayed };
+  }
   const mine = devices.find(d => d && d.thisPhone);
   const counts = [data.sent, data.pushed, data.delivered, data.test && data.test.sent].filter(n => typeof n === 'number');
   if (!mine) {
@@ -432,6 +558,9 @@ function platform() {
   const app = standalone();
   if (isIOS(nav)) return app ? 'ios-app' : 'ios-safari';
   if (/Android/i.test(ua)) {
+    /* the Epinoia Android app first: it is also display-mode standalone, but its settings
+       are its own Game alerts channel, not an installed web app's App info */
+    if (inApp()) return 'android-twa';
     /* Samsung Internet's installed app still has its notifications posted by Samsung Internet,
        so its fixes are Samsung's, not App info's */
     if (/SamsungBrowser/i.test(ua)) return app ? 'android-samsung-app' : 'android-samsung';
@@ -440,7 +569,15 @@ function platform() {
   return 'desktop';
 }
 const SETTINGS = Object.freeze({
-  'android-app': ['Press and hold the Epinoia icon on your Home Screen, then tap App info.',
+  /* THE EPINOIA ANDROID APP. Chrome receives each push and the app re-posts it on Game alerts,
+     so the app's channel decides whether it pops up, and both apps must be allowed to run in
+     the background. One UI adds the Brief pop-up style, which only lights the screen's edge. */
+  'android-twa': ['Tap Open notification settings (or open Settings, then Apps, then Epinoia, then Notifications) and allow notifications.',
+                  'Open Game alerts there: choose Alert rather than Silent, and turn on Show as pop-up and the lock screen.',
+                  'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
+                  'In Settings, open Apps, then Epinoia, then Battery, and choose Unrestricted. Do the same for Chrome, which receives each notification before Epinoia shows it.',
+                  'In Settings, open Battery (or Battery and device care), then Background usage limits: take Epinoia and Chrome out of Sleeping apps and Deep sleeping apps, and add both to Never sleeping apps.'],
+  'android-app':['Press and hold the Epinoia icon on your Home Screen, then tap App info.',
                   'Tap Notifications and turn them on, including every category under them.'],
   'android-chrome': ['In Chrome, tap ⋮ then Settings, then Site settings, then Notifications.',
                      'Find prophesyscouting.co.uk and set it to Allowed.',
@@ -464,6 +601,7 @@ const SETTINGS = Object.freeze({
             'Check your computer lets the browser show notifications (on Windows: Settings, then System, then Notifications).']
 });
 const QUIET = Object.freeze({
+  'android-twa': ['Check the phone is not in Do Not Disturb, or that Epinoia is allowed as an exception to it.'],
   'android-app': ['Check the phone is not in Do Not Disturb, and that Battery for Epinoia (App info, then Battery) is not Restricted.'],
   'android-chrome': ['Check the phone is not in Do Not Disturb, and that Battery for Chrome (Settings, then Apps, then Chrome, then Battery) is not Restricted.'],
   'android-samsung': ['Check the phone is not in Do Not Disturb.'],
@@ -479,7 +617,51 @@ const QUIET = Object.freeze({
    whether it popped up, and a no gets these steps for their phone, then another test. */
 function help() {
   const plat = platform();
-  return { platform: plat, steps: (SETTINGS[plat] || []).concat(QUIET[plat] || []) };
+  const out = { platform: plat, steps: (SETTINGS[plat] || []).concat(QUIET[plat] || []) };
+  if (plat === 'android-twa') out.action = settingsAction();
+  return out;
+}
+/* the button that opens the app's own notification settings, for a page to draw */
+function settingsAction() { return { label: 'Open notification settings', href: SETTINGS_INTENT }; }
+/* For the profile card in the app: the permission step's finding when Android is blocking
+   pop-ups by the launch report, else null (not in the app, no report, all on, or a report
+   made stale by a visit to the settings) */
+function appBlocked() {
+  if (!inApp()) return null;
+  const p = appPermission(quick());
+  return p && p.ok === false ? p : null;
+}
+const REOPEN = 'Then close Epinoia completely (swipe it away from your recent apps), open it again and run the check again: the app reports its notification settings each time it opens.';
+
+/* THE PERMISSION STEP IN THE ANDROID APP, from what Android told the launcher: notif is
+   areNotificationsEnabled() (1 or 0), chan the Game alerts channel's importance (4 HIGH and
+   5 MAX pop up, 3 sounds without popping up, 1-2 silent, 0 off, -1 not created). null when
+   the launch carried neither, and the browser's own answer has to do. The JavaScript
+   permission is shown beside it, for information only. */
+function appPermission(q) {
+  const sh = launchState() || {};
+  const notif = whole(sh.notif), chan = whole(sh.chan);
+  if (notif === null) return null;
+  const js = 'This page’s browser permission reads ' + (q === 'granted' ? 'allowed' : q === 'denied' ? 'blocked' : 'not asked') +
+             '; the app’s own setting is what counts.';
+  const when = ' (as of this launch)';
+  /* the settings screen was opened after the report was made: neither pass nor fail, and
+     the check goes on, so the live test push and its arrival decide */
+  if (launchStale()) {
+    return { ok: null, label: 'Your notification settings may have changed since Epinoia opened',
+             detail: 'What Android reported when the app opened is out of date, so the test below decides. ' + js };
+  }
+  if (notif === 0) {
+    return { ok: false, label: 'Notifications are turned off for the Epinoia app' + when, detail: js,
+             title: 'Turn on notifications for the Epinoia app, then reopen it' };
+  }
+  if (chan !== null && chan < IMPORTANCE_HIGH) {
+    const how = chan < 0 ? 'Game alerts is not set up yet' : chan === 0 ? 'Game alerts is switched off'
+      : chan === 3 ? 'Game alerts can sound, but is set not to pop up' : 'Game alerts is set to Silent';
+    return { ok: false, label: how + when, detail: js,
+             title: chan < 0 ? 'Reopen the Epinoia app' : 'Set Game alerts to pop up, then reopen the app' };
+  }
+  return { ok: true, label: 'Notifications are on for the Epinoia app' + (chan !== null ? ', and Game alerts pops up' : '') + when, detail: js };
 }
 
 /* A promise for the next receipt from this phone's worker with the given tag, and a
@@ -577,7 +759,10 @@ async function check(onStep) {
     steps.push({ id, ok, label, detail: detail || '' });
     if (typeof onStep === 'function') { try { onStep(steps.slice()); } catch (_) { /* the page's problem */ } }
   };
-  const advise = (title, lines) => report({ advice: { title, lines: (lines || []).filter(Boolean) } });
+  /* in the app every piece of advice carries the button into the app's notification settings */
+  const app = plat === 'android-twa';
+  const advise = (title, lines) => report({ advice: Object.assign({ title, lines: (lines || []).filter(Boolean) },
+                                                                  app ? { action: settingsAction() } : {}) });
 
   /* 1. the browser */
   const q = quick();
@@ -593,17 +778,21 @@ async function check(onStep) {
   }
   add('browser', true, 'This browser can receive notifications');
 
-  /* 2. permission */
-  if (q === 'denied') {
+  /* 2. permission: in the app, what Android said at launch; elsewhere the browser's */
+  const native = app ? appPermission(q) : null;
+  if (native) {
+    add('permission', native.ok, native.label, native.detail);
+    if (native.ok === false) return advise(native.title, SETTINGS[plat].slice(0, 2).concat(REOPEN));
+  } else if (q === 'denied') {
     add('permission', false, 'Notifications are blocked for Epinoia on this phone');
-    return advise('Allow notifications, then run the check again', SETTINGS[plat]);
-  }
-  if (q !== 'granted') {
+    return advise('Allow notifications, then run the check again', SETTINGS[plat].concat(app ? [REOPEN] : []));
+  } else if (q !== 'granted') {
     add('permission', false, 'Epinoia has not been allowed to send notifications yet');
     return advise('Turn notifications on', ['Tap Turn on above and choose Allow when the phone asks.',
-      'If nothing asks, allow them in settings instead:'].concat(SETTINGS[plat]));
+      'If nothing asks, allow them in settings instead:'].concat(SETTINGS[plat], app ? [REOPEN] : []));
+  } else {
+    add('permission', true, 'Notifications are allowed for Epinoia');
   }
-  add('permission', true, 'Notifications are allowed for Epinoia');
 
   /* 3. the worker */
   const nav = g('navigator');
@@ -790,6 +979,7 @@ const CSS = [
   '.ep-push-btn{-webkit-appearance:none;appearance:none;box-sizing:border-box;min-height:48px;width:100%;border-radius:12px;cursor:pointer;',
   'font:inherit;font-size:15px;font-weight:700;padding:12px 16px;border:1px solid var(--eps-rule);background:transparent;color:var(--eps-ink)}',
   '.ep-push-btn.pri{background:var(--eps-accent);border-color:var(--eps-accent);color:var(--eps-on)}',
+  'a.ep-push-btn{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none}',
   '.ep-push-btn:focus-visible{outline:2px solid var(--eps-accent);outline-offset:2px}',
   '.ep-push-btn[disabled]{opacity:.65;cursor:default}',
   '@media (min-width:600px){.ep-push{align-items:center;padding:16px}.ep-push-sheet{border-bottom:1px solid var(--eps-rule);border-radius:18px;',
@@ -911,9 +1101,18 @@ function openSheet(doc, view, name, kind) {
     const d = el('p', null, 'It reached your phone, but a phone setting stopped it popping up. Change these, then send another:');
     d.id = 'ep-push-d';
     const ol = el('ol');
-    help().steps.forEach(s => ol.appendChild(el('li', null, s)));
-    draw([head('Your phone is hiding it'), d, ol],
-         [button('Send another test', 'pri', verify), button('Close', null, () => close(false))]);
+    const h = help();
+    h.steps.forEach(s => ol.appendChild(el('li', null, s)));
+    const acts = [button('Send another test', 'pri', verify)];
+    /* in the Android app, straight into its own notification settings */
+    if (h.action) {
+      const a = el('a', 'ep-push-btn', h.action.label);
+      a.href = h.action.href;
+      a.addEventListener('click', settingsOpened);
+      acts.push(a);
+    }
+    acts.push(button('Close', null, () => close(false)));
+    draw([head('Your phone is hiding it'), d, ol], acts);
   }
   function done() {
     const d = el('p', null, 'You’ll hear about ' + name + ' on this phone. ');
@@ -951,12 +1150,13 @@ function openSheet(doc, view, name, kind) {
 }
 
 return {
-  state, enable, disable, test, sync, check, offer, help,
-  MESSAGES: MSG, SW_URL, SCOPE,
+  state, enable, disable, test, sync, check, offer, help, inApp, endpoint, settingsOpened, appBlocked,
+  MESSAGES: MSG, SW_URL, SCOPE, settingsIntent: SETTINGS_INTENT,
   _test: {
     env(e) { ENV = e || null; },
     quick, keyBytes, sameKey, isIOS, iosVersion, decide, snoozed, snooze, storedSession,
     subscriptionRow, SNOOZE_KEY, SNOOZE_MS, platform, SETTINGS, QUIET, serviceName, RECEIPT_MS,
+    clientKind, launchState, launchStale, IMPORTANCE_HIGH, SETTINGS_OPENED_KEY,
     close() { if (sheet) { sheet.remove(); sheet = null; } }
   }
 };

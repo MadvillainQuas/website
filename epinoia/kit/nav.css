@@ -563,3 +563,17 @@ body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var
   .ep-tabbar a:active{ background:color-mix(in oklch,var(--lume) 10%,transparent) }
   body.nav-drawer-open{ overflow:hidden }
 }
+
+/* ---- the Android app's banners (nav.js showAndroidApp, showUpdate) ----
+   The card itself is the kit's .ep-install. Two things differ: the button is a link, so it
+   loses the underline and sits like the button it replaces; and on a phone these two stand
+   above the bottom bar rather than over it, because the update notice is shown inside the app,
+   where the bar is the only way around. */
+.ep-install a.go{ display:inline-flex; align-items:center; text-decoration:none; white-space:nowrap }
+.ep-install a.go:focus-visible, .ep-install .x:focus-visible{ outline:2px solid var(--lume); outline-offset:2px }
+.ep-update .tx b{ color:var(--lume) }
+:root[data-theme="light"] .ep-install a.go{ color:#fff }
+@media (max-width:820px){
+  body.has-nav .ep-install.ep-app-offer,
+  body.has-nav .ep-install.ep-update{ bottom:calc(68px + env(safe-area-inset-bottom,0px)) }
+}
