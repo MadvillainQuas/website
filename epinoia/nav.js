@@ -605,6 +605,16 @@
     bellTimer = setInterval(refresh, 60000);
   }
 
+  /* GLOBAL SCOUTING, IN THE FOOT, because it belongs to no league: every league's current season
+     in one table. Here it is on every page's rail and in the phone menu sheet; HOME (Phase 1,
+     home/front.js) links it as well once that page exists. */
+  const scouting = el('a', 'item' + (/\/epinoia\/scouting\//.test(here) ? ' on' : ''));
+  scouting.href = root + 'scouting/';
+  scouting.append(el('span', 'ic', '⌕'), el('span', 'tx', 'scouting'));
+  scouting.title = 'global scouting: every league in one table';
+  if (scouting.classList.contains('on')) scouting.setAttribute('aria-current', 'page');
+  navFoot.appendChild(scouting);
+
   const contact = el('a', 'item' + (/\/epinoia\/contact\//.test(here) ? ' on' : ''));
   contact.href = root + 'contact/';
   contact.append(el('span', 'ic', '✉'), el('span', 'tx', 'contact'));

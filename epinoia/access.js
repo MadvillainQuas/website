@@ -83,6 +83,7 @@
    THE API (§6), plus a few additions marked +:
      FEATURES, CATALOGUE
      load({leagueId | leagueSlug, force+})  -> Promise<state>   never rejects
+     + loadMany({leagueIds, force})  -> Promise<Map<id, state>>, one request for up to 50
      get(league) analyticsOk(league) canView(league)   league = id (or a loaded slug)
      isPremiumColumn(key)  teaserHTML(o)  paywallHTML(o)  joinHref(o)
      authHeaders(league?)  onChange(fn) -> unsubscribe
@@ -664,10 +665,18 @@ async function resolveSlug(slug, until) {
 }
 
 async function fetchState(key, until) {
+  const body = await askServer(key ? [key] : null, until);
+  return body ? fromPayload(body, key || null) : failOpen({ leagueId: key || null });
+}
+
+/* The one access_state request, for no league (null) or a list of league ids. The
+   payload, or null for every kind of "no answer" -- no network, the migration
+   missing, a refusal, a 5xx, the deadline -- which the callers turn into the
+   fail-open state. */
+async function askServer(leagues, until) {
   const f = net(), c = cfg();
-  const fallback = () => failOpen({ leagueId: key || null });
-  if (!f || !c.supabaseUrl || !c.supabaseAnonKey) return fallback();
-  if (missingRecently()) return fallback();
+  if (!f || !c.supabaseUrl || !c.supabaseAnonKey) return null;
+  if (missingRecently()) return null;
   const s = session();
   const headers = { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' };
   if (s) headers.Authorization = 'Bearer ' + s.token;
@@ -675,21 +684,21 @@ async function fetchState(key, until) {
     const out = await timed(until - Date.now(), signal =>
       f(c.supabaseUrl + '/rest/v1/rpc/access_state', {
         method: 'POST', cache: 'no-store', headers, signal,
-        body: JSON.stringify({ p_leagues: key ? [key] : null })
+        body: JSON.stringify({ p_leagues: leagues })
       }).then(async r => {
         if (r && r.ok) return { ok: true, body: await r.json() };
         let j = null;
         try { j = r ? await r.json() : null; } catch (_) { j = null; }
         return { ok: false, status: r ? r.status : 0, code: j && j.code };
       }));
-    if (out === TIMED_OUT) return fallback();
+    if (out === TIMED_OUT) return null;
     if (!out.ok) {
       /* PGRST202 / 404: the function is not there — the migration is not applied */
       if (out.status === 404 || out.code === 'PGRST202') sset('sessionStorage', MISSING_KEY, String(Date.now()));
-      return fallback();                         // 401 and 5xx too: fail open
+      return null;                               // 401 and 5xx too: fail open
     }
-    return fromPayload(out.body, key || null);
-  } catch (_) { return fallback(); }
+    return out.body;
+  } catch (_) { return null; }
 }
 
 function loadId(key, force, until) {
@@ -703,19 +712,94 @@ function loadId(key, force, until) {
   const fk = uk + '|' + key;
   if (inflight.has(fk)) return inflight.get(fk);
   const p = fetchState(key, until || Date.now() + DEADLINE_MS)
-    .then(st => {
-      if (userKey() !== uk) return;
-      /* A FAILED RE-ASK CHANGES NOTHING. The fail-open fallback stands in for
-         an answer nobody has; put over a KNOWN one it would take a paywall
-         down, or put analytics back, on a network blip, and tell every
-         listener so. The known answer stays, and is asked for again later. */
-      const had = states.get(key);
-      if (!st.known && had && had.user === uk && had.st.known) { retryLater(); return; }
-      put(key, st, uk);
-    }, () => {})
+    .then(st => settle(key, st, uk), () => {})
     .then(() => { if (inflight.get(fk) === p) inflight.delete(fk); return get(key); });
   inflight.set(fk, p);
   return p;
+}
+
+/* An answer arriving for one league, from load() or loadMany() alike. */
+function settle(key, st, uk) {
+  if (userKey() !== uk) return;
+  /* A FAILED RE-ASK CHANGES NOTHING. The fail-open fallback stands in for
+     an answer nobody has; put over a KNOWN one it would take a paywall
+     down, or put analytics back, on a network blip, and tell every
+     listener so. The known answer stays, and is asked for again later. */
+  const had = states.get(key);
+  if (!st.known && had && had.user === uk && had.st.known) { retryLater(); return; }
+  put(key, st, uk);
+}
+
+/* ---------------------------------------------------------- many leagues ---
+   A PAGE ABOUT EVERY LEAGUE (global scouting) needs every league's answer before
+   it reads a row: which leagues this viewer may see, whether any locks the paid
+   columns, and -- because authHeaders() only sends a member's token once a
+   members-only league they may see is loaded -- whether its reads go out as the
+   member at all. One load() per league would be one request per league; the RPC
+   takes a list (access_state(p_leagues uuid[]), up to 50), so this asks once.
+
+   Everything else is load()'s: the same four-second deadline across the token
+   refresh and the request, the same per-league memory and 60-second
+   sessionStorage cache (a league already answered is not asked again), a league
+   already being asked about by load() is waited for rather than asked twice (and
+   the reverse), a failed re-ask keeps a known answer, and it never rejects. A
+   league the server leaves out of its answer comes back unknown, which fails
+   open like any other missing answer. More than 50 ids go out as several
+   requests of 50, together.
+
+   loadMany({ leagueIds, force }) -> Promise<Map<leagueId, state>>, in the order
+   asked, duplicates and blanks dropped; each state is get(leagueId). */
+const MANY_MAX = 50;
+function loadMany(opts) {
+  try {
+    const o = opts || {};
+    const until = Date.now() + DEADLINE_MS;
+    if (refreshPlan(stored(), Date.now()) === 'refresh') {
+      return ensureSession(until).then(() => loadManyNow(o, until), () => loadManyNow(o, until));
+    }
+    return loadManyNow(o, until);
+  } catch (_) {
+    return Promise.resolve(new Map());
+  }
+}
+function loadManyNow(o, until) {
+  const ids = [];
+  try {
+    (Array.isArray(o.leagueIds) ? o.leagueIds : []).forEach(x => {
+      const id = x == null ? '' : String(x);
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    });
+    const force = !!o.force, uk = userKey();
+    const waits = new Map();
+    const ask = [];
+    ids.forEach(id => {
+      if (!force) {
+        const e = states.get(id);
+        if (e && e.user === uk && (e.st.known || Date.now() - e.at < TTL_MS)) { waits.set(id, Promise.resolve(get(id))); return; }
+        const c = readCache(uk, id);
+        if (c) { put(id, c.st, uk, c.at); waits.set(id, Promise.resolve(get(id))); return; }
+      }
+      const fk = uk + '|' + id;
+      if (inflight.has(fk)) { waits.set(id, inflight.get(fk)); return; }
+      ask.push(id);
+    });
+    for (let i = 0; i < ask.length; i += MANY_MAX) {
+      const chunk = ask.slice(i, i + MANY_MAX);
+      const req = askServer(chunk, until).catch(() => null);
+      chunk.forEach(id => {
+        const fk = uk + '|' + id;
+        const p = req
+          .then(body => settle(id, body ? fromPayload(body, id) : failOpen({ leagueId: id }), uk), () => {})
+          .then(() => { if (inflight.get(fk) === p) inflight.delete(fk); return get(id); });
+        inflight.set(fk, p);
+        waits.set(id, p);
+      });
+    }
+    return Promise.all(ids.map(id => Promise.resolve(waits.get(id)).catch(() => get(id))))
+      .then(list => new Map(ids.map((id, i) => [id, list[i]])), () => new Map(ids.map(id => [id, get(id)])));
+  } catch (_) {
+    return Promise.resolve(new Map(ids.map(id => [id, failOpen({ leagueId: id })])));
+  }
 }
 
 /* One quiet retry a minute after a failed re-ask, while the tab is in view —
@@ -1003,7 +1087,7 @@ if (BROWSER) {
 
 return {
   FEATURES, CATALOGUE,
-  load, get, analyticsOk, canView, isPremiumColumn,
+  load, loadMany, get, analyticsOk, canView, isPremiumColumn,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,
   /* for supabase/tests/access.test.mjs only: a fake network, a shorter deadline,

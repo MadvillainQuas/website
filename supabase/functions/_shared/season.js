@@ -693,8 +693,18 @@ function percentiles(rows, keys, lowerIsBetter, groupOf) {
       pool.forEach(r => {
         const v = r[k];
         if (v == null || !isFinite(v)) return;
-        let below = 0;
-        for (let i = 0; i < vals.length; i++) if (vals[i] < v) below++; else break;
+        /* HOW MANY VALUES ARE STRICTLY BELOW, by binary search over the sorted list.
+           This was a walk from the bottom that stopped at the first value not below,
+           which is the same count -- the list is sorted, so everything before that
+           point is below and nothing after it is -- but it made each key cost n
+           squared, and a table of every league runs to thousands of rows redrawn on
+           a phone. The lower bound gives the identical number in log n. */
+        let lo = 0, hi = vals.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (vals[mid] < v) lo = mid + 1; else hi = mid;
+        }
+        const below = lo;
         let p = 100 * below / (vals.length - 1 || 1);
         if (low.has(k)) p = 100 - p;
         table.set(r.id, Math.max(0, Math.min(100, p)));
