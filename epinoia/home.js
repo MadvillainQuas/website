@@ -1050,9 +1050,9 @@ function renumber() {
 
   if (WANT) {
     try {
-      const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) +
-        '&select=id,slug,name,colour_a,colour_b,store_url,store_name,' +
-        'country,sections,nav,theme&limit=1');
+      /* the whole row: colour_source (0122) is read below, and naming a column a database
+         without that migration does not have would lose the league page altogether */
+      const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) + '&select=*&limit=1');
       LEAGUE = ls[0] || null;
     } catch (_) { /* fall through to the hub */ }
   }
@@ -1078,6 +1078,12 @@ function renumber() {
     }
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
+    }
+    /* THE LEAGUE'S OWN COLOURS, from its logo or as its admin picked them (0122): trims on this
+       page and on the sidebar while it is here. A league that chose its own accent in
+       Appearance keeps it. Before applyTheme, so the six chosen slots still have the last word. */
+    if (window.EpinoiaTeamColour && window.EpinoiaTeamColour.league) {
+      window.EpinoiaTeamColour.league(LEAGUE, { keepAccent: !!(LEAGUE.theme && LEAGUE.theme.accent) });
     }
     applyTheme(LEAGUE.theme);
     /* the strip narrows to this league too */

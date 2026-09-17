@@ -177,7 +177,8 @@ def colour_team(sb, team: dict, dry: bool = False, log=print) -> dict | None:
 def sweep(sb, force: bool = False, team: str | None = None, dry: bool = False, log=print) -> int:
     """Colour every team with a crest whose colour was not chosen by hand. Without --force a team
     already coloured from its logo is skipped (the crest has not changed); the ingest calls this
-    with force=False after a crest sync, so a new crest -> colour_source back to 'default' -> read."""
+    with force=False after a crest sync, so a new crest -> colour_source back to 'default' -> read.
+    Leagues get the same pass (sweep_leagues); the count returned is the teams'."""
     q = 'select=id,slug,logo_path,colour,colour_2,colour_source&logo_path=not.is.null&colour_source=neq.manual'
     if team:
         q += f"&slug=eq.{team}"
@@ -188,7 +189,72 @@ def sweep(sb, force: bool = False, team: str | None = None, dry: bool = False, l
     for t in rows:
         if colour_team(sb, t, dry=dry, log=log):
             n += 1
+    if not team:
+        k = sweep_leagues(sb, force=force, dry=dry, log=log)
+        if k:
+            log(f"   {k} league(s) coloured from their logo")
     return n
+
+
+# ------------------------------------------------------------------ leagues (0122) ---
+GROUND = (0x04, 0x10, 0x0b)
+
+
+def _derived(hex_: str) -> str:
+    """teamcolour.js derived(): the second colour of a logo that had only one -- the same hue,
+    clearly lighter or darker. leagues.colour_b cannot be empty, as teams.colour_2 can."""
+    rgb = [int(hex_[i:i + 2], 16) for i in (1, 3, 5)]
+
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    lum = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2])
+    target, t = (GROUND, 0.55) if lum > 0.3 else ((255, 255, 255), 0.45)
+    return '#%02x%02x%02x' % tuple(int(round(max(0, min(255, c + (g - c) * t)))) for c, g in zip(rgb, target))
+
+
+def colour_league(sb, league: dict, dry: bool = False, log=print) -> dict | None:
+    """Read one league's logo and write its colours. An SVG is left to the league admin console,
+    which reads it in the browser on upload: Pillow cannot open a vector."""
+    url = logo_url(league.get('logo_path'), sb.url)
+    if not url:
+        return None
+    if url.lower().split('?')[0].endswith('.svg'):
+        return None
+    try:
+        r = requests.get(url, timeout=20, headers={'User-Agent': 'epinoia-ingest/1.0'})
+        r.raise_for_status()
+        if 'svg' in (r.headers.get('content-type') or ''):
+            return None
+        pal = palette(r.content)
+    except Exception as exc:
+        log(f"   (league colours: {league.get('slug')}: {exc})")
+        return None
+    if not pal['primary']:
+        return None
+    body = {'colour_a': pal['primary'], 'colour_b': pal['secondary'] or _derived(pal['primary']),
+            'colour_source': 'logo'}
+    log(f"   league {league.get('slug', league.get('id')):21s} {body['colour_a']}  {body['colour_b']}")
+    if not dry:
+        sb.patch('leagues', f"id=eq.{league['id']}", body)
+    return body
+
+
+def sweep_leagues(sb, force: bool = False, league: str | None = None, dry: bool = False, log=print) -> int:
+    """Colour every league with a logo whose colours were not chosen by hand -- by default only
+    the ones nobody has read yet (colour_source 'default'). A database without 0122 has no
+    colour_source column: the select fails and this reads nothing."""
+    q = 'select=id,slug,logo_path,colour_a,colour_b,colour_source&logo_path=not.is.null&colour_source=neq.manual'
+    if league:
+        q += f"&slug=eq.{league}"
+    elif not force:
+        q += '&colour_source=eq.default'
+    try:
+        rows = sb.select('leagues', q)
+    except Exception as exc:
+        log(f"   (league colours: {str(exc)[:120]})")
+        return 0
+    return sum(1 for lg in rows if colour_league(sb, lg, dry=dry, log=log))
 
 
 class _Sb:
@@ -209,6 +275,7 @@ class _Sb:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--team', help='one team, by slug')
+    ap.add_argument('--league', help='one league, by slug (its logo)')
     ap.add_argument('--force', action='store_true', help='re-read teams already coloured from the logo')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--worker-config', action='store_true', help=r'take the URL and key from %APPDATA%\epinoia\worker.json')
@@ -222,6 +289,10 @@ def main() -> int:
         url, key = cfg['supabase_url'], cfg['service_key']
     if not (url and key):
         print('SUPABASE_URL / SUPABASE_SERVICE_KEY missing'); return 2
+    if a.league:
+        k = sweep_leagues(_Sb(url, key), force=True, league=a.league, dry=a.dry_run)
+        print(f"{k} league(s) {'would be ' if a.dry_run else ''}coloured")
+        return 0
     n = sweep(_Sb(url, key), force=a.force or bool(a.team), team=a.team, dry=a.dry_run)
     print(f"{n} team(s) {'would be ' if a.dry_run else ''}coloured")
     return 0

@@ -84,18 +84,28 @@ function mount(o) {
   let cur = { country: '', sections: {}, nav: {}, theme: {} };
   const boxes = {}, tabBoxes = {}, colours = {};
 
-  /* ---- the league's own mark ----
-     Shown beside the league's name on its front page, at the top of the one
-     screen every visitor sees. It goes through the same media queue as a club
-     crest and a player photograph — the league approves what appears under its
-     own name, including its own upload, because one queue that always applies
-     beats two with an exception in it. */
+  /* ---- the league's own mark, and the colours it gives the league ----
+     Beside the league's name on its front page and in the sidebar. A LEAGUE ADMIN'S OWN UPLOAD
+     IS LIVE AT ONCE (publish_league_logo, 0122), the way a club manager's crest is: approving it
+     in Photographs was a second step with the same person in it. It goes straight into the
+     public bucket, which the storage policy of 0065 allows for a league admin's logo path.
+
+     THEN ITS COLOURS ARE READ, with the same count a club's crest gets (teamcolour.js palette,
+     the browser twin of scripts/ingest/team_colours.py), and saved as the league's colours:
+     the trims on the league's front page, its table and fixtures page, and the sidebar while a
+     visitor is on either. Colours an admin picked by hand are never replaced by a read unless
+     they ask for it. The ingest's colour sweep reads any logo this page did not. */
+  const TC = () => window.EpinoiaTeamColour;
+  const logoUrl = path => window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, path);
+  const NEEDS_0122 = 'The database has not had migration 0122 yet — run Push Database.bat, then try again.';
+  const missingFn = e => !!e && (e.code === 'PGRST202' || /could not find the function/i.test(e.message || ''));
+
   host.appendChild(el('div', 'fmt-h', 'League logo'));
   host.appendChild(el('p', 'empty',
-    'Sits next to the league name on the front page. An SVG with a ' +
-    'transparent background is best — it stays sharp at every size and on ' +
-    'every screen; a transparent PNG works too. It appears once it is ' +
-    'approved in Photographs below.'));
+    'Sits next to the league name on the front page and in the sidebar, and gives the league ' +
+    'its colours: the two strongest colours in it become the trims on the league’s pages. An ' +
+    'SVG with a transparent background is best — it stays sharp at every size; a transparent ' +
+    'PNG works too. It is live as soon as it is uploaded.'));
   const lgRow = el('div', 'row');
   const lgFile = el('input');
   lgFile.type = 'file';
@@ -110,9 +120,37 @@ function mount(o) {
   lgRm.type = 'button';
   lgRm.hidden = true;
   lgRm.title = 'take the league logo down — the name shows on its own';
+  lgRow.append(lgPick, lgFile, lgRm, lgPrev);
+  host.appendChild(lgRow);
+
+  const paintLogo = (path, note) => {
+    lgPrev.textContent = '';
+    if (!path) { lgPrev.textContent = note || 'no logo yet'; lgRm.hidden = true; return; }
+    lgRm.hidden = false;
+    const img = document.createElement('img');
+    img.src = logoUrl(path);
+    img.alt = ''; img.style.cssText = 'height:30px;vertical-align:middle;margin-right:8px';
+    lgPrev.appendChild(img);
+    if (note) lgPrev.appendChild(document.createTextNode(note));
+  };
+
+  /* whatever is there already, live or waiting, so an administrator can see it */
+  async function showLogo() {
+    try {
+      const { data } = await o.sb.from('media')
+        .select('storage_path,status')
+        .eq('owner_type', 'league').eq('owner_id', o.league.id).eq('kind', 'logo')
+        .order('created_at', { ascending: false }).limit(1);
+      const m = data && data[0];
+      if (!m) return paintLogo(null);
+      paintLogo(m.storage_path, m.status === 'approved' ? 'live' : m.status + ' — approve it in Photographs');
+    } catch (_) { lgPrev.textContent = ''; }
+  }
+  showLogo();
+
   lgRm.addEventListener('click', async () => {
-    if (!confirm('Remove the league logo?\n\nThe league name shows on its own ' +
-                 'until another is uploaded.')) return;
+    if (!confirm('Remove the league logo?\n\nThe league name shows on its own until another is ' +
+                 'uploaded, and colours read from this logo go with it (colours you picked stay).')) return;
     lgRm.disabled = true;
     const { data, error } = await o.sb.rpc('remove_media', {
       p_owner_type: 'league', p_owner_id: o.league.id, p_kind: 'logo' });
@@ -123,32 +161,33 @@ function mount(o) {
       o.sb.storage.from('media-public').remove(orphans).catch(() => {});
       o.sb.storage.from('media-pending').remove(orphans).catch(() => {});
     }
-    lgPrev.textContent = 'no logo yet';
-    lgRm.hidden = true;
+    paintLogo(null);
     o.say('Logo removed.', 'ok');
+    loadColours();
   });
 
-  lgRow.append(lgPick, lgFile, lgRm, lgPrev);
-  host.appendChild(lgRow);
-
-  /* whatever is already approved, so an administrator can see what is live */
-  (async () => {
-    try {
-      const { data } = await o.sb.from('media')
-        .select('storage_path,status')
-        .eq('owner_type', 'league').eq('owner_id', o.league.id).eq('kind', 'logo')
-        .order('created_at', { ascending: false }).limit(1);
-      const m = data && data[0];
-      if (!m) { lgPrev.textContent = 'no logo yet'; return; }
-      lgRm.hidden = false;
-      lgPrev.textContent = '';
-      const img = document.createElement('img');
-      img.src = window.EpinoiaUpload.publicUrl(window.EPINOIA_CONFIG, m.storage_path);
-      img.alt = ''; img.style.cssText = 'height:30px;vertical-align:middle;margin-right:8px';
-      lgPrev.appendChild(img);
-      lgPrev.appendChild(document.createTextNode(m.status));
-    } catch (_) { lgPrev.textContent = ''; }
-  })();
+  /* The two colours of a logo, read in this browser and saved as the league's. force: replace
+     colours an admin picked by hand (the "use the logo's colours" button); an upload never does. */
+  async function readLogoColours(path, force) {
+    const T = TC();
+    if (!T || !T.fromImage) return o.say('The colour reader did not load.', 'err');
+    const pal = await T.fromImage(logoUrl(path));
+    if (!pal || !pal.primary) {
+      o.say('The logo is live, but no colours could be read from it — pick them under League colours.', 'warn');
+      return;
+    }
+    const b = pal.secondary || T.derived(pal.primary);
+    const r = await o.sb.rpc('set_league_colours', {
+      p_league: o.league.id, p_colour_a: pal.primary, p_colour_b: b, p_source: 'logo', p_force: !!force });
+    if (r.error) return o.say(missingFn(r.error) ? NEEDS_0122 : r.error.message, 'err');
+    await loadColours();
+    if (r.data === 'kept') {
+      o.say('The logo is live. The colours you picked are kept — “use the logo’s colours” switches to it.', 'ok');
+    } else {
+      o.say('The logo is live, and the league’s colours are now ' + pal.primary + ' and ' + b +
+            ' from it. Reload the league’s page to see them.', 'ok');
+    }
+  }
 
   lgFile.addEventListener('change', async () => {
     const f = lgFile.files && lgFile.files[0];
@@ -157,17 +196,112 @@ function mount(o) {
     if (!window.EpinoiaUpload) return o.say('The uploader did not load.', 'err');
     lgPick.disabled = true;
     try {
-      const up = await window.EpinoiaUpload.upload(o.sb, {
-        file: f, ownerType: 'league', ownerId: o.league.id, kind: 'logo' });
-      if (!up || !up.storage_path) throw new Error('the upload returned no path');
-      lgPrev.textContent = 'uploaded — approve it in Photographs';
-      lgRm.hidden = false;
-      o.say('Logo uploaded and queued for approval.', 'ok');
+      /* Is publish_league_logo there? A database without 0122 answers "no such function"; one
+         with it refuses the all-zero id as "no such image" before anything else happens. */
+      const probe = await o.sb.rpc('publish_league_logo', { p_media: '00000000-0000-0000-0000-000000000000' });
+      if (missingFn(probe.error)) {
+        /* the old way: the approval queue, and no colours until the migration is in */
+        const up = await window.EpinoiaUpload.upload(o.sb, {
+          file: f, ownerType: 'league', ownerId: o.league.id, kind: 'logo' });
+        if (!up || !up.storage_path) throw new Error('the upload returned no path');
+        lgPrev.textContent = 'uploaded — approve it in Photographs';
+        lgRm.hidden = false;
+        o.say('Logo uploaded and queued for approval. ' + NEEDS_0122.replace('try again', 'upload it again to publish it at once and read its colours'), 'warn');
+      } else {
+        const up = await window.EpinoiaUpload.upload(o.sb, {
+          file: f, ownerType: 'league', ownerId: o.league.id, kind: 'logo', bucket: 'media-public' });
+        if (!up || !up.storage_path) throw new Error('the upload returned no path');
+        const pub = await o.sb.rpc('publish_league_logo', { p_media: up.id });
+        if (pub.error) throw new Error(pub.error.message);
+        const orphans = (pub.data && pub.data.orphans) || [];
+        if (orphans.length) {
+          o.sb.storage.from('media-public').remove(orphans).catch(() => {});
+          o.sb.storage.from('media-pending').remove(orphans).catch(() => {});
+        }
+        paintLogo(up.storage_path, 'live');
+        await readLogoColours(up.storage_path, false);
+      }
     } catch (e) {
       o.say('Upload failed: ' + (e.message || e), 'err');
     }
     lgPick.disabled = false;
   });
+
+  /* ---- league colours ---- */
+  host.appendChild(el('div', 'fmt-h', 'League colours'));
+  host.appendChild(el('p', 'empty',
+    'The league’s two colours: a wash behind its name, the selected tab, the hairlines and a ' +
+    'stripe along the top of the sidebar, on the league’s front page and its table and ' +
+    'fixtures page (the sidebar goes back to normal on every other page). Read from the logo ' +
+    'when one is uploaded, or pick your own — colours you pick are never replaced by a logo.'));
+  const lcRow = el('div', 'row');
+  const lcA = el('input', 'ep-input'); lcA.type = 'color'; lcA.value = '#93f2bf';
+  lcA.style.cssText = 'flex:0 0 46px;padding:3px'; lcA.title = 'primary colour';
+  const lcB = el('input', 'ep-input'); lcB.type = 'color'; lcB.value = '#8ff5ff';
+  lcB.style.cssText = 'flex:0 0 46px;padding:3px'; lcB.title = 'secondary colour';
+  const lcTrim = el('span');
+  lcTrim.style.cssText = 'display:inline-block;width:120px;height:10px;border-radius:2px;vertical-align:middle';
+  const lcState = el('span', 'mt');
+  lcRow.append(lcA, lcB, lcTrim, lcState);
+  host.appendChild(lcRow);
+  const lcBar = el('div', 'row');
+  const lcSave = el('button', 'ep-btn mini', 'save these colours'); lcSave.type = 'button';
+  const lcLogo = el('button', 'ep-btn mini', 'use the logo’s colours'); lcLogo.type = 'button';
+  const lcClear = el('button', 'ep-btn mini', 'no league colours'); lcClear.type = 'button';
+  lcClear.title = 'back to the platform’s own colours';
+  lcBar.append(lcSave, lcLogo, lcClear);
+  host.appendChild(lcBar);
+
+  let lgRowData = null;
+  const drawTrim = () => {
+    lcTrim.style.background = 'linear-gradient(90deg,' + lcA.value + ' 0 72%,' + lcB.value + ' 72% 88%,' + lcA.value + ' 88%)';
+  };
+  lcA.addEventListener('input', drawTrim);
+  lcB.addEventListener('input', drawTrim);
+
+  async function loadColours() {
+    const r = await o.sb.from('leagues').select('*').eq('id', o.league.id).maybeSingle();
+    if (r.error || !r.data) return;
+    lgRowData = r.data;
+    lcA.value = /^#[0-9a-f]{6}$/i.test(r.data.colour_a || '') ? r.data.colour_a : '#93f2bf';
+    lcB.value = /^#[0-9a-f]{6}$/i.test(r.data.colour_b || '') ? r.data.colour_b : '#8ff5ff';
+    drawTrim();
+    const src = r.data.colour_source;
+    lcState.textContent = src === 'logo' ? 'read from the logo'
+      : src === 'manual' ? 'picked by hand'
+      : src === undefined ? 'needs migration 0122'
+      : r.data.logo_path ? 'not read from the logo yet' : 'none — the platform’s colours';
+    lcLogo.disabled = !r.data.logo_path;
+  }
+
+  const saveColours = async (source, a, b, force) => {
+    const r = await o.sb.rpc('set_league_colours', {
+      p_league: o.league.id, p_colour_a: a, p_colour_b: b, p_source: source, p_force: !!force });
+    if (r.error) { o.say(missingFn(r.error) ? NEEDS_0122 : r.error.message, 'err'); return false; }
+    await loadColours();
+    return true;
+  };
+  lcSave.addEventListener('click', async () => {
+    lcSave.disabled = true;
+    if (await saveColours('manual', lcA.value, lcB.value)) {
+      o.say('Saved — the league’s pages use these colours now.', 'ok');
+    }
+    lcSave.disabled = false;
+  });
+  lcLogo.addEventListener('click', async () => {
+    if (!lgRowData || !lgRowData.logo_path) return o.say('Upload a logo first.', 'warn');
+    lcLogo.disabled = true;
+    await readLogoColours(lgRowData.logo_path, true);
+    lcLogo.disabled = !(lgRowData && lgRowData.logo_path);
+  });
+  lcClear.addEventListener('click', async () => {
+    lcClear.disabled = true;
+    if (await saveColours('default', null, null)) {
+      o.say('Cleared — the league’s pages are in the platform’s colours again.', 'ok');
+    }
+    lcClear.disabled = false;
+  });
+  loadColours();
 
   /* ---- country ---- */
   host.appendChild(el('div', 'fmt-h', 'Country'));
@@ -223,7 +357,7 @@ function mount(o) {
   host.appendChild(tGrid);
 
   /* ---- colours ---- */
-  host.appendChild(el('div', 'fmt-h', 'Colours'));
+  host.appendChild(el('div', 'fmt-h', 'Page and sidebar colours (advanced)'));
   host.appendChild(el('p', 'empty',
     'Six slots, and nothing else is themeable — a league can look like itself ' +
     'without being able to produce something nobody can read. Leave a slot on ' +

@@ -169,5 +169,49 @@
     });
   }
 
-  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, contrast: (a, b) => contrast(parse(a), parse(b)) };
+  /* ------------------------------------------------------- a league in its colours --- */
+  /* THE LEAGUE'S OWN PAGES IN THE LEAGUE'S COLOURS (0122). The same two colours a club gets
+     from its crest, read the same way from the league's logo, painted as
+
+       --league-a / --league-b            the colours as surfaces (tabs, stripes, glows)
+       --league-a-ink / --league-b-ink    the same colours as text on the page's ground
+       --league-on-a / --league-on-b      text ON a surface of the colour
+
+     and body.league-themed, which the kit (epinoia-kit.css) and the rail (nav.css) turn into
+     trims. The accent the whole kit reads, --lume, becomes the league's ink, so links, active
+     rows and figures follow — unless the league picked an accent of its own in Appearance
+     (keepAccent), which is the more deliberate choice of the two.
+
+     Only colours somebody vouched for paint at once: read from the logo, or picked by an admin
+     (colour_source 'logo' / 'manual'). A logo nobody has read yet is read here, for this visit,
+     as a club's fresh crest is on its page; the league's admin console saves the read. The
+     sidebar is themed only because it sits inside the page that set the class: leave the
+     league's pages and it is the platform's again. */
+  function paintLeague(a, b, opts) {
+    const A0 = parse(a) ? toHex(parse(a)) : null;
+    if (!A0 || A0 === '#93f2bf') return false;           /* the platform's mint is not a league colour */
+    const B0 = parse(b) ? toHex(parse(b)) : derived(A0);
+    const A = surface(A0), B = surface(B0);
+    const s = document.documentElement.style;
+    s.setProperty('--league-a', A);          s.setProperty('--league-b', B);
+    s.setProperty('--league-a-ink', ink(A)); s.setProperty('--league-b-ink', ink(B));
+    s.setProperty('--league-on-a', on(A));   s.setProperty('--league-on-b', on(B));
+    if (!(opts && opts.keepAccent)) s.setProperty('--lume', ink(A));
+    document.body.classList.add('league-themed');
+    return true;
+  }
+
+  function league(row, opts) {
+    if (!row || typeof document === 'undefined') return Promise.resolve(false);
+    const src = row.colour_source;
+    if ((src === 'logo' || src === 'manual') && paintLeague(row.colour_a, row.colour_b, opts)) {
+      return Promise.resolve(true);
+    }
+    const url = src !== 'manual' && row.logo_path && typeof window.epinoiaLogoUrl === 'function'
+      ? window.epinoiaLogoUrl(row.logo_path) : null;
+    if (!url) return Promise.resolve(false);
+    return fromImage(url).then(p => !!(p && p.primary && paintLeague(p.primary, p.secondary, opts)));
+  }
+
+  window.EpinoiaTeamColour = { apply, card, ink, on, surface, derived, fromImage, palette, league, paintLeague, contrast: (a, b) => contrast(parse(a), parse(b)) };
 })();

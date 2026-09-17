@@ -336,6 +336,39 @@ body.nav-drawer-open{ overflow:hidden }
   .ep-nav a.item.lrow > .crest, .ep-nav .teams a.item.trow > .ep-crest{ margin-right:0 }
 }
 
+/* ---- on a league's own pages, the league's colours ------------------------
+   body.league-themed is set by the league's front page and its hub (teamcolour.js league(),
+   migration 0122), so the rail wears the league's colours exactly while the reader is on
+   them and is the platform's again everywhere else. A 3px band of the primary with the
+   secondary's stripe along the top (the trim a club's page has), the edge and hairlines in
+   the primary, the selected row and the drilled-in heading in its ink, and the faintest wash
+   of it over whatever the rail's background is (the platform's, or a league's own "Sidebar"
+   colour from Appearance, which it tints rather than replaces). ::after, because the open
+   drawer on a phone uses ::before for its grab handle. */
+body.league-themed .ep-nav{
+  background:color-mix(in srgb,var(--league-a) 6%,var(--nav-bg,var(--panel)));
+  border-right-color:color-mix(in oklch,var(--league-a) 55%,transparent);
+}
+body.league-themed .ep-nav::after{
+  content:''; position:absolute; left:0; right:0; top:0; height:3px; pointer-events:none;
+  background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%);
+}
+body.league-themed .ep-nav a.item.on, body.league-themed .ep-nav .lrow.on{
+  color:var(--league-a-ink); border-left-color:var(--league-a);
+  background:color-mix(in oklch,var(--league-a) 14%,transparent);
+}
+body.league-themed .ep-nav .phead{ border-bottom-color:color-mix(in oklch,var(--league-a) 45%,transparent) }
+body.league-themed .ep-nav .phead .lname .marq > span{ color:var(--league-a-ink) }
+body.league-themed .ep-nav .ep-nav-foot{ border-top-color:color-mix(in oklch,var(--league-a) 30%,transparent) }
+/* the phone bar marks the selected row along its top, the open drawer down its left, as the
+   platform's own rules above do */
+@media (max-width:820px){
+  body.league-themed .ep-nav:not(.drawer-open) a.item.on, body.league-themed .ep-nav:not(.drawer-open) .lrow.on{
+    border-left-color:transparent; border-top-color:var(--league-a);
+  }
+  body.league-themed .ep-nav.drawer-open a.item.on{ border-left-color:var(--league-a); border-top-color:transparent }
+}
+
 /* ---- account ------------------------------------------------------------- */
 .ep-nav .acct{ display:flex; flex-direction:column }
 

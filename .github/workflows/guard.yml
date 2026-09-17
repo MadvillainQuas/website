@@ -274,6 +274,13 @@ jobs:
         # quiet misparse is twenty wrong rows rather than one
         run: node supabase/tests/csv.test.mjs
 
+      - name: A league's logo and the colours it gives the league
+        # 0122 makes a published logo the league's and keeps colours read from it honest (a new
+        # logo resets them, a hand-picked choice is never overwritten); the league's pages and
+        # the rail paint only vouched-for colours; the worker and the browser agree on a
+        # second colour; and a database without 0122 still shows every league page
+        run: node supabase/tests/league-colours.test.mjs
+
       - name: A fed league's season, clubs and players
         # which Genius phases are this season (SLB names them '26-27'), the whole season's fixtures
         # not the current round, club codes from the preview page, and clubs and players that share

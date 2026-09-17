@@ -136,6 +136,14 @@ async function boot() {
       : Promise.resolve(null);
     document.documentElement.style.setProperty('--team-a', league.colour_a || '#93f2bf');
     document.documentElement.style.setProperty('--team-b', league.colour_b || '#8ff5ff');
+    /* THE LEAGUE'S OWN COLOURS, from its logo or as its admin picked them (0122): trims on this
+       page and on the sidebar while it is here. A league that chose its own accent in
+       Appearance keeps it, here as on its front page. */
+    const ownAccent = league.theme && /^#[0-9a-f]{6}$/i.test(league.theme.accent || '') ? league.theme.accent : null;
+    if (window.EpinoiaTeamColour && window.EpinoiaTeamColour.league) {
+      window.EpinoiaTeamColour.league(league, { keepAccent: !!ownAccent });
+    }
+    if (ownAccent) document.documentElement.style.setProperty('--lume', ownAccent);
     $('#leagueName').textContent = league.name;
     document.title = league.name + ' · Epinoia';
 

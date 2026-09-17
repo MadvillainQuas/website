@@ -550,3 +550,31 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 :root[data-theme="light"] .ep-input{ background:#ffffff; color:var(--ink); border-color:var(--rule-2) }
 :root[data-theme="light"] .vidchip, :root[data-theme="light"] .vidspan, :root[data-theme="light"] .starrow-x{ background:#ffffff }
 :root[data-theme="light"] .vidchip.on, :root[data-theme="light"] .vidspan.on{ background:var(--lume); color:#ffffff }
+
+/* ---------- a league's own pages, in the league's colours (0122) ----------
+   teamcolour.js league() reads the league's two colours (from its logo, or as an admin picked
+   them), paints --league-a/-b (the colours as surfaces), --league-a-ink/-b-ink (as text on the
+   ground) and --league-on-a/-b (text on the colour), sets the kit's accent --lume to the
+   league's ink, and puts body.league-themed on the league's front page and its hub. The
+   hairlines take the primary, the ground takes a faint wash of both, and the selected tab and
+   chip become solid league colour. The rail's trims are in nav.css; the heading of each page is
+   trimmed in that page's own stylesheet. Last in the file on purpose: the light theme's
+   ".ep-tab.on" rules above carry the same weight. */
+body.league-themed{
+  --rule:color-mix(in oklch,var(--league-a) 24%,transparent);
+  --rule-2:color-mix(in oklch,var(--league-a) 48%,transparent);
+  background:
+    radial-gradient(1100px 620px at 12% -8%, color-mix(in srgb,var(--league-a) 20%,var(--ground)), transparent 62%),
+    radial-gradient(900px 520px at 100% 22%, color-mix(in srgb,var(--league-b) 10%,var(--ground)), transparent 60%),
+    var(--ground);
+  background-attachment:fixed;
+}
+body.league-themed .ep-tab.on,
+:root[data-theme="light"] body.league-themed .ep-tab.on{ background:var(--league-a); color:var(--league-on-a) }
+body.league-themed .ep-chip.on{ border-color:var(--league-a); color:var(--league-a-ink);
+  background:color-mix(in oklch,var(--league-a) 18%,transparent) }
+:root[data-theme="light"] body.league-themed .ep-chip.on{ background:var(--league-a); border-color:var(--league-a); color:var(--league-on-a) }
+/* the trim: a band of the primary with the secondary's stripe at its end, as a club's page has */
+.league-trim{ display:none }
+body.league-themed .league-trim{ display:block; height:3px;
+  background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%) }
