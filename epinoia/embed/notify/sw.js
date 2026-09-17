@@ -25,9 +25,9 @@
    The decisions are small pure functions so supabase/tests/notify-embed.test.mjs can
    run this file in node with a stubbed `self`.
    ============================================================================ */
-const EMBED_SW_VERSION = 'notify-embed-2026-09-17';
+const EMBED_SW_VERSION = 'notify-embed-2026-09-17-logo';
 const EPINOIA = 'https://prophesyscouting.co.uk/epinoia/';
-const EMBED_ICON = EPINOIA + 'brand/epinoia-mark-192.png';
+const EMBED_ICON = EPINOIA + 'brand/epinoia-app-192.png';   // the app's logo, as sw.js
 const EMBED_BADGE = EPINOIA + 'brand/epinoia-mark-32.png';
 /* PUBLIC VALUES, COPIED FROM epinoia/config.js; the test fails if they drift. */
 const EMBED_SUPABASE_URL = 'https://hhvofgqqadtyvcjudhjx.supabase.co';

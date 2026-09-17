@@ -155,11 +155,11 @@ function applyTheme(t) {
    Turning the card on also switches the account on (push.js does both), and the box
    is ticked to match, so the next save does not quietly send notify_push:false. */
 const PHONE_WORDS = {
-  on: 'On. What you choose below arrives on this phone, even when Epinoia is closed.',
+  on: 'On. What you choose below arrives on this phone, even when EPINOIΛ is closed.',
   off: 'Off on this phone.',
   denied: 'Blocked. Notifications are switched off for this site in this browser’s settings; allow them there, then come back to this page.',
-  unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or Epinoia from the Home Screen on an iPhone.',
-  'ios-install': 'On iPhone and iPad, notifications only arrive through Epinoia on your Home Screen. Tap Share, then Add to Home Screen, then open Epinoia from there and turn them on.'
+  unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or EPINOIΛ from the Home Screen on an iPhone.',
+  'ios-install': 'On iPhone and iPad, notifications only arrive through EPINOIΛ on your Home Screen. Tap Share, then Add to Home Screen, then open EPINOIΛ from there and turn them on.'
 };
 let phoneBusy = false;
 
@@ -219,7 +219,7 @@ function askAppReleased() {
     }, () => {});
   } catch (_) { /* no offer is the safe answer */ }
 }
-const INSTALL_WORDS = { web: 'Add Epinoia to your Home Screen', android: 'Get the Epinoia app for Android' };
+const INSTALL_WORDS = { web: 'Add EPINOIΛ to your Home Screen', android: 'Get the EPINOIΛ app for Android' };
 async function paintPhone() {
   const P = window.EpinoiaPush;
   const st = P ? await P.state() : 'unsupported';
@@ -233,7 +233,7 @@ async function paintPhone() {
   const blocked = app && P && P.appBlocked ? P.appBlocked() : null;
   if (blocked && st !== 'unsupported') {
     $('#phoneState').textContent = (st === 'on' ? 'On for this page, but Android is not' : PHONE_WORDS[st] + ' Android is also not') +
-      ' letting Epinoia pop up notifications (as of this launch). Tap Open notification settings to allow them.';
+      ' letting EPINOIΛ pop up notifications (as of this launch). Tap Open notification settings to allow them.';
   }
   if (app) $('#pushSettings').href = P.settingsIntent;
   $('#installBtn').textContent = offerApp ? INSTALL_WORDS.android : INSTALL_WORDS.web;
@@ -305,7 +305,7 @@ async function paintDupes(st, app) {
   if (!app) {
     if (st !== 'on' || !(await accountHasApp())) { box.classList.add('hide'); return; }
     box.textContent = '';
-    box.append('Your account has the Epinoia Android app. If it is on this phone, notifications come through it, and ' +
+    box.append('Your account has the EPINOIΛ Android app. If it is on this phone, notifications come through it, and ' +
                'with them on here as well every notification arrives twice. ');
     const off = document.createElement('button');
     off.type = 'button'; off.className = 'ep-btn'; off.textContent = 'Turn off notifications here';
@@ -333,7 +333,7 @@ async function paintDupes(st, app) {
     box.className = 'msg ' + (error ? 'err' : 'ok');
     box.textContent = error
       ? 'The others could not be turned off just now. Try again in a minute.'
-      : 'Done: those sign-ups are off, and this app keeps its own. If you open Epinoia in Samsung Internet again, its profile page offers to turn notifications off there for good.';
+      : 'Done: those sign-ups are off, and this app keeps its own. If you open EPINOIΛ in Samsung Internet again, its profile page offers to turn notifications off there for good.';
   };
   box.appendChild(b);
   box.className = 'msg warn';
@@ -421,7 +421,7 @@ function askSeen() {
   box.textContent = '';
   box.classList.remove('hide');
   const adv = document.createElement('div'); adv.className = 'adv';
-  const q = document.createElement('b'); q.textContent = 'Did a notification from Epinoia just pop up on this phone?';
+  const q = document.createElement('b'); q.textContent = 'Did a notification from EPINOIΛ just pop up on this phone?';
   const acts = document.createElement('div'); acts.className = 'phone-acts';
   acts.append(phoneButton('Yes, it did', 'ep-btn pri', () => {
     box.classList.add('hide');
@@ -713,7 +713,7 @@ async function paintMembership() {
     const tx = el('div');
     tx.append(
       el('b', null, featureWords(g.features)),
-      el('small', null, 'Given by ' + (g.league_id ? (g.league_name || 'your league') : 'Epinoia') + (g.note ? ' · ' + g.note : '')),
+      el('small', null, 'Given by ' + (g.league_id ? (g.league_name || 'your league') : 'EPINOIΛ') + (g.note ? ' · ' + g.note : '')),
       el('span', 'st', g.expires_at ? 'Until ' + longDate(g.expires_at) + '.' : 'No end date.'));
     row.appendChild(tx);
     host.appendChild(row);

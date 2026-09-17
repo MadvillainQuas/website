@@ -275,7 +275,7 @@ const NOT_OUT = { versionCode: 1, versionName: '1.0.0', minShell: 1, released: f
   p.later(2500);
   const b = p.banners()[0];
   ok('Android browser: after 2.5 s, one banner offering the Android app', p.banners().length === 1 && b.cls.has('ep-app-offer')
-     && /Get the Epinoia app for Android/.test(textOf(b)), textOf(b));
+     && /Get the EPINOIΛ app for Android/.test(textOf(b)), textOf(b));
   ok('...its button is a link to /epinoia/android/ (from stats/: ../android/)', goOf(b) && goOf(b).tagName === 'A' && goOf(b).href === '../android/', goOf(b) && goOf(b).href);
   ok('...never the web app\'s "Add Epinoia to your home screen"', !/home screen/i.test(textOf(b)));
   const x = b.children.find(n => n.cls.has('x'));
@@ -308,7 +308,7 @@ for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unrea
   p.fire('beforeinstallprompt', { preventDefault() {}, prompt() {} });
   const b = p.banners()[0];
   ok('...beforeinstallprompt: the web app\'s "Add Epinoia to your home screen", as before the app existed',
-     p.banners().length === 1 && !b.cls.has('ep-app-offer') && /Add Epinoia to your home screen/.test(textOf(b)) && goOf(b).tagName === 'BUTTON', textOf(b));
+     p.banners().length === 1 && !b.cls.has('ep-app-offer') && /Add EPINOIΛ to your home screen/.test(textOf(b)) && goOf(b).tagName === 'BUTTON', textOf(b));
   ok('...and nothing links to the download page', !p.banners().some(n => goOf(n) && goOf(n).href === '../android/'));
 }
 {
@@ -335,7 +335,7 @@ for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unrea
   const p = page('/epinoia/home/', { ua: UA.iphone });
   p.later(2500);
   const b = p.banners()[0];
-  ok('iPhone: Add to Home Screen, exactly as before', !!b && !b.cls.has('ep-app-offer') && /Add Epinoia to your home screen/.test(textOf(b))
+  ok('iPhone: Add to Home Screen, exactly as before', !!b && !b.cls.has('ep-app-offer') && /Add EPINOIΛ to your home screen/.test(textOf(b))
      && /Add to Home Screen/.test(textOf(b)) && goOf(b).tagName === 'BUTTON', textOf(b));
 }
 {
@@ -347,7 +347,7 @@ for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unrea
   const q = page('/epinoia/home/', { ua: UA.desktop, width: 800 });
   q.fire('beforeinstallprompt', { preventDefault() {}, prompt() {} });
   const b = q.banners()[0];
-  ok('desktop, narrow window, beforeinstallprompt: the web app, as before', !!b && !b.cls.has('ep-app-offer') && /Add Epinoia to your home screen/.test(textOf(b)));
+  ok('desktop, narrow window, beforeinstallprompt: the web app, as before', !!b && !b.cls.has('ep-app-offer') && /Add EPINOIΛ to your home screen/.test(textOf(b)));
 }
 {
   const p = page('/epinoia/home/', { ua: UA.desktop });
@@ -370,7 +370,7 @@ console.log('\n-- the update notice');
   const p = page('/epinoia/stats/?l=bcb', { ua: UA.chromeAndroid, app: true, session, versionJson: { versionCode: 3, versionName: '1.2.0', minShell: 2 } });
   await tick(); await tick(); await tick();
   const b = p.banners().find(n => n.cls.has('ep-update'));
-  ok('the app, shell 1 < minShell 2: "Update the Epinoia app"', !!b && /Update the Epinoia app/.test(textOf(b)), p.banners().map(textOf).join(' | '));
+  ok('the app, shell 1 < minShell 2: "Update the Epinoia app"', !!b && /Update the EPINOIΛ app/.test(textOf(b)), p.banners().map(textOf).join(' | '));
   ok('...naming the version', /1\.2\.0/.test(textOf(b)));
   ok('...linking to /epinoia/android/', goOf(b) && goOf(b).tagName === 'A' && goOf(b).href === '../android/');
   ok('...fetched from /epinoia/android/version.json', p.fetches.filter(f => /version\.json$/.test(f)).length === 1 && p.fetches.includes('../android/version.json'), p.fetches.join());
@@ -475,7 +475,7 @@ const promoFrame = () => {
   const strips = byClass(f.frame, 'ep-appstrip');
   ok('...and one strip on the page', strips.length === 1 && strips[0].href === '../android/' && strips[0].dataset.kind === 'android');
   ok('...before the page\'s footer', f.frame.children.indexOf(strips[0]) === f.frame.children.indexOf(f.foot) - 1);
-  ok('...with the app icon and the words', strips[0] && strips[0].children[0].src === '../android/icon-192.png' && /Get the Epinoia app/.test(strips[0].textContent));
+  ok('...with the app icon and the words', strips[0] && strips[0].children[0].src === '../android/icon-192.png' && /Get the EPINOIΛ app/.test(strips[0].textContent));
   const P = p.ctx.EpinoiaAppPromo;
   ok('window.EpinoiaAppPromo answers the same, with the rail\'s root', P && P.current() && P.current().kind === 'android' && P.href(P.current()) === '../android/');
 }

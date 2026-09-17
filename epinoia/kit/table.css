@@ -255,10 +255,18 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
        moves under script, which is all xscroll.js's drag needs.
 
        pinch-zoom beside pan-y: a two-finger zoom over small figures is the reader's
-       to make, and it claims no single-finger axis. */
+       to make, and it claims no single-finger axis.
+
+       OVERSCROLL BACK TO AUTO, BOTH AXES. The desktop rule above sets
+       overscroll-behavior:contain, and naming only -x here left -y at contain. An
+       overflow:hidden box is still a scroll container, and Chrome stops the scroll chain at
+       one whose overscroll is contained even when it cannot scroll itself: a vertical swipe
+       that began on the table latched onto this box, which could not move, and never reached
+       the page. The whole table was a dead zone for scrolling down. Horizontal panning is
+       script-driven (xscroll.js), so containing x bought nothing either. */
     overflow:hidden;
     touch-action:pan-y pinch-zoom;
-    overscroll-behavior-x:contain;
+    overscroll-behavior:auto;
   }
   /* A HEADER CELL IS ALWAYS A POSITIONED BOX, so a resize grip is anchored inside it.
      position:static here let every grip anchor to .ep-frame instead, where they stacked
@@ -275,7 +283,7 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
   .ft-host table.ft th.c1, .ft-host table.ft td.c1{ width:132px }
   .ft-host .ft-wrap{
     max-height:none; overflow:hidden;
-    touch-action:pan-y pinch-zoom; overscroll-behavior-x:contain;
+    touch-action:pan-y pinch-zoom; overscroll-behavior:auto;   /* see the 640px block: not contain */
   }
   .ft-host table.ft thead th:not(.stick){ position:relative }
   .ft-host .ft-grip{ display:none }

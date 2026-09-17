@@ -497,10 +497,21 @@ function card(g, opts) {
     const row = node('span', 'fxc-tm ' + cls + (win ? ' win' : lose ? ' lose' : ''));
     const crest = root.epinoiaCrest ? root.epinoiaCrest(team || {}, { cls: 'fxc-crest' }) : node('span', 'fxc-crest');
     row.appendChild(crest);
-    /* the full name, and the club's short name for a card too narrow to hold it (fxc.css picks) */
+    /* the full name, and the club's letters for a card too narrow to hold it (fxc.css picks).
+       The letters are the league's own unique initials (initials.js) once they have loaded;
+       until then, and on a page without initials.js, the club's short name stands in. */
     const nm = node('span', 'fxc-nm');
+    nm.title = name;
     nm.appendChild(node('span', 'full', name));
-    nm.appendChild(node('span', 'short', shortName(team, name)));
+    const I = root.EpinoiaInitials;
+    const short = node('span', 'short', (I && team && I.code(team)) || shortName(team, name));
+    if (I && team && team.id) {
+      short.setAttribute('data-initials-team', team.id);
+      if (I.code(team)) short.classList.add('is-code');
+      const lg = leagueOf(g);
+      if (lg && lg.id) I.want(lg.id);
+    }
+    nm.appendChild(short);
     row.appendChild(nm);
     if (isLive || isFinal) row.appendChild(node('span', 'fxc-sc', score == null ? '0' : String(score)));
     return row;

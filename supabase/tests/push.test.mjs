@@ -681,7 +681,7 @@ console.log('\nthe Epinoia Android app (a Trusted Web Activity on Chrome)');
   const words = h.steps.join(' ');
   ok('help(): Game alerts on Alert with pop-up, One UI\'s Detailed pop-up style, both batteries Unrestricted and never sleeping, Do Not Disturb',
      /Game alerts/.test(words) && /Alert rather than Silent/.test(words) && /pop-up/.test(words) && /Detailed/.test(words) &&
-     /Epinoia, then Battery/.test(words) && /Unrestricted/.test(words) && /Chrome/.test(words) && /Sleeping apps/.test(words) &&
+     /EPINOIΛ, then Battery/.test(words) && /Unrestricted/.test(words) && /Chrome/.test(words) && /Sleeping apps/.test(words) &&
      /Never sleeping apps/.test(words) && /Do Not Disturb/.test(words), words);
   eq('...and the Open notification settings action', [h.platform, h.action], ['android-twa', { label: 'Open notification settings', href: INTENT }]);
   android();
@@ -704,7 +704,7 @@ console.log('\nthe Epinoia Android app (a Trusted Web Activity on Chrome)');
   let r = await P.check();
   let perm = r.steps.find(s => s.id === 'permission');
   ok('notifications off for the app (notif=0) fail the permission step even though the page says granted',
-     perm && perm.ok === false && /turned off for the Epinoia app/.test(perm.label) && /as of this launch/.test(perm.label) && !r.ok, JSON.stringify(ids(r)));
+     perm && perm.ok === false && /turned off for the EPINOIΛ app/.test(perm.label) && /as of this launch/.test(perm.label) && !r.ok, JSON.stringify(ids(r)));
   ok('...the page\'s own permission is shown, for information only', /allowed/.test(perm.detail) && /app’s own setting is what counts/.test(perm.detail));
   ok('...the check stops there, with the settings button and a prompt to reopen the app',
      ids(r).join() === 'browser:ok,permission:bad' && r.advice.action && r.advice.action.href === INTENT &&
@@ -789,7 +789,7 @@ console.log('\nthe Epinoia Android app (a Trusted Web Activity on Chrome)');
   r = await P.check();
   perm = r.steps.find(s => s.id === 'permission');
   ok('...Check this phone marks the permission step neither pass nor fail, saying the settings may have changed',
-     perm.ok === null && /may have changed since Epinoia opened/.test(perm.label) && /test below decides/.test(perm.detail));
+     perm.ok === null && /may have changed since EPINOIΛ opened/.test(perm.label) && /test below decides/.test(perm.detail));
   eq('...and goes on, so the live test decides', ids(r),
      ['browser:ok', 'permission:?', 'worker:ok', 'subscription:ok', 'account:ok', 'channel:ok', 'delivery:ok', 'arrival:ok']);
   ok('...ending on the app\'s advice with the button, not "reopen"', r.ok && r.advice.action && !/reopen/i.test(r.advice.title));
@@ -848,7 +848,7 @@ const client = (url, o = {}) => {
      [W.SUPABASE_URL, W.SUPABASE_KEY, W.VAPID_PUBLIC_KEY], [CFG_URL, CFG_KEY, CFG_VAPID]);
   ok('the icon and the badge are real files', fs.existsSync(path.join(ROOT, W.ICON.replace(/^\//, ''))) && fs.existsSync(path.join(ROOT, W.BADGE.replace(/^\//, ''))),
      W.ICON + ' ' + W.BADGE);
-  eq('icon 192, and the badge is the white silhouette', [W.ICON, W.BADGE], ['/epinoia/brand/epinoia-mark-192.png', '/epinoia/brand/epinoia-badge-96.png']);
+  eq('icon 192 is the app logo, and the badge is the white silhouette', [W.ICON, W.BADGE], ['/epinoia/brand/epinoia-app-192.png', '/epinoia/brand/epinoia-badge-96.png']);
   {
     /* Android draws a badge from its alpha alone: every pixel white, the ground transparent */
     const png = fs.readFileSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-badge-96.png'));
@@ -883,7 +883,7 @@ const client = (url, o = {}) => {
   const page = await respond(L, { method: 'GET', mode: 'navigate', url: ORIGIN + '/epinoia/home/' });
   ok('fetch: a page load that fails offline gets the offline page, status 200, as HTML, never stored',
      page && page.status === 200 && /text\/html/.test(page.headers['Content-Type']) && /no-store/.test(page.headers['Cache-Control']) &&
-     /Epinoia is offline/.test(page.body), page && JSON.stringify({ status: page.status, headers: page.headers }));
+     /EPINOIΛ is offline/.test(page.body), page && JSON.stringify({ status: page.status, headers: page.headers }));
   ok('...light by default, dark when the phone is', /background:#f3faf6/.test(page.body) && /prefers-color-scheme:dark/.test(page.body));
   eq('fetch: a failed JSON read (not a page load) is not answered by the worker, so its caller sees a real network error',
      await respond(L, { method: 'GET', mode: 'cors', url: 'https://abc.supabase.co/rest/v1/games?select=id' }), null);
@@ -901,19 +901,19 @@ const client = (url, o = {}) => {
     tag: 'lineups:' + G, renotify: true, kind: 'lineups', timestamp: 1758301500000, actions: [{ action: 'starters', title: 'See lineups' }] });
   eq('a lineups payload becomes the notification the contract describes', JSON.parse(JSON.stringify(n)), {
     title: 'Lineups are in: Rockets v Lions',
-    options: { body: 'Rockets: Baker, Salih, Cole, Diaz, Eze\nLions: …', icon: '/epinoia/brand/epinoia-mark-192.png', badge: '/epinoia/brand/epinoia-badge-96.png',
+    options: { body: 'Rockets: Baker, Salih, Cole, Diaz, Eze\nLions: …', icon: '/epinoia/brand/epinoia-app-192.png', badge: '/epinoia/brand/epinoia-badge-96.png',
       vibrate: [80, 40, 80], data: { url, kind: 'lineups', actions: { starters: url } },
       tag: 'lineups:' + G, renotify: true, timestamp: 1758301500000, actions: [{ action: 'starters', title: 'See lineups' }] } });
 
   eq('a league\'s crest in the payload is the icon (a notification button\'s subscriber)',
      W.notificationFor({ title: 'FT', icon: 'https://x.test/crest.png', tag: 't' }).options.icon, 'https://x.test/crest.png');
-  eq('...but never one that is not https', W.notificationFor({ title: 'FT', icon: 'javascript:alert(1)', tag: 't' }).options.icon, '/epinoia/brand/epinoia-mark-192.png');
+  eq('...but never one that is not https', W.notificationFor({ title: 'FT', icon: 'javascript:alert(1)', tag: 't' }).options.icon, '/epinoia/brand/epinoia-app-192.png');
   const bare = W.notificationFor({ title: 'x', renotify: true });
   ok('renotify without a tag is dropped (showNotification would throw)', !('renotify' in bare.options) && !('tag' in bare.options));
   const three = W.notificationFor({ tag: 't', actions: [{ action: 'a', title: 'A' }, { action: 'b', title: 'B' }, { action: 'c', title: 'C' }, { action: '', title: 'bad' }] });
   eq('at most two actions', JSON.parse(JSON.stringify(three.options.actions)).map(a => a.action), ['a', 'b']);
   const empty = W.notificationFor(null);
-  eq('nothing at all still shows something, and opens HOME', [empty.title, empty.options.body, empty.options.data.url], ['Epinoia', '', '/epinoia/home/']);
+  eq('nothing at all still shows something, and opens HOME', [empty.title, empty.options.body, empty.options.data.url], ['EPINOIΛ', '', '/epinoia/home/']);
   eq('HOME is its own path; the site root stays /epinoia/', [W.HOME_PATH, W.SITE_PATH], ['/epinoia/home/', '/epinoia/']);
   ok('a bad timestamp is left out rather than passed through', !('timestamp' in W.notificationFor({ timestamp: 'soon' }).options));
 
@@ -926,7 +926,7 @@ const client = (url, o = {}) => {
   eq('"Box score" on a half-time notice opens the box score too (tapped after full time, the game opens on its report)',
      W.actionUrl('halftime', 'box', ORIGIN + '/epinoia/game/?g=1&mode=supabase'), ORIGIN + '/epinoia/game/?g=1&mode=supabase&tab=box');
 
-  eq('a text payload (not JSON) is shown as the body', W.readPayload({ json: () => { throw new SyntaxError('x'); }, text: () => 'plain words' }), { title: 'Epinoia', body: 'plain words' });
+  eq('a text payload (not JSON) is shown as the body', W.readPayload({ json: () => { throw new SyntaxError('x'); }, text: () => 'plain words' }), { title: 'EPINOIΛ', body: 'plain words' });
 
   /* THE PAYLOAD THE NOTIFY FUNCTION ACTUALLY BUILDS, read by this worker: the keys
      cannot drift apart between the two files without this failing */
@@ -1164,7 +1164,7 @@ console.log('\nwired into the pages');
   ok('...on an Android browser it offers the Android app (nav.js\'s own decision), labelled so, and goes to ../android/',
      /const offerApp = !app && androidAppOffer\(\);/.test(me) && /S\.installOffer\(\{/.test(me) && /=== 'android-app'/.test(me) &&
      /installBtn: !app && !standaloneApp\(\) && \(offerApp \? st !== 'on'/.test(me) &&
-     /android: 'Get the Epinoia app for Android'/.test(me) && /\$\('#installBtn'\)\.textContent = offerApp \? INSTALL_WORDS\.android : INSTALL_WORDS\.web/.test(me) &&
+     /android: 'Get the EPINOIΛ app for Android'/.test(me) && /\$\('#installBtn'\)\.textContent = offerApp \? INSTALL_WORDS\.android : INSTALL_WORDS\.web/.test(me) &&
      /if \(androidAppOffer\(\)\) \{ location\.href = '\.\.\/android\/'; return; \}/.test(me));
   ok('the other sign-ups: only in the app with this phone on, the fan\'s own rows, deleted by id',
      /if \(st !== 'on' \|\| !sb\) \{ box\.classList\.add\('hide'\); return; \}\r?\n\s*const others = await otherSignups\(\);/.test(me) &&
@@ -1244,7 +1244,7 @@ console.log('\nthe sheet points an Android browser at the app (nav.js EpinoiaApp
   const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'push.js'), 'utf8');
   const fnBody = name => src.slice(src.indexOf('function ' + name + '('), src.indexOf('\n  }\n', src.indexOf('function ' + name + '(')));
   ok('the ask links the app when there is one', /const app = androidApp\(\);[\s\S]*Get the app[\s\S]*a\.href = app\.href/.test(fnBody('ask')));
-  ok('"your phone is hiding it" offers the app as a way out', /const app = androidApp\(\);[\s\S]*'Get the Epinoia app'[\s\S]*a\.href = app\.href/.test(fnBody('hidden')));
+  ok('"your phone is hiding it" offers the app as a way out', /const app = androidApp\(\);[\s\S]*'Get the EPINOIΛ app'[\s\S]*a\.href = app\.href/.test(fnBody('hidden')));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

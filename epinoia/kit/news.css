@@ -155,7 +155,23 @@
   font-family:var(--f-micro); font-size:9px; color:var(--ink-3);
   margin-top:7px; line-height:1.8;
 }
-.art-foot{padding:0 calc(var(--u)*3) calc(var(--u)*5)}
+.art-foot{padding:0 calc(var(--u)*3) calc(var(--u)*5);display:flex;flex-wrap:wrap;gap:8px}
+
+/* a match report's game (news-page.js gameCard): under the standfirst, opening the box score */
+.art-game-slot:empty{display:none}
+.art-game{display:flex;flex-direction:column;gap:4px;margin:0 0 calc(var(--u)*3);
+  padding:calc(var(--u)*1.5) calc(var(--u)*2) calc(var(--u)*1.5) calc(var(--u)*2.5);
+  border:1px solid var(--rule-2);background:var(--panel);color:inherit;text-decoration:none;
+  position:relative;transition:border-color .15s ease}
+.art-game::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--lume),var(--aqua))}
+.art-game:hover{border-color:var(--lume)}
+.art-game:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.art-game .k{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}
+.art-game .t{font-family:var(--f-ui);font-weight:800;font-size:16px;line-height:1.35;color:var(--ink)}
+.art-game .t b{font-family:var(--f-score);font-weight:400;font-size:18px;white-space:pre}
+.art-game .d{font-family:var(--f-micro);font-size:9.5px;color:var(--ink-3)}
+.art-body a.art-game{color:inherit}
 
 /* ---------- the editor ---------- */
 .news-ed{border:1px solid var(--rule-2);padding:calc(var(--u)*2);margin-top:calc(var(--u)*2)}

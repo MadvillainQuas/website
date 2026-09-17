@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Epinoia</string>
+    <string name="app_name">EPINOIΛ</string>
 
     <!--
         DIGITAL ASSET LINKS, APP SIDE: this app may handle every URL on the apex host.
@@ -22,21 +22,21 @@
     <string name="channel_alerts_description">Reminders, lineups, half-time and results for the games you follow.</string>
 
     <!-- Chrome dialog (once, when Chrome is missing or disabled) -->
-    <string name="chrome_dialog_title">Epinoia needs Chrome</string>
-    <string name="chrome_dialog_message">Epinoia runs on Google Chrome, which gives it its splash screen and game alerts. Chrome is not installed or is turned off on this phone.\n\nGet or enable Chrome, then open Epinoia again. You can carry on without it, but game alerts will not work.</string>
+    <string name="chrome_dialog_title">EPINOIΛ needs Chrome</string>
+    <string name="chrome_dialog_message">EPINOIΛ runs on Google Chrome, which gives it its splash screen and game alerts. Chrome is not installed or is turned off on this phone.\n\nGet or enable Chrome, then open EPINOIΛ again. You can carry on without it, but game alerts will not work.</string>
     <string name="chrome_dialog_get">Get Chrome</string>
     <string name="chrome_dialog_continue">Continue anyway</string>
 
     <!-- Notification pre-prompt (first launch, Android 13+) -->
     <string name="prompt_title">Game alerts</string>
-    <string name="prompt_body">Epinoia can tell you when a game you follow is about to start, when lineups are in, at half-time and at the final whistle.\n\nAndroid will ask next. Choose Allow to get them. You can change this at any time.</string>
+    <string name="prompt_body">EPINOIΛ can tell you when a game you follow is about to start, when lineups are in, at half-time and at the final whistle.\n\nAndroid will ask next. Choose Allow to get them. You can change this at any time.</string>
     <string name="prompt_allow">Continue</string>
     <string name="prompt_later">Not now</string>
 
     <!-- Notification settings screen -->
     <string name="settings_title">Notification settings</string>
     <string name="settings_intro">What decides whether a game alert pops up on this phone.</string>
-    <string name="settings_row_app">Epinoia notifications</string>
+    <string name="settings_row_app">EPINOIΛ notifications</string>
     <string name="settings_row_channel">Game alerts</string>
     <string name="settings_row_dnd">Do Not Disturb</string>
     <string name="settings_row_battery">Battery</string>
@@ -55,6 +55,6 @@
     <string name="settings_open_app">Open notification settings</string>
     <string name="settings_open_channel">Open Game alerts settings</string>
     <string name="settings_open_battery">Open battery settings</string>
-    <string name="settings_test_hint">To check it works, go back to Epinoia, open your profile and tap Send a test. Lock the phone: the alert should pop up within a few seconds.</string>
-    <string name="settings_back">Back to Epinoia</string>
+    <string name="settings_test_hint">To check it works, go back to EPINOIΛ, open your profile and tap Send a test. Lock the phone: the alert should pop up within a few seconds.</string>
+    <string name="settings_back">Back to EPINOIΛ</string>
 </resources>

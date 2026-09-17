@@ -146,7 +146,7 @@ async function one(league) {
   $('#head').textContent = a.title;
   $('#leagueName').textContent = league.name +
     (a.published_at ? ' · ' + N.when(a.published_at) : '') +
-    (a.author_name ? ' · by ' + a.author_name : '');
+    (a.author_name ? ' · by ' + N.byline(a.author_name) : '');
 
   if (a.cover_path) {
     const fig = el('div', 'art-cover');
@@ -159,6 +159,9 @@ async function one(league) {
 
   const body = el('div', 'art-body');
   if (a.standfirst) body.appendChild(el('p', 'art-stand', a.standfirst));
+  /* the report's game, straight after the standfirst: filled in when it answers */
+  const gameSlot = el('div', 'art-game-slot');
+  body.appendChild(gameSlot);
   body.appendChild(B.toDom(a.body, { url: imgUrl }));
   host.appendChild(body);
 
@@ -167,6 +170,54 @@ async function one(league) {
   link.href = '?l=' + encodeURIComponent(league.slug);
   foot.appendChild(link);
   host.appendChild(foot);
+
+  reportGame(league, a).then(g => {
+    if (!g) return;
+    gameSlot.appendChild(gameCard(g));
+    const chip = el('a', 'ep-chip', 'the game →');
+    chip.href = gameHref(g.id);
+    foot.insertBefore(chip, link);
+  }, () => { /* a written piece, or no answer: the article stands on its own */ });
+}
+
+/* ------------------------------------------------------ a report's game ---
+   A MATCH REPORT LINKS THE GAME IT IS ABOUT. finalise-game files each report with
+   news_articles.game_id (0105), but news_article does not return it; the published row is
+   readable directly (the news_read policy), with the member's token for a members-only league,
+   as every other call here. The fixture line comes from the game itself, so the card reads
+   "Nottingham Hoods 79–76 Derby Trailblazers" and opens the box score. A written article has
+   no game and gets nothing. */
+const gameHref = id => '../game/?g=' + encodeURIComponent(id) + '&mode=supabase';
+async function reportGame(league, a) {
+  if (!a || !a.slug) return null;
+  const rows = await api('news_articles?select=game_id&league_id=eq.' + encodeURIComponent(league.id) +
+    '&slug=eq.' + encodeURIComponent(a.slug) + '&limit=1');
+  const id = rows && rows[0] && rows[0].game_id;
+  if (!id) return null;
+  let g = null;
+  try {
+    const gs = await api('games?select=id,status,home_score,away_score,tipoff_at,' +
+      'home:home_team_id(name),away:away_team_id(name)&id=eq.' + encodeURIComponent(id) + '&limit=1');
+    g = gs && gs[0];
+  } catch (_) { /* the link still works without the line */ }
+  return g || { id };
+}
+function gameCard(g) {
+  const card = el('a', 'art-game');
+  card.href = gameHref(g.id);
+  const one = v => (Array.isArray(v) ? v[0] : v) || {};
+  const home = one(g.home).name, away = one(g.away).name;
+  const scored = g.status === 'final' || g.status === 'live';
+  card.appendChild(el('span', 'k', g.status === 'live' ? 'live now' : 'the game'));
+  const line = el('span', 't');
+  if (home && away) {
+    line.append(el('span', null, home),
+      el('b', null, scored && g.home_score != null && g.away_score != null ? ' ' + g.home_score + '–' + g.away_score + ' ' : ' v '),
+      el('span', null, away));
+  } else line.textContent = 'This report’s game';
+  card.appendChild(line);
+  card.appendChild(el('span', 'd', 'Box score, play-by-play and every stat →'));
+  return card;
 }
 
 /* --------------------------------------------------------- every article --- */

@@ -8,16 +8,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Epinoia">
-<link rel="apple-touch-icon" href="/epinoia/brand/epinoia-mark-180.png">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<link rel="apple-touch-icon" href="/epinoia/brand/epinoia-app-180.png">
 <!-- PUBLIC page; the content needs a session, which the page asks Supabase for itself. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<script src="../appmode.js?v=275"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=275">
-<link rel="stylesheet" href="../kit/nav.css?v=275">
+<script src="../appmode.js?v=276"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=276">
+<link rel="stylesheet" href="../kit/nav.css?v=276">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -146,7 +146,7 @@
   </div>
 
   <div id="signedout" class="note hide">
-    You are not signed in. <a id="signinLink" href="../signin/?next=/epinoia/me/" style="color:var(--lume)">Sign in</a> with your email to see your membership, follow clubs and players, and choose how Epinoia keeps you posted.
+    You are not signed in. <a id="signinLink" href="../signin/?next=/epinoia/me/" style="color:var(--lume)">Sign in</a> with your email to see your membership, follow clubs and players, and choose how EPINOIΛ keeps you posted.
   </div>
 
   <div id="body" class="hide">
@@ -181,7 +181,7 @@
       <div class="ep-hdr"><span class="idx">04</span><h2>Appearance</h2></div>
       <div class="row"><span class="lbl">Your colour</span><div id="swatches" style="display:flex;gap:8px;flex-wrap:wrap"></div>
         <input id="colour" type="color" class="ep-input" style="width:58px;padding:3px" title="any colour"></div>
-      <div class="row"><span class="lbl">Light or dark, everywhere on Epinoia</span>
+      <div class="row"><span class="lbl">Light or dark, everywhere on EPINOIΛ</span>
         <button class="ep-chip" id="themeDark" type="button">dark</button>
         <button class="ep-chip" id="themeLight" type="button">light</button></div>
     </section>
@@ -196,7 +196,7 @@
           <button class="ep-btn pri hide" id="pushOn" type="button">Turn on notifications</button>
           <button class="ep-btn hide" id="pushTest" type="button">Send a test</button>
           <button class="ep-btn hide" id="pushOff" type="button">Turn off</button>
-          <button class="ep-btn hide" id="installBtn" type="button">Add Epinoia to your Home Screen</button>
+          <button class="ep-btn hide" id="installBtn" type="button">Add EPINOIΛ to your Home Screen</button>
           <button class="ep-btn hide" id="pushCheck" type="button">Check this phone</button>
           <!-- inside the Android app only: a test sent after 10 s (lock the phone first), and
                the app's own notification settings screen (me.js sets the intent link) -->
@@ -236,10 +236,10 @@
     <div class="note"><a id="deleteAccount" href="../privacy/#delete" style="color:var(--flare)">Delete my account</a></div>
   </div>
 </div>
-<script src="../config.js?v=275" defer></script>
-<script src="../vendor/supabase.js?v=275" defer></script>
-<script src="../push.js?v=275" defer></script>
-<script src="me.js?v=275" defer></script>
-<script src="../nav.js?v=275" defer></script>
+<script src="../config.js?v=276" defer></script>
+<script src="../vendor/supabase.js?v=276" defer></script>
+<script src="../push.js?v=276" defer></script>
+<script src="me.js?v=276" defer></script>
+<script src="../nav.js?v=276" defer></script>
 </body>
 </html>

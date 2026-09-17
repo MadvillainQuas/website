@@ -190,6 +190,79 @@ async function renderTeams() {
    it before the public sees it. "Uploaded" and "live on the website" are
    different states and the slot shows the difference — a pending crest is
    drawn at half strength rather than as though it were already live. */
+/* ------------------------------------------------------------------------------------------------
+   THE CLUB'S INITIALS, FOR PHONES.
+
+   Where a card has no room for "Nottingham Hoods" (HOME's fixtures on a phone), the club shows
+   as letters worked out for the whole league at once, so no two clubs in it share them
+   (initials.js). The club can choose its own: 2 to 4 letters or digits, unique in the league
+   (0129 set_team_initials checks both). Empty goes back to automatic. The field shows what the
+   automatic letters would be, so a club can see whether it needs to choose at all.
+
+   Before 0129 is applied the column and the function are missing: the field says so and
+   stays out of the way rather than breaking the page. */
+async function mountInitials() {
+  const row = $('#initialsRow'), input = $('#clubInitials'), save = $('#initialsSave'), help = $('#initialsHelp');
+  if (!row || !input || !team) return;
+  const forTeam = team;
+  help.textContent = '';
+  input.value = '';
+  let me1 = null, league = [];
+  let r = await sb.from('teams').select('id,league_id,initials').eq('id', forTeam.id).maybeSingle();
+  const hasColumn = !(r.error && /initials/.test(r.error.message || ''));
+  if (!hasColumn) r = await sb.from('teams').select('id,league_id').eq('id', forTeam.id).maybeSingle();
+  if (team !== forTeam) return;
+  me1 = r.data || null;
+  if (me1 && me1.league_id) {
+    const cols = 'id,league_id,name,short_name,external_ids' + (hasColumn ? ',initials' : '');
+    const lr = await sb.from('teams').select(cols).eq('league_id', me1.league_id);
+    if (team !== forTeam) return;
+    league = lr.data || [];
+  }
+  const I = window.EpinoiaInitials;
+  const autoCode = () => {
+    if (!I || !league.length) return '';
+    return I.assign(league.map(t => (t.id === forTeam.id ? Object.assign({}, t, { initials: null }) : t))).get(forTeam.id) || '';
+  };
+  const paint = () => {
+    const own = me1 && me1.initials;
+    const auto = autoCode();
+    input.value = own || '';
+    input.placeholder = auto || 'auto';
+    help.textContent = !hasColumn
+      ? 'Choosing your own initials needs a database update first.'
+      : own ? 'Your choice. Clear it and save to go back to automatic' + (auto ? ' (' + auto + ').' : '.')
+        : auto ? 'Automatic: ' + auto + '. Type 2 to 4 letters to choose your own.'
+          : 'Type 2 to 4 letters to choose your own.';
+  };
+  paint();
+  input.disabled = save.disabled = !hasColumn;
+  if (row.dataset.wired) { row.__paint = paint; return; }
+  row.dataset.wired = '1';
+  row.__paint = paint;
+  input.addEventListener('input', () => {
+    const v = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    if (v !== input.value) input.value = v;
+  });
+  const submit = async () => {
+    if (!team) return;
+    save.disabled = true;
+    const { data, error } = await sb.rpc('set_team_initials', { p_team: team.id, p_initials: input.value });
+    save.disabled = false;
+    if (error) {
+      const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message || '');
+      say(missing ? 'Choosing your own initials needs a database update first.' : error.message, 'err');
+      return;
+    }
+    /* a new choice changes this browser's worked-out letters too: ask again next page */
+    try { sessionStorage.removeItem('epinoia_initials_v1'); } catch (_) { /* private mode */ }
+    say(data === 'auto' ? 'Initials set back to automatic.' : 'Initials saved: ' + data + '.', 'ok');
+    mountInitials();
+  };
+  save.addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+}
+
 async function mountCrest() {
   const slot = $('#crestSlot'), help = $('#crestHelp'), file = $('#crestFile');
   if (!slot || !team) return;
@@ -514,6 +587,7 @@ async function renderRoster() {
   show('#roster', true);
   $('#rtitle').textContent = team.name;
   mountCrest();
+  mountInitials();
   document.documentElement.style.setProperty('--team-a', team.colour || '#93f2bf');
   const { data, error } = await sb.from('roster_entries')
     .select('id,jersey,active,players(id,first_name,last_name,is_minor)')

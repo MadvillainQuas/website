@@ -155,7 +155,9 @@ const fire = async (fn, ev) => { const waits = []; ev.waitUntil = p => waits.pus
      ['install', 'activate', 'push', 'notificationclick', 'pushsubscriptionchange', 'message'].every(t => typeof listeners[t] === 'function') &&
      !listeners.fetch && !/caches\./.test(swSrc) && !/localStorage|indexedDB/.test(swSrc));
   ok('its default icon and badge are Epinoia\'s, absolute, and real files',
-     W.EMBED_ICON === 'https://prophesyscouting.co.uk/epinoia/brand/epinoia-mark-192.png' && fs.existsSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-mark-32.png')));
+     W.EMBED_ICON === 'https://prophesyscouting.co.uk/epinoia/brand/epinoia-app-192.png'
+     && fs.existsSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-app-192.png'))
+     && fs.existsSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-mark-32.png')));
 
   await fire(listeners.push, { data: { json: () => ({ title: 'FT · Lions 90–80 Eagles', body: 'Trophy', url: 'https://club.example/match/1', icon: 'https://x.test/crest.png',
                                                       tag: 'result:1', renotify: true, kind: 'result' }) } });

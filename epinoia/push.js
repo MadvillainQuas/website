@@ -71,13 +71,13 @@ const IMPORTANCE_HIGH = 4;
 const MAX_DELAY_S = 10;
 
 const MSG = Object.freeze({
-  unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or Epinoia from the Home Screen on an iPhone.',
-  iosInstall: 'On iPhone and iPad, notifications only arrive through Epinoia on your Home Screen. Tap Share, then Add to Home Screen, open Epinoia from there and turn notifications on.',
+  unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or EPINOIΛ from the Home Screen on an iPhone.',
+  iosInstall: 'On iPhone and iPad, notifications only arrive through EPINOIΛ on your Home Screen. Tap Share, then Add to Home Screen, open EPINOIΛ from there and turn notifications on.',
   denied: 'Notifications are blocked for this site. Allow them in your browser’s site settings, then try again.',
   notConfigured: 'Notifications are not set up on this site yet.',
-  signedOut: 'Sign in first, so Epinoia knows whose notifications to send.',
+  signedOut: 'Sign in first, so EPINOIΛ knows whose notifications to send.',
   dismissed: 'Notifications were not allowed. Try again and choose Allow when your browser asks.',
-  worker: 'This browser would not start Epinoia’s notification service. Reload the page and try again.',
+  worker: 'This browser would not start EPINOIΛ’s notification service. Reload the page and try again.',
   subscribe: 'This browser could not sign up for notifications. Check that notifications are allowed for this site, then try again.',
   expired: 'Your sign-in has expired. Sign in again, then turn notifications on.',
   save: 'This phone could not be added to your account just now. Check your connection and try again.',
@@ -586,12 +586,12 @@ const SETTINGS = Object.freeze({
   /* THE EPINOIA ANDROID APP. Chrome receives each push and the app re-posts it on Game alerts,
      so the app's channel decides whether it pops up, and both apps must be allowed to run in
      the background. One UI adds the Brief pop-up style, which only lights the screen's edge. */
-  'android-twa': ['Tap Open notification settings (or open Settings, then Apps, then Epinoia, then Notifications) and allow notifications.',
+  'android-twa': ['Tap Open notification settings (or open Settings, then Apps, then EPINOIΛ, then Notifications) and allow notifications.',
                   'Open Game alerts there: choose Alert rather than Silent, and turn on Show as pop-up and the lock screen.',
                   'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
-                  'In Settings, open Apps, then Epinoia, then Battery, and choose Unrestricted. Do the same for Chrome, which receives each notification before Epinoia shows it.',
-                  'In Settings, open Battery (or Battery and device care), then Background usage limits: take Epinoia and Chrome out of Sleeping apps and Deep sleeping apps, and add both to Never sleeping apps.'],
-  'android-app':['Press and hold the Epinoia icon on your Home Screen, then tap App info.',
+                  'In Settings, open Apps, then EPINOIΛ, then Battery, and choose Unrestricted. Do the same for Chrome, which receives each notification before EPINOIΛ shows it.',
+                  'In Settings, open Battery (or Battery and device care), then Background usage limits: take EPINOIΛ and Chrome out of Sleeping apps and Deep sleeping apps, and add both to Never sleeping apps.'],
+  'android-app':['Press and hold the EPINOIΛ icon on your Home Screen, then tap App info.',
                   'Tap Notifications and turn them on, including every category under them.'],
   'android-chrome': ['In Chrome, tap ⋮ then Settings, then Site settings, then Notifications.',
                      'Find prophesyscouting.co.uk and set it to Allowed.',
@@ -604,19 +604,19 @@ const SETTINGS = Object.freeze({
                       'Tap Samsung Internet there and set every category, including prophesyscouting.co.uk, to Alert rather than Silent.',
                       'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
                       'In Settings, open Battery (or Battery and device care), then Background usage limits, and take Samsung Internet out of Sleeping apps and Deep sleeping apps.'],
-  'android-samsung-app': ['In the phone’s Settings, open Notifications, then App notifications, and turn on both Epinoia and Samsung Internet.',
+  'android-samsung-app': ['In the phone’s Settings, open Notifications, then App notifications, and turn on both EPINOIΛ and Samsung Internet.',
                           'Tap each of them there and set every category to Alert rather than Silent.',
                           'In Settings, open Notifications, then Notification pop-up style, and choose Detailed (Brief only lights the edge of the screen).',
-                          'In Settings, open Battery (or Battery and device care), then Background usage limits, and take Epinoia and Samsung Internet out of Sleeping apps and Deep sleeping apps.',
+                          'In Settings, open Battery (or Battery and device care), then Background usage limits, and take EPINOIΛ and Samsung Internet out of Sleeping apps and Deep sleeping apps.',
                           'In Samsung Internet, open the menu, then Settings, then Sites and downloads, then Notifications: prophesyscouting.co.uk must be allowed.'],
-  'ios-app': ['Open the Settings app, then Notifications, then Epinoia.', 'Turn on Allow Notifications, and choose Lock Screen and Banners.'],
-  'ios-safari': ['Notifications only arrive through Epinoia on your Home Screen: tap Share, then Add to Home Screen, and open it from there.'],
+  'ios-app': ['Open the Settings app, then Notifications, then EPINOIΛ.', 'Turn on Allow Notifications, and choose Lock Screen and Banners.'],
+  'ios-safari': ['Notifications only arrive through EPINOIΛ on your Home Screen: tap Share, then Add to Home Screen, and open it from there.'],
   desktop: ['Click the icon to the left of the address, open the site settings for prophesyscouting.co.uk and allow Notifications.',
             'Check your computer lets the browser show notifications (on Windows: Settings, then System, then Notifications).']
 });
 const QUIET = Object.freeze({
-  'android-twa': ['Check the phone is not in Do Not Disturb, or that Epinoia is allowed as an exception to it.'],
-  'android-app': ['Check the phone is not in Do Not Disturb, and that Battery for Epinoia (App info, then Battery) is not Restricted.'],
+  'android-twa': ['Check the phone is not in Do Not Disturb, or that EPINOIΛ is allowed as an exception to it.'],
+  'android-app': ['Check the phone is not in Do Not Disturb, and that Battery for EPINOIΛ (App info, then Battery) is not Restricted.'],
   'android-chrome': ['Check the phone is not in Do Not Disturb, and that Battery for Chrome (Settings, then Apps, then Chrome, then Battery) is not Restricted.'],
   'android-samsung': ['Check the phone is not in Do Not Disturb.'],
   'android-samsung-app': ['Check the phone is not in Do Not Disturb.'],
@@ -645,7 +645,7 @@ function appBlocked() {
   const p = appPermission(quick());
   return p && p.ok === false ? p : null;
 }
-const REOPEN = 'Then close Epinoia completely (swipe it away from your recent apps), open it again and run the check again: the app reports its notification settings each time it opens.';
+const REOPEN = 'Then close EPINOIΛ completely (swipe it away from your recent apps), open it again and run the check again: the app reports its notification settings each time it opens.';
 
 /* THE PERMISSION STEP IN THE ANDROID APP, from what Android told the launcher: notif is
    areNotificationsEnabled() (1 or 0), chan the Game alerts channel's importance (4 HIGH and
@@ -662,20 +662,20 @@ function appPermission(q) {
   /* the settings screen was opened after the report was made: neither pass nor fail, and
      the check goes on, so the live test push and its arrival decide */
   if (launchStale()) {
-    return { ok: null, label: 'Your notification settings may have changed since Epinoia opened',
+    return { ok: null, label: 'Your notification settings may have changed since EPINOIΛ opened',
              detail: 'What Android reported when the app opened is out of date, so the test below decides. ' + js };
   }
   if (notif === 0) {
-    return { ok: false, label: 'Notifications are turned off for the Epinoia app' + when, detail: js,
-             title: 'Turn on notifications for the Epinoia app, then reopen it' };
+    return { ok: false, label: 'Notifications are turned off for the EPINOIΛ app' + when, detail: js,
+             title: 'Turn on notifications for the EPINOIΛ app, then reopen it' };
   }
   if (chan !== null && chan < IMPORTANCE_HIGH) {
     const how = chan < 0 ? 'Game alerts is not set up yet' : chan === 0 ? 'Game alerts is switched off'
       : chan === 3 ? 'Game alerts can sound, but is set not to pop up' : 'Game alerts is set to Silent';
     return { ok: false, label: how + when, detail: js,
-             title: chan < 0 ? 'Reopen the Epinoia app' : 'Set Game alerts to pop up, then reopen the app' };
+             title: chan < 0 ? 'Reopen the EPINOIΛ app' : 'Set Game alerts to pop up, then reopen the app' };
   }
-  return { ok: true, label: 'Notifications are on for the Epinoia app' + (chan !== null ? ', and Game alerts pops up' : '') + when, detail: js };
+  return { ok: true, label: 'Notifications are on for the EPINOIΛ app' + (chan !== null ? ', and Game alerts pops up' : '') + when, detail: js };
 }
 
 /* A promise for the next receipt from this phone's worker with the given tag, and a
@@ -787,8 +787,8 @@ async function check(onStep) {
       : MSG.unsupported]);
   }
   if (q === 'ios-install') {
-    add('browser', false, 'On iPhone, notifications need Epinoia on your Home Screen', MSG.iosInstall);
-    return advise('Add Epinoia to your Home Screen', SETTINGS['ios-safari']);
+    add('browser', false, 'On iPhone, notifications need EPINOIΛ on your Home Screen', MSG.iosInstall);
+    return advise('Add EPINOIΛ to your Home Screen', SETTINGS['ios-safari']);
   }
   add('browser', true, 'This browser can receive notifications');
 
@@ -798,14 +798,14 @@ async function check(onStep) {
     add('permission', native.ok, native.label, native.detail);
     if (native.ok === false) return advise(native.title, SETTINGS[plat].slice(0, 2).concat(REOPEN));
   } else if (q === 'denied') {
-    add('permission', false, 'Notifications are blocked for Epinoia on this phone');
+    add('permission', false, 'Notifications are blocked for EPINOIΛ on this phone');
     return advise('Allow notifications, then run the check again', SETTINGS[plat].concat(app ? [REOPEN] : []));
   } else if (q !== 'granted') {
-    add('permission', false, 'Epinoia has not been allowed to send notifications yet');
+    add('permission', false, 'EPINOIΛ has not been allowed to send notifications yet');
     return advise('Turn notifications on', ['Tap Turn on above and choose Allow when the phone asks.',
       'If nothing asks, allow them in settings instead:'].concat(SETTINGS[plat], app ? [REOPEN] : []));
   } else {
-    add('permission', true, 'Notifications are allowed for Epinoia');
+    add('permission', true, 'Notifications are allowed for EPINOIΛ');
   }
 
   /* 3. the worker */
@@ -815,11 +815,11 @@ async function check(onStep) {
     try { reg = await whenActive(await nav.serviceWorker.register(SW_URL, { scope: SCOPE })); } catch (_) { reg = null; }
   }
   if (!reg || !reg.active || !reg.pushManager) {
-    add('worker', false, 'Epinoia’s notification service is not running on this phone', MSG.worker);
-    return advise('Reload and try again', ['Close Epinoia completely, open it again and run the check.']);
+    add('worker', false, 'EPINOIΛ’s notification service is not running on this phone', MSG.worker);
+    return advise('Reload and try again', ['Close EPINOIΛ completely, open it again and run the check.']);
   }
   const version = await pingWorker(reg, 3000);
-  add('worker', true, 'Epinoia’s notification service is running', version ? 'version ' + version : 'an older version; it updates the next time Epinoia is reopened');
+  add('worker', true, 'EPINOIΛ’s notification service is running', version ? 'version ' + version : 'an older version; it updates the next time EPINOIΛ is reopened');
 
   /* 4. the subscription (re-made when missing, or made with another key) */
   let sub = await currentSubscription(reg);
@@ -881,7 +881,7 @@ async function check(onStep) {
     const why = res.status === 429 ? 'A check has just run. Wait a few seconds and run it again.'
       : (res.text || res.error || MSG.testFailed) + (res.detail ? ' (' + String(res.detail).slice(0, 120) + ')' : '');
     add('delivery', false, 'The test push did not get through', why);
-    return advise(res.fix === 'server' ? 'This is on Epinoia’s side, not your phone' : 'Try again in a minute',
+    return advise(res.fix === 'server' ? 'This is on EPINOIΛ’s side, not your phone' : 'Try again in a minute',
                   [res.fix === 'server' ? 'Nothing on this phone needs changing. Try again later.' : 'If it keeps failing, tap Turn off, then Turn on, and run the check again.']);
   }
   add('delivery', true, serviceName(sub.endpoint) + ' accepted a test push for this phone');
@@ -895,20 +895,20 @@ async function check(onStep) {
   }
   if (!got.shown) {
     add('arrival', false, 'The test reached this phone, but the browser refused to show it', got.error || '');
-    return advise('Allow Epinoia to show notifications', SETTINGS[plat]);
+    return advise('Allow EPINOIΛ to show notifications', SETTINGS[plat]);
   }
   add('arrival', true, 'The test reached this phone at ' + clock(got.at || now()) + ' and was shown');
   /* the phone can receive; what is left is the account */
   if (steps.some(s => s.id === 'account' && s.ok === false)) {
     return advise(sess && sess.userId ? 'This phone works, but it is not on your account yet' : 'This phone works: sign in so it gets your notifications',
                   sess && sess.userId ? ['Run the check again in a minute. If it still fails, tap Turn off, then Turn on.']
-                                      : ['Sign in on this phone with the email you use for Epinoia, then run the check again.']);
+                                      : ['Sign in on this phone with the email you use for EPINOIΛ, then run the check again.']);
   }
   if (steps.some(s => s.id === 'channel' && s.ok === false)) {
     return advise('This phone works: switch on Phone and desktop alerts',
                   ['Tick Phone and desktop alerts below. Tests reach this phone either way, but real notifications are only sent while it is on.']);
   }
-  return advise('Everything on Epinoia’s side works', [
+  return advise('Everything on EPINOIΛ’s side works', [
     'If a notification titled “This phone can get notifications” did not appear just now, the phone is hiding them:'
   ].concat(SETTINGS[plat] || [], QUIET[plat] || []));
 }
@@ -1090,7 +1090,7 @@ function openSheet(doc, view, name, kind) {
     const parts = [head('Get notified about ' + name + '?'), d];
     const app = androidApp();
     if (app) {
-      const t = el('p', null, 'Alerts pop up most reliably in the Epinoia app for Android. ');
+      const t = el('p', null, 'Alerts pop up most reliably in the EPINOIΛ app for Android. ');
       const a = el('a', null, 'Get the app'); a.href = app.href;
       t.appendChild(a);
       parts.push(t);
@@ -1125,7 +1125,7 @@ function openSheet(doc, view, name, kind) {
     }, () => { if (sheet) done(); });
   }
   function seen() {
-    const d = el('p', null, 'Epinoia just sent “Notifications are on” to this phone.'); d.id = 'ep-push-d';
+    const d = el('p', null, 'EPINOIΛ just sent “Notifications are on” to this phone.'); d.id = 'ep-push-d';
     draw([head('Did a notification pop up?'), d],
          [button('Yes, it did', 'pri', done), button('No', null, hidden)]);
   }
@@ -1148,8 +1148,8 @@ function openSheet(doc, view, name, kind) {
     const parts = [head('Your phone is hiding it'), d, ol];
     const app = androidApp();
     if (app) {
-      parts.push(el('p', null, 'Or skip the browser’s settings: in the Epinoia app for Android, alerts pop up on their own.'));
-      const a = el('a', 'ep-push-btn', 'Get the Epinoia app');
+      parts.push(el('p', null, 'Or skip the browser’s settings: in the EPINOIΛ app for Android, alerts pop up on their own.'));
+      const a = el('a', 'ep-push-btn', 'Get the EPINOIΛ app');
       a.href = app.href;
       acts.push(a);
     }
@@ -1168,7 +1168,7 @@ function openSheet(doc, view, name, kind) {
     draw([head('Get notified about ' + name + '?'), d], [button('Close', 'pri', () => close(true))]);
   }
   function install() {
-    const d = el('p', null, 'On iPhone and iPad, notifications come through Epinoia on your Home Screen:');
+    const d = el('p', null, 'On iPhone and iPad, notifications come through EPINOIΛ on your Home Screen:');
     d.id = 'ep-push-d';
     const ol = el('ol');
     /* strings are text; an array is [bold words] */
@@ -1179,7 +1179,7 @@ function openSheet(doc, view, name, kind) {
     };
     step('Tap ', ['Share'], ' (the square with an arrow).');
     step('Choose ', ['Add to Home Screen'], '.');
-    step('Open ', ['Epinoia'], ' from your Home Screen, and sign in if it asks.');
+    step('Open ', ['EPINOIΛ'], ' from your Home Screen, and sign in if it asks.');
     step('Follow ' + name + ' again and turn notifications on.');
     draw([head('Get notified about ' + name + '?'), d, ol], [button('Got it', 'pri', () => close(true))]);
   }

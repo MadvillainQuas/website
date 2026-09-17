@@ -72,6 +72,14 @@ ok('...and does NOT re-open overflow-x',
 /* pinch-zoom may ride along: it claims no single-finger axis */
 ok("...and names pan-y, so vertical is the page's in as many words",
    /touch-action:\s*pan-y(\s+pinch-zoom)?\s*;/.test(ftWrap));
+/* 2026-09-17, reported from a real phone: the statistics table could not be scrolled down.
+   The desktop .ft-wrap has overscroll-behavior:contain; a phone rule naming only -x left -y
+   contained, and Chrome ends a touch's scroll chain at a contained scroll container even when
+   (overflow:hidden) it cannot move, so a swipe that began on the table went nowhere. */
+ok('...and resets overscroll-behavior on both axes (contain on -y made the table a scroll dead zone)',
+   /overscroll-behavior:\s*auto/.test(ftWrap) && !/overscroll-behavior(-y)?:\s*contain/.test(ftWrap), ftWrap);
+ok('...the full table\'s at 820px too',
+   /overscroll-behavior:\s*auto/.test(ftHostWrap) && !/overscroll-behavior(-y)?:\s*contain/.test(ftHostWrap), ftHostWrap);
 ok("the full table's own .ft-wrap does the same at 820px, and only inside .ft-host",
    at820 > -1 && /\.ft-host \.ft-wrap\{/.test(tBare.slice(at820)) &&
    /overflow:hidden/.test(ftHostWrap) && /touch-action:\s*pan-y/.test(ftHostWrap), ftHostWrap);

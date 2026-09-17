@@ -185,4 +185,14 @@ for name, k in DENSITIES.items():
 save(visible.resize((512, 512), Image.LANCZOS).convert('RGBA'), 'android/store/icon-512.png')
 for px in (192, 384):
     save(visible.resize((px, px), Image.LANCZOS), f'epinoia/android/icon-{px}.png')
+
+# THE WEB APP AND ITS NOTIFICATIONS use the same logo (epinoia/brand/epinoia-app-*): the
+# notification's picture (sw.js ICON), the Home Screen web app's icons (manifest, and
+# apple-touch-icon, which is also the picture on an iPhone's notifications). A maskable icon's
+# safe zone is the centre circle of 80%, so it is cut from the full 108 dp layer, where the
+# wordmark spans 55% of the side, rather than from the 72 dp square, where it spans 82%.
+for px in (180, 192, 512):
+    save(visible.resize((px, px), Image.LANCZOS), f'epinoia/brand/epinoia-app-{px}.png')
+for px in (192, 512):
+    save(layer.resize((px, px), Image.LANCZOS), f'epinoia/brand/epinoia-app-{px}-maskable.png')
 print('written')

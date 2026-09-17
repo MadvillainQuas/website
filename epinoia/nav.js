@@ -103,11 +103,11 @@
       const w = where(e);
       if (w === 'android' && e.released === true) {
         return { kind: 'android', href: 'android/', icon: 'android/icon-192.png', row: 'get the app',
-          title: 'Get the Epinoia app', sub: 'Scores, fixtures and game alerts that pop up, in an app of its own.' };
+          title: 'Get the EPINOIΛ app', sub: 'Scores, fixtures and game alerts that pop up, in an app of its own.' };
       }
       if (w === 'ios' && e.standalone !== true) {
         return { kind: 'ios', href: 'android/#iosSec', icon: 'brand/epinoia-mark-192.png', row: 'add to home screen',
-          title: 'Epinoia on your iPhone', sub: 'Add it to your Home Screen: it opens full screen, with game alerts.' };
+          title: 'EPINOIΛ on your iPhone', sub: 'Add it to your Home Screen: it opens full screen, with game alerts.' };
       }
       return null;
     };
@@ -660,7 +660,7 @@
     installBanner = el('div', 'ep-install');
     const ic = el('img'); ic.src = root + 'brand/epinoia-mark-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
-    tx.appendChild(el('b', null, 'Add Epinoia to your home screen'));
+    tx.appendChild(el('b', null, 'Add EPINOIΛ to your home screen'));
     /* SAMSUNG INTERNET packages a home-screen app itself, and Google Play Protect warns about
        its packaging ("built for an older version of Android"). That is Samsung's installer, not
        the site: "Install anyway" is safe, and Chrome on the same phone installs it cleanly. */
@@ -690,7 +690,7 @@
     /* the app's own icon, not the site mark: it is what the phone will show once installed */
     const ic = el('img'); ic.src = root + 'android/icon-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
-    tx.appendChild(el('b', null, 'Get the Epinoia app for Android'));
+    tx.appendChild(el('b', null, 'Get the EPINOIΛ app for Android'));
     tx.appendChild(el('span', null, 'Scores, fixtures and your clubs one tap away, with game alerts that pop up.'));
     const go = el('a', 'go', 'get it'); go.href = root + 'android/';
     const x = el('button', 'x', '×'); x.type = 'button'; x.title = 'not now';
@@ -788,7 +788,7 @@
     bar.setAttribute('role', 'status');
     const ic = el('img'); ic.src = root + 'android/icon-192.png'; ic.alt = '';
     const tx = el('div', 'tx');
-    tx.appendChild(el('b', null, 'Update the Epinoia app'));
+    tx.appendChild(el('b', null, 'Update the EPINOIΛ app'));
     tx.appendChild(el('span', null, ver.versionName
       ? 'Version ' + ver.versionName + ' is ready. Some things on the site need it.'
       : 'A new version is ready. Some things on the site need it.'));
@@ -1312,6 +1312,11 @@
            every activation of it would break opening a league in a new tab. */
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
             e.shiftKey || e.altKey) return;
+        /* IN THE PHONE SHEET A LEAGUE IS A PLACE TO GO. The sheet closes on any link tapped
+           inside it (the document listener below), so sliding the rail into the league here
+           closed the sheet with nothing opened, and the reader had to open the menu again to
+           get anywhere. On a phone the row is simply the link it is: the league's front page. */
+        if (nav.classList.contains('drawer-open')) return;
         e.preventDefault();
 
         /* PICKING A LEAGUE CHANGES THE RAIL AND NOTHING ELSE. It used to load

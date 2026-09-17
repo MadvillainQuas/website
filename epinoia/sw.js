@@ -25,7 +25,7 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-app-2';
+const SW_VERSION = 'notifications-v2-2026-09-17-logo';
 const SITE_PATH = '/epinoia/';
 /* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
    window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
@@ -33,7 +33,10 @@ const SITE_PATH = '/epinoia/';
    the app alike. SITE_PATH stays the site's root: relative links resolve under it, and
    pickClient uses it to recognise a window that is already on Epinoia. */
 const HOME_PATH = '/epinoia/home/';
-const ICON = '/epinoia/brand/epinoia-mark-192.png';
+/* THE PICTURE ON A NOTIFICATION IS THE APP'S LOGO, the blue EPINOIΛ square the Android app
+   wears (tools/build-android-icons.py writes both), not the old black mark: on a phone it sits
+   right beside the app's own icon. A league's crest in the payload still takes its place. */
+const ICON = '/epinoia/brand/epinoia-app-192.png';
 /* THE BADGE IS A SILHOUETTE. Android draws a badge from its alpha channel alone, so the 32px
    colour mark (an opaque rounded square) showed as a blank white tile in the status bar; this
    is the Λ in white on a transparent ground. */
@@ -61,13 +64,13 @@ self.addEventListener('install', () => self.skipWaiting());
 function offlinePage() {
   return new Response(
     '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>Offline · Epinoia</title>' +
+    '<meta name="color-scheme" content="light dark"><title>Offline · EPINOIΛ</title>' +
     '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;text-align:center;padding:16px;box-sizing:border-box;' +
     'background:#f3faf6;color:#0d1f17;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}' +
     'b{display:block;font-size:22px;font-weight:800}p{margin:8px 0 20px;opacity:.78;line-height:1.5}' +
     'a{display:inline-block;padding:12px 22px;border-radius:12px;background:#0c7a54;color:#fff;font-weight:700;text-decoration:none}' +
     '@media (prefers-color-scheme:dark){body{background:#04100b;color:#e6fff1}a{background:#93f2bf;color:#04100b}}</style>' +
-    '<body><div><b>Epinoia is offline</b><p>Nothing is stored on this phone. Connect, then try again.</p><a href="">Try again</a></div></body></html>',
+    '<body><div><b>EPINOIΛ is offline</b><p>Nothing is stored on this phone. Connect, then try again.</p><a href="">Try again</a></div></body></html>',
     { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
 self.addEventListener('fetch', e => {
@@ -86,7 +89,7 @@ function readPayload(data) {
   } catch (_) {
     let t = '';
     try { t = data.text(); } catch (_) { t = ''; }
-    return { title: 'Epinoia', body: t };
+    return { title: 'EPINOIΛ', body: t };
   }
 }
 
@@ -139,7 +142,7 @@ function notificationFor(payload) {
   const ts = Number(d.timestamp);
   if (Number.isFinite(ts) && ts > 0) options.timestamp = ts;
   if (actions.length) options.actions = actions;
-  return { title: typeof d.title === 'string' && d.title ? d.title : 'Epinoia', options };
+  return { title: typeof d.title === 'string' && d.title ? d.title : 'EPINOIΛ', options };
 }
 
 /* Tells every open Epinoia page that a push arrived and whether the browser agreed to

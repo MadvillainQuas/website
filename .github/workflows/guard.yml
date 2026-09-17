@@ -475,6 +475,15 @@ jobs:
           node supabase/tests/country.test.mjs
           node supabase/tests/app-shell.test.mjs
 
+      - name: Club initials on phones, and the phone fixes (news dates and game links, the league tap, EPINOIΛ)
+        # initials.js gives every club in a league its own letters (a snapshot of the platform's
+        # leagues, the loader's fallback before 0129, the portal field, the migration's shape);
+        # the news date in the reader's order, a report's game link, the menu's league row, and
+        # the app name and notification logo
+        run: |
+          node supabase/tests/initials.test.mjs
+          node supabase/tests/phone-fixes.test.mjs
+
       - name: Email sign-in inside the Android app, and the privacy page's deletion path
         run: node supabase/tests/app-signin.test.mjs
 

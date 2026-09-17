@@ -21,11 +21,36 @@
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
 
-const when = iso => {
+/* ON A PHONE THE DATE IS NUMBERS: 13/9/26 in Britain, 9/13/26 in the US, 13.9.26 in
+   Germany. The reader's own locale gives the order and the separators; the day and month lose
+   their leading zeros, which en-GB would otherwise print (13/09/26). A wider screen keeps the
+   written date. opts: { short, locale } (the tests pass both). */
+const PHONE_Q = '(max-width:820px)';
+function shortDate(d, locale) {
+  try {
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric', year: '2-digit' })
+      .formatToParts(d)
+      .map(p => (p.type === 'day' || p.type === 'month') ? String(Number(p.value)) : p.value)
+      .join('');
+  } catch (_) {
+    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(-2);
+  }
+}
+const when = (iso, opts) => {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  if (isNaN(d.getTime())) return '';
+  const o = opts || {};
+  const short = o.short != null ? !!o.short
+    : (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(PHONE_Q).matches);
+  if (short) return shortDate(d, o.locale);
+  return d.toLocaleDateString(o.locale, { day: 'numeric', month: 'long', year: 'numeric' });
 };
+
+/* THE MATCH REPORTS ARE SIGNED BY THE PLATFORM, and the platform is EPINOIΛ. Reports filed before
+   finalise-game said so carry "Epinoia match report" in the database; they read the same as new
+   ones. Anybody else's name is theirs, untouched. */
+const byline = name => String(name || '').replace(/^Epinoia(?=\s|$)/, 'EPINOIΛ');
 
 /* A colour from the headline, so two articles are not the same shade and the
    same article is the same shade every time. The same trick the club plates
@@ -140,7 +165,7 @@ function card(a, opts) {
      the worst combination. */
   const foot = el('div', 'club-foot');
   foot.append(el('span', 'club-name', when(a.published_at)),
-              el('span', 'club-ed', a.author_name || ''));
+              el('span', 'club-ed', byline(a.author_name)));
 
   link.append(plate, foot);
   return link;
@@ -182,5 +207,5 @@ async function mountHeadlines(o) {
   return true;
 }
 
-return { mountHeadlines, card, tint, when };
+return { mountHeadlines, card, tint, when, byline };
 }));

@@ -122,6 +122,19 @@
 .fxc-go{flex:none;color:var(--lume)}
 .fxc.is-live .fxc-go{color:var(--flare)}
 
+/* A CLUB'S INITIALS read as a scoreboard's: letterspaced capitals (initials.js) */
+.fxc-nm .short.is-code{letter-spacing:.06em}
+
+/* HOME'S RAIL ON A PHONE SHOWS INITIALS. Eight cards side by side at 266px each had room for
+   "Cardiff Met Archers" only as "Cardiff Met Arch…"; the rail is a glance at what is on, and
+   NOT v YOR beside two crests reads faster. The card's aria-label and each name's title keep
+   the full names. The games page lists one card per row and keeps them. */
+@media (max-width:820px){
+  .fxc-rail .fxc-nm .full{display:none}
+  .fxc-rail .fxc-nm .short{display:inline}
+  .fxc-rail .fxc-nm{font-size:15px}
+}
+
 /* COMPACT: a card too narrow for a name and a time column (two across a phone). */
 @container (max-width:210px){
   .fxc-top{padding:7px 8px 4px}

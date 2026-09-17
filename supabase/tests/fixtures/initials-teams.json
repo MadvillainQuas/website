@@ -1,0 +1,362 @@
+[
+ {
+  "id": "d969c575-5225-495b-8032-41fb159097e2",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Loughborough Riders",
+  "short_name": "Riders",
+  "external_ids": {
+   "fiba_livestats": "LRB"
+  }
+ },
+ {
+  "id": "37396838-c549-4a58-9a68-c67a2b5537b2",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Bristol Flyers II",
+  "short_name": "Flyers",
+  "external_ids": {
+   "fiba_livestats": "BF2"
+  }
+ },
+ {
+  "id": "423ed57c-59c7-4e22-a5a2-98a54a5b4a3e",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Worthing Thunder",
+  "short_name": "Thunder",
+  "external_ids": {
+   "fiba_livestats": "WTB"
+  }
+ },
+ {
+  "id": "a252d298-f456-4ddb-9cc0-c460bd6e12fa",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Milton Keynes Breakers",
+  "short_name": "Breakers",
+  "external_ids": {
+   "fiba_livestats": "MKB"
+  }
+ },
+ {
+  "id": "36a683d8-b75e-4468-8d21-c5df85e14e98",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "London Cavaliers",
+  "short_name": "Cavaliers",
+  "external_ids": {
+   "fiba_livestats": "LCB"
+  }
+ },
+ {
+  "id": "a682df51-9e75-42d5-bc45-a77eced60f55",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Nottingham Hoods",
+  "short_name": "Hoods",
+  "external_ids": {
+   "fiba_livestats": "NHB"
+  }
+ },
+ {
+  "id": "601a634b-dd53-4aba-b574-7a21568046e6",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Derby Trailblazers",
+  "short_name": "Blazers",
+  "external_ids": {
+   "fiba_livestats": "DTB"
+  }
+ },
+ {
+  "id": "00267c35-0ed2-418e-aab5-c83a74b4640e",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Essex Rebels",
+  "short_name": "ERM",
+  "external_ids": {
+   "fiba_livestats": "ERM"
+  }
+ },
+ {
+  "id": "8f3ab8c6-6efa-4d50-9a51-e178abd8aa1f",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Yorkshire Dragons",
+  "short_name": "Dragons",
+  "external_ids": {
+   "fiba_livestats": "YDB"
+  }
+ },
+ {
+  "id": "123ef2de-1df2-4110-8d7d-289c3f44ebd8",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Birmingham Rockets",
+  "short_name": "CBR",
+  "external_ids": {
+   "fiba_livestats": "CBR"
+  }
+ },
+ {
+  "id": "398b44a6-10a3-49c0-bb44-faac3b5d73a6",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Bristol Hurricanes",
+  "short_name": "Hurricanes",
+  "external_ids": {
+   "fiba_livestats": "BHB"
+  }
+ },
+ {
+  "id": "fc19a771-6b55-46c8-a781-debb48f4b1ed",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Newcastle Knights",
+  "short_name": "Knights",
+  "external_ids": {
+   "fiba_livestats": "NKB"
+  }
+ },
+ {
+  "id": "d5c929ec-b777-44a2-9ac9-06561373602a",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Reading Rockets",
+  "short_name": "Reading",
+  "external_ids": {
+   "fiba_livestats": "RRB"
+  }
+ },
+ {
+  "id": "3588f1a9-a848-4b7b-8c64-e4fc693abf1f",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Oaklands Wolves",
+  "short_name": "Wolves",
+  "external_ids": {
+   "fiba_livestats": "OAK"
+  }
+ },
+ {
+  "id": "3c702e49-ced7-4d15-8830-6125a337d2a9",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Falkirk Fury",
+  "short_name": "Fury",
+  "external_ids": {
+   "fiba_livestats": "FAF"
+  }
+ },
+ {
+  "id": "231bf368-642b-4dce-b1c4-1957229f6f91",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Gloucester City Kings",
+  "short_name": "Kings",
+  "external_ids": {
+   "fiba_livestats": "GCK"
+  }
+ },
+ {
+  "id": "2f9e20fc-8ba8-42b9-b606-8977170dec98",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Plymouth Raiders",
+  "short_name": "Raiders",
+  "external_ids": {
+   "fiba_livestats": "PLR"
+  }
+ },
+ {
+  "id": "42ce8a54-4287-40f5-9b2b-ddda45fb9956",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Cardiff Met Archers",
+  "short_name": "CMA",
+  "external_ids": {
+   "fiba_livestats": "CMA"
+  }
+ },
+ {
+  "id": "c9917ad9-d3bd-4167-92ff-046adb8087bb",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Hemel Storm",
+  "short_name": "Storm",
+  "external_ids": {
+   "fiba_livestats": "HSB"
+  }
+ },
+ {
+  "id": "05e208f2-068b-4705-ba7c-30f31f081917",
+  "league_id": "3d9ab0f1-83bb-4f11-9e7c-f310968e7f37",
+  "name": "Portsmouth Force",
+  "short_name": "Force",
+  "external_ids": {
+   "fiba_livestats": "PMF"
+  }
+ },
+ {
+  "id": "d63c08b6-31c1-4273-b114-e7eba0c8fc21",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Oaklands Wolves",
+  "short_name": "OAK",
+  "external_ids": {
+   "fiba_livestats": "OAK"
+  }
+ },
+ {
+  "id": "99180b9f-1f05-4abb-a289-b46f30255790",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "B. Braun Sheffield Sharks",
+  "short_name": "SHE",
+  "external_ids": {
+   "fiba_livestats": "SHE"
+  }
+ },
+ {
+  "id": "33b07ecc-7fb0-4ee9-93a3-2624831d212a",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Bristol Flyers",
+  "short_name": "BRI",
+  "external_ids": {
+   "fiba_livestats": "BRI"
+  }
+ },
+ {
+  "id": "dae2cd7a-d723-4c65-a759-fcc5e22a2625",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Caledonia Gladiators",
+  "short_name": "CAL",
+  "external_ids": {
+   "fiba_livestats": "CAL"
+  }
+ },
+ {
+  "id": "d5047dd9-cb86-4afd-a622-021950bd8a2a",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Cheshire Phoenix",
+  "short_name": "CHE",
+  "external_ids": {
+   "fiba_livestats": "CHE"
+  }
+ },
+ {
+  "id": "2cdad774-e3bd-4b1c-b448-d7dbb1dd02a8",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Leicester Riders",
+  "short_name": "LEI",
+  "external_ids": {
+   "fiba_livestats": "LEI"
+  }
+ },
+ {
+  "id": "4df16b90-3464-42de-a71d-b893d6986caf",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Liverpool Basketball",
+  "short_name": "LIV",
+  "external_ids": {
+   "fiba_livestats": "LIV"
+  }
+ },
+ {
+  "id": "164738aa-f5e1-424e-a8c0-3eac91f40c75",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "London Lions",
+  "short_name": "LON",
+  "external_ids": {
+   "fiba_livestats": "LON"
+  }
+ },
+ {
+  "id": "8683e58b-b5ba-440e-9c21-13b0153faa5b",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Manchester Basketball",
+  "short_name": "MAN",
+  "external_ids": {
+   "fiba_livestats": "MAN"
+  }
+ },
+ {
+  "id": "1b4a614c-fa35-4873-b120-0c9629be56ac",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Newcastle Eagles",
+  "short_name": "NEW",
+  "external_ids": {
+   "fiba_livestats": "NEW"
+  }
+ },
+ {
+  "id": "fa8cf857-f752-436f-92b9-0bee0e9d84a2",
+  "league_id": "3f4858ce-a146-4acc-aa36-53af617d3fdb",
+  "name": "Surrey 89ers",
+  "short_name": "SUR",
+  "external_ids": {
+   "fiba_livestats": "SUR"
+  }
+ },
+ {
+  "id": "029f62cc-d466-460f-a83a-2e282b9256fb",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "B. Braun Sheffield Hatters",
+  "short_name": "SHE",
+  "external_ids": {
+   "fiba_livestats": "SHE"
+  }
+ },
+ {
+  "id": "e3165e86-d0df-45a0-a4d1-e84b7b48a495",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Caledonia Gladiators",
+  "short_name": "CAL",
+  "external_ids": {
+   "fiba_livestats": "CAL"
+  }
+ },
+ {
+  "id": "aea97a07-f50d-478c-9cab-0a42411d2cc3",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Cardiff Met Archers",
+  "short_name": "CAR",
+  "external_ids": {
+   "fiba_livestats": "CAR"
+  }
+ },
+ {
+  "id": "2f268683-605e-454c-a9db-6870bcac8aab",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Essex Rebels",
+  "short_name": "ESS",
+  "external_ids": {
+   "fiba_livestats": "ESS"
+  }
+ },
+ {
+  "id": "28031b30-ec2d-4502-b248-0267688cbd25",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Leicester Riders",
+  "short_name": "LEI",
+  "external_ids": {
+   "fiba_livestats": "LEI"
+  }
+ },
+ {
+  "id": "af9a9db4-78f0-4736-867a-e5b2867c6ed8",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "London Lions",
+  "short_name": "LON",
+  "external_ids": {
+   "fiba_livestats": "LON"
+  }
+ },
+ {
+  "id": "855c5eda-bab6-4bd7-8888-35d17886abec",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Manchester Basketball",
+  "short_name": "MAN",
+  "external_ids": {
+   "fiba_livestats": "MAN"
+  }
+ },
+ {
+  "id": "0cfbc91b-5467-40eb-9522-800b3447560a",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Newcastle Eagles",
+  "short_name": "NEW",
+  "external_ids": {
+   "fiba_livestats": "NEW"
+  }
+ },
+ {
+  "id": "2d87bdeb-2806-4691-9542-bcce6a4042ec",
+  "league_id": "d12cb1a3-bce9-4d3d-be8c-073d5d6bd141",
+  "name": "Nottingham Wildcats",
+  "short_name": "NOT",
+  "external_ids": {
+   "fiba_livestats": "NOT"
+  }
+ }
+]

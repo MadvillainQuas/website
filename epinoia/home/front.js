@@ -195,7 +195,7 @@ function drawAppCard(doc, host, card) {
   const go = el('span', 'go', '→');
   go.setAttribute('aria-hidden', 'true');
   a.append(
-    el('span', 'k', 'Epinoia for Android'),
+    el('span', 'k', 'EPINOIΛ for Android'),
     t,
     el('span', 'd', 'Its own icon and window, and game alerts that pop up. It shows the live site, so it needs a connection and Chrome on the phone.'),
     go
