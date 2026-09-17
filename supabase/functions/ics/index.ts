@@ -80,7 +80,10 @@ Deno.serve(async (req) => {
 
   const title = name + ' · EPINOIΛ';
   const body = buildCalendar({ name: title, games: rows, site });
-  const headers = { ...cors, ...feedHeaders({ name: title, body, download }) };
+  /* the calendar is called "<club> · EPINOIΛ" inside, but the FILE is named after the club
+     alone: a file name keeps only plain characters, and EPINOIΛ without its lambda reads as
+     a typo on somebody's desktop */
+  const headers = { ...cors, ...feedHeaders({ name, body, download }) };
   /* the client already has these exact bytes */
   if (etagMatches(req.headers.get('if-none-match'), headers.ETag)) return new Response(null, { status: 304, headers });
   return new Response(req.method === 'HEAD' ? null : body, { headers });

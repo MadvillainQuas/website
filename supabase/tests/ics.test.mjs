@@ -150,7 +150,7 @@ console.log('\nthe feed: RFC 5545, as every calendar reads it');
 }
 {
   const body = buildCalendar({ name: 'x', games: [game()], site: SITE });
-  const h = feedHeaders({ name: 'B. Braun Sheffield Sharks · EPINOIΛ', body });
+  const h = feedHeaders({ name: 'B. Braun Sheffield Sharks', body });
   eq('the type every client expects', h['Content-Type'], 'text/calendar; charset=utf-8');
   ok('a file name every operating system accepts: plain characters, ending .ics',
      /^inline; filename="[A-Za-z0-9 _-]+\.ics"$/.test(h['Content-Disposition']) && /Sheffield Sharks/.test(h['Content-Disposition']),
@@ -174,6 +174,7 @@ console.log('\nthe ics function: what it serves, and to whom');
   ok('?download=1 sends it as a file', /download = url\.searchParams\.get\('download'\) === '1'/.test(fn));
   ok('anyone may read it: no auth, and CORS for a browser', /Access-Control-Allow-Origin': '\*'/.test(fn) && !/Authorization/.test(fn));
   ok('the ETag and the file name are readable cross-origin', /Access-Control-Expose-Headers': 'ETag, Content-Disposition'/.test(fn));
+  ok('the file is named after the club, not the calendar\'s "· EPINOIΛ" title', /feedHeaders\(\{ name, body, download \}\)/.test(fn));
   const cfg = read('supabase', 'config.toml');
   ok('deployed without a JWT gate (a calendar client sends no headers)', /\[functions\.ics\]\s*\nverify_jwt = false/.test(cfg));
 }
