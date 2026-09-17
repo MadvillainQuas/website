@@ -1,7 +1,13 @@
 # EPINOIA HOME, the global pages and the Android app — roadmap
 
-Written 2026-09-17 and revised the same day after a review pass. **Status: Phase 0 is in progress
-in the working tree (uncommitted). Nothing else is built.**
+Written 2026-09-17 and revised the same day after a review pass. **Status: Phases 0 to 7 are built
+(branch release-home-app). Phase 8 (Play Store) is not started. What remains is the owner's: the
+`notify` redeploy and migration 0128 (6.8), the Magic Link template with `{{ .Token }}` and then
+`emailOtp: true` in `epinoia/config.js` (6.1), the signing key and GitHub secrets with the
+`assetlinks.json` fingerprint (6.2–6.4), the first signed release and then `"released": true` in
+`epinoia/android/version.json` (6.5), and the Phase 7 on-device gate (6.6).** Until those are done
+the site behaves as it did before the app: Android browsers are offered the web app, and email
+sign-in inside an app says the link signs in the phone's browser.
 
 This plan is based on six read-only maps of the code made the same day, covering statistics on phones,
 navigation and entry points, cross-league data, the scouting table, the UI kit and app packaging.
@@ -524,7 +530,7 @@ website repo folder, because the repo is public and the signing key must never b
 
 **6.1 Supabase sign-in.**
 - **Before R2: redirects.** In the Supabase dashboard, open Authentication → URL Configuration → Redirect URLs, and check that `https://prophesyscouting.co.uk/epinoia/**` is listed.
-- **Before R3: the sign-in code.** Open Authentication → Email Templates → Magic Link, and make sure the message includes `{{ .Token }}` (for example "or enter this code: {{ .Token }}"). The app signs in by that code, because the link itself finishes in the phone's default browser.
+- **Before R3: the sign-in code.** Open Authentication → Email Templates → Magic Link, and make sure the message includes `{{ .Token }}` (for example "or enter this code: {{ .Token }}"). The app signs in by that code, because the link itself finishes in the phone's default browser. Once a test email shows the code, have the lead set `emailOtp: true` in `epinoia/config.js`; until then the in-app code field stays hidden.
 
 **6.2 Before Phase 6: install Java,** which provides keytool. Afterwards, open a new Command Prompt
 so the PATH change applies.
@@ -576,7 +582,9 @@ token through `gh auth git-credential`, not the stored PAT (risk 19).
 
 **6.5 After the workflow is pushed: run the first build.** The wait gives GitHub time to register
 the run before it is watched. The last line should show status 200 and
-`content-type: application/json`.
+`content-type: application/json`. Once `gh release view` shows `epinoia.apk`, have the lead set
+`"released": true` in `epinoia/android/version.json`: only then do Android browsers get the
+"Get the Epinoia app" banner, HOME card and profile button (until then they keep the web-app offer).
 
 ```bat
 cd /d %USERPROFILE%
@@ -708,6 +716,7 @@ curl.exe -s -X POST -H "content-type: application/json" -d "{\"diag\":true}" htt
 | 26 | Play's EU trader declaration shows a trader's address and phone number on the listing | choose the account type knowing it (6.7 step 1, Q27) |
 | 27 | A TWA verifies the whole origin, so same-site pages outside `/epinoia/` open full-screen in the app with no URL bar | in app mode, `appmode.js` sends those links to a browser tab (Phase 6, Q30) |
 | 28 | The first-launch permission dialog sits between the system splash and HOME | a native pre-prompt in HOME's colour; the no-flash check applies from the second launch (Phase 6) |
+| 29 | A reader who chose the dark theme sees the light `#f3faf6` splash fade into a dark HOME: Android cannot read the site's saved theme, and `STATUS_BAR_COLOR_DARK` follows only the phone's system setting | accepted for this release (light is the default theme); if it matters, a `values-night` splash colour covers readers whose phone is also in dark mode |
 
 ## 8. Open questions
 

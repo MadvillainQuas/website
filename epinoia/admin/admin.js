@@ -1034,11 +1034,21 @@ async function loadMembers() {
    classic scripts sharing one global scope with a dozen others.
 
    A code sign-in fires onAuthStateChange exactly as the link does, so each page
-   carries on down its own post-sign-in path. Nothing here renders the page. */
+   carries on down its own post-sign-in path. Nothing here renders the page.
+
+   NOT UNTIL THE EMAIL CARRIES THE CODE. The field is only drawn once config.js
+   sets EPINOIA_CONFIG.emailOtp: true, which the owner does with the template
+   change. Until then the same place in the app says plainly that the link
+   signs in the phone's browser, not the app, and points to Google sign-in. */
 let emailCodeResend = null;
 
 function emailCodeInApp() {
   return !!window.epinoiaApp || document.documentElement.classList.contains('m-app');
+}
+
+function emailCodeInEmail() {
+  const c = window.EPINOIA_CONFIG;
+  return !!c && c.emailOtp === true;
 }
 
 /* Called after a send succeeds. Outside the app it returns null and the page
@@ -1060,6 +1070,7 @@ function offerEmailCode(after, email, resend) {
     hint.style.cssText = 'margin:0;font-size:14px;line-height:1.6;color:var(--ink-2)';
 
     const lab = document.createElement('label');
+    lab.id = 'emailCodeLab';
     lab.htmlFor = 'emailCodeIn';
     lab.textContent = 'Code from the email';
     lab.style.cssText = 'font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;' +
@@ -1079,6 +1090,7 @@ function offerEmailCode(after, email, resend) {
     input.style.cssText = 'font-size:16px;letter-spacing:.3em;max-width:220px';
 
     const row = document.createElement('div');
+    row.id = 'emailCodeRow';
     row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
     const go = document.createElement('button');
     go.id = 'emailCodeGo';
@@ -1104,9 +1116,16 @@ function offerEmailCode(after, email, resend) {
     after.parentNode.insertBefore(box, after.nextSibling);
   }
   box.setAttribute('data-email', email);
-  box.querySelector('#emailCodeHint').textContent =
-    'Enter the 6-digit code from the email, or open the link on this phone. ' +
-    'It went to ' + email + '.';
+  const withCode = emailCodeInEmail();
+  box.querySelector('#emailCodeLab').style.display = withCode ? '' : 'none';
+  box.querySelector('#emailCodeIn').style.display = withCode ? '' : 'none';
+  box.querySelector('#emailCodeRow').style.display = withCode ? 'flex' : 'none';
+  box.querySelector('#emailCodeHint').textContent = withCode
+    ? 'Enter the 6-digit code from the email, or open the link on this phone. ' +
+      'It went to ' + email + '.'
+    : 'It went to ' + email + '. Its link opens in this phone’s browser and signs ' +
+      'you in there, not in this app. To sign in inside the app, use Google sign-in ' +
+      'where it is offered.';
   box.style.display = 'flex';
   return box;
 }
@@ -1163,7 +1182,7 @@ async function sendAdminLink(to) {
   });
   if (error) return oops(error);
   if (offerEmailCode($('#send').parentNode, v, sendAdminLink)) {
-    return say('Email sent to ' + v + '. Open the link in it on this phone, or enter its code below.', 'ok');
+    return say('Email sent to ' + v + '. What to do next is below.', 'ok');
   }
   say('Link sent to ' + v + '. It expires shortly — open it on this device.', 'ok');
 }

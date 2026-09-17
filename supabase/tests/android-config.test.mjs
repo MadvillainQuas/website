@@ -61,9 +61,11 @@ if (Array.isArray(fps) && fps.length === 0)
 console.log('\n-- epinoia/android/version.json: one source of truth');
 const ver = json('epinoia', 'android', 'version.json');
 ok('version.json is valid JSON', !ver.__error, ver.__error);
-ok('it has exactly versionCode, versionName, minShell, apk, play',
-   JSON.stringify(Object.keys(ver).sort()) === JSON.stringify(['apk', 'minShell', 'play', 'versionCode', 'versionName']),
+ok('it has exactly versionCode, versionName, minShell, apk, play, released',
+   JSON.stringify(Object.keys(ver).sort()) === JSON.stringify(['apk', 'minShell', 'play', 'released', 'versionCode', 'versionName']),
    JSON.stringify(Object.keys(ver)));
+ok('released is a boolean (false until the first signed build is out; the site offers the app only when true)',
+   typeof ver.released === 'boolean');
 ok('versionCode is a positive integer', Number.isInteger(ver.versionCode) && ver.versionCode > 0);
 ok('versionName is x.y.z', typeof ver.versionName === 'string' && /^\d+\.\d+\.\d+$/.test(ver.versionName));
 ok('minShell is a positive integer no higher than versionCode (or no shell could satisfy it)',

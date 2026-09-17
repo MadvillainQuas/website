@@ -86,9 +86,9 @@ for (const f of FORMS) {
   /* the installed web apps count as "in the app" too, and until the owner adds
      {{ .Token }} to the email templates the email has only the link, so the
      message must stay true without a code */
-  ok(name + ': the in-app message still holds for an email with only the link',
-     body.includes("'. Open the link in it on this phone, or enter its code below.'") &&
-     !/Enter the code from it below/.test(body));
+  ok(name + ': the in-app message still holds for an email with only the link (the field below says what to do)',
+     body.includes("'. What to do next is below.'") &&
+     !/enter its code below|Enter the code from it below/.test(body));
 }
 ok('signin.js: the click still sends from the field', /\$\('#send'\)\.addEventListener\('click', \(\) => sendLink\(\)\)/.test(rd('epinoia', 'signin', 'signin.js')));
 ok('app.js: the click still sends from the field', /\$\('#send'\)\.addEventListener\('click', \(\) => sendLink\(\)\)/.test(rd('epinoia', 'app', 'app.js')));
@@ -145,6 +145,9 @@ function page(o = {}) {
     say: (text, kind) => { said.push([text, kind]); } };
   ctx.window = ctx;
   if (o.app) ctx.epinoiaApp = true;
+  /* the owner's switch, set once the email carries {{ .Token }} */
+  if (o.otp) ctx.EPINOIA_CONFIG = { emailOtp: true };
+  else if (o.config !== undefined) ctx.EPINOIA_CONFIG = o.config;
   vm.createContext(ctx);
   vm.runInContext(BLOCK + '\nthis.offerEmailCode = offerEmailCode; this.emailCodeInApp = emailCodeInApp;', ctx, { filename: 'email-code-block.js' });
   return { ctx, body, form, anchor, after, said, calls };
@@ -165,9 +168,33 @@ for (const [label, o] of [['window.epinoiaApp', { app: true }], ['html.m-app', {
   ok(label + ': shown', box && box.style.display === 'flex');
 }
 
+/* BEFORE THE OWNER'S TEMPLATE CHANGE (config.js emailOtp not true): no code field, a plain note */
+for (const [label, config] of [['no EPINOIA_CONFIG', undefined], ['emailOtp: false', { emailOtp: false }], ['emailOtp: "true" (a string)', { emailOtp: 'true' }]]) {
+  const p = page({ app: true, config });
+  const box = p.ctx.offerEmailCode(p.anchor, 'sec@club.co.uk', async () => {});
+  const hint = box && box.querySelector('#emailCodeHint');
+  ok(label + ': the note is drawn in the app, where the field would be', !!box && box.style.display === 'flex' && p.form.children[1] === box);
+  ok(label + ': no code field, label or buttons shown',
+     box.querySelector('#emailCodeIn').style.display === 'none' && box.querySelector('#emailCodeLab').style.display === 'none' &&
+     box.querySelector('#emailCodeRow').style.display === 'none');
+  ok(label + ': it says the link signs in the phone\'s browser, not the app, and points to Google',
+     /browser/.test(hint.textContent) && /not in this app/.test(hint.textContent) && /Google/.test(hint.textContent) &&
+     hint.textContent.includes('sec@club.co.uk') && !/code/i.test(hint.textContent), hint.textContent);
+}
+{
+  const p = page({ app: true });
+  p.ctx.offerEmailCode(p.anchor, 'a@b.co', async () => {});
+  p.ctx.EPINOIA_CONFIG = { emailOtp: true };
+  const box = p.ctx.offerEmailCode(p.anchor, 'a@b.co', async () => {});
+  ok('switched on: the same box now shows the field and its buttons',
+     box.querySelector('#emailCodeIn').style.display === '' && box.querySelector('#emailCodeLab').style.display === '' &&
+     box.querySelector('#emailCodeRow').style.display === 'flex' && /6-digit code/.test(box.querySelector('#emailCodeHint').textContent));
+}
+ok('config.js ships emailOtp: false until the template carries {{ .Token }}', /\n\s*emailOtp: false\n/.test(rd('epinoia', 'config.js')));
+
 {
   const resent = [];
-  const p = page({ app: true });
+  const p = page({ app: true, otp: true });
   const box = p.ctx.offerEmailCode(p.anchor, 'sec@club.co.uk', async to => { resent.push(to); });
   const input = box.querySelector('#emailCodeIn');
   const go = box.querySelector('#emailCodeGo');
@@ -210,7 +237,7 @@ for (const [label, o] of [['window.epinoiaApp', { app: true }], ['html.m-app', {
 }
 
 {
-  const p = page({ app: true, verify: () => ({ data: null, error: { message: 'Token has expired or is invalid' } }) });
+  const p = page({ app: true, otp: true, verify: () => ({ data: null, error: { message: 'Token has expired or is invalid' } }) });
   const box = p.ctx.offerEmailCode(p.anchor, 'a@b.co', async () => {});
   const input = box.querySelector('#emailCodeIn');
   input.value = '654321';
@@ -219,7 +246,7 @@ for (const [label, o] of [['window.epinoiaApp', { app: true }], ['html.m-app', {
   ok('an expired code: the field stays, with what was typed', box.style.display === 'flex' && input.value === '654321');
 }
 {
-  const p = page({ app: true, verify: () => { throw new Error('Failed to fetch'); } });
+  const p = page({ app: true, otp: true, verify: () => { throw new Error('Failed to fetch'); } });
   const box = p.ctx.offerEmailCode(p.anchor, 'a@b.co', async () => {});
   box.querySelector('#emailCodeIn').value = '111111';
   await box.querySelector('#emailCodeGo').fire('click');

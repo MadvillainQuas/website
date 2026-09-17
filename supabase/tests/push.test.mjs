@@ -156,8 +156,10 @@ function browser(o = {}) {
     matchMedia: q => ({ matches: !!(o.displayStandalone && /standalone/.test(q)) }),
     EPINOIA_CONFIG: { supabaseUrl: 'https://' + REF + '.supabase.co', supabaseAnonKey: 'sb_publishable_test' },
     EPINOIA_VAPID: o.vapid === undefined ? CFG_VAPID : o.vapid,
-    isSecureContext: !o.insecure, document: undefined, EpinoiaAccess: undefined
+    isSecureContext: !o.insecure, document: o.referrer !== undefined ? { referrer: o.referrer } : undefined, EpinoiaAccess: undefined
   };
+  /* o.twaSeen: appmode.js has seen the Android app's launcher on this phone before */
+  if (o.twaSeen) ls.setItem('epinoia_twa_seen', String(o.twaSeen));
   if (o.now) env.now = o.now;
   T.env(env);
   return { calls, ls, ss, get sub() { return sub; }, makeSub };
@@ -656,6 +658,17 @@ console.log('\nthe Epinoia Android app (a Trusted Web Activity on Chrome)');
   eq('...never Samsung Internet, whatever its session holds (its web app is Samsung\'s to post)', [T.platform(), P.inApp()], ['android-samsung-app', false]);
   android({ displayStandalone: true });
   eq('...an installed web app without the launcher is still android-app', [T.platform(), P.inApp()], ['android-app', false]);
+  /* a window a notification tap opened while the app was closed: a new session, no report */
+  android({ displayStandalone: true, twaSeen: 3 });
+  eq('...a standalone Chrome window on a phone that has run the app (epinoia_twa_seen) is the app', [T.platform(), P.inApp(), T.clientKind()], ['android-twa', true, 'twa']);
+  android({ twaSeen: 3 });
+  eq('...but a plain Chrome tab on that phone is not', [T.platform(), P.inApp(), T.clientKind()], ['android-chrome', false, 'tab']);
+  android({ ua: UA.samsung, displayStandalone: true, twaSeen: 3 });
+  eq('...nor Samsung Internet\'s web app, whatever localStorage holds', [P.inApp(), T.clientKind()], [false, 'samsung-app']);
+  android({ referrer: 'android-app://uk.co.prophesyscouting.epinoia/' });
+  eq('...the app\'s own android-app:// referrer is the app', [T.platform(), P.inApp()], ['android-twa', true]);
+  android({ referrer: 'android-app://com.google.android.gm/' });
+  eq('...another app\'s referrer (Gmail) is not', P.inApp(), false);
   browser({ ua: UA.chrome, shell: HIGH });
   ok('...and a computer is never the app', !P.inApp() && T.platform() === 'desktop');
   android({ shell: 'not json' });
@@ -977,6 +990,15 @@ const client = (url, o = {}) => {
   eq('an empty url: HOME', W.clickTarget({ url: '' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
   eq('a javascript: link goes nowhere but HOME', W.clickTarget({ url: 'javascript:alert(1)' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
   eq('a league link still resolves under /epinoia/, not under HOME', W.clickTarget({ url: '?l=bcb' }, '', ORIGIN), ORIGIN + '/epinoia/?l=bcb');
+  /* the notify deployed before HOME sends link-less rows to the site root */
+  eq('the old notify\'s root link (site + \'\'): HOME, never the splash', W.clickTarget({ url: ORIGIN + '/epinoia/' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('...as index.html too', W.clickTarget({ url: ORIGIN + '/epinoia/index.html' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('...keeping the query and the hash', W.clickTarget({ url: ORIGIN + '/epinoia/?from=digest#top' }, '', ORIGIN), ORIGIN + '/epinoia/home/?from=digest#top');
+  eq('...an empty ?l= is still the splash, so HOME', W.clickTarget({ url: ORIGIN + '/epinoia/?l=' }, '', ORIGIN), ORIGIN + '/epinoia/home/?l=');
+  eq('...a button\'s root link too', W.clickTarget({ actions: { open: ORIGIN + '/epinoia/' } }, 'open', ORIGIN), ORIGIN + '/epinoia/home/');
+  eq('...but a league front page stays where it is', W.clickTarget({ url: ORIGIN + '/epinoia/?l=bcb' }, '', ORIGIN), ORIGIN + '/epinoia/?l=bcb');
+  eq('...and another site\'s /epinoia/ is not rewritten', W.clickTarget({ url: 'https://elsewhere.example/epinoia/' }, '', ORIGIN), 'https://elsewhere.example/epinoia/');
+  eq('...nor a deeper page', W.clickTarget({ url: ORIGIN + '/epinoia/fixtures/' }, '', ORIGIN), ORIGIN + '/epinoia/fixtures/');
 
   const other = client(ORIGIN + '/prophesy/', { focused: true });
   const hidden = client(ORIGIN + '/epinoia/fixtures/', { visible: false });

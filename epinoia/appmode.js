@@ -24,7 +24,8 @@
       the reader chose dark), and theme-color to match, so a light page never
       flashes the dark bar and a dark reader on HOME (which ships #f3faf6) gets
       the dark one.
-   2. App detection: the epinoia_app sessionStorage flag, ?source=pwa|twa, an
+   2. App detection: the epinoia_app sessionStorage flag, ?source=pwa|twa, the
+      Android launcher's own shell=/notif=/chan= (Chrome on Android), an
       android-app:// referrer, display-mode standalone, or iOS's
       navigator.standalone. In the app: html.m-app, window.epinoiaApp = true,
       the ground colour on the root (no white or black flash between pages;
@@ -85,8 +86,18 @@
      the stored flag would then keep an ordinary tab "in the app" (and off the splash) for
      the rest of its session. The manifest asks for standalone, and the Android app is
      already recognised by ?source=twa and its android-app:// referrer. */
+  /* THE LAUNCHER'S OWN REPORT IS AN APP SIGNAL TOO. An App Link (the digest email's, a
+     notification's) launches with shell=, notif= and chan= but not the manifest's ?source=twa.
+     All three, a whole shell build, and Chrome on Android: a lone ?shell= in a pasted link, or
+     Samsung Internet, is not the app. */
+  var ua = '';
+  try { ua = String((window.navigator && window.navigator.userAgent) || ''); } catch (_) { ua = ''; }
+  var launcher = !!q && /^[1-9]\d*$/.test(param('shell') || '') && q.has('notif') && q.has('chan')
+    && /Android/i.test(ua) && !/SamsungBrowser/i.test(ua);
+
   var app = stored
     || source === 'pwa' || source === 'twa'
+    || launcher
     || referrer.indexOf('android-app://') === 0
     || media('(display-mode: standalone)')
     || !!(window.navigator && window.navigator.standalone === true);
@@ -116,6 +127,11 @@
     });
     shell.at = Date.now();
     try { sessionStorage.setItem('epinoia_shell', JSON.stringify(shell)); } catch (_) { /* best effort */ }
+    /* REMEMBERED BEYOND THIS SESSION, so push.js still knows the app in a window a notification
+       tap opens later with no report of its own. Chrome only: Samsung Internet is never the app. */
+    if (typeof shell.shell === 'number' && shell.shell > 0 && !/SamsungBrowser/i.test(ua)) {
+      try { localStorage.setItem('epinoia_twa_seen', String(shell.shell)); } catch (_) { /* best effort */ }
+    }
   }
 
   /* ---- 4. THE SPLASH, NEVER IN THE APP. ---- */

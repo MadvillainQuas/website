@@ -36,11 +36,16 @@
        where(env)           'app' | 'ios' | 'android' | 'other'
                             env = { app, mApp, ua, platform, maxTouchPoints }
        installOffer(env)    what the install banner offers: 'none' in the app and on the
-                            download page itself, 'android-app' on an Android browser (the
-                            real app, not the web app), 'ios' (Add to Home Screen, as it
-                            always was), 'web' elsewhere (only on beforeinstallprompt)
-                            env adds { path }
+                            download page itself, 'android-app' on an Android browser once
+                            the app is out (the real app, not the web app), 'ios' (Add to
+                            Home Screen, as it always was), 'web' elsewhere, and on Android
+                            until then (only on beforeinstallprompt)
+                            env adds { path, released }
        appCard(env, ver)    HOME's card: null, or { href, versionName } on an Android browser
+                            when version.json says released: true
+       NOT BEFORE THE FIRST RELEASE. epinoia/android/version.json carries "released"; until
+       the owner's first signed build is out and that is flipped to true, an Android browser
+       keeps the web-app offer it always had and nothing points at a download that 404s.
        readShell(store)     sessionStorage epinoia_shell, as appmode.js stored it, or null
        needsUpdate(sh, ver) the launch's shell build is below version.json's minShell
        cleanVersion(json)   version.json reduced to the fields the site trusts
@@ -66,18 +71,22 @@
     const installOffer = env => {
       const w = where(env);
       if (w === 'app') return 'none';
-      if (w === 'android') return /^\/epinoia\/android(\/|$)/.test(String((env && env.path) || '')) ? 'none' : 'android-app';
+      if (w === 'android') {
+        if (/^\/epinoia\/android(\/|$)/.test(String((env && env.path) || ''))) return 'none';
+        return env.released === true ? 'android-app' : 'web';
+      }
       return w === 'ios' ? 'ios' : 'web';
     };
     const cleanVersion = j => {
       if (!j || typeof j !== 'object') return null;
       const name = typeof j.versionName === 'string' && /^\d+(\.\d+){1,3}$/.test(j.versionName) ? j.versionName : '';
-      return { versionCode: whole(j.versionCode), versionName: name, minShell: whole(j.minShell) };
+      return { versionCode: whole(j.versionCode), versionName: name, minShell: whole(j.minShell), released: j.released === true };
     };
     const appCard = (env, ver) => {
       if (where(env) !== 'android') return null;
       const v = cleanVersion(ver);
-      return { href: (env && env.href) || '../android/', versionName: v ? v.versionName : '' };
+      if (!v || !v.released) return null;
+      return { href: (env && env.href) || '../android/', versionName: v.versionName };
     };
     const readShell = store => {
       try {
@@ -600,8 +609,12 @@
      app: on a Samsung the web app's alerts are posted by Samsung Internet and do not pop up,
      which is the problem the Android app exists to solve. It is offered after the same 2.5 s
      as the iPhone's, whether or not the browser fired beforeinstallprompt, and never on the
-     download page itself. iPhone and desktop are exactly as they were. */
+     download page itself. ONLY ONCE IT IS OUT: until version.json says released: true, an
+     Android browser keeps the web-app offer. iPhone and desktop are exactly as they were. */
   let installEvt = null, installBanner = null;
+  /* set once version.json says the Android app is out (released: true); until then an
+     Android browser is offered the web app, exactly as before the app existed */
+  let appReleased = false;
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const dismissed = () => { try { return (+localStorage.getItem('epinoia_install_dismissed') || 0) > Date.now() - 14 * 86400000; } catch (_) { return false; } };
@@ -609,7 +622,7 @@
     app: window.epinoiaApp === true,
     mApp: document.documentElement.classList.contains('m-app'),
     ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints,
-    path: location.pathname
+    path: location.pathname, released: appReleased
   });
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});
@@ -668,8 +681,21 @@
   window.epinoiaInstall = () => showInstall(true);
   window.epinoiaCanInstall = () => !!installEvt;
   {
-    const offer = AppShell.installOffer(shellEnv());
-    if (offer === 'ios' || offer === 'android-app') setTimeout(() => showInstall(false), 2500);
+    const env = shellEnv();
+    const offer = AppShell.installOffer(env);
+    if (offer === 'ios') setTimeout(() => showInstall(false), 2500);
+    else if (offer === 'web' && AppShell.where(env) === 'android') {
+      /* AN ANDROID BROWSER ASKS version.json (once a session, shared with HOME's card) whether
+         the app is out. Not yet, or no answer: nothing on a timer, and beforeinstallprompt
+         still offers the web app. Out: the Android app, after the same 2.5 s. */
+      let store = null;
+      try { store = window.sessionStorage; } catch (_) { store = null; }
+      AppShell.version(root + 'android/version.json', { store }).then(ver => {
+        if (!ver || ver.released !== true) return;
+        appReleased = true;
+        setTimeout(() => showInstall(false), 2500);
+      });
+    }
   }
 
   /* ------------------------------------------------------- update the app ---

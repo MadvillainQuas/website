@@ -25,7 +25,7 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-app';
+const SW_VERSION = 'notifications-v2-2026-09-17-app-2';
 const SITE_PATH = '/epinoia/';
 /* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
    window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
@@ -183,7 +183,10 @@ self.addEventListener('message', e => {
 
 /* --------------------------------------------------------------- the tap --- */
 /* Where a tap goes: the button's page, else the notice's page, else HOME.
-   Relative links resolve under /epinoia/; anything that is not http(s) goes to HOME. */
+   Relative links resolve under /epinoia/; anything that is not http(s) goes to HOME.
+   THE SITE'S OWN ROOT IS HOME TOO. A notify deployed before HOME existed sends rows with no
+   link to https://<site>/epinoia/, the splash with the water; this site's /epinoia/ (or
+   /epinoia/index.html) with no league asked for goes to HOME, keeping the query and hash. */
 function clickTarget(data, action, origin) {
   const d = data && typeof data === 'object' ? data : {};
   const map = d.actions && typeof d.actions === 'object' ? d.actions : {};
@@ -192,7 +195,11 @@ function clickTarget(data, action, origin) {
   const home = origin + HOME_PATH;
   try {
     const u = new URL(raw, origin + SITE_PATH);
-    return /^https?:$/.test(u.protocol) ? u.href : home;
+    if (!/^https?:$/.test(u.protocol)) return home;
+    if (u.origin === origin && /^\/epinoia\/(index\.html)?$/.test(u.pathname) && !u.searchParams.get('l')) {
+      u.pathname = HOME_PATH;
+    }
+    return u.href;
   } catch (_) { return home; }
 }
 

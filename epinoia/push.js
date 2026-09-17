@@ -195,11 +195,25 @@ function whole(v) {
 }
 /* INSIDE THE EPINOIA ANDROID APP: the launcher's report is in this session, or this page was
    launched with ?source=twa. Never Samsung Internet: the app is forced onto Chrome, and a
-   Samsung Internet web app carrying a copied launch URL is still Samsung's to post. */
+   Samsung Internet web app carrying a copied launch URL is still Samsung's to post.
+   A WINDOW OPENED BY A NOTIFICATION TAP while the app was closed is a new session with neither,
+   so two more signals count: the app's own android-app:// referrer, and an installed-looking
+   window (display-mode standalone) in a Chrome that has run the app before (appmode.js keeps
+   localStorage epinoia_twa_seen whenever the launcher reports itself). */
+const TWA_SEEN_KEY = 'epinoia_twa_seen';
+const APP_REFERRER = 'android-app://uk.co.prophesyscouting.epinoia';
 function inApp() {
   const ua = String((g('navigator') || {}).userAgent || '');
   if (!/Android/i.test(ua) || /SamsungBrowser/i.test(ua)) return false;
-  return !!launchState() || launchSource() === 'twa';
+  if (launchState() || launchSource() === 'twa') return true;
+  const doc = g('document');
+  let ref = '';
+  try { ref = String((doc && doc.referrer) || ''); } catch (_) { ref = ''; }
+  if (ref.indexOf(APP_REFERRER) === 0) return true;
+  const ls = storage();
+  let seen = null;
+  try { seen = ls ? ls.getItem(TWA_SEEN_KEY) : null; } catch (_) { seen = null; }
+  return !!seen && standalone();
 }
 
 /* Everything that can be known without waiting: 'unsupported', 'ios-install',

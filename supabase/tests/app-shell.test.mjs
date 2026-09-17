@@ -83,8 +83,11 @@ eq('where: window.epinoiaApp wins over an Android UA', S.where(env(UA.chromeAndr
 eq('where: html.m-app wins over an Android UA', S.where(env(UA.samsung, { mApp: true })), 'app');
 eq('where: nothing known', S.where(undefined), 'other');
 
-eq('installOffer: Android browser -> the Android app', S.installOffer(env(UA.chromeAndroid, { path: '/epinoia/stats/' })), 'android-app');
-eq('installOffer: Samsung Internet -> the Android app', S.installOffer(env(UA.samsung, { path: '/epinoia/home/' })), 'android-app');
+eq('installOffer: Android browser, app released -> the Android app', S.installOffer(env(UA.chromeAndroid, { path: '/epinoia/stats/', released: true })), 'android-app');
+eq('installOffer: Samsung Internet, app released -> the Android app', S.installOffer(env(UA.samsung, { path: '/epinoia/home/', released: true })), 'android-app');
+eq('installOffer: Android browser, app not released yet -> the web app, as before', S.installOffer(env(UA.chromeAndroid, { path: '/epinoia/stats/' })), 'web');
+eq('installOffer: Samsung Internet, released: false -> the web app', S.installOffer(env(UA.samsung, { path: '/epinoia/home/', released: false })), 'web');
+eq('installOffer: a truthy non-boolean released does not count', S.installOffer(env(UA.samsung, { path: '/epinoia/home/', released: 'yes' })), 'web');
 eq('installOffer: in the app -> none', S.installOffer(env(UA.chromeAndroid, { app: true, path: '/epinoia/home/' })), 'none');
 eq('installOffer: installed iPhone web app -> none', S.installOffer(env(UA.iphone, { mApp: true })), 'none');
 eq('installOffer: the download page itself -> none', S.installOffer(env(UA.chromeAndroid, { path: '/epinoia/android/' })), 'none');
@@ -92,10 +95,12 @@ eq('installOffer: the download page as index.html -> none', S.installOffer(env(U
 eq('installOffer: iPhone -> Add to Home Screen, unchanged', S.installOffer(env(UA.iphone, { path: '/epinoia/android/' })), 'ios');
 eq('installOffer: desktop -> web (only when the browser offers it)', S.installOffer(env(UA.desktop)), 'web');
 
-eq('appCard: Android browser, no version yet', S.appCard(env(UA.chromeAndroid, { href: '../android/' }), null), { href: '../android/', versionName: '' });
-eq('appCard: with version.json', S.appCard(env(UA.samsung), { versionName: '1.2.0', minShell: 1 }), { href: '../android/', versionName: '1.2.0' });
-eq('appCard: a versionName that is not a version is dropped', S.appCard(env(UA.samsung), { versionName: '<b>1</b>' }).versionName, '');
-eq('appCard: in the app -> null', S.appCard(env(UA.chromeAndroid, { app: true }), null), null);
+eq('appCard: Android browser, no version yet -> null (not known to be out)', S.appCard(env(UA.chromeAndroid, { href: '../android/' }), null), null);
+eq('appCard: version.json without released -> null', S.appCard(env(UA.samsung), { versionName: '1.2.0', minShell: 1 }), null);
+eq('appCard: released: false -> null', S.appCard(env(UA.samsung), { versionName: '1.2.0', minShell: 1, released: false }), null);
+eq('appCard: released: true', S.appCard(env(UA.samsung), { versionName: '1.2.0', minShell: 1, released: true }), { href: '../android/', versionName: '1.2.0' });
+eq('appCard: a versionName that is not a version is dropped', S.appCard(env(UA.samsung), { versionName: '<b>1</b>', released: true }).versionName, '');
+eq('appCard: in the app -> null', S.appCard(env(UA.chromeAndroid, { app: true }), { released: true }), null);
 eq('appCard: iPhone -> null', S.appCard(env(UA.iphone), null), null);
 eq('appCard: desktop -> null', S.appCard(env(UA.desktop), null), null);
 
@@ -119,7 +124,9 @@ ok('needsUpdate: minShell missing or not whole -> no', !S.needsUpdate({ shell: 1
   const v = S.cleanVersion(real);
   ok('cleanVersion reads the real epinoia/android/version.json', v && Number.isInteger(v.minShell) && /^\d+\.\d+\.\d+$/.test(v.versionName), JSON.stringify(v));
   eq('cleanVersion: only the trusted fields', S.cleanVersion({ versionCode: '2', versionName: '1.1.0', minShell: 1, apk: 'javascript:x' }),
-     { versionCode: 2, versionName: '1.1.0', minShell: 1 });
+     { versionCode: 2, versionName: '1.1.0', minShell: 1, released: false });
+  eq('cleanVersion: released only when it is exactly true', [S.cleanVersion({ released: true }).released, S.cleanVersion({ released: 'true' }).released], [true, false]);
+  ok('the real version.json says whether the app is out, as a boolean (false until the first signed build)', typeof real.released === 'boolean' && v.released === real.released, JSON.stringify(real));
   eq('cleanVersion: not an object', S.cleanVersion('1.0.0'), null);
 }
 
@@ -258,8 +265,11 @@ function page(url, o = {}) {
 const goOf = b => b && b.children.find(n => n.cls.has('go'));
 const textOf = b => b ? b.textContent : '';
 
+const OUT = { versionCode: 1, versionName: '1.0.0', minShell: 1, released: true };
+const NOT_OUT = { versionCode: 1, versionName: '1.0.0', minShell: 1, released: false };
 {
-  const p = page('/epinoia/stats/?l=bcb', { ua: UA.chromeAndroid });
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.chromeAndroid, versionJson: OUT });
+  await tick(); await tick(); await tick();
   ok('Android browser: nothing before the delay', p.banners().length === 0);
   p.later(2500);
   const b = p.banners()[0];
@@ -272,7 +282,8 @@ const textOf = b => b ? b.textContent : '';
   ok('...dismissed: gone, and remembered for the fortnight', p.banners().length === 0 && !!p.ctx.localStorage.getItem('epinoia_install_dismissed'));
 }
 {
-  const p = page('/epinoia/home/', { ua: UA.samsung });
+  const p = page('/epinoia/home/', { ua: UA.samsung, versionJson: OUT });
+  await tick(); await tick(); await tick();
   p.fire('beforeinstallprompt', { preventDefault() {}, prompt() {} });
   const b = p.banners()[0];
   ok('Samsung Internet firing beforeinstallprompt: the Android app, not the web app', !!b && b.cls.has('ep-app-offer')
@@ -281,14 +292,27 @@ const textOf = b => b ? b.textContent : '';
   ok('...and the timer does not add a second one', p.banners().length === 1);
 }
 {
-  const p = page('/epinoia/home/', { ua: UA.chromeAndroid, local: { epinoia_install_dismissed: String(Date.now()) } });
+  const p = page('/epinoia/home/', { ua: UA.chromeAndroid, versionJson: OUT, local: { epinoia_install_dismissed: String(Date.now()) } });
+  await tick(); await tick(); await tick();
   p.later(2500);
   ok('Android browser, dismissed this fortnight: nothing', p.banners().length === 0);
   p.ctx.epinoiaInstall();
   ok('...but asked for from a page (epinoiaInstall): the Android app offer', p.banners().length === 1 && p.banners()[0].cls.has('ep-app-offer'));
 }
+for (const [name, versionJson] of [['says released: false', NOT_OUT], ['is unreachable', new Error('offline')], ['has no released at all', { versionCode: 1, versionName: '1.0.0', minShell: 1 }]]) {
+  const p = page('/epinoia/home/', { ua: UA.samsung, versionJson });
+  await tick(); await tick(); await tick();
+  p.later(2500);
+  ok('Android browser, version.json ' + name + ': no Android app banner on a timer', p.banners().length === 0, p.banners().map(textOf).join(' | '));
+  p.fire('beforeinstallprompt', { preventDefault() {}, prompt() {} });
+  const b = p.banners()[0];
+  ok('...beforeinstallprompt: the web app\'s "Add Epinoia to your home screen", as before the app existed',
+     p.banners().length === 1 && !b.cls.has('ep-app-offer') && /Add Epinoia to your home screen/.test(textOf(b)) && goOf(b).tagName === 'BUTTON', textOf(b));
+  ok('...and nothing links to the download page', !p.banners().some(n => goOf(n) && goOf(n).href === '../android/'));
+}
 {
-  const p = page('/epinoia/android/', { ua: UA.chromeAndroid });
+  const p = page('/epinoia/android/', { ua: UA.chromeAndroid, versionJson: OUT });
+  await tick(); await tick();
   p.later(2500);
   p.fire('beforeinstallprompt', { preventDefault() {}, prompt() {} });
   p.ctx.epinoiaInstall();
@@ -327,9 +351,16 @@ const textOf = b => b ? b.textContent : '';
 {
   const p = page('/epinoia/home/', { ua: UA.desktop });
   ok('a plain tab never fetches version.json', !p.fetches.some(f => /version\.json/.test(f)));
-  const q = page('/epinoia/home/', { ua: UA.chromeAndroid });
-  q.later(2500);
-  ok('an Android browser\'s rail does not fetch version.json either (HOME\'s card does, on HOME)', !q.fetches.some(f => /version\.json/.test(f)));
+  const session = new Store();
+  const q = page('/epinoia/home/', { ua: UA.chromeAndroid, session, versionJson: NOT_OUT });
+  await tick(); await tick(); await tick();
+  ok('an Android browser\'s rail asks version.json whether the app is out', q.fetches.filter(f => /version\.json$/.test(f)).length === 1 && q.fetches.includes('../android/version.json'), q.fetches.join());
+  const r = page('/epinoia/stats/', { ua: UA.chromeAndroid, session, versionJson: NOT_OUT });
+  await tick(); await tick(); await tick();
+  ok('...once a session: the next page reads the stored answer', !r.fetches.some(f => /version\.json/.test(f)), r.fetches.join());
+  const i = page('/epinoia/home/', { ua: UA.iphone, versionJson: OUT });
+  await tick(); await tick();
+  ok('an iPhone never asks', !i.fetches.some(f => /version\.json/.test(f)));
 }
 
 console.log('\n-- the update notice');
@@ -380,7 +411,7 @@ console.log('\n-- the update notice');
   const p = page('/epinoia/home/', { ua: UA.chromeAndroid, session, versionJson: { minShell: 5 } });
   await tick(); await tick();
   ok('a browser tab with a stale epinoia_shell but no app signal: no update notice',
-     !p.banners().some(n => n.cls.has('ep-update')) && !p.fetches.some(f => /version\.json/.test(f)));
+     !p.banners().some(n => n.cls.has('ep-update')));
 }
 {
   const session = new Store({ epinoia_app: '1', epinoia_shell: '{"shell":1}' });
@@ -420,7 +451,7 @@ console.log('\n-- HOME\'s Android app card');
     return { host, a, done, calls, url: o.url, store };
   };
   {
-    const r = await draw(UA.chromeAndroid, { versionJson: { versionCode: 1, versionName: '1.0.0', minShell: 1 } });
+    const r = await draw(UA.chromeAndroid, { versionJson: { versionCode: 1, versionName: '1.0.0', minShell: 1, released: true } });
     ok('Chrome on Android: one card in #homeApp', r.host.children.length === 1 && r.a.cls.has('hm-app'));
     ok('...a link to ../android/', r.a.tagName === 'A' && r.a.href === '../android/', r.a.href);
     ok('..."Get the Android app"', /Get the Android app/.test(r.a.textContent), r.a.textContent);
@@ -430,10 +461,18 @@ console.log('\n-- HOME\'s Android app card');
   }
   {
     const r = await draw(UA.samsung, { versionJson: new Error('offline') });
-    ok('Samsung Internet, version.json unreachable: the card still, no version', r.a && r.a.href === '../android/' && byClass(r.a, 'v')[0].textContent === '');
+    ok('Samsung Internet, version.json unreachable: no card (not known to be out)', r.host.children.length === 0 && r.done === null);
   }
   {
-    const r = await draw(UA.firefoxAndroid, { store: new Store({ epinoia_android_version: '{"versionCode":2,"versionName":"1.1.0","minShell":1}' }), versionJson: { versionName: '9.9.9' } });
+    const r = await draw(UA.samsung, { versionJson: { versionCode: 1, versionName: '1.0.0', minShell: 1, released: false } });
+    ok('Samsung Internet, released: false: no card, the slot stays empty', r.host.children.length === 0 && r.done === null && r.calls === 1);
+  }
+  {
+    const r = await draw(UA.samsung, { versionJson: JSON.parse(rd('epinoia', 'android', 'version.json')) });
+    ok('the real version.json: a card exactly when it says released', (r.host.children.length === 1) === (JSON.parse(rd('epinoia', 'android', 'version.json')).released === true));
+  }
+  {
+    const r = await draw(UA.firefoxAndroid, { store: new Store({ epinoia_android_version: '{"versionCode":2,"versionName":"1.1.0","minShell":1,"released":true}' }), versionJson: { versionName: '9.9.9' } });
     ok('another Android browser (Firefox): the card, the session\'s stored version, no fetch', r.a && byClass(r.a, 'v')[0].textContent === 'v1.1.0' && r.calls === 0);
   }
   for (const [name, ua, extra] of [

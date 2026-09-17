@@ -21,7 +21,12 @@ window.EPINOIA_CONFIG = {
 
   // 'supabase' once the key is in and the migration is applied;
   // 'local' drives everything through BroadcastChannel for offline development.
-  defaultMode: 'local'
+  defaultMode: 'local',
+
+  // true ONLY once the Supabase Magic Link email template carries {{ .Token }}:
+  // then the sign-in forms inside the app offer a field for the email's code.
+  // Until then the app is told the link signs in the phone's browser instead.
+  emailOtp: false
 };
 
 /* Lazily create the Supabase client, only if the SDK and a key are present.

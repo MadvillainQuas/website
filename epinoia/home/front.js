@@ -155,9 +155,8 @@ function reScroll() {
    iPhone or on a desktop. WHO GETS IT is nav.js's decision (window.EpinoiaAppShell.appCard), the
    same one that swaps the rail's install banner for the Android app, so the two never disagree;
    nav.js loads after this file but before DOMContentLoaded, so it is there when this runs, and
-   a page without it simply has no card. The card is drawn at once and the version is added when
-   version.json answers (once a session, shared with nav.js's update notice); no answer, no
-   version, the card still works.
+   a page without it simply has no card. The card is drawn when version.json answers (once a
+   session, shared with nav.js) with released: true, carrying the version it names.
 
    deps (for the tests): { host, shell, env, store, doc } */
 function paintApp(deps) {
@@ -173,9 +172,20 @@ function paintApp(deps) {
     ua: nav.userAgent || '', platform: nav.platform || '', maxTouchPoints: nav.maxTouchPoints || 0
   };
   env.href = BASE + 'android/';
-  const card = shell.appCard(env, null);
-  if (!card) return Promise.resolve(null);
-
+  /* NOT BEFORE THE FIRST RELEASE: the card waits for version.json, and draws only when it says
+     released: true. Not an Android browser, no answer, or not out yet: no card, and only an
+     Android browser asks at all. */
+  if (typeof shell.where !== 'function' || shell.where(env) !== 'android' || typeof shell.version !== 'function') {
+    return Promise.resolve(null);
+  }
+  let store = d.store;
+  if (store === undefined) { try { store = root.sessionStorage; } catch (_) { store = null; } }
+  return shell.version(BASE + 'android/version.json', { store }).then(ver => {
+    const card = shell.appCard(env, ver);
+    return card ? drawAppCard(doc, host, card) : null;
+  }, () => null);
+}
+function drawAppCard(doc, host, card) {
   const el = (t, c, x) => { const n = doc.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
   const a = el('a', 'hm-app');
   a.href = card.href;
@@ -190,18 +200,11 @@ function paintApp(deps) {
     el('span', 'd', 'Its own icon and window, and game alerts that pop up. It shows the live site, so it needs a connection and Chrome on the phone.'),
     go
   );
+  if (card.versionName) v.textContent = 'v' + card.versionName;
   host.textContent = '';
   host.appendChild(a);
   fadeIn(a);
-
-  let store = d.store;
-  if (store === undefined) { try { store = root.sessionStorage; } catch (_) { store = null; } }
-  if (typeof shell.version !== 'function') return Promise.resolve(a);
-  return shell.version(BASE + 'android/version.json', { store }).then(ver => {
-    const c = shell.appCard(env, ver);
-    if (c && c.versionName) v.textContent = 'v' + c.versionName;
-    return a;
-  }, () => a);
+  return a;
 }
 
 /* ------------------------------------------------------------ sections --- */

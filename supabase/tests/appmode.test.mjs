@@ -73,14 +73,14 @@ function load(url, o = {}) {
       pathname: u.pathname, search: u.search, hash: u.hash,
       replace: to => { replaced.push({ to, hiddenFirst: root.style.display === 'none' }); }
     },
-    navigator: { standalone: o.iosStandalone === true ? true : undefined },
+    navigator: { standalone: o.iosStandalone === true ? true : undefined, userAgent: o.ua || '' },
     sessionStorage: ss,
     localStorage: ls,
     matchMedia: q => ({ matches: (o.media || []).includes(q) })
   };
   ctx.window = ctx;
   vm.runInNewContext(SRC, ctx, { filename: 'appmode.js' });
-  return { ctx, cls, attrs, root, meta, replaced, ss, listeners };
+  return { ctx, cls, attrs, root, meta, replaced, ss, ls, listeners };
 }
 
 /* A link, and a click on it (or on a child of it) as the document's listeners see it. */
@@ -204,6 +204,31 @@ function click(r, target, ev = {}) {
 {
   const r = load('/epinoia/home/?shell=3&notif=1&chan=4');
   ok('shell params in a plain tab (no app signal) are not stored', r.ss.getItem('epinoia_shell') === null);
+}
+{
+  const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 15; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
+  const SAMSUNG = 'Mozilla/5.0 (Linux; Android 15; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36';
+
+  /* an App Link (the digest email's root link) launches with the report but no ?source=twa */
+  const r = load('/epinoia/?shell=3&notif=1&chan=4', { water: 'front', ua: CHROME_ANDROID });
+  ok('the launcher\'s shell=, notif= and chan= in Chrome on Android: the app, even without ?source=twa',
+     r.ctx.window.epinoiaApp === true && r.cls.has('m-app') && r.ss.getItem('epinoia_app') === '1');
+  ok('...so an App Link to the root never shows the water: replaced with HOME, query kept',
+     r.replaced.length === 1 && r.replaced[0].to === '/epinoia/home/?shell=3&notif=1&chan=4' && r.replaced[0].hiddenFirst, JSON.stringify(r.replaced));
+  ok('...the report stored', JSON.parse(r.ss.getItem('epinoia_shell') || '{}').shell === 3);
+  ok('...and the app remembered beyond this session (localStorage epinoia_twa_seen)', r.ls.getItem('epinoia_twa_seen') === '3');
+
+  const s = load('/epinoia/?shell=3&notif=1&chan=4', { water: 'front', ua: SAMSUNG });
+  ok('the same URL in Samsung Internet: not the app, the splash stays', s.ctx.window.epinoiaApp === false && s.replaced.length === 0);
+  const t = load('/epinoia/home/?source=twa&shell=3&notif=1&chan=4', { ua: SAMSUNG });
+  ok('...and a Samsung Internet app session never marks the phone as having run the app', t.ls.getItem('epinoia_twa_seen') === null);
+
+  const lone = load('/epinoia/?shell=3', { water: 'front', ua: CHROME_ANDROID });
+  ok('a lone ?shell= (a pasted link) is not the app', lone.ctx.window.epinoiaApp === false && lone.replaced.length === 0);
+  const junk = load('/epinoia/?shell=abc&notif=1&chan=4', { water: 'front', ua: CHROME_ANDROID });
+  ok('a shell= that is not a build number is not the app', junk.ctx.window.epinoiaApp === false);
+  const desk = load('/epinoia/?shell=3&notif=1&chan=4', { water: 'front', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0.0.0 Safari/537.36' });
+  ok('the report on a desktop browser is not the app', desk.ctx.window.epinoiaApp === false && desk.replaced.length === 0);
 }
 
 /* ----------------------------------------------------- pages that stay put --- */

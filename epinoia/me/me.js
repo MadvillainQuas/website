@@ -189,16 +189,35 @@ function settingsLink(action) {
    unchanged, so push.js stops believing it (the check then lets its live test decide) */
 function settingsTapped() { try { if (window.EpinoiaPush && window.EpinoiaPush.settingsOpened) window.EpinoiaPush.settingsOpened(); } catch (_) { /* a courtesy */ } }
 /* AN ANDROID BROWSER IS OFFERED THE ANDROID APP, not the web app (roadmap Phase 6), by the
-   same decision as nav.js's banner (EpinoiaAppShell.installOffer), so the two never disagree */
+   same decision as nav.js's banner (EpinoiaAppShell.installOffer), so the two never disagree.
+   ONLY ONCE THE APP IS OUT: version.json's released (asked once a session, shared with nav.js)
+   sets meAppReleased and repaints the card; until then the button offers the web app. */
+let meAppReleased = false;
 function androidAppOffer() {
   const S = window.EpinoiaAppShell;
   if (!S || typeof S.installOffer !== 'function') return false;
   try {
     return S.installOffer({
       app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
-      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints, path: location.pathname
+      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints, path: location.pathname,
+      released: meAppReleased
     }) === 'android-app';
   } catch (_) { return false; }
+}
+function askAppReleased() {
+  const S = window.EpinoiaAppShell;
+  if (!S || typeof S.version !== 'function' || typeof S.where !== 'function') return;
+  try {
+    if (S.where({ app: window.epinoiaApp === true, mApp: document.documentElement.classList.contains('m-app'),
+      ua: navigator.userAgent, platform: navigator.platform, maxTouchPoints: navigator.maxTouchPoints }) !== 'android') return;
+    let store = null;
+    try { store = window.sessionStorage; } catch (_) { store = null; }
+    S.version('../android/version.json', { store }).then(ver => {
+      if (!ver || ver.released !== true) return;
+      meAppReleased = true;
+      if (!phoneBusy) paintPhone();
+    }, () => {});
+  } catch (_) { /* no offer is the safe answer */ }
 }
 const INSTALL_WORDS = { web: 'Add Epinoia to your Home Screen', android: 'Get the Epinoia app for Android' };
 async function paintPhone() {
@@ -491,6 +510,7 @@ function wirePhone() {
   /* back from the browser's settings, or from installing: say where things stand now */
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !phoneBusy) paintPhone(); });
   window.addEventListener('beforeinstallprompt', () => setTimeout(paintPhone, 0));
+  askAppReleased();
 }
 /* the fixture reminders sit under their master switch */
 function paintFixtureSubs() {
