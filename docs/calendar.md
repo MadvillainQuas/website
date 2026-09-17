@@ -25,6 +25,13 @@ So the panel puts the route that *does* work on an Android phone first:
 
 - **ICSx⁵** (free, open source) subscribes on the phone itself and writes the fixtures into
   Android's calendar store, which is exactly what Samsung Calendar reads. It keeps updating.
+  The row is **two numbered steps — install, then subscribe** — because a `webcal:` link with
+  no app to claim it opens a blank screen and nothing else, which is what somebody sees before
+  ICSx⁵ is installed (and installing F-Droid, the shop, is not installing ICSx⁵).
+  Subscribe is therefore an Android `intent:` link naming `at.bitfire.icsdroid` and carrying
+  `S.browser_fallback_url`: with ICSx⁵ installed the tap opens it; without, the same tap lands
+  on its store page. It stays in the same tab, or the fallback would open in an empty one.
+  Play, F-Droid and the Galaxy Store all carry ICSx⁵, and all three are linked.
 - **The file** (`?download=1`) imports into any calendar app, including Samsung Calendar on
   its own. It is a snapshot and does not update, and the panel says so.
 

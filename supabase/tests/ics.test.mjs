@@ -205,7 +205,20 @@ const URL_ICS = 'https://ref.supabase.co/functions/v1/ics/team/sharks.ics';
 
   const android = C.routes('android', URL_ICS, 'Sharks')[0];
   ok('the Android route names Samsung Calendar and what it cannot do', /Samsung Calendar/.test(android.how) && /cannot follow a calendar link/.test(android.how));
-  ok('...and offers ICSx⁵ beside the subscribe button', android.extra.href === C.ICSX5 && android.action.href.startsWith('webcal:'));
+  ok('...and leads with installing ICSx⁵, because Subscribe has nothing to open before that',
+     android.action.href === C.ICSX5 && /^1\. Get ICSx/.test(android.action.label) && /^2\. Subscribe/.test(android.extra.label));
+  ok('...from F-Droid, where it is free, rather than the paid Play listing',
+     C.ICSX5 === 'https://f-droid.org/packages/at.bitfire.icsdroid/' && /F‑Droid/.test(android.action.label));
+  ok('...Subscribe is an Android intent naming ICSx⁵, with the store as its fallback, so a phone without it lands on the store rather than a blank screen',
+     android.extra.href.startsWith('intent://ref.supabase.co/functions/v1/ics/team/sharks.ics#Intent;')
+     && android.extra.href.includes(';scheme=webcal;') && android.extra.href.includes(';package=at.bitfire.icsdroid;')
+     && android.extra.href.includes('S.browser_fallback_url=' + encodeURIComponent(C.ICSX5)) && android.extra.href.endsWith(';end'),
+     android.extra.href);
+  ok('...Google Play is still offered for anybody who would rather pay the developer',
+     android.links.some(l => l.href === C.ICSX5_PLAY) && /£1\.79 on Google Play/.test(android.how));
+  ok('...and F-Droid is named as the shop, not the app (the mistake this row exists to prevent)',
+     /F-Droid itself is only the shop/.test(android.note));
+  ok('...and the words say to install first', /Install ICSx⁵ first/.test(android.how) && /nothing to open/.test(android.how));
   const google = C.routes('android', URL_ICS, 'Sharks').find(r => r.id === 'google');
   ok('the Google route warns that a phone calendar app will not see it', /not in Samsung Calendar or other phone calendar apps/.test(google.how));
   const file = C.routes('ios', URL_ICS, 'Sharks').find(r => r.id === 'file');
@@ -248,11 +261,13 @@ const URL_ICS = 'https://ref.supabase.co/functions/v1/ics/team/sharks.ics';
   eq('one row per route, Android first on an Android phone', rows.map(r => r.dataset.route), ['android', 'file', 'google', 'outlook']);
   ok('the club is named at the top', out.panel.textContent.includes('B. Braun Sheffield Sharks in your calendar'));
   const links = byClass(out.panel, 'ep-cal-go').filter(n => n.tagName === 'A');
-  ok('the subscribe link is webcal, the download link is a download',
-     links.some(a => a.href && a.href.startsWith('webcal:')) &&
+  ok('on an Android phone the subscribe link is the intent, and the download link is a download',
+     links.some(a => a.href && a.href.startsWith('intent://') && a.href.includes('package=at.bitfire.icsdroid')) &&
      links.some(a => a.href && a.href.endsWith('download=1') && 'download' in a.attrs),
      links.map(a => a.href).join(' | '));
+  ok('...and the intent stays in this tab, where its fallback can land', links.filter(a => String(a.href).startsWith('intent://')).every(a => !a.target));
   ok('links out open in a new tab, safely', links.filter(a => a.target).every(a => a.target === '_blank' && a.rel === 'noopener'));
+  ok('an iPhone still gets a plain webcal: link', C.routes('ios', URL_ICS, 'Sharks')[0].action.href.startsWith('webcal:'));
   const field = out.panel.all().find(n => String(n.className).includes('ep-cal-url'));
   eq('the address is there to copy by hand', field.value, URL_ICS);
   ok('...read-only, and labelled', field.readOnly === true && /calendar address/.test(field.getAttribute('aria-label')));

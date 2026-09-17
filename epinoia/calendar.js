@@ -48,7 +48,9 @@ const OUTLOOK_ADD = 'https://outlook.live.com/calendar/0/addfromweb';
    Play price rather than hiding it, so anybody who would rather pay the developer knows
    where to go — and anybody who will not install F-Droid is pointed at Google Calendar,
    which is free and needs no app at all. */
-const ICSX5 = 'https://f-droid.org/packages/at.bitfire.icsdroid/';
+const ICSX5_PKG = 'at.bitfire.icsdroid';
+const ICSX5 = 'https://f-droid.org/packages/' + ICSX5_PKG + '/';
+const ICSX5_PLAY = 'https://play.google.com/store/apps/details?id=' + ICSX5_PKG;
 
 const g = k => root[k];
 
@@ -64,6 +66,19 @@ function platform(nav) {
 
 const webcalOf = url => String(url || '').replace(/^https:/i, 'webcal:');
 const downloadOf = url => String(url || '') + (String(url || '').includes('?') ? '&' : '?') + 'download=1';
+
+/* SUBSCRIBING ON ANDROID WITHOUT THE BLACK SCREEN. A plain webcal: link goes nowhere when no
+   app has claimed that scheme: the browser opens a blank page and nothing happens, which is
+   exactly what somebody sees before they have installed ICSx⁵. An Android intent: link names
+   the app AND carries a fallback, so the same tap either opens ICSx⁵ (which registers
+   webcal:// and webcals://) or lands on its store page. Chrome, Samsung Internet, Edge and
+   Firefox on Android all follow intent: links; anything else is not an Android browser and
+   never sees this route. */
+function androidIntent(url, fallback) {
+  const rest = String(url || '').replace(/^https?:\/\//i, '');
+  return 'intent://' + rest + '#Intent;scheme=webcal;package=' + ICSX5_PKG +
+    ';S.browser_fallback_url=' + encodeURIComponent(fallback || ICSX5) + ';end';
+}
 
 /* The routes, in the order this device should see them. Each: what it is called, what it
    does, the button and the words under it. */
@@ -86,9 +101,18 @@ function routes(plat, url, name) {
   const android = {
     id: 'android',
     title: 'Android, including Samsung Calendar',
-    how: 'Samsung Calendar and the other Android calendar apps cannot follow a calendar link on their own. ICSx⁵ does it for them: install it, tap Subscribe below, and the fixtures appear in Samsung Calendar and keep updating. Get it free from F‑Droid — the same app costs £1.79 on Google Play, which is the developer asking to be paid rather than anything this feed needs. If you would rather not install F‑Droid, Google Calendar below is free and needs no app at all.',
-    action: { label: 'Subscribe on this phone', href: webcal },
-    extra: { label: 'Get ICSx⁵ free (F‑Droid)', href: ICSX5 }
+    /* TWO STEPS, IN ORDER, BECAUSE STEP TWO ALONE IS A BLACK SCREEN. A webcal: link needs an
+       app that has claimed the scheme; before ICSx⁵ is installed the browser opens a blank
+       page and nothing happens (reported here 2026-09-18, by somebody who had installed
+       F-Droid — the shop — and reasonably thought that was the app). */
+    how: 'Two steps, once. Samsung Calendar and the other Android calendar apps cannot follow a calendar link on their own; ICSx⁵ does it for them, and writes the fixtures into the phone\'s own calendar so Samsung Calendar shows them and keeps them up to date. Install ICSx⁵ first, then tap Subscribe — until it is installed, Subscribe has nothing to open. Get it free from F‑Droid — the same app costs £1.79 on Google Play, which is the developer asking to be paid rather than anything this feed needs. If you would rather not install F‑Droid, Google Calendar below is free and needs no app at all.',
+    action: { label: '1. Get ICSx⁵ free (F‑Droid)', href: ICSX5 },
+    extra: { label: '2. Subscribe on this phone', href: androidIntent(url, ICSX5) },
+    links: [
+      { label: 'or pay for it on Google Play', href: ICSX5_PLAY },
+      { label: 'or paste the address below into any app that takes calendar subscriptions', href: '' }
+    ],
+    note: 'In F-Droid, search for ICSx⁵ and install it: F-Droid itself is only the shop. Already installed? Step 2 opens it.'
   };
   const google = {
     id: 'google',
@@ -136,6 +160,10 @@ const CSS = [
   '.ep-cal-t{font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--lume)}',
   '.ep-cal-p{margin:0;font-size:13.5px;line-height:1.6;color:var(--ink-2)}',
   '.ep-cal-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}',
+  '.ep-cal-hint{margin:0;font-size:12.5px;line-height:1.6;color:var(--ink-3)}',
+  '.ep-cal-links{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;font-size:12.5px;line-height:1.7;color:var(--ink-3)}',
+  '.ep-cal-links a{color:var(--lume)}',
+  '.ep-cal-sep{color:var(--ink-3)}',
   '.ep-cal-go{display:inline-flex;align-items:center;min-height:38px;padding:0 14px;text-decoration:none;',
   'font-family:var(--f-micro);font-size:10px;letter-spacing:.1em;text-transform:uppercase;',
   'background:var(--lume);color:var(--on-accent);border:1px solid var(--lume)}',
@@ -234,10 +262,25 @@ function mount(host, opts) {
     acts.appendChild(a);
     if (r.extra) {
       const b = el('a', 'ep-cal-go ghost', r.extra.label);
-      b.href = r.extra.href; b.target = '_blank'; b.rel = 'noopener';
+      b.href = r.extra.href;
+      /* an intent: link must stay in this tab: a new tab with nothing to show is the black
+         screen all over again, and the fallback would open there instead of here */
+      if (!/^intent:/i.test(r.extra.href)) { b.target = '_blank'; b.rel = 'noopener'; }
       acts.appendChild(b);
     }
     row.appendChild(acts);
+    if (r.note) row.appendChild(el('p', 'ep-cal-hint', r.note));
+    if (r.links && r.links.length) {
+      const more = el('div', 'ep-cal-links');
+      r.links.forEach((l, i) => {
+        if (i) more.appendChild(el('span', 'ep-cal-sep', '·'));
+        if (!l.href) { more.appendChild(el('span', null, l.label)); return; }
+        const link = el('a', null, l.label);
+        link.href = l.href; link.target = '_blank'; link.rel = 'noopener';
+        more.appendChild(link);
+      });
+      row.appendChild(more);
+    }
     panel.appendChild(row);
   });
 
@@ -268,5 +311,6 @@ function mount(host, opts) {
   return { chip, panel, show: () => show(true), hide: () => show(false) };
 }
 
-return { mount, platform, webcalOf, downloadOf, routes, GOOGLE_ADD, OUTLOOK_ADD, ICSX5, CSS };
+return { mount, platform, webcalOf, downloadOf, androidIntent, routes,
+         GOOGLE_ADD, OUTLOOK_ADD, ICSX5, ICSX5_PKG, ICSX5_PLAY, CSS };
 }));
