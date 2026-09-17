@@ -1164,11 +1164,16 @@ def wants_reread(track):
 
 def may_queue(track, statuses):
     """(queue?, why) for one game's footage, given the status of every job already run against
-    THAT footage. The only place the backfill decides anything."""
+    THAT footage, OLDEST FIRST. The only place the backfill decides anything."""
     if any(s in ('queued', 'claimed', 'running') for s in statuses):
         return False, ''
-    # unchanged: two failures is enough, whatever the reason
-    if len([s for s in statuses if s in ('failed', 'cancelled')]) >= 2:
+    # Two failures is still enough to stop trying - but only failures since the last reading
+    # that finished. 7f424d2f failed twice in a download loop, was then read (badly: one sample
+    # at confidence 0.085, which places nothing), and counting all three against it would have
+    # left the one game on the platform that lists no plays at all unreadable for ever. A
+    # failure before a reading describes a fetch that is over; what stands is the reading.
+    done_at = max((i for i, s in enumerate(statuses) if s == 'done'), default=-1)
+    if len([s for s in statuses[done_at + 1:] if s in ('failed', 'cancelled')]) >= 2:
         return False, ''
     done = len([s for s in statuses if s == 'done'])
     if not done:
@@ -1201,7 +1206,8 @@ def backfill(db, cfg):
     if not rows:
         return 0
     ids = ','.join(r['game_id'] for r in rows)
-    have = db.select('video_jobs', 'select=game_id,status,video_url&game_id=in.(%s)' % ids)
+    # oldest first: may_queue counts only the failures that came AFTER the last finished reading
+    have = db.select('video_jobs', 'select=game_id,status,video_url&game_id=in.(%s)&order=requested_at' % ids)
     # a job counts against the footage it was for: a video pasted over a read one (0115
     # clears its track) is new footage, and gets its own read
     url_of = {r['game_id']: r['url'] for r in rows}

@@ -395,6 +395,12 @@ console.log('\nthe worker reads the whole broadcast unless the stamps cover it')
       { track: { coverage: { worker: 'ai_worker/1.0', read_frac: 0.065 } }, statuses: ['done', 'running'] },
       /* 5: two failures is still enough, whatever the track says */
       { track: null, statuses: ['failed', 'cancelled'] },
+      /* 6: 7f424d2f's shape -- it failed twice in a download loop, and was then read badly
+         (one sample at confidence 0.085, which places nothing). The failures came BEFORE the
+         reading, so they do not count against reading it again. */
+      { track: { coverage: { worker: 'ai_worker/1.0', read_frac: 0.02 } }, statuses: ['failed', 'failed', 'done'] },
+      /* 7: ...but two failures SINCE that reading do stop it */
+      { track: { coverage: { worker: 'ai_worker/1.0', read_frac: 0.02 } }, statuses: ['done', 'failed', 'failed'] },
     ],
     slim: { mode: 'score', video: 'x.mp4', source: 'clock.py (score mode)',
             matched: 2, changes_seen: 3,
@@ -456,6 +462,10 @@ console.log('\nthe worker reads the whole broadcast unless the stamps cover it')
     eq('...nor after two failures, which is the rule that was already there', q[5], false);
     ok('a game that was never read is queued without a re-read reason',
        got.queue[3][1] === '', got.queue[3][1]);
+    /* 7f424d2f is the one game on the platform whose video tab lists nothing at all. Counting
+       the two failures it had BEFORE its bad reading would have made that permanent. */
+    eq('failures before a reading do not block reading it again', q[6], true);
+    eq('...two failures since the reading do', q[7], false);
 
     const slim = got.slim;
     ok('a stored score reading keeps the score it read, so it can be audited',
