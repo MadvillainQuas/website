@@ -648,6 +648,9 @@ const client = (url, o = {}) => {
       vibrate: [80, 40, 80], data: { url, kind: 'lineups', actions: { starters: url } },
       tag: 'lineups:' + G, renotify: true, timestamp: 1758301500000, actions: [{ action: 'starters', title: 'See lineups' }] } });
 
+  eq('a league\'s crest in the payload is the icon (a notification button\'s subscriber)',
+     W.notificationFor({ title: 'FT', icon: 'https://x.test/crest.png', tag: 't' }).options.icon, 'https://x.test/crest.png');
+  eq('...but never one that is not https', W.notificationFor({ title: 'FT', icon: 'javascript:alert(1)', tag: 't' }).options.icon, '/epinoia/brand/epinoia-mark-192.png');
   const bare = W.notificationFor({ title: 'x', renotify: true });
   ok('renotify without a tag is dropped (showNotification would throw)', !('renotify' in bare.options) && !('tag' in bare.options));
   const three = W.notificationFor({ tag: 't', actions: [{ action: 'a', title: 'A' }, { action: 'b', title: 'B' }, { action: 'c', title: 'C' }, { action: '', title: 'bad' }] });

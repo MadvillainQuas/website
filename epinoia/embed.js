@@ -43,13 +43,30 @@
   const kind = (me.dataset.epinoia || 'strip').toLowerCase();
   const base = new URL('.', me.src).href;          // .../epinoia/
 
+  /* A NOTIFICATION BUTTON IS NOT A FRAME (docs/notify-embed.md §1): a browser will not
+     ask for notification permission from a frame on another site. The snippet is
+     queued for embed/notify/notify.js, which draws the button into the page itself
+     (in a closed shadow root, so neither side's styles leak), and that file is loaded
+     once however many buttons the page carries. */
+  if (kind === 'notify') {
+    (window.EpinoiaNotifyButtons = window.EpinoiaNotifyButtons || []).push(me);
+    if (!document.querySelector('script[data-epinoia-notify-loader]')) {
+      const loader = document.createElement('script');
+      loader.src = new URL('embed/notify/notify.js', base).href;
+      loader.async = true;
+      loader.setAttribute('data-epinoia-notify-loader', '1');
+      (document.head || document.documentElement).appendChild(loader);
+    }
+    return;
+  }
+
   const PATHS = { strip: 'embed/strip/', game: 'embed/game/',
                   standings: 'embed/table/', leaders: 'embed/table/',
                   shop: 'embed/merch/' };
   const path = PATHS[kind];
   if (!path) {
     console.warn('[epinoia] unknown embed "' + kind +
-                 '" — expected strip, game, standings, leaders or shop');
+                 '" — expected strip, game, standings, leaders, shop or notify');
     return;
   }
 

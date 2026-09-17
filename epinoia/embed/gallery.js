@@ -77,6 +77,42 @@ function paint() {
   $('#f-lead').src = frameUrl('embed/table/', { l: league(), kind: 'leaders', stat: st, n: 10 });
   $('#f-lead').style.height = '320px';
   $('#s-lead').textContent = snippet('leaders', { stat: st });
+
+  paintNotify();
+}
+
+/* THE NOTIFICATION BUTTON is drawn into the page, not a frame (docs/notify-embed.md
+   §1), so its preview is the real snippet run here: a script element carrying the
+   same attributes as the one to copy. */
+let notifyTeams = [], notifyFor = '';
+async function paintNotify() {
+  const lg = league();
+  if (lg && notifyFor !== lg) {
+    notifyFor = lg;
+    try {
+      const l = leagues.find(x => x.slug === lg);
+      notifyTeams = l ? await api('teams?select=slug,name&league_id=eq.' + encodeURIComponent(l.id) + '&order=name') : [];
+    } catch (_) { notifyTeams = []; }
+    const sel = $('#nteam');
+    sel.textContent = '';
+    notifyTeams.forEach(t => sel.append(new Option(t.name, t.slug)));
+  }
+  const kind = $('#nkind').value;
+  $('#nteamL').style.display = kind === 'team' ? '' : 'none';
+  const extra = {};
+  if (kind === 'team' && $('#nteam').value) extra.team = $('#nteam').value;
+  if (theme() === 'light') extra.theme = 'light';
+  const bits = ['data-epinoia="notify"', `data-league="${lg}"`].concat(Object.entries(extra).map(([k, v]) => `data-${k}="${v}"`));
+  $('#s-notify').textContent = `<script src="${ORIGIN}${BASE}embed.js"\n        ${bits.join(' ')}><\/script>`;
+  const host = $('#p-notify');
+  host.textContent = '';
+  if (!lg) return;
+  const s = document.createElement('script');
+  s.src = `${ORIGIN}${BASE}embed.js`;
+  s.dataset.epinoia = 'notify';
+  s.dataset.league = lg;
+  Object.entries(extra).forEach(([k, v]) => { s.dataset[k] = v; });
+  host.appendChild(s);
 }
 
 /* every preview posts its height; apply it to the frame that sent it, and only
@@ -103,13 +139,14 @@ document.querySelectorAll('[data-copy]').forEach(b => {
 });
 ['#league', '#theme', '#stat', '#accent', '#accent2'].forEach(sel =>
   $(sel).addEventListener('change', paint));
+['#nkind', '#nteam'].forEach(sel => $(sel).addEventListener('change', paintNotify));
 $('#reset').addEventListener('click', () => {
   $('#accent').value = DEFAULT_A1; $('#accent2').value = DEFAULT_A2; paint();
 });
 
 (async function boot() {
   try {
-    leagues = await api('leagues?select=slug,name&order=name');
+    leagues = await api('leagues?select=id,slug,name&order=name');
     leagues.forEach(l => $('#league').append(new Option(l.name, l.slug)));
     if (!leagues.length) $('#league').append(new Option('no leagues yet', ''));
 

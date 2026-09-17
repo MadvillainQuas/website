@@ -101,21 +101,63 @@ export function actionsFor(n) {
   return [];
 }
 
-/* the JSON the service worker receives (epinoia/sw.js reads exactly these keys) */
-export function payloadFor(n, site, nowMs) {
+/* the JSON the service worker receives (epinoia/sw.js reads exactly these keys).
+   extra: a device's (docs/notify-embed.md §6) — {url} an absolute link to use instead of
+   the row's, {icon} the league's crest; an icon is only ever an https URL. */
+export function payloadFor(n, site, nowMs, extra) {
   const base = String(site || '').replace(/\/?$/, '/');
   const link = String((n && n.link) || '').replace(/^\/+/, '');
   const created = n && n.created_at ? Date.parse(n.created_at) : NaN;
-  return {
+  const x = extra || {};
+  const out = {
     title: String((n && n.title) || 'Epinoia'),
     body: String((n && n.body) || ''),
-    url: base + link,
+    url: typeof x.url === 'string' && /^https:\/\//.test(x.url) ? x.url : base + link,
     tag: tagFor(n),
     renotify: true,
     kind: String((n && n.kind) || ''),
     timestamp: Number.isFinite(created) ? created : nowMs,
     actions: actionsFor(n)
   };
+  if (typeof x.icon === 'string' && /^https:\/\//.test(x.icon)) out.icon = x.icon;
+  return out;
+}
+
+/* WHERE A DEVICE'S TAP OPENS (docs/notify-embed.md §6). A game notice opens the league's
+   own match page when it gave a pattern — {game} is Epinoia's id, {external} the feed's,
+   and a pattern that needs {external} for a game without one falls back to Epinoia's
+   page; an announcement or a test opens the league's home page when it gave one;
+   anything else, Epinoia's own page for the row. Always absolute: the service worker
+   may be running on the league's domain. */
+export function deviceUrl(n, site, cfg, external) {
+  const base = String(site || '').replace(/\/?$/, '/');
+  const c = cfg || {};
+  const game = n && n.game_id ? String(n.game_id) : '';
+  const https = u => typeof u === 'string' && /^https:\/\/[^\s]+$/.test(u);
+  if (game && https(c.game_url) && (c.game_url.includes('{game}') || c.game_url.includes('{external}'))) {
+    const ext = external == null ? '' : String(external);
+    if (!c.game_url.includes('{external}') || ext) {
+      return c.game_url.replace(/\{game\}/g, encodeURIComponent(game)).replace(/\{external\}/g, encodeURIComponent(ext));
+    }
+  }
+  const kind = n && n.kind;
+  if (!game && (kind === 'announcement' || kind === 'test') && https(c.home_url)) return c.home_url;
+  return base + String((n && n.link) || '').replace(/^\/+/, '');
+}
+
+/* a crest as stored (a storage path in media-public, an https URL, or an early worker's
+   JSON) -> an https URL, the way epinoia/config.js epinoiaAsset reads one; null otherwise */
+export function crestUrl(path, supabaseUrl) {
+  if (path == null) return null;
+  let p = String(path).trim();
+  if (p.charAt(0) === '{') {
+    try { p = (JSON.parse(p) || {}).url || ''; } catch (_) { return null; }
+  }
+  if (!p) return null;
+  if (/^https:\/\//i.test(p)) return p;
+  if (/^http:\/\//i.test(p) || !supabaseUrl) return null;
+  return String(supabaseUrl).replace(/\/+$/, '') + '/storage/v1/object/public/media-public/' +
+         p.split('/').map(encodeURIComponent).join('/');
 }
 
 /* the options web-push's sendNotification takes */

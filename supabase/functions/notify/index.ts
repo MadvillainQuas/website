@@ -41,7 +41,7 @@
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
-import { payloadFor, webpushOptions, isExpired, testPayload } from '../_shared/pushpayload.js';
+import { payloadFor, webpushOptions, isExpired, testPayload, deviceUrl, crestUrl } from '../_shared/pushpayload.js';
 import { serviceOf, explain, decryptPush, makeReceiver, vapidSigned } from '../_shared/pushcheck.js';
 
 const cors = {
@@ -203,6 +203,66 @@ Deno.serve(async (req) => {
     }
     await record(admin, outcomes, dead);
     if (dead.length) await admin.from('push_subscriptions').delete().in('id', [...new Set(dead)]);
+  }
+
+  /* ----------------------------------------------------------- devices --- */
+  /* A notification button's subscriber (docs/notify-embed.md, 0127): no account, one
+     browser subscription. Its rows are pushed to that subscription, with an absolute
+     link (the league's own page when it gave a pattern) and the league's crest. */
+  out.devices = 0;
+  if (pub && priv) {
+    const DEV = 'id,device_id,kind,title,body,link,ref,game_id,league_id,data,expires_at,urgency,created_at';
+    const r = await admin.from('notifications').select(DEV)
+      .not('device_id', 'is', null).is('pushed_at', null).gte('created_at', since)
+      .order('created_at', { ascending: true }).limit(500);
+    if (r.error) {
+      if (!/device_id|column/i.test(r.error.message)) notes.push('could not read device notifications: ' + r.error.message);
+    } else {
+      const rows = (r.data ?? []) as any[];
+      const nowD = Date.now();
+      const staleD = rows.filter(n => isExpired(n, nowD)).map(n => n.id);
+      if (staleD.length) { await stamp('pushed_at', staleD); out.expired = (out.expired as number) + staleD.length; }
+      const liveD = rows.filter(n => !isExpired(n, nowD));
+      if (liveD.length) {
+        const uniq = (xs: any[]) => [...new Set(xs.filter(Boolean))];
+        const devIds = uniq(liveD.map(n => n.device_id));
+        const leagueIds = uniq(liveD.map(n => n.league_id));
+        const gameIds = uniq(liveD.map(n => n.game_id));
+        const devs = ((await admin.from('push_devices').select('id,endpoint,p256dh,auth').in('id', devIds)).data ?? []) as any[];
+        const cfgs = leagueIds.length ? ((await admin.from('notify_embeds').select('league_id,game_url,home_url').in('league_id', leagueIds)).data ?? []) as any[] : [];
+        const lgs = leagueIds.length ? ((await admin.from('leagues').select('id,logo_path').in('id', leagueIds)).data ?? []) as any[] : [];
+        const exts = gameIds.length ? ((await admin.from('external_games').select('game_id,external_id').in('game_id', gameIds)).data ?? []) as any[] : [];
+        const devBy = new Map(devs.map(d => [d.id, d]));
+        const cfgBy = new Map(cfgs.map(c => [c.league_id, c]));
+        const crestBy = new Map(lgs.map(l => [l.id, crestUrl(l.logo_path, url)]));
+        const extBy = new Map(exts.map(e => [e.game_id, e.external_id]));
+        webpush.setVapidDetails(VAPID_SUBJECT(), pub, priv);
+        const outcomes = new Map<string, { status: number; error: string | null }>();
+        const dead: string[] = [];
+        for (const n of liveD) {
+          const d = devBy.get(n.device_id);
+          if (d && !dead.includes(d.id)) {
+            const link = deviceUrl(n, site, cfgBy.get(n.league_id) ?? null, extBy.get(n.game_id) ?? null);
+            const payload = JSON.stringify(payloadFor(n, site, Date.now(), { url: link, icon: crestBy.get(n.league_id) ?? null }));
+            const res = await push(d, payload, webpushOptions(n, Date.now()));
+            outcomes.set(d.id, { status: res.status, error: res.ok ? null : res.detail });
+            if (res.ok) (out.devices as number) += 1;
+            else if (res.status === 404 || res.status === 410) dead.push(d.id);
+            else notes.push('device push ' + res.status + (res.detail ? ': ' + res.detail.slice(0, 80) : ''));
+          }
+          await stamp('pushed_at', [n.id]);
+        }
+        const at = new Date().toISOString();
+        for (const [id, o] of outcomes) {
+          if (dead.includes(id)) continue;
+          try {
+            await admin.from('push_devices').update({ last_push_at: at, last_push_status: o.status, last_push_error: o.error }).eq('id', id);
+          } catch (_) { /* the push itself is what matters */ }
+        }
+        /* the browser let the subscription go: the device and its rows go with it */
+        if (dead.length) await admin.from('push_devices').delete().in('id', dead);
+      }
+    }
   }
 
   return json({ ok: true, ...out });

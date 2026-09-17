@@ -263,6 +263,13 @@ jobs:
         # outside the Home Screen app, never after "not now", never when blocked)
         run: node supabase/tests/push.test.mjs
 
+      - name: Notification buttons on a league's own website
+        # the button asks for permission inside the tap and never takes the site's own
+        # service worker scope; the window reports "following" only to the site that
+        # opened it, and the button believes only Epinoia; the imported worker leaves
+        # the site's requests alone; every function called exists
+        run: node supabase/tests/notify-embed.test.mjs
+
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
         # database (0126) share one rule, tested against the same names

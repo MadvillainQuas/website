@@ -110,6 +110,29 @@ eq(tagFor({ kind: 'halftime', game_id: G, ref: G + ':ht' }), 'result:' + G, 'no 
 eq(actionsFor({ kind: 'halftime' }), [{ action: 'box', title: 'Box score' }], 'half-time offers "Box score"');
 ok(/half-time/.test(tp.body), 'the test push mentions half-time among what will arrive');
 
+/* ---- a device's link and crest (docs/notify-embed.md §6) ---- */
+const PP = await import('../functions/_shared/pushpayload.js');
+const SITE = 'https://prophesyscouting.co.uk/epinoia/';
+const gameRow = { kind: 'result', game_id: G, ref: G, link: 'game/?g=' + G + '&mode=supabase' };
+eq(PP.deviceUrl(gameRow, SITE, null, null), SITE + 'game/?g=' + G + '&mode=supabase', 'no pattern: Epinoia\'s game page, absolute');
+eq(PP.deviceUrl(gameRow, SITE, { game_url: 'https://club.example/match/{game}' }, null), 'https://club.example/match/' + G, '{game}: the league\'s own match page');
+eq(PP.deviceUrl(gameRow, SITE, { game_url: 'https://club.example/m?fiba={external}' }, '2702545'), 'https://club.example/m?fiba=2702545', '{external}: the feed\'s id');
+eq(PP.deviceUrl(gameRow, SITE, { game_url: 'https://club.example/m?fiba={external}' }, null), SITE + 'game/?g=' + G + '&mode=supabase', '...and Epinoia\'s page for a game the feed does not know');
+eq(PP.deviceUrl(gameRow, SITE, { game_url: 'http://club.example/match/{game}' }, null), SITE + 'game/?g=' + G + '&mode=supabase', 'a pattern that is not https is ignored');
+eq(PP.deviceUrl(gameRow, SITE, { game_url: 'https://club.example/match' }, null), SITE + 'game/?g=' + G + '&mode=supabase', 'a pattern with neither token is ignored');
+eq(PP.deviceUrl({ kind: 'announcement', link: '?l=slb-men' }, SITE, { home_url: 'https://club.example' }, null), 'https://club.example', 'an announcement opens the league\'s home page');
+eq(PP.deviceUrl({ kind: 'announcement', link: '?l=slb-men' }, SITE, null, null), SITE + '?l=slb-men', '...or Epinoia\'s league page');
+eq(PP.deviceUrl({ kind: 'test' }, SITE, { home_url: 'https://club.example/' }, null), 'https://club.example/', 'a test opens the home page');
+eq(PP.deviceUrl({ kind: 'test' }, SITE, null, null), SITE, '...or Epinoia\'s front page');
+const devPl = PP.payloadFor({ kind: 'result', game_id: G, ref: G, title: 'FT', link: 'game/?g=1' }, SITE, NOW, { url: 'https://club.example/match/1', icon: 'https://x.test/crest.png' });
+eq([devPl.url, devPl.icon], ['https://club.example/match/1', 'https://x.test/crest.png'], 'payloadFor takes a device\'s absolute url and the crest');
+const badPl = PP.payloadFor({ kind: 'result', game_id: G, ref: G, link: 'game/?g=1' }, SITE, NOW, { url: 'javascript:alert(1)', icon: 'http://x.test/c.png' });
+eq([badPl.url, 'icon' in badPl], [SITE + 'game/?g=1', false], '...but never a url or an icon that is not https');
+eq(PP.crestUrl('leagues/slb/logo 1.png', 'https://abc.supabase.co'), 'https://abc.supabase.co/storage/v1/object/public/media-public/leagues/slb/logo%201.png', 'a stored crest becomes its public URL');
+eq(PP.crestUrl('https://images.example/c.png', 'https://abc.supabase.co'), 'https://images.example/c.png', 'an https crest stays as it is');
+eq(PP.crestUrl('{"url":"https://images.example/c.png"}', 'https://abc.supabase.co'), 'https://images.example/c.png', 'an early worker\'s JSON crest is read');
+eq([PP.crestUrl('http://x/c.png', 'https://abc.supabase.co'), PP.crestUrl('', 'https://abc.supabase.co'), PP.crestUrl(null, 'x')], [null, null, null], 'no crest otherwise');
+
 /* ============================================================================
    pushcheck — the phone questions that need no phone (docs/notifications.md §7)
    ============================================================================ */

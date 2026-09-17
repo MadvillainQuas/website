@@ -21,7 +21,7 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-receipts';
+const SW_VERSION = 'notifications-v2-2026-09-17-devices';
 const SITE_PATH = '/epinoia/';
 const ICON = '/epinoia/brand/epinoia-mark-192.png';
 const BADGE = '/epinoia/brand/epinoia-mark-32.png';
@@ -94,7 +94,8 @@ function notificationFor(payload) {
   actions.forEach(a => { map[a.action] = actionUrl(kind, a.action, url); });
   const options = {
     body: typeof d.body === 'string' ? d.body : String(d.body == null ? '' : d.body),
-    icon: ICON,
+    /* a league's crest, for a notification button's subscriber (docs/notify-embed.md §6) */
+    icon: typeof d.icon === 'string' && /^https:\/\/[^\s]+$/.test(d.icon) ? d.icon : ICON,
     badge: BADGE,
     vibrate: [80, 40, 80],
     data: { url, kind, actions: map }

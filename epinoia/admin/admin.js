@@ -762,6 +762,9 @@ function mountGovernance() {
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });
   window.EpinoiaEmbedsUI.mount({ host: '#embedsPanel', sb, league,
                                  teams: byIdObj(), say });
+  if (window.EpinoiaEmbedsUI.mountNotify) {
+    window.EpinoiaEmbedsUI.mountNotify({ host: '#notifyEmbedPanel', sb, league, teams: byIdObj(), say });
+  }
   /* MEMBERSHIPS & ACCESS gets the league as a function, not the object. The
      keys, webhook and merch panels in render() were handed the value and kept
      acting on the first league after a chip switched it; this one reads the

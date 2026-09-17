@@ -131,6 +131,30 @@
       <button class="ep-btn" data-copy="s-lead" style="font-size:9px;padding:6px 10px">copy</button></div>
   </div>
 
+  <div class="sec">
+    <h2>Notification button</h2>
+    <p class="why">
+      A button for any page of your own website: on a club page it follows that club
+      (on a player page, that player; on a match page, that game — the console makes
+      those). Visitors need no Epinoia account: the button opens a small Epinoia window
+      where they allow notifications, and reminders, lineups, half-time and full-time
+      scores arrive on their phone.
+    </p>
+    <div class="opts">
+      <label>for
+        <select id="nkind" class="ep-input" style="font-size:11px;padding:7px 9px">
+          <option value="team">one club</option><option value="league">visitors pick clubs</option>
+        </select>
+      </label>
+      <label id="nteamL">club
+        <select id="nteam" class="ep-input" style="font-size:11px;padding:7px 9px"></select>
+      </label>
+    </div>
+    <div class="prev" id="p-notify" style="padding:16px;min-height:72px"></div>
+    <div class="snip"><pre id="s-notify"></pre>
+      <button class="ep-btn" data-copy="s-notify" style="font-size:9px;padding:6px 10px">copy</button></div>
+  </div>
+
   <div class="foot">
     <a href="../">← Epinoia</a>
     <span>Widgets are iframes: your stylesheet and ours cannot reach each other.</span>

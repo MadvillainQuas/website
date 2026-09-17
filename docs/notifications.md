@@ -11,6 +11,10 @@ The v1 system (0106/0107) stays underneath: `notifications` rows written by
 fan-outs, read by the bell, delivered beyond the bell by `notify`. v2 changes what
 is written, when, and how it reaches a phone.
 
+**Notification buttons on a league's own website** (no Epinoia account; the browser's
+subscription is the subscriber) are `docs/notify-embed.md`, migration 0127. Every
+fan-out below writes to those devices from the same statements as to accounts.
+
 ---
 
 ## 1. What a fan gets
