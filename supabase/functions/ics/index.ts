@@ -1,67 +1,67 @@
 // ============================================================================
-// ics — a club's fixtures as a calendar feed.
+// ics — a club's or a league's fixtures as a calendar feed (docs/calendar.md).
 //
-//   GET /functions/v1/ics/team/<slug or id>.ics   every game of one club
-//   GET /functions/v1/ics/league/<slug>.ics       every game in a league's competitions
-//   GET /functions/v1/ics?team=… / ?league=…      the same, the older query form (still served)
+//   GET /functions/v1/ics/team/<slug or id>.ics     every game of one club
+//   GET /functions/v1/ics/league/<slug>.ics         every game in a league's competitions
+//   GET /functions/v1/ics?team=… / ?league=…        the same, the older query form (still served)
+//   …?download=1                                    the same bytes, sent as a file to save
 //
-// THE PATH FORM IS THE ONE HANDED OUT. A calendar subscription URL that ends in .ics with no
-// query string is the shape every calendar client parses without surprises; Google's
-// subscribe link carries the feed URL inside its own query string, and a second `?` nested
-// in there is one more thing to go wrong. Supabase routes every sub-path of a function to
-// the function, so the path is read here rather than needing a second function.
+// THE PATH FORM IS THE ONE HANDED OUT. A subscription URL that ends in .ics with no query
+// string is the shape every calendar client parses without surprises. Supabase routes every
+// sub-path of a function to the function, so the path is read here rather than needing a
+// second function.
 //
-// Public, unauthenticated, read-only: Google Calendar, Apple Calendar and Outlook fetch
-// this URL themselves (no headers), so the function is deployed with --no-verify-jwt and
-// reads with the anon key under RLS, the same rows the public pages show. Scheduled games
-// are two-hour events at their tip-off; finished ones carry the score in the title so a
-// subscribed calendar becomes a results archive too. Each event's UID is the game id, so a
-// re-fetch updates rather than duplicates.
+// Public, unauthenticated, read-only: Google, Apple Calendar, Outlook and ICSx⁵ fetch this URL
+// themselves (no headers), so the function is deployed with --no-verify-jwt and reads with the
+// anon key under RLS — the same rows the public pages show. Scheduled games are two-hour events
+// at their tip-off; finished ones carry the score in the title, so a subscription becomes a
+// results archive too; a voided game stays as CANCELLED rather than vanishing.
+//
+// THE BYTES ONLY MOVE WHEN THE FIXTURES DO. Each event's DTSTAMP is the row's own last change,
+// never "now", so a client that asks again with If-None-Match gets 304 and spends nothing. The
+// calendar itself is built in _shared/icsfeed.js, which supabase/tests/ics.test.mjs holds to
+// RFC 5545 under Node.
 // ============================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { buildCalendar, feedHeaders, etagMatches } from '../_shared/icsfeed.js';
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' };
-const esc = (s: string) => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-/* RFC 5545: a content line is at most 75 OCTETS, continued on the next line after a space.
-   Counted in UTF-8 bytes, not characters: a club or venue name with accents or the en dash
-   in a score is wider in bytes than it looks, and a line split inside a multi-byte
-   character is not text any more. So the cut steps back to a character boundary. */
-const enc = new TextEncoder();
-const fold = (line: string) => {
-  const out: string[] = [];
-  let cur = '', bytes = 0, limit = 75;
-  for (const ch of line) {                  // iterates code points, so a surrogate pair stays whole
-    const n = enc.encode(ch).length;
-    if (bytes + n > limit) { out.push(cur); cur = ' '; bytes = 1; limit = 75; }
-    cur += ch; bytes += n;
-  }
-  out.push(cur); return out.join('\r\n');
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+  'Access-Control-Allow-Headers': 'if-none-match',
+  'Access-Control-Expose-Headers': 'ETag, Content-Disposition'
 };
+
+/* every status a fixture can be in that is worth a place in a calendar: void is kept so a
+   subscriber sees "Cancelled", not a game that quietly disappeared */
+const STATUSES = ['scheduled', 'live', 'finalising', 'final', 'void'];
+const SELECT = 'id,tipoff_at,status,venue,venue_address,home_score,away_score,created_at,finalised_at,reverted_at,' +
+               'home:home_team_id(name,short_name),away:away_team_id(name,short_name),competitions(name)';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return new Response('use GET', { status: 405, headers: { ...cors, Allow: 'GET, HEAD, OPTIONS' } });
+  }
   const url = new URL(req.url);
-  /* /…/ics/team/<key>.ics or /…/ics/league/<key>.ics, else the query form */
   const m = url.pathname.match(/\/ics\/(team|league)\/([^/]+?)(?:\.ics)?\/?$/i);
   const fromPath = (kind: string) => (m && m[1].toLowerCase() === kind ? decodeURIComponent(m[2]) : '');
   const team = (fromPath('team') || url.searchParams.get('team') || '').trim();
   const league = (fromPath('league') || url.searchParams.get('league') || '').trim();
+  const download = url.searchParams.get('download') === '1';
   if (!team && !league) return new Response('team= or league= required', { status: 400, headers: cors });
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false } });
   const site = (Deno.env.get('SITE_URL') ?? 'https://prophesyscouting.co.uk/epinoia/').replace(/\/?$/, '/');
-  const sel = 'id,tipoff_at,status,venue,venue_address,home_score,away_score,home_team_id,away_team_id,' +
-              'home:home_team_id(name,short_name),away:away_team_id(name,short_name),competitions(name)';
-  let name = 'Epinoia', rows: any[] = [];
+  let name = 'EPINOIΛ', rows: any[] = [];
 
   if (team) {
     const isId = /^[0-9a-f-]{36}$/i.test(team);
     const { data: t } = await db.from('teams').select('id,name').eq(isId ? 'id' : 'slug', team).maybeSingle();
     if (!t) return new Response('no such club', { status: 404, headers: cors });
     name = t.name;
-    const { data } = await db.from('games').select(sel).or(`home_team_id.eq.${t.id},away_team_id.eq.${t.id}`)
-      .in('status', ['scheduled', 'live', 'finalising', 'final']).order('tipoff_at', { ascending: true }).limit(400);
+    const { data } = await db.from('games').select(SELECT).or(`home_team_id.eq.${t.id},away_team_id.eq.${t.id}`)
+      .in('status', STATUSES).order('tipoff_at', { ascending: true }).limit(400);
     rows = data ?? [];
   } else {
     const { data: l } = await db.from('leagues').select('id,name').eq('slug', league).maybeSingle();
@@ -72,38 +72,16 @@ Deno.serve(async (req) => {
     const { data: comps } = sids.length ? await db.from('competitions').select('id').in('season_id', sids) : { data: [] };
     const cids = (comps ?? []).map((c: any) => c.id);
     const { data } = cids.length
-      ? await db.from('games').select(sel).in('competition_id', cids).in('status', ['scheduled', 'live', 'finalising', 'final'])
+      ? await db.from('games').select(SELECT).in('competition_id', cids).in('status', STATUSES)
           .order('tipoff_at', { ascending: true }).limit(1000)
       : { data: [] };
     rows = data ?? [];
   }
 
-  const now = stamp(new Date());
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Epinoia//fixtures//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-                 fold('X-WR-CALNAME:' + esc(name + ' · Epinoia')), 'X-WR-TIMEZONE:Europe/London', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H'];
-  for (const g of rows) {
-    if (!g.tipoff_at) continue;
-    const start = new Date(g.tipoff_at);
-    const done = g.status === 'final' || g.status === 'finalising';
-    const h = g.home?.name ?? 'Home', a = g.away?.name ?? 'Away';
-    const title = done && g.home_score != null ? `${h} ${g.home_score}–${g.away_score} ${a}` : `${h} v ${a}`;
-    const where = [g.venue, g.venue_address].filter(Boolean).join(', ');
-    const link = site + 'game/?g=' + g.id + '&mode=supabase';
-    lines.push('BEGIN:VEVENT',
-      'UID:' + g.id + '@epinoia',
-      'DTSTAMP:' + now,
-      'DTSTART:' + stamp(start),
-      'DTEND:' + stamp(new Date(start.getTime() + 2 * 3600 * 1000)),
-      fold('SUMMARY:' + esc(title)),
-      fold('DESCRIPTION:' + esc((g.competitions?.name ? g.competitions.name + '\n' : '') + (done ? 'Final score. ' : '') + 'Box score, stats and video: ' + link)),
-      fold('LOCATION:' + esc(where)),
-      fold('URL:' + link),
-      'STATUS:CONFIRMED',
-      'END:VEVENT');
-  }
-  lines.push('END:VCALENDAR');
-  return new Response(lines.join('\r\n') + '\r\n', {
-    headers: { ...cors, 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'public, max-age=1800',
-               'Content-Disposition': 'inline; filename="' + name.replace(/[^A-Za-z0-9 _-]/g, '') + '.ics"' }
-  });
+  const title = name + ' · EPINOIΛ';
+  const body = buildCalendar({ name: title, games: rows, site });
+  const headers = { ...cors, ...feedHeaders({ name: title, body, download }) };
+  /* the client already has these exact bytes */
+  if (etagMatches(req.headers.get('if-none-match'), headers.ETag)) return new Response(null, { status: 304, headers });
+  return new Response(req.method === 'HEAD' ? null : body, { headers });
 });

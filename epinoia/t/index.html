@@ -329,11 +329,9 @@
   body.themed a.plain:hover{color:var(--team-a-ink)}
   .hero-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
   .hero .ep-follow.lbl{margin-top:0}
-  .ep-chip.cal{display:inline-flex;align-items:center;height:30px;padding:0 12px;text-decoration:none}
-  /* what to do in Google's "From URL" screen, with the address to copy by hand */
-  .cal-note{flex-basis:100%;display:grid;gap:6px;max-width:560px;margin-top:2px}
-  .cal-msg{font-family:var(--f-micro);font-size:9px;letter-spacing:.04em;line-height:1.8;color:var(--ink-2)}
-  .cal-url{width:100%;font-family:var(--f-data);font-size:11px}
+  /* the "add to calendar" chip; the panel it opens brings its own styles (calendar.js) */
+  .ep-chip.cal{display:inline-flex;align-items:center;height:30px;padding:0 12px;text-decoration:none;
+    font:inherit;cursor:pointer}
   /* MEMBERS ONLY (team.js decideAccess): the card stands where the record and the statistics
      were. Everything marked .pw-hide is what the database refuses to a non-member -- results,
      statistics, shots, lineups -- so it goes rather than sitting there empty; the crest, the
@@ -434,6 +432,8 @@
 <script src="../video.js?v=280" defer></script>
 <script src="../p/video.js?v=280" defer></script>
 <script src="venue.js?v=280" defer></script>
+<!-- the "add to calendar" panel: loaded before team.js, which mounts it -->
+<script src="../calendar.js?v=280" defer></script>
 <script src="../boxscore.js?v=280" defer></script>
 <script src="../shotchart.js?v=280" defer></script>
 <script src="../sitpanel.js?v=280" defer></script>

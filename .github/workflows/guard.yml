@@ -264,6 +264,13 @@ jobs:
         # outside the Home Screen app, never after "not now", never when blocked)
         run: node supabase/tests/push.test.mjs
 
+      - name: Fixtures in a calendar
+        # the feed every calendar app reads the same way (RFC 5545 folding in octets, UTC
+        # stamps, stable UIDs and a stable DTSTAMP so the ETag holds), and a panel that puts
+        # the route that works on this device first — an Android phone is never sent down the
+        # Google route, which Samsung Calendar can never see
+        run: node supabase/tests/ics.test.mjs
+
       - name: Notifications to the iPhone app, through Apple
         # the provider token Apple accepts (ES256, r||s, refreshed on the half hour), a
         # lineups alert replacing the reminder (collapse id = the web's topic), a dead token

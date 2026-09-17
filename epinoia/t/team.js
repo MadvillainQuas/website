@@ -175,48 +175,15 @@ function decideAccess(lg) {
       fb.classList.add('lbl'); acts.appendChild(fb);
     }
     /* THE FIXTURES IN YOUR CALENDAR. The ics function serves the club's games as a feed that
-       calendars fetch themselves and keep fetching, so a moved tip-off or a new round arrives
-       on its own. Apple and Outlook take the webcal link. Finished games stay in it with the
-       score.
-
-       GOOGLE NO LONGER TAKES A PREFILLED LINK. Its calendar/r?cid=<feed> shortcut, in both
-       the https:// and the webcal:// form, answers "Unable to add calendar. Please check
-       the URL" for a feed that is public and valid (reported here 2026-09-13, and by others
-       for other feeds the same week). What still works is its own "From URL" screen with
-       the address pasted in. So the button copies the feed's address, opens that screen in
-       a new tab, and says under the buttons what to do there, with the address in a field
-       to copy by hand if the browser would not let the page write to the clipboard. */
+       calendars fetch themselves and keep fetching, so a moved tip-off, a new round or a final
+       score arrives on its own. WHICH ROUTE WORKS DEPENDS ON THE DEVICE, and getting that wrong
+       is how a calendar ends up added but never seen: a feed added to Google by URL shows in
+       Google Calendar and its app, but never in Samsung Calendar or any other Android calendar
+       app. calendar.js puts the routes in order for the device in hand — Apple, ICSx⁵ on
+       Android, Google, Outlook, and the file for anything else — and says what each one does
+       (docs/calendar.md). */
     const ics = CFG.supabaseUrl + '/functions/v1/ics/team/' + encodeURIComponent(team.slug || team.id) + '.ics';
-    const webcal = ics.replace(/^https:/, 'webcal:');
-    const gcal = el('a', 'ep-chip cal', 'add to Google Calendar');
-    gcal.href = 'https://calendar.google.com/calendar/r/settings/addbyurl';
-    gcal.target = '_blank'; gcal.rel = 'noopener';
-    gcal.title = 'copy the fixtures feed and open Google Calendar’s “From URL” screen';
-    const ical = el('a', 'ep-chip cal', 'Apple / Outlook');
-    ical.href = webcal;
-    ical.title = 'subscribe in Apple Calendar or Outlook';
-    const calNote = el('div', 'cal-note');
-    calNote.hidden = true;
-    const calMsg = el('span', 'cal-msg');
-    const calUrl = document.createElement('input');
-    calUrl.type = 'text'; calUrl.readOnly = true; calUrl.value = ics; calUrl.className = 'ep-input cal-url';
-    calUrl.setAttribute('aria-label', 'fixtures feed address');
-    calUrl.addEventListener('focus', () => calUrl.select());
-    calNote.append(calMsg, calUrl);
-    /* not preventDefault: the new tab opens from the click itself, so no popup blocker stops it */
-    gcal.addEventListener('click', () => {
-      const tell = copied => {
-        calMsg.textContent = copied
-          ? 'Feed address copied. In the Google Calendar tab, paste it into “URL of calendar” and press Add calendar.'
-          : 'Copy this address, then paste it into “URL of calendar” in the Google Calendar tab and press Add calendar.';
-        calNote.hidden = false;
-      };
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ics).then(() => tell(true), () => tell(false));
-        else tell(false);
-      } catch (_) { tell(false); }
-    });
-    acts.append(gcal, ical, calNote);
+    if (window.EpinoiaCalendar) window.EpinoiaCalendar.mount(acts, { url: ics, name: team.name });
     $('#tname').parentNode.appendChild(acts);
     const lg = team.leagues || {};
     if (lg.slug) window.__CS_LEAGUE_SLUG = lg.slug;
