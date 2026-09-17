@@ -28,6 +28,10 @@
    ============================================================================ */
 @media (min-width:1000px){ body{ zoom:1.25 } }
 @media (min-width:1200px){ body{ zoom:1.5 } }
+/* The sidebar keeps the site's scale; the box score itself (and its popover, which sits on the
+   body) is drawn 15% smaller inside it. Zoom multiplies, and modern.js / events.js read the
+   scale off the element, so placement is unchanged. */
+@media (min-width:1000px){ .wrap, .mv-pop{ zoom:.85 } }
 
 /* ------------------------------------------------------ the league's colours --- */
 body.league-themed{
