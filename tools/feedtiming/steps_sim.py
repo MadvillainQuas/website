@@ -4,7 +4,17 @@ Step1: serial loop, one key (gzip), a poll every GAP s; hi = LM of served copy, 
 Step2: observer, gzip only, every POLL s; hi = LM first containing, lo = LM of previous version (200).
 Step2b: same, lo = latest LM seen on a 304 of the previous content (lm_last).
 Step3: + in-version clock pull (hi -= d_i).
-Also: recv - LM on first sighting."""
+Also: recv - LM on first sighting.
+
+SUPERSEDED - ITS CADENCE NUMBERS ARE WRONG. Its row filter (`r.get("lm")`) keeps only rows that carry a Last-Modified,
+which throws away 964 of the 1,200 gzip rows (every 304 without the header), and the cadence
+subsampling then runs over ~236 rows clustered on the CDN's own 30 s cycle. It never models "a
+poll at time t gets whatever the CDN holds at t". So "10-15 s gives the same medians as 5 s",
+"20 s and slower loses dead-ball versions", "every version is seen at 5, 10 and 15 s", "25 s
+loses versions", and step 1's 62 s / step 2's dead-ball p90 206 s in docs/feed-timing.md are
+artefacts of that filter. Use scripts/ingest/feedstamp.py --replay, which walks every row:
+    python scripts/ingest/feedstamp.py --replay supabase/tests/fixtures/feedtiming/probe3.jsonl.gz --every 5 --step 2
+Kept for the record of how the plan's table was produced."""
 import json, sys, statistics as st, collections
 import os, sys
 import gzip as _gz

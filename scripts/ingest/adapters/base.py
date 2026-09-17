@@ -46,6 +46,8 @@ class GameBundle:
     pbp: Optional[list] = None               # normalised events (optional, large)
     payload_hash: str = ""                   # sha1 of the raw payload — worker skips unchanged
     raw: Any = None                          # raw payload for archiving (never written to Postgres)
+    feed_lm_ms: Optional[int] = None         # data.json Last-Modified, epoch ms (None: header absent)
+    feed_recv_ms: Optional[int] = None       # when that response arrived, epoch ms
 
 
 class BaseAdapter:

@@ -45,6 +45,10 @@ from .base import BaseAdapter, GameBundle, ScheduleGame
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[2]          # …/scripts (adapters → ingest → scripts)
 sys.path.insert(0, str(SCRIPTS_DIR))
+# …/scripts/ingest, for feedstamp: bootstrap_league and build_dataset import this adapter
+# without run_ingest having put that directory on the path first
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from feedstamp import lm_ms as _lm_ms  # noqa: E402
 _GVS_IMPORT_ERROR = None
 try:                                   # the schedule pre-scraper that already runs on GitHub Actions
     import gamevis_schedule_scraper as gvs   # noqa: E402
@@ -221,11 +225,31 @@ class FibaLiveStatsAdapter(BaseAdapter):
         r.raise_for_status()
         return r.json()
 
+    def _get_meta(self, url: str) -> tuple[Optional[dict], dict]:
+        """_get, keeping what the response says about WHEN: (raw | None, {"lm_ms", "etag", "recv_ms"}).
+
+        data.json is served through a 30 s CloudFront cache, so the copy we receive was
+        uploaded on average 13 s before we receive it. Its Last-Modified says when, and
+        feedstamp.version_stamp turns that into the stamp a play gets (docs/feed-timing.md,
+        step 1). receive time is taken the moment the response is in, before any parsing."""
+        gap = time.time() - self._last
+        if gap < self.min_request_gap_s:
+            time.sleep(self.min_request_gap_s - gap)
+        self._last = time.time()
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=25)
+        meta = {"lm_ms": _lm_ms(r.headers.get("Last-Modified")), "etag": r.headers.get("ETag"),
+                "recv_ms": int(time.time() * 1000)}
+        if r.status_code in (403, 404):     # not published yet (403 is what the feed returns before tip) — try next poll
+            return None, meta
+        r.raise_for_status()
+        return r.json(), meta
+
     def fetch(self, external_id: str, config: dict) -> Optional[GameBundle]:
-        raw = self._get(FIBA_DATA_URL.format(game_id=external_id))
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=external_id))
         if not raw or "tm" not in raw:
             return None
         b = self.bundle_from_raw(raw, external_id, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b

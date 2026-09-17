@@ -421,9 +421,34 @@ const LEEWAY_MS = 2000;
    run-up is not a highlight, it is the game. Past the cap the honest answer is the
    accuracy figure the tab already shows, not a longer clip. */
 const ERR_ROOM_MAX = 15000;
+/* A FED PLAY'S BAR IS HONEST, AND IT ONLY POINTS ONE WAY.
+
+   Since docs/feed-timing.md steps 1-4 a fed stamp is the moment LiveStats' CDN copy
+   was uploaded, pulled back by the game clock, and its wall_err is the whole window
+   back to the last upload that did NOT hold the play: the play happened inside
+   [wall - wall_err, wall], never after. The CDN only publishes every 26-35 s, and the
+   lower edge carries a further 10 s for the feed's own lag (feedstamp.KEY_LAG_MS: an
+   upload's content is older than its Last-Modified, and a play is keyed after it
+   happens), so that window is typically 37-40 s wide - and a 15 s cap spends under half
+   of it. Replayed on four live games (feedstamp.py --replay, step 4), the cap decides
+   how often the clip still holds the play, taking the play as anywhere in its window:
+
+       made three  (9.5 s run-up + 2 s leeway + cap)   15 s: 0.75    30 s: 0.97    45 s: 0.99
+       made FT     (6 s + 2 s + cap)                   15 s: 0.59    30 s: 0.93    45 s: 0.99
+
+   So a row whose bar is wider than 15 s gets up to 45 s of room: 56.5 s of run-up for a
+   three at worst, which is a long clip and still a highlight, not the game. Thirty was
+   the right cap while the bars were 27-30 s wide; the key lag widened them by 10 s, and
+   holding the clip's odds at 0.99 means giving the cap the same 15 s.
+   At or below 15 s nothing changes, and a scorer's tap carries no wall_err at all,
+   so a scored game's clips are exactly what they were. (Arithmetically this is
+   Math.min(e, 45000); it is written as the two caps so that reading it says which
+   rows the cap was raised for.) */
+const ERR_ROOM_FED_MAX = 45000;
 function clipOf(t, errMs) {
   const r = ROLL[t] || DEFAULT_ROLL;
-  const err = (errMs != null && isFinite(+errMs) && +errMs > 0) ? Math.min(+errMs, ERR_ROOM_MAX) : 0;
+  const e = (errMs != null && isFinite(+errMs) && +errMs > 0) ? +errMs : 0;
+  const err = Math.min(e, e > ERR_ROOM_MAX ? ERR_ROOM_FED_MAX : ERR_ROOM_MAX);
   return [r[0] + LEEWAY_MS + err, r[1]];
 }
 

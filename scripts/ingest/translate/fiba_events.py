@@ -126,10 +126,23 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
     pf = {}
     last_period = 1
     tip_winner = arrow_init = None
-    pending_subs: dict[tuple, dict] = {}   # (team, period, clock) -> {"in": [], "out": []}
+    pending_subs: dict[tuple, dict] = {}   # (team, period, clock) -> {"in": [], "out": [], "in_an": [], "out_an": []}
+    # WHICH FEED ACTIONS AN EVENT CAME FROM (docs/feed-timing.md, step 3). The ingest stamps a
+    # play with the moment the feed first showed it, and it learns that per LiveStats
+    # actionNumber, so every event carries the numbers it was built from as `_ans`. In memory
+    # only: game_rows copies named keys, so it never reaches the database, and nothing else in
+    # an event changes (tools/feedtiming/golden.py froze the rows before this was added).
+    #   - an event emitted while reading an action carries that action (satellites - loc, stype,
+    #     tag - are emitted in their shot's iteration, so they inherit it for free);
+    #   - a paired substitution carries BOTH halves, [out, in], passed explicitly, because the
+    #     pair is flushed while the NEXT action is being read and the default would name that;
+    #   - the fouled-out sub the translator invents carries [] - no action of the feed's.
+    cur_an = None
 
-    def emit(t, team=None, pid=None, period=None, clock=None, **payload):
+    def emit(t, team=None, pid=None, period=None, clock=None, _ans=None, **payload):
         ev = {"seq": len(events) + 1, "t": t, "team": team, "pid": pid, "period": period, "clock": clock, "payload": payload}
+        # `is None`, never `or`: the fabricated sub passes [] and must keep it
+        ev["_ans"] = [cur_an] if _ans is None else list(_ans)
         events.append(ev)
         return ev["seq"]
 
@@ -146,8 +159,8 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
     def flush_subs():
         for (team, period, clock), g in pending_subs.items():
             outs, ins = g["out"], g["in"]
-            for o, i in zip(outs, ins):
-                emit("sub", team, None, period, clock, **{"in": i, "out": o})
+            for o, i, ao, ai in zip(outs, ins, g["out_an"], g["in_an"]):
+                emit("sub", team, None, period, clock, _ans=[ao, ai], **{"in": i, "out": o})
                 on_court[team].discard(o); on_court[team].add(i)
             if len(outs) != len(ins):
                 report["warnings"].append(f"unpaired substitution at P{period} {clock}ms team {team}: {len(outs)} out / {len(ins)} in")
@@ -161,6 +174,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
         period = period_of(ev)
         clock = clock_ms(ev.get("gt"))
         an = int(ev["actionNumber"])
+        cur_an = an
         last_period = max(last_period, period)
 
         if at != "substitution":
@@ -252,9 +266,10 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
         elif at == "substitution":
             pid = pid_of(ev, team)
             if pid and team is not None:
-                g = pending_subs.setdefault((team, period, clock), {"in": [], "out": []})
+                g = pending_subs.setdefault((team, period, clock), {"in": [], "out": [], "in_an": [], "out_an": []})
                 if sub in ("in", "out"):
                     g[sub].append(pid)
+                    g[sub + "_an"].append(an)
         elif at == "timeout":
             if team is not None:
                 emit("timeout", team, None, period, clock)
@@ -269,7 +284,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
         if pid in on_court[team]:
             bench = [p["id"] for p in snap["teams"][team]["players"] if p["id"] not in on_court[team]]
             if bench:
-                emit("sub", team, None, last_period, 0, **{"in": bench[0], "out": pid})
+                emit("sub", team, None, last_period, 0, _ans=[], **{"in": bench[0], "out": pid})
                 on_court[team].discard(pid); on_court[team].add(bench[0])
                 report["warnings"].append(f"fabricated sub for fouled-out {pid}")
     if len(starters[0]) != 5 or len(starters[1]) != 5:

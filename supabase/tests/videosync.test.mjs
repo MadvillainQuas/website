@@ -124,6 +124,43 @@ const clipAt = (cadenceMs, v) => {
      (armed.end - armed.start) + ' vs ' + (clipAt(POLL, vid).end - clipAt(POLL, vid).start));
 }
 
+/* ---- a fed play's honest window (docs/feed-timing.md, step 5) -------------
+   Since the ingest stamps fed plays by the CDN upload that first held them,
+   pulled back by the game clock, wall_err is the whole one-sided window: the
+   play happened in [wall - wall_err, wall]. The CDN publishes every 26-35 s,
+   so that window is typically 27-30 s, and a 15 s run-up cap spends half of
+   it. A row whose bar is wider than 15 s gets up to 30 s; at or below 15 s
+   (a tap has none, an armed broadcast a couple of seconds) nothing changes. */
+console.log('\na fed play is inside its clip anywhere in its window');
+{
+  const J = x => JSON.stringify(x);
+  ok('a made three with a 29 s window runs up 9.5 + 2 + 29 s', J(V.clipOf('p3_made', 29000)) === J([40500, 4500]), J(V.clipOf('p3_made', 29000)));
+  ok('...a made free throw 6 + 2 + 29 s', J(V.clipOf('ft_made', 29000)) === J([37000, 3000]), J(V.clipOf('ft_made', 29000)));
+  ok('a first-write batch\'s minute and a half still stops at 45 s (56.5 s for a three)',
+     J(V.clipOf('p3_made', 100000)) === J([56500, 4500]), J(V.clipOf('p3_made', 100000)));
+  ok('a bar of 12 s is spent whole, as before', J(V.clipOf('p3_made', 12000)) === J([23500, 4500]));
+  ok('...and one of exactly 15 s keeps the 15 s cap it always had', J(V.clipOf('p3_made', 15000)) === J([26500, 4500]));
+  ok('a scorer\'s tap carries no wall_err and gets no extra room at all',
+     J(V.clipOf('p3_made', null)) === J([11500, 4500]) && J(V.clipOf('p3_made', 0)) === J([11500, 4500]) &&
+     J(V.clipOf('p3_made', 'x')) === J([11500, 4500]));
+
+  /* the worst case the window allows: the play a full 29 s before its stamp */
+  for (const [t, label] of [['p3_made', 'three'], ['ft_made', 'free throw']]) {
+    const truth = TIP + 31 * 60000;
+    const e = { seq: 77, t, period: 4, clock: 400000, wall: truth + 29000, wall_err: 29000 };
+    const c = V.index([e], vid, { label: () => label })[0];
+    const at = truth - STREAM;
+    ok(`a ${label} a full 29 s before its stamp is inside its clip`, c && c.start <= at && at <= c.end,
+       c ? c.start + '..' + c.end + ' vs ' + at : 'no clip');
+    ok(`...with its run-up still in front of it (${label})`, c && at - c.start >= (t === 'p3_made' ? 9500 : 6000),
+       c ? String(at - c.start) : 'no clip');
+  }
+  const vjs = readFileSync(path.join(ROOT, 'epinoia', 'video.js'), 'utf8');
+  ok('the fed cap is its own named number, raised only past the scored one',
+     /const ERR_ROOM_MAX = 15000;/.test(vjs) && /const ERR_ROOM_FED_MAX = 45000;/.test(vjs) &&
+     /Math\.min\(e, e > ERR_ROOM_MAX \? ERR_ROOM_FED_MAX : ERR_ROOM_MAX\)/.test(vjs));
+}
+
 /* ---- the fallbacks ------------------------------------------------------- */
 console.log('\nand it refuses rather than guessing');
 ok('a video with a stream start but no tip yet is not anchored',

@@ -49,6 +49,7 @@ from adapters import get_adapter  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from translate.fiba_events import translate, game_rows  # noqa: E402
 from feedplatform import Platform, season_name_for  # noqa: E402
+import feedstamp  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "ingest-sources.json"
@@ -62,46 +63,80 @@ def now_iso() -> str:
 
 # ─────────────────────────────────────────────────────────── Supabase (REST)
 class Supabase:
-    def __init__(self, url: str, key: str):
+    def __init__(self, url: str, key: str, session=None):
         self.url = url.rstrip("/")
         self.key = key
         self.h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+        # ONE CONNECTION, NOT A NEW ONE PER CALL. Every method was a bare requests.post/get,
+        # so each of the 17-19 round trips a changed live game costs opened its own TCP and
+        # TLS connection. Once the feed observer polls between writes (docs/feed-timing.md,
+        # step 2) the length of a write is the only thing left that stretches the gap between
+        # two looks at a game, and a pooled keep-alive connection is the cheapest part of it
+        # to remove. The live lane is single-threaded, so one Session is safe.
+        #
+        # The one thing a pool adds is a connection that died while it sat idle: the live lane
+        # naps up to two minutes waiting for a tip-off, the server closes the socket, and the
+        # next request on it fails before a byte of it is processed. urllib3 retries that for
+        # GET but not for POST or PATCH. So select, patch and upsert - the calls that are safe
+        # to send twice - get exactly one more try on a ConnectionError. insert, rpc and
+        # function are never resent: a second insert is a duplicate row, and a second
+        # finalise-game is a second pass over a closed game.
+        self.s = session or requests.Session()
+
+    def _again(self, send):
+        """Send an idempotent request; once more if the pooled connection had gone away."""
+        try:
+            return send()
+        except requests.ConnectionError:
+            return send()
+
+    @staticmethod
+    def _ok(r):
+        """raise_for_status, with PostgREST's own reason attached. "400 Client Error: Bad Request"
+        is all 57 failed event writes said on 2026-09-12 (run 34708486251), and callers such as
+        write_platform print the exception and carry on - so the body, which names the actual
+        fault (mismatched keys, a trigger's message), is the only diagnosis a run log can hold."""
+        try:
+            r.raise_for_status()
+        except requests.HTTPError as exc:
+            raise requests.HTTPError(f"{exc} - {(r.text or '')[:300]}", response=r) from None
+        return r
 
     def rpc(self, fn: str, body: dict | None = None):
-        r = requests.post(f"{self.url}/rest/v1/rpc/{fn}", headers=self.h, json=body or {}, timeout=30)
-        r.raise_for_status(); return r.json()
+        r = self.s.post(f"{self.url}/rest/v1/rpc/{fn}", headers=self.h, json=body or {}, timeout=30)
+        self._ok(r); return r.json()
 
     def select(self, table: str, query: str):
-        r = requests.get(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=30)
-        r.raise_for_status(); return r.json()
+        r = self._again(lambda: self.s.get(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=30))
+        self._ok(r); return r.json()
 
     def upsert(self, table: str, rows, on_conflict: str):
         h = dict(self.h, Prefer="resolution=merge-duplicates,return=representation")
-        r = requests.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60)
-        r.raise_for_status(); return r.json()
+        r = self._again(lambda: self.s.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60))
+        self._ok(r); return r.json()
 
     def patch(self, table: str, query: str, body: dict):
-        r = requests.patch(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, json=body, timeout=30)
-        r.raise_for_status(); return r.json() if r.text else None
+        r = self._again(lambda: self.s.patch(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, json=body, timeout=30))
+        self._ok(r); return r.json() if r.text else None
 
     def delete(self, table: str, query: str):
-        r = requests.delete(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=60)
-        r.raise_for_status(); return True
+        r = self.s.delete(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=60)
+        self._ok(r); return True
 
     def insert(self, table: str, rows):
         h = dict(self.h, Prefer="return=minimal")
-        r = requests.post(f"{self.url}/rest/v1/{table}", headers=h, json=rows, timeout=120)
-        r.raise_for_status(); return True
+        r = self.s.post(f"{self.url}/rest/v1/{table}", headers=h, json=rows, timeout=120)
+        self._ok(r); return True
 
     def function(self, name: str, body: dict):
-        r = requests.post(f"{self.url}/functions/v1/{name}", headers=dict(self.h, **{"x-ingest-worker": "1"}), json=body, timeout=120)
+        r = self.s.post(f"{self.url}/functions/v1/{name}", headers=dict(self.h, **{"x-ingest-worker": "1"}), json=body, timeout=120)
         return r.status_code, (r.json() if r.text and r.headers.get("content-type", "").startswith("application/json") else r.text)
 
     def storage_put(self, bucket: str, path: str, data: bytes, content_type="application/json") -> str:
-        r = requests.post(f"{self.url}/storage/v1/object/{bucket}/{path}",
-                          headers={"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": content_type, "x-upsert": "true"},
-                          data=data, timeout=120)
-        r.raise_for_status()
+        r = self.s.post(f"{self.url}/storage/v1/object/{bucket}/{path}",
+                        headers={"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": content_type, "x-upsert": "true"},
+                        data=data, timeout=120)
+        self._ok(r)
         return f"{self.url}/storage/v1/object/public/{bucket}/{path}"
 
 
@@ -573,7 +608,8 @@ def enqueue_video_job(sb: Supabase, game_id: str) -> bool:
 
 _CLOCK_SEEN: dict = {}      # game_id -> (clock_ms at the last read, when), for the running flag under the heartbeat
 
-def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None) -> bool:
+def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
+                   stamps: dict | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
     from the payload the first time they appear; a hand-mapped league only matches, never invents."""
@@ -653,7 +689,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}", {"game_id": game_id, "ingested_at": now_iso(), "error": None})
     if will_translate:
         try:
-            write_event_log(sb, src, b, game_id, people["pids"], observed)
+            write_event_log(sb, src, b, game_id, people["pids"], observed, stamps)
         except Exception as exc:
             print(f"    (event translation failed: {exc})")
     try:
@@ -675,6 +711,14 @@ def _elapsed_ms(row: dict) -> int:
         played += 600_000 if q <= 4 else 300_000
     full = 600_000 if per <= 4 else 300_000
     return played + max(0, full - min(full, clock))
+
+
+def _same_row(e: dict, r: dict) -> bool:
+    """Does a stored game_events row already hold exactly what this translation would write?
+    Every column the ingest writes, the payload whole (so a stamp that moved is a change)."""
+    return (e.get("seq") == r.get("seq") and e.get("t") == r.get("t") and e.get("team") == r.get("team")
+            and e.get("pid") == r.get("pid") and e.get("period") == r.get("period") and e.get("clock") == r.get("clock")
+            and (e.get("payload") or {}) == (r.get("payload") or {}))
 
 
 def _iso_ms(s) -> int | None:
@@ -700,10 +744,21 @@ def discovery_observed(b, t_obs: float, every_s: float) -> tuple | None:
     fetch as the error. write_event_log widens that to what the log itself knows, and
     declines past three minutes, so a lane that last saw this game half an hour ago
     stamps nothing it cannot bound. Finished and scheduled games get nothing: a backfill
-    has no moment of observation worth the name."""
+    has no moment of observation worth the name.
+
+    BOTH LANES STAMP ON THE SAME CLOCK. The live lane stamps with the response's
+    Last-Modified (docs/feed-timing.md, step 1), which is on average 13 s earlier than
+    receive time. This lane writes the same live games during the live pass (it never
+    skips one), so if it kept receive time, a live-lane tail following a discovery write
+    would find a newest wall LATER than its own stamp: `real` goes negative and the bar
+    collapses to the configured interval, confidently, for every row of that batch. So
+    this uses the same version_stamp, and receive time only for a bundle that carries no
+    feed timing at all (another adapter)."""
     if getattr(b, "status", None) != "live":
         return None
-    return (int(t_obs * 1000), int((every_s + (time.time() - t_obs)) * 1000))
+    lm, recv = getattr(b, "feed_lm_ms", None), getattr(b, "feed_recv_ms", None)
+    at = feedstamp.version_stamp(lm, recv, None)["stamp_ms"] if recv is not None else int(t_obs * 1000)
+    return (at, int((every_s + (time.time() - t_obs)) * 1000))
 
 
 def within_stamp(rows: list, stamp: dict | None) -> list:
@@ -775,7 +830,8 @@ def first_write_stamp(rows: list, stamp: dict | None, fresh_ms: int = 90_000) ->
     return out
 
 
-def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict, observed: tuple | None = None) -> None:
+def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: dict, observed: tuple | None = None,
+                    stamps: dict | None = None) -> None:
     """Translate the FIBA payload into game_events and finalise the game (roadmap Phase B).
     `pids` maps "<teamcode>:<pno>" -> players.id (from Platform.ensure_game_people).
     `observed` = (epoch_ms, err_ms): WHEN THIS POLL SAW THE FEED, and how far back the play could
@@ -784,7 +840,10 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     epoch_ms (the device-stamp slot epinoia/video.js already prefers) and payload.wall_err =
     err_ms, which is what places a fed game's plays in a video - see
     docs/video-livestats-sync-roadmap.md, Phase 0. Backfilled logs get no stamp: their created_at
-    is the import, and the page's timed-log test correctly refuses to anchor a video to them."""
+    is the import, and the page's timed-log test correctly refuses to anchor a video to them.
+    `stamps` = the live lane observer's per-action memory ({actionNumber: [hi, lo] | None},
+    docs/feed-timing.md step 3): when given, a play is stamped by the version it first appeared
+    in, pulled by the game clock, and the poll stamp only covers what memory cannot."""
     tm = b.raw.get("tm") or {}
     codes = {0: (tm.get("1") or {}).get("code", ""), 1: (tm.get("2") or {}).get("code", "")}
     missing = set()
@@ -880,14 +939,78 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         # video.js interpolates it from its neighbours and marks it approximate.
         if err <= 180_000:
             stamp = {"wall": int(observed[0]), "wall_err": err}
-    if existing and same_prefix:
+    # MEMORY STAMPS (docs/feed-timing.md, step 3). A poll stamp is one instant for a whole batch:
+    # every row it covers gets the moment this write's version was uploaded, and an error bar
+    # back to the last write. The live lane's observer knows better for most plays - it looked
+    # every few seconds, so it knows the version each action FIRST appeared in, and within that
+    # version the game clock says how much earlier than the upload the play must have been.
+    # feedstamp.row_stamp turns that memory into a verdict per row:
+    #   mem      the row takes memory's wall and wall_err, in either write path, and over a
+    #            carried stamp (memory is write-once, so a stamp carried FROM memory is the
+    #            same value; one carried from anything else is the worse of the two);
+    #   decline  a late entry - its upload says when it was typed, not when it happened - is
+    #            left unstamped, and the poll stamp may not cover it either (a carried stamp
+    #            it already has is kept: nothing here ever un-times a row);
+    #   none     what memory cannot place (the first version this process saw, the sub the
+    #            translator invents, a window past three minutes such as the tip against a
+    #            pre-game upload) - today's logic, poll stamp, within_stamp and all.
+    # REFILL: an existing row with no wall at all that memory CAN place (the discovery lane
+    # wrote it, or a bar too wide to claim) sends the write down the rewrite branch, which
+    # replaces the log from the first row that changes. Only rows with no wall trigger it, so
+    # once refilled it never churns; poll stamps other writers left are not "upgraded".
+    #
+    # EPINOIA_STAMPS (a repository variable): unset or "on" writes them; "shadow" works them
+    # out and prints what it would have done next to the poll stamp, writing exactly what it
+    # would without them; "off" - or anything unrecognised, so a typo fails safe - skips them.
+    #
+    # EVERYTHING THAT CAN THROW IS INSIDE THE TRY. write_platform swallows this function's
+    # exceptions and live_keeper marks the payload hash written regardless, so a raise here
+    # would freeze a live log with nothing in the run log but one line. On any failure the log
+    # is written exactly as it was before memory existed.
+    mem, declined, refill = {}, set(), False
+    stamps_mode = {"": "on", "on": "on", "1": "on", "true": "on", "shadow": "shadow"}.get(
+        os.environ.get("EPINOIA_STAMPS", "").strip().lower(), "off")
+    if stamps and stamps_mode in ("on", "shadow"):
+        try:
+            for ev in T["events"]:
+                kind, val = feedstamp.row_stamp(ev.get("_ans"), stamps)
+                if kind == "mem":
+                    mem[ev["seq"]] = val
+                elif kind == "decline":
+                    declined.add(ev["seq"])
+            refill = bool(same_prefix and any(e["seq"] in mem and (e.get("payload") or {}).get("wall") is None for e in existing))
+            if stamps_mode == "shadow":
+                start = len(existing) if (existing and same_prefix and not refill) else 0
+                new_mem = [mem[r["seq"]] for r in rows[start:] if r["seq"] in mem]
+                lead = sorted((stamp["wall"] - m["wall"]) / 1000 for m in new_mem) if stamp else []
+                errs = sorted(m["wall_err"] / 1000 for m in new_mem)
+                detail = ([f"median {lead[len(lead) // 2]:.1f} s before the poll stamp"] if lead else []) + \
+                         ([f"median bar {errs[len(errs) // 2]:.1f} s"] if errs else [])
+                n_refill = sum(1 for e in existing if e["seq"] in mem and (e.get("payload") or {}).get("wall") is None)
+                print(f"    ~ feedstamp shadow: {len(new_mem)} of {len(rows) - start} rows by memory"
+                      + (f" ({', '.join(detail)})" if detail else "")
+                      + f", {sum(1 for s in declined if s > start)} declined, {n_refill} to refill; poll {stamp}")
+                mem, declined, refill = {}, set(), False
+        except Exception as exc:
+            print(f"    ! feedstamp: {exc!r} - today's stamps")
+            mem, declined, refill = {}, set(), False
+    if existing and same_prefix and not refill:
         tail = rows[len(existing):]
+        for r in tail:
+            if r["seq"] in mem:
+                r["payload"] = {**(r.get("payload") or {}), **mem[r["seq"]]}
         if stamp:
+            # within_stamp still sees every tail row, memory's included, so `latest` is the
+            # latest play of this write; only the rows memory did not place take the poll stamp
             for r in within_stamp(tail, stamp):
+                if "wall" in (r.get("payload") or {}) or r["seq"] in declined:
+                    continue
                 r["payload"] = {**(r.get("payload") or {}), **stamp}
         for i in range(0, len(tail), 400):
             sb.insert("game_events", tail[i:i + 400])
-        how = f"+{len(tail)} events (now {len(rows)})" + (" stamped" if stamp and tail else "")
+        n_mem = sum(1 for r in tail if r["seq"] in mem)
+        how = (f"+{len(tail)} events (now {len(rows)})" + (" stamped" if stamp and tail else "")
+               + (f", {n_mem} by memory" if n_mem else ""))
     else:
         # A corrected feed = replace (the platform's own model). The stamps already earned are
         # carried across by matching the old rows in order - one Genius correction three plays
@@ -954,10 +1077,27 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 if e.get("created_at"):
                     r["created_at"] = e.get("created_at")
                 kept += 1
+        # MEMORY AFTER THE CARRY, AND OVER IT. Memory is write-once, so where the carried stamp
+        # came from memory this writes the identical value (and _same_row below still leaves the
+        # row alone); where it came from a poll, or from the wrong row sharing a carry key,
+        # memory is the better answer. A declined row keeps whatever it carried.
+        #
+        # A REFILLED ROW KEEPS ITS INSERT TIME. The carry above moves created_at only with a
+        # stamp, so a row that was in the log unstamped and gains a memory stamp would go back
+        # in with a created_at of now - and created_at is what game_tip_wallclock and the page's
+        # timed-log test read when a stamp is missing. The same play at the same position keeps
+        # the one it had: a refill changes a row's time, never when it was first written.
+        for i, r in enumerate(rows):
+            if r["seq"] in mem:
+                r["payload"] = {**(r.get("payload") or {}), **mem[r["seq"]]}
+                if "created_at" not in r and i < len(existing) and existing[i].get("created_at") and \
+                        (existing[i]["t"], existing[i].get("team"), existing[i]["period"], existing[i]["clock"]) == \
+                        (r["t"], r["team"], r["period"], r["clock"]):
+                    r["created_at"] = existing[i]["created_at"]
         how_first = ""
         if stamp and existing:
             for r in within_stamp(rows[len(existing):], stamp):
-                if "wall" not in (r.get("payload") or {}):
+                if "wall" not in (r.get("payload") or {}) and r["seq"] not in declined:
                     r["payload"] = {**(r.get("payload") or {}), **stamp}
         elif stamp and not existing:
             # The first sight of this game. Stamp it only if the log is still short
@@ -965,12 +1105,12 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
             fw = first_write_stamp(rows, stamp)
             if fw:
                 for r in rows:
-                    if "wall" not in (r.get("payload") or {}):
+                    if "wall" not in (r.get("payload") or {}) and r["seq"] not in declined:
                         r["payload"] = {**(r.get("payload") or {}), **fw}
                 how_first = f", first write stamped (±{fw['wall_err'] // 1000}s)"
             else:
                 how_first = ", first write unstamped (log already deep)"
-        # REWRITTEN IN PLACE, NOT DELETED AND REBUILT.
+        # ONLY WHAT CHANGED IS REPLACED, AND NOTHING IS EVER UPDATED IN PLACE.
         #
         # This was `delete everything, then insert everything`, two requests with no
         # transaction around them - so between them the game had NO play-by-play at
@@ -1017,6 +1157,8 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
             sb.insert("game_events", fresh[i:i + 400])
         how = f"{len(rows)} events written" + (f" (log rewritten from seq {keep + 1}, {len(fresh)} rows replaced, {kept} stamps kept)"
                                                if existing else how_first)
+        if mem:
+            how += f", {sum(1 for r in fresh if r['seq'] in mem)} by memory" + (" (refill)" if refill else "")
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
     clock_ms = 0
@@ -1177,8 +1319,44 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     hashes: dict[str, str] = {}
     finished: set[str] = set()
     unchanged_since: dict[str, float] = {}      # when each game's payload last changed (stale-final rule)
+    last_lm: dict[str, int] = {}                # newest Last-Modified written per game (the inline path's older-copy rule)
     end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
     fast_every = max(1, min(10, int(getattr(args, "broadcast_every", 2) or 2)))
+    # THE OBSERVER LOOKS, THIS LOOP WRITES (docs/feed-timing.md, step 2).
+    #
+    # This loop used to fetch a game, write it, fetch the next and write that, so the time
+    # between two looks at one game was however long it took to write all the others:
+    # 37.9 s median and 198.5 s worst across four live games on 2026-09-12. The CDN publishes
+    # a new version every 26-35 s, so a version could be published and replaced unseen, and
+    # the one that was seen was stamped as late as the loop came round to it.
+    #
+    # feed_observer.FeedObserver polls every due game with a conditional GET every
+    # OBS_EVERY seconds (the armed ones every fast_every), at the top of every pass and again
+    # after every write, and holds the newest version with its Last-Modified stamp. The loop
+    # only takes what the observer holds, and writes a version it has not written yet. The
+    # write itself (write_supabase_feed, write_platform, write_event_log) is exactly what it
+    # was; bundle_from_raw, with its SHA-1 and the stints pipeline, now runs once per new
+    # version instead of on every unchanged poll.
+    #
+    # KILL SWITCH: EPINOIA_OBSERVER=0 (a repository variable, no commit needed) runs the
+    # inline fetch below instead, byte for byte the step-1 loop. So does any failure to build
+    # the observer. Unset means on.
+    observer = None
+    if os.environ.get("EPINOIA_OBSERVER", "") != "0":
+        try:
+            from feed_observer import FeedObserver
+            observer = FeedObserver()
+        except Exception as exc:
+            print(f"live lane: observer unavailable ({exc!r}) - polling inline")
+    written: dict[str, int] = {}; last_bundle: dict[str, GameBundle] = {}; write_s: dict[str, list] = {}
+    OBS_EVERY = 5
+
+    def observer_line(xid: str) -> str:
+        s, ws = observer.stats(xid), sorted(write_s.get(xid) or [])
+        return (f"   observer {xid}: {s['polls']} polls, {s['share304'] * 100:.0f}% 304, max gap {s['max_poll_gap_ms'] / 1000:.1f} s, "
+                f"gaps over 25 s {s['gaps_over_25s']}/{s['gaps']}, {s['versions']} versions, {s['older']} older copies, "
+                f"{s['errors']} errors, {s['stamped']} actions in memory ({s['late']} late, {s['contra']} contradictions), "
+                + (f"median write {ws[len(ws) // 2]:.1f} s over {len(ws)}" if ws else "no writes"))
     due, next_tip, recheck, exit_code = [], None, 0.0, 0
     # THE BROADCAST HEARTBEAT. A game somebody has armed (games.broadcast_until in the future,
     # set from the control room) is read every couple of seconds so a scorebug on a stream
@@ -1191,7 +1369,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             return {str(x["id"]) for x in rows}
         except Exception:
             return set()
-    print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s ({fast_every} s while a game is armed for broadcast)")
+    print(f"live lane: up to {args.live_loop // 60} min, polling every {every} s ({fast_every} s while a game is armed for broadcast)"
+          + (f"; the observer looks every {OBS_EVERY} s between writes" if observer else "; inline fetch (EPINOIA_OBSERVER=0)"))
     while time.time() < end:
         now = datetime.now(timezone.utc)
         if time.time() >= armed_check:
@@ -1211,52 +1390,115 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         slow_pass = time.time() >= slow_due
         if slow_pass:
             slow_due = time.time() + every
+        armed_x = {str(r["external_id"]) for _, r in due if str(r.get("game_id") or "") in armed}
+        if observer:
+            observer.observe_due([str(r["external_id"]) for _, r in due], OBS_EVERY, armed_x, fast_every)
+        wrote_any = False
         for src, r in due:
             xid = str(r["external_id"])
             is_armed = str(r.get("game_id") or "") in armed
-            if not slow_pass and not is_armed:
+            if observer is None and not slow_pass and not is_armed:
                 continue
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
-            t_obs = time.time()
-            try:
-                b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
-            except Exception as exc:
-                print(f"    ! {xid}: {exc}"); exit_code = 1; continue
-            if not b:
-                continue                                                  # not published yet
-            if hashes.get(xid) == b.payload_hash:
-                # NOTHING NEW - but a game a scorer never closed must still finish. Genius only
-                # marks a game final through an explicit 'game end' action; when the payload has
-                # sat unchanged for 15 min at the end of the fourth period (or later) with the
-                # scores not level, the game is over in every sense that matters and is finalised.
-                first_seen = unchanged_since.setdefault(xid, time.time())
-                if b.status == "live" and time.time() - first_seen >= STALE_FINAL_S and _looks_finished(b.raw):
-                    print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() - first_seen) // 60)} min at the end of P{b.raw.get('period')} - treating as final")
+            if observer is None:   # KILL SWITCH (EPINOIA_OBSERVER=0): the step-1 inline fetch, unchanged
+                t_obs = time.time()
+                try:
+                    b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+                except Exception as exc:
+                    print(f"    ! {xid}: {exc}"); exit_code = 1; continue
+                if not b:
+                    continue                                                  # not published yet
+                vs = feedstamp.version_stamp(b.feed_lm_ms, b.feed_recv_ms or int(t_obs * 1000), last_lm.get(xid))
+                if vs["older"]:
+                    # AN OLDER CDN COPY IS NOT NEWS. data.json comes through CloudFront, and an
+                    # edge can serve an upload older than one this pass has already written. Taken
+                    # as a change it would rewrite the log backwards (plays vanish, then come back
+                    # on the next poll, re-stamped late) and restart the stale-final timer below,
+                    # so a finished game nobody closed might never close. Only STRICTLY older
+                    # counts: S3 truncates Last-Modified to whole seconds, so new content can carry
+                    # an equal header.
+                    print(f"    ~ {xid}: older copy (Last-Modified {b.feed_lm_ms} < {last_lm[xid]}), skipped"); continue
+                if hashes.get(xid) == b.payload_hash:
+                    # NOTHING NEW - but a game a scorer never closed must still finish. Genius only
+                    # marks a game final through an explicit 'game end' action; when the payload has
+                    # sat unchanged for 15 min at the end of the fourth period (or later) with the
+                    # scores not level, the game is over in every sense that matters and is finalised.
+                    first_seen = unchanged_since.setdefault(xid, time.time())
+                    if b.status == "live" and time.time() - first_seen >= STALE_FINAL_S and _looks_finished(b.raw):
+                        print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() - first_seen) // 60)} min at the end of P{b.raw.get('period')} - treating as final")
+                        b.status = "final"
+                    else:
+                        continue
+                else:
+                    unchanged_since[xid] = time.time()
+                # a play in this payload happened between the previous upload and this one: the
+                # stamp is when the CDN's copy was uploaded (Last-Modified + 999 ms), not when we
+                # happened to ask; the error is still the configured interval plus the fetch
+                observed = (vs["stamp_ms"], int(((fast_every if is_armed else every) + (time.time() - t_obs)) * 1000))
+                snap = None
+            else:
+                snap = observer.take(xid)
+                if snap is None:
+                    continue                                                  # not published yet
+                if snap.version == written.get(xid):
+                    # Nothing new since the last write - the same stale-final rule as the inline
+                    # path, timed from when the observer last saw the content change.
+                    b = last_bundle.get(xid)
+                    if not (b and b.status == "live" and time.time() * 1000 - snap.changed_at_ms >= STALE_FINAL_S * 1000
+                            and _looks_finished(b.raw)):
+                        continue
+                    print(f"    = {b.home_name} v {b.away_name}: unchanged {int((time.time() * 1000 - snap.changed_at_ms) // 60000)} min at the end of P{b.raw.get('period')} - treating as final")
                     b.status = "final"
                 else:
-                    continue
-            else:
-                unchanged_since[xid] = time.time()
-            # a play in this payload happened between the previous poll and this fetch
-            observed = (int(t_obs * 1000), int(((fast_every if is_armed else every) + (time.time() - t_obs)) * 1000))
+                    try:
+                        b = adapters[src["code"]].bundle_from_raw(snap.raw, xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
+                    except Exception as exc:
+                        # a payload the adapter cannot read is skipped, not retried every second
+                        print(f"    ! {xid}: {exc}"); exit_code = 1; written[xid] = snap.version; continue
+                    if g.tipoff_at:
+                        b.tipoff_at = g.tipoff_at
+                    b.feed_lm_ms, b.feed_recv_ms = snap.lm_ms, snap.recv_ms
+                    last_bundle[xid] = b
+                    if hashes.get(xid) == b.payload_hash:      # pass handover: the DB already has this content
+                        written[xid] = snap.version; continue
+                # the version's upload stamp; the error stays the CONFIGURED interval plus the
+                # poll's own duration, so the heartbeat's `fast` test reads exactly as before
+                observed = (snap.stamp_ms, int((fast_every if is_armed else every) * 1000) + snap.fetch_ms)
             run = runs[src["code"]]; run["games_fetched"] += 1
+            t_write = time.time()
             raw_ref = None
             try:
                 raw_ref = write_supabase_feed(sb, src, b, entry_for(b, None, None, g))
             except Exception as exc:
                 print(f"    (supabase feed write failed: {exc})")
             try:
-                write_platform(sb, src, b, run, observed); run["games_written"] += 1
+                # the observer's per-action memory (step 3); the kill switch has none, and passes
+                # None, which is exactly the write this lane made before memory existed
+                write_platform(sb, src, b, run, observed, observer.stamps(xid) if observer else None); run["games_written"] += 1
             except Exception as exc:
                 print(f"    (platform write failed: {exc})")
+            if observer:
+                write_s.setdefault(xid, []).append(time.time() - t_write)
+                observer.observe_due([str(r_["external_id"]) for _, r_ in due], OBS_EVERY, armed_x, fast_every)
             hashes[xid] = b.payload_hash
+            if snap:
+                written[xid] = snap.version
+            elif vs["basis"] == "lm":
+                last_lm[xid] = max(last_lm.get(xid) or 0, b.feed_lm_ms)
+            wrote_any = True
             e = entry_for(b, None, raw_ref, g)
             print(f"    ~ {b.home_name} {e['homeScore']}-{e['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}Z")
             if b.status == "final":
                 finished.add(xid)
+                if observer:
+                    print(observer_line(xid))
+                    observer.forget(xid); written.pop(xid, None); last_bundle.pop(xid, None)
         due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
         if due:
+            if observer:
+                # the observer keeps its own cadence; this only stops the loop spinning
+                time.sleep(0 if wrote_any else 1); continue
             hot = any(str(r.get("game_id") or "") in armed for _, r in due)
             time.sleep(fast_every if hot else every); continue
         # nothing on: wait for the next tip-off if this pass can still reach it (short naps - the
@@ -1265,6 +1507,11 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         if wait is None or time.time() + wait > end:
             break
         time.sleep(min(max(wait, 5), 120))
+    if observer:
+        # THE STEP-2 DECISION GATE, read off the run log: if more than about 5% of a game's poll
+        # gaps are over 25 s, the writes are starving the observer - ship 2b, then a thread.
+        for xid in list(observer.st):
+            print(observer_line(xid))
     for s in fiba:
         if s.get("id"):
             try:
@@ -1418,7 +1665,8 @@ def main() -> int:
                 if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh:
                     continue
                 if args.dry_run:
-                    print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}")
+                    print(f"    [dry] {b.home_name} vs {b.away_name} ({b.status}) stints={len(b.stints)} box={len(b.box.get('home', []))}+{len(b.box.get('away', []))}"
+                          + (f" lm={b.feed_lm_ms} recv-lm={(b.feed_recv_ms - b.feed_lm_ms) / 1000:.1f}s" if b.feed_lm_ms and b.feed_recv_ms else " lm=none"))
                     if args.fixture_out:
                         write_test_fixture(Path(args.fixture_out), src, b)
                     continue

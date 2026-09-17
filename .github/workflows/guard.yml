@@ -449,6 +449,14 @@ jobs:
         # three of four live games ended with their whole log un-timed.
         run: node supabase/tests/ingest-replace.test.mjs
 
+      - name: A play is timed by the version of the feed it first appeared in
+        # docs/feed-timing.md steps 1-4: the stamp is the CDN copy's Last-Modified rather than
+        # our receive time (the copy we get is a median 13 s old), pulled back by the game clock
+        # within its version, and its window reaches back to the upload that did not hold it,
+        # with 10 s for the feed's own lag. Replays four live games out of the recorded probe,
+        # so the numbers in the names are measurements, not hopes.
+        run: node supabase/tests/feedstamp.test.mjs
+
       - name: JSON API
         # exercises the deployed function over HTTP with a real key.
         # Skips cleanly when EPINOIA_API_KEY is not set, so a fork without
