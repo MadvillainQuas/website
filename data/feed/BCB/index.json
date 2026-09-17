@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-17T20:18:55.385465+00:00",
+"updated": "2026-09-17T23:07:31.900894+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2369,6 +2369,18 @@
 "raw_ref": null
 },
 {
+"id": "2887019",
+"home": "Nottingham Hoods",
+"away": "Yorkshire Dragons",
+"status": "scheduled",
+"date": "2026-09-19T17:30:00+00:00",
+"venue": "Harvey Hadden Sports Village",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
 "id": "2887000",
 "home": "Bristol Hurricanes",
 "away": "Gloucester City Kings",
@@ -2399,18 +2411,6 @@
 "status": "scheduled",
 "date": "2026-09-19T15:00:00+00:00",
 "venue": "Archers Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
-},
-{
-"id": "2887019",
-"home": "Nottingham Hoods",
-"away": "Yorkshire Dragons",
-"status": "scheduled",
-"date": "2026-09-18T17:30:00+00:00",
-"venue": "Harvey Hadden Sports Village",
 "homeScore": null,
 "awayScore": null,
 "hash": null,
