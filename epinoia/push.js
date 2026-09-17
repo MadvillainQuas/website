@@ -1048,8 +1048,9 @@ async function saveNative(ep, sess) {
 
 async function enableNative(n) {
   if (!signedIn()) return result(false, 'off', MSG.signedOut);
-  /* iOS asks the person the first time; after that the app just registers again */
-  const r = await nativeCall(n, 'push.enable', {}, 25000);
+  /* iOS asks the person the first time; after that the app just registers again. The wait
+     includes however long they take over iOS's question, so it is generous. */
+  const r = await nativeCall(n, 'push.enable', {}, 120000);
   if (!r) return result(false, 'off', MSG.nativeFailed);
   nativeRemember(n, r);
   const perm = nativePermission(r.permission);
