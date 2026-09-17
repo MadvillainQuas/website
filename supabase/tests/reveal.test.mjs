@@ -80,6 +80,11 @@ function world(o = {}) {
   };
   globalThis.matchMedia = () => ({ matches: !!o.reduced });
   globalThis.requestAnimationFrame = fn => { frames.push(fn); return frames.length; };
+  const timers = [];
+  const realTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => { timers.push(fn); return timers.length; };
+  globalThis.__timers = timers;
+  globalThis.__realTimeout = realTimeout;
   globalThis.MutationObserver = class {
     constructor(fn) { this.fn = fn; mutators.push(this); }
     observe() { this.on = true; }
@@ -104,7 +109,9 @@ function world(o = {}) {
       observers[0].fn([{ target: n, isIntersecting: false,
                          boundingClientRect: { bottom: 900 }, rootBounds: { top: 0 } }]);
     },
-    runFrames() { const f = frames.splice(0); f.forEach(fn => fn()); }
+    runFrames() { const f = frames.splice(0); f.forEach(fn => fn()); },
+    /* the 1.5s "nobody has told us anything" net */
+    runTimers() { const t = globalThis.__timers.splice(0); t.forEach(fn => fn()); }
   };
 }
 
@@ -141,6 +148,41 @@ console.log('\n-- when it runs');
 
   m.stop();
   ok('stopping takes the mark off again', !w.html.cls.has('rv-on'));
+}
+
+/* ---------------------------------------------------------- the net ------- */
+console.log('\n-- when the browser never reports back');
+{
+  /* A window the compositor has stopped painting, or a tab never brought to
+     the front: the observer is never called and every block would sit at
+     opacity 0. */
+  const w = world();
+  const R = load();
+  const a = w.block('sec'), b = w.block('sec');
+  R.mount({ root: w.body, selector: '.sec' });
+  eq('before the net, nothing is shown', [a.cls.has('rv-in'), b.cls.has('rv-in')], [false, false]);
+  w.runTimers();
+  eq('after it, everything is', [a.cls.has('rv-in'), b.cls.has('rv-in')], [true, true]);
+
+  const c = w.block('sec');
+  w.mutators[0].fn(); w.runFrames();
+  ok('and a block that arrives later is shown too', c.cls.has('rv') && c.cls.has('rv-in'));
+
+  /* the observer was never disconnected, so a browser that wakes up takes over */
+  w.leaveAbove(a);
+  ok('a browser that wakes up takes over again', a.cls.has('rv-above') && !a.cls.has('rv-in'));
+}
+{
+  const w = world();
+  const R = load();
+  const a = w.block('sec');
+  R.mount({ root: w.body, selector: '.sec' });
+  w.enter(a);
+  const b = w.block('sec');
+  w.runTimers();
+  w.mutators[0].fn(); w.runFrames();
+  ok('the net does not fire once the browser has reported anything',
+     !b.cls.has('rv-in'), b.className);
 }
 
 /* -------------------------------------------------------- it stands down -- */

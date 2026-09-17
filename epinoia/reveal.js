@@ -13,7 +13,11 @@
       by CSS that only bites under html.rv-on, and that class is set from here,
       after the observer exists. If this file fails to parse, fails to load, or
       the browser has no IntersectionObserver, every block is simply visible —
-      a broken animation must never cost somebody the page.
+      a broken animation must never cost somebody the page. And if the observer
+      exists but is never CALLED — a window that has stopped painting, a tab
+      never brought to the front — a net a second and a half in shows
+      everything anyway (see it below; it is the one part of this worth being
+      paranoid about).
 
    2. LAYOUT NEVER MOVES. Only opacity and transform change, so a fixture list
       does not reflow as it fades, the scrollbar does not jump, and an anchor
@@ -66,8 +70,12 @@ function mount(opts) {
   if (!host || !selector || !usable()) return { refresh: function () {}, stop: function () {} };
 
   const seen = new WeakSet();
+  const enrolled = [];
+  let settled = false;      // has the browser ever told us where anything is?
+  let blind = false;        // ...and did we give up waiting?
 
   const io = new IntersectionObserver(function (entries) {
+    settled = true;
     entries.forEach(function (e) {
       const n = e.target;
       if (e.isIntersecting) {
@@ -92,10 +100,32 @@ function mount(opts) {
       const n = list[i];
       if (seen.has(n) || (n.closest && n.closest(NEVER))) continue;
       seen.add(n);
+      enrolled.push(n);
       n.classList.add('rv');
+      if (blind) n.classList.add('rv-in');
       io.observe(n);
     }
   }
+
+  /* THE SAFETY NET, and the reason rule 1 at the top is not just a comment.
+
+     An observer that is never called leaves every block at opacity 0 — a blank
+     page. It should not happen, but it does: a window the compositor has
+     stopped painting, a tab that has never been foregrounded, a headless
+     renderer taking a screenshot. All of those also stop rendering updates,
+     which is what IntersectionObserver delivers on.
+
+     So: if nothing has been reported by the time the page has had a second and
+     a half, show everything and keep watching. If the browser wakes up and
+     starts reporting, the normal behaviour resumes on the next scroll — the
+     observer was never disconnected. The cost of being wrong here is one page
+     that does not animate; the cost of not doing it is one page nobody can
+     read. */
+  setTimeout(function () {
+    if (settled) return;
+    blind = true;
+    enrolled.forEach(function (n) { n.classList.add('rv-in'); });
+  }, 1500);
 
   /* ONE PASS PER FRAME. Rendering appends in bursts; each burst is a single
      pass, and a burst that lands mid-frame waits for the next one. */
