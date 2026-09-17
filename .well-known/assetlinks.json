@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "uk.co.prophesyscouting.epinoia",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "C8:D9:34:6B:81:73:26:F7:AB:42:74:43:10:47:1F:84:EA:01:D6:6D:C3:81:7E:C8:55:7B:FB:7C:EB:04:93:93"
+      ]
     }
   }
 ]
