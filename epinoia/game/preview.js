@@ -109,13 +109,23 @@ function sideHTML(players, colour, name) {
 
 /* Both fives, or nothing. Half a lineup is a graphic that raises a question it
    cannot answer, and a fixture where only one table has finished its setup is a
-   normal state a few minutes before a tip. */
+   normal state a few minutes before a tip.
+
+   id="starters" is where a lineups notification lands (game/?g=…&show=starters,
+   docs/notifications.md §6): game.js scrolls to it on a preview, and draws this
+   same section above the tabs of a game already live or final — ctx.status says
+   which, so the note does not promise a tip-off that has already happened. */
 function startersHTML(ctx) {
   const A = ctx.startersA || [], B = ctx.startersB || [];
   if (A.length < 5 || B.length < 5) return '';
-  return '<section class="pv-sec">' +
+  const started = ctx.status === 'live' || ctx.status === 'final' || ctx.status === 'finalising';
+  const at = whenText(ctx.tipoff).time;
+  const note = !started ? 'Confirmed at the table. Tip-off is ' + esc(at.toLowerCase()) + '.'
+    : at === 'TBC' ? 'Confirmed at the table.'
+    : 'Confirmed at the table. Tipped off at ' + esc(at.toLowerCase()) + '.';
+  return '<section class="pv-sec" id="starters">' +
     '<h2>Starting five</h2>' +
-    '<p class="pv-fivenote">Confirmed at the table. Tip-off is ' + esc(whenText(ctx.tipoff).time.toLowerCase()) + '.</p>' +
+    '<p class="pv-fivenote">' + note + '</p>' +
     '<div class="pv-fives">' +
       sideHTML(A, ctx.colourA, ctx.nameA) +
       sideHTML(B, ctx.colourB, ctx.nameB) +
@@ -463,7 +473,7 @@ function render(ctx) {
   '</div>';
 }
 
-return { render: render, narrative: narrative, FACTORS: FACTORS, MIN_GP: MIN_GP,
+return { render: render, narrative: narrative, startersHTML: startersHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
          __test: { observations: observations, teamShape: teamShape,
                    playerNote: playerNote, edge: edge, whenText: whenText } };
 }));

@@ -9,7 +9,13 @@
 
    Reads the stored session the way nav.js does (no SDK on public pages), loads the
    fan's row once, and keeps every bell on the page for the same thing in step.
-     window.EpinoiaFollow.bell('game' | 'team' | 'player', id, { label })  -> element
+     window.EpinoiaFollow.bell('game' | 'team' | 'player', id, { label, name })  -> element
+
+   A FOLLOW IS WHEN A PHONE IS WORTH ASKING ABOUT (docs/notifications.md §5). Once a
+   follow has saved, push.js is loaded (beside this file, same version stamp) and
+   offers to turn notifications on for `name` — "this club" when the bell was not
+   given one. push.js itself stays down when they are already on, blocked, not
+   possible in this browser, or were turned down in the last fortnight.
    ============================================================================ */
 (function () {
   const C = () => window.EPINOIA_CONFIG || {};
@@ -44,7 +50,7 @@
   }
   const has = (kind, id) => !!(prefs && (prefs[KEY[kind]] || []).includes(id));
 
-  async function toggle(kind, id) {
+  async function toggle(kind, id, name) {
     await load();
     const k = KEY[kind];
     const cur = new Set(prefs[k] || []);
@@ -58,7 +64,32 @@
     } catch (_) {
       if (cur.has(id)) cur.delete(id); else cur.add(id);      // put it back
       prefs[k] = [...cur]; paintAll(kind, id);
+      return;
     }
+    if (cur.has(id)) offerPush(kind, name);                   // followed, and saved
+  }
+
+  /* push.js, fetched the first time a follow needs it: from beside this file, with
+     this file's own ?v= so the two cannot come from different deploys */
+  let pushLoading = null;
+  function loadPush() {
+    if (window.EpinoiaPush) return Promise.resolve(window.EpinoiaPush);
+    if (pushLoading) return pushLoading;
+    pushLoading = new Promise((resolve, reject) => {
+      const me = document.querySelector('script[src*="follow.js"]');
+      const src = me ? me.getAttribute('src').replace(/follow\.js(?=[?#]|$)/, 'push.js') : '/epinoia/push.js';
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.addEventListener('load', () => (window.EpinoiaPush ? resolve(window.EpinoiaPush) : reject(new Error('push.js is empty'))));
+      s.addEventListener('error', () => { pushLoading = null; reject(new Error('push.js could not be loaded')); });
+      document.head.appendChild(s);
+    });
+    return pushLoading;
+  }
+  function offerPush(kind, name) {
+    loadPush()
+      .then(P => P.offer({ name: name || WHAT[kind], kind }))
+      .catch(() => { /* the follow saved; the offer is a nicety */ });
   }
   function paint(b) {
     const on = has(b.dataset.kind, b.dataset.id);
@@ -88,7 +119,7 @@
         location.href = root + 'signin/?next=' + encodeURIComponent(location.pathname + location.search);
         return;
       }
-      toggle(kind, id);
+      toggle(kind, id, o.name);
     });
     paint(b);
     load().then(() => paint(b));

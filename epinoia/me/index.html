@@ -15,8 +15,8 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=256">
-<link rel="stylesheet" href="../kit/nav.css?v=256">
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=257">
+<link rel="stylesheet" href="../kit/nav.css?v=257">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -75,10 +75,43 @@
   .msg a{color:inherit}
   .msg.err{border-left-color:var(--flare);color:var(--flare);background:color-mix(in oklch,var(--flare) 8%,transparent)}
   .msg.warn{border-left-color:var(--amber);color:var(--amber);background:color-mix(in oklch,var(--amber) 8%,transparent)}
+  .msg.ok{border-left-color:var(--lume);color:var(--lume);background:color-mix(in oklch,var(--lume) 8%,transparent)}
+
+  /* THIS PHONE (push.js): the one browser the page is open in — whether it can take
+     notifications, and the buttons that change that. The channels and the switches
+     below it are the account's, and follow the fan to every device. */
+  .phone{display:grid;gap:12px;margin:calc(var(--u)*1.5) calc(var(--u)*3) calc(var(--u)*1.5);padding:14px 16px;
+    border:1px solid var(--rule-2)}
+  .phone b{font-family:var(--f-ui);font-size:15px;display:block;color:var(--ink)}
+  .phone .st{font-family:var(--f-ui);font-size:14px;line-height:1.55;color:var(--ink-2);display:block;margin-top:3px;max-width:62ch}
+  .phone[data-state="on"] .st{color:var(--lume)}
+  .phone-acts{display:flex;flex-wrap:wrap;gap:8px}
+  .phone-acts.hide{display:none}
+  .phone-acts .ep-btn{min-height:44px}
+  .phone-acts .hide{display:none}
+  .phone .msg{margin:0}
+  .phone .ep-btn[disabled],.phone .ep-btn[disabled]:hover{cursor:default;background:transparent;color:var(--ink-3);border-color:var(--rule-2);filter:none}
+
+  /* a switch for each moment a fan can be told about; a real checkbox underneath
+     (role=switch), so the keyboard, the label and a screen reader all work as before */
+  input.sw{-webkit-appearance:none;appearance:none;flex:none;box-sizing:border-box;width:40px;height:24px;margin:0;border-radius:12px;
+    cursor:pointer;border:1px solid var(--rule-2);
+    background:radial-gradient(circle at 11px 50%,var(--ink-3) 0 7px,transparent 7.5px) no-repeat,transparent;
+    transition:background-color .15s,border-color .15s}
+  input.sw:checked{border-color:var(--lume);
+    background:radial-gradient(circle at 27px 50%,var(--on-accent) 0 7px,transparent 7.5px) no-repeat,var(--lume)}
+  input.sw:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+  input.sw:disabled{cursor:default}
+  .opt.sub{padding-left:calc(var(--u)*7)}
+  .opt.sub.off{opacity:.5}
+  @media (prefers-reduced-motion:reduce){input.sw{transition:none}}
   @media (max-width:560px){
     .mem{grid-template-columns:minmax(0,1fr);padding-left:16px;padding-right:16px}
     .mem-foot,.mem-intro{padding-left:16px;padding-right:16px}
     .msg{margin-left:16px;margin-right:16px}
+    .phone{margin-left:16px;margin-right:16px}
+    .opt{padding-left:16px;padding-right:16px}
+    .opt.sub{padding-left:48px}
   }
 </style>
 </head>
@@ -135,18 +168,33 @@
         <button class="ep-chip" id="themeLight" type="button">light</button></div>
     </section>
 
-    <section class="sec">
+    <!-- Notifications (docs/notifications.md §5). "This phone" is push.js on this
+         browser; the channels and the switches are fan_prefs, saved as they change. -->
+    <section class="sec" id="notifSec">
       <div class="ep-hdr"><span class="idx">05</span><h2>Notifications</h2></div>
+      <div class="phone" id="phoneCard" data-state="">
+        <div><b>This phone</b><span class="st" id="phoneState">Checking this browser&hellip;</span></div>
+        <div class="phone-acts">
+          <button class="ep-btn pri hide" id="pushOn" type="button">Turn on notifications</button>
+          <button class="ep-btn hide" id="pushTest" type="button">Send a test</button>
+          <button class="ep-btn hide" id="pushOff" type="button">Turn off</button>
+          <button class="ep-btn hide" id="installBtn" type="button">Add Epinoia to your Home Screen</button>
+        </div>
+        <div id="phoneMsg" class="msg hide" role="status" aria-live="polite"></div>
+      </div>
       <div class="row"><span class="lbl">How</span></div>
       <label class="opt"><input type="checkbox" id="nInapp"><div><b>On the site</b><span>the bell at the top right of every page</span></div></label>
       <label class="opt"><input type="checkbox" id="nEmail"><div><b>Email</b><span id="nEmailTo">to the address you sign in with</span></div></label>
-      <label class="opt"><input type="checkbox" id="nPush"><div><b>Phone and desktop alerts</b><span id="nPushNote">a push to this browser, even when Epinoia is closed. On a phone, add Epinoia to your home screen first (iPhone needs that; Android does not).</span>
-        <button class="ep-chip" id="installBtn" type="button" style="margin-top:8px">add Epinoia to your home screen</button></div></label>
-      <div class="row"><span class="lbl">What</span></div>
-      <label class="opt"><input type="checkbox" id="wResults"><div><b>Results</b><span>the final score whenever a club you follow plays</span></div></label>
-      <label class="opt"><input type="checkbox" id="wPlayers"><div><b>Player lines</b><span>points, rebounds and assists of players you follow, after each game</span></div></label>
-      <label class="opt"><input type="checkbox" id="wFixtures"><div><b>Upcoming games</b><span>three days before a club you follow plays, and again on the day</span></div></label>
-      <label class="opt"><input type="checkbox" id="wAnn"><div><b>League announcements</b><span>notices from the leagues your clubs play in</span></div></label>
+      <label class="opt"><input type="checkbox" id="nPush"><div><b>Phone and desktop alerts</b><span id="nPushNote">on every phone or computer where notifications are turned on. Ticking it turns them on for this one; unticking stops them everywhere.</span></div></label>
+      <div class="row"><span class="lbl">What to tell you</span></div>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wFixtures"><div><b>Upcoming games</b><span>reminders before a club or a game you follow tips off</span></div></label>
+      <label class="opt sub" id="oFix2d"><input type="checkbox" role="switch" class="sw" id="wFix2d"><div><b>2 days before</b><span>the day, the time and the venue</span></div></label>
+      <label class="opt sub" id="oFix2h"><input type="checkbox" role="switch" class="sw" id="wFix2h"><div><b>2 hours before</b><span>a last reminder before tip-off</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wLineups"><div><b>Starting lineups</b><span>both starting fives, as soon as the table confirms them</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wResults"><div><b>Full-time results</b><span>the final score whenever a club or a game you follow plays</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wPlayers"><div><b>Player statlines</b><span>points, rebounds and assists of players you follow, after each game</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wPlayerGames"><div><b>Games of players you follow</b><span>reminders and lineups for a player&rsquo;s games when you don&rsquo;t follow their club</span></div></label>
+      <label class="opt"><input type="checkbox" role="switch" class="sw" id="wAnn"><div><b>League announcements</b><span>notices from the leagues your clubs play in</span></div></label>
       <div class="status" id="status"></div>
     </section>
 
@@ -156,9 +204,10 @@
     </section>
   </div>
 </div>
-<script src="../config.js?v=256" defer></script>
-<script src="../vendor/supabase.js?v=256" defer></script>
-<script src="me.js?v=256" defer></script>
-<script src="../nav.js?v=256" defer></script>
+<script src="../config.js?v=257" defer></script>
+<script src="../vendor/supabase.js?v=257" defer></script>
+<script src="../push.js?v=257" defer></script>
+<script src="me.js?v=257" defer></script>
+<script src="../nav.js?v=257" defer></script>
 </body>
 </html>

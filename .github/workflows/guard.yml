@@ -251,6 +251,18 @@ jobs:
         # known answer; the premium catalogue matches the real column keys
         run: node supabase/tests/access.test.mjs
 
+      - name: Push notifications on a lock screen
+        # the 2-hour reminder replaces the 2-day one (same tag), a reminder is
+        # never pushed after tip-off (TTL and expiry), and the Topic header a
+        # push service would reject is caught here rather than on a phone
+        run: node supabase/tests/pushpayload.test.mjs
+
+      - name: Push notifications on the phone
+        # the service worker turns a payload into a notification and a tap into the
+        # right page; push.js decides whether to offer notifications (never on iOS
+        # outside the Home Screen app, never after "not now", never when blocked)
+        run: node supabase/tests/push.test.mjs
+
       - name: Official-vote CSV parsing and name folding
         # the two places a pasted spreadsheet breaks a naive parser: a club
         # with a comma in its name, and a surname carrying accents in one

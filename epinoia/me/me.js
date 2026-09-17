@@ -30,7 +30,10 @@ function collect() {
     fav_player_ids: prefs.fav_player_ids || [],
     notify_inapp: $('#nInapp').checked, notify_email: $('#nEmail').checked, notify_push: $('#nPush').checked,
     want_results: $('#wResults').checked, want_players: $('#wPlayers').checked,
-    want_fixtures: $('#wFixtures').checked, want_announcements: $('#wAnn').checked
+    want_fixtures: $('#wFixtures').checked, want_announcements: $('#wAnn').checked,
+    /* notifications v2 (0121); a database without them ignores the keys */
+    want_fixture_2d: $('#wFix2d').checked, want_fixture_2h: $('#wFix2h').checked,
+    want_lineups: $('#wLineups').checked, want_player_games: $('#wPlayerGames').checked
   };
 }
 function save() {
@@ -138,33 +141,110 @@ function applyTheme(t) {
   $('#themeLight').classList.toggle('on', t === 'light');
 }
 
-/* ----------------------------------------------------------------- push --- */
-async function enablePush() {
-  const note = $('#nPushNote');
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { note.textContent = 'this browser cannot receive pushes'; return false; }
-  const key = window.EPINOIA_VAPID;
-  if (!key) { note.textContent = 'push is not configured on this site yet'; return false; }
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') { note.textContent = 'permission was not given; allow notifications for this site and try again'; return false; }
-  const reg = await navigator.serviceWorker.register('/epinoia/sw.js', { scope: '/epinoia/' });
-  await navigator.serviceWorker.ready;
-  const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(key.length / 4) * 4, '='));
-  const appKey = new Uint8Array([...raw].map(c => c.charCodeAt(0)));
-  const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
-  const j = sub.toJSON();
-  const { error } = await sb.from('push_subscriptions').upsert({
-    user_id: user.id, endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0, 200)
-  }, { onConflict: 'endpoint' });
-  if (error) { note.textContent = 'could not save this browser: ' + error.message; return false; }
-  note.textContent = 'this browser will receive pushes';
-  return true;
+/* ----------------------------------------------------------------- push ---
+   THIS PHONE, through push.js (docs/notifications.md §5) — the same module the
+   follow sheet uses, so the profile and the sheet can never disagree about what
+   "on" means. The card says where this browser stands in plain words and offers
+   only the buttons that make sense from there.
+
+   Two switches, deliberately different:
+     the card's Turn on / Turn off   this browser only (a subscription row);
+     the "Phone and desktop alerts"  the account's notify_push, every device.
+   Turning the card on also switches the account on (push.js does both), and the box
+   is ticked to match, so the next save does not quietly send notify_push:false. */
+const PHONE_WORDS = {
+  on: 'On. What you choose below arrives on this phone, even when Epinoia is closed.',
+  off: 'Off on this phone.',
+  denied: 'Blocked. Notifications are switched off for this site in this browser’s settings; allow them there, then come back to this page.',
+  unsupported: 'This browser cannot receive notifications. On a phone, use Chrome or Samsung Internet on Android, or Epinoia from the Home Screen on an iPhone.',
+  'ios-install': 'On iPhone and iPad, notifications only arrive through Epinoia on your Home Screen. Tap Share, then Add to Home Screen, then open Epinoia from there and turn them on.'
+};
+let phoneBusy = false;
+
+function phoneSay(text, kind) {
+  const m = $('#phoneMsg');
+  m.textContent = text || '';
+  m.className = 'msg ' + (kind || '');
+  m.classList.toggle('hide', !text);
 }
-async function disablePush() {
-  try {
-    const reg = await navigator.serviceWorker.getRegistration('/epinoia/');
-    const sub = reg && await reg.pushManager.getSubscription();
-    if (sub) { await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
-  } catch (_) { /* nothing to undo */ }
+function standaloneApp() {
+  try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (_) { return false; }
+}
+async function paintPhone() {
+  const P = window.EpinoiaPush;
+  const st = P ? await P.state() : 'unsupported';
+  $('#phoneCard').dataset.state = st;
+  $('#phoneState').textContent = P ? PHONE_WORDS[st] : 'Notifications could not be loaded on this page. Reload to try again.';
+  const show = {
+    pushOn: st === 'off',
+    pushTest: st === 'on',
+    pushOff: st === 'on',
+    /* the Home Screen is the whole answer on an iPhone, and an offer worth making
+       wherever the browser says it can install */
+    installBtn: !standaloneApp() && (st === 'ios-install' || (st !== 'on' && !!(window.epinoiaCanInstall && window.epinoiaCanInstall())))
+  };
+  Object.keys(show).forEach(id => $('#' + id).classList.toggle('hide', !show[id]));
+  $('#phoneCard .phone-acts').classList.toggle('hide', !Object.values(show).some(Boolean));
+  return st;
+}
+/* one action at a time; `run` is called synchronously so a permission prompt
+   still has the tap behind it */
+function phoneAction(btn, busyText, run) {
+  if (phoneBusy) return;
+  phoneBusy = true;
+  const pending = run();
+  const label = btn.textContent;
+  const buttons = [...document.querySelectorAll('#phoneCard button')];
+  buttons.forEach(b => { b.disabled = true; });
+  btn.textContent = busyText;
+  phoneSay('');
+  Promise.resolve(pending)
+    .then(r => { if (r && r.message) phoneSay(r.message, r.ok ? 'ok' : 'err'); return r; },
+          () => { phoneSay('Something went wrong. Reload the page and try again.', 'err'); })
+    .then(() => {
+      buttons.forEach(b => { b.disabled = false; });
+      btn.textContent = label;
+      phoneBusy = false;
+      return paintPhone();
+    });
+  return pending;
+}
+function wirePhone() {
+  const P = window.EpinoiaPush;
+  $('#pushOn').onclick = () => phoneAction($('#pushOn'), 'Turning on…', () => P.enable().then(r => {
+    if (r.ok) { $('#nPush').checked = true; prefs.notify_push = true; }
+    return r;
+  }));
+  $('#pushTest').onclick = () => phoneAction($('#pushTest'), 'Sending…', () => P.test());
+  $('#pushOff').onclick = () => phoneAction($('#pushOff'), 'Turning off…', () => P.disable());
+  $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
+  /* the account's channel: ticking it turns this browser on too (a tap, so the
+     permission prompt can appear); unticking stops pushes on every device */
+  $('#nPush').onchange = () => {
+    const box = $('#nPush');
+    if (!P || phoneBusy) { box.checked = !box.checked; return; }
+    if (box.checked) {
+      phoneAction($('#pushOn'), 'Turning on…', () => P.enable().then(r => {
+        if (!r.ok && r.state !== 'on') box.checked = false;
+        save();
+        return r;
+      }));
+    } else {
+      phoneAction($('#pushOff'), 'Turning off…', () => P.disable({ notifyPush: false }).then(r => {
+        save();
+        return { ok: true, message: 'Phone and desktop alerts are off everywhere.' };
+      }));
+    }
+  };
+  /* back from the browser's settings, or from installing: say where things stand now */
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !phoneBusy) paintPhone(); });
+  window.addEventListener('beforeinstallprompt', () => setTimeout(paintPhone, 0));
+}
+/* the fixture reminders sit under their master switch */
+function paintFixtureSubs() {
+  const on = $('#wFixtures').checked;
+  ['#wFix2d', '#wFix2h'].forEach(s => { $(s).disabled = !on; });
+  ['#oFix2d', '#oFix2h'].forEach(s => { $(s).classList.toggle('off', !on); });
 }
 
 /* ----------------------------------------------------------------- recent --- */
@@ -399,19 +479,24 @@ async function paintMembership() {
 
   const { data } = await sb.from('fan_prefs').select('*').maybeSingle();
   prefs = data || { theme: 'light', colour: '#93f2bf', fav_team_ids: [], fav_player_ids: [], notify_inapp: true, notify_email: false,
-                    notify_push: false, want_results: true, want_players: true, want_fixtures: true, want_announcements: true };
+                    notify_push: false, want_results: true, want_players: true, want_fixtures: true, want_announcements: true,
+                    want_fixture_2d: true, want_fixture_2h: true, want_lineups: true, want_player_games: true };
   if (!data) await sb.rpc('set_fan_prefs', { p: {} });
 
   $('#nInapp').checked = !!prefs.notify_inapp; $('#nEmail').checked = !!prefs.notify_email; $('#nPush').checked = !!prefs.notify_push;
   $('#wResults').checked = !!prefs.want_results; $('#wPlayers').checked = !!prefs.want_players;
   $('#wFixtures').checked = !!prefs.want_fixtures; $('#wAnn').checked = !!prefs.want_announcements;
-  ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn'].forEach(s => { $(s).onchange = save; });
-  $('#nPush').onchange = async () => {
-    if ($('#nPush').checked) { const ok = await enablePush(); if (!ok) $('#nPush').checked = false; }
-    else await disablePush();
-    save();
-  };
-  $('#installBtn').onclick = () => { if (window.epinoiaInstall) window.epinoiaInstall(); };
+  /* the v2 switches default on (0121), including on a row written before they existed */
+  $('#wFix2d').checked = prefs.want_fixture_2d !== false; $('#wFix2h').checked = prefs.want_fixture_2h !== false;
+  $('#wLineups').checked = prefs.want_lineups !== false; $('#wPlayerGames').checked = prefs.want_player_games !== false;
+  paintFixtureSubs();
+  ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn',
+   '#wFix2d', '#wFix2h', '#wLineups', '#wPlayerGames'].forEach(s => { $(s).onchange = () => { paintFixtureSubs(); save(); }; });
+  wirePhone();
+  /* not awaited: the card fills in while the rest of the page does. With
+     notifications on, this browser's subscription is saved again under whoever is
+     signed in now (push.js sync), which heals a rotated or inherited one. */
+  paintPhone().then(st => { if (st === 'on' && window.EpinoiaPush) window.EpinoiaPush.sync().catch(() => {}); });
   applyTheme(prefs.theme === 'dark' ? 'dark' : 'light');
   $('#themeDark').onclick = () => { applyTheme('dark'); save(); };
   $('#themeLight').onclick = () => { applyTheme('light'); save(); };

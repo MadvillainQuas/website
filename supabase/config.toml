@@ -64,3 +64,14 @@ verify_jwt = false
 # whether payments are switched on.
 [functions.billing]
 verify_jwt = false
+
+# notify delivers notification rows that are already waiting — tip-off reminders,
+# lineups, results — by email and phone push (docs/notifications.md §4). Its
+# busiest caller is the database's minute tick (pg_cron + pg_net), which holds no
+# user token, so the gateway cannot be the thing that guards it. The function
+# guards itself: a call without a recognised token can only trigger delivery of
+# rows to their own owners — which any signed-in fan could already trigger — and
+# is throttled; a test push needs a signed-in token and goes only to that fan's
+# own phones. Nothing is read back to the caller but counts.
+[functions.notify]
+verify_jwt = false

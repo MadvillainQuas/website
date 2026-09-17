@@ -402,7 +402,8 @@ function squadsHTML(d) {
   return sides ? '<div class="rep-squads">' + sides + '</div>' : '';
 }
 /* the faces: approved photographs, fetched once per game and swapped in where they exist */
-let squadPhotoCache = null;
+let squadPhotoCache = null;             // pid -> photo url, or null for a player with none
+const squadPhotoAsking = {};            // pid -> the request answering for that player
 async function squadPhotos(hostEl) {
   /* The host is a parameter because the preview wants the same faces. It renders
      into #view rather than the box score's body, and the cache and the markup are
@@ -411,18 +412,28 @@ async function squadPhotos(hostEl) {
   if (!host) return;
   const ids = [...new Set([...host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]')].map(e => e.dataset.pid).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return;
-  if (!squadPhotoCache) {
-    squadPhotoCache = {};
-    try {
-      const CFG = window.EPINOIA_CONFIG;
-      for (let i = 0; i < ids.length; i += 40) {
-        const c = ids.slice(i, i + 40);
-        const r = await fetch(CFG.supabaseUrl + '/rest/v1/media?owner_type=eq.player&kind=eq.photo&status=eq.approved&owner_id=in.(' + c.join(',') + ')&select=owner_id,storage_path&order=created_at.desc',
-                              { headers: { apikey: CFG.supabaseAnonKey } });
-        (r.ok ? await r.json() : []).forEach(m => { if (!squadPhotoCache[m.owner_id]) squadPhotoCache[m.owner_id] = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + m.storage_path; });
-      }
-    } catch (_) { /* names stay */ }
+  /* ASKED ONCE PER PLAYER, not once per page: the first host to ask may hold only
+     some of the game's players (the starting fives above the tabs hold ten), and a
+     cache filled from it would leave everybody else faceless for the evening. A
+     player already being asked about is waited for rather than asked about twice. */
+  if (!squadPhotoCache) squadPhotoCache = {};
+  const ask = ids.filter(id => !(id in squadPhotoCache) && !squadPhotoAsking[id]);
+  if (ask.length) {
+    const job = (async () => {
+      try {
+        const CFG = window.EPINOIA_CONFIG;
+        for (let i = 0; i < ask.length; i += 40) {
+          const c = ask.slice(i, i + 40);
+          const r = await fetch(CFG.supabaseUrl + '/rest/v1/media?owner_type=eq.player&kind=eq.photo&status=eq.approved&owner_id=in.(' + c.join(',') + ')&select=owner_id,storage_path&order=created_at.desc',
+                                { headers: { apikey: CFG.supabaseAnonKey } });
+          (r.ok ? await r.json() : []).forEach(m => { if (!squadPhotoCache[m.owner_id]) squadPhotoCache[m.owner_id] = CFG.supabaseUrl + '/storage/v1/object/public/media-public/' + m.storage_path; });
+        }
+      } catch (_) { /* names stay */ }
+      ask.forEach(id => { if (!(id in squadPhotoCache)) squadPhotoCache[id] = null; delete squadPhotoAsking[id]; });
+    })();
+    ask.forEach(id => { squadPhotoAsking[id] = job; });
   }
+  await Promise.all([...new Set(ids.map(id => squadPhotoAsking[id]).filter(Boolean))]);
   host.querySelectorAll('.sq[data-pid], .mv-p[data-pid]').forEach(e => {
     const url = squadPhotoCache[e.dataset.pid];
     if (!url) return;
@@ -765,6 +776,138 @@ function renderShell() {
   r.setProperty('--team0-glow', glow(k0, .4));
   r.setProperty('--team1-glow', glow(k1, .4));
   shellBuilt = true;
+  mountStartersCard();                  // show=starters on a live or final game; a no-op otherwise
+}
+
+/* ------------------------------------------------------- the lineups link ---
+   docs/notifications.md §6. A lineups notification opens game/?g=…&show=starters.
+
+   On a SCHEDULED game the preview already draws the two starting fives once both
+   are confirmed (preview.js startersHTML, id="starters"); renderPreview scrolls to
+   that section and lights it up for a moment.
+
+   On a game already LIVE or FINAL there is no preview, and somebody who tapped
+   "See lineups" should not be dropped on a box score to hunt for them. So the same
+   section — the same markup and preview.css's styles, which this page loads — is
+   drawn above the tabs, with a close button. Closing takes show= out of the address
+   too, so a refresh does not bring it back. Nothing is drawn when either five is
+   incomplete: half a lineup answers nothing.
+
+   The card is mounted from renderShell, so the shell being rebuilt (a video link
+   arriving mid-game) puts it back rather than losing it. */
+function wantStarters() {
+  try { return new URLSearchParams(location.search).get('show') === 'starters'; } catch (_) { return false; }
+}
+function prefersReducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (_) { return false; }
+}
+/* after the browser has laid the new markup out; the timeout is the floor for a tab
+   that is not painting */
+function afterLayout(fn) {
+  let done = false;
+  const once = () => { if (!done) { done = true; fn(); } };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(once));
+  setTimeout(once, 120);
+}
+
+/* The confirmed starting five, in the order the table listed them. Reads the
+   roster snapshot rather than the club's published squad: the snapshot is who
+   actually turned up, which is the whole reason it is written. */
+function startingFive(S, t) {
+  const ids = (S && S.starters && S.starters[t]) || [];
+  const team = (S && S.teams && S.teams[t]) || {};
+  const byId = {};
+  (team.players || []).forEach(p => { byId[p.id] = p; });
+  return ids.map(id => byId[id]).filter(Boolean);
+}
+
+/* the close button and the highlight: a few rules on top of preview.css, which is
+   generated alongside the preview and not the place for this page's chrome */
+const STARTERS_CSS =
+  '#starters{scroll-margin-top:12px}' +
+  '.pv-sec.pv-flash{animation:pv-flash 2.4s ease-out}' +
+  '@keyframes pv-flash{0%,35%{box-shadow:0 0 0 2px var(--lume,#93f2bf),0 0 30px rgba(147,242,191,.35)}100%{box-shadow:0 0 0 0 transparent}}' +
+  '#csStarters{margin:0 0 14px}' +
+  '#csStarters .pv-sec{position:relative;margin:12px 0 0}' +
+  '#csStarters .pv-sec h2{padding-right:48px}' +
+  '#csStarters .pv-close{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;cursor:pointer;' +
+    'display:grid;place-items:center;font:inherit;font-size:22px;line-height:1;background:transparent;' +
+    'color:var(--ink,#e6fff1);border:1px solid var(--rule-2,rgba(147,242,191,.44))}' +
+  '#csStarters .pv-close:hover{color:var(--lume,#93f2bf);border-color:var(--lume,#93f2bf)}' +
+  '#csStarters .pv-close:focus-visible{outline:2px solid var(--lume,#93f2bf);outline-offset:2px}' +
+  '@media (prefers-reduced-motion:reduce){.pv-sec.pv-flash{animation:none;box-shadow:0 0 0 2px var(--lume,#93f2bf)}}';
+function startersCss() {
+  if (document.getElementById('csStartersCss')) return;
+  const st = document.createElement('style');
+  st.id = 'csStartersCss';
+  st.textContent = STARTERS_CSS;
+  document.head.appendChild(st);
+}
+
+function revealStarters(sec) {
+  if (!sec) return;
+  startersCss();
+  try { sec.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }); }
+  catch (_) { try { sec.scrollIntoView(); } catch (__) { /* stays where it is */ } }
+  sec.classList.remove('pv-flash');
+  void sec.offsetWidth;                 // restart the animation if it was already running
+  sec.classList.add('pv-flash');
+  setTimeout(() => sec.classList.remove('pv-flash'), 2600);
+}
+
+let startersClosed = false, startersRevealed = false;
+function mountStartersCard() {
+  const S = window.S;
+  if (startersClosed || walled || !S || S.status === 'scheduled' || !wantStarters()) return false;
+  const P = window.EpinoiaPreview;
+  if (!P || typeof P.startersHTML !== 'function') return false;
+  const view = $('#view');
+  const tabs = view && view.querySelector('.tabrow');
+  if (!tabs || document.getElementById('csStarters')) return false;
+  const five = [startingFive(S, 0), startingFive(S, 1)];
+  if (five[0].length < 5 || five[1].length < 5) return false;
+
+  /* the ink form of a club colour on the light theme, as renderShell does for the page */
+  const TC = window.EpinoiaTeamColour;
+  const light = !!(TC && document.documentElement.getAttribute('data-theme') === 'light');
+  const colour = (t, dflt) => { const c = B.safeColour((S.teams[t] || {}).color, dflt); return light ? TC.ink(c) : c; };
+  const html = P.startersHTML({
+    nameA: (S.teams[0] || {}).name || 'Home', nameB: (S.teams[1] || {}).name || 'Away',
+    colourA: colour(0, '#93f2bf'), colourB: colour(1, '#8ff5ff'),
+    startersA: five[0], startersB: five[1],
+    tipoff: S.meta && S.meta.tipoff_at, status: S.status
+  });
+  if (!html) return false;
+
+  startersCss();
+  const host = document.createElement('div');
+  host.id = 'csStarters';
+  host.innerHTML = html;
+  const sec = host.querySelector('#starters');
+  if (!sec) return false;
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'pv-close';
+  x.setAttribute('aria-label', 'Close the starting fives');
+  x.textContent = '×';
+  x.addEventListener('click', closeStartersCard);
+  sec.insertBefore(x, sec.firstChild);
+  tabs.parentNode.insertBefore(host, tabs);
+  squadPhotos(host).catch(() => { /* names stay */ });
+  if (!startersRevealed) { startersRevealed = true; afterLayout(() => revealStarters(sec)); }
+  return true;
+}
+function closeStartersCard() {
+  startersClosed = true;
+  const host = document.getElementById('csStarters');
+  if (host) host.remove();
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete('show');
+    history.replaceState(null, '', u);
+  } catch (_) { /* the card is gone either way */ }
+  const tab = document.querySelector('#view .tabbtn.on') || document.querySelector('#view .tabbtn');
+  if (tab) tab.focus({ preventScroll: true });
 }
 
 /* ---------------------------------------------------------------------------
@@ -2610,17 +2753,6 @@ async function renderPreview() {
     return solid.concat(mine.filter(p => p.gp < MIN).sort(rank)).slice(0, 2);
   };
 
-  /* The confirmed starting five, in the order the table listed them. Reads the
-     roster snapshot rather than the club's published squad: the snapshot is who
-     actually turned up, which is the whole reason it is written. */
-  const startingFive = t => {
-    const ids = (S.starters && S.starters[t]) || [];
-    const team = (S.teams && S.teams[t]) || {};
-    const byId = {};
-    (team.players || []).forEach(p => { byId[p.id] = p; });
-    return ids.map(id => byId[id]).filter(Boolean);
-  };
-
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
@@ -2639,7 +2771,7 @@ async function renderPreview() {
        will be on the floor, which is the most interesting thing about a fixture
        in the half hour before it. Empty until then, and the section simply does
        not render. */
-    startersA: startingFive(0), startersB: startingFive(1),
+    startersA: startingFive(S, 0), startersB: startingFive(S, 1),
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
     competition: S.competition, leagueSlug: S.leagueSlug
   });
@@ -2659,6 +2791,9 @@ async function renderPreview() {
   offerToScore();
   offerToRevert();
   offerToAttachVideo(); offerToMoveCompetition();
+
+  /* a lineups notification (show=starters) lands on the fives, when there are fives */
+  if (wantStarters()) afterLayout(() => revealStarters(document.getElementById('starters')));
 }
 
 /* ------------------------------------------------------------------- boot --- */
@@ -2713,6 +2848,8 @@ async function renderPreview() {
        most people arrive with. A live game keeps opening on the box score,
        where the numbers ARE the story as it happens. */
     if (window.EpinoiaReport) fTab = 'report';
+    /* a link that names its tab (a result notification's "Box score" button) gets it */
+    if (qp.get('tab') && TABS.some(t => t[0] === qp.get('tab'))) fTab = qp.get('tab');
     /* a link from a profile to one play opens straight on the video */
     if (qp.get('vs') || qp.get('vp') || qp.get('vr')) fTab = 'video';
     render();

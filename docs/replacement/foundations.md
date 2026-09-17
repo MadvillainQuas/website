@@ -1822,6 +1822,11 @@ from the Australian examples.
 
 ## 9. Migration slices
 
+> **Numbers are provisional from 0121 on.** 0119 and 0120 shipped as written.
+> `0121` was taken on 2026-09-17 by notifications v2 (`docs/notifications.md`), so
+> each slice below takes the next free number when it is built; its name, not its
+> number, is the reference.
+
 Each slice lists its purpose, objects, what it guarantees not to break, its
 self-test, what it lets a browser or console do, its size (roadmap scale:
 S days, M 1–3 weeks, L 1–2 months) and its calendar. Every slice also runs:
