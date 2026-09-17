@@ -1227,5 +1227,25 @@ console.log('\nwired into the pages');
   ok('the game page loads preview.css, which styles the card', /href="preview\.css\?v=\d+"/.test(gp) && /\.pv-fives\{/.test(read('epinoia', 'game', 'preview.css')));
 }
 
+console.log('\nthe sheet points an Android browser at the app (nav.js EpinoiaAppPromo)');
+{
+  const promo = kind => ({ current: () => (kind ? { kind, href: 'android/' } : null), href: p => '../' + p.href });
+  T.env({ EpinoiaAppPromo: promo('android') });
+  eq('an Android browser with the app out: the app, at the rail\'s root', T.androidApp(), { href: '../android/' });
+  T.env({ EpinoiaAppPromo: promo('ios') });
+  eq('an iPhone: nothing (its sheet has the Home Screen steps)', T.androidApp(), null);
+  T.env({ EpinoiaAppPromo: promo(null) });
+  eq('no promo (desktop, in the app, not out yet): nothing', T.androidApp(), null);
+  T.env({ EpinoiaAppPromo: undefined });
+  eq('a page without nav.js (a league website\'s embed): nothing', T.androidApp(), null);
+  T.env({ EpinoiaAppPromo: { current() { throw new Error('boom'); } } });
+  eq('a broken promo: nothing, never a throw', T.androidApp(), null);
+  T.env(null);
+  const src = fs.readFileSync(path.join(ROOT, 'epinoia', 'push.js'), 'utf8');
+  const fnBody = name => src.slice(src.indexOf('function ' + name + '('), src.indexOf('\n  }\n', src.indexOf('function ' + name + '(')));
+  ok('the ask links the app when there is one', /const app = androidApp\(\);[\s\S]*Get the app[\s\S]*a\.href = app\.href/.test(fnBody('ask')));
+  ok('"your phone is hiding it" offers the app as a way out', /const app = androidApp\(\);[\s\S]*'Get the Epinoia app'[\s\S]*a\.href = app\.href/.test(fnBody('hidden')));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

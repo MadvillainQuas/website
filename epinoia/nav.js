@@ -43,6 +43,9 @@
                             env adds { path, released }
        appCard(env, ver)    HOME's card: null, or { href, versionName } on an Android browser
                             when version.json says released: true
+       promo(env)           the standing phone links to the download page: null, or
+                            { kind, href, icon, row, title, sub } (env adds { path, released,
+                            standalone }); window.EpinoiaAppPromo carries the answer to pages
        NOT BEFORE THE FIRST RELEASE. epinoia/android/version.json carries "released"; until
        the owner's first signed build is out and that is flipped to true, an Android browser
        keeps the web-app offer it always had and nothing points at a download that 404s.
@@ -88,6 +91,26 @@
       if (!v || !v.released) return null;
       return { href: (env && env.href) || '../android/', versionName: v.versionName };
     };
+    /* THE APP, SIGNPOSTED ON A PHONE. The standing links to the download page (the rail's
+       row, the strip at the end of a page, the notification sheet's line): null on a desktop,
+       in the app, on the download page itself and on the staff tools; on an Android browser,
+       only once the app is out; on an iPhone, the page's Home Screen steps, unless Epinoia is
+       already opened from the Home Screen. href is relative to the rail's root. */
+    const NO_PROMO = /^\/epinoia\/(android|admin|app|edit|embed|broadcast|api|signin|join|score|clockcam)(\/|$)/;
+    const promo = env => {
+      const e = env || {};
+      if (NO_PROMO.test(String(e.path || ''))) return null;
+      const w = where(e);
+      if (w === 'android' && e.released === true) {
+        return { kind: 'android', href: 'android/', icon: 'android/icon-192.png', row: 'get the app',
+          title: 'Get the Epinoia app', sub: 'Scores, fixtures and game alerts that pop up, in an app of its own.' };
+      }
+      if (w === 'ios' && e.standalone !== true) {
+        return { kind: 'ios', href: 'android/#iosSec', icon: 'brand/epinoia-mark-192.png', row: 'add to home screen',
+          title: 'Epinoia on your iPhone', sub: 'Add it to your Home Screen: it opens full screen, with game alerts.' };
+      }
+      return null;
+    };
     const readShell = store => {
       try {
         const j = JSON.parse((store && store.getItem('epinoia_shell')) || 'null');
@@ -126,7 +149,7 @@
         .catch(() => { pending = null; return null; });
       return pending;
     };
-    return { where, installOffer, appCard, readShell, needsUpdate, cleanVersion, version, VERSION_KEY };
+    return { where, installOffer, appCard, promo, readShell, needsUpdate, cleanVersion, version, VERSION_KEY };
   })();
   window.EpinoiaAppShell = AppShell;
 
@@ -698,6 +721,58 @@
       });
     }
   }
+
+  /* ------------------------------------------------- the app, signposted ---
+     THE BANNER IS ONCE A FORTNIGHT; THESE STAY. On a phone, every page with the rail links the
+     download page twice more: a row under HOME in the menu sheet, and a strip at the end of the
+     page, before its footer (not on HOME for Android, whose own card sits under the wordmark).
+     What each says is AppShell.promo's answer, so none of them appears on a desktop, in the
+     app, before the app is out, or on the download page. window.EpinoiaAppPromo hands the same
+     answer to push.js, whose notification sheet points an Android browser at the app. */
+  const promoReady = (() => {
+    const env = shellEnv();
+    const w = AppShell.where(env);
+    if (w === 'ios') return Promise.resolve(AppShell.promo(Object.assign(env, { standalone: standalone() })));
+    if (w !== 'android') return Promise.resolve(null);
+    let store = null;
+    try { store = window.sessionStorage; } catch (_) { store = null; }
+    return AppShell.version(root + 'android/version.json', { store })
+      .then(ver => AppShell.promo(Object.assign(env, { released: !!ver && ver.released === true })), () => null);
+  })();
+  let promoNow = null;
+  window.EpinoiaAppPromo = { ready: promoReady, current: () => promoNow, href: p => root + p.href };
+  function promoRow(p) {
+    const a = el('a', 'item app-row');
+    a.href = root + p.href;
+    const ic = el('span', 'ic');
+    const img = el('img'); img.src = root + p.icon; img.alt = '';
+    ic.appendChild(img);
+    a.append(ic, el('span', 'tx', p.row));
+    a.title = p.title;
+    return a;
+  }
+  function promoStrip(p) {
+    const a = el('a', 'ep-appstrip');
+    a.href = root + p.href;
+    a.dataset.kind = p.kind;
+    const img = el('img'); img.src = root + p.icon; img.alt = '';
+    const tx = el('span', 'tx');
+    tx.append(el('b', null, p.title), el('span', null, p.sub));
+    const go = el('span', 'go', '→');
+    go.setAttribute('aria-hidden', 'true');
+    a.append(img, tx, go);
+    return a;
+  }
+  promoReady.then(p => {
+    promoNow = p;
+    if (!p) return;
+    navFoot.insertBefore(promoRow(p), adminRow);
+    if (p.kind === 'android' && document.getElementById('homeApp')) return;
+    const frame = document.querySelector('.ep-frame') || document.querySelector('body > .wrap');
+    if (!frame) return;
+    const foot = Array.prototype.find.call(frame.children, c => c.tagName === 'FOOTER' || c.classList.contains('foot'));
+    frame.insertBefore(promoStrip(p), foot || null);
+  }, () => {});
 
   /* ------------------------------------------------------- update the app ---
      THE ANDROID APP SAYS WHICH BUILD IT IS on every launch (shell=, kept by appmode.js in

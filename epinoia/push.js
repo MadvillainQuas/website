@@ -1003,6 +1003,17 @@ const CSS = [
   '@media (prefers-reduced-motion:reduce){.ep-push-scrim,.ep-push-sheet{animation:none}}'
 ].join('');
 
+/* THE ANDROID APP, WHERE ALERTS POP UP. nav.js (window.EpinoiaAppPromo) knows by the time a sheet
+   opens whether this is an Android browser and the app is out; a page without nav.js (a league
+   website's embed) has no answer, and the sheet says nothing about the app. { href } or null. */
+function androidApp() {
+  const P = g('EpinoiaAppPromo');
+  try {
+    const p = P && typeof P.current === 'function' ? P.current() : null;
+    return p && p.kind === 'android' ? { href: P.href(p) } : null;
+  } catch (_) { return null; }
+}
+
 const BELL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>';
 
 function openSheet(doc, view, name, kind) {
@@ -1077,6 +1088,13 @@ function openSheet(doc, view, name, kind) {
   function ask(message) {
     const d = el('p', null, lead); d.id = 'ep-push-d';
     const parts = [head('Get notified about ' + name + '?'), d];
+    const app = androidApp();
+    if (app) {
+      const t = el('p', null, 'Alerts pop up most reliably in the Epinoia app for Android. ');
+      const a = el('a', null, 'Get the app'); a.href = app.href;
+      t.appendChild(a);
+      parts.push(t);
+    }
     if (message) parts.push(el('p', 'ep-push-msg err', message));
     const on = button('Turn on notifications', 'pri', () => {
       /* enable() is called inside this click, before anything is awaited */
@@ -1125,8 +1143,18 @@ function openSheet(doc, view, name, kind) {
       a.addEventListener('click', settingsOpened);
       acts.push(a);
     }
+    /* in an Android browser, the way out of browser settings altogether: the app posts its
+       alerts itself, on its own channel that pops up */
+    const parts = [head('Your phone is hiding it'), d, ol];
+    const app = androidApp();
+    if (app) {
+      parts.push(el('p', null, 'Or skip the browser’s settings: in the Epinoia app for Android, alerts pop up on their own.'));
+      const a = el('a', 'ep-push-btn', 'Get the Epinoia app');
+      a.href = app.href;
+      acts.push(a);
+    }
     acts.push(button('Close', null, () => close(false)));
-    draw([head('Your phone is hiding it'), d, ol], acts);
+    draw(parts, acts);
   }
   function done() {
     const d = el('p', null, 'You’ll hear about ' + name + ' on this phone. ');
@@ -1170,7 +1198,7 @@ return {
     env(e) { ENV = e || null; },
     quick, keyBytes, sameKey, isIOS, iosVersion, decide, snoozed, snooze, storedSession,
     subscriptionRow, SNOOZE_KEY, SNOOZE_MS, platform, SETTINGS, QUIET, serviceName, RECEIPT_MS,
-    clientKind, launchState, launchStale, IMPORTANCE_HIGH, SETTINGS_OPENED_KEY,
+    clientKind, launchState, launchStale, IMPORTANCE_HIGH, SETTINGS_OPENED_KEY, androidApp,
     close() { if (sheet) { sheet.remove(); sheet = null; } }
   }
 };

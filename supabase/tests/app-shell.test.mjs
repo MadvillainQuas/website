@@ -240,8 +240,9 @@ function page(url, o = {}) {
     },
     addEventListener: (t, f) => { (winListeners[t] = winListeners[t] || []).push(f); },
     document: {
-      querySelector: () => null,
-      getElementById: () => null,
+      /* o.frame: the page's .ep-frame (an El), for the app strip; o.homeApp: HOME's card slot */
+      querySelector: sel => (sel === '.ep-frame' && o.frame) ? o.frame : null,
+      getElementById: id => (id === 'homeApp' && o.homeApp) ? new El('div') : null,
       createElement: t => new El(t),
       documentElement: { classList: { contains: c => htmlCls.has(c) }, style: {}, setAttribute() {}, removeAttribute() {} },
       body,
@@ -425,6 +426,116 @@ console.log('\n-- the update notice');
   await tick(); await tick(); await tick();
   const b = p.banners().find(n => n.cls.has('ep-update'));
   ok('two folders down: the notice links to ../../android/', b && goOf(b).href === '../../android/' && p.fetches.includes('../../android/version.json'), p.fetches.join());
+}
+
+/* ----------------------------------------------------------------- 2b --- */
+console.log('\n-- the app, signposted on a phone (AppShell.promo, the rail\'s row, the page\'s strip)');
+{
+  const S = shellApi();
+  const at = (ua, extra) => S.promo(Object.assign({ ua, path: '/epinoia/stats/' }, extra || {}));
+  const a = at(UA.samsung, { released: true });
+  ok('promo: Samsung Internet, app out -> the Android app, linking android/',
+     a && a.kind === 'android' && a.href === 'android/' && a.icon === 'android/icon-192.png' && a.row === 'get the app', JSON.stringify(a));
+  ok('promo: Chrome on Android, app out -> the Android app', (at(UA.chromeAndroid, { released: true }) || {}).kind === 'android');
+  eq('promo: Android, not out yet -> nothing', at(UA.chromeAndroid, { released: false }), null);
+  eq('promo: Android, a truthy non-boolean released -> nothing', at(UA.chromeAndroid, { released: 'yes' }), null);
+  const i = at(UA.iphone);
+  ok('promo: iPhone -> the download page\'s Home Screen steps', i && i.kind === 'ios' && i.href === 'android/#iosSec' && i.row === 'add to home screen', JSON.stringify(i));
+  eq('promo: iPhone already on the Home Screen -> nothing', at(UA.iphone, { standalone: true }), null);
+  ok('promo: iPad asking for the desktop site -> the Home Screen steps',
+     (S.promo({ ua: UA.ipadDesktop, platform: 'MacIntel', maxTouchPoints: 5, path: '/epinoia/home/' }) || {}).kind === 'ios');
+  eq('promo: desktop -> nothing', at(UA.desktop, { released: true }), null);
+  eq('promo: in the app -> nothing', at(UA.chromeAndroid, { released: true, app: true }), null);
+  eq('promo: html.m-app -> nothing', at(UA.chromeAndroid, { released: true, mApp: true }), null);
+  for (const path of ['/epinoia/android/', '/epinoia/admin/', '/epinoia/admin/platform/', '/epinoia/app/', '/epinoia/edit/',
+    '/epinoia/embed/notify/', '/epinoia/broadcast/help/', '/epinoia/api/', '/epinoia/signin/', '/epinoia/join/', '/epinoia/score/']) {
+    eq('promo: never on ' + path, S.promo({ ua: UA.samsung, released: true, path }), null);
+  }
+  for (const path of ['/epinoia/home/', '/epinoia/', '/epinoia/game/', '/epinoia/t/', '/epinoia/me/', '/epinoia/apple/']) {
+    ok('promo: on ' + path, !!S.promo({ ua: UA.samsung, released: true, path }));
+  }
+}
+const promoFrame = () => {
+  const frame = new El('div'); frame.cls.add('ep-frame');
+  const content = new El('section');
+  const foot = new El('footer');
+  frame.append(content, foot);
+  return { frame, content, foot };
+};
+{
+  const f = promoFrame();
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.samsung, versionJson: OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  const rows = byClass(p.body, 'app-row');
+  ok('Samsung Internet, app out: one "get the app" row in the rail', rows.length === 1 && /get the app/.test(rows[0].textContent), rows.map(r => r.textContent).join('|'));
+  ok('...linking ../android/', rows[0] && rows[0].href === '../android/');
+  const foot = rows[0] && rows[0].parent;
+  const home = foot && foot.children.find(n => n.cls.has('home-row'));
+  ok('...in the foot, straight after HOME', !!home && foot.children.indexOf(rows[0]) === foot.children.indexOf(home) + 1);
+  const strips = byClass(f.frame, 'ep-appstrip');
+  ok('...and one strip on the page', strips.length === 1 && strips[0].href === '../android/' && strips[0].dataset.kind === 'android');
+  ok('...before the page\'s footer', f.frame.children.indexOf(strips[0]) === f.frame.children.indexOf(f.foot) - 1);
+  ok('...with the app icon and the words', strips[0] && strips[0].children[0].src === '../android/icon-192.png' && /Get the Epinoia app/.test(strips[0].textContent));
+  const P = p.ctx.EpinoiaAppPromo;
+  ok('window.EpinoiaAppPromo answers the same, with the rail\'s root', P && P.current() && P.current().kind === 'android' && P.href(P.current()) === '../android/');
+}
+{
+  const frame = new El('div'); frame.cls.add('ep-frame');
+  const p = page('/epinoia/scouting/', { ua: UA.chromeAndroid, versionJson: OUT, frame });
+  await tick(); await tick(); await tick();
+  const strips = byClass(frame, 'ep-appstrip');
+  ok('a page with no footer: the strip ends the page', strips.length === 1 && frame.children[frame.children.length - 1] === strips[0]);
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/home/', { ua: UA.samsung, versionJson: OUT, frame: f.frame, homeApp: true });
+  await tick(); await tick(); await tick();
+  ok('HOME on Android: the rail row, but no strip (HOME\'s own card is under the wordmark)',
+     byClass(p.body, 'app-row').length === 1 && byClass(f.frame, 'ep-appstrip').length === 0);
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.samsung, versionJson: NOT_OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  ok('Android, app not out: no row, no strip', byClass(p.body, 'app-row').length === 0 && byClass(f.frame, 'ep-appstrip').length === 0);
+  ok('...and EpinoiaAppPromo says so', p.ctx.EpinoiaAppPromo.current() === null);
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/fixtures/?l=bcb', { ua: UA.desktop, versionJson: OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  ok('desktop: no row, no strip, and version.json is not even asked', byClass(p.body, 'app-row').length === 0
+     && byClass(f.frame, 'ep-appstrip').length === 0 && !p.fetches.some(u => /version\.json/.test(u)));
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/stats/?l=bcb', { ua: UA.chromeAndroid, app: true, versionJson: OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  ok('in the app: no row, no strip', byClass(p.body, 'app-row').length === 0 && byClass(f.frame, 'ep-appstrip').length === 0);
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/android/', { ua: UA.samsung, versionJson: OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  ok('the download page itself: no row, no strip', byClass(p.body, 'app-row').length === 0 && byClass(f.frame, 'ep-appstrip').length === 0);
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/t/?l=bcb', { ua: UA.iphone, platform: 'iPhone', touch: 5, frame: f.frame });
+  await tick(); await tick(); await tick();
+  const rows = byClass(p.body, 'app-row');
+  const strips = byClass(f.frame, 'ep-appstrip');
+  ok('iPhone: an "add to home screen" row and a strip, to the Home Screen steps',
+     rows.length === 1 && /add to home screen/.test(rows[0].textContent) && rows[0].href === '../android/#iosSec'
+     && strips.length === 1 && strips[0].href === '../android/#iosSec' && strips[0].dataset.kind === 'ios');
+  ok('...with the site mark, not the Android icon', strips[0] && strips[0].children[0].src === '../brand/epinoia-mark-192.png');
+}
+{
+  const f = promoFrame();
+  const p = page('/epinoia/stats/wowy/?l=bcb', { ua: UA.samsung, versionJson: OUT, frame: f.frame });
+  await tick(); await tick(); await tick();
+  ok('two folders down: the row and the strip link ../../android/',
+     (byClass(p.body, 'app-row')[0] || {}).href === '../../android/' && (byClass(f.frame, 'ep-appstrip')[0] || {}).href === '../../android/');
 }
 
 /* ------------------------------------------------------------------ 3 --- */
