@@ -263,6 +263,19 @@ jobs:
         # outside the Home Screen app, never after "not now", never when blocked)
         run: node supabase/tests/push.test.mjs
 
+      - name: A side not known yet is never a club
+        # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
+        # database (0126) share one rule, tested against the same names
+        run: |
+          python scripts/ingest/placeholders_test.py
+          node supabase/tests/placeholders.test.mjs
+
+      - name: The console's fixture list
+        # overlapping loads draw once, an empty competition still gets its import and
+        # generator panels, cup opponents are named, 200+ games fold away and open
+        # thirty at a time
+        run: node supabase/tests/admin-fixtures.test.mjs
+
       - name: Official-vote CSV parsing and name folding
         # the two places a pasted spreadsheet breaks a naive parser: a club
         # with a comma in its name, and a surname carrying accents in one

@@ -18,6 +18,8 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
+from placeholders import is_placeholder_team
+
 
 def slugify(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
@@ -124,6 +126,11 @@ class Platform:
         return None
 
     def team(self, league_id: str, t: dict) -> dict | None:
+        # "To be determined", "TBC", "Winner of QF1": a cup draw's side that is not known yet is
+        # never matched to a club or created as one (placeholders.py). The caller skips the fixture
+        # until the schedule names the side, and writes it then.
+        if is_placeholder_team(t.get("name")):
+            return None
         code = (t.get("code") or "").strip() or slugify(t.get("name", ""))
         key = (league_id, code)
         if key in self.cache["team"]:

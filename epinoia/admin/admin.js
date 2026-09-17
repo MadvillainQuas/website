@@ -49,6 +49,24 @@ function oops(e, fallback) {
 const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-')
                       .replace(/^-|-$/g, '').slice(0, 40);
 
+/* "To be determined", "TBC", "Winner of QF1": a cup draw's side that is not known yet
+   is never a club. The same patterns, character for character, as
+   scripts/ingest/placeholders.py and public.is_placeholder_team_name (0126), all tested
+   against supabase/tests/fixtures/placeholder_teams.json. */
+const PLACEHOLDER_PATTERNS = [
+  '^(team )?t ?b ?[dca]( ?[0-9]+)?( ?\\(.*\\))?$',
+  '^to be (determined|confirmed|decided|announced|named|assigned|agreed)( .*)?$',
+  '^(winners?|losers?) (of )?(the )?(qf|sf|semi|quarter|final|game|match|round|tie|r[0-9]|g[0-9]|m[0-9]|#)',
+  '^(qf|sf|semi ?-?final|quarter ?-?final|game|match|round|tie) ?[0-9]* (winners?|losers?)$',
+  '^(bye|unknown( team)?|placeholder|not yet (known|determined|decided))$',
+  '^t ?b ?[dca] vs?\\.? t ?b ?[dca]$'
+];
+const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_PATTERNS.map(p => '(?:' + p + ')').join('|'));
+function isPlaceholderTeam(name) {
+  const s = String(name == null ? '' : name).toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  return !!s && PLACEHOLDER_RE.test(s);
+}
+
 /* ------------------------------------------------------------------- boot --- */
 async function boot() {
   sb = window.epinoiaClient && epinoiaClient();
@@ -406,24 +424,124 @@ function mountFormats() {
 }
 
 /* --------------------------------------------------------------- fixtures --- */
+/* THE FIXTURE LIST.
+
+   Three ways it used to come out wrong, each fixed here:
+     * two loads overlapping (a move, an edit and the competition picker all reload
+       it, none of them waiting) both cleared the list BEFORE their query and both
+       drew AFTER it, so every game appeared twice. Only the newest load draws now,
+       and it clears the list at the moment it draws;
+     * a competition with no fixtures returned before the import and "Generate a
+       season" panels were rebuilt, so they stayed bound to the competition picked
+       before — the one moment they are most needed, pointed at the wrong place;
+     * a club from another league (a cup tie) was drawn as "—": the list only knew
+       this league's clubs. Their names are fetched with the fixtures.
+   A season can be 200+ games, so the list is folded away in one row that starts
+   closed on every visit, keeps whatever state it was left in when it reloads, and
+   builds its rows only when it is opened. Games are read a thousand at a time, the
+   most one request returns. */
+let fxSeq = 0;
+let fxOpen = false;
+let fxShow = 'all';          // all | toplay | played
+let fxOtherTeams = [];
+
 async function loadFixtures() {
-  fixtures = [];
+  const seq = ++fxSeq;
+  let rows = [], others = [];
   if (comp) {
-    const { data, error } = await sb.from('games')
-      .select('id,tipoff_at,venue,status,home_score,away_score,home_team_id,away_team_id,roster_snapshot')
-      .eq('competition_id', comp.id).order('tipoff_at');
-    if (error) return oops(error);
-    fixtures = data || [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from('games')
+        .select('id,tipoff_at,venue,status,home_score,away_score,home_team_id,away_team_id,roster_snapshot')
+        .eq('competition_id', comp.id).order('tipoff_at', { ascending: true, nullsFirst: false }).order('id')
+        .range(from, from + 999);
+      if (seq !== fxSeq) return;
+      if (error) return oops(error);
+      rows = rows.concat(data || []);
+      if (!data || data.length < 1000) break;
+    }
+    const known = new Set(teams.map(t => t.id));
+    const missing = [...new Set(rows.flatMap(g => [g.home_team_id, g.away_team_id]))].filter(id => id && !known.has(id));
+    if (missing.length) {
+      const { data } = await sb.from('teams').select('id,name,short_name,colour,slug').in('id', missing);
+      if (seq !== fxSeq) return;
+      others = data || [];
+    }
   }
-  const host = $('#fxList'); host.textContent = '';
-  $('#fxNote').textContent = comp ? fixtures.length + ' scheduled' : 'pick a competition';
-  if (!comp) return;
+  fixtures = rows;
+  fxOtherTeams = others;
+  drawFixtures();
+  /* always, and after the list: an empty competition is exactly when these are needed */
+  mountImport();
+  mountFixtureGen();
+}
+
+const fxPlayed = g => !(g.status === 'scheduled' || g.status === 'live');
+/* Opened, the list draws thirty games and a button for thirty more. How far down it
+   has been opened survives a reload (a move or an edit reloads the list); another
+   competition, or another filter, starts from the first thirty again. */
+const FX_PAGE = 30;
+let fxLimit = FX_PAGE;
+let fxCompId = null;
+
+function drawFixtures() {
+  const host = $('#fxList');
+  host.textContent = '';
+  if (!comp) { $('#fxNote').textContent = 'pick a competition'; return; }
+  if (fxCompId !== comp.id) { fxCompId = comp.id; fxLimit = FX_PAGE; fxShow = 'all'; }
+  const live = fixtures.filter(g => g.status === 'live').length;
+  const toPlay = fixtures.filter(g => g.status === 'scheduled').length;
+  const played = fixtures.length - live - toPlay;
+  const parts = [toPlay + ' to play', live ? live + ' live' : '', played + ' played'].filter(Boolean);
+  $('#fxNote').textContent = fixtures.length ? fixtures.length + ' fixture' + (fixtures.length === 1 ? '' : 's') + ' · ' + parts.join(' · ') : 'no fixtures yet';
   if (!fixtures.length) {
-    host.appendChild(el('div', 'empty', 'No fixtures yet.'));
+    host.appendChild(el('div', 'empty', 'No fixtures yet. Schedule one above, generate a season or import a game below.'));
     return;
   }
 
-  const byId = new Map(teams.map(t => [t.id, t]));
+  const box = document.createElement('details');
+  box.className = 'fxbox';
+  box.open = fxOpen;
+  const sum = document.createElement('summary');
+  sum.append(el('b', null, 'All ' + fixtures.length + ' fixtures'), el('span', 'n', parts.join(' · ')),
+             el('span', 'hint', box.open ? 'hide' : 'show'));
+  box.appendChild(sum);
+  const inner = el('div', 'fxinner');
+  box.appendChild(inner);
+  let built = false;
+  const build = () => { if (!built) { built = true; buildFixtureRows(inner); } };
+  box.addEventListener('toggle', () => {
+    fxOpen = box.open;
+    sum.querySelector('.hint').textContent = box.open ? 'hide' : 'show';
+    if (box.open) build();
+  });
+  host.appendChild(box);
+  if (box.open) build();
+}
+
+function buildFixtureRows(host) {
+  const byId = new Map(teams.concat(fxOtherTeams).map(t => [t.id, t]));
+  const pool = () => fixtures.filter(g => fxShow === 'toplay' ? !fxPlayed(g) : fxShow === 'played' ? fxPlayed(g) : true);
+
+  /* which games are shown: every one, the ones still to play, or the ones played */
+  const filter = el('div', 'fxfilter');
+  const chips = [['all', 'all'], ['toplay', 'to play'], ['played', 'played']].map(([k, label]) => {
+    const b = el('button', 'ep-chip' + (fxShow === k ? ' on' : ''), label);
+    b.type = 'button';
+    b.dataset.k = k;
+    b.setAttribute('aria-pressed', String(fxShow === k));
+    b.addEventListener('click', () => {
+      if (fxShow === k) return;
+      fxShow = k;
+      fxLimit = FX_PAGE;
+      chips.forEach(c => { const on = c.dataset.k === k; c.classList.toggle('on', on); c.setAttribute('aria-pressed', String(on)); });
+      renderRows();
+    });
+    return b;
+  });
+  filter.append(el('span', 'note', 'show'), ...chips);
+  host.appendChild(filter);
+  let resetBulk = () => {};
+
   /* BLOCK DESIGNATION. A whole round of cup ties entered under the league, or a
      feed that could only file everything under one phase: tick the games and
      move them together, before or after they are played. Same move as the
@@ -433,7 +551,7 @@ async function loadFixtures() {
     const bar = el('div', 'fxbulk');
     const all = el('label', 'fxbulk-all');
     const allBox = document.createElement('input'); allBox.type = 'checkbox'; allBox.title = 'tick every game shown';
-    all.append(allBox, document.createTextNode(' select all'));
+    all.append(allBox, document.createTextNode(' select all shown'));
     const sel = el('select', 'ep-input mini');
     sel.appendChild(el('option', null, 'move ticked games to…')).value = '';
     comps.filter(c => c.id !== comp.id).forEach(c => {
@@ -443,8 +561,13 @@ async function loadFixtures() {
     const count = el('span', 'note', '');
     const ticked = () => [...host.querySelectorAll('input.fxpick:checked')].map(i => i.value);
     const refresh = () => { const n = ticked().length; count.textContent = n ? n + ' ticked' : ''; sel.disabled = !n; };
-    allBox.addEventListener('change', () => { host.querySelectorAll('input.fxpick').forEach(i => { i.checked = allBox.checked; }); refresh(); });
-    host.addEventListener('change', e => { if (e.target && e.target.classList.contains('fxpick')) refresh(); });
+    /* "shown" is the rows drawn so far: games further down are not ticked by it */
+    allBox.addEventListener('change', () => {
+      host.querySelectorAll('input.fxpick').forEach(i => { i.checked = allBox.checked; });
+      refresh();
+    });
+    host.addEventListener('change', e => { if (e.target && e.target.classList && e.target.classList.contains('fxpick')) refresh(); });
+    resetBulk = () => { allBox.checked = false; refresh(); };
     sel.addEventListener('change', async () => {
       const to = comps.find(c => c.id === sel.value);
       const ids = ticked();
@@ -468,91 +591,127 @@ async function loadFixtures() {
     host.appendChild(bar);
     refresh();
   }
-  fixtures.forEach(g => {
-    const row = el('div', 'fxrow');
-    if (comps.length > 1) {
-      const pick = document.createElement('input'); pick.type = 'checkbox'; pick.className = 'fxpick'; pick.value = g.id;
-      pick.title = 'tick to move with the others';
-      row.appendChild(pick);
+
+  const list = el('div', 'fxrows');
+  const foot = el('div', 'fxfoot');
+  const more = el('button', 'ep-btn fxmore');
+  more.type = 'button';
+  const shown = el('span', 'note', '');
+  foot.append(more, shown);
+  host.append(list, foot);
+
+  let drawn = 0, month = null;
+  function renderRows() {
+    list.textContent = '';
+    drawn = 0;
+    month = null;
+    drawUpTo(fxLimit);
+    resetBulk();
+  }
+  function drawUpTo(limit) {
+    const games = pool();
+    if (!games.length) {
+      list.appendChild(el('div', 'empty', fxShow === 'toplay' ? 'Nothing left to play.' : fxShow === 'played' ? 'Nothing played yet.' : 'No fixtures.'));
     }
-    const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
-    row.appendChild(el('div', 'd', when
-      ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' +
-        when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-      : 'TBC'));
-    row.appendChild(el('div', 'tn h', (byId.get(g.home_team_id) || {}).name || '—'));
-    row.appendChild(el('div', 'v', g.status === 'final'
-      ? `${g.home_score}–${g.away_score}` : (g.status === 'live' ? 'LIVE' : 'v')));
-    row.appendChild(el('div', 'tn', (byId.get(g.away_team_id) || {}).name || '—'));
-
-    const ac = el('div', 'ac');
-    if (g.status === 'scheduled' || g.status === 'live') {
-      const sc = el('a', 'ep-btn mini pri', 'score');
-      sc.href = '../score/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
-      sc.target = '_blank'; sc.rel = 'noopener';
-      ac.appendChild(sc);
-      const st = el('button', 'ep-btn mini', 'staff');
-      st.type = 'button';
-      st.addEventListener('click', () => officials(g, row));
-      ac.appendChild(st);
-    } else {
-      const v = el('a', 'ep-btn mini', 'box ↗');
-      v.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
-      v.target = '_blank'; v.rel = 'noopener';
-      ac.appendChild(v);
+    const stop = Math.min(limit, games.length);
+    for (; drawn < stop; drawn++) {
+      const g = games[drawn];
+      const at = g.tipoff_at ? new Date(g.tipoff_at) : null;
+      const m = at ? at.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Date to be confirmed';
+      if (m !== month) { month = m; list.appendChild(el('div', 'fxmonth', m)); }
+      list.appendChild(fixtureRow(g, byId));
     }
-    /* Move a fixture to another phase or into the cup.
+    const left = games.length - drawn;
+    more.textContent = 'Show ' + Math.min(FX_PAGE, left) + ' more';
+    more.classList.toggle('hide', left <= 0);
+    shown.textContent = games.length ? drawn + ' of ' + games.length + ' shown' : '';
+  }
+  more.addEventListener('click', () => { fxLimit = drawn + FX_PAGE; drawUpTo(fxLimit); });
+  renderRows();
+}
 
-       A game's phase is its competition — there is no second flag to keep in
-       step, which is what stops a game being a league game on one page and a
-       cup tie on another. Moving it is therefore a real move, and it changes
-       both tables, so both are rebuilt afterwards. Only offered when there is
-       somewhere to move it TO. */
-    if (comps.length > 1) {
-      const mv = el('select', 'ep-input mini fxmove');
-      comps.forEach(c => {
-        const o = el('option', null, c.name + (c.kind === 'cup' ? ' (cup)' : ''));
-        o.value = c.id; mv.appendChild(o);
-      });
-      mv.value = comp.id;
-      mv.title = 'move this fixture to another phase';
-      mv.addEventListener('change', async () => {
-        const to = comps.find(c => c.id === mv.value);
-        if (!to || to.id === comp.id) return;
-        if (!confirm('Move this fixture to ' + to.name + '? Both tables will be rebuilt.')) {
-          mv.value = comp.id; return;
-        }
-        mv.disabled = true;
-        const { error } = await sb.from('games')
-          .update({ competition_id: to.id, tie_id: null, leg: null }).eq('id', g.id);
-        if (error) { mv.disabled = false; mv.value = comp.id; return oops(error); }
-        /* a played game counts towards a table, so BOTH ends have to be redone */
-        for (const cid of [comp.id, to.id]) {
-          await sb.rpc('recompute_standings', { p_competition: cid });
-          await sb.rpc('compute_season_awards', { p_competition: cid });
-          await sb.rpc('advance_bracket', { p_competition: cid });
-        }
-        say('Fixture moved to ' + to.name + '.', 'ok');
-        loadFixtures();
-      });
-      ac.appendChild(mv);
-    }
+/* one fixture's row: when, who, the score, and what can be done with it */
+function fixtureRow(g, byId) {
+  const row = el('div', 'fxrow');
+  if (comps.length > 1) {
+    const pick = document.createElement('input'); pick.type = 'checkbox'; pick.className = 'fxpick'; pick.value = g.id;
+    pick.title = 'tick to move with the others';
+    row.appendChild(pick);
+  }
+  const when = g.tipoff_at ? new Date(g.tipoff_at) : null;
+  row.appendChild(el('div', 'd', when
+    ? when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' +
+      when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : 'TBC'));
+  row.appendChild(el('div', 'tn h', (byId.get(g.home_team_id) || {}).name || '—'));
+  row.appendChild(el('div', 'v', g.status === 'final'
+    ? `${g.home_score}–${g.away_score}` : (g.status === 'live' ? 'LIVE' : 'v')));
+  row.appendChild(el('div', 'tn', (byId.get(g.away_team_id) || {}).name || '—'));
 
-    /* Edit, delete, void — the surgery a secretary does all season. Supplied
-       by governance-ui rather than built here so the rules about what a
-       PLAYED game will accept live in one place beside the RPC that
-       enforces them. */
-    window.EpinoiaGovernance.fixtureActions({
-      sb, game: g, comp, teams: byIdObj(), say, row,
-      onDone: () => { loadFixtures(); loadStandingsDependents(); }
-    }).forEach(n => ac.appendChild(n));
+  const ac = el('div', 'ac');
+  if (g.status === 'scheduled' || g.status === 'live') {
+    const sc = el('a', 'ep-btn mini pri', 'score');
+    sc.href = '../score/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+    sc.target = '_blank'; sc.rel = 'noopener';
+    ac.appendChild(sc);
+    const st = el('button', 'ep-btn mini', 'staff');
+    st.type = 'button';
+    st.addEventListener('click', () => officials(g, row));
+    ac.appendChild(st);
+  } else {
+    const v = el('a', 'ep-btn mini', 'box ↗');
+    v.href = '../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase';
+    v.target = '_blank'; v.rel = 'noopener';
+    ac.appendChild(v);
+  }
+  /* Move a fixture to another phase or into the cup.
 
-    row.appendChild(ac);
-    host.appendChild(row);
-  });
+     A game's phase is its competition — there is no second flag to keep in
+     step, which is what stops a game being a league game on one page and a
+     cup tie on another. Moving it is therefore a real move, and it changes
+     both tables, so both are rebuilt afterwards. Only offered when there is
+     somewhere to move it TO. */
+  if (comps.length > 1) {
+    const mv = el('select', 'ep-input mini fxmove');
+    comps.forEach(c => {
+      const o = el('option', null, c.name + (c.kind === 'cup' ? ' (cup)' : ''));
+      o.value = c.id; mv.appendChild(o);
+    });
+    mv.value = comp.id;
+    mv.title = 'move this fixture to another phase';
+    mv.addEventListener('change', async () => {
+      const to = comps.find(c => c.id === mv.value);
+      if (!to || to.id === comp.id) return;
+      if (!confirm('Move this fixture to ' + to.name + '? Both tables will be rebuilt.')) {
+        mv.value = comp.id; return;
+      }
+      mv.disabled = true;
+      const { error } = await sb.from('games')
+        .update({ competition_id: to.id, tie_id: null, leg: null }).eq('id', g.id);
+      if (error) { mv.disabled = false; mv.value = comp.id; return oops(error); }
+      /* a played game counts towards a table, so BOTH ends have to be redone */
+      for (const cid of [comp.id, to.id]) {
+        await sb.rpc('recompute_standings', { p_competition: cid });
+        await sb.rpc('compute_season_awards', { p_competition: cid });
+        await sb.rpc('advance_bracket', { p_competition: cid });
+      }
+      say('Fixture moved to ' + to.name + '.', 'ok');
+      loadFixtures();
+    });
+    ac.appendChild(mv);
+  }
 
-  mountImport();
-  mountFixtureGen();
+  /* Edit, delete, void — the surgery a secretary does all season. Supplied
+     by governance-ui rather than built here so the rules about what a
+     PLAYED game will accept live in one place beside the RPC that
+     enforces them. */
+  window.EpinoiaGovernance.fixtureActions({
+    sb, game: g, comp, teams: byIdObj(), say, row,
+    onDone: () => { loadFixtures(); loadStandingsDependents(); }
+  }).forEach(n => ac.appendChild(n));
+
+  row.appendChild(ac);
+  return row;
 }
 
 /* teams is an array here and the governance module wants a lookup; one place
@@ -919,6 +1078,9 @@ $('#anGo').addEventListener('click', async () => {
 $('#tmGo').addEventListener('click', async () => {
   const name = $('#tmName').value.trim();
   if (!name) return say('Name the team.', 'err');
+  if (isPlaceholderTeam(name)) {
+    return say('“' + name + '” stands for a side that is not known yet, not a club. Schedule the tie once both teams are known.', 'err');
+  }
   const short = ($('#tmShort').value.trim() || name.slice(0, 3)).toUpperCase();
   const { data, error } = await sb.from('teams').insert({
     league_id: league.id, name, short_name: short,

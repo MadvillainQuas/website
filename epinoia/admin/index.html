@@ -71,6 +71,24 @@
   .fxrow .h{text-align:right}
   .fxrow .v{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);text-align:center}
   .fxrow .ac{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
+  /* the fixture list, folded into one row: a season is 200+ games */
+  .fxbox{border-bottom:1px solid var(--rule)}
+  .fxbox > summary{list-style:none;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-height:44px;padding:8px 4px;
+    font-family:var(--f-ui);font-size:13px}
+  .fxbox > summary::-webkit-details-marker{display:none}
+  .fxbox > summary::before{content:'';width:0;height:0;border-style:solid;border-width:5px 0 5px 7px;border-color:transparent transparent transparent var(--ink-3);
+    transition:transform .15s ease}
+  .fxbox[open] > summary::before{transform:rotate(90deg)}
+  .fxbox > summary b{font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .fxbox > summary .n{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
+  .fxbox > summary .hint{margin-left:auto;font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--lume)}
+  .fxbox > summary:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+  .fxfilter{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 4px 8px}
+  .fxmonth{font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+    padding:12px 4px 5px;border-bottom:1px solid var(--rule)}
+  .fxfoot{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 4px 12px}
+  .fxfoot .fxmore{min-height:40px}
+  @media (prefers-reduced-motion:reduce){ .fxbox > summary::before{transition:none} }
   .mini{font-size:9px;padding:6px 9px}
   /* the inline fixture editor, opened under the row it belongs to */
   .gv-edit{border-left:2px solid var(--lume);padding:9px 0 3px 11px;

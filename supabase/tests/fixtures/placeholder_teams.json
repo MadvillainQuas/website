@@ -1,0 +1,17 @@
+{
+  "_about": "Names a fixture list uses for a side that is not known yet. Every one of these is a placeholder, never a club: the ingest (scripts/ingest/placeholders.py), the console (epinoia/admin/admin.js) and the database (migration 0126, public.is_placeholder_team_name) must all agree, and each test reads this file or copies it exactly.",
+  "placeholders": [
+    "To be determined", "TO BE DETERMINED", "to be determined ", "To Be Confirmed", "To be decided", "To be announced",
+    "TBD", "tbd", "TBC", "TBA", "T.B.D.", "T.B.C", "T B D", "TBD (Winner SF1)", "Team TBD", "TBC 1", "TBD2",
+    "Winner of QF1", "Winner QF1", "Winner SF 2", "Winners of Semi Final 1", "Loser of Game 3", "Winner Match 4",
+    "Winner R1", "QF1 Winner", "Semi-final 1 winner", "Quarter Final 2 Winner", "Game 5 Loser",
+    "Bye", "BYE", "Unknown", "Unknown team", "Placeholder", "Not yet known", "TBD v TBD"
+  ],
+  "clubs": [
+    "Reading Rockets", "London Lions", "Bristol Flyers", "Newcastle Eagles", "Caledonia Gladiators",
+    "Leicester Riders", "Manchester Basketball", "Cheshire Phoenix", "Sheffield Sharks", "Surrey 89ers",
+    "Oaklands Wolves", "Tobermory Tigers", "Tbilisi Tornadoes", "Byers Green Bulls", "Winnersh Warriors",
+    "Unity Hoops", "Team Solent Kestrels", "Derby Trailblazers", "Loughborough Riders", "Abbey Tbacks",
+    "Winchester Kings", "Tbc Tigers Academy"
+  ]
+}
