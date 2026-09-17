@@ -561,7 +561,23 @@ console.log('\ncheck(): why nothing arrives');
   signIn(b.ls);
   r = await P.check();
   ok('the account\'s phone alerts switched off: named as the problem even though the test arrives',
-     r.steps.some(s => s.id === 'channel' && s.ok === false) && !r.ok);
+     r.steps.some(s => s.id === 'channel' && s.ok === false) && !r.ok && /Phone and desktop alerts/.test(r.advice.title));
+
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true, json: answers(),
+                arrive: (url, body) => body && body.check ? { tag: 'check', shown: true } : null });
+  r = await P.check();
+  eq('signed out: the phone works, the advice says to sign in (not that everything works)',
+     [r.ok, r.steps.find(s => s.id === 'account').ok, /sign in/.test(r.advice.title), r.steps[r.steps.length - 1].id],
+     [false, false, true, 'arrival']);
+
+  b = android({ permission: 'granted', sub: { endpoint: EPC, key: T.keyBytes(CFG_VAPID) }, receipts: true,
+                json: answers({ rows: [{ id: 'row1', last_push_at: '2026-09-19T14:00:00Z', last_push_status: 403, last_push_error: 'the VAPID credentials do not match' }] }),
+                arrive: (url, body) => body && body.check ? { tag: 'check', shown: true } : null });
+  signIn(b.ls);
+  r = await P.check();
+  const hist = r.steps.find(s => s.id === 'history');
+  ok('an earlier refusal is shown for information, and a test that now works still reads as working',
+     hist && hist.ok === null && /refused \(403\)/.test(hist.label) && r.ok && /Everything/.test(r.advice.title));
 }
 T.env(null);
 

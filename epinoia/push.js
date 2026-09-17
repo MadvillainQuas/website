@@ -630,8 +630,9 @@ async function check(onStep) {
     const on = await accountPushOn(sess);
     if (on === false) add('channel', false, 'Phone and desktop alerts are switched off on your account', 'Tick Phone and desktop alerts below; tests still arrive, real notifications do not.');
     else if (on === true) add('channel', true, 'Phone and desktop alerts are on for your account');
+    /* what happened before the check: worth knowing, but the test below decides */
     if (row.row && row.row.last_push_at && row.row.last_push_status != null && !(row.row.last_push_status >= 200 && row.row.last_push_status < 300)) {
-      add('history', false, 'The last notification to this phone was refused (' + row.row.last_push_status + ') at ' + clock(Date.parse(row.row.last_push_at)),
+      add('history', null, 'Before this check, the last notification to this phone was refused (' + row.row.last_push_status + ') at ' + clock(Date.parse(row.row.last_push_at)),
           String(row.row.last_push_error || '').slice(0, 160));
     }
   }
@@ -672,6 +673,16 @@ async function check(onStep) {
     return advise('Allow Epinoia to show notifications', SETTINGS[plat]);
   }
   add('arrival', true, 'The test reached this phone at ' + clock(got.at || now()) + ' and was shown');
+  /* the phone can receive; what is left is the account */
+  if (steps.some(s => s.id === 'account' && s.ok === false)) {
+    return advise(sess && sess.userId ? 'This phone works, but it is not on your account yet' : 'This phone works: sign in so it gets your notifications',
+                  sess && sess.userId ? ['Run the check again in a minute. If it still fails, tap Turn off, then Turn on.']
+                                      : ['Sign in on this phone with the email you use for Epinoia, then run the check again.']);
+  }
+  if (steps.some(s => s.id === 'channel' && s.ok === false)) {
+    return advise('This phone works: switch on Phone and desktop alerts',
+                  ['Tick Phone and desktop alerts below. Tests reach this phone either way, but real notifications are only sent while it is on.']);
+  }
   return advise('Everything on Epinoia’s side works', [
     'If a notification titled “This phone can get notifications” did not appear just now, the phone is hiding them:'
   ].concat(SETTINGS[plat] || [], QUIET[plat] || []));
