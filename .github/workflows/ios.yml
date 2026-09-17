@@ -1,0 +1,604 @@
+name: ios
+
+# THE EPINOIA IPHONE APP IS BUILT HERE, NEVER ON A PC. There is no Mac and no Swift toolchain on
+# the PC this repo is edited on, and the repo is public, so the signing certificate, the
+# provisioning profile and the App Store Connect key live in seven GitHub secrets and are decoded
+# into $RUNNER_TEMP (the key into ~/.appstoreconnect) for the length of one job, then deleted.
+#
+# Every run, secrets or not:
+#   - the cheap checks (plists parse, the store icon is 1024 px with no alpha, version.json)
+#   - XcodeGen writes ios/Epinoia.xcodeproj from ios/project.yml (it is never committed)
+#   - an unsigned Release build for the simulator, uploaded as the artifact ios-simulator-app
+#   - four screenshots of the live site inside the app, in an iPhone Pro Max simulator, uploaded
+#     as ios-screenshots (whatever happens after)
+#   - a proof that a .p12 exported the way the owner exports it on Windows (OpenSSL 3,
+#     PBE-SHA1-3DES, SHA-1 MAC) imports into a macOS keychain, before the real one is ever needed
+#
+# Only on main, only with all seven secrets, and only when the tag ios-v<build> does not exist yet:
+#   archive signed with the Apple Distribution certificate, export an .ipa (artifact ios-ipa),
+#   upload it to App Store Connect, and tag the commit ios-v<build>. An existing tag is a warning,
+#   not a failure, so an edit that changes nothing but minShell uploads nothing.
+#
+# epinoia/ios/version.json is the single source of truth for the version: this workflow reads it,
+# Info.plist gets it through MARKETING_VERSION / CURRENT_PROJECT_VERSION, the site reads it.
+#
+# macos-26: App Store Connect has required uploads built with Xcode 26 (the iOS 26 SDK) since
+# April 2026. setup-xcode then picks the newest stable Xcode on the image.
+
+on:
+  push:
+    # '**' matches every branch. Naming branches at all also stops tag pushes from triggering a
+    # build, including the ios-v* tags this workflow creates.
+    branches: ['**']
+    paths:
+      - 'ios/**'
+      - 'epinoia/ios/version.json'
+      - 'tools/build-ios-icons.py'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+# An upload creates a tag. Two runs racing on one ref could both see "no tag yet" and upload the
+# same build number twice (App Store Connect refuses the second), so runs queue, never overlap.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: false
+
+# READ BY DEFAULT, WRITE ONLY WHERE THE TAG IS MADE.
+permissions:
+  contents: read
+
+env:
+  BUNDLE_ID: uk.co.prophesyscouting.epinoia
+  APP_PATH: ios/build/Build/Products/Release-iphonesimulator/Epinoia.app
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      # SECRETS CANNOT BE TESTED IN A STEP'S if:, but they can be read here. This is 'true' only
+      # when all seven are set; nothing is printed.
+      HAS_SIGNING: ${{ secrets.IOS_DIST_CERT_P12_BASE64 != '' && secrets.IOS_DIST_CERT_PASSWORD != '' && secrets.IOS_PROFILE_BASE64 != '' && secrets.IOS_TEAM_ID != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_KEY_P8_BASE64 != '' }}
+    steps:
+      # THE TOKEN IS NOT LEFT IN .git/config. xcodebuild and Homebrew run on this checkout, and a
+      # write token there could push to main, which is the live site. The tag step passes
+      # github.token to gh itself, and ls-remote on this public repo needs no credentials.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # ------------------------------------------------------------------ cheap checks first --
+      # HERE-STRINGS, NOT PIPES, INTO grep -q: with pipefail on, grep exiting at the first match
+      # can kill the writer with SIGPIPE and fail the step for no real reason.
+      - name: The iOS app's configuration agrees with itself
+        run: |
+          for f in ios/Epinoia/Info.plist ios/Epinoia/Epinoia.entitlements ios/Epinoia/PrivacyInfo.xcprivacy; do
+            plutil -lint "$f"
+          done
+          for f in epinoia/ios/version.json ios/Epinoia/Assets.xcassets/Contents.json ios/Epinoia/Assets.xcassets/*/Contents.json; do
+            jq empty "$f"
+            echo "$f: OK"
+          done
+
+          # App Store Connect refuses a marketing icon with an alpha channel (ITMS-90717).
+          icon=ios/Epinoia/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+          props=$(sips -g pixelWidth -g pixelHeight -g hasAlpha "$icon")
+          echo "$props"
+          if ! grep -q 'pixelWidth: 1024' <<< "$props" || ! grep -q 'pixelHeight: 1024' <<< "$props"; then
+            echo "::error file=$icon::The App Store icon must be 1024x1024. Run python tools/build-ios-icons.py."
+            exit 1
+          fi
+          if grep -q 'hasAlpha: yes' <<< "$props"; then
+            echo "::error file=$icon::The App Store icon has an alpha channel, which App Store Connect rejects. Run python tools/build-ios-icons.py."
+            exit 1
+          fi
+
+          aps=$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' ios/Epinoia/Epinoia.entitlements)
+          if [ "$aps" != "production" ]; then
+            echo "::error file=ios/Epinoia/Epinoia.entitlements::aps-environment is '$aps'. Store builds need 'production'; a local development value must not be committed."
+            exit 1
+          fi
+          if ! grep -q "PRODUCT_BUNDLE_IDENTIFIER: $BUNDLE_ID\$" ios/project.yml; then
+            echo "::error file=ios/project.yml::PRODUCT_BUNDLE_IDENTIFIER must be $BUNDLE_ID (the same package as the Android app)."
+            exit 1
+          fi
+
+      # VERSION.JSON IS READ ONCE, HERE. A build that is not a positive integer would give a tag
+      # like ios-vnull, and App Store Connect wants x.y.z for the version, so the run stops first.
+      - name: Read the app version
+        id: version
+        run: |
+          build=$(jq -r '.build' epinoia/ios/version.json)
+          version=$(jq -r '.version' epinoia/ios/version.json)
+          if ! [[ "$build" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error file=epinoia/ios/version.json::build must be a positive integer, got '$build'."
+            exit 1
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=epinoia/ios/version.json::version must look like 1.2.3, got '$version'."
+            exit 1
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Epinoia for iPhone $version (build $build)"
+
+      # ------------------------------------------------------------------------- the project --
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show the Xcode in use
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Generate the Xcode project
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+        run: |
+          if ! command -v xcodegen > /dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+          cd ios
+          xcodegen generate --spec project.yml
+
+      # ------------------------------------------------------------------- simulator build --
+      # xcbeautify (on GitHub's macOS images) turns compile errors into annotations on the files;
+      # without it the plain log is printed. pipefail keeps a failed xcodebuild failing the step.
+      - name: Build for the simulator (unsigned, Release)
+        id: simbuild
+        env:
+          BUILD: ${{ steps.version.outputs.build }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -o pipefail
+          args=(
+            -project ios/Epinoia.xcodeproj
+            -scheme Epinoia
+            -configuration Release
+            -sdk iphonesimulator
+            -destination 'generic/platform=iOS Simulator'
+            -derivedDataPath ios/build
+            CODE_SIGNING_ALLOWED=NO
+            "MARKETING_VERSION=$VERSION"
+            "CURRENT_PROJECT_VERSION=$BUILD"
+            build
+          )
+          if command -v xcbeautify > /dev/null 2>&1; then
+            xcodebuild "${args[@]}" | xcbeautify --renderer github-actions
+          else
+            xcodebuild "${args[@]}"
+          fi
+
+      # The build must carry version.json's numbers and the files XcodeGen was trusted to include.
+      - name: Check what was built
+        env:
+          BUILD: ${{ steps.version.outputs.build }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::$APP_PATH was not built."
+            exit 1
+          fi
+          plist="$APP_PATH/Info.plist"
+          value() { /usr/libexec/PlistBuddy -c "Print :$1" "$plist"; }
+          echo "CFBundleDisplayName: $(value CFBundleDisplayName)"
+          if [ "$(value CFBundleIdentifier)" != "$BUNDLE_ID" ]; then
+            echo "::error::CFBundleIdentifier is $(value CFBundleIdentifier), expected $BUNDLE_ID."
+            exit 1
+          fi
+          if [ "$(value CFBundleVersion)" != "$BUILD" ] || [ "$(value CFBundleShortVersionString)" != "$VERSION" ]; then
+            echo "::error::The app says $(value CFBundleShortVersionString) ($(value CFBundleVersion)), version.json says $VERSION ($BUILD)."
+            exit 1
+          fi
+          if [ ! -f "$APP_PATH/PrivacyInfo.xcprivacy" ]; then
+            echo "::error::PrivacyInfo.xcprivacy is not in the app bundle; add it to the resources in ios/project.yml."
+            exit 1
+          fi
+          icon_name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$plist" 2> /dev/null || true)
+          if [ ! -f "$APP_PATH/Assets.car" ] || [ "$icon_name" != "AppIcon" ]; then
+            echo "::error::The asset catalog or the app icon was not compiled into the app (CFBundleIconName '$icon_name')."
+            exit 1
+          fi
+          echo "ok - $BUNDLE_ID $VERSION ($BUILD), privacy manifest and icon present"
+
+      # BEFORE THE SCREENSHOTS, so a simulator problem never loses the app itself.
+      - name: Zip the simulator app
+        run: ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/Epinoia-simulator.zip"
+
+      - name: Upload the simulator app
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-app
+          path: ${{ runner.temp }}/Epinoia-simulator.zip
+          if-no-files-found: error
+
+      # ----------------------------------------------------------------------- screenshots --
+      # The newest iPhone Pro Max the image has (any iPhone if there is none), Apple's 9:41 status
+      # bar, then each page passed with the launch argument the app reads (Site.startURL) and 25 s
+      # for the live site to load before the picture. Real pages, real data: a broken screenshot
+      # is a broken page or a broken app.
+      - name: Take screenshots in the simulator
+        timeout-minutes: 15
+        run: |
+          mkdir -p shots
+          devices=$(xcrun simctl list devices available -j)
+          udid=$(jq -r '
+            [ .devices | to_entries[]
+              | select(.key | test("SimRuntime.iOS-"))
+              | (.key | sub(".*iOS-"; "") | split("-") | map((tonumber? // 0))) as $v
+              | .value[]
+              | select(.isAvailable != false)
+              | {udid, name, v: $v} ]
+            | (map(select(.name | test("^iPhone .*Pro Max$"))) | sort_by(.v) | last)
+              // (map(select(.name | startswith("iPhone"))) | sort_by(.v) | last)
+            | .udid // empty' <<< "$devices")
+          if [ -z "$udid" ]; then
+            echo "::error::No available iPhone simulator on this image."
+            exit 1
+          fi
+          name=$(jq -r --arg u "$udid" '[.devices[][] | select(.udid == $u) | .name][0]' <<< "$devices")
+          echo "Simulator: $name ($udid)"
+
+          xcrun simctl boot "$udid" > /dev/null 2>&1 || true   # "already booted" is fine; bootstatus reports real failures
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          xcrun simctl install "$udid" "$APP_PATH"
+
+          names=(home fixtures stats team)
+          urls=(
+            'https://prophesyscouting.co.uk/epinoia/home/?source=ios'
+            'https://prophesyscouting.co.uk/epinoia/fixtures/?l=slb-men'
+            'https://prophesyscouting.co.uk/epinoia/stats/?l=slb-men'
+            'https://prophesyscouting.co.uk/epinoia/t/?t=b-braun-sheffield-sharks'
+          )
+          for i in "${!urls[@]}"; do
+            n=$(printf '%02d' $((i + 1)))
+            xcrun simctl terminate "$udid" "$BUNDLE_ID" > /dev/null 2>&1 || true
+            xcrun simctl launch "$udid" "$BUNDLE_ID" -EpinoiaStartURL "${urls[$i]}"
+            sleep 25
+            xcrun simctl io "$udid" screenshot "shots/$n-${names[$i]}.png"
+          done
+          ls -l shots
+
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-screenshots
+          path: shots/
+          if-no-files-found: warn
+
+      # ------------------------------------------------------------------ the .p12 path, proven --
+      # THE OWNER EXPORTS THE CERTIFICATE ON WINDOWS WITH OPENSSL 3. OpenSSL 3's default .p12
+      # (AES-256 and a PBKDF2 MAC) is refused by the macOS keychain with a bare "MAC verification
+      # failed", and that would first show up on the day of the first release. So every run builds
+      # a throwaway self-signed certificate and exports it with EXACTLY the owner's flags, then
+      # imports it with EXACTLY the release step's command. Homebrew's openssl@3 stands in for
+      # Windows' (macOS's own openssl is LibreSSL).
+      - name: Check a Windows-style .p12 imports into a keychain
+        run: |
+          prefix=$(brew --prefix openssl@3 2> /dev/null || true)
+          if [ -n "$prefix" ] && [ -x "$prefix/bin/openssl" ]; then
+            ossl="$prefix/bin/openssl"
+          else
+            ossl=$(command -v openssl)
+            echo "::warning::Homebrew openssl@3 is not on this image; checking with $ossl instead, which may not be OpenSSL 3."
+          fi
+          "$ossl" version
+
+          work="$RUNNER_TEMP/p12-check"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          "$ossl" req -x509 -newkey rsa:2048 -nodes -keyout check.key -out check.crt -days 1 -subj "/CN=Epinoia CI p12 check" 2> /dev/null
+          p12pass=$(uuidgen)
+          "$ossl" pkcs12 -export -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 \
+            -inkey check.key -in check.crt -name "Epinoia CI p12 check" -passout "pass:$p12pass" -out check.p12
+
+          kc="$work/check.keychain-db"
+          kcpass=$(uuidgen)
+          security create-keychain -p "$kcpass" "$kc"
+          security unlock-keychain -p "$kcpass" "$kc"
+          # A format the keychain cannot read fails right here ("MAC verification failed" or a
+          # passphrase error), which is the failure this step exists to catch.
+          security import check.p12 -k "$kc" -P "$p12pass" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kcpass" "$kc" > /dev/null
+          # And the private key came with the certificate: an identity (listed even though a
+          # self-signed certificate is untrusted), or at least a private-key item (class 0x00000010).
+          ids=$(security find-identity "$kc")
+          items=$(security dump-keychain "$kc" 2> /dev/null || true)
+          security delete-keychain "$kc"
+          echo "$ids"
+          if ! grep -q 'Epinoia CI p12 check' <<< "$ids" && ! grep -q '0x00000010' <<< "$items"; then
+            echo "::error::The .p12 imported without its private key."
+            exit 1
+          fi
+          echo "ok - an OpenSSL 3 .p12 (PBE-SHA1-3DES, SHA-1 MAC) imports with its private key"
+
+      # --------------------------------------------------------------- signed App Store build --
+      # ONE UPLOAD PER BUILD NUMBER. App Store Connect refuses a build number it has seen, so an
+      # existing tag means "already uploaded" and the run ends green. git ls-remote exits 2 for
+      # "no such ref"; anything else unexpected stops the run rather than risk a double upload.
+      - name: Decide whether to upload a release
+        id: release
+        env:
+          TAG: ios-v${{ steps.version.outputs.build }}
+        run: |
+          if [ "$HAS_SIGNING" != "true" ]; then
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Unsigned build::The signing secrets (IOS_DIST_CERT_P12_BASE64, IOS_DIST_CERT_PASSWORD, IOS_PROFILE_BASE64, IOS_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64) are not all set. The simulator app and the screenshots are attached to this run; nothing goes to App Store Connect."
+            exit 0
+          fi
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Not main::The signing secrets are set, but builds go to App Store Connect only from main."
+            exit 0
+          fi
+          set +e
+          git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Already uploaded::Tag $TAG already exists, so nothing is uploaded. Raise build in epinoia/ios/version.json to ship a new app."
+          elif [ "$status" -eq 2 ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::git ls-remote failed (exit $status) while checking for tag $TAG."
+            exit 1
+          fi
+
+      # A TEMPORARY KEYCHAIN, NEVER THE LOGIN ONE, with a random password that is never printed.
+      # The partition list lets codesign use the key without a GUI prompt (which on a runner would
+      # hang until the timeout). Apple's WWDR G3 intermediate is added so the distribution
+      # certificate's chain is complete even if the image lacks it. The profile is checked before
+      # minutes of archiving: the right app ID, push for production, associated domains.
+      # Xcode 16 and later read profiles from ~/Library/Developer/Xcode/UserData; older tools from
+      # ~/Library/MobileDevice. It is copied to both.
+      - name: Install the distribution certificate and profile
+        id: signing
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          umask 077
+          kc="$RUNNER_TEMP/epinoia-signing.keychain-db"
+          kcpass=$(uuidgen)
+          security create-keychain -p "$kcpass" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$kcpass" "$kc"
+          echo "keychain=$kc" >> "$GITHUB_OUTPUT"
+
+          # tr strips the line breaks and spaces a Windows base64 paste carries.
+          printf '%s' "$IOS_DIST_CERT_P12_BASE64" | tr -d '\r\n ' | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          if [ ! -s "$RUNNER_TEMP/dist.p12" ]; then
+            echo "::error::IOS_DIST_CERT_P12_BASE64 decoded to an empty file."
+            exit 1
+          fi
+          security import "$RUNNER_TEMP/dist.p12" -k "$kc" -P "$IOS_DIST_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dist.p12"
+
+          if curl -fsSL --retry 3 -o "$RUNNER_TEMP/AppleWWDRCAG3.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer; then
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$kc" > /dev/null 2>&1 || true
+          else
+            echo "::warning::Could not download Apple's WWDR G3 intermediate; relying on the image's copy."
+          fi
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kcpass" "$kc" > /dev/null
+          existing=$(security list-keychains -d user | tr -d '"' | xargs)
+          # shellcheck disable=SC2086
+          security list-keychains -d user -s "$kc" $existing
+
+          identities=$(security find-identity -v -p codesigning "$kc")
+          echo "$identities"
+          if ! grep -q '"Apple Distribution' <<< "$identities"; then
+            echo "::error::The .p12 holds no valid Apple Distribution identity (certificate plus private key)."
+            exit 1
+          fi
+
+          profile="$RUNNER_TEMP/epinoia.mobileprovision"
+          printf '%s' "$IOS_PROFILE_BASE64" | tr -d '\r\n ' | base64 --decode > "$profile"
+          security cms -D -i "$profile" > "$RUNNER_TEMP/profile.plist"
+          field() { /usr/libexec/PlistBuddy -c "Print :$1" "$RUNNER_TEMP/profile.plist" 2> /dev/null || true; }
+          uuid=$(field UUID)
+          name=$(field Name)
+          appid=$(field Entitlements:application-identifier)
+          aps=$(field Entitlements:aps-environment)
+          domains=$(field Entitlements:com.apple.developer.associated-domains)
+          if [ -z "$uuid" ] || [ -z "$name" ]; then
+            echo "::error::IOS_PROFILE_BASE64 is not a readable provisioning profile."
+            exit 1
+          fi
+          if [ "$appid" != "$IOS_TEAM_ID.$BUNDLE_ID" ]; then
+            echo "::error::The profile '$name' is for $appid, not $BUNDLE_ID in team IOS_TEAM_ID."
+            exit 1
+          fi
+          if [ "$aps" != "production" ]; then
+            echo "::error::The profile '$name' has no production push entitlement. Turn on Push Notifications for the App ID, then regenerate and re-download the App Store profile."
+            exit 1
+          fi
+          if [ -z "$domains" ]; then
+            echo "::error::The profile '$name' has no Associated Domains entitlement. Turn it on for the App ID, then regenerate the profile."
+            exit 1
+          fi
+          for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME/Library/MobileDevice/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            cp "$profile" "$dir/$uuid.mobileprovision"
+          done
+          echo "profile_uuid=$uuid" >> "$GITHUB_OUTPUT"
+          echo "profile_name=$name" >> "$GITHUB_OUTPUT"
+          echo "Provisioning profile: $name ($uuid)"
+
+      - name: Archive, signed for the App Store
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        env:
+          BUILD: ${{ steps.version.outputs.build }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          PROFILE_NAME: ${{ steps.signing.outputs.profile_name }}
+          KEYCHAIN: ${{ steps.signing.outputs.keychain }}
+        run: |
+          set -o pipefail
+          args=(
+            archive
+            -project ios/Epinoia.xcodeproj
+            -scheme Epinoia
+            -configuration Release
+            -destination 'generic/platform=iOS'
+            -archivePath "$RUNNER_TEMP/Epinoia.xcarchive"
+            "DEVELOPMENT_TEAM=$IOS_TEAM_ID"
+            CODE_SIGN_STYLE=Manual
+            "CODE_SIGN_IDENTITY=Apple Distribution"
+            "PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
+            "OTHER_CODE_SIGN_FLAGS=--keychain $KEYCHAIN"
+            "MARKETING_VERSION=$VERSION"
+            "CURRENT_PROJECT_VERSION=$BUILD"
+          )
+          if command -v xcbeautify > /dev/null 2>&1; then
+            xcodebuild "${args[@]}" | xcbeautify --renderer github-actions
+          else
+            xcodebuild "${args[@]}"
+          fi
+
+      # Two export option files from one script: "export" writes the .ipa now, "upload" is the
+      # fallback below when altool cannot upload. plistlib writes them, so a profile name with an
+      # ampersand or quotes cannot break the XML.
+      - name: Export the .ipa
+        id: export
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          PROFILE_NAME: ${{ steps.signing.outputs.profile_name }}
+        run: |
+          python3 - "$RUNNER_TEMP" <<'PY'
+          import os
+          import plistlib
+          import sys
+
+          for destination in ('export', 'upload'):
+              options = {
+                  'method': 'app-store-connect',
+                  'destination': destination,
+                  'teamID': os.environ['IOS_TEAM_ID'],
+                  'signingStyle': 'manual',
+                  'signingCertificate': 'Apple Distribution',
+                  'provisioningProfiles': {os.environ['BUNDLE_ID']: os.environ['PROFILE_NAME']},
+                  'uploadSymbols': True,
+                  'manageAppVersionAndBuildNumber': False,
+              }
+              with open(os.path.join(sys.argv[1], 'ExportOptions-%s.plist' % destination), 'wb') as f:
+                  plistlib.dump(options, f)
+          PY
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Epinoia.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions-export.plist" \
+            -exportPath "$RUNNER_TEMP/export"
+          ipa=$(find "$RUNNER_TEMP/export" -name '*.ipa' -print -quit)
+          if [ -z "$ipa" ]; then
+            echo "::error::The export produced no .ipa."
+            exit 1
+          fi
+          ls -l "$ipa"
+          echo "ipa=$ipa" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the .ipa
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: ${{ steps.export.outputs.ipa }}
+          if-no-files-found: error
+
+      # ALTOOL FIRST, XCODEBUILD IF ALTOOL IS GONE. altool --upload-app has been deprecated for
+      # years; if this Xcode no longer has it, or no longer knows the command, the same archive is
+      # exported again with destination "upload", which sends it to App Store Connect with the same
+      # API key. Any other altool failure (a rejected build) stops here: retrying cannot fix it.
+      # altool finds the key by its file name, AuthKey_<ASC_KEY_ID>.p8, in ~/.appstoreconnect/private_keys.
+      - name: Upload to App Store Connect
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          IPA: ${{ steps.export.outputs.ipa }}
+        run: |
+          umask 077
+          keydir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$keydir"
+          p8="$keydir/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8_BASE64" | tr -d '\r\n ' | base64 --decode > "$p8"
+          if [ ! -s "$p8" ]; then
+            echo "::error::ASC_KEY_P8_BASE64 decoded to an empty file."
+            exit 1
+          fi
+
+          uploaded=false
+          if xcrun --find altool > /dev/null 2>&1; then
+            set +e
+            out=$(xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1)
+            status=$?
+            set -e
+            printf '%s\n' "$out"
+            if [ "$status" -eq 0 ] && ! grep -qE 'ERROR ITMS-|\*\*\* Error' <<< "$out"; then
+              uploaded=true
+            elif grep -qiE 'unknown (command|option)|unrecognized (command|option)|not a valid (command|option)|no longer supported' <<< "$out"; then
+              echo "::warning::altool cannot upload apps in this Xcode; uploading with xcodebuild instead."
+            else
+              echo "::error::altool could not upload the build (exit $status). The log above says why."
+              exit 1
+            fi
+          else
+            echo "::notice::altool is not in this Xcode; uploading with xcodebuild."
+          fi
+
+          if [ "$uploaded" != "true" ]; then
+            xcodebuild -exportArchive \
+              -archivePath "$RUNNER_TEMP/Epinoia.xcarchive" \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions-upload.plist" \
+              -exportPath "$RUNNER_TEMP/upload" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$p8" \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          fi
+
+      # A lightweight tag through the API, with the job's own token passed to gh for this one call
+      # (the checkout kept no credentials). Tags made with github.token start no workflow runs.
+      - name: Tag the upload
+        if: env.HAS_SIGNING == 'true' && steps.release.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ios-v${{ steps.version.outputs.build }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA" > /dev/null
+          echo "::notice title=Uploaded::EPINOIΛ for iPhone $VERSION (build $BUILD) is on App Store Connect and tagged $TAG. It appears in TestFlight once Apple has processed it."
+
+      # Always, even after a failed step: no signing material outlives the job.
+      - name: Delete the signing material
+        if: always()
+        env:
+          PROFILE_UUID: ${{ steps.signing.outputs.profile_uuid }}
+        run: |
+          if [ -f "$RUNNER_TEMP/epinoia-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/epinoia-signing.keychain-db" || true
+          fi
+          rm -f "$RUNNER_TEMP/dist.p12" "$RUNNER_TEMP/epinoia.mobileprovision" "$RUNNER_TEMP/profile.plist" \
+            "$RUNNER_TEMP/AppleWWDRCAG3.cer" "$RUNNER_TEMP"/ExportOptions-*.plist
+          rm -rf "$HOME/.appstoreconnect/private_keys" "$RUNNER_TEMP/p12-check"
+          if [ -n "$PROFILE_UUID" ]; then
+            rm -f "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/$PROFILE_UUID.mobileprovision" \
+              "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          fi

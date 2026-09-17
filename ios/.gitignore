@@ -1,0 +1,18 @@
+# GENERATED, NEVER COMMITTED. XcodeGen writes the project from project.yml (see README.md).
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# BUILD OUTPUT. CI builds into ios/build; Xcode on a Mac uses DerivedData.
+build/
+DerivedData/
+*.ipa
+*.xcarchive
+
+# SIGNING MATERIAL NEVER COMES NEAR THIS FOLDER. It lives in GitHub secrets and is decoded into the
+# runner's temporary directory for one job. Listed anyway, as a second lock.
+*.p12
+*.cer
+*.mobileprovision
+*.p8
+ExportOptions*.plist

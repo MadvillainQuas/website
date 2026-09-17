@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    WHAT THE APP IS ALLOWED TO DO, checked by iOS against the provisioning profile it is signed with.
+
+    aps-environment: production. The App Store and TestFlight only ever talk to Apple's production
+    push service, and CI only builds for those. A development build run from Xcode on a phone is
+    signed with a development profile, whose value is "development": change it locally for that
+    run (never commit it), and the app then reports apnsEnv 'sandbox' through the bridge (DEBUG).
+
+    Associated domains: applinks for the apex host only, never www (www 301-redirects, and iOS does
+    not follow a redirect when it fetches /.well-known/apple-app-site-association). The site's AASA
+    file names which paths open the app; the Team ID it needs is known once the Apple Developer
+    account exists.
+-->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>production</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:prophesyscouting.co.uk</string>
+	</array>
+</dict>
+</plist>
