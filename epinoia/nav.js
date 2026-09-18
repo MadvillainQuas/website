@@ -1460,7 +1460,10 @@
      apply). And not the platform's own tools (the console, the scorer, the broadcast
      room, a profile), which are nobody's league. teamcolour.js is loaded only when a
      page needs it and has not loaded it already, at this file's own stamp. */
-  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|video|join)\//;
+  /* injuries is here for the LEAGUE's report (?l=…). The global wire is the same path with no
+     league named, and themeLeague only paints when a page has named one, so it stays the
+     platform's own colours without needing a rule of its own. */
+  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|video|join|injuries)\//;
   const CLUB_PAGE = /\/epinoia\/(t|p)\//;
   let themedFor = '';
   let teamColour = null;
