@@ -668,6 +668,35 @@ def enqueue_video_job(sb: Supabase, game_id: str) -> bool:
 
 _CLOCK_SEEN: dict = {}      # game_id -> (clock_ms at the last read, when), for the running flag under the heartbeat
 
+
+def _clock_ms(text) -> int | None:
+    """"9:45" or "00:51:40" (mm:ss:cc) -> milliseconds remaining. None when it is not a clock."""
+    parts = str(text or "").strip().split(":")
+    if len(parts) < 2:
+        return None
+    try:
+        return (int(parts[0]) * 60 + int(float(parts[1]))) * 1000
+    except (TypeError, ValueError):
+        return None
+
+
+def _clock_from_log(actions) -> int | None:
+    """The clock at the furthest point the log has reached.
+
+    NOT "the last row in the list". The order a feed hands its actions over in is not something
+    to rely on (see docs: the pbp-ordering trap), so this asks the question by value: the highest
+    period, and within it the least time remaining. A log that arrives reversed, or with a
+    correction appended out of order, gives the same answer."""
+    best = None
+    for a in actions or []:
+        ms = _clock_ms(a.get("gt"))
+        if ms is None:
+            continue
+        key = (int(a.get("period") or 0), -ms)
+        if best is None or key > best[0]:
+            best = (key, ms)
+    return best[1] if best else None
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
                    stamps: dict | None = None) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
@@ -1221,12 +1250,15 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
             how += f", {sum(1 for r in fresh if r['seq'] in mem)} by memory" + (" (refill)" if refill else "")
     # scoreboard state: FIBA's clock is mm:ss remaining in the current period
     live = b.status == "live"
-    clock_ms = 0
-    try:
-        mm, ss = str(b.raw.get("clock") or "0:00").split(":")[:2]
-        clock_ms = (int(mm) * 60 + int(float(ss))) * 1000
-    except Exception:
-        pass
+    clock_ms = _clock_ms(str(b.raw.get("clock") or "")) or 0
+    if not clock_ms:
+        # NOT EVERY FEED PRINTS A CLOCK. FIBA's own data.json carries `clock` beside the score;
+        # a league whose adapter rebuilds the payload from its own back end may carry only the
+        # log and the two team blocks -- LNB and both Espoirs divisions hand over {'pbp', 'tm'}
+        # and nothing else. The clock was read off the missing key, came out 0, and every French
+        # game showed "Q1 0:00" from tip to final hooter while lnb.fr showed the real clock
+        # (reported 2026-09-18). The log knows: every action carries the time it happened at.
+        clock_ms = _clock_from_log(b.raw.get("pbp")) or 0
     # `running` is FALSE for a fed game on the ordinary cadence: the page would otherwise count
     # the clock down locally between ten-second polls, and a feed clock is only ever as current
     # as its last event. Under the BROADCAST HEARTBEAT (a read every couple of seconds) the
