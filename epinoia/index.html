@@ -15,15 +15,15 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-app-180.png">
-<script src="appmode.js?v=296" data-water="front"></script>
-<script src="mode.js?v=296"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=296">
-<link rel="stylesheet" href="kit/haze.css?v=296">
-<link rel="stylesheet" href="kit/nav.css?v=296">
-<link rel="stylesheet" href="kit/card.css?v=296">
-<link rel="stylesheet" href="kit/news.css?v=296">
-<link rel="stylesheet" href="kit/splash.css?v=296">
-<link rel="stylesheet" href="kit/access.css?v=296">
+<script src="appmode.js?v=297" data-water="front"></script>
+<script src="mode.js?v=297"></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=297">
+<link rel="stylesheet" href="kit/haze.css?v=297">
+<link rel="stylesheet" href="kit/nav.css?v=297">
+<link rel="stylesheet" href="kit/card.css?v=297">
+<link rel="stylesheet" href="kit/news.css?v=297">
+<link rel="stylesheet" href="kit/splash.css?v=297">
+<link rel="stylesheet" href="kit/access.css?v=297">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   /* the platform's wordmark, top left of a league's front page: the way back to HOME */
@@ -161,6 +161,11 @@
      lines. object-fit keeps any shape whole inside that height. On a phone, where the name needs
      the whole width, the logo goes above it. */
   .hero-head{font-size:clamp(38px,9vw,74px)}
+  /* the league's own actions, directly under its name */
+  .hero-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:calc(var(--u)*1.5)}
+  .hero-acts:empty{display:none}
+  .hero-acts .ep-follow{background:var(--panel)}
+  body.league-themed .hero-acts .ep-follow.on{background:var(--league-a);border-color:var(--league-a)}
   .hero-head.has-logo{display:flex;align-items:center;gap:clamp(14px,2.4vw,30px)}
   .hero-head.has-logo .wordmark{flex:1 1 auto;min-width:0}
   .lg-logo{height:1.72em;width:auto;max-width:min(38%,240px);object-fit:contain;
@@ -580,6 +585,12 @@
     <!-- THE WAY HOME. Class wm, not wordmark: home.js renames the .wordmark below to the league's name. -->
     <a class="plain hm-home" href="home/"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
     <div class="hero-head"><div class="wordmark epinoia-mark" aria-label="Epinoia">EPINOIΛ</div></div>
+    <!-- FOLLOW THE WHOLE LEAGUE. home.js mounts the bell here once it knows which league
+         this is; empty on the hub, and on a database that has not taken 0133 yet. Its own
+         row rather than inside .hero-head, which becomes a column on a phone when the
+         league has a logo and would stack a pill under the badge. -->
+    <div class="hero-acts" id="leagueActs"></div>
+
     <div class="tagline">
       Live box scores, standings and season statistics.
     </div>
@@ -746,36 +757,36 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=296" defer></script>
+<script src="config.js?v=297" defer></script>
 <!-- memberships: the league splash's paywall card, its "Become a member" card and
      a member's auth headers. Nothing is asked of the server on the platform hub. -->
-<script src="access.js?v=296" defer></script>
-<script src="follow.js?v=296" defer></script>
-<script src="teamcolour.js?v=296" defer></script>
-<script src="rt.js?v=296" defer></script>
+<script src="access.js?v=297" defer></script>
+<script src="follow.js?v=297" defer></script>
+<script src="teamcolour.js?v=297" defer></script>
+<script src="rt.js?v=297" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=296" defer></script>
-<script src="bpm.js?v=296" defer></script>
-<script src="data.js?v=296" defer></script>
-<script src="merch.js?v=296" defer></script>
-<script src="upload.js?v=296" defer></script>
-<script src="newsblocks.js?v=296" defer></script>
-<script src="news.js?v=296" defer></script>
-<script src="toty.js?v=296" defer></script>
-<script src="igtile.js?v=296" defer></script>
-<script src="socials.js?v=296" defer></script>
-<script src="music.js?v=296" defer></script>
-<script src="splash.js?v=296" defer></script>
+<script src="season.js?v=297" defer></script>
+<script src="bpm.js?v=297" defer></script>
+<script src="data.js?v=297" defer></script>
+<script src="merch.js?v=297" defer></script>
+<script src="upload.js?v=297" defer></script>
+<script src="newsblocks.js?v=297" defer></script>
+<script src="news.js?v=297" defer></script>
+<script src="toty.js?v=297" defer></script>
+<script src="igtile.js?v=297" defer></script>
+<script src="socials.js?v=297" defer></script>
+<script src="music.js?v=297" defer></script>
+<script src="splash.js?v=297" defer></script>
 <!-- the clubs' letters for the fixture rows on a phone (home.js teamName) -->
-<script src="initials.js?v=296" defer></script>
-<script src="stars.js?v=296" defer></script>
+<script src="initials.js?v=297" defer></script>
+<script src="stars.js?v=297" defer></script>
 <!-- which clubs are in which competition, for the Clubs grid -->
-<script src="comps.js?v=296" defer></script>
+<script src="comps.js?v=297" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="haze.js?v=296" defer></script>
-<script src="home.js?v=296" defer></script>
-<script src="nav.js?v=296" defer></script>
-<script src="xscroll.js?v=296" defer></script>
+<script src="haze.js?v=297" defer></script>
+<script src="home.js?v=297" defer></script>
+<script src="nav.js?v=297" defer></script>
+<script src="xscroll.js?v=297" defer></script>
 </body>
 </html>

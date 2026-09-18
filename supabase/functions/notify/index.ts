@@ -129,8 +129,12 @@ Deno.serve(async (req) => {
 
   /* The v2 columns (0121) are read when they exist; a function deployed ahead of the
      migration falls back to v1's, so delivery never stops over a deploy order. */
-  const V2 = 'id,user_id,kind,title,body,link,ref,game_id,data,expires_at,urgency,created_at';
-  const V1 = 'id,user_id,kind,title,body,link,ref,game_id,created_at';
+  /* league_id rides along so a push can say which pile it belongs to (pushpayload.js
+     group): a fan following a whole league can have several games land together, and the
+     service worker folds them into one notice. It has been on the table since 0106, so
+     both shapes can ask for it. */
+  const V2 = 'id,user_id,kind,title,body,link,ref,game_id,league_id,data,expires_at,urgency,created_at';
+  const V1 = 'id,user_id,kind,title,body,link,ref,game_id,league_id,created_at';
   const pending = async (stamp: 'emailed_at' | 'pushed_at', users: string[]) => {
     if (!users.length) return [] as any[];
     const q = (cols: string) => admin.from('notifications').select(cols)
@@ -201,11 +205,20 @@ Deno.serve(async (req) => {
       : [];
     const byUser = new Map<string, any[]>();
     subs.forEach((s: any) => { const a = byUser.get(s.user_id) ?? []; a.push(s); byUser.set(s.user_id, a); });
+    /* what to call each pile, in one read: "3 updates in British Championship Basketball"
+       rather than "3 updates". A league that cannot be read is simply not named. */
+    const lgIds = [...new Set(toPush.map((n: any) => n.league_id).filter(Boolean))];
+    const lgName = new Map<string, string>();
+    if (lgIds.length) {
+      const r = await admin.from('leagues').select('id,name').in('id', lgIds);
+      ((r.data ?? []) as any[]).forEach(l => lgName.set(l.id, l.name));
+    }
     const dead: string[] = [];
     const outcomes = new Map<string, { status: number; error: string | null }>();
     for (const n of toPush) {
       const mine = byUser.get(n.user_id) ?? [];
-      const payload = JSON.stringify(payloadFor(n, site, Date.now()));
+      const payload = JSON.stringify(payloadFor(n, site, Date.now(),
+        { groupName: (n.league_id && lgName.get(n.league_id)) || '' }));
       const options = webpushOptions(n, Date.now());
       let sent = 0;
       for (const s of mine) {

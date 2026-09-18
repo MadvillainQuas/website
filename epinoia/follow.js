@@ -9,7 +9,11 @@
 
    Reads the stored session the way nav.js does (no SDK on public pages), loads the
    fan's row once, and keeps every bell on the page for the same thing in step.
-     window.EpinoiaFollow.bell('game' | 'team' | 'player', id, { label, name })  -> element
+     window.EpinoiaFollow.bell('game' | 'team' | 'player' | 'league', id, { label, name })  -> element
+
+   A LEAGUE IS THE WHOLE LEAGUE (0133): following one brings every game in it, and every
+   game of a club that joins it later, because the audience expands the league into its
+   clubs when the notices are made rather than when the follow was saved.
 
    A FOLLOW IS WHEN A PHONE IS WORTH ASKING ABOUT (docs/notifications.md §5). Once a
    follow has saved, push.js is loaded (beside this file, same version stamp) and
@@ -19,9 +23,15 @@
    ============================================================================ */
 (function () {
   const C = () => window.EPINOIA_CONFIG || {};
-  const KEY = { game: 'fav_game_ids', team: 'fav_team_ids', player: 'fav_player_ids' };
-  const WHAT = { game: 'this game', team: 'this club', player: 'this player' };
+  const KEY = { game: 'fav_game_ids', team: 'fav_team_ids', player: 'fav_player_ids',
+                league: 'fav_league_ids' };
+  const WHAT = { game: 'this game', team: 'this club', player: 'this player',
+                 league: 'every game in this league' };
   let prefs = null, loading = null, sess = null;
+  /* which follow lists this database actually has. A page asks before it mounts a bell for
+     one the database has never heard of, because the write would be quietly ignored and the
+     bell would sit there lit, having saved nothing. */
+  let cols = null;
 
   function session() {
     if (sess !== null) return sess || null;
@@ -42,10 +52,19 @@
     if (prefs) return Promise.resolve(prefs);
     if (loading) return loading;
     if (!session()) return Promise.resolve(null);
-    loading = fetch(C().supabaseUrl + '/rest/v1/fan_prefs?select=fav_game_ids,fav_team_ids,fav_player_ids', { cache: 'no-store', headers: headers() })
-      .then(r => r.ok ? r.json() : [])
-      .then(rows => { prefs = rows[0] || { fav_game_ids: [], fav_team_ids: [], fav_player_ids: [] }; return prefs; })
-      .catch(() => { prefs = { fav_game_ids: [], fav_team_ids: [], fav_player_ids: [] }; return prefs; });
+    /* fav_league_ids arrived in 0133. A browser holding this file from cache against a
+       database that has not taken the migration yet would get a 400 and no bells at all,
+       so the column is dropped and the read repeated; a league bell is simply off until
+       the migration lands, and every other bell works as it always did. */
+    const BLANK = { fav_game_ids: [], fav_team_ids: [], fav_player_ids: [], fav_league_ids: [] };
+    const read = cols => fetch(C().supabaseUrl + '/rest/v1/fan_prefs?select=' + cols,
+      { cache: 'no-store', headers: headers() }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+    loading = read('fav_game_ids,fav_team_ids,fav_player_ids,fav_league_ids')
+      .then(rows => { cols = ['fav_game_ids', 'fav_team_ids', 'fav_player_ids', 'fav_league_ids']; return rows; })
+      .catch(() => read('fav_game_ids,fav_team_ids,fav_player_ids')
+        .then(rows => { cols = ['fav_game_ids', 'fav_team_ids', 'fav_player_ids']; return rows; }))
+      .then(rows => { prefs = Object.assign({}, BLANK, rows[0] || {}); return prefs; })
+      .catch(() => { prefs = Object.assign({}, BLANK); return prefs; });
     return loading;
   }
   const has = (kind, id) => !!(prefs && (prefs[KEY[kind]] || []).includes(id));
@@ -95,6 +114,10 @@
     const on = has(b.dataset.kind, b.dataset.id);
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
+    /* A LABELLED BELL SAYS WHICH IT IS. "Follow the league" in a lit pill is a sentence
+       arguing with its own colour; a caller that gives both words gets the right one. */
+    const sp = b.dataset.labelOn ? b.querySelector('span') : null;
+    if (sp) sp.textContent = on ? b.dataset.labelOn : (b.dataset.labelOff || sp.textContent);
     b.title = session() ? ((on ? 'following ' : 'follow ') + WHAT[b.dataset.kind] + (on ? ' — tap to stop' : ' — results and fixtures in your bell'))
                         : 'sign in to follow ' + WHAT[b.dataset.kind];
   }
@@ -110,7 +133,12 @@
     b.dataset.kind = kind; b.dataset.id = id;
     b.setAttribute('aria-label', 'follow ' + WHAT[kind]);
     b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>' +
-                  (o.label ? '<span>' + o.label + '</span>' : '');
+                  (o.label ? '<span></span>' : '');
+    if (o.label) {
+      b.dataset.labelOff = o.label;
+      b.dataset.labelOn = o.labelOn || o.label;
+      b.querySelector('span').textContent = o.label;
+    }
     b.addEventListener('click', e => {
       e.preventDefault(); e.stopPropagation();
       if (!session()) {
@@ -126,5 +154,10 @@
     return b;
   }
 
-  window.EpinoiaFollow = { bell, load, has, toggle, session };
+  /* Does this database hold that follow list? Unknown until the fan's row has been read, so
+     a caller awaits load() first; signed out it is unknowable and the answer is no, which is
+     right — the bell would lead to sign-in and the answer would be known by then. */
+  const supports = kind => !!(cols && cols.indexOf(KEY[kind]) >= 0);
+
+  window.EpinoiaFollow = { bell, load, has, toggle, session, supports };
 })();

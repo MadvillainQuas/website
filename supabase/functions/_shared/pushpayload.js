@@ -103,7 +103,13 @@ export function actionsFor(n) {
 
 /* the JSON the service worker receives (epinoia/sw.js reads exactly these keys).
    extra: a device's (docs/notify-embed.md §6) — {url} an absolute link to use instead of
-   the row's, {icon} the league's crest; an icon is only ever an https URL. */
+   the row's, {icon} the league's crest; an icon is only ever an https URL.
+
+   GROUP — which pile this notice belongs to, so the service worker can fold several that
+   land together into one (epinoia/sw.js, docs/notifications.md). A league is the unit: a
+   fan following a whole league (0133) can have three games finish within a minute of each
+   other, and three separate notices is three separate slots on a lock screen. {groupName}
+   is what to call the pile; without it the worker says how many, which is still true. */
 export function payloadFor(n, site, nowMs, extra) {
   const base = String(site || '').replace(/\/?$/, '/');
   /* A ROW WITH NO LINK OPENS HOME, not the site's root, which is the water splash: a tap that
@@ -122,6 +128,11 @@ export function payloadFor(n, site, nowMs, extra) {
     actions: actionsFor(n)
   };
   if (typeof x.icon === 'string' && /^https:\/\//.test(x.icon)) out.icon = x.icon;
+  const lg = n && n.league_id ? String(n.league_id) : '';
+  if (lg) {
+    out.group = 'lg:' + lg;
+    if (typeof x.groupName === 'string' && x.groupName) out.groupName = x.groupName;
+  }
   return out;
 }
 

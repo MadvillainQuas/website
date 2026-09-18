@@ -105,7 +105,14 @@ console.log('\n-- EPINOIΛ, and its logo on notifications');
   const sw = rd('epinoia', 'sw.js');
   ok('sw.js: the notification picture is the app logo, and a notice with no title says EPINOIΛ',
      /const ICON = '\/epinoia\/brand\/epinoia-app-192\.png';/.test(sw) && /return \{ title: 'EPINOIΛ', body: t \};/.test(sw));
-  ok('...a new worker version, so phones take it', /const SW_VERSION = 'notifications-v2-2026-09-17-offline';/.test(sw));
+  /* THE VERSION MOVES WHENEVER THE WORKER DOES, which is the point of it. Pinned to the
+     exact string this change shipped with, it went red on the next honest bump; what has to
+     be true is that there IS one, that it is dated, and that it is not one from before the
+     rename (a phone holding that one shows the old picture). */
+  ok('...a dated worker version, so phones take it',
+     /const SW_VERSION = 'notifications-v2-(\d{4}-\d{2}-\d{2})-[a-z]+';/.test(sw) &&
+     (/const SW_VERSION = 'notifications-v2-(\d{4}-\d{2}-\d{2})/.exec(sw) || [])[1] >= '2026-09-17',
+     (/const SW_VERSION = '[^']*'/.exec(sw) || [])[0]);
   const png = fs.readFileSync(path.join(ROOT, 'epinoia', 'brand', 'epinoia-app-192.png'));
   eq('the app logo for notifications is a 192px PNG', [png.readUInt32BE(16), png.readUInt32BE(20)], [192, 192]);
   const nav = rd('epinoia', 'nav.js');

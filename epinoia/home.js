@@ -875,6 +875,32 @@ function embedLook() {
    transparent link laid over it. That also makes the embed purely a picture
    here, which is what a summary should be: the reader either glances and moves
    on, or clicks through to the page where the thing is actually interactive. */
+/* ------------------------------------------------------- follow the league ---
+   ONE BELL FOR ALL OF IT. A fan could follow a club, a player or one game; somebody who
+   simply wants this league had to find every club and press every bell, and would still
+   miss a club that joined next season. Following the league is the league — the audience
+   expands it into the clubs playing in it when the notices are made (0133), so a new club
+   arrives already followed.
+
+   Mounted only when the database HAS that list. Without the migration, set_fan_prefs would
+   take the write and quietly drop it, and the bell would sit there lit having saved
+   nothing — which is worse than no bell. Signed out, follow.js cannot know, so no bell is
+   drawn and the rest of the page is unchanged; a reader who signs in gets it on the way
+   back, because the sign-in returns here. */
+function leagueBell() {
+  const host = $('#leagueActs');
+  const F = window.EpinoiaFollow;
+  if (!host || !F || !LEAGUE || !LEAGUE.id || typeof F.load !== 'function') return;
+  F.load().then(() => {
+    if (!F.supports || !F.supports('league') || host.querySelector('.ep-follow')) return;
+    const b = F.bell('league', LEAGUE.id, {
+      cls: 'big lbl', label: 'follow the league', labelOn: 'following the league',
+      name: LEAGUE.name
+    });
+    host.appendChild(b);
+  }).catch(() => { /* no bell; nothing else on the page depends on it */ });
+}
+
 /* which competition the two embeds are showing; '' until the season is known,
    which is the embed's own default (its first competition) */
 let splashComp = '';
@@ -1245,6 +1271,7 @@ function renumber() {
       tag.textContent = 'Live box scores, standings and season statistics for ' +
         LEAGUE.name + '.';
     }
+    leagueBell();
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
     }

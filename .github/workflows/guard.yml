@@ -540,6 +540,13 @@ jobs:
           node supabase/tests/initials.test.mjs
           node supabase/tests/phone-fixes.test.mjs
 
+      - name: Following a whole league, and folding what lands together
+        # fan_prefs.fav_league_ids (0133) reaches every game through notify_audience, which
+        # expands a followed league into the clubs playing in it; follow.js will not draw a
+        # bell for a list the database has never heard of; and from the third notice of one
+        # league the service worker folds them into a single expandable one
+        run: node supabase/tests/league-bell.test.mjs
+
       - name: The scorer is shut until somebody says otherwise
         # a signed-out visitor reached the statistician's app from HOME's foot and was shown a
         # league's fixture list: the link is now hidden in the markup and opened only on a

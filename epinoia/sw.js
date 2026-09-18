@@ -1,6 +1,6 @@
 /* ============================================================================
    Epinoia service worker — the phone side of notifications.
-   Version: notifications v2, 2026-09-17 (docs/notifications.md §5). Any byte
+   Version: notifications v2, 2026-09-18 (docs/notifications.md §5). Any byte
    changed here is a new worker to the browser; this line is the one to bump.
 
    Registered by nav.js on every page and by push.js when a fan turns notifications
@@ -25,7 +25,7 @@
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-17-offline';
+const SW_VERSION = 'notifications-v2-2026-09-18-grouped';
 const SITE_PATH = '/epinoia/';
 /* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
    window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
@@ -145,6 +145,88 @@ function notificationFor(payload) {
   return { title: typeof d.title === 'string' && d.title ? d.title : 'EPINOIΛ', options };
 }
 
+/* ======================================================= one pile, not three ===
+   THREE NOTICES THAT LAND TOGETHER ARE ONE PIECE OF NEWS. Following a whole league
+   (0133) means a Saturday afternoon can finish four games inside a minute, and four
+   separate notices is four separate slots on a lock screen — the reader clears them
+   without reading any. So from the third one they become a single notice that says how
+   many and lists them, one game to a line: Android expands a multi-line body when the
+   notification is pulled down, which is the "drop down to see more".
+
+   THE FIRST TWO ARE LEFT ALONE. One notice about one game is the thing itself, and
+   folding it into a summary of one would be worse. The third arriving is what turns the
+   pile into a pile, and it takes the first two in with it.
+
+   THE UNIT IS A LEAGUE (payload.group, 'lg:<id>'), not the whole phone: "3 games in the
+   British Championship" is a sentence, "3 notifications" is a count. A notice with no
+   league of its own is never grouped.
+
+   A REPLACEMENT IS NOT AN ADDITION. The two-hour reminder carries the same tag as the
+   two-day one deliberately (pushpayload.js tagFor), so an item with a tag already in the
+   pile takes its place rather than sitting beside it. */
+const GROUP_MIN = 3;          // two on screen and a third arriving
+const GROUP_MAX = 6;          // lines listed before the summary says how many more
+
+function itemOf(n) {
+  return { title: n.title, body: (n.options && n.options.body) || '',
+           url: (n.options && n.options.data && n.options.data.url) || HOME_PATH,
+           tag: (n.options && n.options.tag) || '' };
+}
+
+/* the pile a live notification stands for: a summary knows its own items, an ordinary
+   notice is one item */
+function itemsOf(live) {
+  const d = (live && live.data) || {};
+  if (Array.isArray(d.items) && d.items.length) return d.items.slice();
+  return [{ title: live.title || '', body: live.body || '', url: d.url || HOME_PATH, tag: live.tag || '' }];
+}
+
+/* items + what to call the pile -> the one notice that replaces them */
+function summaryFor(items, groupName, group) {
+  const shown = items.slice(-GROUP_MAX);
+  const rest = items.length - shown.length;
+  const line = i => i.title + (i.body ? ' — ' + i.body : '');
+  /* ONE GAME TO A LINE. A newline is what makes Android draw the expandable long-text
+     notification, which is the whole point of folding them together. */
+  const body = shown.map(line).join('\n') + (rest > 0 ? '\n…and ' + rest + ' more' : '');
+  const where = groupName ? ' in ' + groupName : '';
+  const newest = items[items.length - 1] || {};
+  return {
+    title: items.length + ' updates' + where,
+    options: {
+      body,
+      icon: ICON, badge: BADGE, vibrate: [80, 40, 80],
+      tag: 'grp:' + group,
+      renotify: true,
+      /* tapping opens the one that has just arrived — the reason the phone buzzed;
+         the button is for the rest of them */
+      data: { url: newest.url || HOME_PATH, kind: 'group', group, items,
+              actions: { all: SITE_PATH + 'games/' } },
+      actions: [{ action: 'all', title: 'All games' }]
+    }
+  };
+}
+
+/* What to show for an arriving notice: itself, or the pile it completes. Anything the
+   browser will not tell us about open notifications means "show it", because a notice
+   nobody sees is the one thing that must not happen. */
+function grouped(n, group, groupName) {
+  if (!group || !self.registration || typeof self.registration.getNotifications !== 'function') {
+    return Promise.resolve(n);
+  }
+  return Promise.resolve(self.registration.getNotifications()).then(open => {
+    const mine = (open || []).filter(x => x && x.data && x.data.group === group);
+    let items = [];
+    mine.forEach(x => { items = items.concat(itemsOf(x)); });
+    const fresh = itemOf(n);
+    if (fresh.tag) items = items.filter(i => i.tag !== fresh.tag);   // a replacement, not an addition
+    items.push(fresh);
+    if (items.length < GROUP_MIN) return n;
+    mine.forEach(x => { try { x.close(); } catch (_) { /* already gone */ } });
+    return summaryFor(items, groupName, group);
+  }).catch(() => n);
+}
+
 /* Tells every open Epinoia page that a push arrived and whether the browser agreed to
    show it. The profile page's check waits for this: a push that arrives and is shown,
    yet never seen, is the phone's notification settings, not the site. Best effort — a
@@ -160,17 +242,24 @@ function receipt(kind, tag, shown, error) {
 }
 
 self.addEventListener('push', e => {
-  const n = notificationFor(readPayload(e.data));
+  const payload = readPayload(e.data);
+  const n = notificationFor(payload);
+  /* THE RECEIPT IS ABOUT THE NOTICE THAT ARRIVED, not about what was drawn for it. The
+     profile page's check waits for its own tag, and a push folded into a pile has still
+     reached this phone. */
+  const kind = n.options.data.kind, tag = n.options.tag || '';
+  const group = typeof payload.group === 'string' ? payload.group : '';
+  const name = typeof payload.groupName === 'string' ? payload.groupName : '';
   /* A browser that rejects an option (actions, vibrate) still shows the words: a
      push that shows nothing is the one thing a push must never do. */
-  e.waitUntil(Promise.resolve()
-    .then(() => self.registration.showNotification(n.title, n.options))
-    .catch(() => self.registration.showNotification(n.title, {
-      body: n.options.body, icon: n.options.icon, badge: n.options.badge,
-      tag: n.options.tag, data: n.options.data
-    }))
-    .then(() => receipt(n.options.data.kind, n.options.tag || '', true, ''),
-          err => receipt(n.options.data.kind, n.options.tag || '', false, String((err && err.message) || err || 'not shown'))));
+  e.waitUntil(grouped(n, group, name)
+    .then(show => self.registration.showNotification(show.title, show.options)
+      .catch(() => self.registration.showNotification(show.title, {
+        body: show.options.body, icon: show.options.icon, badge: show.options.badge,
+        tag: show.options.tag, data: show.options.data
+      })))
+    .then(() => receipt(kind, tag, true, ''),
+          err => receipt(kind, tag, false, String((err && err.message) || err || 'not shown'))));
 });
 
 /* the profile page asks which worker is running (a phone can hold on to an old one) */
@@ -290,5 +379,5 @@ self.addEventListener('pushsubscriptionchange', e => {
 if (typeof module === 'object' && module && module.exports) {
   module.exports = { SW_VERSION, SITE_PATH, HOME_PATH, ICON, BADGE, SUPABASE_URL, SUPABASE_KEY, VAPID_PUBLIC_KEY,
                      readPayload, actionUrl, notificationFor, clickTarget, pickClient, swapBody, keyBytes, resubscribe, openAt, receipt,
-                     offlinePage };
+                     offlinePage, GROUP_MIN, GROUP_MAX, itemOf, itemsOf, summaryFor, grouped };
 }
