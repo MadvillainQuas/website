@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ai_worker as W  # noqa: E402  (config, DB, helpers)
+import requeue as RQ  # noqa: E402  (what a stored reading covers, and what is stale)
 
 SITE = 'https://prophesyscouting.co.uk'
 ACTIVE = ('queued', 'claimed', 'running')
@@ -149,6 +150,58 @@ class Model(object):
 
     def set_paused(self, paused):
         self.db.upsert('video_workers', {'id': self.worker_id, 'paused': bool(paused), 'last_seen': W.now_iso()}, 'id')
+
+    # ---- reading games again
+    # THE QUEUE IS JOBS; THIS IS GAMES. Every other action here acts on a job row, which is fine
+    # for the thing in front of you and no use at all for the question "which games did the
+    # reader do badly, and can I have them all done again?" -- a game read badly two hundred jobs
+    # ago has no row on the screen to click. So this reads the games themselves, and with them
+    # the one number that says whether their plays are placed or guessed: how much of each
+    # period was played before the reader's first reading of it.
+    def with_video(self):
+        rows = self.db.select('game_videos',
+            'select=game_id,url,clock_track,games(tipoff_at,'
+            'home:teams!games_home_team_id_fkey(name),away:teams!games_away_team_id_fkey(name))'
+            '&is_primary=eq.true')
+        pend = {}
+        for j in self.jobs:
+            if j['status'] in ACTIVE and not RQ._stale(j):
+                pend.setdefault(j['game_id'], []).append(j)
+        out = []
+        for r in rows:
+            if not r.get('url'):
+                continue
+            out.append({'game_id': r['game_id'], 'url': r['url'], 'games': r.get('games') or {},
+                        'tops': RQ.unread_tops(r.get('clock_track') or {}),
+                        'read': bool((r.get('clock_track') or {}).get('samples')),
+                        'pending': pend.get(r['game_id'], [])})
+        out.sort(key=lambda r: ((r['games'] or {}).get('tipoff_at') or '', r['game_id']))
+        return out
+
+    def held(self, game_id):
+        return W.held_back(self.cfg, game_id)
+
+    def hold(self, game_id, on):
+        self.cfg['never_read'] = W.set_held(game_id, on)
+
+    def reconcile(self, rows, pick):
+        """Leave the queue holding exactly one job for each game picked, and none for the rest.
+
+        A read already RUNNING is left to finish either way: it is half an hour of work, and
+        nobody ticking a list meant to throw that away."""
+        queued = cancelled = 0
+        for r in rows:
+            alive = list(r['pending'])
+            if r['game_id'] in pick:
+                for j in alive[1:]:                       # never two jobs on one game
+                    self.cancel(j); cancelled += 1
+                if not alive:
+                    self.insert(r['game_id'], r['url']); queued += 1
+            else:
+                for j in alive:
+                    if j['status'] == 'queued':
+                        self.cancel(j); cancelled += 1
+        return queued, cancelled
 
 
 # --------------------------------------------------------------------------- the worker process
@@ -304,11 +357,116 @@ def run_window(cfg):
         if s:
             M.add_game(s)
 
+    def rereads():
+        rows = M.with_video()
+        if not rows:
+            raise RuntimeError('no game has a video attached yet')
+
+        win = tk.Toplevel(root); win.title('Re-read games'); win.configure(bg=BG)
+        win.geometry('980x600'); win.transient(root)
+        ttk.Label(win, text='Read games again', style='Head.TLabel').pack(anchor='w', padx=14, pady=(12, 2))
+        ttk.Label(win, wraplength=930, justify='left', style='Dim.TLabel',
+                  text='A reading replaces the one stored for that game, so this is all it takes to redo a '
+                       'game the reader did badly. Ticked games end up in the queue, once each; unticked '
+                       'games come out of it. A read already running is left to finish. "Unread at the top" '
+                       'is the part of each period played before the reader first saw the clock — the part '
+                       'where the page has to guess where a play belongs.').pack(anchor='w', padx=14)
+
+        cols = ('pick', 'game', 'when', 'read', 'job')
+        t = ttk.Treeview(win, columns=cols, show='headings', selectmode='browse')
+        for c, (head, w_) in {'pick': ('', 34), 'game': ('Game', 300), 'when': ('Tipped off', 96),
+                              'read': ('Unread at the top', 250), 'job': ('In the queue', 190)}.items():
+            t.heading(c, text=head); t.column(c, width=w_, minwidth=28, stretch=(c in ('game', 'read')), anchor='w')
+        t.tag_configure('needs', foreground=AMBER)
+        t.tag_configure('ok', foreground=DIM)
+        t.tag_configure('heldrow', foreground=DIM)
+        t.pack(fill='both', expand=True, padx=14, pady=(8, 6))
+
+        def needs(r):
+            return not r['read'] or max(r['tops'].values() or [0]) > 20000
+
+        pick = {r['game_id'] for r in rows if needs(r) and not M.held(r['game_id'])}
+
+        def state_of(r):
+            if not r['read']:
+                return 'never read'
+            bad = ', '.join('Q%d %ds' % (p, ms / 1000) for p, ms in sorted(r['tops'].items()) if ms > 20000)
+            return bad or 'read to the top of every period'
+
+        def draw():
+            keep = (t.selection() or [None])[0]
+            t.delete(*t.get_children())
+            for r in rows:
+                gid = r['game_id']
+                g = r['games'] or {}
+                name = '%s v %s' % ((g.get('home') or {}).get('name') or '?', (g.get('away') or {}).get('name') or '?')
+                when = (g.get('tipoff_at') or '')[:10]
+                if M.held(gid):
+                    mark, job, tag = '--', 'held back', 'heldrow'
+                else:
+                    mark = '[x]' if gid in pick else '[  ]'
+                    job = r['pending'][0]['status'] if r['pending'] else ''
+                    tag = 'needs' if needs(r) else 'ok'
+                t.insert('', 'end', iid=gid, values=(mark, name, when, state_of(r), job), tags=(tag,))
+            if keep and t.exists(keep):
+                t.selection_set(keep)
+            go.configure(text='Re-read %d game%s' % (len(pick), '' if len(pick) == 1 else 's'))
+
+        def toggle(ev):
+            gid = t.identify_row(ev.y)
+            if not gid or M.held(gid):
+                return
+            if gid in pick:
+                pick.discard(gid)
+            else:
+                pick.add(gid)
+            draw()
+
+        t.bind('<Button-1>', toggle, add='+')
+
+        bar_ = ttk.Frame(win, padding=(14, 0, 14, 12)); bar_.pack(fill='x')
+
+        def set_all(which):
+            pick.clear()
+            for r in rows:
+                if M.held(r['game_id']):
+                    continue
+                if which == 'all' or (which == 'needs' and needs(r)):
+                    pick.add(r['game_id'])
+            draw()
+
+        def toggle_hold():
+            sel = t.selection()
+            if not sel:
+                raise RuntimeError('pick a game in the list first')
+            gid = sel[0]
+            on = not M.held(gid)
+            M.hold(gid, on)
+            pick.discard(gid)
+            draw()
+
+        def apply():
+            q, c = M.reconcile(rows, pick)
+            messagebox.showinfo('Re-read games',
+                                '%d game(s) queued, %d job(s) taken out of the queue.\n\n'
+                                'The worker has to be running to pick them up.' % (q, c), parent=win)
+            win.destroy()
+            refresh_now()
+
+        for text, fn in (('All', lambda: set_all('all')), ('None', lambda: set_all('none')),
+                         ('Only those that need it', lambda: set_all('needs')),
+                         ('Hold back / release', toggle_hold)):
+            ttk.Button(bar_, text=text, command=act(fn)).pack(side='left', padx=3)
+        ttk.Button(bar_, text='Close', command=win.destroy).pack(side='right', padx=3)
+        go = ttk.Button(bar_, text='Re-read', style='Go.TButton', command=act(apply)); go.pack(side='right', padx=3)
+        draw()
+
     b_start = ttk.Button(btns, text='Start worker', style='Go.TButton', command=act(start_worker)); b_start.pack(side='left', padx=3)
     b_stop = ttk.Button(btns, text='Stop', command=act(stop_worker)); b_stop.pack(side='left', padx=3)
     b_pause = ttk.Button(btns, text='Pause', command=act(pause_worker)); b_pause.pack(side='left', padx=3)
     b_resume = ttk.Button(btns, text='Resume', command=act(resume_worker)); b_resume.pack(side='left', padx=3)
     ttk.Button(btns, text='Add game…', command=act(add_game)).pack(side='left', padx=(12, 3))
+    ttk.Button(btns, text='Re-read games…', command=act(rereads)).pack(side='left', padx=3)
 
     # ---- middle: the queue
     mid = ttk.Frame(root, padding=(14, 4, 14, 4)); mid.pack(fill='both', expand=True)

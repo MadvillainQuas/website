@@ -57,6 +57,7 @@ DEFAULTS = {
     'retry_wait_s': 1800,       # how long a job waits after YouTube's "confirm you're not a bot" before it is tried again
     'dashboard_auto': True,     # open the dashboard window whenever a game starts processing
     'backfill_days': 21,        # ...as long as it tipped off this recently
+    'never_read': [],           # game ids the sweep must leave alone (see held_back)
 }
 # 1.1 reads the whole broadcast when the wall stamps cover only one end of it, refuses a score
 # reading that matched almost nothing, and stores a coverage summary beside every track. It is a
@@ -66,6 +67,33 @@ VERSION = 'ai_worker/1.1'
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------- games the sweep must not touch
+# CANCELLING A JOB IS NOT THE SAME AS SAYING NO. backfill() offers back every game an older
+# worker read, so a job cancelled by hand reappears within the hour -- which is right for a game
+# nobody meant to exclude and wrong for one somebody did. A held-back game is named here, in the
+# worker's own config, because this is the worker's own behaviour being asked for; the dashboard
+# and requeue.py read and write the same list, and both show a held game as held.
+def held_back(cfg, game_id):
+    return any(game_id.startswith(x) for x in (cfg.get('never_read') or []) if x)
+
+
+def set_held(game_id, hold, path=None):
+    """Add or remove a game from never_read, on disk. Returns the new list."""
+    path = path or CONFIG_PATH
+    with io.open(path, encoding='utf-8') as fh:
+        cfg = json.load(fh)
+    held = [x for x in (cfg.get('never_read') or []) if x]
+    held = [x for x in held if not (game_id.startswith(x) or x.startswith(game_id))]
+    if hold:
+        held.append(game_id)
+    cfg['never_read'] = held
+    tmp = path + '.tmp'
+    with io.open(tmp, 'w', encoding='utf-8') as fh:
+        json.dump(cfg, fh, indent=2)
+    os.replace(tmp, path)
+    return held
 
 
 LOG_PATH = os.path.join(os.path.dirname(CONFIG_PATH), 'worker.log')
@@ -771,7 +799,24 @@ def track_coverage(track):
         cov['read_frac'] = round(max(0.0, min(1.0, (hi - lo) / float(dur))), 3)
     runs = track.get('runs') or []
     cov['run_periods'] = sorted({r['period'] for r in runs if isinstance(r, dict) and r.get('period') is not None})
+    # THE TOP OF EACH PERIOD, UNREAD. The one number that says whether a game's plays are placed
+    # or guessed: past the last reading in either direction the page projects, so a period whose
+    # first minutes were never read is the part of the game where every event is an estimate.
+    # Stored here so the dashboard can rank games by it without pulling every track down.
+    cov['unread_heads'] = unread_heads(samples)
     return cov
+
+
+def unread_heads(samples):
+    """{period: ms of that period played before its first reading}. Empty when nothing was read."""
+    top = {}
+    for s in samples or []:
+        p, ms = s.get('period'), s.get('clock_ms')
+        if p is None or ms is None:
+            continue
+        if p not in top or ms > top[p]:
+            top[p] = ms
+    return {str(p): int(max(0, (600000 if p <= 4 else 300000) - v)) for p, v in sorted(top.items())}
 
 
 def slim_track(track):
@@ -1220,9 +1265,12 @@ def backfill(db, cfg):
     statuses = {}
     for j in have:
         statuses.setdefault(j['game_id'], []).append(j['status'])
-    n, again = 0, 0
+    n, again, held = 0, 0, 0
     for r in rows:
         g = r['game_id']
+        if held_back(cfg, g):
+            held += 1
+            continue
         queue, why = may_queue(r.get('clock_track'), statuses.get(g, []))
         if not queue:
             continue
@@ -1235,6 +1283,8 @@ def backfill(db, cfg):
             log('  re-reading %s: %s' % (g[:8], why))
     if n:
         log('queued %d final game(s) with a stream: %d never read, %d worth reading again' % (n, n - again, again))
+    if held:
+        log('  (%d game(s) held back by never_read)' % held)
     return n
 
 
