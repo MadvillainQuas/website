@@ -17,10 +17,10 @@
    a statistic; this decides what to show and how to rank it.
    ============================================================================ */
 (function (root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.EpinoiaTable = api;
-}(typeof globalThis !== 'undefined' ? globalThis : self, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
   if (x != null) n.textContent = x; return n; };
@@ -1362,7 +1362,13 @@ function render(opts) {
     const hOf = n => Math.ceil(n.getBoundingClientRect ? n.getBoundingClientRect().height : n.offsetHeight || 0);
     const setH = () => {
       if (nav && hOf(nav)) de.style.setProperty('--ep-nav-h', hOf(nav) + 'px');
-      if (tray && !tray.hidden && hOf(tray)) de.style.setProperty('--ft-tray-h', hOf(tray) + 'px');
+      /* MEASURED, NOT ASSUMED, because a tabbed page can hide the tray without touching it:
+         the league page's table lives in a pane, and switching to the team tab takes the tray
+         off the screen with it. Its height is then 0, which the observer below reports, so the
+         notification bell drops back rather than staying lifted over nothing. */
+      const up = !!(tray && !tray.hidden && hOf(tray));
+      if (up) de.style.setProperty('--ft-tray-h', hOf(tray) + 'px');
+      if (tray && body.classList) body.classList.toggle('ft-tray-open', up);
     };
     setH();
     if (barWatch || !nav || typeof ResizeObserver !== 'function') return;
@@ -1419,8 +1425,9 @@ function render(opts) {
     go.type = 'button';
     go.disabled = picked.size < 2;
     go.addEventListener('click', () => {
-      if (picked.size < 2 || typeof opts.onCompare !== 'function') return;
-      opts.onCompare(getSelected(), statKeys());
+      if (picked.size < 2) return;
+      if (typeof opts.onCompare === 'function') { opts.onCompare(getSelected(), statKeys()); return; }
+      openCompare();
     });
     acts.append(clr, go);
     tray.appendChild(acts);
@@ -1428,6 +1435,55 @@ function render(opts) {
     try { watchBars(); } catch (_) { /* the CSS fallback offsets stand */ }
   }
   function getSelected() { return [...picked.values()]; }
+
+  /* percentiles for the given stats (the visible preset's by default), over the population
+     and the current grouping, ranked as the heat colours and the stat filters rank them
+     (a floored rate among the players who clear its floor).
+     A PICK THE LEAGUE, CLUB OR POSITION SELECT HAS SINCE LEFT OUT is ranked over the table
+     before those selects instead: dropped into the picked league's pool he would be alone in
+     his own league's group (under three players, no rank, every bar 'no data'), or ranked
+     against a league he never played in. A player being compared always has a rank.
+     A FUNCTION, NOT ONLY AN API METHOD: the table's own comparison (openCompare) needs it too. */
+  function getRanksFor(keys) {
+    const ks = (Array.isArray(keys) ? keys : statKeys()).filter(k => !absent(k));
+    const floors = FILTERS && liveLines().length ? (view(), lastFloors) : null;
+    const keep = new Set(picked.keys());
+    const pop = population();
+    const ids = new Set(pop.map(r => String(r.id)));
+    const out = ranksOver(pop, ks, floors, keep);
+    const outside = [...picked.values()].filter(r => !ids.has(String(r.id)));
+    if (!outside.length) return out;
+    const base = basePopulation();
+    const bids = new Set(base.map(r => String(r.id)));
+    outside.forEach(r => { if (!bids.has(String(r.id))) base.push(r); });
+    ranksOver(base, ks, floors, keep).forEach((m, k) => {
+      let into = out.get(k);
+      if (!into) { into = new Map(); out.set(k, into); }
+      outside.forEach(r => { if (m.has(r.id)) into.set(r.id, m.get(r.id)); });
+    });
+    return out;
+  }
+
+  /* THE COMPARISON EVERY SELECTABLE TABLE GETS (compare.js). A page that asks for the tray
+     and nothing else gets the chart: the picks, the stats on screen, the percentiles this
+     table has already ranked, and each of the table's own categories as a dropdown holding
+     every other stat in it. A page whose percentiles mean something particular passes its own
+     onCompare instead — the global scouting page does, because its ranks are per league.
+     EVERY USABLE COLUMN IS RANKED, not only the ones on screen: a stat chosen from a dropdown
+     must arrive with its percentile, or the bar it draws would read as "no data". */
+  function openCompare() {
+    const C = root.EpinoiaCompare;
+    if (!C || typeof C.fromTable !== 'function' || typeof C.open !== 'function' || isTeam) return;
+    const keys = statKeys();
+    const rankable = CAT.filter(c => c.heat && !absent(c.k)).map(c => c.k);
+    let ranks = null;
+    try { ranks = getRanksFor(rankable); } catch (_) { ranks = null; }
+    C.open(C.fromTable({
+      picks: getSelected(), statKeys: keys, cols: CAT, ranks, groups: presets,
+      locked: k => absent(k), max: PICK_MAX,
+      note: 'Percentiles among the players this table covers, before its stat filters and search.'
+    }));
+  }
 
   const sortVal = (c, r) => (c.sort ? c.sort(r) : r[c.k]);
 
@@ -1939,32 +1995,8 @@ function render(opts) {
     },
     getView: () => view(),
     getPool: () => population(),
-    /* percentiles for the given stats (the visible preset's by default), over the population
-       and the current grouping, ranked as the heat colours and the stat filters rank them
-       (a floored rate among the players who clear its floor).
-       A PICK THE LEAGUE, CLUB OR POSITION SELECT HAS SINCE LEFT OUT is ranked over the table
-       before those selects instead: dropped into the picked league's pool he would be alone in
-       his own league's group (under three players, no rank, every bar 'no data'), or ranked
-       against a league he never played in. A player being compared always has a rank. */
-    getRanks(keys) {
-      const ks = (Array.isArray(keys) ? keys : statKeys()).filter(k => !absent(k));
-      const floors = FILTERS && liveLines().length ? (view(), lastFloors) : null;
-      const keep = new Set(picked.keys());
-      const pop = population();
-      const ids = new Set(pop.map(r => String(r.id)));
-      const out = ranksOver(pop, ks, floors, keep);
-      const outside = [...picked.values()].filter(r => !ids.has(String(r.id)));
-      if (!outside.length) return out;
-      const base = basePopulation();
-      const bids = new Set(base.map(r => String(r.id)));
-      outside.forEach(r => { if (!bids.has(String(r.id))) base.push(r); });
-      ranksOver(base, ks, floors, keep).forEach((m, k) => {
-        let into = out.get(k);
-        if (!into) { into = new Map(); out.set(k, into); }
-        outside.forEach(r => { if (m.has(r.id)) into.set(r.id, m.get(r.id)); });
-      });
-      return out;
-    },
+    /* percentiles for the given stats, over the table's own population (see getRanksFor) */
+    getRanks: getRanksFor,
     getSelected,
     getState
   };

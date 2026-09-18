@@ -262,21 +262,159 @@ function modeHtml(st) {
     '</div>';
 }
 /* the stat chips; `fold` puts them behind a closed "stats · N" button (a phone, below the chart) */
+/* EVERY OTHER STAT, BY CATEGORY. The chips are the stats this table was already showing —
+   the quick ones, and the ones somebody reaches for first. They cannot be every stat the
+   platform holds: a hundred and forty chips is not a choice, it is a wall. So each of the
+   table's own categories (per game, shooting, rebounding, defence, advanced, the event
+   splits…) becomes one small dropdown listing everything in it, with a tick beside what is
+   already being compared. Choosing a line toggles that stat, exactly as its chip would.
+   groups: [{ key, label, stats: [{ key, label }] }] — the caller builds them from the
+   table's own column catalogue, so the names here are the names in the table. */
+function groupsHtml(o, st, fold) {
+  const groups = (o.statGroups || []).filter(g => g && g.stats && g.stats.length);
+  if (!groups.length) return '';
+  const on = new Set(st.keys);
+  const id = fold ? '' : 'cmp-more-' + (++seq);
+  const row = '<div class="cmp-more" role="group" aria-label="Add a stat by category"' +
+    (fold ? '' : ' id="' + id + '"' + (st.moreOpen ? '' : ' hidden')) + '>' +
+    groups.map(g => {
+      const picked = g.stats.filter(s => on.has(s.key)).length;
+      return '<select class="cmp-pick" data-cmp-group="' + esc(g.key) + '" aria-label="' + esc(g.label) + ' stats">' +
+        '<option value="">' + esc(g.label) + (picked ? ' · ' + picked : '') + '</option>' +
+        g.stats.map(s => '<option value="' + esc(s.key) + '">' + (on.has(s.key) ? '✓ ' : '+ ') +
+          esc(s.label || s.key) + '</option>').join('') + '</select>';
+    }).join('') + '</div>';
+  /* SIXTEEN DROPDOWNS ABOVE THE CHART IS NOT A CHOICE EITHER. On a phone they are already
+     behind the chips' own "Stats · N" button; on a wider screen they would have pushed the
+     chart four hundred pixels down the panel, so they sit behind one of their own and the
+     panel opens on the chips and the bars, as it did before they existed. */
+  if (fold) return row;
+  return '<div class="cmp-morebox"><button type="button" class="cmp-fold cmp-morebtn" data-cmp-more="1" aria-controls="' +
+    id + '" aria-expanded="' + !!st.moreOpen + '">Every stat · by category</button>' + row + '</div>';
+}
+
 function statsHtml(o, st, fold) {
   const pool = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : o.stats || [];
-  if (pool.length < 2) return '';
+  const more = groupsHtml(o, st, fold);
+  if (pool.length < 2 && !more) return '';
   const on = new Set(st.keys);
   const id = fold ? 'cmp-stats-' + (++seq) : '';
   const chips = '<div class="cmp-stats" role="group" aria-label="Stats"' + (fold ? ' id="' + id + '"' + (st.statsOpen ? '' : ' hidden') : '') + '>' +
     pool.map(s =>
       '<button type="button" class="cmp-stat' + (on.has(s.key) ? ' on' : '') + '" data-cmp-stat="' + esc(s.key) +
-      '" aria-pressed="' + on.has(s.key) + '">' + esc(s.label || s.key) + '</button>').join('') + '</div>';
-  if (!fold) return chips;
+      '" aria-pressed="' + on.has(s.key) + '">' + esc(s.label || s.key) + '</button>').join('') +
+    (fold ? more : '') + '</div>';
+  if (!fold) return chips + more;
   return '<div class="cmp-statbox"><button type="button" class="cmp-fold" data-cmp-fold="1" aria-controls="' + id +
     '" aria-expanded="' + !!st.statsOpen + '">Stats · ' + st.keys.length + '</button>' + chips + '</div>';
 }
 function controlsHtml(o, st) {
   return '<div class="cmp-controls">' + modeHtml(st) + statsHtml(o, st, false) + '</div>';
+}
+
+/* ==================================================== from a table's own rows ===
+   WHAT A TABLE HANDS OVER, AND WHAT THE CHART NEEDS, in one place so every table that
+   offers a comparison offers the same one. The global scouting page had this to itself;
+   a league's statistics table now calls the same function (fulltable.js, opts.selectable).
+
+     fromTable({ picks, statKeys, cols, ranks, groups, locked, title, note, max })
+       picks     the rows the table has selected
+       statKeys  the keys of the stat columns on screen, in their order
+       cols      the table's column catalogue (each { k, l, fmt, heat, signed, g })
+       ranks     Map<statKey, Map<rowId, percentile>> over the table's own population
+       groups    [[key, label], …] the table's categories, for the dropdowns
+       locked(k) optional: a key this page may not show
+   Returns the object render()/open() take. */
+const CORE_STATS = ['ppg', 'rpg', 'apg', 'spg', 'bpg', 'topg', 'ts', 'efg', 'p3_pct', 'usg', 'ast_pct', 'blk_pct', 'bpm'];
+const MAX_STATS = 8;
+/* playing time, fouls and turnovers: offered as chips, never chosen ahead of a real stat */
+const DEMOTED = new Set(['mpg', 'min', 'pfpg', 'pf', 'topg', 'tov']);
+const RAPM_KEYS = new Set(['rapm', 'orapm', 'drapm']);
+const finite = v => typeof v === 'number' && isFinite(v);
+
+function statFrom(c) {
+  const k = c.k;
+  const out = {
+    key: k,
+    label: c.l || k,
+    fmt: v => {
+      if (!finite(v)) return '—';
+      const probe = {};
+      probe[k] = v;
+      const s = c.fmt ? c.fmt(probe, 0) : String(v);
+      return s == null || s === '' ? String(Math.round(v * 10) / 10) : String(s);
+    }
+  };
+  if (c.signed) out.signed = true;
+  return out;
+}
+
+/* which stats the chart opens on, which are offered as chips, and the columns by key */
+function tableStats(statKeys, cols, locked) {
+  const byKey = new Map((cols || []).map(c => [c.k, c]));
+  const usable = k => {
+    const c = byKey.get(k);
+    return !!(c && c.heat && !RAPM_KEYS.has(k) && !(locked && locked(k)));
+  };
+  const uniq = list => list.filter((k, i) => list.indexOf(k) === i);
+  const minor = k => DEMOTED.has(k);
+  const preset = uniq((statKeys || []).filter(usable));
+  const major = preset.filter(k => !minor(k));
+  const keys = (major.length ? major.concat(preset.filter(minor))
+    : CORE_STATS.filter(k => usable(k) && !minor(k)).concat(preset))
+    .filter((k, i, a) => a.indexOf(k) === i)
+    .slice(0, MAX_STATS);
+  const pool = uniq((statKeys || []).concat(CORE_STATS)).filter(usable);
+  return { keys, pool, byKey, usable };
+}
+
+/* every category the table knows, each with every stat in it that can be compared */
+function tableGroups(groups, cols, locked) {
+  const S = tableStats([], cols, locked);
+  const seen = new Set();
+  return (groups || []).map(g => {
+    const key = Array.isArray(g) ? g[0] : g.key;
+    const label = Array.isArray(g) ? g[1] : g.label;
+    if (key === '*' || !key) return null;                  /* "everything" is every other list again */
+    const stats = (cols || [])
+      .filter(c => Array.isArray(c.g) && c.g.indexOf(key) >= 0 && S.usable(c.k))
+      .map(c => ({ key: c.k, label: c.t || c.l || c.k }));
+    if (!stats.length) return null;
+    stats.forEach(s => seen.add(s.key));
+    return { key, label, stats };
+  }).filter(Boolean);
+}
+
+function fromTable(o) {
+  const opt = o || {};
+  const cols = opt.cols || [];
+  const S = tableStats(opt.statKeys, cols, opt.locked);
+  const rows = (opt.picks || []).slice(0, Math.max(2, Math.floor(opt.max) || 5));
+  const ranks = opt.ranks;
+  const values = {}, pcts = {};
+  /* the chart may be given any stat the dropdowns offer, so every usable column is valued,
+     not only the ones on screen */
+  const every = (cols || []).filter(c => S.usable(c.k)).map(c => c.k);
+  rows.forEach(r => {
+    const id = String(r.id);
+    values[id] = {}; pcts[id] = {};
+    every.forEach(k => {
+      values[id][k] = finite(r[k]) ? r[k] : null;
+      const m = ranks && ranks.get ? ranks.get(k) : null;
+      const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null;
+      pcts[id][k] = finite(p) ? p : null;
+    });
+  });
+  return {
+    title: opt.title || ('Compare ' + rows.length + ' players'),
+    players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' })),
+    stats: S.keys.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
+    allStats: S.pool.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
+    statGroups: tableGroups(opt.groups, cols, opt.locked),
+    values, pcts,
+    mode: 'pct',
+    note: opt.note || ''
+  };
 }
 
 const hosts = typeof WeakMap === 'function' ? new WeakMap() : null;
@@ -287,7 +425,7 @@ function render(host, o) {
   if (prev) prev.destroy();
   o = Object.assign({}, o || {});
   const pool = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : stats(o);
-  const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false };
+  const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false, moreOpen: false };
 
   const current = () => {
     const byKey = new Map(pool.concat(stats(o)).map(s => [s.key, s]));
@@ -327,11 +465,42 @@ function render(host, o) {
     if (typeof o.onChange === 'function') o.onChange({ mode: st.mode, stats: st.keys.slice() });
   };
 
+  /* the same toggle a chip does, so a stat added from a dropdown can be taken out by its chip */
+  const toggle = k => {
+    if (!k) return;
+    const at = st.keys.indexOf(k);
+    if (at >= 0) {
+      if (st.keys.length > 1) st.keys.splice(at, 1);        /* the last stat stays */
+      else return;
+    } else {
+      /* keep the pool's order, so a stat put back returns to its place; anything from a
+         category dropdown that the pool has never heard of goes on the end */
+      const order = pool.map(s => s.key);
+      st.keys.push(k);
+      st.keys.sort((a, b) => {
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        return (ia < 0 ? order.length : ia) - (ib < 0 ? order.length : ib);
+      });
+    }
+    changed();
+  };
+
+  const onChangeSel = e => {
+    const sel = e.target && e.target.closest ? e.target.closest('[data-cmp-group]') : null;
+    if (!sel || !host.contains(sel)) return;
+    const k = sel.value;
+    sel.selectedIndex = 0;                     /* the dropdown is an action, not a setting */
+    toggle(k);
+  };
+  host.addEventListener('change', onChangeSel);
+
   const onClick = e => {
     const t = e.target && e.target.closest ? e.target : null;
     if (!t) return;
     const fb = t.closest('[data-cmp-fold]');
     if (fb && host.contains(fb)) { st.statsOpen = !st.statsOpen; draw(); return; }
+    const mo = t.closest('[data-cmp-more]');
+    if (mo && host.contains(mo)) { st.moreOpen = !st.moreOpen; draw(); return; }
     const mb = t.closest('[data-cmp-mode]');
     if (mb && host.contains(mb)) {
       const m = mb.getAttribute('data-cmp-mode') === 'value' ? 'value' : 'pct';
@@ -339,20 +508,7 @@ function render(host, o) {
       return;
     }
     const sb = t.closest('[data-cmp-stat]');
-    if (sb && host.contains(sb)) {
-      const k = sb.getAttribute('data-cmp-stat');
-      const at = st.keys.indexOf(k);
-      if (at >= 0) {
-        if (st.keys.length > 1) st.keys.splice(at, 1);        /* the last stat stays */
-        else return;
-      } else {
-        /* keep the pool's order, so a stat put back returns to its place */
-        const order = pool.map(s => s.key);
-        st.keys.push(k);
-        st.keys.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-      }
-      changed();
-    }
+    if (sb && host.contains(sb)) toggle(sb.getAttribute('data-cmp-stat'));
   };
   host.addEventListener('click', onClick);
 
@@ -380,6 +536,7 @@ function render(host, o) {
       clearTimeout(timer);
       if (ro) ro.disconnect();
       host.removeEventListener('click', onClick);
+      host.removeEventListener('change', onChangeSel);
       if (hosts) hosts.delete(host);
     }
   };
@@ -422,5 +579,6 @@ function open(o) {
   return { dialog: dlg, chart, close };
 }
 
-return { html, legendHtml, render, open, isSigned, ord, SERIES, NARROW, MAX_PLAYERS };
+return { html, legendHtml, render, open, fromTable, tableStats, tableGroups, statFrom,
+         isSigned, ord, SERIES, NARROW, MAX_PLAYERS, CORE_STATS, MAX_STATS, DEMOTED };
 }));

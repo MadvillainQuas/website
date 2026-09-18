@@ -523,6 +523,11 @@
                     el('span', 'lgo', '›'));
   leaguesRow.title = 'every league, by country';
   leaguesRow.dataset.leaguesRow = '1';
+  /* IT MOVES THE RAIL; IT DOES NOT GO ANYWHERE. The sheet closes on any link tapped inside it,
+     which took a phone reader out of the menu the moment they pressed "leagues ›" — the rail
+     slid to the countries behind a sheet that was no longer there. Rows like this one say so,
+     and the closer leaves them alone (reported 2026-09-18). */
+  leaguesRow.dataset.railMove = '1';
   leaguesRow.addEventListener('click', e => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
@@ -1215,7 +1220,11 @@
     if (!nav.classList.contains('drawer-open')) return;
     if (!nav.contains(e.target)) { navToggle.click(); return; }
     const a = e.target.closest && e.target.closest('a[href]');
-    if (a && nav.contains(a) && !a.dataset.teamsRow && !a.dataset.teamsTab) setTimeout(() => { if (nav.classList.contains('drawer-open')) navToggle.click(); }, 50);
+    /* …except the rows that only move the rail (the clubs layer, "leagues ›"): those are a step
+       through the menu, not a way out of it */
+    if (a && nav.contains(a) && !a.dataset.teamsRow && !a.dataset.teamsTab && !a.dataset.railMove) {
+      setTimeout(() => { if (nav.classList.contains('drawer-open')) navToggle.click(); }, 50);
+    }
   });
   nav.appendChild(navToggle);
 

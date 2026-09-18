@@ -18,6 +18,13 @@
      8. render() draws legend + controls + chart, and its mode toggle and stat
         chips redraw and report the change; kit/compare.css uses the five
         series tokens and never --good or --flare
+     9. fromTable() turns a table's own rows, columns, ranks and categories into
+        the chart's input, and every category becomes a dropdown holding every
+        stat in it — so a reader can compare on any stat the table has, not only
+        the ones on screen
+    10. every league's statistics table offers the comparison: the season
+        statistics page and the league page's leaders both select, and both load
+        compare.js and its stylesheet
 
      node supabase/tests/compare.test.mjs
    ============================================================================ */
@@ -331,6 +338,174 @@ console.log('\n8. render() and kit/compare.css');
   const js = rd('epinoia', 'compare.js');
   ok('compare.js is UMD: module.exports and window.EpinoiaCompare', /module\.exports = api/.test(js) && /root\.EpinoiaCompare = api/.test(js));
   ok('compare.js writes no colour into the markup', !/fill="(#|var|rgb)/.test(js) && !/stroke="(#|var|rgb)/.test(js));
+}
+
+/* -------------------------------------------- 9. fromTable and the categories --- */
+console.log('\n9. a table\'s own rows, columns and categories');
+{
+  /* THE REAL CATALOGUE, not a fixture: what a league's statistics table actually holds.
+     If a column is renamed, regrouped or dropped, this section reads the new one. */
+  const T = require(path.join(ROOT, 'epinoia', 'fulltable.js'));
+  const cols = T.PLAYER_COLS, presets = T.PRESETS.player;
+  const keyOf = c => c.k;
+  const heat = new Set(cols.filter(c => c.heat).map(keyOf));
+  const perGame = cols.filter(c => c.heat && c.g.includes('basic')).map(keyOf);
+
+  const picks = [
+    { id: 'p1', name: 'Ada Okafor', teamName: 'York', ppg: 21.4, rpg: 5.1, apg: 3.2, ts: 0.612, p3_pct: 0.381, mpg: 33.1 },
+    { id: 'p2', name: 'Bea Lund', teamName: 'Derby', ppg: 14.0, rpg: 9.8, apg: 6.4, ts: 0.55, mpg: 29.7 },
+    { id: 'p3', name: 'Cal Price', teamName: 'Bristol', ppg: 8.2, rpg: 3.0, apg: 1.1, ts: 0.499, mpg: 12.0 }
+  ];
+  const ranks = new Map([['ppg', new Map([['p1', 96], ['p2', 71], ['p3', 22]])],
+                         ['p3_pct', new Map([['p1', 84]])]]);
+
+  const S = C.tableStats(perGame, cols, null);
+  ok('the stats on screen are what the chart opens on', S.keys.every(k => perGame.includes(k)) && S.keys.length > 1);
+  ok('at most eight bars', S.keys.length <= C.MAX_STATS && C.MAX_STATS === 8);
+  ok('playing time, fouls and turnovers go behind the real stats', (() => {
+    const first = S.keys.findIndex(k => C.DEMOTED.has(k));
+    return first === -1 || S.keys.slice(first).every(k => C.DEMOTED.has(k));
+  })(), S.keys.join(','));
+  ok('a locked column is never offered', !C.tableStats(perGame, cols, k => k === 'ppg').pool.includes('ppg'));
+  ok('RAPM is never compared — it has no meaning off one floor',
+     !C.tableStats(['rapm', 'orapm', 'drapm'].concat(perGame), cols, null).pool.some(k => /rapm$/.test(k)));
+
+  const groups = C.tableGroups(presets, cols, null);
+  ok('one dropdown per category', groups.length === presets.filter(p => p[0] !== '*').length, groups.length + ' of ' + presets.length);
+  ok('"everything" is not a category of its own', !groups.some(g => g.key === '*'));
+  ok('each carries the table\'s own label and its own stats', groups.every(g =>
+    g.label === (presets.find(p => p[0] === g.key) || [])[1] && g.stats.length > 0 &&
+    g.stats.every(s => heat.has(s.key))));
+  ok('between them the categories reach far more than the eight on screen',
+     new Set(groups.flatMap(g => g.stats.map(s => s.key))).size > 60);
+  ok('a locked column is dropped from the categories too',
+     !C.tableGroups(presets, cols, k => k === 'ppg').some(g => g.stats.some(s => s.key === 'ppg')));
+
+  const o = C.fromTable({ picks, statKeys: perGame, cols, ranks, groups: presets, max: 5,
+                          note: 'Percentiles among the players this table covers.' });
+  ok('the picks become the players, in their order', o.players.map(p => p.name).join() === 'Ada Okafor,Bea Lund,Cal Price');
+  ok('max caps the picks', C.fromTable({ picks, statKeys: perGame, cols, groups: presets, max: 2 }).players.length === 2);
+  ok('EVERY comparable column is valued, not only the ones on screen',
+     Object.keys(o.values.p1).length > 100 && o.values.p1.ts === 0.612 && o.values.p1.p3_pct === 0.381);
+  ok('a stat this player has no number for is null, never 0', o.values.p2.p3_pct === null);
+  ok('the table\'s percentiles come through', o.pcts.p1.ppg === 96 && o.pcts.p3.ppg === 22 && o.pcts.p2.p3_pct === null);
+  ok('percentile is the scale it opens on, with the table\'s note',
+     o.mode === 'pct' && /players this table covers/.test(o.note));
+  ok('the chart draws, with no NaN', (() => { const s = C.html(Object.assign({}, o, { width: 375 }));
+    return /<svg/.test(s) && !/NaN|Infinity/.test(s); })());
+
+  /* the dropdowns on screen, and what choosing a line does */
+  const mkHost = () => {
+    const chart = { clientWidth: 375, innerHTML: '' };
+    const host = {
+      clientWidth: 900, _html: '', listeners: {},
+      set innerHTML(v) { this._html = v; chart.innerHTML = ''; }, get innerHTML() { return this._html; },
+      querySelector: sel => (sel === '.cmp-chart' ? chart : null),
+      contains: () => true,
+      addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); },
+      removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] || []).filter(f => f !== fn); },
+      /* a <select> whose value is the chosen key, as the browser hands it over */
+      pick(value) {
+        const sel = { value, selectedIndex: 3, getAttribute: () => null };
+        sel.closest = s => (s === '[data-cmp-group]' ? sel : null);
+        (this.listeners.change || []).forEach(fn => fn({ target: sel }));
+        return sel;
+      },
+      click(attrName, value) {
+        const btn = { getAttribute: k => (k === attrName ? value : null) };
+        btn.closest = s => (s === '[' + attrName + ']' ? btn : null);
+        (this.listeners.click || []).forEach(fn => fn({ target: btn }));
+      }
+    };
+    return { host, chart };
+  };
+  const { host } = mkHost();
+  const seen = [];
+  const api = C.render(host, Object.assign({}, o, { onChange: c => seen.push(c) }));
+  ok('a select per category, each with a placeholder and its stats',
+     count(host.innerHTML, /<select class="cmp-pick" data-cmp-group=/g) === groups.length &&
+     /<option value="">per game/.test(host.innerHTML));
+  /* on a wide screen the row of them is behind a button of its own: sixteen dropdowns above
+     the chart put the bars off the bottom of the panel */
+  ok('on a wide screen the categories are folded away, and the chart is not pushed down',
+     /data-cmp-more="1"[^>]*aria-expanded="false">Every stat · by category</.test(host.innerHTML) &&
+     /<div class="cmp-more"[^>]*hidden>/.test(host.innerHTML) &&
+     host.innerHTML.indexOf('cmp-morebox') < host.innerHTML.indexOf('cmp-chart'));
+  host.click('data-cmp-more', '1');
+  ok('the button opens them, and closes them again, without redrawing the comparison',
+     /aria-expanded="true"/.test(host.innerHTML) && !/<div class="cmp-more"[^>]*hidden>/.test(host.innerHTML) &&
+     seen.length === 0);
+  ok('a stat already drawn is ticked, the rest are offered with a +',
+     /<option value="ppg">✓ /.test(host.innerHTML) && /<option value="[^"]+">\+ /.test(host.innerHTML));
+  ok('the placeholder counts what the category has drawn', /<option value="">per game · \d+</.test(host.innerHTML));
+  ok('the chips are still there — the dropdowns are beside them, not instead',
+     count(host.innerHTML, /data-cmp-stat=/g) === o.allStats.length);
+
+  const off = api.state.keys.slice();
+  const chosen = groups.find(g => g.key === 'advanced').stats.map(s => s.key).find(k => !off.includes(k));
+  const sel = host.pick(chosen);
+  ok('choosing a line adds that stat', api.state.keys.includes(chosen) && seen.length === 1 && seen[0].stats.includes(chosen));
+  ok('the dropdown is an action, not a setting — it goes back to its placeholder', sel.selectedIndex === 0);
+  ok('it is now ticked in its category', new RegExp('<option value="' + chosen + '">✓ ').test(host.innerHTML));
+  host.pick(chosen);
+  ok('choosing it again takes it out', !api.state.keys.includes(chosen));
+  host.click('data-cmp-stat', chosen);
+  host.click('data-cmp-stat', chosen);
+  ok('a stat added from a dropdown can be taken out by its chip', !api.state.keys.includes(chosen));
+  const empty = mkHost();
+  C.render(empty.host, Object.assign({}, o, { statGroups: [] }));
+  ok('a table with no categories draws no dropdowns and no button for them',
+     !/cmp-pick/.test(empty.host.innerHTML) && !/data-cmp-more/.test(empty.host.innerHTML));
+
+  /* on a phone the chips already fold; the dropdowns ride inside that fold, not behind a second one */
+  const narrow = mkHost();
+  narrow.host.clientWidth = 375;
+  C.render(narrow.host, o);
+  const nh = narrow.host.innerHTML;
+  ok('on a phone they are inside the chips\' own fold, with no button of their own',
+     !/data-cmp-more/.test(nh) && nh.indexOf('cmp-more') > nh.indexOf('data-cmp-fold') &&
+     nh.indexOf('cmp-more') < nh.lastIndexOf('</div></div>'));
+  ok('...and the chart still comes first', nh.indexOf('cmp-chart') < nh.indexOf('cmp-more'));
+
+  const css = rd('epinoia', 'kit', 'compare.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('compare.css styles the dropdowns', /\.cmp-pick\{/.test(css) && /\.cmp-more\{/.test(css));
+  ok('no text under 11px', !(css.match(/font-size:\s*(\d+(?:\.\d+)?)px/g) || [])
+    .some(m => parseFloat(m.replace(/[^\d.]/g, '')) < 11));
+}
+
+/* ------------------------------------ 10. every league's statistics table --- */
+console.log('\n10. the comparison on every league\'s table');
+{
+  const ft = rd('epinoia', 'fulltable.js');
+  ok('the tray falls back to the shared comparison when a page gives no onCompare',
+     /if \(typeof opts\.onCompare === 'function'\)[\s\S]{0,80}openCompare\(\);/.test(ft));
+  ok('openCompare hands over the picks, the stats on screen, the ranks and the categories',
+     /C\.open\(C\.fromTable\(\{[\s\S]{0,200}picks: getSelected\(\), statKeys: keys, cols: CAT, ranks, groups: presets/.test(ft));
+  ok('every comparable column is ranked, so a stat chosen from a dropdown has its percentile',
+     /const rankable = CAT\.filter\(c => c\.heat && !absent\(c\.k\)\)\.map\(c => c\.k\);/.test(ft) &&
+     /getRanksFor\(rankable\)/.test(ft));
+  ok('getRanksFor is a function the table can call, not only an API method',
+     /function getRanksFor\(keys\) \{/.test(ft) && /getRanks: getRanksFor,/.test(ft));
+  ok('a team table never opens the player comparison', /typeof C\.open !== 'function' \|\| isTeam\) return;/.test(ft));
+  ok('the compare script is reached through the global it is loaded as',
+     /const api = factory\(root\);/.test(ft) && /const C = root\.EpinoiaCompare;/.test(ft));
+
+  const pages = [
+    ['the season statistics page', ['epinoia', 'stats', 'stats.js'], ['epinoia', 'stats', 'index.html']],
+    ['the league page\'s leaders', ['epinoia', 'l', 'league.js'], ['epinoia', 'l', 'index.html']]
+  ];
+  pages.forEach(([what, js, html]) => {
+    const src = rd(...js), page = rd(...html);
+    ok(what + ' selects players to compare', /selectable: \{ max: 5 \}/.test(src));
+    ok(what + ' loads compare.js', /<script src="\.\.\/compare\.js\?v=\d+" defer><\/script>/.test(page));
+    ok(what + ' loads its stylesheet', /<link rel="stylesheet" href="\.\.\/kit\/compare\.css\?v=\d+">/.test(page));
+    ok(what + ' loads it after the table it belongs to',
+       page.indexOf('fulltable.js') < page.indexOf('compare.js'));
+  });
+  /* the league page draws a team table on another tab; only the players' one selects */
+  const lg = rd('epinoia', 'l', 'league.js');
+  ok('the team table is left alone', (lg.match(/selectable: \{ max: 5 \}/g) || []).length === 1 &&
+     lg.indexOf('selectable') < lg.indexOf("kind: 'team'"));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

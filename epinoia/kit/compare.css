@@ -58,6 +58,25 @@
 .cmp-stat.on{ color:var(--on-accent); background:var(--lume); border-color:var(--lume) }
 .cmp-stats[hidden]{ display:none }
 /* on a phone the chips sit under the chart, behind this button (compare.js statsHtml) */
+/* EVERY OTHER STAT, BY CATEGORY (compare.js groupsHtml): one small dropdown per category,
+   beside the chips rather than instead of them — the chips stay the quick way in. On a wide
+   screen the row itself is behind a button, because sixteen of them above the chart put the
+   bars off the bottom of the panel; on a phone the chips' own fold already holds them. */
+.cmp-morebox{ display:grid; gap:6px; min-width:0; justify-items:start }
+.cmp-morebtn{ min-height:32px }
+.cmp-more{ display:flex; flex-wrap:wrap; gap:4px; min-width:0; align-items:center }
+.cmp-more[hidden]{ display:none }
+.cmp-pick{
+  /* the label is a category's own name ("events · second chance"), so it is given room:
+     cut to twelve characters they all read "EVENTS · SE" and choose between nothing */
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.03em; text-transform:uppercase;
+  color:var(--ink-2); background:var(--panel); border:1px dashed var(--rule-2); border-radius:2px;
+  min-height:28px; padding:0 6px; cursor:pointer; max-width:min(19em, 100%);
+}
+.cmp-pick:hover{ color:var(--ink); border-color:var(--ink-3) }
+.cmp-pick:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px }
+.cmp-pick option{ font-family:var(--f-ui); font-size:13px; letter-spacing:0; text-transform:none }
+
 .cmp-statbox{ display:grid; gap:8px; min-width:0 }
 .cmp-fold{
   justify-self:start; min-height:40px; padding:0 12px; border:1px solid var(--rule-2); border-radius:3px;

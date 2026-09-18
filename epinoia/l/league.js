@@ -558,6 +558,8 @@ async function renderLeaders() {
     filename: (league.slug || 'league') + '-leaders',
     /* the table drops the premium columns itself when this league's analytics are locked */
     leagueId: league.id, leagueSlug: league.slug,
+    /* the same pick-and-compare the season statistics page offers (fulltable.js tray) */
+    selectable: { max: 5 },
     rows: S.players,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
     /* the same on-request RAPM as the season statistics page: every stint in the scope */

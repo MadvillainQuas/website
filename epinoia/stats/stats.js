@@ -94,6 +94,10 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
         filename: league.slug + '-season-stats',
         /* the table drops the premium columns itself when this league's analytics are locked */
         leagueId: league.id, leagueSlug: league.slug,
+        /* PICK UP TO FIVE AND COMPARE THEM (fulltable.js tray -> compare.js). No onCompare:
+           this table's percentiles are one league's, which is exactly what the table's own
+           comparison ranks over, so it opens the shared chart itself. */
+        selectable: { max: 5 },
         rows: S.players,
         playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
         /* RAPM on request: it needs every stint of the scope, which means reading the

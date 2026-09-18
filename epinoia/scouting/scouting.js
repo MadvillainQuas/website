@@ -183,7 +183,11 @@ function compareStats(statKeys, cols, locked) {
     .filter((k, i, a) => a.indexOf(k) === i)
     .slice(0, MAX_COMPARE_STATS);
   const pool = uniq((statKeys || []).concat(CORE_STATS)).filter(usable);
-  return { keys, pool, byKey };
+  /* AND EVERY OTHER COMPARABLE COLUMN. The chips are the preset and the core stats; the
+     category dropdowns beside them reach the rest of the table, so anything one of them can
+     choose must arrive with a value and a percentile or its bar would read "no data". */
+  const every = (cols || []).map(c => c.k).filter(usable);
+  return { keys, pool, every, byKey };
 }
 
 function statOf(c) {
@@ -209,7 +213,7 @@ function compareInput(picks, statKeys, cols, ranks, opt) {
   rows.forEach(r => {
     const id = String(r.id);
     values[id] = {}; pcts[id] = {};
-    S.pool.forEach(k => {
+    S.every.forEach(k => {
       values[id][k] = fin(r[k]) ? r[k] : null;
       const m = ranks && ranks.get ? ranks.get(k) : null;
       const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null;
@@ -221,6 +225,9 @@ function compareInput(picks, statKeys, cols, ranks, opt) {
     players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' })),
     stats: S.keys.map(k => statOf(S.byKey.get(k))),
     allStats: S.pool.map(k => statOf(S.byKey.get(k))),
+    /* the table's categories, each a dropdown of its own stats — built by the caller from
+       EpinoiaCompare.tableGroups, because that is the same list a league's own table offers */
+    statGroups: o.statGroups || [],
     values, pcts,
     mode: 'pct',
     note: o.withinLeague === false
@@ -379,7 +386,11 @@ function boot() {
     if (!C || !tbl || !picks || picks.length < 2) return;
     const S = compareStats(statKeys, T.PLAYER_COLS, locked);
     const within = tbl.getState ? tbl.getState().withinLeague !== false : true;
-    const o = compareInput(picks, statKeys, T.PLAYER_COLS, tbl.getRanks(S.pool), { locked, withinLeague: within });
+    /* every comparable column, not only the chips': the category dropdowns can choose any of
+       them, and a stat without its percentile draws as "no data" */
+    const groups = typeof C.tableGroups === 'function' ? C.tableGroups(T.PRESETS.player, T.PLAYER_COLS, locked) : [];
+    const o = compareInput(picks, statKeys, T.PLAYER_COLS, tbl.getRanks(S.every),
+      { locked, withinLeague: within, statGroups: groups });
     if (phone() || !panel) { closePanel(); C.open(o); return; }
     closePanel();
     panel.hidden = false;

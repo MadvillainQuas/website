@@ -199,7 +199,9 @@ async function games() {
     }
     gs = await api('games?select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
       'competitions(id,name,kind),' +
-      'home:home_team_id(name,short_name,colour,logo_path),away:away_team_id(name,short_name,colour,logo_path)' +
+      /* the club's id as well: a fixture row asks initials.js for that club's letters by id
+         (teamName), which is what a phone shows in place of a name it has no room for */
+      'home:home_team_id(id,name,short_name,colour,logo_path),away:away_team_id(id,name,short_name,colour,logo_path)' +
       '&status=in.(live,final,finalising,scheduled)' + scope + '&order=tipoff_at.desc&limit=400');
   } catch (e) {
     return fail('#games', 'Could not reach the server. ' + e.message);
@@ -301,9 +303,9 @@ async function games() {
 
     const h = el('div', 'tn h'), a = el('div', 'tn');
     if (window.epinoiaCrest) {
-      h.append(el('span', null, (g.home || {}).name || '\u2014'), window.epinoiaCrest(g.home, { cls: 'fxcrest' }));
-      a.append(window.epinoiaCrest(g.away, { cls: 'fxcrest' }), el('span', null, (g.away || {}).name || '\u2014'));
-    } else { h.textContent = (g.home || {}).name || '\u2014'; a.textContent = (g.away || {}).name || '\u2014'; }
+      h.append(teamName(g.home), window.epinoiaCrest(g.home, { cls: 'fxcrest' }));
+      a.append(window.epinoiaCrest(g.away, { cls: 'fxcrest' }), teamName(g.away));
+    } else { h.appendChild(teamName(g.home)); a.appendChild(teamName(g.away)); }
     if (final) {
       if (g.home_score > g.away_score) h.style.color = 'var(--lume)';
       if (g.away_score > g.home_score) a.style.color = 'var(--lume)';
@@ -517,6 +519,30 @@ function paintCard(a, colour, colour2) {
   const TC = window.EpinoiaTeamColour;
   if (TC && TC.card) TC.card(a, colour || '#93f2bf', colour2);
   else a.style.setProperty('--ink-c', colour || '#93f2bf');
+}
+
+/* A CLUB'S NAME IN A FIXTURE ROW, AND ITS LETTERS FOR A PHONE. Three columns of full names on
+   a 390px screen left "Yorkshire Dragons" as "YO…" and "Derby Trailblazers" as "DE…" — every
+   row the same two letters and a full stop, which says nothing (reported 2026-09-18). Both are
+   written; the stylesheet shows whichever fits. The letters are the league's own unique codes
+   (initials.js) once they have loaded, the club's short name until then, and the title and the
+   row's own aria-label keep the full name for a reader who cannot see either. */
+function teamName(team) {
+  const t = team || {};
+  const name = t.name || '—';
+  const sp = el('span', 'tnm');
+  sp.title = name;
+  sp.appendChild(el('span', 'full', name));
+  const I = window.EpinoiaInitials;
+  const code = I && typeof I.code === 'function' ? I.code(t) : '';
+  const short = el('span', 'short', code || monogram(t));
+  if (t.id) {
+    short.setAttribute('data-initials-team', t.id);
+    if (code) short.classList.add('is-code');
+    if (I && typeof I.want === 'function' && LEAGUE && LEAGUE.id) I.want(LEAGUE.id);
+  }
+  sp.appendChild(short);
+  return sp;
 }
 
 function monogram(t) {

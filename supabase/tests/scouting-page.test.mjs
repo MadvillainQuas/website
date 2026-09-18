@@ -237,6 +237,13 @@ const COLS = [
   ok('a stat with no rank is null, never NaN', o.pcts['L1:a'].rpg === null);
   ok('a missing or non-finite value is null', o.values['L1:a'].p3_pct === null && o.values['L2:a'].rpg === null);
   ok('no locked stat reaches the chart data', !('z_rim_att' in o.values['L1:a']) && !('z_rim_att' in o.pcts['L1:a']));
+  /* the category dropdowns reach past the chips, so every comparable column is valued */
+  ok('every comparable column is valued, not only the chips\'',
+     COLS.filter(c => c.heat && !locked(c.k) && c.k !== 'rapm').every(c => c.k in o.values['L1:a']));
+  eq('the categories come through as the chart\'s dropdowns',
+     S.compareInput(rows, preset, COLS, ranks, { locked, statGroups: [{ key: 'g', label: 'G', stats: [{ key: 'ppg', label: 'PPG' }] }] }).statGroups,
+     [{ key: 'g', label: 'G', stats: [{ key: 'ppg', label: 'PPG' }] }]);
+  eq('and a comparison with none is a comparison with no dropdowns', o.statGroups, []);
   ok('percentile mode by default', o.mode === 'pct');
   ok('the note says within own league', /within each player/.test(o.note));
   ok('the note says across leagues when the toggle is off',
