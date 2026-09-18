@@ -188,5 +188,19 @@ got = p.team("L", {"name": "BK Komarno", "code": "KOM"})
 eq("...but a real feed abbreviation still does",
    (got or {}).get("short_name"), "KOM")
 
+p = platform()
+got = p.team("L", {"name": "Patrioti Levice", "code": "699064"})
+eq("...and the club's name it falls back to is cut at a WORD boundary, not mid-word",
+   (got or {}).get("short_name"), "Patrioti")
+
+print("\n-- short_form(): a name cut to fit, never mid-word")
+eq("short enough already: untouched", names.short_form("BC Komarno"), "BC Komarno")
+eq("one word over the limit: that word alone", names.short_form("Patrioti Levice"), "Patrioti")
+eq("keeps whole words as long as they fit", names.short_form("BC SLOVAN Bratislava"), "BC SLOVAN")
+eq("a single word longer than the limit still gets cut -- there is no whole word to keep",
+   names.short_form("Supercalifragilisticexpialidocious"), "Supercalifra")
+eq("empty stays empty", names.short_form(""), "")
+eq("collapses whitespace first", names.short_form("  BC   Komarno  "), "BC Komarno")
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

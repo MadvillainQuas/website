@@ -312,7 +312,9 @@ def main() -> int:
     ap.add_argument('--league', help='one league, by slug (its logo)')
     ap.add_argument('--force', action='store_true', help='re-read teams already coloured from the logo')
     ap.add_argument('--dry-run', action='store_true')
-    ap.add_argument('--worker-config', action='store_true', help=r'take the URL and key from %APPDATA%\epinoia\worker.json')
+    # %% not %: argparse's --help formatter runs this help text through %-substitution
+    # (for %(default)s and friends), so a literal %APPDATA% crashed --help outright.
+    ap.add_argument('--worker-config', action='store_true', help=r'take the URL and key from %%APPDATA%%\epinoia\worker.json')
     ap.add_argument('--file', help='just print the palette of a local image')
     a = ap.parse_args()
     if a.file:

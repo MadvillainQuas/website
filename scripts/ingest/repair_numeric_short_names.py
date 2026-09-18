@@ -57,7 +57,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--league', help='league slug: only that league\'s teams')
     ap.add_argument('--dry-run', action='store_true')
-    ap.add_argument('--worker-config', action='store_true', help=r'take the URL and key from %APPDATA%\epinoia\worker.json')
+    # %% not %: argparse's --help formatter runs this help text through %-substitution
+    # (for %(default)s and friends), so a literal %APPDATA% crashed --help outright.
+    ap.add_argument('--worker-config', action='store_true', help=r'take the URL and key from %%APPDATA%%\epinoia\worker.json')
     a = ap.parse_args()
 
     url, key = os.environ.get('SUPABASE_URL'), os.environ.get('SUPABASE_SERVICE_KEY')
@@ -79,7 +81,7 @@ def main() -> int:
         print('nothing to repair'); return 0
     for t in teams:
         nice = names.team_name(t.get('name') or '') or t.get('name') or ''
-        sn = nice[:12]
+        sn = names.short_form(nice)
         print(f"   {t['slug']:28s} {t['short_name']!r:10s} -> {sn!r}")
         if not a.dry_run:
             sb.patch('teams', f"id=eq.{t['id']}", {'short_name': sn})

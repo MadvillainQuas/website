@@ -2,1055 +2,1579 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-18T05:20:27.888138+00:00",
+"updated": "2026-09-18T06:31:29.510659+00:00",
 "games": [
 {
 "id": "544677",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544676",
 "home": "BK Loko BaliMania Plzeň",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544675",
 "home": "USK Praha",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544674",
 "home": "BK Opava",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544673",
 "home": "BK GAPA Hradec Králové",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544672",
 "home": "Sršni Photomate Písek",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2027-01-09T17:00:00Z",
-"venue": null
-},
-{
-"id": "544668",
-"home": "BK Loko BaliMania Plzeň",
-"away": "NH Ostrava",
-"status": "scheduled",
-"date": "2027-01-03T17:00:00Z",
-"venue": null
+"date": "2027-01-09",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544671",
 "home": "BK Olomoucko",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2027-01-03T16:00:00Z",
-"venue": null
+"date": "2027-01-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544669",
-"home": "BK KVIS Pardubice",
-"away": "USK Praha",
+"id": "544668",
+"home": "BK Loko BaliMania Plzeň",
+"away": "NH Ostrava",
 "status": "scheduled",
-"date": "2027-01-02T17:30:00Z",
-"venue": null
+"date": "2027-01-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544670",
 "home": "BK GAPA Hradec Králové",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2027-01-02T17:00:00Z",
-"venue": null
+"date": "2027-01-02",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544666",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "Sršni Photomate Písek",
+"id": "544669",
+"home": "BK KVIS Pardubice",
+"away": "USK Praha",
 "status": "scheduled",
-"date": "2027-01-02T17:00:00Z",
-"venue": null
+"date": "2027-01-02",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544667",
 "home": "SK Slavia Praha ERA NBK",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2027-01-02T14:00:00Z",
-"venue": null
+"date": "2027-01-02",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544666",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2027-01-02",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544665",
 "home": "BK ARMEX ENERGY Děčín",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-12-30T17:30:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544664",
 "home": "SLUNETA Ústí nad Labem",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-12-30T17:00:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544663",
 "home": "BK Loko BaliMania Plzeň",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-12-30T17:00:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544662",
 "home": "USK Praha",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-12-30T17:00:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544661",
 "home": "BK Opava",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-12-30T17:00:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544660",
 "home": "Sršni Photomate Písek",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-12-30T17:00:00Z",
-"venue": null
+"date": "2026-12-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544659",
 "home": "PUMPA Basket Brno",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-12-27T18:00:00Z",
-"venue": null
-},
-{
-"id": "544655",
-"home": "NH Ostrava",
-"away": "BK ARMEX ENERGY Děčín",
-"status": "scheduled",
-"date": "2026-12-27T17:30:00Z",
-"venue": null
-},
-{
-"id": "544657",
-"home": "BK GAPA Hradec Králové",
-"away": "BK Loko BaliMania Plzeň",
-"status": "scheduled",
-"date": "2026-12-27T17:00:00Z",
-"venue": null
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544658",
 "home": "BK Olomoucko",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00Z",
-"venue": null
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544657",
+"home": "BK GAPA Hradec Králové",
+"away": "BK Loko BaliMania Plzeň",
+"status": "scheduled",
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544656",
 "home": "BK KVIS Pardubice",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-12-27T14:30:00Z",
-"venue": null
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544655",
+"home": "NH Ostrava",
+"away": "BK ARMEX ENERGY Děčín",
+"status": "scheduled",
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544654",
 "home": "SK Slavia Praha ERA NBK",
 "away": "Sršni Photomate Písek",
 "status": "scheduled",
-"date": "2026-12-27T14:00:00Z",
-"venue": null
-},
-{
-"id": "544650",
-"home": "BK Loko BaliMania Plzeň",
-"away": "BK Olomoucko",
-"status": "scheduled",
-"date": "2026-12-22T17:00:00Z",
-"venue": null
-},
-{
-"id": "544649",
-"home": "USK Praha",
-"away": "PUMPA Basket Brno",
-"status": "scheduled",
-"date": "2026-12-22T17:00:00Z",
-"venue": null
+"date": "2026-12-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544651",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-12-22T16:30:00Z",
-"venue": null
+"date": "2026-12-22",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544650",
+"home": "BK Loko BaliMania Plzeň",
+"away": "BK Olomoucko",
+"status": "scheduled",
+"date": "2026-12-22",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544649",
+"home": "USK Praha",
+"away": "PUMPA Basket Brno",
+"status": "scheduled",
+"date": "2026-12-22",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544645",
 "home": "BK Olomoucko",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-12-20T16:00:00Z",
-"venue": null
-},
-{
-"id": "544644",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "BK GAPA Hradec Králové",
-"status": "scheduled",
-"date": "2026-12-19T17:00:00Z",
-"venue": null
+"date": "2026-12-20",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544647",
 "home": "BK Opava",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-12-19T16:30:00Z",
-"venue": null
+"date": "2026-12-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544644",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "BK GAPA Hradec Králové",
+"status": "scheduled",
+"date": "2026-12-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544643",
 "home": "BK KVIS Pardubice",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-12-19T16:30:00Z",
-"venue": null
+"date": "2026-12-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544642",
 "home": "NH Ostrava",
 "away": "Sršni Photomate Písek",
 "status": "scheduled",
-"date": "2026-12-19T16:30:00Z",
-"venue": null
+"date": "2026-12-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544646",
 "home": "PUMPA Basket Brno",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-12-18T15:30:00Z",
-"venue": null
+"date": "2026-12-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544653",
 "home": "SK Slavia Praha ERA NBK",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-12-14T17:00:00Z",
-"venue": null
+"date": "2026-12-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544637",
 "home": "BK Loko BaliMania Plzeň",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-12-13T17:00:00Z",
-"venue": null
+"date": "2026-12-13",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544636",
 "home": "Sršni Photomate Písek",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-12-13T16:00:00Z",
-"venue": null
-},
-{
-"id": "544639",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "BK Olomoucko",
-"status": "scheduled",
-"date": "2026-12-12T17:00:00Z",
-"venue": null
-},
-{
-"id": "544638",
-"home": "PUMPA Basket Brno",
-"away": "SLUNETA Ústí nad Labem",
-"status": "scheduled",
-"date": "2026-12-12T17:00:00Z",
-"venue": null
+"date": "2026-12-13",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544641",
 "home": "NH Ostrava",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-12-12T16:30:00Z",
-"venue": null
+"date": "2026-12-12",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544639",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "BK Olomoucko",
+"status": "scheduled",
+"date": "2026-12-12",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544638",
+"home": "PUMPA Basket Brno",
+"away": "SLUNETA Ústí nad Labem",
+"status": "scheduled",
+"date": "2026-12-12",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544640",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-12-10T17:00:00Z",
-"venue": null
+"date": "2026-12-10",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544595",
 "home": "BK Olomoucko",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-12-07T16:00:00Z",
-"venue": null
-},
-{
-"id": "544630",
-"home": "BK KVIS Pardubice",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-12-05T17:30:00Z",
-"venue": null
-},
-{
-"id": "544634",
-"home": "BK Opava",
-"away": "SLUNETA Ústí nad Labem",
-"status": "scheduled",
-"date": "2026-12-05T17:00:00Z",
-"venue": null
-},
-{
-"id": "544633",
-"home": "PUMPA Basket Brno",
-"away": "BK ARMEX ENERGY Děčín",
-"status": "scheduled",
-"date": "2026-12-05T17:00:00Z",
-"venue": null
-},
-{
-"id": "544632",
-"home": "BK Olomoucko",
-"away": "SK Slavia Praha ERA NBK",
-"status": "scheduled",
-"date": "2026-12-05T17:00:00Z",
-"venue": null
-},
-{
-"id": "544631",
-"home": "BK GAPA Hradec Králové",
-"away": "NH Ostrava",
-"status": "scheduled",
-"date": "2026-12-05T17:00:00Z",
-"venue": null
+"date": "2026-12-07",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544635",
 "home": "USK Praha",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-12-05T16:30:00Z",
-"venue": null
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544634",
+"home": "BK Opava",
+"away": "SLUNETA Ústí nad Labem",
+"status": "scheduled",
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544633",
+"home": "PUMPA Basket Brno",
+"away": "BK ARMEX ENERGY Děčín",
+"status": "scheduled",
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544632",
+"home": "BK Olomoucko",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544631",
+"home": "BK GAPA Hradec Králové",
+"away": "NH Ostrava",
+"status": "scheduled",
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544630",
+"home": "BK KVIS Pardubice",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2026-12-05",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544648",
 "home": "Sršni Photomate Písek",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-12-02T17:00:00Z",
-"venue": null
+"date": "2026-12-02",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544625",
 "home": "SLUNETA Ústí nad Labem",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-11-22T17:00:00Z",
-"venue": null
+"date": "2026-11-22",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544624",
 "home": "Sršni Photomate Písek",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-11-22T17:00:00Z",
-"venue": null
+"date": "2026-11-22",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544629",
 "home": "BK KVIS Pardubice",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-11-21T16:30:00Z",
-"venue": null
+"date": "2026-11-21",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544628",
 "home": "NH Ostrava",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-11-21T16:30:00Z",
-"venue": null
-},
-{
-"id": "544626",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "BK Opava",
-"status": "scheduled",
-"date": "2026-11-21T16:00:00Z",
-"venue": null
+"date": "2026-11-21",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544627",
 "home": "SK Slavia Praha ERA NBK",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-11-21T14:00:00Z",
-"venue": null
+"date": "2026-11-21",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544618",
-"home": "BK GAPA Hradec Králové",
-"away": "Sršni Photomate Písek",
+"id": "544626",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "BK Opava",
 "status": "scheduled",
-"date": "2026-11-18T18:00:00Z",
-"venue": null
+"date": "2026-11-21",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544623",
 "home": "BK Loko BaliMania Plzeň",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-11-18T17:00:00Z",
-"venue": null
+"date": "2026-11-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544622",
 "home": "USK Praha",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-11-18T17:00:00Z",
-"venue": null
+"date": "2026-11-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544620",
 "home": "PUMPA Basket Brno",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-11-18T17:00:00Z",
-"venue": null
+"date": "2026-11-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544612",
-"home": "Sršni Photomate Písek",
-"away": "SLUNETA Ústí nad Labem",
+"id": "544618",
+"home": "BK GAPA Hradec Králové",
+"away": "Sršni Photomate Písek",
 "status": "scheduled",
-"date": "2026-11-15T16:00:00Z",
-"venue": null
+"date": "2026-11-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544614",
 "home": "SK Slavia Praha ERA NBK",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-11-15T14:00:00Z",
-"venue": null
+"date": "2026-11-15",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544616",
-"home": "PUMPA Basket Brno",
-"away": "BK KVIS Pardubice",
+"id": "544612",
+"home": "Sršni Photomate Písek",
+"away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-11-14T17:30:00Z",
-"venue": null
+"date": "2026-11-15",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544617",
 "home": "BK GAPA Hradec Králové",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-11-14T17:00:00Z",
-"venue": null
+"date": "2026-11-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544613",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "BK Loko BaliMania Plzeň",
+"id": "544616",
+"home": "PUMPA Basket Brno",
+"away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-11-14T17:00:00Z",
-"venue": null
+"date": "2026-11-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544615",
 "home": "NH Ostrava",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-11-14T16:30:00Z",
-"venue": null
+"date": "2026-11-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544613",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "BK Loko BaliMania Plzeň",
+"status": "scheduled",
+"date": "2026-11-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544652",
 "home": "BK ARMEX ENERGY Děčín",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-11-11T17:00:00Z",
-"venue": null
-},
-{
-"id": "544606",
-"home": "BK Olomoucko",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-11-08T16:00:00Z",
-"venue": null
+"date": "2026-11-11",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544610",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-11-08T14:00:00Z",
-"venue": null
+"date": "2026-11-08",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544606",
+"home": "BK Olomoucko",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2026-11-08",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544611",
 "home": "BK ARMEX ENERGY Děčín",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-11-07T17:00:00Z",
-"venue": null
-},
-{
-"id": "544607",
-"home": "PUMPA Basket Brno",
-"away": "BK GAPA Hradec Králové",
-"status": "scheduled",
-"date": "2026-11-07T17:00:00Z",
-"venue": null
+"date": "2026-11-07",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544609",
 "home": "NH Ostrava",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-11-07T16:30:00Z",
-"venue": null
+"date": "2026-11-07",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544608",
 "home": "BK KVIS Pardubice",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-11-07T16:30:00Z",
-"venue": null
+"date": "2026-11-07",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544607",
+"home": "PUMPA Basket Brno",
+"away": "BK GAPA Hradec Králové",
+"status": "scheduled",
+"date": "2026-11-07",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544605",
 "home": "PUMPA Basket Brno",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-11-04T17:00:00Z",
-"venue": null
+"date": "2026-11-04",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544599",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-11-04T17:00:00Z",
-"venue": null
+"date": "2026-11-04",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544604",
 "home": "BK Opava",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-11-01T17:00:00Z",
-"venue": null
+"date": "2026-11-01",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544601",
 "home": "SLUNETA Ústí nad Labem",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-11-01T17:00:00Z",
-"venue": null
+"date": "2026-11-01",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544600",
 "home": "Sršni Photomate Písek",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-11-01T16:00:00Z",
-"venue": null
+"date": "2026-11-01",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544603",
 "home": "USK Praha",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-10-31T16:30:00Z",
-"venue": null
+"date": "2026-10-31",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544602",
 "home": "NH Ostrava",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-10-31T16:30:00Z",
-"venue": null
+"date": "2026-10-31",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544621",
 "home": "BK Opava",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-10-30T17:00:00Z",
-"venue": null
-},
-{
-"id": "544596",
-"home": "BK GAPA Hradec Králové",
-"away": "USK Praha",
-"status": "scheduled",
-"date": "2026-10-28T18:00:00Z",
-"venue": null
+"date": "2026-10-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544598",
 "home": "NH Ostrava",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-10-28T17:00:00Z",
-"venue": null
-},
-{
-"id": "544594",
-"home": "PUMPA Basket Brno",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-10-28T17:00:00Z",
-"venue": null
+"date": "2026-10-28",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544597",
 "home": "BK KVIS Pardubice",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-10-28T16:30:00Z",
-"venue": null
+"date": "2026-10-28",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544596",
+"home": "BK GAPA Hradec Králové",
+"away": "USK Praha",
+"status": "scheduled",
+"date": "2026-10-28",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544594",
+"home": "PUMPA Basket Brno",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2026-10-28",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544591",
 "home": "BK Loko BaliMania Plzeň",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-10-25T17:00:00Z",
-"venue": null
+"date": "2026-10-25",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544590",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-10-25T17:00:00Z",
-"venue": null
+"date": "2026-10-25",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544593",
 "home": "BK Opava",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-10-24T16:00:00Z",
-"venue": null
-},
-{
-"id": "544589",
-"home": "BK ARMEX ENERGY Děčín",
-"away": "NH Ostrava",
-"status": "scheduled",
-"date": "2026-10-24T16:00:00Z",
-"venue": null
+"date": "2026-10-24",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544592",
 "home": "USK Praha",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-10-24T15:30:00Z",
-"venue": null
+"date": "2026-10-24",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544589",
+"home": "BK ARMEX ENERGY Děčín",
+"away": "NH Ostrava",
+"status": "scheduled",
+"date": "2026-10-24",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544588",
 "home": "Sršni Photomate Písek",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-10-23T16:00:00Z",
-"venue": null
+"date": "2026-10-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544583",
 "home": "PUMPA Basket Brno",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-10-18T16:00:00Z",
-"venue": null
-},
-{
-"id": "544582",
-"home": "BK Opava",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-10-17T17:00:00Z",
-"venue": null
-},
-{
-"id": "544585",
-"home": "BK GAPA Hradec Králové",
-"away": "SLUNETA Ústí nad Labem",
-"status": "scheduled",
-"date": "2026-10-17T16:00:00Z",
-"venue": null
+"date": "2026-10-18",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544587",
 "home": "NH Ostrava",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-10-17T15:30:00Z",
-"venue": null
+"date": "2026-10-17",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544586",
 "home": "BK KVIS Pardubice",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-10-17T15:30:00Z",
-"venue": null
+"date": "2026-10-17",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544585",
+"home": "BK GAPA Hradec Králové",
+"away": "SLUNETA Ústí nad Labem",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544582",
+"home": "BK Opava",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544584",
 "home": "BK Olomoucko",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-10-16T08:00:00Z",
-"venue": null
+"date": "2026-10-16",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544619",
 "home": "BK KVIS Pardubice",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-10-14T15:30:00Z",
-"venue": null
+"date": "2026-10-14",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544580",
 "home": "BK Loko BaliMania Plzeň",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-10-11T16:00:00Z",
-"venue": null
+"date": "2026-10-11",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544579",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-10-11T16:00:00Z",
-"venue": null
+"date": "2026-10-11",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544576",
 "home": "Sršni Photomate Písek",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-10-11T15:00:00Z",
-"venue": null
+"date": "2026-10-11",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544581",
 "home": "USK Praha",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-10-10T16:00:00Z",
-"venue": null
+"date": "2026-10-10",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544578",
 "home": "BK GAPA Hradec Králové",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-10-10T16:00:00Z",
-"venue": null
+"date": "2026-10-10",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544577",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-10-10T10:00:00Z",
-"venue": null
-},
-{
-"id": "544572",
-"home": "SLUNETA Ústí nad Labem",
-"away": "PUMPA Basket Brno",
-"status": "scheduled",
-"date": "2026-10-04T16:00:00Z",
-"venue": null
+"date": "2026-10-10",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544573",
 "home": "BK Olomoucko",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-10-04T15:00:00Z",
-"venue": null
+"date": "2026-10-04",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544574",
-"home": "BK GAPA Hradec Králové",
-"away": "SK Slavia Praha ERA NBK",
+"id": "544572",
+"home": "SLUNETA Ústí nad Labem",
+"away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-10-03T16:00:00Z",
-"venue": null
-},
-{
-"id": "544571",
-"home": "BK Opava",
-"away": "BK Loko BaliMania Plzeň",
-"status": "scheduled",
-"date": "2026-10-03T16:00:00Z",
-"venue": null
+"date": "2026-10-04",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544575",
 "home": "BK KVIS Pardubice",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-10-03T15:30:00Z",
-"venue": null
+"date": "2026-10-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544574",
+"home": "BK GAPA Hradec Králové",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544571",
+"home": "BK Opava",
+"away": "BK Loko BaliMania Plzeň",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544570",
 "home": "USK Praha",
 "away": "Sršni Photomate Písek",
 "status": "scheduled",
-"date": "2026-10-03T15:30:00Z",
-"venue": null
+"date": "2026-10-03",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544569",
 "home": "BK Loko BaliMania Plzeň",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544568",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544567",
 "home": "BK ARMEX ENERGY Děčín",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544566",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK Olomoucko",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544565",
 "home": "NH Ostrava",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544564",
 "home": "Sršni Photomate Písek",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-09-30T16:00:00Z",
-"venue": null
-},
-{
-"id": "544558",
-"home": "BK Loko BaliMania Plzeň",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-09-27T16:00:00Z",
-"venue": null
+"date": "2026-09-30",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544562",
 "home": "BK Olomoucko",
 "away": "NH Ostrava",
 "status": "scheduled",
-"date": "2026-09-27T15:00:00Z",
-"venue": null
+"date": "2026-09-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544558",
+"home": "BK Loko BaliMania Plzeň",
+"away": "Sršni Photomate Písek",
+"status": "scheduled",
+"date": "2026-09-27",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544563",
 "home": "BK GAPA Hradec Králové",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-09-26T16:00:00Z",
-"venue": null
+"date": "2026-09-26",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544561",
 "home": "PUMPA Basket Brno",
 "away": "SK Slavia Praha ERA NBK",
 "status": "scheduled",
-"date": "2026-09-26T16:00:00Z",
-"venue": null
+"date": "2026-09-26",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544560",
 "home": "BK Opava",
 "away": "BK ARMEX ENERGY Děčín",
 "status": "scheduled",
-"date": "2026-09-26T16:00:00Z",
-"venue": null
+"date": "2026-09-26",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544559",
 "home": "USK Praha",
 "away": "SLUNETA Ústí nad Labem",
 "status": "scheduled",
-"date": "2026-09-26T15:30:00Z",
-"venue": null
+"date": "2026-09-26",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544557",
 "home": "SLUNETA Ústí nad Labem",
 "away": "BK Loko BaliMania Plzeň",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544556",
 "home": "BK ARMEX ENERGY Děčín",
 "away": "USK Praha",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544555",
 "home": "SK Slavia Praha ERA NBK",
 "away": "BK Opava",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544554",
 "home": "NH Ostrava",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544553",
 "home": "BK Olomoucko",
 "away": "BK KVIS Pardubice",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544552",
 "home": "Sršni Photomate Písek",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-09-23T16:00:00Z",
-"venue": null
-},
-{
-"id": "544546",
-"home": "SLUNETA Ústí nad Labem",
-"away": "Sršni Photomate Písek",
-"status": "scheduled",
-"date": "2026-09-20T16:00:00Z",
-"venue": null
+"date": "2026-09-23",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544551",
 "home": "BK Olomoucko",
 "away": "BK GAPA Hradec Králové",
 "status": "scheduled",
-"date": "2026-09-20T15:00:00Z",
-"venue": null
+"date": "2026-09-20",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "544548",
-"home": "USK Praha",
-"away": "SK Slavia Praha ERA NBK",
+"id": "544546",
+"home": "SLUNETA Ústí nad Labem",
+"away": "Sršni Photomate Písek",
 "status": "scheduled",
-"date": "2026-09-19T18:00:00Z",
-"venue": null
-},
-{
-"id": "544549",
-"home": "BK Opava",
-"away": "NH Ostrava",
-"status": "scheduled",
-"date": "2026-09-19T16:00:00Z",
-"venue": null
+"date": "2026-09-20",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "544550",
 "home": "BK KVIS Pardubice",
 "away": "PUMPA Basket Brno",
 "status": "scheduled",
-"date": "2026-09-19T14:00:00Z",
-"venue": null
+"date": "2026-09-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544549",
+"home": "BK Opava",
+"away": "NH Ostrava",
+"status": "scheduled",
+"date": "2026-09-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "544548",
+"home": "USK Praha",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-09-19",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2890468",
@@ -1059,7 +1583,20 @@
 "homeScore": 79,
 "awayScore": 109,
 "status": "final",
-"date": "2026-09-17T16:00:00Z",
+"date": "2026-09-17",
+"hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
+"venue": null,
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
+"updated": "2026-09-18T06:31:20.952438+00:00"
+},
+{
+"id": "2890468",
+"home": "BK Loko BaliMania  Plzeň",
+"away": "BK ARMEX ENERGY Děčín",
+"homeScore": 79,
+"awayScore": 109,
+"status": "final",
+"date": "2026-09-17",
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",

@@ -238,6 +238,27 @@ def team_name(raw: str) -> str:
     return re.sub(r"\s+", " ", latinise(raw).strip())
 
 
+def short_form(name: str, maxlen: int = 12) -> str:
+    """A name cut to fit a short_name column WITHOUT cutting a word in half. "Patrioti Levice"
+    fits nowhere under 12 characters whole, so a bare name[:12] gave "Patrioti Lev" -- readable
+    as neither the club's name nor an abbreviation of it (found 2026-09-18, on every Slovak SBL
+    club whose short_name had just been repaired away from a numeric feed id: see
+    feedplatform.py's team() and repair_numeric_short_names.py, the two places a club's own name
+    stands in for a short_name the feed never gave). This keeps whole words from the front for as
+    long as they fit, so "Patrioti Levice" becomes "Patrioti" and "BC SLOVAN Bratislava" becomes
+    "BC SLOVAN" -- and only cuts mid-word for the rare single word already longer than maxlen."""
+    s = re.sub(r"\s+", " ", str(name or "").strip())
+    if len(s) <= maxlen:
+        return s
+    words = s.split(" ")
+    out = words[0][:maxlen]
+    for w in words[1:]:
+        if len(out) + 1 + len(w) > maxlen:
+            break
+        out += " " + w
+    return out
+
+
 # ---------------------------------------------------------------- one club, one row ---
 # Words that say nothing about WHICH club this is.
 _CLUB_NOISE = {"basketball", "basket", "basquet", "baloncesto", "bc", "cb", "kk", "bk", "bbc",

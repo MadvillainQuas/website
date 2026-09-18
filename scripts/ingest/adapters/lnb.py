@@ -177,6 +177,17 @@ class LnbAdapter(FibaLiveStatsAdapter):
         self._last_api = time.time()
         r = requests.request(method, url, timeout=45, **kw)
         if r.status_code in (403, 404):
+            # UNLIKE fiba_livestats.py's own 403/404-is-normal case (a game that has not tipped
+            # off yet), there is no routine reason for LNB's OWN discovery calls -- listing a
+            # season's competitions, then one competition's calendar -- to be refused: this is
+            # not per-game polling, it is the request that lists every game there is. A silent
+            # None here reads identically to "no games this season" and "the request was blocked"
+            # -- which cost real time to tell apart (2026-09-18: api-prod.lnb.fr returned 242
+            # games from a home connection and, in the same minute, nothing at all from the
+            # ingest workflow's runner -- the two calls otherwise byte-for-byte identical -- the
+            # kind of thing only a site's own bot protection tells apart by IP). Printed, not
+            # raised: one blocked competition must not stop the rest of the pass.
+            print(f"   (lnb: {r.status_code} on {url.split('/')[-1]} -- {(r.text or '')[:200]!r})")
             return None
         r.raise_for_status()
         return r.json()

@@ -258,7 +258,7 @@ class Platform:
             # id that will never mean anything to a reader, is what stands in for one.
             sn_code = code if re.search(r"[A-Za-z]", code) else nice
             r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
-                                      "short_name": (names.team_name(t.get("shortName") or "") or sn_code)[:12], "logo_path": self.logo_url(t),
+                                      "short_name": names.short_form(names.team_name(t.get("shortName") or "") or sn_code), "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
                                       "aliases": list(dict.fromkeys(extra))})
         self.cache["team"][key] = r

@@ -1698,7 +1698,12 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="discover + fetch, write nothing")
     ap.add_argument("--config", action="store_true", help="(kept for compatibility) config sources are always read; with Supabase keys the database sources are merged in too")
     ap.add_argument("--max-games", type=int, default=400)
-    ap.add_argument("--ids", help="comma-separated external ids: skip discovery and fetch just these (tests)")
+    ap.add_argument("--ids", help="comma-separated external ids: skip discovery and fetch just these (tests). "
+                    "For the Czech NBL (fiba_site_schedule, site=czech) this is nbl.basketball's OWN /zapas/<id> "
+                    "id, not the LiveStats id external_games.external_id ends up holding -- fetch() translates "
+                    "one to the other on the way in (see data/feed/CBFFE/idmap.json for the mapping). Passing "
+                    "the LiveStats id here fails silently: 'to (re)fetch' but 'fetched 0', no error printed "
+                    "(reported 2026-09-18, cost a fetch() debugging session before the idmap gave up the real id)")
     ap.add_argument("--feed-out", default=str(FEED_DIR), help="repo feed directory (default data/feed); '' to disable")
     ap.add_argument("--fixture-out", help="also write each bundle (+ raw) as JSON test fixtures here")
     ap.add_argument("--no-supabase", action="store_true")
@@ -1708,10 +1713,32 @@ def main() -> int:
     ap.add_argument("--live-every", type=int, default=30)
     ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
     ap.add_argument("--backfill", action="store_true", help="claim the oldest queued season backfill (0135) and run this same pass over that league's sources with that season pinned")
+    # %% not %: argparse's --help formatter runs this help text through %-substitution
+    # (for %(default)s and friends), so a literal %APPDATA% crashed --help outright --
+    # the exact same bug already sitting in team_colours.py's own --worker-config, copied
+    # forward here without noticing until --help was actually run (2026-09-18).
+    ap.add_argument("--worker-config", action="store_true", help=r"take SUPABASE_URL / SUPABASE_SERVICE_KEY from %%APPDATA%%\epinoia\worker.json, same as team_colours.py / sync_clubs.py, for a one-off local run with nothing pasted into a shell")
     args = ap.parse_args()
     if args.backfill and args.live_only:
         print("--backfill and --live-only are different lanes: an old season has no live games")
         return 2
+
+    # SET BEFORE ANYTHING ELSE READS THEM. Every other Supabase-credentialed helper in this file
+    # (backfill_claim included) reads SUPABASE_URL / SUPABASE_SERVICE_KEY straight from the
+    # environment rather than being passed a client, so filling the environment here -- once,
+    # before the first read -- covers all of them without threading --worker-config through each
+    # one by hand. setdefault, not assignment: an env var Louie already set (CI, a shell profile)
+    # always wins over the file. Every OTHER ingest script (team_colours.py, sync_clubs.py,
+    # repair_numeric_short_names.py) already offers this flag; this file was the one left needing
+    # SUPABASE_URL / SUPABASE_SERVICE_KEY typed by hand for a local run (reported 2026-09-18).
+    if args.worker_config:
+        try:
+            cfg = json.load(open(os.path.join(os.environ['APPDATA'], 'epinoia', 'worker.json')))
+            os.environ.setdefault('SUPABASE_URL', cfg['supabase_url'])
+            os.environ.setdefault('SUPABASE_SERVICE_KEY', cfg['service_key'])
+        except Exception as exc:
+            print(f"--worker-config: {exc}")
+            return 2
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
     sb = Supabase(url, key) if (url and key and not args.dry_run and not args.no_supabase) else None
