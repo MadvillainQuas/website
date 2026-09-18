@@ -35,8 +35,15 @@
    monogram-size variants that make a star or a Team of the Year card.
    ============================================================================ */
 
+/* A CARD IS THE SIZE THE LAYOUT GIVES IT, NEVER THE SIZE OF ITS CAPTION. The caption is
+   nowrap, and a flex or grid item's automatic minimum is its whole content, so a card holding
+   a long club name could not be held to its track: on a phone the clubs rail gives each card
+   flex:0 0 128px, but "Crvena Zvezda Meridianbet Belgrade" floored it at 182px, and because
+   the plate is aspect-ratio:1 the card grew in both directions. Twenty EuroLeague clubs came
+   out in four different sizes (reported 2026-09-18). min-width:0 lets the card sit on its
+   track and the caption ellipsis instead, which is what .club-ed already does below. */
 .club{position:relative;display:block;text-decoration:none;color:inherit;
-  isolation:isolate}
+  isolation:isolate;min-width:0}
 .club-plate{position:relative;aspect-ratio:1;overflow:hidden;
   background:var(--panel);border:1px solid var(--rule);
   display:grid;place-items:center;
@@ -134,7 +141,7 @@
 .club-foot{display:flex;align-items:baseline;gap:8px;padding:9px 2px 0}
 .club-name{font-family:var(--f-ui);font-weight:800;font-size:12.5px;
   text-transform:uppercase;letter-spacing:.02em;color:var(--ink-t,var(--ink));
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* the club's name in the club's ink -- the text-safe one, so a navy club is not
    a line of near-black on near-black */
 .club:hover .club-name{color:var(--ink-t,var(--ink-c));

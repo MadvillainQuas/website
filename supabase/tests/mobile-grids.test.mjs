@@ -32,6 +32,7 @@ const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
 const news = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'news.css'), 'utf8');
 const home = readFileSync(path.join(ROOT, 'epinoia', 'index.html'), 'utf8');
+const card = readFileSync(path.join(ROOT, 'epinoia', 'kit', 'card.css'), 'utf8');
 
 let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
@@ -97,6 +98,27 @@ ok('the star name is scaled by the class star cards actually carry',
 ok('...and so is the club under it', /\.stargrid \.star-team\{font-size:/.test(hmob));
 ok('the crest monogram comes down too, or it swamps a 79px card',
    /\.clubgrid \.club-mono\{font-size:clamp\(/.test(hmob));
+
+/* ---- a card is the size of its track, not the size of its caption ---------- */
+/* The rail hands every club card flex:0 0 128px, and every plate is aspect-ratio:1, so on a
+   phone the twenty EuroLeague clubs should have been twenty identical squares. Five of them
+   were not: a flex item's automatic minimum is its whole content, the caption is nowrap, and
+   "Crvena Zvezda Meridianbet Belgrade" floored its card at 182px — which the square plate then
+   matched in height, so the card grew in both directions (reported 2026-09-18, measured on the
+   live EuroLeague page: 128 / 137 / 139 / 155 / 160 / 182).
+
+   flex-basis alone does not say this. Only min-width:0 lets the card sit on its track and the
+   caption ellipsis, which is exactly what .club-ed already had to do. */
+ok('the club card can never be widened by its own caption',
+   /\.club\{[^}]*min-width:0/.test(card));
+ok('...and the caption gives way instead of pushing',
+   /\.club-name\{[^}]*min-width:0/.test(card));
+ok('...which only works because the caption can ellipsis',
+   /\.club-name\{[^}]*text-overflow:ellipsis/.test(card) &&
+   /\.club-name\{[^}]*white-space:nowrap/.test(card));
+/* the same floor, already fixed once on the byline — if it regresses the news cards go too */
+ok('the edition byline keeps the fix it was given first',
+   /\.club-ed\{[^}]*min-width:0/.test(card));
 
 /* ---- the desktop layout is untouched -------------------------------------- */
 ok('the desktop news layout still leads with one wide card',

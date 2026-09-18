@@ -44,6 +44,21 @@ const ok = (name, cond, detail) => {
   else { fail++; console.log('  FAIL  ' + name + (detail ? '\n          ' + detail : '')); }
 };
 
+/* ---------------------------------------------------------------------------
+   EVERY SOURCE BELOW IS READ WITH ITS LINE ENDINGS NORMALISED TO \n.
+
+   The assertions here are regexes over real source, and several of them pin the
+   SHAPE of a guard across a line break — `\{\s*\n\s*if\(`, `\n\s*return;\n\s*\}`.
+   A bare \n in those cannot match a \r\n, so on a Windows checkout, where git
+   hands the working tree CRLF, the guard is present and correct and this file
+   reports it missing. CI checks out LF and stays green, so the failure appears
+   only on the machine the code is written on, which is the worst place for a
+   test to be wrong (found 2026-09-18, after a rebase re-checked the scorer out
+   as CRLF and four assertions about save() went red without the scorer moving).
+
+   Hence the .replace on every read: the regexes describe code, not line endings.
+   --------------------------------------------------------------------------- */
+
 /* A supabase client that records what it was asked to write, and can be told
    to refuse the way PostgREST refuses: by RESOLVING with an error. */
 function fakeSb(opts = {}) {
@@ -173,9 +188,9 @@ const frameOf = (events, state) => ({
 /* ---- the scorer is told ----------------------------------------------------- */
 {
   const src = require('node:fs').readFileSync(
-    path.join(ROOT, 'epinoia', 'score', 'sync.js'), 'utf8');
+    path.join(ROOT, 'epinoia', 'score', 'sync.js'), 'utf8').replace(/\r\n/g, '\n');
   const boot = require('node:fs').readFileSync(
-    path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+    path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8').replace(/\r\n/g, '\n');
   ok('sync passes a write-failure hook to the publisher', /onError:\s*\(err\)/.test(src));
   ok('...and the scorer shows it on the bar', /not saving/.test(boot));
   /* Asserted as a PROPERTY of the handler, not as a distance in the source.
@@ -203,8 +218,8 @@ const frameOf = (events, state) => ({
 /* ---- the announcement that makes a live game appear at once ----------------- */
 {
   const fs = require('node:fs');
-  const sync = fs.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sync.js'), 'utf8');
-  const strip = fs.readFileSync(path.join(ROOT, 'epinoia', 'embed', 'strip', 'strip.js'), 'utf8');
+  const sync = fs.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sync.js'), 'utf8').replace(/\r\n/g, '\n');
+  const strip = fs.readFileSync(path.join(ROOT, 'epinoia', 'embed', 'strip', 'strip.js'), 'utf8').replace(/\r\n/g, '\n');
   ok('the scorer announces a status change on a fixed topic',
      /ANNOUNCE_TOPIC = 'epinoia:live'/.test(sync));
   ok('the strip listens on the same one',
@@ -232,7 +247,7 @@ const frameOf = (events, state) => ({
    --------------------------------------------------------------------------- */
 {
   const fs2 = require('node:fs');
-  const sc = fs2.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
+  const sc = fs2.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 
   ok('a failed save is reported rather than swallowed',
      /catch\(e\)\{[\s\S]{0,200}saveBroken = true;[\s\S]{0,120}saveBanner\(/.test(sc));
@@ -267,7 +282,7 @@ const frameOf = (events, state) => ({
    --------------------------------------------------------------------------- */
 {
   const fs3 = require('node:fs');
-  const bs = fs3.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+  const bs = fs3.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8').replace(/\r\n/g, '\n');
 
   ok('the question has three answers, not two',
      /async function mayScoreThis\(sb\)/.test(bs) &&
@@ -315,8 +330,8 @@ const frameOf = (events, state) => ({
    --------------------------------------------------------------------------- */
 {
   const fs4 = require('node:fs');
-  const sc4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
-  const bs4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+  const sc4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+  const bs4 = fs4.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8').replace(/\r\n/g, '\n');
 
   ok('the page knows at boot whether the phone already holds a game',
      /let savedInPlay = \(function \(\) \{[\s\S]{0,400}p\.phase !== 'setup' && \(p\.events \|\| \[\]\)\.length/.test(sc4));
@@ -366,7 +381,7 @@ const frameOf = (events, state) => ({
    --------------------------------------------------------------------------- */
 {
   const fs5 = require('node:fs');
-  const bs5 = fs5.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8');
+  const bs5 = fs5.readFileSync(path.join(ROOT, 'epinoia', 'score', 'bootstrap.js'), 'utf8').replace(/\r\n/g, '\n');
 
   ok('the scoring app asks the phone to stay awake',
      /navigator\.wakeLock\.request\('screen'\)/.test(bs5));
@@ -414,8 +429,8 @@ const frameOf = (events, state) => ({
    --------------------------------------------------------------------------- */
 {
   const fs7 = require('node:fs');
-  const sw = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sw.js'), 'utf8');
-  const sc7 = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8');
+  const sw = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'sw.js'), 'utf8').replace(/\r\n/g, '\n');
+  const sc7 = fs7.readFileSync(path.join(ROOT, 'epinoia', 'score', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 
   ok('the scorer registers a worker of its own',
      /navigator\.serviceWorker\.register\('sw\.js', \{ scope: '\.\/'/.test(sc7));
