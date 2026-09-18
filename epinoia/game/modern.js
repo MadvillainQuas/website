@@ -508,7 +508,6 @@
   function fitNames(host) {
     host.querySelectorAll('.mv-nm').forEach(n => {
       n.style.fontSize = '';
-      n.classList.remove('wrap');
       const room = n.clientWidth;
       if (!room || n.scrollWidth <= room) return;
       /* ONE STEP IS NOT ENOUGH. Shrinking re-lays the letters out (this caption is uppercase
@@ -519,10 +518,19 @@
         size = Math.max(NAME_FLOOR, size * room / n.scrollWidth);
         n.style.fontSize = size.toFixed(2) + 'px';
       }
-      /* A DOUBLE-BARRELLED SURNAME BEATS THE FLOOR. "Segno-Verbrugghe" does not fit a caption
-         86px wide at any size worth reading, and half a name with an ellipsis after it is
-         worse than a name on two lines. */
-      if (n.scrollWidth > room) { n.classList.add('wrap'); n.style.fontSize = ''; }
+      /* AND WHAT STILL DOES NOT FIT IS CUT, AS IT ALWAYS WAS.
+         A caption that beats the floor used to be allowed to wrap onto a second line. It
+         should not be: a name is ONE line under a circle, and the circles are placed
+         absolutely at fixed spots on a court while the lines under them are not -- so a
+         caption that grows taller pushes that player's minutes and plus-minus down past the
+         next player's, where they read as belonging to nobody. "Segno-Verbrugghe" has one
+         hyphen to break at and the rest has to break mid-word, which made the caption nine
+         lines and its owner's numbers an inch adrift (reported 2026-09-18).
+
+         Measuring the name is what makes this rare: nearly everything fits once it is
+         allowed to shrink, and the one surname in a league that still does not gets the
+         ellipsis it got before any of this. A caption cannot change the height of the block
+         it is in. */
     });
   }
 

@@ -101,9 +101,6 @@
 :root[data-theme="light"] .mv-shadow{ background:radial-gradient(ellipse at center, rgba(13,31,23,.28), rgba(13,31,23,0) 70%) }
 :root[data-theme="light"] .mv-pop{ box-shadow:0 18px 50px rgba(13,31,23,.22) }
 
-/* a name too long for one line at a readable size goes onto two (modern.js fitNames) */
-.mv-nm.wrap{ white-space:normal; overflow-wrap:break-word; text-wrap:balance; line-height:1.08; text-overflow:clip }
-
 /* ------------------------------------------------------------------- the flash ---
    A basket is the one thing on this page that HAPPENS, and a box score that only ever
    settles to a new number never says so. When a face's visible line moves, the change
