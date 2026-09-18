@@ -494,5 +494,79 @@ console.log('\nthe worker reads the whole broadcast unless the stamps cover it')
      /run_ingest\.py has the same enqueue gate/.test(aw));
 }
 
+/* ============================================================================
+   A THIRD REAL BROADCAST: e3d1193e, Loughborough Riders v Hemel Storm, 2026-09-06,
+   video dx3_ugdfECM. Read whole (993 readings, 42 runs, all four quarters) and
+   still placing its plays about a minute late at the start of the first quarter.
+
+   THE GROUND TRUTH IS THE BROADCAST'S OWN SCOREBUG: at 47:10 of the video it
+   reads 7:58 of the first quarter. Nothing in the track says so — that is the
+   point of it — so it is written here as the fixed point the placement is
+   measured against.
+
+   TWO THINGS WERE WRONG, both about footage outside a run.
+
+   A run only exists where the clock was seen RUNNING, so a stoppage — the clock
+   standing at one value while the footage goes on — can never be one, and
+   positionFromRuns could not see those readings at all. And past the ends of the
+   runs it projected at a second of footage per second of clock, which is what a
+   clock does only while it is running: across a whole quarter of this game the
+   footage runs at 2.04, 2.02, 1.83 and 2.31 times the clock.
+   ============================================================================ */
+{
+  const F = load('loughborough-storm.video.json');
+  const track = F.clock_track;
+  const at = (p, c) => { const v = V.positionFromTrack(track, p, c); return v == null ? null : v / 1000; };
+
+  ok('the fixture is the whole reading: four quarters, runs and readings both',
+     track.samples.length === 993 && track.runs.length === 42 &&
+     new Set(track.runs.map(r => r.period)).size === 4);
+
+  /* the scorebug's own reading, and how far the placement lands from it */
+  const TRUTH_T = 2830, TRUTH_C = 478000;          // 47:10 of video is Q1 7:58
+  const got = at(1, TRUTH_C);
+  ok('Q1 7:58 is placed within 40s of where the broadcast shows it',
+     got != null && Math.abs(got - TRUTH_T) <= 40,
+     got == null ? 'not placed' : `placed ${got.toFixed(0)}s, broadcast says ${TRUTH_T}s (${(got - TRUTH_T).toFixed(0)}s out)`);
+  ok('...which it was not before: projecting at a second a second put it 77s late',
+     got != null && got - TRUTH_T < 70,
+     got == null ? 'not placed' : `${(got - TRUTH_T).toFixed(0)}s out`);
+
+  /* the clock only falls as the footage runs: placements must not go backwards */
+  const ladder = [548000, 510000, 478000, 450000, 432000, 400000, 360000]
+    .map(c => at(1, c)).filter(v => v != null);
+  ok('a falling clock gives a rising position, all the way down the quarter',
+     ladder.every((v, i) => i === 0 || v >= ladder[i - 1]), JSON.stringify(ladder));
+
+  /* A STOPPAGE IS EVIDENCE. 7:12 stands from 2930 to 2950 in this track: readings, never
+     a run. The play that stopped the clock belongs at the front of that window. */
+  const stood = track.samples.filter(s => s.period === 1 && s.clock_ms === 432000).map(s => s.t);
+  const lo = Math.min(...stood), hi = Math.max(...stood);
+  ok('the clock standing at Q1 7:12 is in the readings but in no run',
+     stood.length > 1 && !track.runs.some(r => r.period === 1 && r.c0 >= 432000 && r.c1 <= 432000),
+     `${stood.length} readings, ${lo}-${hi}s`);
+  const atStood = at(1, 432000);
+  ok('...and a play at that clock is placed inside the window it was on screen',
+     atStood != null && atStood >= lo - 1 && atStood <= hi + 1,
+     atStood == null ? 'not placed' : `${atStood}s, window ${lo}-${hi}s`);
+
+  /* inside a run the clock demonstrably ran a second a second: that must stay exact */
+  const r = track.runs.find(x => x.period === 1);
+  const mid = (r.c0 + r.c1) / 2;
+  const want = r.t0 + (r.c0 - mid) / 1000;
+  ok('inside a run the placement is still the run, to the second',
+     Math.abs(at(1, mid) - want) < 1.5, `${at(1, mid)} vs ${want}`);
+
+  /* and the projection past the ends runs at the rate the quarter actually ran at */
+  const R1 = track.runs.filter(x => x.period === 1).sort((a, b) => a.t0 - b.t0);
+  const rate = (R1[R1.length - 1].t1 - R1[0].t0) / ((R1[0].c0 - R1[R1.length - 1].c1) / 1000);
+  ok('the first quarter really does take about twice its clock in footage',
+     rate > 1.6 && rate < 2.6, rate.toFixed(2) + 'x');
+  const out40 = at(1, R1[0].c0 + 40000);
+  ok('...so 40s of clock before the first run is more than 40s of footage before it',
+     out40 != null && (R1[0].t0 - out40) > 55,
+     out40 == null ? 'not placed' : `${(R1[0].t0 - out40).toFixed(0)}s of footage`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -754,14 +754,28 @@ function positionFromRuns(runs, period, clockMs) {
       return (r.t1 + (next.t0 - r.t1) * frac) * 1000;
     }
   }
+  /* OUTSIDE THE RUNS THE CLOCK IS NOT RUNNING AT A SECOND A SECOND.
+
+     Inside a run it is, by definition, and that is measured: 1.01x across every track
+     stored. But a period as a whole takes about twice its clock in footage — 2.04, 2.02,
+     1.83 and 2.31 on the four quarters of e3d1193e — because of everything between the
+     runs. Projecting past the end of the runs at 1.00 therefore lands short by the whole
+     of the stoppages it skipped: the first quarter of that game placed a play 48 seconds
+     of clock before the first run 77 seconds of video too late, which is what a reader
+     sees as "the events are just off" (reported 2026-09-18).
+
+     So a projection runs at the rate this period actually ran at. It is still a
+     projection into footage nobody read, and RUN_REACH_MS still bounds how far it goes. */
   const first = R[0], last = R[R.length - 1];
+  const spanV = last.t1 - first.t0, spanC = (first.c0 - last.c1) / 1000;
+  const rate = (R.length > 1 && spanV > 0 && spanC > 0) ? spanV / spanC : 1;
   if (clockMs > first.c0) {
     if (clockMs - first.c0 > RUN_REACH_MS) return null;
-    return Math.max(0, first.t0 - (clockMs - first.c0) / 1000) * 1000;
+    return Math.max(0, first.t0 - (clockMs - first.c0) / 1000 * rate) * 1000;
   }
   if (clockMs < last.c1) {
     if (last.c1 - clockMs > RUN_REACH_MS) return null;
-    return (last.t1 + (last.c1 - clockMs) / 1000) * 1000;
+    return (last.t1 + (last.c1 - clockMs) / 1000 * rate) * 1000;
   }
   return null;
 }
@@ -872,9 +886,80 @@ function stampIsPossible(e, sinceMs) {
   if (sinceMs == null) return false;
   return sinceMs <= cumElapsed(e) * SANE_RATIO + SANE_ABOVE_MS;
 }
+/* --------------------------------------------- the readings a run cannot hold ---
+   A RUN ONLY EXISTS WHERE THE CLOCK WAS SEEN RUNNING. runsFromTrack builds one from
+   consecutive readings whose clock fell by about the time that passed — so a STOPPAGE,
+   where the clock stands at one value for twenty seconds of footage, can never become a
+   run. Those readings are then invisible to positionFromRuns, which is the one place a
+   dead-ball play most needs them: a free throw, an inbound, the play after a whistle.
+
+   Measured, leave-one-out, over every clock track stored (2026-09-18): asked where a
+   clock value it had NOT been given belongs, positionFromRuns put 61% of gap values and
+   55% of edge values within five seconds of the footage the reader actually saw that
+   clock in; reading the same readings back puts 93% and 80% there, and takes the gap's
+   ninetieth percentile from 35 seconds to 3.2.
+
+   So the runs stay authoritative where they apply — inside a run the clock demonstrably
+   ran at a second per second, and that placement is exact — and everywhere else the
+   readings are consulted before anything is projected.
+
+   The curve is (clock, t) pairs in video order: every reading, plus both ends of every
+   run. Cached per track, because index() asks this once per play. */
+const evidenceCache = new WeakMap();
+function evidenceFor(track, period) {
+  let byPeriod = evidenceCache.get(track);
+  if (!byPeriod) { byPeriod = new Map(); evidenceCache.set(track, byPeriod); }
+  let obs = byPeriod.get(period);
+  if (obs) return obs;
+  obs = [];
+  (track.samples || []).forEach(s => {
+    if (s && s.period === period && s.clock_ms != null && s.t != null &&
+        !(s.conf != null && +s.conf < SANE_MIN_CONF)) obs.push([s.clock_ms, s.t]);
+  });
+  runsFromTrack(track).forEach(r => {
+    if (r.period !== period) return;
+    obs.push([r.c0, r.t0]); obs.push([r.c1, r.t1]);
+  });
+  obs.sort((a, b) => a[1] - b[1]);
+  byPeriod.set(period, obs);
+  return obs;
+}
+
+/* Where the clock crossed clockMs, according to the readings alone. null when they do
+   not reach it — the caller then projects, as it always did. */
+function positionFromEvidence(track, period, clockMs) {
+  const obs = evidenceFor(track, period);
+  if (!obs.length) return null;
+  /* IT WAS ON SCREEN: the moment it APPEARED is the moment the play belongs to. A clock
+     that stands is a dead ball, and the play that stopped it is at the front of that
+     window, not the middle of it. */
+  let first = null, before = null, after = null;
+  for (let i = 0; i < obs.length; i++) {
+    const c = obs[i][0], t = obs[i][1];
+    if (c === clockMs) { if (first == null || t < first) first = t; continue; }
+    if (c > clockMs) before = obs[i];
+    else if (before && !after) after = obs[i];
+  }
+  if (first != null) return first * 1000;
+  if (before && after) {
+    const span = before[0] - after[0];
+    if (span <= 0) return before[1] * 1000;
+    /* less footage between two readings than clock between them is not one stretch of
+       the same game: one of the two is a misread, and neither is vouched for */
+    if ((after[1] - before[1]) * 1000 < span - 5000) return null;
+    return (before[1] + (after[1] - before[1]) * ((before[0] - clockMs) / span)) * 1000;
+  }
+  return null;
+}
+
 function positionFromTrack(track, period, clockMs) {
   if (!track) return null;
   const runs = runsFromTrack(track);
+  /* inside a run the clock ran at a second a second, and that is exact */
+  const inRun = runs.some(r => r.period === period && clockMs <= r.c0 && clockMs >= r.c1);
+  if (inRun) return positionFromRuns(runs, period, clockMs);
+  const byEvidence = positionFromEvidence(track, period, clockMs);
+  if (byEvidence != null) return byEvidence;
   const byRuns = positionFromRuns(runs, period, clockMs);
   if (byRuns != null) return byRuns;
   /* A CLOCK TRACK THAT NEVER SAW A QUARTER'S CLOCK RUN HAS NOT READ THAT QUARTER.
