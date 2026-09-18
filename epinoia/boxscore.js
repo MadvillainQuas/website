@@ -681,6 +681,13 @@ function lineupAgg(d,t){
   });
 }
 
+function periodPill(S) {
+  if (S.phase === 'final') return 'final';
+  const over = S.clockMs === 0 || S.clockMs >= PLEN(S.period);
+  if (over && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  return perName(S.period) + ' · ' + fmtClock(S.clockMs);
+}
+
 function scoreHeadHTML(d){
   return '<div class="glass bx-scorehead hero-stripe">'+
     '<div class="bteam" data-team-slot="0">'+esc(tname(0))+'</div>'+
@@ -694,15 +701,7 @@ function scoreHeadHTML(d){
        swings wildly in the first quarter, and it sat next to the two things people actually
        come to this line for. It is still on the full stats tab, next to the other team rates,
        where it can be read against something. */
-    /* A CLOCK AT ZERO IS NOT A CLOCK THAT STOPPED WORKING. Between quarters a fed game's log
-       has nothing past the last action of the period just played, so the honest reading is
-       0:00 -- and it stays there for the whole break, which reads as a page that has frozen.
-       It has not: the period is over, so say that instead of showing a stopped clock. The
-       fourth is left alone, because "end of q4" with the game still live is the one case
-       where what comes next is not simply the next period. */
-    '<div class="pacepill">'+(S.phase==='final' ? 'final'
-      : (S.clockMs===0 && S.period>=1 && S.period<4 ? 'end of '+perName(S.period)
-        : perName(S.period)+' · '+fmtClock(S.clockMs)))+'</div></div>'+
+    '<div class="pacepill">'+periodPill(S)+'</div></div>'+
     '<div class="bteam" data-team-slot="1" style="text-align:right">'+esc(tname(1))+'</div></div>';
 }
 
@@ -976,5 +975,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

@@ -15,7 +15,7 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=309" data-no-ground></script>
+<script src="../appmode.js?v=310" data-no-ground></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -5096,6 +5096,26 @@ function showScreen(n){
    'helpview','videoview'].forEach(id=>
     document.getElementById(id).classList.toggle('hidden', id!==n));
 }
+/* A CLOCK AT ZERO IS NOT A CLOCK THAT STOPPED WORKING. Between quarters a fed game's log
+   has nothing past the last action of the period just played, so the honest reading is
+   0:00 -- and it stays there for the whole break, which reads as a page that has frozen.
+   It has not: the period is over, so say that instead of showing a stopped clock.
+
+   NOR IS A FULL CLOCK ONE THAT HASN'T STARTED. A feed can just as well report the break by
+   pre-loading the NEXT period's clock before that period has actually tipped off -- period
+   unchanged, clock back at the full 10:00 (or 5:00 in overtime) -- which used to read as
+   "Q2 · 10:00", i.e. a fresh quarter, when the game was in fact sitting at the end of Q2
+   (reported 2026-09-18, a live game stuck at the half). notify_halftime.sql (0124) already
+   treats both readings as the same break server-side; this mirrors that here. The fourth
+   period is left alone in both cases, because "end of q4" with the game still live is the
+   one case where what comes next is not simply the next period. */
+function periodPill(S) {
+  if (S.phase === 'final') return 'final';
+  const over = S.clockMs === 0 || S.clockMs >= PLEN(S.period);
+  if (over && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  return perName(S.period) + ' · ' + fmtClock(S.clockMs);
+}
+
 function scoreHeadHTML(d){
   return '<div class="glass bx-scorehead hero-stripe">'+
     '<div class="bteam" data-team-slot="0">'+esc(tname(0))+'</div>'+
@@ -5109,15 +5129,7 @@ function scoreHeadHTML(d){
        swings wildly in the first quarter, and it sat next to the two things people actually
        come to this line for. It is still on the full stats tab, next to the other team rates,
        where it can be read against something. */
-    /* A CLOCK AT ZERO IS NOT A CLOCK THAT STOPPED WORKING. Between quarters a fed game's log
-       has nothing past the last action of the period just played, so the honest reading is
-       0:00 -- and it stays there for the whole break, which reads as a page that has frozen.
-       It has not: the period is over, so say that instead of showing a stopped clock. The
-       fourth is left alone, because "end of q4" with the game still live is the one case
-       where what comes next is not simply the next period. */
-    '<div class="pacepill">'+(S.phase==='final' ? 'final'
-      : (S.clockMs===0 && S.period>=1 && S.period<4 ? 'end of '+perName(S.period)
-        : perName(S.period)+' · '+fmtClock(S.clockMs)))+'</div></div>'+
+    '<div class="pacepill">'+periodPill(S)+'</div></div>'+
     '<div class="bteam" data-team-slot="1" style="text-align:right">'+esc(tname(1))+'</div></div>';
 }
 function qstripHTML(d){
@@ -6921,15 +6933,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=309">
-<link rel="stylesheet" href="../video.css?v=309">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=309">
-<script src="../config.js?v=309" defer></script>
-<script src="../vendor/supabase.js?v=309" defer></script>
-<script src="../live.js?v=309" defer></script>
-<script src="../video.js?v=309" defer></script>
-<script src="sync.js?v=309" defer></script>
-<script src="bootstrap.js?v=309" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=310">
+<link rel="stylesheet" href="../video.css?v=310">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=310">
+<script src="../config.js?v=310" defer></script>
+<script src="../vendor/supabase.js?v=310" defer></script>
+<script src="../live.js?v=310" defer></script>
+<script src="../video.js?v=310" defer></script>
+<script src="sync.js?v=310" defer></script>
+<script src="bootstrap.js?v=310" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

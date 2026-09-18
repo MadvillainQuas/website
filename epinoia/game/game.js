@@ -840,6 +840,17 @@ function startingFive(S, t) {
   return ids.map(id => byId[id]).filter(Boolean);
 }
 
+/* The same disambiguation squadsHTML already does for the match-report squad strip
+   (window.EpinoiaModernBox.nameLabels over both full rosters), handed to
+   EpinoiaPreview so its "starting five" card can tell two same-surnamed teammates
+   apart instead of labelling both "Delpeche" (reported 2026-09-18). */
+function gameNameLabels(S) {
+  const all = [];
+  ((S && S.teams) || []).forEach(tm => (tm.players || []).forEach(q => all.push(q)));
+  const MB = window.EpinoiaModernBox;
+  return (MB && MB.nameLabels) ? MB.nameLabels(all) : {};
+}
+
 /* the close button and the highlight: a few rules on top of preview.css, which is
    generated alongside the preview and not the place for this page's chrome */
 const STARTERS_CSS =
@@ -893,7 +904,7 @@ function mountStartersCard() {
   const html = P.startersHTML({
     nameA: (S.teams[0] || {}).name || 'Home', nameB: (S.teams[1] || {}).name || 'Away',
     colourA: colour(0, '#93f2bf'), colourB: colour(1, '#8ff5ff'),
-    startersA: five[0], startersB: five[1],
+    startersA: five[0], startersB: five[1], nameLabels: gameNameLabels(S),
     tipoff: S.meta && S.meta.tipoff_at, status: S.status
   });
   if (!html) return false;
@@ -2360,7 +2371,12 @@ function goLive() {
     }
     const pill = document.querySelector('#csHead .pacepill');
     if (!pill || S.phase === 'final') { renderHead(); return; }
-    const want = B.perName(S.period) + ' · ' + B.fmtClock(S.clockMs) + ' ';
+    /* B.periodPill, not a hand-rolled "Qn · clock" here -- this used to skip the
+       end-of-period reading entirely and print the raw clock every 500ms even when it sat
+       at 0:00 or a full period length, overwriting whatever renderHead had correctly drawn
+       the moment the next tick landed (reported 2026-09-18: a live game stuck reading
+       "Q2 · 10:00" through the whole half-time break). */
+    const want = B.periodPill(S) + ' ';
     if (pill.firstChild && pill.firstChild.nodeType === 3) {
       if (pill.firstChild.nodeValue !== want) pill.firstChild.nodeValue = want;
     } else renderHead();
@@ -2873,7 +2889,7 @@ async function renderPreview() {
        will be on the floor, which is the most interesting thing about a fixture
        in the half hour before it. Empty until then, and the section simply does
        not render. */
-    startersA: startingFive(S, 0), startersB: startingFive(S, 1),
+    startersA: startingFive(S, 0), startersB: startingFive(S, 1), nameLabels: gameNameLabels(S),
     outA: out.A, outB: out.B,
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
     competition: S.competition, leagueSlug: S.leagueSlug

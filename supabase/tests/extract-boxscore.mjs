@@ -40,7 +40,7 @@ const WANTED = [
   // calculators
   'teamTotals', 'teamAdv', 'playerAdv', 'gpRate', 'playerAdvTable', 'lineupAgg',
   // HTML builders
-  'scoreHeadHTML', 'qstripHTML', 'teamChipsHTML', 'bxTeamHTML', 'pbpHTML',
+  'periodPill', 'scoreHeadHTML', 'qstripHTML', 'teamChipsHTML', 'bxTeamHTML', 'pbpHTML',
   'shotChartHTML', 'advHTML', 'luNames', 'lineupsHTML'
 ];
 

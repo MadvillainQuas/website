@@ -79,31 +79,36 @@ const SLOTS = [
   { x: 0.71, y: 0.22 }
 ];
 
+/* Only a fallback for when no game-wide disambiguation was handed in — see the
+   labels param below, and the note above nameLabelsOf() near startersHTML. */
 const surname = n => {
   const s = String(n || '').trim().split(/\s+/);
   return s.length > 1 ? s[s.length - 1] : (s[0] || '');
 };
 
-function fiveCircles(players, colour) {
+function fiveCircles(players, colour, labels) {
   return (players || []).slice(0, 5).map((p, i) => {
     const slot = SLOTS[Math.min(SLOTS.length - 1, i)];
+    const label = (labels && labels[p.id]) || surname(p.name);
     return '<div class="mv-p floor" data-pid="' + esc(p.id) + '"' +
       ' style="left:' + (slot.x * 100).toFixed(1) + '%;top:' + (slot.y * 100).toFixed(1) + '%"' +
       ' aria-label="' + esc(p.name) + '">' +
       '<span class="mv-shadow"></span>' +
       '<span class="sq-face" style="--c:' + esc(colour) + '"><span class="sq-nm">' + esc(p.name) + '</span></span>' +
       (p.num !== '' && p.num != null ? '<span class="mv-num">' + esc(p.num) + '</span>' : '') +
-      '<span class="mv-nm">' + esc(surname(p.name)) + '</span>' +
+      /* --nl matches modern.js's own floor circles: a short surname keeps full size, a
+         disambiguated "Mal. Delpeche" shrinks instead of running past the badge. */
+      '<span class="mv-nm" style="--nl:' + label.length + '">' + esc(label) + '</span>' +
       '</div>';
   }).join('');
 }
 
-function sideHTML(players, colour, name) {
+function sideHTML(players, colour, name, labels) {
   const B = (typeof globalThis !== 'undefined') && globalThis.EpinoiaBox;
   const court = (B && B.courtSVG) ? B.courtSVG(null, { plain: true }) : '';
   return '<div class="pv-five" style="--c:' + esc(colour) + '">' +
     '<div class="pv-fivehead" style="color:' + esc(colour) + '">' + esc(name) + '</div>' +
-    '<div class="mv-court">' + court + '<div class="mv-five">' + fiveCircles(players, colour) + '</div></div>' +
+    '<div class="mv-court">' + court + '<div class="mv-five">' + fiveCircles(players, colour, labels) + '</div></div>' +
     '</div>';
 }
 
@@ -123,12 +128,21 @@ function startersHTML(ctx) {
   const note = !started ? 'Confirmed at the table. Tip-off is ' + esc(at.toLowerCase()) + '.'
     : at === 'TBC' ? 'Confirmed at the table.'
     : 'Confirmed at the table. Tipped off at ' + esc(at.toLowerCase()) + '.';
+  /* THE SAME QUESTION MODERN.JS ASKS OF THE FLOOR CIRCLES, ASKED HERE OF THE PREVIEW.
+     Two clubs put a Marcus Delpeche and a Malcolm Delpeche on the same roster and this
+     card had no way to tell them apart -- its own surname-only helper doesn't look past
+     the one player it's labelling, so both circles came out "DELPECHE" (2026-09-18).
+     game.js already computes this game-wide disambiguation for the squad strip
+     (window.EpinoiaModernBox.nameLabels over both rosters) and hands it in as
+     ctx.nameLabels; a caller that has no roster to build it from (e.g. a test) simply
+     omits it and every label falls back to the bare surname, same as before. */
+  const labels = ctx.nameLabels || {};
   return '<section class="pv-sec" id="starters">' +
     '<h2>Starting five</h2>' +
     '<p class="pv-fivenote">' + note + '</p>' +
     '<div class="pv-fives">' +
-      sideHTML(A, ctx.colourA, ctx.nameA) +
-      sideHTML(B, ctx.colourB, ctx.nameB) +
+      sideHTML(A, ctx.colourA, ctx.nameA, labels) +
+      sideHTML(B, ctx.colourB, ctx.nameB, labels) +
     '</div>' +
   '</section>';
 }

@@ -269,7 +269,10 @@ console.log('\nthe starting five');
      (html.match(/class="mv-p floor"/g) || []).length + ' circles');
   ok('...carrying the pid the photo loader keys on',
      /data-pid="a1"/.test(html) && /data-pid="b5"/.test(html));
-  ok('...the jersey number and the surname', /class="mv-num">4</.test(html) && /class="mv-nm">Player</.test(html));
+  /* class="mv-nm" carries a --nl style (the label's length, matching modern.js's own floor
+     circles) so a long disambiguated label shrinks instead of running past its badge --
+     the attribute order comes straight from fiveCircles(), not asserted here. */
+  ok('...the jersey number and the surname', /class="mv-num">4</.test(html) && /class="mv-nm"[^>]*>Player</.test(html));
   ok('...and it leads the page, ahead of how to get there',
      html.indexOf('Starting five') < html.indexOf('How to get there'));
   /* the circles are modern.css's, not a second set: if these class names drift the
@@ -277,8 +280,25 @@ console.log('\nthe starting five');
   ok('it reuses the box score\'s own circle, court and face classes',
      /mv-court/.test(html) && /mv-five/.test(html) && /sq-face/.test(html) && /mv-shadow/.test(html));
   ok('a name with one word does not produce an empty label',
-     /class="mv-nm">Solo</.test(P.render(Object.assign({}, base,
+     /class="mv-nm"[^>]*>Solo</.test(P.render(Object.assign({}, base,
        { startersA: [{ id: 'x', name: 'Solo', num: '9' }].concat(five('a').slice(1)), startersB: five('b') }))));
+
+  /* TWO TEAMMATES, ONE SURNAME. Bristol Flyers' own roster carries both a Marcus and a
+     Malcolm Delpeche; this card's own surname-only helper cannot tell them apart and
+     printed "DELPECHE" (then, after being squeezed through .sq-face's fixed circle,
+     "DELPEC...") for both (reported 2026-09-18). game.js now hands in ctx.nameLabels --
+     the same game-wide disambiguation modern.js's floor circles already use -- and this
+     card is expected to read it rather than fall back to its own bare surname(). */
+  const delpecheA = [{ id: 'p21', name: 'Marcus Delpeche', num: '21' },
+                     { id: 'p22', name: 'Malcolm Delpeche', num: '22' }].concat(five('a').slice(2));
+  const labels = { p21: 'Mar. Delpeche', p22: 'Mal. Delpeche' };
+  const htmlD = P.render(Object.assign({}, base, { startersA: delpecheA, startersB: five('b'), nameLabels: labels }));
+  ok('two teammates sharing a surname get different labels',
+     /class="mv-nm"[^>]*>Mar\. Delpeche</.test(htmlD) && /class="mv-nm"[^>]*>Mal\. Delpeche</.test(htmlD));
+  ok('...never the bare, ambiguous surname for either of them',
+     !/class="mv-nm"[^>]*>Delpeche</.test(htmlD));
+  ok('with no labels handed in at all, it still falls back to the bare surname (old callers)',
+     /class="mv-nm"[^>]*>Delpeche</.test(P.render(Object.assign({}, base, { startersA: delpecheA, startersB: five('b') }))));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
