@@ -57,11 +57,16 @@ PLAYER_STATS = {
 }
 
 
-def _season(config: dict) -> str:
-    """"2026-27" -> "E2026". A season override in the config wins, spelt either way."""
+def _season(config: dict, comp: str = "E") -> str:
+    """"2026-27" -> "E2026", or "U2026" for the EuroCup.
+
+    THE SEASON CODE CARRIES THE COMPETITION. Both competitions run on the same two hosts and the
+    same field names; what separates them is one letter, in the feeds path AND in the season code
+    (E2026 is the EuroLeague, U2026 the EuroCup). Hard-coding the E here was the only thing
+    stopping the EuroCup being a config entry."""
     raw = str(config.get("season") or "")
-    m = re.match(r"E?(\d{4})", raw)
-    return "E" + (m.group(1) if m else str(time.gmtime().tm_year))
+    m = re.match(r"[A-Z]?(\d{4})", raw)
+    return comp + (m.group(1) if m else str(time.gmtime().tm_year))
 
 
 def _stats(row: dict) -> dict:
@@ -74,7 +79,7 @@ def _stats(row: dict) -> dict:
 class EuroLeagueAdapter(FibaLiveStatsAdapter):
     name = "euroleague"
     min_request_gap_s = 0.4
-    competition = "E"                       # the EuroCup is "U" on the identical feeds
+    competition = "E"        # "U" is the EuroCup: same hosts, same fields, one letter apart
 
     # ---------------------------------------------------------------- schedule ---
     def _json(self, url: str):
@@ -89,8 +94,8 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         return r.json()
 
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
-        season = _season(config)
         comp = config.get("competition_code") or self.competition
+        season = _season(config, comp)
         data = self._json(SCHEDULE.format(comp=comp, season=season)) or {}
         out = []
         for g in data.get("data") or []:
@@ -114,7 +119,7 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
 
     # ------------------------------------------------------------------- game ---
     def fetch(self, external_id: str, config: dict) -> Optional[GameBundle]:
-        m = re.match(r"(E\d{4})_(\d+)$", str(external_id))
+        m = re.match(r"([A-Z]\d{4})_(\d+)$", str(external_id))
         if not m:
             return None
         season, code = m.group(1), m.group(2)
