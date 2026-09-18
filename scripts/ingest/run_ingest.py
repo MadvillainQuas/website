@@ -49,6 +49,7 @@ from adapters import get_adapter  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from translate.fiba_events import translate, game_rows  # noqa: E402
 from feedplatform import Platform, season_name_for  # noqa: E402
+from fetchwindow import worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1652,9 +1653,25 @@ def main() -> int:
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
             known = known_db if sb else known_repo
-            todo = ([g for g in games] if args.refresh else
-                    [g for g in games if not (known.get(g.external_id, {}).get("status") == "final" and known.get(g.external_id, {}).get("hash"))])[: args.max_games]
-            print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch")
+            # A GAME THAT HAS NOT TIPPED OFF HAS NOTHING TO FETCH. The feed answers
+            # 403/404 until the scoresheet is opened, so asking about a fixture three
+            # weeks away buys a refusal and costs a request plus its politeness gap.
+            # The schedule facts for those games are still written, just below — only
+            # the game feed is left alone. See fetchwindow.py.
+            def done(g):
+                k = known.get(g.external_id, {})
+                return k.get("status") == "final" and k.get("hash")
+
+            now_utc = datetime.now(timezone.utc)
+            if args.refresh:
+                ready, waiting = list(games), 0
+            else:
+                unfinished = [g for g in games if not done(g)]
+                ready = [g for g in unfinished if worth_fetching(g.tipoff_at, now_utc)]
+                waiting = len(unfinished) - len(ready)
+            todo = ready[: args.max_games]
+            print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch"
+                  + (f" ({waiting} not tipped off yet)" if waiting else ""))
             entries = {**known_repo, **known}
             # schedule facts for every game (dates, venues, clubs) even before the feed publishes a payload
             for g in games:

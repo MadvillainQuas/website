@@ -296,6 +296,12 @@ jobs:
         # wins; a page that changes league takes the last one's colours off
         run: node supabase/tests/league-theme-pages.test.mjs
 
+      - name: A fixture that has not tipped off is never requested
+        # The feed answers 403/404 until a scoresheet opens, so a discovery pass that
+        # asked about every unplayed fixture collected a refusal per game per provider,
+        # every half hour. Live, played and undated games are still always fetched.
+        run: python scripts/ingest/fetchwindow_test.py
+
       - name: One shape for a player's name, whatever the feed calls them
         # names.py: "DONCIC, LUKA", "Hernangomez, Willy", kanji with a romaji field beside it,
         # Czech and Polish diacritics, Cyrillic, Mc/Mac/O'/hyphens/particles, and the full stops
