@@ -1,0 +1,1800 @@
+{
+"code": "EC",
+"label": "EuroCup",
+"adapter": "euroleague",
+"updated": "2026-09-18T05:17:45.677836+00:00",
+"games": [
+{
+"id": "U2026_213",
+"home": "La Laguna Tenerife",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2027-01-13T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_209",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2027-01-13T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_219",
+"home": "Napoli Basketball",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2027-01-13T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_211",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2027-01-13T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_224",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2027-01-13T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_220",
+"home": "Buducnost VOLI Podgorica",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2027-01-13T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_223",
+"home": "PAOK Thessaloniki",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2027-01-13T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_212",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2027-01-13T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_221",
+"home": "Lietkabelis Panevezys",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2027-01-13T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_216",
+"home": "Turk Telekom Ankara",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2027-01-13T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_215",
+"home": "Maxima Roma",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2027-01-12T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_214",
+"home": "Umana Reyer Venice",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2027-01-12T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_222",
+"home": "ratiopharm ulm",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2027-01-12T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_217",
+"home": "Slask Wroclaw",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2027-01-12T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_218",
+"home": "Tofas Bursa",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2027-01-12T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_210",
+"home": "Riga Zelli",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2027-01-12T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_207",
+"home": "Roma Basketball",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2027-01-06T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_201",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2027-01-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_198",
+"home": "Skyliners Frankfurt",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2027-01-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_194",
+"home": "Baglietto Derthona Tortona",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2027-01-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_205",
+"home": "Kids&Us Manresa",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2027-01-06T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_206",
+"home": "Balkan Botevgrad",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2027-01-06T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_200",
+"home": "Siauliai Basketball",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2027-01-06T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_208",
+"home": "Bahcesehir College Istanbul",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2027-01-06T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_199",
+"home": "London Lions",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2027-01-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_203",
+"home": "Dolomiti Energia Trento",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2027-01-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_196",
+"home": "Le Mans Sarthe Basket",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2027-01-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_193",
+"home": "Rostock Seawolves",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2027-01-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_202",
+"home": "NINERS Chemnitz",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2027-01-05T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_195",
+"home": "Aris Thessaloniki",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2027-01-05T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_204",
+"home": "Neptunas Klaipeda",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2027-01-05T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_197",
+"home": "U-BT Cluj-Napoca",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2027-01-05T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_186",
+"home": "Napoli Basketball",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-12-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_178",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-12-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_191",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-12-30T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_189",
+"home": "ratiopharm ulm",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-12-30T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_179",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-12-30T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_185",
+"home": "Tofas Bursa",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-12-30T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_184",
+"home": "U-BT Cluj-Napoca",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-12-30T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_177",
+"home": "Riga Zelli",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-12-30T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_182",
+"home": "Maxima Roma",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-12-29T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_192",
+"home": "Kids&Us Manresa",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-12-29T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_181",
+"home": "Umana Reyer Venice",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-12-29T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_180",
+"home": "Rostock Seawolves",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-12-29T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_190",
+"home": "PAOK Thessaloniki",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-12-29T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_188",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-12-29T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_187",
+"home": "Buducnost VOLI Podgorica",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-12-29T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_183",
+"home": "Turk Telekom Ankara",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-12-29T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_165",
+"home": "La Laguna Tenerife",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-12-23T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_166",
+"home": "London Lions",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-12-23T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_168",
+"home": "Umana Reyer Venice",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_163",
+"home": "Le Mans Sarthe Basket",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_176",
+"home": "ratiopharm ulm",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_172",
+"home": "Tofas Bursa",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_164",
+"home": "Riga Zelli",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_167",
+"home": "Siauliai Basketball",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-12-23T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_174",
+"home": "Roma Basketball",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-12-22T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_161",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-12-22T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_170",
+"home": "Dolomiti Energia Trento",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-12-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_169",
+"home": "Slask Wroclaw",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-12-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_162",
+"home": "Aris Thessaloniki",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-12-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_173",
+"home": "Lietkabelis Panevezys",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_171",
+"home": "Neptunas Klaipeda",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_175",
+"home": "Bahcesehir College Istanbul",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-12-22T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_149",
+"home": "Maxima Roma",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-12-16T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_145",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-12-16T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_158",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-12-16T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_155",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-12-16T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_157",
+"home": "PAOK Thessaloniki",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-12-16T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_156",
+"home": "NINERS Chemnitz",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-12-16T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_154",
+"home": "Buducnost VOLI Podgorica",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-12-16T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_146",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-12-16T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_151",
+"home": "U-BT Cluj-Napoca",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_150",
+"home": "Turk Telekom Ankara",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-12-16T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_159",
+"home": "Kids&Us Manresa",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-12-15T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_153",
+"home": "Napoli Basketball",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_147",
+"home": "Rostock Seawolves",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_152",
+"home": "Skyliners Frankfurt",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-12-15T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_148",
+"home": "Baglietto Derthona Tortona",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-12-15T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_160",
+"home": "Balkan Botevgrad",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-12-15T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_136",
+"home": "Maxima Roma",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-12-09T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_129",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-12-09T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_135",
+"home": "Umana Reyer Venice",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_132",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_143",
+"home": "ratiopharm ulm",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_137",
+"home": "Slask Wroclaw",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_141",
+"home": "Lietkabelis Panevezys",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_139",
+"home": "Tofas Bursa",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_131",
+"home": "Riga Zelli",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_133",
+"home": "La Laguna Tenerife",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-12-08T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_140",
+"home": "Napoli Basketball",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-12-08T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_130",
+"home": "Le Mans Sarthe Basket",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-12-08T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_144",
+"home": "PAOK Thessaloniki",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-12-08T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_138",
+"home": "Neptunas Klaipeda",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-12-08T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_134",
+"home": "Siauliai Basketball",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-12-08T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_142",
+"home": "Bahcesehir College Istanbul",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-12-08T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_126",
+"home": "Kids&Us Manresa",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-11-18T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_124",
+"home": "Dolomiti Energia Trento",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-11-18T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_125",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-11-18T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_122",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-11-18T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_119",
+"home": "Skyliners Frankfurt",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-11-18T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_123",
+"home": "NINERS Chemnitz",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-11-18T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_121",
+"home": "Buducnost VOLI Podgorica",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-11-18T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_116",
+"home": "Aris Thessaloniki",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-11-18T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_113",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-11-18T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_118",
+"home": "U-BT Cluj-Napoca",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_115",
+"home": "Baglietto Derthona Tortona",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-11-18T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_120",
+"home": "London Lions",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-11-17T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_128",
+"home": "Roma Basketball",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-11-17T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_114",
+"home": "Rostock Seawolves",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-11-17T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_127",
+"home": "Balkan Botevgrad",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-11-17T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_117",
+"home": "Turk Telekom Ankara",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-11-17T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_103",
+"home": "Skyliners Frankfurt",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-11-12T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_97",
+"home": "Le Mans Sarthe Basket",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-11-11T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_110",
+"home": "Roma Basketball",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-11-11T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_99",
+"home": "Baglietto Derthona Tortona",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-11-11T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_98",
+"home": "Aris Thessaloniki",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_107",
+"home": "NINERS Chemnitz",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_101",
+"home": "Siauliai Basketball",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-11-11T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_109",
+"home": "Bahcesehir College Istanbul",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-11-11T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_112",
+"home": "Kids&Us Manresa",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-11-10T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_102",
+"home": "London Lions",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-11-10T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_106",
+"home": "Dolomiti Energia Trento",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-11-10T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_100",
+"home": "Rostock Seawolves",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-11-10T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_108",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-11-10T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_111",
+"home": "Balkan Botevgrad",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-11-10T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_105",
+"home": "Neptunas Klaipeda",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-11-10T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_104",
+"home": "U-BT Cluj-Napoca",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-11-10T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_87",
+"home": "Maxima Roma",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-11-04T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_85",
+"home": "La Laguna Tenerife",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-11-04T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_81",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-11-04T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_88",
+"home": "Umana Reyer Venice",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_83",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_94",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-11-04T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_89",
+"home": "Slask Wroclaw",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-11-04T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_82",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-11-04T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_93",
+"home": "Lietkabelis Panevezys",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_84",
+"home": "Riga Zelli",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_86",
+"home": "Turk Telekom Ankara",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-11-04T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_91",
+"home": "Napoli Basketball",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-11-03T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_96",
+"home": "ratiopharm ulm",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-11-03T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_95",
+"home": "PAOK Thessaloniki",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-11-03T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_90",
+"home": "Buducnost VOLI Podgorica",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-11-03T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_92",
+"home": "Tofas Bursa",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-11-03T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_69",
+"home": "La Laguna Tenerife",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-10-28T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_71",
+"home": "London Lions",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-10-28T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_65",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-10-28T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_66",
+"home": "Le Mans Sarthe Basket",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_68",
+"home": "Baglietto Derthona Tortona",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-10-28T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_76",
+"home": "NINERS Chemnitz",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_73",
+"home": "Slask Wroclaw",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_67",
+"home": "Aris Thessaloniki",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-10-28T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_74",
+"home": "Neptunas Klaipeda",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_70",
+"home": "Siauliai Basketball",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-10-28T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_79",
+"home": "Roma Basketball",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-10-27T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_75",
+"home": "Dolomiti Energia Trento",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-10-27T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_72",
+"home": "Skyliners Frankfurt",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-10-27T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_80",
+"home": "Balkan Botevgrad",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-10-27T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_77",
+"home": "Lietkabelis Panevezys",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-10-27T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_78",
+"home": "Bahcesehir College Istanbul",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-10-27T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_56",
+"home": "Maxima Roma",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-10-21T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_52",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-10-21T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_63",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-10-21T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_58",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-10-21T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_53",
+"home": "Skyliners Frankfurt",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-10-21T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_64",
+"home": "PAOK Thessaloniki",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-10-21T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_57",
+"home": "NINERS Chemnitz",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-10-21T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_49",
+"home": "Baglietto Derthona Tortona",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-10-21T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_51",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_54",
+"home": "U-BT Cluj-Napoca",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_62",
+"home": "Kids&Us Manresa",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-10-20T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_60",
+"home": "Napoli Basketball",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_50",
+"home": "Rostock Seawolves",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_59",
+"home": "Buducnost VOLI Podgorica",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-10-20T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_55",
+"home": "Turk Telekom Ankara",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-10-20T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_61",
+"home": "Balkan Botevgrad",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-10-20T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_40",
+"home": "London Lions",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-10-15T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_38",
+"home": "Umana Reyer Venice",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-10-14T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_37",
+"home": "La Laguna Tenerife",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-10-14T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_33",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-10-14T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_35",
+"home": "Le Mans Sarthe Basket",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-10-14T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_42",
+"home": "Tofas Bursa",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_41",
+"home": "Slask Wroclaw",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_36",
+"home": "Aris Thessaloniki",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_46",
+"home": "ratiopharm ulm",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-10-14T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_34",
+"home": "Riga Zelli",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_39",
+"home": "Siauliai Basketball",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-10-14T15:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_48",
+"home": "Roma Basketball",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_44",
+"home": "Dolomiti Energia Trento",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_47",
+"home": "Bahcesehir College Istanbul",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-10-13T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_45",
+"home": "Lietkabelis Panevezys",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-10-13T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_43",
+"home": "Neptunas Klaipeda",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-10-13T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_31",
+"home": "Kids&Us Manresa",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-10-07T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_29",
+"home": "Roma Basketball",
+"away": "Lietkabelis Panevezys",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_18",
+"home": "Baglietto Derthona Tortona",
+"away": "Le Mans Sarthe Basket",
+"status": "scheduled",
+"date": "2026-10-07T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_26",
+"home": "NINERS Chemnitz",
+"away": "Neptunas Klaipeda",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_17",
+"home": "Aris Thessaloniki",
+"away": "Recoletas Salud San Pablo Burgos",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_30",
+"home": "Balkan Botevgrad",
+"away": "Bahcesehir College Istanbul",
+"status": "scheduled",
+"date": "2026-10-07T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_23",
+"home": "U-BT Cluj-Napoca",
+"away": "Umana Reyer Venice",
+"status": "scheduled",
+"date": "2026-10-07T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_21",
+"home": "London Lions",
+"away": "La Laguna Tenerife",
+"status": "scheduled",
+"date": "2026-10-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_25",
+"home": "Dolomiti Energia Trento",
+"away": "Slask Wroclaw",
+"status": "scheduled",
+"date": "2026-10-06T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_19",
+"home": "Rostock Seawolves",
+"away": "Riga Zelli",
+"status": "scheduled",
+"date": "2026-10-06T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_32",
+"home": "BOSNA BH Telecom Sarajevo",
+"away": "PAOK Thessaloniki",
+"status": "scheduled",
+"date": "2026-10-06T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_27",
+"home": "Cosea JL Bourg-en-Bresse",
+"away": "Tofas Bursa",
+"status": "scheduled",
+"date": "2026-10-06T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_22",
+"home": "Skyliners Frankfurt",
+"away": "Siauliai Basketball",
+"status": "scheduled",
+"date": "2026-10-06T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_28",
+"home": "Buducnost VOLI Podgorica",
+"away": "Napoli Basketball",
+"status": "scheduled",
+"date": "2026-10-06T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_24",
+"home": "Turk Telekom Ankara",
+"away": "Maxima Roma",
+"status": "scheduled",
+"date": "2026-10-06T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_20",
+"home": "Cedevita Olimpija Ljubljana",
+"away": "Hapoel Midtown Jerusalem",
+"status": "scheduled",
+"date": "2026-10-06T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_6",
+"home": "Maxima Roma",
+"away": "U-BT Cluj-Napoca",
+"status": "scheduled",
+"date": "2026-09-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_5",
+"home": "La Laguna Tenerife",
+"away": "Turk Telekom Ankara",
+"status": "scheduled",
+"date": "2026-09-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_1",
+"home": "Recoletas Salud San Pablo Burgos",
+"away": "Cedevita Olimpija Ljubljana",
+"status": "scheduled",
+"date": "2026-09-30T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_10",
+"home": "Napoli Basketball",
+"away": "Cosea JL Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-09-30T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_9",
+"home": "Slask Wroclaw",
+"away": "Buducnost VOLI Podgorica",
+"status": "scheduled",
+"date": "2026-09-30T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_15",
+"home": "ratiopharm ulm",
+"away": "Balkan Botevgrad",
+"status": "scheduled",
+"date": "2026-09-30T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_14",
+"home": "PAOK Thessaloniki",
+"away": "Kids&Us Manresa",
+"status": "scheduled",
+"date": "2026-09-30T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_13",
+"home": "Lietkabelis Panevezys",
+"away": "BOSNA BH Telecom Sarajevo",
+"status": "scheduled",
+"date": "2026-09-30T16:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_3",
+"home": "Riga Zelli",
+"away": "Baglietto Derthona Tortona",
+"status": "scheduled",
+"date": "2026-09-30T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_16",
+"home": "Bahcesehir College Istanbul",
+"away": "Roma Basketball",
+"status": "scheduled",
+"date": "2026-09-30T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_8",
+"home": "Siauliai Basketball",
+"away": "London Lions",
+"status": "scheduled",
+"date": "2026-09-30T15:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_7",
+"home": "Umana Reyer Venice",
+"away": "Skyliners Frankfurt",
+"status": "scheduled",
+"date": "2026-09-29T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_4",
+"home": "Le Mans Sarthe Basket",
+"away": "Aris Thessaloniki",
+"status": "scheduled",
+"date": "2026-09-29T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_2",
+"home": "Hapoel Midtown Jerusalem",
+"away": "Rostock Seawolves",
+"status": "scheduled",
+"date": "2026-09-29T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_11",
+"home": "Tofas Bursa",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-09-29T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "U2026_12",
+"home": "Neptunas Klaipeda",
+"away": "Dolomiti Energia Trento",
+"status": "scheduled",
+"date": "2026-09-29T16:00:00.000Z",
+"venue": null
+}
+]
+}

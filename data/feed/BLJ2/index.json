@@ -1,0 +1,5896 @@
+{
+"code": "BLJ2",
+"label": "B.LEAGUE One",
+"adapter": "bleague",
+"updated": "2026-09-18T05:51:59.435846+00:00",
+"games": [
+{
+"id": "507892",
+"home": "東京U",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-04-25T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507906",
+"home": "香川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507904",
+"home": "FE名古屋",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507902",
+"home": "福井",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507898",
+"home": "新潟",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507894",
+"home": "立川",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507891",
+"home": "東京U",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507890",
+"home": "福島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507888",
+"home": "山形",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507886",
+"home": "青森",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-04-24T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507908",
+"home": "福岡",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507905",
+"home": "香川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507903",
+"home": "FE名古屋",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507901",
+"home": "福井",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507897",
+"home": "新潟",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507893",
+"home": "立川",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507889",
+"home": "福島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507887",
+"home": "山形",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507885",
+"home": "青森",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-04-23T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507907",
+"home": "福岡",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-22T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507884",
+"home": "鹿児島",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507882",
+"home": "福岡",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507880",
+"home": "愛媛",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "愛媛武道"
+},
+{
+"id": "507878",
+"home": "徳島",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507876",
+"home": "奈良",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507874",
+"home": "FE名古屋",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507870",
+"home": "新潟",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "新発田"
+},
+{
+"id": "507868",
+"home": "立川",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507866",
+"home": "埼玉",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507864",
+"home": "越谷",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507862",
+"home": "福島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-04-17T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507883",
+"home": "鹿児島",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507881",
+"home": "福岡",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507879",
+"home": "愛媛",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "愛媛武道"
+},
+{
+"id": "507877",
+"home": "徳島",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507875",
+"home": "奈良",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507873",
+"home": "FE名古屋",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507869",
+"home": "新潟",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "新発田"
+},
+{
+"id": "507867",
+"home": "立川",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507865",
+"home": "埼玉",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507863",
+"home": "越谷",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507861",
+"home": "福島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-04-16T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507856",
+"home": "岡山",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-04-11T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507860",
+"home": "熊本",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507858",
+"home": "愛媛",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507855",
+"home": "岡山",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507854",
+"home": "静岡",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507852",
+"home": "岐阜",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507850",
+"home": "福井",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507848",
+"home": "新潟",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507846",
+"home": "横浜EX",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "横アリ"
+},
+{
+"id": "507844",
+"home": "東京Z",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507840",
+"home": "山形",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507838",
+"home": "岩手",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-04-10T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507859",
+"home": "熊本",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507857",
+"home": "愛媛",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507853",
+"home": "静岡",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507851",
+"home": "岐阜",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507849",
+"home": "福井",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507847",
+"home": "新潟",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507845",
+"home": "横浜EX",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "横アリ"
+},
+{
+"id": "507843",
+"home": "東京Z",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507839",
+"home": "山形",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507837",
+"home": "岩手",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-04-09T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507832",
+"home": "岡山",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-04T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507836",
+"home": "鹿児島",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507834",
+"home": "香川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507831",
+"home": "岡山",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507830",
+"home": "FE名古屋",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507828",
+"home": "岐阜",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507826",
+"home": "福井",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507820",
+"home": "埼玉",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507818",
+"home": "越谷",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507816",
+"home": "福島",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507814",
+"home": "青森",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-04-03T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507835",
+"home": "鹿児島",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507833",
+"home": "香川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507829",
+"home": "FE名古屋",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507827",
+"home": "岐阜",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507825",
+"home": "福井",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507819",
+"home": "埼玉",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507817",
+"home": "越谷",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507815",
+"home": "福島",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507813",
+"home": "青森",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-04-02T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507794",
+"home": "東京U",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-03-29T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507796",
+"home": "東京Z",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-03-28T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507793",
+"home": "東京U",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-03-28T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507812",
+"home": "熊本",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507810",
+"home": "福岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "北九州"
+},
+{
+"id": "507808",
+"home": "徳島",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507806",
+"home": "奈良",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507804",
+"home": "静岡",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "このはな"
+},
+{
+"id": "507802",
+"home": "新潟",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507800",
+"home": "横浜EX",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "横浜BT"
+},
+{
+"id": "507798",
+"home": "立川",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507795",
+"home": "東京Z",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507792",
+"home": "福島",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507790",
+"home": "岩手",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-03-27T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507811",
+"home": "熊本",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507809",
+"home": "福岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "北九州"
+},
+{
+"id": "507807",
+"home": "徳島",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507805",
+"home": "奈良",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507803",
+"home": "静岡",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "このはな"
+},
+{
+"id": "507801",
+"home": "新潟",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507799",
+"home": "横浜EX",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "横浜BT"
+},
+{
+"id": "507797",
+"home": "立川",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507791",
+"home": "福島",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507789",
+"home": "岩手",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-03-26T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507786",
+"home": "愛媛",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507784",
+"home": "香川",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "丸亀"
+},
+{
+"id": "507780",
+"home": "FE名古屋",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "一宮総体"
+},
+{
+"id": "507778",
+"home": "岐阜",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507776",
+"home": "福井",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507774",
+"home": "金沢",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "七尾"
+},
+{
+"id": "507772",
+"home": "越谷",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "アイルA"
+},
+{
+"id": "507770",
+"home": "山形",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507768",
+"home": "青森",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-20T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507788",
+"home": "鹿児島",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507785",
+"home": "愛媛",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507783",
+"home": "香川",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "丸亀"
+},
+{
+"id": "507782",
+"home": "岡山",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507779",
+"home": "FE名古屋",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "一宮総体"
+},
+{
+"id": "507777",
+"home": "岐阜",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507775",
+"home": "福井",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507773",
+"home": "金沢",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "七尾"
+},
+{
+"id": "507771",
+"home": "越谷",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "アイルA"
+},
+{
+"id": "507769",
+"home": "山形",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507767",
+"home": "青森",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-19T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507787",
+"home": "鹿児島",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-18T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507781",
+"home": "岡山",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-03-18T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507766",
+"home": "熊本",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507765",
+"home": "香川",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507764",
+"home": "徳島",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "アミノ"
+},
+{
+"id": "507763",
+"home": "静岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507762",
+"home": "金沢",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507761",
+"home": "新潟",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507760",
+"home": "八王子",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507759",
+"home": "立川",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507758",
+"home": "東京Z",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507757",
+"home": "埼玉",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507756",
+"home": "岩手",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-03-16T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507755",
+"home": "鹿児島",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "姶良"
+},
+{
+"id": "507753",
+"home": "福岡",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507751",
+"home": "愛媛",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "今治中央"
+},
+{
+"id": "507749",
+"home": "岡山",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "津山"
+},
+{
+"id": "507747",
+"home": "奈良",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507745",
+"home": "岐阜",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "で愛"
+},
+{
+"id": "507743",
+"home": "横浜EX",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507739",
+"home": "越谷",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507737",
+"home": "福島",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "いわき"
+},
+{
+"id": "507735",
+"home": "山形",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507733",
+"home": "青森",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-13T15:00:00Z",
+"venue": "マエダ"
+},
+{
+"id": "507754",
+"home": "鹿児島",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "姶良"
+},
+{
+"id": "507752",
+"home": "福岡",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507750",
+"home": "愛媛",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "今治中央"
+},
+{
+"id": "507748",
+"home": "岡山",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "津山"
+},
+{
+"id": "507746",
+"home": "奈良",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507744",
+"home": "岐阜",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "で愛"
+},
+{
+"id": "507742",
+"home": "横浜EX",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507741",
+"home": "八王子",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "町田市体"
+},
+{
+"id": "507738",
+"home": "越谷",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507736",
+"home": "福島",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "いわき"
+},
+{
+"id": "507734",
+"home": "山形",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507732",
+"home": "青森",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-12T15:00:00Z",
+"venue": "マエダ"
+},
+{
+"id": "507740",
+"home": "八王子",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-03-11T15:00:00Z",
+"venue": "町田市体"
+},
+{
+"id": "507715",
+"home": "東京U",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-08T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507717",
+"home": "東京Z",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-03-07T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507714",
+"home": "東京U",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-07T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507731",
+"home": "鹿児島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507729",
+"home": "熊本",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507725",
+"home": "FE名古屋",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507721",
+"home": "新潟",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507719",
+"home": "横浜EX",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507716",
+"home": "東京Z",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507713",
+"home": "埼玉",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507711",
+"home": "越谷",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507709",
+"home": "福島",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-06T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507730",
+"home": "鹿児島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507728",
+"home": "熊本",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507727",
+"home": "徳島",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507724",
+"home": "FE名古屋",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507723",
+"home": "福井",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507720",
+"home": "新潟",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507718",
+"home": "横浜EX",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507712",
+"home": "埼玉",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507710",
+"home": "越谷",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507708",
+"home": "福島",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-05T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507726",
+"home": "徳島",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-03-04T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507722",
+"home": "福井",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-03-04T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507707",
+"home": "熊本",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507706",
+"home": "福岡",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507705",
+"home": "香川",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507704",
+"home": "岡山",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507703",
+"home": "静岡",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507702",
+"home": "金沢",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507701",
+"home": "新潟",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507700",
+"home": "八王子",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507699",
+"home": "埼玉",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507698",
+"home": "青森",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-03-02T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507697",
+"home": "鹿児島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "志布志体"
+},
+{
+"id": "507695",
+"home": "愛媛",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507693",
+"home": "徳島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507691",
+"home": "奈良",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507689",
+"home": "FE名古屋",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507687",
+"home": "岐阜",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507683",
+"home": "八王子",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507681",
+"home": "立川",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507679",
+"home": "東京Z",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507677",
+"home": "山形",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-27T15:00:00Z",
+"venue": "山形スポ"
+},
+{
+"id": "507696",
+"home": "鹿児島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "志布志体"
+},
+{
+"id": "507694",
+"home": "愛媛",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507692",
+"home": "徳島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507690",
+"home": "奈良",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507688",
+"home": "FE名古屋",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "クロコ"
+},
+{
+"id": "507686",
+"home": "岐阜",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507685",
+"home": "横浜EX",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507682",
+"home": "八王子",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507680",
+"home": "立川",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507678",
+"home": "東京Z",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507676",
+"home": "山形",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "山形スポ"
+},
+{
+"id": "507675",
+"home": "岩手",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-26T15:00:00Z",
+"venue": "宮古"
+},
+{
+"id": "507684",
+"home": "横浜EX",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-25T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507674",
+"home": "岩手",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-25T15:00:00Z",
+"venue": "宮古"
+},
+{
+"id": "507673",
+"home": "鹿児島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507672",
+"home": "福岡",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "北九州"
+},
+{
+"id": "507671",
+"home": "岡山",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507670",
+"home": "FE名古屋",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507669",
+"home": "岐阜",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "で愛"
+},
+{
+"id": "507668",
+"home": "福井",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507667",
+"home": "横浜EX",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507666",
+"home": "東京U",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "有コロ"
+},
+{
+"id": "507665",
+"home": "越谷",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "アイルA"
+},
+{
+"id": "507664",
+"home": "福島",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507663",
+"home": "山形",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-02-23T15:00:00Z",
+"venue": "山形スポ"
+},
+{
+"id": "507662",
+"home": "熊本",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507658",
+"home": "香川",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507654",
+"home": "静岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "このはな"
+},
+{
+"id": "507652",
+"home": "福井",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507650",
+"home": "金沢",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507648",
+"home": "八王子",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507646",
+"home": "東京Z",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507644",
+"home": "東京U",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "有明S"
+},
+{
+"id": "507642",
+"home": "岩手",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507640",
+"home": "青森",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-20T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507661",
+"home": "熊本",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507660",
+"home": "福岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507657",
+"home": "香川",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507656",
+"home": "岡山",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "津山"
+},
+{
+"id": "507653",
+"home": "静岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "このはな"
+},
+{
+"id": "507651",
+"home": "福井",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507649",
+"home": "金沢",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507647",
+"home": "八王子",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507645",
+"home": "東京Z",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507643",
+"home": "東京U",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "有明S"
+},
+{
+"id": "507641",
+"home": "岩手",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507639",
+"home": "青森",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-19T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507659",
+"home": "福岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-18T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507655",
+"home": "岡山",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-18T15:00:00Z",
+"venue": "津山"
+},
+{
+"id": "507638",
+"home": "熊本",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507634",
+"home": "徳島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507632",
+"home": "奈良",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507630",
+"home": "FE名古屋",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507628",
+"home": "岐阜",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507626",
+"home": "新潟",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507624",
+"home": "立川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507622",
+"home": "東京Z",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507620",
+"home": "埼玉",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507618",
+"home": "福島",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507616",
+"home": "青森",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-02-13T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507637",
+"home": "熊本",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507636",
+"home": "愛媛",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507633",
+"home": "徳島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507631",
+"home": "奈良",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507629",
+"home": "FE名古屋",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507627",
+"home": "岐阜",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507625",
+"home": "新潟",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507623",
+"home": "立川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507621",
+"home": "東京Z",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "調整中"
+},
+{
+"id": "507619",
+"home": "埼玉",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507617",
+"home": "福島",
+"away": "越谷",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507615",
+"home": "青森",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-02-12T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507635",
+"home": "愛媛",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-02-11T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507614",
+"home": "福岡",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-08T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507598",
+"home": "東京U",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-02-08T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507613",
+"home": "福岡",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-07T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507597",
+"home": "東京U",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-02-07T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507612",
+"home": "愛媛",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507610",
+"home": "香川",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507608",
+"home": "岡山",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "福田"
+},
+{
+"id": "507606",
+"home": "静岡",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507604",
+"home": "金沢",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507596",
+"home": "埼玉",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507594",
+"home": "越谷",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507592",
+"home": "山形",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-02-06T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507611",
+"home": "愛媛",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507609",
+"home": "香川",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507607",
+"home": "岡山",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "福田"
+},
+{
+"id": "507605",
+"home": "静岡",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507603",
+"home": "金沢",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507602",
+"home": "横浜EX",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507600",
+"home": "八王子",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507595",
+"home": "埼玉",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507593",
+"home": "越谷",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507591",
+"home": "山形",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-02-05T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507601",
+"home": "横浜EX",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-02-04T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507599",
+"home": "八王子",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-02-04T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507590",
+"home": "鹿児島",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507589",
+"home": "奈良",
+"away": "岡山",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507588",
+"home": "FE名古屋",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507587",
+"home": "福井",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507586",
+"home": "横浜EX",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507585",
+"home": "立川",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507584",
+"home": "東京Z",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "江戸川区"
+},
+{
+"id": "507583",
+"home": "東京U",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "墨田区"
+},
+{
+"id": "507582",
+"home": "山形",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507581",
+"home": "岩手",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-02-02T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507580",
+"home": "鹿児島",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507578",
+"home": "熊本",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "菊陽総合"
+},
+{
+"id": "507576",
+"home": "福岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507574",
+"home": "徳島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507572",
+"home": "岡山",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507570",
+"home": "福井",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507568",
+"home": "金沢",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507566",
+"home": "立川",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507564",
+"home": "埼玉",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507562",
+"home": "越谷",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507560",
+"home": "福島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507558",
+"home": "青森",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-01-30T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507579",
+"home": "鹿児島",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507577",
+"home": "熊本",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "菊陽総合"
+},
+{
+"id": "507575",
+"home": "福岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507573",
+"home": "徳島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507571",
+"home": "岡山",
+"away": "東京U",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507569",
+"home": "福井",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507567",
+"home": "金沢",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507565",
+"home": "立川",
+"away": "奈良",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507563",
+"home": "埼玉",
+"away": "八王子",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507561",
+"home": "越谷",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507559",
+"home": "福島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507557",
+"home": "青森",
+"away": "新潟",
+"status": "scheduled",
+"date": "2027-01-29T15:00:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507542",
+"home": "東京U",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-01-24T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507556",
+"home": "熊本",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507554",
+"home": "香川",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507552",
+"home": "奈良",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507550",
+"home": "静岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507548",
+"home": "岐阜",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "で愛"
+},
+{
+"id": "507546",
+"home": "新潟",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507544",
+"home": "八王子",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507541",
+"home": "東京U",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507540",
+"home": "埼玉",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507538",
+"home": "越谷",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507536",
+"home": "山形",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507534",
+"home": "岩手",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-01-23T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507555",
+"home": "熊本",
+"away": "徳島",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507553",
+"home": "香川",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507551",
+"home": "奈良",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "ロート"
+},
+{
+"id": "507549",
+"home": "静岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507547",
+"home": "岐阜",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "で愛"
+},
+{
+"id": "507545",
+"home": "新潟",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507543",
+"home": "八王子",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507539",
+"home": "埼玉",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507537",
+"home": "越谷",
+"away": "青森",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "越谷"
+},
+{
+"id": "507535",
+"home": "山形",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507533",
+"home": "岩手",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2027-01-22T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507532",
+"home": "鹿児島",
+"away": "福井",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507531",
+"home": "愛媛",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507530",
+"home": "岡山",
+"away": "福岡",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507529",
+"home": "FE名古屋",
+"away": "静岡",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507528",
+"home": "新潟",
+"away": "福島",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507527",
+"home": "横浜EX",
+"away": "立川",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507526",
+"home": "八王子",
+"away": "金沢",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507525",
+"home": "東京Z",
+"away": "山形",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507523",
+"home": "岩手",
+"away": "熊本",
+"status": "scheduled",
+"date": "2027-01-19T15:00:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507524",
+"home": "東京U",
+"away": "香川",
+"status": "scheduled",
+"date": "2027-01-18T15:00:00Z",
+"venue": "有明M"
+},
+{
+"id": "507508",
+"home": "東京Z",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-12-27T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507502",
+"home": "青森",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-12-27T06:05:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507518",
+"home": "香川",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-12-27T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507516",
+"home": "徳島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-12-27T05:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507514",
+"home": "金沢",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-27T05:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507510",
+"home": "立川",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-12-27T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507504",
+"home": "岩手",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-12-27T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507506",
+"home": "福島",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-12-27T04:35:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507522",
+"home": "熊本",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-12-27T04:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507512",
+"home": "新潟",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-27T04:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507515",
+"home": "徳島",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507513",
+"home": "金沢",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507509",
+"home": "立川",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507505",
+"home": "福島",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507503",
+"home": "岩手",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507501",
+"home": "青森",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-12-26T06:05:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507521",
+"home": "熊本",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-12-26T05:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507520",
+"home": "福岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-12-26T05:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507517",
+"home": "香川",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-12-26T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507511",
+"home": "新潟",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-26T04:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507507",
+"home": "東京Z",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-12-26T04:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507519",
+"home": "福岡",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-12-25T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507494",
+"home": "奈良",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-12-20T08:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507492",
+"home": "FE名古屋",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-12-20T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507484",
+"home": "横浜EX",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-12-20T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507482",
+"home": "埼玉",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-20T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507496",
+"home": "香川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-12-20T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507490",
+"home": "静岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-12-20T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507486",
+"home": "金沢",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-20T05:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507480",
+"home": "越谷",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-12-20T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507478",
+"home": "山形",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-20T05:05:00Z",
+"venue": "三友体文"
+},
+{
+"id": "507500",
+"home": "鹿児島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-12-20T04:05:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507483",
+"home": "横浜EX",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-12-19T08:35:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507491",
+"home": "FE名古屋",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-12-19T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507499",
+"home": "鹿児島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507493",
+"home": "奈良",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507485",
+"home": "金沢",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507481",
+"home": "埼玉",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507479",
+"home": "越谷",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507477",
+"home": "山形",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-19T06:05:00Z",
+"venue": "三友体文"
+},
+{
+"id": "507498",
+"home": "福岡",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-12-19T05:05:00Z",
+"venue": "久留米"
+},
+{
+"id": "507495",
+"home": "香川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-12-19T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507489",
+"home": "静岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-12-19T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507497",
+"home": "福岡",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-12-18T10:05:00Z",
+"venue": "久留米"
+},
+{
+"id": "507476",
+"home": "熊本",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-12-15T10:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507460",
+"home": "東京U",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-12-15T10:05:00Z",
+"venue": "代々木２"
+},
+{
+"id": "507475",
+"home": "熊本",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-12-14T10:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507459",
+"home": "東京U",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-12-14T10:05:00Z",
+"venue": "代々木２"
+},
+{
+"id": "507474",
+"home": "愛媛",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507472",
+"home": "徳島",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507470",
+"home": "岡山",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507468",
+"home": "静岡",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "浜松"
+},
+{
+"id": "507466",
+"home": "岐阜",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507464",
+"home": "新潟",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507458",
+"home": "越谷",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507454",
+"home": "岩手",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-12-13T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507456",
+"home": "福島",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-12-13T04:35:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507457",
+"home": "越谷",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-12-12T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507455",
+"home": "福島",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-12-12T06:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507453",
+"home": "岩手",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-12-12T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507473",
+"home": "愛媛",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507469",
+"home": "岡山",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507467",
+"home": "静岡",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "浜松"
+},
+{
+"id": "507465",
+"home": "岐阜",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507463",
+"home": "新潟",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507462",
+"home": "八王子",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-12T05:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507471",
+"home": "徳島",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-12-12T05:00:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507461",
+"home": "八王子",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-11T10:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507452",
+"home": "熊本",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507451",
+"home": "香川",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "高松総合"
+},
+{
+"id": "507450",
+"home": "徳島",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507449",
+"home": "FE名古屋",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507448",
+"home": "金沢",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507447",
+"home": "新潟",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507446",
+"home": "横浜EX",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "横浜BT"
+},
+{
+"id": "507445",
+"home": "立川",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507443",
+"home": "埼玉",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507442",
+"home": "山形",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507441",
+"home": "青森",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-12-09T10:05:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507444",
+"home": "東京Z",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-12-09T09:35:00Z",
+"venue": "世田谷区"
+},
+{
+"id": "507426",
+"home": "東京U",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-06T15:00:00Z",
+"venue": "中央区"
+},
+{
+"id": "507434",
+"home": "奈良",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-12-06T08:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507425",
+"home": "東京U",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-12-06T08:05:00Z",
+"venue": "中央区"
+},
+{
+"id": "507422",
+"home": "山形",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-12-06T07:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507418",
+"home": "青森",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-12-06T06:05:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507438",
+"home": "愛媛",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507436",
+"home": "岡山",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507432",
+"home": "岐阜",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507430",
+"home": "福井",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "アイシン"
+},
+{
+"id": "507428",
+"home": "金沢",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507424",
+"home": "越谷",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507420",
+"home": "岩手",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-12-06T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507440",
+"home": "鹿児島",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-06T04:05:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507439",
+"home": "鹿児島",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507433",
+"home": "奈良",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507429",
+"home": "福井",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "アイシン"
+},
+{
+"id": "507427",
+"home": "金沢",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507423",
+"home": "越谷",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507421",
+"home": "山形",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507417",
+"home": "青森",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-12-05T06:05:00Z",
+"venue": "カクヒロ"
+},
+{
+"id": "507437",
+"home": "愛媛",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-12-05T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507435",
+"home": "岡山",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-12-05T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507431",
+"home": "岐阜",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-12-05T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507419",
+"home": "岩手",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-12-05T04:55:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507408",
+"home": "岡山",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-11-30T03:35:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507407",
+"home": "岡山",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-11-29T08:35:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507398",
+"home": "埼玉",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-29T06:05:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507416",
+"home": "熊本",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507412",
+"home": "香川",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "善通寺"
+},
+{
+"id": "507406",
+"home": "静岡",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507402",
+"home": "八王子",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507400",
+"home": "立川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507394",
+"home": "岩手",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-11-29T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507396",
+"home": "福島",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-29T04:35:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507410",
+"home": "徳島",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-29T04:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507401",
+"home": "八王子",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-11-28T08:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507415",
+"home": "熊本",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507409",
+"home": "徳島",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507404",
+"home": "横浜EX",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507399",
+"home": "立川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507397",
+"home": "埼玉",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507393",
+"home": "岩手",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-11-28T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507414",
+"home": "福岡",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-28T05:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507411",
+"home": "香川",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-11-28T05:05:00Z",
+"venue": "善通寺"
+},
+{
+"id": "507405",
+"home": "静岡",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-11-28T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507395",
+"home": "福島",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-28T04:40:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507413",
+"home": "福岡",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-27T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507403",
+"home": "横浜EX",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-11-27T10:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507384",
+"home": "岐阜",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-11-22T06:05:00Z",
+"venue": "で愛"
+},
+{
+"id": "507380",
+"home": "横浜EX",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-22T06:05:00Z",
+"venue": "横浜BT"
+},
+{
+"id": "507376",
+"home": "東京Z",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-22T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507374",
+"home": "埼玉",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-11-22T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507370",
+"home": "青森",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-22T06:05:00Z",
+"venue": "青森武道"
+},
+{
+"id": "507388",
+"home": "徳島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-11-22T05:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507386",
+"home": "静岡",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-11-22T05:05:00Z",
+"venue": "浜松"
+},
+{
+"id": "507382",
+"home": "福井",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-22T05:05:00Z",
+"venue": "敦賀総合"
+},
+{
+"id": "507392",
+"home": "鹿児島",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-11-22T04:05:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507379",
+"home": "横浜EX",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-21T08:35:00Z",
+"venue": "横浜BT"
+},
+{
+"id": "507375",
+"home": "東京Z",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-21T08:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507391",
+"home": "鹿児島",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "せんだい"
+},
+{
+"id": "507387",
+"home": "徳島",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507383",
+"home": "岐阜",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "で愛"
+},
+{
+"id": "507381",
+"home": "福井",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "敦賀総合"
+},
+{
+"id": "507373",
+"home": "埼玉",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507372",
+"home": "山形",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "山形スポ"
+},
+{
+"id": "507369",
+"home": "青森",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-21T06:05:00Z",
+"venue": "青森武道"
+},
+{
+"id": "507390",
+"home": "愛媛",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-21T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507385",
+"home": "静岡",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-11-21T05:05:00Z",
+"venue": "浜松"
+},
+{
+"id": "507378",
+"home": "八王子",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-21T05:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507389",
+"home": "愛媛",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-20T10:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507377",
+"home": "八王子",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-20T10:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507371",
+"home": "山形",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-11-20T10:05:00Z",
+"venue": "山形スポ"
+},
+{
+"id": "507368",
+"home": "福岡",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-11-17T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507367",
+"home": "福岡",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-11-16T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507362",
+"home": "奈良",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-11-15T08:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507360",
+"home": "FE名古屋",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-11-15T06:35:00Z",
+"venue": "エントリ"
+},
+{
+"id": "507356",
+"home": "新潟",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-11-15T06:05:00Z",
+"venue": "東総合"
+},
+{
+"id": "507364",
+"home": "岡山",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-11-15T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507358",
+"home": "金沢",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-11-15T05:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507354",
+"home": "立川",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-11-15T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507350",
+"home": "越谷",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-15T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507348",
+"home": "岩手",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-15T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507366",
+"home": "香川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-11-15T04:05:00Z",
+"venue": "丸亀"
+},
+{
+"id": "507359",
+"home": "FE名古屋",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-11-14T06:35:00Z",
+"venue": "エントリ"
+},
+{
+"id": "507361",
+"home": "奈良",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507357",
+"home": "金沢",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507355",
+"home": "新潟",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "東総合"
+},
+{
+"id": "507353",
+"home": "立川",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507349",
+"home": "越谷",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507347",
+"home": "岩手",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-14T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507365",
+"home": "香川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-11-14T05:05:00Z",
+"venue": "丸亀"
+},
+{
+"id": "507363",
+"home": "岡山",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-11-14T05:05:00Z",
+"venue": "津山"
+},
+{
+"id": "507352",
+"home": "東京U",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-14T05:05:00Z",
+"venue": "有明S"
+},
+{
+"id": "507351",
+"home": "東京U",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-13T10:05:00Z",
+"venue": "有明S"
+},
+{
+"id": "507340",
+"home": "FE名古屋",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-08T06:35:00Z",
+"venue": "中村"
+},
+{
+"id": "507336",
+"home": "岐阜",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-11-08T06:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507332",
+"home": "横浜EX",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-08T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507326",
+"home": "東京Z",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-08T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507324",
+"home": "青森",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-08T06:05:00Z",
+"venue": "マエダ"
+},
+{
+"id": "507344",
+"home": "愛媛",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-11-08T05:05:00Z",
+"venue": "伊予市民"
+},
+{
+"id": "507338",
+"home": "静岡",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-11-08T05:05:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507334",
+"home": "福井",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-08T05:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507330",
+"home": "八王子",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-11-08T05:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507328",
+"home": "立川",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-11-08T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507346",
+"home": "鹿児島",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-08T04:05:00Z",
+"venue": "姶良"
+},
+{
+"id": "507323",
+"home": "青森",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-07T09:05:00Z",
+"venue": "マエダ"
+},
+{
+"id": "507331",
+"home": "横浜EX",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-11-07T08:35:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507329",
+"home": "八王子",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-11-07T08:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507325",
+"home": "東京Z",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-11-07T08:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507339",
+"home": "FE名古屋",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-07T06:35:00Z",
+"venue": "中村"
+},
+{
+"id": "507345",
+"home": "鹿児島",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-07T06:05:00Z",
+"venue": "姶良"
+},
+{
+"id": "507342",
+"home": "奈良",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-11-07T06:05:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507335",
+"home": "岐阜",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-11-07T06:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507333",
+"home": "福井",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-07T06:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507327",
+"home": "立川",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-11-07T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507343",
+"home": "愛媛",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-11-07T05:05:00Z",
+"venue": "伊予市民"
+},
+{
+"id": "507337",
+"home": "静岡",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-11-07T05:05:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507341",
+"home": "奈良",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-11-06T09:05:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507322",
+"home": "熊本",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "益城総合"
+},
+{
+"id": "507321",
+"home": "福岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "北九州"
+},
+{
+"id": "507319",
+"home": "静岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507318",
+"home": "福井",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507317",
+"home": "金沢",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "いしかわ"
+},
+{
+"id": "507316",
+"home": "立川",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507315",
+"home": "埼玉",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507314",
+"home": "福島",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507313",
+"home": "山形",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-11-04T10:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507320",
+"home": "香川",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-11-04T04:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507308",
+"home": "奈良",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-11-01T08:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507304",
+"home": "横浜EX",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-11-01T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507302",
+"home": "東京Z",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-11-01T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507292",
+"home": "青森",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-11-01T06:05:00Z",
+"venue": "むつ"
+},
+{
+"id": "507306",
+"home": "岐阜",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-11-01T05:05:00Z",
+"venue": "高山"
+},
+{
+"id": "507298",
+"home": "越谷",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-11-01T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507296",
+"home": "福島",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-11-01T05:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507294",
+"home": "岩手",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-11-01T05:05:00Z",
+"venue": "一関"
+},
+{
+"id": "507310",
+"home": "徳島",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-11-01T03:35:00Z",
+"venue": "トモニ那"
+},
+{
+"id": "507303",
+"home": "横浜EX",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-31T08:35:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507301",
+"home": "東京Z",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-31T08:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507295",
+"home": "福島",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-10-31T07:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507309",
+"home": "徳島",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-10-31T06:05:00Z",
+"venue": "トモニ那"
+},
+{
+"id": "507307",
+"home": "奈良",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-31T06:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507297",
+"home": "越谷",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-10-31T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507293",
+"home": "岩手",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-10-31T06:05:00Z",
+"venue": "一関"
+},
+{
+"id": "507291",
+"home": "青森",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-10-31T06:05:00Z",
+"venue": "むつ"
+},
+{
+"id": "507312",
+"home": "愛媛",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-10-31T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507305",
+"home": "岐阜",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-10-31T05:05:00Z",
+"venue": "高山"
+},
+{
+"id": "507311",
+"home": "愛媛",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-10-30T10:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507300",
+"home": "東京U",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-30T10:05:00Z",
+"venue": "江戸川区"
+},
+{
+"id": "507299",
+"home": "東京U",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-29T10:05:00Z",
+"venue": "江戸川区"
+},
+{
+"id": "507282",
+"home": "FE名古屋",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-10-25T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507268",
+"home": "青森",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-10-25T06:05:00Z",
+"venue": "FLAT"
+},
+{
+"id": "507286",
+"home": "香川",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507284",
+"home": "岡山",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507280",
+"home": "静岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507278",
+"home": "福井",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507276",
+"home": "新潟",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507272",
+"home": "立川",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507270",
+"home": "山形",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-25T05:05:00Z",
+"venue": "つるしん"
+},
+{
+"id": "507290",
+"home": "鹿児島",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-10-25T04:05:00Z",
+"venue": "大崎体"
+},
+{
+"id": "507281",
+"home": "FE名古屋",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-10-24T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507289",
+"home": "鹿児島",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "大崎体"
+},
+{
+"id": "507285",
+"home": "香川",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507277",
+"home": "福井",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507271",
+"home": "立川",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507269",
+"home": "山形",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "つるしん"
+},
+{
+"id": "507267",
+"home": "青森",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-10-24T06:05:00Z",
+"venue": "FLAT"
+},
+{
+"id": "507288",
+"home": "福岡",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-10-24T05:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507283",
+"home": "岡山",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-10-24T05:05:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507279",
+"home": "静岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-24T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507275",
+"home": "新潟",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-10-24T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507287",
+"home": "福岡",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-10-23T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507274",
+"home": "八王子",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-10-23T10:05:00Z",
+"venue": "町田市体"
+},
+{
+"id": "507273",
+"home": "八王子",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-10-22T10:05:00Z",
+"venue": "町田市体"
+},
+{
+"id": "507246",
+"home": "東京U",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-10-19T10:05:00Z",
+"venue": "有明M"
+},
+{
+"id": "507245",
+"home": "東京U",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-10-18T08:05:00Z",
+"venue": "有明M"
+},
+{
+"id": "507258",
+"home": "FE名古屋",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-18T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507252",
+"home": "横浜EX",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-18T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507248",
+"home": "東京Z",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-18T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507266",
+"home": "熊本",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507264",
+"home": "愛媛",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507262",
+"home": "徳島",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507260",
+"home": "奈良",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507256",
+"home": "金沢",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507254",
+"home": "新潟",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507250",
+"home": "立川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507244",
+"home": "埼玉",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-10-18T05:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507247",
+"home": "東京Z",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-17T09:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507251",
+"home": "横浜EX",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-17T08:35:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507257",
+"home": "FE名古屋",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-17T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507265",
+"home": "熊本",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507261",
+"home": "徳島",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "トモニ"
+},
+{
+"id": "507259",
+"home": "奈良",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507255",
+"home": "金沢",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507249",
+"home": "立川",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507243",
+"home": "埼玉",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-10-17T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507263",
+"home": "愛媛",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-17T05:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507253",
+"home": "新潟",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-10-17T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507242",
+"home": "鹿児島",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507241",
+"home": "福岡",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507240",
+"home": "愛媛",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "コミセン"
+},
+{
+"id": "507239",
+"home": "岡山",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507238",
+"home": "奈良",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507237",
+"home": "静岡",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "静岡中央"
+},
+{
+"id": "507236",
+"home": "岐阜",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "で愛"
+},
+{
+"id": "507235",
+"home": "福井",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507234",
+"home": "八王子",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507232",
+"home": "越谷",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507231",
+"home": "岩手",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-10-14T10:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507233",
+"home": "東京U",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-10-13T10:05:00Z",
+"venue": "有明M"
+},
+{
+"id": "507210",
+"home": "山形",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-10-11T07:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507222",
+"home": "FE名古屋",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-10-11T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507218",
+"home": "横浜EX",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-10-11T06:05:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507214",
+"home": "埼玉",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-11T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507230",
+"home": "熊本",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-11T05:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507228",
+"home": "福岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-11T05:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507226",
+"home": "香川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-11T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507220",
+"home": "金沢",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-11T05:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507208",
+"home": "岩手",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-11T05:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507212",
+"home": "福島",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-11T04:35:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507217",
+"home": "横浜EX",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-10-10T08:35:00Z",
+"venue": "横浜武道"
+},
+{
+"id": "507227",
+"home": "福岡",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-10T07:05:00Z",
+"venue": "照葉積水"
+},
+{
+"id": "507221",
+"home": "FE名古屋",
+"away": "徳島",
+"status": "scheduled",
+"date": "2026-10-10T06:35:00Z",
+"venue": "枇杷島"
+},
+{
+"id": "507229",
+"home": "熊本",
+"away": "静岡",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507224",
+"home": "奈良",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507219",
+"home": "金沢",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "金沢市総"
+},
+{
+"id": "507216",
+"home": "東京Z",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507213",
+"home": "埼玉",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "浦和駒場"
+},
+{
+"id": "507211",
+"home": "福島",
+"away": "岐阜",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507209",
+"home": "山形",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507207",
+"home": "岩手",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-10-10T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507225",
+"home": "香川",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-10T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507215",
+"home": "東京Z",
+"away": "八王子",
+"status": "scheduled",
+"date": "2026-10-09T10:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507223",
+"home": "奈良",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-10-09T09:05:00Z",
+"venue": "Jアリ"
+},
+{
+"id": "507192",
+"home": "東京U",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-10-04T06:05:00Z",
+"venue": "有明M"
+},
+{
+"id": "507184",
+"home": "青森",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-10-04T06:05:00Z",
+"venue": "つがる"
+},
+{
+"id": "507206",
+"home": "香川",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507204",
+"home": "徳島",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507202",
+"home": "静岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507200",
+"home": "岐阜",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507198",
+"home": "福井",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507196",
+"home": "八王子",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507194",
+"home": "立川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507190",
+"home": "越谷",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507186",
+"home": "山形",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-10-04T05:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507188",
+"home": "福島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-04T04:35:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507195",
+"home": "八王子",
+"away": "埼玉",
+"status": "scheduled",
+"date": "2026-10-03T08:05:00Z",
+"venue": "エスアリ"
+},
+{
+"id": "507191",
+"home": "東京U",
+"away": "東京Z",
+"status": "scheduled",
+"date": "2026-10-03T08:05:00Z",
+"venue": "有明M"
+},
+{
+"id": "507203",
+"home": "徳島",
+"away": "奈良",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507197",
+"home": "福井",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "福井県営"
+},
+{
+"id": "507193",
+"home": "立川",
+"away": "熊本",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "立川立飛"
+},
+{
+"id": "507189",
+"home": "越谷",
+"away": "鹿児島",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "越谷"
+},
+{
+"id": "507187",
+"home": "福島",
+"away": "愛媛",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "ボンズA"
+},
+{
+"id": "507185",
+"home": "山形",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "山形県総"
+},
+{
+"id": "507183",
+"home": "青森",
+"away": "岩手",
+"status": "scheduled",
+"date": "2026-10-03T06:05:00Z",
+"venue": "つがる"
+},
+{
+"id": "507205",
+"home": "香川",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-10-03T05:05:00Z",
+"venue": "あなアリ"
+},
+{
+"id": "507201",
+"home": "静岡",
+"away": "岡山",
+"status": "scheduled",
+"date": "2026-10-03T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507199",
+"home": "岐阜",
+"away": "新潟",
+"status": "scheduled",
+"date": "2026-10-03T05:00:00Z",
+"venue": "OKB"
+},
+{
+"id": "507164",
+"home": "東京Z",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-09-27T06:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507162",
+"home": "埼玉",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-09-27T06:05:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507180",
+"home": "熊本",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507178",
+"home": "愛媛",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "愛媛武道"
+},
+{
+"id": "507172",
+"home": "奈良",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "ロート"
+},
+{
+"id": "507170",
+"home": "静岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507168",
+"home": "岐阜",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507166",
+"home": "新潟",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-09-27T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507182",
+"home": "鹿児島",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-09-27T04:05:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507160",
+"home": "岩手",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-09-27T03:40:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507171",
+"home": "奈良",
+"away": "福島",
+"status": "scheduled",
+"date": "2026-09-26T08:30:00Z",
+"venue": "ロート"
+},
+{
+"id": "507163",
+"home": "東京Z",
+"away": "立川",
+"status": "scheduled",
+"date": "2026-09-26T08:05:00Z",
+"venue": "大田総合"
+},
+{
+"id": "507181",
+"home": "鹿児島",
+"away": "福岡",
+"status": "scheduled",
+"date": "2026-09-26T06:05:00Z",
+"venue": "鹿児体"
+},
+{
+"id": "507179",
+"home": "熊本",
+"away": "香川",
+"status": "scheduled",
+"date": "2026-09-26T06:05:00Z",
+"venue": "熊本県総"
+},
+{
+"id": "507161",
+"home": "埼玉",
+"away": "東京U",
+"status": "scheduled",
+"date": "2026-09-26T06:05:00Z",
+"venue": "所沢市民"
+},
+{
+"id": "507159",
+"home": "岩手",
+"away": "山形",
+"status": "scheduled",
+"date": "2026-09-26T06:05:00Z",
+"venue": "盛岡"
+},
+{
+"id": "507177",
+"home": "愛媛",
+"away": "青森",
+"status": "scheduled",
+"date": "2026-09-26T05:30:00Z",
+"venue": "愛媛武道"
+},
+{
+"id": "507174",
+"home": "岡山",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-09-26T05:05:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507169",
+"home": "静岡",
+"away": "FE名古屋",
+"status": "scheduled",
+"date": "2026-09-26T05:05:00Z",
+"venue": "このはな"
+},
+{
+"id": "507167",
+"home": "岐阜",
+"away": "福井",
+"status": "scheduled",
+"date": "2026-09-26T05:05:00Z",
+"venue": "OKB"
+},
+{
+"id": "507165",
+"home": "新潟",
+"away": "金沢",
+"status": "scheduled",
+"date": "2026-09-26T05:05:00Z",
+"venue": "アオーレ"
+},
+{
+"id": "507173",
+"home": "岡山",
+"away": "越谷",
+"status": "scheduled",
+"date": "2026-09-25T10:05:00Z",
+"venue": "シゲトー"
+},
+{
+"id": "507176",
+"home": "徳島",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-09-23T05:05:00Z",
+"venue": "アスティ"
+},
+{
+"id": "507175",
+"home": "徳島",
+"away": "横浜EX",
+"status": "scheduled",
+"date": "2026-09-22T06:50:00Z",
+"venue": "アスティ"
+}
+]
+}

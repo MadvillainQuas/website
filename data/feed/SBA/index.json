@@ -1,0 +1,56 @@
+{
+"code": "SBA",
+"label": "Slovak SBL",
+"adapter": "fiba_site_schedule",
+"updated": "2026-09-18T05:21:01.413086+00:00",
+"games": [
+{
+"id": "2897381",
+"home": "MBK Baník Handlová",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-09-30T16:00:00Z",
+"venue": "Športová hala, Handlová"
+},
+{
+"id": "2897380",
+"home": "BC Prievidza",
+"away": "BKM Lučenec",
+"status": "scheduled",
+"date": "2026-09-27T16:00:00Z",
+"venue": "Športová hala, Prievidza"
+},
+{
+"id": "2897378",
+"home": "Spišskí Rytieri",
+"away": "Iskra Svit",
+"status": "scheduled",
+"date": "2026-09-26T17:00:00Z",
+"venue": "Mestská športová hala, Spišská Nová Ves"
+},
+{
+"id": "2897379",
+"home": "BC Komárno",
+"away": "Inter Basket",
+"status": "scheduled",
+"date": "2026-09-26T16:00:00Z",
+"venue": "Mestská športová hala, Komárno"
+},
+{
+"id": "2897377",
+"home": "Patrioti Levice",
+"away": "MBK Baník Handlová",
+"status": "scheduled",
+"date": "2026-09-26T16:00:00Z",
+"venue": "Haleon Aréna, Levice"
+},
+{
+"id": "2897376",
+"home": "Košice Wolves",
+"away": "BC SLOVAN Bratislava",
+"status": "scheduled",
+"date": "2026-09-24T16:00:00Z",
+"venue": "Stará jazdiareň, Košice"
+}
+]
+}

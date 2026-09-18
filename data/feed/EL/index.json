@@ -1,0 +1,3048 @@
+{
+"code": "EL",
+"label": "EuroLeague",
+"adapter": "euroleague",
+"updated": "2026-09-18T05:13:50.069279+00:00",
+"games": [
+{
+"id": "E2026_379",
+"home": "FC Barcelona",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-04-16T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_380",
+"home": "Olympiacos Piraeus",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-04-16T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_377",
+"home": "Besiktas Istanbul",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-04-16T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_378",
+"home": "Dubai Basketball",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-04-16T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_375",
+"home": "Paris Basketball",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-04-15T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_376",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-04-15T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_373",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-04-15T18:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_372",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-04-15T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_374",
+"home": "Anadolu Efes Istanbul",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-04-15T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_371",
+"home": "Zalgiris Kaunas",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-04-15T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_369",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-04-09T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_370",
+"home": "Olympiacos Piraeus",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-04-09T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_368",
+"home": "Besiktas Istanbul",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-04-09T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_366",
+"home": "Paris Basketball",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-04-08T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_365",
+"home": "Valencia Basket",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-04-08T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_363",
+"home": "Armani Olimpia Milan",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-04-08T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_367",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-04-08T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_364",
+"home": "FC Bayern Munich",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-04-08T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_362",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-04-08T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_361",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-04-08T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_360",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-04-07T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_359",
+"home": "Dubai Basketball",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-04-07T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_358",
+"home": "Real Madrid",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-04-06T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_357",
+"home": "Paris Basketball",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-04-06T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_354",
+"home": "FC Barcelona",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-04-06T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_355",
+"home": "Virtus Bologna",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-04-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_353",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-04-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_352",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-04-06T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_356",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-04-06T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_351",
+"home": "Besiktas Istanbul",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-04-06T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_350",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-04-02T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_349",
+"home": "FC Barcelona",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-04-02T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_348",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-04-02T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_347",
+"home": "Paris Basketball",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-04-01T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_346",
+"home": "Valencia Basket",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-04-01T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_345",
+"home": "Armani Olimpia Milan",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-04-01T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_344",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-04-01T18:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_342",
+"home": "Virtus Bologna",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-03-31T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_341",
+"home": "Zalgiris Kaunas",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-31T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_343",
+"home": "Anadolu Efes Istanbul",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-03-31T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_339",
+"home": "Real Madrid",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-03-26T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_336",
+"home": "Armani Olimpia Milan",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-26T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_340",
+"home": "Olympiacos Piraeus",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-03-26T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_337",
+"home": "FC Bayern Munich",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-03-26T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_335",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-03-26T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_338",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-03-26T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_334",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-03-25T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_332",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-03-25T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_331",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-03-25T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_333",
+"home": "Anadolu Efes Istanbul",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-03-25T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_329",
+"home": "Valencia Basket",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-03-24T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_330",
+"home": "Olympiacos Piraeus",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-03-24T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_328",
+"home": "FC Bayern Munich",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-03-24T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_327",
+"home": "Zalgiris Kaunas",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-24T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_326",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-03-23T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_325",
+"home": "Paris Basketball",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-03-23T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_323",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-03-23T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_322",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-03-23T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_324",
+"home": "Anadolu Efes Istanbul",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-03-23T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_321",
+"home": "Dubai Basketball",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-03-23T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_320",
+"home": "FC Barcelona",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-19T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_319",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-03-19T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_317",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-03-19T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_316",
+"home": "Besiktas Istanbul",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-03-19T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_318",
+"home": "Dubai Basketball",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-03-19T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_314",
+"home": "Real Madrid",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-03-18T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_312",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-03-18T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_315",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-03-18T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_311",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-03-18T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_313",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-03-18T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_308",
+"home": "FC Barcelona",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-03-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_310",
+"home": "Olympiacos Piraeus",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-03-12T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_306",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-03-12T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_307",
+"home": "Zalgiris Kaunas",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-03-12T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_309",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-03-12T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_305",
+"home": "Real Madrid",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-03-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_304",
+"home": "Paris Basketball",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-03-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_302",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-03-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_301",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-03-11T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_303",
+"home": "FC Bayern Munich",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-11T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_300",
+"home": "Armani Olimpia Milan",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-03-10T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_299",
+"home": "Dubai Basketball",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-03-10T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_298",
+"home": "Real Madrid",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-09T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_297",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-03-09T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_296",
+"home": "Virtus Bologna",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-03-09T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_294",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-03-09T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_293",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-03-09T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_295",
+"home": "FC Bayern Munich",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-03-09T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_292",
+"home": "Zalgiris Kaunas",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-03-09T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_291",
+"home": "Besiktas Istanbul",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-03-09T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_289",
+"home": "FC Barcelona",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-03-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_288",
+"home": "Armani Olimpia Milan",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-03-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_290",
+"home": "FC Bayern Munich",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-03-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_286",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-03-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_287",
+"home": "Dubai Basketball",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-03-05T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_284",
+"home": "Paris Basketball",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-04T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_281",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-03-04T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_283",
+"home": "Virtus Bologna",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-03-04T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_282",
+"home": "Valencia Basket",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-03-04T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_285",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-03-04T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_280",
+"home": "Olympiacos Piraeus",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-02-12T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_278",
+"home": "Zalgiris Kaunas",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-02-12T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_279",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-02-12T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_277",
+"home": "Virtus Bologna",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-02-11T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_276",
+"home": "Valencia Basket",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-02-11T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_275",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-02-11T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_274",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-02-11T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_273",
+"home": "Besiktas Istanbul",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-02-11T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_272",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-02-10T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_271",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-02-10T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_269",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-02-05T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_268",
+"home": "Valencia Basket",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-02-05T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_267",
+"home": "Armani Olimpia Milan",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-02-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_266",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-02-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_265",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-02-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_270",
+"home": "Olympiacos Piraeus",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-02-05T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_264",
+"home": "Real Madrid",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-02-04T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_262",
+"home": "Zalgiris Kaunas",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-02-04T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_263",
+"home": "Anadolu Efes Istanbul",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-02-04T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_261",
+"home": "Dubai Basketball",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-02-04T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_260",
+"home": "Valencia Basket",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-02-03T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_258",
+"home": "FC Barcelona",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-02-03T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_259",
+"home": "FC Bayern Munich",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-02-03T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_257",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-02-03T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_255",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-02-02T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_254",
+"home": "Paris Basketball",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-02-02T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_253",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-02-02T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_256",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-02-02T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_251",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-02-02T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_252",
+"home": "Anadolu Efes Istanbul",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-02-02T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_248",
+"home": "FC Barcelona",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-01-29T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_247",
+"home": "Armani Olimpia Milan",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-01-29T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_250",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-01-29T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_246",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-01-29T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_249",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-01-29T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_244",
+"home": "Virtus Bologna",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-01-28T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_242",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-01-28T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_245",
+"home": "Olympiacos Piraeus",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-01-28T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_243",
+"home": "FC Bayern Munich",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-01-28T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_241",
+"home": "Besiktas Istanbul",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-01-28T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_240",
+"home": "Valencia Basket",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-01-22T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_237",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-01-22T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_238",
+"home": "Zalgiris Kaunas",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-01-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_239",
+"home": "Anadolu Efes Istanbul",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2027-01-22T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_236",
+"home": "Real Madrid",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-01-21T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_235",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-01-21T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_234",
+"home": "Paris Basketball",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-01-21T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_232",
+"home": "FC Bayern Munich",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-01-21T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_233",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-01-21T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_231",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-01-21T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_229",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-01-15T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_228",
+"home": "Virtus Bologna",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2027-01-15T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_230",
+"home": "Olympiacos Piraeus",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-01-15T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_226",
+"home": "Besiktas Istanbul",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-01-15T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_227",
+"home": "Dubai Basketball",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2027-01-15T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_224",
+"home": "Real Madrid",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-01-14T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_223",
+"home": "Armani Olimpia Milan",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-01-14T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_225",
+"home": "Panathinaikos AKTOR Athens",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-01-14T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_222",
+"home": "Zalgiris Kaunas",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2027-01-14T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_221",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-01-14T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_220",
+"home": "Olympiacos Piraeus",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2027-01-13T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_219",
+"home": "Besiktas Istanbul",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-01-13T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_216",
+"home": "Virtus Bologna",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2027-01-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_215",
+"home": "FC Barcelona",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2027-01-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_214",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-01-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_218",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2027-01-12T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_213",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2027-01-12T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_211",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2027-01-12T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_212",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-01-12T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_217",
+"home": "Dubai Basketball",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-01-12T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_209",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2027-01-08T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_207",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2027-01-08T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_208",
+"home": "Dubai Basketball",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2027-01-08T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_210",
+"home": "Real Madrid",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2027-01-07T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_206",
+"home": "Valencia Basket",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2027-01-07T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_205",
+"home": "Armani Olimpia Milan",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2027-01-07T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_202",
+"home": "Zalgiris Kaunas",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2027-01-07T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_204",
+"home": "Anadolu Efes Istanbul",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2027-01-07T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_203",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2027-01-07T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_201",
+"home": "FC Barcelona",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2027-01-06T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_200",
+"home": "Paris Basketball",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-12-30T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_199",
+"home": "Virtus Bologna",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-12-30T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_198",
+"home": "FC Bayern Munich",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-12-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_196",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-12-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_197",
+"home": "Anadolu Efes Istanbul",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-12-30T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_195",
+"home": "Real Madrid",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-12-29T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_194",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-12-29T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_192",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-12-29T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_191",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-12-29T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_193",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-12-29T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_190",
+"home": "Armani Olimpia Milan",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-12-23T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_189",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-12-23T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_186",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_188",
+"home": "Zalgiris Kaunas",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_187",
+"home": "Dubai Basketball",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-12-23T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_185",
+"home": "Virtus Bologna",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-12-22T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_184",
+"home": "FC Bayern Munich",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-12-22T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_183",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-12-22T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_182",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-12-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_181",
+"home": "Besiktas Istanbul",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_178",
+"home": "FC Barcelona",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-12-18T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_177",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-12-18T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_175",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-12-18T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_179",
+"home": "FC Bayern Munich",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-12-18T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_180",
+"home": "Olympiacos Piraeus",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-12-18T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_176",
+"home": "Anadolu Efes Istanbul",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-12-18T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_174",
+"home": "Real Madrid",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-12-17T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_172",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-12-17T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_171",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-12-17T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_173",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-12-17T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_168",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-12-16T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_170",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-12-16T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_167",
+"home": "Besiktas Istanbul",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_161",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-12-15T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_166",
+"home": "Real Madrid",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-12-15T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_165",
+"home": "Paris Basketball",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-12-15T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_163",
+"home": "Virtus Bologna",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-12-15T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_162",
+"home": "Valencia Basket",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-12-15T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_164",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-12-15T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_169",
+"home": "Anadolu Efes Istanbul",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-12-15T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_159",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-12-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_158",
+"home": "Virtus Bologna",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-12-11T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_160",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-12-11T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_156",
+"home": "Dubai Basketball",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-12-11T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_154",
+"home": "Paris Basketball",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-12-10T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_157",
+"home": "Valencia Basket",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-12-10T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_153",
+"home": "Armani Olimpia Milan",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-12-10T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_152",
+"home": "Zalgiris Kaunas",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-12-10T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_151",
+"home": "Hapoel IBI Tel Aviv",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-12-10T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_155",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-12-10T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_149",
+"home": "Virtus Bologna",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-12-04T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_148",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-12-04T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_150",
+"home": "Olympiacos Piraeus",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-12-04T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_147",
+"home": "Zalgiris Kaunas",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-12-04T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_146",
+"home": "Besiktas Istanbul",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-12-04T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_145",
+"home": "Real Madrid",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-12-03T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_143",
+"home": "FC Bayern Munich",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-12-03T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_141",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-12-03T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_144",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-12-03T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_142",
+"home": "Anadolu Efes Istanbul",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-12-03T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_139",
+"home": "Real Madrid",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-11-25T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_138",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-11-25T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_140",
+"home": "Olympiacos Piraeus",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-25T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_137",
+"home": "Dubai Basketball",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-11-25T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_133",
+"home": "FC Barcelona",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-11-24T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_136",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-11-24T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_135",
+"home": "Valencia Basket",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-11-24T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_134",
+"home": "FC Bayern Munich",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-24T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_131",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-11-24T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_132",
+"home": "Besiktas Istanbul",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-11-24T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_129",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-11-20T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_128",
+"home": "FC Barcelona",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-11-20T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_130",
+"home": "Olympiacos Piraeus",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-11-20T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_127",
+"home": "Anadolu Efes Istanbul",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-11-20T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_125",
+"home": "Valencia Basket",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-11-19T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_126",
+"home": "Paris Basketball",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-19T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_123",
+"home": "Armani Olimpia Milan",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-11-19T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_124",
+"home": "FC Bayern Munich",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-11-19T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_121",
+"home": "Zalgiris Kaunas",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-11-19T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_122",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-11-19T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_120",
+"home": "Besiktas Istanbul",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_119",
+"home": "Virtus Bologna",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-11-17T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_118",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-11-17T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_116",
+"home": "FC Barcelona",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-11-17T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_115",
+"home": "Armani Olimpia Milan",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-11-17T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_114",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-17T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_117",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-11-17T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_112",
+"home": "Zalgiris Kaunas",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-11-17T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_113",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-11-17T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_111",
+"home": "Dubai Basketball",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-11-17T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_108",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-11-13T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_110",
+"home": "Panathinaikos AKTOR Athens",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-11-13T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_109",
+"home": "Anadolu Efes Istanbul",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-11-13T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_106",
+"home": "Real Madrid",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-11-12T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_105",
+"home": "Valencia Basket",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-11-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_104",
+"home": "Armani Olimpia Milan",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-11-12T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_107",
+"home": "Olympiacos Piraeus",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-11-12T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_103",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-12T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_102",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-11-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_101",
+"home": "Paris Basketball",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-11-11T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_99",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-11-06T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_98",
+"home": "Virtus Bologna",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-11-06T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_100",
+"home": "Olympiacos Piraeus",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-11-06T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_97",
+"home": "Besiktas Istanbul",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-11-06T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_96",
+"home": "Armani Olimpia Milan",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-11-05T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_94",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-11-05T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_93",
+"home": "Hapoel IBI Tel Aviv",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-11-05T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_95",
+"home": "Anadolu Efes Istanbul",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-11-05T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_91",
+"home": "Real Madrid",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-11-04T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_92",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-11-04T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_89",
+"home": "Virtus Bologna",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-10-30T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_87",
+"home": "FC Barcelona",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-10-30T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_90",
+"home": "Olympiacos Piraeus",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-10-30T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_85",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-10-30T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_86",
+"home": "Zalgiris Kaunas",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-10-30T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_88",
+"home": "Anadolu Efes Istanbul",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-10-30T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_84",
+"home": "Dubai Basketball",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-30T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_83",
+"home": "Real Madrid",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-10-29T19:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_82",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-10-29T19:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_81",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-10-29T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_80",
+"home": "Virtus Bologna",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-10-28T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_78",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_79",
+"home": "Besiktas Istanbul",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-10-28T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_77",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_73",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-10-27T20:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_75",
+"home": "Valencia Basket",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-10-27T19:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_76",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-10-27T19:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_74",
+"home": "FC Bayern Munich",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-10-27T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_71",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-27T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_72",
+"home": "Dubai Basketball",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-10-27T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_69",
+"home": "Paris Basketball",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-10-23T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_70",
+"home": "Olympiacos Piraeus",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-10-23T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_68",
+"home": "Zalgiris Kaunas",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-23T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_66",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-10-22T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_63",
+"home": "Armani Olimpia Milan",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-10-22T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_67",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-10-22T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_62",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-10-22T18:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_65",
+"home": "FC Bayern Munich",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-10-22T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_64",
+"home": "Anadolu Efes Istanbul",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-10-22T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_61",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_59",
+"home": "Virtus Bologna",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-10-16T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_58",
+"home": "FC Barcelona",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-10-16T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_60",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-16T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_56",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-10-16T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_57",
+"home": "Zalgiris Kaunas",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-10-16T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_55",
+"home": "Besiktas Istanbul",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-10-16T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_53",
+"home": "Real Madrid",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-15T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_52",
+"home": "Valencia Basket",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-15T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_51",
+"home": "Armani Olimpia Milan",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-10-15T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_54",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-10-15T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_50",
+"home": "Paris Basketball",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-10-14T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_49",
+"home": "Anadolu Efes Istanbul",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-10-14T17:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_48",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_45",
+"home": "Valencia Basket",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-10-13T19:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_47",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Panathinaikos AKTOR Athens",
+"status": "scheduled",
+"date": "2026-10-13T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_44",
+"home": "FC Barcelona",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-13T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_43",
+"home": "Armani Olimpia Milan",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-10-13T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_42",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-10-13T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_41",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_46",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-10-13T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_39",
+"home": "FC Barcelona",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-10-09T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_38",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-10-09T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_40",
+"home": "Olympiacos Piraeus",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-10-09T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_35",
+"home": "Real Madrid",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-10-08T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_34",
+"home": "Valencia Basket",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-08T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_36",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Fenerbahce Tarfin Istanbul",
+"status": "scheduled",
+"date": "2026-10-08T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_33",
+"home": "FC Bayern Munich",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-10-08T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_32",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-10-08T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_37",
+"home": "Dubai Basketball",
+"away": "Crvena Zvezda Meridianbet Belgrade",
+"status": "scheduled",
+"date": "2026-10-08T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_31",
+"home": "Paris Basketball",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-07T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_27",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-10-02T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_30",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-10-02T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_28",
+"home": "FC Bayern Munich",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-10-02T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_26",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-10-02T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_29",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Dubai Basketball",
+"status": "scheduled",
+"date": "2026-10-02T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_25",
+"home": "Besiktas Istanbul",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-10-02T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_24",
+"home": "Paris Basketball",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-10-01T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_23",
+"home": "Virtus Bologna",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-10-01T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_21",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-10-01T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_22",
+"home": "Hapoel IBI Tel Aviv",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-10-01T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_20",
+"home": "Panathinaikos AKTOR Athens",
+"away": "LDLC ASVEL Villeurbanne",
+"status": "scheduled",
+"date": "2026-09-30T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_19",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Besiktas Istanbul",
+"status": "scheduled",
+"date": "2026-09-30T18:05:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_18",
+"home": "Paris Basketball",
+"away": "Partizan Mozzart Bet Belgrade",
+"status": "scheduled",
+"date": "2026-09-29T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_16",
+"home": "Armani Olimpia Milan",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-09-29T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_15",
+"home": "Valencia Basket",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-09-29T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_12",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Hapoel IBI Tel Aviv",
+"status": "scheduled",
+"date": "2026-09-29T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_17",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-09-29T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_14",
+"home": "Zalgiris Kaunas",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-09-29T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_11",
+"home": "Anadolu Efes Istanbul",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-09-29T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_13",
+"home": "Dubai Basketball",
+"away": "FC Barcelona",
+"status": "scheduled",
+"date": "2026-09-29T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_10",
+"home": "Partizan Mozzart Bet Belgrade",
+"away": "Armani Olimpia Milan",
+"status": "scheduled",
+"date": "2026-09-25T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_9",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Virtus Bologna",
+"status": "scheduled",
+"date": "2026-09-25T17:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_8",
+"home": "Besiktas Istanbul",
+"away": "Valencia Basket",
+"status": "scheduled",
+"date": "2026-09-25T17:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_6",
+"home": "LDLC ASVEL Villeurbanne",
+"away": "Maccabi Rapyd Tel Aviv",
+"status": "scheduled",
+"date": "2026-09-24T18:45:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_5",
+"home": "Kosner Baskonia Vitoria-Gasteiz",
+"away": "Olympiacos Piraeus",
+"status": "scheduled",
+"date": "2026-09-24T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_4",
+"home": "FC Barcelona",
+"away": "Anadolu Efes Istanbul",
+"status": "scheduled",
+"date": "2026-09-24T18:30:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_7",
+"home": "Panathinaikos AKTOR Athens",
+"away": "Paris Basketball",
+"status": "scheduled",
+"date": "2026-09-24T18:15:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_1",
+"home": "Crvena Zvezda Meridianbet Belgrade",
+"away": "Zalgiris Kaunas",
+"status": "scheduled",
+"date": "2026-09-24T18:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_3",
+"home": "Hapoel IBI Tel Aviv",
+"away": "FC Bayern Munich",
+"status": "scheduled",
+"date": "2026-09-24T16:00:00.000Z",
+"venue": null
+},
+{
+"id": "E2026_2",
+"home": "Dubai Basketball",
+"away": "Real Madrid",
+"status": "scheduled",
+"date": "2026-09-24T16:00:00.000Z",
+"venue": null
+}
+]
+}
