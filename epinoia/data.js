@@ -585,9 +585,21 @@ async function events(gameIds) {
   if (!gameIds || !gameIds.length) return [];
   const chunks = [];
   for (let i = 0; i < gameIds.length; i += 40) chunks.push(gameIds.slice(i, i + 40));
+  /* ORDER BY GAME_ID, SEQ -- NOT BARE SEQ. seq is assigned per game (every game's own log starts
+     back at 1), so across the twenty-odd games one chunk holds it is not a meaningful ordering
+     at all, and Postgres cannot use its (game_id, seq) index to produce one: an `IN (list)`
+     filter with a sort on only the second column of that index forces an explicit sort over
+     every matching row before OFFSET/LIMIT can even be applied, on however many thousand events
+     twenty games hold, on every one of the pages the fan-out below requests in parallel. That is
+     what a "canceling statement due to statement timeout" on this exact query turned out to be
+     (reported 2026-09-18, first seen on a BCB team's shot zones) -- the table simply grew past
+     where the sort stayed inside the timeout. Sorting by (game_id, seq) instead is the index's
+     own order, so PostgREST/Postgres can satisfy it directly per game_id and merge, and pagination
+     is still perfectly stable (nothing here reads across games in this order; grouping by game_id
+     downstream is exactly what byG does with the result). */
   const parts = await Promise.all(chunks.map(c =>
     all(`game_events?game_id=in.(${c.join(',')})` +
-        `&select=game_id,seq,t,team,pid,period,clock,payload,created_at&order=seq`)));
+        `&select=game_id,seq,t,team,pid,period,clock,payload,created_at&order=game_id,seq`)));
   return parts.flat().map(r => {
     /* created_at rides along because it is the only axis the log shares with a
        video of the game — see epinoia/video.js. Everything else here ignores
