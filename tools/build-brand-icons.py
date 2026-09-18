@@ -22,6 +22,13 @@ ground must run past every edge and the mark must sit inside the middle two thir
 picture at 1.5x the pixels (162 dp) is the Android 12+ system splash, which draws the 108 dp
 canvas over 162 dp and shows a centred circle of two thirds.
 
+THE SPLASH SOMEBODY ACTUALLY LOOKS AT IS NOT THE ICON. A cold start shows the system splash for
+an instant and then hands over to a full-screen image while the page loads — the TWA splash on
+Android, UILaunchScreen on iOS — and both of those were the app icon again, so the launch read
+as the same tile twice followed by a browser. They carry the lockup now: the mark BESIDE the
+wordmark, which is the brand as drawn. The system splash keeps the mark alone, because the
+platform masks that one to a circle whatever is put in it.
+
     python tools/build-brand-icons.py
 """
 import os
@@ -37,8 +44,8 @@ ASSETS = 'ios/Epinoia/Assets.xcassets'
 GROUND = (255, 255, 255)   # the brand sheet's own ground
 MARK_IN_VISIBLE = 0.62     # the mark's share of the 72 dp the mask leaves visible
 RADIUS = 0.225             # corner radius of the unmasked shapes, as a share of the side
-SPLASH = 0.52              # the icon's share of the splash canvas
-LAUNCH_PT = 200            # iOS launch mark width in points
+SPLASH = 0.52              # the icon's share of the system splash canvas
+LOCKUP_DP = 72             # the mark's height in the TWA splash's lockup
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 SS = 8                     # corners are cut at 8x and box-averaged down: exact coverage, no ringing
 
@@ -114,6 +121,34 @@ def shape(size, frac, kind, inner):
     return out
 
 
+def lockup(height_dp, k):
+    """The mark and the wordmark side by side, on a transparent canvas.
+
+    THE SCREEN BETWEEN THE ICON AND THE PAGE. A cold start shows the system splash (an icon in a
+    circle the platform draws, and a circle is all it will ever draw), then hands over to the
+    TWA splash while Chrome loads HOME — and that one is a full image of our own choosing. It was
+    the app icon again, so the launch read as the same tile twice and then a browser; the brand
+    as drawn is the mark BESIDE the wordmark, which is what belongs on the screen somebody is
+    actually looking at while they wait.
+
+    Transparent, because the splash background colour behind it (epinoia_ground_light) is the
+    same #f3faf6 as HOME: the hand-over never flashes another colour. The wordmark is set to
+    58% of the mark's height, which is what makes the two read as one lockup rather than as a
+    picture next to some words."""
+    h = round(height_dp * k)
+    mh = h
+    mw = max(1, round(mh * mark.width / mark.height))
+    wh = max(1, round(mh * 0.58))
+    ww = max(1, round(wh * wordmark.width / wordmark.height))
+    gap = max(1, round(mh * 0.30))
+    out = Image.new('RGBA', (mw + gap + ww, h), (0, 0, 0, 0))
+    m = mark.resize((mw, mh), Image.LANCZOS)
+    w_ = wordmark.resize((ww, wh), Image.LANCZOS)
+    out.paste(m, (0, 0), m)
+    out.paste(w_, (mw + gap, (h - wh) // 2), w_)      # optically centred on the mark
+    return out
+
+
 def save(img, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path, optimize=True)
@@ -140,8 +175,9 @@ for name, k in DENSITIES.items():
     themed = Image.new('RGBA', (s108, s108), (255, 255, 255, 0))
     themed.putalpha(mono.resize((s108, s108), Image.LANCZOS))
     written.append(save(themed, f'{RES}/drawable-{name}/ic_launcher_monochrome.png'))
-    written.append(save(shape(s108, SPLASH, 'rounded', MARK_IN_VISIBLE * SPLASH),
-                        f'{RES}/drawable-{name}/splash.png'))
+    # the TWA splash: the lockup, because this is the screen somebody actually looks at
+    written.append(save(lockup(LOCKUP_DP, k), f'{RES}/drawable-{name}/splash.png'))
+    # the Android 12+ system splash icon: the mark alone, because the platform masks it to a circle
     written.append(save(shape(round(162 * k), SPLASH, 'rounded', MARK_IN_VISIBLE * SPLASH),
                         f'{RES}/drawable-{name}/splash_system.png'))
     written.append(save(shape(s48, 44 / 48, 'rounded', MARK_IN_VISIBLE * 44 / 48),
@@ -159,8 +195,10 @@ for px in (192, 384):
 icon = visible.resize((1024, 1024), Image.LANCZOS)
 assert icon.mode == 'RGB'
 written.append(save(icon, f'{ASSETS}/AppIcon.appiconset/icon-1024.png'))
+# the launch screen is the same lockup Android's TWA splash carries, for the same reason: the
+# screen somebody looks at while the app opens should be the brand, not the app icon again
 for scale, suffix in ((1, ''), (2, '@2x'), (3, '@3x')):
-    written.append(save(shape(LAUNCH_PT * scale, 1.0, 'rounded', MARK_IN_VISIBLE),
+    written.append(save(lockup(LOCKUP_DP, scale),
                         f'{ASSETS}/LaunchLogo.imageset/launch-logo{suffix}.png'))
 for px in (192, 384):
     written.append(save(visible.resize((px, px), Image.LANCZOS), f'epinoia/ios/icon-{px}.png'))

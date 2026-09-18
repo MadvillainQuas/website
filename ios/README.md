@@ -50,7 +50,7 @@ ios/
     PrivacyInfo.xcprivacy        the privacy manifest (see below)
     Assets.xcassets/
       AppIcon.appiconset/        one 1024 px icon, RGB, no alpha, square corners
-      LaunchLogo.imageset/       the launch mark, 200 pt, 1x/2x/3x
+      LaunchLogo.imageset/       the launch lockup (mark + wordmark), 1x/2x/3x
       LaunchBackground.colorset/ #f3faf6, light and dark
 ```
 

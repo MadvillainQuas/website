@@ -27,7 +27,12 @@ const D = window.EpinoiaData;
 const qp = new URLSearchParams(location.search);
 const leagueSlug = qp.get('l') || 'demo-league';
 const kind = (qp.get('kind') || 'standings').toLowerCase();
-const rows = Math.min(parseInt(qp.get('n'), 10) || 10, 25);
+/* A CAP, NOT A DEFAULT. Twenty-five was low enough to cut a league's own standings short
+   and there was no way to ask for more; the default is unchanged, so every page already
+   embedding this gets exactly what it got. The rows scroll inside the frame now (see the
+   stylesheet), so asking for the whole table costs the page nothing. */
+const MAX_ROWS = 200;
+const rows = Math.min(parseInt(qp.get('n'), 10) || 10, MAX_ROWS);
 
 /* Light or dark, the club's colours and the host page's colourway: ../theme.js, shared by every
    embed. */
@@ -37,9 +42,20 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
   if (x != null) n.textContent = x; return n; };
 const f1 = v => (v == null ? '—' : Number(v).toFixed(1));
 
+/* THE HEIGHT THE LIST WANTS, not the height the box has. body.scrollHeight is clamped by
+   the scrolling box now, so a page that resizes the frame around this embed would have been
+   told to keep it exactly as tall as it already was, and the scroll would be the only way to
+   see the rest — on a page that had no need to scroll at all. */
 function postHeight() {
-  try { parent.postMessage({ epinoiaEmbed: 'height', height: document.body.scrollHeight }, '*'); }
-  catch (_) {}
+  try {
+    const host = document.getElementById('host');
+    const chrome = ['.ep-hd', '.ep-foot'].reduce((n, sel) => {
+      const el = document.querySelector(sel);
+      return n + (el ? el.offsetHeight : 0);
+    }, 0);
+    const height = host ? chrome + host.scrollHeight : document.body.scrollHeight;
+    parent.postMessage({ epinoiaEmbed: 'height', height }, '*');
+  } catch (_) {}
 }
 
 /* THE FULL TABLE OPENS IN THE PAGE ON OUR OWN PAGES, in a tab on anybody else's. The league

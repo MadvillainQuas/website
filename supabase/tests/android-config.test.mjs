@@ -208,10 +208,12 @@ console.log('\n-- android/app/src/main/res: every icon at every density, and not
     return [b.readUInt32BE(16), b.readUInt32BE(20)];
   };
   const sized = (want, ...p) => { const s = pngSize(...p); return !!s && s[0] === want && s[1] === want; };
+  /* splash.png is NOT here any more: the TWA splash is the brand lockup, which is wide, and a
+     square check would have to pick a width for it. Its shape is held in
+     supabase/tests/cards-and-splash.test.mjs, which is where the reason for it is written. */
   const EXPECT = [
     ['drawable', 'ic_launcher_background', 108],
     ['drawable', 'ic_launcher_monochrome', 108],
-    ['drawable', 'splash', 108],
     ['drawable', 'splash_system', 162],
     ['mipmap', 'ic_launcher', 48],
     ['mipmap', 'ic_launcher_round', 48]
@@ -230,6 +232,18 @@ console.log('\n-- android/app/src/main/res: every icon at every density, and not
        && /<foreground android:drawable="@android:color\/transparent"/.test(x)
        && /<monochrome android:drawable="@drawable\/ic_launcher_monochrome"/.test(x));
   }
+  /* the lockup still has to BE there at every density, and be a lockup */
+  {
+    const bad = Object.entries(DENS).filter(([d]) => {
+      const sz = pngSize(...RES, 'drawable-' + d, 'splash.png');
+      return !sz || sz[0] <= sz[1] * 3;
+    });
+    ok('drawable/splash.png at all five densities, and wide at every one of them', bad.length === 0,
+       'missing or not a lockup: ' + bad.map(([d]) => d).join(', '));
+    ok('...and no drawable/splash.xml or density-less splash.png left to shadow it',
+       !existsSync(file(...RES, 'drawable', 'splash.xml')) && !existsSync(file(...RES, 'drawable', 'splash.png')));
+  }
+
   const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
   const v31 = read(...RES, 'values-v31', 'themes.xml');
   ok('the manifest names the launcher icons and the splash that exist',

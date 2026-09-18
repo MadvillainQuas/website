@@ -124,16 +124,16 @@ console.log('\n2. choosing one moves both embeds and both links');
   await new Promise(s => setTimeout(s, 0));
   eq('the table and the leaders both open on the principal competition',
      r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=12&theme=dark&c=c-lg',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=10&theme=dark&c=c-lg']);
+     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark&c=c-lg',
+      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark&c=c-lg']);
   eq('...and so does the way out of each card',
      r.hits().map(a => a.attrs.href || a.href),
      ['l/?l=bcb&c=c-lg', 'l/?l=bcb&c=c-lg#leaders']);
 
   r.chips()[1].click();
   eq('choosing the trophy moves both embeds', r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=12&theme=dark&c=c-cup',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=10&theme=dark&c=c-cup']);
+     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark&c=c-cup',
+      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark&c=c-cup']);
   eq('...and both links, so "open ›" opens what is on screen',
      r.hits().map(a => a.attrs.href || a.href),
      ['l/?l=bcb&c=c-cup', 'l/?l=bcb&c=c-cup#leaders']);
@@ -151,8 +151,8 @@ console.log('\n3. a league with nothing to choose between');
   eq('one competition: no buttons at all', r.chips().length, 0);
   eq('...and the embeds are exactly what they always were',
      r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=12&theme=dark',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=10&theme=dark']);
+     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark',
+      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark']);
 
   const none = run(null);
   await new Promise(s => setTimeout(s, 0));

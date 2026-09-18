@@ -540,6 +540,13 @@ jobs:
           node supabase/tests/initials.test.mjs
           node supabase/tests/phone-fixes.test.mjs
 
+      - name: The embeds scroll, the fixture card is side by side, and the app opens on the brand
+        # a league's standings embed showed nine of twelve clubs and the frame simply cut the rest
+        # off: the rows scroll now and the front page asks for all of them and a top thirty; the
+        # fixture card puts the two clubs either side of a "v" rather than stacking them; and both
+        # splash images carry the mark beside the wordmark instead of the app icon again
+        run: node supabase/tests/cards-and-splash.test.mjs
+
       - name: Following a whole league, and folding what lands together
         # fan_prefs.fav_league_ids (0133) reaches every game through notify_audience, which
         # expands a followed league into the clubs playing in it; follow.js will not draw a

@@ -919,9 +919,13 @@ function splash() {
   const picker = el('div', 'gpick'); picker.id = 'seasonPick';
   host.appendChild(picker);
 
+  /* THE WHOLE TABLE, AND A REAL TOP THIRTY. Twelve rows cut a league's own standings
+     short on its own front page, and ten leaders is a glance rather than a list. The
+     embed scrolls inside its frame now, so asking for all of it costs the page nothing
+     and a reader who wants the tenth club does not have to open another page to see it. */
   const cards = [
-    { title: 'Table', kind: '&kind=standings&n=12', href: table },
-    { title: 'Leaders', kind: '&kind=leaders&stat=ppg&n=10', href: table + '#leaders' }
+    { title: 'Table', kind: '&kind=standings&n=200', href: table },
+    { title: 'Leaders', kind: '&kind=leaders&stat=ppg&n=30', href: table + '#leaders' }
   ];
   const grid = el('div', 'splitgrid');
   cards.forEach(c => {

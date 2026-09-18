@@ -14,17 +14,22 @@
    for free, and laid out for a phone rather than for a 178px strip:
 
      [badge  League name ............. TOMORROW]
-     [crest  Home club .................. 18:30]
-     [crest  Away club ................ tip-off]
+     [ crest          v          crest ]
+     [  HOME                      AWAY ]
+     [ Sat 19 Sept .............. 18:30 ]
      [venue ....................... preview →]
 
-   A live or final card carries the scores down the right in place of the time.
+   TWO CLUBS SIDE BY SIDE, not one above the other. Stacked, a fixture read as
+   a list of two things rather than as a match, and the card spent its whole
+   width on two names that never needed it — which is why the scoreboard card
+   this one is ported from puts them either side of a "v". A live or final card
+   carries the score between them, the winner's number in the accent.
 
    READABLE ON A PHONE. The strip's 6.5px labels were drawn for a desktop
-   widget; here nothing is smaller than 8.5px and club names are 13px. A card
-   narrower than 210px (two across a 360px phone) is a CONTAINER QUERY away
-   from its compact form: short club names, and the tip-off moved onto the
-   state line, so it never ellipsises a name to three letters.
+   widget; here nothing is smaller than 8.5px and club names are 13px. Side by
+   side there is about half a card for each name, so the club's LETTERS are the
+   default and the full name appears only on a card wide enough to hold two of
+   them — a CONTAINER QUERY, so the card's own width decides, not the page's.
    ============================================================================ */
 
 /* ------------------------------------------------------------- the badge --- */
@@ -81,39 +86,52 @@
 @keyframes fxc-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){ .fxc-st .dot{animation:none} .fxc{transition:none} }
 
-/* THE TWO CLUBS. Each row is washed from the left in its club's colour (strip.js's --h and --a,
-   mixed into transparency so a white or a gold club reads on either theme), with a solid edge
-   of the colour where the strip had its diagonal. */
-.fxc-body{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:3px;
-  padding:2px 10px 8px}
-.fxc-tm{grid-column:1 / -1;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;
-  gap:8px;min-height:32px;padding:3px 6px 3px 7px;border-left:3px solid var(--rule-2);
-  background:linear-gradient(90deg,color-mix(in oklch,var(--h,var(--lume)) 20%,transparent),transparent 78%)}
-.fxc-tm.a{border-left-color:var(--a,var(--rule-2));
-  background:linear-gradient(90deg,color-mix(in oklch,var(--a,var(--aqua)) 20%,transparent),transparent 78%)}
-.fxc-tm.h{border-left-color:var(--h,var(--rule-2))}
-.fxc.is-upcoming .fxc-tm{grid-column:1}
+/* THE TWO CLUBS, EITHER SIDE OF THE MIDDLE. Each side is washed in its own club's colour
+   (strip.js's --h and --a, mixed into transparency so a white or a gold club reads on either
+   theme) and sits under a solid edge of it, where the strip had its diagonal. */
+.fxc-body{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;
+  column-gap:6px;padding:4px 10px 8px}
+.fxc-tm{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
+  min-width:0;min-height:84px;padding:8px 4px 7px;border-top:3px solid var(--rule-2);border-radius:0 0 3px 3px;
+  background:linear-gradient(180deg,color-mix(in oklch,var(--h,var(--lume)) 20%,transparent),transparent 82%)}
+.fxc-tm.a{border-top-color:var(--a,var(--rule-2));
+  background:linear-gradient(180deg,color-mix(in oklch,var(--a,var(--aqua)) 20%,transparent),transparent 82%)}
+.fxc-tm.h{border-top-color:var(--h,var(--rule-2))}
 
-.fxc-crest{width:24px;height:24px;border-radius:3px;overflow:hidden;display:grid;place-items:center;
-  font-family:var(--f-score);font-size:11px;line-height:1;color:#04100b}
+.fxc-crest{width:30px;height:30px;border-radius:3px;overflow:hidden;display:grid;place-items:center;
+  font-family:var(--f-score);font-size:13px;line-height:1;color:#04100b;flex:none}
 .fxc-crest.has-img{background:#ffffff}
 .fxc-crest img{width:100%;height:100%;object-fit:contain;display:block}
 
-.fxc-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-family:var(--f-ui);font-weight:700;font-size:13px;line-height:1.2;color:var(--ink)}
-.fxc-nm .short{display:none}
-.fxc-sc{font-family:var(--f-score);font-size:22px;line-height:1;font-variant-numeric:tabular-nums;
-  color:var(--ink);min-width:2ch;text-align:right}
-.fxc-tm.win .fxc-sc{color:var(--lume)}
-.fxc-tm.lose .fxc-nm,.fxc-tm.lose .fxc-sc{color:var(--ink-3)}
-.fxc.is-live .fxc-sc{color:var(--ink)}
+/* IT WRAPS RATHER THAN ELLIPSISING. Half a card is about 150px, which holds "Bristol Flyers"
+   and cuts "Cardiff Met Archers" to "Cardiff Met Arch…" — a club reduced to a word and a half
+   for want of one line. Two lines, centred, and the cards still line up because both sides of
+   every card reserve the same height. */
+.fxc-nm{max-width:100%;min-width:0;text-align:center;overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:break-word;
+  font-family:var(--f-ui);font-weight:700;font-size:13px;line-height:1.16;color:var(--ink)}
+/* the letters are the default: half a card is not a club name */
+.fxc-nm .full{display:none}
+.fxc-nm .short{display:inline}
+.fxc-tm.lose .fxc-nm{color:var(--ink-3)}
 
-/* the tip-off, its own column beside the two clubs */
-.fxc-when{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:flex-end;
-  justify-content:center;gap:3px;padding-left:10px;border-left:1px solid var(--rule)}
-.fxc-when b{font-family:var(--f-score);font-weight:400;font-size:24px;line-height:1;
+/* between them: the score, or a "v" */
+.fxc-mid{display:flex;align-items:center;justify-content:center;gap:4px;padding:0 2px;align-self:center}
+.fxc-v{font-family:var(--f-ui);font-style:italic;font-size:13px;color:var(--ink-3)}
+.fxc-sc{font-family:var(--f-score);font-size:24px;line-height:1;font-variant-numeric:tabular-nums;
+  color:var(--ink);min-width:1.6ch;text-align:center}
+.fxc-dash{font-family:var(--f-score);font-size:18px;line-height:1;color:var(--ink-3)}
+.fxc-sc.win{color:var(--lume)}
+.fxc-sc.lose{color:var(--ink-3)}
+.fxc.is-live .fxc-sc{color:var(--ink)}
+.fxc.is-live .fxc-sc.win{color:var(--lume)}
+
+/* when it is, under the two clubs and in full */
+.fxc-when{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 12px 7px;
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.fxc-when b{font-family:var(--f-score);font-weight:400;font-size:20px;line-height:1;letter-spacing:0;
   font-variant-numeric:tabular-nums;color:var(--ink)}
-.fxc-when span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.fxc-day{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .fxc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;
   padding:6px 10px 7px;border-top:1px solid var(--rule);
@@ -125,28 +143,33 @@
 /* A CLUB'S INITIALS read as a scoreboard's: letterspaced capitals (initials.js) */
 .fxc-nm .short.is-code{letter-spacing:.06em}
 
-/* HOME'S RAIL ON A PHONE SHOWS INITIALS. Eight cards side by side at 266px each had room for
-   "Cardiff Met Archers" only as "Cardiff Met Arch…"; the rail is a glance at what is on, and
-   NOT v YOR beside two crests reads faster. The card's aria-label and each name's title keep
-   the full names. The games page lists one card per row and keeps them. */
-@media (max-width:820px){
-  .fxc-rail .fxc-nm .full{display:none}
-  .fxc-rail .fxc-nm .short{display:inline}
-  .fxc-rail .fxc-nm{font-size:15px}
-}
+/* THE FULL NAME NEEDS A CARD WIDE ENOUGH FOR TWO OF THEM. Half of a 240px card is 110px,
+   which holds "Gloucester City Kings" as "Gloucest…" and nothing better; the club's letters
+   under its crest read faster and never lie. From 290px there is room for the names, so they
+   come back. The card's aria-label and each name's title always carry them.
 
-/* COMPACT: a card too narrow for a name and a time column (two across a phone). */
+   290 IS IN THE KIT'S OWN PIXELS, NOT THE SCREEN'S. body carries zoom:1.25 from 1000px and
+   1.5 from 1200px (kit/epinoia-kit.css), and a container query measures the unzoomed size —
+   so a card that MEASURES 463px on a desktop is 309 to this query, and a threshold written
+   against what the ruler says would never match. */
+@container (min-width:290px){
+  .fxc-nm .full{display:inline}
+  .fxc-nm .short{display:none}
+  .fxc-nm{font-size:14px}
+  .fxc-crest{width:34px;height:34px}
+}
+@media (max-width:820px){ .fxc-rail .fxc-nm{font-size:15px} }
+
+/* COMPACT: a card too narrow for the venue as well (two across a phone). */
 @container (max-width:210px){
   .fxc-top{padding:7px 8px 4px}
-  .fxc-body{padding:2px 8px 7px}
-  .fxc-tm{grid-template-columns:20px minmax(0,1fr) auto;gap:6px;padding:3px 4px 3px 5px}
-  .fxc-crest{width:20px;height:20px;font-size:10px}
-  .fxc-nm .full{display:none}
-  .fxc-nm .short{display:inline}
+  .fxc-body{padding:4px 6px 7px;column-gap:2px}
+  .fxc-tm{padding:6px 2px 6px;min-height:76px}
+  .fxc-crest{width:26px;height:26px;font-size:11px}
   .fxc-sc{font-size:20px}
-  .fxc-when{display:none}
-  .fxc.is-upcoming .fxc-tm{grid-column:1 / -1}
-  .fxc-st-t{display:inline}
+  .fxc-when{padding:0 8px 6px}
+  .fxc-when b{font-size:17px}
+  .fxc-st-t{display:none}
   .fxc-foot{padding:5px 8px 6px}
   .fxc-vn{display:none}
   .fxc-go{margin-left:auto}
@@ -180,7 +203,7 @@
 @media (hover:hover){
   :root[data-theme="light"] .fxc:hover{border-color:var(--lume);box-shadow:0 6px 18px rgba(13,31,23,.14)}
 }
-:root[data-theme="light"] .fxc-tm{background:linear-gradient(90deg,color-mix(in oklch,var(--h,var(--lume)) 14%,transparent),transparent 78%)}
-:root[data-theme="light"] .fxc-tm.a{background:linear-gradient(90deg,color-mix(in oklch,var(--a,var(--aqua)) 14%,transparent),transparent 78%)}
+:root[data-theme="light"] .fxc-tm{background:linear-gradient(180deg,color-mix(in oklch,var(--h,var(--lume)) 14%,transparent),transparent 82%)}
+:root[data-theme="light"] .fxc-tm.a{background:linear-gradient(180deg,color-mix(in oklch,var(--a,var(--aqua)) 14%,transparent),transparent 82%)}
 :root[data-theme="light"] .lgb-tile img,
 :root[data-theme="light"] .fxc-crest.has-img{box-shadow:inset 0 0 0 1px rgba(13,31,23,.1)}

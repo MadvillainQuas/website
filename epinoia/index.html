@@ -15,15 +15,15 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-app-180.png">
-<script src="appmode.js?v=297" data-water="front"></script>
-<script src="mode.js?v=297"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=297">
-<link rel="stylesheet" href="kit/haze.css?v=297">
-<link rel="stylesheet" href="kit/nav.css?v=297">
-<link rel="stylesheet" href="kit/card.css?v=297">
-<link rel="stylesheet" href="kit/news.css?v=297">
-<link rel="stylesheet" href="kit/splash.css?v=297">
-<link rel="stylesheet" href="kit/access.css?v=297">
+<script src="appmode.js?v=298" data-water="front"></script>
+<script src="mode.js?v=298"></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=298">
+<link rel="stylesheet" href="kit/haze.css?v=298">
+<link rel="stylesheet" href="kit/nav.css?v=298">
+<link rel="stylesheet" href="kit/card.css?v=298">
+<link rel="stylesheet" href="kit/news.css?v=298">
+<link rel="stylesheet" href="kit/splash.css?v=298">
+<link rel="stylesheet" href="kit/access.css?v=298">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   /* the platform's wordmark, top left of a league's front page: the way back to HOME */
@@ -123,14 +123,16 @@
     font-family:var(--f-micro);font-size:9px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--ink-3)}
   .embedgo{margin-left:auto;color:var(--lume)}
-  .embedframe{display:block;width:100%;height:330px;border:0;background:var(--ground)}
+  /* Taller than it was: the embed scrolls inside this frame, and a box that shows four
+     rows before it starts scrolling is a box nobody scrolls. */
+  .embedframe{display:block;width:100%;height:430px;border:0;background:var(--ground)}
   /* the whole card is one link. It sits ABOVE the iframe deliberately: an
      iframe swallows clicks, so without this the card would look clickable and
      do nothing. It also makes the embed a picture here, which is what a
      summary should be — glance, or click through to where it is interactive. */
   .embedhit{position:absolute;inset:0;z-index:2;display:block}
   .embedhit:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
-  @media (max-width:640px){ .embedframe{height:280px} }
+  @media (max-width:640px){ .embedframe{height:360px} }
 
   /* ---- WHICH PAGE THIS IS, settled before the first paint -----------------
      mode.js puts m-splash or m-league on the root element from the URL, and
@@ -757,36 +759,36 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=297" defer></script>
+<script src="config.js?v=298" defer></script>
 <!-- memberships: the league splash's paywall card, its "Become a member" card and
      a member's auth headers. Nothing is asked of the server on the platform hub. -->
-<script src="access.js?v=297" defer></script>
-<script src="follow.js?v=297" defer></script>
-<script src="teamcolour.js?v=297" defer></script>
-<script src="rt.js?v=297" defer></script>
+<script src="access.js?v=298" defer></script>
+<script src="follow.js?v=298" defer></script>
+<script src="teamcolour.js?v=298" defer></script>
+<script src="rt.js?v=298" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=297" defer></script>
-<script src="bpm.js?v=297" defer></script>
-<script src="data.js?v=297" defer></script>
-<script src="merch.js?v=297" defer></script>
-<script src="upload.js?v=297" defer></script>
-<script src="newsblocks.js?v=297" defer></script>
-<script src="news.js?v=297" defer></script>
-<script src="toty.js?v=297" defer></script>
-<script src="igtile.js?v=297" defer></script>
-<script src="socials.js?v=297" defer></script>
-<script src="music.js?v=297" defer></script>
-<script src="splash.js?v=297" defer></script>
+<script src="season.js?v=298" defer></script>
+<script src="bpm.js?v=298" defer></script>
+<script src="data.js?v=298" defer></script>
+<script src="merch.js?v=298" defer></script>
+<script src="upload.js?v=298" defer></script>
+<script src="newsblocks.js?v=298" defer></script>
+<script src="news.js?v=298" defer></script>
+<script src="toty.js?v=298" defer></script>
+<script src="igtile.js?v=298" defer></script>
+<script src="socials.js?v=298" defer></script>
+<script src="music.js?v=298" defer></script>
+<script src="splash.js?v=298" defer></script>
 <!-- the clubs' letters for the fixture rows on a phone (home.js teamName) -->
-<script src="initials.js?v=297" defer></script>
-<script src="stars.js?v=297" defer></script>
+<script src="initials.js?v=298" defer></script>
+<script src="stars.js?v=298" defer></script>
 <!-- which clubs are in which competition, for the Clubs grid -->
-<script src="comps.js?v=297" defer></script>
+<script src="comps.js?v=298" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="haze.js?v=297" defer></script>
-<script src="home.js?v=297" defer></script>
-<script src="nav.js?v=297" defer></script>
-<script src="xscroll.js?v=297" defer></script>
+<script src="haze.js?v=298" defer></script>
+<script src="home.js?v=298" defer></script>
+<script src="nav.js?v=298" defer></script>
+<script src="xscroll.js?v=298" defer></script>
 </body>
 </html>

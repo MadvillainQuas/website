@@ -491,12 +491,16 @@ function card(g, opts) {
   top.appendChild(state);
   a.appendChild(top);
 
+  /* THE TWO CLUBS SIDE BY SIDE, as the scoreboard card does it (kit/embed.css .ep-card):
+     crest over name, a "v" or the score between them. Stacked one above the other, a
+     fixture read as a list of two things rather than as a match, and the card spent its
+     whole width on two names that never needed it. */
   const winH = isFinal && hs != null && as != null && hs > as;
   const winA = isFinal && hs != null && as != null && as > hs;
-  const side = (team, name, score, cls, win, lose) => {
-    const row = node('span', 'fxc-tm ' + cls + (win ? ' win' : lose ? ' lose' : ''));
+  const side = (team, name, cls, win, lose) => {
+    const col = node('span', 'fxc-tm ' + cls + (win ? ' win' : lose ? ' lose' : ''));
     const crest = root.epinoiaCrest ? root.epinoiaCrest(team || {}, { cls: 'fxc-crest' }) : node('span', 'fxc-crest');
-    row.appendChild(crest);
+    col.appendChild(crest);
     /* the full name, and the club's letters for a card too narrow to hold it (fxc.css picks).
        The letters are the league's own unique initials (initials.js) once they have loaded;
        until then, and on a page without initials.js, the club's short name stands in. */
@@ -512,20 +516,32 @@ function card(g, opts) {
       if (lg && lg.id) I.want(lg.id);
     }
     nm.appendChild(short);
-    row.appendChild(nm);
-    if (isLive || isFinal) row.appendChild(node('span', 'fxc-sc', score == null ? '0' : String(score)));
-    return row;
+    col.appendChild(nm);
+    return col;
   };
   const body = node('span', 'fxc-body');
-  body.appendChild(side(g.home, home, hs, 'h', winH, winA));
-  body.appendChild(side(g.away, away, as, 'a', winA, winH));
+  body.appendChild(side(g.home, home, 'h', winH, winA));
+  const mid = node('span', 'fxc-mid');
+  if (isLive || isFinal) {
+    mid.appendChild(node('b', 'fxc-sc h' + (winH ? ' win' : winA ? ' lose' : ''), hs == null ? '0' : String(hs)));
+    mid.appendChild(node('span', 'fxc-dash', '–'));
+    mid.appendChild(node('b', 'fxc-sc a' + (winA ? ' win' : winH ? ' lose' : ''), as == null ? '0' : String(as)));
+  } else {
+    mid.appendChild(node('span', 'fxc-v', 'v'));
+  }
+  body.appendChild(mid);
+  body.appendChild(side(g.away, away, 'a', winA, winH));
+  a.appendChild(body);
+
+  /* WHEN IT IS, under the two clubs and in full: the day the top line abbreviates and the
+     time it used to carry in a column of its own, which the side-by-side body has no room
+     for. A game already played or being played says so on the top line instead. */
   if (!isLive && !isFinal) {
     const when = node('span', 'fxc-when');
+    when.appendChild(node('span', 'fxc-day', dayLabel(g.tipoff_at, o.now)));
     when.appendChild(node('b', null, timeLabel(g.tipoff_at)));
-    when.appendChild(node('span', null, 'tip-off'));
-    body.appendChild(when);
+    a.appendChild(when);
   }
-  a.appendChild(body);
 
   const foot = node('span', 'fxc-foot');
   foot.appendChild(node('span', 'fxc-vn', g.venue || (one(g.competitions) || {}).name || ''));

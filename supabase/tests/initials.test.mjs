@@ -159,8 +159,13 @@ console.log('\n-- wired in');
        html.indexOf('initials.js') < html.indexOf(page[0] === 'app' ? 'app.js?v' : 'globalgames.js'));
   }
   const fxc = rd('epinoia', 'kit', 'fxc.css');
-  ok('fxc.css: on a phone, HOME\'s rail shows the letters, not the names',
-     /@media \(max-width:820px\)\{\s*\.fxc-rail \.fxc-nm \.full\{display:none\}\s*\.fxc-rail \.fxc-nm \.short\{display:inline\}/.test(fxc));
+  /* THE LETTERS ARE THE DEFAULT NOW. The card puts the two clubs side by side, so half a card
+     is all a name has and the letters are what fits; the full name comes back on a card wide
+     enough for two of them. That is a property of the CARD's width, not the phone's, so it is
+     a container query — which is why this is no longer a max-width rule about the rail. */
+  ok('fxc.css: the club\'s letters are what a card shows until it is wide enough for the names',
+     /\.fxc-nm \.full\{display:none\}\s*\.fxc-nm \.short\{display:inline\}/.test(fxc) &&
+     /@container \(min-width:\d+px\)\{\s*\.fxc-nm \.full\{display:inline\}\s*\.fxc-nm \.short\{display:none\}/.test(fxc));
   const app = rd('epinoia', 'app', 'app.js'), appHtml = rd('epinoia', 'app', 'index.html');
   ok('the club portal has the field, its save and its help', /id="clubInitials"/.test(appHtml) && /id="initialsSave"/.test(appHtml) && /id="initialsHelp"/.test(appHtml));
   ok('...saved through set_team_initials, clearing this browser\'s remembered codes', /sb\.rpc\('set_team_initials', \{ p_team: team\.id, p_initials: input\.value \}\)/.test(app) &&
