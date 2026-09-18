@@ -240,12 +240,33 @@ function deriveGame(game) {
   const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
   const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
                             'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
+  /* AT THE RIM IS A PLACE, AND THE COURT ALREADY DRAWS IT. The restricted area — 125 cm around
+     the ring (boxscore.js COURT.RA_R), on the same chart these markers are plotted on — is what
+     "at the rim" means, rather than a rectangle covering most of the key. The pipeline that
+     builds the season CSVs measures it the same way (scripts/ingest/stints.py), so a game's rim
+     rate on this page and in the exports are now the same number. */
+  const RIM_AT = { x: 750 / 1500, y: 157.5 / 1400, w: 1500, h: 1400, r: 125 };
+  const atRim = l => {
+    const dx = (l.x - RIM_AT.x) * RIM_AT.w, dy = (l.y - RIM_AT.y) * RIM_AT.h;
+    return Math.sqrt(dx * dx + dy * dy) <= RIM_AT.r;
+  };
+  /* the key itself: 4.90 m across, 5.80 m from the baseline (COURT.KEY_HALF / KEY_LEN) */
+  const inPaint = l => !!l && Math.abs(l.x * RIM_AT.w - RIM_AT.x * RIM_AT.w) <= 245 && l.y * RIM_AT.h <= 580;
   const isRim = ev => {
     const ty = (stypes[ev.id] || '').toLowerCase();
+    /* a tip-in or a dunk is at the rim wherever the marker landed: the ball went in from there */
     if (ty && RIM_TYPE.has(ty)) return true;
-    if (ty && FAR_TYPE.has(ty)) return false;
     const l = locs[ev.id];
-    return (l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'));
+    /* THEN THE MARKER, AND ONLY THEN THE LABEL. This used to read the other way round, on the
+       argument that a statistician choosing "dunk" has told you more than a thumb on a small
+       court drawing. True of a chosen label -- and most feeds do not choose. LNB's names 90 of
+       95 shots "jumpshot", layups under the basket included, so "jump shot" short-circuited
+       ahead of a perfectly good coordinate and a whole league's rim rate came out at three
+       attempts a game with every one of them made (reported 2026-09-18). A label that is the
+       same for nearly every shot is not evidence; the place the shot was taken from is. */
+    if (l) return atRim(l);
+    if (ty && FAR_TYPE.has(ty)) return false;
+    return !!(tags[ev.id] && tags[ev.id].has('paint'));
   };
 
   const st = ev => d.stats[ev.pid];
@@ -277,7 +298,16 @@ function deriveGame(game) {
     /* THE SCORER IS CREDITED AS WELL AS THE SIDE: a player's own paint, transition,
        second-chance and off-turnover points, by the same rules as the team's */
     const sp = ev.pid ? st(ev) : null;
+    /* POINTS IN THE PAINT, FROM THE PAINT. This read one qualifier and nothing else, and a feed
+       that does not send qualifiers therefore scored none: LNB's shot actions carry a marker and
+       a subType and no quals at all, so a game with fifteen made shots in the key reported 0
+       paint points on both sides (reported 2026-09-18). The key is a rectangle on the same chart
+       the markers are plotted on -- 4.90 m wide by 5.80 m from the baseline (COURT.KEY_HALF,
+       COURT.KEY_LEN) -- so where a feed gives the place, the place answers, and the qualifier
+       stays as the answer for a feed that gives only that. Two-point field goals only: a free
+       throw is not a paint point and a three cannot be one. */
     if (tg && tg.has('paint')) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
+    else if (ev.t === 'p2_made' && inPaint(locs[ev.id])) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
     /* tagged by hand, or inside the window a change of possession opened */
     const gotItAt = breakAt[ev.team];
     const quick = gotItAt != null &&

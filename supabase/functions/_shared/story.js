@@ -773,11 +773,124 @@ function facts(g) {
   ).filter(Boolean).sort((a, b) => b.salience - a.salience);
 }
 
+/* ============================================================================
+   THE SCOUT'S LEDGER — the same game, asked the questions a coach asks on the
+   Monday: what decided it, what we did well, what we did badly.
+
+   The rest of this file mines what was NEWSWORTHY. A report has to be readable
+   by somebody who did not watch, so a 19-point night and a six-minute run are
+   the right things to lead with. None of that is what a coach wants on the
+   Monday morning, and the difference is the reference point: news compares a
+   game to itself, scouting compares it to every other game in the league.
+
+   So this reads the same four factors and rates through gamepct.js -- the
+   preset built by replaying a season of real games -- and asks where each side
+   sat in that distribution. "They shot 43%" is a fact. "They shot worse from
+   the field than eight games in ten in this league, and gave the ball away more
+   often than nine in ten" is a scouting report, and it is the same two numbers.
+
+   WHAT DECIDED IT is the gap between the two sides on each measure, in
+   percentile points, direction-aware. It deliberately does not weight the
+   factors against each other: the honest claim is "this is where the two teams
+   were furthest apart", not "this is worth 6.2 points of margin", which would
+   need a model this page does not have and could not show its working for.
+
+   DEGRADES. Without the preset (a league with no scales built yet, or a test
+   running in node) every percentile is null; the ledger then compares the two
+   sides directly and says so, rather than going quiet.
+   ============================================================================ */
+
+/* the measures worth a coach's Monday, in the order a coach would ask them */
+const SCOUT = [
+  { k: 'efg',     lab: 'shooting from the field',      short: 'eFG%' },
+  { k: 'tovp',    lab: 'looking after the ball',       short: 'TOV%' },
+  { k: 'orebp',   lab: 'the offensive glass',          short: 'OREB%' },
+  { k: 'drebp',   lab: 'the defensive glass',          short: 'DREB%' },
+  { k: 'ftr',     lab: 'getting to the line',          short: 'FTA rate' },
+  { k: 'ftp',     lab: 'free throws',                  short: 'FT%' },
+  { k: 'p3p',     lab: 'shooting from three',          short: '3PT%' },
+  { k: 'p3r',     lab: 'how much they shot from three', short: '3PA rate', style: true },
+  { k: 'rimr',    lab: 'how much they got to the rim', short: 'rim rate', style: true },
+  { k: 'rimp',    lab: 'finishing at the rim',         short: 'rim%' },
+  { k: 'astp',    lab: 'sharing the ball',             short: 'AST%' },
+  { k: 'astTo',   lab: 'passing against turning it over', short: 'AST/TO' },
+  { k: 'stlp',    lab: 'forcing turnovers',            short: 'STL%' },
+  { k: 'blkp',    lab: 'protecting the rim',           short: 'BLK%' },
+  { k: 'ppp',     lab: 'scoring per possession',       short: 'PPP', mirror: true },
+  { k: 'drtg',    lab: 'their defence',                short: 'DRTG', mirror: true }
+];
+
+/* how far from ordinary a percentile is — 50 is the middle, so this is the distance from it */
+const notable = p => (p == null ? 0 : Math.abs(p - 50));
+
+function scout(g, opts) {
+  const o = opts || {};
+  /* NOT `root`. This module's factory is called with no arguments (see the wrapper at the top),
+     so `root` inside it is undefined and a lookup through it silently finds nothing -- which
+     would have left every game ungraded, in the browser as well as in a test, with no error to
+     say so. globalThis is the thing that exists in both. */
+  const GP = o.gamepct || (typeof globalThis !== 'undefined' && globalThis.EpinoiaGamePct) || null;
+  const league = o.league || (g.meta && g.meta.leagueSlug) || null;
+  const sides = [0, 1].map(t => {
+    const ctx = { T: g.adv[t], O: g.adv[1 - t] };
+    const rows = [];
+    SCOUT.forEach(m => {
+      const T = g.adv[t] || {}, O = g.adv[1 - t] || {};
+      const v = T[m.k];
+      if (v == null || !isFinite(v)) return;
+      let pct = null, band = null;
+      if (GP && GP.rate) {
+        const r = GP.rate('team', m.k, ctx, { league });
+        if (r) { pct = (r.d ? r.g : r.p); band = r.band; }
+      }
+      rows.push({ key: m.k, label: m.lab, short: m.short, style: !!m.style,
+                  value: v, theirs: O[m.k], pct, band });
+    });
+    /* a style is not a strength: shooting a lot of threes is neither good nor bad, so it is
+       described but never listed as something they did well or badly */
+    const judged = rows.filter(r => !r.style && r.pct != null);
+    const byPct = judged.slice().sort((x, y) => y.pct - x.pct);
+    return {
+      t, rows,
+      good: byPct.filter(r => r.pct >= 60).slice(0, 3),
+      bad: byPct.filter(r => r.pct <= 40).reverse().slice(0, 3),
+      graded: judged.length > 0
+    };
+  });
+
+  /* WHERE THE TWO WERE FURTHEST APART. On percentiles when the preset has them, because a
+     20-point gap in eFG% and a 20-point gap in OREB% are not the same size of gap; on the raw
+     rates when it does not, which is cruder and is labelled as such. */
+  const decided = [];
+  SCOUT.forEach(m => {
+    /* A MIRROR IS NOT A SECOND REASON. One side's points per possession IS the other side's
+       defensive rating; listing both as places the teams were far apart says the same thing
+       twice and pushes a genuinely different reason off the end of the list. Each still appears
+       in its own side's strengths and weaknesses, where it is about that side alone. */
+    if (m.style || m.mirror) return;
+    const a = sides[0].rows.find(r => r.key === m.k), b = sides[1].rows.find(r => r.key === m.k);
+    if (!a || !b) return;
+    const graded = a.pct != null && b.pct != null;
+    const gap = graded ? (a.pct - b.pct) : null;
+    if (graded && Math.abs(gap) < 20) return;                 // both sides in much the same place
+    decided.push({ key: m.k, label: m.lab, short: m.short, graded,
+                   winner: graded ? (gap > 0 ? 0 : 1) : null,
+                   gap: graded ? Math.abs(gap) : null,
+                   values: [a.value, b.value], pcts: [a.pct, b.pct] });
+  });
+  decided.sort((x, y) => (y.gap || 0) - (x.gap || 0));
+
+  const w = g.score[0] >= g.score[1] ? 0 : 1;
+  return { league: GP && GP.against ? null : null, graded: sides[0].graded && sides[1].graded,
+           sides, decided: decided.slice(0, 4), winner: w,
+           margin: Math.abs(g.score[0] - g.score[1]) };
+}
+
 /* FACTS ONLY. The prose that reads these lives in report.js, deliberately
    behind a seam: everything here is numbers with names attached and can be
    tested for being right, everything there is phrasing and cannot. It is also
    where a language model would be handed the brief. */
-return { facts, F, esc, num, one, pct1, mins, ordinal, plural,
+return { facts, scout, SCOUT, F, esc, num, one, pct1, mins, ordinal, plural,
          __x: { factResult, factQuarters, factFlow, factFactors,
                 factLineups, factPlayers, factTeamShape,
                 factDefence, factFouls, factPassing, factZones,

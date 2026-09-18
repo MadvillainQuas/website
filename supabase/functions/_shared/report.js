@@ -1244,6 +1244,121 @@ function capitalise(text) {
     function (_, lead, ch) { return lead + ch.toUpperCase(); });
 }
 
+/* ------------------------------------------------------- the scout's note ---
+   THE SAME GAME, ON THE MONDAY. Everything above is written for somebody who
+   did not watch: it leads with the 19-point night and the six-minute run,
+   because that is what a report is for. A coach opening the same page wants a
+   different question answered -- not "what happened" but "where were we, against
+   everyone else who played this season, and what do we work on".
+
+   The reference point is the whole difference, and it is why this reads as
+   scouting rather than as more commentary. "They shot 43 per cent" is a fact.
+   "They shot worse from the field than eight games in ten in this league" is a
+   judgement, and it is the same number.
+
+   It never ranks a STYLE. Shooting a lot of threes is not good or bad, and a
+   line that told a coach to shoot fewer of them because the percentile was low
+   would be inventing an instruction out of a preference. story.js marks those,
+   and they are described in the ledger card without ever appearing here. */
+function sectionScout(g, fs, R) {
+  const st = S();
+  if (!st.scout) return [];
+  const sc = st.scout(g);
+  const out = [];
+  R.neutral();
+  const W = sc.winner, L = 1 - W;
+  const nm = t => tc(g.names[t]);
+
+  if (sc.decided.length) {
+    const top = sc.decided[0];
+    if (sc.graded) {
+      out.push(nm(top.winner) + ' won this on ' + top.label + ' before anything else: ' +
+        pctPhrase(top.pcts[top.winner]) + ' where ' + nm(1 - top.winner) + ' were ' +
+        pctPhrase(top.pcts[1 - top.winner]) + '.');
+      const rest = sc.decided.slice(1, 3);
+      if (rest.length) {
+        out.push('The other gaps worth the film room: ' +
+          rest.map(x => x.label + ' (' + nm(x.winner) + ', ' +
+            Math.round(x.gap) + ' percentile points clear)').join(' and ') + '.');
+      }
+    } else {
+      /* NO SCALES FOR THIS COMPETITION YET, so there is no league to be measured against and
+         the honest comparison is the two sides against each other. It is a weaker claim and is
+         phrased as one: where they were apart, not where either of them was good. */
+      const mine = sc.decided.filter(x => sideAhead(sc, x, W)).slice(0, 3);
+      const theirs = sc.decided.filter(x => sideAhead(sc, x, L)).slice(0, 2);
+      if (mine.length) {
+        out.push(nm(W) + ' came out ahead on ' + listOf(mine.map(x => x.label)) +
+          ', and with no league scales built for this competition yet those are the two sides ' +
+          'against each other rather than against anybody else.');
+      }
+      if (theirs.length) {
+        out.push(nm(L) + ' had the better of ' + listOf(theirs.map(x => x.label)) +
+          ' — the part of their game that did not cost them.');
+      }
+    }
+  }
+
+  /* each side in turn, the winner first, because a coach reads their own column */
+  [W, L].forEach(t => {
+    const side = sc.sides[t];
+    if (!side || !side.graded) return;
+    const bits = [];
+    if (side.good.length) {
+      bits.push(nm(t) + ' did their best work on ' + listOf(side.good.map(r => r.label)) +
+        ' — ' + side.good.map(r => pctPhrase(r.pct)).slice(0, 1)[0] + ' on the first of those.');
+    }
+    if (side.bad.length) {
+      /* a side that won by twenty did not have anything "cost them", and saying so in a
+         report they will read on the Monday is the quickest way to lose a coach */
+      const lead = t === W;
+      bits.push((lead ? 'The parts of it they will still want back: '
+                      : (bits.length ? 'What cost them was ' : nm(t) + ' were let down by ')) +
+        listOf(side.bad.map(r => r.label)) + ', ' +
+        pctPhrase(side.bad[0].pct) + ' on ' + side.bad[0].label + '.');
+    }
+    if (bits.length) out.push(bits.join(' '));
+  });
+
+  /* and the one thing to take into the week */
+  const lose = sc.sides[L];
+  if (lose && lose.bad.length) {
+    out.push('If there is one thing to take into the week, it is ' + lose.bad[0].label +
+      ': ' + nm(L) + ' were ' + pctPhrase(lose.bad[0].pct) + ' there, and no other part of ' +
+      'their game was further behind the league.');
+  }
+  return out;
+}
+
+/* which side is ahead on a measure when there are no percentiles to rank them by: the raw
+   figures, with the stat's own direction respected -- fewer turnovers is better, more of
+   everything else is */
+const LOWER_IS_BETTER = new Set(['tovp', 'drtg']);
+function sideAhead(sc, dec, t) {
+  const a = dec.values[t], b = dec.values[1 - t];
+  if (a == null || b == null || a === b) return false;
+  return LOWER_IS_BETTER.has(dec.key) ? a < b : a > b;
+}
+
+/* a percentile as a coach would say it, not as a number */
+function pctPhrase(p) {
+  if (p == null) return 'hard to place';
+  const r = Math.round(p);
+  if (r >= 90) return 'better than nine games in ten';
+  if (r >= 75) return 'better than three games in four';
+  if (r >= 60) return 'better than most';
+  if (r > 40) return 'about league average';
+  if (r > 25) return 'worse than most';
+  if (r > 10) return 'worse than three games in four';
+  return 'worse than nine games in ten';
+}
+
+function listOf(xs) {
+  const a = xs.slice(0, 3);
+  if (a.length <= 1) return a[0] || '';
+  return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+}
+
 function report(g) {
   const st = S();
   const fs = st.facts(g);
@@ -1267,8 +1382,11 @@ function report(g) {
   addCapped('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
   addCapped('On the floor', sectionLineups(g, fs, R), 'lineups');
   addCapped('The performances', sectionPlayers(g, fs, R), 'players');
+  addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
+  let sc = null;
+  try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }
   return { headline: headline(g, fs), standfirst: stand,
-           sections: secs, facts: fs };
+           sections: secs, facts: fs, scout: sc };
 }
 
 /* Plain text, for a news article body or a feed — same words, no markup. */
