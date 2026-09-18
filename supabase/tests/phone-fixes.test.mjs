@@ -112,23 +112,18 @@ console.log('\n-- EPINOIΛ, and its logo on notifications');
   ok('the app\'s offers on the site say EPINOIΛ', /'Get the EPINOIΛ app for Android'/.test(nav) && /'Update the EPINOIΛ app'/.test(nav) && /title: 'Get the EPINOIΛ app'/.test(nav));
   ok('the screen-reader name of the rail stays "Epinoia" (a word, not letters)', /nav\.setAttribute\('aria-label', 'Epinoia'\)/.test(nav));
   const ver = JSON.parse(rd('epinoia', 'android', 'version.json'));
-<<<<<<< HEAD
-  /* THE POINT IS THAT THE RENAME SHIPPED, not which build it shipped in. Pinned to the exact
-     build it went out in (1.0.2, code 3) this went red the moment the next release raised it,
-     which is a normal thing to do and not a regression: it is the FLOOR that matters. */
-  ok('the renamed Android app is at least the build the rename shipped in (1.0.2, code 3)',
-     ver.versionCode >= 3 && ver.versionName >= '1.0.2',
-     'versionCode ' + ver.versionCode + ', versionName ' + ver.versionName);
-=======
   /* A FLOOR, NOT A VALUE. What this is for is that the rename shipped as its own build — a phone
      only takes a new name and a new icon when the versionCode moves. Pinning the exact number
      meant every release after it turned this suite red for doing the very thing the suite asks
-     for: 1.0.3 (code 4) carried the drawn logo onto the icon and broke it. */
+     for: 1.0.3 (code 4) carried the drawn logo onto the icon and broke it.
+
+     Numeric, not lexicographic. Two sides of a rebase reached for this fix at once and the other
+     compared versionName as a STRING — which holds until 1.0.10, where "1.0.10" sorts below
+     "1.0.2" and the suite goes red on a release all over again. */
   const [maj, min, pat] = String(ver.versionName || '').split('.').map(Number);
   ok('the renamed Android app shipped as its own build (at least 1.0.2, code 3)',
      ver.versionCode >= 3 && maj >= 1 && (maj > 1 || min > 0 || pat >= 2),
      ver.versionName + ' / ' + ver.versionCode);
->>>>>>> 73f3cfec (the app version test is a floor, not a value)
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
