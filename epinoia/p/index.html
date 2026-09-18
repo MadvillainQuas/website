@@ -124,6 +124,8 @@
   .compscope{padding:0 0 calc(var(--u)*2)}
   /* the video tab: everything else steps aside */
   body.vtab .sec:not(#videosec), body.vtab section.card{display:none}
+  /* the weekly report tab: everything else steps aside, as it does for video */
+  body.wktab .sec:not(#weeklysec), body.wktab section.card{display:none}
   /* IN THE CLUB'S COLOURS -- the same dress as the club's own page (t/index.html): the
      player is at a club and the card says which one before the name is read. teamcolour.js
      paints --team-a/--team-b and the -ink variants that are safe as text; body.themed
@@ -229,6 +231,7 @@
        actually played in, which is why it carries no placeholder: an empty
        section on every profile in a league without cameras teaches people to
        scroll past this part of the page. -->
+  <div class="sec" id="weeklysec" style="display:none"></div>
   <div class="sec" id="videosec" style="display:none">
     <div class="sec-h"><span class="idx">04b</span><h2>On video</h2>
       <span class="note" id="videoNote"></span></div>
@@ -274,6 +277,7 @@
 <script src="../video.js?v=306" defer></script>
 <script src="video.js?v=306" defer></script>
 <script src="../sitpanel.js?v=306" defer></script>
+<script src="../weekly.js?v=306" defer></script>
 <script src="player.js?v=306" defer></script>
 <script src="../nav.js?v=306" defer></script>
 <script src="../xscroll.js?v=306" defer></script>

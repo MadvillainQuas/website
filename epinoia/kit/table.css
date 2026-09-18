@@ -461,3 +461,31 @@ table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 16%
 :root[data-theme="light"] .ft-tray{ background:#ffffff; box-shadow:0 -6px 16px -8px rgba(13,31,23,.28) }
 :root[data-theme="light"] .ft-chip{ background:#ffffff }
 :root[data-theme="light"] table.ft tbody tr.picked td.stick{ background:color-mix(in oklch,var(--lume) 12%,#ffffff) }
+
+/* ---------------------------------------------------- the weekly report tab ----
+   Two lists and then the evidence. "Keep doing" and "work on" are the report; the
+   ledger under them is what a coach checks a claim against, in one order, with the
+   league's opinion of each line beside it. A style is grey and carries no verdict. */
+.wk{ max-width:860px }
+.wk-head{ padding:2px 0 14px }
+.wk-k{ font-family:var(--f-micro); font-size:8.5px; letter-spacing:.26em; text-transform:uppercase; color:var(--lume) }
+.wk-sub{ font-family:var(--f-micro); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-top:6px }
+.wk-prose p{ margin:0 0 13px; font-size:14.5px; line-height:1.72; color:var(--ink-2); max-width:62ch }
+.wk-prose p b{ display:block; font-family:var(--f-micro); font-size:8.5px; letter-spacing:.22em;
+  text-transform:uppercase; margin-bottom:5px; font-weight:400 }
+.wk-keep{ border-left:2px solid var(--good); padding-left:12px }
+.wk-keep b{ color:var(--good) }
+.wk-work{ border-left:2px solid var(--amber,var(--bad)); padding-left:12px }
+.wk-work b{ color:var(--amber,var(--bad)) }
+.wk-tbl{ display:grid; gap:2px; margin-top:18px; max-width:520px }
+.wk-row{ display:grid; grid-template-columns:78px 46px 1fr 28px; align-items:center; gap:8px; padding:3px 0;
+  font-family:var(--f-data,var(--f-mono)); font-size:11px }
+.wk-lab{ font-family:var(--f-micro); font-size:8px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3) }
+.wk-val{ text-align:right; color:var(--ink); font-variant-numeric:tabular-nums }
+.wk-bar{ position:relative; height:6px; border-radius:3px; background:color-mix(in oklch,var(--ink) 8%,transparent); overflow:hidden }
+.wk-bar i{ position:absolute; inset:0 auto 0 0; display:block; border-radius:3px; background:var(--ink-3) }
+.wk-p{ text-align:right; color:var(--ink-3); font-variant-numeric:tabular-nums; font-size:9.5px }
+.wk-good .wk-bar i{ background:var(--good) } .wk-good .wk-p{ color:var(--good) }
+.wk-bad .wk-bar i{ background:var(--bad) }   .wk-bad .wk-p{ color:var(--bad) }
+.wk-style .wk-bar i{ background:color-mix(in oklch,var(--ink) 26%,transparent) }
+.wk-key{ font-family:var(--f-micro); font-size:8px; letter-spacing:.06em; color:var(--ink-3); line-height:1.7; padding:10px 0 0 }

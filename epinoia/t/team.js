@@ -208,6 +208,7 @@ function decideAccess(lg) {
     teamShots(team);
     await lineupPanels(team);
     await videoPanel(team);
+    weeklyTab(team);
   } catch (e) { oops('Could not load: ' + e.message); }
 })();
 
@@ -298,6 +299,19 @@ async function videoPanel(team) {
     tabs.querySelectorAll('.ep-tab').forEach(b => { b.onclick = () => showVideo(b.dataset.p === 'video'); });
     if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
   } catch (e) { console.warn('[video]', e); }
+}
+
+/* THE WEEK, SCOUTED. The same ledger the match report's scout's note is built on, asked of the
+   club's last seven days instead of one game: what to keep doing, what to work on, and the whole
+   column of measures underneath as the evidence for both. Mounted whether or not there is video,
+   so the tab bar appears for every club rather than only the filmed ones. */
+function weeklyTab(team) {
+  const W = window.EpinoiaWeekly;
+  if (!W || !W.mount) return;
+  W.mount({
+    tabs: '#ttabs', panel: '#weeklysec', window: 'the last seven days',
+    load: () => W.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 })
+  });
 }
 
 async function record(team) {

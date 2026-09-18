@@ -59,11 +59,25 @@ function fail(msg) {
   $('#log').textContent = '';
 }
 
+/* THE WEEK, SCOUTED. The same ledger the match report's scout's note is built on, asked of this
+   player's last seven days: what to keep doing, what to work on, and the measures underneath as
+   the evidence for both. Mounted whether or not there is footage, so the tab bar appears for
+   every player rather than only the filmed ones. */
+function weeklyTab(pl, name) {
+  const W = window.EpinoiaWeekly;
+  if (!W || !W.mount || !pl || !pl.id) return;
+  W.mount({
+    tabs: '#ptabs', panel: '#weeklysec', window: 'the last seven days',
+    load: () => W.playerWeek(api, pl.id, { name: name, league: ACCESS_LEAGUE.slug, days: 7 })
+  });
+}
+
 /* --------------------------------------------------------------- identity --- */
 function paintIdentity(pl, entry, team) {
   const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
   $('#name').textContent = name;
   document.title = name + ' · Epinoia';
+  weeklyTab(pl, name);
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
     const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });

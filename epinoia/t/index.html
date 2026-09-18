@@ -293,6 +293,9 @@
   /* the video tab: the profile steps aside */
   body.vtab #tbody{display:none}
   #videosec{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  /* the weekly report tab: the profile steps aside, as it does for video */
+  body.wktab #tbody, body.wktab #videosec{display:none}
+  #weeklysec{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
   /* IN THE CLUB'S COLOURS. teamcolour.js paints --team-a/--team-b from the crest's two brand
      colours (read by the ingest) and the -ink variants that are safe as text on the dark
      ground; body.themed switches the page over to them. The page's own accent (--lume) becomes
@@ -374,6 +377,7 @@
     <button class="ep-tab on" data-p="profile" role="tab">Profile</button>
     <button class="ep-tab" data-p="video" role="tab">Video</button>
   </div>
+  <div class="sec" id="weeklysec" style="display:none"></div>
   <div id="videosec" style="display:none">
     <div class="ep-hdr"><span class="idx">V</span><h2>On video</h2>
       <span class="hnote" id="videoNote"></span></div>
@@ -441,6 +445,7 @@
 <script src="../boxscore.js?v=306" defer></script>
 <script src="../shotchart.js?v=306" defer></script>
 <script src="../sitpanel.js?v=306" defer></script>
+<script src="../weekly.js?v=306" defer></script>
 <script src="team.js?v=306" defer></script>
 <script src="../nav.js?v=306" defer></script>
 <script src="../xscroll.js?v=306" defer></script>
