@@ -1970,11 +1970,43 @@ function offerAdminControls() {
 })();
 
 /* cheap: 576 characters, safe to run on every clock tick */
+/* ------------------------------------------------------------------ the basket ---
+   A SCOREBOARD THAT ONLY EVER SETTLES NEVER SAYS ANYTHING HAPPENED. 64 becomes 66
+   between two renders and somebody watching a phone in a hall has no idea which
+   team it was or whether they missed anything. So the change is said out loud for
+   a moment, under the side that scored: +2, +3, +1.
+
+   Only while the game is LIVE, and only for a plausible basket. A page that opens
+   at 64-58, a tab that comes back after ten minutes, a backfill that reconciles the
+   whole log — each of those moves the score by a lot at once, and a "+37" pill on a
+   scoreboard is a bug wearing an animation. The first render after a load never
+   flashes at all, because nothing on screen changed: it arrived that way. */
+let lastScore = null;
+const MAX_FLASH = 4;              // a four-point play is the most one basket can be worth
+
+function flashScore(el, d) {
+  const now = [+d.score[0] || 0, +d.score[1] || 0];
+  const was = lastScore;
+  lastScore = now;
+  if (!was || !window.S || window.S.status !== 'live') return;
+  const scores = el.querySelectorAll('.bscore');
+  now.forEach((v, i) => {
+    const up = v - was[i];
+    if (up <= 0 || up > MAX_FLASH || !scores[i]) return;
+    const pill = document.createElement('span');
+    pill.className = 'bscore-delta';
+    pill.textContent = '+' + up;
+    scores[i].appendChild(pill);
+    scores[i].classList.add('hit');
+    setTimeout(() => { pill.remove(); scores[i].classList.remove('hit'); }, 1500);
+  });
+}
+
 function renderHead(d) {
   const S = window.S;
   d = d || window.derive();
   const el = $('#csHead');
-  if (el) { el.innerHTML = B.scoreHeadHTML(d); decorateTeams(el); }
+  if (el) { el.innerHTML = B.scoreHeadHTML(d); decorateTeams(el); flashScore(el, d); }
   txt($('#csHeading'), S.status === 'final' ? 'final'
                      : S.status === 'live' ? 'live' : 'scheduled');
   document.title = d.score[0] + '–' + d.score[1] + ' ' +

@@ -69,6 +69,64 @@
   };
   const initials = name => String(name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase();
 
+  /* ---------------------------------------------------------- the name on a face ---
+     A SURNAME IS ONLY A NAME WHILE IT IS THE ONLY ONE. Five circles saying "GARCIA",
+     "GARCIA" and "GARCIA" name nobody, and two of those can be on the floor together.
+
+     So the label is the shortest thing that still picks a player out of THIS GAME: the
+     surname alone where it is unique, and where it is not, the least first-name that
+     separates the players who share it — "T. Halbwachs" if one T, "Ta. Halbwachs" if
+     the other is Tao's brother Theo, and so on. Brothers with the same first name get
+     their shirt number, which is the only thing left that differs.
+
+     Diacritics are folded for the COMPARISON only: Peña and Pena are the same surname
+     to a reader glancing at a phone, and the label itself keeps its accents. */
+  const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  const givenOf = name => {
+    const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+    return w.length > 1 ? w.slice(0, w.length - 1).join(' ') : '';
+  };
+
+  function nameLabels(players) {
+    /* players: [{ id, name, num }] — everyone in the game, both teams */
+    const groups = {};
+    players.forEach(p => {
+      const k = fold(surname(p.name));
+      (groups[k] = groups[k] || []).push(p);
+    });
+    const out = {};
+    Object.keys(groups).forEach(k => {
+      const g = groups[k];
+      if (g.length === 1) { out[g[0].id] = surname(g[0].name); return; }
+      /* the shortest first-name prefix that tells every one of them apart */
+      let n = 0;
+      for (let len = 1; len <= 6; len++) {
+        const seen = new Set(g.map(p => fold(givenOf(p.name)).slice(0, len)));
+        if (seen.size === g.length) { n = len; break; }
+      }
+      g.forEach(p => {
+        const given = givenOf(p.name);
+        if (!n || !given) {
+          /* same surname, same first name (or no first name at all): the shirt is what is left */
+          out[p.id] = (p.num !== '' && p.num != null ? '#' + p.num + ' ' : '') + surname(p.name);
+        } else {
+          out[p.id] = given.slice(0, n) + '. ' + surname(p.name);
+        }
+      });
+    });
+    return out;
+  }
+
+  let labels = {}, labelKey = '';
+  function labelsFor(S) {
+    const all = [];
+    (S.teams || []).forEach(tm => (tm.players || []).forEach(p => all.push(p)));
+    const key = all.map(p => p.id + ':' + p.name).join('|');
+    if (key !== labelKey) { labelKey = key; labels = nameLabels(all); }
+    return labels;
+  }
+
   /* --------------------------------------------------------------- data --- */
   let advByPid = {};          // pid -> playerAdv row, for the popover
   let posByPid = {};          // pid -> { n: estimate 1..5, src: 'bpm'|'listed'|'none', listed: text }
@@ -171,6 +229,8 @@
   }
 
   /* --------------------------------------------------------------- html --- */
+  /* The silhouette that stands in for a photograph is drawn by .sq-face itself (report.css),
+     so every view that uses the component gets it without three copies of an SVG. */
   function faceHTML(p, colour, cls) {
     return '<span class="sq-face ' + cls + '" style="--c:' + esc(colour) + '"><span class="sq-nm">' + esc(p.name) + '</span></span>';
   }
@@ -180,12 +240,17 @@
     const reb = (x.or || 0) + (x.dr || 0);
     const b = bpmByPid[p.id];
     const dnp = !(x.min > 0 || x.pts > 0);
+    const label = (labels[p.id] || surname(p.name));
+    /* the line the reader can actually see beside this face: what a flash is judged on */
+    const shown = o.bench ? [x.pts || 0, reb] : [x.pts || 0, reb, x.ast || 0];
     return '<div class="mv-p' + (o.bench ? ' bench' : ' floor') + (dnp ? ' dnp' : '') + (pinned === p.id ? ' pinned' : '') + '" data-pid="' + esc(p.id) + '"' +
+      ' data-shown="' + shown.join(',') + '"' +
       (o.style ? ' style="' + o.style + '"' : '') + ' tabindex="0" role="button" aria-label="' + esc(p.name) + '">' +
       '<span class="mv-shadow"></span>' +
       faceHTML(p, colour, '') +
       (p.num !== '' && p.num != null ? '<span class="mv-num">' + esc(p.num) + '</span>' : '') +
-      '<span class="mv-nm">' + esc(surname(p.name)) + '</span>' +
+      /* --nl is the label's length; the size it picks is CSS's, so each breakpoint keeps its own */
+      '<span class="mv-nm" style="--nl:' + label.length + '">' + esc(label) + '</span>' +
       (o.bench
         ? '<span class="mv-line">' + (dnp ? 'dnp' : window.EpinoiaBox.fmtMin(x.min || 0)) + '</span>' +
           (dnp ? '' : '<span class="mv-sub">' + (x.pts || 0) + ' pts · ' + reb + ' reb</span>')
@@ -220,6 +285,7 @@
 
   function render(d) {
     compute(d);
+    labelsFor(window.S);
     return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>' +
       '<div class="setup-note mv-note">positions from BPM’s season estimate, leaning on the club’s listed position (this game’s numbers until a player has twenty season minutes) · tap or hover a player for the full line</div>';
   }
@@ -381,8 +447,97 @@
   }
 
   /* called by game.js after the modern body lands in the host */
+  /* ------------------------------------------------------------------ the flash ---
+     WHAT CHANGED SINCE THE LAST DRAW. The view is rebuilt from HTML strings whenever
+     the log changes, so nothing in the DOM survives to animate from. What survives is
+     this map: the line each face was showing last time. A face whose visible numbers
+     moved gets the change spelled out beside it for a moment — "+2", "+1 REB" — and
+     then the page is quiet again.
+
+     Only the numbers the reader can SEE on that face count. A player whose steals went
+     up flashes nothing, because nothing beside his face changed, and a flash pointing
+     at an unchanged line is worse than no flash at all.
+
+     The first draw never flashes: opening a game at 64-58 must not fire twenty pills. */
+  let shownBefore = null;
+  /* [suffix, the most one play can add] — a bigger jump than this is not a play, it is a tab
+     that was left on another view for ten minutes, or a log being reconciled. Those get no
+     flash: an animation is a way of saying "watch, this just happened". */
+  const LINE_LABELS = [['', 4], ['REB', 2], ['AST', 2]];
+
+  function flashChanges(host) {
+    const now = {};
+    const fire = [];
+    host.querySelectorAll('.mv-p[data-shown]').forEach(el => {
+      const pid = el.getAttribute('data-pid');
+      const vals = el.getAttribute('data-shown').split(',').map(Number);
+      now[pid] = vals;
+      const was = shownBefore && shownBefore[pid];
+      if (!was || was.length !== vals.length) return;
+      const bits = [];
+      vals.forEach((v, i) => {
+        const d = v - was[i];
+        const spec = LINE_LABELS[i] || ['', 4];
+        if (d > 0 && d <= spec[1]) bits.push('+' + d + (spec[0] ? ' ' + spec[0] : ''));
+      });
+      if (bits.length) fire.push([el, bits.join(' · ')]);
+    });
+    if (shownBefore) fire.forEach(([el, text]) => {
+      const pill = document.createElement('span');
+      pill.className = 'mv-pop-delta';
+      pill.textContent = text;
+      el.appendChild(pill);
+      el.classList.add('mv-hit');
+      setTimeout(() => { pill.remove(); el.classList.remove('mv-hit'); }, 1600);
+    });
+    shownBefore = now;
+  }
+
+  /* ------------------------------------------------------------- the name that fits ---
+     The CSS steps the size down by the label's length, which is close and costs nothing
+     before the first paint. Close is not always enough: "Segno-Verbrugghe" wants 126px of
+     an 86px caption at the size a five-letter surname gets, and an ellipsis in the middle
+     of a name is the one thing this whole view exists to avoid. So once it is on the page
+     each caption is measured and given the size that actually fits it — never smaller than
+     it has to be, and never below the floor where it would stop being readable.
+
+     Re-run when the webfont lands: a measurement taken against the fallback face is a
+     measurement of the wrong letters. */
+  const NAME_FLOOR = 6.6;         // below this a caption on a phone stops being a word
+
+  function fitNames(host) {
+    host.querySelectorAll('.mv-nm').forEach(n => {
+      n.style.fontSize = '';
+      n.classList.remove('wrap');
+      const room = n.clientWidth;
+      if (!room || n.scrollWidth <= room) return;
+      /* ONE STEP IS NOT ENOUGH. Shrinking re-lays the letters out (this caption is uppercase
+         and letter-spaced), so the proportion measured at one size is only close at the next.
+         A few passes converge; the loop stops the moment it fits. */
+      let size = parseFloat(getComputedStyle(n).fontSize) || 11;
+      for (let i = 0; i < 4 && n.scrollWidth > room && size > NAME_FLOOR; i++) {
+        size = Math.max(NAME_FLOOR, size * room / n.scrollWidth);
+        n.style.fontSize = size.toFixed(2) + 'px';
+      }
+      /* A DOUBLE-BARRELLED SURNAME BEATS THE FLOOR. "Segno-Verbrugghe" does not fit a caption
+         86px wide at any size worth reading, and half a name with an ellipsis after it is
+         worse than a name on two lines. */
+      if (n.scrollWidth > room) { n.classList.add('wrap'); n.style.fontSize = ''; }
+    });
+  }
+
+  let fontsWatched = false;
+
   function mounted(host) {
     bind(host);
+    try { flashChanges(host); } catch (_) { /* a flash is decoration: never break the box score */ }
+    try {
+      fitNames(host);
+      if (!fontsWatched && document.fonts && document.fonts.ready) {
+        fontsWatched = true;
+        document.fonts.ready.then(() => { try { fitNames(host); } catch (_) {} });
+      }
+    } catch (_) { /* a caption at its CSS size is still a caption */ }
     host.dispatchEvent(new CustomEvent('mv:redrawn'));
   }
 
@@ -421,5 +576,5 @@
     } catch (_) { return false; }
   }
 
-  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, hidePop, listedToNumber, SLOTS, placed, _pos: () => posByPid };
+  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, hidePop, listedToNumber, nameLabels, SLOTS, placed, _pos: () => posByPid };
 }());

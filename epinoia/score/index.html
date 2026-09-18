@@ -512,7 +512,33 @@ body.pregame .plist{opacity:.72}
 .bx-scorehead .bteam{font-size:13px;letter-spacing:.16em;text-transform:lowercase;max-width:30%;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bx-scorehead .bscore{font-size:38px;font-weight:200;font-variant-numeric:tabular-nums;
-  text-shadow:0 0 22px rgba(160,255,210,.4);}
+  text-shadow:0 0 22px rgba(160,255,210,.4);position:relative;}
+/* THE BASKET, SAID OUT LOUD. A scoreboard that only ever settles on a new number never tells
+   anybody that anything happened: 64 becomes 66 between two renders and a person watching a
+   phone in a hall does not know which side it was. The change is spelled out under the team
+   that scored for a moment and then the board is quiet again. game.js decides WHEN (live
+   games only, and only a plausible basket); this is only what it looks like. */
+.bx-scorehead .bscore .bscore-delta{position:absolute;left:50%;top:calc(100% - 4px);transform:translateX(-50%);
+  font-family:var(--f-head);font-size:14px;font-weight:700;letter-spacing:.02em;line-height:1;padding:2px 8px;
+  border-radius:999px;white-space:nowrap;pointer-events:none;text-shadow:none;
+  color:var(--bg,#07130d);background:var(--lume,#93f2bf);box-shadow:0 4px 16px rgba(0,0,0,.4);
+  animation:bscore-delta 1.5s cubic-bezier(.2,.8,.2,1) forwards;}
+.bx-scorehead .bscore.hit{animation:bscore-knock .5s cubic-bezier(.2,.8,.2,1);}
+@keyframes bscore-delta{
+  0%{opacity:0;transform:translate(-50%,-8px) scale(.8);}
+  12%{opacity:1;transform:translate(-50%,2px) scale(1.08);}
+  22%{transform:translate(-50%,0) scale(1);}
+  70%{opacity:1;transform:translate(-50%,0) scale(1);}
+  100%{opacity:0;transform:translate(-50%,10px) scale(.96);}
+}
+@keyframes bscore-knock{
+  0%{transform:scale(1);} 35%{transform:scale(1.12);} 100%{transform:scale(1);}
+}
+@media (prefers-reduced-motion:reduce){
+  .bx-scorehead .bscore .bscore-delta{animation:bscore-fade 1.5s linear forwards;}
+  .bx-scorehead .bscore.hit{animation:none;}
+  @keyframes bscore-fade{0%{opacity:0}10%{opacity:1}78%{opacity:1}100%{opacity:0}}
+}
 .bx-scorehead .bmid{font-size:10px;letter-spacing:.24em;color:var(--dim);text-align:center;text-transform:lowercase;}
 .qstrip{display:flex;justify-content:center;}
 .qstrip table{border-collapse:collapse;font-variant-numeric:tabular-nums;}
@@ -637,6 +663,7 @@ table.adv td{font-size:11.5px;font-weight:300;padding:6px 6px;text-align:right;c
   border-bottom:1px solid rgba(170,255,215,.05);}
 table.adv td.name,table.adv th.name{text-align:left;position:sticky;left:0;background:#04190f;z-index:2;max-width:130px;
   overflow:hidden;text-overflow:ellipsis;}
+table.adv tbody tr:hover td.name{background-color:#04190f;}
 table.adv td.name{color:var(--lume);}
 table.adv td.name small{color:var(--dim);font-size:9px;margin-right:6px;}
 table.adv .sep{border-right:1px solid rgba(170,255,215,.12);}
@@ -814,6 +841,15 @@ table.adv td.g-shotdist{background:rgba(255,208,0,.04);} table.adv td.g-offcourt
 table.adv td.g-defcourt{background:rgba(255,107,107,.04);} table.adv td.g-individual{background:rgba(255,0,170,.04);}
 table.adv tr{transition:background .2s ease;} table.adv tbody tr:hover td{background:color-mix(in srgb,var(--team0) 8%,transparent);}
 table.adv td.name,table.adv th.name{background:var(--bg-base);box-shadow:2px 0 8px rgba(0,0,0,.3);border-right:2px solid rgba(255,255,255,.08);}
+/* THE PINNED COLUMN IS THE ONE CELL THAT MAY NOT BE SEE-THROUGH. The row hover above paints
+   every td with a translucent wash, and it outspecifies the rule that gives the pinned name
+   column its own solid colour -- so hovering a row took the floor out from under the name and
+   that row's own numbers, sliding past underneath, showed through the player's name (reported
+   2026-09-18, on a phone where a tap leaves the hover state on). The wash is kept, because it
+   is what says "this row"; it just goes ON TOP of the column's colour now instead of replacing
+   it. Every other cell scrolls away, so a translucent wash there costs nothing. */
+table.adv tbody tr:hover td.name{background-color:var(--bg-base);
+  background-image:linear-gradient(color-mix(in srgb,var(--team0) 8%,transparent),color-mix(in srgb,var(--team0) 8%,transparent));}
 table.adv td.name{font-family:var(--f-body);font-weight:600;color:var(--text-bright);}
 table.bx tbody tr:hover td{background:color-mix(in srgb,var(--team0) 6%,transparent);}
 table.bx td:nth-child(2){font-family:var(--f-body);font-weight:600;color:var(--text-bright);}

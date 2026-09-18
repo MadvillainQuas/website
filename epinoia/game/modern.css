@@ -30,7 +30,12 @@
   background:radial-gradient(ellipse at center, rgba(0,0,0,.45), rgba(0,0,0,0) 70%); z-index:0 }
 .mv-num{ position:absolute; top:-2px; left:50%; margin-left:12px; z-index:2; min-width:18px; height:18px; padding:0 4px; border-radius:9px;
   background:var(--bg-card); border:1px solid var(--border-subtle); font-family:var(--f-score); font-size:11px; line-height:17px; color:var(--text-secondary) }
-.mv-nm{ margin-top:5px; font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:11px; letter-spacing:.02em; text-transform:uppercase; color:var(--text-bright);
+/* THE NAME SIZES ITSELF TO THE NAME. --nl is the label's length, set by modern.js; a short
+   surname keeps the full 11px and a long one (or a disambiguated "Ta. Halbwachs") shrinks
+   rather than being cut off by the ellipsis. The steps live here, not in the inline style, so
+   the phone breakpoint below keeps its own scale. */
+.mv-nm{ margin-top:5px; font-family:var(--f-ui,var(--f-head)); font-weight:800; letter-spacing:.02em; text-transform:uppercase; color:var(--text-bright);
+  font-size:clamp(7.5px, calc(11px - max(0, var(--nl,7) - 9) * 0.42px), 11px);
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:1px 6px; border-radius:4px; background:color-mix(in oklch,var(--bg-card) 78%,transparent) }
 .mv-line{ font-family:var(--f-micro,var(--f-mono)); font-size:7.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-secondary); line-height:1.5; white-space:nowrap;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; padding:0 5px; border-radius:3px; background:color-mix(in oklch,var(--bg-card) 78%,transparent) }
@@ -42,12 +47,17 @@
   border-top:1px solid var(--border-subtle); margin-top:6px }
 .mv-bench{ display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 4px 6px; min-width:0 }
 .mv-bench::-webkit-scrollbar{ display:none }
-.mv-p.bench{ position:static; flex:0 0 66px; width:66px; margin:0; transform:none }
+/* RELATIVE, NOT STATIC. .mv-num is absolutely positioned, so it is placed against the nearest
+   POSITIONED ancestor -- and a bench face that took itself out of the positioning context sent
+   its shirt number up the tree to the page itself, where it sat as a lone number floating above
+   the team heading (reported 2026-09-18). Relative keeps the face in the flow exactly as static
+   did and gives the number back the box it belongs to. */
+.mv-p.bench{ position:relative; flex:0 0 66px; width:66px; margin:0; transform:none }
 .mv-p.bench .sq-face{ width:44px; height:44px; border-width:2px; filter:drop-shadow(0 4px 6px rgba(0,0,0,.35)) }
 .mv-p.bench .sq-face .sq-nm{ font-size:7px; -webkit-line-clamp:2 }
 .mv-p.bench .mv-shadow{ display:none }
 .mv-p.bench .mv-num{ margin-left:8px; height:15px; min-width:15px; line-height:14px; font-size:9.5px }
-.mv-p.bench .mv-nm{ font-size:9px; background:none; padding:0 }
+.mv-p.bench .mv-nm{ font-size:clamp(6.5px, calc(9px - max(0, var(--nl,7) - 9) * 0.32px), 9px); background:none; padding:0 }
 .mv-p.bench .mv-line{ font-size:8px; background:none; font-family:var(--f-data,var(--f-mono)); letter-spacing:0; text-transform:none; color:var(--text-primary) }
 .mv-p.bench .mv-sub{ font-family:var(--f-micro,var(--f-mono)); font-size:6.5px; letter-spacing:.06em; text-transform:uppercase }
 .mv-p.dnp{ opacity:.45 }
@@ -81,7 +91,7 @@
   .mv-p{ width:86px; margin-left:-43px }
   .mv-p .sq-face{ width:50px; height:50px }
   .mv-shadow{ top:42px; width:44px; margin-left:-22px }
-  .mv-nm{ font-size:9.5px }
+  .mv-nm{ font-size:clamp(6.5px, calc(9.5px - max(0, var(--nl,7) - 9) * 0.34px), 9.5px) }
   .mv-line{ font-size:7.5px; letter-spacing:.04em }
   .mv-p.floor .mv-line .w{ display:none } .mv-p.floor .mv-line .n{ display:inline }
   .mv-sub{ font-size:8px }
@@ -90,3 +100,36 @@
 :root[data-theme="light"] .mv-p .sq-face{ filter:drop-shadow(0 8px 10px rgba(13,31,23,.28)) drop-shadow(0 2px 3px rgba(13,31,23,.18)) }
 :root[data-theme="light"] .mv-shadow{ background:radial-gradient(ellipse at center, rgba(13,31,23,.28), rgba(13,31,23,0) 70%) }
 :root[data-theme="light"] .mv-pop{ box-shadow:0 18px 50px rgba(13,31,23,.22) }
+
+/* a name too long for one line at a readable size goes onto two (modern.js fitNames) */
+.mv-nm.wrap{ white-space:normal; overflow-wrap:break-word; text-wrap:balance; line-height:1.08; text-overflow:clip }
+
+/* ------------------------------------------------------------------- the flash ---
+   A basket is the one thing on this page that HAPPENS, and a box score that only ever
+   settles to a new number never says so. When a face's visible line moves, the change
+   is spelled out beside it for a moment and the circle takes a short knock — enough to
+   catch the eye of somebody already looking at the court, never enough to pull it away
+   from somewhere else. modern.js decides what changed; this is only how it looks. */
+.mv-pop-delta{ position:absolute; left:50%; top:46px; transform:translateX(-50%); z-index:4; pointer-events:none; white-space:nowrap;
+  font-family:var(--f-score); font-size:12px; letter-spacing:.02em; padding:2px 7px; border-radius:999px;
+  color:var(--bg-base); background:var(--c,var(--lume)); box-shadow:0 4px 14px rgba(0,0,0,.35);
+  animation:mv-delta 1.6s cubic-bezier(.2,.8,.2,1) forwards }
+.mv-p.bench .mv-pop-delta{ top:32px; font-size:10px; padding:1px 5px }
+.mv-p.mv-hit .sq-face{ animation:mv-knock .5s cubic-bezier(.2,.8,.2,1) }
+@keyframes mv-delta{
+  0%{ opacity:0; transform:translate(-50%,6px) scale(.8) }
+  14%{ opacity:1; transform:translate(-50%,-2px) scale(1.06) }
+  24%{ transform:translate(-50%,0) scale(1) }
+  72%{ opacity:1; transform:translate(-50%,-4px) scale(1) }
+  100%{ opacity:0; transform:translate(-50%,-14px) scale(.96) }
+}
+@keyframes mv-knock{
+  0%{ transform:translateY(0) scale(1) }
+  35%{ transform:translateY(-4px) scale(1.1) }
+  100%{ transform:translateY(0) scale(1) }
+}
+@media (prefers-reduced-motion:reduce){
+  .mv-pop-delta{ animation:mv-delta-quiet 1.6s linear forwards }
+  .mv-p.mv-hit .sq-face{ animation:none }
+  @keyframes mv-delta-quiet{ 0%{opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
+}
