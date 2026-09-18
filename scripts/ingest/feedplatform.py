@@ -144,8 +144,24 @@ class Platform:
         key = (league_id, code)
         if key in self.cache["team"]:
             return self.cache["team"][key]
-        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name,logo_path")
+        r = self.one("teams", f"league_id=eq.{league_id}&external_ids->>fiba_livestats=eq.{code}&select=id,slug,name,aliases,logo_path")
         if r and not self.dry:
+            # THE NAME A SCHEDULE COULD NOT GIVE. A club first seen on a fixture list may be named
+            # in its own script and abbreviated with it (bleague.jp prints "広島", the game payload
+            # says "HIROSHIMA DRAGONFLIES"). The moment a Latin name arrives for the same club, it
+            # becomes the club's name and the native one is kept as an alias — so a supporter
+            # searching either finds it, and the site does not carry one club in two alphabets.
+            incoming = names.team_name((t.get("name") or "").strip())
+            if incoming and names.has_cjk(r.get("name") or "") and not names.has_cjk(incoming):
+                al = [a for a in (r.get("aliases") or []) if a]
+                if r["name"] and r["name"] not in al:
+                    al.append(r["name"])
+                try:
+                    self.sb.patch("teams", f"id=eq.{r['id']}", {"name": incoming, "aliases": al})
+                    self.log(f"  ~ {r['name']} is {incoming}")
+                    r["name"] = incoming
+                except Exception:
+                    pass
             # a crest the club has not got yet (or the JSON blob an early worker wrote) -> the feed's URL
             lp = r.get("logo_path") or ""
             url = self.logo_url(t)
@@ -221,7 +237,15 @@ class Platform:
             raw_name = (t.get("name") or code).strip()
             nice = names.team_name(raw_name) or raw_name
             extra = [a for a in (raw_name, t.get("nameInternational")) if a and a != nice]
-            r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, slugify(nice)), "name": nice,
+            # A SLUG FROM THE CODE WHEN THE NAME IS NOT LATIN. slugify strips to ASCII, so the
+            # B.LEAGUE's own abbreviations come out as one letter or none at all: "A東京" -> "a"
+            # and "琉球" -> "x", which is not a name and, worse, is the SAME slug for every club
+            # whose abbreviation has no Latin in it. The feed's code (at, rg) is stable and
+            # already unique within the league, so it is the better slug in that case.
+            base = slugify(nice)
+            if len(base) < 3 or base == "x":
+                base = slugify(code) if len(slugify(code)) >= 2 else base
+            r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
                                       "short_name": (names.team_name(t.get("shortName") or "") or code)[:12], "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
                                       "aliases": list(dict.fromkeys(extra))})

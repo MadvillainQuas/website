@@ -31,12 +31,13 @@ import json
 import os
 import re
 import time
+from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 import requests
 
 from .base import ScheduleGame
-from .fiba_livestats import FibaLiveStatsAdapter, UA
+from .fiba_livestats import FibaLiveStatsAdapter, UA, ZoneInfo
 
 CZECH_BASE = "https://nbl.basketball"
 CZECH_SCHEDULE = CZECH_BASE + "/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0"
@@ -50,6 +51,41 @@ _WEBCAST_ANY = re.compile(r"fibalivestats\.com/webcast/[A-Za-z]+/(\d+)", re.I)
 _ZAPAS = re.compile(r"/zapas/(\d+)")
 # <option value="11641">Sezóna 2026/2027</option>
 _SEASON_OPT = re.compile(r"<option[^>]*value=\"(\d+)\"[^>]*>\s*([^<]*?)\s*</option>", re.I)
+
+# --- what each site's own fixture row says, which is more than an id ---------------------
+# nbl.basketball prints one <tr> per fixture: a sortable timestamp, both clubs in their own
+# divs, and the link to the game. Everything a fixture needs is there before any hop.
+_CZ_ROW = re.compile(r"<tr\b.*?</tr>", re.S)
+_CZ_WHEN = re.compile(r'data-sort="(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})"')
+_CZ_TEAM = re.compile(r"<div[^>]*>\s*([^<>\d][^<>]{2,60}?)\s*</div>")
+_CZ_TEAM_HREF = re.compile(r'href="/tym/([a-z0-9-]+)"')
+
+# sbl.slovakbasket.sk draws a card per fixture: both crests carry the club's name in alt=, the
+# header carries the date and the hall, and the club's own id is in the crest URL.
+_SK_CARD = re.compile(r'class="match-ticket-inner".*?(?=class="match-ticket-inner"|\Z)', re.S)
+_SK_TEAM = re.compile(r'<img[^>]+src="([^"]*Competitor/(\d+)/[^"]*)"[^>]*alt="([^"]*)"')
+_SK_WHEN = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})\s*o\s*(\d{1,2}):(\d{2})")
+_SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</span>', re.S)
+
+
+def _utc(tz_name, y, mo, d, h, mi):
+    """A local kick-off as an ISO instant, or None where the zone database is unavailable.
+
+    The whole platform stores UTC; a fixture written in local time is an hour or two wrong for
+    half the season, which is exactly long enough for nobody to notice until a play-off."""
+    if ZoneInfo is None:
+        return None
+    try:
+        local = datetime(int(y), int(mo), int(d), int(h), int(mi), tzinfo=ZoneInfo(tz_name))
+        return local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        return None
+
+
+def _slug_of(row: str, i: int):
+    """The i-th club's own slug on nbl.basketball (/tym/bk-armex-energy-decin), as its code."""
+    found = _CZ_TEAM_HREF.findall(row or "")
+    return found[i] if len(found) > i else None
 
 
 def _start_year(season: str) -> int:
@@ -101,6 +137,16 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         except Exception:
             pass                      # a cache that cannot be written is a slow pass, not a failure
 
+    def fetch(self, external_id: str, config: dict):
+        """The FIBA fetch, with the Czech id translated to the LiveStats one on the way in."""
+        site = (config.get("site") or "").lower()
+        if site in ("czech", "czech_nbl", "cbffe"):
+            mid = self._czech_match_id(str(external_id), config)
+            if not mid:
+                return None        # the fixture exists, its webcast does not yet
+            return super().fetch(mid, config)
+        return super().fetch(external_id, config)
+
     # ---------------------------------------------------------------- the sites ---
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
         site = (config.get("site") or "").lower()
@@ -112,29 +158,53 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         return super().discover(schedule_url, config)
 
     def _czech(self, config: dict) -> list[ScheduleGame]:
-        """nbl.basketball: the season page lists /zapas/<siteId>; the id is on the game's page."""
+        """nbl.basketball: one <tr> per fixture — id, both clubs and the kick-off, in one request.
+
+        THE FIXTURE IS KEYED ON THE SITE'S OWN ID, not on the LiveStats id. The LiveStats id is
+        the one thing the schedule does NOT carry (it appears on the game's page, and for a
+        fixture far out it does not exist yet), so keying on it meant two thirds of the season
+        was invisible — 37 fixtures out of 132 — and a game that gained its id later would have
+        arrived as a SECOND row beside the one already written. The site id is on every row from
+        the moment a fixture exists and never changes, so it is the id; resolving it to a
+        LiveStats id is fetch()'s problem, once, and cached.
+
+        That also takes ~130 requests out of every discovery pass: nothing is hopped here at all."""
         year = _start_year(config.get("season") or "")
         html = self._page(CZECH_SCHEDULE.format(year=year))
-        site_ids = list(dict.fromkeys(_ZAPAS.findall(html)))
-        known = self._idmap(config)
-        out, learned = [], False
-        for sid in site_ids:
-            mid = known.get(sid)
-            if not mid:
-                try:
-                    page = self._page(f"{CZECH_BASE}/zapas/{sid}")
-                except Exception:
-                    continue
-                m = _WEBCAST.search(page) or _WEBCAST_ANY.search(page)
-                if not m:
-                    continue           # a fixture with no webcast yet: nothing to ingest
-                mid = m.group(1)
-                known[sid] = mid
-                learned = True
-            out.append(ScheduleGame(external_id=str(mid), extra={"site_id": sid}))
-        if learned:
-            self._save_idmap(config, known)
+        out, seen = [], set()
+        for row in _CZ_ROW.findall(html):
+            m = _ZAPAS.search(row)
+            if not m or m.group(1) in seen:
+                continue
+            sid = m.group(1)
+            seen.add(sid)
+            names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
+            when = _CZ_WHEN.search(row)
+            out.append(ScheduleGame(
+                external_id=sid,
+                home_name=names_[0] if len(names_) > 0 else "",
+                away_name=names_[1] if len(names_) > 1 else "",
+                tipoff_at=_utc("Europe/Prague", *when.groups()) if when else None))
         return out
+
+    def _czech_match_id(self, sid: str, config: dict) -> Optional[str]:
+        """The LiveStats id behind a Czech fixture id, learnt once and remembered.
+
+        A game's LiveStats id never changes, so the map is written to data/feed/<CODE>/idmap.json
+        and a fixture costs this hop exactly once in its life."""
+        known = self._idmap(config)
+        if known.get(sid):
+            return known[sid]
+        try:
+            page = self._page(f"{CZECH_BASE}/zapas/{sid}")
+        except Exception:
+            return None
+        w = _WEBCAST.search(page) or _WEBCAST_ANY.search(page)
+        if not w:
+            return None            # no webcast published for this fixture yet
+        known[sid] = w.group(1)
+        self._save_idmap(config, known)
+        return known[sid]
 
     def _slovakia(self, config: dict) -> list[ScheduleGame]:
         """sbl.slovakbasket.sk: one page per month, each linking every game's webcast directly."""
@@ -150,10 +220,28 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 html = self._page(SLOVAK_LIST.format(sid=sid, month=month))
             except Exception:
                 continue
-            for mid in _WEBCAST.findall(html):
-                if mid not in seen:
-                    seen.add(mid)
-                    out.append(ScheduleGame(external_id=str(mid)))
+            # EACH CARD CARRIES THE WHOLE FIXTURE: both clubs (named in the crest's alt text, with
+            # the club's own id in the crest URL), the hall, and the kick-off. Taking only the
+            # webcast link out of it threw all of that away and left the fixture unwritable.
+            for card in _SK_CARD.findall(html):
+                m = _WEBCAST.search(card)
+                if not m or m.group(1) in seen:
+                    continue
+                seen.add(m.group(1))
+                teams = _SK_TEAM.findall(card)
+                when = _SK_WHEN.search(card)
+                venue = _SK_VENUE.search(card)
+                out.append(ScheduleGame(
+                    external_id=str(m.group(1)),
+                    home_name=teams[0][2].strip() if len(teams) > 0 else "",
+                    away_name=teams[1][2].strip() if len(teams) > 1 else "",
+                    tipoff_at=(_utc("Europe/Bratislava", when.group(3), when.group(2), when.group(1),
+                                    when.group(4), when.group(5)) if when else None),
+                    extra={"venue": venue.group(1).strip() if venue else None,
+                           "home_logo": teams[0][0] if len(teams) > 0 else None,
+                           "away_logo": teams[1][0] if len(teams) > 1 else None,
+                           "home_code": teams[0][1] if len(teams) > 0 else None,
+                           "away_code": teams[1][1] if len(teams) > 1 else None}))
         return out
 
     def _slovak_season_id(self, config: dict, season: str, year: int) -> Optional[str]:

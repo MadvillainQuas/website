@@ -230,15 +230,22 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
                  and not p.strip().startswith("第")]
         return ScheduleGame(
             external_id=key.group(1),          # the ScheduleKey alone addresses the game page
-            # NO CLUB NAMES: the card abbreviates them in Japanese and a club created from that is
-            # stuck with it (see the module docstring). The payload names both clubs properly.
-            home_name="", away_name="",
+            # THE CARD DOES NAME BOTH CLUBS, in the abbreviation bleague.jp itself prints:
+            # "A東京" for Alvark Tokyo, "琉球" for Ryukyu. Leaving them out meant no fixture could
+            # be written until a game had been PLAYED, which is most of a season showing nothing.
+            # An abbreviation is a poor name and a missing fixture list is a worse one — and the
+            # club does not keep it: the first game fetched carries HomeTeamNameE, and
+            # feedplatform replaces a club's native-script name with the Latin one when it comes.
+            home_name=_team_name(card, 0), away_name=_team_name(card, 1),
             tipoff_at=tip,
             status="final" if "FINAL" in state.upper() else "scheduled",
             extra={"venue": venue[-1] if venue else None,
-                   # kept for the day the fixture rows can be written: the crest file name is the
-                   # club's own code on this site (at = Alvark Tokyo, hd = Hiroshima).
+                   # the crest file name IS the club's own code on this site (at = Alvark Tokyo,
+                   # hd = Hiroshima), which is what keeps the club created from an abbreviated
+                   # schedule card and the club named by a played game the same row.
                    "home_crest": _crest(card, 0), "away_crest": _crest(card, 1),
+                   "home_logo": _crest_url(card, 0), "away_logo": _crest_url(card, 1),
+                   "home_code": _team_code(card, 0), "away_code": _team_code(card, 1),
                    "event": event}), date
 
     # --------------------------------------------------------------------- game ---
@@ -367,6 +374,33 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
                        pno=str(e.get("PlayerID1") or "").strip() or None,
                        period=S.num(e.get("Period"), 1)))
         return out
+
+
+CARD_TEAM_NAME = re.compile(r'class="team-name"[^>]*>\s*([^<]+?)\s*<')
+
+
+def _team_name(card: str, i: int) -> str:
+    """The i-th club named on a schedule card (home first, away second).
+
+    It is bleague.jp's own abbreviation and it is in Japanese, which is the site's own choice of
+    how to print it; the alternative here is an unnamed fixture, and a club keeps this name only
+    until one of its games is played."""
+    found = CARD_TEAM_NAME.findall(card or "")
+    return found[i].strip() if len(found) > i else ""
+
+
+def _team_code(card: str, i: int) -> Optional[str]:
+    """The club's code, which on this site is its crest's file name."""
+    return _crest(card, i)
+
+
+def _crest_url(card: str, i: int) -> Optional[str]:
+    """The i-th crest as a URL the site can actually load."""
+    found = CARD_LOGO.findall(card or "")
+    if len(found) <= i:
+        return None
+    u = found[i]
+    return u if u.startswith("http") else SITE + u
 
 
 def _crest(card: str, i: int) -> Optional[str]:
