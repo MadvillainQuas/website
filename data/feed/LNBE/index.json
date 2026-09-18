@@ -2,1927 +2,2887 @@
 "code": "LNBE",
 "label": "Espoirs ÉLITE",
 "adapter": "lnb",
-"updated": "2026-09-18T07:23:23.473077+00:00",
+"updated": "2026-09-18T16:35:17.801222+00:00",
 "games": [
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e99c3c9-a547-11f1-8a37-6bde6950aa58",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-05-08",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e8a017e-a547-11f1-9850-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-05-08",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e79e180-a547-11f1-966d-6bde6950aa58",
 "home": "Espoirs Roanne",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-05-08",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e6cc235-a547-11f1-bb37-6bde6950aa58",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-05-08",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e5b7afe-a547-11f1-b70a-6bde6950aa58",
 "home": "Espoirs Paris",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-05-08",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e4b76bd-a547-11f1-a3f0-6bde6950aa58",
 "home": "Espoirs Limoges",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-05-08",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e3b7290-a547-11f1-8d41-6bde6950aa58",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-05-08",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e2cf100-a547-11f1-919e-6bde6950aa58",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-05-08T15:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-05-08",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e1bb7da-a547-11f1-84a8-6bde6950aa58",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-05-01",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8e0bce06-a547-11f1-ae9d-6bde6950aa58",
 "home": "Espoirs Limoges",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-05-01",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8df97068-a547-11f1-8929-6bde6950aa58",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-05-01",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8de984a0-a547-11f1-925f-6bde6950aa58",
 "home": "Espoirs Nancy",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-05-01",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8ddaa094-a547-11f1-aff4-6bde6950aa58",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8dbb2d7f-a547-11f1-bbd5-6bde6950aa58",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Roanne",
-"status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8dabb5a9-a547-11f1-9727-6bde6950aa58",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Paris",
-"status": "scheduled",
-"date": "2027-05-01T15:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-05-01",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8dca9192-a547-11f1-8f20-6bde6950aa58",
 "home": "Espoirs Cholet",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-05-01T14:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-05-01",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8dbb2d7f-a547-11f1-bbd5-6bde6950aa58",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Roanne",
+"status": "scheduled",
+"date": "2027-05-01",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8dabb5a9-a547-11f1-9727-6bde6950aa58",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Paris",
+"status": "scheduled",
+"date": "2027-05-01",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d9f33a2-a547-11f1-bc49-6bde6950aa58",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-04-24",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d9131d8-a547-11f1-af64-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-04-24",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d83f218-a547-11f1-b9a5-6bde6950aa58",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-04-24",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d73d3ce-a547-11f1-9ff3-6bde6950aa58",
 "home": "Espoirs Paris",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-04-24",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d6488e5-a547-11f1-905e-6bde6950aa58",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-04-24",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d556f2d-a547-11f1-8a73-6bde6950aa58",
 "home": "Espoirs Dijon",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-04-24",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d462cc3-a547-11f1-be00-6bde6950aa58",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-04-24",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d3692da-a547-11f1-9e3e-6bde6950aa58",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-04-24T15:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-04-24",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d276268-a547-11f1-92d1-6bde6950aa58",
 "home": "Espoirs Nancy",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-04-17",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d185728-a547-11f1-b500-6bde6950aa58",
 "home": "Espoirs Roanne",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-04-17",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8d08d772-a547-11f1-ac68-6bde6950aa58",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-04-17",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8cfa7de4-a547-11f1-9aa4-6bde6950aa58",
 "home": "Espoirs Limoges",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-04-17",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8ceb1b37-a547-11f1-9316-6bde6950aa58",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-04-17",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8cdcd4ca-a547-11f1-84eb-6bde6950aa58",
 "home": "Espoirs Dijon",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8cbb0f90-a547-11f1-be1f-6bde6950aa58",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Bourg-en-Bresse",
-"status": "scheduled",
-"date": "2027-04-17T15:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-04-17",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8ccd5176-a547-11f1-a84f-6bde6950aa58",
 "home": "Espoirs Cholet",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-04-17T14:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-04-17",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8cbb0f90-a547-11f1-be1f-6bde6950aa58",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2027-04-17",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8cabe6b5-a547-11f1-91a5-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-04-10",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c9c9e0d-a547-11f1-84f0-6bde6950aa58",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-04-10",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c8db5f8-a547-11f1-a07b-6bde6950aa58",
 "home": "Espoirs Paris",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-04-10",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c7f41c7-a547-11f1-add8-6bde6950aa58",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-04-10",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c7064e6-a547-11f1-bff1-6bde6950aa58",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-04-10",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c60033f-a547-11f1-a8d6-6bde6950aa58",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-04-10",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c517b96-a547-11f1-b795-6bde6950aa58",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-04-10",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c42c113-a547-11f1-8c5e-6bde6950aa58",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-04-10T15:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-04-10",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c33b8bc-a547-11f1-971c-6bde6950aa58",
 "home": "Espoirs Roanne",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-04-03",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c21743d-a547-11f1-9ebe-6bde6950aa58",
 "home": "Espoirs Paris",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-04-03",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c1251ce-a547-11f1-bc09-6bde6950aa58",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-04-03",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8c021f48-a547-11f1-b2d3-6bde6950aa58",
 "home": "Espoirs Nancy",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-04-03",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8bf15228-a547-11f1-85e0-6bde6950aa58",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-04-03",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8be2039e-a547-11f1-92e9-6bde6950aa58",
 "home": "Espoirs Dijon",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8bc03996-a547-11f1-9d62-6bde6950aa58",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Pau-Lacq-Orthez",
-"status": "scheduled",
-"date": "2027-04-03T15:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-04-03",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8bd05314-a547-11f1-889c-6bde6950aa58",
 "home": "Espoirs Cholet",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-04-03T14:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-04-03",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8bc03996-a547-11f1-9d62-6bde6950aa58",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Pau-Lacq-Orthez",
+"status": "scheduled",
+"date": "2027-04-03",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8baffd66-a547-11f1-a394-6bde6950aa58",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-27",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8ba16bfa-a547-11f1-9ecc-6bde6950aa58",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-03-27",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b91d689-a547-11f1-a42a-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-27",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b83870e-a547-11f1-84b6-6bde6950aa58",
 "home": "Espoirs Nancy",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-03-27",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b73410b-a547-11f1-811c-6bde6950aa58",
 "home": "Espoirs Limoges",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-03-27",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b644d13-a547-11f1-be71-6bde6950aa58",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-03-27",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b538173-a547-11f1-9438-6bde6950aa58",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-03-27",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b462981-a547-11f1-94c1-6bde6950aa58",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-03-27T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-03-27",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b37d064-a547-11f1-b6e3-6bde6950aa58",
 "home": "Espoirs Roanne",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-03-20",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b28ce05-a547-11f1-b280-6bde6950aa58",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-03-20",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b1905fb-a547-11f1-a002-6bde6950aa58",
 "home": "Espoirs Paris",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-03-20",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8b0a9363-a547-11f1-90e3-6bde6950aa58",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-03-20",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8afb762f-a547-11f1-a23f-6bde6950aa58",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-20",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8aec0672-a547-11f1-b628-6bde6950aa58",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-03-20",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8adf97c5-a547-11f1-896e-6bde6950aa58",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-03-20",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8acec7b8-a547-11f1-82fb-6bde6950aa58",
 "home": "Espoirs Dijon",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-03-20T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-03-20",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8abf3cb9-a547-11f1-a831-6bde6950aa58",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-03-13",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8ab01353-a547-11f1-8678-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-13",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8aa12b67-a547-11f1-8d80-6bde6950aa58",
 "home": "Espoirs Limoges",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-03-13",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a9294d7-a547-11f1-9eb1-6bde6950aa58",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-03-13",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a8461a7-a547-11f1-a243-6bde6950aa58",
 "home": "Espoirs Nancy",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-03-13",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a758b34-a547-11f1-9a82-6bde6950aa58",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a23bcd0-a547-11f1-974d-6bde6950aa58",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Saint-Quentin",
-"status": "scheduled",
-"date": "2027-03-13T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-03-13",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a6418ab-a547-11f1-94ea-6bde6950aa58",
 "home": "Espoirs Cholet",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-03-13T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-03-13",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a23bcd0-a547-11f1-974d-6bde6950aa58",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Saint-Quentin",
+"status": "scheduled",
+"date": "2027-03-13",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a1410a9-a547-11f1-8a2d-6bde6950aa58",
 "home": "Espoirs Dijon",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-03-06",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_8a029e47-a547-11f1-a484-6bde6950aa58",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-06",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_89f1a8f7-a547-11f1-8a8e-6bde6950aa58",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-06",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_89e16864-a547-11f1-9d83-6bde6950aa58",
 "home": "Espoirs Roanne",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-03-06",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_89ce99ce-a547-11f1-8570-6bde6950aa58",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-03-06",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_89bc56b1-a547-11f1-86cc-6bde6950aa58",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-03-06",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_89ad16f4-a547-11f1-8c4b-6bde6950aa58",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-03-06",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_893adb79-a547-11f1-92b8-6bde6950aa58",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-03-06T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-03-06",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e9c4d22-a547-11f1-a807-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-02-24",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e8e247d-a547-11f1-a71e-975b9e2e0018",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-02-24",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e7f5a9b-a547-11f1-9611-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-02-24",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e7184b9-a547-11f1-a2d0-975b9e2e0018",
 "home": "Espoirs Paris",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-02-24",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e633ec0-a547-11f1-88b3-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-02-24",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e5509c1-a547-11f1-8c8d-975b9e2e0018",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-02-24",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e466243-a547-11f1-8594-975b9e2e0018",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-02-24",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e384003-a547-11f1-81a4-975b9e2e0018",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-02-24T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-02-24",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e2a8cc6-a547-11f1-89da-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-02-13",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e1d5d84-a547-11f1-babe-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-02-13",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6e0f3ba0-a547-11f1-aa21-975b9e2e0018",
 "home": "Espoirs Paris",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-02-13",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dffdb40-a547-11f1-8789-975b9e2e0018",
 "home": "Espoirs Nancy",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-02-13",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6defe6ed-a547-11f1-9a76-975b9e2e0018",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dd65168-a547-11f1-8426-975b9e2e0018",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Le Mans",
-"status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dc7d35a-a547-11f1-bf49-975b9e2e0018",
-"home": "Espoirs Limoges",
-"away": "Espoirs Nanterre",
-"status": "scheduled",
-"date": "2027-02-13T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-02-13",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6de41958-a547-11f1-b632-975b9e2e0018",
 "home": "Espoirs Cholet",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-02-13T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-02-13",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dd65168-a547-11f1-8426-975b9e2e0018",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Le Mans",
+"status": "scheduled",
+"date": "2027-02-13",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dc7d35a-a547-11f1-bf49-975b9e2e0018",
+"home": "Espoirs Limoges",
+"away": "Espoirs Nanterre",
+"status": "scheduled",
+"date": "2027-02-13",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dbab50a-a547-11f1-b145-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-02-06",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6dad0e3a-a547-11f1-85e6-975b9e2e0018",
 "home": "Espoirs Paris",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-02-06",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d9ecfdc-a547-11f1-9e0b-975b9e2e0018",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-02-06",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d90f214-a547-11f1-bdfb-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-02-06",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d822d02-a547-11f1-b97d-975b9e2e0018",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-02-06",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d7546b4-a547-11f1-9f8c-975b9e2e0018",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-02-06",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d67b579-a547-11f1-985f-975b9e2e0018",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-02-06",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d5a209b-a547-11f1-8483-975b9e2e0018",
 "home": "Espoirs Dijon",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-02-06T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-02-06",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d4be006-a547-11f1-a8fd-975b9e2e0018",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-01-30",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d3c999f-a547-11f1-a350-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-01-30",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d2eb5dc-a547-11f1-b983-975b9e2e0018",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-30",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d1fd348-a547-11f1-ae07-975b9e2e0018",
 "home": "Espoirs Limoges",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d0412e7-a547-11f1-b0f4-975b9e2e0018",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Nanterre",
-"status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6cf32476-a547-11f1-80ab-975b9e2e0018",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ce37718-a547-11f1-ab2b-975b9e2e0018",
-"home": "Espoirs Boulazac",
-"away": "Espoirs Paris",
-"status": "scheduled",
-"date": "2027-01-30T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-01-30",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d120a13-a547-11f1-ba22-975b9e2e0018",
 "home": "Espoirs Cholet",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-30T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-30",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6d0412e7-a547-11f1-b0f4-975b9e2e0018",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Nanterre",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6cf32476-a547-11f1-80ab-975b9e2e0018",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ce37718-a547-11f1-ab2b-975b9e2e0018",
+"home": "Espoirs Boulazac",
+"away": "Espoirs Paris",
+"status": "scheduled",
+"date": "2027-01-30",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6cd6abb6-a547-11f1-a36e-975b9e2e0018",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-01-23",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6cc814e8-a547-11f1-bbab-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-01-23",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6cb7ebf0-a547-11f1-b22a-975b9e2e0018",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2027-01-23",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ca92542-a547-11f1-984f-975b9e2e0018",
 "home": "Espoirs Dijon",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-01-23",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c9b5006-a547-11f1-ba98-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-01-23",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c8dab80-a547-11f1-ab51-975b9e2e0018",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-01-23",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c7c0a81-a547-11f1-b486-975b9e2e0018",
 "home": "Espoirs Nancy",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-01-23",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c6d4ba6-a547-11f1-9948-975b9e2e0018",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2027-01-23T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-01-23",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c5f4100-a547-11f1-b6f4-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-01-16",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c51e75d-a547-11f1-9bd7-975b9e2e0018",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-01-16",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c426a9c-a547-11f1-a44e-975b9e2e0018",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-16",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c346fda-a547-11f1-b30c-975b9e2e0018",
 "home": "Espoirs Paris",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2027-01-16",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c238e84-a547-11f1-b937-975b9e2e0018",
 "home": "Espoirs Limoges",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-01-16",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c11e14d-a547-11f1-83fd-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-01-16",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6c05b0b0-a547-11f1-beec-975b9e2e0018",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-16T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-01-16",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6bf7c5d5-a547-11f1-8c5e-975b9e2e0018",
 "home": "Espoirs Cholet",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2027-01-16T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-16",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6be963fd-a547-11f1-8a06-975b9e2e0018",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-09",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6bdb47f3-a547-11f1-b57e-975b9e2e0018",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-01-09",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6bcd03eb-a547-11f1-99c3-975b9e2e0018",
 "home": "Espoirs Nancy",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-01-09",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6bbe8c9f-a547-11f1-8887-975b9e2e0018",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-01-09",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6baf6c6b-a547-11f1-ae89-975b9e2e0018",
 "home": "Espoirs Limoges",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-01-09",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ba27f2a-a547-11f1-abec-975b9e2e0018",
 "home": "Espoirs Dijon",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b82782e-a547-11f1-b7a1-975b9e2e0018",
-"home": "Espoirs Boulazac",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2027-01-09T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-01-09",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b9153cb-a547-11f1-a089-975b9e2e0018",
 "home": "Espoirs Cholet",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2027-01-09T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-09",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b82782e-a547-11f1-b7a1-975b9e2e0018",
+"home": "Espoirs Boulazac",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2027-01-09",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b762dc0-a547-11f1-832a-975b9e2e0018",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-12-19",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b655ad2-a547-11f1-b238-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-12-19",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b571ce3-a547-11f1-b93d-975b9e2e0018",
 "home": "Espoirs Paris",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2026-12-19",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b1a2b2c-a547-11f1-9a60-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-12-19",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6b0ae9f8-a547-11f1-8c1b-975b9e2e0018",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-12-19",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6afc4558-a547-11f1-bce2-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-12-19",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ae9c01a-a547-11f1-a01d-975b9e2e0018",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-12-19",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6ada317c-a547-11f1-b6e1-975b9e2e0018",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-12-19T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-12-19",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6acb66ee-a547-11f1-b58f-975b9e2e0018",
 "home": "Espoirs Dijon",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-12-12",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6abda49d-a547-11f1-9711-975b9e2e0018",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-12-12",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6aaf72c5-a547-11f1-afb5-975b9e2e0018",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-12-12",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6aa22d20-a547-11f1-93cb-975b9e2e0018",
 "home": "Espoirs Roanne",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-12-12",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a902878-a547-11f1-b165-975b9e2e0018",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-12-12",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a80e550-a547-11f1-a21e-975b9e2e0018",
 "home": "Espoirs Nancy",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a64e2d9-a547-11f1-b15b-975b9e2e0018",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Le Mans",
-"status": "scheduled",
-"date": "2026-12-12T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-12-12",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a72e8dd-a547-11f1-b492-975b9e2e0018",
 "home": "Espoirs Cholet",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-12-12T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-12-12",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a64e2d9-a547-11f1-b15b-975b9e2e0018",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Le Mans",
+"status": "scheduled",
+"date": "2026-12-12",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a531436-a547-11f1-8c88-975b9e2e0018",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-12-05",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a44df4d-a547-11f1-98b7-975b9e2e0018",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-12-05",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a352545-a547-11f1-a519-975b9e2e0018",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-12-05",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a2630a7-a547-11f1-a6c6-975b9e2e0018",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-12-05",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a18327e-a547-11f1-8a6d-975b9e2e0018",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-12-05",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_6a094232-a547-11f1-8b3e-975b9e2e0018",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-12-05",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_69f89c7b-a547-11f1-b3c4-975b9e2e0018",
 "home": "Espoirs Limoges",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-12-05",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_697e447c-a547-11f1-aa33-975b9e2e0018",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2026-12-05T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-12-05",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54d758c7-a547-11f1-a531-c58262ca47d6",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-11-28",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54c87db5-a547-11f1-aa8a-c58262ca47d6",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-11-28",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54b79c66-a547-11f1-906a-c58262ca47d6",
 "home": "Espoirs Nancy",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-11-28",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54a62f04-a547-11f1-9cc4-c58262ca47d6",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-11-28",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54954241-a547-11f1-b3b2-c58262ca47d6",
 "home": "Espoirs Limoges",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-11-28",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_54841716-a547-11f1-a56e-c58262ca47d6",
 "home": "Espoirs Dijon",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_545e33c6-a547-11f1-a9c5-c58262ca47d6",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-11-28T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-11-28",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5470cf4f-a547-11f1-b50e-c58262ca47d6",
 "home": "Espoirs Cholet",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-11-28T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-11-28",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_545e33c6-a547-11f1-a9c5-c58262ca47d6",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-11-28",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5448c3c3-a547-11f1-be26-c58262ca47d6",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-11-21",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5436d6aa-a547-11f1-a30a-c58262ca47d6",
 "home": "Espoirs Roanne",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-11-21",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5426d930-a547-11f1-9ae4-c58262ca47d6",
 "home": "Espoirs Paris",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2026-11-21",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5416b455-a547-11f1-9bcc-c58262ca47d6",
 "home": "Espoirs Nancy",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-11-21",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5405de35-a547-11f1-91f2-c58262ca47d6",
 "home": "Espoirs Dijon",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-11-21",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53f6fcf8-a547-11f1-bc29-c58262ca47d6",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53dd39ac-a547-11f1-9d79-c58262ca47d6",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Saint-Quentin",
-"status": "scheduled",
-"date": "2026-11-21T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-11-21",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53eb31b0-a547-11f1-8593-c58262ca47d6",
 "home": "Espoirs Cholet",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-11-21T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-11-21",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53dd39ac-a547-11f1-9d79-c58262ca47d6",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Saint-Quentin",
+"status": "scheduled",
+"date": "2026-11-21",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53cf2d71-a547-11f1-8c55-c58262ca47d6",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-11-14",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53bfb97b-a547-11f1-b2cc-c58262ca47d6",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-11-14",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53b0b8cc-a547-11f1-8349-c58262ca47d6",
 "home": "Espoirs Limoges",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-11-14",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53a07236-a547-11f1-b3be-c58262ca47d6",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-11-14",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_538fad44-a547-11f1-8205-c58262ca47d6",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-11-14",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53809084-a547-11f1-ba58-c58262ca47d6",
 "home": "Espoirs Dijon",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-11-14",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_536eae6e-a547-11f1-b4d9-c58262ca47d6",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-11-14",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_535e1da1-a547-11f1-b124-c58262ca47d6",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-11-14T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-11-14",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_534e49d0-a547-11f1-a7f1-c58262ca47d6",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-11-07",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53401eff-a547-11f1-9a4b-c58262ca47d6",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-11-07",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_532fe42c-a547-11f1-ab5c-c58262ca47d6",
 "home": "Espoirs Paris",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
+"date": "2026-11-07",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_532003fb-a547-11f1-a68f-c58262ca47d6",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-11-07",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5310db66-a547-11f1-8002-c58262ca47d6",
 "home": "Espoirs Nancy",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52f650e1-a547-11f1-9ba1-c58262ca47d6",
-"home": "Espoirs Roanne",
-"away": "Espoirs Saint-Quentin",
-"status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52e823aa-a547-11f1-9688-c58262ca47d6",
-"home": "Espoirs Boulazac",
-"away": "Espoirs Gravelines-Dunkerque",
-"status": "scheduled",
-"date": "2026-11-07T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-11-07",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_53047398-a547-11f1-bda7-c58262ca47d6",
 "home": "Espoirs Cholet",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2026-11-07T15:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-11-07",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52f650e1-a547-11f1-9ba1-c58262ca47d6",
+"home": "Espoirs Roanne",
+"away": "Espoirs Saint-Quentin",
+"status": "scheduled",
+"date": "2026-11-07",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52e823aa-a547-11f1-9688-c58262ca47d6",
+"home": "Espoirs Boulazac",
+"away": "Espoirs Gravelines-Dunkerque",
+"status": "scheduled",
+"date": "2026-11-07",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52d7b708-a547-11f1-9c22-c58262ca47d6",
 "home": "Espoirs Paris",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2026-10-31T16:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52b91126-a547-11f1-a265-c58262ca47d6",
-"home": "Espoirs Dijon",
-"away": "Espoirs Nancy",
-"status": "scheduled",
-"date": "2026-10-31T16:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5275be72-a547-11f1-89e0-c58262ca47d6",
-"home": "Espoirs Saint-Quentin",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-10-31T16:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52647834-a547-11f1-b39e-c58262ca47d6",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Nanterre",
-"status": "scheduled",
-"date": "2026-10-31T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-10-31",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52c5e9c7-a547-11f1-9e90-c58262ca47d6",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-10-31T13:30:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-10-31",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52b91126-a547-11f1-a265-c58262ca47d6",
+"home": "Espoirs Dijon",
+"away": "Espoirs Nancy",
+"status": "scheduled",
+"date": "2026-10-31",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52a95515-a547-11f1-a68c-c58262ca47d6",
 "home": "Espoirs Limoges",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-10-31T13:30:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-10-31",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52998bf2-a547-11f1-95f2-c58262ca47d6",
 "home": "Espoirs Le Mans",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-10-31T13:30:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-10-31",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5285bf51-a547-11f1-ade3-c58262ca47d6",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2026-10-31T13:30:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-10-31",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5275be72-a547-11f1-89e0-c58262ca47d6",
+"home": "Espoirs Saint-Quentin",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-31",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52647834-a547-11f1-b39e-c58262ca47d6",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Nanterre",
+"status": "scheduled",
+"date": "2026-10-31",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_525624dc-a547-11f1-9572-c58262ca47d6",
 "home": "Espoirs Lyon-Villeurbanne",
 "away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2026-10-24T15:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-10-24",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_52473f19-a547-11f1-b27b-c58262ca47d6",
 "home": "Espoirs Roanne",
 "away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-10-24T15:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-10-24",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5238d7d7-a547-11f1-a68c-c58262ca47d6",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Cholet",
 "status": "scheduled",
-"date": "2026-10-24T15:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-10-24",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_522904c0-a547-11f1-b6b6-c58262ca47d6",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2026-10-24T15:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_520d0dae-a547-11f1-9377-c58262ca47d6",
-"home": "Espoirs Pau-Lacq-Orthez",
-"away": "Espoirs Limoges",
-"status": "scheduled",
-"date": "2026-10-24T15:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-10-24",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_521ba76b-a547-11f1-8dd0-c58262ca47d6",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-10-24T12:30:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-10-24",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_520d0dae-a547-11f1-9377-c58262ca47d6",
+"home": "Espoirs Pau-Lacq-Orthez",
+"away": "Espoirs Limoges",
+"status": "scheduled",
+"date": "2026-10-24",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51fe1fe7-a547-11f1-b9e7-c58262ca47d6",
 "home": "Espoirs Bourg-en-Bresse",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-10-24T12:30:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-10-24",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51f014a9-a547-11f1-bff6-c58262ca47d6",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2026-10-24T12:30:00.000Z",
-"venue": "Le Palio (Boulazac)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51d11149-a547-11f1-be67-c58262ca47d6",
-"home": "Espoirs Paris",
-"away": "Espoirs Boulazac",
-"status": "scheduled",
-"date": "2026-10-17T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51c1a1aa-a547-11f1-965d-c58262ca47d6",
-"home": "Espoirs Le Mans",
-"away": "Espoirs Bourg-en-Bresse",
-"status": "scheduled",
-"date": "2026-10-17T15:00:00.000Z",
-"venue": "Antares (Le Mans)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51af8e4e-a547-11f1-9a0f-c58262ca47d6",
-"home": "Espoirs Strasbourg",
-"away": "Espoirs Roanne",
-"status": "scheduled",
-"date": "2026-10-17T15:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_519fabff-a547-11f1-91cf-c58262ca47d6",
-"home": "Espoirs Gravelines-Dunkerque",
-"away": "Espoirs Dijon",
-"status": "scheduled",
-"date": "2026-10-17T15:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51716522-a547-11f1-abe6-c58262ca47d6",
-"home": "Espoirs Limoges",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-10-17T15:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-10-24",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51dfd7af-a547-11f1-86a5-c58262ca47d6",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2026-10-17T12:30:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-10-17",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51d11149-a547-11f1-be67-c58262ca47d6",
+"home": "Espoirs Paris",
+"away": "Espoirs Boulazac",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51c1a1aa-a547-11f1-965d-c58262ca47d6",
+"home": "Espoirs Le Mans",
+"away": "Espoirs Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51af8e4e-a547-11f1-9a0f-c58262ca47d6",
+"home": "Espoirs Strasbourg",
+"away": "Espoirs Roanne",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_519fabff-a547-11f1-91cf-c58262ca47d6",
+"home": "Espoirs Gravelines-Dunkerque",
+"away": "Espoirs Dijon",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_519104e6-a547-11f1-97ed-c58262ca47d6",
 "home": "Espoirs Cholet",
 "away": "Espoirs Chalon/Saône",
 "status": "scheduled",
-"date": "2026-10-17T12:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-10-17",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51809c12-a547-11f1-8481-c58262ca47d6",
 "home": "Espoirs Nancy",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2026-10-17T12:30:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-10-17",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51716522-a547-11f1-abe6-c58262ca47d6",
+"home": "Espoirs Limoges",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5137442b-a547-11f1-ab5e-c58262ca47d6",
 "home": "Espoirs Paris",
 "away": "Espoirs Strasbourg",
 "status": "scheduled",
-"date": "2026-10-10T15:00:00.000Z",
-"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51172089-a547-11f1-bede-c58262ca47d6",
-"home": "Espoirs Lyon-Villeurbanne",
-"away": "Espoirs Roanne",
-"status": "scheduled",
-"date": "2026-10-10T15:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5106f664-a547-11f1-bf8b-c58262ca47d6",
-"home": "Espoirs Saint-Quentin",
-"away": "Espoirs Le Mans",
-"status": "scheduled",
-"date": "2026-10-10T15:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50e8ac92-a547-11f1-b738-c58262ca47d6",
-"home": "Espoirs Boulazac",
-"away": "Espoirs Bourg-en-Bresse",
-"status": "scheduled",
-"date": "2026-10-10T15:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50d9a7d9-a547-11f1-beee-c58262ca47d6",
-"home": "Espoirs Dijon",
-"away": "Espoirs Limoges",
-"status": "scheduled",
-"date": "2026-10-10T15:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-10-10",
+"venue": "Athletica - Complexe Sportif Luc Abalo (Eaubonne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5126552c-a547-11f1-aa7d-c58262ca47d6",
 "home": "Espoirs Nanterre",
 "away": "Espoirs Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-10-10T12:30:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-10-10",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50cb9eb2-a547-11f1-8465-c58262ca47d6",
-"home": "Espoirs Chalon/Saône",
-"away": "Espoirs Nancy",
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_51172089-a547-11f1-bede-c58262ca47d6",
+"home": "Espoirs Lyon-Villeurbanne",
+"away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-10-10T12:30:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-10-10",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5106f664-a547-11f1-bf8b-c58262ca47d6",
+"home": "Espoirs Saint-Quentin",
+"away": "Espoirs Le Mans",
+"status": "scheduled",
+"date": "2026-10-10",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50f82baf-a547-11f1-8b11-c58262ca47d6",
 "home": "Espoirs Cholet",
 "away": "Espoirs Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-10-10T12:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-10-10",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_504b430e-a547-11f1-93dd-c58262ca47d6",
-"home": "Espoirs Gravelines-Dunkerque",
-"away": "Espoirs Lyon-Villeurbanne",
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50e8ac92-a547-11f1-b738-c58262ca47d6",
+"home": "Espoirs Boulazac",
+"away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-10-03T16:00:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-10-10",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50934c0d-a547-11f1-9ab1-c58262ca47d6",
-"home": "Espoirs Le Mans",
-"away": "Espoirs Paris",
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50d9a7d9-a547-11f1-beee-c58262ca47d6",
+"home": "Espoirs Dijon",
+"away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-10-03T15:00:00.000Z",
-"venue": "Salle Robert Jarry (Le Mans)"
+"date": "2026-10-10",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5084bbfb-a547-11f1-9580-c58262ca47d6",
-"home": "Espoirs Bourg-en-Bresse",
-"away": "Espoirs Chalon/Saône",
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50cb9eb2-a547-11f1-8465-c58262ca47d6",
+"home": "Espoirs Chalon/Saône",
+"away": "Espoirs Nancy",
 "status": "scheduled",
-"date": "2026-10-03T15:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-10-10",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50b76c66-a547-11f1-8bde-c58262ca47d6",
 "home": "Espoirs Strasbourg",
 "away": "Espoirs Boulazac",
 "status": "scheduled",
-"date": "2026-10-03T12:30:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-10-03",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50a2b9e5-a547-11f1-b234-c58262ca47d6",
 "home": "Espoirs Limoges",
 "away": "Espoirs Saint-Quentin",
 "status": "scheduled",
-"date": "2026-10-03T12:30:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-10-03",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_505a0568-a547-11f1-9fc5-c58262ca47d6",
-"home": "Espoirs Nancy",
-"away": "Espoirs Cholet",
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50934c0d-a547-11f1-9ab1-c58262ca47d6",
+"home": "Espoirs Le Mans",
+"away": "Espoirs Paris",
 "status": "scheduled",
-"date": "2026-10-03T12:30:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-10-03",
+"venue": "Salle Robert Jarry (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_5084bbfb-a547-11f1-9580-c58262ca47d6",
+"home": "Espoirs Bourg-en-Bresse",
+"away": "Espoirs Chalon/Saône",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_506855c2-a547-11f1-bbfa-c58262ca47d6",
 "home": "Espoirs Pau-Lacq-Orthez",
 "away": "Espoirs Dijon",
 "status": "scheduled",
-"date": "2026-10-03T12:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-10-03",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_505a0568-a547-11f1-9fc5-c58262ca47d6",
+"home": "Espoirs Nancy",
+"away": "Espoirs Cholet",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_504b430e-a547-11f1-93dd-c58262ca47d6",
+"home": "Espoirs Gravelines-Dunkerque",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_50764c07-a547-11f1-830e-c58262ca47d6",
 "home": "Espoirs Roanne",
 "away": "Espoirs Nanterre",
 "status": "scheduled",
-"date": "2026-10-02T13:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_501c7050-a547-11f1-b1fd-c58262ca47d6",
-"home": "Espoirs Nancy",
-"away": "Espoirs Paris",
-"status": "scheduled",
-"date": "2026-09-26T15:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4fcfd617-a547-11f1-9cac-c58262ca47d6",
-"home": "Espoirs Dijon",
-"away": "Espoirs Strasbourg",
-"status": "scheduled",
-"date": "2026-09-26T15:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4fc0070a-a547-11f1-829d-c58262ca47d6",
-"home": "Espoirs Cholet",
-"away": "Espoirs Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-09-26T15:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
-},
-{
-"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_502cea10-a547-11f1-b8de-c58262ca47d6",
-"home": "Espoirs Nanterre",
-"away": "Espoirs Pau-Lacq-Orthez",
-"status": "scheduled",
-"date": "2026-09-26T14:30:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-10-02",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_503b5e9f-a547-11f1-9b3a-c58262ca47d6",
 "home": "Espoirs Boulazac",
 "away": "Espoirs Roanne",
 "status": "scheduled",
-"date": "2026-09-26T12:30:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-09-26",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_502cea10-a547-11f1-b8de-c58262ca47d6",
+"home": "Espoirs Nanterre",
+"away": "Espoirs Pau-Lacq-Orthez",
+"status": "scheduled",
+"date": "2026-09-26",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_501c7050-a547-11f1-b1fd-c58262ca47d6",
+"home": "Espoirs Nancy",
+"away": "Espoirs Paris",
+"status": "scheduled",
+"date": "2026-09-26",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_500bae09-a547-11f1-b636-c58262ca47d6",
 "home": "Espoirs Saint-Quentin",
 "away": "Espoirs Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-09-26T12:30:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-09-26",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4ff38b4b-a547-11f1-8b23-c58262ca47d6",
 "home": "Espoirs Gravelines-Dunkerque",
 "away": "Espoirs Le Mans",
 "status": "scheduled",
-"date": "2026-09-26T12:30:00.000Z",
-"venue": "Salle Norbert Merlen (Gravelines)"
+"date": "2026-09-26",
+"venue": "Salle Norbert Merlen (Gravelines)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4fcfd617-a547-11f1-9cac-c58262ca47d6",
+"home": "Espoirs Dijon",
+"away": "Espoirs Strasbourg",
+"status": "scheduled",
+"date": "2026-09-26",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4fc0070a-a547-11f1-829d-c58262ca47d6",
+"home": "Espoirs Cholet",
+"away": "Espoirs Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-09-26",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "e8a1d34d-6a4c-11f1-9f56-db2de611af49_4f94c94c-a547-11f1-adf7-c58262ca47d6",
 "home": "Espoirs Chalon/Saône",
 "away": "Espoirs Limoges",
 "status": "scheduled",
-"date": "2026-09-26T12:30:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-09-26",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 }
 ]
 }

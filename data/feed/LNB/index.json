@@ -2,1943 +2,2911 @@
 "code": "LNB",
 "label": "Betclic ÉLITE",
 "adapter": "lnb",
-"updated": "2026-09-18T06:35:40.629071+00:00",
+"updated": "2026-09-18T16:35:15.422239+00:00",
 "games": [
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e7121516-a543-11f1-92c9-4d8da76af24d",
 "home": "Pau-Lacq-Orthez",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-05-09",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e700f6cd-a543-11f1-a7ff-4d8da76af24d",
 "home": "Paris",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-05-09",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6f09716-a543-11f1-8e9c-4d8da76af24d",
 "home": "Limoges",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-05-09",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6e13069-a543-11f1-82a0-4d8da76af24d",
 "home": "Le Mans",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-05-09",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6d013ea-a543-11f1-9da6-4d8da76af24d",
 "home": "Boulazac",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-05-09",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_43493057-a544-11f1-ba6b-3f509ef44449",
 "home": "Lyon-Villeurbanne",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-05-09",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_433981fb-a544-11f1-a9ed-3f509ef44449",
 "home": "Strasbourg",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-05-09",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_43061b66-a544-11f1-a9dc-3f509ef44449",
 "home": "Roanne",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-05-09T18:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-05-09",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6b3a1aa-a543-11f1-9375-4d8da76af24d",
 "home": "Nanterre",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-05-01",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6a454ea-a543-11f1-a0d1-4d8da76af24d",
 "home": "Nancy",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-05-01",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6952991-a543-11f1-88a1-4d8da76af24d",
 "home": "Limoges",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-05-01",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6860859-a543-11f1-89e5-4d8da76af24d",
 "home": "Gravelines-Dunkerque",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-05-01",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e676fbec-a543-11f1-82a9-4d8da76af24d",
 "home": "Cholet",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-05-01",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6679cd9-a543-11f1-b602-4d8da76af24d",
 "home": "Chalon/Saône",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-05-01",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6579497-a543-11f1-945a-4d8da76af24d",
 "home": "Bourg-en-Bresse",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-05-01",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e642791c-a543-11f1-98c8-4d8da76af24d",
 "home": "Boulazac",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-05-01T18:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-05-01",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e633110b-a543-11f1-b142-4d8da76af24d",
 "home": "Lyon-Villeurbanne",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-04-27",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e6223ad4-a543-11f1-8dc7-4d8da76af24d",
 "home": "Strasbourg",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-04-27",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e61351c3-a543-11f1-97ac-4d8da76af24d",
 "home": "Pau-Lacq-Orthez",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-04-27",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e60397ac-a543-11f1-afe6-4d8da76af24d",
 "home": "Paris",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-04-27",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e5f3fd22-a543-11f1-aa71-4d8da76af24d",
 "home": "Saint-Quentin",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-04-27",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e5e265f2-a543-11f1-b8e3-4d8da76af24d",
 "home": "Le Mans",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-04-27",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e5d1a6fe-a543-11f1-aba0-4d8da76af24d",
 "home": "Dijon",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-04-27",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e5c0e17e-a543-11f1-bce0-4d8da76af24d",
 "home": "Bourg-en-Bresse",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-04-27T18:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-04-27",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e5ae4c98-a543-11f1-ad16-4d8da76af24d",
 "home": "Roanne",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-04-17",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e59fdece-a543-11f1-9967-4d8da76af24d",
 "home": "Nanterre",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-04-17",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e58cb913-a543-11f1-be1d-4d8da76af24d",
 "home": "Nancy",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-04-17",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e57d4975-a543-11f1-92fb-4d8da76af24d",
 "home": "Limoges",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-04-17",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e56c625f-a543-11f1-b53c-4d8da76af24d",
 "home": "Gravelines-Dunkerque",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-04-17",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e55b2244-a543-11f1-9720-4d8da76af24d",
 "home": "Dijon",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-04-17",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e54bdb35-a543-11f1-abf7-4d8da76af24d",
 "home": "Cholet",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-04-17",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e53b804a-a543-11f1-8002-4d8da76af24d",
 "home": "Chalon/Saône",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-04-17",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e52c8126-a543-11f1-8e76-4d8da76af24d",
 "home": "Lyon-Villeurbanne",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-04-10",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e51a9385-a543-11f1-8a2b-4d8da76af24d",
 "home": "Strasbourg",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-04-10",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e50c0691-a543-11f1-9eb0-4d8da76af24d",
 "home": "Pau-Lacq-Orthez",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-04-10",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4fbfd92-a543-11f1-ba36-4d8da76af24d",
 "home": "Paris",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-04-10",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4ebb3ce-a543-11f1-996d-4d8da76af24d",
 "home": "Saint-Quentin",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-04-10",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4da748c-a543-11f1-8ae4-4d8da76af24d",
 "home": "Le Mans",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-04-10",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4cb0340-a543-11f1-ad42-4d8da76af24d",
 "home": "Bourg-en-Bresse",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-04-10",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4b89c13-a543-11f1-a5e2-4d8da76af24d",
 "home": "Boulazac",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-04-10",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4a5572e-a543-11f1-888a-4d8da76af24d",
 "home": "Roanne",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-04-03",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e494edb0-a543-11f1-882e-4d8da76af24d",
 "home": "Paris",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-04-03",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e484eade-a543-11f1-ba3f-4d8da76af24d",
 "home": "Nanterre",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-04-03",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e47003b1-a543-11f1-a446-4d8da76af24d",
 "home": "Nancy",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-04-03",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e4614ed9-a543-11f1-a502-4d8da76af24d",
 "home": "Gravelines-Dunkerque",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-04-03",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e44f1084-a543-11f1-95f0-4d8da76af24d",
 "home": "Dijon",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-04-03",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e43f4a66-a543-11f1-8ef4-4d8da76af24d",
 "home": "Cholet",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-04-03",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e42f571a-a543-11f1-9d35-4d8da76af24d",
 "home": "Chalon/Saône",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-04-03",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e41f4960-a543-11f1-ae29-4d8da76af24d",
 "home": "Lyon-Villeurbanne",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-03-27",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e40e0551-a543-11f1-a449-4d8da76af24d",
 "home": "Strasbourg",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-27",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3fbd5bf-a543-11f1-864b-4d8da76af24d",
 "home": "Nancy",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-03-27",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3ec9ba1-a543-11f1-9c44-4d8da76af24d",
 "home": "Saint-Quentin",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-27",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3dc61ed-a543-11f1-b5b4-4d8da76af24d",
 "home": "Limoges",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-03-27",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3ca56c0-a543-11f1-8857-4d8da76af24d",
 "home": "Le Mans",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-03-27",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3b9b0fd-a543-11f1-9aa7-4d8da76af24d",
 "home": "Gravelines-Dunkerque",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-03-27",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3a93a77-a543-11f1-aa09-4d8da76af24d",
 "home": "Bourg-en-Bresse",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-03-27",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e398b1d0-a543-11f1-84c6-4d8da76af24d",
 "home": "Roanne",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-03-20",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e38857e9-a543-11f1-b684-4d8da76af24d",
 "home": "Pau-Lacq-Orthez",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-03-20",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e378530c-a543-11f1-8787-4d8da76af24d",
 "home": "Paris",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-03-20",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e36652ae-a543-11f1-b42a-4d8da76af24d",
 "home": "Nanterre",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-03-20",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3551a3b-a543-11f1-aaf6-4d8da76af24d",
 "home": "Saint-Quentin",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-20",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e343d892-a543-11f1-b635-4d8da76af24d",
 "home": "Dijon",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-03-20",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e333abdc-a543-11f1-9de7-4d8da76af24d",
 "home": "Chalon/Saône",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-03-20",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e322f1eb-a543-11f1-af5f-4d8da76af24d",
 "home": "Boulazac",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-03-20",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e3139290-a543-11f1-af9c-4d8da76af24d",
 "home": "Lyon-Villeurbanne",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-03-13",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e302ebee-a543-11f1-a8bd-4d8da76af24d",
 "home": "Strasbourg",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-13",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e2f394d4-a543-11f1-b9ea-4d8da76af24d",
 "home": "Nancy",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-03-13",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e2e25627-a543-11f1-9b7a-4d8da76af24d",
 "home": "Limoges",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-03-13",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e2d114be-a543-11f1-ab36-4d8da76af24d",
 "home": "Gravelines-Dunkerque",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-03-13",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e2bd629a-a543-11f1-bc88-4d8da76af24d",
 "home": "Cholet",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-03-13",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e2abb9f8-a543-11f1-9561-4d8da76af24d",
 "home": "Chalon/Saône",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-03-13",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e29af5b7-a543-11f1-ad3f-4d8da76af24d",
 "home": "Bourg-en-Bresse",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-03-13T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-03-13",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e28975ba-a543-11f1-9374-4d8da76af24d",
 "home": "Strasbourg",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-03-06",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e274271b-a543-11f1-8bec-4d8da76af24d",
 "home": "Roanne",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-03-06",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e263c57c-a543-11f1-a42c-4d8da76af24d",
 "home": "Pau-Lacq-Orthez",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-03-06",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e24dfafc-a543-11f1-abb4-4d8da76af24d",
 "home": "Nanterre",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-03-06",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e23d3af4-a543-11f1-a2a5-4d8da76af24d",
 "home": "Saint-Quentin",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-03-06",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e22b2a0c-a543-11f1-85d3-4d8da76af24d",
 "home": "Le Mans",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-03-06",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e21951db-a543-11f1-8752-4d8da76af24d",
 "home": "Dijon",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-03-06",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e20a6836-a543-11f1-b45f-4d8da76af24d",
 "home": "Boulazac",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-03-06T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-03-06",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e1d1ef94-a543-11f1-9a39-4d8da76af24d",
 "home": "Lyon-Villeurbanne",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-02-13",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e19ed8e0-a543-11f1-896d-4d8da76af24d",
 "home": "Roanne",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-02-13",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d0ab8892-a543-11f1-abd6-09f845b2d984",
 "home": "Paris",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-02-13",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d09e025c-a543-11f1-b96f-09f845b2d984",
 "home": "Nancy",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-02-13",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d09044cb-a543-11f1-9602-09f845b2d984",
 "home": "Limoges",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-02-13",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d07ec199-a543-11f1-9287-09f845b2d984",
 "home": "Cholet",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-02-13",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d070c06f-a543-11f1-a988-09f845b2d984",
 "home": "Chalon/Saône",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-02-13",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d062ac3d-a543-11f1-8038-09f845b2d984",
 "home": "Bourg-en-Bresse",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-02-13",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d0537092-a543-11f1-86f2-09f845b2d984",
 "home": "Lyon-Villeurbanne",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-02-06",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d04539c3-a543-11f1-8012-09f845b2d984",
 "home": "Paris",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-02-06",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d03890a0-a543-11f1-8e7d-09f845b2d984",
 "home": "Nanterre",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-02-06",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d029ac89-a543-11f1-94e4-09f845b2d984",
 "home": "Saint-Quentin",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-02-06",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d01bace9-a543-11f1-884f-09f845b2d984",
 "home": "Le Mans",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-02-06",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_d00d045c-a543-11f1-86af-09f845b2d984",
 "home": "Gravelines-Dunkerque",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-02-06",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cffefffe-a543-11f1-9460-09f845b2d984",
 "home": "Dijon",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-02-06",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cff2c785-a543-11f1-b8ba-09f845b2d984",
 "home": "Boulazac",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-02-06",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cfe5aaef-a543-11f1-a84d-09f845b2d984",
 "home": "Strasbourg",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-01-30",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cfd8da40-a543-11f1-a82d-09f845b2d984",
 "home": "Roanne",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-01-30",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cfcb1c0a-a543-11f1-9016-09f845b2d984",
 "home": "Pau-Lacq-Orthez",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-30",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cfb9dea9-a543-11f1-b0c4-09f845b2d984",
 "home": "Limoges",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-01-30",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cfab7728-a543-11f1-ac4c-09f845b2d984",
 "home": "Cholet",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-30",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf9ec380-a543-11f1-bc8d-09f845b2d984",
 "home": "Chalon/Saône",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-01-30",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf9187f9-a543-11f1-a3b2-09f845b2d984",
 "home": "Bourg-en-Bresse",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-01-30",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf7f7010-a543-11f1-ac7a-09f845b2d984",
 "home": "Boulazac",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-01-30",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf709233-a543-11f1-ab77-09f845b2d984",
 "home": "Lyon-Villeurbanne",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2027-01-23",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf62b704-a543-11f1-a693-09f845b2d984",
 "home": "Nanterre",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-01-23",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf54c022-a543-11f1-9bb9-09f845b2d984",
 "home": "Nancy",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-01-23",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf465cd8-a543-11f1-b59e-09f845b2d984",
 "home": "Saint-Quentin",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-01-23",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf38b94e-a543-11f1-ad8b-09f845b2d984",
 "home": "Le Mans",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-01-23",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf27d012-a543-11f1-8be8-09f845b2d984",
 "home": "Gravelines-Dunkerque",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2027-01-23",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf18f099-a543-11f1-8f78-09f845b2d984",
 "home": "Dijon",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-01-23",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cf097be9-a543-11f1-9bb9-09f845b2d984",
 "home": "Bourg-en-Bresse",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2027-01-23",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cef9447b-a543-11f1-80a6-09f845b2d984",
 "home": "Strasbourg",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2027-01-16",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ceed9e3a-a543-11f1-af99-09f845b2d984",
 "home": "Roanne",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2027-01-16",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cedf502b-a543-11f1-be76-09f845b2d984",
 "home": "Pau-Lacq-Orthez",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-16",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ced32a71-a543-11f1-9163-09f845b2d984",
 "home": "Paris",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2027-01-16",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cec48f89-a543-11f1-becd-09f845b2d984",
 "home": "Limoges",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-01-16",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ceb7ff9f-a543-11f1-81f6-09f845b2d984",
 "home": "Le Mans",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2027-01-16",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cea91c02-a543-11f1-8520-09f845b2d984",
 "home": "Cholet",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-16",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce9b1d9d-a543-11f1-836c-09f845b2d984",
 "home": "Chalon/Saône",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2027-01-16",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce8936fd-a543-11f1-a93f-09f845b2d984",
 "home": "Pau-Lacq-Orthez",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2027-01-09",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce759fd1-a543-11f1-8aed-09f845b2d984",
 "home": "Nanterre",
 "away": "Paris",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2027-01-09",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce638b10-a543-11f1-8ef9-09f845b2d984",
 "home": "Nancy",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2027-01-09",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce51729e-a543-11f1-a4c0-09f845b2d984",
 "home": "Saint-Quentin",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2027-01-09",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce3f127c-a543-11f1-9659-09f845b2d984",
 "home": "Limoges",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2027-01-09",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce2ee956-a543-11f1-a167-09f845b2d984",
 "home": "Dijon",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2027-01-09",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce2021db-a543-11f1-af25-09f845b2d984",
 "home": "Cholet",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2027-01-09",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce1199a9-a543-11f1-bb68-09f845b2d984",
 "home": "Boulazac",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2027-01-09T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2027-01-09",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ce028ef2-a543-11f1-8606-09f845b2d984",
 "home": "Lyon-Villeurbanne",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-12-27",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cdf45869-a543-11f1-9b68-09f845b2d984",
 "home": "Strasbourg",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-12-27",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cde4c77a-a543-11f1-a48e-09f845b2d984",
 "home": "Roanne",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-12-27",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cdd3a5ca-a543-11f1-b7d9-09f845b2d984",
 "home": "Paris",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-12-27",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cdc51f04-a543-11f1-a32c-09f845b2d984",
 "home": "Le Mans",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-12-27",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cdb5f229-a543-11f1-9d07-09f845b2d984",
 "home": "Gravelines-Dunkerque",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-12-27",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cda74a25-a543-11f1-8c78-09f845b2d984",
 "home": "Bourg-en-Bresse",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-12-27",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd98e464-a543-11f1-93b8-09f845b2d984",
 "home": "Boulazac",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-12-27T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-12-27",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd89a552-a543-11f1-b2ba-09f845b2d984",
 "home": "Pau-Lacq-Orthez",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-12-22",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd792e2c-a543-11f1-9fae-09f845b2d984",
 "home": "Nanterre",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-12-22",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd69c1cf-a543-11f1-856a-09f845b2d984",
 "home": "Nancy",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-12-22",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd59a4fb-a543-11f1-9852-09f845b2d984",
 "home": "Saint-Quentin",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-12-22",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd4b6314-a543-11f1-9d6c-09f845b2d984",
 "home": "Limoges",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-12-22",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd3b5b6a-a543-11f1-91f8-09f845b2d984",
 "home": "Dijon",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-12-22",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd2c39a4-a543-11f1-aa42-09f845b2d984",
 "home": "Cholet",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-12-22",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd1da933-a543-11f1-b631-09f845b2d984",
 "home": "Chalon/Saône",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-12-22",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd10a8ee-a543-11f1-a6d6-09f845b2d984",
 "home": "Lyon-Villeurbanne",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-12-19",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cd0154cc-a543-11f1-933e-09f845b2d984",
 "home": "Roanne",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-12-19",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ccf4535e-a543-11f1-ae30-09f845b2d984",
 "home": "Pau-Lacq-Orthez",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-12-19",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cce4ff3d-a543-11f1-8918-09f845b2d984",
 "home": "Paris",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-12-19",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ccd5ed18-a543-11f1-b41e-09f845b2d984",
 "home": "Le Mans",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-12-19",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ccc7e038-a543-11f1-80eb-09f845b2d984",
 "home": "Gravelines-Dunkerque",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-12-19",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_ccb5c8ab-a543-11f1-bed0-09f845b2d984",
 "home": "Bourg-en-Bresse",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-12-19",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cca7c75e-a543-11f1-867c-09f845b2d984",
 "home": "Boulazac",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-12-19",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc9747fa-a543-11f1-b0dc-09f845b2d984",
 "home": "Lyon-Villeurbanne",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-12-12",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc88c75b-a543-11f1-bd34-09f845b2d984",
 "home": "Strasbourg",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-12-12",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc789592-a543-11f1-8890-09f845b2d984",
 "home": "Roanne",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-12-12",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc6a93e1-a543-11f1-9c4d-09f845b2d984",
 "home": "Nanterre",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-12-12",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc5be7fa-a543-11f1-aea4-09f845b2d984",
 "home": "Nancy",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-12-12",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc4de036-a543-11f1-9537-09f845b2d984",
 "home": "Dijon",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-12-12",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc3f3f3a-a543-11f1-8785-09f845b2d984",
 "home": "Cholet",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-12-12",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cc28a9c2-a543-11f1-851f-09f845b2d984",
 "home": "Chalon/Saône",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-12-12T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-12-12",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_cbfbbd4a-a543-11f1-b55e-09f845b2d984",
 "home": "Strasbourg",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-12-05",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0f4d2a5-a543-11f1-920b-b9515c5be892",
 "home": "Pau-Lacq-Orthez",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-12-05",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0e52016-a543-11f1-b7f4-b9515c5be892",
 "home": "Saint-Quentin",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-12-05",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0d68dca-a543-11f1-a02f-b9515c5be892",
 "home": "Limoges",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-12-05",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0c886e2-a543-11f1-a44e-b9515c5be892",
 "home": "Le Mans",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-12-05",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0baf1a6-a543-11f1-9c31-b9515c5be892",
 "home": "Gravelines-Dunkerque",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-12-05",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0ad9d30-a543-11f1-bc9a-b9515c5be892",
 "home": "Bourg-en-Bresse",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-12-05",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a09f8a9a-a543-11f1-9319-b9515c5be892",
 "home": "Boulazac",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-12-05",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0924e49-a543-11f1-85ec-b9515c5be892",
 "home": "Lyon-Villeurbanne",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-11-21",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0844856-a543-11f1-9532-b9515c5be892",
 "home": "Roanne",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-11-21",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a076bd18-a543-11f1-bb36-b9515c5be892",
 "home": "Paris",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-11-21",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a069289b-a543-11f1-b5da-b9515c5be892",
 "home": "Nanterre",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-11-21",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0536fd3-a543-11f1-bf9b-b9515c5be892",
 "home": "Nancy",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-11-21",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a04766e9-a543-11f1-8687-b9515c5be892",
 "home": "Dijon",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-11-21",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a0365f6e-a543-11f1-922c-b9515c5be892",
 "home": "Cholet",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-11-21",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a02a3e1b-a543-11f1-a6f6-b9515c5be892",
 "home": "Chalon/Saône",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-11-21",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a01cf3a2-a543-11f1-b674-b9515c5be892",
 "home": "Pau-Lacq-Orthez",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-11-14",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_a00c84fe-a543-11f1-bb52-b9515c5be892",
 "home": "Saint-Quentin",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-11-14",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9ffb5d19-a543-11f1-a52f-b9515c5be892",
 "home": "Limoges",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-11-14",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fef613d-a543-11f1-96b8-b9515c5be892",
 "home": "Le Mans",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-11-14",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fe1aaa5-a543-11f1-b2fb-b9515c5be892",
 "home": "Gravelines-Dunkerque",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-11-14",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fd482da-a543-11f1-967d-b9515c5be892",
 "home": "Dijon",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-11-14",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fc76f15-a543-11f1-9f30-b9515c5be892",
 "home": "Chalon/Saône",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-11-14",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fb92408-a543-11f1-bd0b-b9515c5be892",
 "home": "Bourg-en-Bresse",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-11-14T19:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-11-14",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9fa9e2af-a543-11f1-930a-b9515c5be892",
 "home": "Lyon-Villeurbanne",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-11-07",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f9a478e-a543-11f1-978d-b9515c5be892",
 "home": "Strasbourg",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-11-07",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f894072-a543-11f1-a6f1-b9515c5be892",
 "home": "Roanne",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-11-07",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f7cb851-a543-11f1-92c3-b9515c5be892",
 "home": "Paris",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-11-07",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f70ba26-a543-11f1-b414-b9515c5be892",
 "home": "Nanterre",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-11-07",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f62432f-a543-11f1-a15d-b9515c5be892",
 "home": "Nancy",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-11-07",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f532240-a543-11f1-b74c-b9515c5be892",
 "home": "Cholet",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-11-07",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f459d2d-a543-11f1-9905-b9515c5be892",
 "home": "Boulazac",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-11-07",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f267747-a543-11f1-bd77-b9515c5be892",
 "home": "Paris",
 "away": "Chalon/Saône",
 "status": "scheduled",
-"date": "2026-11-01T18:00:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-11-01",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f188e2c-a543-11f1-8862-b9515c5be892",
 "home": "Saint-Quentin",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-11-01T15:30:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9ed1a207-a543-11f1-8305-b9515c5be892",
-"home": "Bourg-en-Bresse",
-"away": "Nanterre",
-"status": "scheduled",
-"date": "2026-10-31T19:30:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-11-01",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f349605-a543-11f1-bbf9-b9515c5be892",
 "home": "Strasbourg",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-10-31T17:30:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-10-31",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9f0b813f-a543-11f1-a76a-b9515c5be892",
 "home": "Limoges",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-10-31T17:30:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-10-31",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9efd702d-a543-11f1-8936-b9515c5be892",
 "home": "Le Mans",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-10-31T17:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-10-31",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9eee142f-a543-11f1-9b0f-b9515c5be892",
 "home": "Gravelines-Dunkerque",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-10-31T17:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-10-31",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9ed1a207-a543-11f1-8305-b9515c5be892",
+"home": "Bourg-en-Bresse",
+"away": "Nanterre",
+"status": "scheduled",
+"date": "2026-10-31",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9edf0696-a543-11f1-a6a6-b9515c5be892",
 "home": "Dijon",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e9fd7c1-a543-11f1-be08-b9515c5be892",
-"home": "Pau-Lacq-Orthez",
-"away": "Limoges",
-"status": "scheduled",
-"date": "2026-10-25T18:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-10-30",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9ec3d972-a543-11f1-8822-b9515c5be892",
 "home": "Lyon-Villeurbanne",
 "away": "Nancy",
 "status": "scheduled",
-"date": "2026-10-25T15:30:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-10-25",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9eb3cbed-a543-11f1-a422-b9515c5be892",
 "home": "Roanne",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-10-25T15:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
+"date": "2026-10-25",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e9fd7c1-a543-11f1-be08-b9515c5be892",
+"home": "Pau-Lacq-Orthez",
+"away": "Limoges",
+"status": "scheduled",
+"date": "2026-10-25",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e91873e-a543-11f1-b4f3-b9515c5be892",
 "home": "Nanterre",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-10-24T18:30:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-10-24",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e7406a6-a543-11f1-82e0-b9515c5be892",
 "home": "Chalon/Saône",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-10-24T16:30:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-10-24",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e64ec51-a543-11f1-868f-b9515c5be892",
 "home": "Bourg-en-Bresse",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-10-24T16:00:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
+"date": "2026-10-24",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e56da5d-a543-11f1-a6f5-b9515c5be892",
 "home": "Boulazac",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-10-24T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-10-24",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e830acd-a543-11f1-b4eb-b9515c5be892",
 "home": "Saint-Quentin",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9dfda469-a543-11f1-9c4d-b9515c5be892",
-"home": "Le Mans",
-"away": "Bourg-en-Bresse",
-"status": "scheduled",
-"date": "2026-10-18T17:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-10-23",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e27ac2f-a543-11f1-9b1c-b9515c5be892",
 "home": "Paris",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-10-18T14:30:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-10-18",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9dfda469-a543-11f1-9c4d-b9515c5be892",
+"home": "Le Mans",
+"away": "Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-10-18",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9df03291-a543-11f1-a249-b9515c5be892",
 "home": "Gravelines-Dunkerque",
 "away": "Dijon",
 "status": "scheduled",
-"date": "2026-10-18T14:00:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e0bae68-a543-11f1-b9c0-b9515c5be892",
-"home": "Limoges",
-"away": "Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-10-17T18:30:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9de0ddbe-a543-11f1-9cf1-b9515c5be892",
-"home": "Cholet",
-"away": "Chalon/Saône",
-"status": "scheduled",
-"date": "2026-10-17T16:30:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-10-18",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e38400e-a543-11f1-b5df-b9515c5be892",
 "home": "Pau-Lacq-Orthez",
 "away": "Saint-Quentin",
 "status": "scheduled",
-"date": "2026-10-17T16:00:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
+"date": "2026-10-17",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e18f28e-a543-11f1-895d-b9515c5be892",
 "home": "Nancy",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-10-17T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-10-17",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e0bae68-a543-11f1-b9c0-b9515c5be892",
+"home": "Limoges",
+"away": "Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9de0ddbe-a543-11f1-9cf1-b9515c5be892",
+"home": "Cholet",
+"away": "Chalon/Saône",
+"status": "scheduled",
+"date": "2026-10-17",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9e47f0e5-a543-11f1-bab0-b9515c5be892",
 "home": "Strasbourg",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-10-16",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9dd24eb5-a543-11f1-8369-b9515c5be892",
 "home": "Lyon-Villeurbanne",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-10-11T17:00:00.000Z",
-"venue": "Astroballe (Villeurbanne)"
+"date": "2026-10-11",
+"venue": "Astroballe (Villeurbanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9dc5169c-a543-11f1-8a9e-b9515c5be892",
 "home": "Paris",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-10-11T14:30:00.000Z",
-"venue": "Adidas Arena (Paris)"
+"date": "2026-10-11",
+"venue": "Adidas Arena (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9da9c6dc-a543-11f1-b6d8-b9515c5be892",
 "home": "Saint-Quentin",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-10-11T14:00:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d73db07-a543-11f1-983a-b9515c5be892",
-"home": "Boulazac",
-"away": "Bourg-en-Bresse",
-"status": "scheduled",
-"date": "2026-10-10T18:30:00.000Z",
-"venue": "Le Palio (Boulazac)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d820490-a543-11f1-a078-b9515c5be892",
-"home": "Chalon/Saône",
-"away": "Nancy",
-"status": "scheduled",
-"date": "2026-10-10T16:30:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-10-11",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9db7c710-a543-11f1-b0b1-b9515c5be892",
 "home": "Nanterre",
 "away": "Gravelines-Dunkerque",
 "status": "scheduled",
-"date": "2026-10-10T16:00:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-10-10",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d8dd5bb-a543-11f1-a06f-b9515c5be892",
 "home": "Cholet",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-10-10T16:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-10-10",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d820490-a543-11f1-a078-b9515c5be892",
+"home": "Chalon/Saône",
+"away": "Nancy",
+"status": "scheduled",
+"date": "2026-10-10",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d73db07-a543-11f1-983a-b9515c5be892",
+"home": "Boulazac",
+"away": "Bourg-en-Bresse",
+"status": "scheduled",
+"date": "2026-10-10",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d9c2b8a-a543-11f1-82f3-b9515c5be892",
 "home": "Dijon",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-10-09",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d196005-a543-11f1-9c31-b9515c5be892",
 "home": "Le Mans",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-10-04T17:00:00.000Z",
-"venue": "Antares (Le Mans)"
+"date": "2026-10-04",
+"venue": "Antares (Le Mans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d0c328d-a543-11f1-9ab8-b9515c5be892",
 "home": "Gravelines-Dunkerque",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-10-04T14:30:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9cfdf254-a543-11f1-9cad-b9515c5be892",
-"home": "Bourg-en-Bresse",
-"away": "Chalon/Saône",
-"status": "scheduled",
-"date": "2026-10-03T18:30:00.000Z",
-"venue": "Ekinox (Bourg-en-Bresse)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d456e6e-a543-11f1-92b0-b9515c5be892",
-"home": "Pau-Lacq-Orthez",
-"away": "Dijon",
-"status": "scheduled",
-"date": "2026-10-03T16:30:00.000Z",
-"venue": "Palais des Sports de Pau (Pau)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d29edb2-a543-11f1-90e9-b9515c5be892",
-"home": "Limoges",
-"away": "Saint-Quentin",
-"status": "scheduled",
-"date": "2026-10-03T16:30:00.000Z",
-"venue": "Palais des Sports de Beaublanc (Limoges)"
+"date": "2026-10-04",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d637e72-a543-11f1-b8d4-b9515c5be892",
 "home": "Strasbourg",
 "away": "Boulazac",
 "status": "scheduled",
-"date": "2026-10-03T16:00:00.000Z",
-"venue": "Rhénus Sport (Strasbourg)"
+"date": "2026-10-03",
+"venue": "Rhénus Sport (Strasbourg)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d456e6e-a543-11f1-92b0-b9515c5be892",
+"home": "Pau-Lacq-Orthez",
+"away": "Dijon",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Palais des Sports de Pau (Pau)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d375dfb-a543-11f1-8f76-b9515c5be892",
 "home": "Nancy",
 "away": "Cholet",
 "status": "scheduled",
-"date": "2026-10-03T16:00:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-10-03",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d29edb2-a543-11f1-90e9-b9515c5be892",
+"home": "Limoges",
+"away": "Saint-Quentin",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Palais des Sports de Beaublanc (Limoges)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9cfdf254-a543-11f1-9cad-b9515c5be892",
+"home": "Bourg-en-Bresse",
+"away": "Chalon/Saône",
+"status": "scheduled",
+"date": "2026-10-03",
+"venue": "Ekinox (Bourg-en-Bresse)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9d5467e2-a543-11f1-9176-b9515c5be892",
 "home": "Roanne",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Halle André Vacheresse (Roanne)"
-},
-{
-"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_390be9fd-a542-11f1-8a78-5392b5a73941",
-"home": "Cholet",
-"away": "Lyon-Villeurbanne",
-"status": "scheduled",
-"date": "2026-09-27T17:00:00.000Z",
-"venue": "La Meilleraie (Cholet)"
+"date": "2026-10-02",
+"venue": "Halle André Vacheresse (Roanne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9c79420c-a543-11f1-aaad-b9515c5be892",
 "home": "Nancy",
 "away": "Paris",
 "status": "scheduled",
-"date": "2026-09-27T14:30:00.000Z",
-"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)"
+"date": "2026-09-27",
+"venue": "Palais des Sports J. Weille-Espace J.J. Eisenbach (Nancy)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_390be9fd-a542-11f1-8a78-5392b5a73941",
+"home": "Cholet",
+"away": "Lyon-Villeurbanne",
+"status": "scheduled",
+"date": "2026-09-27",
+"venue": "La Meilleraie (Cholet)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_9cf16dac-a543-11f1-9943-b9515c5be892",
 "home": "Nanterre",
 "away": "Pau-Lacq-Orthez",
 "status": "scheduled",
-"date": "2026-09-26T18:30:00.000Z",
-"venue": "Palais des Sports Maurice Thorez (Nanterre)"
+"date": "2026-09-26",
+"venue": "Palais des Sports Maurice Thorez (Nanterre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_393e3c55-a542-11f1-ab6f-5392b5a73941",
 "home": "Saint-Quentin",
 "away": "Bourg-en-Bresse",
 "status": "scheduled",
-"date": "2026-09-26T16:30:00.000Z",
-"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)"
+"date": "2026-09-26",
+"venue": "Palais des Sports Pierre Ratte (Saint-Quentin)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_392ea17d-a542-11f1-99ec-5392b5a73941",
 "home": "Gravelines-Dunkerque",
 "away": "Le Mans",
 "status": "scheduled",
-"date": "2026-09-26T16:30:00.000Z",
-"venue": "Stade des Flandres (Dunkerque)"
+"date": "2026-09-26",
+"venue": "Stade des Flandres (Dunkerque)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_38f632df-a542-11f1-854f-5392b5a73941",
 "home": "Chalon/Saône",
 "away": "Limoges",
 "status": "scheduled",
-"date": "2026-09-26T16:00:00.000Z",
-"venue": "Le Colisée (Chalon/Saône)"
+"date": "2026-09-26",
+"venue": "Le Colisée (Chalon/Saône)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_38c91f42-a542-11f1-aefc-5392b5a73941",
 "home": "Boulazac",
 "away": "Roanne",
 "status": "scheduled",
-"date": "2026-09-26T16:00:00.000Z",
-"venue": "Le Palio (Boulazac)"
+"date": "2026-09-26",
+"venue": "Le Palio (Boulazac)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_391e04b2-a542-11f1-96cf-5392b5a73941",
 "home": "Dijon",
 "away": "Strasbourg",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Palais des Sports J.M. Geoffroy (Dijon)"
+"date": "2026-09-25",
+"venue": "Palais des Sports J.M. Geoffroy (Dijon)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "f078d99b-6a42-11f1-a61d-93f597ed56e4_a0764a0e-a540-11f1-a70c-d59e3ec9c042",
 "home": "Paris",
 "away": "Nanterre",
 "status": "scheduled",
-"date": "2026-09-19T17:00:00.000Z",
-"venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)"
+"date": "2026-09-19",
+"venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "f078d99b-6a42-11f1-a61d-93f597ed56e4_0ebe66cb-a540-11f1-bf2c-bb90ad76ce3d",
 "home": "Roanne",
 "away": "Lyon-Villeurbanne",
 "status": "scheduled",
-"date": "2026-09-19T14:00:00.000Z",
-"venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)"
+"date": "2026-09-19",
+"venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 }
 ]
 }

@@ -2,3047 +2,4567 @@
 "code": "LNB2",
 "label": "ÉLITE 2",
 "adapter": "lnb",
-"updated": "2026-09-18T06:42:34.802054+00:00",
+"updated": "2026-09-18T16:35:16.662902+00:00",
 "games": [
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b14b5cc9-a546-11f1-bd7d-dd53ad0e9919",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2027-05-14",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b13d0a15-a546-11f1-acdf-dd53ad0e9919",
 "home": "Rouen",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-05-14",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b12fb5df-a546-11f1-9fe1-dd53ad0e9919",
 "home": "Levallois",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2027-05-14",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b121b7ae-a546-11f1-9b04-dd53ad0e9919",
 "home": "La Rochelle",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-05-14",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b115acda-a546-11f1-b1c1-dd53ad0e9919",
 "home": "Gries-Souffel",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-05-14",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b1035362-a546-11f1-92b4-dd53ad0e9919",
 "home": "Antibes",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-05-14",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0f6c6b3-a546-11f1-a9fc-dd53ad0e9919",
 "home": "Vichy",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2027-05-14",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0e8925c-a546-11f1-a0a7-dd53ad0e9919",
 "home": "Poitiers",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-05-14",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0d9b90e-a546-11f1-af24-dd53ad0e9919",
 "home": "Evreux",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-05-14",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0cb2109-a546-11f1-a97e-dd53ad0e9919",
 "home": "Denain",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-05-14T18:30:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-05-14",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0bd4442-a546-11f1-892e-dd53ad0e9919",
 "home": "Orléans",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-05-08T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-05-08",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0afbce0-a546-11f1-840b-dd53ad0e9919",
 "home": "Blois",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-05-08T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-05-08",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b09f0527-a546-11f1-8c5e-dd53ad0e9919",
 "home": "Fos-sur-Mer",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-05-07T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2027-05-07",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b091b71d-a546-11f1-80b2-dd53ad0e9919",
 "home": "Châlons-Reims",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-05-07",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b08115f5-a546-11f1-b41c-dd53ad0e9919",
 "home": "Aix-Maurienne",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-05-07",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b071437f-a546-11f1-9233-dd53ad0e9919",
 "home": "Le Havre",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-05-07",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b062e47c-a546-11f1-a386-dd53ad0e9919",
 "home": "Hyères-Toulon",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-05-07",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b05273a2-a546-11f1-8cc5-dd53ad0e9919",
 "home": "Caen",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-05-07",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b042da88-a546-11f1-b690-dd53ad0e9919",
 "home": "Nantes",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-05-07",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b03470ff-a546-11f1-97f4-dd53ad0e9919",
 "home": "Quimper",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-05-07T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0173ed0-a546-11f1-b1d1-dd53ad0e9919",
-"home": "Levallois",
-"away": "Caen",
-"status": "scheduled",
-"date": "2027-04-30T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b00889ff-a546-11f1-a213-dd53ad0e9919",
-"home": "Fos-sur-Mer",
-"away": "Aix-Maurienne",
-"status": "scheduled",
-"date": "2027-04-30T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_affa3362-a546-11f1-b0dc-dd53ad0e9919",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "Nantes",
-"status": "scheduled",
-"date": "2027-04-30T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afc36737-a546-11f1-a22f-dd53ad0e9919",
-"home": "Gries-Souffel",
-"away": "Blois",
-"status": "scheduled",
-"date": "2027-04-30T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afa75122-a546-11f1-be9d-dd53ad0e9919",
-"home": "Antibes",
-"away": "Vichy",
-"status": "scheduled",
-"date": "2027-04-30T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-05-07",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b02669c7-a546-11f1-b5d1-dd53ad0e9919",
 "home": "Quimper",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-04-30T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-04-30",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b0173ed0-a546-11f1-b1d1-dd53ad0e9919",
+"home": "Levallois",
+"away": "Caen",
+"status": "scheduled",
+"date": "2027-04-30",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_b00889ff-a546-11f1-a213-dd53ad0e9919",
+"home": "Fos-sur-Mer",
+"away": "Aix-Maurienne",
+"status": "scheduled",
+"date": "2027-04-30",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_affa3362-a546-11f1-b0dc-dd53ad0e9919",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "Nantes",
+"status": "scheduled",
+"date": "2027-04-30",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afed780b-a546-11f1-9ec2-dd53ad0e9919",
 "home": "Rouen",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-04-30T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-04-30",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afdec151-a546-11f1-942a-dd53ad0e9919",
 "home": "Poitiers",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-04-30T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-04-30",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afd18903-a546-11f1-b511-dd53ad0e9919",
 "home": "La Rochelle",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-04-30T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-04-30",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afc36737-a546-11f1-a22f-dd53ad0e9919",
+"home": "Gries-Souffel",
+"away": "Blois",
+"status": "scheduled",
+"date": "2027-04-30",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afb46b17-a546-11f1-99e4-dd53ad0e9919",
 "home": "Evreux",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-04-30T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-04-30",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_afa75122-a546-11f1-be9d-dd53ad0e9919",
+"home": "Antibes",
+"away": "Vichy",
+"status": "scheduled",
+"date": "2027-04-30",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af98ad3e-a546-11f1-bea2-dd53ad0e9919",
 "home": "Vichy",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-04-23T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af73378e-a546-11f1-80c3-dd53ad0e9919",
-"home": "Levallois",
-"away": "Quimper",
-"status": "scheduled",
-"date": "2027-04-23T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af3b91e1-a546-11f1-ade0-dd53ad0e9919",
-"home": "Antibes",
-"away": "Poitiers",
-"status": "scheduled",
-"date": "2027-04-23T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-04-23",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af80e228-a546-11f1-ba4b-dd53ad0e9919",
 "home": "Rouen",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-04-23",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af73378e-a546-11f1-80c3-dd53ad0e9919",
+"home": "Levallois",
+"away": "Quimper",
+"status": "scheduled",
+"date": "2027-04-23",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af65f734-a546-11f1-84ad-dd53ad0e9919",
 "home": "Hyères-Toulon",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-04-23",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af57fa99-a546-11f1-a5d0-dd53ad0e9919",
 "home": "Caen",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-04-23",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af4a1a20-a546-11f1-875e-dd53ad0e9919",
 "home": "Blois",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-04-23",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af3b91e1-a546-11f1-ade0-dd53ad0e9919",
+"home": "Antibes",
+"away": "Poitiers",
+"status": "scheduled",
+"date": "2027-04-23",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af2e4530-a546-11f1-b7ff-dd53ad0e9919",
 "home": "Châlons-Reims",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2027-04-23",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af1d1fb1-a546-11f1-9632-dd53ad0e9919",
 "home": "Le Havre",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-04-23",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_af0cd2ac-a546-11f1-9b99-dd53ad0e9919",
 "home": "Denain",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-04-23T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-04-23",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aefeb948-a546-11f1-9a14-dd53ad0e9919",
 "home": "Orléans",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-04-17T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-04-17",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aef0af09-a546-11f1-9e97-dd53ad0e9919",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-04-16T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aeabd3bc-a546-11f1-a61b-dd53ad0e9919",
-"home": "Fos-sur-Mer",
-"away": "Vichy",
-"status": "scheduled",
-"date": "2027-04-16T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae806e1e-a546-11f1-92ca-dd53ad0e9919",
-"home": "Gries-Souffel",
-"away": "Denain",
-"status": "scheduled",
-"date": "2027-04-16T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-04-16",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aee2d7d6-a546-11f1-96c3-dd53ad0e9919",
 "home": "Poitiers",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-04-16",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aed56f38-a546-11f1-84b4-dd53ad0e9919",
 "home": "Nantes",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-04-16",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aec72ea6-a546-11f1-83ef-dd53ad0e9919",
 "home": "La Rochelle",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-04-16",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aeb9367b-a546-11f1-ba19-dd53ad0e9919",
 "home": "Evreux",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-04-16",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_aeabd3bc-a546-11f1-a61b-dd53ad0e9919",
+"home": "Fos-sur-Mer",
+"away": "Vichy",
+"status": "scheduled",
+"date": "2027-04-16",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae9bc369-a546-11f1-aab6-dd53ad0e9919",
 "home": "Aix-Maurienne",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-04-16",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae8e36c0-a546-11f1-8d2f-dd53ad0e9919",
 "home": "Hyères-Toulon",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-04-16T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-04-16",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae806e1e-a546-11f1-92ca-dd53ad0e9919",
+"home": "Gries-Souffel",
+"away": "Denain",
+"status": "scheduled",
+"date": "2027-04-16",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae70dcf6-a546-11f1-b16c-dd53ad0e9919",
 "home": "Vichy",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-04-13T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae2606e2-a546-11f1-bcc3-dd53ad0e9919",
-"home": "Levallois",
-"away": "Nantes",
-"status": "scheduled",
-"date": "2027-04-13T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ade177b4-a546-11f1-b9fe-dd53ad0e9919",
-"home": "Antibes",
-"away": "Fos-sur-Mer",
-"status": "scheduled",
-"date": "2027-04-13T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-04-13",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae616619-a546-11f1-bd44-dd53ad0e9919",
 "home": "Rouen",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-04-13",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae52ec2e-a546-11f1-a68c-dd53ad0e9919",
 "home": "Châlons-Reims",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2027-04-13",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae43f864-a546-11f1-855a-dd53ad0e9919",
 "home": "Quimper",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-04-13",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae34b453-a546-11f1-8e2d-dd53ad0e9919",
 "home": "Poitiers",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-04-13",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae2606e2-a546-11f1-bcc3-dd53ad0e9919",
+"home": "Levallois",
+"away": "Nantes",
+"status": "scheduled",
+"date": "2027-04-13",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae10f5cc-a546-11f1-b10a-dd53ad0e9919",
 "home": "Denain",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-04-13",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ae002c8f-a546-11f1-9cce-dd53ad0e9919",
 "home": "Caen",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-04-13",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_adf01b3c-a546-11f1-bdc8-dd53ad0e9919",
 "home": "Blois",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-04-13T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-04-13",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ade177b4-a546-11f1-b9fe-dd53ad0e9919",
+"home": "Antibes",
+"away": "Fos-sur-Mer",
+"status": "scheduled",
+"date": "2027-04-13",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_add29a7b-a546-11f1-b11f-dd53ad0e9919",
 "home": "Blois",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-04-10T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-04-10",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_adc40e7d-a546-11f1-82cb-dd53ad0e9919",
 "home": "Fos-sur-Mer",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-04-09T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2027-04-09",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_adb7564d-a546-11f1-a07b-dd53ad0e9919",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-04-09T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_429a3e64-a546-11f1-a691-11b5d3a5668a",
-"home": "Gries-Souffel",
-"away": "Levallois",
-"status": "scheduled",
-"date": "2027-04-09T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-04-09",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_ad85df4a-a546-11f1-a2ca-dd53ad0e9919",
 "home": "Quimper",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-04-09",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_42e7c64c-a546-11f1-8511-11b5d3a5668a",
 "home": "Nantes",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-04-09",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_42d86326-a546-11f1-8a86-11b5d3a5668a",
 "home": "Aix-Maurienne",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-04-09",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_42c87e9d-a546-11f1-80cf-11b5d3a5668a",
 "home": "Le Havre",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-04-09",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_42b8c38b-a546-11f1-90cc-11b5d3a5668a",
 "home": "La Rochelle",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-04-09",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_42a87ce9-a546-11f1-8e3a-11b5d3a5668a",
 "home": "Hyères-Toulon",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-04-09T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-04-09",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_429a3e64-a546-11f1-a691-11b5d3a5668a",
+"home": "Gries-Souffel",
+"away": "Levallois",
+"status": "scheduled",
+"date": "2027-04-09",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_428a70cf-a546-11f1-bc81-11b5d3a5668a",
 "home": "Orléans",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-04-03T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-04-03",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_427a705c-a546-11f1-a468-11b5d3a5668a",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-04-02T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_425d2f10-a546-11f1-b8a4-11b5d3a5668a",
-"home": "Vichy",
-"away": "Levallois",
-"status": "scheduled",
-"date": "2027-04-02T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41f943e6-a546-11f1-b3b6-11b5d3a5668a",
-"home": "Antibes",
-"away": "Rouen",
-"status": "scheduled",
-"date": "2027-04-02T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-04-02",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_426b9530-a546-11f1-9ea1-11b5d3a5668a",
 "home": "Châlons-Reims",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-04-02",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_425d2f10-a546-11f1-b8a4-11b5d3a5668a",
+"home": "Vichy",
+"away": "Levallois",
+"status": "scheduled",
+"date": "2027-04-02",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_424ca4f9-a546-11f1-a2d5-11b5d3a5668a",
 "home": "Poitiers",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-04-02",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_423b0527-a546-11f1-96e1-11b5d3a5668a",
 "home": "Nantes",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-04-02",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_422a6645-a546-11f1-8eb7-11b5d3a5668a",
 "home": "Aix-Maurienne",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-04-02",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_421934a1-a546-11f1-b1d0-11b5d3a5668a",
 "home": "Evreux",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-04-02",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_4208a568-a546-11f1-ba86-11b5d3a5668a",
 "home": "Caen",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-04-02T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-04-02",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41f943e6-a546-11f1-b3b6-11b5d3a5668a",
+"home": "Antibes",
+"away": "Rouen",
+"status": "scheduled",
+"date": "2027-04-02",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41e9be53-a546-11f1-a1c2-11b5d3a5668a",
 "home": "Vichy",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-03-30T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2027-03-30",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41d9f44b-a546-11f1-afc5-11b5d3a5668a",
 "home": "Fos-sur-Mer",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-03-30T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_419b806e-a546-11f1-8e66-11b5d3a5668a",
-"home": "Levallois",
-"away": "Saint-Chamond-Andrezieux-Bouthéon",
-"status": "scheduled",
-"date": "2027-03-30T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_416cdbfb-a546-11f1-a6ec-11b5d3a5668a",
-"home": "Gries-Souffel",
-"away": "La Rochelle",
-"status": "scheduled",
-"date": "2027-03-30T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-03-30",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41c9aaf6-a546-11f1-8e8e-11b5d3a5668a",
 "home": "Rouen",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-03-30",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41ba96bb-a546-11f1-9859-11b5d3a5668a",
 "home": "Châlons-Reims",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2027-03-30",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_41aafc53-a546-11f1-9196-11b5d3a5668a",
 "home": "Quimper",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-03-30",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_419b806e-a546-11f1-8e66-11b5d3a5668a",
+"home": "Levallois",
+"away": "Saint-Chamond-Andrezieux-Bouthéon",
+"status": "scheduled",
+"date": "2027-03-30",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_418b96da-a546-11f1-b57d-11b5d3a5668a",
 "home": "Le Havre",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-03-30",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_417c51e1-a546-11f1-bea1-11b5d3a5668a",
 "home": "Hyères-Toulon",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-03-30",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_416cdbfb-a546-11f1-a6ec-11b5d3a5668a",
+"home": "Gries-Souffel",
+"away": "La Rochelle",
+"status": "scheduled",
+"date": "2027-03-30",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_415d2d1a-a546-11f1-b4cd-11b5d3a5668a",
 "home": "Denain",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-03-30T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-03-30",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_414dafb5-a546-11f1-8367-11b5d3a5668a",
 "home": "Orléans",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-03-27",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_413d0a49-a546-11f1-98e1-11b5d3a5668a",
 "home": "Blois",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-03-27T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_410e2090-a546-11f1-a314-11b5d3a5668a",
-"home": "Levallois",
-"away": "Antibes",
-"status": "scheduled",
-"date": "2027-03-26T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40dc7654-a546-11f1-ba1a-11b5d3a5668a",
-"home": "Gries-Souffel",
-"away": "Vichy",
-"status": "scheduled",
-"date": "2027-03-26T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-03-27",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_412db4cc-a546-11f1-a4ee-11b5d3a5668a",
 "home": "Aix-Maurienne",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-03-26",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_411d4f42-a546-11f1-91fb-11b5d3a5668a",
 "home": "Denain",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-03-26",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_410e2090-a546-11f1-a314-11b5d3a5668a",
+"home": "Levallois",
+"away": "Antibes",
+"status": "scheduled",
+"date": "2027-03-26",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40fe0828-a546-11f1-b8c5-11b5d3a5668a",
 "home": "Le Havre",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-03-26",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40ecfee7-a546-11f1-96c3-11b5d3a5668a",
 "home": "La Rochelle",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-03-26",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40dc7654-a546-11f1-ba1a-11b5d3a5668a",
+"home": "Gries-Souffel",
+"away": "Vichy",
+"status": "scheduled",
+"date": "2027-03-26",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40cb0b51-a546-11f1-81cf-11b5d3a5668a",
 "home": "Evreux",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-03-26",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40baf8a4-a546-11f1-b2fe-11b5d3a5668a",
 "home": "Caen",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-03-26T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-03-26",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_40a983a9-a546-11f1-aa5c-11b5d3a5668a",
 "home": "Orléans",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-03-20T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_4082acd2-a546-11f1-aaac-11b5d3a5668a",
-"home": "Vichy",
-"away": "Aix-Maurienne",
-"status": "scheduled",
-"date": "2027-03-19T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_406e70ef-a546-11f1-abae-11b5d3a5668a",
-"home": "Fos-sur-Mer",
-"away": "Quimper",
-"status": "scheduled",
-"date": "2027-03-19T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_405dc621-a546-11f1-8776-11b5d3a5668a",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "La Rochelle",
-"status": "scheduled",
-"date": "2027-03-19T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_400f435e-a546-11f1-8702-11b5d3a5668a",
-"home": "Antibes",
-"away": "Gries-Souffel",
-"status": "scheduled",
-"date": "2027-03-19T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-03-20",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_409324dd-a546-11f1-9e55-11b5d3a5668a",
 "home": "Rouen",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-03-19T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-03-19",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_4082acd2-a546-11f1-aaac-11b5d3a5668a",
+"home": "Vichy",
+"away": "Aix-Maurienne",
+"status": "scheduled",
+"date": "2027-03-19",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_406e70ef-a546-11f1-abae-11b5d3a5668a",
+"home": "Fos-sur-Mer",
+"away": "Quimper",
+"status": "scheduled",
+"date": "2027-03-19",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_405dc621-a546-11f1-8776-11b5d3a5668a",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "La Rochelle",
+"status": "scheduled",
+"date": "2027-03-19",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_404f362d-a546-11f1-b09d-11b5d3a5668a",
 "home": "Châlons-Reims",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-03-19T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-03-19",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_403eb261-a546-11f1-83b2-11b5d3a5668a",
 "home": "Poitiers",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-03-19T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-03-19",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_402e65dd-a546-11f1-b26b-11b5d3a5668a",
 "home": "Nantes",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-03-19T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-03-19",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_401e79bc-a546-11f1-b3f9-11b5d3a5668a",
 "home": "Hyères-Toulon",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-03-19T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-03-19",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_400f435e-a546-11f1-8702-11b5d3a5668a",
+"home": "Antibes",
+"away": "Gries-Souffel",
+"status": "scheduled",
+"date": "2027-03-19",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ffee9bc-a546-11f1-9380-11b5d3a5668a",
 "home": "Fos-sur-Mer",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-03-16T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2027-03-16",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3fed7d87-a546-11f1-a60d-11b5d3a5668a",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-03-16T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2027-03-16",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3fde5c2f-a546-11f1-8746-11b5d3a5668a",
 "home": "Quimper",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-03-16",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3fcb2954-a546-11f1-93ed-11b5d3a5668a",
 "home": "Aix-Maurienne",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-03-16",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3fba0c9d-a546-11f1-922a-11b5d3a5668a",
 "home": "La Rochelle",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-03-16",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3faa9538-a546-11f1-adcf-11b5d3a5668a",
 "home": "Hyères-Toulon",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-03-16",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f991a9d-a546-11f1-acac-11b5d3a5668a",
 "home": "Evreux",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-03-16",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f89eaa3-a546-11f1-a57c-11b5d3a5668a",
 "home": "Denain",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-03-16",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f78f75d-a546-11f1-9e21-11b5d3a5668a",
 "home": "Caen",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-03-16",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f68c984-a546-11f1-8638-11b5d3a5668a",
 "home": "Blois",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-03-16T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f3769c9-a546-11f1-8b53-11b5d3a5668a",
-"home": "Vichy",
-"away": "La Rochelle",
-"status": "scheduled",
-"date": "2027-03-12T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ef4534f-a546-11f1-9ff6-11b5d3a5668a",
-"home": "Levallois",
-"away": "Châlons-Reims",
-"status": "scheduled",
-"date": "2027-03-12T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ed32fef-a546-11f1-b915-11b5d3a5668a",
-"home": "Gries-Souffel",
-"away": "Fos-sur-Mer",
-"status": "scheduled",
-"date": "2027-03-12T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ec0a659-a546-11f1-8775-11b5d3a5668a",
-"home": "Antibes",
-"away": "Aix-Maurienne",
-"status": "scheduled",
-"date": "2027-03-12T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-03-16",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f573b0c-a546-11f1-85e6-11b5d3a5668a",
 "home": "Orléans",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-03-12",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f468c4a-a546-11f1-b086-11b5d3a5668a",
 "home": "Blois",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-03-12",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f3769c9-a546-11f1-8b53-11b5d3a5668a",
+"home": "Vichy",
+"away": "La Rochelle",
+"status": "scheduled",
+"date": "2027-03-12",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f25be7b-a546-11f1-8f0d-11b5d3a5668a",
 "home": "Rouen",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-03-12",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f166035-a546-11f1-ad8d-11b5d3a5668a",
 "home": "Poitiers",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-03-12",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3f056be6-a546-11f1-8d53-11b5d3a5668a",
 "home": "Nantes",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-03-12",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ef4534f-a546-11f1-9ff6-11b5d3a5668a",
+"home": "Levallois",
+"away": "Châlons-Reims",
+"status": "scheduled",
+"date": "2027-03-12",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ee377cc-a546-11f1-93f6-11b5d3a5668a",
 "home": "Le Havre",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-03-12T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-03-12",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ed32fef-a546-11f1-b915-11b5d3a5668a",
+"home": "Gries-Souffel",
+"away": "Fos-sur-Mer",
+"status": "scheduled",
+"date": "2027-03-12",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3ec0a659-a546-11f1-8775-11b5d3a5668a",
+"home": "Antibes",
+"away": "Aix-Maurienne",
+"status": "scheduled",
+"date": "2027-03-12",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3eaf76ef-a546-11f1-be51-11b5d3a5668a",
 "home": "Fos-sur-Mer",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-03-05T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2027-03-05",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e9f691f-a546-11f1-aebc-11b5d3a5668a",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-03-05T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2027-03-05",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e8fcf68-a546-11f1-8832-11b5d3a5668a",
 "home": "Châlons-Reims",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-03-05",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e7e6fb7-a546-11f1-ae78-11b5d3a5668a",
 "home": "Quimper",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-03-05",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e6e04c6-a546-11f1-b82f-11b5d3a5668a",
 "home": "Aix-Maurienne",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-03-05",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e5c4bdd-a546-11f1-93ad-11b5d3a5668a",
 "home": "Le Havre",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-03-05",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e4be4e2-a546-11f1-8034-11b5d3a5668a",
 "home": "La Rochelle",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-03-05",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e3c2bc4-a546-11f1-88da-11b5d3a5668a",
 "home": "Hyères-Toulon",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-03-05",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e27d43b-a546-11f1-810b-11b5d3a5668a",
 "home": "Evreux",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-03-05",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e184f26-a546-11f1-937a-11b5d3a5668a",
 "home": "Denain",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-03-05T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-03-05",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3e083d9f-a546-11f1-8011-11b5d3a5668a",
 "home": "Orléans",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-02-13",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3df72180-a546-11f1-9443-11b5d3a5668a",
 "home": "Blois",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-02-13T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21f95639-a546-11f1-86d4-3395b870f0d4",
-"home": "Levallois",
-"away": "Denain",
-"status": "scheduled",
-"date": "2027-02-12T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21dd4a71-a546-11f1-94d9-3395b870f0d4",
-"home": "Vichy",
-"away": "Rouen",
-"status": "scheduled",
-"date": "2027-02-12T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21d08873-a546-11f1-b826-3395b870f0d4",
-"home": "Gries-Souffel",
-"away": "Quimper",
-"status": "scheduled",
-"date": "2027-02-12T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21c170bb-a546-11f1-b012-3395b870f0d4",
-"home": "Antibes",
-"away": "La Rochelle",
-"status": "scheduled",
-"date": "2027-02-12T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-02-13",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_3d9b3bfc-a546-11f1-86dd-11b5d3a5668a",
 "home": "Poitiers",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-02-12T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-02-12",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_2211d206-a546-11f1-9a8c-3395b870f0d4",
 "home": "Nantes",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-02-12T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-02-12",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_2204f186-a546-11f1-ad82-3395b870f0d4",
 "home": "Aix-Maurienne",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-02-12T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-02-12",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21f95639-a546-11f1-86d4-3395b870f0d4",
+"home": "Levallois",
+"away": "Denain",
+"status": "scheduled",
+"date": "2027-02-12",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21ea8822-a546-11f1-bdec-3395b870f0d4",
 "home": "Caen",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-02-12T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-02-12",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21dd4a71-a546-11f1-94d9-3395b870f0d4",
+"home": "Vichy",
+"away": "Rouen",
+"status": "scheduled",
+"date": "2027-02-12",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21d08873-a546-11f1-b826-3395b870f0d4",
+"home": "Gries-Souffel",
+"away": "Quimper",
+"status": "scheduled",
+"date": "2027-02-12",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21c170bb-a546-11f1-b012-3395b870f0d4",
+"home": "Antibes",
+"away": "La Rochelle",
+"status": "scheduled",
+"date": "2027-02-12",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21b4dca0-a546-11f1-a5e6-3395b870f0d4",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-02-09T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2027-02-09",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21a74983-a546-11f1-920e-3395b870f0d4",
 "home": "Rouen",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-02-09",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_219a10e5-a546-11f1-89e6-3395b870f0d4",
 "home": "Châlons-Reims",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2027-02-09",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_218cce07-a546-11f1-974f-3395b870f0d4",
 "home": "Quimper",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-02-09",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_217eb3b1-a546-11f1-8c25-3395b870f0d4",
 "home": "Orléans",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-02-09",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_2170bcf9-a546-11f1-8507-3395b870f0d4",
 "home": "Nantes",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-02-09",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_2165e14d-a546-11f1-8cae-3395b870f0d4",
 "home": "Le Havre",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-02-09",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_215828f0-a546-11f1-a2b0-3395b870f0d4",
 "home": "Evreux",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-02-09",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_214d6fd9-a546-11f1-85b8-3395b870f0d4",
 "home": "Denain",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-02-09",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_213f789e-a546-11f1-bb51-3395b870f0d4",
 "home": "Caen",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-02-09T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-02-09",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_212fbf2d-a546-11f1-a843-3395b870f0d4",
 "home": "Blois",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-02-06T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-02-06",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21216624-a546-11f1-89ae-3395b870f0d4",
 "home": "Fos-sur-Mer",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-02-05T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20ee4656-a546-11f1-b81d-3395b870f0d4",
-"home": "Levallois",
-"away": "Le Havre",
-"status": "scheduled",
-"date": "2027-02-05T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20b565e1-a546-11f1-91aa-3395b870f0d4",
-"home": "Gries-Souffel",
-"away": "Poitiers",
-"status": "scheduled",
-"date": "2027-02-05T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-02-05",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_211364b7-a546-11f1-a419-3395b870f0d4",
 "home": "Châlons-Reims",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-02-05",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_21063213-a546-11f1-a42a-3395b870f0d4",
 "home": "Quimper",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-02-05",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20f9a1d5-a546-11f1-865e-3395b870f0d4",
 "home": "Aix-Maurienne",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-02-05",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20ee4656-a546-11f1-b81d-3395b870f0d4",
+"home": "Levallois",
+"away": "Le Havre",
+"status": "scheduled",
+"date": "2027-02-05",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20e17f5f-a546-11f1-974f-3395b870f0d4",
 "home": "La Rochelle",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-02-05",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20d2d908-a546-11f1-8de0-3395b870f0d4",
 "home": "Hyères-Toulon",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-02-05",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20c43a01-a546-11f1-832d-3395b870f0d4",
 "home": "Evreux",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-02-05T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-02-05",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20b565e1-a546-11f1-91aa-3395b870f0d4",
+"home": "Gries-Souffel",
+"away": "Poitiers",
+"status": "scheduled",
+"date": "2027-02-05",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20a7956c-a546-11f1-9988-3395b870f0d4",
 "home": "Orléans",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-01-30T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2027-01-30",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_209a6c44-a546-11f1-81d3-3395b870f0d4",
 "home": "Vichy",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-01-29T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_207251f8-a546-11f1-a8ea-3395b870f0d4",
-"home": "Gries-Souffel",
-"away": "Caen",
-"status": "scheduled",
-"date": "2027-01-29T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20645cb5-a546-11f1-b0b7-3395b870f0d4",
-"home": "Antibes",
-"away": "Quimper",
-"status": "scheduled",
-"date": "2027-01-29T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-01-29",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_208dd324-a546-11f1-845d-3395b870f0d4",
 "home": "Poitiers",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-01-29",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_207fbc26-a546-11f1-8d0f-3395b870f0d4",
 "home": "La Rochelle",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-01-29",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_207251f8-a546-11f1-a8ea-3395b870f0d4",
+"home": "Gries-Souffel",
+"away": "Caen",
+"status": "scheduled",
+"date": "2027-01-29",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20645cb5-a546-11f1-b0b7-3395b870f0d4",
+"home": "Antibes",
+"away": "Quimper",
+"status": "scheduled",
+"date": "2027-01-29",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20314640-a546-11f1-9413-3395b870f0d4",
 "home": "Rouen",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-01-29",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_2026008a-a546-11f1-b190-3395b870f0d4",
 "home": "Nantes",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-01-29",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_201763c9-a546-11f1-856b-3395b870f0d4",
 "home": "Le Havre",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-01-29",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_20092117-a546-11f1-b6a6-3395b870f0d4",
 "home": "Denain",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-01-29T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-01-29",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ffb78b3-a546-11f1-89d1-3395b870f0d4",
 "home": "Blois",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-01-23T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2027-01-23",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fef5946-a546-11f1-8a4f-3395b870f0d4",
 "home": "Vichy",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-01-22T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2027-01-22",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fe18206-a546-11f1-971d-3395b870f0d4",
 "home": "Fos-sur-Mer",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2027-01-22T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2027-01-22",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fd3096e-a546-11f1-9436-3395b870f0d4",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-01-22T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fa88dc3-a546-11f1-8052-3395b870f0d4",
-"home": "Levallois",
-"away": "La Rochelle",
-"status": "scheduled",
-"date": "2027-01-22T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2027-01-22",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fc5222f-a546-11f1-a4d9-3395b870f0d4",
 "home": "Rouen",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2027-01-22T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2027-01-22",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fb58d00-a546-11f1-aced-3395b870f0d4",
 "home": "Aix-Maurienne",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2027-01-22T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-01-22",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1fa88dc3-a546-11f1-8052-3395b870f0d4",
+"home": "Levallois",
+"away": "La Rochelle",
+"status": "scheduled",
+"date": "2027-01-22",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f9abe7d-a546-11f1-8381-3395b870f0d4",
 "home": "Hyères-Toulon",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2027-01-22T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-01-22",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f86f768-a546-11f1-8302-3395b870f0d4",
 "home": "Evreux",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-01-22T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-01-22",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f796d24-a546-11f1-bc1d-3395b870f0d4",
 "home": "Caen",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-01-22T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-01-22",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f6b3504-a546-11f1-80d6-3395b870f0d4",
 "home": "Orléans",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-01-16T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f0640f8-a546-11f1-9043-3395b870f0d4",
-"home": "Gries-Souffel",
-"away": "Le Havre",
-"status": "scheduled",
-"date": "2027-01-15T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1edaeb90-a546-11f1-93c8-3395b870f0d4",
-"home": "Antibes",
-"away": "Hyères-Toulon",
-"status": "scheduled",
-"date": "2027-01-15T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2027-01-16",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f5c4b65-a546-11f1-8c61-3395b870f0d4",
 "home": "Châlons-Reims",
 "away": "Caen",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2027-01-15",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f37667f-a546-11f1-9b3e-3395b870f0d4",
 "home": "Poitiers",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2027-01-15",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f25ed6c-a546-11f1-802e-3395b870f0d4",
 "home": "Nantes",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-01-15",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f14156f-a546-11f1-a19e-3395b870f0d4",
 "home": "La Rochelle",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2027-01-15",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f0640f8-a546-11f1-9043-3395b870f0d4",
+"home": "Gries-Souffel",
+"away": "Le Havre",
+"status": "scheduled",
+"date": "2027-01-15",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ef62139-a546-11f1-ada7-3395b870f0d4",
 "home": "Evreux",
 "away": "Blois",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2027-01-15",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ee8f525-a546-11f1-ac53-3395b870f0d4",
 "home": "Denain",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-01-15T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2027-01-15",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1edaeb90-a546-11f1-93c8-3395b870f0d4",
+"home": "Antibes",
+"away": "Hyères-Toulon",
+"status": "scheduled",
+"date": "2027-01-15",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1f4d0114-a546-11f1-ba64-3395b870f0d4",
 "home": "Quimper",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2027-01-12T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-01-12",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ecc83f9-a546-11f1-af15-3395b870f0d4",
 "home": "Vichy",
 "away": "Denain",
 "status": "scheduled",
-"date": "2027-01-08T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2027-01-08",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ebf1eb3-a546-11f1-a68b-3395b870f0d4",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2027-01-08T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e959584-a546-11f1-89d7-3395b870f0d4",
-"home": "Levallois",
-"away": "Blois",
-"status": "scheduled",
-"date": "2027-01-08T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e7a8922-a546-11f1-98d3-3395b870f0d4",
-"home": "Gries-Souffel",
-"away": "Evreux",
-"status": "scheduled",
-"date": "2027-01-08T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2027-01-08",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1eb1d2b2-a546-11f1-bbbd-3395b870f0d4",
 "home": "Quimper",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2027-01-08",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1ea2b8c2-a546-11f1-8089-3395b870f0d4",
 "home": "Aix-Maurienne",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2027-01-08",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e959584-a546-11f1-89d7-3395b870f0d4",
+"home": "Levallois",
+"away": "Blois",
+"status": "scheduled",
+"date": "2027-01-08",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e884fcb-a546-11f1-acad-3395b870f0d4",
 "home": "Hyères-Toulon",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2027-01-08",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e7a8922-a546-11f1-98d3-3395b870f0d4",
+"home": "Gries-Souffel",
+"away": "Evreux",
+"status": "scheduled",
+"date": "2027-01-08",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e6cf8fe-a546-11f1-8b04-3395b870f0d4",
 "home": "Nantes",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2027-01-08",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e5ef912-a546-11f1-bfd7-3395b870f0d4",
 "home": "Le Havre",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2027-01-08",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e508965-a546-11f1-a324-3395b870f0d4",
 "home": "Caen",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2027-01-08T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2027-01-08",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e41cda3-a546-11f1-af2e-3395b870f0d4",
 "home": "Fos-sur-Mer",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2026-12-27",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e356d63-a546-11f1-97e7-3395b870f0d4",
 "home": "Rouen",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-12-27",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e28a766-a546-11f1-9925-3395b870f0d4",
 "home": "Châlons-Reims",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2026-12-27",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e1cbcb5-a546-11f1-bad1-3395b870f0d4",
 "home": "Poitiers",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-12-27",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1e0da836-a546-11f1-8b92-3395b870f0d4",
 "home": "Orléans",
 "away": "Caen",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-12-27",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1dfd5af6-a546-11f1-9421-3395b870f0d4",
 "home": "La Rochelle",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-12-27",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1defe17b-a546-11f1-8a4a-3395b870f0d4",
 "home": "Evreux",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-12-27",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1de04e9a-a546-11f1-a5ae-3395b870f0d4",
 "home": "Denain",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-12-27",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1dd2b90f-a546-11f1-93ad-3395b870f0d4",
 "home": "Blois",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-12-27",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1dc4a5d6-a546-11f1-9e9b-3395b870f0d4",
 "home": "Antibes",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-12-27T16:00:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-12-27",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1db7484c-a546-11f1-b3b3-3395b870f0d4",
 "home": "Vichy",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-12-22T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-12-22",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_1d89e396-a546-11f1-99a1-3395b870f0d4",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2026-12-22T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08a5b8dc-a546-11f1-806a-1fd83dd89ae1",
-"home": "Levallois",
-"away": "Evreux",
-"status": "scheduled",
-"date": "2026-12-22T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_087620dd-a546-11f1-8dcc-1fd83dd89ae1",
-"home": "Gries-Souffel",
-"away": "Rouen",
-"status": "scheduled",
-"date": "2026-12-22T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
+"date": "2026-12-22",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08d4d339-a546-11f1-ad26-1fd83dd89ae1",
 "home": "Quimper",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2026-12-22",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08c4b34e-a546-11f1-91ec-1fd83dd89ae1",
 "home": "Nantes",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-12-22",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08b5c11b-a546-11f1-a0ac-1fd83dd89ae1",
 "home": "Aix-Maurienne",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-12-22",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08a5b8dc-a546-11f1-806a-1fd83dd89ae1",
+"home": "Levallois",
+"away": "Evreux",
+"status": "scheduled",
+"date": "2026-12-22",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0894111b-a546-11f1-98f9-1fd83dd89ae1",
 "home": "Le Havre",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-12-22",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0883dd5d-a546-11f1-b49d-1fd83dd89ae1",
 "home": "Hyères-Toulon",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-12-22",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_087620dd-a546-11f1-8dcc-1fd83dd89ae1",
+"home": "Gries-Souffel",
+"away": "Rouen",
+"status": "scheduled",
+"date": "2026-12-22",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08676a74-a546-11f1-a958-1fd83dd89ae1",
 "home": "Caen",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-12-22T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-12-22",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08594a73-a546-11f1-90ba-1fd83dd89ae1",
 "home": "Blois",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-12-19T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_083caaa7-a546-11f1-8c14-1fd83dd89ae1",
-"home": "Fos-sur-Mer",
-"away": "Caen",
-"status": "scheduled",
-"date": "2026-12-18T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_080f36c6-a546-11f1-9126-1fd83dd89ae1",
-"home": "Levallois",
-"away": "Hyères-Toulon",
-"status": "scheduled",
-"date": "2026-12-18T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07e04a57-a546-11f1-ba22-1fd83dd89ae1",
-"home": "Antibes",
-"away": "Saint-Chamond-Andrezieux-Bouthéon",
-"status": "scheduled",
-"date": "2026-12-18T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-12-19",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_084afaba-a546-11f1-8cac-1fd83dd89ae1",
 "home": "Orléans",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-12-18",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_083caaa7-a546-11f1-8c14-1fd83dd89ae1",
+"home": "Fos-sur-Mer",
+"away": "Caen",
+"status": "scheduled",
+"date": "2026-12-18",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_082f593a-a546-11f1-8e00-1fd83dd89ae1",
 "home": "Quimper",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2026-12-18",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_08207ed9-a546-11f1-b076-1fd83dd89ae1",
 "home": "Poitiers",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "Arena Futuroscope (Chasseneuil-du-Poitou)"
+"date": "2026-12-18",
+"venue": "Arena Futuroscope (Chasseneuil-du-Poitou)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_080f36c6-a546-11f1-9126-1fd83dd89ae1",
+"home": "Levallois",
+"away": "Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-12-18",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07fff713-a546-11f1-afcc-1fd83dd89ae1",
 "home": "La Rochelle",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-12-18",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07f11321-a546-11f1-9fd9-1fd83dd89ae1",
 "home": "Denain",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-12-18",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07e04a57-a546-11f1-ba22-1fd83dd89ae1",
+"home": "Antibes",
+"away": "Saint-Chamond-Andrezieux-Bouthéon",
+"status": "scheduled",
+"date": "2026-12-18",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07d1aa39-a546-11f1-bc57-1fd83dd89ae1",
 "home": "Rouen",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-12-18T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07536345-a546-11f1-91ef-1fd83dd89ae1",
-"home": "Gries-Souffel",
-"away": "Orléans",
-"status": "scheduled",
-"date": "2026-12-11T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0726ca8c-a546-11f1-b697-1fd83dd89ae1",
-"home": "Vichy",
-"away": "Antibes",
-"status": "scheduled",
-"date": "2026-12-11T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-12-18",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07998c6d-a546-11f1-bef9-1fd83dd89ae1",
 "home": "Aix-Maurienne",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-12-11",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_078419d9-a546-11f1-8c5b-1fd83dd89ae1",
 "home": "Le Havre",
 "away": "Caen",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-12-11",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07758339-a546-11f1-9d89-1fd83dd89ae1",
 "home": "La Rochelle",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-12-11",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0763e608-a546-11f1-9fdb-1fd83dd89ae1",
 "home": "Hyères-Toulon",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-12-11",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07536345-a546-11f1-91ef-1fd83dd89ae1",
+"home": "Gries-Souffel",
+"away": "Orléans",
+"status": "scheduled",
+"date": "2026-12-11",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_07438a7c-a546-11f1-91f4-1fd83dd89ae1",
 "home": "Evreux",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-12-11",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0735b86e-a546-11f1-872e-1fd83dd89ae1",
 "home": "Denain",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-12-11",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0726ca8c-a546-11f1-b697-1fd83dd89ae1",
+"home": "Vichy",
+"away": "Antibes",
+"status": "scheduled",
+"date": "2026-12-11",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_071918a9-a546-11f1-a4e3-1fd83dd89ae1",
 "home": "Nantes",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-12-11",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_070b601b-a546-11f1-b8ea-1fd83dd89ae1",
 "home": "Châlons-Reims",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-12-11T19:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2026-12-11",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06fba5bf-a546-11f1-8400-1fd83dd89ae1",
 "home": "Fos-sur-Mer",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-12-08T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2026-12-08",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06efba43-a546-11f1-a803-1fd83dd89ae1",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-12-08T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_067846ab-a546-11f1-9b2e-1fd83dd89ae1",
-"home": "Antibes",
-"away": "Châlons-Reims",
-"status": "scheduled",
-"date": "2026-12-08T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-12-08",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06e0fb3a-a546-11f1-b442-1fd83dd89ae1",
 "home": "Quimper",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2026-12-08",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06d31c10-a546-11f1-babf-1fd83dd89ae1",
 "home": "Poitiers",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-12-08",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06c1958d-a546-11f1-8fc5-1fd83dd89ae1",
 "home": "Orléans",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-12-08",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06b546d2-a546-11f1-97a5-1fd83dd89ae1",
 "home": "Aix-Maurienne",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-12-08",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06a6f37c-a546-11f1-a1c9-1fd83dd89ae1",
 "home": "Hyères-Toulon",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-12-08",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0697f233-a546-11f1-8e27-1fd83dd89ae1",
 "home": "Caen",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-12-08",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06867555-a546-11f1-a87d-1fd83dd89ae1",
 "home": "Blois",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-12-08T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-12-08",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_067846ab-a546-11f1-9b2e-1fd83dd89ae1",
+"home": "Antibes",
+"away": "Châlons-Reims",
+"status": "scheduled",
+"date": "2026-12-08",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0668e37d-a546-11f1-ae54-1fd83dd89ae1",
 "home": "Blois",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-12-05T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-12-05",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0657adf8-a546-11f1-9747-1fd83dd89ae1",
 "home": "Vichy",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-12-04T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-12-04",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0647bc0b-a546-11f1-aba6-1fd83dd89ae1",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-12-04T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2026-12-04",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_06310785-a546-11f1-bcf5-1fd83dd89ae1",
 "home": "Châlons-Reims",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-12-04T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2026-12-04",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0621d465-a546-11f1-b148-1fd83dd89ae1",
 "home": "Nantes",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-12-04T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-12-04",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0603b581-a546-11f1-a449-1fd83dd89ae1",
 "home": "La Rochelle",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2026-12-04T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-12-04",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05f43459-a546-11f1-a804-1fd83dd89ae1",
 "home": "Rouen",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2026-12-04T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-12-04",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05d26a3e-a546-11f1-9df4-1fd83dd89ae1",
 "home": "Denain",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-12-04T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-12-04",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05e44740-a546-11f1-9a70-1fd83dd89ae1",
 "home": "Evreux",
 "away": "Caen",
 "status": "scheduled",
-"date": "2026-12-03T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-12-03",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0585b19d-a546-11f1-bfe7-1fd83dd89ae1",
 "home": "Levallois",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-11-22T17:00:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2026-11-22",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05b3cda8-a546-11f1-a374-1fd83dd89ae1",
 "home": "Quimper",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-11-21T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_056859cb-a546-11f1-8a6d-1fd83dd89ae1",
-"home": "Gries-Souffel",
-"away": "Châlons-Reims",
-"status": "scheduled",
-"date": "2026-11-20T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_054b0b2d-a546-11f1-a3dc-1fd83dd89ae1",
-"home": "Fos-sur-Mer",
-"away": "Denain",
-"status": "scheduled",
-"date": "2026-11-20T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_053a9a7a-a546-11f1-8add-1fd83dd89ae1",
-"home": "Antibes",
-"away": "Evreux",
-"status": "scheduled",
-"date": "2026-11-20T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-11-21",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05c284e4-a546-11f1-9a74-1fd83dd89ae1",
 "home": "Orléans",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-11-20T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-11-20",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05a4c41e-a546-11f1-bcd6-1fd83dd89ae1",
 "home": "Nantes",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-11-20T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-11-20",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0595cdf1-a546-11f1-b1be-1fd83dd89ae1",
 "home": "Aix-Maurienne",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-11-20T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-11-20",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_05779a2a-a546-11f1-9495-1fd83dd89ae1",
 "home": "Le Havre",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-11-20T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-11-20",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_056859cb-a546-11f1-8a6d-1fd83dd89ae1",
+"home": "Gries-Souffel",
+"away": "Châlons-Reims",
+"status": "scheduled",
+"date": "2026-11-20",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0559a9cd-a546-11f1-a807-1fd83dd89ae1",
 "home": "Caen",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-11-20T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-11-20",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_054b0b2d-a546-11f1-a3dc-1fd83dd89ae1",
+"home": "Fos-sur-Mer",
+"away": "Denain",
+"status": "scheduled",
+"date": "2026-11-20",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_053a9a7a-a546-11f1-8add-1fd83dd89ae1",
+"home": "Antibes",
+"away": "Evreux",
+"status": "scheduled",
+"date": "2026-11-20",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0529ca87-a546-11f1-a201-1fd83dd89ae1",
 "home": "Vichy",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-11-17T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04aa6b3e-a546-11f1-8768-1fd83dd89ae1",
-"home": "Antibes",
-"away": "Le Havre",
-"status": "scheduled",
-"date": "2026-11-17T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-11-17",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_051b9af2-a546-11f1-b49a-1fd83dd89ae1",
 "home": "Rouen",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-11-17",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_050d44a0-a546-11f1-b9ae-1fd83dd89ae1",
 "home": "Châlons-Reims",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2026-11-17",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04fedb1f-a546-11f1-bc9c-1fd83dd89ae1",
 "home": "Poitiers",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-11-17",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04f0e15d-a546-11f1-b20c-1fd83dd89ae1",
 "home": "Orléans",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-11-17",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04e2eb23-a546-11f1-ba89-1fd83dd89ae1",
 "home": "Hyères-Toulon",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-11-17",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04d5fd09-a546-11f1-987b-1fd83dd89ae1",
 "home": "Evreux",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-11-17",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04c8c393-a546-11f1-ad01-1fd83dd89ae1",
 "home": "Caen",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-11-17",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04b9dfe9-a546-11f1-817a-1fd83dd89ae1",
 "home": "Blois",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-11-17T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-11-17",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04aa6b3e-a546-11f1-8768-1fd83dd89ae1",
+"home": "Antibes",
+"away": "Le Havre",
+"status": "scheduled",
+"date": "2026-11-17",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_049b663b-a546-11f1-9d72-1fd83dd89ae1",
 "home": "Vichy",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-11-13T19:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-11-13",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_048d3269-a546-11f1-82a3-1fd83dd89ae1",
 "home": "Fos-sur-Mer",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-11-13T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04428954-a546-11f1-8e78-1fd83dd89ae1",
-"home": "Gries-Souffel",
-"away": "Hyères-Toulon",
-"status": "scheduled",
-"date": "2026-11-13T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_041724f3-a546-11f1-a0d4-1fd83dd89ae1",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "Blois",
-"status": "scheduled",
-"date": "2026-11-13T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2026-11-13",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_047ec484-a546-11f1-b244-1fd83dd89ae1",
 "home": "Rouen",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-11-13",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04721f47-a546-11f1-a427-1fd83dd89ae1",
 "home": "Aix-Maurienne",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-11-13",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04618804-a546-11f1-a89f-1fd83dd89ae1",
 "home": "Le Havre",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-11-13",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0452342e-a546-11f1-a9d7-1fd83dd89ae1",
 "home": "La Rochelle",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-11-13",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_04428954-a546-11f1-8e78-1fd83dd89ae1",
+"home": "Gries-Souffel",
+"away": "Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-11-13",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0433eeb1-a546-11f1-b2c1-1fd83dd89ae1",
 "home": "Evreux",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-11-13",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0425b3e4-a546-11f1-b6d7-1fd83dd89ae1",
 "home": "Denain",
 "away": "Caen",
 "status": "scheduled",
-"date": "2026-11-13T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-11-13",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_041724f3-a546-11f1-a0d4-1fd83dd89ae1",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "Blois",
+"status": "scheduled",
+"date": "2026-11-13",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_03ea8b72-a546-11f1-b9d0-1fd83dd89ae1",
 "home": "Quimper",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-11-07T19:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5c2585e-a545-11f1-9954-a957da759704",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "Rouen",
-"status": "scheduled",
-"date": "2026-11-06T19:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e59f9e25-a545-11f1-a334-a957da759704",
-"home": "Levallois",
-"away": "Fos-sur-Mer",
-"status": "scheduled",
-"date": "2026-11-06T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2026-11-07",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e60a9f9e-a545-11f1-b79b-a957da759704",
 "home": "Poitiers",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-11-06",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5f92258-a545-11f1-a191-a957da759704",
 "home": "Nantes",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-11-06",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5e6ad6e-a545-11f1-a7ca-a957da759704",
 "home": "Le Havre",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-11-06",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5d4f3af-a545-11f1-bf60-a957da759704",
 "home": "Hyères-Toulon",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-11-06",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5c2585e-a545-11f1-9954-a957da759704",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "Rouen",
+"status": "scheduled",
+"date": "2026-11-06",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5af8491-a545-11f1-b01b-a957da759704",
 "home": "Châlons-Reims",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2026-11-06",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e59f9e25-a545-11f1-a334-a957da759704",
+"home": "Levallois",
+"away": "Fos-sur-Mer",
+"status": "scheduled",
+"date": "2026-11-06",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e58edeaa-a545-11f1-9bac-a957da759704",
 "home": "La Rochelle",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-11-06",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e57df225-a545-11f1-803e-a957da759704",
 "home": "Caen",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-11-06T19:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-11-06",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_0611a4fd-a546-11f1-b63b-1fd83dd89ae1",
 "home": "Levallois",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-11-03T19:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2026-11-03",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e56ee288-a545-11f1-9500-a957da759704",
 "home": "Orléans",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-10-31T19:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-10-31",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e55e5481-a545-11f1-b81e-a957da759704",
 "home": "Blois",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-10-31T19:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e53d7b7e-a545-11f1-8b24-a957da759704",
-"home": "Gries-Souffel",
-"away": "Aix-Maurienne",
-"status": "scheduled",
-"date": "2026-10-30T19:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e51fc1df-a545-11f1-9578-a957da759704",
-"home": "Fos-sur-Mer",
-"away": "Saint-Chamond-Andrezieux-Bouthéon",
-"status": "scheduled",
-"date": "2026-10-30T19:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4e395fc-a545-11f1-92e7-a957da759704",
-"home": "Antibes",
-"away": "Caen",
-"status": "scheduled",
-"date": "2026-10-30T19:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-10-31",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e54ca09f-a545-11f1-9045-a957da759704",
 "home": "Rouen",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-10-30",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e53d7b7e-a545-11f1-8b24-a957da759704",
+"home": "Gries-Souffel",
+"away": "Aix-Maurienne",
+"status": "scheduled",
+"date": "2026-10-30",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e52f278a-a545-11f1-afef-a957da759704",
 "home": "Denain",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-10-30",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e51fc1df-a545-11f1-9578-a957da759704",
+"home": "Fos-sur-Mer",
+"away": "Saint-Chamond-Andrezieux-Bouthéon",
+"status": "scheduled",
+"date": "2026-10-30",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e5101a15-a545-11f1-bf3e-a957da759704",
 "home": "Châlons-Reims",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2026-10-30",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e50116e1-a545-11f1-9e85-a957da759704",
 "home": "Poitiers",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Arena Futuroscope (Chasseneuil-du-Poitou)"
+"date": "2026-10-30",
+"venue": "Arena Futuroscope (Chasseneuil-du-Poitou)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4f1a761-a545-11f1-aa72-a957da759704",
 "home": "Evreux",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-10-30T19:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-10-30",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4e395fc-a545-11f1-92e7-a957da759704",
+"home": "Antibes",
+"away": "Caen",
+"status": "scheduled",
+"date": "2026-10-30",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4d68363-a545-11f1-b490-a957da759704",
 "home": "Blois",
 "away": "Antibes",
 "status": "scheduled",
-"date": "2026-10-25T15:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-10-25",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4a730ef-a545-11f1-9d69-a957da759704",
 "home": "Quimper",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-10-24T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2026-10-24",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4c77674-a545-11f1-be04-a957da759704",
 "home": "Vichy",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-10-23T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-10-23",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4b7f4d4-a545-11f1-9c02-a957da759704",
 "home": "Saint-Chamond-Andrezieux-Bouthéon",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-10-23T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e48668d1-a545-11f1-a10d-a957da759704",
-"home": "Levallois",
-"away": "Orléans",
-"status": "scheduled",
-"date": "2026-10-23T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2026-10-23",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e495cfa0-a545-11f1-808f-a957da759704",
 "home": "Nantes",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-10-23",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e48668d1-a545-11f1-a10d-a957da759704",
+"home": "Levallois",
+"away": "Orléans",
+"status": "scheduled",
+"date": "2026-10-23",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4764bf4-a545-11f1-8281-a957da759704",
 "home": "Le Havre",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-10-23",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4686d4f-a545-11f1-9d8f-a957da759704",
 "home": "Aix-Maurienne",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-10-23",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e458ad20-a545-11f1-b9e2-a957da759704",
 "home": "La Rochelle",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-10-23",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e4492f4e-a545-11f1-9532-a957da759704",
 "home": "Caen",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-10-23T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-10-23",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e439fe7a-a545-11f1-bab2-a957da759704",
 "home": "Fos-sur-Mer",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-10-20T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3d5b925-a545-11f1-8c6b-a957da759704",
-"home": "Gries-Souffel",
-"away": "Saint-Chamond-Andrezieux-Bouthéon",
-"status": "scheduled",
-"date": "2026-10-20T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3a351df-a545-11f1-8ae1-a957da759704",
-"home": "Antibes",
-"away": "Denain",
-"status": "scheduled",
-"date": "2026-10-20T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-10-20",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e42a0f18-a545-11f1-a6eb-a957da759704",
 "home": "Rouen",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-10-20",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e419e9d8-a545-11f1-bf7b-a957da759704",
 "home": "Châlons-Reims",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2026-10-20",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e409b61c-a545-11f1-9f80-a957da759704",
 "home": "Orléans",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-10-20",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3f758ae-a545-11f1-a109-a957da759704",
 "home": "Aix-Maurienne",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-10-20",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3e6136d-a545-11f1-9892-a957da759704",
 "home": "Hyères-Toulon",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-10-20",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3d5b925-a545-11f1-8c6b-a957da759704",
+"home": "Gries-Souffel",
+"away": "Saint-Chamond-Andrezieux-Bouthéon",
+"status": "scheduled",
+"date": "2026-10-20",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3c37a0c-a545-11f1-8171-a957da759704",
 "home": "Evreux",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-10-20",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3b48020-a545-11f1-8c20-a957da759704",
 "home": "Caen",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-10-20T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-10-20",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3a351df-a545-11f1-8ae1-a957da759704",
+"home": "Antibes",
+"away": "Denain",
+"status": "scheduled",
+"date": "2026-10-20",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3933d31-a545-11f1-880d-a957da759704",
 "home": "Blois",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-10-17T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
+"date": "2026-10-17",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e383edc0-a545-11f1-9b53-a957da759704",
 "home": "Vichy",
 "away": "Caen",
 "status": "scheduled",
-"date": "2026-10-16T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+"date": "2026-10-16",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3748182-a545-11f1-9fe1-a957da759704",
 "home": "Levallois",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-10-16T18:30:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3453406-a545-11f1-ab02-a957da759704",
-"home": "Fos-sur-Mer",
-"away": "Antibes",
-"status": "scheduled",
-"date": "2026-10-16T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e33284ff-a545-11f1-8ec0-a957da759704",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "Evreux",
-"status": "scheduled",
-"date": "2026-10-16T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2026-10-16",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3657ea5-a545-11f1-9e15-a957da759704",
 "home": "Le Havre",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-10-16",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e356909b-a545-11f1-806a-a957da759704",
 "home": "Hyères-Toulon",
 "away": "Orléans",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-10-16",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3453406-a545-11f1-ab02-a957da759704",
+"home": "Fos-sur-Mer",
+"away": "Antibes",
+"status": "scheduled",
+"date": "2026-10-16",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e33284ff-a545-11f1-8ec0-a957da759704",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "Evreux",
+"status": "scheduled",
+"date": "2026-10-16",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e3214378-a545-11f1-84fb-a957da759704",
 "home": "Poitiers",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-10-16",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e31171cb-a545-11f1-abd3-a957da759704",
 "home": "Nantes",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-10-16",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e301944b-a545-11f1-92cc-a957da759704",
 "home": "Denain",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-10-16T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-10-16",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2db5bb2-a545-11f1-82f8-a957da759704",
 "home": "Quimper",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-10-10T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e284ae05-a545-11f1-8e75-a957da759704",
-"home": "Vichy",
-"away": "Evreux",
-"status": "scheduled",
-"date": "2026-10-09T18:30:00.000Z",
-"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2536740-a545-11f1-a763-a957da759704",
-"home": "Antibes",
-"away": "Orléans",
-"status": "scheduled",
-"date": "2026-10-09T18:30:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-10-10",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2f09d08-a545-11f1-907a-a957da759704",
 "home": "Rouen",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-10-09",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2c920cb-a545-11f1-9a66-a957da759704",
 "home": "Poitiers",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-10-09",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2b8fff8-a545-11f1-83ad-a957da759704",
 "home": "Le Havre",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-10-09",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2a7391a-a545-11f1-bdf4-a957da759704",
 "home": "La Rochelle",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-10-09",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2963f37-a545-11f1-b0b9-a957da759704",
 "home": "Caen",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-10-09",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e284ae05-a545-11f1-8e75-a957da759704",
+"home": "Vichy",
+"away": "Evreux",
+"status": "scheduled",
+"date": "2026-10-09",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2750883-a545-11f1-8ad7-a957da759704",
 "home": "Châlons-Reims",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+"date": "2026-10-09",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2646be0-a545-11f1-88fc-a957da759704",
 "home": "Denain",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-10-09T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-10-09",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e2536740-a545-11f1-a763-a957da759704",
+"home": "Antibes",
+"away": "Orléans",
+"status": "scheduled",
+"date": "2026-10-09",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e23ee609-a545-11f1-8c17-a957da759704",
 "home": "Orléans",
 "away": "Rouen",
 "status": "scheduled",
-"date": "2026-10-03T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-10-03",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e230070a-a545-11f1-a76a-a957da759704",
 "home": "Blois",
 "away": "Poitiers",
 "status": "scheduled",
-"date": "2026-10-03T18:00:00.000Z",
-"venue": "Le Jeu de Paume (Blois)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1ee8256-a545-11f1-9e0b-a957da759704",
-"home": "Gries-Souffel",
-"away": "Antibes",
-"status": "scheduled",
-"date": "2026-10-02T18:30:00.000Z",
-"venue": "Espace Sport La Forêt (Gries)"
-},
-{
-"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1cd1991-a545-11f1-a2cf-a957da759704",
-"home": "Saint-Chamond-Andrezieux-Bouthéon",
-"away": "Caen",
-"status": "scheduled",
-"date": "2026-10-02T18:30:00.000Z",
-"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)"
+"date": "2026-10-03",
+"venue": "Le Jeu de Paume (Blois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e21eec6e-a545-11f1-91d6-a957da759704",
 "home": "Châlons-Reims",
 "away": "Denain",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Reims Arena (Reims)"
+"date": "2026-10-02",
+"venue": "Reims Arena (Reims)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e20e6da7-a545-11f1-95ad-a957da759704",
 "home": "Aix-Maurienne",
 "away": "Le Havre",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Halle Marlioz (Aix-les-Bains)"
+"date": "2026-10-02",
+"venue": "Halle Marlioz (Aix-les-Bains)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1fde512-a545-11f1-a753-a957da759704",
 "home": "Levallois",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+"date": "2026-10-02",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1ee8256-a545-11f1-9e0b-a957da759704",
+"home": "Gries-Souffel",
+"away": "Antibes",
+"status": "scheduled",
+"date": "2026-10-02",
+"venue": "Espace Sport La Forêt (Gries)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1dc751a-a545-11f1-a293-a957da759704",
 "home": "Evreux",
 "away": "Fos-sur-Mer",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+"date": "2026-10-02",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
+"id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1cd1991-a545-11f1-a2cf-a957da759704",
+"home": "Saint-Chamond-Andrezieux-Bouthéon",
+"away": "Caen",
+"status": "scheduled",
+"date": "2026-10-02",
+"venue": "Arena Saint-Etienne Métropole (Saint-Chamond)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1bcc563-a545-11f1-aa7f-a957da759704",
 "home": "Nantes",
 "away": "Quimper",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "La Trocardière (Rezé)"
+"date": "2026-10-02",
+"venue": "La Trocardière (Rezé)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1acd628-a545-11f1-a422-a957da759704",
 "home": "Hyères-Toulon",
 "away": "La Rochelle",
 "status": "scheduled",
-"date": "2026-10-02T18:00:00.000Z",
-"venue": "Espace 3000 (Hyères)"
+"date": "2026-10-02",
+"venue": "Espace 3000 (Hyères)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e19c22f9-a545-11f1-b999-a957da759704",
 "home": "Orléans",
 "away": "Châlons-Reims",
 "status": "scheduled",
-"date": "2026-09-26T18:00:00.000Z",
-"venue": "CO'Met (Orléans)"
+"date": "2026-09-26",
+"venue": "CO'Met (Orléans)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1484f50-a545-11f1-8bd2-a957da759704",
 "home": "Antibes",
 "away": "Nantes",
 "status": "scheduled",
-"date": "2026-09-26T17:00:00.000Z",
-"venue": "Azur Arena (Antibes)"
+"date": "2026-09-26",
+"venue": "Azur Arena (Antibes)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e189fcfc-a545-11f1-802f-a957da759704",
 "home": "Fos-sur-Mer",
 "away": "Hyères-Toulon",
 "status": "scheduled",
-"date": "2026-09-25T18:30:00.000Z",
-"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+"date": "2026-09-25",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e17a1731-a545-11f1-8f8e-a957da759704",
 "home": "Quimper",
 "away": "Levallois",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Kostum Park - A nous la vie (Quimper)"
+"date": "2026-09-25",
+"venue": "Kostum Park - A nous la vie (Quimper)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e168cb0a-a545-11f1-8934-a957da759704",
 "home": "Denain",
 "away": "Blois",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Complexe Sportif Jean Degros (Denain)"
+"date": "2026-09-25",
+"venue": "Complexe Sportif Jean Degros (Denain)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1577ca8-a545-11f1-9654-a957da759704",
 "home": "Caen",
 "away": "Aix-Maurienne",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Palais des Sports de Caen la mer (Caen)"
+"date": "2026-09-25",
+"venue": "Palais des Sports de Caen la mer (Caen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e1376295-a545-11f1-940c-a957da759704",
 "home": "Rouen",
 "away": "Vichy",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Kindarena (Rouen)"
+"date": "2026-09-25",
+"venue": "Kindarena (Rouen)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e124617d-a545-11f1-93ed-a957da759704",
 "home": "Poitiers",
 "away": "Evreux",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Salle Saint-Eloi (Poitiers)"
+"date": "2026-09-25",
+"venue": "Salle Saint-Eloi (Poitiers)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e113ee05-a545-11f1-abea-a957da759704",
 "home": "Le Havre",
 "away": "Saint-Chamond-Andrezieux-Bouthéon",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Docks Océane (Le Havre)"
+"date": "2026-09-25",
+"venue": "Docks Océane (Le Havre)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "95e6448b-6a4c-11f1-a9a9-4739aa510fe1_e0b2aeb7-a545-11f1-ae0f-a957da759704",
 "home": "La Rochelle",
 "away": "Gries-Souffel",
 "status": "scheduled",
-"date": "2026-09-25T18:00:00.000Z",
-"venue": "Salle Gaston Neveur (La Rochelle)"
+"date": "2026-09-25",
+"venue": "Salle Gaston Neveur (La Rochelle)",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 }
 ]
 }
