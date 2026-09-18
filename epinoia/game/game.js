@@ -2602,7 +2602,22 @@ function checkGap() {
 function mergeLive(game, events, removed, full) {
   if (!window.S) return;
   if (game) {
-    if (game.teams) window.S.teams = game.teams;
+    /* THE CLUB'S COLOUR SURVIVES THE FRAME. loadStored puts the colour read from the crest onto
+       each side, and then the first live frame replaced the whole teams array with the
+       transport's copy -- whose colour is the roster snapshot's, which for a fed game is the
+       kit's own mint and cyan. The scoreboard kept the real colours (it reads --team0/--team1,
+       set separately), so a game drew its header in Denain red and its five faces in mint, and
+       nothing on the page said which club a circle belonged to (reported 2026-09-18). The frame
+       decides who is on the floor; it does not get to decide what colour they play in. */
+    if (game.teams) {
+      const m = window.S.meta || {};
+      const club = i => { const c = (i === 0 ? m.home : m.away) || {}; return /^#[0-9a-f]{6}$/i.test(String(c.colour || '')) ? c.colour : null; };
+      const held = (window.S.teams || []).map(t => t && t.color);
+      window.S.teams = game.teams;
+      /* what the page is already wearing wins, because resolveClash may have moved one side to
+         its second colour; the club row is the fallback for a frame that arrived before a load */
+      window.S.teams.forEach((t, i) => { const c = held[i] || club(i); if (c) t.color = c; });
+    }
     if (game.starters) window.S.starters = game.starters;
     if (game.period != null) window.S.period = game.period;
     if (game.tipWinner != null) window.S.tipWinner = game.tipWinner;

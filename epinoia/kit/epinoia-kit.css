@@ -522,7 +522,14 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 :root[data-theme="light"] .badge, :root[data-theme="light"] .ep-crest:not(.has-img){ color:#fff }
 :root[data-theme="light"] body::after{ opacity:.025 }
 
-/* ---------- the bell ---------- */
+/* ---------- the bell ----------
+   ALSO IN kit/nav.css, AND THE TWO MUST STAY IN STEP. nav.js mounts the bell on every page
+   that shows the nav, and the game page (and every other page built on the scorer's own
+   stylesheet) loads nav.css without this one -- so the bell arrived there with no styling at
+   all: a bare SVG and its unread count in normal flow at the foot of the document, which is
+   the loose bell and the stray number a signed-in reader saw under the box score
+   (reported 2026-09-18). Five pages load THIS sheet without nav.css, so the rules live in
+   both rather than moving. */
 .ep-bell{position:fixed;top:10px;right:14px;z-index:1500;font-family:var(--f-ui)}
 .ep-bell>button{width:40px;height:40px;border-radius:50%;border:1px solid var(--rule-2);background:var(--panel);
   color:var(--ink);display:grid;place-items:center;cursor:pointer;position:relative;box-shadow:0 4px 18px rgba(0,0,0,.35)}

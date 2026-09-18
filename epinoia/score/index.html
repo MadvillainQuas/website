@@ -572,6 +572,35 @@ table.bx th:nth-child(2),table.bx td:nth-child(2){text-align:left;max-width:120p
 table.bx td:first-child{color:var(--lume);font-weight:200;font-size:14px;}
 table.bx tr.oncourt td:nth-child(2){color:var(--lume);}
 table.bx tr.tot td{border-top:1px solid var(--line);color:var(--lume);font-weight:400;}
+/* ---- THE TRADITIONAL BOX SCORE, MADE READABLE ACROSS ------------------------------------
+   Seventeen columns of small grey numbers, every row identical, and the eye has nothing to
+   hold on to: reading Niscoise's rebounds means counting cells from the left and hoping the
+   row did not drift. Four cheap things fix that, and none of them adds ink to a cell:
+
+     a band on every other row, so a row stays a row all the way across;
+     a hairline where the groups change (shooting | rebounds | playmaking | fouls | +/-),
+       so a column can be found by which side of a line it is on rather than by counting;
+     points in the club's colour and in the club's weight, because that is the column
+       everybody came for;
+     and the side's own colour on the card, the on-court row and the totals, so two tables
+       one above the other are visibly two different teams.
+
+   --side is the club's colour, picked up from the heading the card already carries. */
+.bxteam:has(h3[data-team-slot="0"]){--side:var(--team0);}
+.bxteam:has(h3[data-team-slot="1"]){--side:var(--team1);}
+table.bx tr:nth-of-type(even) td{background:color-mix(in srgb,var(--side,var(--lume)) 4%,transparent);}
+table.bx th:nth-child(5),table.bx td:nth-child(5),
+table.bx th:nth-child(8),table.bx td:nth-child(8),
+table.bx th:nth-child(11),table.bx td:nth-child(11),
+table.bx th:nth-child(15),table.bx td:nth-child(15),
+table.bx th:nth-child(17),table.bx td:nth-child(17){border-left:1px solid color-mix(in srgb,var(--side,var(--lume)) 16%,transparent);}
+table.bx td:nth-child(4){font-weight:600;font-size:13px;color:var(--side,var(--lume));}
+table.bx th:nth-child(4){color:var(--side,var(--faint));}
+table.bx tr.oncourt td{background:color-mix(in srgb,var(--side,var(--lume)) 11%,transparent);}
+table.bx tr.oncourt td:first-child{box-shadow:inset 3px 0 0 var(--side,var(--lume));}
+table.bx tr.tot td{border-top-color:color-mix(in srgb,var(--side,var(--lume)) 45%,transparent);
+  background:color-mix(in srgb,var(--side,var(--lume)) 7%,transparent);}
+table.bx tr.tot td:nth-child(4){font-size:14px;font-weight:700;}
 /* lineups */
 .lucard{padding:12px 12px;margin-bottom:10px;}
 .lurow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(170,255,215,.07);}
@@ -2942,7 +2971,10 @@ function courtSVG(loc, opts){
 
   return '<svg viewBox="0 0 '+C.W+' '+C.H+'" xmlns="http://www.w3.org/2000/svg" '+
       'preserveAspectRatio="xMidYMid meet">'+
-    '<rect x="0" y="0" width="'+C.W+'" height="'+C.H+'" fill="rgba(140,255,200,.04)"/>'+
+    /* THE FLOOR IS A VARIABLE FOR THE SAME REASON THE LINES ARE. Two courts side by side in
+       the same mint say nothing about whose half is whose; a page that knows the clubs can
+       tint each one. The fallback is the value it always had, so the scorer is unchanged. */
+    '<rect x="0" y="0" width="'+C.W+'" height="'+C.H+'" fill="var(--court-floor, rgba(140,255,200,.04))"/>'+
     /* the boundary, stroked so its INNER edge is the playing area */
     '<rect x="3" y="3" width="'+(C.W-6)+'" height="'+(C.H-6)+'" fill="none" '+
       'stroke="'+line+'" stroke-width="6"/>'+
@@ -5687,7 +5719,7 @@ function shotChartHTML(d,t){
      knowing where a shot came from. `plain` drops the lane ticks, which are
      detail this size cannot carry. */
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
-  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam shotteam" style="--c:'+esc(col)+'"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
       (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+

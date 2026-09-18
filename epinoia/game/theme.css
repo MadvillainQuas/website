@@ -94,3 +94,26 @@ td.gp{ border-radius:0 }
 .tsacell .gp{ padding:0 4px; border-radius:6px }
 .tsacell .gp-pc{ margin-left:3px; vertical-align:super; font-size:8px }
 .gpnote{ text-align:left; padding-top:8px; font-size:10px }
+
+/* ------------------------------------------------------- a court in the club's colour ---
+   TWO COURTS SIDE BY SIDE IN THE SAME MINT SAY NOTHING ABOUT WHOSE HALF IS WHOSE. Every
+   other thing on the page that belongs to a side is coloured by side — the score, the
+   heading, the bars — and then the two half courts, the largest objects on the box score,
+   were identical. The club's colour is already on the card as --c (modern.js sets it per
+   team, shotChartHTML now does the same), so the floor and the lines take it from there.
+
+   Faint on purpose. A court is the ground a reader looks past, not a thing to look at: it
+   has to say "this is Denain's" at a glance and then get out of the way of five faces and
+   their numbers. */
+.mv-card, .bxteam.shotteam{
+  --line-hi:color-mix(in oklch,var(--c,var(--lume)) 40%,transparent);
+  --court-floor:color-mix(in oklch,var(--c,var(--lume)) 7%,transparent);
+}
+
+/* ---------------------------------------------------- full stats: the shade, not the number ---
+   Every figure in these tables carries its percentile as a small number beside it, and at
+   forty numbers a screen the page reads as a spreadsheet of two numbers per cell rather than
+   one. The SHADE says the same thing without being read, so the shade stays and the digits
+   go. They remain where there is room for them to be useful: the modern box score's popover,
+   which shows one player at a time. */
+table.adv .gp-pc, .ffval .gp-pc, .tsacell .gp-pc{ display:none }

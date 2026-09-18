@@ -185,7 +185,10 @@ function courtSVG(loc, opts){
 
   return '<svg viewBox="0 0 '+C.W+' '+C.H+'" xmlns="http://www.w3.org/2000/svg" '+
       'preserveAspectRatio="xMidYMid meet">'+
-    '<rect x="0" y="0" width="'+C.W+'" height="'+C.H+'" fill="rgba(140,255,200,.04)"/>'+
+    /* THE FLOOR IS A VARIABLE FOR THE SAME REASON THE LINES ARE. Two courts side by side in
+       the same mint say nothing about whose half is whose; a page that knows the clubs can
+       tint each one. The fallback is the value it always had, so the scorer is unchanged. */
+    '<rect x="0" y="0" width="'+C.W+'" height="'+C.H+'" fill="var(--court-floor, rgba(140,255,200,.04))"/>'+
     /* the boundary, stroked so its INNER edge is the playing area */
     '<rect x="3" y="3" width="'+(C.W-6)+'" height="'+(C.H-6)+'" fill="none" '+
       'stroke="'+line+'" stroke-width="6"/>'+
@@ -818,7 +821,7 @@ function shotChartHTML(d,t){
      knowing where a shot came from. `plain` drops the lane ticks, which are
      detail this size cannot carry. */
   const svg = courtSVG(null, {plain:true}).replace('</svg>', dots+'</svg>');
-  return '<div class="glass bxteam"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
+  return '<div class="glass bxteam shotteam" style="--c:'+esc(col)+'"><h3 data-team-slot="'+t+'">'+esc(tname(t))+'</h3>'+
     '<div style="max-width:420px;margin:0 auto;">'+svg+'</div>'+
     '<div class="setup-note" style="padding:6px 0 2px">● made · ✕ missed · '+withLoc.length+' of '+shots.length+' shots located'+
       (moved ? ' · '+moved+' moved to the side of the arc they were worth' : '')+'</div>'+
