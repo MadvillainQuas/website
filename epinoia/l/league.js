@@ -147,17 +147,22 @@ async function boot() {
     $('#leagueName').textContent = league.name;
     document.title = league.name + ' · Epinoia';
 
-    /* every season, not just the newest — a league's history was previously
-       unreachable rather than merely unlinked, since no parameter could get
-       you there */
-    seasons = await api(`seasons?league_id=eq.${league.id}` +
-      `&select=id,name,starts_on,ends_on&order=starts_on.desc`);
+    /* EVERY SEASON THE READER CAN ACTUALLY GO TO, and its competitions with it
+       (seasonbar.js): a league's history was previously unreachable rather
+       than merely unlinked, and the seasons this page went on to offer
+       included ones with no games in them at all. One read for the lot, so
+       changing season below costs no request — and a season that has been
+       drawn but not played is still offered and still the default, which is
+       what most of the platform looks like in September. */
+    const SB = window.EpinoiaSeasonBar;
+    const scope = await SB.load(api, league.id);
+    seasons = scope.list;
     if (!seasons.length) return fail('This league has no seasons yet.');
-    season = pickSeason(seasons, wantSeason);
+    season = SB.pick(seasons, wantSeason);
     $('#seasonName').textContent = season.name;
     renderSeasonPicker();
 
-    comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
+    comps = season.comps;
     if (!comps.length) return fail('This season has no competitions yet.');
     splitComps();
     comp = phases.find(c => c.id === wantComp) || phases[0] || comps[0];
@@ -184,48 +189,37 @@ function fail(msg) {
 }
 
 
-/* A season is named like "2026-27", which is what a person would put in a URL,
-   so ?s= matches on the name before falling back to the id. A mistyped season
-   lands on the newest rather than on an error. */
-function pickSeason(list, ref) {
-  if (!list.length) return null;
-  if (!ref) return list[0];
-  const key = String(ref).toLowerCase().replace(/[^a-z0-9]/g, '');
-  return list.find(x => x.id === ref) ||
-         list.find(x => String(x.name).toLowerCase().replace(/[^a-z0-9]/g, '') === key) ||
-         list[0];
-}
+/* The season control, drawn by the shared one (seasonbar.js) so that the row
+   here, on the league's front page, on the fixtures page and on the statistics
+   page is one control rather than four that drift. Its chips are links, so a
+   past season can be copied out of the address bar or opened in a new tab;
+   this page can redraw itself, so onPick catches the plain click and does.
 
+   NO REQUEST ON A CHANGE OF SEASON: every season's competitions came back with
+   the seasons in boot(). What follows is the same work a first load does. */
 function renderSeasonPicker() {
   const wrap = $('#seasonPick');
   if (!wrap) return;
-  wrap.textContent = '';
-  /* one season is not a choice, and a control offering it is noise */
-  if (seasons.length < 2) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  seasons.forEach(sn => {
-    const b = el('button', 'ep-chip' + (sn.id === season.id ? ' on' : ''), sn.name);
-    b.type = 'button';
-    b.addEventListener('click', async () => {
-      if (sn.id === season.id) return;
-      season = sn; comp = null; SEASON = null;
+  window.EpinoiaSeasonBar.mount({
+    host: wrap, seasons, season,
+    onPick: async sn => {
+      /* statScope names a competition of the season being left, and a filter
+         pointing into last season would have asked for nobody's statistics. */
+      season = sn; comp = null; SEASON = null; statScope = 'all';
       $('#seasonName').textContent = season.name;
       $('#ctx').textContent = league.name + ' · ' + season.name;
       /* the URL carries the season so a past table is linkable */
-      const u = new URL(location.href);
-      u.searchParams.set('s', season.name);
-      u.searchParams.delete('c');
-      history.replaceState(null, '', u);
+      window.EpinoiaSeasonBar.syncUrl(season);
       renderSeasonPicker();
-      comps = await api(`competitions?season_id=eq.${season.id}&select=*&order=name`);
+      comps = season.comps;
       splitComps();
       comp = phases[0] || comps[0] || null;
       cupComp = cups[0] || null;
       if (!PAYWALLED) { renderPhasePicker(); renderCupPicker(); }
       if (!comp) return fail('That season has no competitions.');
+      $('#foot').textContent = 'Epinoia Network · ' + league.name + ' · ' + season.name;
       await renderPanes();
-    });
-    wrap.appendChild(b);
+    }
   });
 }
 

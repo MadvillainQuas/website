@@ -15,12 +15,12 @@
 <title>League · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=299"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=299">
-<link rel="stylesheet" href="../kit/table.css?v=299">
-<link rel="stylesheet" href="../kit/compare.css?v=299">
-<link rel="stylesheet" href="../kit/nav.css?v=299">
-<link rel="stylesheet" href="../kit/access.css?v=299">
+<script src="../appmode.js?v=300"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=300">
+<link rel="stylesheet" href="../kit/table.css?v=300">
+<link rel="stylesheet" href="../kit/compare.css?v=300">
+<link rel="stylesheet" href="../kit/nav.css?v=300">
+<link rel="stylesheet" href="../kit/access.css?v=300">
 <style>
   .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .pane{display:none} .pane.on{display:block}
@@ -98,7 +98,9 @@
   .awval{font-family:var(--f-score);font-size:26px;color:var(--lume);line-height:1;margin-top:8px}
   .awdet{font-family:var(--f-micro);font-size:7.5px;color:var(--ink-3);margin-top:5px;
     line-height:1.6}
-  .seasonpick .ep-chip{font-family:var(--f-micro);font-size:9.5px}
+  /* the season chips are links (seasonbar.js), so a past season can be copied out of
+     the address bar; the underline a link gets by default is not wanted on a chip */
+  .seasonpick .ep-chip{font-family:var(--f-micro);font-size:9.5px;text-decoration:none}
   .seasonpick{border-bottom:1px solid var(--rule)}
   .phasepick{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .phasepick .ep-chip{font-family:var(--f-micro);font-size:9.5px}
@@ -179,20 +181,21 @@
   </footer>
 </div>
 
-<script src="../config.js?v=299" defer></script>
-<script src="../access.js?v=299" defer></script>
-<script src="../teamcolour.js?v=299" defer></script>
-<script src="../bpm.js?v=299" defer></script>
-<script src="../season.js?v=299" defer></script>
-<script src="../data.js?v=299" defer></script>
-<script src="../fulltable.js?v=299" defer></script>
-<script src="../compare.js?v=299" defer></script>
-<script src="../rapm.js?v=299" defer></script>
-<script src="bracket.js?v=299" defer></script>
-<script src="../boxscore.js?v=299" defer></script>
-<script src="../shotchart.js?v=299" defer></script>
-<script src="league.js?v=299" defer></script>
-<script src="../nav.js?v=299" defer></script>
-<script src="../xscroll.js?v=299" defer></script>
+<script src="../config.js?v=300" defer></script>
+<script src="../access.js?v=300" defer></script>
+<script src="../teamcolour.js?v=300" defer></script>
+<script src="../bpm.js?v=300" defer></script>
+<script src="../season.js?v=300" defer></script>
+<script src="../data.js?v=300" defer></script>
+<script src="../seasonbar.js?v=300" defer></script>
+<script src="../fulltable.js?v=300" defer></script>
+<script src="../compare.js?v=300" defer></script>
+<script src="../rapm.js?v=300" defer></script>
+<script src="bracket.js?v=300" defer></script>
+<script src="../boxscore.js?v=300" defer></script>
+<script src="../shotchart.js?v=300" defer></script>
+<script src="league.js?v=300" defer></script>
+<script src="../nav.js?v=300" defer></script>
+<script src="../xscroll.js?v=300" defer></script>
 </body>
 </html>

@@ -16,6 +16,11 @@ Normalisation to the GameBundle / 13-CSV shape:
     Actions worker, the checked-out scraper repo on PYTHONPATH). Rows are
     produced through the pipeline's own StintCSVStreamer so the column
     contract is exactly stints.csv's.
+  • stints, when that folder is NOT there — scripts/ingest/stints.py, a port of
+    the same logic into this repo. That is the case on GitHub Actions, where
+    the ingest actually runs, so it is the path most games take; the scraper
+    stays preferred because it is the proven one. Same columns either way.
+  • lineups — summed from whichever stints came back (stints.lineups_from_stints).
 """
 from __future__ import annotations
 
@@ -50,6 +55,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 # without run_ingest having put that directory on the path first
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from feedstamp import lm_ms as _lm_ms  # noqa: E402
+import stints as _stints  # noqa: E402  the in-repo stint builder — the fallback that always exists
 _GVS_IMPORT_ERROR = None
 try:                                   # the schedule pre-scraper that already runs on GitHub Actions
     import gamevis_schedule_scraper as gvs   # noqa: E402
@@ -297,12 +303,25 @@ class FibaLiveStatsAdapter(BaseAdapter):
         team_rows = {"home": self._team_row(home, external_id), "away": self._team_row(away, external_id)}
         box_rows = {"home": self._box_rows(home, external_id), "away": self._box_rows(away, external_id)}
         self._box_cache = box_rows
-        stints = self._stints_via_pipeline(raw, external_id, config, team_rows)
+        # THE SCRAPER FIRST, BECAUSE IT IS THE PROVEN ONE — and the in-repo builder whenever it is
+        # not there, which on the Actions runner is always. Either way the rows are stints.csv's,
+        # so the per-five table is summed from them once, here, rather than in every consumer.
+        #
+        # BUT ONLY FOR A FEED THE SCRAPER CAN ACTUALLY READ. It reverses the play-by-play
+        # unconditionally, so a forward-built stream goes straight to the in-repo builder
+        # instead — see _pbp_newest_first for why that is not a preference but a correctness
+        # requirement.
+        stints = []
+        if self._pbp_newest_first(raw):
+            stints = self._stints_via_pipeline(raw, external_id, config, team_rows)
+        if not stints:
+            stints = self._stints_in_repo(raw, external_id, config, team_rows)
+        lineups = _stints.lineups_from_stints(stints) if stints else {}
         return GameBundle(
             external_id=external_id, status=status,
             home_name=home.get("name", ""), away_name=away.get("name", ""),
             tipoff_at=None,
-            team=team_rows, box=box_rows, stints=stints, lineups={},
+            team=team_rows, box=box_rows, stints=stints, lineups=lineups,
             four_factors=self.four_factors_from_team_rows(team_rows["home"], team_rows["away"]),
             shots=self._shots(home, away), transition=self._transition(home, away),
             pbp=None, payload_hash=payload_hash, raw=raw,
@@ -319,6 +338,44 @@ class FibaLiveStatsAdapter(BaseAdapter):
         if not (raw.get("pbp") or []):
             return "scheduled"
         return "live"
+
+    # ------------------------------------------------------------------ feed ordering
+    @staticmethod
+    def _pbp_newest_first(raw: dict) -> bool:
+        """Is this payload's play-by-play ordered newest-first, the way FIBA writes one?
+
+        THIS DECIDES WHICH STINT BUILDER IS SAFE TO USE, and it is not a matter of taste. The
+        scraper's parse_playbyplay reverses the list unconditionally — its own comment says
+        "JSON pbp is in REVERSE chronological order (newest first)" — which is correct for a
+        genuine data.json and exactly wrong for the leagues whose adapters BUILD a forward
+        stream: ACB, LNB, B.LEAGUE, EuroLeague and EuroCup. Feeding one of those to the scraper
+        plays the game backwards, so substitutions arrive before the players they replace and
+        the stints that come out are confident nonsense rather than a visible failure.
+
+        It matters only on a machine where the scraper folder exists, because that is the one
+        place the scraper branch is ever chosen — which is to say Louie's PC and not the
+        Actions runner, so a bug here would have shown up exactly where it was hardest to
+        believe.
+
+        The order is READ FROM THE PAYLOAD rather than assumed per adapter: a feed that changes
+        its mind is then followed rather than trusted, and a new translated adapter cannot
+        forget to add itself to a list. Ties and empty feeds keep the old FIBA reading."""
+        evs = raw.get("pbp") or []
+        if len(evs) < 2:
+            return True            # nothing to read; the FIBA assumption is the old behaviour
+
+        def num(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
+        for key in ("actionNumber", "period"):
+            first = next((n for n in (num(e.get(key)) for e in evs) if n is not None), None)
+            last = next((n for n in (num(e.get(key)) for e in reversed(evs)) if n is not None), None)
+            if first is not None and last is not None and first != last:
+                return first > last
+        return True
 
     # ------------------------------------------------------------------ normalisers
     @staticmethod
@@ -410,6 +467,30 @@ class FibaLiveStatsAdapter(BaseAdapter):
     def _transition(cls, home: dict, away: dict) -> dict:
         tr = lambda t: {"fb": cls._tot(t, "sPointsFastBreak"), "sc": cls._tot(t, "sPointsSecondChance"), "pot": cls._tot(t, "sPointsFromTurnovers")}
         return {"home": tr(home), "away": tr(away)}
+
+    # ------------------------------------------------------------------ stints, in this repo
+    def _stints_in_repo(self, raw: dict, gid: str, config: dict, team_rows: dict) -> list:
+        """scripts/ingest/stints.py on the same payload: the fallback that is never missing.
+
+        This is the path that actually runs in production. The scraper folder the branch above
+        wants does not exist on the GitHub Actions runner, so before this every league shipped an
+        empty stints list and nobody saw an error — an empty list is a valid answer.
+
+        Lineups are spelled from the box rows, which have already been through names.py, so a five
+        reads the same here as in the box score beside it. A lineup that is not five a side is
+        printed, once per game, rather than stored silently."""
+        names = {side: {str(r["pno"]): r["player_name"] for r in self._box_cache.get(side, [])}
+                 for side in ("home", "away")}
+        warnings: list = []
+        try:
+            rows, _ = _stints.build(raw, team_rows, names=names, game_id=str(gid),
+                                    game_date=config.get("game_date", ""), warnings=warnings)
+        except Exception as exc:
+            print(f"     (stints failed for {gid}: {exc!r})")
+            return []
+        if warnings:
+            print(f"     ({len(warnings)} lineup warning(s) for {gid}: {warnings[0]})")
+        return rows
 
     # ------------------------------------------------------------------ stints via the scraper pipeline
     @classmethod

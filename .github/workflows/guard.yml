@@ -530,6 +530,19 @@ jobs:
         # rail and the phone's bar
         run: node supabase/tests/haze.test.mjs
 
+      - name: The Learn more page, and the seasons control
+        # pitch.test.mjs: the deployment slide leads, every tab it declares opens a pane, every
+        # framed page and every screenshot is lazy and sized, and — the part that matters — no
+        # claim on a SALES page outlives the code that implements it, each one matched against
+        # the migration or module that makes it true.
+        # seasonbar.test.mjs: a league's seasons, offered only when there is more than one with
+        # games in it, carried in ?s= by name, on the four surfaces that read it.
+        # Both existed untested by CI: a page that sells the product and a control that navigates
+        # it are exactly the two things nobody notices are broken until somebody outside does.
+        run: |
+          node supabase/tests/pitch.test.mjs
+          node supabase/tests/seasonbar.test.mjs
+
       - name: Which clubs are in which competition
         # comps.js: a competition earns its own clubs list only when it brings clubs the main
         # competition does not have — BCB's Trophy does, SLB's cups do not (one of them only

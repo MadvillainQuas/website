@@ -20,6 +20,8 @@ site) read from:
     python scripts/ingest/run_ingest.py --config --source SLB   # config/ingest-sources.json
     python scripts/ingest/run_ingest.py --config --source SLB --ids 2702542,2702560
     python scripts/ingest/run_ingest.py --config --source SLB --dry-run   # write nothing
+    python scripts/ingest/run_ingest.py --backfill              # an older season somebody asked for
+    python scripts/ingest/run_ingest.py --backfill --dry-run    # ...say which, and read nothing in
 
 Idempotent: (adapter, external_id) is unique; unchanged payload hashes are
 skipped; live games are re-fetched until final. Politeness is the adapter's
@@ -1549,6 +1551,131 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     return exit_code, chain
 
 
+# ────────────────────────────────────────────────────────── the backfill lane
+# AN OLDER SEASON, ASKED FOR FROM THE CONSOLE (0135 season_backfills).
+#
+# There is no second ingest here and there must never be one. Every adapter
+# already reads the season it is given out of adapter_config["season"] — acb's
+# ?temporada=, B.LEAGUE's ?year=, EuroLeague's E<year>, the Czech and Slovak
+# sites' own season lists, and for a Genius client the year
+# expand_competition_sources matches each competition against. So a backfill is
+# THIS pass with one string changed; everything below is about which sources it
+# changes it on, and how the queued row is left afterwards.
+#
+# THE ADAPTER HAS TO BE ABLE TO READ A SEASON. The pipeline bridges (bbl_2bbl,
+# euroleague_api, eurobasket_html, genius_html, bcb_pipeline) hand the config
+# to a scraper module in the bcb_scraper project that may pin its own year, and
+# a source that quietly re-read THIS season while filed under 2024-25 is the
+# worst thing this feature could do — last season's table filled with this
+# season's games, and no error anywhere. A source whose adapter is not on this
+# list is skipped with a reason printed, never run on trust.
+SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague"}
+
+_BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
+
+
+def beat() -> None:
+    """Keep a claimed backfill's lease alive. 0135 re-queues a row whose worker has not been heard
+    from for 90 minutes — that is what stops a killed runner blocking its league's season for ever —
+    and a season is several hundred games, so the pass has to say it is still there. Throttled to
+    once a minute, and a no-op for every other kind of pass, so the call in the game loop is free."""
+    b = _BEAT
+    if not b or time.time() - b["at"] < 60:
+        return
+    b["at"] = time.time()
+    try:
+        b["q"].rpc("heartbeat_season_backfill", {"p_id": b["id"]})
+    except Exception:
+        pass            # a missed heartbeat is not worth failing a season over; the lease is 90 min
+
+
+def backfill_claim(args) -> tuple[dict | None, "Supabase | None"]:
+    """Take the oldest queued backfill and say which league and season it is for.
+
+    THE QUEUE IS READ EVEN ON A DRY RUN. It is this lane's INPUT, not an output, so it gets its own
+    client rather than main()'s `sb`, which is deliberately None when nothing may be written. A dry
+    run then PEEKS instead of claiming: --dry-run has always meant the database comes back exactly
+    as it was, and the queue is part of the database."""
+    global _BEAT
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if not (url and key):
+        print("--backfill needs SUPABASE_URL / SUPABASE_SERVICE_KEY: the queue lives in the database")
+        return None, None
+    q = Supabase(url, key)
+    job = None
+    if args.dry_run:
+        rows = q.select("season_backfills", "state=eq.queued&order=requested_at.asc&limit=1&select=*")
+        job = dict(rows[0], _dry=True) if rows else None
+        if job:
+            print(f"[dry] claiming backfill {job['id']} - {job['season']} (nothing written: the row stays queued)")
+    else:
+        got = q.rpc("claim_season_backfill", {"p_worker": f"gha:{os.environ.get('GITHUB_RUN_ID', 'local')}"})
+        if isinstance(got, list):
+            got = got[0] if got else None
+        # an empty queue comes back as null, or as a row of nulls - both mean "nothing to do"
+        job = got if (got and got.get("id")) else None
+        if job:
+            print(f"claimed backfill {job['id']} - {job['season']}")
+            _BEAT = {"q": q, "id": job["id"], "at": time.time()}
+    if not job:
+        print("no season backfill is queued")
+        return None, q
+    try:                                   # the league's slug is how a config source is recognised
+        lg = q.select("leagues", f"id=eq.{job['league_id']}&select=slug,name")
+        job["league_slug"] = (lg[0] if lg else {}).get("slug")
+        job["league_name"] = (lg[0] if lg else {}).get("name") or job.get("league_slug")
+    except Exception as exc:
+        print(f"   (league lookup failed: {exc})")
+    print(f"-> backfilling {job.get('league_name') or job['league_id']} {job['season']}")
+    return job, q
+
+
+def backfill_sources(job: dict, sources: list[dict]) -> list[dict]:
+    """This league's sources from load_sources, pinned to the backfill's season.
+
+    THREE FIELDS ARE DELIBERATELY REPLACED so an old season cannot land on top of the live one:
+
+      adapter_config["season"]  the mechanism itself - every adapter reads it, and
+                                expand_competition_sources picks the competitions of THAT season;
+      competition_id            a registry row points at the competition of the season being
+                                played, and would file 2024-25's games straight into it.
+                                Cleared, so source_competition creates/uses the right one;
+      id                        the schedule_sources row. A backfill that stamped last_polled_at
+                                on the live source would push the next ordinary poll half an hour
+                                out - an old season must never delay the current one."""
+    lid, slug = job.get("league_id"), job.get("league_slug")
+    out = []
+    for s in sources:
+        if not ((lid and s.get("league_id") == lid) or (slug and s.get("league_slug") == slug)):
+            continue
+        if s["adapter"] not in SEASON_AWARE_ADAPTERS:
+            print(f"   {s.get('code')}: the {s['adapter']} adapter does not read a season - skipped rather than "
+                  f"risk filing this season's games under {job['season']}")
+            continue
+        out.append({**s, "adapter_config": dict(s.get("adapter_config") or {}, season=job["season"]),
+                    "competition_id": None, "id": None})
+    print(f"   {len(out)} source(s) pinned to {job['season']}: " + (", ".join(s.get("code") or "?" for s in out) or "none"))
+    return out
+
+
+def backfill_finish(q: "Supabase | None", job: dict, state: str, sources_run: int,
+                    seen: int, written: int, error: str | None) -> None:
+    """Close the queued row. Always called - a pass that threw still has to say so, because a row
+    left on `running` blocks its league's season until the 90-minute lease expires."""
+    global _BEAT
+    _BEAT = None
+    line = f"backfill {job['season']} {state}: {sources_run} source(s), {seen} seen, {written} written" + (f" - {error}" if error else "")
+    if not q or job.get("_dry"):
+        print("[dry] " + line)
+        return
+    try:
+        q.rpc("finish_season_backfill", {"p_id": job["id"], "p_state": state, "p_sources": sources_run,
+                                         "p_seen": seen, "p_written": written, "p_error": error})
+        print(line)
+    except Exception as exc:
+        print(f"(could not close the backfill row - the lease will re-queue it: {exc})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", help="label/code of one source")
@@ -1564,7 +1691,11 @@ def main() -> int:
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)
     ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
+    ap.add_argument("--backfill", action="store_true", help="claim the oldest queued season backfill (0135) and run this same pass over that league's sources with that season pinned")
     args = ap.parse_args()
+    if args.backfill and args.live_only:
+        print("--backfill and --live-only are different lanes: an old season has no live games")
+        return 2
 
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
     sb = Supabase(url, key) if (url and key and not args.dry_run and not args.no_supabase) else None
@@ -1573,15 +1704,36 @@ def main() -> int:
         print("Supabase: off" + ("" if args.no_supabase or args.dry_run else " (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)") + " - repo feed only")
 
     sources = load_sources(sb, args.config and sb is None, args.source)
+    # THE BACKFILL NARROWS THE SOURCE LIST BEFORE ANYTHING ELSE TOUCHES IT — the same load_sources,
+    # then one league's rows with the season pinned. It has to happen here, ahead of
+    # expand_competition_sources, because that is what turns a Genius client's page into one source
+    # per competition OF A GIVEN SEASON: run it first and it would expand every league on the
+    # registry against the season being played and then throw the work away.
+    job, queue = None, None
+    if args.backfill:
+        job, queue = backfill_claim(args)
+        if not job:
+            return 0                       # an empty queue is a successful pass that did nothing
+        sources = backfill_sources(job, sources)
+        if not sources:
+            backfill_finish(queue, job, "failed", 0, 0, 0,
+                            "no season-aware source is configured for this league")
+            return 1
     if not args.ids:
         sources = expand_competition_sources(sources)
     print(f"{len(sources)} source(s) due")
+    if job and not sources:
+        # the league has a source, but the site publishes no competition for that season: a real
+        # answer ("we do not hold it") rather than a silent success the console cannot explain
+        backfill_finish(queue, job, "failed", 0, 0, 0, f"the source publishes no {job['season']} competition")
+        return 1
     if args.live_only and not args.ids:
         rc, chain = live_keeper(sb, sources, args)
         gh_output(chain="true" if chain else "false")
         return rc
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     exit_code = 0
+    tot = {"seen": 0, "written": 0, "error": None}      # the whole pass, for a backfill's row
     for src in sources:
         adapter = get_adapter(src["adapter"])
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
@@ -1697,6 +1849,7 @@ def main() -> int:
                 if not b:
                     continue
                 run["games_fetched"] += 1
+                beat()                      # a backfill's lease, kept alive through a long season
                 prev = known.get(g.external_id)
                 if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh:
                     continue
@@ -1787,7 +1940,17 @@ def main() -> int:
                                                                    "games_written": run["games_written"], "status": "failed" if err and not run["games_written"] else ("partial" if err else "ok"), "error": err})
                 except Exception:
                     pass
+            tot["seen"] += run["games_seen"]; tot["written"] += run["games_written"]
+            if err:
+                tot["error"] = err
+            beat()
             print(f"   done in {time.time() - t0:.1f}s - seen {run['games_seen']}, fetched {run['games_fetched']}, written {run['games_written']}")
+    # the queued row is closed whatever happened: `running` left behind is a league whose season
+    # nobody can ask for again until the lease expires
+    if job:
+        backfill_finish(queue, job, "failed" if exit_code else "done", len(sources),
+                        tot["seen"], tot["written"], tot["error"])
+        return exit_code            # an old season has no live games - never chain the live lane
     # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane
     if sb and not args.dry_run and not args.ids:
         try:

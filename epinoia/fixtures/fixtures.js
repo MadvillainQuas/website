@@ -81,6 +81,9 @@ function badge(team) {
 
 /* --------------------------------------------------------------- filters --- */
 let COMPS = [], compFilter = '';
+/* the seasons a reader may go to and the one being shown (seasonbar.js): only
+   those with games in them, newest first, the current one unless ?s= says */
+let SEASONS = [], SEASON = null;
 function syncUrl() {
   const u = new URL(location.href);
   if (LEAGUE) u.searchParams.set('l', LEAGUE.slug);
@@ -88,6 +91,31 @@ function syncUrl() {
   if (teamFilter) u.searchParams.set('t', teamFilter); else u.searchParams.delete('t');
   if (stateFilter !== 'all') u.searchParams.set('show', stateFilter); else u.searchParams.delete('show');
   history.replaceState(null, '', u);
+}
+
+/* THE SEASON, in the same chips as the rest of the filters and drawn by the
+   same module the league page uses (seasonbar.js). It sits above them because
+   it is not a filter on the list — it decides which list this is. Changing it
+   costs one read: every season's competitions arrived with the seasons. */
+function renderSeasonPicker() {
+  const host = $('#seasonPick');
+  if (!host) return;
+  window.EpinoiaSeasonBar.mount({
+    host, wrap: host.parentNode, seasons: SEASONS, season: SEASON,
+    onPick: async sn => {
+      SEASON = sn;
+      COMPS = (sn.comps || []).slice();
+      /* the competition filter named a phase of the season being left */
+      compFilter = '';
+      window.EpinoiaSeasonBar.syncUrl(sn);
+      syncUrl();
+      $('#ctx').textContent = LEAGUE.name + ' · ' + sn.name;
+      renderSeasonPicker();
+      if (!(await loadGames())) return;
+      renderFilters();
+      await render();
+    }
+  });
 }
 
 function renderFilters() {
@@ -508,10 +536,35 @@ function watchLive(delay) {
   }, delay != null ? delay : (anyLive ? LIVE_MS : IDLE_MS));
 }
 
+/* The season's games, into GAMES. Its own function because the season picker
+   reads a different season into the same list, and a second copy of this query
+   is a second place for the select to fall behind the row the page draws. */
+async function loadGames() {
+  const ids = COMPS.map(c => c.id);
+  if (!ids.length) {
+    GAMES = [];
+    $('#list').textContent = '';
+    $('#list').appendChild(el('div', 'empty', 'This season has no competitions yet.'));
+    return false;
+  }
+  GAMES = await D.all('games?competition_id=in.(' + ids.join(',') + ')' +
+    '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
+    'starters,home_team_id,away_team_id&order=tipoff_at.desc');
+  /* behind the wall only the fixtures are this viewer's; the database already
+     refuses the rest, and this keeps a simulated non-member's list the same */
+  if (WALL.walled) GAMES = GAMES.filter(g => g.status === 'scheduled');
+  return true;
+}
+
 (async function boot() {
   try {
-    const ctx = await D.context(qp.get('l') || 'demo-league', qp.get('c'), qp.get('s'));
+    /* SEASONS, NOT JUST THIS ONE (seasonbar.js): the same read data.js context()
+       made, with the seasons cut to those that have games and every season's
+       competitions attached — so the chips below can offer them and switching
+       costs no further request. */
+    const ctx = await window.EpinoiaSeasonBar.context(D.get, qp.get('l') || 'demo-league', qp.get('s'));
     LEAGUE = ctx.league;
+    SEASONS = ctx.seasons; SEASON = ctx.season;
     window.__CS_LEAGUE_SLUG = LEAGUE.slug;
     $('#ctx').textContent = LEAGUE.name + (ctx.season ? ' · ' + ctx.season.name : '');
     $('#foot').textContent = 'Epinoia Network · ' + LEAGUE.name;
@@ -548,18 +601,8 @@ function watchLive(delay) {
 
     COMPS = (ctx.comps || []).slice();
     compFilter = qp.get('comp') && COMPS.some(c => c.id === qp.get('comp')) ? qp.get('comp') : '';
-    const comps = COMPS.map(c => c.id);
-    if (!comps.length) {
-      $('#list').textContent = '';
-      $('#list').appendChild(el('div', 'empty', 'This season has no competitions yet.'));
-      return;
-    }
-    GAMES = await D.all('games?competition_id=in.(' + comps.join(',') + ')' +
-      '&select=id,tipoff_at,status,home_score,away_score,venue,venue_address,competition_id,' +
-      'starters,home_team_id,away_team_id&order=tipoff_at.desc');
-    /* behind the wall only the fixtures are this viewer's; the database already
-       refuses the rest, and this keeps a simulated non-member's list the same */
-    if (WALL.walled) GAMES = GAMES.filter(g => g.status === 'scheduled');
+    renderSeasonPicker();
+    if (!(await loadGames())) return;
 
     renderFilters();
     await render();

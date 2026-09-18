@@ -139,6 +139,11 @@ async function render() {
   window.EpinoiaWebhook.mount({ host: '#webhookPanel', sb, league, say });
   window.EpinoiaFeeds.mount({ host: '#feedsPanel', sb, league, say,
                                 cfg: window.EPINOIA_CONFIG });
+  /* Seasons & competitions, part two: asking for an OLDER season to be read in.
+     Mounted once with getters, and redrawn from loadLeague() — the season list
+     it marks up is the one that has just been loaded for this league. */
+  window.EpinoiaBackfill.mount({ host: '#backfillPanel', sb, say,
+                                league: () => league, seasons: () => seasons });
   window.EpinoiaMerchUI.mount({ host: '#merchPanel', sb, league, say,
                                 cfg: window.EPINOIA_CONFIG,
                                 season: season ? season.name : '' });
@@ -237,6 +242,7 @@ async function loadLeague() {
   seasons = data || [];
   if (!season || !seasons.some(s => s.id === season.id)) season = seasons[0] || null;
   renderSeasonPick();
+  if (window.EpinoiaBackfill) window.EpinoiaBackfill.refresh();
   await loadComps();
   await loadTeams();
 }

@@ -29,6 +29,18 @@ order), the romaji in internationalFirstName/internationalFamilyName. names.py p
 fields when the native ones are CJK and keeps the kanji as a searchable alias. Nothing is
 romanised here: there is no safe rule for it, and the feed already did it.
 
+SO IS THE EVENT STREAM. PlayByPlays was already being downloaded for the shot chart and then
+dropped, which is why this league shipped no stints and no lineups; it is now translated whole and
+handed over as raw["pbp"], which is the only thing scripts/ingest/stints.py reads. Three things
+about this feed decide whether the lineups come out right, and all three are the scraper's findings
+(LINEUPDATASCRAPE.parse_playbyplay_bleague), not new ones:
+  · `Side` ('left'/'right') FLIPS AT HALF TIME and must never attribute anything — HomeAway (1/2)
+    does, with TeamID as the fallback;
+  · the array is chronological but corrections are APPENDED with early-game clocks, so it is
+    stable-sorted by (period, elapsed) before anything reads it;
+  · the ten CD1=86 "player in" rows at P1 10:00 carry Score=null and are the STARTER
+    ANNOUNCEMENT, not substitutions — replaying them would put ten men on court.
+
 THE SHOT CHART IS FREE, and the scraper throws it away. Every made/missed field-goal event carries
 X and Y as a PERCENTAGE OF THE FULL COURT, which is already the frame shot_dist_to_nearest_rim
 measures in — so the coordinates are passed straight through and at_rim_offset is NOT used;
@@ -95,6 +107,77 @@ PLAYER_STATS = {
 SHOTS = {1: (True, True), 2: (True, False),
          3: (False, True), 4: (False, True), 5: (False, False), 6: (False, False)}
 
+# ActionCD1 -> (actionType, subType, success) in the FIBA event shape scripts/ingest/stints.py
+# replays. This is LINEUPDATASCRAPE's BLEAGUE_ACTIONCD1_MAP respelled: the codes, and the 10-game
+# validation behind them (24/25/26 are fouls that count in the box; 15/16 carry no stat; 17/18/19
+# belong to the club and not to a player), are the scraper's. Only the vocabulary differs, because
+# the stint builder wants FIBA's words rather than the scraper's canonical event names.
+#
+# DELIBERATELY ABSENT, i.e. skipped: 16 (and-one marker — the free throws that follow carry the
+# points), 80 (game start — FIBA has no such action; period/start is the one that opens a period),
+# 84/85 (clock start/stop, pure noise: 164 of this game's 730 rows).
+ACTIONS = {
+    1:  ("3pt", None, 1),
+    2:  ("3pt", None, 0),
+    3:  ("2pt", None, 1),                       # made, outside the paint
+    4:  ("2pt", None, 1),                       # made, inside it — PAINT adds the qualifier
+    5:  ("2pt", None, 0),
+    6:  ("2pt", None, 0),
+    7:  ("freethrow", None, 1),
+    8:  ("freethrow", None, 0),
+    9:  ("rebound", "defensive", None),
+    10: ("rebound", "offensive", None),
+    11: ("block", None, None),
+    12: ("assist", None, None),
+    # KEPT, where the scraper suppresses it: an offensive foul (23) always arrives with its own
+    # turnover (13) one row later, and the scraper drops the 13 because its single "Offensive Foul"
+    # action already counts PF+TOV. Here a foul and a turnover are two events counted by two
+    # different branches of stints._apply, so dropping the 13 would lose the turnover — and FIBA
+    # itself files an offensive foul as both.
+    13: ("turnover", None, None),
+    14: ("steal", None, None),
+    15: ("foulon", None, None),                 # the mirror of a foul; `previousAction` pairs them
+    17: ("turnover", None, None),               # the club's own, credited to nobody
+    18: ("rebound", "defensive", None),
+    19: ("rebound", "offensive", None),
+    22: ("foul", "personal", None),
+    23: ("foul", "offensive", None),
+    # A player technical lands in this feed's box FOUL column (which is read from the box rows and
+    # is untouched by any of this) but NOT in a stint's pf: stints._apply excludes technicals by
+    # name, as FIBA counts them. The two numbers differ by design, not by accident.
+    24: ("foul", "technical", None),
+    25: ("foul", "unsportsmanlike", None),
+    26: ("foul", "disqualifying", None),
+    81: ("game", "end", None),
+    82: ("period", "start", None),
+    83: ("period", "end", None),
+    86: ("substitution", "in", None),
+    87: ("substitution", "out", None),
+    88: ("timeout", None, None),
+}
+GAME_END, SUB_IN = 81, 86
+PAINT = (4, 6)                                  # "inside the paint" is the code itself
+TEAM_EVENTS = (17, 18, 19)                      # no player: the stint builder must not charge one
+
+#: ActionCD2 on a field goal. Three words is all this feed has, which is why the rim split is taken
+#: from the shot's coordinates instead (see _shot_chart) and these only feed the event log's own
+#: shot-type vocabulary (translate/fiba_events.STYPE).
+SHOT_SUBTYPE = {27: "jumpshot", 28: "layup", 29: "dunk"}
+
+#: ActionCD2/ActionCD3 -> FIBA's scoring qualifiers, which is how stints.csv's fast-break,
+#: second-chance and points-off-turnover columns get filled at all. The scraper uses only 35/38 (it
+#: had no override hook for the other two) and notes the rest exist; the feed's own PlayText names
+#: each one, so 38 is a fast break off a turnover and 48 is a second chance off a turnover — both,
+#: not either.
+#:
+#: THESE DO NOT SUM TO THE BOX COLUMNS, AND SHOULD NOT. On the game checked the tags reconcile with
+#: PTFB / PT2ND exactly — but as a COUNT OF MADE SCORING PLAYS, not as points (home 4 tagged
+#: fast-break scores = PTFB 4, worth 6 points; away 7 second-chance scores = PT2ND 7, worth 13).
+#: The stint columns are points, because that is what a second-chance POINTS column means, so they
+#: are deliberately larger than the club row beside them until PLAYER_STATS is re-read.
+QUALIFIERS = {35: ("fastbreak",), 36: ("fromturnover",), 37: ("2ndchance",),
+              38: ("fastbreak", "fromturnover"), 48: ("fromturnover", "2ndchance")}
+
 #: a player row for the WHOLE game: Category 1 is a player (2/3 are team rows) and
 #: PeriodCategory 18 is the game total (1-4 are quarters, 15/16 the halves).
 PLAYER_ROW, TEAM_ROW, WHOLE_GAME = 1, 3, 18
@@ -126,6 +209,31 @@ def _stats(row: dict) -> dict:
     out["sFieldGoalsMade"] = out["sTwoPointersMade"] + out["sThreePointersMade"]
     out["sFieldGoalsAttempted"] = out["sTwoPointersAttempted"] + out["sThreePointersAttempted"]
     return out
+
+
+def _rest_secs(ev: dict) -> int:
+    """RestTime ("M:SS", time REMAINING, no leading zero) as seconds. Anything unreadable is 0,
+    which sorts to the END of its period — where a period-end row with "0:00" belongs anyway."""
+    rt = str(ev.get("RestTime") or "")
+    if ":" not in rt:
+        return 0
+    m, s = (rt.split(":") + ["0"])[:2]
+    try:
+        return int(m) * 60 + int(s)
+    except ValueError:
+        return 0
+
+
+def _ordered(pbp: list) -> list:
+    """The plays oldest first, which the array very nearly already is.
+
+    PlayByPlays is written in play order, but a LATE CORRECTION IS APPENDED to the end of it with
+    its own early-game period and clock — the scraper's 20-game validation caught this on 505235
+    and 505253 — so one bad row would otherwise drag every lineup after it out of place. `No` is
+    not monotonic and cannot settle it either. The sort is stable, so ties keep feed order, which
+    is what preserves a free-throw trip and the in/out order inside one substitution window."""
+    return sorted([e for e in (pbp or []) if isinstance(e, dict)],
+                  key=lambda e: (S.num(e.get("Period"), 0), -_rest_secs(e)))
 
 
 def _split_latin(name: str) -> tuple:
@@ -271,7 +379,11 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
         if not game.get("BoxscoreExistsFlg"):
             return None               # tipped off but nothing published yet: try again next pass
 
-        shots = self._shot_chart(blob.get("PlayByPlays") or [])
+        # ONE ordered list feeds both the shot chart and the event stream, because the two are
+        # joined on a position in it: a shot marker and the event that took the shot have to agree
+        # on their actionNumber or the rim split silently falls back to a subType.
+        plays = _ordered(blob.get("PlayByPlays") or [])
+        shots = self._shot_chart(plays)
         crests = _crests(page)
         tm = []
         for side in ("Home", "Away"):
@@ -303,11 +415,14 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
             tm.append(t)
 
         played = bool(game.get("GameEndedFlg"))
-        # The pipeline reads "is this over?" off the pbp sentinel alone, so a game still being
-        # played needs at least one event to be called live rather than never-started.
-        marker = None if played or not blob.get("PlayByPlays") else [
-            {"actionType": "period", "subType": "start", "period": S.num(game.get("GameCurrentPeriod"), 1)}]
-        raw = S.game(tm[0], tm[1], played=played, pbp=marker)
+        # HomeAway (1/2) is on every player row of the game checked; TeamID is the fallback the
+        # scraper leans on. Both exist because the third candidate, `Side`, is which basket the
+        # club was attacking and flips at half time.
+        tno_of = {str(game.get(side + "TeamID")): tno for tno, side in ((1, "Home"), (2, "Away"))
+                  if game.get(side + "TeamID")}
+        # The pipeline still reads "is this over?" off the pbp sentinel alone, and a game being
+        # played now carries its real events, so it is called live rather than never-started.
+        raw = S.game(tm[0], tm[1], played=played, pbp=self._events(plays, tno_of, played))
         b = self.bundle_from_raw(raw, str(external_id), config)
         # GameDateTime is a UNIX epoch STRING and is the authoritative tip-off; the schedule card's
         # time is only the announced one.
@@ -357,23 +472,111 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
         return None                   # fibashape sums the players instead
 
     @staticmethod
-    def _shot_chart(pbp: list) -> dict:
+    def _shot_chart(plays: list) -> dict:
         """{TeamID: [shot…]} — x/y are already a percentage of the full court.
 
         ATTRIBUTION IS BY TeamID AND NEVER BY `Side`: 'left'/'right' is which basket the club was
         attacking, and it flips at half time, so half of every club's shots would be filed against
-        its opponent."""
+        its opponent.
+
+        `plays` must be the ORDERED list, because a marker is stamped with its position in it and
+        that position is the only join between a shot and the event that took it."""
         out: dict = {}
-        for e in pbp or []:
+        for n, e in enumerate(plays or [], start=1):
             kind = SHOTS.get(e.get("ActionCD1"))
             if not kind or e.get("X") is None or e.get("Y") is None:
                 continue
             three, made = kind
-            out.setdefault(str(e.get("TeamID") or ""), []).append(
-                S.shot(S.num(e.get("X")), S.num(e.get("Y")), made=made, three=three,
+            s = S.shot(S.num(e.get("X")), S.num(e.get("Y")), made=made, three=three,
                        pno=str(e.get("PlayerID1") or "").strip() or None,
-                       period=S.num(e.get("Period"), 1)))
+                       period=S.num(e.get("Period"), 1))
+            # THE SAME NUMBER THE EVENT CARRIES. stints._shot_type finds a shot's marker by
+            # actionNumber and measures the distance to the rim from it; without the join it falls
+            # back to subType, and this feed spells a shot three ways (jump shot / layup / dunk),
+            # so every mid-range and every three would file as neither rim nor off-the-dribble.
+            s["actionNumber"] = n
+            out.setdefault(str(e.get("TeamID") or ""), []).append(s)
         return out
+
+    @staticmethod
+    def _events(plays: list, tno_of: dict, played: bool) -> list:
+        """The same plays in the platform's FIBA event shape, oldest first.
+
+        scripts/ingest/stints.py rebuilds the lineups from this and from nothing else, so what has
+        to be right is the four fields that place a play — period, gt, tno, pno — and gt is time
+        REMAINING, which is what RestTime already is.
+
+        pno IS PlayerID, the same string _players keys tm[].pl by. The shirt number could not do
+        it: the pipeline keys rosters on "<club>:<pno>", and #0 and #00 are two legal jerseys that
+        any number-keyed lineup merges into one player.
+
+        actionNumber is the play's position in the ordered list, INCLUDING the rows skipped here,
+        so a skipped clock-stop leaves a gap rather than renumbering everything after it — which is
+        what lets a shot marker and its event agree (see _shot_chart). stints.ordered() only sorts
+        by it, so gaps cost nothing."""
+        out, last_foul = [], None
+        for n, e in enumerate(plays or [], start=1):
+            cd1 = e.get("ActionCD1")
+            spec = ACTIONS.get(cd1)
+            if spec is None:
+                continue                      # 16/80/84/85, and anything this feed grows later
+            action, sub, success = spec
+            if cd1 == GAME_END and not played:
+                # GameEndedFlg is the one thing that decides live from final (fiba_livestats._status
+                # looks for this sentinel first), so a game the club has not signed off does not
+                # get to publish itself as over.
+                continue
+            if cd1 == SUB_IN and e.get("Score") is None:
+                # The starter announcement: five "player in" rows a side at P1 10:00, with no score
+                # because no basketball has been played. Replaying them as substitutions puts ten
+                # men on court; the starters come from the box score's StartingFlg instead, which
+                # named exactly five a side on the game checked.
+                continue
+            ha = e.get("HomeAway")
+            teamless = action in ("period", "game")
+            ev = {"actionNumber": n, "actionType": action,
+                  "period": max(1, S.num(e.get("Period"), 1)),
+                  "gt": str(e.get("RestTime") or "0:00"),
+                  # tno 0 is FIBA's "this belongs to neither club" — a period end has no club
+                  "tno": 0 if teamless else (ha if ha in (1, 2)
+                                             else tno_of.get(str(e.get("TeamID") or ""), 0)),
+                  # a club's own rebound or turnover names no player, and an empty pno is exactly
+                  # how the stint builder knows not to charge one
+                  "pno": "" if teamless or cd1 in TEAM_EVENTS else str(e.get("PlayerID1") or "").strip()}
+            if action in ("2pt", "3pt"):
+                sub = SHOT_SUBTYPE.get(e.get("ActionCD2"))
+            if sub:
+                ev["subType"] = sub
+            if success is not None:
+                ev["success"] = success
+            quals = ["team"] if cd1 in TEAM_EVENTS else []
+            if cd1 in PAINT:
+                quals.append("pointsinthepaint")
+            for cd in (e.get("ActionCD2"), e.get("ActionCD3")):
+                quals.extend(q for q in QUALIFIERS.get(cd, ()) if q not in quals)
+            if quals:
+                ev["qualifier"] = quals
+            if action == "foulon" and last_foul is not None:
+                # The drawn foul follows the foul itself — one row later on 36 of 41 here, two
+                # after an offensive foul, where the committing player's own turnover sits between
+                # them. Only a foul moves the pointer, so both orders pair correctly.
+                ev["previousAction"] = last_foul
+            if action == "foul":
+                last_foul = n
+            out.append(ev)
+        return out
+
+    def _stints_via_pipeline(self, raw: dict, gid: str, config: dict, team_rows: dict) -> list:
+        """NOT FOR A TRANSLATED FEED — the scraper's stint builder reads these backwards.
+
+        fiba_livestats tries the scraper's fiba_api_parser before the in-repo builder, and it is
+        the proven one for a REAL data.json, which is NEWEST FIRST: parse_playbyplay reverses the
+        list before replaying it. Everything here is built FORWARDS (_ordered, fibashape.game), so
+        the scraper would replay the game from the final buzzer back to the tip — and one wrong
+        stint is worse than none, because it is a truthy answer that stops the in-repo builder ever
+        running. Returning nothing hands the game to scripts/ingest/stints.py, which reads it
+        forwards. (The scraper's own BLJ path is unaffected: it parses the game page itself.)"""
+        return []
 
 
 CARD_TEAM_NAME = re.compile(r'class="team-name"[^>]*>\s*([^<]+?)\s*<')

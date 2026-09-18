@@ -12,12 +12,13 @@
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
-<title>The scoring app · Epinoia</title>
+<title>Learn more · Epinoia</title>
+<meta name="description" content="Epinoia is a competition platform for basketball: one scoring app, one event log, and every surface a league needs derived from it — public site, club pages, embeddable widgets, an API, phone apps and alerts.">
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=299"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=299">
-<link rel="stylesheet" href="../kit/nav.css?v=299">
+<script src="../appmode.js?v=300"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=300">
+<link rel="stylesheet" href="../kit/nav.css?v=300">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -133,6 +134,72 @@
   .spec .v{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2)}
   .spec .v b{color:var(--ink);font-weight:400}
 
+  /* ==================== the gallery ====================
+     The live frames above prove the widgets work; they are poor at showing
+     BREADTH, because a reader will not sit through nine iframes booting. So
+     the tour of the rest of the platform is captured stills — half a megabyte
+     for thirteen pages, lazily, against roughly a megabyte each for a frame
+     that also has to reach the database before it shows anything.
+
+     They are real captures of the live site rather than mock-ups, which is
+     also why they are dated in the caption block below: a still CAN go stale,
+     and saying when it was taken is cheaper than pretending it cannot. */
+  .gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
+  .gal figure{margin:0;background:var(--ground);display:flex;flex-direction:column}
+  .gal img{display:block;width:100%;height:auto;border-bottom:1px solid var(--rule)}
+  .gal figcaption{padding:10px 12px 13px}
+  .gal .t{font-family:var(--f-ui);font-weight:700;font-size:12px;color:var(--ink);
+    display:block;margin-bottom:4px}
+  .gal .d{font-family:var(--f-micro);font-size:9px;line-height:1.9;color:var(--ink-3);display:block}
+  /* the three phone captures are portrait and would each take a whole row of
+     the grid above; their own row keeps them at a readable size side by side */
+  .trio{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
+  .trio figure{margin:0;background:var(--ground)}
+  .trio img{display:block;width:100%;height:auto;border-bottom:1px solid var(--rule)}
+  .trio figcaption{padding:9px 11px 12px;font-family:var(--f-micro);font-size:9px;
+    line-height:1.85;color:var(--ink-3)}
+  .trio figcaption b{display:block;font-family:var(--f-ui);font-weight:700;font-size:11px;
+    color:var(--ink);margin-bottom:3px}
+
+  /* ==================== who it is for ====================
+     Six readers arrive at this page with six different questions, and a single
+     column of prose answers none of them quickly. Each card opens with the
+     problem in that reader's own terms, because somebody scanning for
+     themselves stops at the sentence that describes their Saturday. */
+  .auds{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
+  .aud{background:var(--ground);padding:calc(var(--u)*2.5);display:flex;flex-direction:column}
+  .aud .k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;
+    color:var(--ink-3)}
+  .aud h3{font-family:var(--f-ui);font-weight:800;font-size:15px;line-height:1.2;margin:6px 0 0;
+    color:var(--lume);text-transform:none;letter-spacing:0}
+  .aud .q{font-family:var(--f-micro);font-size:9.5px;line-height:1.9;color:var(--ink-2);
+    margin:calc(var(--u)*1.5) 0 0;border-left:2px solid var(--lume);padding-left:11px}
+  .aud ul{padding-left:16px;margin:calc(var(--u)*2) 0 0}
+  .aud li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
+    margin-bottom:5px;max-width:none}
+  .aud li b{color:var(--ink);font-weight:400}
+  .aud .grow{flex:1}
+  .aud .go{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--lume);text-decoration:none;margin-top:calc(var(--u)*2);display:inline-block}
+  .aud .go:hover{text-decoration:underline}
+
+  /* ==================== what changed ====================
+     Grouped by who benefits rather than by release, because nobody outside
+     this project cares which week a thing shipped — they care whether the
+     thing they wanted is there now. */
+  .news{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin:calc(var(--u)*2) 0 0}
+  .news section{background:var(--ground);padding:calc(var(--u)*2.5)}
+  .news h3{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--lume);margin:0 0 calc(var(--u)*1.5);font-weight:400}
+  .news ul{padding-left:16px;margin:0}
+  .news li{font-family:var(--f-micro);font-size:9.5px;line-height:1.95;color:var(--ink-2);
+    margin-bottom:7px;max-width:none}
+  .news li b{color:var(--ink);font-weight:400}
+
   @media (max-width:820px){
     .models{grid-template-columns:1fr}
     .spec{grid-template-columns:1fr;gap:0}
@@ -145,24 +212,27 @@
 <div class="ep-frame">
   <div class="topbar">
     <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
-    <span class="ep-micro">the scoring app</span>
+    <span class="ep-micro">learn more</span>
   </div>
 
   <div class="hero">
-    <h1>Scoring</h1>
+    <h1>Learn more</h1>
     <p>
-      A statistician&rsquo;s app that writes an append-only log of what happened
-      and derives everything else from it &mdash; box score, play-by-play,
-      lineups, advanced numbers. Nothing on a page is a figure somebody typed
-      twice.
+      Epinoia is a competition platform for basketball. A statistician&rsquo;s app
+      writes an append-only log of what happened, and everything else is derived
+      from it &mdash; the box score, the table, the play-by-play, the lineups, the
+      advanced numbers, the club and player pages, the widgets on somebody
+      else&rsquo;s website, the API, the phone app and the alert that arrives at
+      half-time. Nothing on any page is a figure somebody typed twice.
     </p>
   </div>
 
   <div class="tabs-wrap">
     <div class="ep-tabs" role="tablist">
-      <button class="ep-tab on" data-p="deploy" role="tab">What we deploy</button>
-      <button class="ep-tab" data-p="use" role="tab">Use it for your competition</button>
-      <button class="ep-tab" data-p="how" role="tab">How the app works</button>
+      <button class="ep-tab on" data-p="deploy" role="tab">What it is</button>
+      <button class="ep-tab" data-p="who" role="tab">Who it&rsquo;s for</button>
+      <button class="ep-tab" data-p="new" role="tab">What&rsquo;s new</button>
+      <button class="ep-tab" data-p="how" role="tab">How it works</button>
     </div>
   </div>
 
@@ -177,10 +247,11 @@
       <h2>Two deployment models.<br><em>One statistical pipeline.</em></h2>
       <p>
         Every figure Epinoia publishes &mdash; on a competition site, inside a
-        widget on a club&rsquo;s own pages, or through the API &mdash; is
-        derived from the same append-only event log by the same engine. The two
-        models differ in one respect only: how much of the public surface we
-        host. The capture, the derivation and the distribution are identical.
+        widget on a club&rsquo;s own pages, in a phone alert, or through the API
+        &mdash; is derived from the same append-only event log by the same
+        engine. The two models differ in one respect only: how much of the
+        public surface we host. The capture, the derivation and the
+        distribution are identical.
       </p>
     </div>
 
@@ -200,13 +271,20 @@
           <li><b>Competition site</b> &mdash; standings, fixtures and results, club and
             player profiles, statistical leaders, full season tables, knockout
             brackets and season awards.</li>
+          <li><b>Several competitions, one league</b> &mdash; a cup and a championship
+            keep separate tables, fixtures and squads, and a reader switches
+            between them on the same page.</li>
           <li><b>Club portals</b> &mdash; each club maintains its own roster, crest, home
             venue and merchandise, under its own credentials.</li>
           <li><b>Editorial</b> &mdash; match reports and competition news, with an approval
             workflow and role-based access: platform administrator, league
             administrator, statistician, news writer.</li>
           <li><b>Statistical production</b> &mdash; box scores, play-by-play, lineup and
-            with-or-without analysis, shot charts and four-factor summaries.</li>
+            with-or-without analysis, shot charts, four-factor summaries and
+            league percentiles.</li>
+          <li><b>Supporters</b> &mdash; a following, a phone app and alerts that go out on
+            the competition&rsquo;s behalf rather than through somebody&rsquo;s
+            personal account.</li>
           <li><b>Distribution</b> &mdash; the widgets, API and partner push described
             opposite are included, so third-party sites are served from day one.</li>
         </ul>
@@ -218,7 +296,7 @@
             <span class="url">your-competition.org &mdash; hosted by Epinoia</span></div>
           <div class="port" data-scale><iframe loading="lazy" tabindex="-1" scrolling="no"
             title="A live competition site: standings, fixtures and news"
-            src="../l/?c=demo-league"></iframe></div>
+            src="../l/?l=bcb&amp;c=bf7b17a4-9275-4418-b78a-7442844b73a3"></iframe></div>
           <div class="cap">Competition site &mdash; live, not a screenshot</div>
         </div>
 
@@ -226,9 +304,9 @@
           <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
             <span class="url">your-competition.org/player</span></div>
           <div class="port" data-scale data-h="920"><iframe loading="lazy" tabindex="-1" scrolling="no"
-            title="A live player profile with season shot chart"
-            src="../p/?p=65485ad8-55a4-4daa-a74c-60723b3291ef"></iframe></div>
-          <div class="cap">Player profile &mdash; season shot chart, on/off, game log</div>
+            title="A live player profile with league percentiles"
+            src="../p/?p=da0552c8-fd2f-4f75-a0e2-e75eefb3eafb"></iframe></div>
+          <div class="cap">Player profile &mdash; percentiles, on/off, game log</div>
         </div>
       </div>
 
@@ -255,6 +333,8 @@
             moment it is final, in JSON, CSV or XML, with configurable
             sections, name order and date format, for RealGM, Eurobasket or a
             club&rsquo;s own importer.</li>
+          <li><b>Calendar feeds</b> &mdash; a club&rsquo;s fixtures as a subscribable
+            calendar that updates itself when a game moves.</li>
           <li><b>No build step</b> &mdash; a component is one tag, pasted into whatever
             your site is already built with.</li>
         </ul>
@@ -266,7 +346,7 @@
             <span class="url">your-own-site.org &mdash; our components, your pages</span></div>
           <div class="live"><iframe loading="lazy" scrolling="no" height="132"
             title="Live fixture and score ticker"
-            src="../embed/strip/?l=demo-league&amp;n=8"></iframe></div>
+            src="../embed/strip/?l=bcb&amp;n=8"></iframe></div>
           <div class="cap">Live ticker &mdash; flips to in-play without a refresh</div>
         </div>
 
@@ -275,13 +355,111 @@
             <span class="url">your-own-site.org/results</span></div>
           <div class="live"><iframe loading="lazy" scrolling="no" height="250"
             title="Live box score widget"
-            src="../embed/game/?g=f1fe5ba6-7360-461e-9fd2-c71c60fdb7e0"></iframe></div>
+            src="../embed/game/?g=52bfe03b-d70e-4924-97c1-5f02c15cdf4e"></iframe></div>
           <div class="live"><iframe loading="lazy" scrolling="no" height="300"
             title="Live standings widget"
-            src="../embed/table/?l=demo-league&amp;kind=standings"></iframe></div>
+            src="../embed/table/?l=bcb&amp;c=bf7b17a4-9275-4418-b78a-7442844b73a3&amp;kind=standings"></iframe></div>
           <div class="cap">Box score and standings &mdash; both interactive, right here</div>
         </div>
       </div>
+    </div>
+
+    <!-- ---------- the tour ---------- -->
+    <h2>The platform, page by page</h2>
+    <p>
+      Captures of the running site. Everything below is reachable from the
+      public navigation without an account, and every number in them was
+      derived from an event log rather than entered.
+    </p>
+
+    <div class="gal">
+      <figure>
+        <img src="shots/home.webp" width="1600" height="1000" loading="lazy" decoding="async"
+             alt="The Epinoia home page: today's fixtures across every league.">
+        <figcaption><span class="t">Home</span><span class="d">Every league, today&rsquo;s
+          games and the players having the best season, on one page.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/games.webp" width="1600" height="1089" loading="lazy" decoding="async"
+             alt="Global fixtures: every league's games, nearest to now first.">
+        <figcaption><span class="t">Global fixtures</span><span class="d">Every league&rsquo;s
+          games in one list, nearest to now first, grouped by competition.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/league.webp" width="1600" height="1089" loading="lazy" decoding="async"
+             alt="A competition page: table, fixtures, leaders, team stats and cup.">
+        <figcaption><span class="t">A competition</span><span class="d">Table, fixtures,
+          leaders and team statistics &mdash; and a row of buttons for the other
+          competitions in the same league.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/team.webp" width="1600" height="1111" loading="lazy" decoding="async"
+             alt="A club page themed in the club's own colours, with crest, form and four factors.">
+        <figcaption><span class="t">A club</span><span class="d">Crest, colours taken
+          from it, form, four factors, roster, venue, and a calendar a supporter
+          can subscribe to.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/player-a.webp" width="1600" height="1111" loading="lazy" decoding="async"
+             alt="A player profile showing league percentile bars for scoring and efficiency.">
+        <figcaption><span class="t">A player</span><span class="d">Percentiles against
+          every player in the league, adjustable for position, with on/off and a
+          game log underneath.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/game.webp" width="1600" height="1089" loading="lazy" decoding="async"
+             alt="A finished game: box score, play-by-play and a downloadable scoresheet.">
+        <figcaption><span class="t">A game</span><span class="d">Box score,
+          play-by-play, shot chart and a scoresheet PDF &mdash; live from the first
+          whistle, not assembled afterwards.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/scouting.webp" width="1600" height="1000" loading="lazy" decoding="async"
+             alt="Global scouting: every league's season in one sortable table.">
+        <figcaption><span class="t">Scouting</span><span class="d">Every league&rsquo;s
+          current season in one table, filtered on several statistics at once.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/video.webp" width="1600" height="1000" loading="lazy" decoding="async"
+             alt="The video hub: broadcasts indexed against the game clock.">
+        <figcaption><span class="t">Video hub</span><span class="d">Broadcasts read by
+          the clock reader and indexed against the log, so a possession can be
+          found rather than scrubbed for.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/embeds.webp" width="1600" height="1000" loading="lazy" decoding="async"
+             alt="The widget gallery: four embeddable components with their code.">
+        <figcaption><span class="t">Widgets</span><span class="d">Four components any
+          site can carry &mdash; a club page, a local paper, a school newsletter.
+          One line each, no key to manage.</span></figcaption>
+      </figure>
+      <figure>
+        <img src="shots/country.webp" width="1600" height="1000" loading="lazy" decoding="async"
+             alt="A country page collecting every competition played there.">
+        <figcaption><span class="t">A country</span><span class="d">Every competition
+          played there, with the day&rsquo;s fixtures across all of them.</span></figcaption>
+      </figure>
+    </div>
+
+    <div class="trio">
+      <figure>
+        <img src="shots/phone-home.webp" width="560" height="1198" loading="lazy" decoding="async"
+             alt="The home page on a phone.">
+        <figcaption><b>On a phone</b>The same pages, laid out for a hand. This is
+          what the app shows, because the app is this.</figcaption>
+      </figure>
+      <figure>
+        <img src="shots/phone-game.webp" width="560" height="1198" loading="lazy" decoding="async"
+             alt="A box score on a phone.">
+        <figcaption><b>A game in your pocket</b>Live score, box score and
+          play-by-play, with alerts if you follow either club.</figcaption>
+      </figure>
+      <figure>
+        <img src="shots/scorer.webp" width="560" height="1198" loading="lazy" decoding="async"
+             alt="The scoring application in training mode.">
+        <figcaption><b>The scoring app</b>Tap the player, then the action. Fouls,
+          timeouts, the bonus and the arrow keep themselves.</figcaption>
+      </figure>
     </div>
 
     <!-- ---------- what does not vary ---------- -->
@@ -295,8 +473,8 @@
       <div class="v">A browser-based scoring application, local-first: the game
         is held on the device and published as connectivity allows, so a hall
         with no signal is not a lost fixture. Games arriving from <b>FIBA
-        LiveStats</b> or as <b>CSV</b> are indistinguishable downstream from
-        one scored in the app.</div>
+        LiveStats</b>, as <b>CSV</b>, or from a league&rsquo;s own feed are
+        indistinguishable downstream from one scored in the app.</div>
 
       <div class="k">Data model</div>
       <div class="v">An <b>append-only event log</b>. A correction appends a
@@ -326,6 +504,17 @@
         recorded &mdash; enforced by a <b>row-level policy on the players
         table</b>, so every reader inherits it rather than each surface
         remembering to filter.</div>
+
+      <div class="k">Access</div>
+      <div class="v">Who may write is decided by the database, not by which
+        page somebody found: a finalised game cannot be reopened by a reader,
+        and a statistician cannot edit a competition they are not on. Whole
+        leagues can be put behind membership if a federation wants that.</div>
+
+      <div class="k">Reach</div>
+      <div class="v">An installable <b>app</b>, and alerts a supporter chooses:
+        two days out, two hours out, when the lineups land, at half-time, at
+        the final whistle, or when a player they follow puts up a line.</div>
 
       <div class="k">Migration</div>
       <div class="v">A season already played can be imported rather than
@@ -364,26 +553,166 @@
     </div>
   </div>
 
-  <!-- The sales tab is FIRST and is what somebody lands on, because a reader
-       arriving from the splash is deciding whether this is for them, not
-       learning to drive it. -->
-  <div class="pane" id="pane-use">
-    <h2>What a league gets</h2>
-    <p>
-      Live scoring, a public table that rebuilds itself from the games, player
-      and team profiles, lineup and with-or-without analysis, embeddable
-      widgets for club websites, a read-only JSON API, and an automatic feed to
-      the sites that republish results.
-    </p>
-    <div class="steps">
-      <div class="step"><div class="n">01</div><div class="t">Live from the whistle</div>
-        <div class="d">The public box score is under a second behind the scorer&rsquo;s table, and corrections reach it too &mdash; an undo is not something a viewer has to refresh to see.</div></div>
-      <div class="step"><div class="n">02</div><div class="t">One source of truth</div>
-        <div class="d">Standings, awards, brackets and season statistics all derive from the same event log. Delete them and re-run, and the same answers come back.</div></div>
-      <div class="step"><div class="n">03</div><div class="t">Your clubs, your pages</div>
-        <div class="d">Each club gets a profile, a roster it maintains itself, a home venue with a map, and merchandise built from its own crest.</div></div>
-      <div class="step"><div class="n">04</div><div class="t">Safeguarding built in</div>
-        <div class="d">Under-18 players are withheld from public pages, from the API and from every partner feed &mdash; by the database, not by somebody remembering to filter.</div></div>
+  <!-- ================= who it is for =================
+       The same platform answers six quite different questions. Rather than
+       write one paragraph that half-answers all of them, each reader gets the
+       problem in their own words and the four or five things that solve it. -->
+  <div class="pane" id="pane-who">
+    <div class="pitch-head">
+      <h2>Six people ask about this.<br><em>They are not asking the same thing.</em></h2>
+      <p>
+        A federation wants to stop administering a spreadsheet. A club wants a
+        page that is not embarrassing. A broadcaster wants the clock. An analyst
+        wants the log. Find yours.
+      </p>
+    </div>
+
+    <div class="auds">
+
+      <div class="aud">
+        <div class="k">01</div>
+        <h3>Leagues and federations</h3>
+        <div class="q">
+          Your results live in a spreadsheet, your table is maintained by hand,
+          and the statistics that would make the competition worth following
+          are not collected at all.
+        </div>
+        <ul>
+          <li><b>The whole public surface</b>, run for you &mdash; or just the data
+            layer, if the website is not the problem.</li>
+          <li><b>A table that cannot disagree with the games</b>, because it is
+            recomputed from them rather than kept.</li>
+          <li><b>Several competitions under one league</b> &mdash; a championship, a
+            cup, an age group &mdash; each with its own table and its own clubs.</li>
+          <li><b>Safeguarding by policy</b>, not by somebody remembering: minors are
+            withheld from every public surface at the database.</li>
+          <li><b>Delegation without risk</b> &mdash; clubs maintain their own rosters and
+            a statistician scores their own fixtures, and neither can touch
+            anything else.</li>
+          <li><b>Last season imported</b>, so the first page a visitor sees is not
+            empty.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../contact/">Talk about your competition &rarr;</a>
+      </div>
+
+      <div class="aud">
+        <div class="k">02</div>
+        <h3>Clubs</h3>
+        <div class="q">
+          Your supporters find out the score from a photograph of a scoresheet
+          on a Facebook page, some time on Sunday.
+        </div>
+        <ul>
+          <li><b>A club page</b> in your own colours, taken from your own crest,
+            with form, four factors and the squad.</li>
+          <li><b>A roster you maintain</b> under your own login &mdash; nobody has to
+            email the league to fix a name.</li>
+          <li><b>A calendar supporters subscribe to</b>, which moves when the fixture
+            moves.</li>
+          <li><b>Alerts</b> to the people who follow you: lineups, half-time, full
+            time.</li>
+          <li><b>Your own website, served</b> &mdash; drop the score strip and the table
+            into the site you already have.</li>
+          <li><b>Merchandise</b> generated from your crest, and a venue with a map.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../embed/">See what you could embed &rarr;</a>
+      </div>
+
+      <div class="aud">
+        <div class="k">03</div>
+        <h3>Broadcast and media</h3>
+        <div class="q">
+          Your graphics operator is typing the score into a template while
+          watching the hall clock, and your highlights editor is scrubbing.
+        </div>
+        <ul>
+          <li><b>A live socket</b> under a second behind the statistician&rsquo;s table,
+            so graphics run on the real state of the game.</li>
+          <li><b>Clock cam</b> &mdash; point a phone at the scoreboard, box the digits,
+            and the broadcast reads the hall&rsquo;s own clock.</li>
+          <li><b>A video hub</b> where a broadcast is indexed against the log, so a
+            possession is found rather than hunted for.</li>
+          <li><b>Embeddable score strip and box score</b> for a paper, a rights
+            holder or a club site &mdash; one line, no key.</li>
+          <li><b>Match reports written on finalisation</b>, as a starting draft rather
+            than a blank page.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../clockcam/">Look at the clock reader &rarr;</a>
+      </div>
+
+      <div class="aud">
+        <div class="k">04</div>
+        <h3>Scouts, analysts and recruiters</h3>
+        <div class="q">
+          The numbers you need exist somewhere, in nine formats, behind eight
+          websites, and none of them will tell you what a line is worth in that
+          league.
+        </div>
+        <ul>
+          <li><b>Every league&rsquo;s season in one table</b>, sorted and filtered on
+            several statistics at once.</li>
+          <li><b>Percentiles rather than raw lines</b> &mdash; and adjustable for
+            position, because 7 rebounds means two different things.</li>
+          <li><b>On/off, with-or-without, lineups and stints</b>, derived from the
+            substitution log rather than estimated.</li>
+          <li><b>Shot charts and four factors</b> per player, per club, per game.</li>
+          <li><b>The whole thing as JSON</b>, keyed, paginated, rate-limited &mdash; for
+            a model or a study rather than a page.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../scouting/">Open global scouting &rarr;</a>
+      </div>
+
+      <div class="aud">
+        <div class="k">05</div>
+        <h3>Sponsors and commercial partners</h3>
+        <div class="q">
+          You are asked to back a competition whose audience nobody can
+          describe beyond &ldquo;quite a few people come&rdquo;.
+        </div>
+        <ul>
+          <li><b>An audience that identifies itself</b> &mdash; supporters sign in to
+            follow clubs and players, so a following is a number rather than a
+            guess.</li>
+          <li><b>A competition&rsquo;s identity travels</b> on every widget it places on
+            somebody else&rsquo;s site.</li>
+          <li><b>A membership and paid-access layer</b> is built in and off by default,
+            for a competition that wants one.</li>
+          <li><b>Club merchandise</b> generated per club, without a separate shop to
+            run.</li>
+          <li><b>An app on the phone</b>, which is where a season ticket holder
+            actually is.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../contact/">Ask what the reach is &rarr;</a>
+      </div>
+
+      <div class="aud">
+        <div class="k">06</div>
+        <h3>Developers and integrators</h3>
+        <div class="q">
+          You have been asked to put live scores on a site, and every option
+          you have found wants a build step, a key rotation policy and a
+          contract.
+        </div>
+        <ul>
+          <li><b>Widgets as one script tag</b>, isolated in their own frame &mdash; your
+            CSS and ours cannot reach each other.</li>
+          <li><b>A read-only JSON API</b>, keyed per consumer, with rate-limit headers
+            and pagination echoed on every response.</li>
+          <li><b>Push on finalisation</b> to your endpoint in JSON, CSV or XML, with
+            the sections, name order and date format you need.</li>
+          <li><b>Calendar feeds</b> per club and per competition, with proper
+            conditional requests.</li>
+          <li><b>Import rather than rescore</b> &mdash; CSV, FIBA LiveStats, or an adapter
+            for a league that already publishes its own statistics.</li>
+        </ul>
+        <div class="grow"></div>
+        <a class="go" href="../api/">Read the API docs &rarr;</a>
+      </div>
     </div>
 
     <h2>What it costs to try</h2>
@@ -408,6 +737,109 @@
       <a class="pri" href="../contact/">Contact us</a>
       <a href="../score/?train=1">Try the training game</a>
       <a href="../api/">Read the API docs</a>
+    </div>
+  </div>
+
+  <!-- ================= what changed =================
+       This page used to describe a scoring app with a website attached. It is
+       kept honest by listing only what is running: anything half-built is
+       absent rather than described in the future tense. -->
+  <div class="pane" id="pane-new">
+    <div class="pitch-head">
+      <h2>It stopped being a scoring app<br><em>with a website attached.</em></h2>
+      <p>
+        Everything below is running now. Work in progress is not on this list
+        &mdash; a roadmap printed as a feature list is how software gets bought
+        twice.
+      </p>
+    </div>
+
+    <div class="news">
+
+      <section>
+        <h3>On the phone</h3>
+        <ul>
+          <li><b>An app of its own.</b> The competition installs to a home screen
+            and opens without a browser around it. Android is built and signed;
+            an iPhone build exists and follows it.</li>
+          <li><b>Alerts a supporter chooses</b> &mdash; two days before a game, two
+            hours before, when the lineups are posted, at half-time, at the
+            final whistle, and when a followed player puts up a line.</li>
+          <li><b>Alerts a league can send</b> to its own audience from its own
+            pages, rather than through somebody&rsquo;s personal account.</li>
+          <li><b>Email</b> on the competition&rsquo;s own domain for the things that
+            should not be a push.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>For supporters</h3>
+        <ul>
+          <li><b>Home</b> &mdash; every league, the day&rsquo;s games and the players
+            having the best season, on one page.</li>
+          <li><b>Global fixtures</b> &mdash; every league&rsquo;s games in one list,
+            nearest to now first; and a page per country.</li>
+          <li><b>Following</b> &mdash; clubs and players, with announcements from the
+            competition.</li>
+          <li><b>Calendar subscriptions</b> per club, with a downloadable file for
+            the phones that refuse a subscription.</li>
+          <li><b>Every league in its own colours</b>, read from its crest, so a
+            competition&rsquo;s pages look like the competition.</li>
+          <li><b>Highlight reels</b> and an injury report.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>For analysts</h3>
+        <ul>
+          <li><b>Global scouting</b> &mdash; every league&rsquo;s current season in one
+            table, top of the sorted statistic, filtered on several at once.</li>
+          <li><b>League percentiles</b> on every player, adjustable for position.</li>
+          <li><b>Game pages shaded by percentile</b>, so a line reads as good or bad
+            without you already knowing the league.</li>
+          <li><b>A video hub per league</b>, with broadcasts read by the clock
+            reader and indexed against the log.</li>
+          <li><b>A modern box score</b> alongside the traditional one.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>For clubs and leagues</h3>
+        <ul>
+          <li><b>Competitions within a league.</b> A cup and a championship keep
+            separate tables and separate squads &mdash; and the button to switch
+            squads only appears when the two really do have different clubs in
+            them.</li>
+          <li><b>Fixture lists that follow the squads</b>, so a cup side does not
+            appear in a championship list.</li>
+          <li><b>Club pages themed to the crest</b>, with a photographed venue rather
+            than a placeholder.</li>
+          <li><b>Match reports written automatically</b> when a game is finalised.</li>
+          <li><b>A membership and paid-access framework</b>, shipped and off by
+            default, for a competition that wants one.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Under the hood</h3>
+        <ul>
+          <li><b>Feeds instead of rescoring.</b> Adapters read FIBA LiveStats and
+            Genius-hosted competitions, and &mdash; for leagues that publish their
+            own &mdash; EuroLeague and EuroCup, Liga Endesa, LNB &Eacute;lite and
+            &Eacute;lite 2, and B.LEAGUE.</li>
+          <li><b>One form of a name.</b> Players arrive as given name then family
+            name, transliterated to Latin, however the source wrote them.</li>
+          <li><b>One club, not two.</b> A sponsor&rsquo;s name appearing in a fixture
+            list but not in the roster no longer creates a second club.</li>
+          <li><b>A write guard on finished games</b>, and standings recomputed rather
+            than accumulated.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="cta">
+      <a class="pri" href="../home/">See it running</a>
+      <a href="../contact/">Ask about something not listed</a>
     </div>
   </div>
 
@@ -439,6 +871,22 @@
         <div class="d">A sanity check runs first &mdash; periods played, minutes adding up, nobody on court with six fouls &mdash; and then the result publishes.</div></div>
     </div>
 
+    <h2>Where the games come from</h2>
+    <p>
+      Not every competition needs a statistician in every hall. A game can
+      reach the log four ways, and downstream they are indistinguishable:
+    </p>
+    <ul>
+      <li><b>Scored in the app</b> &mdash; the usual case, and the only one that is live
+        as it happens.</li>
+      <li><b>FIBA LiveStats</b> &mdash; if the hall already runs it, the game is read
+        rather than scored twice.</li>
+      <li><b>A league&rsquo;s own feed</b> &mdash; where a competition publishes its own
+        statistics, an adapter converts them into the same events.</li>
+      <li><b>CSV</b> &mdash; for a season already played, or a competition whose
+        records are a spreadsheet.</li>
+    </ul>
+
     <h2>Things worth knowing</h2>
     <ul>
       <li>It works with no signal. The scorer keeps its own copy and publishes when it can.</li>
@@ -455,14 +903,16 @@
   <footer class="foot">
     <a href="../home/">&larr; Epinoia</a>
     <a href="../contact/">Contact</a>
+    <a href="../embed/">Widgets</a>
+    <a href="../api/">API</a>
     <span>Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=299" defer></script>
-<script src="learn.js?v=299" defer></script>
-<script src="../nav.js?v=299" defer></script>
-<!-- three tabs now, and a fourth would run off a phone; the platform's
-     standard scroller keeps the strip one row high and reachable -->
-<script src="../xscroll.js?v=299" defer></script>
+<script src="../config.js?v=300" defer></script>
+<script src="learn.js?v=300" defer></script>
+<script src="../nav.js?v=300" defer></script>
+<!-- four tabs now, which runs off a phone; the platform's standard scroller
+     keeps the strip one row high and reachable -->
+<script src="../xscroll.js?v=300" defer></script>
 </body>
 </html>

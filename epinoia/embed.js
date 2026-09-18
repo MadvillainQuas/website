@@ -3,7 +3,7 @@
    EPINOIA EMBED — one line on someone else's page.
 
      <script src="https://prophesyscouting.co.uk/epinoia/embed.js"
-             data-epinoia="strip" data-league="demo-league"></script>
+             data-epinoia="strip" data-league="your-league-slug"></script>
 
      <script src="https://prophesyscouting.co.uk/epinoia/embed.js"
              data-epinoia="game" data-game="<uuid>"></script>

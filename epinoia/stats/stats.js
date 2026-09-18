@@ -12,7 +12,16 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
 (async function boot() {
   try {
     const D = window.EpinoiaData;
-    const { league, comp, comps } = await D.context(qp.get('l') || 'demo-league', qp.get('c'));
+    const SB = window.EpinoiaSeasonBar;
+    /* EVERY SEASON THIS LEAGUE HAS PLAYED, not only the newest (seasonbar.js):
+       the same league / season / competitions read data.js context() makes, cut
+       to the seasons that have games and with each one's competitions attached,
+       so the chips below can offer them and changing season costs no request. */
+    const ctx = await SB.context(D.get, qp.get('l') || 'demo-league', qp.get('s'));
+    const league = ctx.league;
+    let season = ctx.season;
+    let comps = ctx.comps;
+    const comp = comps[0] || null;
     /* WHAT THIS VIEWER MAY SEE (docs/memberships.md): asked now, by id, and settled before the
        table is drawn. The module gives up by itself after 4 s and answers open, and without it
        on the page nothing here changes. */
@@ -22,13 +31,19 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
       : Promise.resolve(null);
     /* the rail marks the league, and the page wears its colours (nav.js) */
     window.__CS_LEAGUE_SLUG = league.slug;
-    $('#ctx').textContent = league.name;
+    $('#ctx').textContent = league.name + (season ? ' · ' + season.name : '');
     $('#title').textContent = league.name + ' — season statistics';
+    /* ?s= on the way out, and only when it is worth carrying: every page opens on
+       the current season by itself, so naming it would be a parameter on a link
+       that means nothing. A season the reader chose does have to travel. */
+    const seasonQ = () => (season && ctx.current && season.id !== ctx.current.id)
+      ? '&s=' + encodeURIComponent(season.name) : '';
     /* the route to team stats: the league page's Team Stats tab, for THIS league
        (and the same competition when one was chosen here) */
     const tl = $('#teamsLink');
-    if (tl) tl.href = '../l/?l=' + encodeURIComponent(league.slug) +
-      (qp.get('c') ? '&c=' + encodeURIComponent(qp.get('c')) : '') + '#teams';
+    const teamsHref = () => '../l/?l=' + encodeURIComponent(league.slug) +
+      (qp.get('c') ? '&c=' + encodeURIComponent(qp.get('c')) : '') + seasonQ() + '#teams';
+    if (tl) tl.href = teamsHref();
     if (!comp) return fail('This league has no competitions yet.');
 
     /* A MEMBERS-ONLY LEAGUE closed to this viewer: the card instead of the table, and no season
@@ -67,6 +82,25 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     const scopeIds = () => scope === 'all'
       ? (comps || []).map(c => c.id).filter(Boolean)
       : [scope];
+
+    /* THE SEASON, in the chips the rest of the platform uses (seasonbar.js).
+       Above the table rather than in the "covering" select beside the phases:
+       a season is which numbers these are, a phase is which part of them. */
+    SB.mount({
+      host: $('#seasonPick'), wrap: $('#seasonRow'),
+      seasons: ctx.seasons, season,
+      onPick: sn => {
+        season = sn;
+        comps = sn.comps;
+        /* the phase filter named a competition of the season being left */
+        scope = 'all';
+        SB.syncUrl(sn);
+        $('#ctx').textContent = league.name + ' · ' + sn.name;
+        if (tl) tl.href = teamsHref();
+        fillScopes();
+        draw();
+      }
+    });
 
     /* The table's renderer empties whatever host it is given, so the filter
        gets a host of its own — appending both to #tbl wiped the control. */
@@ -114,9 +148,16 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
     sel.className = 'ep-input scopesel';
     const add = (v, label) => { const o = document.createElement('option');
       o.value = v; o.textContent = label; sel.appendChild(o); };
-    add('all', 'the whole season · ' + (comps || []).length + ' competitions');
-    (comps || []).forEach(c => add(c.id,
-      c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
+    /* refilled on a change of season: these are that season's phases, and last
+       season's would ask the table for a competition it no longer has */
+    function fillScopes() {
+      sel.textContent = '';
+      add('all', 'the whole season · ' + (comps || []).length + ' competitions');
+      (comps || []).forEach(c => add(c.id,
+        c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
+      sel.value = scope;
+    }
+    fillScopes();
     sel.addEventListener('change', () => { scope = sel.value; draw(); });
     bar.appendChild(sel);
 

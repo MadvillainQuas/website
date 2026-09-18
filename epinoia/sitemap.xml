@@ -46,6 +46,21 @@
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
+  <!-- The pitch page, and the widget gallery it sends people to. Both are
+       static prose rather than league data, so they are the only two pages
+       here a search engine can usefully rank on their own words — and they
+       are what a competition or a partner is looking for when they find us
+       without already knowing the name. -->
+  <url>
+    <loc>https://prophesyscouting.co.uk/epinoia/learn/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://prophesyscouting.co.uk/epinoia/embed/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
   <url>
     <loc>https://prophesyscouting.co.uk/epinoia/api/</loc>
     <changefreq>monthly</changefreq>

@@ -44,11 +44,20 @@ ok('...and it is the one that opens',
    'somebody arriving from the splash is deciding whether this is for them');
 ok('...the other panes do not also open',
    (learn.match(/class="pane on"/g) || []).length === 1);
-ok('its tab is first', learn.indexOf('data-p="deploy"') < learn.indexOf('data-p="use"'));
+/* Read the tabs OFF THE PAGE rather than naming them here. The page has grown from
+   three tabs to four and will grow again; a hard-coded list turns every new audience
+   section into a test failure that says nothing, and — worse — silently stops checking
+   the tab it no longer knows about. What must hold is the same either way: the buying
+   tab leads, and every tab the page declares actually opens something. */
+const tabKeys = [...learn.matchAll(/data-p="([a-z-]+)"/g)].map(m => m[1]);
+ok('its tab is first', tabKeys[0] === 'deploy',
+   `first tab is "${tabKeys[0]}" — the slide is what a buyer lands on`);
+ok('the page still carries the two tabs everything else here reads',
+   tabKeys.includes('deploy') && tabKeys.includes('how'), tabKeys.join(','));
 
-/* the tab machinery is generic, so a third tab needs no JS change — but the
+/* the tab machinery is generic, so a fourth tab needs no JS change — but the
    pane id and the tab key have to agree or the tab does nothing */
-['deploy', 'use', 'how'].forEach(k => {
+tabKeys.forEach(k => {
   ok(`tab "${k}" has a pane`, learn.includes(`data-p="${k}"`) && learn.includes(`id="pane-${k}"`));
 });
 
@@ -117,7 +126,22 @@ ok('the model grid cannot be widened by its own contents',
 ok('scaled frames do not take pointer input', /\.port iframe\{[^}]*pointer-events:none/.test(learn));
 ok('...and are out of the tab order',
    (learn.match(/tabindex="-1"/g) || []).length >= 3);
-ok('every frame is lazy', (learn.match(/loading="lazy"/g) || []).length === srcs.length);
+/* Count the attribute ON THE TAGS IT IS ABOUT. Comparing a page-wide count of
+   loading="lazy" against the number of frames held only while the page had no
+   images; the moment the gallery arrived, thirteen lazy <img> tags made the
+   totals disagree and the check failed for the one reason that was not a bug. */
+const lazyOf = re => [...learn.matchAll(re)].filter(m => /loading="lazy"/.test(m[0])).length;
+const frames = [...learn.matchAll(/<iframe\b[^>]*>/g)].length;
+const imgs = [...learn.matchAll(/<img\b[^>]*>/g)].length;
+ok('every frame is lazy', lazyOf(/<iframe\b[^>]*>/g) === frames,
+   `${lazyOf(/<iframe\b[^>]*>/g)} of ${frames}`);
+/* The gallery is half a megabyte of captures across four tabs. Eager, they would
+   all be fetched for a reader who never leaves the first one. */
+ok('...and so is every screenshot', imgs > 0 && lazyOf(/<img\b[^>]*>/g) === imgs,
+   `${lazyOf(/<img\b[^>]*>/g)} of ${imgs}`);
+/* A picture with no intrinsic size reflows the text under it when it lands. */
+ok('...and each one reserves its space',
+   [...learn.matchAll(/<img\b[^>]*>/g)].every(m => /width="\d+"/.test(m[0]) && /height="\d+"/.test(m[0])));
 ok('every frame is described for a screen reader',
    (learn.match(/<iframe[^>]*\stitle="/g) || []).length === srcs.length);
 

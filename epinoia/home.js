@@ -16,6 +16,12 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
    leaders. One file, because the two differ by a filter and a section, and
    maintaining a near-copy is how they drift. */
 const WANT = new URLSearchParams(location.search).get('l') || '';
+/* WHICH SEASON THIS PAGE IS ABOUT. Empty means the current one, which is what
+   almost every visit is; ?s=2025-26 is a link somebody sent, or a chip in the
+   season row below the summaries. Everything on a league's front page that has
+   a season — the games list, the clubs field, the stars, the team of the year
+   and both embeds — reads it through seasonNow() and follows it. */
+const WANT_SEASON = new URLSearchParams(location.search).get('s') || '';
 let LEAGUE = null;              // resolved when WANT is set
 /* docs/memberships.md: set only on the league splash, and only when the server
    has SAID this viewer may not see a members-only league */
@@ -189,7 +195,7 @@ async function games() {
          belongs to a league — so the league's competitions are resolved first
          and the games filtered by them. Two round trips, and no dependence on
          PostgREST resolving a three-deep embedded filter. */
-      const comps = await leagueCompetitions(LEAGUE.id);
+      const comps = await leagueCompetitions();
       if (!comps.length) {
         const host = $('#games'); host.textContent = '';
         host.appendChild(el('div', 'empty', 'No fixtures in this league yet.'));
@@ -401,7 +407,8 @@ function showAllLink(total) {
   if (!head) return;
   head.textContent = '';
   const a = el('a', 'showall', 'show all' + (total ? ' (' + total + ')' : '') + ' →');
-  a.href = 'fixtures/' + (LEAGUE ? '?l=' + encodeURIComponent(LEAGUE.slug) : '');
+  /* the fixture list opens on the season this page is showing */
+  a.href = 'fixtures/' + (LEAGUE ? '?l=' + encodeURIComponent(LEAGUE.slug) + seasonQuery() : '');
   head.appendChild(a);
 }
 
@@ -438,57 +445,78 @@ async function leagues() {
   });
 }
 
-/* Which competitions belong to a league, newest season first.
+/* ------------------------------------------------------------ the season ---
+   WHICH SEASON, ASKED ONCE, ANSWERED FOR THE WHOLE PAGE.
 
-   ASKED FOR ONCE PER PAGE, not once per caller. Three sections need this list
-   and each used to fetch it — measured: seasons and competitions were each
-   requested three times on one load of a league's front page, six round trips
-   for one answer that cannot change while the page is open.
+   Every section that shows a season used to work it out for itself, and none
+   of them could be sent anywhere else: the games list took every competition
+   of every season, the clubs grid read the newest season back out of the
+   database again, and the team of the year walked them all. Measured before:
+   seasons and competitions were each requested three times on one load.
 
-   The promise is cached rather than the result, which matters now that the
-   callers run concurrently: caching the result still lets two callers that
-   start together both miss and both fetch. Holding the in-flight promise means
-   the second one waits on the first one's request. */
-const compsCache = new Map();
-function leagueCompetitions(leagueId) {
-  if (compsCache.has(leagueId)) return compsCache.get(leagueId);
-  const p = (async () => {
-    const seasons = await api('seasons?league_id=eq.' + leagueId +
-      '&select=id&order=starts_on.desc');
-    if (!seasons.length) return [];
-    const comps = await api('competitions?season_id=in.(' +
-      seasons.map(s => s.id).join(',') + ')&select=id');
-    return comps.map(c => c.id);
+   seasonbar.js now answers all of it in one shared read — which seasons a
+   reader may go to (a season with no games at all is not one), which is the
+   default, and every season's competitions with them. ?s= picks; the sections
+   below simply read what it settled on, so a link to last season opens the
+   whole page on last season rather than one panel of it. */
+let SEASON = null;                 // the chosen season row, with its `comps`
+let SEASONS = [];                  // what the chip row offers, newest first
+let SEASON_CURRENT = null;         // the default, so a link can say when it differs
+let seasonP = null;
+
+function seasonNow() {
+  if (seasonP) return seasonP;
+  seasonP = (async () => {
+    const o = await window.EpinoiaSeasonBar.load(api, LEAGUE.id);
+    SEASONS = o.list;
+    SEASON_CURRENT = o.current;
+    SEASON = window.EpinoiaSeasonBar.pick(o.list, WANT_SEASON);
+    return SEASON;
   })();
   /* A failure must not be remembered — a section that retries later should get
      a real attempt, not a cached rejection from a blip. */
-  p.catch(() => compsCache.delete(leagueId));
-  compsCache.set(leagueId, p);
-  return p;
+  seasonP.catch(() => { seasonP = null; });
+  return seasonP;
+}
+
+/* The competitions this page is reading — the chosen season's, not every one
+   the league has ever run. The games list, the stars and the team of the year
+   all scope themselves by this, so a page opened at ?s=2025-26 shows that
+   season's games and that season's ballot rather than this one's. */
+async function leagueCompetitions() {
+  const s = await seasonNow();
+  return s ? s.comps.map(c => c.id) : [];
+}
+
+/* ?s= on a link out of this page, and only when it is worth carrying: the
+   current season is what every page opens on by itself, so spelling it out
+   would put a parameter on every link on the platform for nothing. */
+function seasonQuery() {
+  return (SEASON && SEASON_CURRENT && SEASON.id !== SEASON_CURRENT.id)
+    ? '&s=' + encodeURIComponent(SEASON.name) : '';
 }
 
 /* ---------------------------------------------------- the season's fields ---
-   WHICH CLUBS ARE IN WHICH COMPETITION, for the newest season only — last
+   WHICH CLUBS ARE IN WHICH COMPETITION, for the season being shown only — last
    season's entries are not this season's field and would put a club that has
    since dropped out back on the page.
 
-   Three requests, once per page, cached the same way the competitions are: the
-   season's competitions, who is entered in them (competition_teams, which the
-   ingest maintains by the act of filing fixtures), and the fixtures themselves
-   — which say which competitions are actually being played. comps.js turns the
-   three into the answer. A failure anywhere gives null, and every caller falls
-   back to the plain league-wide list it showed before. */
+   Two requests now, once per page, cached: who is entered in the season's
+   competitions (competition_teams, which the ingest maintains by the act of
+   filing fixtures) and the fixtures themselves — which say which competitions
+   are actually being played. The competitions no longer cost a read of their
+   own: seasonNow() has them. comps.js turns the answer into the fields. A
+   failure anywhere gives null, and every caller falls back to the plain
+   league-wide list it showed before. */
 let fieldsCache = null;
-function seasonFields(leagueId) {
+function seasonFields() {
   if (fieldsCache) return fieldsCache;
   const p = (async () => {
     const C = window.EpinoiaComps;
     if (!C) return null;
-    const seasons = await api('seasons?league_id=eq.' + leagueId +
-      '&select=id&order=starts_on.desc&limit=1');
-    if (!seasons.length) return null;
-    const comps = await api('competitions?season_id=eq.' + seasons[0].id +
-      '&select=id,name,kind');
+    const season = await seasonNow();
+    if (!season) return null;
+    const comps = season.comps;
     if (!comps.length) return null;
     const ids = comps.map(c => c.id);
     const [entries, gs] = await Promise.all([
@@ -724,7 +752,7 @@ async function stars() {
   const ST = window.EpinoiaStars;
   if (!sec || !LEAGUE || !ST) return null;
 
-  const comps = await leagueCompetitions(LEAGUE.id);
+  const comps = await leagueCompetitions();
   if (!comps.length) return null;
 
   let played = [];
@@ -863,6 +891,38 @@ function embedLook() {
     if (hex(L.colour_b)) q += '&accent2=' + encodeURIComponent(L.colour_b);
   }
   return q;
+}
+
+/* --------------------------------------------------- which season, here ---
+   The season row, above the two summaries it governs (seasonbar.js draws it;
+   the league page, the fixtures page and the statistics page get the same
+   one). Only the seasons with games in them are offered, newest first, and
+   the current one is chosen unless ?s= says otherwise.
+
+   ITS CHIPS ARE PLAIN LINKS AND THAT IS DELIBERATE. This page is eight
+   independent sections with caches of their own — the games list, the clubs
+   field, the stars, the team of the year, the merchandise that reads the last
+   two — and re-running all of them in place would be a redraw engine the page
+   does not have and would not be worth having. The season is in the URL, so
+   opening the page at it IS the redraw, and every section picks it up through
+   seasonNow() on the way in.
+
+   Drawn outside splash() because splash() owns #leagues and lays the buttons
+   and the two cards out in an order the summaries depend on. */
+async function seasonBar() {
+  /* #seasonChips, not #seasonPick: splash() has called its competition row that
+     since before seasons were navigable, and two elements of one id is a bug
+     waiting for whichever $() happens to run first. */
+  const host = $('#seasonChips');
+  if (!host || !LEAGUE) return;
+  let season;
+  /* a read that failed leaves the page exactly as it was, with no row */
+  try { season = await seasonNow(); } catch (_) { return; }
+  if (!season) return;
+  /* the heading says WHICH season, because "This season" is a lie on any other */
+  const head = $('#leaguesHead');
+  if (head) head.textContent = season.name + ' season';
+  window.EpinoiaSeasonBar.mount({ host, wrap: $('#seasonBar'), seasons: SEASONS, season });
 }
 
 /* ------------------------------------------------------------ the splash ---
@@ -1018,13 +1078,13 @@ function splash() {
    on the page. The hub hides Clubs and Stars — both need a league — and a hub
    whose first heading is "02" looks like something failed to load. */
 /* ------------------------------------------------- team of the year --------
-   Above the stars, sharing their cards. The competition is the league's most
-   recent one, because a ballot belongs to a season rather than to a league —
-   an old team of the year hanging around on next season's front page would be
+   Above the stars, sharing their cards. The competitions are the SHOWN
+   season's, because a ballot belongs to a season rather than to a league — an
+   old team of the year hanging around on next season's front page would be
    worse than none. */
 async function teamOfTheYear() {
   if (!LEAGUE || !window.EpinoiaToty) return;
-  const comps = await leagueCompetitions(LEAGUE.id);
+  const comps = await leagueCompetitions();
   if (!comps.length) return;
 
   /* THE MOST EXPENSIVE THING ON THIS PAGE, and it usually displays nothing.
@@ -1037,9 +1097,9 @@ async function teamOfTheYear() {
      spent to draw nothing.
 
      Now every competition is asked at once and the first one that answers wins.
-     Same rule, same winner — comps is ordered newest season first and the
-     choice is still the earliest in that order, not the fastest to reply — but
-     the wall-clock cost is one round trip instead of 2N. */
+     Same rule, same winner — the choice is still the earliest in comps' own
+     order, not the fastest to reply — but the wall-clock cost is one round trip
+     instead of 2N. */
   const probes = await Promise.all(comps.map(id =>
     window.EpinoiaToty.probe({ competitionId: id, rpc })
       .catch(() => null)));
@@ -1319,6 +1379,7 @@ function renumber() {
        of the Year and the news have no second pass, so they start after the
        answer: one access_state call, bounded at four seconds by access.js. */
     splash();
+    seasonBar().catch(() => null);
     const gamesFirst = games().catch(() => null);
     const clubsP = clubs().catch(() => null);
     const socialsP = socials().catch(() => null);

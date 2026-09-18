@@ -15,15 +15,15 @@
 <title>Epinoia Network</title>
 <link rel="icon" type="image/png" sizes="32x32" href="brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="brand/epinoia-app-180.png">
-<script src="appmode.js?v=299" data-water="front"></script>
-<script src="mode.js?v=299"></script>
-<link rel="stylesheet" href="kit/epinoia-kit.css?v=299">
-<link rel="stylesheet" href="kit/haze.css?v=299">
-<link rel="stylesheet" href="kit/nav.css?v=299">
-<link rel="stylesheet" href="kit/card.css?v=299">
-<link rel="stylesheet" href="kit/news.css?v=299">
-<link rel="stylesheet" href="kit/splash.css?v=299">
-<link rel="stylesheet" href="kit/access.css?v=299">
+<script src="appmode.js?v=300" data-water="front"></script>
+<script src="mode.js?v=300"></script>
+<link rel="stylesheet" href="kit/epinoia-kit.css?v=300">
+<link rel="stylesheet" href="kit/haze.css?v=300">
+<link rel="stylesheet" href="kit/nav.css?v=300">
+<link rel="stylesheet" href="kit/card.css?v=300">
+<link rel="stylesheet" href="kit/news.css?v=300">
+<link rel="stylesheet" href="kit/splash.css?v=300">
+<link rel="stylesheet" href="kit/access.css?v=300">
 <style>
   .hero{padding:calc(var(--u)*5) calc(var(--u)*3) calc(var(--u)*2);border-bottom:1px solid var(--rule)}
   /* the platform's wordmark, top left of a league's front page: the way back to HOME */
@@ -89,6 +89,12 @@
   .gpick{padding:calc(var(--u)) calc(var(--u)*3) 0;display:flex;flex-direction:column;gap:6px}
   .gpick .grow{display:flex;flex-wrap:wrap;gap:5px}
   .gpick .ep-chip .kind{margin-left:6px;font-size:7px;letter-spacing:.12em;opacity:.65;text-transform:uppercase}
+  /* the season row, above the two summaries it governs. Its chips are LINKS, so
+     a season can be copied or opened in a new tab; the underline a link carries
+     by default is not wanted on a chip. [hidden] needs saying because .gpick
+     sets display:flex, which beats the browser's own rule for the attribute. */
+  #seasonBar[hidden]{display:none}
+  #seasonBar .ep-chip{text-decoration:none}
   .fx .sc{font-family:var(--f-score);font-size:20px;padding:0 8px;white-space:nowrap}
   .fx .st{font-family:var(--f-micro);font-size:9px;text-align:right}
   .fx .fxbell{justify-self:end}
@@ -553,9 +559,9 @@
             <span class="d">A practice game with two invented squads. Nothing is saved.</span>
           </a>
           <a class="seg" href="learn/">
-            <span class="k">the app</span>
+            <span class="k">the whole thing</span>
             <span class="t">Learn more</span>
-            <span class="d">What it does, and how to use it for your own competition.</span>
+            <span class="d">What the platform is, who it is for, and how to run your own competition on it.</span>
           </a>
         </div>
       </div>
@@ -666,6 +672,11 @@
   <!-- leagues ------------------------------------------------------------ -->
   <div class="sec" id="seasonSec">
     <div class="sec-h"><span class="idx" id="idxLeagues">03</span><h2 id="leaguesHead">Leagues</h2></div>
+    <!-- WHICH SEASON (a league's front page only; home.js seasonBar). Hidden until
+         the league has more than one season with games in it — one season is not a
+         choice. Above #leagues rather than inside it: splash() owns that element and
+         lays out the competition buttons and the two summaries in its own order. -->
+    <div class="gpick" id="seasonBar" hidden><div class="grow" id="seasonChips"></div></div>
     <div id="leagues"><div class="empty">Loading…</div></div>
   </div>
 
@@ -740,10 +751,10 @@
         <span class="t">Build on the data</span>
         <span class="d">Every game, box score, lineup and season line as JSON, with a key for your site or your study.</span>
       </a>
-      <a class="card" href="prophesy/">
-        <span class="k">Prophe(s)y</span>
+      <a class="card" href="learn/">
+        <span class="k">Learn more</span>
         <span class="t">What Epinoia is for</span>
-        <span class="d">The pitch: why a league would run on this, what a club gets, and where it goes next.</span>
+        <span class="d">The pitch: why a league would run on this, what a club gets, and who else — media, analysts, sponsors, developers — it is built for.</span>
       </a>
       <a class="card muted" href="devfeed.html">
         <span class="k">Tools</span>
@@ -759,36 +770,37 @@
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=299" defer></script>
+<script src="config.js?v=300" defer></script>
 <!-- memberships: the league splash's paywall card, its "Become a member" card and
      a member's auth headers. Nothing is asked of the server on the platform hub. -->
-<script src="access.js?v=299" defer></script>
-<script src="follow.js?v=299" defer></script>
-<script src="teamcolour.js?v=299" defer></script>
-<script src="rt.js?v=299" defer></script>
+<script src="access.js?v=300" defer></script>
+<script src="follow.js?v=300" defer></script>
+<script src="teamcolour.js?v=300" defer></script>
+<script src="rt.js?v=300" defer></script>
 <!-- the stars podium runs the same aggregation and the same BPM as the
      season table, so it loads the same modules rather than a copy -->
-<script src="season.js?v=299" defer></script>
-<script src="bpm.js?v=299" defer></script>
-<script src="data.js?v=299" defer></script>
-<script src="merch.js?v=299" defer></script>
-<script src="upload.js?v=299" defer></script>
-<script src="newsblocks.js?v=299" defer></script>
-<script src="news.js?v=299" defer></script>
-<script src="toty.js?v=299" defer></script>
-<script src="igtile.js?v=299" defer></script>
-<script src="socials.js?v=299" defer></script>
-<script src="music.js?v=299" defer></script>
-<script src="splash.js?v=299" defer></script>
+<script src="season.js?v=300" defer></script>
+<script src="bpm.js?v=300" defer></script>
+<script src="data.js?v=300" defer></script>
+<script src="merch.js?v=300" defer></script>
+<script src="upload.js?v=300" defer></script>
+<script src="newsblocks.js?v=300" defer></script>
+<script src="news.js?v=300" defer></script>
+<script src="toty.js?v=300" defer></script>
+<script src="igtile.js?v=300" defer></script>
+<script src="socials.js?v=300" defer></script>
+<script src="music.js?v=300" defer></script>
+<script src="splash.js?v=300" defer></script>
 <!-- the clubs' letters for the fixture rows on a phone (home.js teamName) -->
-<script src="initials.js?v=299" defer></script>
-<script src="stars.js?v=299" defer></script>
+<script src="initials.js?v=300" defer></script>
+<script src="stars.js?v=300" defer></script>
 <!-- which clubs are in which competition, for the Clubs grid -->
-<script src="comps.js?v=299" defer></script>
+<script src="comps.js?v=300" defer></script>
+<script src="seasonbar.js?v=300" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="haze.js?v=299" defer></script>
-<script src="home.js?v=299" defer></script>
-<script src="nav.js?v=299" defer></script>
-<script src="xscroll.js?v=299" defer></script>
+<script src="haze.js?v=300" defer></script>
+<script src="home.js?v=300" defer></script>
+<script src="nav.js?v=300" defer></script>
+<script src="xscroll.js?v=300" defer></script>
 </body>
 </html>

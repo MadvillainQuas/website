@@ -15,10 +15,10 @@
 <title>Fixtures · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=299"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=299">
-<link rel="stylesheet" href="../kit/access.css?v=299">
-<link rel="stylesheet" href="../kit/nav.css?v=299">
+<script src="../appmode.js?v=300"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=300">
+<link rel="stylesheet" href="../kit/access.css?v=300">
+<link rel="stylesheet" href="../kit/nav.css?v=300">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
@@ -141,6 +141,9 @@
     .venue{text-align:left;margin-left:0}
   }
   .ep-chip .kind{margin-left:6px;font-size:7px;letter-spacing:.12em;opacity:.65;text-transform:uppercase}
+  /* the season chips are links, so a season can be copied or opened in a new tab;
+     a chip does not want the underline a link carries by default */
+  #seasonPick .ep-chip{text-decoration:none}
   .fixture{position:relative}
   .fixture .ep-follow.corner{top:10px;right:10px}
   /* the one-line members banner sits in the page's gutter like the filters do */
@@ -168,6 +171,10 @@
   <div id="accessBanner" class="hide"></div>
 
   <div class="filters">
+    <!-- WHICH SEASON, above the filters because it is not one: it decides which
+         list this is. Hidden (fixtures.js renderSeasonPicker) until the league has
+         more than one season with games in it. -->
+    <div class="frow" style="display:none"><span class="flabel">Season</span><span id="seasonPick"></span></div>
     <div class="frow" style="display:none"><span class="flabel">Competition</span><span id="compPick"></span></div>
     <div class="frow"><span class="flabel">Club</span><span id="teamPick"></span></div>
     <div class="frow"><span class="flabel">Show</span><span id="statePick"></span></div>
@@ -181,16 +188,17 @@
     <span id="foot">Epinoia Network</span>
   </footer>
 </div>
-<script src="../config.js?v=299" defer></script>
+<script src="../config.js?v=300" defer></script>
 <!-- memberships: the members-only banner, and a member's auth headers for data.js -->
-<script src="../access.js?v=299" defer></script>
-<script src="../follow.js?v=299" defer></script>
-<script src="../rt.js?v=299" defer></script>
-<script src="../season.js?v=299" defer></script>
-<script src="../bpm.js?v=299" defer></script>
-<script src="../data.js?v=299" defer></script>
-<script src="fixtures.js?v=299" defer></script>
-<script src="../nav.js?v=299" defer></script>
-<script src="../xscroll.js?v=299" defer></script>
+<script src="../access.js?v=300" defer></script>
+<script src="../follow.js?v=300" defer></script>
+<script src="../rt.js?v=300" defer></script>
+<script src="../season.js?v=300" defer></script>
+<script src="../bpm.js?v=300" defer></script>
+<script src="../data.js?v=300" defer></script>
+<script src="../seasonbar.js?v=300" defer></script>
+<script src="fixtures.js?v=300" defer></script>
+<script src="../nav.js?v=300" defer></script>
+<script src="../xscroll.js?v=300" defer></script>
 </body>
 </html>

@@ -15,12 +15,12 @@
 <title>Season stats · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=299"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=299">
-<link rel="stylesheet" href="../kit/table.css?v=299">
-<link rel="stylesheet" href="../kit/compare.css?v=299">
-<link rel="stylesheet" href="../kit/nav.css?v=299">
-<link rel="stylesheet" href="../kit/access.css?v=299">
+<script src="../appmode.js?v=300"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=300">
+<link rel="stylesheet" href="../kit/table.css?v=300">
+<link rel="stylesheet" href="../kit/compare.css?v=300">
+<link rel="stylesheet" href="../kit/nav.css?v=300">
+<link rel="stylesheet" href="../kit/access.css?v=300">
 <style>
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
@@ -41,6 +41,11 @@
   body.league-themed .ep-frame > .ep-hdr::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;pointer-events:none;
     background:linear-gradient(90deg,var(--league-a) 0 72%,var(--league-b) 72% 88%,var(--league-a) 88%)}
   body.league-themed #title{color:var(--league-a-ink)}
+  /* the season chips are links, so a season can be copied or opened in a new tab;
+     a chip does not want the underline a link carries by default */
+  #seasonRow{gap:12px}
+  #seasonPick{display:flex;gap:7px;flex-wrap:wrap}
+  #seasonPick .ep-chip{text-decoration:none}
   #ctx{min-width:0}
 
   /* ON A PHONE (820px and below, where the tab bar is). THE HEADER WRAPS. Its two links
@@ -82,22 +87,30 @@
          league being viewed once the context is known -->
     <a href="../l/#teams" class="subpage" id="teamsLink">Team stats →</a>
     <a href="wowy/" class="subpage">WOWY &amp; lineups →</a></div>
+  <!-- WHICH SEASON (stats.js, drawn by seasonbar.js). Above the table's own
+       "covering" filter because a season is which numbers these are, while a
+       phase is which part of them. Hidden until the league has more than one
+       season with games in it. -->
+  <div class="ctl" id="seasonRow" style="display:none">
+    <span class="scopelab">season</span><span id="seasonPick"></span>
+  </div>
   <!-- search, min-games, stat-group pills, column toggles and CSV all come
        from the shared table component, so they behave identically here and on
        the leaders board. -->
   <div id="tbl"></div>
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=299" defer></script>
-<script src="../access.js?v=299" defer></script>
-<script src="../bpm.js?v=299" defer></script>
-<script src="../season.js?v=299" defer></script>
-<script src="../data.js?v=299" defer></script>
-<script src="../fulltable.js?v=299" defer></script>
-<script src="../compare.js?v=299" defer></script>
-<script src="../rapm.js?v=299" defer></script>
-<script src="stats.js?v=299" defer></script>
-<script src="../nav.js?v=299" defer></script>
-<script src="../xscroll.js?v=299" defer></script>
+<script src="../config.js?v=300" defer></script>
+<script src="../access.js?v=300" defer></script>
+<script src="../bpm.js?v=300" defer></script>
+<script src="../season.js?v=300" defer></script>
+<script src="../data.js?v=300" defer></script>
+<script src="../seasonbar.js?v=300" defer></script>
+<script src="../fulltable.js?v=300" defer></script>
+<script src="../compare.js?v=300" defer></script>
+<script src="../rapm.js?v=300" defer></script>
+<script src="stats.js?v=300" defer></script>
+<script src="../nav.js?v=300" defer></script>
+<script src="../xscroll.js?v=300" defer></script>
 </body>
 </html>

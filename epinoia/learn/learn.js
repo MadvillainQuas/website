@@ -1,5 +1,5 @@
 'use strict';
-/* Two tabs, and the sales one lands first on purpose: somebody arriving from
+/* Four tabs, and the sales one lands first on purpose: somebody arriving from
    the splash is deciding whether this is for them, not learning to drive it.
 
    The choice is reflected in the URL so either tab can be linked to directly —
