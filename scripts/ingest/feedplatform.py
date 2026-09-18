@@ -18,6 +18,8 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
+import names
+
 from placeholders import is_placeholder_team
 
 
@@ -28,12 +30,19 @@ def slugify(s: str) -> str:
 
 
 def full_name(p: dict) -> tuple[str, str]:
-    first = (p.get("firstName") or p.get("internationalFirstName") or "").strip()
-    last = (p.get("familyName") or p.get("internationalFamilyName") or "").strip()
-    if not (first or last):
-        parts = (p.get("name") or "").replace(".", "").split()
-        first, last = (parts[0], " ".join(parts[1:])) if parts else ("", "")
+    """The name as the platform stores it. See scripts/ingest/names.py.
+
+    This used to trust the Genius payload, which was fine while every league on the platform WAS
+    Genius: two clean fields, Latin, already in reading order. It is not fine for a EuroLeague
+    "DONCIC, LUKA", an ACB "Hernangomez, Willy" or a B.LEAGUE payload in kanji -- one of which
+    would file a player under the surname D, and one of which the site cannot search at all."""
+    first, last, _ = names.person(p)
     return first, last
+
+
+def name_and_aliases(p: dict) -> tuple[str, str, list]:
+    """As above, plus every form of the name that was thrown away on the way."""
+    return names.person(p)
 
 
 def season_name_for(now: datetime | None = None) -> str:
@@ -147,24 +156,75 @@ class Platform:
                 except Exception:
                     pass
         if not r:
-            nm = (t.get("name") or "").strip().lower()
+            raw = (t.get("name") or "").strip()
+            nm = raw.lower()
             real_code = (t.get("code") or "").strip()
-            for row in (self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases,external_ids,logo_path") if self.sb else []):
-                names = {row["name"].strip().lower()} | {a.strip().lower() for a in (row.get("aliases") or [])}
-                if nm in names:
-                    r = row
-                    # Only a real feed code is written back. SLB's hosted schedule lists its clubs with no
-                    # code, and the slug stand-in would otherwise replace the club's real code on every
-                    # discovery pass until the next game put it back.
-                    if real_code and not self.dry:
-                        self.sb.patch("teams", f"id=eq.{row['id']}", {"external_ids": {**(row.get("external_ids") or {}), "fiba_livestats": real_code}})
+            rows = self.sb.select("teams", f"league_id=eq.{league_id}&select=id,slug,name,aliases,external_ids,logo_path") if self.sb else []
+
+            def adopt(row, why=""):
+                """Take an existing club, and write back what this fixture taught us about it."""
+                # Only a real feed code is written back. SLB's hosted schedule lists its clubs with no
+                # code, and the slug stand-in would otherwise replace the club's real code on every
+                # discovery pass until the next game put it back.
+                patch = {}
+                if real_code:
+                    patch["external_ids"] = {**(row.get("external_ids") or {}), "fiba_livestats": real_code}
+                if why:
+                    # the sponsored form becomes an alias, so the next pass is an exact hit and the
+                    # club is findable by the name the fixture list actually printed
+                    al = list(row.get("aliases") or [])
+                    if raw and raw not in al and raw != row.get("name"):
+                        al.append(raw)
+                        patch["aliases"] = al
+                    self.log(f"  ~ {raw} is {row.get('name')} ({why})")
+                if patch and not self.dry:
+                    self.sb.patch("teams", f"id=eq.{row['id']}", patch)
+                return {**row, **patch}
+
+            for row in rows:
+                # `known`, not `names`: that is the module this file imports, and shadowing it here
+                # would take the name normaliser away from everything below.
+                known = {row["name"].strip().lower()} | {a.strip().lower() for a in (row.get("aliases") or [])}
+                if nm in known:
+                    r = adopt(row)
                     break
+
+            if not r:
+                # THE SAME CLUB WEARING A SPONSOR (names.same_club). A fixture list writes "Baxi
+                # Manresa" where the club was created as "Manresa", or drops a sponsor the club was
+                # created with, and the platform used to register a second club: half the fixtures
+                # under each, two rows in the table, and a field of twenty clubs showing twenty-two.
+                # It is deliberately conservative — a leftover word that MARKS a different side (II,
+                # B, Women, Academy) is never treated as a sponsor — and it only ever looks inside
+                # one league.
+                hits = [row for row in rows
+                        if names.same_club(raw, row.get("name") or "")
+                        or any(names.same_club(raw, a) for a in (row.get("aliases") or []))]
+                if len(hits) == 1:
+                    r = adopt(hits[0], "sponsor")
+                elif len(hits) > 1:
+                    # TWO CLUBS BOTH LOOK LIKE THIS ONE. Guessing wrong welds two real clubs
+                    # together, which no re-run can undo — and creating a third is worse than the
+                    # duplicate this whole path exists to prevent. So the side is left unresolved,
+                    # exactly as an unnamed cup side is: the caller skips the fixture, and it is
+                    # written the moment somebody names the club (or adds an alias).
+                    self.log(f"  ? {raw} could be " + " / ".join(h.get("name") or "?" for h in hits[:3])
+                             + " — fixture left for a human")
+                    return None
         if not r and self.auto_create:
             self.log(f"  + team {t.get('name')} [{code}]")
-            r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, slugify(t.get("name", code))), "name": (t.get("name") or code).strip(),
-                                      "short_name": (t.get("shortName") or code)[:12], "logo_path": self.logo_url(t),
+            # THE CLUB'S NAME, LATINISED BUT NOT REWRITTEN (names.team_name): a club is not a
+            # person, so its own capitalisation stands -- all that happens is that Rio Breogan and
+            # Zalgiris Kaunas become sluggable and searchable on a Latin-alphabet site. Whatever
+            # the feed actually wrote is kept as an alias, which is also how the next discovery
+            # pass recognises the club it already created.
+            raw_name = (t.get("name") or code).strip()
+            nice = names.team_name(raw_name) or raw_name
+            extra = [a for a in (raw_name, t.get("nameInternational")) if a and a != nice]
+            r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, slugify(nice)), "name": nice,
+                                      "short_name": (names.team_name(t.get("shortName") or "") or code)[:12], "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
-                                      "aliases": [t["nameInternational"]] if t.get("nameInternational") and t["nameInternational"] != t.get("name") else []})
+                                      "aliases": list(dict.fromkeys(extra))})
         self.cache["team"][key] = r
         return r
 
@@ -250,7 +310,9 @@ class Platform:
             elif res["status"] == "ambiguous":
                 self.log(f"  ? {first} {last}: ambiguous between " + " / ".join(f"{x['candidate'].get('first_name')} {x['candidate'].get('last_name')}" for x in res["ranked"][:2]))
         if not r and self.auto_create:
-            aliases = [a for a in {p.get("name"), p.get("scoreboardName")} if a and a != (first + " " + last).strip()]
+            # EVERY form the normaliser folded away, so the native spelling stays searchable:
+            # "Dončić" and the scoreboard's "L. DONCIC" both still find Luka Doncic.
+            aliases = name_and_aliases(p)[2]
             r = self.insert("players", {"slug": f"{team['slug']}-{slugify(first + ' ' + last)}", "first_name": first or "?", "last_name": last,
                                         "is_minor": False, "external_ids": {"fiba_livestats": ext}, "aliases": aliases}, "slug")
         self.cache["player"][key] = r

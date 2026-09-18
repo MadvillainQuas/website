@@ -296,6 +296,13 @@ jobs:
         # wins; a page that changes league takes the last one's colours off
         run: node supabase/tests/league-theme-pages.test.mjs
 
+      - name: One shape for a player's name, whatever the feed calls them
+        # names.py: "DONCIC, LUKA", "Hernangomez, Willy", kanji with a romaji field beside it,
+        # Czech and Polish diacritics, Cyrillic, Mc/Mac/O'/hyphens/particles, and the full stops
+        # that drop an action in the stint engine — all to "Luka Doncic", with every form the
+        # normaliser folded away kept as an alias
+        run: python scripts/ingest/names_test.py
+
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the
         # database (0126) share one rule, tested against the same names

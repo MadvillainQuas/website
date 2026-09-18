@@ -1,0 +1,176 @@
+"""scripts/ingest/names.py — one shape for a name, whatever the feed calls them.
+
+Every case below is a real form one of the ten leagues actually sends.
+
+    python scripts/ingest/names_test.py
+"""
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import names  # noqa: E402
+
+PASS = FAIL = 0
+
+
+def ok(what, cond, saw=None):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        print("  PASS  " + what)
+    else:
+        FAIL += 1
+        print("  FAIL  " + what + ("" if saw is None else "  -- saw " + repr(saw)))
+
+
+def eq(what, got, want):
+    ok(what, got == want, got)
+
+
+print("\n-- the shapes the feeds send")
+eq("Genius sends the two fields already split",
+   names.person({"firstName": "Amari", "familyName": "Williams"})[:2], ("Amari", "Williams"))
+eq("EuroLeague shouts, family name first",
+   names.person({"name": "DONCIC, LUKA"})[:2], ("Luka", "Doncic"))
+eq("the ACB writes it the same way without shouting",
+   names.person({"name": "Hernangomez, Willy"})[:2], ("Willy", "Hernangomez"))
+eq("a plain string in reading order",
+   names.person("Elias Valtonen")[:2], ("Elias", "Valtonen"))
+eq("one word is a family name, not a forename",
+   names.person("Nene")[:2], ("", "Nene"))
+
+print("\n-- alphabets")
+eq("Czech diacritics are folded", names.person({"name": "Tomáš Satoranský"})[:2], ("Tomas", "Satoransky"))
+eq("Slovak and Serbian too", names.person({"name": "Nikola Jokić"})[:2], ("Nikola", "Jokic"))
+eq("Swedish and Norwegian letters NFKD will not split",
+   names.person({"name": "Jonas Øverbø"})[:2], ("Jonas", "Overbo"))
+eq("Polish", names.person({"name": "Michał Sokołowski"})[:2], ("Michal", "Sokolowski"))
+eq("Cyrillic", names.person({"name": "Алексей Швед"})[:2], ("Aleksey", "Shved"))
+eq("Greek", names.person({"name": "Γιαννης Παπαγιαννης"})[:2], ("Giannis", "Papagiannis"))
+eq("German", names.person({"name": "Maximilian Kleber"})[:2], ("Maximilian", "Kleber"))
+
+print("\n-- Japanese: the Latin field wins, the kanji is kept")
+first, last, aliases = names.person({"firstName": "勇樹", "familyName": "富樫",
+                                     "internationalFirstName": "Yuki",
+                                     "internationalFamilyName": "Togashi"})
+eq("the romaji is what is stored", (first, last), ("Yuki", "Togashi"))
+ok("the kanji is kept as an alias", any("富樫" in a for a in aliases), aliases)
+eq("with no Latin field the kanji is left alone rather than guessed at",
+   names.person({"firstName": "勇樹", "familyName": "富樫"})[:2], ("勇樹", "富樫"))
+
+print("\n-- capitalisation a .title() gets wrong")
+eq("Mc", names.person({"name": "MCDONALD, JAMES"})[:2], ("James", "McDonald"))
+eq("Mac", names.person({"name": "MACDONALD, JAMES"})[:2], ("James", "MacDonald"))
+eq("apostrophes", names.person({"name": "O'NEAL, SHAQUILLE"})[:2], ("Shaquille", "O'Neal"))
+eq("hyphens", names.person({"name": "SMITH-JONES, KYLE"})[:2], ("Kyle", "Smith-Jones"))
+eq("a shouted feed capitalises the leading particle",
+   names.person({"name": "VAN DER BERG, JAN"})[:2], ("Jan", "Van der Berg"))
+eq("...and leaves the interior ones down", names.person({"name": "DE LA CRUZ, LUIS"})[:2],
+   ("Luis", "De la Cruz"))
+eq("which is how English-language basketball writes it",
+   names.person({"name": "DE COLO, NANDO"})[:2], ("Nando", "De Colo"))
+eq("a mixed-case feed is left alone", names.person({"name": "DeAndre Jordan"})[:2], ("DeAndre", "Jordan"))
+eq("...including its own particles", names.person({"firstName": "Jan", "familyName": "van der Berg"})[:2],
+   ("Jan", "van der Berg"))
+
+print("\n-- full stops, which drop an action in the stint engine")
+eq("initials lose their stops", names.person({"name": "K.J. Williams"})[:2], ("K J", "Williams"))
+eq("suffixes lose theirs and keep their shape",
+   names.person({"name": "Baker Jr."})[:2], ("Baker", "Jr"))
+ok("no stored name contains a full stop",
+   all("." not in x for x in names.person({"name": "A.J. Smith Jr."})[:2]))
+
+print("\n-- nothing is lost")
+f, l, al = names.person({"name": "DONCIC, LUKA", "scoreboardName": "L. DONCIC"})
+ok("the shouted original is an alias", "DONCIC, LUKA" in al, al)
+ok("so is the scoreboard form", "L. DONCIC" in al, al)
+f, l, al = names.person({"name": "Nikola Jokić"})
+ok("the native spelling is an alias, so a search for it still finds him", "Nikola Jokić" in al, al)
+f, l, al = names.person({"firstName": "Amari", "familyName": "Williams"})
+eq("a name that needed nothing has no aliases", al, [])
+
+print("\n-- clubs are not people")
+eq("a club keeps its own capitalisation", names.team_name("Žalgiris Kaunas"), "Zalgiris Kaunas")
+eq("...and its own words", names.team_name("AS Monaco Basket"), "AS Monaco Basket")
+eq("Japanese club names are left as they are", names.team_name("千葉ジェッツ"), "千葉ジェッツ")
+
+print("\n-- the edges")
+eq("nothing in, nothing out", names.person("")[:2], ("", ""))
+eq("None is not a crash", names.person(None)[:2], ("", ""))
+eq("whitespace collapses", names.person({"name": "  Luka   Doncic  "})[:2], ("Luka", "Doncic"))
+
+print("\n-- one club, one row: the sponsor problem")
+# Sponsors are part of a club's name across most of Europe, and they change mid-season.
+ok("a sponsor on the front is the same club", names.same_club("Baxi Manresa", "Manresa"))
+ok("...and on the end", names.same_club("Crvena Zvezda Meridianbet", "Crvena Zvezda"))
+ok("...and swapped for another", names.same_club("Casademont Zaragoza", "Basket Zaragoza"))
+ok("...and dropped entirely", names.same_club("Valencia Basket", "Valencia"))
+ok("a generic word is not what makes a club", names.same_club("CB Gran Canaria", "Gran Canaria"))
+ok("two clubs from one city are two clubs",
+   not names.same_club("Bristol Flyers", "Bristol Hurricanes"))
+ok("a second side is not the first side",
+   not names.same_club("Bristol Flyers II", "Bristol Flyers"))
+ok("...nor is a women's side the men's",
+   not names.same_club("London Lions Women", "London Lions"))
+ok("...nor an academy the senior club",
+   not names.same_club("Oaklands Wolves Academy", "Oaklands Wolves"))
+ok("nothing matches nothing", not names.same_club("", "Manresa"))
+
+print("\n-- ...and the platform acts on it")
+import feedplatform  # noqa: E402
+
+
+class FakeSB:
+    """Just enough Supabase for Platform.team(): the league's clubs, and a note of every write."""
+
+    def __init__(self, rows):
+        self.rows, self.patched, self.inserted = rows, [], []
+
+    def select(self, table, q):
+        if table != "teams":
+            return []
+        if "external_ids->>fiba_livestats=eq." in q or "slug=eq." in q:
+            return []
+        return self.rows
+
+    def patch(self, table, q, row):
+        self.patched.append((q, row))
+        return row
+
+    def upsert(self, table, row, on_conflict=None):
+        self.inserted.append(row)
+        return [{**row, "id": "new"}]
+
+
+def platform(extra=None):
+    rows = [{"id": "t1", "slug": "manresa", "name": "Manresa", "aliases": [], "external_ids": {}, "logo_path": None},
+            {"id": "t2", "slug": "bristol-flyers", "name": "Bristol Flyers", "aliases": [], "external_ids": {}, "logo_path": None}]
+    if extra:
+        rows.append(extra)
+    return feedplatform.Platform(FakeSB(rows), dry=False, auto_create=True, log=lambda m: None)
+
+
+p = platform()
+got = p.team("L", {"name": "Baxi Manresa", "code": "BAX"})
+eq("a sponsored fixture finds the club that is already there", (got or {}).get("id"), "t1")
+ok("...and does not create a second one", not p.sb.inserted, p.sb.inserted)
+ok("...and remembers the sponsored form as an alias",
+   any("Baxi Manresa" in (row.get("aliases") or []) for _, row in p.sb.patched), p.sb.patched)
+
+p = platform()
+got = p.team("L", {"name": "Bristol Flyers II", "code": "BF2"})
+ok("a second side is created rather than welded onto the first",
+   (got or {}).get("id") != "t2" and len(p.sb.inserted) == 1, ((got or {}).get("id"), p.sb.inserted))
+
+p = platform()
+p.team("L", {"name": "Bristol Hurricanes", "code": "BH"})
+ok("an unrelated club is still its own club", len(p.sb.inserted) == 1)
+
+p = platform({"id": "t3", "slug": "manresa-basket", "name": "Manresa Basket", "aliases": [],
+              "external_ids": {}, "logo_path": None})
+got = p.team("L", {"name": "Baxi Manresa", "code": "BAX"})
+ok("two clubs that both look like it are left alone rather than guessed between",
+   not p.sb.inserted and not p.sb.patched, (got, p.sb.inserted, p.sb.patched))
+
+print("\n%d passed, %d failed" % (PASS, FAIL))
+sys.exit(1 if FAIL else 0)
