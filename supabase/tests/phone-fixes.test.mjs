@@ -112,7 +112,12 @@ console.log('\n-- EPINOIΛ, and its logo on notifications');
   ok('the app\'s offers on the site say EPINOIΛ', /'Get the EPINOIΛ app for Android'/.test(nav) && /'Update the EPINOIΛ app'/.test(nav) && /title: 'Get the EPINOIΛ app'/.test(nav));
   ok('the screen-reader name of the rail stays "Epinoia" (a word, not letters)', /nav\.setAttribute\('aria-label', 'Epinoia'\)/.test(nav));
   const ver = JSON.parse(rd('epinoia', 'android', 'version.json'));
-  ok('the renamed Android app is a new build (version 1.0.2, code 3)', ver.versionCode === 3 && ver.versionName === '1.0.2');
+  /* THE POINT IS THAT THE RENAME SHIPPED, not which build it shipped in. Pinned to the exact
+     build it went out in (1.0.2, code 3) this went red the moment the next release raised it,
+     which is a normal thing to do and not a regression: it is the FLOOR that matters. */
+  ok('the renamed Android app is at least the build the rename shipped in (1.0.2, code 3)',
+     ver.versionCode >= 3 && ver.versionName >= '1.0.2',
+     'versionCode ' + ver.versionCode + ', versionName ' + ver.versionName);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
