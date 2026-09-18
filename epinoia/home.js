@@ -875,37 +875,99 @@ function embedLook() {
    transparent link laid over it. That also makes the embed purely a picture
    here, which is what a summary should be: the reader either glances and moves
    on, or clicks through to the page where the thing is actually interactive. */
+/* which competition the two embeds are showing; '' until the season is known,
+   which is the embed's own default (its first competition) */
+let splashComp = '';
+
 function splash() {
   const host = $('#leagues'); host.textContent = '';
   const slug = encodeURIComponent(LEAGUE.slug);
   const table = 'l/?l=' + slug;
 
+  /* THE BUTTONS GO ABOVE BOTH CARDS, because they govern both. A league is not
+     one competition — it is a league, a cup, a trophy and its playoffs — and
+     these two summaries showed whichever the embed happened to pick first, with
+     no way to see the cup's table or the cup's leading scorers without leaving
+     the page. Drawn only when there is more than one competition being played:
+     a single-competition league gets no choice it does not have. */
+  const picker = el('div', 'gpick'); picker.id = 'seasonPick';
+  host.appendChild(picker);
+
+  const cards = [
+    { title: 'Table', kind: '&kind=standings&n=12', href: table },
+    { title: 'Leaders', kind: '&kind=leaders&stat=ppg&n=10', href: table + '#leaders' }
+  ];
   const grid = el('div', 'splitgrid');
-  [['Table', 'embed/table/?l=' + slug + '&kind=standings&n=12' + embedLook(), table],
-   ['Leaders', 'embed/table/?l=' + slug + '&kind=leaders&stat=ppg&n=10' + embedLook(), table + '#leaders']]
-    .forEach(([title, src, href]) => {
-      const card = el('div', 'embedcard');
-      const h = el('div', 'embedhead');
-      h.append(el('span', null, title), el('span', 'embedgo', 'open ›'));
-      card.appendChild(h);
+  cards.forEach(c => {
+    const card = el('div', 'embedcard');
+    const h = el('div', 'embedhead');
+    h.append(el('span', null, c.title), el('span', 'embedgo', 'open ›'));
+    card.appendChild(h);
 
-      const f = document.createElement('iframe');
-      f.className = 'embedframe';
-      f.src = src;
-      f.loading = 'lazy';
-      f.scrolling = 'no';
-      f.title = LEAGUE.name + ' ' + title.toLowerCase();
-      card.appendChild(f);
+    const f = document.createElement('iframe');
+    f.className = 'embedframe';
+    f.src = 'embed/table/?l=' + slug + c.kind + embedLook();
+    f.loading = 'lazy';
+    f.scrolling = 'no';
+    f.title = LEAGUE.name + ' ' + c.title.toLowerCase();
+    card.appendChild(f);
 
-      /* the whole card is the link; the iframe is decoration under it */
-      const a = el('a', 'embedhit');
-      a.href = href;
-      a.setAttribute('aria-label', 'Open the ' + LEAGUE.name + ' ' + title.toLowerCase());
-      card.appendChild(a);
+    /* the whole card is the link; the iframe is decoration under it */
+    const a = el('a', 'embedhit');
+    a.href = c.href;
+    a.setAttribute('aria-label', 'Open the ' + LEAGUE.name + ' ' + c.title.toLowerCase());
+    card.appendChild(a);
 
-      grid.appendChild(card);
-    });
+    c.frame = f; c.link = a;
+    grid.appendChild(card);
+  });
   host.appendChild(grid);
+
+  /* Point both embeds at one competition, and take the reader there too — the
+     league page reads ?c= the same way, so "open ›" opens what is on screen.
+     THE SRC IS ONLY WRITTEN WHEN IT CHANGES: assigning the same URL reloads an
+     iframe, which on first paint would be the summary flickering for nothing. */
+  const point = id => {
+    splashComp = id || '';
+    const c = splashComp ? '&c=' + encodeURIComponent(splashComp) : '';
+    cards.forEach(card => {
+      const want = 'embed/table/?l=' + slug + card.kind + embedLook() + c;
+      if (card.frame.getAttribute('src') !== want) card.frame.src = want;
+      const hash = card.href.indexOf('#');
+      card.link.href = hash < 0 ? card.href + c
+        : card.href.slice(0, hash) + c + card.href.slice(hash);
+    });
+  };
+
+  /* The competitions actually being PLAYED, from the same read the clubs grid
+     makes (comps.js, cached): a competition with entries and no fixtures is not
+     a view of anything. The principal one is selected, which is what the embeds
+     were already showing. A league with one competition, or a read that fails,
+     leaves the page exactly as it was. */
+  seasonFields(LEAGUE.id).then(F => {
+    const played = (F && F.all) || [];
+    if (played.length < 2) return;
+    const main = (F.main && F.main.id) || played[0].id;
+    const order = played.slice().sort((a, b) =>
+      (a.id === main ? -1 : 0) - (b.id === main ? -1 : 0) ||
+      String(a.name).localeCompare(String(b.name)));
+    const draw = () => {
+      picker.textContent = '';
+      const row = el('div', 'grow');
+      order.forEach(c => {
+        const b = el('button', 'ep-chip' + (splashComp === c.id ? ' on' : ''), c.name);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', splashComp === c.id ? 'true' : 'false');
+        const tag = KIND_LABEL[c.kind] || '';
+        if (tag) b.appendChild(el('small', 'kind', tag));
+        b.addEventListener('click', () => { point(c.id); draw(); });
+        row.appendChild(b);
+      });
+      picker.appendChild(row);
+    };
+    point(main);
+    draw();
+  }).catch(() => { /* no buttons, and the summaries as they always were */ });
 
   /* THE FULL TABLE BELONGS HERE, under the two summaries it is the long
      version of, rather than in "Take part" among the sign-in cards. A reader

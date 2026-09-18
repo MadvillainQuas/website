@@ -540,6 +540,20 @@ jobs:
           node supabase/tests/initials.test.mjs
           node supabase/tests/phone-fixes.test.mjs
 
+      - name: The scorer is shut until somebody says otherwise
+        # a signed-out visitor reached the statistician's app from HOME's foot and was shown a
+        # league's fixture list: the link is now hidden in the markup and opened only on a
+        # whoami yes, and the scorer itself ships body.cs-shut so every way of failing — a
+        # stale bootstrap.js from a phone's cache, a script that never ran, an exception
+        # before the gate — leaves it shut rather than leaves an application running
+        run: node supabase/tests/score-gate.test.mjs
+
+      - name: A league's front page says which competition it is showing
+        # the table and the leaders embeds share one row of buttons, drawn from the
+        # competitions actually being played (comps.js), re-pointing both embeds and both
+        # "open" links; one competition means no buttons at all
+        run: node supabase/tests/league-front.test.mjs
+
       - name: Who is missing — the injury report and the waiver wire
         # injuries.js works the report out of the box scores (who was being played, who has not
         # taken the floor since, OUT against DNP, judged before the absence rather than on a

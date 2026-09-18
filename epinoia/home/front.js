@@ -127,6 +127,38 @@ function signedIn() {
 function paintFoot() {
   const a = document.getElementById('homeSignin');
   if (a) a.hidden = signedIn();
+  paintScore();
+}
+
+/* --------------------------------------------------------- score a game ---
+   THE ONE LINK IN THIS FOOT THAT GOES SOMEWHERE NOT EVERYBODY MAY GO. It was
+   offered to every visitor and led to the real scorer, where a signed-out
+   reader was shown a league's fixture list and a load button before anything
+   refused them (reported 2026-09-18). The splash page has always asked the
+   question before offering the link; HOME did not.
+
+   It is `hidden` in the markup, so the shut state needs nothing to run: a
+   failed or stale front.js, or no script at all, leaves it shut. It opens only
+   on a yes from the database — the same predicate the rail uses for its own
+   "score a game" row, so the two cannot disagree — and a signed-out reader
+   costs no request at all, because the stored session is looked at first.
+
+   THE DEMO IS NOT GATED and sits right under it: the thing a curious visitor
+   actually wants is a practice game that writes nothing anywhere. */
+async function paintScore() {
+  const li = document.getElementById('homeScoreLi');
+  if (!li || !signedIn()) return;                 // signed out: shut, and nothing asked
+  try {
+    const sb = root.epinoiaClientReady ? await root.epinoiaClientReady() : null;
+    if (!sb) return;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data, error } = await sb.rpc('whoami');
+    if (error || !data) return;                   // could not ask is not a yes
+    const may = !!(data.is_platform_admin || (data.leagues || []).length ||
+                   (data.scoring || []).length);
+    li.hidden = !may;
+  } catch (_) { /* shut, which is the safe way to be wrong */ }
 }
 
 /* ------------------------------------------------------------ #leagues ---

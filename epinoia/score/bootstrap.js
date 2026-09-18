@@ -1787,6 +1787,9 @@
     /* Nothing of the scorer is left running underneath the notice: a paused
        app behind a panel is still an app, and its timers still publish. */
     try { window.EpinoiaSync && window.EpinoiaSync.halt(); } catch (_) {}
+    /* the door stays shut (body.cs-shut), so this card covers a blank page rather than a
+       working scorer; only the "checking" notice underneath it is replaced */
+    try { const g = document.getElementById('csGate'); if (g) g.remove(); } catch (_) {}
     refused = true;
     say('not your game', '#ff5f6b');
     bar.style.borderColor = 'rgba(255,95,107,.7)';
@@ -1926,8 +1929,20 @@
       'open to everybody and writes nothing anywhere.');
   }
 
+  /* THE DOOR, OPENED. index.html ships body.cs-shut, which hides every screen, every modal
+     and the toast; this is the only thing that takes it off. Everything that is not an
+     answered yes — a refusal, an exception, a bootstrap.js that never ran — leaves it on. */
+  function openDoor() {
+    try {
+      document.body.classList.remove('cs-shut');
+      const g = document.getElementById('csGate');
+      if (g) g.remove();
+    } catch (_) { /* nothing to open */ }
+  }
+
   async function start() {
-    if (!(await gateScorer())) return;       // refused: nothing else is wired up
+    if (!(await gateScorer())) return;       // refused: nothing else is wired up, and the door stays shut
+    openDoor();
 
     /* THE DEMO GETS NO LEAGUE MACHINERY. ?train=1 is a practice game with two
        invented squads and nothing behind it, and it was still being handed the

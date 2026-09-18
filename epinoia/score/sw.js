@@ -29,7 +29,11 @@
    declares. The list maintains itself.
    ============================================================================ */
 
-const CACHE = 'epinoia-scorer-v1';
+/* v2: the scorer now ships shut (body.cs-shut in index.html) and bootstrap.js is the only
+   thing that opens it. A phone still holding v1 would serve its cached shell and its cached
+   bootstrap.js — the ungated pair — from under the new deploy, so the name is changed and
+   activate drops every epinoia-scorer-* cache that is not this one. */
+const CACHE = 'epinoia-scorer-v2';
 const SHELL = new URL('./', self.location).pathname;     // '/epinoia/score/'
 
 /* src="..." and href="..." for the scripts, styles and icons; url(...) for the
