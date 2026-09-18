@@ -682,7 +682,6 @@ function lineupAgg(d,t){
 }
 
 function scoreHeadHTML(d){
-  const TA = teamAdv(d,0);
   return '<div class="glass bx-scorehead hero-stripe">'+
     '<div class="bteam" data-team-slot="0">'+esc(tname(0))+'</div>'+
     '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">'+
@@ -690,7 +689,12 @@ function scoreHeadHTML(d){
     '<div class="bscore">'+d.score[0]+'</div>'+
     '<div class="bmid" style="width:3px;height:44px;border-radius:2px;opacity:.6;background:linear-gradient(180deg,var(--team0),var(--team1))"></div>'+
     '<div class="bscore">'+d.score[1]+'</div></div>'+
-    '<div class="pacepill">'+(S.phase==='final'?'final':perName(S.period)+' · '+fmtClock(S.clockMs))+' <span style="opacity:.4">|</span> pace <b>'+TA.pace.toFixed(1)+'</b> / 40</div></div>'+
+    /* THE CLOCK, AND NOTHING ELSE. Pace shared the pill with the period and the clock, and it
+       is the one number here nobody looks up mid-game: it is a rate over a whole game, it
+       swings wildly in the first quarter, and it sat next to the two things people actually
+       come to this line for. It is still on the full stats tab, next to the other team rates,
+       where it can be read against something. */
+    '<div class="pacepill">'+(S.phase==='final'?'final':perName(S.period)+' · '+fmtClock(S.clockMs))+'</div></div>'+
     '<div class="bteam" data-team-slot="1" style="text-align:right">'+esc(tname(1))+'</div></div>';
 }
 
@@ -723,7 +727,23 @@ function teamChipsHTML(d,t){
 function bxTeamHTML(d,t){
   const T = d.team[t];
   const cols = ['min','pts','2fg','3fg','ft','or','dr','reb','ast','to','stl','blk','pf','fd','+/-'];
-  let rows = S.teams[t].players.map(p=>{
+  /* STARTERS FIRST, THEN THE BENCH, WITH A LINE BETWEEN THEM.
+     Every other view on this platform separates the two -- the modern box score puts five on
+     the floor and the rest underneath, the lineups tab counts them apart, the leaderboards
+     split their splits by it -- and then the oldest table on the site listed all twelve in
+     roster order, so the five who started the game were wherever the roster happened to put
+     them. It is the first thing anybody reads a box score for.
+
+     S.starters is who the game began with, which is what "starter" means here and everywhere
+     else on the page. A game whose starters were never recorded (an old import) has an empty
+     list; then there is nothing to separate and the table is exactly what it was. */
+  const startIds = (S.starters && S.starters[t]) ? S.starters[t].filter(Boolean) : [];
+  const isStarter = p => startIds.indexOf(p.id) !== -1;
+  const squad = S.teams[t].players.slice();
+  const five = startIds.map(id => squad.find(p => p.id === id)).filter(Boolean);
+  const rest = squad.filter(p => !isStarter(p));
+  const ordered = five.length ? five.concat(rest) : squad;
+  const line = p=>{
     const s = d.stats[p.id];
     const onc = d.onCourt[t].includes(p.id);
     return '<tr data-pid="'+p.id+'"'+(onc?' class="oncourt"':'')+'><td>'+esc(p.num)+'</td><td>'+esc(p.name)+'</td>'+
@@ -732,7 +752,14 @@ function bxTeamHTML(d,t){
       '<td>'+s.or+'</td><td>'+s.dr+'</td><td>'+(s.or+s.dr)+'</td>'+
       '<td>'+s.ast+'</td><td>'+s.to+'</td><td>'+s.stl+'</td><td>'+s.blk+'</td><td>'+s.pf+'</td>'+
       '<td>'+s.fd+'</td><td>'+(s.pm>0?'+':'')+s.pm+'</td></tr>';
-  }).join('');
+  };
+  let rows = ordered.map(line).join('');
+  if(five.length && rest.length){
+    /* the divider goes between the two, spanning the table: a row that is a label, not data */
+    rows = five.map(line).join('') +
+      '<tr class="bxsep"><td colspan="'+(cols.length+2)+'">bench</td></tr>' +
+      rest.map(line).join('');
+  }
   if(T.teamRebO+T.teamRebD+T.teamTo>0){
     rows += '<tr><td></td><td>team</td><td></td><td></td><td></td><td></td><td></td>'+
       '<td>'+T.teamRebO+'</td><td>'+T.teamRebD+'</td><td>'+(T.teamRebO+T.teamRebD)+'</td>'+

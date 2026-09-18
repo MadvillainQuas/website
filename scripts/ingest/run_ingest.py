@@ -1396,8 +1396,45 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
     return due, next_tip
 
 
+LIVE_MUTEX = "Global\\EpinoiaLiveLane"
+_live_mutex_handle = None
+
+
+def claim_live_lane() -> bool:
+    """One live lane per machine. False when another already holds it.
+
+    TWO LANES WRITE THE SAME ROWS, AND THE OLDER ONE WINS HALF THE TIME. On 18 Sep 2026 a lane
+    started from this checkout and a second from another (behind by one commit, without the
+    clock fix) polled the same games fifteen seconds apart: one wrote the real game clock and
+    the other wrote zero, so every French game's clock sat at 0:00 for a stretch and then
+    flashed back to a time. Nothing was broken in either copy -- they were simply both right
+    about different code. The lane is a writer; there should only ever be one of it.
+
+    A Windows named mutex, because that is what the dashboard already uses to keep one worker
+    on a desktop. On anything else, and on a runner, this is a no-op: GitHub's own concurrency
+    group does the same job there."""
+    global _live_mutex_handle
+    if _live_mutex_handle is not None:
+        return True                             # this process already holds it
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        _live_mutex_handle = k.CreateMutexW(None, False, LIVE_MUTEX)
+        if k.GetLastError() == 183:            # ERROR_ALREADY_EXISTS
+            return False
+    except Exception:
+        pass                                    # not Windows: no mutex, no harm
+    return True
+
+
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
+    if not claim_live_lane():
+        print("live lane: another one is already running on this machine -- leaving it to it.\n"
+              "  (two lanes poll the same games and write the same rows; the older copy's answer\n"
+              "   wins half the time, which is how a game clock ends up flashing between a real\n"
+              "   time and 0:00. Close the other window, or let this one exit.)")
+        return 0, False
     # EVERY SOURCE THAT SPEAKS LIVESTATS, NOT ONLY THE ONE NAMED AFTER IT. This tested
     # `adapter == "fiba_livestats"`, so the live lane covered the generic sources and silently
     # skipped every league with its own adapter on top of the same feed -- LNB and its two
