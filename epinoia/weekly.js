@@ -192,18 +192,53 @@ function ledger(scope, measures, ctx, values, league) {
 
 /* ------------------------------------------------------------------ words --- */
 
+/* THE SAME PICK, KEPT IDENTICAL TO game/story.js's REPORT.JS. Report.js's sectionScout() has
+   its own copy of this exact mechanism (seedOf, pickVaried, the seven-band phrase bank) --
+   duplicated deliberately rather than shared, because this module runs on the team and player
+   profile pages and that one runs on the game page, and neither loads the other's scripts. If
+   one is improved, improve both; a drift between them is a bug, not a style choice. */
+function seedOf(str) {
+  let h = 0;
+  const s = String(str == null ? '' : str);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+let lastPick = null;
+function pickVaried(seed, options) {
+  if (options.length < 2) return options[0];
+  let i = seedOf(seed) % options.length;
+  const key = options.length + ':' + i;
+  if (key === lastPick) i = (i + 1) % options.length;
+  lastPick = options.length + ':' + i;
+  return options[i];
+}
+
 /* the register is "next week", not "last week": every weakness is phrased as a
    thing to work on, and every strength as a thing to keep doing */
-function phrase(p) {
+const PCT_BANDS = [
+  [90, ['better than nine weeks in ten', 'among the best in the league', 'as good as almost anyone plays this in the league']],
+  [75, ['better than three weeks in four', 'comfortably above the league', 'one of the stronger numbers in the league']],
+  [60, ['better than most teams in the league', 'above the league’s middle', 'on the better side of the league']],
+  [40, ['about average for this league', 'in the middle of the league', 'neither a strength nor a weakness']],
+  [25, ['worse than most teams in the league', 'below the league’s middle', 'on the weaker side of the league']],
+  [10, ['worse than three weeks in four', 'comfortably below the league', 'one of the softer numbers in the league']],
+  [-1, ['worse than nine weeks in ten', 'among the weakest in the league', 'rare to see this low in the league']]
+];
+function pctOptions(r) {
+  if (r >= 90) return PCT_BANDS[0][1];
+  if (r >= 75) return PCT_BANDS[1][1];
+  if (r >= 60) return PCT_BANDS[2][1];
+  if (r > 40) return PCT_BANDS[3][1];
+  if (r > 25) return PCT_BANDS[4][1];
+  if (r > 10) return PCT_BANDS[5][1];
+  return PCT_BANDS[6][1];
+}
+/* `seed` ties the pick to what the sentence is about (the subject and the measure), not to the
+   raw number, so a re-render of the same week reads the same way and two different weeks
+   landing in the same band are free to say it differently. */
+function phrase(p, seed) {
   if (p == null) return 'hard to place';
-  const r = Math.round(p);
-  if (r >= 90) return 'better than nine weeks in ten';
-  if (r >= 75) return 'better than three in four';
-  if (r >= 60) return 'better than most';
-  if (r > 40) return 'about average for this league';
-  if (r > 25) return 'worse than most';
-  if (r > 10) return 'worse than three in four';
-  return 'worse than nine in ten';
+  return pickVaried(String(seed || ''), pctOptions(Math.round(p)));
 }
 
 const listOf = xs => {
@@ -215,6 +250,7 @@ function prose(subject, led, games, record) {
   const out = [];
   const n = games.length;
   const spell = n === 1 ? 'one game' : n + ' games';
+  lastPick = null;              // this report's phrasing must not inherit the last one's
   if (!n) return ['No games in this window yet — the report fills in as soon as one is played.'];
 
   const head = subject + ' played ' + spell + (record ? ' (' + record + ')' : '') + ' this week.';
@@ -228,13 +264,13 @@ function prose(subject, led, games, record) {
 
   if (led.good.length) {
     out.push('KEEP DOING: ' + listOf(led.good.map(r => r.label)) + '. ' +
-      cap(led.good[0].label) + ' was ' + phrase(led.good[0].pct) + ' — the part of the week ' +
-      'that needs no fixing, only repeating.');
+      cap(led.good[0].label) + ' was ' + phrase(led.good[0].pct, subject + led.good[0].key + 'good') +
+      ' — the part of the week that needs no fixing, only repeating.');
   }
   if (led.bad.length) {
     out.push('WORK ON: ' + listOf(led.bad.map(r => r.label)) + '. ' +
-      cap(led.bad[0].label) + ' was ' + phrase(led.bad[0].pct) + ', and it is the furthest ' +
-      'behind the league of anything here — the one to take into Tuesday.');
+      cap(led.bad[0].label) + ' was ' + phrase(led.bad[0].pct, subject + led.bad[0].key + 'bad') +
+      ', and it is the furthest behind the league of anything here — the one to take into Tuesday.');
   }
   if (!led.good.length && !led.bad.length) {
     out.push('Nothing in the week stood out in either direction: every measure landed in the ' +

@@ -639,5 +639,51 @@ ok('...and drives the same engine the browser does',
 }
 
 
+{
+  /* THE SCOUT'S NOTE MUST NOT SAY THE SAME THING TWICE IN A ROW.
+
+     OREB% and DREB% are the same rebound seen from each end, so a game that decides itself on
+     the glass hands both sides a MIRROR percentile -- one team's 94th is close to being the
+     other's 6th -- and the opening sentence names both in a row: "<winner> won this on the
+     defensive glass ... <phrase> where <loser> were <phrase>". With one fixed string per band
+     this read as "better than nine games in ten ... worse than nine games in ten" -- the exact
+     complaint (2026-09-18, a screenshot of Cardiff Met Archers v Gloucester City Kings), and
+     the two sentence halves saying the literal same six words is what made it read that way. */
+  const g = game({ score: [66, 96] });
+  g.adv[0].orebp = 15.2; g.adv[0].drebp = 61.7;
+  g.adv[1].orebp = 38.3; g.adv[1].drebp = 84.8;
+  const scores = { p3r: [100, 12], rimr: [2, 97], astTo: [17, 2] };  // keep the styles out of the way
+  globalThis.EpinoiaGamePct = {
+    rate: (scope, key, ctx) => {
+      const t = g.adv.indexOf(ctx.T);
+      if (scores[key]) return { p: scores[key][t], g: scores[key][t], d: 1, band: 0 };
+      const v = (key === 'orebp' || key === 'drebp') ? ctx.T[key] : 50;
+      return { p: v, g: v, d: 1, band: 0 };
+    }
+  };
+  const r = Report.report(g);
+  delete globalThis.EpinoiaGamePct;
+  const sec = r.sections.find(s => /scout/i.test(s.heading));
+  const opener = sec.paras[0];
+  ok('the opening sentence names two different comparisons, not one repeated twice',
+     !/(better than nine games in ten|worse than nine games in ten|among the best in the league|among the weakest in the league|rare to see this low in the league|as good as almost anyone plays this in the league).*\1/i
+       .test(opener) || (opener.match(/nine games in ten/g) || []).length < 2,
+     opener);
+  const halves = opener.split(' where ');
+  ok('...concretely: the phrase before "where" differs from the phrase after it',
+     halves.length === 2 && halves[0].split(':')[1] !== halves[1].split('were')[1], opener);
+}
+
+{
+  /* A REPORT NEVER SHUFFLES ON A RE-READ. The variety comes from what the sentence is ABOUT
+     (the team, the measure), not from anything that changes between two renders of the exact
+     same game -- a coach comparing notes with an assistant must see the same words. */
+  const g = game({ score: [80, 70] });
+  const a = Report.report(g), b = Report.report(g);
+  const secA = a.sections.find(s => /scout/i.test(s.heading));
+  const secB = b.sections.find(s => /scout/i.test(s.heading));
+  ok('the same game reports the same way twice', JSON.stringify(secA) === JSON.stringify(secB));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

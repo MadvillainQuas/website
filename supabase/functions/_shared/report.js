@@ -1266,6 +1266,7 @@ function sectionScout(g, fs, R) {
   const sc = st.scout(g);
   const out = [];
   R.neutral();
+  lastPick = null;             // this section's phrasing must not inherit the last section's
   const W = sc.winner, L = 1 - W;
   const nm = t => tc(g.names[t]);
 
@@ -1273,8 +1274,8 @@ function sectionScout(g, fs, R) {
     const top = sc.decided[0];
     if (sc.graded) {
       out.push(nm(top.winner) + ' won this on ' + top.label + ' before anything else: ' +
-        pctPhrase(top.pcts[top.winner]) + ' where ' + nm(1 - top.winner) + ' were ' +
-        pctPhrase(top.pcts[1 - top.winner]) + '.');
+        pctPhrase(top.pcts[top.winner], g.names[top.winner] + top.key + 'a') + ' where ' + nm(1 - top.winner) + ' were ' +
+        pctPhrase(top.pcts[1 - top.winner], g.names[1 - top.winner] + top.key + 'b') + '.');
       const rest = sc.decided.slice(1, 3);
       if (rest.length) {
         out.push('The other gaps worth the film room: ' +
@@ -1306,7 +1307,7 @@ function sectionScout(g, fs, R) {
     const bits = [];
     if (side.good.length) {
       bits.push(nm(t) + ' did their best work on ' + listOf(side.good.map(r => r.label)) +
-        ' — ' + side.good.map(r => pctPhrase(r.pct)).slice(0, 1)[0] + ' on the first of those.');
+        ' — ' + pctPhrase(side.good[0].pct, g.names[t] + side.good[0].key + 'good') + ' on the first of those.');
     }
     if (side.bad.length) {
       /* a side that won by twenty did not have anything "cost them", and saying so in a
@@ -1315,7 +1316,7 @@ function sectionScout(g, fs, R) {
       bits.push((lead ? 'The parts of it they will still want back: '
                       : (bits.length ? 'What cost them was ' : nm(t) + ' were let down by ')) +
         listOf(side.bad.map(r => r.label)) + ', ' +
-        pctPhrase(side.bad[0].pct) + ' on ' + side.bad[0].label + '.');
+        pctPhrase(side.bad[0].pct, g.names[t] + side.bad[0].key + 'bad') + ' on ' + side.bad[0].label + '.');
     }
     if (bits.length) out.push(bits.join(' '));
   });
@@ -1324,8 +1325,8 @@ function sectionScout(g, fs, R) {
   const lose = sc.sides[L];
   if (lose && lose.bad.length) {
     out.push('If there is one thing to take into the week, it is ' + lose.bad[0].label +
-      ': ' + nm(L) + ' were ' + pctPhrase(lose.bad[0].pct) + ' there, and no other part of ' +
-      'their game was further behind the league.');
+      ': ' + nm(L) + ' were ' + pctPhrase(lose.bad[0].pct, g.names[L] + lose.bad[0].key + 'take') +
+      ' there, and no other part of their game was further behind the league.');
   }
   return out;
 }
@@ -1341,16 +1342,42 @@ function sideAhead(sc, dec, t) {
 }
 
 /* a percentile as a coach would say it, not as a number */
-function pctPhrase(p) {
+/* A COMPARISON WITH A SEAT LEFT FOR VARIETY. This used to be one fixed string per band, and
+   the two sides of a single comparator stat (OREB% and DREB% are the same rebound, seen from
+   each end) land in MIRROR bands almost every time -- one team's 94th percentile is close to
+   being the other's 6th -- so a sentence that reaches for pctPhrase() twice used to say "better
+   than nine games in ten... worse than nine games in ten" without a single different word
+   between the two halves. Three phrasings a band and pickVaried()'s own rule (never the same
+   template as the sentence just before it) means the second half never repeats the first's
+   exact words, whatever their two numbers happen to be. The seed is passed in by the caller,
+   not derived from the number: two teams sitting in the same band should not therefore say the
+   same thing, but the SAME team's SAME stat read twice in one report should. */
+const PCT_BANDS = [
+  [90, ['better than nine games in ten', 'among the best in the league', 'as good as almost anyone plays this in the league']],
+  [75, ['better than three games in four', 'comfortably above the league', 'one of the stronger numbers in the league']],
+  [60, ['better than most teams in the league', 'above the league’s middle', 'on the better side of the league']],
+  [40, ['about league average', 'in the middle of the league', 'neither a strength nor a weakness']],
+  [25, ['worse than most teams in the league', 'below the league’s middle', 'on the weaker side of the league']],
+  [10, ['worse than three games in four', 'comfortably below the league', 'one of the softer numbers in the league']],
+  [-1, ['worse than nine games in ten', 'among the weakest in the league', 'rare to see this low in the league']]
+];
+function pctOptions(r) {
+  if (r >= 90) return PCT_BANDS[0][1];
+  if (r >= 75) return PCT_BANDS[1][1];
+  if (r >= 60) return PCT_BANDS[2][1];
+  if (r > 40) return PCT_BANDS[3][1];
+  if (r > 25) return PCT_BANDS[4][1];
+  if (r > 10) return PCT_BANDS[5][1];
+  return PCT_BANDS[6][1];
+}
+/* `seed` ties the choice to what the sentence is ABOUT (which team, which measure), not to the
+   number itself, so the pick is stable across a re-render but two different teams landing in
+   the same band are free to say it differently -- and pickVaried's own memory of the last
+   template used is what actually stops a sentence saying the same words about both sides of
+   one comparison in a row. */
+function pctPhrase(p, seed) {
   if (p == null) return 'hard to place';
-  const r = Math.round(p);
-  if (r >= 90) return 'better than nine games in ten';
-  if (r >= 75) return 'better than three games in four';
-  if (r >= 60) return 'better than most';
-  if (r > 40) return 'about league average';
-  if (r > 25) return 'worse than most';
-  if (r > 10) return 'worse than three games in four';
-  return 'worse than nine games in ten';
+  return pickVaried(String(seed || ''), pctOptions(Math.round(p)));
 }
 
 function listOf(xs) {

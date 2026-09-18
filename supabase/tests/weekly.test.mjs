@@ -76,5 +76,20 @@ ok('work-on is marked', /wk-work/.test(html));
 ok('a club name cannot inject markup',
    !/<script/.test(W.render({ games: [], led: null, prose: ['<script>x</script>'] }, {})));
 
+console.log('\n-- phrase() never hands out the same wording twice running (2026-09-18 fix:');
+console.log('   the exact same words this module used for game/report.js\'s repeated "nine games');
+console.log('   in ten" complaint, so the guard against it is checked the same way)');
+/* Same percentile, same seed -> pickVaried's raw index is identical both times, so a
+   consecutive repeat is only avoided because it remembers the last pick and steps off it.
+   This holds regardless of which band 95 falls in, so it doesn't depend on PCT_BANDS' wording. */
+const rep1 = W.phrase(95, 'sameseed');
+const rep2 = W.phrase(95, 'sameseed');
+ok('two consecutive identical calls do not return the same phrase', rep1 !== rep2, [rep1, rep2]);
+
+console.log('\n-- a week reports the same way on a second render');
+const proseA = W.prose('Loughborough', led2, [{}, {}, {}, {}], '3-1');
+const proseB = W.prose('Loughborough', led2, [{}, {}, {}, {}], '3-1');
+ok('the same week, read twice, comes out identical', JSON.stringify(proseA) === JSON.stringify(proseB));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
