@@ -48,6 +48,14 @@ console.log('\n1. the scorer ships shut');
      /<section id="setup" class="screen">/.test(page));
   ok('a notice stands in its place while the question is being put',
      /<div id="csGate">/.test(page) && /Checking your account/.test(page));
+  /* THE DOOR IS NOT BOX-SCORE STYLING. extract-boxscore.mjs lifts the scorer's FIRST
+     <style> block whole into epinoia/boxscore.css, so a rule written there rides along on
+     every public game page — and the first draft of this door did exactly that. It lives in
+     a second block, which the extractor does not read. */
+  ok('the door is in a second stylesheet, after the one the box score is lifted from',
+     page.indexOf('body.cs-shut >') > page.indexOf('</style>'));
+  ok('...so none of it reaches the public box score',
+     !/cs-shut|csGate/.test(rd('epinoia', 'boxscore.css')));
   ok('...and that notice is gone the moment the door is open',
      /body:not\(\.cs-shut\) > #csGate\{ display:none !important; \}/.test(page));
 }

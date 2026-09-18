@@ -15,7 +15,7 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=295" data-no-ground></script>
+<script src="../appmode.js?v=296" data-no-ground></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -104,30 +104,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
 input{font:inherit;color:var(--txt);}
 .hidden{display:none !important;}
-
-/* ================= THE DOOR IS SHUT IN THE MARKUP =================
-   The scorer used to draw itself and then be refused: bootstrap.js asked whether this
-   account may score anything and, on a no, laid a notice over the top. The app underneath
-   was still there — the setup screen, its thirty-eight inputs, and (on an older copy of
-   bootstrap.js) the league's fixture list — so anything that stopped that notice appearing
-   left a real scoring app in a stranger's hands (reported 2026-09-18).
-
-   So the page starts SHUT and bootstrap.js opens it, rather than starting open and being
-   closed. Every state that is not an answered yes — no script, a script that failed to
-   load, a stale copy from a phone's cache that has never heard of the gate, an exception
-   before the gate runs — leaves it shut, because none of them can take this class off.
-   The refusal card then sits over a blank page rather than over an application.
-
-   The demo (?train=1) is let through at once: it invents two squads, writes nothing
-   anywhere and is the one thing here that should need no account. */
-body.cs-shut > section, body.cs-shut > .modalwrap, body.cs-shut > #toast{ display:none !important; }
-body:not(.cs-shut) > #csGate{ display:none !important; }
-#csGate{
-  position:fixed; inset:0; z-index:2147483500; display:grid; place-items:center;
-  padding:24px; text-align:center; background:var(--bg,#04100b);
-  font:400 13px/1.7 ui-sans-serif,system-ui,sans-serif; color:rgba(230,255,241,.72);
-}
-#csGate b{ display:block; font-size:16px; font-weight:700; color:#93f2bf; margin-bottom:8px; }
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;
   padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px);}
 .glass{
@@ -1531,6 +1507,37 @@ table.adv .cell .bar.shooting{ opacity:.95 } table.adv .cell .bar.playmaking{ op
 table.adv .cell .bar.handling{ opacity:.6 } table.adv .cell .bar.defense{ opacity:.85 }
 table.adv[data-team="0"] th.sorted{ color:var(--team0) } table.adv[data-team="1"] th.sorted{ color:var(--team1) }
 .luname{ background:color-mix(in srgb,var(--team0) 12%,transparent); border-color:color-mix(in srgb,var(--team0) 30%,transparent) }
+</style>
+
+<!-- A SECOND STYLESHEET, ON PURPOSE. The block above is lifted WHOLE into
+     epinoia/boxscore.css (supabase/tests/extract-boxscore.mjs), so that the public box
+     score is drawn by the statistician's own rules. The door below is application
+     chrome and has nothing to do with a box score, so it would ride along as dead
+     weight on every public game page. The extractor takes the FIRST block only. -->
+<style>
+/* ================= THE DOOR IS SHUT IN THE MARKUP =================
+   The scorer used to draw itself and then be refused: bootstrap.js asked whether this
+   account may score anything and, on a no, laid a notice over the top. The app underneath
+   was still there — the setup screen, its thirty-eight inputs, and (on an older copy of
+   bootstrap.js) the league's fixture list — so anything that stopped that notice appearing
+   left a real scoring app in a stranger's hands (reported 2026-09-18).
+
+   So the page starts SHUT and bootstrap.js opens it, rather than starting open and being
+   closed. Every state that is not an answered yes — no script, a script that failed to
+   load, a stale copy from a phone's cache that has never heard of the gate, an exception
+   before the gate runs — leaves it shut, because none of them can take this class off.
+   The refusal card then sits over a blank page rather than over an application.
+
+   The demo (?train=1) is let through at once: it invents two squads, writes nothing
+   anywhere and is the one thing here that should need no account. */
+body.cs-shut > section, body.cs-shut > .modalwrap, body.cs-shut > #toast{ display:none !important; }
+body:not(.cs-shut) > #csGate{ display:none !important; }
+#csGate{
+  position:fixed; inset:0; z-index:2147483500; display:grid; place-items:center;
+  padding:24px; text-align:center; background:var(--bg,#04100b);
+  font:400 13px/1.7 ui-sans-serif,system-ui,sans-serif; color:rgba(230,255,241,.72);
+}
+#csGate b{ display:block; font-size:16px; font-weight:700; color:#93f2bf; margin-bottom:8px; }
 </style>
 </head>
 <body class="cs-shut">
@@ -6799,15 +6806,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=295">
-<link rel="stylesheet" href="../video.css?v=295">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=295">
-<script src="../config.js?v=295" defer></script>
-<script src="../vendor/supabase.js?v=295" defer></script>
-<script src="../live.js?v=295" defer></script>
-<script src="../video.js?v=295" defer></script>
-<script src="sync.js?v=295" defer></script>
-<script src="bootstrap.js?v=295" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=296">
+<link rel="stylesheet" href="../video.css?v=296">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=296">
+<script src="../config.js?v=296" defer></script>
+<script src="../vendor/supabase.js?v=296" defer></script>
+<script src="../live.js?v=296" defer></script>
+<script src="../video.js?v=296" defer></script>
+<script src="sync.js?v=296" defer></script>
+<script src="bootstrap.js?v=296" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it
