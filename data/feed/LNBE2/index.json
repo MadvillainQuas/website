@@ -2,7 +2,7 @@
 "code": "LNBE2",
 "label": "Espoirs ÉLITE 2",
 "adapter": "lnb",
-"updated": "2026-09-18T16:35:19.010578+00:00",
+"updated": "2026-09-18T19:29:55.439025+00:00",
 "games": [
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f2173455-a547-11f1-a83b-cb85daa47c95",
@@ -932,24 +932,24 @@
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef142eef-a547-11f1-8144-cb85daa47c95",
 "home": "Espoirs Denain",
 "away": "Espoirs Fos-sur-Mer",
-"status": "live",
+"status": "final",
 "date": "2026-09-18",
 "venue": "Complexe Sportif Jean Degros (Denain)",
-"homeScore": 50,
-"awayScore": 58,
-"hash": "dbecbd9ec0d27267286e1e1b3110f840b6c29743",
+"homeScore": 74,
+"awayScore": 71,
+"hash": "f7acb0809a9b78b43b8c811d87e236d5ef25ba76",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef142eef-a547-11f1-8144-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed51bb55-a547-11f1-8b09-cb85daa47c95",
 "home": "Espoirs Vichy",
 "away": "Espoirs Antibes",
-"status": "live",
+"status": "final",
 "date": "2026-09-18",
 "venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)",
-"homeScore": 22,
-"awayScore": 25,
-"hash": "bd93c8f776de0e51f26f9be4f38a4fa09ab1c642",
+"homeScore": 75,
+"awayScore": 74,
+"hash": "930319c885aaa2f18d1362dd8df33a8326266f25",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed51bb55-a547-11f1-8b09-cb85daa47c95.json"
 },
 {

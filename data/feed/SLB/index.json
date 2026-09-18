@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball Men",
 "adapter": "fiba_livestats",
-"updated": "2026-09-18T16:16:40.348708+00:00",
+"updated": "2026-09-18T19:11:27.774868+00:00",
 "games": [
 {
 "id": "2882601",
@@ -2144,13 +2144,14 @@
 "id": "2882425",
 "home": "Bristol Flyers",
 "away": "London Lions",
-"status": "scheduled",
+"homeScore": 29,
+"awayScore": 40,
+"status": "live",
 "date": "2026-09-18",
+"hash": "6f900d2f113ae2123f45208621c56bbbc6181f22",
 "venue": "SGS College Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2882425.json",
+"updated": "2026-09-18T19:10:49.691762+00:00"
 },
 {
 "id": "2702632",
