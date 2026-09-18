@@ -242,6 +242,20 @@ def match_player(query: dict, candidates: list[dict], threshold: float = 0.82, m
                 s -= 0.05; reasons.append("other-number")
         if q_pos and c.get("position") and str(c["position"]).lower()[:1] == q_pos:
             s += 0.03; reasons.append("position")
+        # TWO BROTHERS ARE NOT ONE PLAYER. "initial-only" is the weakest forename tier: two FULL,
+        # genuinely different first names ("Marcus" vs "Malcolm") that merely start with the same
+        # letter -- not one side giving a bare initial to confirm the other's full name (that is
+        # "initial", scored separately and left alone). On its own it is close to free information
+        # (one in roughly twenty-six), and surname + club alone already reaches deep into scoring
+        # range, so surname + club + initial-only cleared the auto-match threshold outright and
+        # silently merged two real siblings on the same club into one canonical player (Marcus and
+        # Malcolm Delpeche, Bristol Flyers, 2026-09-18) the moment the feed's roster arrived before
+        # shirt numbers did -- the one signal that would have told them apart. A shirt-number match
+        # is real, independent evidence and stays trusted; without one, initial-only is demoted
+        # below auto-match and left to the existing "ambiguous"/"weak" path, which is what already
+        # correctly lets two genuinely different people become two rows instead of one.
+        if "initial-only" in reasons and "number" not in reasons:
+            s -= 0.1; reasons.append("initial-only-unconfirmed")
         ranked.append({"candidate": c, "score": max(0.0, min(1.2, s)), "reasons": reasons})
     ranked.sort(key=lambda r: -r["score"])
     best = ranked[0] if ranked else None

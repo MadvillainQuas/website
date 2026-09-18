@@ -263,6 +263,16 @@ function matchPlayer(query, candidates, opts) {
       else { s -= 0.05; reasons.push('other-number'); }
     }
     if (qPos && c.position && String(c.position).toLowerCase()[0] === qPos) { s += 0.03; reasons.push('position'); }
+    // TWO BROTHERS ARE NOT ONE PLAYER, matching.py's mirror of this same rule. "initial-only" is
+    // two FULL, different first names that merely share a first letter, not one side giving a bare
+    // initial to confirm the other's full name -- on its own it is close to free information, and
+    // surname + club alone reached the auto-match threshold outright, silently merging two real
+    // siblings on the same club into one canonical player (Marcus and Malcolm Delpeche, Bristol
+    // Flyers, 2026-09-18) the moment the feed's roster arrived before shirt numbers did. A shirt
+    // number is real, independent evidence and stays trusted; without one, this is demoted below
+    // auto-match and left to the existing ambiguous/weak path, which already lets two genuinely
+    // different people become two rows instead of one.
+    if (reasons.includes('initial-only') && !reasons.includes('number')) { s -= 0.1; reasons.push('initial-only-unconfirmed'); }
     return { candidate: c, score: Math.max(0, Math.min(1.2, s)), reasons };
   }).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
   const best = ranked[0], next = ranked[1];

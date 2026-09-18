@@ -348,7 +348,18 @@ class Platform:
                 r = res["match"]
                 self.log(f"  = {first} {last} -> {r.get('first_name')} {r.get('last_name')} ({', '.join(res['best']['reasons'])})")
                 if not self.dry:
-                    self.sb.patch("players", f"id=eq.{r['id']}", {"external_ids": {"fiba_livestats": ext}})
+                    # MERGE, DON'T REPLACE. external_ids is a small dict of NAMED feeds (the module
+                    # docstring: "external_ids.fiba_livestats == tm.code", implying other keys can sit
+                    # alongside it) -- patching the whole column to {"fiba_livestats": ext} clobbers
+                    # any other key already on the row, and on a shared/merged canonical id (see the
+                    # initial-only-unconfirmed fix above) it also meant two different real people's
+                    # feed keys were overwriting each other on every poll rather than either being
+                    # kept. `cands` was selected without external_ids, so it is re-read here rather
+                    # than trusted from the match.
+                    cur = self.sb.select("players", f"id=eq.{r['id']}&select=external_ids")
+                    merged = dict((cur[0].get("external_ids") or {}) if cur else {})
+                    merged["fiba_livestats"] = ext
+                    self.sb.patch("players", f"id=eq.{r['id']}", {"external_ids": merged})
             elif res["status"] == "ambiguous":
                 self.log(f"  ? {first} {last}: ambiguous between " + " / ".join(f"{x['candidate'].get('first_name')} {x['candidate'].get('last_name')}" for x in res["ranked"][:2]))
         if not r and self.auto_create:
