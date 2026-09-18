@@ -13,8 +13,38 @@ Supabase `game_advanced` row and index_9's engines are fed by ONE shape.
 """
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Optional
+
+# ---------------------------------------------------------------- what the page said ---
+# MOST OF THESE ADAPTERS READ HTML, AND HTML SPELLS AN AMPERSAND "&amp;". A venue came
+# through as "M&amp;S Bank Arena" and every page then drew exactly that, because the text
+# was never wrong on the way in — it was HTML, stored as if it were words (reported
+# 2026-09-18). The same is true of an apostrophe from a JSON array of labels
+# ("Men&#039;s National Cup"), which one adapter had already learned to undo on its own.
+#
+# So it is undone HERE, once, where a page's text becomes a field: every adapter is covered,
+# including the next one somebody writes, and nobody has to remember. Unescaping twice is
+# harmless for real names — "&amp;amp;" is the only string that would lose a level, and it is
+# not a venue — but text that is genuinely blank stays blank rather than becoming "None".
+_TEXT_FIELDS = ('home_name', 'away_name', 'venue')
+
+
+def _text(v):
+    """One field of human-readable text, as the page meant it rather than as it spelt it."""
+    return html.unescape(v) if isinstance(v, str) and '&' in v else v
+
+
+def _clean(obj):
+    for f in _TEXT_FIELDS:
+        if hasattr(obj, f):
+            setattr(obj, f, _text(getattr(obj, f)))
+    ex = getattr(obj, 'extra', None)
+    if isinstance(ex, dict):
+        for f in _TEXT_FIELDS:
+            if f in ex:
+                ex[f] = _text(ex[f])
 
 
 @dataclass
@@ -26,6 +56,9 @@ class ScheduleGame:
     tipoff_at: Optional[str] = None          # ISO-8601 UTC if the schedule exposes it
     status: str = "scheduled"                # scheduled | live | final
     extra: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        _clean(self)
 
 
 @dataclass
@@ -48,6 +81,9 @@ class GameBundle:
     raw: Any = None                          # raw payload for archiving (never written to Postgres)
     feed_lm_ms: Optional[int] = None         # data.json Last-Modified, epoch ms (None: header absent)
     feed_recv_ms: Optional[int] = None       # when that response arrived, epoch ms
+
+    def __post_init__(self):
+        _clean(self)
 
 
 class BaseAdapter:

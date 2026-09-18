@@ -158,5 +158,70 @@ console.log('\n4. a new version for phones to take');
      /- 'epinoia\/android\/version\.json'/.test(wf) && /tag_name: android-v\$\{\{ steps\.version\.outputs\.code \}\}/.test(wf));
 }
 
+/* ------------------------------------------------------ 5. the strip card --- */
+console.log('\n5. the strip card, cleaned up on the daily card\'s model');
+{
+  const css = rd('epinoia', 'kit', 'embed.css');
+  const card = css.slice(css.indexOf('.ep-card{'), css.indexOf('.cse[data-theme="light"]'));
+  /* EACH THEME ITS OWN PANEL. White in both made the dark bar a row of bright tiles with
+     bright edges, and on a dark record the outline that separates a card is DARKER than it. */
+  ok('the dark theme is a dark panel with a dark edge',
+     /background:linear-gradient\(180deg, #0e2318, #0a1a12\);/.test(css) &&
+     /border:1px solid rgba\(2,10,6,\.85\); border-radius:4px;/.test(css));
+  ok('...with a hair of light inside it, so it does not dissolve into the record',
+     /inset 0 0 0 1px rgba\(147,242,191,\.10\)/.test(css));
+  ok('the light theme is the white panel, with a white edge',
+     /\.cse\[data-theme="light"\] \.ep-card\{\s*background:#ffffff; color:#0d1f17;\s*border-color:#ffffff;/.test(css));
+  ok('...and its washes are lighter, because they sit on white rather than on a panel',
+     /\.cse\[data-theme="light"\] \.ep-card \.half\.h\{[\s\S]{0,180}18%, transparent\)/.test(css));
+  ok('THE CRESTS CLEAR THE COLOUR LINE rather than touching it',
+     /\.ep-card \.row\{[^}]*padding-top:7px/.test(css));
+  ok('the diagonal is gone: each club washes its own half',
+     /\.ep-card \.half\{[^}]*width:50%/.test(css) && !/clip-path:polygon\(0 0, 58% 0/.test(css));
+  ok('...under a solid edge of its own colour, as the daily card carries them',
+     /\.ep-card \.half\.h\{\s*\n?\s*left:0; border-top:3px solid var\(--h/.test(css));
+  ok('the wash starts below the competition line, so the card is not split before it speaks',
+     /\.ep-card \.half\{ position:absolute; top:22px/.test(css));
+  ok('the halftone is gone', !/radial-gradient\(circle, color-mix\(in oklch, var\(--h/.test(css));
+  ok('the seam and the scrim are drawn no more, though strip.js still builds them',
+     /\.ep-card \.seam, \.ep-card \.scrim\{ display:none \}/.test(css) &&
+     /el\('div', 'seam'\), el\('div', 'scrim'\)/.test(rd('epinoia', 'embed', 'strip', 'strip.js')));
+  ok('no text shadow is left on the card', !/\.ep-card[^{]*\{[^}]*text-shadow/.test(card));
+  ok('the card carries its own ink, and says so where an <a> cannot outrank it',
+     /\.cse a\.ep-card\{ color:var\(--ep-ink\) \}/.test(css) &&
+     /\.cse\[data-theme="light"\] a\.ep-card\{ color:#0d1f17 \}/.test(css));
+  ok('what a card says is unchanged: the state rule, the live dot, the competition, the time',
+     /\.ep-card::before\{/.test(css) && /\.ep-card \.meta \.st \.dot\{/.test(css) &&
+     /\.ep-card \.meta \.comp\{/.test(css) && /\.ep-card \.when\{/.test(css));
+}
+
+/* ------------------------------------------------ 6. what the page spelt --- */
+console.log('\n6. an ampersand is an ampersand');
+{
+  const base = rd('scripts', 'ingest', 'adapters', 'base.py');
+  ok('the ingest undoes HTML entities where a page\'s text becomes a field',
+     /import html/.test(base) && /html\.unescape\(v\)/.test(base));
+  ok('...for both shapes an adapter returns, so no adapter has to remember',
+     (base.match(/def __post_init__\(self\):\s*\n\s*_clean\(self\)/g) || []).length === 2);
+  ok('...on the names and the venue, wherever they are carried',
+     /_TEXT_FIELDS = \('home_name', 'away_name', 'venue'\)/.test(base) &&
+     /ex\[f\] = _text\(ex\[f\]\)/.test(base));
+  ok('a code is left exactly as it came: it is an identifier, not words',
+     !/home_code/.test(base.slice(base.indexOf('_TEXT_FIELDS'), base.indexOf('@dataclass'))));
+
+  const mig = rd('supabase', 'migrations', '0134_unescape_scraped_text.sql');
+  ok('the rows already stored are repaired', /update public\.games\s*\n\s*set venue = public\.unescape_html\(venue\)/.test(mig));
+  ok('...including a club whose name came through the same way',
+     /update public\.teams\s*\n\s*set name = public\.unescape_html\(name\)/.test(mig) &&
+     /set short_name = public\.unescape_html\(short_name\)/.test(mig));
+  ok('the ampersand is undone last within a pass, and the pass runs twice',
+     /v := replace\(v, '&amp;',  '&'\);\s*-- last within a pass/.test(mig) &&
+     /exit when v = prev or i >= 2;/.test(mig));
+  ok('...which is capped, so nobody\'s data is looped over without a floor',
+     /i >= 2/.test(mig) && /should have a floor under it/.test(mig));
+  ok('text with no entity in it is returned untouched, without the work',
+     /if v is null or position\('&' in v\) = 0 then return v; end if;/.test(mig));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
