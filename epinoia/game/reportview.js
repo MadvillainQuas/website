@@ -165,17 +165,65 @@ function cardPlayers(g, facts) {
     '<div class="rps">' + cards + '</div></div>';
 }
 
+/* THE LEDGER. The prose picks the two or three things worth saying; a coach wants the
+   whole column in front of them, in one order, with the league's opinion of each line beside
+   it. Green is ahead of the league, red behind, and a STYLE -- how often they shot from three,
+   how often they got to the rim -- is deliberately uncoloured, because neither answer is the
+   right one and colouring it would read as an instruction. */
+function cardScout(g, fs, rep) {
+  const sc = rep && rep.scout;
+  if (!sc || !sc.sides) return '';
+  /* WITHOUT THE LEAGUE'S OPINION IT IS STILL EVIDENCE. A competition with no percentile scales
+     built yet (a new league, a first season) has no distribution to read a game against, and the
+     card used to disappear entirely -- taking the only proof of what the section had just
+     claimed with it. The same rows then run head to head instead: the two sides' own figures,
+     the better one marked, which is the comparison a coach can always make. */
+  if (!sc.graded) {
+    const rows = sc.sides[0].rows.map(r => {
+      const b = sc.sides[1].rows.find(x => x.key === r.key);
+      if (!b) return '';
+      const a = r.value, c = b.value;
+      const better = r.style ? -1 : (a === c ? -1 : (a > c ? 0 : 1));
+      const one = (v, t) => '<span class="sn-h' + (better === t ? ' win' : '') + '">' +
+        (Math.round(v * 10) / 10) + '</span>';
+      return '<div class="sn-hrow">' + one(a, 0) +
+        '<span class="sn-hlab">' + esc(r.short) + '</span>' + one(c, 1) + '</div>';
+    }).join('');
+    return '<div class="rcard"><div class="rcard-h">The two sides, measure by measure</div>' +
+      '<div class="sn-head">' + rows + '</div>' +
+      '<div class="sn-key">no percentile scales are built for this competition yet, so these are ' +
+      'the two sides against each other rather than against the league</div></div>';
+  }
+  const col = t => {
+    const rows = sc.sides[t].rows.filter(r => r.pct != null).map(r => {
+      const p = Math.round(r.pct);
+      const cls = r.style ? 'sn-style' : p >= 70 ? 'sn-good' : p <= 30 ? 'sn-bad' : 'sn-mid';
+      return '<div class="sn-row ' + cls + '">' +
+        '<span class="sn-lab">' + esc(r.short) + '</span>' +
+        '<span class="sn-val">' + (Math.round(r.value * 10) / 10) + '</span>' +
+        '<span class="sn-bar"><i style="width:' + Math.max(2, Math.min(100, p)) + '%"></i></span>' +
+        '<span class="sn-p">' + p + '</span></div>';
+    }).join('');
+    return '<div class="sn-col"><div class="sn-team">' + esc(g.names[t]) + '</div>' + rows + '</div>';
+  };
+  return '<div class="rcard"><div class="rcard-h">Against every other game in this league</div>' +
+    '<div class="sn">' + col(0) + col(1) + '</div>' +
+    '<div class="sn-key">the bar is the percentile — how this game compares with real games in ' +
+    'this competition · grey rows are a style, not a score</div></div>';
+}
+
 const CARDS = {
   quarters: cardQuarters,
   factors:  cardFactors,
   lineups:  cardLineups,
-  players:  cardPlayers
+  players:  cardPlayers,
+  scout:    cardScout
 };
 
 /* ---- the whole article --------------------------------------------------- */
 function render(g, rep) {
   const secs = rep.sections.map(s => {
-    const card = CARDS[s.card] ? CARDS[s.card](g, rep.facts) : '';
+    const card = CARDS[s.card] ? CARDS[s.card](g, rep.facts, rep) : '';
     return '<section class="rsec">' +
       '<h2>' + esc(s.heading) + '</h2>' +
       '<div class="rprose">' + s.paras.map(p => '<p>' + p + '</p>').join('') + '</div>' +

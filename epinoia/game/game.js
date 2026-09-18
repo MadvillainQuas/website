@@ -378,6 +378,19 @@ function squadsHTML(d) {
     const byId = {}; played.forEach(p => { byId[p.id] = p; });
     const first = starters.map(id => byId[id]).filter(Boolean);
     const rest = played.filter(p => starters.indexOf(p.id) < 0).sort((a, b) => (d.stats[b.id].min || 0) - (d.stats[a.id].min || 0));
+    /* A surname where it is the only one in this game, and a first initial where it is not --
+       the same question the modern box score answers, asked of the whole squad list here. */
+    const sqName = (() => {
+      const all = [];
+      (window.S.teams || []).forEach(tm => (tm.players || []).forEach(q => all.push(q)));
+      const MB = window.EpinoiaModernBox;
+      const labels = (MB && MB.nameLabels) ? MB.nameLabels(all) : {};
+      const byName = {};
+      all.forEach(q => { if (labels[q.id]) byName[q.name] = labels[q.id]; });
+      const last = n => { const w = String(n || '').trim().split(/\s+/).filter(Boolean);
+        return w.length ? w[w.length - 1] : '?'; };
+      return n => byName[n] || last(n);
+    })();
     const circle = p => {
       const x = d.stats[p.id];
       const reb = (x.or || 0) + (x.dr || 0);
@@ -386,6 +399,12 @@ function squadsHTML(d) {
       const href = /^[0-9a-f-]{36}$/i.test(p.id) ? '../p/?p=' + encodeURIComponent(p.id) : null;
       return (href ? '<a class="sq" href="' + esc(href) + '"' : '<div class="sq"') + ' data-pid="' + esc(p.id) + '" title="' + esc(p.name) + '">' +
         '<span class="sq-face" style="--c:' + esc(team.color || '#93f2bf') + '"><span class="sq-nm">' + esc(p.name) + '</span></span>' +
+        /* THE NAME UNDER THE FACE, because it is no longer inside it. The circle used to print
+           the player's name in place of a photograph; a silhouette says "no picture of this one"
+           far better, but it says nothing at all about WHO, and this view had no caption of its
+           own -- so the match report became eleven identical grey circles with numbers over them
+           (reported 2026-09-18). A name belongs under a face here as it does everywhere else. */
+        '<span class="sq-name">' + esc(sqName(p.name)) + '</span>' +
         '<b class="sq-min">' + B.fmtMin(x.min || 0) + '</b>' +
         '<span class="sq-bpm' + (b == null ? ' none' : b >= 0 ? ' pos' : ' neg') + '">' + (b == null ? '' : (b > 0 ? '+' : '') + b.toFixed(1) + ' BPM') + '</span>' +
         '<span class="sq-line">' + (x.pts || 0) + ' pts · ' + reb + ' reb · ' + (x.ast || 0) + ' ast</span>' +
