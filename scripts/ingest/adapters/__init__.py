@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from .base import BaseAdapter, GameBundle, ScheduleGame
 from .fiba_livestats import FibaLiveStatsAdapter
+from .fiba_site_schedule import FibaSiteScheduleAdapter
 
 
 class _PipelineBridge(BaseAdapter):
@@ -66,6 +67,7 @@ class GeniusHtmlAdapter(_PipelineBridge):
 
 REGISTRY: dict[str, type[BaseAdapter]] = {
     FibaLiveStatsAdapter.name: FibaLiveStatsAdapter,
+    FibaSiteScheduleAdapter.name: FibaSiteScheduleAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,
     EurobasketHtmlAdapter.name: EurobasketHtmlAdapter,

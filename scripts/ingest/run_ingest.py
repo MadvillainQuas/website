@@ -334,27 +334,46 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
                 continue
             out.append(src); continue
         season = ac.get("season") or season_name_for()
+        y_start = int(str(season)[:4]) if str(season)[:4].isdigit() else None
         words = {w.lower() for w in re.findall(r"[A-Za-z]{3,}", f"{src.get('label', '')} {src.get('code', '')} {src.get('league_name', '')}")}
         inc = [re.compile(x, re.I) for x in (ac.get("competitions_include") or [])]
         exc_ = [re.compile(x, re.I) for x in (ac.get("competitions_exclude") or [])]
+        # THE YEAR, WHERE THE CLIENT PUBLISHES IT. The <option> list on a schedule page gives names
+        # only, and a name is a poor season: Basketball England has eight seasons of "NBL Division
+        # One" and Sweden's current one is called "SBL Herr" with no year in it at all. The tenant's
+        # landing page carries the year against each competition id, so it is asked once per pass
+        # and the name is only fallen back on when the client does not publish it.
+        years = {}
+        if ac.get("client_code") and hasattr(adapter, "tenant_competitions"):
+            try:
+                years = {c["id"]: c["year"] for c in adapter.tenant_competitions(ac["client_code"])}
+            except Exception:
+                years = {}
         picked = []
         for c in comps:
             n = c["name"]
             if any(r.search(n) for r in exc_):
                 continue
-            wanted = any(r.search(n) for r in inc)
-            if not wanted:
-                in_season = season_match(n, season)
-                ours = whole_client or any(w in n.lower() for w in words)
-                wanted = in_season and ours
+            # competitions_include NAMES what is ours; it does not excuse the season. Before, an
+            # include matched every season the client had ever run — three EABLs, twenty-three
+            # "NBL Division One"s, and the women's league along with them.
+            named = any(r.search(n) for r in inc) if inc else (whole_client or any(w in n.lower() for w in words))
+            yr = years.get(c.get("id"))
+            in_season = (yr == y_start) if (yr and y_start) else season_match(n, season)
+            wanted = named and in_season
             # an all-star game or exhibition is not a phase with a table; only when asked for by name
             if wanted and kind_of(n, ac.get("competition_kinds")) == "friendly" and not any(r.search(n) for r in inc):
                 continue
             if wanted:
                 picked.append(c)
         if not picked:
-            if whole_client:
-                print(f"   {src.get('code')}: no {season} competition on the page yet - skipped")
+            # A source that KNOWS which competitions are its own (client_is_league, or an explicit
+            # competitions_include) and finds none for this season has nothing to ingest yet: the
+            # client has not published the season. Falling through to the bare page would poll
+            # whatever Genius last defaulted to, which is last season - the one thing a site that
+            # says "current season" must not do.
+            if whole_client or inc:
+                print(f"   {src.get('code')}: no {season} competition published yet - skipped")
                 continue
             out.append(src); continue
         print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{c['name']} [{kind_of(c['name'], ac.get('competition_kinds'))}]" for c in picked))

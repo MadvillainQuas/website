@@ -133,6 +133,36 @@ class FibaLiveStatsAdapter(BaseAdapter):
     # the competition picker on a hosted schedule: one <option> per competition the client runs
     _COMP_OPTION = re.compile(r'<option[^>]*value\s*=\s*"([^"]*?/competition/(\d+)/schedule[^"]*)"([^>]*)>\s*([^<]+?)\s*</option>', re.S | re.I)
 
+    # THE TENANT'S OWN ARCHIVE, WITH YEARS. The schedule page's <option> list names every
+    # competition a client runs but not WHICH SEASON each one is, and a client like Basketball
+    # England has eight seasons of "NBL Division One" and the current one is called "SBL Herr"
+    # with no year in it at all. The tenant landing page carries the year explicitly, in the
+    # arrays that drive its own competition menu:
+    #     data.push(['.../competition/<id>/', '<label>', <league>, '<year>', <id>]);
+    # This regex is lifted from the scraper that has read it for years
+    # (scraper files/eabl_scraper.py genius_league_competitions).
+    _ARCHIVE = re.compile(r"\['https?://[^']*?/competition/(\d+)/'\s*,\s*'([^']*)'\s*,\s*\d+\s*,\s*'(\d{4})'\s*,\s*\d+\s*\]")
+
+    def tenant_competitions(self, client_code: str) -> list[dict]:
+        """[{id, name, year}] for every competition a Genius client runs, the year included."""
+        if not client_code:
+            return []
+        cache = getattr(self, "_tenant_cache", None)
+        if cache is None:
+            cache = self._tenant_cache = {}
+        if client_code in cache:
+            return cache[client_code]
+        out = []
+        try:
+            r = requests.get(f"{self.HOSTED}/{client_code}/en", headers={"User-Agent": UA}, timeout=40)
+            if r.status_code == 200:
+                for cid, label, year in self._ARCHIVE.findall(r.text):
+                    out.append({"id": cid, "name": re.sub(r"\s+", " ", label).strip(), "year": int(year)})
+        except Exception:
+            out = []
+        cache[client_code] = out
+        return out
+
     def parse_competitions(self, html: str) -> list[dict]:
         """Every competition the hosted schedule offers: [{id, url, name, selected}]. Genius runs a
         league's phases as separate competitions (BCB: 'BCB 2026-2027', 'BCB Trophy 2027', an All Star

@@ -95,17 +95,35 @@
       "adapter": "fiba_livestats",
       "league_id": null,
       "competition_id": null,
-      "poll_minutes": 60,
+      "poll_minutes": 45,
       "active_window": [
         12,
         24
       ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "eabl",
+      "league_name": "Elite Academy Basketball League",
       "adapter_config": {
+        "code": "EABL",
+        "client_code": "BBE",
         "archive_raw": true,
         "store_pbp": false,
-        "competition_id_external": 47445
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^EABL"
+        ],
+        "competitions_exclude": [
+          "^WEABL",
+          "Women",
+          "Girls"
+        ]
       },
-      "scheduleUrls": []
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/BBE/en/schedule"
+      ],
+      "league_country": "GB"
     },
     {
       "code": "2BBL",
@@ -139,6 +157,142 @@
         "store_pbp": true
       },
       "scheduleUrls": []
+    },
+    {
+      "code": "NBLD1",
+      "label": "NBL Division One",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "nbl-d1",
+      "league_name": "NBL Division One",
+      "adapter_config": {
+        "code": "NBLD1",
+        "client_code": "BBE",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^NBL Division One",
+          "^NBL Division 1"
+        ],
+        "competitions_exclude": [
+          "^W",
+          "Women",
+          "Division Two",
+          "Division 2",
+          "Junior",
+          "Under"
+        ]
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/BBE/en/schedule"
+      ],
+      "league_country": "GB"
+    },
+    {
+      "code": "SBF",
+      "label": "Basketligan (Sweden)",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "basketligan",
+      "league_name": "Basketligan",
+      "adapter_config": {
+        "code": "SBF",
+        "client_code": "SBF",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "Basketligan Herr",
+          "SBL Herr"
+        ],
+        "competitions_exclude": [
+          "Dam",
+          "Women",
+          "U18",
+          "U20"
+        ]
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/SBF/en/schedule"
+      ],
+      "league_country": "SE"
+    },
+    {
+      "code": "CBFFE",
+      "label": "Czech NBL",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "czech-nbl",
+      "league_name": "Kooperativa NBL",
+      "adapter_config": {
+        "code": "CBFFE",
+        "site": "czech",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://nbl.basketball/zapasy"
+      ],
+      "league_country": "CZ"
+    },
+    {
+      "code": "SBA",
+      "label": "Slovak SBL",
+      "adapter": "fiba_site_schedule",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "slovak-sbl",
+      "league_name": "Tipos Slovenska basketbalova liga",
+      "adapter_config": {
+        "code": "SBA",
+        "site": "slovakia",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "season_ids": {
+          "2026-27": "11641",
+          "2025-26": "11613"
+        }
+      },
+      "scheduleUrls": [
+        "https://sbl.slovakbasket.sk/sk/stats/match-list"
+      ],
+      "league_country": "SK"
     }
   ]
 }
