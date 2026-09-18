@@ -116,6 +116,20 @@ ok("...nor an academy the senior club",
    not names.same_club("Oaklands Wolves Academy", "Oaklands Wolves"))
 ok("nothing matches nothing", not names.same_club("", "Manresa"))
 
+print("\n-- a kanji club name is not punctuation")
+# latinise() does not romanise CJK script, so a kanji name used to reach club_core()'s tokenizer
+# untouched and lose every kanji character to it (re.split on [^0-9a-z]+ treats non-ASCII as pure
+# separator noise): "A東京" (Alvark Tokyo) and "A千葉" (Altiri Chiba) both collapsed to
+# the single token {"a"}, and two real, different B.LEAGUE clubs came back "the same club wearing
+# a different sponsor" (found 2026-09-18).
+eq("club_core keeps a kanji run as its own token, not as separator noise",
+   names.club_core("A東京"), frozenset({"a", "東京"}))
+ok("Alvark Tokyo is not Altiri Chiba -- two real clubs, not one sponsored",
+   not names.same_club("A東京", "A千葉"))
+ok("...nor is Tokyo Kyoto -- their kanji names even share one character",
+   not names.same_club("東京", "京都"))
+ok("a club really is itself", names.same_club("A東京", "A東京"))
+
 print("\n-- ...and the platform acts on it")
 import feedplatform  # noqa: E402
 

@@ -101,6 +101,54 @@ PLAYER_STATS = {
     "sPlusMinusPoints": "PLUSMINUS",
 }
 
+# A CLUB'S NAME, THE MOMENT IT IS DISCOVERED -- not the moment its first game is fetched. The
+# schedule card names a club only in Japanese, in the site's own abbreviated form ("A東京" for
+# Alvark Tokyo), and the comment on _team_name() below says a club "keeps this name only until
+# one of its games is played" -- which for a season that has not started yet (every fixture still
+# "scheduled") means the whole league sits in Japanese for weeks, not the "one game in" the
+# self-heal was designed around (found 2026-09-18, on a season four days from its first tip-off).
+#
+# THE GAME FEED'S OWN "TeamNameE" IS NOT SAFE EITHER, once it does arrive: it is written
+# "ALVARK TOKYO" -- shouted, not title case -- and names.team_name() does not fix shouted case
+# the way names.py's player-name path does, so the self-heal would have replaced a Japanese name
+# with a shouted English one rather than "Alvark Tokyo".
+#
+# So both paths go through this table instead: keyed on the club's own crest code (bleague.jp's
+# file name for its crest, e.g. "at", the same string _team_code() and the game feed's "code" both
+# resolve to independently, so a club found from a schedule card and the identical club found from
+# a game payload land on the same row). Values are each club's current official English name, cross-
+# checked against Wikipedia's B.LEAGUE squad list (2026-27 season) rather than guessed from the
+# kanji. A code not in here (a club promoted or renamed since) falls back to the existing behaviour
+# unchanged: the Japanese name from the card, self-healing once a game is fetched.
+EN_NAME = {
+    # B1 / Premier
+    "at": "Alvark Tokyo", "ac": "Altiri Chiba", "rg": "Ryukyu Golden Kings", "ir": "Ibaraki Robots",
+    "ns": "Kobe Storks", "dd": "Nagoya Diamond Dolphins", "nv": "Nagasaki Velca",
+    "ls": "Shiga Lakes", "hd": "Hiroshima Dragonflies", "sn": "San-en NeoPhoenix",
+    "cj": "Chiba Jets", "lh": "Levanga Hokkaido", "sm": "SeaHorses Mikawa",
+    "oe": "Osaka Evessa", "yb": "Yokohama B-Corsairs", "ss": "Shimane Susanoo Magic",
+    "sr": "Tokyo Sunrockers", "gc": "Gunma Crane Thunders", "kh": "Kyoto Hannaryz",
+    "sg": "Saga Ballooners", "bw": "Shinshu Brave Warriors", "tg": "Toyama Grouses",
+    "se": "Sendai 89ers", "an": "Akita Northern Happinets", "ub": "Utsunomiya Brex",
+    "kb": "Kawasaki Brave Thunders",
+    # B2 / One
+    "aw": "Aomori Wat's", "bn": "Bambitious Nara", "eo": "Ehime Orange Vikings",
+    "ex": "Yokohama Excellence", "ez": "Earthfriends Tokyo Z", "fa": "Kagawa Five Arrows",
+    "fb": "Fukui Blowinds", "fe": "Fighting Eagles Nagoya", "ff": "Fukushima Firebonds",
+    "gb": "Tokushima Gambarous", "gs": "Gifu Swoops", "hb": "Tokyo Hachioji Bee Trains",
+    "ib": "Iwate Big Bulls", "ka": "Koshigaya Alphas", "ks": "Kanazawa Samuraiz",
+    "kv": "Kumamoto Volters", "na": "Niigata Albirex BB", "rf": "Rizing Zephyr Fukuoka",
+    "rk": "Kagoshima Rebnise", "sb": "Saitama Broncos", "td": "Tachikawa Dice",
+    "to": "Tryhoop Okayama", "tu": "Tokyo United BC", "vs": "Veltex Shizuoka",
+    "yw": "Yamagata Wyverns",
+}
+
+
+def _en_name(code: Optional[str], fallback: str) -> str:
+    """EN_NAME[code], case-insensitively, or the name the feed gave when the code is not (yet)
+    in the table -- never a KeyError, never a blank name."""
+    return EN_NAME.get((code or "").strip().lower()) or fallback
+
 # MADE OR MISSED IS THE ACTION CODE ITSELF, not the `Success` field beside it: 1=3pt made,
 # 2=3pt missed, 3=2pt made outside the paint, 4=2pt made inside it, 5/6 the same two missed.
 # ActionCD1 -> (is it a three, was it made).
@@ -341,10 +389,11 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
             # THE CARD DOES NAME BOTH CLUBS, in the abbreviation bleague.jp itself prints:
             # "A東京" for Alvark Tokyo, "琉球" for Ryukyu. Leaving them out meant no fixture could
             # be written until a game had been PLAYED, which is most of a season showing nothing.
-            # An abbreviation is a poor name and a missing fixture list is a worse one — and the
-            # club does not keep it: the first game fetched carries HomeTeamNameE, and
-            # feedplatform replaces a club's native-script name with the Latin one when it comes.
-            home_name=_team_name(card, 0), away_name=_team_name(card, 1),
+            # An abbreviation is a poor name on its own, so EN_NAME (above) resolves it by the
+            # club's crest code the moment the fixture is discovered — the first game fetched
+            # still carries HomeTeamNameE for any club EN_NAME does not (yet) cover.
+            home_name=_en_name(_team_code(card, 0), _team_name(card, 0)),
+            away_name=_en_name(_team_code(card, 1), _team_name(card, 1)),
             tipoff_at=tip,
             status="final" if "FINAL" in state.upper() else "scheduled",
             extra={"venue": venue[-1] if venue else None,
@@ -394,9 +443,12 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
             code, logo = crests.get(side.lower()) or (None, None)
             quarters = [game.get("%sTeamScore%02d" % (side, q)) for q in range(1, 5)]
             t = S.team(
-                # The English name is the one the site can slug and search; the Japanese full name
-                # is handed over as nameInternational, which feedplatform keeps as an alias.
-                (game.get(side + "TeamNameE") or game.get(side + "TeamNameJ") or "").strip(),
+                # EN_NAME first: the feed's own TeamNameE is written "ALVARK TOKYO", shouted, and
+                # names.team_name() (unlike the player-name path) does not fix shouted case — using
+                # it directly here would have overwritten a club's name with the shouted form the
+                # moment its first game was fetched. TeamNameE/TeamNameJ are still the fallback for
+                # a club EN_NAME does not (yet) cover, exactly as before.
+                _en_name(code, (game.get(side + "TeamNameE") or game.get(side + "TeamNameJ") or "").strip()),
                 code or tid,
                 score=game.get(side + "TeamScore"),          # the club's official final
                 quarters=quarters,

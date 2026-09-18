@@ -2,7 +2,7 @@
 "code": "SBA",
 "label": "Slovak SBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-18T05:21:01.413086+00:00",
+"updated": "2026-09-18T07:28:22.603722+00:00",
 "games": [
 {
 "id": "2897381",
@@ -10,7 +10,11 @@
 "away": "Nitra Blue Wings",
 "status": "scheduled",
 "date": "2026-09-30T16:00:00Z",
-"venue": "Športová hala, Handlová"
+"venue": "Športová hala, Handlová",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2897380",
@@ -18,7 +22,11 @@
 "away": "BKM Lučenec",
 "status": "scheduled",
 "date": "2026-09-27T16:00:00Z",
-"venue": "Športová hala, Prievidza"
+"venue": "Športová hala, Prievidza",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2897378",
@@ -26,7 +34,11 @@
 "away": "Iskra Svit",
 "status": "scheduled",
 "date": "2026-09-26T17:00:00Z",
-"venue": "Mestská športová hala, Spišská Nová Ves"
+"venue": "Mestská športová hala, Spišská Nová Ves",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2897379",
@@ -34,7 +46,11 @@
 "away": "Inter Basket",
 "status": "scheduled",
 "date": "2026-09-26T16:00:00Z",
-"venue": "Mestská športová hala, Komárno"
+"venue": "Mestská športová hala, Komárno",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2897377",
@@ -42,7 +58,11 @@
 "away": "MBK Baník Handlová",
 "status": "scheduled",
 "date": "2026-09-26T16:00:00Z",
-"venue": "Haleon Aréna, Levice"
+"venue": "Haleon Aréna, Levice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2897376",
@@ -50,7 +70,11 @@
 "away": "BC SLOVAN Bratislava",
 "status": "scheduled",
 "date": "2026-09-24T16:00:00Z",
-"venue": "Stará jazdiareň, Košice"
+"venue": "Stará jazdiareň, Košice",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 }
 ]
 }

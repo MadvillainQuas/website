@@ -268,19 +268,41 @@ async function games() {
   const odd = gs.filter(g => DONE(g.status) && at(g) > now)
                 .sort((a, b) => at(a) - at(b));
 
-  /* ONE DATE ORDER. The four buckets above decide WHICH games are worth
-     showing; they are not four lists to print in sequence. Printed that way a
-     result from Tuesday sat below a fixture next month and above one
-     yesterday, and a reader scanning for a date had to know the buckets
-     existed. Anything LIVE stays pinned at the top — it is the thing somebody
-     opened the page for — and everything else runs strictly by kick-off,
-     earliest first, so results flow into fixtures the way a season does. */
+  /* THE NEXT GAME FIRST — the club pages' own rule (epinoia/t/team.js, "THE NEXT GAME
+     FIRST"), which this page did not follow.
+
+     It used to print one strict date order: this week's results, then the fixtures, all
+     ascending. Read from the top that opens on the OLDEST thing in the window — a result
+     from six days ago — and the game about to be played sat wherever the week's results
+     happened to leave it. On a league with a busy week it was off the bottom of the
+     fifteen entirely, so "what is on next" needed a tab (reported 2026-09-18).
+
+     So: anything LIVE, then what is still to come soonest-first, then the results
+     latest-first. The first row is always the nearest game, and the rest fan out from it
+     in both directions the way somebody scanning the page actually reads.
+
+     RESULTS KEEP A FEW OF THE FIFTEEN. Upcoming alone would fill the cap on any league
+     with a season ahead of it, and the default view would stop answering "what just
+     happened" at all — which is half of what this section is for. Four is enough to show
+     the last round; the rest of the room goes to the fixtures. */
   const CAP = gamesShow === 'week' ? 15 : 60;
-  const rest = gamesShow === 'results'
-    ? gs.filter(g => DONE(g.status)).sort((a, b) => at(b) - at(a))
-    : gamesShow === 'upcoming'
-    ? gs.filter(g => g.status === 'scheduled').sort((a, b) => at(a) - at(b))
-    : recent.concat(upcoming, odd).sort((a, b) => at(a) - at(b));
+  const RECENT_SLOTS = 4;
+  let rest;
+  if (gamesShow === 'results') {
+    rest = gs.filter(g => DONE(g.status)).sort((a, b) => at(b) - at(a));
+  } else if (gamesShow === 'upcoming') {
+    rest = gs.filter(g => g.status === 'scheduled').sort((a, b) => at(a) - at(b));
+  } else {
+    const room = Math.max(0, CAP - live.length);
+    /* up to four slots held back for results, and the fixtures take the rest -- but a league
+       with only two fixtures left does not waste the other thirteen rows: whatever the
+       fixtures do not use falls back to the results. */
+    const reserved = Math.min(recent.length, RECENT_SLOTS);
+    const keepUpcoming = Math.min(upcoming.length, Math.max(0, room - reserved));
+    const keepRecent = Math.min(recent.length, Math.max(0, room - keepUpcoming));
+    rest = upcoming.slice(0, keepUpcoming)
+             .concat(recent.slice(0, keepRecent), odd);
+  }
   const shown = live.concat(rest).slice(0, CAP);
   const total = gs.length;
 

@@ -273,8 +273,19 @@ _CLUB_MARKERS = {"ii", "iii", "iv", "2", "3", "4", "b", "c", "w", "women", "wome
 
 
 def club_core(name: str) -> frozenset:
-    """The tokens that identify a club, with the words that identify nobody removed."""
-    toks = re.split(r"[^0-9a-z]+", latinise(str(name or "")).lower())
+    """The tokens that identify a club, with the words that identify nobody removed.
+
+    latinise() does not romanise CJK script -- there is no safe rule for that, same as
+    names.py's own player-name path -- so a kanji name reaches here untouched. The OLD
+    tokenizer (re.split on [^0-9a-z]+) treated every kanji character as mere punctuation
+    between ASCII runs, discarding the only content that actually says which club this is:
+    "A東京" (Alvark Tokyo) and "A千葉" (Altiri Chiba) both collapsed to the single token {"a"},
+    so same_club() called them the same club wearing a different sponsor -- two real, distinct
+    clubs (found 2026-09-18, on B.LEAGUE's own schedule). A contiguous run of kana/kanji is kept
+    as ONE token instead (splitting per-character would make Tokyo and Kyoto share a token on
+    one shared kanji, the same false-positive shape this function exists to prevent)."""
+    s = latinise(str(name or "")).lower()
+    toks = re.findall(r"[0-9a-z]+|[぀-ヿ㐀-鿿]+", s)
     return frozenset(t for t in toks if t and t not in _CLUB_NOISE)
 
 

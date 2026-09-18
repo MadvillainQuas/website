@@ -1,0 +1,653 @@
+{
+"code": "LNBE2",
+"label": "Espoirs ÉLITE 2",
+"adapter": "lnb",
+"updated": "2026-09-18T07:24:54.499030+00:00",
+"games": [
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f20986a3-a547-11f1-97d1-cb85daa47c95",
+"home": "Espoirs Caen",
+"away": "Espoirs Evreux",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00.000Z",
+"venue": "Palais des Sports de Caen (Caen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1fb11c3-a547-11f1-8b4f-cb85daa47c95",
+"home": "Espoirs Orléans",
+"away": "Espoirs La Rochelle",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00.000Z",
+"venue": "CO'Met (Orléans)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1ec6c41-a547-11f1-98e6-cb85daa47c95",
+"home": "Espoirs Nantes",
+"away": "Espoirs Poitiers",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00.000Z",
+"venue": "La Trocardière (Rezé)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1dd667e-a547-11f1-bd80-cb85daa47c95",
+"home": "Espoirs Aix-Maurienne",
+"away": "Espoirs Vichy",
+"status": "scheduled",
+"date": "2026-11-21T16:00:00.000Z",
+"venue": "Halle Marlioz (Aix-les-Bains)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f2173455-a547-11f1-a83b-cb85daa47c95",
+"home": "Espoirs Quimper",
+"away": "Espoirs Le Havre",
+"status": "scheduled",
+"date": "2026-11-21T15:30:00.000Z",
+"venue": "Kostum Park - A nous la vie (Quimper)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f2346a1f-a547-11f1-ba92-cb85daa47c95",
+"home": "Espoirs Fos-sur-Mer",
+"away": "Espoirs Denain",
+"status": "scheduled",
+"date": "2026-11-20T16:00:00.000Z",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1cec72a-a547-11f1-99ea-cb85daa47c95",
+"home": "Espoirs Antibes",
+"away": "Espoirs Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-11-20T16:00:00.000Z",
+"venue": "Azur Arena (Antibes)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f22681ed-a547-11f1-8645-cb85daa47c95",
+"home": "Espoirs Gries-Souffel",
+"away": "Espoirs Châlons-Reims",
+"status": "scheduled",
+"date": "2026-11-20T15:30:00.000Z",
+"venue": "Espace Sport La Forêt (Gries)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1a2c608-a547-11f1-8e83-cb85daa47c95",
+"home": "Espoirs Le Havre",
+"away": "Espoirs Caen",
+"status": "scheduled",
+"date": "2026-11-14T16:00:00.000Z",
+"venue": "BCMO - Salle Lucien Nolent (Le Havre)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1938b9b-a547-11f1-a47b-cb85daa47c95",
+"home": "Espoirs Evreux",
+"away": "Espoirs Rouen",
+"status": "scheduled",
+"date": "2026-11-14T16:00:00.000Z",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f18464eb-a547-11f1-9ed1-cb85daa47c95",
+"home": "Espoirs La Rochelle",
+"away": "Espoirs Poitiers",
+"status": "scheduled",
+"date": "2026-11-14T16:00:00.000Z",
+"venue": "Salle Gaston Neveur (La Rochelle)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1751d23-a547-11f1-b87a-cb85daa47c95",
+"home": "Espoirs Blois",
+"away": "Espoirs Nantes",
+"status": "scheduled",
+"date": "2026-11-14T16:00:00.000Z",
+"venue": "Le Jeu de Paume (Blois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1b03b8b-a547-11f1-8985-cb85daa47c95",
+"home": "Espoirs Gries-Souffel",
+"away": "Espoirs Levallois",
+"status": "scheduled",
+"date": "2026-11-14T14:00:00.000Z",
+"venue": "Espace Sport La Forêt (Gries)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f1be6e85-a547-11f1-924b-cb85daa47c95",
+"home": "Espoirs Fos-sur-Mer",
+"away": "Espoirs Châlons-Reims",
+"status": "scheduled",
+"date": "2026-11-13T16:00:00.000Z",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f164e5f4-a547-11f1-9a3d-cb85daa47c95",
+"home": "Espoirs Vichy",
+"away": "Espoirs Saint-Chamond-Andrezieux",
+"status": "scheduled",
+"date": "2026-11-13T16:00:00.000Z",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f155f94d-a547-11f1-b78a-cb85daa47c95",
+"home": "Espoirs Aix-Maurienne",
+"away": "Espoirs Antibes",
+"status": "scheduled",
+"date": "2026-11-13T15:30:00.000Z",
+"venue": "Halle Marlioz (Aix-les-Bains)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f13da32f-a547-11f1-a083-cb85daa47c95",
+"home": "Espoirs Châlons-Reims",
+"away": "Espoirs Denain",
+"status": "scheduled",
+"date": "2026-11-07T16:00:00.000Z",
+"venue": "Complexe Sportif René Tys (Reims)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f10af16a-a547-11f1-a0b9-cb85daa47c95",
+"home": "Espoirs Caen",
+"away": "Espoirs Rouen",
+"status": "scheduled",
+"date": "2026-11-07T16:00:00.000Z",
+"venue": "Palais des Sports de Caen la mer (Caen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0fb48fd-a547-11f1-9d98-cb85daa47c95",
+"home": "Espoirs Poitiers",
+"away": "Espoirs Blois",
+"status": "scheduled",
+"date": "2026-11-07T16:00:00.000Z",
+"venue": "Salle Saint-Eloi (Poitiers)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0ec5574-a547-11f1-b2fe-cb85daa47c95",
+"home": "Espoirs Nantes",
+"away": "Espoirs Orléans",
+"status": "scheduled",
+"date": "2026-11-07T16:00:00.000Z",
+"venue": "La Trocardière (Rezé)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0cb7d58-a547-11f1-87f9-cb85daa47c95",
+"home": "Espoirs Hyères-Toulon",
+"away": "Espoirs Aix-Maurienne",
+"status": "scheduled",
+"date": "2026-11-07T16:00:00.000Z",
+"venue": "Espace 3000 (Hyères)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f11a9b1a-a547-11f1-8b4e-cb85daa47c95",
+"home": "Espoirs Quimper",
+"away": "Espoirs Evreux",
+"status": "scheduled",
+"date": "2026-11-07T15:30:00.000Z",
+"venue": "Kostum Park - A nous la vie (Quimper)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0db355d-a547-11f1-8ab9-cb85daa47c95",
+"home": "Espoirs Saint-Chamond-Andrezieux",
+"away": "Espoirs Antibes",
+"status": "scheduled",
+"date": "2026-11-07T15:00:00.000Z",
+"venue": "Palais des Sports (Andrézieux-Bouthéon)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f12bc6a7-a547-11f1-bba2-cb85daa47c95",
+"home": "Espoirs Levallois",
+"away": "Espoirs Fos-sur-Mer",
+"status": "scheduled",
+"date": "2026-11-06T16:00:00.000Z",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0348eff-a547-11f1-8e42-cb85daa47c95",
+"home": "Espoirs Gries-Souffel",
+"away": "Espoirs Fos-sur-Mer",
+"status": "scheduled",
+"date": "2026-11-04T16:00:00.000Z",
+"venue": "Espace Sport La Forêt (Gries)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0bc0fff-a547-11f1-a5f1-cb85daa47c95",
+"home": "Espoirs Châlons-Reims",
+"away": "Espoirs Levallois",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f09cfa27-a547-11f1-be78-cb85daa47c95",
+"home": "Espoirs Rouen",
+"away": "Espoirs Quimper",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "Kindarena (Rouen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f08d5331-a547-11f1-a5c8-cb85daa47c95",
+"home": "Espoirs Evreux",
+"away": "Espoirs Le Havre",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f07e4ed7-a547-11f1-9e0b-cb85daa47c95",
+"home": "Espoirs Orléans",
+"away": "Espoirs Poitiers",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "CO'Met (Orléans)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f06ecf22-a547-11f1-8e67-cb85daa47c95",
+"home": "Espoirs Blois",
+"away": "Espoirs La Rochelle",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "Le Jeu de Paume (Blois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f05f14ff-a547-11f1-8447-cb85daa47c95",
+"home": "Espoirs Hyères-Toulon",
+"away": "Espoirs Saint-Chamond-Andrezieux",
+"status": "scheduled",
+"date": "2026-10-31T16:00:00.000Z",
+"venue": "Espace 3000 (Hyères)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0ad1503-a547-11f1-ad84-cb85daa47c95",
+"home": "Espoirs Denain",
+"away": "Espoirs Gries-Souffel",
+"status": "scheduled",
+"date": "2026-10-31T15:30:00.000Z",
+"venue": "Complexe Sportif Jean Degros (Denain)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0524686-a547-11f1-8279-cb85daa47c95",
+"home": "Espoirs Antibes",
+"away": "Espoirs Vichy",
+"status": "scheduled",
+"date": "2026-10-30T16:00:00.000Z",
+"venue": "Azur Arena (Antibes)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f01739f9-a547-11f1-9d61-cb85daa47c95",
+"home": "Espoirs Le Havre",
+"away": "Espoirs Rouen",
+"status": "scheduled",
+"date": "2026-10-24T15:00:00.000Z",
+"venue": "BCMO - Salle Lucien Nolent (Le Havre)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f008bb79-a547-11f1-8d93-cb85daa47c95",
+"home": "Espoirs La Rochelle",
+"away": "Espoirs Nantes",
+"status": "scheduled",
+"date": "2026-10-24T15:00:00.000Z",
+"venue": "Salle Gaston Neveur (La Rochelle)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eff9ddc0-a547-11f1-96e7-cb85daa47c95",
+"home": "Espoirs Blois",
+"away": "Espoirs Orléans",
+"status": "scheduled",
+"date": "2026-10-24T15:00:00.000Z",
+"venue": "Le Jeu de Paume (Blois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0254e36-a547-11f1-b886-cb85daa47c95",
+"home": "Espoirs Quimper",
+"away": "Espoirs Caen",
+"status": "scheduled",
+"date": "2026-10-24T14:30:00.000Z",
+"venue": "Kostum Park - A nous la vie (Quimper)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_efb1ca90-a547-11f1-8deb-cb85daa47c95",
+"home": "Espoirs Saint-Chamond-Andrezieux",
+"away": "Espoirs Aix-Maurienne",
+"status": "scheduled",
+"date": "2026-10-24T14:00:00.000Z",
+"venue": "Palais des Sports (Andrézieux-Bouthéon)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_efeb685a-a547-11f1-bd71-cb85daa47c95",
+"home": "Espoirs Vichy",
+"away": "Espoirs Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-10-23T15:00:00.000Z",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_efa1e411-a547-11f1-9ed4-cb85daa47c95",
+"home": "Espoirs Fos-sur-Mer",
+"away": "Espoirs Levallois",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef92bfde-a547-11f1-8488-cb85daa47c95",
+"home": "Espoirs Denain",
+"away": "Espoirs Châlons-Reims",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "Complexe Sportif Jean Degros (Denain)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef8461ea-a547-11f1-9204-cb85daa47c95",
+"home": "Espoirs Le Havre",
+"away": "Espoirs Quimper",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "BCMO - Salle Lucien Nolent (Le Havre)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef7422e3-a547-11f1-85b0-cb85daa47c95",
+"home": "Espoirs Evreux",
+"away": "Espoirs Caen",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef6202c7-a547-11f1-ac02-cb85daa47c95",
+"home": "Espoirs Poitiers",
+"away": "Espoirs La Rochelle",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "Salle Saint-Eloi (Poitiers)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef5207d8-a547-11f1-8bba-cb85daa47c95",
+"home": "Espoirs Nantes",
+"away": "Espoirs Blois",
+"status": "scheduled",
+"date": "2026-10-17T15:00:00.000Z",
+"venue": "La Trocardière (Rezé)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef3efc0a-a547-11f1-a295-cb85daa47c95",
+"home": "Espoirs Vichy",
+"away": "Espoirs Aix-Maurienne",
+"status": "scheduled",
+"date": "2026-10-16T15:00:00.000Z",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef313381-a547-11f1-ae48-cb85daa47c95",
+"home": "Espoirs Hyères-Toulon",
+"away": "Espoirs Antibes",
+"status": "scheduled",
+"date": "2026-10-16T14:30:00.000Z",
+"venue": "Espace 3000 (Hyères)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f0442d30-a547-11f1-a252-cb85daa47c95",
+"home": "Espoirs Levallois",
+"away": "Espoirs Denain",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00.000Z",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef230028-a547-11f1-a5e4-cb85daa47c95",
+"home": "Espoirs Châlons-Reims",
+"away": "Espoirs Gries-Souffel",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Palais des Sports Pierre de Coubertin (Châlons en Champagne)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef05fa25-a547-11f1-8d12-cb85daa47c95",
+"home": "Espoirs Rouen",
+"away": "Espoirs Evreux",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Kindarena (Rouen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eef8e978-a547-11f1-a749-cb85daa47c95",
+"home": "Espoirs Caen",
+"away": "Espoirs Le Havre",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Palais des Sports de Caen (Caen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eeeb67bf-a547-11f1-8c1d-cb85daa47c95",
+"home": "Espoirs Poitiers",
+"away": "Espoirs Nantes",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Salle Saint-Eloi (Poitiers)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eedd0beb-a547-11f1-b4a4-cb85daa47c95",
+"home": "Espoirs La Rochelle",
+"away": "Espoirs Orléans",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Salle Gaston Neveur (La Rochelle)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eecfb5a2-a547-11f1-bd0a-cb85daa47c95",
+"home": "Espoirs Aix-Maurienne",
+"away": "Espoirs Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-10-10T15:00:00.000Z",
+"venue": "Halle Marlioz (Aix-les-Bains)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eec02e17-a547-11f1-bc11-cb85daa47c95",
+"home": "Espoirs Antibes",
+"away": "Espoirs Saint-Chamond-Andrezieux",
+"status": "scheduled",
+"date": "2026-10-09T15:00:00.000Z",
+"venue": "Azur Arena (Antibes)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee93805d-a547-11f1-9d7f-cb85daa47c95",
+"home": "Espoirs Rouen",
+"away": "Espoirs Caen",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "Kindarena (Rouen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee83644c-a547-11f1-ae7d-cb85daa47c95",
+"home": "Espoirs Evreux",
+"away": "Espoirs Quimper",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "Centre Omnisports - Salle Jean Fourré (Evreux)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee73fa06-a547-11f1-9ebe-cb85daa47c95",
+"home": "Espoirs Orléans",
+"away": "Espoirs Nantes",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "CO'Met (Orléans)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee6525c8-a547-11f1-80bd-cb85daa47c95",
+"home": "Espoirs Blois",
+"away": "Espoirs Poitiers",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "Le Jeu de Paume (Blois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee5519a4-a547-11f1-bc4b-cb85daa47c95",
+"home": "Espoirs Aix-Maurienne",
+"away": "Espoirs Saint-Chamond-Andrezieux",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "Halle Marlioz (Aix-les-Bains)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee45ca2b-a547-11f1-bf8b-cb85daa47c95",
+"home": "Espoirs Hyères-Toulon",
+"away": "Espoirs Vichy",
+"status": "scheduled",
+"date": "2026-10-03T15:00:00.000Z",
+"venue": "Espace 3000 (Hyères)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eeb0f0f5-a547-11f1-ac5f-cb85daa47c95",
+"home": "Espoirs Levallois",
+"away": "Espoirs Châlons-Reims",
+"status": "scheduled",
+"date": "2026-10-03T14:45:00.000Z",
+"venue": "Palais des Sports Gabriel Péri (Levallois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eea212ce-a547-11f1-9c66-cb85daa47c95",
+"home": "Espoirs Gries-Souffel",
+"away": "Espoirs Denain",
+"status": "scheduled",
+"date": "2026-10-03T14:00:00.000Z",
+"venue": "Espace Sport La Forêt (Gries)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee0a9bad-a547-11f1-a232-cb85daa47c95",
+"home": "Espoirs Le Havre",
+"away": "Espoirs Evreux",
+"status": "scheduled",
+"date": "2026-09-26T15:00:00.000Z",
+"venue": "BCMO - Salle Lucien Nolent (Le Havre)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edfb0d61-a547-11f1-b5e2-cb85daa47c95",
+"home": "Espoirs Poitiers",
+"away": "Espoirs Orléans",
+"status": "scheduled",
+"date": "2026-09-26T15:00:00.000Z",
+"venue": "Salle Saint-Eloi (Poitiers)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edeb2946-a547-11f1-9377-cb85daa47c95",
+"home": "Espoirs La Rochelle",
+"away": "Espoirs Blois",
+"status": "scheduled",
+"date": "2026-09-26T15:00:00.000Z",
+"venue": "Salle Gaston Neveur (La Rochelle)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edd9f0ae-a547-11f1-87ca-cb85daa47c95",
+"home": "Espoirs Saint-Chamond-Andrezieux",
+"away": "Espoirs Vichy",
+"status": "scheduled",
+"date": "2026-09-26T14:00:00.000Z",
+"venue": "Palais des Sports (Andrézieux-Bouthéon)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee183766-a547-11f1-b04c-cb85daa47c95",
+"home": "Espoirs Quimper",
+"away": "Espoirs Rouen",
+"status": "scheduled",
+"date": "2026-09-26T12:00:00.000Z",
+"venue": "Kostum Park - A nous la vie (Quimper)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee35762b-a547-11f1-a70d-cb85daa47c95",
+"home": "Espoirs Fos-sur-Mer",
+"away": "Espoirs Gries-Souffel",
+"status": "scheduled",
+"date": "2026-09-25T15:00:00.000Z",
+"venue": "Halle des Sports Parsemain (Fos-sur-Mer)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edca4397-a547-11f1-a3a0-cb85daa47c95",
+"home": "Espoirs Antibes",
+"away": "Espoirs Aix-Maurienne",
+"status": "scheduled",
+"date": "2026-09-25T15:00:00.000Z",
+"venue": "Azur Arena (Antibes)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ee270cd2-a547-11f1-a9ae-cb85daa47c95",
+"home": "Espoirs Denain",
+"away": "Espoirs Levallois",
+"status": "scheduled",
+"date": "2026-09-23T17:30:00.000Z",
+"venue": "Complexe Sportif Jean Degros (Denain)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed81950c-a547-11f1-ba0b-cb85daa47c95",
+"home": "Espoirs Caen",
+"away": "Espoirs Quimper",
+"status": "scheduled",
+"date": "2026-09-19T15:00:00.000Z",
+"venue": "Palais des Sports de Caen (Caen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed7331e8-a547-11f1-8116-cb85daa47c95",
+"home": "Espoirs Orléans",
+"away": "Espoirs Blois",
+"status": "scheduled",
+"date": "2026-09-19T15:00:00.000Z",
+"venue": "Halle des Sports (Saint-Jean-de-Braye)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed25dab5-a547-11f1-9c4b-cb85daa47c95",
+"home": "Espoirs Saint-Chamond-Andrezieux",
+"away": "Espoirs Hyères-Toulon",
+"status": "scheduled",
+"date": "2026-09-19T14:00:00.000Z",
+"venue": "Palais des Sports (Andrézieux-Bouthéon)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eda2e9dc-a547-11f1-8e95-cb85daa47c95",
+"home": "Espoirs Levallois",
+"away": "Espoirs Gries-Souffel",
+"status": "scheduled",
+"date": "2026-09-19T13:00:00.000Z",
+"venue": "Palais des Sports Marcel Cerdan (Levallois)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed9081d3-a547-11f1-b9d8-cb85daa47c95",
+"home": "Espoirs Rouen",
+"away": "Espoirs Le Havre",
+"status": "scheduled",
+"date": "2026-09-19T12:00:00.000Z",
+"venue": "Kindarena (Rouen)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed62a320-a547-11f1-87c1-cb85daa47c95",
+"home": "Espoirs Nantes",
+"away": "Espoirs La Rochelle",
+"status": "scheduled",
+"date": "2026-09-19T12:00:00.000Z",
+"venue": "La Trocardière (Rezé)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed51bb55-a547-11f1-8b09-cb85daa47c95",
+"home": "Espoirs Vichy",
+"away": "Espoirs Antibes",
+"status": "scheduled",
+"date": "2026-09-18T16:00:00.000Z",
+"venue": "Palais des Sports Pierre Coulon (Bellerive-sur-Allier)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef142eef-a547-11f1-8144-cb85daa47c95",
+"home": "Espoirs Denain",
+"away": "Espoirs Fos-sur-Mer",
+"status": "scheduled",
+"date": "2026-09-18T15:00:00.000Z",
+"venue": "Complexe Sportif Jean Degros (Denain)"
+},
+{
+"id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edb5d69b-a547-11f1-aa2d-cb85daa47c95",
+"home": "Espoirs Châlons-Reims",
+"away": "Espoirs Fos-sur-Mer",
+"homeScore": 87,
+"awayScore": 67,
+"status": "final",
+"date": "2026-09-16T16:30:00.000Z",
+"hash": "896d5802637a46fbb98ec61d82e8f35a2887f45a",
+"venue": "Complexe Sportif René Tys (Reims)",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_edb5d69b-a547-11f1-aa2d-cb85daa47c95.json",
+"updated": "2026-09-18T07:24:40.653171+00:00"
+}
+]
+}

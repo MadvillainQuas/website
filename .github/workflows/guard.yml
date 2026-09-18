@@ -319,6 +319,13 @@ jobs:
         # normaliser folded away kept as an alias
         run: python scripts/ingest/names_test.py
 
+      - name: A B.LEAGUE club is named in English from the moment it is discovered
+        # bleague.jp's schedule cards name a club only in Japanese ("A東京"), and the game feed's
+        # own TeamNameE is SHOUTED ("ALVARK TOKYO"). EN_NAME resolves the crest code to the club's
+        # real English name on both paths, so a season that has not started yet is not a league
+        # of kanji waiting for its first game to be played.
+        run: python scripts/ingest/bleague_test.py
+
       - name: Every FIBA-LiveStats-shaped adapter gets a box score
         # fiba_site_schedule, euroleague, acb, lnb and bleague all subclass FibaLiveStatsAdapter
         # and inherit its fetch() unchanged, but write_platform's will_translate used to compare
