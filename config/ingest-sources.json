@@ -293,6 +293,115 @@
         "https://sbl.slovakbasket.sk/sk/stats/match-list"
       ],
       "league_country": "SK"
+    },
+    {
+      "code": "WNBLD1",
+      "label": "WNBL Division One",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "wnbl-d1",
+      "league_name": "WNBL Division One",
+      "adapter_config": {
+        "code": "WNBLD1",
+        "client_code": "BBE",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^WNBL Division One"
+        ],
+        "competitions_exclude": [
+          "Division Two",
+          "Junior",
+          "Under",
+          "U18"
+        ]
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/BBE/en/schedule"
+      ],
+      "league_country": "GB"
+    },
+    {
+      "code": "WEABL",
+      "label": "Women's Elite Academy Basketball League",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "weabl",
+      "league_name": "Women's Elite Academy Basketball League",
+      "adapter_config": {
+        "code": "WEABL",
+        "client_code": "BBE",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "^WEABL"
+        ],
+        "competitions_exclude": []
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/BBE/en/schedule"
+      ],
+      "league_country": "GB"
+    },
+    {
+      "code": "SBFW",
+      "label": "Basketligan Dam (Sweden)",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "basketligan-dam",
+      "league_name": "Basketligan Dam",
+      "adapter_config": {
+        "code": "SBFW",
+        "client_code": "SBF",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true,
+        "competitions_include": [
+          "SBL Dam",
+          "Basketligan Dam"
+        ],
+        "competitions_exclude": [
+          "Basketettan",
+          "Svenska Cupen",
+          "U16",
+          "U18",
+          "U20",
+          "EM"
+        ]
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/SBF/en/schedule"
+      ],
+      "league_country": "SE"
     }
   ]
 }

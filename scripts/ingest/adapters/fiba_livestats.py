@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Iterable, Optional
 
+import html
 import re
 import urllib.parse
 from datetime import datetime, timezone
@@ -157,7 +158,10 @@ class FibaLiveStatsAdapter(BaseAdapter):
             r = requests.get(f"{self.HOSTED}/{client_code}/en", headers={"User-Agent": UA}, timeout=40)
             if r.status_code == 200:
                 for cid, label, year in self._ARCHIVE.findall(r.text):
-                    out.append({"id": cid, "name": re.sub(r"\s+", " ", label).strip(), "year": int(year)})
+                    # the arrays are HTML-escaped ("Men&#039;s National Cup"), and an unescaped
+                    # apostrophe is enough to make a competitions_include miss its own league
+                    label = html.unescape(re.sub(r"\s+", " ", label)).strip()
+                    out.append({"id": cid, "name": label, "year": int(year)})
         except Exception:
             out = []
         cache[client_code] = out
