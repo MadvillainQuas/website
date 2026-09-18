@@ -144,19 +144,29 @@
     {
       "code": "EL",
       "label": "EuroLeague",
-      "adapter": "euroleague_api",
+      "adapter": "euroleague",
       "league_id": null,
       "competition_id": null,
-      "poll_minutes": 60,
+      "poll_minutes": 45,
       "active_window": [
         16,
         24
       ],
       "adapter_config": {
         "archive_raw": true,
-        "store_pbp": true
+        "store_pbp": false,
+        "code": "EL",
+        "auto_create": true,
+        "competition_code": "E"
       },
-      "scheduleUrls": []
+      "scheduleUrls": [
+        "https://feeds.incrowdsports.com/provider/euroleague-feeds/v2/competitions/E/seasons/games"
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "euroleague",
+      "league_name": "EuroLeague",
+      "league_country": "EU"
     },
     {
       "code": "NBLD1",
