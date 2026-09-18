@@ -283,8 +283,11 @@ async function players(opts) {
     try {
       /* opts.trim === false reads player rows whole: only the tests ask, to prove
          the trimmed read changes nothing */
+      /* rows: false — this file wants the season LINE, never the game rows it was summed
+         from, and it holds every league's at once. See season()'s own note: keeping them
+         would pin ~88 MB and ~114,000 row objects on a full platform, for nothing. */
       const [S, teams] = await Promise.all([
-        D.season(L.competitionIds, { trim: o.trim !== false }),
+        D.season(L.competitionIds, { trim: o.trim !== false, rows: false }),
         D.teamMeta(L.id)
       ]);
       if (signal && signal.aborted) return;

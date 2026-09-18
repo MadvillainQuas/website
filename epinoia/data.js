@@ -14,10 +14,13 @@
    one that fails.
    ============================================================================ */
 (function (root, factory) {
-  const api = factory();
+  /* factory(root), as stars.js does it: the season cache below reaches localStorage through
+     `root`, and a factory called with no argument leaves it undefined — every reference then
+     throws inside the cache's own try/catch, which is a cache that silently never caches. */
+  const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.EpinoiaData = api;
-}(typeof globalThis !== 'undefined' ? globalThis : self, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 function CFG() {
   const c = (typeof window !== 'undefined' && window.EPINOIA_CONFIG) || null;
@@ -306,6 +309,97 @@ const PLAYER_STAT_KEYS = Object.freeze(['min', 'pts', 'p2m', 'p2a', 'p3m', 'p3a'
 const TRIM_SELECT = 'game_id,player_uuid,player_id,team_idx,' +
   PLAYER_STAT_KEYS.map(k => k + ':stats->' + k).join(',');
 
+/* --------------------------------------------- a season a reader already has ---
+   THE SEASON LINE KEEPS; THE ROWS IT WAS SUMMED FROM DO NOT.
+
+   Global scouting reads every league's whole finished season on every visit, and
+   a season only changes when a game is finalised. So the SUMMED season is kept
+   between visits and re-checked with one small request first:
+
+     games?…&status=in.(final,finalising)&select=id,finalised_at
+            &order=finalised_at.desc.nullslast&limit=1   with Prefer: count=exact
+
+   which answers in 94 bytes with both halves of the token — how many games are
+   finished, and when the most recent one was finalised. A game played, a game
+   reverted or a game re-scored all move one of them, so the cache misses and the
+   season is read again; nothing else can change the numbers.
+
+   A TTL SITS BEHIND THE TOKEN ANYWAY. The token is an argument about what can
+   change a season, and an argument is a weaker thing than a measurement: six
+   hours bounds how wrong it can be if some path one day rewrites a box score
+   without touching finalised_at.
+
+   V IS PART OF THE KEY. The line is what players()/teams()/attachBPM computed,
+   so a change to that maths has to invalidate everything cached under the old
+   one — bump V in the same commit and every reader re-reads once.
+
+   localStorage, not session: the point is the visit AFTER this one. It is
+   wrapped in try/catch throughout (private mode, a full quota) and a write that
+   fails clears this file's own keys and gives up — a page that cannot cache is
+   only as slow as it was before caching existed. */
+const SEASON_CACHE_V = 'epinoia_season_v1:';
+const SEASON_CACHE_MS = 6 * 60 * 60 * 1000;
+
+async function seasonToken(scope) {
+  try {
+    /* getCounted, not a bare fetch: it carries the retry and the member's token, so a
+       members-only league is counted for the member exactly as its games are read. */
+    const { rows, total } = await getCounted(`games?${scope}&status=in.(final,finalising)` +
+      '&select=id,finalised_at&order=finalised_at.desc.nullslast&limit=1');
+    if (total == null) return null;   // the server declined to count: do not risk a cache on it
+    const last = (rows && rows[0] && rows[0].finalised_at) || '';
+    return total + '@' + last;
+  } catch (_) { return null; }        // no token, no cache: read it the long way
+}
+
+function seasonCacheGet(key, token) {
+  if (!token) return null;
+  try {
+    const s = root.localStorage && root.localStorage.getItem(key);
+    if (!s) return null;
+    const j = JSON.parse(s);
+    if (!j || j.tok !== token) return null;
+    if (typeof j.at !== 'number' || Date.now() - j.at > SEASON_CACHE_MS || Date.now() < j.at) return null;
+    const d = j.data || {};
+    const byId = {};
+    (d.games || []).forEach(g => { byId[g.id] = g; });
+    return { games: d.games || [], byId, players: d.players || [], teams: d.teams || [],
+             teamOfPlayer: new Map(d.teamOfPlayer || []) };
+  } catch (_) { return null; }
+}
+
+function seasonCachePut(key, token, out) {
+  if (!token) return;
+  const body = JSON.stringify({ tok: token, at: Date.now(), data: {
+    games: out.games, players: out.players, teams: out.teams,
+    teamOfPlayer: [...(out.teamOfPlayer || new Map())]
+  } });
+  const ls = root && root.localStorage;
+  if (!ls) return;
+  try { ls.setItem(key, body); return; } catch (_) { /* full: make room below */ }
+
+  /* FULL. Make room by dropping the seasons READ LONGEST AGO, not all of them: a platform
+     with nineteen leagues cached is exactly when this happens, and throwing the other
+     eighteen away to fit the nineteenth would have every visit evicting the last one's
+     work. Oldest first, one at a time, and give up quietly if it still will not fit —
+     a page that cannot cache is only as slow as it was before there was a cache. */
+  try {
+    const mine = [];
+    for (let i = 0; i < ls.length; i++) {
+      const k = ls.key(i);
+      if (!k || k.indexOf(SEASON_CACHE_V) !== 0 || k === key) continue;
+      let at = 0;
+      try { at = (JSON.parse(ls.getItem(k)) || {}).at || 0; } catch (__) { at = 0; }
+      mine.push({ k, at });
+    }
+    mine.sort((a, b) => a.at - b.at);
+    for (const m of mine) {
+      ls.removeItem(m.k);
+      try { ls.setItem(key, body); return; } catch (__) { /* still full: drop the next one */ }
+    }
+  } catch (___) { /* nothing more to try */ }
+}
+
 /* one trimmed row back into the shape the untrimmed read returns */
 function untrim(r) {
   const stats = {};
@@ -315,14 +409,45 @@ function untrim(r) {
 }
 
 /* opts.trim: read player rows without `adv` (see PLAYER_STAT_KEYS). Team rows are
-   read whole either way, because teamLine takes the team's box from its `adv`. */
+   read whole either way, because teamLine takes the team's box from its `adv`.
+
+   opts.rows === false: HAND BACK THE SEASON, NOT THE ROWS IT WAS BUILT FROM.
+
+   A season's player rows are the biggest thing this file ever holds, and once
+   players() and teams() have summed them nearly every caller is finished with
+   them -- global scouting merges EVERY league's season at once and never looks
+   at `.pgs` or `.tgs` again. Returning them anyway pinned the lot in memory for
+   as long as the page was open: measured 808 bytes a row trimmed, 24 rows a
+   game, so one league's finished season is ~4.6 MB of JSON parsed into ~6,000
+   row objects (each with its own nested `stats`), and nineteen leagues at the
+   same point would be ~88 MB and ~114,000 of them -- on a phone, for a table of
+   a few hundred season lines that was already computed.
+
+   The injury report is the one caller that genuinely re-reads `.pgs` (it works
+   game by game, not on the season line), so rows are kept by DEFAULT and only
+   an explicit `rows: false` drops them. Nothing about the numbers changes:
+   players(), teams() and attachBPM have already run over exactly the same rows
+   either way. */
 async function season(competitionId, opts) {
   const trim = !!(opts && opts.trim);
+  const keepRows = !(opts && opts.rows === false);
   const list = (Array.isArray(competitionId) ? competitionId : [competitionId]).filter(Boolean);
   if (!list.length) return { games: [], players: [], teams: [], byId: {} };
   const scope = list.length === 1
     ? `competition_id=eq.${list[0]}`
     : `competition_id=in.(${list.join(',')})`;
+
+  /* THE SEASON A READER ALREADY HAS IS NOT WORTH SENDING AGAIN. Only for the callers that
+     asked for the season line and not the rows (rows: false): the line is a few hundred
+     small objects and keeps, the rows are megabytes and do not. See seasonToken(). */
+  const ckey = keepRows ? null : SEASON_CACHE_V + list.slice().sort().join(',');
+  let token = null;
+  if (ckey) {
+    token = await seasonToken(scope);
+    const hit = seasonCacheGet(ckey, token);
+    if (hit) return hit;
+  }
+
   const games = await all(`games?${scope}` +
     `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
   if (!games.length) return { games: [], players: [], teams: [], byId: {} };
@@ -367,7 +492,10 @@ async function season(competitionId, opts) {
 
   S.attachBPM(players, teamRows, teamOfPlayer);
 
-  return { games, byId, pgs, tgs, players, teams: teamRows, teamOfPlayer };
+  const out = { games, byId, players, teams: teamRows, teamOfPlayer };
+  if (keepRows) { out.pgs = pgs; out.tgs = tgs; }
+  else if (ckey) seasonCachePut(ckey, token, out);
+  return out;
 }
 
 /* ------------------------------------------------------ a window of games ---
