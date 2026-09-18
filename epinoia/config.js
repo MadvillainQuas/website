@@ -298,6 +298,28 @@ window.epinoiaSdk = function () {
   return sdk;
 };
 
+/* IS THERE A SESSION AT ALL?
+
+   A look at the SDK's own storage key (sb-<project-ref>-auth-token), so a page
+   can decide whether it is worth loading the SDK to ask the question properly.
+   Most readers of most pages are signed out, and fetching the whole client to
+   discover that is a request and a parse for nothing.
+
+   IT ANSWERS "MAYBE", NEVER "YES". A token that has expired, been revoked or
+   belongs to an account with no rights all look the same from here, so nothing
+   may be shown or allowed on the strength of it — every answer that matters
+   comes back from the database. */
+window.epinoiaMaybeSignedIn = function () {
+  try {
+    const m = String((window.EPINOIA_CONFIG || {}).supabaseUrl || '').match(/^https?:\/\/([^.]+)\./);
+    if (!m) return false;
+    const raw = localStorage.getItem('sb-' + m[1] + '-auth-token');
+    if (!raw) return false;
+    const j = JSON.parse(raw);
+    return !!(j && (j.access_token || (j.currentSession && j.currentSession.access_token)));
+  } catch (_) { return false; }
+};
+
 /* The client, once the SDK is there. Callers that cannot proceed without auth
    should await this; window.epinoiaClient() stays synchronous for the pages
    that load the SDK up front. */

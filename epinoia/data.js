@@ -405,7 +405,23 @@ async function statsForGames(games) {
   });
   S.attachBPM(players, teamRows, teamOfPlayer);
 
-  return { players, teams: teamRows, byId, teamOfPlayer, games };
+  /* pgs comes back too: the injury report (epinoia/injuries.js) needs the per-game
+     rows, not the season totals — who was on the sheet, game by game — and reading
+     them a second time for the same games would be the same request twice. */
+  return { players, teams: teamRows, byId, teamOfPlayer, games, pgs, tgs };
+}
+
+/* ------------------------------------------------------- who has been let go ---
+   The releases for a league's clubs (player_releases, migration 0132). A row means
+   the club has said the player has gone, which is the one thing the injury report
+   cannot work out from the box scores. An older database has no such table, so a
+   404 is an empty list rather than a broken page. */
+async function releases(teamIds) {
+  const list = (Array.isArray(teamIds) ? teamIds : [teamIds]).filter(Boolean);
+  if (!list.length) return [];
+  try {
+    return await all(`player_releases?team_id=in.(${list.join(',')})&select=team_id,player_id,note,released_at`);
+  } catch (_) { return []; }
 }
 
 /* Every stint for a team's games. This is what WOWY, the lineup filter and the
@@ -537,5 +553,5 @@ function pickSeason(seasons, ref) {
 }
 
 return { get, all, season, statsForGames, stints, events, playerMeta, teamMeta,
-         context, pickSeason, PLAYER_STAT_KEYS, untrim };
+         releases, context, pickSeason, PLAYER_STAT_KEYS, untrim };
 }));

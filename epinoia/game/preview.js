@@ -133,6 +133,50 @@ function startersHTML(ctx) {
   '</section>';
 }
 
+/* ------------------------------------------------------- the injury report ---
+   WHO IS A QUESTION MARK. Not a filed injury list — no league files one — but
+   what the box scores already say: a player each club was playing who has not
+   taken the floor since (epinoia/injuries.js, the same report the league's own
+   page and the global wire draw, so the three cannot disagree).
+
+   A QUESTION MARK, NOT A VERDICT. Nobody has said anybody is hurt, and the row
+   says only what is known: how many of the club's games they have missed and
+   what they were doing before that. It resolves itself — the first game they
+   record a minute in, they are off this section, off the wire and off the
+   league's report together, because none of the three is storing a judgement.
+
+   ctx.outA / ctx.outB: [{ name, line, dnp, stale, href }], already named by
+   game.js, so this file stays a pure string function. A fixture with nobody
+   missing on either side gets no section: an empty heading is a worry about
+   nothing. */
+function outSide(list, colour, name) {
+  const rows = (list || []).map(p =>
+    '<div class="wr-row' + (p.dnp ? ' is-dnp' : '') + (p.stale ? ' is-stale' : '') + '">' +
+      '<span class="wr-q" aria-hidden="true">' + (p.dnp ? '–' : '?') + '</span>' +
+      '<span class="wr-who">' +
+        (p.href ? '<a class="wr-name" href="' + esc(p.href) + '">' + esc(p.name) + '</a>'
+                : '<span class="wr-name">' + esc(p.name) + '</span>') +
+        '<span class="wr-line">' + esc(p.line) + '</span>' +
+      '</span>' +
+    '</div>').join('');
+  return '<div class="pv-out-side" style="--pc:' + esc(colour) + '">' +
+    '<div class="pv-out-h">' + esc(name) + '</div>' +
+    (rows || '<p class="pv-out-none">Nobody missing.</p>') +
+    '</div>';
+}
+function injuriesHTML(ctx) {
+  const A = ctx.outA || [], B = ctx.outB || [];
+  if (!A.length && !B.length) return '';
+  return '<section class="pv-sec" id="injuries">' +
+    '<h2>Injury report</h2>' +
+    '<p class="pv-fivenote">Worked out from the box scores: players each club was using who have ' +
+    'not taken the floor since. Nobody files this, and it clears itself the moment they play.</p>' +
+    '<div class="pv-out">' + outSide(A, ctx.colourA, ctx.nameA) + outSide(B, ctx.colourB, ctx.nameB) + '</div>' +
+    '<a class="pv-more" href="../injuries/' + (ctx.leagueSlug ? '?l=' + esc(encodeURIComponent(ctx.leagueSlug)) : '') +
+    '">the whole report ↗</a>' +
+    '</section>';
+}
+
 /* ------------------------------------------------------------ four factors ---
    The four things that decide a basketball game, in the order Dean Oliver
    weighted them. `low` marks the ones where a smaller number is better, so a
@@ -424,6 +468,7 @@ function render(ctx) {
     '</div>' +
 
     startersHTML(ctx) +
+    injuriesHTML(ctx) +
 
     '<section class="pv-sec">' +
       '<h2>How to get there</h2>' +
@@ -473,7 +518,8 @@ function render(ctx) {
   '</div>';
 }
 
-return { render: render, narrative: narrative, startersHTML: startersHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
+return { render: render, narrative: narrative, startersHTML: startersHTML,
+         injuriesHTML: injuriesHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
          __test: { observations: observations, teamShape: teamShape,
                    playerNote: playerNote, edge: edge, whenText: whenText } };
 }));

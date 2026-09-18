@@ -311,6 +311,10 @@
     /* not a page: a layer of the rail (the clubs), see openTeams */
     { href: 'l/',          ic: '◉', tx: 'teams',      lg: true, key: 'teams', teams: true,
       match: /\/epinoia\/t\// },
+    /* WHO IS MISSING. Worked out from the box scores rather than filed by anybody
+       (epinoia/injuries.js), so every league has one the moment it has games. */
+    { href: 'injuries/',   ic: '✚', tx: 'injury report', lg: true, key: 'injuries',
+      match: /\/epinoia\/injuries\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
     /* THE VIDEO HUB IS THE ONE ROW THAT DEPENDS ON CONTENT RATHER THAN ON WHO
@@ -513,7 +517,9 @@
     platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
                 'global fixtures: every league’s games on one page'),
     platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
-                'global scouting: every league in one table'));
+                'global scouting: every league in one table'),
+    platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
+                'the waiver wire: who is missing, in every league, by club'));
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
      the journey the rail exists for. */

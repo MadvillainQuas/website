@@ -1,16 +1,26 @@
 /* ============================================================================
    THE PHONE LAYOUT PUTS THE RIGHT NUMBER OF CARDS ON A ROW.
 
-   All three sections asked for a 178–230px minimum column, which on a 390px
-   screen resolves to ONE column: five news articles became five full-width
-   plates, twelve clubs became twelve, and the three monthly stars sat above
-   the three weekly ones in a column six long. Measured in a 375px viewport
-   after the change: news [2,3], clubs [4], stars [3,3].
+   All three sections once asked for a 178–230px minimum column, which on a
+   390px screen resolves to ONE column: five news articles became five
+   full-width plates, twelve clubs became twelve, and the three monthly stars
+   sat above the three weekly ones in a column six long.
+
+   WHAT "RIGHT" IS HAS MOVED TWICE SINCE, and this file holds the reasoning
+   rather than a snapshot of a grid:
+
+     · the clubs and the stars became SNAP-SCROLLING RAILS on a phone — a row
+       that pans rather than a grid that shrinks — so their cards keep a real
+       width instead of four to a 390px screen;
+     · the news cards went the other way (2026-09-18). Three across gave each
+       112px: a headline clamped to two lines of 11px type, a date ellipsised
+       to "13/09…" and a byline reading "EPINOIΛ MATCH RE…". Below 560px one
+       card takes the row; between 560 and 720 they pair up.
 
    The trap worth a test is the CASCADE. The base .news-title is declared
-   further down news.css at the same specificity, so the mobile override —
-   written above it, as the neighbouring media queries are — simply lost, and
-   the second row kept a 15px headline in a 166px card. Position in the file is
+   further down news.css at the same specificity, so a mobile override written
+   above it — as the neighbouring media queries are — simply loses, and the
+   cards keep a headline sized for a desktop card. Position in the file is
    load-bearing here, which nothing about the rule itself tells you.
 
      node supabase/tests/mobile-grids.test.mjs
@@ -27,28 +37,58 @@ let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); }
   else { fail++; console.log('  FAIL  ' + n + (d ? '\n          ' + d : '')); } };
 
-/* ---- news: two, then three ------------------------------------------------ */
-const mob = news.slice(news.indexOf('@media (max-width:720px)'));
+/* ---- news: two on a small tablet, one on a phone --------------------------- */
+/* the tablet block ENDS where the phone block begins: sliced to the end of the file it
+   picks up the phone's own 16px headline and calls it the tablet's */
+const at720 = news.indexOf('@media (max-width:720px)');
+const at560 = news.lastIndexOf('@media (max-width:560px)');
+const mob = news.slice(at720, at560 > at720 ? at560 : undefined);
+const phone = news.slice(at560);
+/* the first font-size a selector is given inside a block — the rule that decides the
+   headline, whatever the rest of the declaration looks like */
+const size = (block, sel) => {
+  const at = block.indexOf(sel + ',');
+  const start = at >= 0 ? at : block.indexOf(sel + '{');
+  if (start < 0) return null;
+  const m = /font-size:\s*([\d.]+)px/.exec(block.slice(start, block.indexOf('}', start) + 1));
+  return m ? parseFloat(m[1]) : null;
+};
+
 ok('the news grid divides into six on a phone',
    /\.news-grid\{[\s\S]{0,160}grid-template-columns:repeat\(6,1fr\)/.test(mob));
-ok('...the first two cards take half each — a row of two',
-   /nth-child\(-n\+2\)\{grid-column:span 3\}/.test(mob));
-ok('...and the rest take a third each — a row of three',
-   /\.news-grid > \.news-card\{grid-column:span 2\}/.test(mob));
+ok('...two cards to a row on a small tablet, with the lead one across the top',
+   /\.news-grid > \.news-card\{grid-column:span 3\}/.test(mob) &&
+   /\.news-grid > \.news-card:first-child\{grid-column:span 6\}/.test(mob));
+ok('...and one to a row on a phone, the lead card included',
+   /\.news-grid > \.news-card,\s*\.news-grid > \.news-card:first-child\{grid-column:1 \/ -1\}/.test(phone));
+ok('...where the headline is big enough to read at arm’s length',
+   (size(phone, '.news-title') || 0) >= 16, 'phone headline ' + size(phone, '.news-title') + 'px');
+ok('...and the standfirst comes back, now there is room for it',
+   /\.news-grid > \.news-card \.news-stand\{display:-webkit-box/.test(phone));
+ok('the phone block comes after the tablet one, so it is the one that applies',
+   news.lastIndexOf('@media (max-width:560px)') > news.indexOf('@media (max-width:720px)'));
 
 /* THE CASCADE. Both rules are (0,1,0); the later one wins. */
 const baseTitle = news.indexOf('.news-title{');
 const mobileBlock = news.indexOf('@media (max-width:720px)');
 ok('the mobile block sits AFTER the base .news-title, or it loses the cascade',
    mobileBlock > baseTitle, 'mobile at ' + mobileBlock + ', base at ' + baseTitle);
-ok('...and it does bring the headline down', /\.news-title\{font-size:11px/.test(mob));
+ok('...and it does size the headline for the card it is in',
+   (size(mob, '.news-title') || 0) >= 13 && (size(mob, '.news-title') || 99) <= 15,
+   'tablet headline ' + size(mob, '.news-title') + 'px');
 
 /* ---- clubs and stars ------------------------------------------------------ */
 const hmob = home.slice(home.indexOf('@media (max-width:720px)'));
-ok('four clubs to a row',
-   /\.clubgrid\{[\s\S]{0,120}grid-template-columns:repeat\(4,1fr\)/.test(hmob));
-ok('three stars to a row, so monthly and weekly read as two rows',
-   /\.stargrid\{[\s\S]{0,120}grid-template-columns:repeat\(3,1fr\)/.test(hmob));
+/* A RAIL, NOT A GRID. Four clubs across 390px is a 79px card; a row that pans
+   keeps each one a real size and still shows there are more. */
+ok('the clubs pan rather than shrink, and each card keeps a width',
+   /\.clubgrid\{[\s\S]{0,200}overflow-x:auto[\s\S]{0,200}scroll-snap-type:x/.test(hmob) &&
+   /\.clubgrid \.club\{flex:0 0 \d+px;scroll-snap-align:start\}/.test(hmob));
+ok('and so do the stars, so monthly and weekly are two rails not a column of six',
+   /\.stargrid\{[\s\S]{0,200}overflow-x:auto[\s\S]{0,200}scroll-snap-type:x/.test(hmob) &&
+   /\.stargrid \.star\{flex:0 0 \d+px;\s*scroll-snap-align:start\}/.test(hmob));
+ok('...with no scrollbar drawn across either', /\.clubgrid::-webkit-scrollbar\{display:none\}/.test(hmob) &&
+   /\.stargrid::-webkit-scrollbar\{display:none\}/.test(hmob));
 
 /* A star card names a player and a club, which are not .club-name — the first
    attempt scaled a class the star cards do not use. */

@@ -1,0 +1,76 @@
+/* ============================================================================
+   THE INJURY REPORT / WAIVER WIRE — epinoia/injuries.js drawn.
+
+   ONE SET OF RULES FOR THREE PLACES: the league's own report, the global wire
+   (/epinoia/injuries/) and the INJURY REPORT section of a game preview. A
+   player who is a question mark on a preview should look like the same question
+   mark on the wire, so the row is styled once here and the game page loads this
+   file beside preview.css rather than keeping a second copy that drifts.
+
+   The question mark is the point. It is not a warning — nobody has said anybody
+   is injured, only that they have not played — so it takes the kit's amber
+   rather than its flare, and the row says what is actually known: how many of
+   the club's games they have missed, and what they were doing before that.
+   ============================================================================ */
+
+/* ---------- a club, with its absences behind it ---------- */
+.wr-club > summary .ep-crest, .wr-club > summary .wr-plate{ flex:none; width:22px; height:22px }
+.wr-club > summary .t{ font-family:var(--f-ui); font-weight:700; font-size:13px; text-transform:uppercase }
+.wr-club .n.wr-out{ color:var(--amber) }
+.wr-league > summary .t{ font-family:var(--f-score); font-size:18px; text-transform:none }
+
+/* ---------- one player ---------- */
+.wr-list{ display:grid; gap:0; padding:0 }
+.wr-row{
+  display:grid; grid-template-columns:26px minmax(0,1fr) auto; align-items:center;
+  gap:10px; padding:10px calc(var(--u)*3); border-top:1px solid var(--rule);
+}
+.wr-row:first-child{ border-top:0 }
+.wr-q{
+  display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%;
+  border:1px solid color-mix(in oklch, var(--amber) 55%, transparent);
+  background:color-mix(in oklch, var(--amber) 12%, transparent);
+  color:var(--amber); font-family:var(--f-score); font-size:15px; line-height:1;
+}
+.wr-row.is-dnp .wr-q{
+  border-color:color-mix(in oklch, var(--ink-3) 55%, transparent);
+  background:color-mix(in oklch, var(--ink-3) 10%, transparent); color:var(--ink-2);
+}
+.wr-who{ min-width:0 }
+.wr-name{ display:block; font-family:var(--f-ui); font-weight:700; font-size:14px; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:none }
+a.wr-name:hover{ color:var(--lume) }
+.wr-line{ display:block; font-family:var(--f-micro); font-size:9px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-3); line-height:1.7 }
+.wr-row.is-stale .wr-line{ color:var(--ink-3) }
+
+/* the club's own button: released takes the player off the wire and off the previews */
+.wr-act{ flex:none }
+.wr-rel{
+  min-height:32px; padding:0 10px; cursor:pointer; white-space:nowrap;
+  border:1px dashed var(--rule-2); border-radius:2px; background:transparent; color:var(--ink-3);
+  font-family:var(--f-micro); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+}
+.wr-rel:hover{ color:var(--ink); border-color:var(--ink-3) }
+.wr-rel:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px }
+.wr-rel[disabled]{ opacity:.5; cursor:progress }
+.wr-rel.on{ color:var(--on-accent); background:var(--ink-3); border-style:solid; border-color:var(--ink-3) }
+.wr-note{ padding:8px calc(var(--u)*3); font-family:var(--f-micro); font-size:9px; color:var(--ink-3) }
+.wr-note.err{ color:var(--flare) }
+
+/* ---------- the same rows inside a game preview ---------- */
+.pv-out .wr-row{ padding-left:0; padding-right:0 }
+.pv-out{ display:grid; gap:calc(var(--u)*2) }
+.pv-out-side{ min-width:0 }
+.pv-out-h{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--pc, var(--ink-3)); padding-bottom:4px; border-bottom:1px solid var(--rule) }
+.pv-out-none{ font-family:var(--f-micro); font-size:9px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-3); padding:10px 0 }
+@media (min-width:720px){ .pv-out{ grid-template-columns:1fr 1fr; gap:calc(var(--u)*3) } }
+
+@media (max-width:560px){
+  .wr-row{ padding-left:calc(var(--u)*2); padding-right:calc(var(--u)*2); grid-template-columns:24px minmax(0,1fr) }
+  .wr-act{ grid-column:2 / -1; justify-self:start }
+  .wr-note{ padding-left:calc(var(--u)*2); padding-right:calc(var(--u)*2) }
+  .pv-out .wr-row{ padding-left:0; padding-right:0 }
+}

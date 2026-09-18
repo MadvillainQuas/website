@@ -121,6 +121,57 @@ function paintIdentity(pl, entry, team) {
   $('#ctx').textContent = [(team || {}).name, name].filter(Boolean).join(' · ');
 }
 
+/* --------------------------------------------------------------- released ---
+   THE ONE THING THE INJURY REPORT CANNOT WORK OUT. It reads who is missing
+   straight out of the box scores (epinoia/injuries.js), which is right for an
+   injury and wrong for a player who has simply gone: he will never appear
+   again, so he would sit on the wire and on every preview's question marks
+   forever. So the club says so, here or on the wire itself — the same
+   set_player_released (0132), and the same row either way.
+
+   Only for whoever manages the club, asked of the database rather than assumed,
+   and only ever asked when somebody is signed in. It is a toggle: a player who
+   comes back is un-released and the report picks him up the moment he plays. */
+async function offerRelease(pl, team) {
+  if (!pl || !pl.id || !team || !team.id) return;
+  /* a reader who is signed out never loads the SDK for this */
+  if (!(window.epinoiaMaybeSignedIn && window.epinoiaMaybeSignedIn())) return;
+  const sb = window.epinoiaClientReady ? await window.epinoiaClientReady() : null;
+  if (!sb) return;
+  let released = false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data: mine } = await sb.rpc('is_team_manager', { p_team: team.id });
+    if (!mine) return;
+    const rows = await api(`player_releases?team_id=eq.${team.id}&player_id=eq.${pl.id}&select=player_id&limit=1`);
+    released = !!(rows && rows.length);
+  } catch (_) { return; }               // no button, which is the safe way to be wrong
+
+  const sub = $('#sub');
+  const b = el('button', 'wr-rel' + (released ? ' on' : ''), released ? 'released' : 'mark released');
+  b.type = 'button';
+  const title = () => b.classList.contains('on')
+    ? 'Released from ' + (team.name || 'this club') + ' — press to put them back on the injury report'
+    : 'Mark as released from ' + (team.name || 'this club') + ' — they leave the injury report and the game previews';
+  b.title = title();
+  b.addEventListener('click', async () => {
+    const want = !b.classList.contains('on');
+    b.disabled = true;
+    try {
+      const { error } = await sb.rpc('set_player_released',
+        { p_team: team.id, p_player: pl.id, p_released: want, p_note: '' });
+      if (error) throw error;
+      b.classList.toggle('on', want);
+      b.textContent = want ? 'released' : 'mark released';
+      b.title = title();
+    } catch (err) {
+      b.title = 'Could not do that: ' + ((err && err.message) || err);
+    } finally { b.disabled = false; }
+  });
+  sub.appendChild(b);
+}
+
 function paintTiles(s) {
   const host = $('#tiles'); host.textContent = '';
   if (!s) {
@@ -522,6 +573,8 @@ async function loadCareerAccess(pl, lgRow) {
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
+    /* the club's own button, if this is the club's own person (nothing is fetched for anybody else) */
+    offerRelease(pl, team).catch(() => { /* no button */ });
     if (team && team.leagues && team.leagues.slug) window.__CS_LEAGUE_SLUG = team.leagues.slug;
 
     /* ---- access ----

@@ -540,12 +540,25 @@ jobs:
           node supabase/tests/initials.test.mjs
           node supabase/tests/phone-fixes.test.mjs
 
+      - name: Who is missing — the injury report and the waiver wire
+        # injuries.js works the report out of the box scores (who was being played, who has not
+        # taken the floor since, OUT against DNP, judged before the absence rather than on a
+        # season average the absence drags down, a transfer and a release are not injuries, a
+        # finalising game is not a finished one); the preview's INJURY REPORT section; and the
+        # wiring — the wire page, the rail rows, statsForGames' per-game rows, the releases
+        # reader, and 0132's shape
+        run: node supabase/tests/injuries.test.mjs
+
       - name: What a phone can actually read
         # the league homepage's fixture rows swap a club's name for its letters below 560px
         # (home.js teamName, the id the query now reads, initials.js), the news cards take the
         # whole row there instead of three across, and "leagues ›" in the menu sheet moves the
         # rail along rather than closing the menu
-        run: node supabase/tests/phone-reading.test.mjs
+        # mobile-grids has been on disk and off this list since it was written, which is how the
+        # news rework above could contradict it without anything going red: it is run here now
+        run: |
+          node supabase/tests/phone-reading.test.mjs
+          node supabase/tests/mobile-grids.test.mjs
 
       - name: Email sign-in inside the Android app, and the privacy page's deletion path
         run: node supabase/tests/app-signin.test.mjs

@@ -2690,6 +2690,35 @@ async function addSeasonContext() {
   if (fTab === 'report') { lastBodyKey = ''; renderBody(); }
 }
 
+/* --------------------------------------------- the preview's injury report ---
+   The two clubs' unresolved absences, named, for EpinoiaPreview.injuriesHTML.
+   Everything it reads is already on the page except the releases, which are one
+   small request for two clubs (player_releases, 0132). Anything missing — an
+   older database, no injuries.js, a season with no games — is an empty section,
+   never a broken preview. */
+async function outFor(season, m) {
+  const empty = { A: [], B: [] };
+  const I = window.EpinoiaInjuries;
+  if (!I || !season || !season.pgs || !season.games || !season.games.length) return empty;
+  const sides = [m.homeTeamId, m.awayTeamId].filter(Boolean);
+  if (!sides.length) return empty;
+  let released = [];
+  try {
+    if (window.EpinoiaData && window.EpinoiaData.releases) released = await window.EpinoiaData.releases(sides);
+  } catch (_) { released = []; }
+  let rep;
+  try { rep = I.report({ games: season.games, pgs: season.pgs, released }); }
+  catch (e) { console.warn('[preview] injury report unavailable', e); return empty; }
+
+  const named = new Map((season.players || []).map(p => [String(p.id), p]));
+  const side = id => I.forPreview(rep, id, 5).map(e => {
+    const p = named.get(String(e.playerId)) || {};
+    return { name: p.name || 'Player', line: I.line(e, { stale: true }), dnp: e.dnp, stale: e.stale,
+             href: '../p/?p=' + encodeURIComponent(e.playerId) };
+  });
+  return { A: m.homeTeamId ? side(m.homeTeamId) : [], B: m.awayTeamId ? side(m.awayTeamId) : [] };
+}
+
 async function renderPreview() {
   const S = window.S, m = S.meta || {};
   let season = { players: [], teams: [], teamOfPlayer: new Map() };
@@ -2753,6 +2782,13 @@ async function renderPreview() {
     return solid.concat(mine.filter(p => p.gp < MIN).sort(rank)).slice(0, 2);
   };
 
+  /* WHO IS A QUESTION MARK (epinoia/injuries.js). The season this page has already
+     read is everything the report needs — the games and the per-game rows — so the
+     only extra request is the clubs' releases, and a league without that table yet
+     gets an empty list rather than a broken preview. The names are already on the
+     season rows from the playerMeta merge above, so nobody is asked for twice. */
+  const out = await outFor(season, m);
+
   /* Names come from the club rows, not the roster snapshot — a scheduled game
      has no snapshot, because nothing has been frozen yet. */
   const home = m.home || {}, away = m.away || {};
@@ -2772,6 +2808,7 @@ async function renderPreview() {
        in the half hour before it. Empty until then, and the section simply does
        not render. */
     startersA: startingFive(S, 0), startersB: startingFive(S, 1),
+    outA: out.A, outB: out.B,
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address,
     competition: S.competition, leagueSlug: S.leagueSlug
   });
