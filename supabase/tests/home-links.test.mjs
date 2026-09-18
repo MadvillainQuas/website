@@ -303,12 +303,17 @@ const PLATFORM = ['home', 'games', 'scouting', 'leagues', 'profile'];
 /* ------------------------------------------------------------------ 3 --- */
 console.log('\n-- what other tests pin in nav.js is unchanged');
 ok('the worker registration call', NAV.includes("navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {});"));
-ok('LEAGUE_PAGE', NAV.includes('const LEAGUE_PAGE = /\\/epinoia\\/(fixtures|stats|news|game|video|join)\\//;'));
+/* WHICH PATHS ARE IN IT IS league-theme-pages.test.mjs's TO SAY. Pinned here as the literal
+   source line, adding a league page (the injury report, 2026-09-18) went red in two files for
+   one deliberate change — and this file's interest is only that the rail still has a painter
+   and still knows HOME is not a league. */
+ok('LEAGUE_PAGE', /const LEAGUE_PAGE = \/\\\/epinoia\\\/\([a-z|]+\)\\\/\/;/.test(NAV));
 ok('the splash skip', NAV.includes("const atSplash = document.documentElement.classList.contains('m-splash')\n                   && !!document.getElementById('splash');\n  if (atSplash) return;"));
 ok('drawLeagues(); themeLeague();', /drawLeagues\(\);\s*\n\s*themeLeague\(\);/.test(NAV));
 ok('nothing in the rail links to countries/ any more', !/'countries\/'/.test(NAV));
 {
-  const LP = /\/epinoia\/(fixtures|stats|news|game|video|join)\//;
+  /* nav.js's own regex, read out of it rather than copied, so it is the live one being asked */
+  const LP = new RegExp((/const LEAGUE_PAGE = \/(.+)\/;/.exec(NAV) || [])[1] || 'x^');
   ok('HOME, games and scouting are not league pages', ['/epinoia/home/', '/epinoia/games/', '/epinoia/scouting/'].every(p => !LP.test(p)));
   ok('the video hub is one', LP.test('/epinoia/video/'));
 }
