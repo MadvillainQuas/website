@@ -249,6 +249,8 @@ function deriveGame(game) {
     const dx = (l.x - RIM_AT.x) * RIM_AT.w, dy = (l.y - RIM_AT.y) * RIM_AT.h;
     return Math.sqrt(dx * dx + dy * dy) <= RIM_AT.r;
   };
+  /* the key itself: 4.90 m across, 5.80 m from the baseline (COURT.KEY_HALF / KEY_LEN) */
+  const inPaint = l => !!l && Math.abs(l.x * RIM_AT.w - RIM_AT.x * RIM_AT.w) <= 245 && l.y * RIM_AT.h <= 580;
   const isRim = ev => {
     const ty = (stypes[ev.id] || '').toLowerCase();
     /* a tip-in or a dunk is at the rim wherever the marker landed: the ball went in from there */
@@ -295,7 +297,16 @@ function deriveGame(game) {
     /* THE SCORER IS CREDITED AS WELL AS THE SIDE: a player's own paint, transition,
        second-chance and off-turnover points, by the same rules as the team's */
     const sp = ev.pid ? st(ev) : null;
+    /* POINTS IN THE PAINT, FROM THE PAINT. This read one qualifier and nothing else, and a feed
+       that does not send qualifiers therefore scored none: LNB's shot actions carry a marker and
+       a subType and no quals at all, so a game with fifteen made shots in the key reported 0
+       paint points on both sides (reported 2026-09-18). The key is a rectangle on the same chart
+       the markers are plotted on -- 4.90 m wide by 5.80 m from the baseline (COURT.KEY_HALF,
+       COURT.KEY_LEN) -- so where a feed gives the place, the place answers, and the qualifier
+       stays as the answer for a feed that gives only that. Two-point field goals only: a free
+       throw is not a paint point and a three cannot be one. */
     if (tg && tg.has('paint')) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
+    else if (ev.t === 'p2_made' && inPaint(locs[ev.id])) { d.team[ev.team].paint += v; if (sp) sp.paint += v; }
     /* tagged by hand, or inside the window a change of possession opened */
     const gotItAt = breakAt[ev.team];
     const quick = gotItAt != null &&

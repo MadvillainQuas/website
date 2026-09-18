@@ -79,6 +79,31 @@ ok('an unmarked "jump shot" is not at the rim', replay([{ type: 'jump shot', mad
 ok('an unmarked layup is', replay([{ type: 'layup', made: true }]).rimA, 1);
 ok('an unmarked, unlabelled shot is not', replay([{ made: false }]).rimA, 0);
 
+console.log('\n-- points in the paint come from the paint, not from a qualifier');
+/* the key: 4.90 m across, 5.80 m from the baseline */
+const IN_KEY = at(750 + 200, 400);      // inside the key, well outside the restricted area
+const OUT_KEY = at(750 + 300, 400);     // the same depth, a metre wider — outside the key
+const paintOf = shots => {
+  const S2 = {
+    teams: [{ name: 'A', players: [{ id: 'p1', name: 'One', num: '1' }] },
+            { name: 'B', players: [{ id: 'p2', name: 'Two', num: '2' }] }],
+    starters: [['p1'], ['p2']], events: [], period: 1, clockMs: 0, status: 'live', phase: 'game'
+  };
+  shots.forEach(s => {
+    const shot = ev(s.made ? 'p2_made' : 'p2_miss', 'p1');
+    S2.events.push(shot);
+    if (s.loc) S2.events.push(ev('loc', null, { ref: shot.id, x: s.loc.x, y: s.loc.y }));
+    if (s.tag) S2.events.push(ev('tag', null, { ref: shot.id, tag: s.tag }));
+  });
+  return E.deriveGame(S2).team[0].paint;
+};
+ok('a made two in the key is two paint points', paintOf([{ loc: IN_KEY, made: true }]), 2);
+ok('the same depth outside the key is none', paintOf([{ loc: OUT_KEY, made: true }]), 0);
+ok('a MISS in the key is none', paintOf([{ loc: IN_KEY, made: false }]), 0);
+ok('under the ring counts too', paintOf([{ loc: RING, made: true }]), 2);
+ok('a feed that sends the qualifier is still believed', paintOf([{ tag: 'paint', made: true }]), 2);
+ok('no marker and no qualifier is none', paintOf([{ made: true }]), 0);
+
 console.log('\n-- made and attempted move together');
 const m = replay([{ type: 'jump shot', loc: RING, made: true }, { type: 'jump shot', loc: RING, made: false }]);
 ok('two at the rim', m.rimA, 2);
