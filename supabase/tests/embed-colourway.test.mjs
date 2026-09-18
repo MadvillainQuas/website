@@ -238,5 +238,34 @@ ok('...showing only that club\'s games, its league named, in the page\'s theme',
      got, ['live', 'sat', 'oct', 'may', 'tbc', 'lastwk', 'aug']);
 }
 
+/* ---------------------------------------------------------------------------
+   A CARD'S THREE LETTERS SAY WHICH CLUB, not what kind of club. Half the Slovak
+   league is "BC Something", so slicing the first three characters gave BC Komarno,
+   BC Prievidza and BC SLOVAN Bratislava the same "BC" on the strip -- which they
+   only reached after they stopped reading "699", the numeric feed id that used to
+   land in short_name. The generic word is skipped, and only when a word is left
+   behind it. initials.js is the module that does this properly, league-wide and
+   collision-free; the strip is a self-contained embed on somebody else's page and
+   deliberately does not load it, so one skipped word is most of the benefit.
+   --------------------------------------------------------------------------- */
+{
+  const src = read('epinoia', 'embed', 'strip', 'strip.js');
+  const m = src.match(/const CLUB_WORD =[\s\S]*?\n};/);
+  ok('strip.js defines abbr() next to its club-word list', !!m);
+  if (m) {
+    const abbr = new Function(m[0] + '\nreturn abbr;')();
+    const of = n => abbr({ short_name: n });
+    eq('BC Komarno is not "BC"', of('BC Komarno'), 'KOM');
+    eq('...nor is BC Prievidza', of('BC Prievidza'), 'PRI');
+    eq('...nor BC SLOVAN', of('BC SLOVAN'), 'SLO');
+    ok('...and the three of them no longer collide',
+       new Set(['BC Komarno', 'BC Prievidza', 'BC SLOVAN'].map(of)).size === 3);
+    eq('MBK Banik keeps the word that names it', of('MBK Banik'), 'BAN');
+    eq('a club with no generic word is untouched', of('Patrioti'), 'PAT');
+    eq('a club that is ONLY a generic word still gets its letters', of('BC'), 'BC');
+    eq('nothing at all still renders', of(''), '???');
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

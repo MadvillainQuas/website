@@ -161,9 +161,22 @@ function postHeight() {
   } catch (_) { /* not framed, or a host that refuses messages */ }
 }
 
-/* a three-letter code is what fits a card; prefer the club's own abbreviation */
-const abbr = t => ((t && (t.short_name || t.name)) || '???')
-  .replace(/[^A-Za-z0-9 ]/g, '').trim().slice(0, 3).toUpperCase();
+/* A THREE-LETTER CODE IS WHAT FITS A CARD, and it has to say WHICH club.
+   Prefer the club's own abbreviation, then its name — but skip the word that says what kind of
+   thing it is rather than which one. Half of Slovakia's league is "BC Something"; slicing the
+   first three characters made BC Komarno, BC Prievidza and BC SLOVAN Bratislava all read "BC"
+   on the strip (reported 2026-09-18, after they stopped reading "699"). The same words
+   initials.js drops for the same reason — it is the module that does this properly, league-wide
+   and collision-free, and the strip deliberately does not load it: this is a self-contained
+   embed on somebody else's page, and one skipped word is most of the benefit. */
+const CLUB_WORD = /^(BC|BK|KK|MBK|BBC|CB|SC|SK|FC|AC|US|USK|TJ|THE)$/i;
+const abbr = (t) => {
+  const raw = ((t && (t.short_name || t.name)) || '???').replace(/[^A-Za-z0-9 ]/g, ' ');
+  const words = raw.split(/\s+/).filter(Boolean);
+  /* only when something is left: "BC" alone is still better than nothing */
+  const kept = words.filter(w => !CLUB_WORD.test(w));
+  return (kept.length ? kept : words).join(' ').replace(/ /g, '').slice(0, 3).toUpperCase() || '???';
+};
 
 /* A MEMBERS-ONLY LEAGUE refuses its live and finished games to an anonymous
    read, so a member's strip was empty. Every read here goes through send(),

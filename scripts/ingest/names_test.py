@@ -202,6 +202,22 @@ got = p.team("L", {"name": "BK Komarno", "code": "KOM"})
 eq("...but a real feed abbreviation still does",
    (got or {}).get("short_name"), "KOM")
 
+# bleague.jp's "code" is the crest's FILE NAME, so it arrives all lower case -- and put "AT" and
+# "RG" on the strip's cards for every club in both Japanese divisions until a code had to look
+# like something a human would print before it could be a short name (2026-09-18).
+p = platform()
+got = p.team("L", {"name": "Alvark Tokyo", "code": "at"})
+eq("an all-lowercase code is a file name, not an abbreviation",
+   (got or {}).get("short_name"), "Alvark Tokyo")
+p = platform()
+got = p.team("L", {"name": "Ryukyu Golden Kings", "code": "rg"})
+eq("...so the club's own name is trimmed to fit instead",
+   (got or {}).get("short_name"), "Ryukyu")
+p = platform()
+got = p.team("L", {"name": "Leicester Riders", "code": "LEI"})
+eq("...while a printed code keeps the slot it earned",
+   (got or {}).get("short_name"), "LEI")
+
 p = platform()
 got = p.team("L", {"name": "Patrioti Levice", "code": "699064"})
 eq("...and the club's name it falls back to is cut at a WORD boundary, not mid-word",

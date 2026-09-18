@@ -2,7 +2,7 @@
 "code": "BLJ",
 "label": "B.LEAGUE Premier",
 "adapter": "bleague",
-"updated": "2026-09-18T07:01:23.039000+00:00",
+"updated": "2026-09-18T08:01:12.733011+00:00",
 "games": [
 {
 "id": "507158",
@@ -5350,7 +5350,11 @@
 "away": "Alvark Tokyo",
 "status": "scheduled",
 "date": "2026-12-27T05:05:00Z",
-"venue": "千葉PA"
+"venue": "千葉PA",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "506711",
@@ -5502,7 +5506,11 @@
 "away": "Alvark Tokyo",
 "status": "scheduled",
 "date": "2026-12-26T05:05:00Z",
-"venue": "千葉PA"
+"venue": "千葉PA",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "506709",
@@ -6362,7 +6370,11 @@
 "away": "Altiri Chiba",
 "status": "scheduled",
 "date": "2026-12-07T10:05:00Z",
-"venue": "トヨタA"
+"venue": "トヨタA",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "506623",

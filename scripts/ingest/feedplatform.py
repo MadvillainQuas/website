@@ -256,7 +256,13 @@ class Platform:
             # club never seen with a proper shortName showed as "699" on a phone (reported
             # 2026-09-18). A code with no letter in it is not a name; the club's own name, not the
             # id that will never mean anything to a reader, is what stands in for one.
-            sn_code = code if re.search(r"[A-Za-z]", code) else nice
+            # ...AND NOR IS A FILE NAME. A code earns the short_name slot only when it reads as
+            # an abbreviation somebody would print: letters, and not ALL lower case. Genius and
+            # the LNB send "BRI", "LON", "DIJ" and those are exactly right; bleague.jp's code is
+            # the crest's FILE NAME ("at", "rg", "sr"), which put "AT" and "RG" on the strip's
+            # cards for every club in both Japanese divisions (reported 2026-09-18). A club's own
+            # name, trimmed, says more in the same three characters.
+            sn_code = code if (re.search(r"[A-Za-z]", code) and code != code.lower()) else nice
             r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
                                       "short_name": names.short_form(names.team_name(t.get("shortName") or "") or sn_code), "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},

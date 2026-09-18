@@ -37,6 +37,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import names  # noqa: E402
 
 NUMERIC = re.compile(r'^\d+$')
+# ...and the other kind of short_name that is not a name: a feed's internal code, kept only
+# because feedplatform used to take any code with a letter in it. bleague.jp's code is its
+# crest's FILE NAME, so every club in both Japanese divisions carried "at", "rg", "sr" and the
+# strip's cards read "AT", "RG", "SR" (2026-09-18). A real printed abbreviation has a capital
+# in it ("BRI", "LON", "DIJ") and is left exactly as it is.
+LOWER_CODE = re.compile(r'^[a-z0-9]{1,4}$')
+
+
+def _is_code_not_a_name(t: dict) -> bool:
+    sn = (t.get('short_name') or '').strip()
+    if not sn:
+        return False
+    if NUMERIC.match(sn):
+        return True
+    if not LOWER_CODE.match(sn):
+        return False
+    # only when it really is the feed's own key for this club, never a genuinely tiny name
+    return sn == str((t.get('external_ids') or {}).get('fiba_livestats') or '').strip().lower()
 
 
 class _Sb:
@@ -70,13 +88,13 @@ def main() -> int:
         print('SUPABASE_URL / SUPABASE_SERVICE_KEY missing'); return 2
     sb = _Sb(url, key)
 
-    q = 'select=id,slug,name,short_name,league_id'
+    q = 'select=id,slug,name,short_name,league_id,external_ids'
     if a.league:
         lg = sb.select('leagues', f"slug=eq.{a.league}&select=id")
         if not lg:
             print(f"no league '{a.league}'"); return 1
         q += f"&league_id=eq.{lg[0]['id']}"
-    teams = [t for t in sb.select('teams', q) if NUMERIC.match(t.get('short_name') or '')]
+    teams = [t for t in sb.select('teams', q) if _is_code_not_a_name(t)]
     if not teams:
         print('nothing to repair'); return 0
     for t in teams:

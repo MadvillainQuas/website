@@ -59,6 +59,14 @@ _CZ_ROW = re.compile(r"<tr\b.*?</tr>", re.S)
 _CZ_WHEN = re.compile(r'data-sort="(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})"')
 _CZ_TEAM = re.compile(r"<div[^>]*>\s*([^<>\d][^<>]{2,60}?)\s*</div>")
 _CZ_TEAM_HREF = re.compile(r'href="/tym/([a-z0-9-]+)"')
+# BOTH CRESTS ARE ON THE ROW, home first, in the same cell as the names -- served through the
+# site's own resizer, which is the only way to have them at all: the file the resizer reads
+# (cbf.cz/files/<id>.png) answers 403 to anything but nbl.basketball itself, over http or https.
+# The resizer hands back a 42px thumbnail and takes no size parameter, so that is the size a
+# Czech crest comes in at: enough for a card and for reading the club's colours off, not enough
+# to enlarge. Without this a Czech club had no crest and therefore no colour at all, on a league
+# whose fixtures are otherwise complete (reported 2026-09-18).
+_CZ_LOGO = re.compile(r'<img[^>]+src="(/min\.php\?[^"]*file=[^"]+)"')
 
 # sbl.slovakbasket.sk draws a card per fixture: both crests carry the club's name in alt=, the
 # header carries the date and the hall, and the club's own id is in the crest URL.
@@ -180,11 +188,17 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             seen.add(sid)
             names_ = [n.strip() for n in _CZ_TEAM.findall(row) if n.strip()]
             when = _CZ_WHEN.search(row)
+            crests = [CZECH_BASE + u for u in _CZ_LOGO.findall(row)]
             out.append(ScheduleGame(
                 external_id=sid,
                 home_name=names_[0] if len(names_) > 0 else "",
                 away_name=names_[1] if len(names_) > 1 else "",
-                tipoff_at=_utc("Europe/Prague", *when.groups()) if when else None))
+                tipoff_at=_utc("Europe/Prague", *when.groups()) if when else None,
+                # no code: this site names no club code anywhere, and the clubs already written
+                # were keyed on the slug of their name (feedplatform's own fallback), so inventing
+                # one now would strand every fixture already filed against them.
+                extra={"home_logo": crests[0] if len(crests) > 0 else None,
+                       "away_logo": crests[1] if len(crests) > 1 else None}))
         return out
 
     def _czech_match_id(self, sid: str, config: dict) -> Optional[str]:

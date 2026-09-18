@@ -443,12 +443,23 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
         for side in ("home", "away"):
             code = (g.extra or {}).get(f"{side}_code"); logo = (g.extra or {}).get(f"{side}_logo")
             name = g.home_name if side == "home" else g.away_name
-            if not code or not logo or code in seen:
+            # A CREST WITHOUT A CODE STILL BELONGS TO A CLUB. Some sites name no club code
+            # anywhere -- the Czech NBL's schedule is one -- and their clubs were created under
+            # the slug of their own name, which is feedplatform's fallback when `code` is blank.
+            # Requiring a code here meant those crests were simply dropped, so the league had
+            # neither a badge nor (a crest being where a colour comes from) a colour. The name
+            # is passed through alone and Platform.team() does the same slug it did when it
+            # created the club, so the crest lands on the row that is already there.
+            key = code or ("name:" + (name or "").strip().lower())
+            if not logo or not (code or name) or key in seen:
                 continue
-            seen.add(code)
+            seen.add(key)
             try:
-                before = plat.cache["team"].get((league_id, code), {}) or {}
-                t = plat.team(league_id, {"code": code, "name": name, "logoT": {"url": logo}})
+                before = plat.cache["team"].get((league_id, code), {}) or {} if code else {}
+                t_in = {"name": name, "logoT": {"url": logo}}
+                if code:
+                    t_in["code"] = code
+                t = plat.team(league_id, t_in)
                 if t and t.get("logo_path") == logo and before.get("logo_path") != logo:
                     n += 1
             except Exception:

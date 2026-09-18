@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-18T07:28:22.631424+00:00",
+ "updated": "2026-09-18T08:01:12.784141+00:00",
  "competitions": [
   {
    "code": "ACB",
@@ -20,7 +20,7 @@
    "label": "B.LEAGUE Premier",
    "adapter": "bleague",
    "games": 780,
-   "updated": "2026-09-18T07:01:23.039000+00:00"
+   "updated": "2026-09-18T08:01:12.733011+00:00"
   },
   {
    "code": "BLJ2",
@@ -34,7 +34,7 @@
    "label": "Czech NBL",
    "adapter": "fiba_site_schedule",
    "games": 133,
-   "updated": "2026-09-18T07:27:43.567331+00:00"
+   "updated": "2026-09-18T07:46:31.145276+00:00"
   },
   {
    "code": "EC",
