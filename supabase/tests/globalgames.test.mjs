@@ -385,13 +385,20 @@ section('the card (a small DOM stub)');
   ok('club colours reach the card', up.style.props['--h'] === '#123456' && up.style.props['--a'] === undefined);
   ok('full and short club names', find(up, 'full').textContent === 'Home g1' && find(up, 'short').textContent === 'Hg1'
      && find(find(up, 'a'), 'short').textContent === 'Away');
+  /* THE SCORE SITS BETWEEN THE TWO CLUBS, not inside one of them: the card puts them side by
+     side either side of a middle column, so fxc-mid is where the numbers are and the win mark
+     is on the number rather than on the whole side. */
+  const mid = n => { const m = find(n, 'fxc-mid'); return m ? m.children.map(c => c.textContent).join('') : null; };
   const fin = W.card(game('g2', L.bcb, -D, 'final', { home_score: 71, away_score: 88 }), { base: '../', now: NOW, badge: false });
-  ok('a final card shows both scores, the winner marked, no tip-off column',
-     /is-final/.test(fin.className) && !find(fin, 'fxc-when') && find(fin, 'a').className.includes('win') &&
-     find(find(fin, 'h'), 'fxc-sc').textContent === '71' && !find(fin, 'fxc-lg'));
+  ok('a final card shows both scores between the clubs, the winner marked, no tip-off row',
+     /is-final/.test(fin.className) && !find(fin, 'fxc-when') && !find(fin, 'fxc-lg') &&
+     mid(fin) === '71–88' && find(fin, 'fxc-sc a').className.includes('win'));
+  ok('...and the loser\'s number is dimmed, not its whole side',
+     find(fin, 'fxc-sc h').className.includes('lose'));
   const lv = W.card(game('g3', L.slbm, -H, 'live', { home_score: 10, away_score: 12 }), { now: NOW, state: { period: 3, score_home: 50, score_away: 48 } });
   ok('a live card takes the scorer\'s score and quarter', /is-live/.test(lv.className) &&
-     find(find(lv, 'h'), 'fxc-sc').textContent === '50' && find(lv, 'fxc-st').textContent.includes('Q3'));
+     mid(lv) === '50–48' && find(lv, 'fxc-st').textContent.includes('Q3'));
+  ok('an upcoming card has a "v" there instead', mid(up) === 'v');
 }
 
 /* ------------------------------------------------------------------------- */
