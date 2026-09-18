@@ -117,6 +117,25 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
         for s in (tm.get(k) or {}).get("shot", []) or []:
             if s.get("actionNumber") is not None:
                 shots_by_action[int(s["actionNumber"])] = s
+    # A COORDINATE THAT REPEATS IS NOT AN OBSERVATION. A feed that hand-marks every shot chart
+    # dot puts real variety even on shots from roughly the same spot -- a defender, a step, a
+    # slightly different angle. Several UNRELATED shots landing on the EXACT same (x, y), to the
+    # feed's own unit, is what a quick-tap default looks like instead: LNB's under-21 feed
+    # names 92% of its shots the generic "jumpshot" and places dozens of them at a handful of
+    # points sitting almost on top of the rim -- (5, 44), (8, 44), (7, 45) reused three, three
+    # and two times across two games -- which is how a whole league's shooting from the restricted
+    # area came out at 75-95% for BOTH sides of the same match (reported 2026-09-18). A genuine
+    # dunk or lay-up is trusted at any repeated spot, because its type already says where it was;
+    # a shot with no such label is not, and falls back to that label instead of a coordinate that
+    # was never really taken there.
+    RIM_LABELLED = {"layup", "drivinglayup", "reverselayup", "eurostep", "dunk", "alleyoopdunk",
+                    "alleyoop", "tipin", "tipinlayup", "tipindunk", "putback"}
+    xy_seen: dict[tuple, int] = {}
+    for s in shots_by_action.values():
+        if s.get("x") is None or s.get("y") is None:
+            continue
+        k = (s.get("x"), s.get("y"))
+        xy_seen[k] = xy_seen.get(k, 0) + 1
 
     pbp = sorted((e for e in (raw.get("pbp") or []) if e.get("actionNumber") is not None), key=lambda e: int(e["actionNumber"]))
     events: list[dict] = []
@@ -198,7 +217,9 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             s = emit(t, team, pid, period, clock)
             seq_of_action[an] = s
             shot = shots_by_action.get(an)
-            xy = shot_xy(shot.get("x"), shot.get("y")) if shot else None
+            untrusted = (shot and sub not in RIM_LABELLED
+                        and xy_seen.get((shot.get("x"), shot.get("y")), 0) >= 3)
+            xy = shot_xy(shot.get("x"), shot.get("y")) if shot and not untrusted else None
             if xy:
                 emit("loc", None, None, period, clock, ref=s, x=xy[0], y=xy[1])
             v = STYPE.get(sub)
