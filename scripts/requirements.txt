@@ -2,3 +2,5 @@ selenium>=4.18.0
 requests>=2.31.0
 pillow>=10.0
 numpy>=1.26
+cairosvg>=2.7.0
+

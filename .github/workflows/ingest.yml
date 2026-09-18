@@ -61,6 +61,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }   # the scraper pipeline is written against 3.12
       - uses: browser-actions/setup-chrome@v1      # headless Chrome for SPA schedule pages
+      # cairosvg (team_colours.py via sync_logos, reading an SVG crest) needs the system libcairo
+      # -- pip alone gets the Python wrapper but not the native library it calls into.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2
       - run: pip install -r scripts/requirements.txt
       # The scraper pipeline (stints, lineups, the 13-CSV dataset). Private repo → deploy key.
       - name: Checkout scraper pipeline

@@ -3,6 +3,16 @@
 A club's crest already says what colour the club is. This module opens the logo, counts the
 colours of its opaque pixels, and picks the two strongest brand colours:
 
+A CREST IS OFTEN A VECTOR. Pillow has no SVG codec at all -- there is no format plugin to add,
+it simply cannot open one -- so a club whose federation publishes SVG crests (Slovakia's own
+site among them) was never coloured: colour_team() opened the file, Image.open() raised, the
+exception was caught and logged one line, and colour_source stayed 'default' forever, on every
+sweep, silently (found 2026-09-18: every Slovak SBL club still #93f2bf, the platform default).
+An SVG is rasterised first (via cairosvg, see _raster below) so the same pixel-counting method
+runs on it unchanged; the league-logo pass a little further down this file skips SVG instead,
+deliberately -- a league's own logo upload is already read in the browser on save, so there is
+nowhere for a vector league logo to go uncoloured the way a club's crest was.
+
   * pixels are quantised to 16 levels a channel and the bins ranked by count; bins within a
     short colour distance of a bigger bin fold into it, so a soft gradient across one red does
     not split that red into three losers;
@@ -152,6 +162,30 @@ def logo_url(path: str | None, supabase_url: str) -> str | None:
         requests.utils.quote(seg, safe='') for seg in p.split('/'))
 
 
+def _is_svg(data: bytes, content_type: str) -> bool:
+    if 'svg' in (content_type or '').lower():
+        return True
+    head = data.lstrip()[:256].lower()
+    return head.startswith(b'<?xml') and b'<svg' in head or head.startswith(b'<svg')
+
+
+def _raster(data: bytes, content_type: str = '') -> bytes:
+    """SVG bytes rasterised to PNG bytes, so palette() -- which only ever opens the result with
+    Pillow -- never has to know the crest was a vector. Anything that is not an SVG is returned
+    unchanged. cairosvg needs the system libcairo the workflow installs explicitly (clubs.yml,
+    ingest.yml) -- if that is ever missing, or a particular file is malformed, this falls back to
+    returning the original bytes, and palette() fails exactly as it always did on a vector image:
+    caught by colour_team()'s own try/except, logged, skipped. A crest can end up worse off only
+    by staying exactly as uncoloured as before, never by crashing the sweep."""
+    if not _is_svg(data, content_type):
+        return data
+    try:
+        import cairosvg
+        return cairosvg.svg2png(bytestring=data, output_width=300)
+    except Exception:
+        return data
+
+
 def colour_team(sb, team: dict, dry: bool = False, log=print) -> dict | None:
     """Read one team's crest and write its colours. `sb` is run_ingest's Supabase helper (patch)."""
     url = logo_url(team.get('logo_path'), sb.url)
@@ -160,7 +194,7 @@ def colour_team(sb, team: dict, dry: bool = False, log=print) -> dict | None:
     try:
         r = requests.get(url, timeout=20, headers={'User-Agent': 'epinoia-ingest/1.0'})
         r.raise_for_status()
-        pal = palette(r.content)
+        pal = palette(_raster(r.content, r.headers.get('content-type', '')))
     except Exception as exc:
         log(f"   (colours: {team.get('slug')}: {exc})")
         return None

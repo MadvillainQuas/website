@@ -245,8 +245,20 @@ class Platform:
             base = slugify(nice)
             if len(base) < 3 or base == "x":
                 base = slugify(code) if len(slugify(code)) >= 2 else base
+            # A DIGIT STRING IS NEVER A DISPLAY NAME. `code` here is whatever this fixture's own
+            # source uses to key a club -- a real feed abbreviation for most adapters ("KOM"), but
+            # for a schedule scraped straight off a site with no such codes (the Slovak SBL: the
+            # crest URL carries only the club's own numeric id on that site, Competitor/699079/…)
+            # it is that number, with nothing else to fall back to at discovery time. That number
+            # was landing in short_name -- the one column every reader of "the short version of
+            # this club's name" takes at face value, including the embed strip's own abbr(), which
+            # does not go through EpinoiaInitials the way the rest of the platform does -- so a
+            # club never seen with a proper shortName showed as "699" on a phone (reported
+            # 2026-09-18). A code with no letter in it is not a name; the club's own name, not the
+            # id that will never mean anything to a reader, is what stands in for one.
+            sn_code = code if re.search(r"[A-Za-z]", code) else nice
             r = self.insert("teams", {"league_id": league_id, "slug": self.free_team_slug(league_id, base), "name": nice,
-                                      "short_name": (names.team_name(t.get("shortName") or "") or code)[:12], "logo_path": self.logo_url(t),
+                                      "short_name": (names.team_name(t.get("shortName") or "") or sn_code)[:12], "logo_path": self.logo_url(t),
                                       "external_ids": {"fiba_livestats": code},
                                       "aliases": list(dict.fromkeys(extra))})
         self.cache["team"][key] = r

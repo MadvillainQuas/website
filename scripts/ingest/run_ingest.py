@@ -47,9 +47,24 @@ for _stream in (sys.stdout, sys.stderr):        # Windows consoles default to cp
         pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from adapters import get_adapter  # noqa: E402
+from adapters import get_adapter, REGISTRY  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
+from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
 from translate.fiba_events import translate, game_rows  # noqa: E402
+
+# EVERY ADAPTER SHAPED LIKE FIBA LIVESTATS -- derived from the classes themselves, not typed out
+# by hand. fiba_site_schedule, euroleague, acb, lnb and bleague all subclass FibaLiveStatsAdapter
+# and inherit fetch()/bundle_from_raw() unchanged, so a GameBundle from any of them is the same
+# shape a source literally named "fiba_livestats" produces. A hand-typed list is exactly how this
+# broke once already: write_platform's will_translate compared src["adapter"] to the literal
+# string "fiba_livestats", which none of these five subclasses' registry names equal, so a Czech
+# NBL / Slovak SBL game never got game_events, game_state or a finalise-game call -- despite its
+# payload carrying a full box score and hundreds of play-by-play rows. games.home_score /
+# away_score come from a separate assignment in write_platform and were never affected, which is
+# why a fixture card showed the real final score while the game page showed FINAL 0-0 with no box
+# score (reported 2026-09-18). Deriving this set from REGISTRY means the next subclass is covered
+# automatically instead of silently repeating the bug.
+TRANSLATABLE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaLiveStatsAdapter)}
 from feedplatform import Platform, season_name_for  # noqa: E402
 from fetchwindow import worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
@@ -442,7 +457,8 @@ def sync_logos(sb: Supabase, src: dict, games: list, run: dict) -> None:
         print(f"   {n} club crest(s) taken from the schedule")
     # THE CREST SAYS WHAT COLOUR THE CLUB IS. Every team with a crest and no colour of its own
     # (colour_source 'default': never coloured, or its crest just changed) is read now; a team
-    # already coloured from its crest, or by an admin, is left alone. Pillow missing -> skipped.
+    # already coloured from its crest, or by an admin, is left alone. Pillow or (for an SVG
+    # crest) cairosvg/libcairo missing -> that team is skipped, not the whole sweep.
     # THE FANS' DIARY. A club's followers hear three days before it plays and again on the day
     # (notify_fixtures, 0106); the notify function then emails and pushes what is waiting.
     try:
@@ -652,7 +668,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         return False
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
-    will_translate = src["adapter"] == "fiba_livestats" and ac.get("translate", True)
+    will_translate = src["adapter"] in TRANSLATABLE_ADAPTERS and ac.get("translate", True)
     # a game we are about to translate stays 'live' until finalise-game closes it — 'final' means
     # "log closed" to the platform (insert trigger refuses events, finalise refuses a second pass)
     status = ("live" if will_translate else "final") if b.status == "final" else ("live" if b.status == "live" else "scheduled")

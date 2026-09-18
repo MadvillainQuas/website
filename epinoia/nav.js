@@ -1446,6 +1446,26 @@
     themeLeague();
   }
 
+  /* SETTLED LATE, for a page that names its league only after this ran. `country` starts at
+     `null` — the sentinel drawLeagues() reads as "every league of every country" and
+     fillCountryHead() labels "Not yet filed" — and fillLeagues() above only resolves it away
+     from null when (lg || pageLeague) already names a real league AT FETCH TIME. The game page
+     (and any other that works its league out from the network rather than from ?l=) sets
+     __CS_LEAGUE_SLUG once that resolves, which can land after this file's own leagues fetch has
+     already finished and drawn the panel — so `country` was left at `null` for the rest of the
+     page's life. Scrolling back out of the league rail then landed on "Not yet filed" showing
+     every league on the platform, not the one the page is actually about (reported 2026-09-18).
+     Redrawing here corrects the panel the same way fillLeagues() would have, had it known. */
+  function settleCountry(l) {
+    if (!l || !leagues.length) return;
+    const want = l.country || '';
+    if (country === want) return;
+    country = want;
+    drawCountries();
+    fillCountryHead(country);
+    drawLeagues();
+  }
+
   /* ------------------------------------------------ the league's colours ---
      EVERY PAGE ABOUT A LEAGUE WEARS THE LEAGUE'S COLOURS (0122's theme: --league-a/-b,
      their inks, body.league-themed, and the kit's accent). The front page and the hub
@@ -1932,7 +1952,7 @@
         markCurrent();
         retarget();
         const l = bySlug();
-        if (l) { fillHeader(l); setView('league', false); }
+        if (l) { fillHeader(l); setView('league', false); settleCountry(l); }
         else { setView('root', false); }
         applyAuth();                 // role gating is league-scoped
         themeLeague();               // and the page wears that league's colours

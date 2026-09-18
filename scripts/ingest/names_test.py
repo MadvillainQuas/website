@@ -172,5 +172,21 @@ got = p.team("L", {"name": "Baxi Manresa", "code": "BAX"})
 ok("two clubs that both look like it are left alone rather than guessed between",
    not p.sb.inserted and not p.sb.patched, (got, p.sb.inserted, p.sb.patched))
 
+print("\n-- a club's short_name is never a number nobody can read")
+# The Slovak SBL's schedule carries no letter abbreviation at all -- its crest URLs carry only
+# the club's own numeric id on that site -- so "code" here is a bare digit string with nothing
+# else to key the fixture on. That number used to land straight in short_name, and the embed
+# strip's own abbr() (which does not go through EpinoiaInitials) showed it verbatim: a club
+# reading "699" on a phone (reported 2026-09-18).
+p = platform()
+got = p.team("L", {"name": "BK Komarno", "code": "699079"})
+eq("a purely numeric code never becomes the short name",
+   (got or {}).get("short_name"), "BK Komarno")
+
+p = platform()
+got = p.team("L", {"name": "BK Komarno", "code": "KOM"})
+eq("...but a real feed abbreviation still does",
+   (got or {}).get("short_name"), "KOM")
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

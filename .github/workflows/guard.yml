@@ -296,6 +296,16 @@ jobs:
         # wins; a page that changes league takes the last one's colours off
         run: node supabase/tests/league-theme-pages.test.mjs
 
+      - name: The rail's back view names the right country
+        # country starts null (drawLeagues() reads that as "every league of every
+        # country", fillCountryHead() labels it "Not yet filed") and only settles once
+        # (lg || pageLeague) names a real league. A page that resolves its league from
+        # the network — the game page, mainly — can name it only AFTER nav.js's own
+        # leagues fetch has already resolved and drawn the panel with country still
+        # null; settleCountry() corrects it late, the same way fillLeagues() would
+        # have, had it known in time.
+        run: node supabase/tests/rail-country-settle.test.mjs
+
       - name: A fixture that has not tipped off is never requested
         # The feed answers 403/404 until a scoresheet opens, so a discovery pass that
         # asked about every unplayed fixture collected a refusal per game per provider,
@@ -308,6 +318,17 @@ jobs:
         # that drop an action in the stint engine — all to "Luka Doncic", with every form the
         # normaliser folded away kept as an alias
         run: python scripts/ingest/names_test.py
+
+      - name: Every FIBA-LiveStats-shaped adapter gets a box score
+        # fiba_site_schedule, euroleague, acb, lnb and bleague all subclass FibaLiveStatsAdapter
+        # and inherit its fetch() unchanged, but write_platform's will_translate used to compare
+        # the registry's adapter name to the literal string "fiba_livestats" -- which none of
+        # those five equal -- so a Czech NBL / Slovak SBL game (fiba_site_schedule) never got
+        # game_events, game_state or a finalise-game call despite a full payload. Just requests:
+        # run_ingest.py's own import, nothing scripts/requirements.txt pulls in for a scrape.
+        run: |
+          pip install requests
+          python scripts/ingest/run_ingest_test.py
 
       - name: A side not known yet is never a club
         # "To be determined", "TBC", "Winner of QF1": the ingest, the console and the

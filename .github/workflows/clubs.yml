@@ -37,6 +37,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      # cairosvg (team_colours.py, reading an SVG crest) needs the system libcairo -- pip alone
+      # gets the Python wrapper but not the native library it calls into.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libcairo2
       - run: pip install -r scripts/requirements.txt
       - name: Sync clubs
         env:
