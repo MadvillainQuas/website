@@ -2203,7 +2203,14 @@ function derive(){
     if(bk){ cur[team].off[bk]+=v; cur[1-team].def[bk]+=v; }
   };
   const lastMade = [0,0]; // value of the last made FG per team, for points-assisted
-  const isRim = ev => { const l=locs[ev.id]; return (l && l.x>0.33 && l.x<0.67 && l.y<0.42) || (tags[ev.id]&&tags[ev.id].has('paint')); };
+  /* AT THE RIM IS THE RESTRICTED AREA -- 125 cm around the ring, the circle drawn on the very
+     chart these markers are tapped onto (COURT.RA_R) -- not a rectangle covering most of the
+     key. The public page (engine.js) and the season exports (stints.py) measure it the same
+     way, so one game does not have two rim rates depending on which screen is reading it. */
+  const RIM_AT = { x: 750/1500, y: 157.5/1400, w: 1500, h: 1400, r: 125 };
+  const isRim = ev => { const l=locs[ev.id];
+    if(l){ const dx=(l.x-RIM_AT.x)*RIM_AT.w, dy=(l.y-RIM_AT.y)*RIM_AT.h; return Math.sqrt(dx*dx+dy*dy)<=RIM_AT.r; }
+    return !!(tags[ev.id]&&tags[ev.id].has('paint')); };
   const tags = {}, stypes = {}, locs = {};
   S.events.forEach(ev=>{
     if(ev.t==='tag'){ const s=tags[ev.ref]=tags[ev.ref]||new Set();

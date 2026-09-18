@@ -239,12 +239,31 @@ function deriveGame(game) {
   const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
   const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
                             'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
+  /* AT THE RIM IS A PLACE, AND THE COURT ALREADY DRAWS IT. The restricted area — 125 cm around
+     the ring (boxscore.js COURT.RA_R), on the same chart these markers are plotted on — is what
+     "at the rim" means, rather than a rectangle covering most of the key. The pipeline that
+     builds the season CSVs measures it the same way (scripts/ingest/stints.py), so a game's rim
+     rate on this page and in the exports are now the same number. */
+  const RIM_AT = { x: 750 / 1500, y: 157.5 / 1400, w: 1500, h: 1400, r: 125 };
+  const atRim = l => {
+    const dx = (l.x - RIM_AT.x) * RIM_AT.w, dy = (l.y - RIM_AT.y) * RIM_AT.h;
+    return Math.sqrt(dx * dx + dy * dy) <= RIM_AT.r;
+  };
   const isRim = ev => {
     const ty = (stypes[ev.id] || '').toLowerCase();
+    /* a tip-in or a dunk is at the rim wherever the marker landed: the ball went in from there */
     if (ty && RIM_TYPE.has(ty)) return true;
-    if (ty && FAR_TYPE.has(ty)) return false;
     const l = locs[ev.id];
-    return (l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'));
+    /* THEN THE MARKER, AND ONLY THEN THE LABEL. This used to read the other way round, on the
+       argument that a statistician choosing "dunk" has told you more than a thumb on a small
+       court drawing. True of a chosen label -- and most feeds do not choose. LNB's names 90 of
+       95 shots "jumpshot", layups under the basket included, so "jump shot" short-circuited
+       ahead of a perfectly good coordinate and a whole league's rim rate came out at three
+       attempts a game with every one of them made (reported 2026-09-18). A label that is the
+       same for nearly every shot is not evidence; the place the shot was taken from is. */
+    if (l) return atRim(l);
+    if (ty && FAR_TYPE.has(ty)) return false;
+    return !!(tags[ev.id] && tags[ev.id].has('paint'));
   };
 
   const st = ev => d.stats[ev.pid];
