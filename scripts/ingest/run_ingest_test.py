@@ -67,5 +67,34 @@ for adapter_name, translate_cfg, want in (
     got = (adapter_name in RI.TRANSLATABLE_ADAPTERS) and translate_cfg
     ok(f"adapter={adapter_name!r} translate={translate_cfg} -> will_translate={want}", got == want, got)
 
+print("\n-- the live lane's source test: what makes a game go live on the site")
+# The same literal-string bug, one lane over. live_keeper selected `adapter == "fiba_livestats"`,
+# so no live pass ever considered LNB, its two Espoirs divisions, ACB, B.LEAGUE, EuroLeague or the
+# Czech site: Espoirs ELITE 2 tipped off on 18 Sep 2026 and sat at "scheduled, 0-0" on the strip
+# and in the box score while the league's own site had it live. A league that cannot go live is
+# worse than one that is late, so this is checked the same way TRANSLATABLE_ADAPTERS is.
+for name in ("fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague"):
+    ok(f"{name} can be polled live", name in RI.LIVE_ADAPTERS)
+for name in ("bcb_pipeline", "euroleague_api", "eurobasket_html", "genius_html"):
+    ok(f"{name} stays out of the live lane", name not in RI.LIVE_ADAPTERS)
+ok("every live adapter is a LiveStats reader",
+   all(issubclass(REGISTRY[n], FibaLiveStatsAdapter) for n in RI.LIVE_ADAPTERS))
+
+print("\n-- ...and which of them the CDN observer may watch")
+# FeedObserver conditional-GETs FIBA's data.json by LiveStats id. An LNB row's external_id is
+# "<competitionId>_<fixtureId>" off lnb.fr's own back end, so there is nothing on the CDN to poll
+# for it: those sources take the inline adapter fetch. Watching them there would poll a 404 every
+# five seconds and never write a score.
+ok("the generic source is watched on the CDN", "fiba_livestats" in RI.CDN_ADAPTERS)
+for name in ("lnb", "acb", "bleague", "euroleague", "fiba_site_schedule"):
+    ok(f"{name} is polled through its own adapter, not the CDN", name not in RI.CDN_ADAPTERS)
+ok("every CDN adapter is also a live adapter", RI.CDN_ADAPTERS <= RI.LIVE_ADAPTERS)
+
+print("\n-- a game is polled from before the tip, not from when somebody notices")
+ok("polling starts at least two minutes before the listed tip-off",
+   RI.LIVE_BEFORE_TIP >= 120, RI.LIVE_BEFORE_TIP)
+ok("...and keeps going long enough to cover a whole game",
+   RI.LIVE_AFTER_TIP >= 2 * 3600, RI.LIVE_AFTER_TIP)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

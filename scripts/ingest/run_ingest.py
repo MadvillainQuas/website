@@ -65,6 +65,17 @@ from translate.fiba_events import translate, game_rows  # noqa: E402
 # score (reported 2026-09-18). Deriving this set from REGISTRY means the next subclass is covered
 # automatically instead of silently repeating the bug.
 TRANSLATABLE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaLiveStatsAdapter)}
+# THE SAME MISTAKE, IN THE LANE THAT MAKES A GAME LIVE. live_keeper picked its sources with the
+# same `adapter == "fiba_livestats"` string, so the live lane covered the generic sources and
+# skipped every league with an adapter of its own on the same feed. Espoirs ELITE 2 tipped off at
+# 15:00Z on 18 Sep 2026 and read "PREVIEW & INFO, 0-0" on the strip and in the box score a quarter
+# of the way through the game, because no live pass had ever considered it -- while the league's
+# own site had it live from the first basket. Derived from REGISTRY for the same reason: the
+# question is what an adapter IS, not what it is called.
+LIVE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaLiveStatsAdapter)}
+# ...but only these ids exist on FIBA's CDN, so only these can be watched by FeedObserver's
+# conditional GET; the rest reach their own league's back end through their adapter's fetch().
+CDN_ADAPTERS = {"fiba_livestats"}
 from feedplatform import Platform, season_name_for  # noqa: E402
 from fetchwindow import worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
@@ -1355,13 +1366,20 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
 
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
+    # EVERY SOURCE THAT SPEAKS LIVESTATS, NOT ONLY THE ONE NAMED AFTER IT. This tested
+    # `adapter == "fiba_livestats"`, so the live lane covered the generic sources and silently
+    # skipped every league with its own adapter on top of the same feed -- LNB and its two
+    # Espoirs divisions, ACB, B.LEAGUE, EuroLeague, the Czech site. Espoirs ELITE 2 tipped off on
+    # 18 Sep 2026 and sat at "scheduled, 0-0" on the site while the game was in its first quarter,
+    # because no live pass ever considered it. The question is what an adapter IS, not what it is
+    # called: the same subclass test run_ingest already uses for translation.
     fiba, seen_codes = [], set()
     for s_ in sources:
-        if s_["adapter"] == "fiba_livestats" and s_["code"] not in seen_codes:
+        if s_["adapter"] in LIVE_ADAPTERS and s_["code"] not in seen_codes:
             seen_codes.add(s_["code"])
             fiba.append({**s_, "competition_label": None, "competition_kind": None})   # discovery decides the phase
     if sb is None or not fiba:
-        print("live lane: needs Supabase and a fiba_livestats source"); return 0, False
+        print("live lane: needs Supabase and a source that reads a LiveStats feed"); return 0, False
     adapters = {s["code"]: get_adapter(s["adapter"]) for s in fiba}
     worker = os.environ.get("GITHUB_RUN_ID", "local")
     runs = {s["code"]: {"source_id": s.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0} for s in fiba}
@@ -1390,6 +1408,13 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     # KILL SWITCH: EPINOIA_OBSERVER=0 (a repository variable, no commit needed) runs the
     # inline fetch below instead, byte for byte the step-1 loop. So does any failure to build
     # the observer. Unset means on.
+    # ...AND ONLY THE CDN'S OWN IDS GO TO THE OBSERVER. FeedObserver polls FIBA's data.json by
+    # LiveStats id; a league whose adapter reaches its own back end for the same log (LNB's rows
+    # are "<competitionId>_<fixtureId>", not a LiveStats id) has nothing there to conditionally
+    # GET. Those sources take the inline fetch below, which is what their adapter is for.
+    def on_cdn(src):
+        return src["adapter"] in CDN_ADAPTERS
+
     observer = None
     if os.environ.get("EPINOIA_OBSERVER", "") != "0":
         try:
@@ -1440,17 +1465,19 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         if slow_pass:
             slow_due = time.time() + every
         armed_x = {str(r["external_id"]) for _, r in due if str(r.get("game_id") or "") in armed}
-        if observer:
-            observer.observe_due([str(r["external_id"]) for _, r in due], OBS_EVERY, armed_x, fast_every)
+        cdn_due = [str(r["external_id"]) for s_, r in due if on_cdn(s_)]
+        if observer and cdn_due:
+            observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
         wrote_any = False
         for src, r in due:
             xid = str(r["external_id"])
             is_armed = str(r.get("game_id") or "") in armed
-            if observer is None and not slow_pass and not is_armed:
+            use_obs = observer is not None and on_cdn(src)
+            if not use_obs and not slow_pass and not is_armed:
                 continue
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
-            if observer is None:   # KILL SWITCH (EPINOIA_OBSERVER=0): the step-1 inline fetch, unchanged
+            if not use_obs:   # the kill switch (EPINOIA_OBSERVER=0), and every source off the CDN
                 t_obs = time.time()
                 try:
                     b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
@@ -1524,12 +1551,12 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             try:
                 # the observer's per-action memory (step 3); the kill switch has none, and passes
                 # None, which is exactly the write this lane made before memory existed
-                write_platform(sb, src, b, run, observed, observer.stamps(xid) if observer else None); run["games_written"] += 1
+                write_platform(sb, src, b, run, observed, observer.stamps(xid) if use_obs else None); run["games_written"] += 1
             except Exception as exc:
                 print(f"    (platform write failed: {exc})")
-            if observer:
+            if use_obs:
                 write_s.setdefault(xid, []).append(time.time() - t_write)
-                observer.observe_due([str(r_["external_id"]) for _, r_ in due], OBS_EVERY, armed_x, fast_every)
+                observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
             hashes[xid] = b.payload_hash
             if snap:
                 written[xid] = snap.version
@@ -1540,13 +1567,14 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             print(f"    ~ {b.home_name} {e['homeScore']}-{e['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}Z")
             if b.status == "final":
                 finished.add(xid)
-                if observer:
+                if use_obs:
                     print(observer_line(xid))
                     observer.forget(xid); written.pop(xid, None); last_bundle.pop(xid, None)
         due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
         if due:
-            if observer:
-                # the observer keeps its own cadence; this only stops the loop spinning
+            if observer and any(on_cdn(s_) for s_, _ in due):
+                # the observer keeps its own cadence; this only stops the loop spinning. The
+                # sources off the CDN are held to `every` by the slow_pass gate above.
                 time.sleep(0 if wrote_any else 1); continue
             hot = any(str(r.get("game_id") or "") in armed for _, r in due)
             time.sleep(fast_every if hot else every); continue
