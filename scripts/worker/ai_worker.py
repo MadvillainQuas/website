@@ -784,6 +784,11 @@ def slim_track(track):
            'mode': track.get('mode'), 'video': track.get('video'), 'samples': samples}
     if track.get('fusion'):
         out['fusion'] = track['fusion']
+    # THE SECOND PASS' OWN ACCOUNT: one row per period whose top the first pass missed, saying
+    # how much of it was unread before and after. A handful of numbers, and the only way to tell
+    # from the stored track whether a head was read or merely projected into.
+    if track.get('backfill'):
+        out['backfill'] = track['backfill']
     if track.get('wall_check'):
         out['wall_check'] = track['wall_check']
     if track.get('note') and track.get('mode') == 'wall':
