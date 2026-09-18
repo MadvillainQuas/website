@@ -13,6 +13,9 @@ from .base import BaseAdapter, GameBundle, ScheduleGame
 from .fiba_livestats import FibaLiveStatsAdapter
 from .fiba_site_schedule import FibaSiteScheduleAdapter
 from .euroleague import EuroLeagueAdapter
+from .acb import ACBAdapter
+from .lnb import LnbAdapter
+from .bleague import BLeagueAdapter
 
 
 class _PipelineBridge(BaseAdapter):
@@ -70,6 +73,9 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     FibaLiveStatsAdapter.name: FibaLiveStatsAdapter,
     FibaSiteScheduleAdapter.name: FibaSiteScheduleAdapter,
     EuroLeagueAdapter.name: EuroLeagueAdapter,
+    ACBAdapter.name: ACBAdapter,
+    LnbAdapter.name: LnbAdapter,
+    BLeagueAdapter.name: BLeagueAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,
     EurobasketHtmlAdapter.name: EurobasketHtmlAdapter,

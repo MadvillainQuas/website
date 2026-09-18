@@ -354,11 +354,21 @@ class FibaLiveStatsAdapter(BaseAdapter):
 
     @staticmethod
     def _full_name(p: dict) -> str:
-        first = (p.get("firstName") or p.get("internationalFirstName") or "").strip()
-        fam = (p.get("familyName") or p.get("internationalFamilyName") or "").strip()
-        if first or fam:
-            return (first + " " + fam).strip()
-        return (p.get("name") or p.get("scoreboardName") or "").strip()
+        """The player's name for the box score, decided by the same module as everywhere else.
+
+        This used to prefer firstName/familyName outright, which is right for a Genius feed and
+        wrong the moment a league sends two scripts: the B.LEAGUE puts the Japanese in those
+        fields and the romaji in the international ones, so a box score read this way came out in
+        kanji while the players table beside it -- built through names.person -- came out in
+        Latin. One player, two spellings, on the same page."""
+        try:
+            import names as _names
+        except ImportError:                     # pragma: no cover - only if run outside the ingest
+            first = (p.get("firstName") or p.get("internationalFirstName") or "").strip()
+            fam = (p.get("familyName") or p.get("internationalFamilyName") or "").strip()
+            return (first + " " + fam).strip() or (p.get("name") or "").strip()
+        first, last, _ = _names.person(p)
+        return (first + " " + last).strip() or (p.get("name") or p.get("scoreboardName") or "").strip()
 
     @classmethod
     def _box_rows(cls, t: dict, gid: str) -> list:

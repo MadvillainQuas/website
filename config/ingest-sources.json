@@ -439,6 +439,149 @@
         "https://hosted.wh.geniussports.com/SBF/en/schedule"
       ],
       "league_country": "SE"
+    },
+    {
+      "code": "ACB",
+      "label": "Liga Endesa",
+      "adapter": "acb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        9,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-endesa",
+      "league_name": "Liga Endesa",
+      "adapter_config": {
+        "code": "ACB",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true
+      },
+      "scheduleUrls": [
+        "https://www.acb.com/es/liga/calendario"
+      ],
+      "league_country": "ES"
+    },
+    {
+      "code": "LNB",
+      "label": "Betclic ÉLITE",
+      "adapter": "lnb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "lnb-elite",
+      "league_name": "Betclic ÉLITE",
+      "adapter_config": {
+        "code": "LNB",
+        "division": 1,
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://lnb.fr/fr/calendar?division=1"
+      ],
+      "league_country": "FR"
+    },
+    {
+      "code": "LNB2",
+      "label": "ÉLITE 2",
+      "adapter": "lnb",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "lnb-elite-2",
+      "league_name": "ÉLITE 2",
+      "adapter_config": {
+        "code": "LNB2",
+        "division": 2,
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://lnb.fr/fr/calendar?division=2"
+      ],
+      "league_country": "FR"
+    },
+    {
+      "code": "BLJ",
+      "label": "B.LEAGUE Premier",
+      "adapter": "bleague",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        2,
+        15
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "b-league-premier",
+      "league_name": "B.LEAGUE Premier",
+      "adapter_config": {
+        "code": "BLJ",
+        "tab": "1",
+        "events": [
+          "2",
+          "3"
+        ],
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.bleague.jp/schedule/?data_format=json&mon=all&tab=1"
+      ],
+      "league_country": "JP"
+    },
+    {
+      "code": "BLJ2",
+      "label": "B.LEAGUE One",
+      "adapter": "bleague",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 45,
+      "active_window": [
+        2,
+        15
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "b-league-one",
+      "league_name": "B.LEAGUE One",
+      "adapter_config": {
+        "code": "BLJ2",
+        "tab": "2",
+        "events": [
+          "2",
+          "3"
+        ],
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.bleague.jp/schedule/?data_format=json&mon=all&tab=2"
+      ],
+      "league_country": "JP"
     }
   ]
 }
