@@ -31,10 +31,35 @@ function norm(code) {
   return /^[A-Za-z]{2}$/.test(c) ? c.toUpperCase() : '';
 }
 
-/* The flag is DERIVED from the two letters of the ISO code: the regional-
+/* WINDOWS HAS NO FLAGS, which is what this used to shrug at. Segoe UI Emoji
+   has never carried the regional-indicator PAIRS, so Chrome and Edge on Windows
+   draw "GB" where every other platform draws the flag — and a rail of two-letter
+   codes beside the country names reads as something broken rather than as a
+   decision. No CSS or markup can change that: the only cure is to stop asking
+   the font and ship the picture.
+
+   So flagSrc() names a file for the countries we have drawn (epinoia/brand/flags,
+   our own SVGs — a flag DESIGN is not copyrightable but somebody else's SVG of
+   it is their file, so these are ours and there is nothing to attribute), and
+   flagOf() still derives the emoji for everything else. A caller draws the image
+   when there is one and the emoji when there is not, which on a Mac, a phone or
+   Firefox is the same flag either way.
+
+   ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
+   add the code here. The alternative — try the image and fall back on error —
+   means a 404 on every page load for every country we have not drawn. */
+const HAVE_FLAG = ['CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'JP', 'SK'];
+
+/* Root-relative on purpose: this file is DOM-free and node runs it, so it does
+   not know how deep the page asking is. The caller prefixes its own root. */
+function flagSrc(code) {
+  const c = norm(code);
+  return HAVE_FLAG.indexOf(c) >= 0 ? 'brand/flags/' + c.toLowerCase() + '.svg' : '';
+}
+
+/* The emoji, DERIVED from the two letters of the ISO code: the regional-
    indicator code points a font renders as that flag. Nothing is stored and
-   nothing can go out of step with the code beside it. (Windows draws the two
-   letters instead of a flag; the country's name is always beside it.) */
+   nothing can go out of step with the code beside it. */
 function flagOf(code) {
   const c = norm(code);
   if (!c) return GLOBE;
@@ -89,5 +114,5 @@ function group(leagues) {
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
 
-return { flagOf, countryName, group, norm, UNFILED };
+return { flagOf, flagSrc, countryName, group, norm, UNFILED, HAVE_FLAG };
 }));

@@ -59,6 +59,7 @@ const nav = read('epinoia', 'nav.js');
 const navcss = read('epinoia', 'kit', 'nav.css');
 const follow = read('epinoia', 'follow.js');
 const kit = read('epinoia', 'kit', 'epinoia-kit.css');
+const country = read('epinoia', 'country.js');
 const robots = read('epinoia', 'robots.txt');
 
 let pass = 0, fail = 0;
@@ -439,6 +440,35 @@ ok('...and the parse is still skipped while it has not changed',
    /let rawSeen = null;/.test(follow));
 ok('a 401 is retried once with whatever the store now holds',
    /if \(r\.status === 401\) \{ rawSeen = null; r = await send\(\); \}/.test(follow));
+
+/* ---- 20. flags Windows can actually draw --------------------------------- */
+console.log('\n20. the rail shows flags, not the two letters a flag is made of');
+/* Segoe UI Emoji has never carried the regional-indicator PAIRS, so Chrome and
+   Edge on Windows draw "CZ", "DE", "GB" down the rail. No CSS fixes that; the
+   only cure is to ship the picture. */
+{
+  const CODES = ['cz', 'de', 'es', 'eu', 'fr', 'gb', 'jp', 'sk'];
+  const dir = path.join(ROOT, 'epinoia', 'brand', 'flags');
+  for (const c of CODES) {
+    const svg = readFileSync(path.join(dir, c + '.svg'), 'utf8');
+    ok(c + '.svg is a 3:2 svg that draws something',
+       /^<svg [^>]*viewBox="0 0 60 40"/.test(svg) && /<(rect|path|circle|polygon)/.test(svg));
+  }
+  ok('every drawn flag is listed in the shared rule',
+     CODES.every(c => new RegExp("'" + c.toUpperCase() + "'").test(country)) &&
+     /function flagSrc\(code\)/.test(country));
+  ok('...and in the rail, which cannot depend on country.js',
+     CODES.every(c => new RegExp("'" + c.toUpperCase() + "'").test(nav)) &&
+     /const HAVE_FLAG = \[/.test(nav),
+     'the rail is on every page and country.js is on two');
+  ok('a country we have not drawn keeps the emoji',
+     /return el\('span', 'ic', flagOf\(code\)\);/.test(nav));
+  ok('a file that fails to load leaves the emoji behind, not a gap',
+     /addEventListener\('error', \(\) => \{\s*\n?\s*wrap\.textContent = flagOf\(code\)/.test(nav));
+  ok('both dimensions are stated, so the flag fits the slot the glyph had',
+     /width:16px; height:10\.67px/.test(navcss),
+     'height:auto let another rule drive it and the image came out a third too wide');
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

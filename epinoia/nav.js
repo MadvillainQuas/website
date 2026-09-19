@@ -1499,6 +1499,45 @@
     return l && l.visibility === 'private' ? PRIVATE_KEY : ((l && l.country) || '');
   }
 
+  /* THE FLAG AS A PICTURE WHERE WE HAVE ONE.
+
+     Segoe UI Emoji has never carried the regional-indicator PAIRS, so Chrome
+     and Edge on Windows draw "CZ", "DE", "GB" — the two letters a flag emoji is
+     built from — straight down the rail, which reads as something broken rather
+     than as a decision. No CSS or markup changes that; the only cure is to stop
+     asking the font and ship the picture. The drawn flags are our own SVGs in
+     brand/flags, and everything we have not drawn keeps the emoji, which is a
+     real flag on a Mac, a phone and Firefox.
+
+     THE LIST IS HERE AND ALSO IN country.js, which is the rule's home. This
+     file already carries its own flagOf and countryName for the same reason:
+     the rail is on every page and country.js is on two, so depending on it here
+     would mean either loading it twenty more times or a rail with no flags on
+     most of the site. Add a flag in both places — or move the rail onto
+     country.js and delete all three copies, which is the better fix and a
+     bigger one than this.
+
+     Returns a NODE, because one of the two answers is an <img>. */
+  const HAVE_FLAG = ['CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'JP', 'SK'];
+
+  function flagNode(code) {
+    const c = /^[A-Za-z]{2}$/.test(code || '') ? code.toUpperCase() : '';
+    if (c && HAVE_FLAG.indexOf(c) >= 0) {
+      const wrap = el('span', 'ic flagimg');
+      const i = document.createElement('img');
+      i.src = root + 'brand/flags/' + c.toLowerCase() + '.svg';
+      i.alt = '';
+      /* a file that fails to load leaves the emoji behind, not a gap */
+      i.addEventListener('error', () => {
+        wrap.textContent = flagOf(code);
+        wrap.classList.remove('flagimg');
+      });
+      wrap.appendChild(i);
+      return wrap;
+    }
+    return el('span', 'ic', flagOf(code));
+  }
+
   function flagOf(code) {
     if (code === PRIVATE_KEY) return '\u{1F511}';
     /* A GLOBE for a league nobody has filed yet, and the same globe the
@@ -1550,7 +1589,7 @@
         const name = countryName(code);
         row.title = name + ' \u00b7 ' + groups.get(code) +
                     (groups.get(code) === 1 ? ' league' : ' leagues');
-        row.append(el('span', 'ic', flagOf(code)), marquee(name));
+        row.append(flagNode(code), marquee(name));
         row.addEventListener('click', () => {
           country = code;
           fillCountryHead(code);
@@ -1570,7 +1609,7 @@
   function fillCountryHead(code) {
     const name = countryName(code);
     cname.textContent = '';
-    cname.append(el('span', 'ic', flagOf(code)), marquee(name));
+    cname.append(flagNode(code), marquee(name));
     cname.title = name + ' — every league, by country, on HOME';
     cname.href = root + 'home/#leagues';
   }

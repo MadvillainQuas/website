@@ -98,6 +98,19 @@
   flex:none; width:16px; text-align:center; font-size:12px; line-height:1;
   opacity:.85;
 }
+/* A DRAWN FLAG IN THE SAME 16px SLOT the glyph had, so a rail of mixed
+   drawn-and-emoji flags still lines its names up. The hairline matters more
+   than it looks: a white-edged flag (Japan, Czechia, Slovakia) on a pale
+   ground has no shape without it. */
+.ep-nav .ic.flagimg{ display:inline-flex; align-items:center; justify-content:center; opacity:1 }
+/* Both dimensions stated. The flags are 3:2, and leaving the height to `auto`
+   let a rule further down the sheet drive it instead — the image came out
+   24x16, a third wider than the 16px slot every other row's glyph sits in, and
+   a rail whose names do not line up is worse than a rail with no flags. */
+.ep-nav .ic.flagimg img{
+  width:16px; height:10.67px; display:block; border-radius:1px;
+  box-shadow:0 0 0 .5px color-mix(in oklch,var(--ink) 30%,transparent);
+}
 .ep-nav .tx{
   font-family:var(--f-micro,ui-monospace,monospace);
   font-size:9.5px; letter-spacing:.11em; text-transform:uppercase;
