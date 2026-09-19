@@ -507,5 +507,34 @@ console.log('\n21. a new league arrives with a season and a competition');
      'a note that stays up after it stops being true is one people read past');
 }
 
+/* ---- 22. a season and a competition can be corrected ---------------------- */
+console.log('\n22. what is already there can be edited');
+/* Both could only be ADDED. Everything else in this console can be corrected,
+   and these two could not: a season named by the wrong convention, a
+   competition called "League" that should say "Division One", a date in the
+   wrong box. The only way out was a second one beside it. */
+ok('a season can be renamed and re-dated',
+   /from\('seasons'\)\.update\(\{\s*\n?\s*name: v, starts_on: from\.value \|\| null, ends_on: to\.value \|\| null \}\)/.test(admin));
+ok('a competition can be renamed and change kind',
+   /from\('competitions'\)\.update\(\{ name: v, kind: kind\.value \}\)/.test(admin));
+ok('both can be deleted',
+   /from\('seasons'\)\.delete\(\)/.test(admin) && /from\('competitions'\)\.delete\(\)/.test(admin));
+ok('the editor opens on the PICKED one, not on every chip',
+   /'edit ' \+ season\.name/.test(admin) && /'edit ' \+ comp\.name/.test(admin),
+   'a pencil and a bin on each chip turns a row of choices into a row of hazards');
+ok('deleting counts the games first, and says what becomes of them',
+   /async function gamesUnder/.test(admin) &&
+   /stay on Epinoia with their box scores/.test(admin) &&
+   /become ad-hoc/.test(admin),
+   'games.competition_id is `on delete set null` (0001) — they survive but leave every table');
+ok('...and the count is asked before the question is put',
+   admin.indexOf('const n = await gamesUnder([comp.id]);') <
+   admin.indexOf('Delete the competition "'));
+ok('nothing played reads as nothing lost',
+   /Nothing has been played in it, so nothing is lost\./.test(admin));
+ok('the season sentence agrees with its number',
+   /'Its one competition goes with it\.'/.test(admin),
+   '"Its 1 competition go with it" is what counting without reading gives you');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

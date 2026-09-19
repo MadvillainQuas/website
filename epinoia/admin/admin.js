@@ -263,8 +263,52 @@ async function loadLeague() {
   await loadTeams();
 }
 
+/* ------------------------------------------- editing what is already there ---
+   A SEASON AND A COMPETITION COULD ONLY BE ADDED. Every other thing in this
+   console can be corrected, and these two could not: a season named "2026-27"
+   when the league runs on calendar years, a competition called "League" that
+   should say "Division One", a start date typed into the wrong box. The only
+   way out was a second one beside it, which is worse than the typo.
+
+   The editor opens under the picker, on the one that is PICKED, rather than
+   putting controls on every chip: the chips are how you choose which season you
+   are working in, and hanging a pencil and a bin off each of them turns a row
+   of choices into a row of hazards.
+
+   WHAT DELETING ACTUALLY DOES is spelled out at the moment of asking, because
+   it is not what people assume. Games are NOT deleted — games.competition_id is
+   `on delete set null` (0001), so every played game survives with its events
+   intact. It becomes an ad-hoc game: out of the table, out of the fixture list,
+   out of every season statistic, and reachable only by its own link. That is
+   recoverable-in-principle and invisible-in-practice, which is exactly the kind
+   of thing somebody needs told before they press it, not after. */
+function editorRow() {
+  const r = el('div', 'gv-edit');
+  r.style.marginTop = 'calc(var(--u)*1.5)';
+  return r;
+}
+
+/* How much a delete would take out of the tables. Asked at the moment of the
+   press rather than kept up to date, because it is one query and it is the
+   number the sentence turns on. */
+async function gamesUnder(compIds) {
+  if (!compIds.length) return 0;
+  const { count, error } = await sb.from('games')
+    .select('id', { count: 'exact', head: true }).in('competition_id', compIds);
+  return error ? -1 : (count || 0);
+}
+
+function describeLoss(n) {
+  if (n < 0) return 'Any games in it stay on Epinoia but leave the table and the fixture list.';
+  if (n === 0) return 'Nothing has been played in it, so nothing is lost.';
+  return n + (n === 1 ? ' game' : ' games') + ' stay on Epinoia with their box scores, but ' +
+         'leave the table, the fixture list and the season statistics — they become ad-hoc ' +
+         'games, reachable only by their own link.';
+}
+
 function renderSeasonPick() {
   const host = $('#snPick'); host.textContent = '';
+  $('#snEdit').textContent = '';
   if (!seasons.length) {
     host.appendChild(el('div', 'empty', 'No seasons yet — add one above to begin.'));
     return;
@@ -274,6 +318,101 @@ function renderSeasonPick() {
     b.type = 'button';
     b.addEventListener('click', async () => { season = s; comp = null; renderSeasonPick(); await loadComps(); });
     host.appendChild(b);
+  });
+  if (!season) return;
+  const edit = el('button', 'ep-chip', 'edit ' + season.name);
+  edit.type = 'button';
+  edit.addEventListener('click', () => {
+    const box = $('#snEdit');
+    if (box.textContent) { box.textContent = ''; return; }
+    openSeasonEditor(box);
+  });
+  host.appendChild(edit);
+}
+
+function openSeasonEditor(box) {
+  box.textContent = '';
+  const r = editorRow();
+  const row = el('div', 'row');
+  const name = el('input', 'ep-input'); name.value = season.name; name.maxLength = 60;
+  const from = el('input', 'ep-input'); from.type = 'date'; from.value = season.starts_on || '';
+  from.title = 'starts on';
+  const to = el('input', 'ep-input'); to.type = 'date'; to.value = season.ends_on || '';
+  to.title = 'ends on';
+  const save = el('button', 'ep-btn mini pri', 'save'); save.type = 'button';
+  const del = el('button', 'ep-btn mini dgr', 'delete season'); del.type = 'button';
+  const sp = el('span'); sp.style.marginLeft = 'auto';
+  row.append(name, from, to, save, sp, del);
+  r.appendChild(row);
+  box.appendChild(r);
+
+  save.addEventListener('click', async () => {
+    const v = name.value.trim();
+    if (!v) return say('A season needs a name.', 'err');
+    save.disabled = true;
+    const { error } = await sb.from('seasons').update({
+      name: v, starts_on: from.value || null, ends_on: to.value || null }).eq('id', season.id);
+    save.disabled = false;
+    if (error) return oops(error);
+    say('Saved ' + v + '.', 'ok');
+    box.textContent = '';
+    await loadLeague();
+  });
+
+  del.addEventListener('click', async () => {
+    const ids = comps.map(c => c.id);
+    const n = await gamesUnder(ids);
+    const what = comps.length === 1
+      ? 'Its one competition goes with it.'
+      : comps.length ? 'Its ' + comps.length + ' competitions go with it.'
+                     : 'It has no competitions in it.';
+    if (!confirm('Delete the season "' + season.name + '"?\n\n' +
+                 what + ' ' + describeLoss(n) + '\n\nThis cannot be undone.')) return;
+    const { error } = await sb.from('seasons').delete().eq('id', season.id);
+    if (error) return oops(error);
+    say('Deleted ' + season.name + '.', 'ok');
+    season = null; comp = null;
+    await loadLeague();
+  });
+}
+
+function openCompEditor(box) {
+  box.textContent = '';
+  const r = editorRow();
+  const row = el('div', 'row');
+  const name = el('input', 'ep-input'); name.value = comp.name; name.maxLength = 60;
+  const kind = el('select', 'ep-input'); kind.style.flex = '0 0 auto';
+  ['league', 'cup', 'playoff'].forEach(k => kind.append(new Option(k, k)));
+  kind.value = comp.kind || 'league';
+  const save = el('button', 'ep-btn mini pri', 'save'); save.type = 'button';
+  const del = el('button', 'ep-btn mini dgr', 'delete competition'); del.type = 'button';
+  const sp = el('span'); sp.style.marginLeft = 'auto';
+  row.append(name, kind, save, sp, del);
+  r.appendChild(row);
+  box.appendChild(r);
+
+  save.addEventListener('click', async () => {
+    const v = name.value.trim();
+    if (!v) return say('A competition needs a name.', 'err');
+    save.disabled = true;
+    const { error } = await sb.from('competitions').update({ name: v, kind: kind.value })
+      .eq('id', comp.id);
+    save.disabled = false;
+    if (error) return oops(error);
+    say('Saved ' + v + '.', 'ok');
+    box.textContent = '';
+    await loadComps();
+  });
+
+  del.addEventListener('click', async () => {
+    const n = await gamesUnder([comp.id]);
+    if (!confirm('Delete the competition "' + comp.name + '"?\n\n' +
+                 describeLoss(n) + '\n\nThis cannot be undone.')) return;
+    const { error } = await sb.from('competitions').delete().eq('id', comp.id);
+    if (error) return oops(error);
+    say('Deleted ' + comp.name + '.', 'ok');
+    comp = null;
+    await loadComps();
   });
 }
 
@@ -294,6 +433,7 @@ async function loadComps() {
 
 function renderCompPick() {
   const host = $('#cpPick'); host.textContent = '';
+  $('#cpEdit').textContent = '';
   if (!season) return;
   if (!comps.length) {
     host.appendChild(el('div', 'empty',
@@ -306,6 +446,15 @@ function renderCompPick() {
     b.addEventListener('click', async () => { comp = c; renderCompPick(); await loadTeams(); await loadFixtures(); });
     host.appendChild(b);
   });
+  if (!comp) return;
+  const edit = el('button', 'ep-chip', 'edit ' + comp.name);
+  edit.type = 'button';
+  edit.addEventListener('click', () => {
+    const box = $('#cpEdit');
+    if (box.textContent) { box.textContent = ''; return; }
+    openCompEditor(box);
+  });
+  host.appendChild(edit);
 }
 
 /* ---------------------------------------------------------- announcements --- */
