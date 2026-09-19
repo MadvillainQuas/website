@@ -268,9 +268,11 @@
 
       <h3>Grant a role</h3>
       <p class="lead">
-        The account must already exist &mdash; ask them to sign in once first.
-        A role granted here takes effect on their next request; nothing needs
-        restarting and no email is sent.
+        The address does not need an account yet. If there is one, the role
+        takes effect on their next request; if there is not, it waits here and
+        applies by itself the moment they sign up and confirm the address.
+        Either way this is the only step &mdash; nothing needs restarting, and
+        no email is sent from this page.
       </p>
       <div class="row">
         <input id="grEmail" class="ep-input grow" type="email" placeholder="them@club.org">
@@ -285,6 +287,11 @@
         <select id="grScope" class="ep-input" style="flex:1 1 200px"></select>
         <button id="grGo" class="ep-btn pri" type="button">grant</button>
       </div>
+
+      <!-- An invitation nobody can see is an invitation nobody remembers
+           making. This is the whole waiting room, with a way to take one back. -->
+      <h3 id="pendH" class="hide">Waiting for an account</h3>
+      <div id="pendList"></div>
     </div>
 
     <div class="pane" id="pane-lgs">

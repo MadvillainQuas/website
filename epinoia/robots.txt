@@ -7,5 +7,9 @@ Disallow: /epinoia/app/
 Disallow: /epinoia/score/
 Disallow: /epinoia/admin/
 Disallow: /epinoia/devfeed.html
+# An invitation to a private league carries its token in the address. The page
+# is noindex anyway, but a crawler that never fetches it cannot put the token
+# in a log, a referrer or an index in the first place.
+Disallow: /epinoia/invite/
 
 Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml

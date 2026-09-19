@@ -60,6 +60,10 @@
     background:color-mix(in oklch,var(--lume) 9%,transparent)}
   .msg.err{color:var(--flare);border:1px solid color-mix(in oklch,var(--flare) 45%,transparent);
     background:color-mix(in oklch,var(--flare) 9%,transparent)}
+  /* it worked, and there is something about it worth knowing — an undated
+     fixture, say. Green would hide that; red would say it failed. */
+  .msg.warn{color:var(--amber);border:1px solid color-mix(in oklch,var(--amber) 45%,transparent);
+    background:color-mix(in oklch,var(--amber) 9%,transparent)}
   .hide{display:none !important}
   .sw{display:flex;align-items:center;gap:7px;font-family:var(--f-micro);font-size:9px;color:var(--ink-2)}
   .fxbulk{display:flex;align-items:center;gap:10px;padding:6px 4px;margin:2px 0 6px;border-bottom:1px dashed var(--rule,rgba(147,242,191,.18));font-size:11px}
@@ -651,6 +655,32 @@
           A league-wide statistician role lets someone score any game in the
           league. To limit them to one fixture, assign them on that fixture instead.
         </p>
+      </div>
+    </div>
+
+    <!-- A PRIVATE LEAGUE'S OWN DOOR. Drawn only when this league is private,
+         because for a public one there is nothing to let anybody into. The
+         whole point of handing somebody a private league is that they then run
+         it, and that includes deciding who can see it — "email Epinoia every
+         time a parent joins" is not running it. -->
+    <div class="sec hide" id="invSec">
+      <div class="sec-h"><span class="idx">18</span><h2>Who can see this league</h2>
+        <span class="note" id="invNote">private — it opens only with a link</span></div>
+      <div class="body">
+        <p class="empty" style="padding-top:0">
+          This league is not listed on Epinoia, is not searchable and is not in
+          the sitemap. A link is the only way in. Send one to a group and
+          everybody in it can read the fixtures, results and statistics; revoke
+          it and it stops working, though the people who already used it stay in.
+        </p>
+        <div class="row">
+          <input id="invLabel" class="ep-input grow" placeholder="who is this link for? (the parents' group, the U16 squad…)" maxlength="80">
+          <input id="invUses" class="ep-input" type="number" min="1" placeholder="uses" style="flex:0 0 90px">
+          <button id="invGo" class="ep-btn pri" type="button">new link</button>
+        </div>
+        <div id="invList" class="list"></div>
+        <div class="fmt-h">People let in by a link</div>
+        <div id="invGuests" class="list"></div>
       </div>
     </div>
   </div>

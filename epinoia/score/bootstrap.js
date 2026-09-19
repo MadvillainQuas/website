@@ -934,12 +934,46 @@
      Injected into the setup screen rather than built into it, so the scorer
      itself is unchanged and still works standalone. */
   const CFGx = window.EPINOIA_CONFIG || {};
+  /* READS AS WHOEVER IS SIGNED IN, not as a stranger.
+
+     This sent the anon key alone, which was invisible while every league was
+     public — the picker's leagues, fixtures and rosters are all readable by
+     anybody. It stopped being invisible with private leagues (0139): the admin
+     of a private league would open the scorer, be let through the door by their
+     own credentials, and then be shown a picker that could not see their league,
+     because the request asking for it was anonymous. Same for a members-only
+     league's staff. The token is the one the SDK already holds. */
   const sbApi = async p => {
-    const r = await fetch(CFGx.supabaseUrl + '/rest/v1/' + p,
-      { cache: 'no-store', headers: { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' } });
+    const h = { apikey: CFGx.supabaseAnonKey, Accept: 'application/json' };
+    try {
+      const sb = window.epinoiaClient && epinoiaClient();
+      const tok = sb && (await sb.auth.getSession()).data.session?.access_token;
+      if (tok) h.Authorization = 'Bearer ' + tok;
+    } catch (_) { /* signed out, or no SDK: the anon key alone, as before */ }
+    const r = await fetch(CFGx.supabaseUrl + '/rest/v1/' + p, { cache: 'no-store', headers: h });
     if (!r.ok) throw new Error(r.status + ' on ' + p.split('?')[0]);
     return r.json();
   };
+
+  /* WHO THIS ACCOUNT IS, asked once. The door (gateScorer) already asks, and the
+     picker below needs the same answer to decide which leagues to offer, so it
+     is kept rather than asked twice — and kept here, above both, because the
+     ?g= path reaches the picker without going through the door's no-fixture
+     branch. */
+  let WHO = null;
+  async function whoAmI() {
+    if (WHO) return WHO;
+    try {
+      const sb = window.epinoiaClient && epinoiaClient();
+      if (!sb) return null;
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return null;
+      const { data, error } = await sb.rpc('whoami');
+      if (error || !data) return null;
+      WHO = data;
+      return WHO;
+    } catch (_) { return null; }
+  }
 
   const rosterOfTeam = async (teamId) => {
     const re = await sbApi('roster_entries?team_id=eq.' + teamId +
@@ -1034,6 +1068,14 @@
 
     let fixtures = [];
 
+    const labelOf = (f) => {
+      const when = f.tipoff_at
+        ? new Date(f.tipoff_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+        : 'TBC';
+      return when + '  ' + ((f.home || {}).name || '?') + ' v ' +
+             ((f.away || {}).name || '?') + (f.status === 'live' ? '  (live)' : '');
+    };
+
     const loadFixtures = async (leagueId) => {
       fxSel.innerHTML = '';
       go.disabled = true;
@@ -1051,14 +1093,7 @@
                              'league admin page, or set up a one-off below.';
           return;
         }
-        fixtures.forEach(f => {
-          const when = f.tipoff_at
-            ? new Date(f.tipoff_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-            : 'TBC';
-          const label = when + '  ' + ((f.home || {}).name || '?') + ' v ' +
-                        ((f.away || {}).name || '?') + (f.status === 'live' ? '  (live)' : '');
-          fxSel.append(new Option(label, f.id));
-        });
+        fixtures.forEach(f => fxSel.append(new Option(labelOf(f), f.id)));
         go.disabled = false;
         note.textContent = '';
       } catch (e) {
@@ -1067,11 +1102,55 @@
       }
     };
 
+    /* ONLY THE LEAGUES THIS ACCOUNT MAY ACTUALLY SCORE IN.
+
+       This listed every league on the platform. The door upstairs asks "may you
+       score ANYTHING?", so a league admin for one league was let in and then
+       shown a dropdown of everybody else's — pick a league, pick a fixture,
+       press load, and be refused by can_score a moment later. The refusal was
+       correct (the database has scoped scoring to the game's own league since
+       0001) but arriving at it that way is the wrong shape: an account should
+       not be offered work it cannot do, and least of all a list of the fixtures
+       of a private league it has nothing to do with.
+
+       whoami answers it exactly. `leagues` is the league_admin memberships,
+       which is what can_score's league branch checks; a platform admin gets
+       everything, because they can score everything. A statistician assigned to
+       individual games administers no league at all, so their way in is the
+       assignment — they arrive on ?g= from the link they were sent, and see a
+       short list of just those fixtures here rather than an empty picker. */
     (async () => {
       try {
-        const lgs = await sbApi('leagues?select=id,name,slug&order=name');
+        const who = await whoAmI();
+        if (!who) { note.textContent = 'Sign in to load a league fixture.'; return; }
+
+        if (!who.is_platform_admin && !(who.leagues || []).length) {
+          const asgn = who.scoring || [];
+          if (!asgn.length) {
+            note.textContent = 'You are not assigned to a fixture and do not administer a ' +
+                               'league, so there is nothing here to load. Set up a one-off below.';
+            return;
+          }
+          lgSel.style.display = 'none';
+          const ids = asgn.map(a => a.game_id).join(',');
+          fixtures = await sbApi('games?id=in.(' + ids + ')' +
+            '&select=id,tipoff_at,status,venue,home:home_team_id(name),away:away_team_id(name)' +
+            '&order=tipoff_at');
+          fixtures.forEach(f => fxSel.append(new Option(labelOf(f), f.id)));
+          go.disabled = !fixtures.length;
+          note.textContent = fixtures.length
+            ? 'The ' + (fixtures.length === 1 ? 'fixture' : fixtures.length + ' fixtures') +
+              ' you are assigned to.'
+            : 'Your assigned fixtures have all finished.';
+          return;
+        }
+
+        const lgs = who.is_platform_admin
+          ? await sbApi('leagues?select=id,name,slug&order=name')
+          : (who.leagues || []).slice().sort((a, b) => a.name.localeCompare(b.name));
         if (!lgs.length) { note.textContent = 'No leagues on the platform yet.'; return; }
         lgs.forEach(l => lgSel.append(new Option(l.name, l.id)));
+        if (lgs.length === 1) lgSel.disabled = true;      // nothing to choose between
         lgSel.addEventListener('change', () => loadFixtures(lgSel.value));
         await loadFixtures(lgs[0].id);
       } catch (e) {
@@ -1771,16 +1850,12 @@
 
   /* Whether this account may score anything at all. Deliberately the same
      shape as nav.js's predicate for the "score a game" row. */
-  async function mayScoreSomething(sb) {
-    try {
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) return false;
-      const { data, error } = await sb.rpc('whoami');
-      if (error || !data) return false;
-      return !!(data.is_platform_admin ||
-                (data.leagues || []).length ||
-                (data.scoring || []).length);
-    } catch (_) { return false; }
+  async function mayScoreSomething() {
+    const data = await whoAmI();          // cached: the picker asks the same question
+    if (!data) return false;
+    return !!(data.is_platform_admin ||
+              (data.leagues || []).length ||
+              (data.scoring || []).length);
   }
 
   function refuse(title, body) {
@@ -1922,7 +1997,7 @@
     /* No fixture named: this is the picker. It lists a league's games and
        loads one, so it needs the same standing the rail requires before it
        will even show the row. */
-    if (await mayScoreSomething(sb)) return true;
+    if (await mayScoreSomething()) return true;
     return refuse('Scoring is for assigned statisticians',
       'This account is not assigned to any fixture and does not administer a ' +
       'league, so there is nothing here for it to score. The practice game is ' +

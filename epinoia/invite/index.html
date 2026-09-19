@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- A private league's invitation is the one page on the platform that must
+     never be indexed: the whole point is that it is not findable. -->
+<meta name="robots" content="noindex,nofollow">
+<!-- No gate.js, no topnav.js — this link goes to somebody with no invite code
+     and no account, which is exactly who the gate would turn away. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>An invitation · Epinoia</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<script src="../appmode.js?v=310"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=310">
+<link rel="stylesheet" href="../kit/nav.css?v=310">
+<style>
+  .topbar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
+    border-bottom:1px solid var(--rule)}
+  .wm{font-family:var(--f-score);font-size:19px;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));color:var(--on-accent);
+    padding:3px 11px 1px;text-transform:uppercase;text-decoration:none}
+  .pane{max-width:520px;margin:0 auto;padding:calc(var(--u)*6) calc(var(--u)*3)}
+  .kicker{font-family:var(--f-micro);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 calc(var(--u)*2)}
+  h1{font-family:var(--f-score);font-size:clamp(26px,5.6vw,42px);line-height:.95;
+    margin:0 0 calc(var(--u)*2);text-transform:uppercase;
+    background:linear-gradient(100deg,var(--lume),var(--aqua));
+    -webkit-background-clip:text;background-clip:text;color:transparent;overflow-wrap:anywhere}
+  p.lead{font-family:var(--f-micro);font-size:10px;color:var(--ink-3);line-height:2;
+    margin:0 0 calc(var(--u)*3)}
+  .msg{font-family:var(--f-micro);font-size:10px;line-height:1.9;padding:10px 13px;
+    margin:calc(var(--u)*2) 0;border-left:2px solid var(--rule-2);color:var(--ink-2)}
+  .msg.ok{border-left-color:var(--lume);color:var(--lume);
+    background:color-mix(in oklch,var(--lume) 8%,transparent)}
+  .msg.err{border-left-color:var(--flare);color:var(--flare);
+    background:color-mix(in oklch,var(--flare) 8%,transparent)}
+  .as{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);
+    line-height:1.9;margin:calc(var(--u)*2) 0}
+  .as b{color:var(--ink-1);font-weight:700;letter-spacing:0}
+  .act{display:flex;flex-wrap:wrap;gap:9px;margin-top:calc(var(--u)*3)}
+  .note{font-family:var(--f-micro);font-size:9px;color:var(--ink-3);line-height:1.9;
+    margin-top:calc(var(--u)*4)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="ep-frame">
+  <div class="topbar">
+    <a href="../home/" class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</a>
+    <span class="ep-micro">invitation</span>
+  </div>
+
+  <div class="pane">
+    <p class="kicker" id="kicker">Checking the link&hellip;</p>
+    <h1 id="title">One moment</h1>
+    <p class="lead" id="lead"></p>
+
+    <div class="as hide" id="as"></div>
+    <div class="act" id="act"></div>
+    <div class="msg hide" id="msg" role="alert"></div>
+
+    <p class="note">
+      A private league is not listed anywhere on Epinoia and does not appear in
+      search. This link is the only way in, so treat it the way you would treat
+      the key to the hall.
+    </p>
+  </div>
+</div>
+<script src="../vendor/supabase.js?v=310" defer></script>
+<script src="../config.js?v=310" defer></script>
+<script src="invite.js?v=310" defer></script>
+<script src="../nav.js?v=310" defer></script>
+</body>
+</html>

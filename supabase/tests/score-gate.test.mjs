@@ -81,10 +81,18 @@ console.log('\n2. only an answered yes opens it');
      /if \(TRAINING\) return true;/.test(b));
   ok('the demo is still given no league machinery',
      /if \(TRAINING\) return;\s*\n\s*\n?\s*try \{ injectFixturePicker\(\)/.test(b.slice(b.indexOf('openDoor();'))));
+  /* Both of these used to read the body of mayScoreSomething. The asking moved
+     into whoAmI(), which caches the answer so the door and the fixture picker
+     cannot disagree about who this is — so the guarantees are checked where
+     they now live. They are unchanged: no session and a failed call both come
+     back as null, and mayScoreSomething reads null as no. */
+  const who = b.slice(b.indexOf('  async function whoAmI()'),
+                      b.indexOf('  function injectFixturePicker'));
   ok('signed out is a real no, not a question that could not be put',
-     /if \(!session\) return false;\s*\n\s*const \{ data, error \} = await sb\.rpc\('whoami'\);/.test(b));
+     /if \(!session\) return null;\s*\n\s*const \{ data, error \} = await sb\.rpc\('whoami'\);/.test(who));
   ok('a whoami that errors is not a yes either',
-     /if \(error \|\| !data\) return false;/.test(b));
+     /if \(error \|\| !data\) return null;/.test(who) &&
+     /const data = await whoAmI\(\);[^\n]*\n\s*if \(!data\) return false;/.test(b));
 
   /* the phones that already hold the ungated pair must not keep serving it */
   const sw = rd('epinoia', 'score', 'sw.js');

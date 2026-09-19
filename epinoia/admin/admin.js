@@ -226,15 +226,21 @@ async function loadLeague() {
      "not loaded" would have an administrator wipe a working link by pressing
      save on a form they never filled in. */
   const { data: row } = await sb.from('leagues')
-    .select('store_url,store_name,gender').eq('id', league.id).maybeSingle();
+    .select('store_url,store_name,gender,visibility').eq('id', league.id).maybeSingle();
   if (row) {
     league.store_url = row.store_url;
     league.store_name = row.store_name;
     league.gender = row.gender || '';
+    league.visibility = row.visibility || 'public';
     $('#shopUrl').value = row.store_url || '';
     $('#shopName').value = row.store_name || '';
     $('#lgGender').value = league.gender;
   }
+  /* The invitation panel exists only for a private league (0139). Whether this
+     league is private is the platform's decision and cannot be changed from
+     here, so this reads the column and draws accordingly rather than offering
+     a switch it would be refused for using. */
+  if (league.visibility === 'private') { $('#invSec').classList.remove('hide'); loadInvites(); }
 
   const { data, error } = await sb.from('seasons')
     .select('id,name,starts_on,ends_on').eq('league_id', league.id).order('starts_on', { ascending: false });
@@ -999,13 +1005,103 @@ async function loadMediaQueue() {
   }
 }
 
+/* ---------------------------------------------- a private league's door --- */
+/* Only a platform admin may mint a link that hands the league over
+   (0139 refuses it here), so this page offers the one kind a league runs
+   itself: a link that lets people SEE it. That is what a secretary needs
+   twenty times a season and Epinoia needs to be asked for none of them. */
+const inviteLink = tok => new URL('../invite/?i=' + encodeURIComponent(tok), location.href).href;
+
+async function loadInvites() {
+  const host = $('#invList'); host.textContent = '';
+  const { data, error } = await sb.rpc('league_invites_list', { p_league: league.id });
+  if (error) return oops(error);
+
+  const live = (data || []).filter(i => !i.spent).length;
+  $('#invNote').textContent = live
+    ? 'private — ' + live + ' live link' + (live === 1 ? '' : 's')
+    : 'private — no live link, so nobody new can get in';
+
+  if (!data || !data.length) {
+    host.appendChild(el('div', 'empty', 'No links yet. Make one above and send it.'));
+  } else data.forEach(i => {
+    const r = el('div', 'item');
+    if (i.spent) r.style.opacity = '.45';
+    const url = inviteLink(i.token);
+    const nm = el('div', 'nm', url);
+    nm.style.cssText = 'overflow-wrap:anywhere;font-family:var(--f-mono,monospace);font-size:11px';
+    r.append(nm, el('div', 'mt',
+      (i.role === 'league_admin' ? 'runs the league' : 'can see the league') +
+      (i.label ? ' · ' + i.label : '') +
+      ' · used ' + i.uses + (i.max_uses ? ' of ' + i.max_uses : '') +
+      (i.revoked_at ? ' · revoked' : i.spent ? ' · finished' : '')));
+    const sp = el('div', 'sp');
+    const copy = el('button', 'ep-btn mini', 'copy'); copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); copy.textContent = 'copied'; }
+      catch (_) { say(url, 'ok'); copy.textContent = 'shown above'; }
+      setTimeout(() => { copy.textContent = 'copy'; }, 1600);
+    });
+    sp.appendChild(copy);
+    if (!i.spent) {
+      const kill = el('button', 'ep-btn mini dgr', 'revoke'); kill.type = 'button';
+      kill.addEventListener('click', async () => {
+        if (!confirm('Revoke this link?\n\nIt stops working straight away. Everybody who ' +
+                     'already used it keeps their access — remove them below if that is ' +
+                     'what you meant.')) return;
+        const { data: res, error: e2 } = await sb.rpc('league_invite_revoke', { p_invite: i.id });
+        if (e2) return oops(e2);
+        say(res, 'ok'); loadInvites();
+      });
+      sp.appendChild(kill);
+    }
+    r.appendChild(sp);
+    host.appendChild(r);
+  });
+
+  const gh = $('#invGuests'); gh.textContent = '';
+  const { data: gs, error: ge } = await sb.rpc('league_guests_list', { p_league: league.id });
+  if (ge) return oops(ge);
+  if (!gs || !gs.length) {
+    gh.appendChild(el('div', 'empty', 'Nobody has used a link yet.'));
+    return;
+  }
+  gs.forEach(g => {
+    const r = el('div', 'item');
+    r.append(el('div', 'nm', g.email),
+             el('div', 'mt', (g.role === 'league_admin' ? 'runs the league' : 'can see it') +
+                             (g.label ? ' · came in on “' + g.label + '”' : '') +
+                             ' · ' + new Date(g.joined_at).toLocaleDateString('en-GB',
+                               { day: '2-digit', month: 'short', year: 'numeric' })));
+    const sp = el('div', 'sp');
+    const rm = el('button', 'ep-btn mini dgr', 'remove'); rm.type = 'button';
+    rm.addEventListener('click', async () => {
+      if (!confirm('Remove ' + g.email + ' from ' + league.name + '?\n\n' +
+                   'They stop being able to open it. They can be let back in with ' +
+                   'another link.')) return;
+      const { data: res, error: e3 } = await sb.rpc('league_guest_remove',
+        { p_league: league.id, p_user: g.user_id });
+      if (e3) return oops(e3);
+      say(res + ' — ' + g.email, 'ok'); loadInvites();
+    });
+    sp.appendChild(rm); r.appendChild(sp);
+    gh.appendChild(r);
+  });
+}
+
 /* ----------------------------------------------------------------- people --- */
 async function loadMembers() {
   const host = $('#grList'); host.textContent = '';
   const { data, error } = await sb.rpc('league_members', { p_league: league.id });
   if (error) return oops(error);
   if (!data || !data.length) {
-    host.appendChild(el('div', 'empty', 'No one else has a role in this league yet.'));
+    /* ...but an invitation that has not landed yet still counts as somebody
+       appointed, so the waiting list is drawn before giving up on the "nobody"
+       line — otherwise a league whose only appointment is pending reads as a
+       league where the grant did not work. */
+    await loadPendingMembers(host);
+    if (!host.children.length)
+      host.appendChild(el('div', 'empty', 'No one else has a role in this league yet.'));
     return;
   }
   data.forEach(m => {
@@ -1019,6 +1115,38 @@ async function loadMembers() {
       const { data: res, error: e2 } = await sb.rpc('revoke_role', { p_membership: m.membership_id });
       if (e2) { rm.disabled = false; return oops(e2); }
       say(res + ' — ' + m.email, 'ok'); loadMembers();
+    });
+    sp.appendChild(rm); r.appendChild(sp);
+    host.appendChild(r);
+  });
+  await loadPendingMembers(host);
+}
+
+/* APPOINTMENTS THAT HAVE NOT FOUND THEIR PERSON YET (0140).
+
+   Granting a role to an address with no account used to be refused, so this
+   state did not exist; now it waits and lands by itself when they sign up. It
+   is drawn in the same list as the real roles, dimmed and labelled, because the
+   question a secretary is asking when they look here is "has Dan got access?" —
+   and "invited, not signed up yet" is the answer to that question, while an
+   empty space is not. */
+async function loadPendingMembers(host) {
+  const { data, error } = await sb.rpc('pending_roles_list', { p_league: league.id });
+  if (error || !data || !data.length) return;
+  data.forEach(p => {
+    const r = el('div', 'item');
+    r.style.opacity = '.68';
+    r.append(el('div', 'nm', p.email),
+             el('div', 'mt', p.role.replace(/_/g, ' ') + ' · waiting — no account on that ' +
+                             'address yet, so it applies when they sign up'));
+    const sp = el('div', 'sp');
+    const rm = el('button', 'ep-btn mini dgr', 'take back'); rm.type = 'button';
+    rm.addEventListener('click', async () => {
+      if (!confirm('Take back the invitation to ' + p.email + '?')) return;
+      rm.disabled = true;
+      const { data: res, error: e2 } = await sb.rpc('pending_role_cancel', { p_id: p.id });
+      if (e2) { rm.disabled = false; return oops(e2); }
+      say(res, 'ok'); loadMembers();
     });
     sp.appendChild(rm); r.appendChild(sp);
     host.appendChild(r);
@@ -1246,49 +1374,174 @@ $('#anGo').addEventListener('click', async () => {
   await loadAnnouncements();
 });
 
+/* ------------------------------------------------------- creating a club ---
+   A SECOND ROW FOR A CLUB THAT IS ALREADY THERE IS THE EXPENSIVE MISTAKE. It
+   does not announce itself: the league simply has two Bristol Hurricanes, each
+   holding half a season, and nothing goes wrong until somebody looks at the
+   table in March. Everything below is aimed at that — the duplicate name, the
+   duplicate abbreviation, and the double-press that makes one out of thin air.
+
+   The abbreviation matters more than it looks. It is the scoreboard, the
+   standings column and the key a LiveStats feed is matched on
+   ("<code>:<pno>"), so two clubs sharing one is two clubs sharing an identity
+   somewhere downstream. It was defaulted to the first three letters of the name
+   and never checked, which for Bristol Hurricanes and Bristol Flyers is the
+   same three letters.
+
+   And the slug: this appended four random characters to EVERY club, so a
+   league's first and only Gloucester City Kings lived at
+   /t/gloucester-city-kings-k3f9 for ever. The clean slug is taken when it is
+   free, which it almost always is. */
 $('#tmGo').addEventListener('click', async () => {
-  const name = $('#tmName').value.trim();
+  const btn = $('#tmGo');
+  if (btn.disabled) return;                 // an impatient second press is not a second club
+  const name = $('#tmName').value.trim().replace(/\s+/g, ' ');
   if (!name) return say('Name the team.', 'err');
   if (isPlaceholderTeam(name)) {
     return say('“' + name + '” stands for a side that is not known yet, not a club. Schedule the tie once both teams are known.', 'err');
   }
-  const short = ($('#tmShort').value.trim() || name.slice(0, 3)).toUpperCase();
-  const { data, error } = await sb.from('teams').insert({
-    league_id: league.id, name, short_name: short,
-    colour: $('#tmCol').value,
-    /* a colour the admin changed from the default is theirs; the ingest's crest reader never
-       writes over a manual choice (left at default, the crest decides) */
-    colour_source: $('#tmCol').value.toLowerCase() !== '#93f2bf' ? 'manual' : 'default',
-    slug: slugify(name) + '-' + Math.random().toString(36).slice(2, 6)
-  }).select('id').single();
-  if (error) return oops(error);
 
-  // creating a team inside a competition almost always means entering it
-  if (comp && data) {
-    const { error: e2 } = await sb.from('competition_teams')
-      .insert({ competition_id: comp.id, team_id: data.id });
-    if (e2) oops(e2);
+  const fold = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const clash = teams.find(t => fold(t.name) === fold(name));
+  if (clash && !confirm(
+        league.name + ' already has a club called “' + clash.name + '”.\n\n' +
+        'Creating a second one gives you two clubs with the same name, each holding ' +
+        'part of the season, and they cannot be merged from this page.\n\n' +
+        'Create it anyway?')) return;
+
+  /* An abbreviation nobody typed is derived, and then made unique inside the
+     league: BRI, BRI2, BRI3. Four characters is the column's limit. */
+  let short = ($('#tmShort').value.trim() || name.slice(0, 3)).toUpperCase().slice(0, 4);
+  const taken = new Set(teams.map(t => (t.short_name || '').toUpperCase()));
+  if (taken.has(short)) {
+    if ($('#tmShort').value.trim()) {
+      const who = teams.find(t => (t.short_name || '').toUpperCase() === short);
+      return say('“' + short + '” is already ' + who.name + '’s abbreviation. It is what ' +
+                 'the scoreboard and the table show, so two clubs cannot share one.', 'err');
+    }
+    const base = short.slice(0, 3);
+    for (let n = 2; n < 100; n++) { short = (base + n).slice(0, 4); if (!taken.has(short)) break; }
   }
-  say(name + (comp ? ' created and entered in ' + comp.name : ' created'), 'ok');
-  $('#tmName').value = ''; $('#tmShort').value = '';
-  await loadTeams();
+
+  /* The plain slug first; a suffix only if the platform already has it (clubs
+     are unique platform-wide, not per league — another league's Titans holds
+     /t/titans). */
+  const base = slugify(name);
+  let slug = base;
+  const { data: used } = await sb.from('teams').select('slug').like('slug', base + '%');
+  const seen = new Set((used || []).map(r => r.slug));
+  if (seen.has(slug)) {
+    for (let n = 2; n < 50; n++) { slug = base + '-' + n; if (!seen.has(slug)) break; }
+  }
+
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.from('teams').insert({
+      league_id: league.id, name, short_name: short,
+      colour: $('#tmCol').value,
+      /* a colour the admin changed from the default is theirs; the ingest's crest reader never
+         writes over a manual choice (left at default, the crest decides) */
+      colour_source: $('#tmCol').value.toLowerCase() !== '#93f2bf' ? 'manual' : 'default',
+      slug
+    }).select('id').single();
+    if (error) return oops(error);
+
+    // creating a team inside a competition almost always means entering it
+    if (comp && data) {
+      const { error: e2 } = await sb.from('competition_teams')
+        .insert({ competition_id: comp.id, team_id: data.id });
+      if (e2) oops(e2);
+    }
+    say(name + ' (' + short + ')' + (comp ? ' created and entered in ' + comp.name : ' created'), 'ok');
+    $('#tmName').value = ''; $('#tmShort').value = '';
+    $('#tmName').focus();                   // a secretary adding a club is adding several
+    await loadTeams();
+  } finally { btn.disabled = false; }
 });
 
+/* ---------------------------------------------------- scheduling a fixture ---
+   BUILT FOR SOMEBODY ENTERING A WHOLE ROUND, which is how this form is
+   actually used: six or seven games, same evening, one after another. So the
+   date and the venue STAY between fixtures (they are nearly always the same
+   for the next one) and the two clubs are cleared, which is the only part that
+   changes. Before this, every field survived — so pressing schedule twice in a
+   row, which is exactly what entering a round feels like, silently made the
+   same fixture again.
+
+   The duplicate check is the other half of that. Same two clubs in the same
+   competition on the same day is a mistake every time; the same pairing on a
+   different day is the return fixture and is waved through. Reversed clubs on
+   the same day is asked about rather than refused — a double-header at a
+   tournament is a real thing, just a rare one. */
 $('#fxGo').addEventListener('click', async () => {
+  const btn = $('#fxGo');
+  if (btn.disabled) return;
   if (!comp) return say('Pick a competition first.', 'err');
   const h = $('#fxHome').value, a = $('#fxAway').value;
   if (!h || !a) return say('Choose both teams.', 'err');
   if (h === a) return say('A team cannot play itself.', 'err');
+  const nameOf = id => (teams.find(t => t.id === id) || {}).name || 'that club';
   const when = $('#fxWhen').value;
-  const { error } = await sb.from('games').insert({
-    competition_id: comp.id, home_team_id: h, away_team_id: a,
-    tipoff_at: when ? new Date(when).toISOString() : null,
-    venue: $('#fxVenue').value.trim() || null
-  });
-  if (error) return oops(error);
-  say('Fixture scheduled.', 'ok');
-  $('#fxVenue').value = '';
-  await loadFixtures();
+
+  const day = iso => (iso || '').slice(0, 10);
+  const sameDay = when ? day(new Date(when).toISOString()) : null;
+  const clash = (fixtures || []).find(f =>
+    ((f.home_team_id === h && f.away_team_id === a) ||
+     (f.home_team_id === a && f.away_team_id === h)) &&
+    (sameDay ? day(f.tipoff_at) === sameDay : !f.tipoff_at));
+  if (clash) {
+    const reversed = clash.home_team_id === a;
+    const wording = sameDay
+      ? nameOf(h) + ' v ' + nameOf(a) + ' is already in ' + comp.name + ' on that date' +
+        (reversed ? ', the other way round (' + nameOf(a) + ' at home)' : '')
+      : 'There is already an undated ' + nameOf(h) + ' v ' + nameOf(a) + ' in ' + comp.name;
+    if (!reversed && sameDay)
+      return say(wording + '. Change the date, or edit the one that is there.', 'err');
+    if (!confirm(wording + '.\n\nSchedule this one as well?')) return;
+  }
+
+  btn.disabled = true;
+  try {
+    const { error } = await sb.from('games').insert({
+      competition_id: comp.id, home_team_id: h, away_team_id: a,
+      tipoff_at: when ? new Date(when).toISOString() : null,
+      venue: $('#fxVenue').value.trim() || null
+    });
+    if (error) return oops(error);
+    /* Named, and dated. "Fixture scheduled." said nothing about WHICH, which
+       on the fifth game of a round is the only thing worth confirming — and an
+       undated fixture is easy to create by accident and invisible afterwards
+       (it sorts to the end of a 200-game list), so it says so out loud. */
+    say(nameOf(h) + ' v ' + nameOf(a) +
+        (when ? ' scheduled for ' + new Date(when).toLocaleString('en-GB',
+                  { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+              : ' added with no date yet — it will sit at the end of the list until one is set'),
+        when ? 'ok' : 'warn');
+    $('#fxHome').value = ''; $('#fxAway').value = '';
+    $('#fxHome').focus();
+    await loadFixtures();
+  } finally { btn.disabled = false; }
+});
+
+$('#invGo').addEventListener('click', async () => {
+  const btn = $('#invGo');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const uses = $('#invUses').value;
+    const { data, error } = await sb.rpc('league_invite_create', {
+      p_league: league.id, p_role: 'viewer',
+      p_label: $('#invLabel').value.trim(),
+      p_max_uses: uses ? Number(uses) : null });
+    if (error) return oops(error);
+    const row = Array.isArray(data) ? data[0] : data;    // a table-returning RPC is an array of one
+    $('#invLabel').value = ''; $('#invUses').value = '';
+    const url = inviteLink(row.token);
+    try { await navigator.clipboard.writeText(url);
+          say('Link made and copied — paste it wherever you are sending it.', 'ok'); }
+    catch (_) { say('Link made: ' + url, 'ok'); }
+    await loadInvites();
+  } finally { btn.disabled = false; }
 });
 
 $('#grRole').addEventListener('change', syncGrantScope);
@@ -1304,8 +1557,15 @@ $('#grGo').addEventListener('click', async () => {
     p_scope_id: toTeam ? $('#grTeam').value : league.id
   });
   if (error) return oops(error);
-  say(data, /^no account/.test(data) ? 'err' : 'ok');
-  if (!/^no account/.test(data)) { $('#grEmail').value = ''; loadMembers(); }
+  /* "invited" is the answer for an address with no account yet (0140): the role
+     is stored and applies by itself when they sign up. That is a success with
+     something to know, not a failure — it used to come back as "no account …
+     then grant again" and was drawn red, which is why nobody ever did the
+     second half. Either way the field clears and the list reloads, because
+     either way the appointment is made. */
+  say(data, /^invited/.test(data) ? 'warn' : 'ok');
+  $('#grEmail').value = '';
+  loadMembers();
 });
 
 /* WHOSE COMPETITION THIS IS (0131). One value, saved on its own button rather

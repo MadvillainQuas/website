@@ -133,7 +133,7 @@ async function gate() {
     const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
     if (tab) { hashTabOpened = true; tab.click(); }
   }
-  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention()]);
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -577,8 +577,8 @@ async function grant() {
   if (picked === 'news_writer') {
     if (!scopeId) return say('Choose the league they write for.', 'err');
     const out = await rpc('grant_league_writer', { p_league: scopeId, p_email: email });
-    if (out) { say(out, /^no account/.test(out) ? 'err' : 'ok');
-               $('#grEmail').value = ''; loadAccounts(); }
+    if (out) { say(out, /^invited/.test(out) ? 'warn' : 'ok');
+               $('#grEmail').value = ''; loadAccounts(); loadPending(); }
     return;
   }
 
@@ -596,8 +596,55 @@ async function grant() {
 
   const out = await rpc('grant_role', {
     p_email: email, p_role: role, p_scope_type: scopeType, p_scope_id: scopeId });
-  if (out) { say(out, /^no account/.test(out) ? 'err' : 'ok'); $('#grEmail').value = '';
-             loadAccounts(); loadOverview(); }
+  /* "invited" is an address with no account yet: 0140 stores the appointment and
+     applies it when they confirm their email, so it is a success worth a note
+     rather than the refusal it used to be. */
+  if (out) { say(out, /^invited/.test(out) ? 'warn' : 'ok'); $('#grEmail').value = '';
+             loadAccounts(); loadOverview(); loadPending(); }
+}
+
+/* ------------------------------------------------------- waiting invites --- */
+/* Roles granted to an address that has no account yet (0140). They are not
+   failures and they are not memberships; they are appointments in transit, and
+   the only place they exist is here. Without this list the platform's own
+   answer to "did I appoint Dan?" is "look in the audit log", which nobody does. */
+async function loadPending() {
+  const rows = await rpc('pending_roles_list', {});
+  const host = $('#pendList'); const head = $('#pendH');
+  if (!host) return;
+  host.textContent = '';
+  const any = rows && rows.length;
+  if (head) head.classList.toggle('hide', !any);
+  if (!any) return;
+
+  const lead = el('p', 'lead',
+    any + ' appointment' + (any === 1 ? '' : 's') + ' made to an address with no account. ' +
+    'Each applies by itself the first time that address signs up and confirms itself. ' +
+    'Nothing else is needed — these are here so you can see them, and take one back.');
+  host.appendChild(lead);
+
+  rows.forEach(p => {
+    const r = el('div', 'row');
+    r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+    const who = el('span', 'grow'); who.textContent = p.email;
+    who.style.overflowWrap = 'anywhere';
+    const what = el('span', 'mt',
+      p.role.replace(/_/g, ' ') + (p.scope_name ? ' · ' + p.scope_name : ''));
+    const when = el('span', 'mt',
+      'invited ' + new Date(p.created_at).toLocaleDateString('en-GB',
+        { day: '2-digit', month: 'short' }) +
+      (p.invited_by_email ? ' by ' + p.invited_by_email : ''));
+    when.style.marginLeft = 'auto';
+    const kill = el('button', 'ep-btn mini danger', 'take back'); kill.type = 'button';
+    kill.addEventListener('click', async () => {
+      if (!confirm('Take back the ' + p.role.replace(/_/g, ' ') + ' invitation to ' +
+                   p.email + '?\n\nIf they sign up later they will get nothing.')) return;
+      const out = await rpc('pending_role_cancel', { p_id: p.id });
+      if (out) { say(out, 'ok'); loadPending(); }
+    });
+    r.append(who, what, when, kill);
+    host.appendChild(r);
+  });
 }
 
 /* --------------------------------------------------------------- leagues --- */
@@ -657,14 +704,165 @@ async function loadLeagues() {
         p_public_live: liveIn.checked, p_youth_protected: youthIn.checked });
       if (out) { say('Saved ' + name.value, 'ok'); loadLeagues(); }
     });
+    /* PRIVACY IS NOT PART OF SAVE. Everything else on this card is a property of
+       the league that its own admin may also change; this one is the platform's
+       alone (0139's trigger refuses it from anywhere but the RPC), it takes a
+       league off the front page the instant it is pressed, and it should not be
+       something that happens because somebody pressed save with a box they did
+       not notice they had ticked. Its own button, its own confirmation. */
+    const priv = el('button', 'ep-btn mini', l.visibility === 'private' ? 'make public' : 'make private');
+    priv.type = 'button';
+    priv.addEventListener('click', () => setVisibility(l));
     const del = el('button', 'ep-btn mini danger', 'delete league'); del.type = 'button';
     del.addEventListener('click', () => deleteLeague(l));
     const sp = el('span'); sp.style.marginLeft = 'auto';
-    acts.append(view, save, sp, del);
+    acts.append(view, save, priv, sp, del);
     box.appendChild(acts);
+
+    /* The private league's own strip: what it is, and the links that open it.
+       Only drawn for a private league — a public one has nothing to say here,
+       and a row of empty invite machinery on every league would be noise. */
+    if (l.visibility === 'private') {
+      const strip = el('div', 'row');
+      strip.style.cssText = 'margin:7px 0 0;padding-top:7px;border-top:1px dashed var(--rule);' +
+                            'flex-wrap:wrap;align-items:center';
+      const tag = el('span', 'mt', 'PRIVATE');
+      tag.style.cssText = 'font-weight:700;letter-spacing:.08em;color:var(--lume)';
+      const count = el('span', 'mt',
+        l.n_invites + ' live link' + (l.n_invites === 1 ? '' : 's') + ' · ' +
+        l.n_guests + ' let in');
+      /* Said out loud, because the state is invisible from everywhere else on
+         the platform: a private league with no live link cannot be reached by
+         anybody who is not already staff, and the way that presents itself is
+         "the link you sent me doesn't work". */
+      if (!l.n_invites) {
+        count.textContent = 'no live link — nobody new can get in';
+        count.style.color = '#ffd166';
+      }
+      const links = el('button', 'ep-btn mini', 'invite links'); links.type = 'button';
+      links.addEventListener('click', () => toggleInvites(l, box, links));
+      strip.append(tag, count, links);
+      box.appendChild(strip);
+    }
 
     host.appendChild(box);
   });
+}
+
+async function setVisibility(l) {
+  const toPrivate = l.visibility !== 'private';
+  const msg = toPrivate
+    ? 'Make ' + l.name + ' private?\n\n' +
+      'It comes off the front page, out of search and out of the sitemap, and its ' +
+      'games, clubs and tables stop being readable by anybody who has not been let in. ' +
+      'Its own admins and the clubs\' managers keep their access.\n\n' +
+      'You will need to mint an invite link for anybody else.'
+    : 'Make ' + l.name + ' public again?\n\n' +
+      'It goes back on the front page and everything in it becomes readable by anybody. ' +
+      'The people already let in stay let in.';
+  if (!confirm(msg)) return;
+  const out = await rpc('platform_set_league_visibility',
+    { p_league: l.id, p_visibility: toPrivate ? 'private' : 'public' });
+  if (out) { say(out, 'ok'); loadLeagues(); }
+}
+
+/* ------------------------------------------------------------- invites --- */
+/* Drawn under the league it belongs to rather than in a panel of its own: a
+   link only means anything next to the league it opens, and the first thing
+   anybody does after minting one is copy it, which wants the league's name in
+   front of them. */
+async function toggleInvites(l, box, btn) {
+  const open = box.querySelector('.lg-invites');
+  if (open) { open.remove(); btn.textContent = 'invite links'; return; }
+  btn.textContent = 'hide links';
+
+  const host = el('div', 'lg-invites');
+  host.style.cssText = 'margin-top:7px;padding:8px;border:1px solid var(--rule);border-radius:8px';
+  box.appendChild(host);
+
+  const mint = el('div', 'row');
+  const label = el('input', 'ep-input grow');
+  label.placeholder = 'who is this link for? (the parents\' group, Dan…)';
+  label.maxLength = 80;
+  const role = el('select', 'ep-input');
+  role.style.flex = '0 0 150px';
+  role.append(new Option('can see the league', 'viewer'),
+              new Option('runs the league', 'league_admin'));
+  const uses = el('input', 'ep-input');
+  uses.type = 'number'; uses.min = '1'; uses.placeholder = 'uses';
+  uses.style.flex = '0 0 86px';
+  const mk = el('button', 'ep-btn mini pri', 'new link'); mk.type = 'button';
+  mint.append(label, role, uses, mk);
+  host.appendChild(mint);
+
+  const list = el('div');
+  list.style.marginTop = '7px';
+  host.appendChild(list);
+
+  /* Resolved against this page rather than assembled from location.origin: the
+     console sits at /epinoia/admin/platform/, the same two levels up that the
+     "open league" link above already walks, and building it that way keeps
+     working if the site is ever served under a prefix. */
+  const linkFor = tok => new URL('../../invite/?i=' + encodeURIComponent(tok), location.href).href;
+
+  const draw = async () => {
+    const rows = await rpc('league_invites_list', { p_league: l.id });
+    list.textContent = '';
+    if (!rows || !rows.length) {
+      list.appendChild(el('div', 'empty', 'No links yet. Mint one above and send it.'));
+      return;
+    }
+    rows.forEach(i => {
+      const r = el('div', 'row');
+      r.style.cssText = 'align-items:center;gap:6px;margin-bottom:4px';
+      const url = linkFor(i.token);
+      const box2 = el('input', 'ep-input grow');
+      box2.value = url; box2.readOnly = true;
+      box2.style.fontFamily = 'var(--f-mono, monospace)';
+      if (i.spent) { box2.style.opacity = '.45'; box2.style.textDecoration = 'line-through'; }
+      box2.addEventListener('focus', () => box2.select());
+      const what = el('span', 'mt',
+        (i.role === 'league_admin' ? 'runs it' : 'can see') +
+        (i.label ? ' · ' + i.label : '') +
+        ' · used ' + i.uses + (i.max_uses ? '/' + i.max_uses : ''));
+      const copy = el('button', 'ep-btn mini', 'copy'); copy.type = 'button';
+      copy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(url); copy.textContent = 'copied'; }
+        catch (_) { box2.select(); copy.textContent = 'select + ⌘C'; }
+        setTimeout(() => { copy.textContent = 'copy'; }, 1600);
+      });
+      const kill = el('button', 'ep-btn mini danger', i.spent ? 'dead' : 'revoke');
+      kill.type = 'button'; kill.disabled = !!i.spent;
+      kill.addEventListener('click', async () => {
+        if (!confirm('Revoke this link?\n\nIt stops working immediately. Anybody who ' +
+                     'already used it stays in the league.')) return;
+        const out = await rpc('league_invite_revoke', { p_invite: i.id });
+        if (out) { say(out, 'ok'); draw(); loadLeagues(); }
+      });
+      r.append(box2, what, copy, kill);
+      list.appendChild(r);
+    });
+  };
+
+  mk.addEventListener('click', async () => {
+    if (role.value === 'league_admin' &&
+        !confirm('A "runs the league" link makes whoever opens it an administrator of ' +
+                 l.name + ' — fixtures, clubs, scoring, everything.\n\nSend it to one ' +
+                 'person, and set it to one use.')) return;
+    const out = await rpc('league_invite_create', {
+      p_league: l.id, p_role: role.value, p_label: label.value.trim(),
+      p_max_uses: uses.value ? Number(uses.value) : null });
+    if (!out) return;
+    /* An RPC returning a table comes back as an array of one. */
+    const row = Array.isArray(out) ? out[0] : out;
+    label.value = ''; uses.value = '';
+    try { await navigator.clipboard.writeText(linkFor(row.token));
+          say('Link made and copied to the clipboard.', 'ok'); }
+    catch (_) { say('Link made — copy it from the list below.', 'ok'); }
+    draw(); loadLeagues();
+  });
+
+  draw();
 }
 
 async function deleteLeague(l) {

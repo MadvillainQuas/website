@@ -609,6 +609,18 @@ jobs:
         # before the gate — leaves it shut rather than leaves an application running
         run: node supabase/tests/score-gate.test.mjs
 
+      - name: A private league stays private, and a role finds its person
+        # 0118 funnels every read of on-court content through four functions, each with an
+        # "access_mode = open" shortcut — and a private league IS access_mode open, so missing
+        # one of them leaves that surface public. This checks all four were changed, that the
+        # statement-level fast path still switches the whole apparatus off while nothing is
+        # gated, that leagues_read is no longer `using (true)` (six pages list straight off
+        # that table), that an invite link is CSPRNG bytes redeemed under a row lock, and that
+        # a role granted to an address with no account waits for CONFIRMATION rather than for
+        # whoever typed the address first. Plus the scorer's picker, which offered a league
+        # admin every other league's fixtures and refused them only after they pressed load.
+        run: node supabase/tests/privateleagues.test.mjs
+
       - name: A league's front page says which competition it is showing
         # the table and the leaders embeds share one row of buttons, drawn from the
         # competitions actually being played (comps.js), re-pointing both embeds and both
