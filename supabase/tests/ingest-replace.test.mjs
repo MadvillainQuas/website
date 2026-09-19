@@ -546,7 +546,9 @@ console.log('\na play is timed by the version it first appeared in');
      /except Exception as exc:\s*\n\s*print\(f"    ! feedstamp:/.test(src));
   ok('a refill takes the rewrite branch', /if existing and same_prefix and not refill:/.test(src));
   ok('the live lane hands the observer\'s memory to the write, and the kill switch hands none',
-     /write_platform\(sb, src, b, run, observed, observer\.stamps\(xid\) if observer else None\)/.test(src) &&
+     /* use_obs, not observer: a source that is not on the CDN has no observer snapshot either,
+        so it hands none for the same reason the kill switch does. The test lagged the rename. */
+     /write_platform\(sb, src, b, run, observed, observer\.stamps\(xid\) if use_obs else None\)/.test(src) &&
      /write_event_log\(sb, src, b, game_id, people\["pids"\], observed, stamps\)/.test(src));
   ok('the discovery lane passes no memory (a different process: its own writes stay poll-stamped)',
      (src.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)\)/g) || []).length === 2);

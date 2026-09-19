@@ -1336,6 +1336,54 @@ LIVE_AFTER_TIP = 4 * 3600      # keep polling an unpublished game this long afte
 LIVE_STALE = 7 * 3600          # a game still 'live' this long after tip is a log nobody closed - not a reason to keep a runner up
 CHAIN_AHEAD = 8 * 3600         # the live lane re-dispatches itself when the next tip-off is within this
 MAIN_CHAIN_AHEAD = 3 * 3600    # the discovery lane starts the live lane when the next tip-off is within this
+
+# ───────────────────────────────── how long the PC's wrapper should sleep between passes
+#
+# WHY THIS EXISTS. live_lane.bat used to wait a flat 30 s and start again, all night. With no
+# game live and the next tip-off 11 hours away that is ~1,300 pointless passes, each opening a
+# Supabase connection and re-reading every source's schedule, to learn the same thing every
+# time. The lane already worked out the answer before it stopped — it knew the next tip-off and
+# whether anything was due — and then threw it away.
+#
+# So it writes the answer down. The rule is the one a person would apply: if a game is live or
+# due NOW there is work, so come straight back; otherwise sleep until LIVE_LEAD before the next
+# tip-off, which leaves the lane awake and polling well before anybody could be watching.
+#
+# The floor matters as much as the ceiling. Waking 30 minutes early is deliberate slack for a
+# fixture that tips early or a clock that drifts, and the cap keeps a wrapper that has been up
+# for days from sleeping past a schedule change it has not seen yet.
+LIVE_LEAD = 30 * 60            # be awake this long before a tip-off
+LIVE_RESTART = 30              # there is work now: the old flat wait, unchanged
+LIVE_WAIT_CAP = 4 * 3600       # never sleep longer than this without re-reading the schedule
+LIVE_WAIT_FILE = os.path.join(os.environ.get("TEMP") or os.environ.get("TMP") or "/tmp",
+                              "epinoia_live_wait")
+
+
+def _hms(s: int) -> str:
+    h, m = divmod(int(s) // 60, 60)
+    return f"{h}h {m:02d}m" if h else f"{m}m"
+
+
+def _live_wait_seconds(due, next_tip, now) -> int:
+    """Seconds the wrapper should sleep before starting the next pass."""
+    if due:
+        return LIVE_RESTART                       # a game is live or due: no pause at all
+    if next_tip is None:
+        return LIVE_WAIT_CAP                      # nothing scheduled anywhere; re-read later
+    ahead = (next_tip - now).total_seconds() - LIVE_LEAD
+    if ahead <= LIVE_RESTART:
+        return LIVE_RESTART                       # tip-off is near: behave exactly as before
+    return int(min(ahead, LIVE_WAIT_CAP))
+
+
+def _write_live_wait(seconds: int) -> None:
+    """Leave the number where live_lane.bat can read it. Best effort on purpose: a wrapper that
+    cannot read it falls back to its own 30 s, which is the behaviour this replaces."""
+    try:
+        with open(LIVE_WAIT_FILE, "w", encoding="ascii") as fh:
+            fh.write(str(int(seconds)))
+    except Exception:
+        pass
 STALE_FINAL_S = 15 * 60        # a payload unchanged this long at the end of P4+ with unequal scores is a finished game
 
 
@@ -1670,8 +1718,11 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     due, next_tip = live_due(sb, fiba, now)
     due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
     chain = bool(due) or (next_tip is not None and (next_tip - now).total_seconds() < CHAIN_AHEAD)
+    wait = _live_wait_seconds(due, next_tip, now)
     print(f"live lane done: {len(due)} still live/due" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
-          (" - chaining the next pass" if chain else " - nothing near, stopping"))
+          (" - chaining the next pass" if chain else " - nothing near, stopping")
+          + (f"; sleep {_hms(wait)} before the next pass" if wait > LIVE_RESTART else ""))
+    _write_live_wait(wait)
     return exit_code, chain
 
 
