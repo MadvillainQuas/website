@@ -458,7 +458,16 @@ async function loadAccounts() {
     const tr = body.insertRow();
 
     const c0 = tr.insertCell();
-    c0.appendChild(el('div', 'nm', r.email));
+    /* The address opens the account. A button rather than the whole row, so the
+       role pills below it keep their own click (revoke) without the two
+       fighting, and so it reaches the keyboard. */
+    const openA = el('button', 'nm', r.email);
+    openA.type = 'button';
+    openA.style.cssText = 'background:none;border:0;padding:0;font:inherit;color:var(--lume);' +
+                          'cursor:pointer;text-align:left';
+    openA.title = 'open this account';
+    openA.addEventListener('click', () => openAccount(r.user_id));
+    c0.appendChild(openA);
     const bits = [r.provider || 'email'];
     if (!r.confirmed) bits.push('unconfirmed');
     if (r.banned) bits.push('DISABLED');
@@ -516,10 +525,13 @@ async function deleteAccount(r) {
     'Deleting ' + r.email + ' removes the account and every role it holds.\n' +
     'Games it scored and rows it created are kept, with the name detached.\n\n' +
     'Type the address exactly to confirm:');
-  if (typed == null) return;
+  if (typed == null) return false;
   const out = await rpc('platform_delete_account',
     { p_user: r.user_id, p_confirm_email: typed });
   if (out) { say(out, 'ok'); loadAccounts(); loadOverview(); }
+  /* Says whether the account is really gone: the dashboard closes on a delete
+     and must stay open on a cancelled prompt or a mistyped address. */
+  return !!out;
 }
 
 async function revoke(m, email, label) {
@@ -528,79 +540,257 @@ async function revoke(m, email, label) {
   if (out) { say(out + ' — ' + label, 'ok'); loadAccounts(); loadOverview(); }
 }
 
+/* THE GRANT FORM'S OWN PICKER, which is the shared one pointed at this page's
+   two controls. It used to carry its own copy of "which roles take a league and
+   which take a club", and the account dashboard and the two tabs now ask the
+   same question — four copies of that mapping would drift, and the one that
+   drifted would silently grant the wrong kind of scope.
+
+   A LEAGUE APPOINTS ITS OWN OFFICIALS AND ITS OWN WRITERS. league_admin,
+   news_writer and a league-wide statistician all scope to a league; the
+   statistician was once offered as a CLUB role only, which does not describe
+   the job — a league sends a table official to whichever fixture needs
+   covering, and tying one to a single club meant a second grant for every other
+   ground. The club-scoped variant is still there for a club's own scorer. */
 function fillScopePicker() {
-  const role = $('#grRole').value;
-  const sel = $('#grScope'); sel.textContent = '';
-  if (role === 'platform_admin') {
+  fillScopeFor($('#grRole').value, $('#grScope'));
+}
+
+async function grant() {
+  const email = ($('#grEmail').value || '').trim();
+  if (!email) return say('Enter the address of the account to grant.', 'err');
+  /* grantTo is the same call the account dashboard and the league and club tabs
+     make. It knows that the news writer is NOT a membership (it lives in
+     league_writers, because writing for a league is not a degree of
+     administering one), that the two statistician entries are one role
+     differing only in scope, and that an "invited" answer is a success worth a
+     note rather than the refusal it used to be. */
+  if (await grantTo(email, $('#grRole').value, $('#grScope').value || null)) {
+    $('#grEmail').value = '';
+    loadAccounts(); loadOverview(); loadPending();
+  }
+}
+
+/* ======================================================= one account, whole ===
+   WHAT THIS PAGE COULD NOT DO BEFORE. The accounts table drew a row of pills
+   and nothing else, so anything attaching a person to a league that is NOT a
+   membership was invisible from here: a news writer (league_writers, 0051), a
+   private league they opened a link to (league_guests, 0139), and an
+   appointment still waiting on their address because they have not signed up
+   yet (pending_roles, 0140). Four kinds of attachment, one of them shown.
+
+   And appointing somebody had one shape: leave the person you are looking at,
+   scroll to a form, type their address from memory, choose a scope out of every
+   league on the platform. This turns that round — the account is on screen, so
+   the grant happens here, against them, with the scope chosen by name.
+
+   Every write is an EXISTING function: grant_role, revoke_role,
+   grant_league_writer, revoke_league_writer. Nothing here can do anything the
+   grant form below could not; it is the same rights reached from where you are.
+   ============================================================================ */
+let acctOpen = null;      // the user_id whose dashboard is showing, if any
+
+function backToAccounts() {
+  acctOpen = null;
+  $('#acctDetail').classList.add('hide');
+  $('#acctList').classList.remove('hide');
+  $('#acctDetail').textContent = '';
+}
+
+/* A scope picker that names things rather than listing uuids. Shared by the
+   dashboard and by the two "add somebody" rows in the leagues and clubs tabs,
+   so the three cannot drift about which roles take which kind of scope. */
+const LEAGUE_ROLES = { league_admin: 'league admin',
+                       statistician_league: 'statistician — the whole league',
+                       news_writer: 'news writer' };
+const TEAM_ROLES = { team_manager: 'club manager', statistician: 'statistician — this club only' };
+
+/* One role name, two shapes: the picker distinguishes the SCOPE, the database
+   knows one 'statistician'. Same mapping the grant form uses. */
+function roleToGrant(picked) {
+  const role = picked === 'statistician_league' ? 'statistician' : picked;
+  const scopeType = role === 'platform_admin' ? 'platform'
+                  : (picked === 'league_admin' || picked === 'statistician_league')
+                    ? 'league' : 'team';
+  return { role, scopeType };
+}
+
+async function grantTo(email, picked, scopeId) {
+  if (picked === 'news_writer') {
+    if (!scopeId) return say('Choose the league they write for.', 'err');
+    const out = await rpc('grant_league_writer', { p_league: scopeId, p_email: email });
+    if (out) say(out, /^invited/.test(out) ? 'warn' : 'ok');
+    return !!out;
+  }
+  const { role, scopeType } = roleToGrant(picked);
+  if (scopeType !== 'platform' && !scopeId) return say('Choose what that role applies to.', 'err');
+  if (role === 'platform_admin' &&
+      !confirm('A platform admin can do everything on this page, to every league, ' +
+               'including removing you.\n\nGrant it to ' + email + '?')) return false;
+  const out = await rpc('grant_role', {
+    p_email: email, p_role: role, p_scope_type: scopeType, p_scope_id: scopeId || null });
+  if (out) say(out, /^invited/.test(out) ? 'warn' : 'ok');
+  return !!out;
+}
+
+async function openAccount(userId) {
+  const a = await rpc('platform_account', { p_user: userId });
+  if (!a) return;
+  acctOpen = userId;
+  $('#acctList').classList.add('hide');
+  const host = $('#acctDetail');
+  host.classList.remove('hide');
+  host.textContent = '';
+
+  const back = el('button', 'ep-btn mini', '← all accounts'); back.type = 'button';
+  back.addEventListener('click', backToAccounts);
+  host.appendChild(back);
+
+  const head = el('div'); head.style.margin = 'calc(var(--u)*2) 0';
+  const h = el('h3', null, a.email); h.style.cssText = 'font-size:14px;color:var(--ink);margin:0 0 4px';
+  const bits = [a.provider || 'email'];
+  if (a.display_name) bits.unshift(a.display_name);
+  if (!a.confirmed) bits.push('has never confirmed this address');
+  if (a.banned) bits.push('DISABLED');
+  bits.push('joined ' + fmtDate(a.created_at));
+  bits.push(a.last_sign_in_at ? 'last seen ' + fmtDate(a.last_sign_in_at) : 'never signed in');
+  head.append(h, el('div', 'lead', bits.join(' · ')));
+  host.appendChild(head);
+
+  /* ---- what they hold ---- */
+  host.appendChild(el('h3', null, 'What this account can do'));
+  const list = el('div');
+  host.appendChild(list);
+
+  const redraw = () => openAccount(userId);
+  let any = 0;
+
+  (a.memberships || []).forEach(m => {
+    any++;
+    const label = m.role.replace(/_/g, ' ') + (m.scope === 'platform' ? '' : ' · ' + (m.label || '?'));
+    const r = el('div', 'row'); r.style.cssText = 'align-items:center;margin-bottom:4px';
+    const cls = { platform_admin: 'pa', league_admin: 'la',
+                  team_manager: 'tm', statistician: 'st' }[m.role] || '';
+    r.appendChild(el('span', 'pill ' + cls, label));
+    const x = el('button', 'ep-btn mini danger', 'revoke'); x.type = 'button';
+    x.style.marginLeft = 'auto';
+    x.addEventListener('click', async () => {
+      if (!confirm('Revoke ' + label + ' from ' + a.email + '?')) return;
+      const out = await rpc('revoke_role', { p_membership: m.membership_id });
+      if (out) { say(out + ' — ' + label, 'ok'); redraw(); loadOverview(); }
+    });
+    r.appendChild(x);
+    list.appendChild(r);
+  });
+
+  (a.writers || []).forEach(w => {
+    any++;
+    const label = 'news writer · ' + (w.label || '?');
+    const r = el('div', 'row'); r.style.cssText = 'align-items:center;margin-bottom:4px';
+    r.appendChild(el('span', 'pill', label));
+    const x = el('button', 'ep-btn mini danger', 'revoke'); x.type = 'button';
+    x.style.marginLeft = 'auto';
+    x.addEventListener('click', async () => {
+      if (!confirm('Stop ' + a.email + ' writing for ' + (w.label || 'this league') + '?')) return;
+      const out = await rpc('revoke_league_writer', { p_id: w.id });
+      if (out) { say(out, 'ok'); redraw(); }
+    });
+    r.appendChild(x);
+    list.appendChild(r);
+  });
+
+  if (!any) list.appendChild(el('div', 'empty', 'No roles. This account can read the ' +
+    'public site and follow clubs, and nothing else.'));
+
+  /* ---- add one, against THIS account ---- */
+  const add = el('div', 'row'); add.style.marginTop = 'calc(var(--u)*2)';
+  const role = el('select', 'ep-input'); role.style.flex = '0 0 auto';
+  role.append(new Option('platform admin', 'platform_admin'));
+  Object.keys(LEAGUE_ROLES).forEach(k => role.append(new Option(LEAGUE_ROLES[k], k)));
+  Object.keys(TEAM_ROLES).forEach(k => role.append(new Option(TEAM_ROLES[k], k)));
+  role.value = 'league_admin';
+  const scope = el('select', 'ep-input'); scope.style.flex = '1 1 220px';
+  const go = el('button', 'ep-btn pri', 'grant'); go.type = 'button';
+  add.append(role, scope, go);
+  host.appendChild(add);
+
+  const fill = () => fillScopeFor(role.value, scope);
+  role.addEventListener('change', fill);
+  fill();
+  go.addEventListener('click', async () => {
+    if (await grantTo(a.email, role.value, scope.value || null)) { redraw(); loadOverview(); }
+  });
+
+  /* ---- the rest of what attaches them, which is not a role ---- */
+  if ((a.guests || []).length) {
+    host.appendChild(el('h3', null, 'Private leagues they were let into'));
+    (a.guests || []).forEach(g => {
+      host.appendChild(el('div', 'lead',
+        (g.label || '?') + (g.private ? '' : ' (public now)') +
+        ' · joined ' + fmtDate(g.joined_at) + (g.via ? ' · on the “' + g.via + '” link' : '') +
+        ' — remove them from that league’s own console.'));
+    });
+  }
+  if ((a.pending || []).length) {
+    host.appendChild(el('h3', null, 'Waiting on this address'));
+    (a.pending || []).forEach(pd => {
+      const r = el('div', 'row'); r.style.cssText = 'align-items:center;margin-bottom:4px';
+      r.appendChild(el('span', 'pill', pd.role.replace(/_/g, ' ') +
+        (pd.label ? ' · ' + pd.label : '') + ' · waiting'));
+      const x = el('button', 'ep-btn mini danger', 'take back'); x.type = 'button';
+      x.style.marginLeft = 'auto';
+      x.addEventListener('click', async () => {
+        const out = await rpc('pending_role_cancel', { p_id: pd.id });
+        if (out) { say(out, 'ok'); redraw(); loadPending(); }
+      });
+      r.appendChild(x);
+      host.appendChild(r);
+    });
+    host.appendChild(el('div', 'lead',
+      'This account exists, so an appointment still waiting means it was made to an address ' +
+      'that has not confirmed itself yet — it applies the moment it does.'));
+  }
+
+  /* ---- the account itself ---- */
+  if (a.user_id !== (me && me.id)) {
+    host.appendChild(el('h3', null, 'The account'));
+    const acts = el('div', 'row');
+    const ban = el('button', 'ep-btn mini', a.banned ? 'enable' : 'disable'); ban.type = 'button';
+    ban.addEventListener('click', async () => {
+      const out = await rpc('platform_set_account_banned',
+        { p_user: a.user_id, p_banned: !a.banned });
+      if (out) { say(out + ' — ' + a.email, 'ok'); redraw(); }
+    });
+    const del = el('button', 'ep-btn mini danger', 'delete'); del.type = 'button';
+    del.addEventListener('click', async () => {
+      if (await deleteAccount({ user_id: a.user_id, email: a.email })) backToAccounts();
+    });
+    acts.append(ban, del);
+    host.appendChild(acts);
+  }
+}
+
+/* Leagues or clubs, by name, for whichever kind of scope the role takes. */
+function fillScopeFor(picked, sel) {
+  sel.textContent = '';
+  if (picked === 'platform_admin') {
     sel.appendChild(new Option('the whole platform', ''));
     sel.disabled = true;
     return;
   }
   sel.disabled = false;
-  /* A LEAGUE APPOINTS ITS OWN OFFICIALS AND ITS OWN WRITERS.
-
-     league_admin, news_writer and a league-wide statistician all scope to a
-     league. The statistician is the one that changed: it was offered as a CLUB
-     role only, which does not describe the job — a league sends a table
-     official to whichever fixture needs covering, and tying one to a single
-     club meant a second grant for every other ground. The club-scoped variant
-     is still available below for a club's own scorer. */
-  if (role === 'league_admin' || role === 'news_writer' ||
-      role === 'statistician_league') {
+  if (LEAGUE_ROLES[picked]) {
     leagues.forEach(l => sel.appendChild(new Option(l.name, l.id)));
     if (!leagues.length) sel.appendChild(new Option('no leagues yet', ''));
     return;
   }
-  /* team_manager and a club's own statistician are team-scoped. The club list
-     can be long, so it is loaded lazily rather than on every boot. */
   sel.appendChild(new Option('loading clubs…', ''));
   rpc('platform_teams', { p_search: '' }).then(rows => {
     sel.textContent = '';
     (rows || []).forEach(t => sel.appendChild(
-      new Option(t.name + ' (' + t.league_name + ')', t.id)));
+      new Option(t.name + (t.league_name ? ' (' + t.league_name + ')' : ''), t.id)));
     if (!rows || !rows.length) sel.appendChild(new Option('no clubs yet', ''));
   });
-}
-
-async function grant() {
-  const email = ($('#grEmail').value || '').trim();
-  const picked = $('#grRole').value;
-  const scopeId = $('#grScope').value || null;
-  if (!email) return say('Enter the address of the account to grant.', 'err');
-
-  /* THE NEWS WRITER IS NOT A MEMBERSHIP. It lives in league_writers with its
-     own grant function, because writing for a league is not a degree of
-     administering one — a club's press officer should be able to publish a
-     match report without also being able to reschedule fixtures. It was
-     therefore missing from this page entirely and could only be granted from
-     inside a league's own console. */
-  if (picked === 'news_writer') {
-    if (!scopeId) return say('Choose the league they write for.', 'err');
-    const out = await rpc('grant_league_writer', { p_league: scopeId, p_email: email });
-    if (out) { say(out, /^invited/.test(out) ? 'warn' : 'ok');
-               $('#grEmail').value = ''; loadAccounts(); loadPending(); }
-    return;
-  }
-
-  /* Two statistician entries, one role: the picker distinguishes the SCOPE,
-     which is the only thing that differs. */
-  const role = picked === 'statistician_league' ? 'statistician' : picked;
-  const scopeType = role === 'platform_admin' ? 'platform'
-                  : (picked === 'league_admin' || picked === 'statistician_league')
-                    ? 'league' : 'team';
-  if (scopeType !== 'platform' && !scopeId)
-    return say('Choose what that role applies to.', 'err');
-  if (role === 'platform_admin' &&
-      !confirm('A platform admin can do everything on this page, to every ' +
-               'league, including removing you.\n\nGrant it to ' + email + '?')) return;
-
-  const out = await rpc('grant_role', {
-    p_email: email, p_role: role, p_scope_type: scopeType, p_scope_id: scopeId });
-  /* "invited" is an address with no account yet: 0140 stores the appointment and
-     applies it when they confirm their email, so it is a success worth a note
-     rather than the refusal it used to be. */
-  if (out) { say(out, /^invited/.test(out) ? 'warn' : 'ok'); $('#grEmail').value = '';
-             loadAccounts(); loadOverview(); loadPending(); }
 }
 
 /* ------------------------------------------------------- waiting invites --- */
@@ -713,10 +903,16 @@ async function loadLeagues() {
     const priv = el('button', 'ep-btn mini', l.visibility === 'private' ? 'make public' : 'make private');
     priv.type = 'button';
     priv.addEventListener('click', () => setVisibility(l));
+    /* APPOINT SOMEBODY TO THE LEAGUE YOU ARE LOOKING AT. The grant form at the
+       bottom of the accounts tab could always do this, but only by leaving this
+       screen, typing an address and finding this league again in a list of every
+       league on the platform. The league is right here. */
+    const ppl = el('button', 'ep-btn mini', 'people'); ppl.type = 'button';
+    ppl.addEventListener('click', () => togglePeople(l, box, ppl));
     const del = el('button', 'ep-btn mini danger', 'delete league'); del.type = 'button';
     del.addEventListener('click', () => deleteLeague(l));
     const sp = el('span'); sp.style.marginLeft = 'auto';
-    acts.append(view, save, priv, sp, del);
+    acts.append(view, save, priv, ppl, sp, del);
     box.appendChild(acts);
 
     /* The private league's own strip: what it is, and the links that open it.
@@ -766,6 +962,100 @@ async function setVisibility(l) {
   if (out) { say(out, 'ok'); loadLeagues(); }
 }
 
+/* --------------------------------------------------- a league's people --- */
+const clubsByIdCache = {};   // id -> platform_teams row, so a club-scoped role can be named
+/* Everybody attached to this league and the clubs in it: league_members (0007)
+   covers both, league_writers_list (0051) the press officers, pending_roles_list
+   (0140) the appointments still waiting on an address. Adding one is grantTo(),
+   the same call the accounts tab makes — so an address with no account behind it
+   waits here exactly as it does there, rather than being refused. */
+async function togglePeople(l, box, btn) {
+  const open = box.querySelector('.lg-people');
+  if (open) { open.remove(); btn.textContent = 'people'; return; }
+  btn.textContent = 'hide people';
+
+  const host = el('div', 'lg-people');
+  host.style.cssText = 'margin-top:7px;padding:8px;border:1px solid var(--rule);border-radius:8px';
+  box.appendChild(host);
+
+  const add = el('div', 'row');
+  const email = el('input', 'ep-input grow');
+  email.type = 'email'; email.placeholder = 'them@club.org';
+  const role = el('select', 'ep-input'); role.style.flex = '0 0 auto';
+  Object.keys(LEAGUE_ROLES).forEach(k => role.append(new Option(LEAGUE_ROLES[k], k)));
+  const go = el('button', 'ep-btn mini pri', 'add to ' + l.name); go.type = 'button';
+  add.append(email, role, go);
+  host.appendChild(add);
+
+  const list = el('div'); list.style.marginTop = '7px';
+  host.appendChild(list);
+
+  const draw = async () => {
+    list.textContent = '';
+    const [members, writers, waiting] = await Promise.all([
+      rpc('league_members', { p_league: l.id }),
+      rpc('league_writers_list', { p_league: l.id }),
+      rpc('pending_roles_list', { p_league: l.id })
+    ]);
+    let n = 0;
+    const line = (label, cls, email2, onKill) => {
+      n++;
+      const r = el('div', 'row');
+      r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+      r.appendChild(el('span', 'pill ' + (cls || ''), label));
+      const who = el('span', 'mt', email2); who.style.overflowWrap = 'anywhere';
+      r.append(who);
+      if (onKill) {
+        const x = el('button', 'ep-btn mini danger', 'revoke'); x.type = 'button';
+        x.style.marginLeft = 'auto';
+        x.addEventListener('click', onKill);
+        r.appendChild(x);
+      }
+      list.appendChild(r);
+    };
+
+    (members || []).forEach(m => {
+      const cls = { league_admin: 'la', team_manager: 'tm', statistician: 'st' }[m.role] || '';
+      /* league_members carries the clubs in the league too, so say which club a
+         club-scoped role is for — "team manager" alone is not an answer. */
+      const clubName = m.scope_type === 'team'
+        ? ' · ' + ((clubsByIdCache[m.scope_id] || {}).name || 'a club')
+        : '';
+      line(m.role.replace(/_/g, ' ') + clubName, cls, m.email, async () => {
+        if (!confirm('Revoke ' + m.role.replace(/_/g, ' ') + ' from ' + m.email + '?')) return;
+        const out = await rpc('revoke_role', { p_membership: m.membership_id });
+        if (out) { say(out + ' — ' + m.email, 'ok'); draw(); loadLeagues(); }
+      });
+    });
+    (writers || []).forEach(w => line('news writer', '', w.email, async () => {
+      if (!confirm('Stop ' + w.email + ' writing for ' + l.name + '?')) return;
+      const out = await rpc('revoke_league_writer', { p_id: w.id });
+      if (out) { say(out, 'ok'); draw(); }
+    }));
+    (waiting || []).forEach(pd => line(pd.role.replace(/_/g, ' ') + ' · waiting', '', pd.email,
+      async () => {
+        const out = await rpc('pending_role_cancel', { p_id: pd.id });
+        if (out) { say(out, 'ok'); draw(); loadPending(); }
+      }));
+
+    if (!n) list.appendChild(el('div', 'empty',
+      'Nobody but the platform administrators. Add whoever runs it above — the address does ' +
+      'not need an account yet.'));
+  };
+
+  go.addEventListener('click', async () => {
+    const v = (email.value || '').trim();
+    if (!v) return say('Enter the address of the person to add.', 'err');
+    if (await grantTo(v, role.value, l.id)) { email.value = ''; draw(); loadLeagues(); loadPending(); }
+  });
+
+  /* the club names league_members refers to, fetched once per console session */
+  if (!Object.keys(clubsByIdCache).length) {
+    const rows = await rpc('platform_teams', { p_search: '' });
+    (rows || []).forEach(t => { clubsByIdCache[t.id] = t; });
+  }
+  draw();
+}
 /* ------------------------------------------------------------- invites --- */
 /* Drawn under the league it belongs to rather than in a panel of its own: a
    link only means anything next to the league it opens, and the first thing
@@ -954,8 +1244,75 @@ async function loadClubs() {
     const lg = leagues.find(l => l.id === t.league_id);
     view.href = '../../t/?l=' + encodeURIComponent(lg ? lg.slug : '') +
                 '&t=' + encodeURIComponent(t.slug);
-    ac.appendChild(view);
+    /* WHO LOOKS AFTER THIS CLUB, and appointing them here. The managers count
+       three cells to the left was the only thing this page said about them, and
+       a number is not a name. Opens as a row beneath this one rather than
+       replacing the table, because a club's people list is two or three lines
+       and the club it belongs to should stay visible above it. */
+    const ppl = el('button', 'ep-btn mini', 'people'); ppl.type = 'button';
+    ppl.addEventListener('click', () => toggleClubPeople(t, tr, ppl));
+    ac.append(ppl, view);
   });
+}
+
+async function toggleClubPeople(t, tr, btn) {
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('club-people')) { next.remove(); btn.textContent = 'people'; return; }
+  btn.textContent = 'hide';
+
+  const row = tr.parentNode.insertBefore(document.createElement('tr'), tr.nextSibling);
+  row.className = 'club-people';
+  const cell = row.insertCell(); cell.colSpan = 6;
+  cell.style.cssText = 'padding:10px 9px;background:color-mix(in oklch,var(--lume) 4%,transparent)';
+
+  const add = el('div', 'row');
+  const email = el('input', 'ep-input grow');
+  email.type = 'email'; email.placeholder = 'them@club.org';
+  const role = el('select', 'ep-input'); role.style.flex = '0 0 auto';
+  Object.keys(TEAM_ROLES).forEach(k => role.append(new Option(TEAM_ROLES[k], k)));
+  const go = el('button', 'ep-btn mini pri', 'add to ' + t.name); go.type = 'button';
+  add.append(email, role, go);
+  cell.appendChild(add);
+
+  const list = el('div'); list.style.marginTop = '6px';
+  cell.appendChild(list);
+
+  const draw = async () => {
+    list.textContent = '';
+    const rows = await rpc('team_members', { p_team: t.id });
+    if (!rows || !rows.length) {
+      list.appendChild(el('div', 'empty',
+        'Nobody yet. A club manager opens the club portal — squads, crests, contact details.'));
+      return;
+    }
+    rows.forEach(m => {
+      const r = el('div', 'row');
+      r.style.cssText = 'align-items:center;gap:8px;margin-bottom:4px';
+      const cls = m.role === 'team_manager' ? 'tm' : 'st';
+      r.appendChild(el('span', 'pill ' + cls, m.role.replace(/_/g, ' ')));
+      const who = el('span', 'mt', m.email + (m.confirmed ? '' : ' · has never confirmed this address'));
+      who.style.overflowWrap = 'anywhere';
+      r.appendChild(who);
+      const x = el('button', 'ep-btn mini danger', 'revoke'); x.type = 'button';
+      x.style.marginLeft = 'auto';
+      x.addEventListener('click', async () => {
+        if (!confirm('Revoke ' + m.role.replace(/_/g, ' ') + ' at ' + t.name +
+                     ' from ' + m.email + '?')) return;
+        const out = await rpc('revoke_role', { p_membership: m.membership_id });
+        if (out) { say(out + ' — ' + m.email, 'ok'); draw(); loadClubs(); }
+      });
+      r.appendChild(x);
+      list.appendChild(r);
+    });
+  };
+
+  go.addEventListener('click', async () => {
+    const v = (email.value || '').trim();
+    if (!v) return say('Enter the address of the person to add.', 'err');
+    if (await grantTo(v, role.value, t.id)) { email.value = ''; draw(); loadClubs(); loadPending(); }
+  });
+
+  draw();
 }
 
 /* ------------------------------------------------------------ moderation --- */

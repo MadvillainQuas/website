@@ -61,9 +61,14 @@ ok('the queue supplies the path the move needs',
 /* ---- 3. a statistician can belong to a league ----------------------------- */
 ok('the console offers a league-wide statistician',
    /statistician_league/.test(html) && /statistician_league/.test(js));
+/* Which roles take a league and which take a club used to be an if-chain inside
+   fillScopePicker. It has four callers now — the grant form, the account
+   dashboard, a league card and a club row — so it is one table, LEAGUE_ROLES,
+   and the picker fills from `leagues` for anything in it. Same guarantee, read
+   where it now lives. */
 ok('...scoped to a league, not a club',
-   /role === 'statistician_league'\)\s*\{[\s\S]{0,200}leagues\.forEach/.test(js) ||
-   /statistician_league'\)\s*\{[\s\S]{0,200}leagues\.forEach/.test(js));
+   /statistician_league:/.test(js) &&
+   /if \(LEAGUE_ROLES\[picked\]\) \{[\s\S]{0,160}leagues\.forEach/.test(js));
 ok('...granted as the statistician role the schema knows',
    /picked === 'statistician_league' \? 'statistician'/.test(js));
 ok('the club-scoped statistician is still available',
@@ -88,7 +93,8 @@ ok('...and nothing else in the console grants on it',
 
 /* ---- 4. the news writer role is grantable here ---------------------------- */
 ok('the console offers the news writer role', /news_writer/.test(html));
-ok('...scoped to a league', /role === 'news_writer'[\s\S]{0,240}leagues\.forEach/.test(js));
+ok('...scoped to a league', /news_writer:/.test(js) &&
+   /if \(LEAGUE_ROLES\[picked\]\) \{[\s\S]{0,160}leagues\.forEach/.test(js));
 ok('...and calls the writer function, not grant_role',
    /picked === 'news_writer'[\s\S]{0,320}rpc\('grant_league_writer'/.test(js));
 ok('...which the migration makes reachable over the API',
@@ -162,6 +168,62 @@ ok('granting platform admin still warns first',
   ok('the migration checks the shipped function body, not its own text',
      /pg_get_functiondef[\s\S]{0,200}delete\s\+from\s\+storage\.objects/.test(mig73) ||
      /src ~\* 'delete/.test(mig73));
+}
+
+
+/* ---- 5. appointing somebody where you are already looking ---------------- */
+console.log('\n5. a role is granted in context, not only from one form at the bottom');
+{
+  const mig = read('supabase', 'migrations', '0141_account_and_club_people.sql');
+
+  /* ONE ACCOUNT, WHOLE. Four different things attach a person to a league and
+     the accounts table could only ever show the first, so a news writer, a
+     private-league guest and an invitation still waiting on the address were
+     all invisible from this page. */
+  for (const k of ['memberships', 'writers', 'guests', 'pending']) {
+    ok('platform_account returns ' + k, new RegExp("'" + k + "',").test(mig));
+  }
+  ok('...and names the scope rather than returning a uuid to draw',
+     /'label',\s+case ms\.scope_type/.test(mig));
+  ok('a pending row is matched on the ADDRESS, not the id',
+     /from pending_roles pe where pe\.email = lower\(u\.email::text\)/.test(mig),
+     'the whole point of a pending row is that there was no account to point at');
+  ok('platform_account is platform admins only',
+     /platform administrators only/.test(mig));
+  ok('team_members is gated on is_team_manager, so a league admin sees their own clubs',
+     /where public\.is_team_manager\(p_team\)/.test(mig));
+
+  /* NO NEW WRITE PATH. Every grant and revoke reachable from the new screens is
+     a function that already existed, so this adds no authorisation surface. */
+  ok('0141 adds readers only — no new way to change anybody’s rights',
+     !/\binsert into memberships\b/.test(mig.split('SELF-TEST')[0]) &&
+     !/\bdelete from memberships\b/.test(mig.split('SELF-TEST')[0]));
+
+  ok('clicking an account opens its dashboard',
+     /openA\.addEventListener\('click', \(\) => openAccount\(r\.user_id\)\)/.test(js));
+  ok('the dashboard grants against THAT account, with the scope chosen by name',
+     /grantTo\(a\.email, role\.value, scope\.value \|\| null\)/.test(js));
+  ok('a league card can appoint somebody to THAT league',
+     /grantTo\(v, role\.value, l\.id\)/.test(js));
+  ok('a club row can appoint somebody to THAT club',
+     /grantTo\(v, role\.value, t\.id\)/.test(js));
+
+  /* The mapping from a picker entry to (role, scope_type) now has four callers.
+     Four copies would drift, and the one that drifted would quietly grant the
+     wrong KIND of scope — a statistician tied to a club instead of a league. */
+  ok('the role-to-scope mapping exists once, not once per screen',
+     (js.match(/const role = picked === 'statistician_league'/g) || []).length === 1);
+  ok('...and the grant form goes through it too',
+     /function fillScopePicker\(\) \{\s*\n\s*fillScopeFor\(/.test(js) &&
+     /await grantTo\(email, \$\('#grRole'\)\.value/.test(js));
+  ok('a league-wide statistician is still role=statistician, scope=league',
+     /picked === 'league_admin' \|\| picked === 'statistician_league'\)\s*\n?\s*\? 'league'/.test(js));
+
+  ok('deleting from the dashboard closes it only if the account really went',
+     /if \(await deleteAccount\(\{ user_id: a\.user_id, email: a\.email \}\)\) backToAccounts\(\)/.test(js),
+     'a cancelled prompt or a mistyped address must leave the dashboard open');
+  ok('the account list is put back when you leave the dashboard',
+     /function backToAccounts\(\)/.test(js) && /id="acctList"/.test(html));
 }
 
 
