@@ -54,6 +54,7 @@ const admin = read('epinoia', 'admin', 'admin.js');
 const adminH = read('epinoia', 'admin', 'index.html');
 const me = read('epinoia', 'me', 'me.js');
 const meH = read('epinoia', 'me', 'index.html');
+const home = read('epinoia', 'home.js');
 const robots = read('epinoia', 'robots.txt');
 
 let pass = 0, fail = 0;
@@ -247,6 +248,54 @@ ok('an error in this pane is reported in this pane',
    'status() writes into the notifications section, which is in the other pane');
 ok('the pane is drawn when it is opened, not at boot',
    /if \(want === 'leagues'\) paintMyLeagues\(\);/.test(me));
+
+/* ---- 10. the league's own page opens for the people let into it ---------- */
+console.log('\n10. a private league has a league page, not the hub');
+/* WHAT WENT WRONG. /epinoia/?l=<slug> resolves the league and switches into
+   league mode; not finding it falls through to the platform hub. home.js reads
+   anonymously on purpose — access.js attaches a token only where it changes the
+   answer for a members-only league, which keeps an open league's request
+   cacheable — and a private league is the OTHER case where it changes the
+   answer. So somebody who followed their invite link, joined, and clicked
+   through was shown the hub, every league on it, and "No league called ...".
+   The league was there; they were not asking as themselves. */
+ok('the league lookup is retried as the account when it comes back empty',
+   /if \(!LEAGUE\) \{[\s\S]{0,420}sessionReady\(\)[\s\S]{0,200}AUTHED = true;[\s\S]{0,120}await api\(q\)/.test(home));
+ok('...and the rest of the page then reads as them too',
+   /if \(AUTHED && typeof A\.session === 'function'\)/.test(home),
+   'the games, standings and clubs of a private league are hidden from an anonymous read as well');
+ok('a slug that really is wrong goes back to an anonymous hub',
+   /if \(!LEAGUE\) AUTHED = false;/.test(home),
+   'the hub below must stay cacheable');
+ok('the ordinary case is untouched: one anonymous request, still cacheable',
+   /const ls = await api\(q\);\s*\n\s*LEAGUE = ls\[0\] \|\| null;\s*\n\s*\} catch/.test(home));
+
+/* ---- 11. an empty league tells the person who can fill it --------------- */
+console.log('\n11. a league with nothing in it offers its admin a schedule');
+ok('the offer is drawn under the league name, beside the follow bell',
+   /leagueBell\(\);[\s\S]{0,220}offerSchedule\(\)/.test(home) &&
+   /\$\('#leagueActs'\)/.test(home.slice(home.indexOf('async function offerSchedule'))));
+ok('it goes to the fixtures section of the console, not its front door',
+   /a\.href = 'admin\/#fixtures'/.test(home) && /id="fixtures"/.test(adminH));
+ok('...and the console scrolls there after it has loaded',
+   /location\.hash === '#fixtures'/.test(admin) && /scrollIntoView/.test(admin),
+   'the browser jumps at parse time, before the fixture list has moved everything down');
+ok('a signed-out visitor costs no request at all',
+   /if \(!s \|\| !s\.token\) return;/.test(home) &&
+   home.indexOf('sessionReady') < home.indexOf('/rpc/whoami'),
+   'who before what: most people looking at a league are nobody on it');
+ok('only an admin of THIS league, or the platform, is offered it',
+   /who\.is_platform_admin \|\|\s*\n?\s*\(who\.leagues \|\| \[\]\)\.some\(l => l\.id === LEAGUE\.id\)/.test(home));
+ok('whoami carries the token explicitly, so it works on a public league too',
+   /rpc\/whoami[\s\S]{0,300}Authorization: 'Bearer ' \+ s\.token/.test(home),
+   'withAuth only attaches one for a members-only or an already-resolved private league');
+ok('"empty" means the league has no game at all, not none in the splash window',
+   /games\?select=id&limit=1&competition_id=in\.\(/.test(home),
+   'a league between seasons would otherwise be told to build a schedule it already has');
+ok('a league with no competition cannot break the in.() list',
+   /compIdsCache = \['00000000-0000-0000-0000-000000000000'\]/.test(home));
+ok('it is drawn once, however many times it is called',
+   /if \(host\.querySelector\('\.mk-sched'\)\) return;/.test(home));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

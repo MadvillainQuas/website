@@ -32,9 +32,27 @@ let WALL = { walled: false, fixturesPublic: true };
    viewer may see) and returns {} otherwise — the hub and every open league send
    exactly what they sent before. Asked per request, and a 401 on a token the
    server no longer accepts is asked once more without it. */
+/* Set once a PRIVATE league has been resolved for this page (see the ?l= block
+   in boot). access.js attaches a token only where it changes the answer for a
+   members-only league, which is right — an open league's request stays
+   anonymous and cacheable. A private league is the other case where it changes
+   the answer, and every read after the league row needs the same treatment: its
+   games, standings, clubs and news are all hidden from an anonymous request
+   too, so resolving the league and then reading the rest as a stranger would
+   draw a league page with nothing in it. */
+let AUTHED = false;
+
 function withAuth(headers, anon) {
   const A = window.EpinoiaAccess;
-  if (!anon && A && typeof A.authHeaders === 'function') {
+  if (anon || !A) return headers;
+  if (AUTHED && typeof A.session === 'function') {
+    try {
+      const s = A.session();
+      if (s && s.token) headers.Authorization = 'Bearer ' + s.token;
+    } catch (_) { /* anonymous, as before */ }
+    return headers;
+  }
+  if (typeof A.authHeaders === 'function') {
     try { Object.assign(headers, A.authHeaders() || {}); } catch (_) { /* anonymous, as before */ }
   }
   return headers;
@@ -983,6 +1001,88 @@ function leagueBell() {
   }).catch(() => { /* no bell; nothing else on the page depends on it */ });
 }
 
+/* ------------------------------------------- a league with nothing in it ---
+   A BRAND NEW LEAGUE IS AN EMPTY PAGE, and an empty page does not say what to
+   do about it. That is the first thing anybody handed a league sees — most
+   sharply on a private one, where the league exists precisely because somebody
+   is going to run it and there is nothing in it yet at all.
+
+   So when there is nothing scheduled and the person looking IS the one who
+   could schedule it, the page says so, under the league's name, and the button
+   goes straight to the fixtures section of their console rather than the front
+   door of it.
+
+   ONLY FOR THEM. A visitor to a league that has not started yet gets the
+   ordinary empty page — "no games yet" is the truth and there is nothing they
+   can do about it. And whoami is asked ONLY when the page is empty, which on
+   every established league is never, so this costs an ordinary league page
+   nothing. */
+async function offerSchedule() {
+  const host = $('#leagueActs');
+  if (!host || !LEAGUE || !LEAGUE.id) return;
+  if (host.querySelector('.mk-sched')) return;          // already offered
+
+  /* WHO BEFORE WHAT, because most people are nobody here. A signed-out visitor
+     — which is most of them — costs no request at all: there is no session, so
+     there is nothing to ask. whoami needs the token whatever the league is
+     (withAuth attaches one only for a members-only league, or a private one
+     this page has already resolved), so it is sent explicitly. */
+  const A = window.EpinoiaAccess;
+  let s = null;
+  try { s = A && typeof A.sessionReady === 'function' ? await A.sessionReady() : null; }
+  catch (_) { return; }
+  if (!s || !s.token) return;
+
+  let who = null;
+  try {
+    const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/whoami`, {
+      method: 'POST', cache: 'no-store',
+      headers: { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json',
+                 Accept: 'application/json', Authorization: 'Bearer ' + s.token },
+      body: '{}'
+    });
+    if (!r.ok) return;
+    who = await r.json();
+  } catch (_) { return; }
+  const mine = who && (who.is_platform_admin ||
+    (who.leagues || []).some(l => l.id === LEAGUE.id));
+  if (!mine) return;
+
+  /* Only now, and NOT "the games list on screen is empty" — the splash shows a
+     WINDOW of games (recent and upcoming), so a league between seasons would be
+     told to build a schedule it already has. This asks whether the league has
+     any game at all. */
+  try {
+    const any = await api('games?select=id&limit=1&competition_id=in.(' +
+      (await comps()).join(',') + ')');
+    if (any.length) return;
+  } catch (_) { return; }                               // could not tell: say nothing
+
+  const a = document.createElement('a');
+  a.className = 'ep-btn pri mk-sched';
+  a.href = 'admin/#fixtures';
+  a.textContent = 'Create a schedule';
+  a.style.textDecoration = 'none';
+  const note = el('span', 'ep-micro',
+    'nothing is scheduled in ' + LEAGUE.name + ' yet');
+  note.style.color = 'var(--ink-3)';
+  host.append(a, note);
+}
+
+/* Every competition in this league, for the "is there any game at all" check.
+   Cached: the page asks for them elsewhere too. */
+let compIdsCache = null;
+async function comps() {
+  if (compIdsCache) return compIdsCache;
+  const rows = await api('competitions?select=id,seasons!inner(league_id)' +
+    '&seasons.league_id=eq.' + LEAGUE.id);
+  compIdsCache = (rows || []).map(c => c.id);
+  /* in.() with an empty list is a syntax error, and a league with no
+     competition has no games by definition */
+  if (!compIdsCache.length) compIdsCache = ['00000000-0000-0000-0000-000000000000'];
+  return compIdsCache;
+}
+
 /* which competition the two embeds are showing; '' until the season is known,
    which is the embed's own default (its first competition) */
 let splashComp = '';
@@ -1330,12 +1430,39 @@ function renumber() {
   }
 
   if (WANT) {
+    /* the whole row: colour_source (0122) is read below, and naming a column a database
+       without that migration does not have would lose the league page altogether */
+    const q = 'leagues?slug=eq.' + encodeURIComponent(WANT) + '&select=*&limit=1';
     try {
-      /* the whole row: colour_source (0122) is read below, and naming a column a database
-         without that migration does not have would lose the league page altogether */
-      const ls = await api('leagues?slug=eq.' + encodeURIComponent(WANT) + '&select=*&limit=1');
+      const ls = await api(q);
       LEAGUE = ls[0] || null;
     } catch (_) { /* fall through to the hub */ }
+
+    /* A PRIVATE LEAGUE IS INVISIBLE TO AN ANONYMOUS READ (0139), and this page's
+       reads are anonymous by design — so somebody who followed their invite
+       link, joined, and clicked through landed on the hub being told "No league
+       called nbl-u18s-men-s". The league was there; they were not asking as
+       themselves.
+
+       Not found BUT signed in is worth exactly one more request, as them. It
+       costs nothing in the ordinary case (a public league resolves on the first
+       try and the request stays cacheable) and it is the only case where the
+       token changes the answer. If that finds it, the page keeps reading as
+       them, because everything else about the league is hidden too. If it does
+       not, the slug really is wrong: AUTHED goes back off so the hub below is
+       fetched anonymously, exactly as before. */
+    if (!LEAGUE) {
+      const A = window.EpinoiaAccess;
+      try {
+        const s = A && typeof A.sessionReady === 'function' ? await A.sessionReady() : null;
+        if (s && s.token) {
+          AUTHED = true;
+          const ls = await api(q);
+          LEAGUE = ls[0] || null;
+          if (!LEAGUE) AUTHED = false;
+        }
+      } catch (_) { AUTHED = false; }
+    }
   }
 
   if (LEAGUE) {
@@ -1358,6 +1485,9 @@ function renumber() {
         LEAGUE.name + '.';
     }
     leagueBell();
+    /* not awaited: an empty new league is the only case it draws anything in,
+       and nothing else on the page waits on the answer */
+    offerSchedule().catch(() => { /* the page is fine without the offer */ });
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
     }

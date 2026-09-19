@@ -148,6 +148,16 @@ async function render() {
                                 cfg: window.EPINOIA_CONFIG,
                                 season: season ? season.name : '' });
   await loadLeague();
+  /* ARRIVING ON #fixtures FROM A LEAGUE PAGE. A league page with nothing
+     scheduled sends its admin straight here (home.js offerSchedule). The
+     browser's own jump happens at parse time, long before the seasons, the
+     competitions and the fixture list have loaded and moved everything down the
+     page, so by now it is pointing somewhere else entirely. Done once, after
+     the load, and only for the one anchor that is linked to from outside. */
+  if (location.hash === '#fixtures') {
+    const sec = document.getElementById('fixtures');
+    if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
 }
 
 function renderAccess() {
