@@ -14,10 +14,11 @@ REM
 REM Config (URL + service key) is the worker's own: %APPDATA%\epinoia\worker.json. Nothing is
 REM pasted into this file and nothing is committed by it.
 REM
-REM To run it at every logon, once, from an Administrator prompt:
-REM   schtasks /Create /TN "Epinoia live lane" /SC ONLOGON /RL LIMITED /TR "\"%~f0\"" /F
-REM To stop it: close this window, or
-REM   schtasks /Delete /TN "Epinoia live lane" /F
+REM TO RUN IT AT EVERY LOGON, use install_live_lane.cmd instead of registering this file: that
+REM starts live_lane_supervisor.ps1, which stays invisible while nothing is on and opens a window
+REM only when a game is live or tips within 30 minutes. Registering THIS file keeps a console
+REM window open all day. (This file is still the way to run one lane by hand.)
+REM To stop the startup task: schtasks /Delete /TN "Epinoia live lane" /F
 
 cd /d "%~dp0"
 :loop
