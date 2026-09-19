@@ -99,6 +99,35 @@ REBOUND_SUBTYPE = {"OFFENSIVE": "offensive", "DEFENSIVE": "defensive"}
 TURNOVER_SUBTYPE = {"BAD_PASS": "badpass", "BALL_CONTROL": "ballhandling"}
 FOUL_SUBTYPE = {"PERSONAL_FOUL": "personal", "OFFENSIVE": "offensive"}
 
+#: THE SHOT CHART, calibrated rather than documented - BBL states no coordinate system anywhere.
+#: coordinates.x/y are an ABSOLUTE position on the vendor's own chart (0..273, 0..192 seen), not
+#: an offset from the basket the way EuroLeague/ACB give it, so the basket's own position has to
+#: be found before fibashape.at_rim_offset (which wants centimetres FROM the basket) can be used.
+#:
+#: Found by brute force against the one thing that cannot be ambiguous: FIBA RULES every three
+#: farther from the rim than every two, with zero tolerance. Grid-searching (x0, y0) for the
+#: point that makes Euclidean distance separate 2PT_THROW from 3PT_THROW attempts best, over the
+#: 142 real shots on game 2006920, landed on (112, 30) with 141 of 142 correctly separated by
+#: distance alone - the one miss sits right at the boundary, the kind of single scorer/rounding
+#: disagreement any 20-game validation would expect to find and not worth chasing on n=1.
+#: UNIT_TO_CM follows from the boundary those 142 shots settle on (99.5 raw units) against FIBA's
+#: known arc radius (660cm corner, 675cm elsewhere): both landed inside the same narrow band. This
+#: is the honest ceiling of what one game can prove; a second game validating (or correcting) the
+#: same two constants is worth doing the moment BBL has a second one to check it against.
+#:
+#: ONE THING THE DISTANCE CALIBRATION CANNOT SEE: whether the chart's two axes share a scale.
+#: UNIT_TO_CM comes from the 2PT/3PT distance boundary, which blends both axes through Euclidean
+#: distance - it says nothing about each axis alone. Applied to both, 20 of the 142 shots (14%,
+#: mostly wide-angle threes) land past the real sideline (7.5m from centre) on the sideways axis,
+#: which a scale of ~4.66 cm/unit rather than 6.7 would have kept in bounds. That gap is too large
+#: to be rounding, and too under-determined by one game to fix with a second guessed constant - a
+#: vendor court diagram that does not preserve the real 28x15m aspect ratio is at least as likely
+#: an explanation as a wrong isotropic scale. Clamped at the chart edge instead of extrapolated
+#: past it in _shot_chart below: a dot pinned to the sideline is honest about "wide", a dot
+#: floating outside the drawn court is not.
+BASKET_X, BASKET_Y = 112, 30
+UNIT_TO_CM = 6.7
+
 #: playerStats field -> the FIBA stat name fibashape stores.
 BOX = {
     "points": "sPoints",
@@ -295,11 +324,15 @@ class BBLAdapter(FibaLiveStatsAdapter):
             return None                    # not tipped off, or the page served no stats
 
         finished = str(gs.get("status") or "").upper() == "OFFICIAL"
-        sides, team_no, starters = [], {}, {}
+        team_no = {str(((gs.get(key) or {}).get("playerStats") or [{}])[0]
+                       .get("seasonTeam", {}).get("seasonTeamId") or ""): tno
+                   for key, tno in (("homeTeam", 1), ("guestTeam", 2))}
+        shots_by_team = self._shot_chart(actions, team_no)
+
+        sides, starters = [], {}
         for key, tno in (("homeTeam", 1), ("guestTeam", 2)):
             rows = (gs.get(key) or {}).get("playerStats") or []
             club = (rows[0].get("seasonTeam") or {}) if rows else {}
-            team_no[str(club.get("seasonTeamId") or "")] = tno
             players = {}
             for r in rows:
                 sp = r.get("seasonPlayer") or {}
@@ -318,7 +351,8 @@ class BBLAdapter(FibaLiveStatsAdapter):
             starters[tno] = {pid for pid, p in players.items() if p.get("starter")}
             totals = S.totals_of(players)
             sides.append(S.team((club.get("name") or "").strip(), (club.get("tlc") or "").strip(),
-                                score=totals.get("sPoints"), players=players, shots=[],
+                                score=totals.get("sPoints"), players=players,
+                                shots=shots_by_team.get(tno, []),
                                 totals=totals, logo=proxied(club.get("logoUrl") or "")))
 
         raw = S.game(sides[0], sides[1], played=finished,
@@ -332,6 +366,44 @@ class BBLAdapter(FibaLiveStatsAdapter):
         elif gs.get("scheduledTime"):
             b.tipoff_at = gs["scheduledTime"]
         return b
+
+    # ------------------------------------------------------------------ the shot chart
+    @staticmethod
+    def _shot_chart(actions: list, team_no: dict) -> dict:
+        # NOT NAMED _shots: FibaLiveStatsAdapter.bundle_from_raw already owns that name, for a
+        # different signature entirely (per-team shots already embedded in tm[1]/tm[2]). This
+        # adapter's shots are built here, before bundle_from_raw runs, and fed into S.team()
+        # instead - a name clash silently called the wrong method with the wrong arguments.
+        """tno -> [S.shot(...)], for every 2PT/3PT attempt that carries a real location.
+
+        A free throw and a shot logged at (0, 0) both look identical to an unset coordinate, so
+        both are skipped rather than plotted at the rim - a missing dot is honest; a rim dot for
+        a shot that was never at the rim is not. See BASKET_X/BASKET_Y/UNIT_TO_CM above for where
+        the conversion comes from."""
+        out: dict = {}
+        for a in actions:
+            kind = str(a.get("type") or "")
+            if kind not in ("TWO_POINT_THROW", "THREE_POINT_THROW"):
+                continue
+            c = a.get("coordinates") or {}
+            x, y = c.get("x"), c.get("y")
+            if not x and not y:
+                continue
+            tno = team_no.get(str(a.get("seasonTeamId") or ""), 0)
+            if not tno:
+                continue
+            across_cm = (S.num(x) - BASKET_X) * UNIT_TO_CM
+            toward_cm = (S.num(y) - BASKET_Y) * UNIT_TO_CM
+            cx, cy = S.at_rim_offset(across_cm, toward_cm)
+            # THE CHART'S OWN EDGE, NOT PAST IT (see the UNIT_TO_CM note above). cx is the
+            # along-the-court axis and stays where it was measured; cy is sideways and is what
+            # goes past the real sideline on a wide-angle shot, so only it is clamped.
+            cy = max(0.0, min(100.0, cy))
+            out.setdefault(tno, []).append(S.shot(
+                cx, cy, made=bool(a.get("isSuccessful")), three=kind == "THREE_POINT_THROW",
+                pno=str(a.get("seasonPlayerId") or "") or None,
+                period=max(1, S.num(a.get("period"), 1))))
+        return out
 
     # ------------------------------------------------------------------ the period lineups
     @staticmethod
