@@ -424,5 +424,21 @@ ok('...and 0139 is what filters it',
    /create policy leagues_read on public\.leagues for select/.test(m39) &&
    /or public\.league_invited\(id\)/.test(m39));
 
+/* ---- 19. the follow that would not save on a private league -------------- */
+console.log('\n19. a rotated token does not cost a follow');
+/* follow.js parsed localStorage ONCE and kept the answer for the life of the
+   page. Fine until something else refreshed the session — and a private
+   league's page is the only one that does, because home.js resolves the league
+   as the account (sessionReady). Supabase ROTATES on refresh, so the token this
+   file was still holding was dead, every write 401'd, and a failed follow used
+   to revert in silence. Nothing about following a private league was ever
+   different; the page around it was. */
+ok('the token is re-read rather than remembered for the page',
+   /if \(raw === rawSeen\) return sess \|\| null;/.test(follow) && /rawSeen = raw;/.test(follow));
+ok('...and the parse is still skipped while it has not changed',
+   /let rawSeen = null;/.test(follow));
+ok('a 401 is retried once with whatever the store now holds',
+   /if \(r\.status === 401\) \{ rawSeen = null; r = await send\(\); \}/.test(follow));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

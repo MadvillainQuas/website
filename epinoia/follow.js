@@ -33,12 +33,35 @@
      bell would sit there lit, having saved nothing. */
   let cols = null;
 
+  /* THE TOKEN IS RE-READ, NOT REMEMBERED.
+
+     This parsed localStorage once and kept the answer for the life of the page,
+     which was fine while nothing else refreshed the session — and stopped being
+     fine the moment a page did. access.js trades an expiring refresh token for
+     a new one and writes it back to the same key, and Supabase ROTATES on
+     refresh: the token this file was still holding is then dead. Every write
+     after that 401s, and because a failed follow used to revert in silence, the
+     bell simply did nothing for ever.
+
+     It bit the private league first and only, because a private league's page is
+     the one that calls sessionReady() — the refresh — before the bell is built
+     (home.js resolves the league as the account). Nothing about following a
+     private league was ever different; the page around it was.
+
+     Re-reading is one synchronous localStorage hit and a JSON.parse, and the
+     parse is skipped while the raw string has not changed, so the common case
+     costs a string comparison. `sess` stays as the memo, keyed on that string. */
+  let rawSeen = null;
   function session() {
-    if (sess !== null) return sess || null;
-    sess = false;
+    let raw = null;
     try {
       const m = String(C().supabaseUrl || '').match(/^https?:\/\/([^.]+)\./);
-      const raw = m && localStorage.getItem('sb-' + m[1] + '-auth-token');
+      raw = m ? localStorage.getItem('sb-' + m[1] + '-auth-token') : null;
+    } catch (_) { return null; }                 // private mode: as before, no session
+    if (raw === rawSeen) return sess || null;    // unchanged since we last looked
+    rawSeen = raw;
+    sess = false;
+    try {
       const j = raw && JSON.parse(raw);
       const tok = j && (j.access_token || (j.currentSession && j.currentSession.access_token));
       const exp = j && (j.expires_at || (j.currentSession && j.currentSession.expires_at));
@@ -78,7 +101,15 @@
     paintAll(kind, id);
     const body = {}; body[k] = prefs[k];
     try {
-      const r = await fetch(C().supabaseUrl + '/rest/v1/rpc/set_fan_prefs', { method: 'POST', headers: headers(), body: JSON.stringify({ p: body }) });
+      const send = () => fetch(C().supabaseUrl + '/rest/v1/rpc/set_fan_prefs',
+        { method: 'POST', headers: headers(), body: JSON.stringify({ p: body }) });
+      let r = await send();
+      /* ONE RETRY ON 401. The token can rotate between the moment this page
+         built its headers and the moment the write goes out — another tab
+         refreshing, or this page's own access.js doing it. session() re-reads
+         the store, so the second attempt carries the new one; a 401 that is
+         really "not signed in" fails again immediately and is reported. */
+      if (r.status === 401) { rawSeen = null; r = await send(); }
       if (!r.ok) {
         /* THE REASON, NOT JUST THE REVERT. This threw away everything the
            server said and put the bell back, so a follow that would not save

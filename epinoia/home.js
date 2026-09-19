@@ -1127,7 +1127,14 @@ async function offerShareLink(who) {
         b.textContent = 'copy it from here →';
         const box = document.createElement('input');
         box.value = url; box.readOnly = true;
-        box.className = 'ep-input';
+        box.className = 'ep-input mk-share-box';
+        /* LABELLED, because an unlabelled box on a page is a mystery. It sits
+           next to two buttons and the eye reads it as a control it is supposed
+           to do something with; a placeholder and a title say what it is even
+           in the moment before the value paints. */
+        box.placeholder = 'the invite link';
+        box.setAttribute('aria-label', 'the invite link for ' + LEAGUE.name);
+        box.title = 'the invite link — select it and copy';
         box.style.cssText = 'flex:1 1 260px;min-width:0;font-family:var(--f-mono,monospace)';
         box.addEventListener('focus', () => box.select());
         host.appendChild(box);
