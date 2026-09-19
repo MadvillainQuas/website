@@ -246,7 +246,7 @@ begin
     raise exception 'sign in first' using errcode = '42501';
   end if;
   if addr not like '%_@_%' then
-    raise exception '% is not an email address' using errcode = '22023';
+    raise exception '% is not an email address', addr using errcode = '22023';
   end if;
 
   if r = 'platform_admin' then
@@ -305,7 +305,7 @@ begin
     raise exception 'you do not administer that league' using errcode = '42501';
   end if;
   if addr not like '%_@_%' then
-    raise exception '% is not an email address' using errcode = '22023';
+    raise exception '% is not an email address', addr using errcode = '22023';
   end if;
 
   select id into uid from auth.users where lower(email) = addr limit 1;

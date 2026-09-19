@@ -132,6 +132,19 @@ jobs:
       - name: Engine smoke test
         run: node supabase/tests/engine.smoke.mjs
 
+      # DELIBERATELY EARLY IN THIS JOB. plpgsql only checks a RAISE's format
+      # string when the function body is compiled, i.e. at CREATE time, so a
+      # `raise exception '% ...'` with no argument is not a runtime surprise —
+      # it stops `supabase db push` dead. And db push is not transactional, so
+      # it stops it HALF WAY, leaving the earlier statements applied, the
+      # migration unrecorded, and the database in a state no file describes.
+      # That happened on 0140 (2026-09-19) and only good luck — every statement
+      # in that file being idempotent — made re-running it safe. A migration is
+      # pushed by hand from a laptop, so CI is the only chance to catch it
+      # before the database is the thing finding out.
+      - name: No migration can stop a db push half way on a malformed RAISE
+        run: node supabase/tests/plpgsql-raise.test.mjs
+
       # The uploader inserted `w` and `h` into a table whose columns are
       # `width` and `height`, so PostgREST refused every upload the platform
       # ever attempted and the media table stood at nought rows. The failure is
