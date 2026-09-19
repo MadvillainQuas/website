@@ -55,6 +55,8 @@ const adminH = read('epinoia', 'admin', 'index.html');
 const me = read('epinoia', 'me', 'me.js');
 const meH = read('epinoia', 'me', 'index.html');
 const home = read('epinoia', 'home.js');
+const nav = read('epinoia', 'nav.js');
+const navcss = read('epinoia', 'kit', 'nav.css');
 const robots = read('epinoia', 'robots.txt');
 
 let pass = 0, fail = 0;
@@ -295,7 +297,87 @@ ok('"empty" means the league has no game at all, not none in the splash window',
 ok('a league with no competition cannot break the in.() list',
    /compIdsCache = \['00000000-0000-0000-0000-000000000000'\]/.test(home));
 ok('it is drawn once, however many times it is called',
-   /if \(host\.querySelector\('\.mk-sched'\)\) return;/.test(home));
+   /if \(host\.querySelector\('\.mk-sched'\) \|\| host\.querySelector\('\.mk-share'\)\) return;/.test(home));
+
+/* ---- 12. the rail knows about a private league ---------------------------- */
+console.log('\n12. the sidebar');
+/* The rail reads the league list to decide which COUNTRY to open, from the
+   page's own league. That read was anonymous, so a private league was missing
+   from it: the page found nothing, fell back to the "every country" sentinel,
+   and put "Not yet filed" above a list of every league on the platform. */
+ok('the rail reads the leagues as the account when there is one',
+   /if \(!anon && sess && sess\.token\) headers\.Authorization = 'Bearer ' \+ sess\.token;/.test(nav));
+ok('...and a bad token falls back to the anonymous request, not to an empty rail',
+   /if \(r\.status === 401 && headers\.Authorization\) return pull\(true\);/.test(nav),
+   'storedSession only refuses an EXPIRED token; a revoked or malformed one would 401 and this is the navigation on every page');
+ok('a private league is its own group, not "Not yet filed"',
+   /const PRIVATE_KEY = '~private';/.test(nav) &&
+   /if \(code === PRIVATE_KEY\) return 'Private';/.test(nav));
+ok('...and it sorts to the top, above the countries',
+   /\(b === PRIVATE_KEY\) - \(a === PRIVATE_KEY\)/.test(nav));
+ok('every place that groups a league uses the one rule',
+   (nav.match(/groupKey\(/g) || []).length >= 5,
+   'the counter, the list filter, the page-opens-its-own-group path and settleCountry');
+
+console.log('\n13. your profile is a rail, and the way back to a private league');
+ok('the deck carries a sixth panel',
+   /const followsPanel = el\('div', 'panel followspanel'\);/.test(nav) &&
+   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel\)/.test(nav));
+ok('...and the CSS is a sixth, not a fifth',
+   /width:600%/.test(navcss) && /width:16\.6667%/.test(navcss) &&
+   /data-view="follows"\] \.deck\{ transform:translateX\(-83\.3333%\)/.test(navcss));
+ok('the panel is hidden from the tab order like every other',
+   /followsPanel\.setAttribute\('aria-hidden', String\(v !== 'follows'\)\)/.test(nav));
+ok('"your profile" opens it, and is still a real link for a modified click',
+   /openFollows\(\);/.test(nav) &&
+   /e\.button !== 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\|\s*\n?\s*e\.shiftKey \|\| e\.altKey\) return;/.test(nav));
+ok('...and says so with a chevron',
+   /meLink\.append\(el\('span', 'ic', '☆'\), el\('span', 'tx', 'your profile'\),\s*\n?\s*el\('span', 'lgo', '›'\)\)/.test(nav));
+ok('the list is clubs AND leagues, read as the account',
+   /fan_prefs\?select=fav_league_ids,fav_team_ids/.test(nav) &&
+   /leagues\?id=in\./.test(nav) && /teams\?id=in\./.test(nav));
+ok('a private league in the list is marked as one',
+   /if \(l\.visibility === 'private'\) a\.append\(el\('span', 'lgo', '\\u\{1F511\}'\)\)/.test(nav) ||
+   /l\.visibility === 'private'/.test(nav));
+ok('a club carries its league slug from the query, not from the rail\u2019s own list',
+   /leagues\(slug\)/.test(nav) && /\(t\.leagues && t\.leagues\.slug\)/.test(nav),
+   '/t/?l=&t=slug is a broken link, not a degraded one');
+ok('a draw that could not reach the answer is not cached',
+   /followsDrawn = true;\s+\/\/ the answer arrived; keep it/.test(nav),
+   'opened once while signed out, it would otherwise say "sign in" for the rest of the session');
+
+console.log('\n14. opening the link follows the league');
+{
+  const m42 = read('supabase', 'migrations', '0142_redeem_follows_the_league.sql');
+  ok('redeeming adds the league to the fan\u2019s own list',
+     /set fav_league_ids = array_append\(fav_league_ids, v\.league_id\)/.test(m42));
+  ok('...only if it is not already there',
+     /not \(v\.league_id = any \(fav_league_ids\)\)/.test(m42));
+  ok('...and never past 0133\u2019s cap',
+     /cardinality\(fav_league_ids\) < 20/.test(m42));
+  ok('being let in never fails because the follow did',
+     /exception when others then\s*\n\s*raise warning '0142/.test(m42),
+     'the access is the point; the follow is the courtesy');
+  ok('a second open does not re-follow what somebody deliberately dropped',
+     m42.indexOf("'already', true") < m42.indexOf('array_append'));
+}
+
+/* ---- 15. the share link, where the league is ----------------------------- */
+console.log('\n15. a private league\u2019s admin can hand out the link from the league');
+ok('the button is on the league page, under its name',
+   /b\.className = 'ep-btn mk-share';/.test(home) && /\$\('#leagueActs'\)/.test(home));
+ok('only on a private league, only for its admins',
+   /LEAGUE\.visibility !== 'private'\) return;/.test(home) &&
+   /who\.is_platform_admin \|\|/.test(home));
+ok('it reuses a live link rather than minting one every press',
+   /league_invites_list[\s\S]{0,300}find\(i => !i\.spent && i\.role === 'viewer'\)/.test(home),
+   'a permanent link is meant to be sent again and again');
+ok('...and mints one only when there is none',
+   /if \(!live\) \{[\s\S]{0,200}league_invite_create/.test(home));
+ok('a browser that refuses the clipboard still hands over the link',
+   /copy it from here/.test(home));
+ok('both offers share one whoami',
+   /offerShareLink\(who\)/.test(home));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

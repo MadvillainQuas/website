@@ -1020,7 +1020,7 @@ function leagueBell() {
 async function offerSchedule() {
   const host = $('#leagueActs');
   if (!host || !LEAGUE || !LEAGUE.id) return;
-  if (host.querySelector('.mk-sched')) return;          // already offered
+  if (host.querySelector('.mk-sched') || host.querySelector('.mk-share')) return;
 
   /* WHO BEFORE WHAT, because most people are nobody here. A signed-out visitor
      — which is most of them — costs no request at all: there is no session, so
@@ -1048,6 +1048,10 @@ async function offerSchedule() {
     (who.leagues || []).some(l => l.id === LEAGUE.id));
   if (!mine) return;
 
+  /* The link to hand somebody comes first and does not depend on the schedule:
+     a private league wants sharing whether or not it has fixtures yet. */
+  offerShareLink(who).catch(() => { /* the page is fine without it */ });
+
   /* Only now, and NOT "the games list on screen is empty" — the splash shows a
      WINDOW of games (recent and upcoming), so a league between seasons would be
      told to build a schedule it already has. This asks whether the league has
@@ -1067,6 +1071,73 @@ async function offerSchedule() {
     'nothing is scheduled in ' + LEAGUE.name + ' yet');
   note.style.color = 'var(--ink-3)';
   host.append(a, note);
+}
+
+/* ------------------------------------------ the way in, for a private league ---
+   THE LINK IS THE LEAGUE'S FRONT DOOR AND IT LIVED IN A CONSOLE. A private
+   league is not listed and not searchable, so the only way anybody else gets to
+   it is a link its admin sends them — and sending one meant opening the league
+   console, finding the invitations panel and copying from there. The thing you
+   want to hand somebody is wanted at the moment you are looking at the league,
+   so it is on the league.
+
+   ONE PRESS, AND IT IS ON THE CLIPBOARD. The newest live link if there is one —
+   a permanent link is meant to be sent again and again, and minting a second
+   one every time this is pressed would leave a league with forty live links and
+   no idea which is which. Only if there is none does it make one.
+
+   ONLY FOR ITS ADMINS, and only on a private league: a public league's front
+   page is its own link and the button would be noise. `who` is the answer
+   offerSchedule already has, so this costs no extra question. */
+async function offerShareLink(who) {
+  const host = $('#leagueActs');
+  if (!host || !LEAGUE || LEAGUE.visibility !== 'private') return;
+  if (host.querySelector('.mk-share')) return;
+  const mine = who && (who.is_platform_admin ||
+    (who.leagues || []).some(l => l.id === LEAGUE.id));
+  if (!mine) return;
+
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ep-btn mk-share';
+  b.textContent = 'Copy invite link';
+  b.title = 'the link that lets somebody into ' + LEAGUE.name;
+  host.appendChild(b);
+
+  b.addEventListener('click', async () => {
+    b.disabled = true;
+    const was = b.textContent;
+    b.textContent = 'one moment…';
+    try {
+      let rows = await rpc('league_invites_list', { p_league: LEAGUE.id });
+      let live = (rows || []).find(i => !i.spent && i.role === 'viewer');
+      if (!live) {
+        const made = await rpc('league_invite_create',
+          { p_league: LEAGUE.id, p_role: 'viewer', p_label: '' });
+        live = Array.isArray(made) ? made[0] : made;   // a table-returning RPC is an array of one
+      }
+      if (!live || !live.token) throw new Error('no link');
+      const url = new URL('invite/?i=' + encodeURIComponent(live.token), location.href).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        b.textContent = 'copied';
+      } catch (_) {
+        /* a browser that refuses the clipboard (or an insecure origin) must
+           still hand over the link, so it goes on screen to be copied by hand */
+        b.textContent = 'copy it from here →';
+        const box = document.createElement('input');
+        box.value = url; box.readOnly = true;
+        box.className = 'ep-input';
+        box.style.cssText = 'flex:1 1 260px;min-width:0;font-family:var(--f-mono,monospace)';
+        box.addEventListener('focus', () => box.select());
+        host.appendChild(box);
+        box.focus();
+      }
+    } catch (_) {
+      b.textContent = 'could not make a link';
+    }
+    setTimeout(() => { b.textContent = was; b.disabled = false; }, 2600);
+  });
 }
 
 /* Every competition in this league, for the "is there any game at all" check.

@@ -445,7 +445,13 @@
      has been published), each a link to the club's profile. The list is fetched the first
      time the layer opens and kept for the page. */
   const teamsPanel = el('div', 'panel teamspanel');
-  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel);
+  /* YOUR OWN, off the footer. Not another rung of the ladder above it — it is
+     reached from "your profile" at the bottom of the rail, not by drilling down
+     through countries — but it rides the same deck so it inherits the slide,
+     the focus handling, the height animation and the phone drawer rather than
+     growing a second mechanism beside them. */
+  const followsPanel = el('div', 'panel followspanel');
+  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -622,6 +628,131 @@
   thead.append(tback, tname);
   const tlist = el('div', 'teams');
   teamsPanel.append(thead, tlist);
+
+  /* ------------------------------------------------------- your own panel ---
+     "Your profile" in the footer was a link straight to /me/. It is now a way
+     in to the two things that are yours: the profile itself, and everything you
+     follow — clubs and leagues together, in one list, because a follow is a
+     follow and a reader looking for "that league I joined" does not first
+     decide which kind of thing it was.
+
+     IT IS THE ONLY ROUTE BACK TO A PRIVATE LEAGUE. A private league is not
+     listed, not searchable and not on the front page, so without this the way
+     back is the original invitation message. Redeeming a link follows the
+     league (0142), which puts it here. */
+  const fhead = el('div', 'phead');
+  const fback = el('button', 'back', '‹');
+  fback.type = 'button';
+  fback.title = 'Back';
+  fback.setAttribute('aria-label', 'Back');
+  const fname = el('a', 'lname');
+  fname.href = root + 'me/';
+  fname.append(marquee('Your profile'));
+  fhead.append(fback, fname);
+  const flist = el('div', 'pages');
+  followsPanel.append(fhead, flist);
+
+  fback.addEventListener('click', () => {
+    setView('country', true);
+    if (meLink) meLink.focus({ preventScroll: true });
+  });
+
+  let followsDrawn = false;
+  function openFollows() {
+    setView('follows', true);
+    drawFollows();
+    const first = flist.querySelector('a');
+    if (first) first.focus({ preventScroll: true });
+  }
+  window.epinoiaOpenFollows = () => openFollows();
+
+  /* Drawn the first time it is opened, then kept: this is a rail on every page
+     and most visits never touch it.
+
+     KEPT ONLY WHEN IT WORKED, though. Opened once while signed out, the panel
+     said "sign in to follow clubs and leagues" — and caching that would have
+     left it saying so for the rest of the session, including after signing in
+     on the very page it is drawn on. A draw that could not reach the answer
+     leaves the flag off and is tried again next time it is opened. */
+  async function drawFollows() {
+    if (followsDrawn) return;
+    flist.textContent = '';
+
+    const mk = (cls, ic, tx, href) => {
+      const a = el('a', 'item ' + cls);
+      a.href = href;
+      a.append(el('span', 'ic', ic), marquee(tx));
+      a.title = tx;
+      return a;
+    };
+    flist.appendChild(mk('', '☆', 'profile', root + 'me/'));
+
+    const hd = el('div', 'gtitle', 'your follows');
+    flist.appendChild(hd);
+    const holding2 = el('div', 'gempty', 'loading…');
+    flist.appendChild(holding2);
+
+    const cfg = window.EPINOIA_CONFIG;
+    const sess = storedSession();
+    if (!cfg || !cfg.supabaseUrl || !sess || !sess.token) {
+      holding2.textContent = 'sign in to follow clubs and leagues';
+      return;                                     // not drawn: ask again next time
+    }
+    const headers = { apikey: cfg.supabaseAnonKey, Accept: 'application/json',
+                      Authorization: 'Bearer ' + sess.token };
+    const get = async (p) => {
+      const r = await fetch(cfg.supabaseUrl + '/rest/v1/' + p, { cache: 'no-store', headers });
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    };
+
+    let prefs = null;
+    try { prefs = (await get('fan_prefs?select=fav_league_ids,fav_team_ids&limit=1'))[0] || null; }
+    catch (_) { holding2.textContent = 'unavailable'; return; }
+    followsDrawn = true;                          // the answer arrived; keep it
+
+    const lids = (prefs && prefs.fav_league_ids) || [];
+    const tids = (prefs && prefs.fav_team_ids) || [];
+    let ls = [], ts = [];
+    try {
+      /* Both as the account: a followed league can be a PRIVATE one, whose row
+         an anonymous request does not return at all. */
+      if (lids.length) ls = await get('leagues?id=in.(' + lids.join(',') +
+        ')&select=id,slug,name,colour_a,logo_path,visibility&order=name');
+      /* The club's league comes back WITH it. Building the link from nav's own
+         league list instead gave ?l= empty for any club whose league is not in
+         it — a club in a league this account cannot see, or simply a list that
+         has not arrived yet — and /t/?l=&t=slug is a broken link, not a
+         degraded one. */
+      if (tids.length) ts = await get('teams?id=in.(' + tids.join(',') +
+        ')&select=id,slug,name,colour,logo_path,league_id,leagues(slug)&order=name');
+    } catch (_) { /* draw whichever arrived */ }
+
+    holding2.remove();
+    if (!ls.length && !ts.length) {
+      flist.appendChild(el('div', 'gempty',
+        'nothing yet — press the bell on a club or a league'));
+      return;
+    }
+    ls.forEach(l => {
+      const a = el('a', 'item lrow');
+      a.href = root + '?l=' + encodeURIComponent(l.slug);
+      a.title = l.name + (l.visibility === 'private' ? ' · private' : '');
+      a.append(crest(l), marquee(l.name));
+      if (l.visibility === 'private') a.append(el('span', 'lgo', '\u{1F511}'));
+      flist.appendChild(a);
+    });
+    ts.forEach(t => {
+      const slug = (t.leagues && t.leagues.slug) ||
+                   (leagues.find(x => x.id === t.league_id) || {}).slug || '';
+      const a = el('a', 'item trow');
+      a.href = root + 't/?l=' + encodeURIComponent(slug) +
+               '&t=' + encodeURIComponent(t.slug);
+      a.title = t.name;
+      a.append(crest(t), marquee(t.name));
+      flist.appendChild(a);
+    });
+  }
   const teamsCache = {};
   async function fillTeams(l) {
     tname.textContent = '';
@@ -764,12 +895,27 @@
     encodeURIComponent(location.pathname + location.search);
   acctLink.title = 'sign in';
   acct.appendChild(acctLink);
-  /* a fan's own page: clubs, players, colour, light or dark, how to be told */
+  /* A fan's own page, and everything they follow. Still a real link to /me/ —
+     a middle click, a modified click and the phone drawer must all behave like
+     the link this has always been — but an ordinary click slides the rail into
+     the panel instead, where the profile and the follows both are. The chevron
+     says so; a row that opens a rail with nothing announcing it is a row people
+     click once, get taken somewhere unexpected, and stop trusting. */
   const meLink = el('a', 'item');
-  meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your profile'));
+  meLink.append(el('span', 'ic', '☆'), el('span', 'tx', 'your profile'),
+                el('span', 'lgo', '›'));
   meLink.href = root + 'me/';
-  meLink.title = 'your clubs, players and notifications';
+  meLink.title = 'your profile, and the clubs and leagues you follow';
   meLink.hidden = true;
+  meLink.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey ||
+        e.shiftKey || e.altKey) return;
+    /* in the phone sheet the row is the link it is: the sheet closes on any tap
+       inside it, so sliding the rail here would shut it with nothing opened */
+    if (nav.classList.contains('drawer-open')) return;
+    e.preventDefault();
+    openFollows();
+  });
   acct.appendChild(meLink);
   navFoot.appendChild(acct);
 
@@ -1279,6 +1425,7 @@
       rootPanel.setAttribute('aria-hidden', 'false');
       leaguePanel.setAttribute('aria-hidden', 'false');
       teamsPanel.setAttribute('aria-hidden', 'false');
+      followsPanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
         navdeck.classList.remove('animating');
         applyHidden();
@@ -1295,6 +1442,7 @@
     rootPanel.setAttribute('aria-hidden', String(v !== 'root'));
     leaguePanel.setAttribute('aria-hidden', String(v !== 'league'));
     teamsPanel.setAttribute('aria-hidden', String(v !== 'teams'));
+    followsPanel.setAttribute('aria-hidden', String(v !== 'follows'));
   }
 
   function fillHeader(l) {
@@ -1338,7 +1486,19 @@
      reader's own language. Where it is unavailable the code stands in, which
      is ugly and correct — better than a hard-coded English list that is wrong
      for half the world and out of date for the rest. */
+  /* A PRIVATE LEAGUE IS NOT A COUNTRY'S LEAGUE, IT IS YOURS. It has no place in
+     the geography — it is not listed, not searchable, and the only people who
+     can see it at all are the ones who were let in — so it gets a group of its
+     own at the top rather than falling into "Not yet filed" beside whichever
+     public leagues nobody has got round to filing. That bucket is where one
+     landed, under a heading that reads like a mistake. */
+  const PRIVATE_KEY = '~private';
+  function groupKey(l) {
+    return l && l.visibility === 'private' ? PRIVATE_KEY : ((l && l.country) || '');
+  }
+
   function flagOf(code) {
+    if (code === PRIVATE_KEY) return '\u{1F511}';
     /* A GLOBE for a league nobody has filed yet, and the same globe the
        countries page uses. The rail said "Elsewhere" behind a white flag and
        the page said "Not yet filed" behind a globe — two names and two glyphs
@@ -1351,6 +1511,7 @@
 
   let regionNames = null;
   function countryName(code) {
+    if (code === PRIVATE_KEY) return 'Private';
     if (!code) return 'Not yet filed';
     if (regionNames === undefined) return code;
     if (!regionNames) {
@@ -1367,7 +1528,7 @@
     clist.textContent = '';
     const groups = new Map();
     leagues.forEach(l => {
-      const k = l.country || '';
+      const k = groupKey(l);
       if (!groups.has(k)) groups.set(k, 0);
       groups.set(k, groups.get(k) + 1);
     });
@@ -1378,7 +1539,8 @@
     /* Named countries first, alphabetically by the name a reader sees rather
        than by the code — sorting by code puts Germany under D. */
     [...groups.keys()]
-      .sort((a, b) => (a === '') - (b === '') ||
+      .sort((a, b) => (b === PRIVATE_KEY) - (a === PRIVATE_KEY) ||
+                      (a === '') - (b === '') ||
                       countryName(a).localeCompare(countryName(b)))
       .forEach(code => {
         const row = el('button', 'item crow' + (country === code ? ' on' : ''));
@@ -1424,12 +1586,38 @@
   async function fillLeagues() {
     const cfg = window.EPINOIA_CONFIG;
     if (!cfg || !cfg.supabaseUrl) { holding.textContent = ''; return; }
-    try {
-      const r = await fetch(cfg.supabaseUrl +
-        '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,colour_source,theme,logo_path,country,nav&order=name',
-        { cache: 'no-store', headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+    /* AS THE ACCOUNT, WHEN THERE IS ONE. This read was anonymous, which was
+       invisible while every league was public and wrong the moment one was not:
+       a private league (0139) is hidden from an anonymous request, so it was
+       missing from the rail entirely — and because the rail works out which
+       country to open from the page's own league, a page showing a private
+       league found nothing, fell back to the "every country" sentinel, and put
+       "Not yet filed" above a list of every league on the platform.
+
+       A signed-out visitor still sends the anonymous, cacheable request they
+       always did. For a signed-in one the answer genuinely differs per person —
+       which private leagues they are in — so there was never a shared cache of
+       it to lose. */
+    const sess = storedSession();
+    const url = cfg.supabaseUrl +
+      '/rest/v1/leagues?select=id,slug,name,colour_a,colour_b,colour_source,theme,logo_path,country,nav,visibility&order=name';
+    /* A TOKEN MUST NEVER COST SOMEBODY THE WHOLE RAIL. storedSession only
+       refuses an EXPIRED token; one that is malformed, revoked, or left over
+       from a rotated project passes that check and comes back 401 — and this
+       list is the navigation on every page, so failing it would replace the
+       rail with "unavailable" for somebody who was browsing perfectly well a
+       moment ago. Signed-in reads are attempted, then fall back to exactly the
+       anonymous request this has always made. */
+    const pull = async (anon) => {
+      const headers = { apikey: cfg.supabaseAnonKey, Accept: 'application/json' };
+      if (!anon && sess && sess.token) headers.Authorization = 'Bearer ' + sess.token;
+      const r = await fetch(url, { cache: 'no-store', headers });
+      if (r.status === 401 && headers.Authorization) return pull(true);
       if (!r.ok) throw new Error(String(r.status));
-      leagues = await r.json();
+      return r.json();
+    };
+    try {
+      leagues = await pull(false);
     } catch (_) {
       holding.textContent = 'unavailable';
       return;
@@ -1438,7 +1626,7 @@
        league opens with the right country already chosen rather than in the
        list of every country. */
     const mine = leagues.find(l => l.slug === (lg || pageLeague));
-    if (mine) country = mine.country || '';
+    if (mine) country = groupKey(mine);
     drawCountries();
     /* named before the leagues are drawn, so the header is never briefly blank */
     fillCountryHead(country === null ? '' : country);
@@ -1458,7 +1646,7 @@
      Redrawing here corrects the panel the same way fillLeagues() would have, had it known. */
   function settleCountry(l) {
     if (!l || !leagues.length) return;
-    const want = l.country || '';
+    const want = groupKey(leagues.find(x => x.id === l.id) || l);
     if (country === want) return;
     country = want;
     drawCountries();
@@ -1521,7 +1709,7 @@
     list.textContent = '';
     const inCountry = country === null
       ? leagues
-      : leagues.filter(l => (l.country || '') === country);
+      : leagues.filter(l => groupKey(l) === country);
     if (!inCountry.length) {
       list.appendChild(el('div', 'gempty', 'none yet'));
       sizeDeck(false);
