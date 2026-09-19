@@ -2,7 +2,7 @@
 "code": "LNBE2",
 "label": "Espoirs ÉLITE 2",
 "adapter": "lnb",
-"updated": "2026-09-19T16:01:29.105096+00:00",
+"updated": "2026-09-19T18:52:37.001799+00:00",
 "games": [
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f2173455-a547-11f1-a83b-cb85daa47c95",
@@ -884,12 +884,12 @@
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed81950c-a547-11f1-ba0b-cb85daa47c95",
 "home": "Espoirs Caen",
 "away": "Espoirs Quimper",
-"status": "live",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Palais des Sports de Caen (Caen)",
-"homeScore": 42,
-"awayScore": 38,
-"hash": "3e09e62f5259b2c28045395d83b5fabde3a88ed8",
+"homeScore": 72,
+"awayScore": 69,
+"hash": "e4d6a7c8998a36f94428e4ed34bfadac746d21c8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed81950c-a547-11f1-ba0b-cb85daa47c95.json"
 },
 {

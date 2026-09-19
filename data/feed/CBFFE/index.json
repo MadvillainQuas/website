@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-19T15:58:01.547777+00:00",
+"updated": "2026-09-19T18:48:28.428947+00:00",
 "games": [
 {
 "id": "544677",
@@ -1541,51 +1541,52 @@
 "raw_ref": null
 },
 {
-"id": "544548",
+"id": "2890469",
 "home": "USK Praha",
 "away": "SK Slavia Praha ERA NBK",
-"status": "scheduled",
+"homeScore": 37,
+"awayScore": 36,
+"status": "live",
 "date": "2026-09-19T18:00:00Z",
+"hash": "162959f70874121b0b3512aed8bf601b5d2bf4c4",
 "venue": null,
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890469.json",
+"updated": "2026-09-19T18:47:44.069672+00:00"
 },
 {
 "id": "2890470",
 "home": "BK Opava",
 "away": "NH Ostrava",
-"homeScore": 0,
-"awayScore": 0,
-"status": "scheduled",
+"homeScore": 77,
+"awayScore": 89,
+"status": "final",
 "date": "2026-09-19T16:00:00Z",
-"hash": "41de0b019d6b07b198af816a4a2cb8d7bc1deb90",
+"hash": "d822edec3251fa538f08e9d75eb63a4038ce631d",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
-"updated": "2026-09-19T15:57:35.521779+00:00"
+"updated": "2026-09-19T18:47:59.374885+00:00"
 },
 {
 "id": "2890471",
 "home": "BK KVIS Pardubice",
 "away": "PUMPA Basket Brno",
-"homeScore": 77,
-"awayScore": 71,
-"status": "live",
+"homeScore": 85,
+"awayScore": 79,
+"status": "final",
 "date": "2026-09-19T14:00:00Z",
-"hash": "160174a5583258222a17286ef0009fdd49bd9dc7",
+"hash": "94c6521ffaa04335b342ff2ddc6665f5ecaba19c",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
-"updated": "2026-09-19T15:57:49.715146+00:00"
+"updated": "2026-09-19T18:48:15.180372+00:00"
 },
 {
 "id": "2890471",
 "home": "BK KVIS Pardubice",
 "away": "PUMPA Basket Brno",
-"homeScore": 75,
-"awayScore": 71,
-"status": "live",
-"hash": "c782431134bb237b7766df655fb2e88c71c52f0a",
+"homeScore": 85,
+"awayScore": 79,
+"status": "final",
+"hash": "80b09d59a1652cfda00330cf397f69fe8727db5e",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
 "date": "2026-09-19"
 },
@@ -1593,11 +1594,22 @@
 "id": "2890470",
 "home": "BK Opava",
 "away": "NH Ostrava",
-"homeScore": 0,
-"awayScore": 0,
-"status": "scheduled",
-"hash": "41de0b019d6b07b198af816a4a2cb8d7bc1deb90",
+"homeScore": 77,
+"awayScore": 89,
+"status": "final",
+"hash": "d822edec3251fa538f08e9d75eb63a4038ce631d",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
+"date": "2026-09-19"
+},
+{
+"id": "2890469",
+"home": "USK Praha",
+"away": "SK Slavia Praha ERA NBK",
+"homeScore": 37,
+"awayScore": 36,
+"status": "live",
+"hash": "ec0e9cadd3a6909aec1db3c4a1a4c3a13d269ab7",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890469.json",
 "date": "2026-09-19"
 },
 {
@@ -1611,7 +1623,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-19T15:57:21.376268+00:00"
+"updated": "2026-09-19T18:47:26.980758+00:00"
 },
 {
 "id": "2890468",

@@ -2,8 +2,24 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-19T16:18:06.940158+00:00",
+"updated": "2026-09-19T19:12:15.852685+00:00",
 "games": [
+{
+"id": "2007034",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "Telekom Baskets Bonn",
+"status": "scheduled",
+"date": "2026-09-25T16:30:00Z",
+"venue": "SWT-Arena"
+},
+{
+"id": "2007030",
+"home": "Phoenix Hagen",
+"away": "ratiopharm ulm",
+"status": "scheduled",
+"date": "2026-09-25T16:30:00Z",
+"venue": "Ischelandhalle"
+},
 {
 "id": "2007028",
 "home": "RASTA Vechta",
@@ -80,37 +96,38 @@
 "id": "2006921",
 "home": "Telekom Baskets Bonn",
 "away": "Veolia Towers Hamburg",
-"status": "scheduled",
+"homeScore": 45,
+"awayScore": 34,
+"status": "live",
 "date": "2026-09-19T18:00:00Z",
+"hash": "aeae66b2f9296006e7200da59e69e1cb43eceb1e",
 "venue": "Telekom Dome Bonn",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006921.json",
+"updated": "2026-09-19T19:12:02.330282+00:00"
 },
 {
 "id": "2006923",
 "home": "Basketball Löwen Braunschweig",
 "away": "VET-CONCEPT Gladiators Trier",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19T16:30:00Z",
 "venue": "Volkswagen Halle Braunschweig",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 116,
+"awayScore": 107,
+"hash": "c6ecf7f3c12db829e926d3a3d29de5def1db78d7",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006923.json"
 },
 {
 "id": "2006922",
 "home": "ROSTOCK SEAWOLVES",
 "away": "Phoenix Hagen",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19T16:30:00Z",
 "venue": "StadtHalle Rostock",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 102,
+"awayScore": 92,
+"hash": "ddd31031912e30d2f8244f8e433068ca359e1a96",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006922.json"
 },
 {
 "id": "2006920",
