@@ -437,7 +437,11 @@ begin
     perform set_config('request.jwt.claims',
       json_build_object('sub', admin_u, 'role', 'authenticated')::text, true);
 
-    msg := public.grant_role('T0140-New@Example.Test', 'league_admin', 'league', lg);
+    /* Deliberately mixed case and padded: grant_role folds an address on the
+       way in, and the assertion below looks for the folded form, so this proves
+       the folding rather than just the storing. Two invitations to the same
+       person differing only in case would otherwise be two rows. */
+    msg := public.grant_role('  T0140-New@Example.Invalid ', 'league_admin', 'league', lg);
     if msg like 'no account%' then
       raise exception '0140: grant_role still refuses an address with no account';
     end if;

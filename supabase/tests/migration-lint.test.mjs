@@ -1,5 +1,13 @@
 /* ============================================================================
-   EVERY RAISE HAS AN ARGUMENT FOR EVERY % IT WRITES.
+   TWO THINGS ABOUT A MIGRATION THAT ONLY A REAL `db push` WOULD OTHERWISE FIND.
+
+   Both of these cost a round trip to the person holding the database, and both
+   leave a NON-TRANSACTIONAL push stopped half way: earlier statements applied,
+   the migration unrecorded, the database in a state no file describes. Each was
+   found the expensive way, on 2026-09-19, one after the other in the same file.
+
+   -------------------------------------------------------------------------
+   1. EVERY RAISE HAS AN ARGUMENT FOR EVERY % IT WRITES.
 
    plpgsql does not check a RAISE's format string until the function body is
    COMPILED, which is at CREATE time. So
@@ -27,7 +35,28 @@
    is not a placeholder. A `raise ... using message = ...` form has no format
    string and is skipped.
 
-     node supabase/tests/plpgsql-raise.test.mjs
+   -------------------------------------------------------------------------
+   2. A MIXED-CASE ADDRESS IS TESTING CASE-FOLDING, SO THE FOLDED FORM MUST BE
+      IN THE SAME FILE.
+
+   `'  T0140-New@Example.Invalid '` in a self-test is not decoration: it is
+   there because the function under test lowercases and trims, and the
+   assertion below it looks for the folded form. 0117 and 0120 use the same
+   padded, mixed-case idiom for the same reason.
+
+   Which makes the pair a find-and-replace hazard, and that is exactly what
+   happened: a case-SENSITIVE sed rewrote the assertion's
+   `t0140-new@example.test` to `...@example.invalid` and left the mixed-case
+   literal above it alone. The function folded the address it was given, stored
+   it, and the assertion then looked for an address nobody had written. The
+   self-test failed on the live database, 33 statements in.
+
+   So: any email literal carrying an uppercase letter must have its lowercased
+   form somewhere else in the same file. Lower-case-only addresses are not
+   checked — 0036 uses one address for both the write and the read and has
+   nothing to fold — so this fires only on the idiom it is about.
+
+     node supabase/tests/migration-lint.test.mjs
    ============================================================================ */
 import path from 'node:path';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -88,12 +117,46 @@ for (const file of readdirSync(DIR).filter(f => f.endsWith('.sql')).sort()) {
   }
 }
 
-console.log(`plpgsql-raise: ${statements} RAISE statement(s) with a format string, across ` +
-            `${readdirSync(DIR).filter(f => f.endsWith('.sql')).length} migrations`);
+const files = readdirSync(DIR).filter(f => f.endsWith('.sql')).sort();
+console.log(`1. RAISE arity: ${statements} statement(s) with a format string, across ` +
+            `${files.length} migrations`);
 if (bad.length) {
   console.log('\nThese would stop a db push at CREATE FUNCTION time:\n');
   bad.forEach(b => console.log('  ' + b));
   console.log('\n' + bad.length + ' malformed RAISE(s)');
   process.exit(1);
 }
-console.log('every one has an argument for every %');
+console.log('   every one has an argument for every %');
+
+/* -- 2. a folded address must be findable in the file that folds it --------- */
+const ADDR = /'\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\s*'/g;
+const orphans = [];
+let folded = 0;
+
+for (const file of files) {
+  const src = readFileSync(path.join(DIR, file), 'utf8');
+  const lower = src.toLowerCase();
+  for (const m of src.matchAll(ADDR)) {
+    const addr = m[1];
+    if (addr === addr.toLowerCase()) continue;    // nothing to fold, nothing to pair
+    folded++;
+    /* The folded form has to appear somewhere OTHER than this literal itself.
+       The literal contributes one occurrence to the lowercased source, so the
+       count has to clear two. */
+    const want = addr.toLowerCase();
+    if (lower.split(want).length - 1 < 2) {
+      const line = src.slice(0, m.index).split('\n').length;
+      orphans.push(`${file}:${line} — ${addr} folds to ${want}, which appears nowhere else in ` +
+                   `this file. Whatever should read it back is looking for something else.`);
+    }
+  }
+}
+
+console.log(`\n2. folded addresses: ${folded} mixed-case email literal(s)`);
+if (orphans.length) {
+  console.log('\nThese would fail a migration self-test on the live database:\n');
+  orphans.forEach(o => console.log('  ' + o));
+  console.log('\n' + orphans.length + ' orphaned address(es)');
+  process.exit(1);
+}
+console.log('   each one is read back in its folded form');

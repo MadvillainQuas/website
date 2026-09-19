@@ -142,8 +142,14 @@ jobs:
       # in that file being idempotent — made re-running it safe. A migration is
       # pushed by hand from a laptop, so CI is the only chance to catch it
       # before the database is the thing finding out.
-      - name: No migration can stop a db push half way on a malformed RAISE
-        run: node supabase/tests/plpgsql-raise.test.mjs
+      #
+      # It checks a second thing for the same reason: a mixed-case address in a
+      # self-test is there to prove a function folds it, so the folded form has
+      # to be what the assertion below reads back. A case-sensitive sed broke
+      # that pair in 0140 and the self-test failed on the live database, 33
+      # statements in, on the very next push after the RAISE.
+      - name: No migration can stop a db push half way
+        run: node supabase/tests/migration-lint.test.mjs
 
       # The uploader inserted `w` and `h` into a table whose columns are
       # `width` and `height`, so PostgREST refused every upload the platform
