@@ -33,6 +33,29 @@ THE SUBSTITUTIONS ARE THE INTERESTING PART, and they are read, not guessed:
 Logos come back through the site's own image proxy. The api.basketball-bundesliga.de URL a
 club carries is 401 like everything else on that host; /_next/image?url=... serves the same
 file publicly, and is what the league's own pages use.
+
+THE FULL-SEASON SCHEDULE IS PROBABLY UNREACHABLE FROM ANY SCRIPT, and this is written honestly
+around that rather than pretending otherwise. The season page's "Mehr Laden" button calls
+.../games?currentPage=N&pageSize=9&gameType=... directly - a real browser walked it from 9
+fixtures to the whole season - but every scripted attempt to call it has failed with 401: plain
+`requests` (any User-Agent, Origin, Referer), a Chrome-TLS-impersonating client (curl_cffi), and
+a genuine headless Chrome via Selenium WITH navigator.webdriver explicitly patched out over CDP
+(the standard anti-detection fix). Tried across four different networks, including Louie's own
+residential connection running this exact ingest script - which failed there too, on the same
+connection his own manual clicking in a real browser had just succeeded on, seconds apart. That
+rules out IP reputation, cookies (the page sets none), a missing session token, plain TLS
+fingerprint, and the obvious automation flag, in that order, as each was tested and disproved.
+What is left is something no client can fake without a human actually clicking - most likely a
+device/interaction fingerprint the site's own JS computes and only genuine use produces.
+
+_games_page still drives a real headless Chrome (the same pattern the scraper already uses at
+ACB and NKL, and the Chrome the ingest workflow already provisions for exactly this). It is kept
+not because it is proven to work - in every test so far it has not - but because it costs
+nothing when it fails (the same graceful fallback either way) and asks nothing extra of anyone
+running this, so if the block on api.basketball-bundesliga.de ever turns out to be transient
+rather than permanent, this starts working with no further change. If Selenium/Chrome is not
+reachable at all, or the browser call also fails, this degrades to the season page's own SSR
+window (~10 fixtures) exactly as before - never to nothing.
 """
 from __future__ import annotations
 
@@ -47,6 +70,13 @@ import requests
 from . import fibashape as S
 from .base import GameBundle, ScheduleGame
 from .fiba_livestats import FibaLiveStatsAdapter, UA
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options as ChromeOptions
+    SELENIUM_AVAILABLE = True
+except ImportError:                       # a box with no Chrome/selenium: the fallback covers it
+    SELENIUM_AVAILABLE = False
 
 SITE = "https://easycredit-bbl.de"
 SCHEDULE_URL = f"{SITE}/saison/aktuelle-spiele"
@@ -196,35 +226,35 @@ class BBLAdapter(FibaLiveStatsAdapter):
         the site's own page size, both gameTypes, until a page comes back short or the safety cap
         is reached.
 
-        NOT EVERY NETWORK CAN REACH IT. This host answers 401 to a request it does not like, and
-        which requests it likes is not fully known - a browser succeeded and a script from this
-        machine did not, which reads as IP reputation rather than headers or TLS (curl, requests
-        and a Chrome-impersonating client all failed alike; changing User-Agent or adding
-        Origin/Referer changed nothing). lnb.fr already blocks GitHub's runners the same way
-        (docs/README notes it), so this may or may not clear from Actions - it will from a
-        residential connection. Either way the adapter must not go quiet: if the bulk endpoint
-        gives back nothing at all, this falls back to the season page's own embedded window
-        rather than returning zero fixtures.
+        NOT EVERY NETWORK CAN REACH IT WITHOUT A BROWSER. Plain requests.get (any User-Agent,
+        any Origin/Referer, even a TLS-impersonating client) gets 401 from three networks tried,
+        including a residential one that a real browser succeeded from moments earlier on the
+        exact same connection - so this drives a real headless Chrome instead of requests for the
+        bulk call (see _games_page). If no browser is reachable there either (a box with no
+        Chrome/selenium, or one where THAT is also blocked), this falls back to the season page's
+        own embedded window rather than returning zero fixtures - the adapter must not go quiet.
         """
         seen, out = set(), []
         bulk_ok = False
-        for kind in ("finished", "scheduled"):
-            for page in self._walk_games(kind):
-                bulk_ok = True
-                for item in page:
-                    g = self._fixture(item)
-                    if g and g.external_id not in seen:
-                        seen.add(g.external_id)
-                        out.append(g)
+        try:
+            for kind in ("finished", "scheduled"):
+                for page in self._walk_games(kind):
+                    bulk_ok = True
+                    for item in page:
+                        g = self._fixture(item)
+                        if g and g.external_id not in seen:
+                            seen.add(g.external_id)
+                            out.append(g)
+        finally:
+            self._close_driver()
 
         if bulk_ok:
             return out
 
-        # THE FALLBACK. Whatever blocked the bulk call almost certainly blocks the season page's
-        # own SSR request too, since both are the same host - but that request is one GET, costs
-        # nothing extra to try, and on a network the bulk endpoint refuses but the site itself
-        # still answers (a CDN edge, a different block rule per path) it recovers a small window
-        # instead of an empty league.
+        # THE FALLBACK. Whatever blocked the bulk call may well block the season page's own SSR
+        # request too, since both are the same host - but that request is one GET, costs nothing
+        # extra to try, and on a box with no browser at all (bulk never even attempted) it is the
+        # only source there is.
         html = self._text(schedule_url or SCHEDULE_URL)
         if not html:
             return []
@@ -252,23 +282,68 @@ class BBLAdapter(FibaLiveStatsAdapter):
                 return
 
     def _games_page(self, game_type: str, page_no: int) -> Optional[dict]:
+        """One page of GAMES_API, called from inside a real headless Chrome rather than requests
+        - see the module note for why plain requests cannot do this one call. Any failure (no
+        selenium, no Chrome binary, the page itself erroring) returns None, which _walk_games
+        reads as "stop, and let discover() fall back" - never an exception up to the caller."""
+        if not SELENIUM_AVAILABLE:
+            return None
+        driver = self._get_driver()
+        if driver is None:
+            return None
         gap = time.time() - getattr(self, "_last_page", 0)
         if gap < self.min_request_gap_s:
             time.sleep(self.min_request_gap_s - gap)
         self._last_page = time.time()
+        # fetch() FROM THE PAGE, not requests: the browser's own TLS/HTTP2 connection is the
+        # entire point, and this is the exact call the site's "Mehr Laden" button makes.
+        script = """
+            const cb = arguments[arguments.length - 1];
+            const p = new URLSearchParams({currentPage: arguments[0], pageSize: arguments[1],
+                                            gameType: arguments[2], competition: 'BBL'});
+            fetch('%s?' + p.toString())
+              .then(r => r.ok ? r.json() : null)
+              .then(cb)
+              .catch(() => cb(null));
+        """ % GAMES_API
         try:
-            r = requests.get(GAMES_API, params={"currentPage": page_no, "pageSize": GAMES_PAGE_SIZE,
-                                                "gameType": game_type, "competition": "BBL"},
-                             headers={"User-Agent": UA, "Accept": "application/json",
-                                      "Origin": SITE, "Referer": SITE + "/"}, timeout=30)
-        except requests.RequestException:
+            driver.set_script_timeout(20)
+            return driver.execute_async_script(script, page_no, GAMES_PAGE_SIZE, game_type)
+        except Exception:
             return None
-        if r.status_code != 200:
-            return None
+
+    def _get_driver(self):
+        """Lazily start one headless Chrome for this discover() pass, reused across every page
+        and both gameTypes so the season is walked with one browser launch, not thirty-odd.
+        Navigated to the site itself first so fetch()'s Origin is genuine, not asserted."""
+        if getattr(self, "_driver", None) is not None:
+            return self._driver
         try:
-            return r.json()
-        except ValueError:
+            options = ChromeOptions()
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            options.add_argument(f"--user-agent={UA}")
+            options.add_experimental_option("excludeSwitches", ["enable-logging"])
+            options.add_argument("--log-level=3")
+            driver = webdriver.Chrome(options=options)
+            driver.set_page_load_timeout(30)
+            driver.get(SITE + "/")
+        except Exception:
+            self._driver = None
             return None
+        self._driver = driver
+        return driver
+
+    def _close_driver(self) -> None:
+        driver = getattr(self, "_driver", None)
+        if driver is not None:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        self._driver = None
 
     @staticmethod
     def _schedule_blocks(props: dict) -> Iterable[list]:
