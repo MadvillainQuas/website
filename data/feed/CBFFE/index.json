@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-18T22:05:14.829294+00:00",
+"updated": "2026-09-19T00:18:24.549083+00:00",
 "games": [
 {
 "id": "544677",
@@ -1587,7 +1587,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-18T22:04:57.246076+00:00"
+"updated": "2026-09-19T00:18:10.494127+00:00"
 },
 {
 "id": "2890468",
