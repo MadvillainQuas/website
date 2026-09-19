@@ -2,7 +2,7 @@
 "code": "LNB",
 "label": "Betclic ÉLITE",
 "adapter": "lnb",
-"updated": "2026-09-19T18:52:33.833724+00:00",
+"updated": "2026-09-19T21:47:13.458619+00:00",
 "games": [
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e7121516-a543-11f1-92c9-4d8da76af24d",
@@ -2888,12 +2888,12 @@
 "id": "f078d99b-6a42-11f1-a61d-93f597ed56e4_a0764a0e-a540-11f1-a70c-d59e3ec9c042",
 "home": "Paris",
 "away": "Nanterre",
-"status": "live",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)",
-"homeScore": 84,
-"awayScore": 79,
-"hash": "c0dce14e672f9df24a0c7894793c9ad651d1f690",
+"homeScore": 95,
+"awayScore": 88,
+"hash": "63b39a165bcc1d0d85659e4a66b36dea7e69e39f",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f078d99b-6a42-11f1-a61d-93f597ed56e4_a0764a0e-a540-11f1-a70c-d59e3ec9c042.json"
 },
 {

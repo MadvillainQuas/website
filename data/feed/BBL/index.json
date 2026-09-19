@@ -2,15 +2,27 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-19T19:12:15.852685+00:00",
+"updated": "2026-09-19T22:09:12.364144+00:00",
 "games": [
+{
+"id": "2007032",
+"home": "SYNTAINICS MBC",
+"away": "Science City Jena",
+"status": "scheduled",
+"date": "2026-09-25T18:00:00Z",
+"venue": "Stadthalle Weißenfels"
+},
 {
 "id": "2007034",
 "home": "VET-CONCEPT Gladiators Trier",
 "away": "Telekom Baskets Bonn",
 "status": "scheduled",
 "date": "2026-09-25T16:30:00Z",
-"venue": "SWT-Arena"
+"venue": "SWT-Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007030",
@@ -18,7 +30,11 @@
 "away": "ratiopharm ulm",
 "status": "scheduled",
 "date": "2026-09-25T16:30:00Z",
-"venue": "Ischelandhalle"
+"venue": "Ischelandhalle",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007028",
@@ -96,11 +112,11 @@
 "id": "2006921",
 "home": "Telekom Baskets Bonn",
 "away": "Veolia Towers Hamburg",
-"homeScore": 45,
-"awayScore": 34,
-"status": "live",
+"homeScore": 96,
+"awayScore": 72,
+"status": "final",
 "date": "2026-09-19T18:00:00Z",
-"hash": "aeae66b2f9296006e7200da59e69e1cb43eceb1e",
+"hash": "d6467b5dff8096546af5bdbe60d1e6a3db125d81",
 "venue": "Telekom Dome Bonn",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006921.json",
 "updated": "2026-09-19T19:12:02.330282+00:00"
