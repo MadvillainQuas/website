@@ -15,9 +15,9 @@
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'">
 <title>Your profile · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
-<script src="../appmode.js?v=310"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=310">
-<link rel="stylesheet" href="../kit/nav.css?v=310">
+<script src="../appmode.js?v=311"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=311">
+<link rel="stylesheet" href="../kit/nav.css?v=311">
 <style>
   .hero{padding:calc(var(--u)*3);border-bottom:1px solid var(--rule)}
   .hname{font-family:var(--f-score);font-size:clamp(26px,5vw,40px);text-transform:uppercase;line-height:1;color:var(--team-a)}
@@ -131,6 +131,8 @@
     .opt{padding-left:16px;padding-right:16px}
     .opt.sub{padding-left:48px}
   }
+  /* the rail, as the learn page and the league page draw it */
+  .tabs-wrap{padding:calc(var(--u)*2) calc(var(--u)*3);border-bottom:1px solid var(--rule)}
 </style>
 </head>
 <body>
@@ -150,6 +152,17 @@
   </div>
 
   <div id="body" class="hide">
+    <!-- TWO THINGS LIVE HERE NOW, so the page says which one you are looking at
+         rather than making you scroll past one to find the other. Profile is
+         everything about you; Your leagues is everything you are attached to. -->
+    <div class="tabs-wrap">
+      <div class="ep-tabs" role="tablist">
+        <button class="ep-tab on" id="tabProfile" data-p="profile" role="tab" aria-selected="true">Profile</button>
+        <button class="ep-tab" id="tabLeagues" data-p="leagues" role="tab" aria-selected="false">Your leagues</button>
+      </div>
+    </div>
+
+    <div id="pane-profile" role="tabpanel">
     <!-- Membership (my_access, 0117). me.js fills it; before the migration is
          applied the RPC is missing and me.js hides the section and renumbers
          the rest. Cancelling here is the "one step, online" the join page's
@@ -234,12 +247,38 @@
     <!-- Deleting the account starts on the privacy page's erasure form, which is also the
          deletion link Google Play lists (roadmap Phase 8). -->
     <div class="note"><a id="deleteAccount" href="../privacy/#delete" style="color:var(--flare)">Delete my account</a></div>
+    </div><!-- /pane-profile -->
+
+    <!-- YOUR LEAGUES. Three ways an account is attached to a league, and they
+         are genuinely different things, so they are three sections rather than
+         one merged list: one you run, one you were let into, one you chose to
+         follow. Each is read with what the account can already see - a private
+         league's row is visible to its guests (0139), so nothing here needs a
+         reader of its own. -->
+    <div id="pane-leagues" class="hide" role="tabpanel">
+      <section class="sec">
+        <div class="ep-hdr"><span class="idx">01</span><h2>Leagues you run</h2>
+          <span class="note" id="runNote" style="padding:0;margin-left:auto"></span></div>
+        <div id="runList"></div>
+      </section>
+
+      <section class="sec">
+        <div class="ep-hdr"><span class="idx">02</span><h2>Private leagues</h2>
+          <span class="note" style="padding:0;margin-left:auto">opened with a link</span></div>
+        <div id="privList"></div>
+      </section>
+
+      <section class="sec">
+        <div class="ep-hdr"><span class="idx">03</span><h2>Leagues you follow</h2></div>
+        <div id="followList"></div>
+      </section>
+    </div>
   </div>
 </div>
-<script src="../config.js?v=310" defer></script>
-<script src="../vendor/supabase.js?v=310" defer></script>
-<script src="../push.js?v=310" defer></script>
-<script src="me.js?v=310" defer></script>
-<script src="../nav.js?v=310" defer></script>
+<script src="../config.js?v=311" defer></script>
+<script src="../vendor/supabase.js?v=311" defer></script>
+<script src="../push.js?v=311" defer></script>
+<script src="me.js?v=311" defer></script>
+<script src="../nav.js?v=311" defer></script>
 </body>
 </html>

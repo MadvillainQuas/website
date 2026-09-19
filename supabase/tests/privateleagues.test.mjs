@@ -51,6 +51,9 @@ const boot = read('epinoia', 'score', 'bootstrap.js');
 const invite = read('epinoia', 'invite', 'invite.js');
 const inviteH = read('epinoia', 'invite', 'index.html');
 const admin = read('epinoia', 'admin', 'admin.js');
+const adminH = read('epinoia', 'admin', 'index.html');
+const me = read('epinoia', 'me', 'me.js');
+const meH = read('epinoia', 'me', 'index.html');
 const robots = read('epinoia', 'robots.txt');
 
 let pass = 0, fail = 0;
@@ -203,6 +206,47 @@ ok('an assigned statistician gets their own fixtures rather than an empty picker
    /who\.scoring \|\| \[\]/.test(boot) && /games\?id=in\.\(/.test(boot));
 ok('the picker reads as the signed-in account, so a private league resolves',
    /h\.Authorization = 'Bearer ' \+ tok/.test(boot));
+
+/* ---- 8. a link that keeps working, said out loud ------------------------- */
+console.log('\n8. a permanent link is the default and says so');
+/* Unlimited was always possible — max_uses null, expires_at null — but the only
+   way to ask for it was leaving a box labelled "uses" empty, which reads as an
+   omission rather than a choice. */
+ok('the database still takes "no limit" as null',
+   /max_uses    int check \(max_uses is null or max_uses > 0\)/.test(m39) &&
+   /expires_at  timestamptz,\s+-- null = no expiry/.test(m39));
+for (const [where, src] of [['platform console', plat], ['league console', admin + adminH]]) {
+  ok(where + ' offers "anyone with the link" as the first, default option',
+     /anyone with the link/.test(src));
+  ok(where + ' only sends a cap when one was actually chosen',
+     /=== 'n'/.test(src));
+  ok(where + ' says which links are permanent',
+     /permanent, used /.test(src));
+}
+
+/* ---- 9. your leagues ------------------------------------------------------ */
+console.log('\n9. the profile says which leagues are yours, and why');
+ok('the profile is a rail of two, not one long scroll',
+   /data-p="profile"/.test(meH) && /data-p="leagues"/.test(meH) &&
+   /id="pane-profile"/.test(meH) && /id="pane-leagues"/.test(meH));
+ok('the three attachments are three sections, not one merged list',
+   /id="runList"/.test(meH) && /id="privList"/.test(meH) && /id="followList"/.test(meH));
+ok('each is read with what the account can already see — no new reader',
+   /rpc\('whoami'\)/.test(me) && /from\('league_guests'\)/.test(me) &&
+   /fav_league_ids/.test(me));
+ok('a followed league is read as the account, not on the anon key',
+   /sb\.from\('leagues'\)\s*\n?\s*\.select\('id,slug,name,colour_a'\)\.in\('id', ids\)/.test(me),
+   'a league you follow can be a private one you were let into, and anonymously its row does not exist');
+ok('leaving a private league is offered, and it is the guest\'s own row',
+   /from\('league_guests'\)\.delete\(\)/.test(me) && /\.eq\('user_id', user\.id\)/.test(me));
+ok('the renumbering follows the sections into their pane',
+   /#pane-profile > section\.sec/.test(me),
+   'it was #body > section.sec, which the rail would have broken');
+ok('an error in this pane is reported in this pane',
+   /function oops\(host, text\)/.test(me) && !/return status\('could not leave/.test(me),
+   'status() writes into the notifications section, which is in the other pane');
+ok('the pane is drawn when it is opened, not at boot',
+   /if \(want === 'leagues'\) paintMyLeagues\(\);/.test(me));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

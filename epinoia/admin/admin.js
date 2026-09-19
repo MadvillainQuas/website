@@ -1033,7 +1033,13 @@ async function loadInvites() {
     r.append(nm, el('div', 'mt',
       (i.role === 'league_admin' ? 'runs the league' : 'can see the league') +
       (i.label ? ' · ' + i.label : '') +
-      ' · used ' + i.uses + (i.max_uses ? ' of ' + i.max_uses : '') +
+      /* "permanent" said out loud: it is the default, and a link that will keep
+         working is the thing somebody wants to be sure of before pasting it
+         into a group they cannot take it back out of. */
+      ' · ' + (i.max_uses ? 'used ' + i.uses + ' of ' + i.max_uses
+                          : 'permanent, used ' + i.uses) +
+      (i.expires_at ? ' · until ' + new Date(i.expires_at).toLocaleDateString('en-GB',
+                        { day: '2-digit', month: 'short', year: 'numeric' }) : '') +
       (i.revoked_at ? ' · revoked' : i.spent ? ' · finished' : '')));
     const sp = el('div', 'sp');
     const copy = el('button', 'ep-btn mini', 'copy'); copy.type = 'button';
@@ -1523,19 +1529,25 @@ $('#fxGo').addEventListener('click', async () => {
   } finally { btn.disabled = false; }
 });
 
+/* the count only makes sense once "a set number" is chosen */
+$('#invLimit').addEventListener('change', () => {
+  $('#invUses').style.display = $('#invLimit').value === 'n' ? '' : 'none';
+});
+
 $('#invGo').addEventListener('click', async () => {
   const btn = $('#invGo');
   if (btn.disabled) return;
   btn.disabled = true;
   try {
     const uses = $('#invUses').value;
+    const capped = $('#invLimit').value === 'n' && uses;
     const { data, error } = await sb.rpc('league_invite_create', {
       p_league: league.id, p_role: 'viewer',
       p_label: $('#invLabel').value.trim(),
-      p_max_uses: uses ? Number(uses) : null });
+      p_max_uses: capped ? Number(uses) : null });
     if (error) return oops(error);
     const row = Array.isArray(data) ? data[0] : data;    // a table-returning RPC is an array of one
-    $('#invLabel').value = ''; $('#invUses').value = '';
+    $('#invLabel').value = '';
     const url = inviteLink(row.token);
     try { await navigator.clipboard.writeText(url);
           say('Link made and copied — paste it wherever you are sending it.', 'ok'); }

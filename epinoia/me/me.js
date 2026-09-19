@@ -563,7 +563,9 @@ const BILLING_NEXT = '/epinoia/me/';
 
 function renumberSections() {
   let n = 0;
-  document.querySelectorAll('#body > section.sec').forEach(sec => {
+  /* Scoped to the profile pane since the rail went in (it was `#body > section`).
+     Your leagues numbers itself and has no section that hides. */
+  document.querySelectorAll('#pane-profile > section.sec').forEach(sec => {
     if (sec.classList.contains('hide')) return;
     const idx = sec.querySelector('.ep-hdr .idx');
     if (idx) idx.textContent = String(++n).padStart(2, '0');
@@ -755,6 +757,165 @@ async function paintMembership() {
   host.appendChild(foot);
 }
 
+/* =========================================================== your leagues ===
+   THREE WAYS AN ACCOUNT IS ATTACHED TO A LEAGUE, and they are different enough
+   to be worth keeping apart: one you run, one you were let into, one you chose
+   to follow. A merged list would answer "which leagues do I see?" and lose the
+   only question anybody actually arrives with, which is "why do I see this one,
+   and can I get rid of it?".
+
+   NOTHING NEW IS NEEDED TO READ ANY OF IT. whoami already returns the leagues
+   this account administers; league_guests is readable by the guest themselves
+   (0139's guests_read); fan_prefs carries the follows (0133). And a private
+   league's own row is visible to whoever was let in, so the embedded
+   leagues(...) below resolves for exactly the people it should and returns
+   nothing for anybody else — the same policy that keeps it off the front page.
+
+   LEAVING IS THE POINT OF THE MIDDLE SECTION. A league admin can remove a guest
+   from their console; this is the other side of that, and it is the only place
+   somebody can get a private league they no longer want out of their account.
+   0139's guests_leave policy allows exactly this row and no other.
+   ============================================================================ */
+let leaguesPainted = false;
+
+/* status() writes into the notifications section, which is in the OTHER pane —
+   an error reported there while this one is open is an error nobody sees. */
+function oops(host, text) {
+  const n = el('div', 'note', text);
+  n.style.color = 'var(--flare)';
+  host.appendChild(n);
+}
+
+/* Built on this page's own row (.pl: a name, a note, an action pushed right),
+   not the admin console's .item/.nm/.mt — those classes do not exist here and
+   the rows would have come out as three stacked unstyled divs. */
+function leagueRow(l, note, action) {
+  const r = el('div', 'pl');
+  const b = el('b');
+  const a = el('a', null, l.name);
+  a.href = '../?l=' + encodeURIComponent(l.slug);
+  a.style.color = l.colour_a || 'var(--lume)';
+  a.style.textDecoration = 'none';
+  b.appendChild(a);
+  r.append(b, el('small', null, note));
+  if (action) { action.style.marginLeft = 'auto'; r.appendChild(action); }
+  return r;
+}
+
+async function paintMyLeagues() {
+  if (leaguesPainted) return;
+  leaguesPainted = true;
+
+  /* ---- leagues you run ---- */
+  const run = $('#runList'); run.textContent = 'Loading…';
+  let who = null;
+  try { who = (await sb.rpc('whoami')).data; } catch (_) { /* drawn as none */ }
+  run.textContent = '';
+  const mine = (who && who.leagues) || [];
+  $('#runNote').textContent = who && who.is_platform_admin ? 'you administer the platform' : '';
+  if (!mine.length) {
+    run.appendChild(el('div', 'note',
+      who && who.is_platform_admin
+        ? 'You administer the platform, so every league is yours to run — they are in the platform console rather than listed here.'
+        : 'You do not run a league. A league administrator is appointed by Epinoia or by whoever already runs the league.'));
+  } else {
+    mine.forEach(l => {
+      const open = el('a', 'ep-chip', 'console');
+      open.href = '../admin/'; open.style.textDecoration = 'none';
+      run.appendChild(leagueRow(l, 'you are an administrator', open));
+    });
+  }
+
+  /* ---- private leagues you were let into ---- */
+  const priv = $('#privList'); priv.textContent = 'Loading…';
+  let guests = [];
+  try {
+    const { data } = await sb.from('league_guests')
+      .select('league_id,joined_at,leagues(id,slug,name,colour_a,visibility)')
+      .eq('user_id', user.id);
+    guests = (data || []).filter(g => g.leagues);
+  } catch (_) { /* drawn as none */ }
+  priv.textContent = '';
+  if (!guests.length) {
+    priv.appendChild(el('div', 'note',
+      'None. A private league is not listed anywhere on Epinoia and does not appear in ' +
+      'search — the only way into one is a link somebody sends you. Open a link and the ' +
+      'league appears here.'));
+  } else guests.forEach(g => {
+    const l = g.leagues;
+    /* An admin can also revoke this from their side, so say which it is rather
+       than implying this is the only way it can end. */
+    const leave = el('button', 'ep-chip', 'leave');
+    leave.type = 'button';
+    leave.addEventListener('click', async () => {
+      if (!confirm('Leave ' + l.name + '?\n\nIt disappears from your account and you will ' +
+                   'not be able to open it again without a new link.')) return;
+      leave.disabled = true;
+      const { error } = await sb.from('league_guests').delete()
+        .eq('league_id', g.league_id).eq('user_id', user.id);
+      if (error) { leave.disabled = false; return oops(priv, 'could not leave: ' + error.message); }
+      leaguesPainted = false; paintMyLeagues();
+    });
+    priv.appendChild(leagueRow(l,
+      'you were let in on ' + new Date(g.joined_at).toLocaleDateString('en-GB',
+        { day: 'numeric', month: 'long', year: 'numeric' }) +
+      (l.visibility === 'private' ? '' : ' — it is a public league now'), leave));
+  });
+
+  /* ---- leagues you follow ---- */
+  const fol = $('#followList'); fol.textContent = 'Loading…';
+  const ids = (prefs && prefs.fav_league_ids) || [];
+  let followed = [];
+  if (ids.length) {
+    /* Read through the client, not api(), which sends the anon key alone: a
+       league you follow can be a PRIVATE one you were let into, and anonymously
+       its row does not exist. Same trap the scorer's picker had. */
+    const { data } = await sb.from('leagues')
+      .select('id,slug,name,colour_a').in('id', ids).order('name');
+    followed = data || [];
+  }
+  fol.textContent = '';
+  if (!followed.length) {
+    fol.appendChild(el('div', 'note',
+      'None yet. Following a league tells you about every game in it, including clubs that ' +
+      'join later — press the bell on a league page.'));
+  } else followed.forEach(l => {
+    const off = el('button', 'ep-chip', 'unfollow');
+    off.type = 'button';
+    off.addEventListener('click', async () => {
+      off.disabled = true;
+      const keep = ids.filter(x => x !== l.id);
+      const { data, error } = await sb.rpc('set_fan_prefs', { p: { fav_league_ids: keep } });
+      if (error) { off.disabled = false; return oops(fol, 'not saved: ' + error.message); }
+      prefs = Object.assign(prefs, data || {});
+      leaguesPainted = false; paintMyLeagues();
+    });
+    fol.appendChild(leagueRow(l, 'every game in this league', off));
+  });
+}
+
+/* The rail. The pane is drawn the first time it is opened rather than at boot:
+   it is three more requests, and most visits to this page are about the bell. */
+function wireTabs() {
+  const panes = { profile: $('#pane-profile'), leagues: $('#pane-leagues') };
+  document.querySelectorAll('.ep-tab[data-p]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const want = tab.dataset.p;
+      document.querySelectorAll('.ep-tab[data-p]').forEach(t => {
+        const on = t === tab;
+        t.classList.toggle('on', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      Object.keys(panes).forEach(k => panes[k].classList.toggle('hide', k !== want));
+      if (want === 'leagues') paintMyLeagues();
+      /* so a reload, or a link sent to somebody, lands on the same pane */
+      try { history.replaceState(null, '', want === 'leagues' ? '#leagues' : location.pathname); }
+      catch (_) { /* a browser that refuses is not a reason to fail the click */ }
+    });
+  });
+  if (location.hash === '#leagues') $('#tabLeagues').click();
+}
+
 /* ----------------------------------------------------------------- boot --- */
 (async function boot() {
   sb = window.epinoiaClient && window.epinoiaClient();
@@ -804,6 +965,7 @@ async function paintMembership() {
     await sb.from('notifications').update({ read_at: new Date().toISOString() }).is('read_at', null);
     paintRecent();
   };
+  wireTabs();
   await paintLeagues();
   await Promise.all([paintTeams(), paintMine(), paintRecent()]);
 })();

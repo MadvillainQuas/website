@@ -788,11 +788,26 @@ async function toggleInvites(l, box, btn) {
   role.style.flex = '0 0 150px';
   role.append(new Option('can see the league', 'viewer'),
               new Option('runs the league', 'league_admin'));
+  /* PERMANENT BY DEFAULT, and it says so.
+
+     A link has always been able to be unlimited — max_uses null, expires_at
+     null, 0139 — but the only way to ask for it was to leave a box labelled
+     "uses" empty, which reads as an omission rather than a choice. The common
+     case is a league's WhatsApp group, where the link has to keep working for
+     whoever joins the group next year, so that is the default and it is
+     spelled out. A count is the exception, for the one link sent to one person. */
+  const limit = el('select', 'ep-input');
+  limit.style.flex = '0 0 180px';
+  limit.append(new Option('anyone with the link', ''),
+               new Option('a set number of people', 'n'));
   const uses = el('input', 'ep-input');
-  uses.type = 'number'; uses.min = '1'; uses.placeholder = 'uses';
-  uses.style.flex = '0 0 86px';
+  uses.type = 'number'; uses.min = '1'; uses.value = '1';
+  uses.style.cssText = 'flex:0 0 78px;display:none';
+  limit.addEventListener('change', () => {
+    uses.style.display = limit.value === 'n' ? '' : 'none';
+  });
   const mk = el('button', 'ep-btn mini pri', 'new link'); mk.type = 'button';
-  mint.append(label, role, uses, mk);
+  mint.append(label, role, limit, uses, mk);
   host.appendChild(mint);
 
   const list = el('div');
@@ -824,7 +839,10 @@ async function toggleInvites(l, box, btn) {
       const what = el('span', 'mt',
         (i.role === 'league_admin' ? 'runs it' : 'can see') +
         (i.label ? ' · ' + i.label : '') +
-        ' · used ' + i.uses + (i.max_uses ? '/' + i.max_uses : ''));
+        ' · ' + (i.max_uses ? 'used ' + i.uses + ' of ' + i.max_uses
+                            : 'permanent, used ' + i.uses) +
+        (i.expires_at ? ' · until ' + new Date(i.expires_at).toLocaleDateString('en-GB',
+                          { day: '2-digit', month: 'short', year: 'numeric' }) : ''));
       const copy = el('button', 'ep-btn mini', 'copy'); copy.type = 'button';
       copy.addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(url); copy.textContent = 'copied'; }
@@ -851,11 +869,11 @@ async function toggleInvites(l, box, btn) {
                  'person, and set it to one use.')) return;
     const out = await rpc('league_invite_create', {
       p_league: l.id, p_role: role.value, p_label: label.value.trim(),
-      p_max_uses: uses.value ? Number(uses.value) : null });
+      p_max_uses: limit.value === 'n' && uses.value ? Number(uses.value) : null });
     if (!out) return;
     /* An RPC returning a table comes back as an array of one. */
     const row = Array.isArray(out) ? out[0] : out;
-    label.value = ''; uses.value = '';
+    label.value = '';
     try { await navigator.clipboard.writeText(linkFor(row.token));
           say('Link made and copied to the clipboard.', 'ok'); }
     catch (_) { say('Link made — copy it from the list below.', 'ok'); }
