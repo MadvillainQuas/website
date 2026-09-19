@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-19T08:05:09.712952+00:00",
+"updated": "2026-09-19T15:49:26.968146+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2408,13 +2408,14 @@
 "id": "2887001",
 "home": "Cardiff Met Archers",
 "away": "Plymouth Raiders",
-"status": "scheduled",
+"homeScore": 42,
+"awayScore": 43,
+"status": "live",
 "date": "2026-09-19T15:00:00+00:00",
+"hash": "0f5b537ab52c509a7a0163a9443f4592e20cde77",
 "venue": "Archers Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887001.json",
+"updated": "2026-09-19T15:49:14.692285+00:00"
 },
 {
 "id": "2886987",

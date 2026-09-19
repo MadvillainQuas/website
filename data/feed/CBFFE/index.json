@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-19T08:13:07.517711+00:00",
+"updated": "2026-09-19T15:58:01.547777+00:00",
 "games": [
 {
 "id": "544677",
@@ -1553,28 +1553,52 @@
 "raw_ref": null
 },
 {
-"id": "544549",
+"id": "2890470",
 "home": "BK Opava",
 "away": "NH Ostrava",
+"homeScore": 0,
+"awayScore": 0,
 "status": "scheduled",
 "date": "2026-09-19T16:00:00Z",
+"hash": "41de0b019d6b07b198af816a4a2cb8d7bc1deb90",
 "venue": null,
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
+"updated": "2026-09-19T15:57:35.521779+00:00"
 },
 {
-"id": "544550",
+"id": "2890471",
 "home": "BK KVIS Pardubice",
 "away": "PUMPA Basket Brno",
-"status": "scheduled",
+"homeScore": 77,
+"awayScore": 71,
+"status": "live",
 "date": "2026-09-19T14:00:00Z",
+"hash": "160174a5583258222a17286ef0009fdd49bd9dc7",
 "venue": null,
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
+"updated": "2026-09-19T15:57:49.715146+00:00"
+},
+{
+"id": "2890471",
+"home": "BK KVIS Pardubice",
+"away": "PUMPA Basket Brno",
+"homeScore": 75,
+"awayScore": 71,
+"status": "live",
+"hash": "c782431134bb237b7766df655fb2e88c71c52f0a",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
+"date": "2026-09-19"
+},
+{
+"id": "2890470",
+"home": "BK Opava",
+"away": "NH Ostrava",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"hash": "41de0b019d6b07b198af816a4a2cb8d7bc1deb90",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
+"date": "2026-09-19"
 },
 {
 "id": "2890468",
@@ -1587,7 +1611,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-19T08:12:54.642756+00:00"
+"updated": "2026-09-19T15:57:21.376268+00:00"
 },
 {
 "id": "2890468",

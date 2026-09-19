@@ -2,7 +2,7 @@
 "code": "EL",
 "label": "EuroLeague",
 "adapter": "euroleague",
-"updated": "2026-09-19T08:09:03.457289+00:00",
+"updated": "2026-09-19T15:53:23.888499+00:00",
 "games": [
 {
 "id": "E2026_379",
@@ -3449,11 +3449,23 @@
 "raw_ref": null
 },
 {
+"id": "E2026_92",
+"home": "Fenerbahce Tarfin Istanbul",
+"away": "Kosner Baskonia Vitoria-Gasteiz",
+"status": "scheduled",
+"date": "2026-11-05T18:00:00.000Z",
+"venue": null,
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
+},
+{
 "id": "E2026_95",
 "home": "Anadolu Efes Istanbul",
 "away": "Paris Basketball",
 "status": "scheduled",
-"date": "2026-11-05T17:30:00.000Z",
+"date": "2026-11-05T17:15:00.000Z",
 "venue": null,
 "homeScore": null,
 "awayScore": null,
@@ -3466,18 +3478,6 @@
 "away": "Panathinaikos AKTOR Athens",
 "status": "scheduled",
 "date": "2026-11-04T19:45:00.000Z",
-"venue": null,
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
-},
-{
-"id": "E2026_92",
-"home": "Fenerbahce Tarfin Istanbul",
-"away": "Kosner Baskonia Vitoria-Gasteiz",
-"status": "scheduled",
-"date": "2026-11-04T17:45:00.000Z",
 "venue": null,
 "homeScore": null,
 "awayScore": null,

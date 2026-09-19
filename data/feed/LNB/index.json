@@ -2,7 +2,7 @@
 "code": "LNB",
 "label": "Betclic ÉLITE",
 "adapter": "lnb",
-"updated": "2026-09-19T08:16:18.768036+00:00",
+"updated": "2026-09-19T16:01:26.322070+00:00",
 "games": [
 {
 "id": "4e3b2f66-6a4c-11f1-a5ad-25baed35874f_e7121516-a543-11f1-92c9-4d8da76af24d",
@@ -2900,13 +2900,13 @@
 "id": "f078d99b-6a42-11f1-a61d-93f597ed56e4_0ebe66cb-a540-11f1-bf2c-bb90ad76ce3d",
 "home": "Roanne",
 "away": "Lyon-Villeurbanne",
-"status": "scheduled",
+"status": "live",
 "date": "2026-09-19",
 "venue": "Stade Roland Garros - Court Central Philippe Chatrier (Paris)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 69,
+"awayScore": 67,
+"hash": "1a17b245400e422801fd4716b3cc9fd40590c230",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f078d99b-6a42-11f1-a61d-93f597ed56e4_0ebe66cb-a540-11f1-bf2c-bb90ad76ce3d.json"
 }
 ]
 }

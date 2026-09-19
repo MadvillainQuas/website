@@ -2,7 +2,7 @@
 "code": "LNBE2",
 "label": "Espoirs ÉLITE 2",
 "adapter": "lnb",
-"updated": "2026-09-19T08:16:21.365392+00:00",
+"updated": "2026-09-19T16:01:29.105096+00:00",
 "games": [
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_f2173455-a547-11f1-a83b-cb85daa47c95",
@@ -860,73 +860,73 @@
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eda2e9dc-a547-11f1-8e95-cb85daa47c95",
 "home": "Espoirs Levallois",
 "away": "Espoirs Gries-Souffel",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Palais des Sports Marcel Cerdan (Levallois)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 76,
+"awayScore": 71,
+"hash": "4db9836c78fa6741d63f31f19ed745128c5d723d",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_eda2e9dc-a547-11f1-8e95-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed9081d3-a547-11f1-b9d8-cb85daa47c95",
 "home": "Espoirs Rouen",
 "away": "Espoirs Le Havre",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Kindarena (Rouen)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 107,
+"awayScore": 78,
+"hash": "edbcc86c3b6eda502cb41c7e5f42537ab6902df8",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed9081d3-a547-11f1-b9d8-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed81950c-a547-11f1-ba0b-cb85daa47c95",
 "home": "Espoirs Caen",
 "away": "Espoirs Quimper",
-"status": "scheduled",
+"status": "live",
 "date": "2026-09-19",
 "venue": "Palais des Sports de Caen (Caen)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 42,
+"awayScore": 38,
+"hash": "3e09e62f5259b2c28045395d83b5fabde3a88ed8",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed81950c-a547-11f1-ba0b-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed7331e8-a547-11f1-8116-cb85daa47c95",
 "home": "Espoirs Orléans",
 "away": "Espoirs Blois",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Halle des Sports (Saint-Jean-de-Braye)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 90,
+"awayScore": 91,
+"hash": "dd245854ab464d10f2091fdf9a6b6baf8056546e",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed7331e8-a547-11f1-8116-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed62a320-a547-11f1-87c1-cb85daa47c95",
 "home": "Espoirs Nantes",
 "away": "Espoirs La Rochelle",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19",
 "venue": "La Trocardière (Rezé)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 77,
+"awayScore": 79,
+"hash": "70ef8854253864c8502a70a4003aa68b8b3cc19d",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed62a320-a547-11f1-87c1-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed25dab5-a547-11f1-9c4b-cb85daa47c95",
 "home": "Espoirs Saint-Chamond-Andrezieux",
 "away": "Espoirs Hyères-Toulon",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-19",
 "venue": "Palais des Sports (Andrézieux-Bouthéon)",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 104,
+"awayScore": 85,
+"hash": "4ee0ef11f4a3ac869e3b9703babeea82e18e30c2",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/lnb/f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ed25dab5-a547-11f1-9c4b-cb85daa47c95.json"
 },
 {
 "id": "f94fc9d2-6a4d-11f1-ab34-7f5e1fd35d52_ef142eef-a547-11f1-8144-cb85daa47c95",
