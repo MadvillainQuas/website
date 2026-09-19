@@ -56,6 +56,26 @@
    checked — 0036 uses one address for both the write and the read and has
    nothing to fold — so this fires only on the idiom it is about.
 
+   -------------------------------------------------------------------------
+   3. AND ONE THIS CANNOT CHECK, WHICH COST THE THIRD PUSH OF THE SAME FILE.
+
+   A migration's self-test runs against the LIVE database, so it may only assert
+   about entities it created itself. 0140's did not: it granted its test user
+   platform admin, revoked it, and expected a refusal on the grounds that this
+   was the only administrator. True of a fresh deployment; false of a platform
+   that already has real ones. The guard behaved perfectly and the self-test
+   failed.
+
+   0139's self-test stands down when the global state it needs is not there
+   ("a league is already private — self-test skipped"). 0140's did not, and
+   should have. When an assertion is genuinely about a global — "how many
+   administrators are there" — either branch on the state and test whichever
+   side is reachable, or skip with a notice. Never delete the real rows to
+   manufacture the state you want, however well the block rolls back.
+
+   No regex finds this. It is here because this is the file somebody opens when
+   a migration has just failed on them.
+
      node supabase/tests/migration-lint.test.mjs
    ============================================================================ */
 import path from 'node:path';

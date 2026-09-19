@@ -494,19 +494,69 @@ begin
      where user_id = admin_u and role = 'platform_admin' and scope_type = 'league';
     if n <> 0 then raise exception '0140: a platform admin was scoped to a league'; end if;
 
-    -- 6. the last administrator cannot be removed, counted by person
+    /* 6. THE ADMINISTRATOR GUARD, TESTED THE WAY A LIVE DATABASE ALLOWS.
+
+       This asked one question and assumed one answer: revoke the only platform
+       admin, expect a refusal. That is true of a fresh deployment and false of
+       the platform, which already has real administrators — so admin_u was
+       never the only one, the guard quite correctly allowed the revoke, and the
+       self-test failed on a database that was behaving perfectly. (0139's
+       self-test stands down when the global state it needs is not there; this
+       one should have done the same and did not.)
+
+       The refusal branch cannot be reached here without first deleting the real
+       administrators. Even inside a block that rolls back, deleting every
+       platform admin from a migration is not a risk worth one assertion.
+
+       So each state tests the branch it can reach, and the counting fix — which
+       is the actual subject — is tested as an invariant either way. */
     delete from memberships where user_id = newcomer and role = 'platform_admin';
+
+    /* THE BUG THIS FILE FIXED, as a property of the state it leaves behind.
+       The guard counted rows, and one person could hold several scope-less
+       rows, so duplicates read as several administrators and the last real one
+       could be removed. After the fold and the partial index, nobody holds the
+       same scope-less role twice.
+
+       Asked as a GROUP BY and not as count(*) against count(distinct user_id),
+       which is the same question only if a person can hold one scope-less role.
+       Nothing enforces that — scope_id's "null only for platform" is a comment
+       on the column in 0001, not a constraint — so one person holding two
+       DIFFERENT scope-less roles is data this file has no quarrel with, and
+       comparing the two counts would have failed on it. */
+    select count(*) into n from (
+      select user_id, role from memberships
+       where scope_id is null group by user_id, role having count(*) > 1) dupes;
+    if n <> 0 then
+      raise exception '0140: % scope-less (person, role) pair(s) still duplicated — the fold or the partial index did not take', n;
+    end if;
+
+    select count(distinct user_id) into n from memberships where role = 'platform_admin';
     set local role authenticated;
     perform set_config('request.jwt.claims',
       json_build_object('sub', admin_u, 'role', 'authenticated')::text, true);
-    begin
+    if n > 1 then
+      /* More than one administrator: revoking one is ALLOWED, and a guard that
+         refused every revoke would be its own kind of lockout. */
       perform public.revoke_role((select id from memberships
                                    where user_id = admin_u and role = 'platform_admin'));
-      raise exception '0140: the only platform admin was revoked';
-    exception when check_violation then null;
-    end;
-    execute format('set local role %I', orig);
-    perform set_config('request.jwt.claims', null, true);
+      execute format('set local role %I', orig);
+      perform set_config('request.jwt.claims', null, true);
+      if exists (select 1 from memberships
+                  where user_id = admin_u and role = 'platform_admin') then
+        raise exception '0140: revoke_role left the row behind with % administrators', n;
+      end if;
+    else
+      -- a fresh deployment, where admin_u really is the only one
+      begin
+        perform public.revoke_role((select id from memberships
+                                     where user_id = admin_u and role = 'platform_admin'));
+        raise exception '0140: the only platform admin was revoked';
+      exception when check_violation then null;
+      end;
+      execute format('set local role %I', orig);
+      perform set_config('request.jwt.claims', null, true);
+    end if;
 
     raise exception using errcode = 'P0004', message = '0140 self-test rollback';
   exception when sqlstate 'P0004' then null;
