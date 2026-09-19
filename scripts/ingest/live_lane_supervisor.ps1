@@ -58,7 +58,39 @@ function Read-Wait {
 
 Say "supervisor started (pid $PID) in $Here"
 
+# CATCH-UP: games that were played while nothing was watching. The lane stops considering a game
+# 4 h after its tip-off, so one that finished while the PC was off or asleep stays "scheduled, 0-0"
+# on the site for ever. run_ingest.py --catch-up fetches each such game (tipped off > 4 h ago,
+# < 7 days ago, still not final) once. It runs at start-up and then at most every 2 hours: a game
+# that was postponed and never played would otherwise be asked about on every cycle, which can be
+# every 30 s while others are live. Hidden - the log records what it found.
+$CatchEvery = [TimeSpan]::FromHours(2)
+$LastCatch  = $null
+
+function Invoke-CatchUp {
+    $out = Join-Path $LogDir 'catchup.out'
+    try {
+        Start-Process -FilePath 'python' -WorkingDirectory $Here -WindowStyle Hidden -Wait `
+            -ArgumentList '-u run_ingest.py --worker-config --catch-up --feed-out ""' `
+            -RedirectStandardOutput $out -RedirectStandardError (Join-Path $LogDir 'catchup.err')
+    } catch {
+        Say "catch-up could not start python: $($_.Exception.Message)"
+        return
+    }
+    $found = @(Select-String -Path $out -Pattern 'catching up:|^\s+\+ ' -ErrorAction SilentlyContinue)
+    if ($found.Count -eq 0) {
+        Say 'catch-up: nothing outstanding'
+    } else {
+        Say ("catch-up: {0} line(s) of work" -f $found.Count)
+        $found | Select-Object -First 12 | ForEach-Object { Say ('  ' + $_.Line.Trim()) }
+    }
+}
+
 while ($true) {
+    if ($null -eq $LastCatch -or ((Get-Date) - $LastCatch) -gt $CatchEvery) {
+        Invoke-CatchUp
+        $LastCatch = Get-Date
+    }
     if (Test-Path $WaitFile) { Remove-Item $WaitFile -Force -ErrorAction SilentlyContinue }
 
     # PROBE: one read of the schedule, hidden. --live-loop 1 = a single pass, no napping.

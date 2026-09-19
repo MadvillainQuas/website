@@ -1334,6 +1334,12 @@ def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> lis
 LIVE_BEFORE_TIP = 20 * 60      # start polling this long before the listed tip-off
 LIVE_AFTER_TIP = 4 * 3600      # keep polling an unpublished game this long after its tip-off
 LIVE_STALE = 7 * 3600          # a game still 'live' this long after tip is a log nobody closed - not a reason to keep a runner up
+# OUTSTANDING: tipped off longer ago than the live window, and never finished in the database. That
+# is what a game looks like when the PC was off (or asleep, or the lane was closed) while it was
+# played: live_due stops considering it 4 h after tip, so nothing revisits it, and the site keeps
+# showing "scheduled, 0-0" for a result that exists. --catch-up fetches each such game once.
+# Capped at a week so a game that was postponed and never played cannot be asked about for ever.
+OUTSTANDING_MAX_AGE = 7 * 24 * 3600
 CHAIN_AHEAD = 8 * 3600         # the live lane re-dispatches itself when the next tip-off is within this
 MAIN_CHAIN_AHEAD = 3 * 3600    # the discovery lane starts the live lane when the next tip-off is within this
 
@@ -1442,6 +1448,24 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
             elif since is not None and since < -LIVE_BEFORE_TIP and (next_tip is None or t < next_tip):
                 next_tip = t
     return due, next_tip
+
+
+def outstanding_rows(sb: "Supabase", src: dict, now: datetime) -> list[dict]:
+    """Games of one source that tipped off more than LIVE_AFTER_TIP ago (so the live lane has
+    stopped looking), less than OUTSTANDING_MAX_AGE ago (so a postponed game is not chased for
+    ever), and are still not final in the database. A game with no tip-off time is skipped: with
+    nothing to date it by, there is no telling a missed game from one not yet played."""
+    rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&external_status=neq.final"
+                                       "&select=external_id,external_status,tipoff_at,home_name,away_name")
+    out = []
+    for r in rows:
+        t = _tip(r)
+        if t is None:
+            continue
+        since = (now - t).total_seconds()
+        if LIVE_AFTER_TIP <= since < OUTSTANDING_MAX_AGE:
+            out.append(r)
+    return out
 
 
 LIVE_MUTEX = "Global\\EpinoiaLiveLane"
@@ -1868,6 +1892,7 @@ def main() -> int:
     ap.add_argument("--no-supabase", action="store_true")
     ap.add_argument("--refresh", action="store_true", help="re-process every game on the schedule even if already final (backfill stints / re-run translation)")
     ap.add_argument("--live-only", action="store_true", help="skip discovery; re-check only games live or due to tip (the frequent pass)")
+    ap.add_argument("--catch-up", action="store_true", help="skip discovery; fetch once each game that tipped off more than 4 h ago (within a week) and is still not final - what a game looks like when it was played while the PC was off")
     ap.add_argument("--live-loop", type=int, default=0, help="after the pass, keep re-polling live games every --live-every seconds for this many seconds")
     ap.add_argument("--live-every", type=int, default=30)
     ap.add_argument("--broadcast-every", type=int, default=2, help="seconds between reads of a game armed for broadcast (games.broadcast_until)")
@@ -1950,6 +1975,19 @@ def main() -> int:
             print(f"-> {src['label']} [{src['adapter']}] {src['schedule_url'][:90]}")
             if args.ids:
                 games = [ScheduleGame(external_id=x.strip()) for x in args.ids.split(",") if x.strip()]
+            elif args.catch_up:
+                # games that were played while nothing was watching: see OUTSTANDING_MAX_AGE
+                games = []
+                try:
+                    for r in (outstanding_rows(sb, src, datetime.now(timezone.utc)) if sb else []):
+                        games.append(ScheduleGame(external_id=str(r["external_id"]), home_name=r.get("home_name") or "",
+                                                  away_name=r.get("away_name") or "", tipoff_at=r.get("tipoff_at"),
+                                                  status=r.get("external_status") or "scheduled"))
+                except Exception as exc:
+                    print(f"   (catch-up lookup failed: {exc})")
+                if not games:
+                    print("   no outstanding games"); continue
+                print(f"   catching up: {len(games)} outstanding game(s): " + ", ".join(f"{g.home_name or g.external_id} v {g.away_name}" for g in games[:6]))
             elif args.live_only:
                 # games live now, or due to tip within 20 min / tipped within the last 4 h (from the schedule dates)
                 games = []
@@ -2123,7 +2161,7 @@ def main() -> int:
                             sb.rpc(fn, {"p_competition": cid})
                         except Exception:
                             pass
-                if feed and not args.live_only:
+                if feed and not args.live_only and not args.catch_up:
                     feed.update_index(src, {k: v for k, v in entries.items() if v.get("hash") or v.get("date")})
                 if sb:
                     try:
@@ -2154,7 +2192,7 @@ def main() -> int:
                         tot["seen"], tot["written"], tot["error"])
         return exit_code            # an old season has no live games - never chain the live lane
     # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane
-    if sb and not args.dry_run and not args.ids:
+    if sb and not args.dry_run and not args.ids and not args.catch_up:
         try:
             now = datetime.now(timezone.utc)
             due, next_tip = live_due(sb, [s for s in sources if s["adapter"] == "fiba_livestats"], now)
