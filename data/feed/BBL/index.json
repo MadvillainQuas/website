@@ -1,0 +1,93 @@
+{
+"code": "BBL",
+"label": "easyCredit BBL",
+"adapter": "bbl",
+"updated": "2026-09-19T02:52:21.181992+00:00",
+"games": [
+{
+"id": "2007028",
+"home": "RASTA Vechta",
+"away": "BMA365 Bamberg Baskets",
+"status": "scheduled",
+"date": "2026-09-24T18:00:00Z",
+"venue": "RASTA Dome"
+},
+{
+"id": "2007029",
+"home": "ALBA BERLIN",
+"away": "SKYLINERS",
+"status": "scheduled",
+"date": "2026-09-24T16:30:00Z",
+"venue": "Uber Arena"
+},
+{
+"id": "2007027",
+"home": "MHP RIESEN Ludwigsburg",
+"away": "ROSTOCK SEAWOLVES",
+"status": "scheduled",
+"date": "2026-09-24T16:30:00Z",
+"venue": "MHPArena Ludwigsburg"
+},
+{
+"id": "2006926",
+"home": "FC Bayern München Basketball",
+"away": "BMA365 Bamberg Baskets",
+"status": "scheduled",
+"date": "2026-09-20T16:00:00Z",
+"venue": "BMW Park München"
+},
+{
+"id": "2006925",
+"home": "ratiopharm ulm",
+"away": "MHP RIESEN Ludwigsburg",
+"status": "scheduled",
+"date": "2026-09-20T14:30:00Z",
+"venue": "ratiopharm arena Ulm"
+},
+{
+"id": "2006924",
+"home": "EWE Baskets Oldenburg",
+"away": "SYNTAINICS MBC",
+"status": "scheduled",
+"date": "2026-09-20T13:00:00Z",
+"venue": "Große EWE Arena Oldenburg"
+},
+{
+"id": "2006921",
+"home": "Telekom Baskets Bonn",
+"away": "Veolia Towers Hamburg",
+"status": "scheduled",
+"date": "2026-09-19T18:00:00Z",
+"venue": "Telekom Dome Bonn"
+},
+{
+"id": "2006923",
+"home": "Basketball Löwen Braunschweig",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-09-19T16:30:00Z",
+"venue": "Volkswagen Halle Braunschweig"
+},
+{
+"id": "2006922",
+"home": "ROSTOCK SEAWOLVES",
+"away": "Phoenix Hagen",
+"status": "scheduled",
+"date": "2026-09-19T16:30:00Z",
+"venue": "StadtHalle Rostock"
+},
+{
+"id": "2006920",
+"home": "ALBA BERLIN",
+"away": "NINERS Chemnitz",
+"homeScore": 89,
+"awayScore": 82,
+"status": "final",
+"date": "2026-09-18T18:00:00Z",
+"hash": "838eeae7f66ed4f9be30353ab41145ba493834ef",
+"venue": "Uber Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006920.json",
+"updated": "2026-09-19T02:51:35.587749+00:00"
+}
+]
+}
