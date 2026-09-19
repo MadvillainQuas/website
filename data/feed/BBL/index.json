@@ -2,7 +2,7 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-19T02:52:21.181992+00:00",
+"updated": "2026-09-19T03:09:58.166458+00:00",
 "games": [
 {
 "id": "2007028",
@@ -10,7 +10,11 @@
 "away": "BMA365 Bamberg Baskets",
 "status": "scheduled",
 "date": "2026-09-24T18:00:00Z",
-"venue": "RASTA Dome"
+"venue": "RASTA Dome",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007029",
@@ -18,7 +22,11 @@
 "away": "SKYLINERS",
 "status": "scheduled",
 "date": "2026-09-24T16:30:00Z",
-"venue": "Uber Arena"
+"venue": "Uber Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007027",
@@ -26,7 +34,11 @@
 "away": "ROSTOCK SEAWOLVES",
 "status": "scheduled",
 "date": "2026-09-24T16:30:00Z",
-"venue": "MHPArena Ludwigsburg"
+"venue": "MHPArena Ludwigsburg",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006926",
@@ -34,7 +46,11 @@
 "away": "BMA365 Bamberg Baskets",
 "status": "scheduled",
 "date": "2026-09-20T16:00:00Z",
-"venue": "BMW Park München"
+"venue": "BMW Park München",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006925",
@@ -42,7 +58,11 @@
 "away": "MHP RIESEN Ludwigsburg",
 "status": "scheduled",
 "date": "2026-09-20T14:30:00Z",
-"venue": "ratiopharm arena Ulm"
+"venue": "ratiopharm arena Ulm",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006924",
@@ -50,7 +70,11 @@
 "away": "SYNTAINICS MBC",
 "status": "scheduled",
 "date": "2026-09-20T13:00:00Z",
-"venue": "Große EWE Arena Oldenburg"
+"venue": "Große EWE Arena Oldenburg",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006921",
@@ -58,7 +82,11 @@
 "away": "Veolia Towers Hamburg",
 "status": "scheduled",
 "date": "2026-09-19T18:00:00Z",
-"venue": "Telekom Dome Bonn"
+"venue": "Telekom Dome Bonn",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006923",
@@ -66,7 +94,11 @@
 "away": "VET-CONCEPT Gladiators Trier",
 "status": "scheduled",
 "date": "2026-09-19T16:30:00Z",
-"venue": "Volkswagen Halle Braunschweig"
+"venue": "Volkswagen Halle Braunschweig",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006922",
@@ -74,7 +106,11 @@
 "away": "Phoenix Hagen",
 "status": "scheduled",
 "date": "2026-09-19T16:30:00Z",
-"venue": "StadtHalle Rostock"
+"venue": "StadtHalle Rostock",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2006920",
