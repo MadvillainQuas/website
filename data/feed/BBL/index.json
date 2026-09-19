@@ -2,7 +2,7 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-19T03:09:58.166458+00:00",
+"updated": "2026-09-19T03:25:34.686486+00:00",
 "games": [
 {
 "id": "2007028",
@@ -120,10 +120,10 @@
 "awayScore": 82,
 "status": "final",
 "date": "2026-09-18T18:00:00Z",
-"hash": "838eeae7f66ed4f9be30353ab41145ba493834ef",
+"hash": "28b8bf54a8800d737227084749cb03064d5e7a84",
 "venue": "Uber Arena",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006920.json",
-"updated": "2026-09-19T02:51:35.587749+00:00"
+"updated": "2026-09-19T03:25:12.092161+00:00"
 }
 ]
 }
