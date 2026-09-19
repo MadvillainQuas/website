@@ -261,6 +261,23 @@ Deno.serve(async (req) => {
   if (game.clockMs > 0) warnings.push('clock is not at zero');
   if (d.score[0] === d.score[1]) blocking.push('scores are level — play overtime');
 
+  /* ONE PERSON CANNOT BE TWO OF THE TEN ON COURT. player_game_stats is keyed (game_id,
+     player_id), so a roster snapshot naming the same player twice does not make a blurred box
+     score, it makes an insert that throws a duplicate key half way through the rebuild below —
+     which lands in the catch, reopens the game, and leaves a finished match sitting at Q4 0:00
+     with a Postgres string in external_games.error. Bristol Hurricanes v Gloucester (19 Sep
+     2026) did exactly that: a stale FIBA LiveStats slot stamp gave Kobe Hill's line to Corey
+     Samuels, who already held his own slot. The feed side is fixed (feedplatform.by_feed_key
+     checks the name on the stamp, ensure_game_people gives one player one slot), and this says
+     so in words if anything ever puts such a snapshot up again. Blocking, not deduplicated:
+     the two slots' stats are already conflated by the time they get here, so there is no
+     correct box score to publish — the sheet has to be fixed, not averaged. */
+  const byPlayer = new Map<string, string[]>();
+  [0, 1].forEach(t => game.teams[t].players.forEach((p: any) =>
+    byPlayer.set(String(p.id), [...(byPlayer.get(String(p.id)) ?? []), p.name || String(p.id)])));
+  for (const [, names] of byPlayer)
+    if (names.length > 1) blocking.push(`${names.join(' and ')} are the same player on the team sheet — fix the roster`);
+
   [0, 1].forEach(t => {
     const mins = game.teams[t].players.reduce((a: number, p: any) => a + (d.stats[p.id]?.min ?? 0), 0) / 60000;
     const expected = (game.period <= 4 ? game.period * 10 : 40 + (game.period - 4) * 5) * 5;

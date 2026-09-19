@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 import names
 
+from matching import normalize as normalize_name
 from placeholders import is_placeholder_team
 
 
@@ -293,16 +294,35 @@ class Platform:
             memo[team["id"]] = lg[0]["league_id"] if lg else None
         return memo[team["id"]]
 
-    def by_feed_key(self, team: dict, ext: str) -> dict | None:
+    def by_feed_key(self, team: dict, ext: str, last: str = "") -> dict | None:
         """The player a "<teamcode>:<pno>" key was given to, IN THIS LEAGUE. The key is only a club code
         and a slot, and codes repeat across leagues (LON is London Lions men and women, OAK is Oaklands
         Wolves in BCB and SLB Women), so a player holding it counts only when they are on this club's
-        roster or on a roster of another club in the same league."""
+        roster or on a roster of another club in the same league.
+
+        A SLOT IS NOT A PERSON. pno is the row the table operator typed a player into for THIS game,
+        and clubs re-enter their squad every week, so the slots shuffle: Bristol Hurricanes v
+        Gloucester (19 Sep 2026) had Kobe Hill in slot 3 and Corey Samuels in 4, where the stored
+        stamps from an earlier game read 2 and 3. Trusting the stamp alone gave Kobe Hill's 13 points
+        to Corey Samuels, and then the name matcher quite correctly gave slot 4 to Corey Samuels as
+        well -- one player on two roster slots, which is a duplicate key on player_game_stats and a
+        finalise that dies and reopens the game (it sat at Q4 0:00 for hours).
+
+        So the stamp is a HINT, checked against the name the feed just gave: same surname and the
+        slot is that player's, a different surname and the slot has been reassigned, the stamp is
+        stale, and the caller falls through to the matcher -- which reads the name, the shirt number
+        and the club, and is the thing that actually knows who this is. `last` empty (a feed with no
+        usable surname) keeps the old behaviour, because then there is nothing better to go on."""
         if not self.sb or str(team.get("id", "")).startswith("dry-"):
             return None
         rows = self.sb.select("players", f"external_ids->>fiba_livestats=eq.{ext}&select=id,slug,first_name,last_name&limit=20")
         if not rows:
             return None
+        if last:
+            want_last = normalize_name(last)
+            rows = [r for r in rows if normalize_name(r.get("last_name")) == want_last]
+            if not rows:
+                return None
         ids = ",".join(r["id"] for r in rows)
         on = self.sb.select("roster_entries", f"player_id=in.({ids})&select=player_id,team_id,teams!inner(league_id)")
         lid = self.league_of(team)
@@ -312,13 +332,20 @@ class Platform:
                 return next(r for r in rows if r["id"] == hit)
         return None
 
-    def player(self, team: dict, team_code: str, pno: str, p: dict) -> dict | None:
+    def player(self, team: dict, team_code: str, pno: str, p: dict, avoid: set | None = None) -> dict | None:
+        """`avoid` = players already given a slot in THIS payload. A person cannot be two of the ten
+        on court, so a stale feed key or a matcher that reaches for someone already spoken for is
+        wrong by construction, and this slot goes on to the next rule (and, in the end, to a new
+        player) rather than becoming a second line for the same person."""
         ext = f"{team_code}:{pno}"
         key = (team["id"], ext)
         if key in self.cache["player"]:
             return self.cache["player"][key]
-        r = self.by_feed_key(team, ext)
         first, last = full_name(p)
+        r = self.by_feed_key(team, ext, last)
+        if r and avoid and r["id"] in avoid:
+            self.log(f"  ! {first} {last}: feed key {ext} points at {r.get('first_name')} {r.get('last_name')}, already on this sheet — ignoring it")
+            r = None
         if not r and self.sb:
             # THE SHARED MATCHER (matching.py = epinoia/match.js): the club's roster first, then anyone in
             # the league with that surname, scored on surname / forename / nickname / club / shirt number.
@@ -326,6 +353,7 @@ class Platform:
             from matching import match_player
             cands, seen = [], set()
             rows = self.sb.select("roster_entries", f"team_id=eq.{team['id']}&select=player_id,jersey,position,players(id,slug,first_name,last_name,aliases)")
+            seen |= set(avoid or ())        # already on this sheet: not a candidate for a second slot
             for row in rows:
                 pl = row.get("players") or {}
                 if pl.get("id") and pl["id"] not in seen:
@@ -432,8 +460,17 @@ class Platform:
                                        "jersey": str(p.get("shirtNumber") or ""), "position": p.get("playingPosition") or None, "active": True})
 
     def ensure_game_people(self, league_id: str, comp: dict, season_id: str, raw: dict) -> dict:
-        """Both clubs + every listed player of one payload. Returns {'1': team, '2': team, 'pids': {ext: uuid}}."""
+        """Both clubs + every listed player of one payload. Returns {'1': team, '2': team, 'pids': {ext: uuid}}.
+
+        ONE PERSON, ONE SLOT. Everything downstream keys a game's stats on the platform player id:
+        player_game_stats is (game_id, player_id), so two slots resolving to one person is not a
+        blurred box score, it is a duplicate-key error that kills finalise-game and leaves a
+        finished game showing 'live' for ever. `taken` makes that structurally impossible — a slot
+        the rules can only fill with someone already on the sheet is left OUT of the map, and
+        run_ingest's pid_for then falls back to a plain "<side>:<pno>" and prints it as a player
+        without a platform id, which is visible and harmless where a collision is neither."""
         out = {"pids": {}}
+        taken: dict = {}                    # player id -> the slot that already has them, BOTH sides
         for k in ("1", "2"):
             t = (raw.get("tm") or {}).get(k) or {}
             team = self.team(league_id, t)
@@ -444,8 +481,14 @@ class Platform:
                 self.sb.upsert("competition_teams", {"competition_id": comp["id"], "team_id": team["id"]}, "competition_id,team_id")
             tcode = (t.get("code") or "").strip() or slugify(t.get("name", ""))
             for pno, p in (t.get("pl") or {}).items():
-                pl = self.player(team, tcode, str(pno), p)
-                if pl:
-                    self.roster(team, pl, season_id, p)
-                    out["pids"][f"{tcode}:{pno}"] = pl["id"]
+                pl = self.player(team, tcode, str(pno), p, avoid=set(taken))
+                if not pl:
+                    continue
+                if pl["id"] in taken:
+                    first, last = full_name(p)
+                    self.log(f"  ! {first} {last} ({tcode}:{pno}) resolves to the same player as {taken[pl['id']]} — left unmatched")
+                    continue
+                taken[pl["id"]] = f"{tcode}:{pno}"
+                self.roster(team, pl, season_id, p)
+                out["pids"][f"{tcode}:{pno}"] = pl["id"]
         return out
