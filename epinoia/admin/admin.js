@@ -431,6 +431,41 @@ function fillTeamSelects(entered) {
     pool.forEach(t => { const o = el('option', null, t.name); o.value = t.id; s.appendChild(o); });
     if (pool.some(t => t.id === keep)) s.value = keep;
   });
+
+  /* SAY WHAT IS MISSING, AND WHERE IT IS.
+
+     A league page sends its admin straight to this section (home.js
+     offerSchedule), and two disabled dropdowns reading "enter teams first" is
+     the whole of what the page used to tell them — with the thing to do about
+     it in a section ABOVE, which they have just been scrolled past. A fixture
+     needs a competition and two clubs entered in it; this names whichever is
+     missing and links to the section that fixes it, so the answer is one press
+     rather than a hunt.
+
+     Nothing is said once it can work: a note that stays up after it stops being
+     true is a note people learn to read past. */
+  const note = $('#fxNote');
+  if (!note) return;
+  note.textContent = '';
+  const need = (text, href) => {
+    note.append(document.createTextNode(text + ' '));
+    const a = el('a', null, href === '#fixtures' ? '' : 'go there →');
+    a.href = href;
+    a.style.color = 'var(--lume)';
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const el2 = document.querySelector(href);
+      if (el2) el2.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+    note.appendChild(a);
+  };
+  if (!season) need('A fixture lives in a season — add one first.', '#seasons');
+  else if (!comp) need('A fixture lives in a competition — add one first.', '#seasons');
+  else if (pool.length < 2) {
+    need(pool.length === 1
+      ? 'One club is entered in ' + comp.name + '. A fixture needs two.'
+      : 'No clubs are entered in ' + comp.name + ' yet.', '#teams');
+  }
 }
 
 /* The format controls need the competition, the clubs entered in it and their

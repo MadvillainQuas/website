@@ -470,5 +470,42 @@ console.log('\n20. the rail shows flags, not the two letters a flag is made of')
      'height:auto let another rule drive it and the image came out a third too wide');
 }
 
+/* ---- 21. "Create a schedule" lands somewhere that can work ---------------- */
+console.log('\n21. a new league arrives with a season and a competition');
+/* The button went to a fixtures section that, on a brand-new league, could not
+   do anything: both club dropdowns disabled, schedule refusing with "Pick a
+   competition first", and the two things it wanted in the section ABOVE, which
+   the reader had just been scrolled past. */
+{
+  const m43 = read('supabase', 'migrations', '0143_a_new_league_has_a_season.sql');
+  ok('create_league gives the league a season and a competition',
+     /perform public\.ensure_first_competition\(new_id\);/.test(m43));
+  ok('...and the competition is a league competition, in this season',
+     /values \(v_season, 'League', 'league'\)/.test(m43) &&
+     /public\.season_label\(\)/.test(m43));
+  ok('the season label turns over in July, and reads as two years',
+     /extract\(month from p_on\) >= 7/.test(m43));
+  ok('it is idempotent, so the creator and the backfill cannot fight',
+     /if exists \(select 1 from seasons s where s\.league_id = p_league\) then\s*\n\s*return null;/.test(m43));
+  ok('the backfill only reaches a league with no season AND no game',
+     /not exists \(select 1 from seasons s where s\.league_id = lg\.id\)[\s\S]{0,300}not exists \(select 1 from games g/.test(m43),
+     'a feed league has seasons the moment it ingests');
+  /* USAGE, not the mention: the migration's own header explains that the feed
+     path is deliberately untouched, and prose naming it must not fail this. */
+  ok('a feed-connected league is NOT given an invented season',
+     !/(create or replace function|perform)\s+public\.create_league_from_feed/.test(m43),
+     'it takes its seasons from the feed; a stray one would sit beside the real ones');
+
+  ok('the fixtures section names what is missing instead of just refusing',
+     /A fixture lives in a season/.test(admin) && /A fixture needs two\./.test(admin));
+  ok('...and links to the section that fixes it',
+     /need\('A fixture lives in a season[^']*', '#seasons'\)/.test(admin) &&
+     /'#teams'\)/.test(admin) &&
+     /id="seasons"/.test(adminH) && /id="teams"/.test(adminH));
+  ok('...and says nothing once a fixture can actually be made',
+     /note\.textContent = '';/.test(admin),
+     'a note that stays up after it stops being true is one people read past');
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
