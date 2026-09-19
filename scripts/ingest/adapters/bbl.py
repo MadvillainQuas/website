@@ -53,6 +53,21 @@ SCHEDULE_URL = f"{SITE}/saison/aktuelle-spiele"
 GAME_URL = SITE + "/spiele/{gid}"
 IMAGE_PROXY = SITE + "/_next/image?url={url}&w=384&q=75"
 
+#: The site's OWN client calls this directly - found by hooking fetch() in a real page load,
+#: not documented anywhere. It is the same API that answers 401 to a bare GET on any other
+#: path (/, /v1/matches, /_next/data/...); this specific path is public and CORS-open, proven
+#: from a real browser: GET .../games?currentPage=1&pageSize=9&gameType=scheduled&competition=BBL
+#: -> 200, cache-control: public, max-age=900. gameType is "scheduled" or "finished"; pageSize
+#: above the site's own default (9) was not proven safe (one probe at 20-200 came back 401
+#: together with the plain default call, which reads as a rate limit tripped by testing, not a
+#: size rejection - but nothing here relies on that guess, since GAMES_PAGE_SIZE stays 9).
+GAMES_API = "https://api.basketball-bundesliga.de/games"
+GAMES_PAGE_SIZE = 9
+#: 34 pages was the season's real total when this was measured (18 clubs, ~306 fixtures). Capped
+#: well above that so a longer season does not go quietly incomplete, and far below "walk forever"
+#: so a server that never says done cannot turn one poll into thousands of requests.
+GAMES_PAGE_CAP = 60
+
 _NEXT = re.compile(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', re.S)
 
 #: BBL event type -> (actionType, subType, whether isSuccessful means anything).
@@ -137,22 +152,53 @@ class BBLAdapter(FibaLiveStatsAdapter):
     code every other league already runs."""
 
     name = "bbl"
+    #: Slower than the base default: one probe at pageSize>9 came back 401 together with a plain
+    #: default-sized call, which is what a tripped rate limit looks like, not a size rejection.
+    #: The season's whole schedule is walked in one poll, so it is worth the extra patience.
+    min_request_gap_s = 0.8
 
     # ------------------------------------------------------------------ schedule
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
-        """Fixtures from the season page's schedule widget.
+        """Every fixture, scheduled and finished, from the same API the site's own client calls.
 
-        IT IS A WINDOW, NOT THE FIXTURE LIST. The widget reports totalPages 34 at nine a page and
-        turns them client-side; no query parameter this adapter could find moves it, and the
-        league's API cannot be asked directly. Polling still reaches every game - each one enters
-        the scheduled window before it is played and appears in the finished window after - but a
-        cold start mid-season sees only what is near today, which is worth knowing before anyone
-        reads an empty April.
+        THE SEASON PAGE ALONE IS A WINDOW, NOT THE FIXTURE LIST - it renders nine games and turns
+        further pages by calling this endpoint itself, client-side. Reading that call rather than
+        the page it is embedded in is what turns nine fixtures into the whole season: paged with
+        the site's own page size, both gameTypes, until a page comes back short or the safety cap
+        is reached.
+
+        NOT EVERY NETWORK CAN REACH IT. This host answers 401 to a request it does not like, and
+        which requests it likes is not fully known - a browser succeeded and a script from this
+        machine did not, which reads as IP reputation rather than headers or TLS (curl, requests
+        and a Chrome-impersonating client all failed alike; changing User-Agent or adding
+        Origin/Referer changed nothing). lnb.fr already blocks GitHub's runners the same way
+        (docs/README notes it), so this may or may not clear from Actions - it will from a
+        residential connection. Either way the adapter must not go quiet: if the bulk endpoint
+        gives back nothing at all, this falls back to the season page's own embedded window
+        rather than returning zero fixtures.
         """
+        seen, out = set(), []
+        bulk_ok = False
+        for kind in ("finished", "scheduled"):
+            for page in self._walk_games(kind):
+                bulk_ok = True
+                for item in page:
+                    g = self._fixture(item)
+                    if g and g.external_id not in seen:
+                        seen.add(g.external_id)
+                        out.append(g)
+
+        if bulk_ok:
+            return out
+
+        # THE FALLBACK. Whatever blocked the bulk call almost certainly blocks the season page's
+        # own SSR request too, since both are the same host - but that request is one GET, costs
+        # nothing extra to try, and on a network the bulk endpoint refuses but the site itself
+        # still answers (a CDN edge, a different block rule per path) it recovers a small window
+        # instead of an empty league.
         html = self._text(schedule_url or SCHEDULE_URL)
         if not html:
             return []
-        out, seen = [], set()
         for block in self._schedule_blocks(_props(html)):
             for item in block:
                 g = self._fixture(item)
@@ -160,6 +206,40 @@ class BBLAdapter(FibaLiveStatsAdapter):
                     seen.add(g.external_id)
                     out.append(g)
         return out
+
+    def _walk_games(self, game_type: str) -> Iterable[list]:
+        """Pages of the bulk endpoint for one gameType, oldest call first. Yields each page's
+        items; stops on a short page (the last one), an unparsable reply (blocked or erroring),
+        or the safety cap. A page that fails outright is not retried - the season poll runs every
+        30 minutes on its own, and a game missed this pass is not missed for long."""
+        for page_no in range(1, GAMES_PAGE_CAP + 1):
+            data = self._games_page(game_type, page_no)
+            if data is None:
+                return
+            items = data.get("items") or []
+            if items:
+                yield items
+            if len(items) < GAMES_PAGE_SIZE or page_no >= S.num(data.get("totalPages"), page_no):
+                return
+
+    def _games_page(self, game_type: str, page_no: int) -> Optional[dict]:
+        gap = time.time() - getattr(self, "_last_page", 0)
+        if gap < self.min_request_gap_s:
+            time.sleep(self.min_request_gap_s - gap)
+        self._last_page = time.time()
+        try:
+            r = requests.get(GAMES_API, params={"currentPage": page_no, "pageSize": GAMES_PAGE_SIZE,
+                                                "gameType": game_type, "competition": "BBL"},
+                             headers={"User-Agent": UA, "Accept": "application/json",
+                                      "Origin": SITE, "Referer": SITE + "/"}, timeout=30)
+        except requests.RequestException:
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            return r.json()
+        except ValueError:
+            return None
 
     @staticmethod
     def _schedule_blocks(props: dict) -> Iterable[list]:
