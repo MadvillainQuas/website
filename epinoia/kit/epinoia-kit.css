@@ -582,6 +582,11 @@ body::after{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:99;
 .ep-follow.big.lbl{width:auto;height:30px}
 .ep-follow.big svg{width:18px;height:18px}
 .ep-follow.corner{position:absolute;top:8px;right:8px;z-index:2}
+/* A follow that did NOT save. It used to revert in silence, which on screen is
+   indistinguishable from a bell that ignored the tap — the reason is on the
+   title, and this is the three seconds of colour that sends somebody to read it. */
+.ep-follow.failed{border-color:var(--flare);color:var(--flare);background:transparent}
+.ep-follow.failed svg{fill:none}
 
 /* ---------- light theme: every card gets an outline ----------
    On the dark ground a card is a lighter panel and needs no edge; on the light ground a white

@@ -719,13 +719,8 @@
          an anonymous request does not return at all. */
       if (lids.length) ls = await get('leagues?id=in.(' + lids.join(',') +
         ')&select=id,slug,name,colour_a,logo_path,visibility&order=name');
-      /* The club's league comes back WITH it. Building the link from nav's own
-         league list instead gave ?l= empty for any club whose league is not in
-         it — a club in a league this account cannot see, or simply a list that
-         has not arrived yet — and /t/?l=&t=slug is a broken link, not a
-         degraded one. */
       if (tids.length) ts = await get('teams?id=in.(' + tids.join(',') +
-        ')&select=id,slug,name,colour,logo_path,league_id,leagues(slug)&order=name');
+        ')&select=id,slug,name,short_name,colour,logo_path&order=name');
     } catch (_) { /* draw whichever arrived */ }
 
     holding2.remove();
@@ -743,13 +738,20 @@
       flist.appendChild(a);
     });
     ts.forEach(t => {
-      const slug = (t.leagues && t.leagues.slug) ||
-                   (leagues.find(x => x.id === t.league_id) || {}).slug || '';
+      /* EXACTLY WHAT THE CLUBS PANEL DOES, because a club's crest is not a
+         league's. crest() above is the league plate — colour_a/colour_b and a
+         monogram — so a club drawn with it lost the crest it already has
+         everywhere else on the rail. epinoiaCrest is the shared club badge.
+         And the link is ?t= alone, the clubs panel's own shape: adding an ?l=
+         built from a league list this club's league may not be in produced
+         /t/?l=&t=slug, which is broken rather than merely plain. */
       const a = el('a', 'item trow');
-      a.href = root + 't/?l=' + encodeURIComponent(slug) +
-               '&t=' + encodeURIComponent(t.slug);
+      a.href = root + 't/?t=' + encodeURIComponent(t.slug);
       a.title = t.name;
-      a.append(crest(t), marquee(t.name));
+      const badge = window.epinoiaCrest
+        ? window.epinoiaCrest(t, { cls: 'ep-crest ic' })
+        : el('span', 'ic', '●');
+      a.append(badge, marquee(t.name));
       flist.appendChild(a);
     });
   }

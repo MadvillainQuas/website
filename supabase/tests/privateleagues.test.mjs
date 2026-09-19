@@ -57,6 +57,8 @@ const meH = read('epinoia', 'me', 'index.html');
 const home = read('epinoia', 'home.js');
 const nav = read('epinoia', 'nav.js');
 const navcss = read('epinoia', 'kit', 'nav.css');
+const follow = read('epinoia', 'follow.js');
+const kit = read('epinoia', 'kit', 'epinoia-kit.css');
 const robots = read('epinoia', 'robots.txt');
 
 let pass = 0, fail = 0;
@@ -339,8 +341,12 @@ ok('the list is clubs AND leagues, read as the account',
 ok('a private league in the list is marked as one',
    /if \(l\.visibility === 'private'\) a\.append\(el\('span', 'lgo', '\\u\{1F511\}'\)\)/.test(nav) ||
    /l\.visibility === 'private'/.test(nav));
-ok('a club carries its league slug from the query, not from the rail\u2019s own list',
-   /leagues\(slug\)/.test(nav) && /\(t\.leagues && t\.leagues\.slug\)/.test(nav),
+/* This first carried the league slug back with the club. The clubs panel does
+   not need one at all \u2014 it links ?t= alone \u2014 so the link now cannot be broken
+   by a missing slug, which is a better answer than fetching one. */
+ok('a club\u2019s link needs no league slug, so none can be missing from it',
+   /root \+ 't\/\?t=' \+ encodeURIComponent\(t\.slug\)/.test(nav) &&
+   !/'t\/\?l='/.test(nav),
    '/t/?l=&t=slug is a broken link, not a degraded one');
 ok('a draw that could not reach the answer is not cached',
    /followsDrawn = true;\s+\/\/ the answer arrived; keep it/.test(nav),
@@ -378,6 +384,45 @@ ok('a browser that refuses the clipboard still hands over the link',
    /copy it from here/.test(home));
 ok('both offers share one whoami',
    /offerShareLink\(who\)/.test(home));
+
+/* ---- 16. a club in the follows list is drawn like a club ----------------- */
+console.log('\n16. the follows list uses the clubs panel\u2019s own badge and link');
+/* nav's crest() is the LEAGUE plate — colour_a/colour_b and a monogram. A club
+   drawn with it lost the crest it already has everywhere else on the rail. */
+ok('a club uses epinoiaCrest, not the league plate',
+   /window\.epinoiaCrest\(t, \{ cls: 'ep-crest ic' \}\)/.test(nav) &&
+   (nav.match(/window\.epinoiaCrest\(t, \{ cls: 'ep-crest ic' \}\)/g) || []).length === 2,
+   'once in the clubs panel, once in the follows list — the same badge in both');
+ok('...and the clubs panel\u2019s link shape, which needs no league slug',
+   /root \+ 't\/\?t=' \+ encodeURIComponent\(t\.slug\)/.test(nav));
+ok('the follows query asks for what that badge needs',
+   /teams\?id=in\.\(' \+ tids\.join\(','\) \+\s*\n?\s*'\)&select=id,slug,name,short_name,colour,logo_path/.test(nav));
+
+/* ---- 17. a follow that will not save says so ----------------------------- */
+console.log('\n17. a refused follow is not a silent revert');
+ok('the server\u2019s own reason is read off the response',
+   /j && \(j\.message \|\| j\.hint \|\| j\.details\)/.test(follow),
+   'a full follow list and a refused write read completely differently');
+ok('toggle hands the reason back rather than swallowing it',
+   /return \{ ok: false, reason: \(e && e\.message\) \|\| 'could not be saved' \}/.test(follow));
+ok('...and the bell that was pressed says it',
+   /sp\.textContent = 'not saved'/.test(follow) &&
+   /b\.title = 'not saved: ' \+ res\.reason/.test(follow));
+ok('it is three seconds, not a stuck state',
+   /setTimeout\(\(\) => \{ if \(sp\) sp\.textContent = was;/.test(follow));
+ok('a successful follow still offers push and reports ok',
+   /if \(cur\.has\(id\)\) offerPush\(kind, name\);[\s\S]{0,80}return \{ ok: true/.test(follow));
+ok('the failed bell has a style of its own',
+   /\.ep-follow\.failed\{/.test(kit));
+
+/* ---- 18. the private group cannot appear for somebody with no private league */
+console.log('\n18. "Private" only shows to somebody who is in one');
+ok('the group is built from the league list, which RLS has already filtered',
+   /leagues\.forEach\(l => \{\s*\n\s*const k = groupKey\(l\);/.test(nav),
+   'a league nobody let this account into is not in `leagues`, so it makes no group');
+ok('...and 0139 is what filters it',
+   /create policy leagues_read on public\.leagues for select/.test(m39) &&
+   /or public\.league_invited\(id\)/.test(m39));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

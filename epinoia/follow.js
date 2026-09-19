@@ -79,13 +79,28 @@
     const body = {}; body[k] = prefs[k];
     try {
       const r = await fetch(C().supabaseUrl + '/rest/v1/rpc/set_fan_prefs', { method: 'POST', headers: headers(), body: JSON.stringify({ p: body }) });
-      if (!r.ok) throw new Error(String(r.status));
-    } catch (_) {
+      if (!r.ok) {
+        /* THE REASON, NOT JUST THE REVERT. This threw away everything the
+           server said and put the bell back, so a follow that would not save
+           looked exactly like a bell that ignored the tap — nothing on screen,
+           nothing in the console, nothing to report but "it errors". The
+           database's own message is the useful part (a full follow list and a
+           refused write read completely differently) and it is carried back to
+           the caller to show. */
+        let why = 'HTTP ' + r.status;
+        try {
+          const j = await r.json();
+          why = (j && (j.message || j.hint || j.details)) || why;
+        } catch (_) { /* not JSON; the status stands */ }
+        throw new Error(why);
+      }
+    } catch (e) {
       if (cur.has(id)) cur.delete(id); else cur.add(id);      // put it back
       prefs[k] = [...cur]; paintAll(kind, id);
-      return;
+      return { ok: false, reason: (e && e.message) || 'could not be saved' };
     }
     if (cur.has(id)) offerPush(kind, name);                   // followed, and saved
+    return { ok: true, on: cur.has(id) };
   }
 
   /* push.js, fetched the first time a follow needs it: from beside this file, with
@@ -147,7 +162,17 @@
         location.href = root + 'signin/?next=' + encodeURIComponent(location.pathname + location.search);
         return;
       }
-      toggle(kind, id, o.name);
+      /* A refusal is SAID, on the bell that was pressed. Reverting in silence is
+         indistinguishable from a dead button. */
+      toggle(kind, id, o.name).then(res => {
+        if (!res || res.ok) return;
+        const sp = b.querySelector('span');
+        const was = sp ? sp.textContent : '';
+        b.title = 'not saved: ' + res.reason;
+        b.classList.add('failed');
+        if (sp) sp.textContent = 'not saved';
+        setTimeout(() => { if (sp) sp.textContent = was; b.classList.remove('failed'); paint(b); }, 3200);
+      });
     });
     paint(b);
     load().then(() => paint(b));
