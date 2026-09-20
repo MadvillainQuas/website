@@ -172,6 +172,35 @@
     return wrap;
   }
 
+  /* ----------------------------------------------------------- the invite ---
+     What stands in this slot for a reader with nothing in it yet. It sits
+     between the day's fixtures and the podium because that is where the thing
+     it is offering would appear, so it shows its own shape rather than
+     describing it from the footer. */
+  function invite(ctx, signedIn) {
+    const box = el('div', 'hm-invite');
+    box.appendChild(el('p', 'hm-invite-t', signedIn
+      ? 'Follow your favourite leagues, clubs and players — the bell on any league, ' +
+        'club or player page — and their results, fixtures and best performers appear ' +
+        'here, with a notification when they play.'
+      : 'Sign in and start following your favourite leagues, clubs and players to get ' +
+        'notifications — their results, fixtures and best performers appear here.'));
+    if (!signedIn) {
+      const go = el('a', 'hm-invite-go', 'Sign in');
+      go.href = ctx.base + 'signin/?next=' + encodeURIComponent(location.pathname);
+      box.appendChild(go);
+    } else {
+      const go = el('a', 'hm-invite-go', 'Browse leagues');
+      go.href = '#leagues';
+      box.appendChild(go);
+    }
+    ctx.host.textContent = '';
+    ctx.host.appendChild(box);
+    const sec = ctx.host.closest('.sec');
+    if (sec) sec.hidden = false;
+    ctx.fadeIn(box);
+  }
+
   /* ---------------------------------------------------------------- a row --- */
   function row(title, node, count) {
     const h = el('h3', 'hm-fol-h');
@@ -263,15 +292,16 @@
     const F = window.EpinoiaFollow;
     const G = window.EpinoiaGlobalGames;
     if (!F || !G) throw new Error('follow.js or globalgames.js has not loaded');
-    /* Signed out is not an error and not an empty state either: there is
-       nothing to say to somebody who has not signed in, so the section stays
-       shut and the page reads as it always did. */
-    if (!F.session()) return;
+    /* Nothing followed is not an error and not an empty state: it is the one
+       moment the slot is worth something else, so it carries the invitation
+       instead. Signed out it offers the way in; signed in it says where the
+       bells are, because the account is already there. */
+    if (!F.session()) return invite(ctx, false);
 
     const prefs = await F.load();
     const leagueIds = ids(prefs && prefs.fav_league_ids);
     const teamIds = ids(prefs && prefs.fav_team_ids);
-    if (!leagueIds.length && !teamIds.length) return;
+    if (!leagueIds.length && !teamIds.length) return invite(ctx, true);
 
     const back = new Date(Date.now() - RESULT_DAYS * DAY).toISOString();
     const from = new Date(Date.now() - G.STALE_MS).toISOString();

@@ -20,15 +20,15 @@
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
 <!-- FIRST, BLOCKING: the theme and app mode before anything paints. Never the splash's mode
      script, its stylesheet or splash-body here: HOME is where the app goes instead of the water. -->
-<script src="../appmode.js?v=326"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=326">
-<link rel="stylesheet" href="../kit/nav.css?v=326">
-<link rel="stylesheet" href="../kit/card.css?v=326">
-<link rel="stylesheet" href="../kit/home.css?v=326">
-<link rel="stylesheet" href="../kit/fxc.css?v=326">
-<link rel="stylesheet" href="stars.css?v=326">
-<link rel="stylesheet" href="leagues.css?v=326">
-<link rel="stylesheet" href="../kit/haze.css?v=326">
+<script src="../appmode.js?v=327"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=327">
+<link rel="stylesheet" href="../kit/nav.css?v=327">
+<link rel="stylesheet" href="../kit/card.css?v=327">
+<link rel="stylesheet" href="../kit/home.css?v=327">
+<link rel="stylesheet" href="../kit/fxc.css?v=327">
+<link rel="stylesheet" href="stars.css?v=327">
+<link rel="stylesheet" href="leagues.css?v=327">
+<link rel="stylesheet" href="../kit/haze.css?v=327">
 </head>
 <body data-haze>
 <div class="ep-frame hm">
@@ -60,8 +60,10 @@
   </section>
 
   <!-- my followed ----------------------------------------------------------
-       Results, upcoming games, and players for followed leagues and clubs
-       (followed-home.js); only shown if signed in and has follows. -->
+       One dropdown per followed league and club — its results, its fixtures
+       and its best players this week (followed-home.js). With nothing followed
+       yet the same slot carries the invitation to follow something; it stays
+       shut only for a reader who follows things that have no games. -->
   <section class="sec" id="followed" aria-labelledby="hmFollowedH" hidden>
     <div class="sec-h"><span class="idx">02</span><h2 id="hmFollowedH">My followed</h2></div>
     <div class="hm-mount" id="homeFollowed" aria-busy="true"></div>
@@ -135,28 +137,28 @@
     </div>
   </footer>
 </div>
-<script src="../config.js?v=326" defer></script>
-<script src="../season.js?v=326" defer></script>
-<script src="../bpm.js?v=326" defer></script>
-<script src="../data.js?v=326" defer></script>
-<script src="../teamcolour.js?v=326" defer></script>
-<script src="../rt.js?v=326" defer></script>
-<script src="../initials.js?v=326" defer></script>
-<script src="../globalgames.js?v=326" defer></script>
-<script src="../stars.js?v=326" defer></script>
-<script src="../country.js?v=326" defer></script>
+<script src="../config.js?v=327" defer></script>
+<script src="../season.js?v=327" defer></script>
+<script src="../bpm.js?v=327" defer></script>
+<script src="../data.js?v=327" defer></script>
+<script src="../teamcolour.js?v=327" defer></script>
+<script src="../rt.js?v=327" defer></script>
+<script src="../initials.js?v=327" defer></script>
+<script src="../globalgames.js?v=327" defer></script>
+<script src="../stars.js?v=327" defer></script>
+<script src="../country.js?v=327" defer></script>
 <!-- the follow list, and the only thing on HOME that knows who is signed in:
      access.js deliberately sends no token here (see followed-home.js) -->
-<script src="../follow.js?v=326" defer></script>
-<script src="front.js?v=326" defer></script>
-<script src="daily.js?v=326" defer></script>
-<script src="followed-home.js?v=326" defer></script>
-<script src="stars-home.js?v=326" defer></script>
-<script src="leagues.js?v=326" defer></script>
-<script src="private-leagues.js?v=326" defer></script>
+<script src="../follow.js?v=327" defer></script>
+<script src="front.js?v=327" defer></script>
+<script src="daily.js?v=327" defer></script>
+<script src="followed-home.js?v=327" defer></script>
+<script src="stars-home.js?v=327" defer></script>
+<script src="leagues.js?v=327" defer></script>
+<script src="private-leagues.js?v=327" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="../haze.js?v=326" defer></script>
-<script src="../nav.js?v=326" defer></script>
-<script src="../xscroll.js?v=326" defer></script>
+<script src="../haze.js?v=327" defer></script>
+<script src="../nav.js?v=327" defer></script>
+<script src="../xscroll.js?v=327" defer></script>
 </body>
 </html>

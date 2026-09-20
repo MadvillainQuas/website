@@ -324,6 +324,24 @@ a.plain{color:inherit;text-decoration:none}
   .hmf-go{padding:4px 7px;letter-spacing:.1em}
 }
 
+/* THE INVITATION, in the same slot before anything is followed: what following
+   gets you, and the way in. A panel and a rule rather than a banner — it sits
+   between the day's fixtures and the podium, and anything louder would read as
+   an advert wedged between two things the reader came for. */
+.hm-invite{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--u)*2);
+  margin:0 calc(var(--u)*3) calc(var(--u)*2);padding:calc(var(--u)*2.5);
+  border:1px solid var(--rule);background:var(--panel)}
+.hm-invite-t{margin:0;flex:1 1 280px;min-width:0;font-family:var(--f-ui);
+  font-size:13px;line-height:1.55;color:var(--ink-2)}
+.hm-invite-go{flex:none;font-family:var(--f-micro);font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--on-accent);background:var(--lume);
+  text-decoration:none;padding:10px 15px;white-space:nowrap}
+.hm-invite-go:hover{filter:brightness(1.08)}
+@media (max-width:560px){
+  .hm-invite{margin:0 12px calc(var(--u)*2);padding:calc(var(--u)*2);gap:calc(var(--u)*1.5)}
+  .hm-invite-go{width:100%;text-align:center}
+}
+
 /* ---- THE FOOT BAND ---------------------------------------------------------
    Everything only the water splash used to offer: sign in, the scoring deck,
    and the API, embeds and contact links. Two columns of 48px rows on a phone,
