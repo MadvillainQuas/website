@@ -217,8 +217,9 @@ Deno.serve(async (req) => {
     const outcomes = new Map<string, { status: number; error: string | null }>();
     for (const n of toPush) {
       const mine = byUser.get(n.user_id) ?? [];
+      const lname = (n.league_id && lgName.get(n.league_id)) || (n.league_id ? 'EPINOIA' : '');
       const payload = JSON.stringify(payloadFor(n, site, Date.now(),
-        { groupName: (n.league_id && lgName.get(n.league_id)) || '' }));
+        { groupName: lname }));
       const options = webpushOptions(n, Date.now());
       let sent = 0;
       for (const s of mine) {
