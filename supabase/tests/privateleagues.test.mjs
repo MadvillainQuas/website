@@ -536,5 +536,21 @@ ok('the season sentence agrees with its number',
    /'Its one competition goes with it\.'/.test(admin),
    '"Its 1 competition go with it" is what counting without reading gives you');
 
+/* ---- 23. the follows panel is as tall as its own contents ---------------- */
+console.log('\n23. the deck is measured against the panel that is open');
+/* The deck is overflow:hidden with an explicit height that sizeDeck sets from
+   panelFor(view). 'follows' was missing from that chain, so it fell through to
+   homePanel: the deck was sized to the home list (208px against the follows
+   panel's 512px), everything past it was clipped, and the last club sat cut in
+   half with no way to reach the rest. */
+ok('panelFor knows every view the deck can be on',
+   /view === 'follows' \? followsPanel/.test(nav),
+   'a view missing from this chain is a panel clipped at another panel’s height');
+ok('...and the deck is re-measured when the rows arrive',
+   /drawFollows\(\)\s*\n?\s*\.then\(\(\) => afterPaint\(\(\) => \{[\s\S]{0,140}sizeDeck\(false\)/.test(nav),
+   'setView sizes it before the follows have been fetched');
+ok('...but not if the reader has slid back out while it was in flight',
+   /if \(nav\.dataset\.view === 'follows'\) sizeDeck\(false\);/.test(nav));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
