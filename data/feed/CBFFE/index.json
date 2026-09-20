@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-20T01:44:19.023603+00:00",
+"updated": "2026-09-20T08:46:58.493212+00:00",
 "games": [
 {
 "id": "544677",
@@ -1551,7 +1551,7 @@
 "hash": "2b786287be61d3ff0f1ceed98bcc0e3ff33aa4cc",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890469.json",
-"updated": "2026-09-20T01:43:42.481676+00:00"
+"updated": "2026-09-20T08:46:15.737381+00:00"
 },
 {
 "id": "2890470",
@@ -1564,7 +1564,7 @@
 "hash": "d822edec3251fa538f08e9d75eb63a4038ce631d",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
-"updated": "2026-09-20T01:43:55.386630+00:00"
+"updated": "2026-09-20T08:46:30.772826+00:00"
 },
 {
 "id": "2890471",
@@ -1577,7 +1577,7 @@
 "hash": "94c6521ffaa04335b342ff2ddc6665f5ecaba19c",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
-"updated": "2026-09-20T01:44:07.896862+00:00"
+"updated": "2026-09-20T08:46:45.917881+00:00"
 },
 {
 "id": "2890471",
@@ -1623,7 +1623,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-20T01:43:28.924221+00:00"
+"updated": "2026-09-20T08:45:59.862990+00:00"
 },
 {
 "id": "2890468",
