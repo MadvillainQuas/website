@@ -1,22 +1,37 @@
 'use strict';
 /* ============================================================================
-   HOME — MY FOLLOWED (Section for signed-in users)
+   HOME — MY FOLLOWED, section 'followed'.
 
-   Shows recent results, upcoming games, and top players for followed leagues
-   and clubs. Only displayed if the user is signed in and has followed items.
+   The last three results and the next three games across every league and club
+   this reader follows. Shut for everybody else: signed out, following nothing,
+   or following things with no games either side of today.
 
-   Fetches:
-     - User's fan preferences (followed leagues and teams)
-     - Recent results for each (3 most recent)
-     - Upcoming games (3 next games)
-     - Top players for that league/club this week
+   THE FOLLOW LIST IS READ THROUGH follow.js, NEVER access.js. access.js
+   attaches a token only where it changes the answer for a members-only league
+   it has already asked access_state about (its authHeaders), and HOME never
+   asks about a league — so on this page it returns no token at all, the read
+   goes out anonymous, and fan_prefs comes back [] for a reader who is signed
+   in and following plenty. That is exactly why this section was permanently
+   empty. follow.js reads the stored session the way nav.js does and already
+   holds the fan's row for the bells, so this shares one read rather than
+   making a second.
+
+   The cards are the platform's own (globalgames.js card()), the same ones the
+   daily fixtures rail above is built from, so a followed game reads as the
+   same kind of thing as any other.
    ============================================================================ */
 (function () {
   const H = window.EpinoiaHome;
   if (!H) return;
 
-  const CFG = window.EPINOIA_CONFIG;
-  const D = window.EpinoiaData;
+  const N = 3;
+
+  /* A follow list is a stored array this page puts straight into a query
+     string, so it is checked rather than trusted: anything that is not a UUID
+     never reaches the request. */
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const ids = v => (Array.isArray(v) ? v : []).filter(x => UUID.test(String(x)));
+  const list = a => a.map(x => '"' + x + '"').join(',');
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -25,202 +40,75 @@
     return n;
   }
 
-  function teamName(t) {
-    if (!t) return el('span', '', '');
-    const span = el('span');
-    if (t.short_name) {
-      const short = el('span', 'team-init');
-      short.textContent = t.short_name;
-      span.appendChild(short);
+  /* A league follow and a club follow cannot be one request — one filters an
+     embedded resource, the other two columns of the game itself — so they go
+     out together and are merged. Either side failing is not the section
+     failing: a reader who follows a club and a league still gets the club. */
+  function reads(G, leagueIds, teamIds, tail) {
+    const out = [];
+    if (leagueIds.length) {
+      out.push(G.request('games?select=' + G.SEL +
+        '&competitions.seasons.leagues.id=in.(' + list(leagueIds) + ')' + tail, false));
     }
-    const name = el('span', 'team-name');
-    name.textContent = t.name || '';
-    span.appendChild(name);
-    return span;
+    if (teamIds.length) {
+      out.push(G.request('games?select=' + G.SEL +
+        '&or=(home_team_id.in.(' + list(teamIds) + '),away_team_id.in.(' + list(teamIds) + '))' +
+        tail, false));
+    }
+    return Promise.all(out.map(p => p.catch(() => [])));
   }
 
-  async function api(path) {
-    const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
-    try {
-      const A = window.EpinoiaAccess;
-      if (A && typeof A.authHeaders === 'function') {
-        Object.assign(headers, A.authHeaders() || {});
-      }
-    } catch (_) { /* anonymous */ }
-    const r = await fetch(CFG.supabaseUrl + '/rest/v1/' + path, {
-      cache: 'no-store',
-      headers
+  function block(title, rows, ctx) {
+    const b = el('div', 'hm-fol');
+    b.appendChild(el('h3', 'hm-fol-h', title));
+    const rail = el('div', 'fxc-rail');
+    rail.setAttribute('role', 'list');
+    rows.forEach(g => {
+      const c = window.EpinoiaGlobalGames.card(g, { base: ctx.base, now: ctx.now });
+      c.setAttribute('role', 'listitem');
+      rail.appendChild(c);
     });
-    if (r.status === 401 && headers.Authorization) {
-      const r2 = await fetch(CFG.supabaseUrl + '/rest/v1/' + path, {
-        cache: 'no-store',
-        headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' }
-      });
-      if (!r2.ok) throw new Error(r2.status + ' ' + path.split('?')[0]);
-      return r2.json();
-    }
-    if (!r.ok) throw new Error(r.status + ' ' + path.split('?')[0]);
-    return r.json();
+    b.appendChild(rail);
+    return b;
   }
 
-  async function getUserPrefs() {
-    try {
-      const rows = await api('fan_prefs?select=fav_league_ids,fav_team_ids&limit=1');
-      return rows[0] || { fav_league_ids: [], fav_team_ids: [] };
-    } catch (_) {
-      return { fav_league_ids: [], fav_team_ids: [] };
-    }
-  }
+  H.register('followed', async function (ctx) {
+    const F = window.EpinoiaFollow;
+    const G = window.EpinoiaGlobalGames;
+    if (!F || !G) throw new Error('follow.js or globalgames.js has not loaded');
+    /* Signed out is not an error, and not an empty state either: there is
+       nothing to say to somebody who has not signed in, so the section stays
+       shut and the page reads as it always did. */
+    if (!F.session()) return;
 
-  async function loadFollowedGames(followedIds, type) {
-    if (!followedIds || followedIds.length === 0) return [];
-    const hour = 3600 * 1000;
-    const from = new Date(Date.now() - 7 * 24 * hour).toISOString();
-    const to = new Date(Date.now() + 7 * 24 * hour).toISOString();
+    const prefs = await F.load();
+    const leagueIds = ids(prefs && prefs.fav_league_ids);
+    const teamIds = ids(prefs && prefs.fav_team_ids);
+    if (!leagueIds.length && !teamIds.length) return;
 
-    if (type === 'league') {
-      const ids = followedIds.map(id => `"${id}"`).join(',');
-      return api(
-        `games?select=id,tipoff_at,status,home:home_team_id(id,name,short_name),away:away_team_id(id,name,short_name),competitions!inner(id,seasons!inner(id,league_id))` +
-        `&competitions.seasons.league_id=in.(${ids})` +
-        `&tipoff_at=gte.${encodeURIComponent(from)}&tipoff_at=lte.${encodeURIComponent(to)}` +
-        `&order=tipoff_at.asc&limit=100`
-      );
-    } else {
-      const ids = followedIds.map(id => `"${id}"`).join(',');
-      return api(
-        `games?select=id,tipoff_at,status,home:home_team_id(id,name,short_name),away:away_team_id(id,name,short_name),competitions!inner(id,seasons!inner(id,league_id))` +
-        `&or=(home_team_id.in.(${ids}),away_team_id.in.(${ids}))` +
-        `&tipoff_at=gte.${encodeURIComponent(from)}&tipoff_at=lte.${encodeURIComponent(to)}` +
-        `&order=tipoff_at.asc&limit=100`
-      );
-    }
-  }
+    const from = new Date(Date.now() - G.STALE_MS).toISOString();
+    const [past, soon] = await Promise.all([
+      reads(G, leagueIds, teamIds, '&status=eq.final&order=tipoff_at.desc,id.desc&limit=' + N),
+      reads(G, leagueIds, teamIds, '&status=in.(scheduled,live)&tipoff_at=gte.' +
+        encodeURIComponent(from) + '&order=tipoff_at.asc,id.asc&limit=' + N)
+    ]);
 
-  function gameCard(g) {
-    const row = el('div', 'fx-row');
-    const link = el('a');
-    link.href = `../game/?g=${g.id}`;
+    /* A game can arrive twice — a followed club playing in a followed league —
+       so the two lists are merged before either is cut to three. */
+    const t = g => Date.parse((g && g.tipoff_at) || '') || 0;
+    const flat = rs => G.dedupe([].concat.apply([], rs));
+    const results = flat(past).sort((a, b) => t(b) - t(a)).slice(0, N);
+    const upcoming = flat(soon).sort((a, b) => t(a) - t(b)).slice(0, N);
+    if (!results.length && !upcoming.length) return;
 
-    const h = el('div', 'fx-side home');
-    h.appendChild(teamName(g.home));
-    link.appendChild(h);
+    const wrap = el('div', 'hm-fols');
+    if (results.length) wrap.appendChild(block('Recent results', results, ctx));
+    if (upcoming.length) wrap.appendChild(block('Coming up', upcoming, ctx));
 
-    const st = el('div', 'fx-state');
-    const score = el('div', 'fx-score');
-    if (g.status === 'live') {
-      st.appendChild(el('span', 'pulse'));
-      st.appendChild(document.createTextNode('LIVE'));
-    } else if (g.status === 'final') {
-      score.textContent = `${g.home_score || 0}–${g.away_score || 0}`;
-    } else {
-      const t = new Date(g.tipoff_at);
-      const h = String(t.getHours()).padStart(2, '0');
-      const m = String(t.getMinutes()).padStart(2, '0');
-      score.textContent = `${h}:${m}`;
-    }
-    if (score.textContent) st.appendChild(score);
-    link.appendChild(st);
-
-    const a = el('div', 'fx-side away');
-    a.appendChild(teamName(g.away));
-    link.appendChild(a);
-
-    row.appendChild(link);
-    return row;
-  }
-
-  async function paint() {
-    const host = document.getElementById('homeFollowed');
-    if (!host) return;
-
-    try {
-      const prefs = await getUserPrefs();
-      const followedLeagues = prefs.fav_league_ids || [];
-      const followedTeams = prefs.fav_team_ids || [];
-
-      if (followedLeagues.length === 0 && followedTeams.length === 0) {
-        document.getElementById('followed').hidden = true;
-        return;
-      }
-
-      host.setAttribute('aria-busy', 'false');
-      host.textContent = '';
-
-      // Load all games for followed items
-      const [leagueGames, teamGames] = await Promise.all([
-        loadFollowedGames(followedLeagues, 'league'),
-        loadFollowedGames(followedTeams, 'team')
-      ]);
-
-      const allGames = [...leagueGames, ...teamGames].sort(
-        (a, b) => new Date(a.tipoff_at) - new Date(b.tipoff_at)
-      );
-
-      if (allGames.length === 0) {
-        document.getElementById('followed').hidden = true;
-        return;
-      }
-
-      // Separate results and upcoming
-      const now = new Date();
-      const results = allGames
-        .filter(g => g.status === 'final' || (g.tipoff_at && new Date(g.tipoff_at) < now))
-        .sort((a, b) => new Date(b.tipoff_at) - new Date(a.tipoff_at))
-        .slice(0, 3);
-
-      const upcoming = allGames
-        .filter(g => g.status !== 'final' && g.tipoff_at && new Date(g.tipoff_at) >= now)
-        .slice(0, 3);
-
-      // Create dropdowns
-      if (results.length > 0) {
-        const section = el('div', 'followed-section');
-        const header = el('div', 'followed-header');
-        header.textContent = '📊 Recent results';
-        section.appendChild(header);
-        const games = el('div', 'followed-games');
-        results.forEach(g => games.appendChild(gameCard(g)));
-        section.appendChild(games);
-        host.appendChild(section);
-      }
-
-      if (upcoming.length > 0) {
-        const section = el('div', 'followed-section');
-        const header = el('div', 'followed-header');
-        header.textContent = '🎯 Coming up';
-        section.appendChild(header);
-        const games = el('div', 'followed-games');
-        upcoming.forEach(g => games.appendChild(gameCard(g)));
-        section.appendChild(games);
-        host.appendChild(section);
-      }
-
-      // Show the section
-      document.getElementById('followed').hidden = false;
-    } catch (err) {
-      console.error('Error loading followed section:', err);
-      host.setAttribute('aria-busy', 'false');
-      document.getElementById('followed').hidden = true;
-    }
-  }
-
-  // Run after page loads
-  function start() {
-    const section = document.getElementById('followed');
-    if (!section) return;
-
-    // Always try to load - paint() will show/hide based on data
-    paint().catch(err => {
-      console.error('Error loading followed section:', err);
-      section.hidden = true;
-    });
-  }
-
-  // Wait for DOM to be ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    setTimeout(start, 100);
-  }
+    ctx.host.textContent = '';
+    ctx.host.appendChild(wrap);
+    const sec = ctx.host.closest('.sec');
+    if (sec) sec.hidden = false;
+    ctx.fadeIn(wrap);
+  });
 })();

@@ -209,6 +209,33 @@
     if (a && a.setAttribute) a.setAttribute('aria-label', label + '. Next fixture ' + when + ', ' + match);
   }
 
+  /* ---------------------------------------------------------------- a grid ---
+     One grid of league cards, each card's next fixture filled in as it lands.
+     What it reads is injected rather than fetched here, because the private
+     leagues section draws these same cards from rows only its own reader may
+     see and so has to ask for all of it with that reader's token. */
+  function grid(ls, ctx, opts) {
+    const o = opts || {};
+    const counts = o.counts || null;
+    const seasons = o.seasons || new Map();
+    const next = typeof o.nextFor === 'function' ? o.nextFor : nextFor;
+    const node = el('div', 'clubgrid lgc-grid');
+    node.setAttribute('role', 'list');
+    if (o.label) node.setAttribute('aria-label', o.label);
+    const pending = [];
+    ls.forEach((l, i) => {
+      const clubs = counts ? (counts.get(l.id) || 0) : null;
+      const c = card(l, i, ls.length, ctx, clubs, seasons.get(l.id));
+      node.appendChild(c.a);
+      const label = c.a.getAttribute('aria-label');
+      pending.push(Promise.resolve().then(() => next(l.id)).then(
+        g => fillNext(c.next, g, ctx, label),
+        () => { c.next.classList.remove('is-pending'); c.next.classList.add('is-none');
+                c.next.querySelector('.w').textContent = ''; }));
+    });
+    return { node, pending };
+  }
+
   /* ------------------------------------------------------------ the section --- */
   H.register('leagues', async function (ctx) {
     const C = window.EpinoiaCountry;
@@ -243,19 +270,9 @@
         el('span', 'starrow-s lgc-n', grp.leagues.length + (grp.leagues.length === 1 ? ' league' : ' leagues')));
       box.appendChild(head);
 
-      const grid = el('div', 'clubgrid lgc-grid');
-      grid.setAttribute('role', 'list');
-      grid.setAttribute('aria-label', 'Leagues in ' + grp.name);
-      grp.leagues.forEach((l, i) => {
-        const clubs = counts ? (counts.get(l.id) || 0) : null;
-        const c = card(l, i, grp.leagues.length, ctx, clubs, seasons.get(l.id));
-        grid.appendChild(c.a);
-        const label = c.a.getAttribute('aria-label');
-        pending.push(nextFor(l.id).then(g => fillNext(c.next, g, ctx, label),
-          () => { c.next.classList.remove('is-pending'); c.next.classList.add('is-none');
-                  c.next.querySelector('.w').textContent = ''; }));
-      });
-      box.appendChild(grid);
+      const g = grid(grp.leagues, ctx, { counts, seasons, label: 'Leagues in ' + grp.name });
+      pending.push.apply(pending, g.pending);
+      box.appendChild(g.node);
       wrap.appendChild(box);
     });
 
@@ -263,4 +280,7 @@
     ctx.fadeIn(wrap);
     await Promise.all(pending);
   });
+
+  /* The private leagues section (private-leagues.js) draws these same cards. */
+  window.EpinoiaHomeLeagues = { grid };
 })();

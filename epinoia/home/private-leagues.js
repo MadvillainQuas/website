@@ -1,179 +1,101 @@
 'use strict';
 /* ============================================================================
-   HOME — PRIVATE LEAGUES (Section for signed-in users)
+   HOME — PRIVATE LEAGUES, section 'privateLeagues'.
 
-   Shows private leagues the user is a member of, using league cards similar
-   to the public leagues section. Only displayed if the user is signed in and
-   is a member of any private leagues.
+   The private leagues this reader was let into, drawn as the very same cards
+   the leagues section above uses (leagues.js grid()). Shut for everybody else.
+
+   THESE ROWS DO NOT EXIST ANONYMOUSLY. A private league is invisible to a
+   stranger by row-level security — that is what keeps it off the front page in
+   the first place — so every read here carries the reader's own token, the
+   league row and the three facts printed on its card alike. Asked without one
+   the request succeeds and returns nothing, which is a section that is always
+   empty rather than an error anybody would notice.
+
+   THE TOKEN COMES FROM follow.js. access.js will not supply one on HOME: its
+   authHeaders speaks only for a members-only league it has already asked
+   access_state about, and HOME asks about none. follow.js reads the stored
+   session the way nav.js does.
+
+   league_guests is readable by the guest themselves (0139 guests_read), so the
+   embedded leagues(...) resolves for exactly the people it should and returns
+   nothing for anybody else — the same policy, asked from the other end.
    ============================================================================ */
 (function () {
   const H = window.EpinoiaHome;
   if (!H) return;
 
-  const CFG = window.EPINOIA_CONFIG;
-  const MINT = '#93f2bf';
+  const COLS = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,' +
+    'access_mode,access_fixtures_public';
+  const HOUR = 3600 * 1000;
 
-  function el(tag, cls, text) {
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = text;
-    return n;
+  function token() {
+    const F = window.EpinoiaFollow;
+    const s = F && typeof F.session === 'function' ? F.session() : null;
+    return (s && s.token) || null;
   }
 
-  async function api(path) {
-    const headers = { apikey: CFG.supabaseAnonKey, Accept: 'application/json' };
-    try {
-      const A = window.EpinoiaAccess;
-      if (A && typeof A.authHeaders === 'function') {
-        Object.assign(headers, A.authHeaders() || {});
-      }
-    } catch (_) { /* anonymous */ }
-    const r = await fetch(CFG.supabaseUrl + '/rest/v1/' + path, {
+  async function api(path, tok) {
+    const c = window.EPINOIA_CONFIG;
+    if (!c || !c.supabaseUrl) throw new Error('config.js has not loaded');
+    const r = await fetch(c.supabaseUrl + '/rest/v1/' + path, {
       cache: 'no-store',
-      headers
+      headers: {
+        apikey: c.supabaseAnonKey, Accept: 'application/json',
+        Authorization: 'Bearer ' + tok
+      }
     });
-    if (r.status === 401 && headers.Authorization) {
-      const r2 = await fetch(CFG.supabaseUrl + '/rest/v1/' + path, {
-        cache: 'no-store',
-        headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' }
-      });
-      if (!r2.ok) throw new Error(r2.status + ' ' + path.split('?')[0]);
-      return r2.json();
-    }
-    if (!r.ok) throw new Error(r.status + ' ' + path.split('?')[0]);
+    if (!r.ok) throw new Error(r.status + ' on ' + path.split('?')[0]);
     return r.json();
   }
 
-  async function getPrivateLeagues() {
-    try {
-      // Get private leagues the user is part of
-      // This queries league_members for the current user and joins with leagues
-      const rows = await api(
-        `leagues?select=id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode` +
-        `&access_mode=eq.members&order=name.asc`
-      );
-      return rows || [];
-    } catch (_) {
-      return [];
-    }
-  }
+  const one = v => (Array.isArray(v) ? v[0] : v) || null;
 
-  async function getTeamCounts() {
-    try {
-      const rows = await api('teams?select=league_id&league_id=not.is.null');
-      const m = new Map();
-      rows.forEach(r => {
-        if (r.league_id) m.set(r.league_id, (m.get(r.league_id) || 0) + 1);
-      });
-      return m;
-    } catch (_) {
-      return new Map();
-    }
-  }
+  H.register('privateLeagues', async function (ctx) {
+    const L = window.EpinoiaHomeLeagues;
+    if (!L) throw new Error('leagues.js has not loaded');
+    const tok = token();
+    if (!tok) return;                     // signed out: the section stays shut
 
-  function colorStyle(league) {
-    if (!league.colour_a) return {};
-    if (league.colour_source === 'default') return {};
-    const style = {};
-    if (/^#[0-9a-f]{6}$/i.test(league.colour_a)) {
-      style['--plate-colour'] = league.colour_a;
-    }
-    return style;
-  }
+    const rows = await api('league_guests?select=joined_at,leagues(' + COLS + ')' +
+      '&order=joined_at.desc', tok);
+    /* a guest row whose league has since been deleted embeds as null */
+    const ls = (rows || []).map(r => one(r.leagues)).filter(Boolean);
+    if (!ls.length) return;
 
-  function leagueCard(league, teamCount) {
-    const card = el('div', 'plate');
-    Object.assign(card.style, colorStyle(league));
+    /* The three facts the public cards carry, asked as this reader so a private
+       league's clubs, season and next game are not blank on its own card. */
+    const [counts, seasons] = await Promise.all([
+      api('teams?select=league_id&league_id=not.is.null', tok).then(ts => {
+        const m = new Map();
+        ts.forEach(t => { if (t.league_id) m.set(t.league_id, (m.get(t.league_id) || 0) + 1); });
+        return m;
+      }).catch(() => null),
+      api('seasons?select=league_id,name,starts_on&order=starts_on.desc.nullslast,name.desc', tok)
+        .then(ss => {
+          const m = new Map();
+          ss.forEach(s => { if (!m.has(s.league_id)) m.set(s.league_id, s); });
+          return m;
+        }).catch(() => new Map())
+    ]);
 
-    const link = el('a');
-    link.href = `../?l=${encodeURIComponent(league.slug)}`;
-    link.className = 'plate-link';
+    const from = new Date(Date.now() - 2 * HOUR).toISOString();
+    const nextFor = id => api('games?select=id,tipoff_at,status,' +
+      'home:home_team_id(name,short_name),away:away_team_id(name,short_name),' +
+      'competitions!inner(id,seasons!inner(id,league_id))' +
+      '&status=eq.scheduled&tipoff_at=gte.' + encodeURIComponent(from) +
+      '&competitions.seasons.league_id=eq.' + encodeURIComponent(id) +
+      '&order=tipoff_at.asc,id.asc&limit=1', tok).then(r => r[0] || null);
 
-    const logo = el('div', 'plate-logo');
-    if (league.logo_path) {
-      const img = el('img');
-      img.src = league.logo_path.startsWith('http')
-        ? league.logo_path
-        : `${CFG.supabaseUrl}/storage/v1/object/public/media-public/${league.logo_path}`;
-      img.alt = league.name;
-      img.onload = () => { logo.classList.add('img-loaded'); };
-      img.onerror = () => { logo.classList.add('img-failed'); };
-      logo.appendChild(img);
-    }
-    const monogram = el('div', 'plate-monogram');
-    monogram.textContent = (league.name || '').split(' ').map(w => w[0]).join('').slice(0, 2);
-    logo.appendChild(monogram);
-    link.appendChild(logo);
-
-    const info = el('div', 'plate-info');
-    const name = el('div', 'plate-name');
-    name.textContent = league.name;
-    info.appendChild(name);
-
-    const meta = el('div', 'plate-meta');
-    if (league.country) {
-      const country = el('span', 'plate-country');
-      country.textContent = league.country;
-      meta.appendChild(country);
-    }
-    if (teamCount > 0) {
-      const clubs = el('span', 'plate-clubs');
-      clubs.textContent = teamCount + (teamCount === 1 ? ' club' : ' clubs');
-      meta.appendChild(clubs);
-    }
-    info.appendChild(meta);
-    link.appendChild(info);
-
-    card.appendChild(link);
-    return card;
-  }
-
-  async function paint() {
-    const host = document.getElementById('homePrivateLeagues');
-    if (!host) return;
-
-    try {
-      const leagues = await getPrivateLeagues();
-      if (leagues.length === 0) {
-        document.getElementById('privateLeagues').hidden = true;
-        return;
-      }
-
-      const teamCounts = await getTeamCounts();
-      host.setAttribute('aria-busy', 'false');
-      host.textContent = '';
-
-      const rail = el('div', 'plate-rail');
-      leagues.forEach(league => {
-        const count = teamCounts.get(league.id) || 0;
-        rail.appendChild(leagueCard(league, count));
-      });
-      host.appendChild(rail);
-
-      document.getElementById('privateLeagues').hidden = false;
-    } catch (err) {
-      console.error('Error loading private leagues:', err);
-      host.setAttribute('aria-busy', 'false');
-      document.getElementById('privateLeagues').hidden = true;
-    }
-  }
-
-  // Run after page loads
-  function start() {
-    const section = document.getElementById('privateLeagues');
-    if (!section) return;
-
-    // Always try to load - paint() will show/hide based on data
-    paint().catch(err => {
-      console.error('Error loading private leagues:', err);
-      section.hidden = true;
+    const g = L.grid(ls, ctx, {
+      counts, seasons, nextFor, label: 'Private leagues you were let into'
     });
-  }
 
-  // Wait for DOM to be ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    setTimeout(start, 100);
-  }
+    ctx.host.textContent = '';
+    ctx.host.appendChild(g.node);
+    const sec = ctx.host.closest('.sec');
+    if (sec) sec.hidden = false;
+    ctx.fadeIn(g.node);
+    await Promise.all(g.pending);
+  });
 })();

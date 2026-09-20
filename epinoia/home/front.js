@@ -35,11 +35,16 @@
 
 const NOW = new Date();
 const BASE = '../';
-const MOUNTS = { fixtures: 'homeDaily', stars: 'homeStars', leagues: 'homeLeagues' };
+const MOUNTS = {
+  fixtures: 'homeDaily', followed: 'homeFollowed', stars: 'homeStars',
+  leagues: 'homeLeagues', privateLeagues: 'homePrivateLeagues'
+};
 const QUIET = {
   fixtures: 'Fixtures could not be loaded just now.',
+  followed: 'What you follow could not be loaded just now.',
   stars: 'The best performers could not be loaded just now.',
-  leagues: 'The leagues could not be loaded just now.'
+  leagues: 'The leagues could not be loaded just now.',
+  privateLeagues: 'Your private leagues could not be loaded just now.'
 };
 const sections = Object.create(null);
 
@@ -280,6 +285,21 @@ async function run(name) {
   }
 }
 
+/* THE SECTION NUMBERS ARE WRITTEN FOR THE PAGE AS IT STANDS, and two of the
+   five sections exist only for a signed-in reader — what they follow, and the
+   private leagues they were let into. Left to the markup the front door would
+   count 01, 03, 04 for everybody else, so the visible sections are numbered
+   here once they have all settled. */
+function renumber() {
+  if (typeof document === 'undefined') return;
+  let n = 0;
+  document.querySelectorAll('.sec').forEach(sec => {
+    const idx = sec.querySelector('.idx');
+    if (!idx || sec.hidden) return;
+    idx.textContent = String(++n).padStart(2, '0');
+  });
+}
+
 function boot() {
   tidyUrl();
   finishSignIn();
@@ -291,8 +311,14 @@ function boot() {
 
   const fixtures = run('fixtures');
   const leagues = run('leagues').then(reScroll);
+  /* both of these need the follow list, and follow.js reads it once for the
+     whole page, so the second to ask gets it for nothing */
+  const followed = fixtures.then(() => run('followed'));
+  const priv = run('privateLeagues');
   const stars = fixtures.then(() => run('stars'));
-  Promise.all([fixtures, leagues, stars]).then(reScroll, reScroll);
+  Promise.all([fixtures, followed, leagues, stars, priv])
+    .then(renumber, renumber)
+    .then(reScroll, reScroll);
 }
 
 /* ON DOMContentLoaded, NOT "WHEN THE DOCUMENT IS NO LONGER LOADING". A deferred script runs

@@ -281,15 +281,17 @@ a.plain{color:inherit;text-decoration:none}
 @media (max-width:720px){ .hm-app{margin:calc(var(--u)*2);padding:calc(var(--u)*2.5)} }
 :root[data-theme="light"] .hm-app{background:#ffffff;box-shadow:0 1px 3px rgba(13,31,23,.08)}
 
-/* ---- MY FOLLOWED ----
-   Recent results, upcoming games, and players for followed leagues/clubs.
-   Dropdown sections with game cards. */
-.followed-section{margin-bottom:calc(var(--u)*2)}
-.followed-header{font-family:var(--f-ui);font-weight:700;font-size:13px;text-transform:uppercase;
-  letter-spacing:.03em;color:var(--ink);margin-bottom:calc(var(--u)*1.5);cursor:pointer;
-  user-select:none}
-.followed-header:hover{color:var(--lume)}
-.followed-games{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
+/* ---- MY FOLLOWED -----------------------------------------------------------
+   Two labelled rails of the platform's own fixture cards, stacked: what the
+   leagues and clubs this reader follows have just played, and what they play
+   next. The label is a quiet micro rule rather than a second heading — the
+   section already has one, and two headings a line apart read as two sections.
+   It sits on the rail's own left gutter (kit/fxc.css .fxc-rail), which is
+   narrower on a phone, so it tracks that rather than setting its own. */
+.hm-fols{display:flex;flex-direction:column;gap:calc(var(--u)*2)}
+.hm-fol-h{margin:0 0 calc(var(--u)*1.25) calc(var(--u)*3);font-family:var(--f-micro);
+  font-size:9px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+@media (max-width:720px){ .hm-fol-h{margin-left:calc(var(--u)*2)} }
 
 /* ---- THE FOOT BAND ---------------------------------------------------------
    Everything only the water splash used to offer: sign in, the scoring deck,
