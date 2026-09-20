@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball Men",
 "adapter": "fiba_livestats",
-"updated": "2026-09-20T08:34:30.494248+00:00",
+"updated": "2026-09-20T15:54:16.571244+00:00",
 "games": [
 {
 "id": "2882601",
@@ -2108,13 +2108,14 @@
 "id": "2882456",
 "home": "London Lions",
 "away": "Newcastle Eagles",
-"status": "scheduled",
+"homeScore": 34,
+"awayScore": 34,
+"status": "live",
 "date": "2026-09-20",
+"hash": "e654679f801fe14c26a9bb1a9bccf648f65966ca",
 "venue": "New City College Hackney",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2882456.json",
+"updated": "2026-09-20T15:53:34.382147+00:00"
 },
 {
 "id": "2882428",
@@ -2132,13 +2133,14 @@
 "id": "2882427",
 "home": "Caledonia Gladiators",
 "away": "Liverpool Basketball",
-"status": "scheduled",
+"homeScore": 36,
+"awayScore": 41,
+"status": "live",
 "date": "2026-09-20",
+"hash": "1b94c8a1a232ff6eb867ed2ba5d6262d772ddd12",
 "venue": "Playsport Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2882427.json",
+"updated": "2026-09-20T15:53:17.005164+00:00"
 },
 {
 "id": "2882425",

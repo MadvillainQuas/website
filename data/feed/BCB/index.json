@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-20T08:37:46.959731+00:00",
+"updated": "2026-09-20T15:58:26.554550+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2312,37 +2312,38 @@
 "id": "2887011",
 "home": "Reading Rockets",
 "away": "Worthing Thunder",
-"status": "scheduled",
+"homeScore": 47,
+"awayScore": 36,
+"status": "live",
 "date": "2026-09-20T15:00:00+00:00",
+"hash": "b721e3dc242390217ada0ee7f563aed2beb9e3d9",
 "venue": "Loddon Valley Leisure Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887011.json",
+"updated": "2026-09-20T15:58:11.211393+00:00"
 },
 {
 "id": "2887021",
 "home": "Newcastle Knights",
 "away": "Nottingham Hoods",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-20T13:00:00+00:00",
 "venue": "Newcastle University Sports Centre",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 112,
+"awayScore": 94,
+"hash": "562778d7390a687a14be9c0be25c686c607ec1d7",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887021.json"
 },
 {
 "id": "2887002",
 "home": "Cardiff Met Archers",
 "away": "Bristol Hurricanes",
-"status": "scheduled",
+"status": "final",
 "date": "2026-09-20T13:00:00+00:00",
 "venue": "Archers Arena",
-"homeScore": null,
-"awayScore": null,
-"hash": null,
-"raw_ref": null
+"homeScore": 74,
+"awayScore": 90,
+"hash": "1cad48a40f535f9e2935d4ddb12103bc8839c592",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2887002.json"
 },
 {
 "id": "2887020",
