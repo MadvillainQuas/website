@@ -205,44 +205,22 @@
     }
   }
 
-  // Run after page loads to check if user is signed in
+  // Run after page loads
   function start() {
     const section = document.getElementById('followed');
     if (!section) return;
 
-    // Check if user is authenticated
-    try {
-      const A = window.EpinoiaAccess;
-      if (A && typeof A.session === 'function') {
-        const s = A.session();
-        if (s && s.user) {
-          paint().catch(console.error);
-          return;
-        }
-      }
-    } catch (_) {}
-
-    // Try with auth headers method
-    try {
-      const A = window.EpinoiaAccess;
-      if (A && typeof A.authHeaders === 'function') {
-        const h = A.authHeaders();
-        if (h && h.Authorization) {
-          paint().catch(console.error);
-          return;
-        }
-      }
-    } catch (_) {}
-
-    // Not signed in, hide section
-    section.hidden = true;
+    // Always try to load - paint() will show/hide based on data
+    paint().catch(err => {
+      console.error('Error loading followed section:', err);
+      section.hidden = true;
+    });
   }
 
-  // Wait for DOM to be ready and access to be loaded
+  // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start);
   } else {
-    // Use a timeout to ensure other scripts have loaded
-    setTimeout(start, 500);
+    setTimeout(start, 100);
   }
 })();
