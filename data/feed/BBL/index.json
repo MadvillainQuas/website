@@ -2,7 +2,7 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-19T22:09:12.364144+00:00",
+"updated": "2026-09-20T00:10:56.868696+00:00",
 "games": [
 {
 "id": "2007032",
@@ -10,7 +10,11 @@
 "away": "Science City Jena",
 "status": "scheduled",
 "date": "2026-09-25T18:00:00Z",
-"venue": "Stadthalle Weißenfels"
+"venue": "Stadthalle Weißenfels",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007034",
