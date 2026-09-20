@@ -29,8 +29,8 @@
    THE STARS ARE THE EXPENSIVE PART AND ARE NOT PAID FOR UNTIL THEY ARE ASKED
    FOR. Each one is a week of box scores through stars.js — the same arithmetic
    as the podium below, so HOME cannot disagree with itself about who a star is
-   — so it runs when its dropdown is first opened. Only the first is open on
-   load, so following six leagues costs one week of box scores, not six.
+   — so it runs when its dropdown is first opened. Every row starts closed, so
+   the section costs nothing beyond its two game reads until a reader opens one.
    ============================================================================ */
 (function () {
   const H = window.EpinoiaHome;
@@ -194,10 +194,9 @@
   }
 
   /* --------------------------------------------------------- one dropdown --- */
-  function dropdown(f, ctx, open) {
+  function dropdown(f, ctx) {
     const G = window.EpinoiaGlobalGames;
     const det = el('details', 'ep-acc hmf-acc');
-    det.open = !!open;
 
     const sum = el('summary');
     const t = el('span', 't');
@@ -248,7 +247,6 @@
         else { h.remove(); }
       }, () => { wait.remove(); h.remove(); });
     };
-    if (det.open) fill();
     det.addEventListener('toggle', () => { if (det.open) fill(); });
 
     return det;
@@ -282,7 +280,7 @@
     if (!follows.length) return;
 
     const wrap = el('div', 'hm-fols');
-    follows.forEach((f, i) => wrap.appendChild(dropdown(f, ctx, i === 0)));
+    follows.forEach(f => wrap.appendChild(dropdown(f, ctx)));
 
     ctx.host.textContent = '';
     ctx.host.appendChild(wrap);
