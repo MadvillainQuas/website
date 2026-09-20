@@ -2,8 +2,24 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-20T16:38:28.703533+00:00",
+"updated": "2026-09-20T19:21:54.325982+00:00",
 "games": [
+{
+"id": "2006910",
+"home": "FC Bayern München Basketball",
+"away": "ALBA BERLIN",
+"status": "scheduled",
+"date": "2026-09-26T13:30:00Z",
+"venue": "BMW Park München"
+},
+{
+"id": "2007033",
+"home": "Veolia Towers Hamburg",
+"away": "NINERS Chemnitz",
+"status": "scheduled",
+"date": "2026-09-25T18:00:00Z",
+"venue": "Inselpark Arena"
+},
 {
 "id": "2007032",
 "home": "SYNTAINICS MBC",
@@ -22,7 +38,11 @@
 "away": "EWE Baskets Oldenburg",
 "status": "scheduled",
 "date": "2026-09-25T18:00:00Z",
-"venue": "tectake ARENA Würzburg"
+"venue": "tectake ARENA Würzburg",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007034",
@@ -88,11 +108,11 @@
 "id": "2006926",
 "home": "FC Bayern München Basketball",
 "away": "BMA365 Bamberg Baskets",
-"homeScore": 46,
-"awayScore": 23,
-"status": "live",
+"homeScore": 108,
+"awayScore": 72,
+"status": "final",
 "date": "2026-09-20T16:00:00Z",
-"hash": "b095ed6292e4dfbd901783aa1303ea5c79efb79b",
+"hash": "987057e06004f209584f28a1e15dc92e75087a67",
 "venue": "BMW Park München",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006926.json",
 "updated": "2026-09-20T16:38:11.250498+00:00"
@@ -101,11 +121,11 @@
 "id": "2006925",
 "home": "ratiopharm ulm",
 "away": "MHP RIESEN Ludwigsburg",
-"homeScore": 83,
-"awayScore": 75,
-"status": "live",
+"homeScore": 86,
+"awayScore": 77,
+"status": "final",
 "date": "2026-09-20T14:30:00Z",
-"hash": "a3e7b4630a94fa25e1950f266461fa5966c77954",
+"hash": "0542519788f33bc92057b7ee5850634c7fcee28a",
 "venue": "ratiopharm arena Ulm",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/bbl/2006925.json",
 "updated": "2026-09-20T16:37:52.617015+00:00"

@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-20T16:10:29.183416+00:00",
+"updated": "2026-09-20T18:56:39.102409+00:00",
 "games": [
 {
 "id": "544677",
@@ -1520,36 +1520,36 @@
 "id": "2890467",
 "home": "SLUNETA  Ústí nad Labem",
 "away": "Sršni Photomate Písek",
-"homeScore": 2,
-"awayScore": 4,
-"status": "live",
+"homeScore": 78,
+"awayScore": 80,
+"status": "final",
 "date": "2026-09-20T16:00:00Z",
-"hash": "954aa8fb0009f5c257f287e4341d1f2e92e17a6e",
+"hash": "ac41d07297bd94668b58fd5fae169a7122bf35c8",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890467.json",
-"updated": "2026-09-20T16:09:53.862609+00:00"
+"updated": "2026-09-20T18:56:10.145507+00:00"
 },
 {
 "id": "2890472",
 "home": "BK Olomoucko",
 "away": "BK GAPA Hradec Králové",
-"homeScore": 38,
-"awayScore": 59,
-"status": "live",
+"homeScore": 81,
+"awayScore": 93,
+"status": "final",
 "date": "2026-09-20T15:00:00Z",
-"hash": "b6382aef618381bd10ee3464bc6f08459d2b532d",
+"hash": "70c2efffb1daebbc0c3033b605ed117e635be484",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890472.json",
-"updated": "2026-09-20T16:10:13.529935+00:00"
+"updated": "2026-09-20T18:56:25.638379+00:00"
 },
 {
 "id": "2890472",
 "home": "BK Olomoucko",
 "away": "BK GAPA Hradec Králové",
-"homeScore": 34,
-"awayScore": 54,
-"status": "live",
-"hash": "bb5c9cb9bd146cbc9fed6fbfabf79433dc7f5efd",
+"homeScore": 81,
+"awayScore": 93,
+"status": "final",
+"hash": "70c2efffb1daebbc0c3033b605ed117e635be484",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890472.json",
 "date": "2026-09-20"
 },
@@ -1557,10 +1557,10 @@
 "id": "2890467",
 "home": "SLUNETA  Ústí nad Labem",
 "away": "Sršni Photomate Písek",
-"homeScore": 0,
-"awayScore": 1,
-"status": "live",
-"hash": "029029ef1b6ac48443522d75637cb0980ffa2cfb",
+"homeScore": 78,
+"awayScore": 80,
+"status": "final",
+"hash": "ac41d07297bd94668b58fd5fae169a7122bf35c8",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890467.json",
 "date": "2026-09-20"
 },
@@ -1575,7 +1575,7 @@
 "hash": "2b786287be61d3ff0f1ceed98bcc0e3ff33aa4cc",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890469.json",
-"updated": "2026-09-20T16:08:59.641429+00:00"
+"updated": "2026-09-20T18:55:23.380917+00:00"
 },
 {
 "id": "2890470",
@@ -1588,7 +1588,7 @@
 "hash": "d822edec3251fa538f08e9d75eb63a4038ce631d",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
-"updated": "2026-09-20T16:09:17.723754+00:00"
+"updated": "2026-09-20T18:55:39.417044+00:00"
 },
 {
 "id": "2890471",
@@ -1601,7 +1601,7 @@
 "hash": "94c6521ffaa04335b342ff2ddc6665f5ecaba19c",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
-"updated": "2026-09-20T16:09:35.845561+00:00"
+"updated": "2026-09-20T18:55:55.125964+00:00"
 },
 {
 "id": "2890471",
@@ -1647,7 +1647,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-20T16:08:40.641268+00:00"
+"updated": "2026-09-20T18:55:04.960005+00:00"
 },
 {
 "id": "2890468",
