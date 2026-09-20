@@ -204,9 +204,15 @@
       t.innerHTML = window.epinoiaLeagueBadge(f.who, { cls: 'lg' });
       G.wireBadges(t);
     } else {
-      const dot = el('span', 'hmf-dot');
-      if (/^#[0-9a-f]{6}$/i.test(String(f.who.colour || ''))) dot.style.background = f.who.colour;
-      t.append(dot, el('span', 'hmf-nm', f.who.name || f.who.slug || 'Club'));
+      /* THE CLUB'S OWN CREST, the same one the fixture cards below it carry
+         (config.js epinoiaCrest): the uploaded badge where the club has one,
+         its initials on its own colour where it has not, and the initials
+         again if the image fails — the CSP forbids an inline onerror, so the
+         fallback is a listener that helper already wires. */
+      t.append(typeof window.epinoiaCrest === 'function'
+        ? window.epinoiaCrest(f.who, { cls: 'hmf-crest' })
+        : el('span', 'hmf-crest'),
+        el('span', 'hmf-nm', f.who.name || f.who.slug || 'Club'));
     }
     sum.appendChild(t);
 
