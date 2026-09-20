@@ -158,8 +158,44 @@
     }
   }
 
-  // Only run if user might be signed in
-  if (window.EpinoiaAccess) {
-    paint().catch(console.error);
+  // Run after page loads to check if user is signed in
+  function start() {
+    const section = document.getElementById('privateLeagues');
+    if (!section) return;
+
+    // Check if user is authenticated
+    try {
+      const A = window.EpinoiaAccess;
+      if (A && typeof A.session === 'function') {
+        const s = A.session();
+        if (s && s.user) {
+          paint().catch(console.error);
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Try with auth headers method
+    try {
+      const A = window.EpinoiaAccess;
+      if (A && typeof A.authHeaders === 'function') {
+        const h = A.authHeaders();
+        if (h && h.Authorization) {
+          paint().catch(console.error);
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Not signed in, hide section
+    section.hidden = true;
+  }
+
+  // Wait for DOM to be ready and access to be loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    // Use a timeout to ensure other scripts have loaded
+    setTimeout(start, 500);
   }
 })();
