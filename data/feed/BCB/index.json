@@ -2,7 +2,7 @@
 "code": "BCB",
 "label": "British Championship Basketball",
 "adapter": "fiba_livestats",
-"updated": "2026-09-20T18:44:58.449293+00:00",
+"updated": "2026-09-20T21:27:21.257746+00:00",
 "games": [
 {
 "id": "2887204",
@@ -2290,9 +2290,9 @@
 "away": "Oaklands Wolves",
 "homeScore": 90,
 "awayScore": 74,
-"status": "live",
+"status": "final",
 "date": "2026-09-20T17:00:00+00:00",
-"hash": "3d35bca9692d6b0ff263e6030a96b5d5df17a3ff",
+"hash": "62c6e80c6267fbd77cc546f61d25b6afe7813425",
 "venue": "Hemel Hempstead Leisure Centre",
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2886991.json",
 "updated": "2026-09-20T18:44:41.131939+00:00"

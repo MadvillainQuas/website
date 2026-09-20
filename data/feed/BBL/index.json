@@ -2,7 +2,7 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-20T19:21:54.325982+00:00",
+"updated": "2026-09-20T21:57:00.409920+00:00",
 "games": [
 {
 "id": "2006910",
@@ -10,7 +10,11 @@
 "away": "ALBA BERLIN",
 "status": "scheduled",
 "date": "2026-09-26T13:30:00Z",
-"venue": "BMW Park München"
+"venue": "BMW Park München",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007033",
@@ -18,7 +22,11 @@
 "away": "NINERS Chemnitz",
 "status": "scheduled",
 "date": "2026-09-25T18:00:00Z",
-"venue": "Inselpark Arena"
+"venue": "Inselpark Arena",
+"homeScore": null,
+"awayScore": null,
+"hash": null,
+"raw_ref": null
 },
 {
 "id": "2007032",
