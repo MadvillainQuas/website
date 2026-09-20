@@ -660,7 +660,20 @@
   let followsDrawn = false;
   function openFollows() {
     setView('follows', true);
-    drawFollows();
+    /* AND AGAIN WHEN THE ROWS LAND. setView sizes the deck immediately, which
+       for this panel is before the follows have been fetched — so the height is
+       measured against a panel holding a heading and the word "loading", and
+       everything that arrives after it is clipped. The clubs panel re-sizes the
+       same way for the same reason.
+
+       Only if this is still the open view: somebody who slides back out while
+       the request is in flight must not have the deck resized to a panel they
+       have left. */
+    drawFollows()
+      .then(() => afterPaint(() => {
+        if (nav.dataset.view === 'follows') sizeDeck(false);
+      }))
+      .catch(() => { /* the panel says what went wrong; the deck keeps its height */ });
     const first = flist.querySelector('a');
     if (first) first.focus({ preventScroll: true });
   }
@@ -1390,11 +1403,19 @@
      document at once so the transform can slide between them, which means the
      taller one would otherwise set the height and leave a hole beneath the
      shorter one. */
+  /* EVERY VIEW, OR THE DECK IS MEASURED AGAINST THE WRONG PANEL. The deck is
+     `overflow:hidden` with an explicit height, and sizeDeck sets that height
+     from whichever panel this returns — so a view missing from this chain falls
+     through to homePanel, the deck is sized to the home list, and the panel that
+     is actually open is CLIPPED at that height with no way to scroll to the
+     rest. That is what 'follows' did: the last club in the list was cut in half
+     and nothing below it could be reached. */
   function panelFor(view) {
     return view === 'teams'   ? teamsPanel
          : view === 'league'  ? leaguePanel
          : view === 'root'    ? rootPanel
          : view === 'country' ? countryPanel
+         : view === 'follows' ? followsPanel
          : homePanel;
   }
 
