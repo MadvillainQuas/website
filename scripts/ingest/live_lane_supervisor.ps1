@@ -3,9 +3,17 @@
 # WHAT IT DOES. Keeps the live lane (run_ingest.py --live-only) available for the whole time the
 # PC is on, without a window sitting open all day:
 #
-#   * NOTHING NEAR   -> it sleeps, hidden, for exactly as long as the lane itself says (the lane
-#                       writes %TEMP%\epinoia_live_wait: seconds until 30 minutes before the next
-#                       tip-off, capped at 4 h).
+#   * NOTHING NEAR   -> it sleeps, hidden, for as long as the lane says (the lane writes
+#                       %TEMP%\epinoia_live_wait: seconds until 30 minutes before the next
+#                       tip-off) BUT NEVER MORE THAN 15 MINUTES AT A STRETCH. The lane's answer
+#                       describes the schedule as it was at the probe; a game added, moved or
+#                       un-postponed during a four-hour nap would be played and finished before
+#                       this looked again.
+#
+# ALWAYS RUNNING. install_live_lane.cmd registers this at logon AND as a watchdog task that
+# launches it every 10 minutes. The mutex below makes the extra launches free, and it means a
+# supervisor that dies -- an update, a stray error, a window closed by hand -- is back within ten
+# minutes instead of staying dead until the next logon.
 #   * A GAME IS LIVE, OR TIPS WITHIN 30 MIN -> it opens a normal console window running the lane,
 #                       so you can see it work, and closes it again when the lane stops.
 #
@@ -29,6 +37,7 @@ $WaitFile = Join-Path $env:TEMP 'epinoia_live_wait'
 $LogDir   = Join-Path $env:LOCALAPPDATA 'epinoia'
 $Log      = Join-Path $LogDir 'live_lane.log'
 $Near     = 30      # the lane's own "work now" answer, run_ingest.LIVE_RESTART
+$MaxNap   = 900     # ceiling on any sleep: the schedule moves, so re-probe at least this often
 $Args_    = '-u run_ingest.py --worker-config --live-only --live-every 15 --feed-out ""'
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -122,8 +131,18 @@ while ($true) {
         Say 'lane window closed (nothing live or near) - probing again'
         Start-Sleep -Seconds 30
     } else {
+        # THE LANE'S ANSWER IS A CEILING, NOT A SLEEP. It is worked out from the schedule as it
+        # stood during the probe, and the schedule moves underneath it: discovery adds a game,
+        # a tip-off is brought forward, a postponed game is given a new time. Sleeping four hours
+        # on a four-hour answer misses all three, and the window stays shut through a whole game.
+        #
+        # It also survives the PC sleeping. Start-Sleep counts wall-clock across suspend, so a long
+        # nap on a machine that was closed and reopened can wake up well past a tip-off.
+        #
+        # Re-probing is one short python run, so it is cheap to ask again every quarter of an hour.
+        $nap = [math]::Min($wait, $MaxNap)
         $h = [math]::Floor($wait / 3600); $m = [math]::Floor(($wait % 3600) / 60)
-        Say ("nothing near - sleeping {0}h {1:00}m until 30 min before the next tip-off" -f $h, $m)
-        Start-Sleep -Seconds $wait
+        Say ("nothing near - next tip-off in {0}h {1:00}m; looking again in {2} min" -f $h, $m, [math]::Round($nap / 60))
+        Start-Sleep -Seconds $nap
     }
 }
