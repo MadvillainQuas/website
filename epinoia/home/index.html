@@ -59,11 +59,19 @@
     </div>
   </section>
 
+  <!-- my followed ----------------------------------------------------------
+       Results, upcoming games, and players for followed leagues and clubs
+       (followed-home.js); only shown if signed in and has follows. -->
+  <section class="sec" id="followed" aria-labelledby="hmFollowedH" hidden>
+    <div class="sec-h"><span class="idx">02</span><h2 id="hmFollowedH">My followed</h2></div>
+    <div class="hm-mount" id="homeFollowed" aria-busy="true"></div>
+  </section>
+
   <!-- best performing players ---------------------------------------------
        Weekly and monthly across every league, on the league pages' stars
        logic (stars-home.js); loaded after the fixtures. -->
   <section class="sec" id="stars" aria-labelledby="hmStarsH">
-    <div class="sec-h"><span class="idx">02</span><h2 id="hmStarsH">Best performing players</h2>
+    <div class="sec-h"><span class="idx">03</span><h2 id="hmStarsH">Best performing players</h2>
       <span class="note">by box plus/minus</span></div>
     <div class="hm-mount" id="homeStars" aria-busy="true">
       <div class="hm-skel st" aria-hidden="true">
@@ -77,7 +85,7 @@
        /epinoia/countries/ lands here (#leagues); front.js scrolls back to it
        once the sections above have grown. -->
   <section class="sec" id="leagues" aria-labelledby="hmLeaguesH">
-    <div class="sec-h"><span class="idx">03</span><h2 id="hmLeaguesH">Leagues</h2></div>
+    <div class="sec-h"><span class="idx">04</span><h2 id="hmLeaguesH">Leagues</h2></div>
     <div class="hm-mount" id="homeLeagues" aria-busy="true">
       <div class="hm-skel lg" aria-hidden="true"><i></i><i></i><i></i></div>
     </div>
@@ -91,6 +99,16 @@
       <span class="d">The statistics table across all leagues: the top 50 in any stat, filters on several stats at once, and players compared side by side.</span>
       <span class="go" aria-hidden="true">→</span>
     </a>
+  </section>
+
+  <!-- private leagues -------------------------------------------------------
+       Leagues the user is a member of, using league cards (private-leagues.js);
+       only shown if signed in and is a member of any private leagues. -->
+  <section class="sec" id="privateLeagues" aria-labelledby="hmPrivateLeaguesH" hidden>
+    <div class="sec-h"><span class="idx">05</span><h2 id="hmPrivateLeaguesH">Private leagues</h2></div>
+    <div class="hm-mount" id="homePrivateLeagues" aria-busy="true">
+      <div class="hm-skel lg" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
   </section>
 
   <!-- THE FOOT BAND: what only the water splash used to offer. "Sign in" hides itself for
@@ -129,8 +147,10 @@
 <script src="../country.js?v=321" defer></script>
 <script src="front.js?v=321" defer></script>
 <script src="daily.js?v=321" defer></script>
+<script src="followed-home.js?v=321" defer></script>
 <script src="stars-home.js?v=321" defer></script>
 <script src="leagues.js?v=321" defer></script>
+<script src="private-leagues.js?v=321" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
 <script src="../haze.js?v=321" defer></script>
 <script src="../nav.js?v=321" defer></script>

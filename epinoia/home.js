@@ -134,7 +134,8 @@ function hexA(hex, a) {
 const SECTION_OF = {
   news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', stars: '#starsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
-  socials: '#socialSec', takepart: '#takepartSec'
+  socials: '#socialSec', takepart: '#takepartSec', followed: '#followed',
+  privateLeagues: '#privateLeagues'
 };
 
 function sectionOn(key) {
