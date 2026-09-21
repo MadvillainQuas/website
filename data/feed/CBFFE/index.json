@@ -2,7 +2,7 @@
 "code": "CBFFE",
 "label": "Czech NBL",
 "adapter": "fiba_site_schedule",
-"updated": "2026-09-20T23:39:09.423335+00:00",
+"updated": "2026-09-21T01:44:03.783243+00:00",
 "games": [
 {
 "id": "544677",
@@ -1527,7 +1527,7 @@
 "hash": "ac41d07297bd94668b58fd5fae169a7122bf35c8",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890467.json",
-"updated": "2026-09-20T23:38:43.675611+00:00"
+"updated": "2026-09-21T01:43:37.384711+00:00"
 },
 {
 "id": "2890472",
@@ -1540,7 +1540,7 @@
 "hash": "70c2efffb1daebbc0c3033b605ed117e635be484",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890472.json",
-"updated": "2026-09-20T23:38:57.156563+00:00"
+"updated": "2026-09-21T01:43:51.473728+00:00"
 },
 {
 "id": "2890472",
@@ -1575,7 +1575,7 @@
 "hash": "2b786287be61d3ff0f1ceed98bcc0e3ff33aa4cc",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890469.json",
-"updated": "2026-09-20T23:38:00.969453+00:00"
+"updated": "2026-09-21T01:42:56.419611+00:00"
 },
 {
 "id": "2890470",
@@ -1588,7 +1588,7 @@
 "hash": "d822edec3251fa538f08e9d75eb63a4038ce631d",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890470.json",
-"updated": "2026-09-20T23:38:17.470962+00:00"
+"updated": "2026-09-21T01:43:10.565011+00:00"
 },
 {
 "id": "2890471",
@@ -1601,7 +1601,7 @@
 "hash": "94c6521ffaa04335b342ff2ddc6665f5ecaba19c",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890471.json",
-"updated": "2026-09-20T23:38:31.227125+00:00"
+"updated": "2026-09-21T01:43:23.828930+00:00"
 },
 {
 "id": "2890471",
@@ -1647,7 +1647,7 @@
 "hash": "e2ca6baae47d4c4446396e8a4686ce30d5f958b6",
 "venue": null,
 "raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_site_schedule/2890468.json",
-"updated": "2026-09-20T23:37:45.530875+00:00"
+"updated": "2026-09-21T01:42:42.943428+00:00"
 },
 {
 "id": "2890468",
