@@ -2,7 +2,7 @@
 "code": "SLB",
 "label": "Super League Basketball Men",
 "adapter": "fiba_livestats",
-"updated": "2026-09-21T01:31:19.472931+00:00",
+"updated": "2026-09-21T08:54:30.231604+00:00",
 "games": [
 {
 "id": "2882601",
@@ -1733,12 +1733,12 @@
 "raw_ref": null
 },
 {
-"id": "2882461",
-"home": "Manchester Basketball",
-"away": "Liverpool Basketball",
+"id": "2882453",
+"home": "Liverpool Basketball",
+"away": "Manchester Basketball",
 "status": "scheduled",
 "date": "2026-11-01",
-"venue": "National Basketball Performance Centre",
+"venue": "M&S Bank Arena",
 "homeScore": null,
 "awayScore": null,
 "hash": null,
@@ -1985,12 +1985,12 @@
 "raw_ref": null
 },
 {
-"id": "2882453",
-"home": "Liverpool Basketball",
-"away": "Manchester Basketball",
+"id": "2882461",
+"home": "Manchester Basketball",
+"away": "Liverpool Basketball",
 "status": "scheduled",
 "date": "2026-10-04",
-"venue": "M&S Bank Arena",
+"venue": "National Basketball Performance Centre",
 "homeScore": null,
 "awayScore": null,
 "hash": null,
