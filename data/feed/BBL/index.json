@@ -2,14 +2,14 @@
 "code": "BBL",
 "label": "easyCredit BBL",
 "adapter": "bbl",
-"updated": "2026-09-21T09:28:35.755248+00:00",
+"updated": "2026-09-21T18:48:36.130903+00:00",
 "games": [
 {
 "id": "2006910",
 "home": "FC Bayern München Basketball",
 "away": "ALBA BERLIN",
 "status": "scheduled",
-"date": "2026-09-26",
+"date": "2026-09-26T13:40:00Z",
 "venue": "BMW Park München",
 "homeScore": null,
 "awayScore": null,
