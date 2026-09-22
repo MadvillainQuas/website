@@ -2,7 +2,7 @@
 "code": "EL",
 "label": "EuroLeague",
 "adapter": "euroleague",
-"updated": "2026-09-22T08:40:07.152913+00:00",
+"updated": "2026-09-22T16:55:58.744508+00:00",
 "games": [
 {
 "id": "E2026_379",
@@ -4169,11 +4169,11 @@
 "raw_ref": null
 },
 {
-"id": "E2026_32",
-"home": "Maccabi Rapyd Tel Aviv",
-"away": "Armani Olimpia Milan",
+"id": "E2026_37",
+"home": "Dubai Basketball",
+"away": "Crvena Zvezda Meridianbet Belgrade",
 "status": "scheduled",
-"date": "2026-10-08T18:00:00.000Z",
+"date": "2026-10-08T16:00:00.000Z",
 "venue": null,
 "homeScore": null,
 "awayScore": null,
@@ -4181,9 +4181,9 @@
 "raw_ref": null
 },
 {
-"id": "E2026_37",
-"home": "Dubai Basketball",
-"away": "Crvena Zvezda Meridianbet Belgrade",
+"id": "E2026_32",
+"home": "Maccabi Rapyd Tel Aviv",
+"away": "Armani Olimpia Milan",
 "status": "scheduled",
 "date": "2026-10-08T16:00:00.000Z",
 "venue": null,
