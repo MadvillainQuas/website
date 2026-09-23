@@ -580,27 +580,63 @@ async function stints(gameIds, teamId, byId) {
    at 1000 rows whatever `limit` says, and six games is nearly 5000 events. A
    one-shot query returns a fifth of the log and looks completely successful —
    the first time this was tested it reported a player scoring 17 points in a
-   season where he scored 98. */
+   season where he scored 98.
+
+   ONE GAME PER REQUEST, CONTINUED BY SEQ -- NEVER BY OFFSET. This read forty
+   games at a time as one log, `in.(...)&order=game_id,seq`, through all(): a
+   counted first page, then every OFFSET page at once. The (game_id, seq) index
+   gave that order without a sort (the 2026-09-18 fix), but an offset is not
+   free: to hand back rows 20000-20999 Postgres walks the 20000 before them, and
+   every row it walks is put through game_events' read policy first. Measured on
+   the live database on 23 Sep, one request at a time, for the 31 games (26,481
+   events) a club profile's shot zones read: a page cost 0.21 s at offset 0,
+   0.51 s at 4000 and 0.80 s at 12000, and the exact count cost 1.37 s on its
+   own. The fan-out asked for all 27 pages together -- about fourteen logs' worth
+   of work at once -- and every page past ~14000 ran into the 3 s statement
+   timeout: up to 41 HTTP 500s in one load of Loughborough Riders' profile, the
+   retries getting there twenty seconds after the page opened.
+
+   A game is about 650 to 1000 events, so one request is nearly always the whole
+   log. A longer one carries on from the last seq it got (`seq=gt.`), which the
+   index goes to directly, so no page costs more than the rows it returns and no
+   count is needed: a short page is the end, the same proof all() relies on.
+   Measured the same way, all 31 logs took about a second with nothing refused.
+   EVENT_LANES caps the games in flight, so a whole league's read queues in the
+   browser rather than in the database's connection pool.
+
+   THE RESULT IS THE ARRAY IT WAS, order included: each block of forty ids in
+   uuid order, which is how `order=game_id,seq` sorted them, and every game's
+   events in seq order. */
+const EVENT_PAGE = 1000;
+const EVENT_LANES = 8;
+
+async function gameLog(id) {
+  const rows = [];
+  let after = null;
+  for (;;) {
+    const page = await get(`game_events?game_id=eq.${id}` + (after == null ? '' : `&seq=gt.${after}`) +
+      `&select=game_id,seq,t,team,pid,period,clock,payload,created_at&order=seq&limit=${EVENT_PAGE}`);
+    rows.push(...page);
+    if (page.length < EVENT_PAGE) return rows;
+    after = page[page.length - 1].seq;
+  }
+}
+
 async function events(gameIds) {
   if (!gameIds || !gameIds.length) return [];
-  const chunks = [];
-  for (let i = 0; i < gameIds.length; i += 40) chunks.push(gameIds.slice(i, i + 40));
-  /* ORDER BY GAME_ID, SEQ -- NOT BARE SEQ. seq is assigned per game (every game's own log starts
-     back at 1), so across the twenty-odd games one chunk holds it is not a meaningful ordering
-     at all, and Postgres cannot use its (game_id, seq) index to produce one: an `IN (list)`
-     filter with a sort on only the second column of that index forces an explicit sort over
-     every matching row before OFFSET/LIMIT can even be applied, on however many thousand events
-     twenty games hold, on every one of the pages the fan-out below requests in parallel. That is
-     what a "canceling statement due to statement timeout" on this exact query turned out to be
-     (reported 2026-09-18, first seen on a BCB team's shot zones) -- the table simply grew past
-     where the sort stayed inside the timeout. Sorting by (game_id, seq) instead is the index's
-     own order, so PostgREST/Postgres can satisfy it directly per game_id and merge, and pagination
-     is still perfectly stable (nothing here reads across games in this order; grouping by game_id
-     downstream is exactly what byG does with the result). */
-  const parts = await Promise.all(chunks.map(c =>
-    all(`game_events?game_id=in.(${c.join(',')})` +
-        `&select=game_id,seq,t,team,pid,period,clock,payload,created_at&order=game_id,seq`)));
-  return parts.flat().map(r => {
+  const ids = [];
+  for (let i = 0; i < gameIds.length; i += 40) ids.push(...[...new Set(gameIds.slice(i, i + 40))].sort());
+  const logs = new Array(ids.length);
+  let next = 0;
+  /* a lane that fails stops the others taking new games: the read has already failed */
+  const lane = async () => {
+    while (next < ids.length) {
+      const i = next++;
+      try { logs[i] = await gameLog(ids[i]); } catch (e) { next = ids.length; throw e; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(EVENT_LANES, ids.length) }, lane));
+  return logs.flat().map(r => {
     /* created_at rides along because it is the only axis the log shares with a
        video of the game — see epinoia/video.js. Everything else here ignores
        it, and re-fetching the whole log to get it back would be the alternative. */

@@ -120,6 +120,112 @@ ok('the count is asked for as exact, never as the planner\'s guess',
 ok('...and one row more than a page is requested, or no count comes back',
    /offset=0&limit=\$\{page \+ 1\}/.test(datajs));
 
+/* ---- 1b. an event log is read game by game, never by offset -------------- */
+console.log('\nan event log is read game by game, and no page walks the rows before it');
+
+/* A season of logs was read forty games at a time through all(), and every OFFSET page paid
+   for the rows it skipped, each one put through game_events' read policy, so the fan-out ran
+   into the statement timeout from about the fourteenth page (23 Sep: 41 HTTP 500s on one club
+   profile). events() is RUN here against a server that answers the way PostgREST does: one
+   game per request, a 1000-row cap, and `seq=gt.` picking up where the last page ended. */
+const EVENT_LANES = +(datajs.match(/const EVENT_LANES = (\d+);/) || [])[1];
+const EVENT_PAGE = +(datajs.match(/const EVENT_PAGE = (\d+);/) || [])[1];
+const eventsSrc = lift(datajs, 'async function gameLog(id)') + '\n' +
+                  lift(datajs, 'async function events(gameIds)');
+const makeEvents = get => new Function('get', 'EVENT_PAGE', 'EVENT_LANES',
+  eventsSrc + '\nreturn events;')(get, EVENT_PAGE, EVENT_LANES);
+
+function fakeLogs(sizes, failOn) {
+  const calls = [];
+  let open = 0, peak = 0;
+  const row = (id, s) => ({ game_id: id, seq: s, t: 'p2_made', team: s % 2, pid: s % 3 ? 'p' + s : null,
+                            period: 1, clock: 600000 - s, payload: { x: s }, created_at: 'at' + s });
+  const get = async p => {
+    calls.push(p);
+    open++; peak = Math.max(peak, open);
+    await new Promise(r => setTimeout(r, 2));
+    open--;
+    const id = (p.match(/game_id=eq\.([^&]+)/) || [])[1];
+    if (id === failOn) throw new Error('500 on game_events');
+    const after = +((p.match(/seq=gt\.(\d+)/) || [])[1] || 0);
+    const lim = Math.min(+((p.match(/limit=(\d+)/) || [])[1] || 1000), 1000);
+    const out = [];
+    for (let s = after + 1; s <= (sizes[id] || 0) && out.length < lim; s++) out.push(row(id, s));
+    return out;
+  };
+  return { get, calls, peak: () => peak, row };
+}
+
+{
+  const sizes = { g5: 2370, g1: 0, g3: 1000, g2: 1, g6: 999, g4: 1001 };
+  const srv = fakeLogs(sizes);
+  const out = await makeEvents(srv.get)(Object.keys(sizes));
+  const per = {};
+  out.forEach(e => { (per[e.gameId] = per[e.gameId] || []).push(e.seq); });
+  ok('every game comes back whole, at 0, 1, 999, 1000, 1001 and 2370 events',
+     Object.keys(sizes).every(id => (per[id] || []).length === sizes[id] &&
+                                    (per[id] || []).every((s, i) => s === i + 1)),
+     JSON.stringify(Object.fromEntries(Object.keys(sizes).map(id => [id, (per[id] || []).length]))));
+  ok('...a full page is never mistaken for the end',
+     srv.calls.filter(c => /game_id=eq\.g3&/.test(c)).length === 2);
+  ok('...and a long game carries on from the last seq it got',
+     srv.calls.some(c => /game_id=eq\.g5&seq=gt\.1000&/.test(c)) &&
+     srv.calls.some(c => /game_id=eq\.g5&seq=gt\.2000&/.test(c)));
+  ok('no request pages by offset or asks for a count',
+     srv.calls.length > 0 && !srv.calls.some(c => /offset=|limit=1001/.test(c)));
+  ok('every request is one game, in seq order',
+     srv.calls.every(c => /^game_events\?game_id=eq\.[^&,]+&/.test(c) && /&order=seq&/.test(c)),
+     srv.calls.find(c => !/^game_events\?game_id=eq\.[^&,]+&/.test(c)));
+}
+
+{
+  /* THE SAME ARRAY AS BEFORE, order included. The in.() read returned each block of forty ids
+     once each, in id order, and each game in seq order -- so a repeat inside a block came back
+     once, and the same game in two blocks came back twice. Built here from the same rows. */
+  const ids = Array.from({ length: 45 }, (_, i) => 'g' + String((i * 37) % 45).padStart(2, '0'));
+  ids[7] = ids[3];
+  ids[42] = ids[3];
+  const sizes = {};
+  ids.forEach((id, i) => { sizes[id] = 3 + (i % 4); });
+  const srv = fakeLogs(sizes);
+  const got = await makeEvents(srv.get)(ids);
+  const want = [];
+  for (let i = 0; i < ids.length; i += 40) {
+    [...new Set(ids.slice(i, i + 40))].sort().forEach(id => {
+      for (let s = 1; s <= sizes[id]; s++) want.push(id + ':' + s);
+    });
+  }
+  const have = got.map(e => e.gameId + ':' + e.seq);
+  ok('the events come back in the order the in.() read gave them',
+     have.join() === want.join(), have.length + ' events against ' + want.length);
+  const e1 = got.find(e => e.gameId === ids[0] && e.seq === 1);
+  const e3 = got.find(e => e.gameId === ids[0] && e.seq === 3);
+  ok('...and each event keeps its shape',
+     JSON.stringify(e1) === JSON.stringify({ t: 'p2_made', id: 1, seq: 1, gameId: ids[0], created_at: 'at1',
+                                             period: 1, clock: 599999, x: 1, team: 1, pid: 'p1' }) &&
+     !('pid' in e3), JSON.stringify(e1));
+}
+
+{
+  const sizes = {};
+  for (let i = 0; i < 20; i++) sizes['g' + String(i).padStart(2, '0')] = 5;
+  const srv = fakeLogs(sizes);
+  await makeEvents(srv.get)(Object.keys(sizes));
+  ok('games are read ' + EVENT_LANES + ' at a time: in parallel, but never all at once',
+     EVENT_LANES > 1 && srv.peak() === EVENT_LANES, 'peak ' + srv.peak());
+}
+
+{
+  const sizes = {};
+  for (let i = 0; i < 30; i++) sizes['g' + String(i).padStart(2, '0')] = 5;
+  const srv = fakeLogs(sizes, 'g01');
+  let threw = false;
+  try { await makeEvents(srv.get)(Object.keys(sizes)); } catch (_) { threw = true; }
+  await new Promise(r => setTimeout(r, 50));
+  ok('a game that cannot be read fails the read, as a failed page did', threw);
+  ok('...and no new game is asked for once it has', srv.calls.length < 30, srv.calls.length + ' requests');
+}
+
 /* ---- 2. the profile asks for a bounded amount of work -------------------- */
 console.log('\nthe cost of a page does not grow with the league');
 
