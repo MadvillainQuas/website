@@ -397,7 +397,9 @@ async function deleteSubscription(endpoint, sess) {
    for certain what phone is about to receive it, so it rides along with that call only —
    never on a plain toggle-off, which has nothing new to say about where the reader is. */
 function myTimeZone() {
-  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (_) { return null; }
+  /* through g() like every other global here: read bare, the tests' fixed zone never applied
+     and the time_zone sent was whatever machine ran them (London locally, UTC on CI) */
+  try { const I = g('Intl'); return (I && I.DateTimeFormat().resolvedOptions().timeZone) || null; } catch (_) { return null; }
 }
 async function setNotifyPush(on, sess) {
   try {
