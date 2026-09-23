@@ -222,6 +222,18 @@ console.log('\nthe wiring');
   ok('the fans’ profile switch is a stored preference', /add column if not exists want_fanvote boolean not null default true/.test(sql) &&
      /want_fanvote\s*=\s*coalesce\(\(p->>'want_fanvote'\)::boolean, want_fanvote\)/.test(sql));
 
+  /* THE DRAG FOLLOWS THE POINTER. The league page is zoomed (body { zoom: 1.25 / 1.5 }), so a fixed
+     ghost on <body> moves 1.5x as far as it is told: it must measure that and divide by it, and be
+     as tall as the card it lifts (index.html's .star.small plate rule would otherwise make it square). */
+  const fvjs = read('epinoia', 'fanvote.js'), fvcss = read('epinoia', 'kit', 'fanvote.css');
+  ok('the drag ghost measures the page zoom and divides its moves by it',
+     /drag\.k = /.test(fvjs) && /\(x - drag\.dx\) \/ k/.test(fvjs) && /\(y - drag\.dy\) \/ k/.test(fvjs) &&
+     /r\.width \/ drag\.k/.test(fvjs));
+  ok('the ghost keeps the strip’s plate shape, above the page’s square-plate rule',
+     /\.fv-ghost\.fv-card\.small \.club-plate\{aspect-ratio:4\/3\}/.test(fvcss));
+  ok('a player card carries points, rebounds and assists', /function statRow/.test(fvjs) && /foot\.append\(who, statRow\(p\.line\)\)/.test(fvjs) &&
+     /\['PTS'.*\['REB'.*\['AST'/.test(fvjs));
+
   const idx = read('epinoia', 'index.html');
   const fv = idx.indexOf('id="fvSec"'), st = idx.indexOf('id="starsSec"');
   ok('the winners sit directly above the Stars', fv > 0 && st > fv && !/id="[^"]+Sec"/.test(idx.slice(fv + 10, st)));

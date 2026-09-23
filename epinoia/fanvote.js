@@ -243,17 +243,28 @@ function plate(markText, bandText, logo) {
   return p;
 }
 
+/* the week's line as three columns: points, rebounds, assists a game */
+function statRow(l) {
+  const row = el('div', 'fv-stats');
+  [['PTS', l && l.ppg], ['REB', l && l.rpg], ['AST', l && l.apg]].forEach(([k, v]) => {
+    const c = el('span', 'fv-stat');
+    c.append(el('b', null, v == null ? '\u2013' : Number(v).toFixed(v % 1 ? 1 : 0)), el('i', null, k));
+    row.appendChild(c);
+  });
+  return row;
+}
+
 function playerCard(p) {
   const team = p.team || {};
   const b = btn('club star small fv-card');
   b.dataset.id = p.id;
   paint(b, team.colour, team.colour_2);
   b.setAttribute('aria-label', p.name + (team.name ? ', ' + team.name : '') +
-    (p.line && p.line.bpm != null ? ', ' + bpmText(p.line) : ''));
+    (p.line && p.line.bpm != null ? ', ' + bpmText(p.line) : '') + (lineText(p.line) ? ', ' + lineText(p.line) : ''));
   const foot = el('div', 'club-foot star-foot');
   const who = el('div', 'star-who');
   who.append(el('span', 'star-name', p.name), el('span', 'star-team', team.short_name || team.name || ''));
-  foot.append(who, el('span', 'club-ed', lineText(p.line)));
+  foot.append(who, statRow(p.line));
   b.append(plate(initials(p.name), bpmText(p.line)), foot);
   return b;
 }
@@ -350,10 +361,19 @@ function picker(o) {
     const g = (drag.from === 'deck' ? drag.src : cards.get(drag.id)).cloneNode(true);
     g.classList.remove('picked'); g.classList.add('fv-ghost');
     g.removeAttribute('data-place');
-    g.style.width = r.width + 'px';
     g.setAttribute('aria-hidden', 'true');
     doc().body.appendChild(g);
     drag.ghost = g;
+    /* THE PAGE IS ZOOMED (body { zoom: 1.25 or 1.5 }), and a fixed box inside it is
+       laid out in zoomed units: a translate of 100 moves it 150 screen pixels. Measure the
+       factor rather than assume it, and speak the page's units: the ghost's size and
+       every move are divided by it, so it sits exactly under the pointer. */
+    g.style.transform = 'translate(0px,0px)';
+    const a = g.getBoundingClientRect();
+    g.style.transform = 'translate(100px,0px)';
+    const k = (g.getBoundingClientRect().left - a.left) / 100;
+    drag.k = k > 0.1 && isFinite(k) ? k : 1;
+    g.style.width = (r.width / drag.k) + 'px';
     drag.dx = drag.x0 - r.left; drag.dy = drag.y0 - r.top;
     move(drag.x0, drag.y0);
     drag.src.classList.add('lifting');
@@ -362,7 +382,8 @@ function picker(o) {
   }
   function move(x, y) {
     if (!drag || !drag.ghost) return;
-    drag.ghost.style.transform = 'translate(' + (x - drag.dx) + 'px,' + (y - drag.dy) + 'px) rotate(-3deg)';
+    const k = drag.k || 1;
+    drag.ghost.style.transform = 'translate(' + ((x - drag.dx) / k) + 'px,' + ((y - drag.dy) / k) + 'px) rotate(-3deg)';
     const at = slotAt(x, y);
     o.slots.forEach((s, i) => s.classList.toggle('over', i === at));
   }

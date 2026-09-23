@@ -145,7 +145,11 @@
 .fv-card .club-foot{padding:6px 1px 0;gap:4px}
 .fv-card .star-name,.fv-card .club-name{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fv-card .star-team{font-size:7.5px}
-.fv-card .club-ed{font-size:7.5px}
+.fv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:3px;padding-top:4px;
+  border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent)}
+.fv-stat{display:flex;flex-direction:column;align-items:center;line-height:1}
+.fv-stat b{font:800 12px/1 var(--f-score);letter-spacing:.01em}
+.fv-stat i{font:700 6.5px/1 var(--f-ui);font-style:normal;letter-spacing:.16em;margin-top:3px;opacity:.6}
 .fv-card.picked{opacity:.38;filter:grayscale(.7);transform:none}
 .fv-card.picked::after{content:attr(data-place);position:absolute;top:10px;left:10px;z-index:3;
   width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
@@ -158,6 +162,8 @@
 .fv-mini .club-mono{font-size:18px}
 .fv-mini:hover{transform:none}
 .fv-mini .club-foot{padding-top:4px}
+/* the ghost lives on <body>, outside the strip, so it needs the strip's plate shape to be as tall as the card it lifts */
+.fv-ghost.fv-card.small .club-plate{aspect-ratio:4/3}   /* outranks index.html's .star.small .club-plate{aspect-ratio:1} */
 .fv-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;margin:0;
   box-shadow:0 22px 44px rgba(0,0,0,.38);transition:none;cursor:grabbing}
 
