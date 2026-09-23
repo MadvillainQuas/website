@@ -53,6 +53,9 @@ console.log('a game worked out by hand');
      M.margin.length === 3 && M.margin[1][1] === 2 && M.margin[2][1] === -1 && M.score[0] === 2 && M.score[1] === 3);
   const html = R.html(M, { colours: ['#112233', '#445566'] });
   ok('it draws both sides, the margin and the key', /Home 1/.test(html) && /Away 1/.test(html) && /rot-margin/.test(html) && /rot-legend/.test(html) && /DNP/.test(html));
+  const bare = R.html(M, { colours: ['#112233', '#445566'], margin: false });
+  ok('margin: false draws both sides with nothing between them (the game flow tab has its own margin chart)',
+     !/rot-margin/.test(bare) && /Home 1/.test(bare) && /Away 1/.test(bare) && /rot-legend/.test(bare));
   ok('names are escaped', !R.html({ minutes: 40, periods: M.periods, now: 40, teams: [{ name: '<b>x', rows: [] }], margin: [] }, {}).includes('<b>x'));
 
   const Z = R.season([{ model: M, side: 0 }, { model: M, side: 1 }], 'Home');

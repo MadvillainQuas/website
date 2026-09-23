@@ -7,6 +7,8 @@
    ============================================================================ */
 .rot{--rot-nw:150px;max-width:1100px;margin:0 auto;padding:calc(var(--u)*2) calc(var(--u)*3);color:var(--ink)}
 .rot-team + .rot-margin, .rot-margin + .rot-team{margin-top:14px}
+/* home straight onto away, where the game flow tab leaves the margin out */
+.rot-team + .rot-team{margin-top:22px}
 .rot-h{display:flex;align-items:center;gap:8px;margin:0 0 8px calc(var(--rot-nw) + 8px)}
 .rot-h i{width:10px;height:10px;background:var(--rot-c);flex:none}
 .rot-h b{font-family:var(--f-ui);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}

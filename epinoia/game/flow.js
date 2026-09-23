@@ -465,13 +465,11 @@ function rotationCard(S, names) {
   if (!R) return '';
   const M = R.compute(S);
   if (!M.teams.some(t => t.rows.some(r => !r.dnp))) return '';
+  /* no margin strip between the sides: the Scoring Development chart a card above is the margin */
   return '<section class="gf-card gf-rot">' +
-    '<div class="gf-card-head"><h3 class="gf-title">Rotations</h3>' +
-      legend(esc(names[0]) + ' Lead', esc(names[1]) + ' Lead') + '</div>' +
-    '<div class="gf-note">Each cell is a minute of the game, shaded by how much of it the player was on the floor; ' +
-      'the line between the two sides is the score margin.</div>' +
-    R.html(M, { colours: ['var(--vis-t0, var(--team0))', 'var(--vis-t1, var(--team1))'],
-                marginLabel: 'score margin · above the line ' + names[0] + ' lead' }) +
+    '<div class="gf-card-head"><h3 class="gf-title">Rotations</h3></div>' +
+    '<div class="gf-note">Each cell is a minute of the game, shaded by how much of it the player was on the floor.</div>' +
+    R.html(M, { colours: ['var(--vis-t0, var(--team0))', 'var(--vis-t1, var(--team1))'], margin: false }) +
   '</section>';
 }
 

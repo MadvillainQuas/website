@@ -205,8 +205,10 @@ function marginHTML(model, colours, opts) {
     '<div class="rot-row rot-mrow">' + scale + '<span class="rot-mplot">' + svg + '</span></div></div>';
 }
 
-/* opts: { colours: [c0, c1], marginLabel, teamNotes: [n0, n1] }. A season model has one side,
-   so it draws its grid and its margin; a game draws home, the margin, then away. */
+/* opts: { colours: [c0, c1], marginLabel, teamNotes: [n0, n1], margin }. A season model has one
+   side, so it draws its grid and its margin; a game draws home, the margin, then away.
+   margin: false leaves the margin out -- the game flow tab already has a whole chart of it a
+   card above, and a second copy squeezed between the rotations only repeated it smaller. */
 function html(model, opts) {
   const o = opts || {};
   const colours = o.colours || [];
@@ -214,9 +216,10 @@ function html(model, opts) {
   const legend = '<div class="rot-legend"><span>0%</span><i></i><span>100%</span><small>' +
     esc(model.season ? 'share of each minute on the floor, across the season' : 'share of each minute on the floor') + '</small></div>';
   const notes = o.teamNotes || [];
+  const margin = o.margin === false ? '' : marginHTML(model, colours, o);
   const body = model.teams.length === 1
-    ? teamHTML(model, 0, colours[0], { teamNote: notes[0] }) + marginHTML(model, colours, o)
-    : teamHTML(model, 0, colours[0], { teamNote: notes[0] }) + marginHTML(model, colours, o) + teamHTML(model, 1, colours[1], { teamNote: notes[1] });
+    ? teamHTML(model, 0, colours[0], { teamNote: notes[0] }) + margin
+    : teamHTML(model, 0, colours[0], { teamNote: notes[0] }) + margin + teamHTML(model, 1, colours[1], { teamNote: notes[1] });
   return '<div class="rot" style="--rot-n:' + model.minutes + '">' + body + legend + '</div>';
 }
 

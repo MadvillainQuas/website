@@ -266,24 +266,41 @@ async function loadStored() {
 
    Only then. A league whose feed writes Latin names asks nothing extra; a row without a
    romanised name keeps the feed's rather than going blank; and a failed read leaves every
-   name as it was, because a box score in katakana is better than no box score. */
+   name as it was, because a box score in katakana is better than no box score.
+
+   WHAT IT FINDS IS KEPT, because a live game's roster is not loaded once. Every live frame
+   (mergeLive) replaces S.teams with the transport's copy of the snapshot -- in the feed's own
+   script -- so a game romanised at load went back to katakana with the first frame (reported
+   2026-09-23 on a B.LEAGUE game being played). LATIN puts the names back on every frame; a
+   player the page has not asked about yet is asked about once (ASKED), never once per frame.
+   Resolves true when it changed a name the page is already showing. */
 const NON_LATIN = /[぀-ヿㇰ-ㇿ㐀-鿿豈-﫿ｦ-ﾟ가-힯]/;
 const PLAYER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-async function romanise(teams) {
-  const ids = [];
-  teams.forEach(t => (t.players || []).forEach(p => {
-    if (p && PLAYER_ID.test(String(p.id || '')) && NON_LATIN.test(String(p.name || ''))) ids.push(p.id);
+const LATIN = {};
+const ASKED = new Set();
+function applyLatin(teams) {
+  let changed = false;
+  (teams || []).forEach(t => ((t && t.players) || []).forEach(p => {
+    if (p && LATIN[p.id] && p.name !== LATIN[p.id]) { p.name = LATIN[p.id]; changed = true; }
   }));
-  if (!ids.length) return;
+  return changed;
+}
+async function romanise(teams) {
+  applyLatin(teams);
+  const ids = [];
+  (teams || []).forEach(t => ((t && t.players) || []).forEach(p => {
+    if (p && PLAYER_ID.test(String(p.id || '')) && NON_LATIN.test(String(p.name || '')) && !ASKED.has(p.id)) ids.push(p.id);
+  }));
+  if (!ids.length) return false;
+  ids.forEach(id => ASKED.add(id));
   let rows = [];
   try { rows = await api('players?id=in.(' + ids.join(',') + ')&select=id,first_name,last_name'); }
-  catch (_) { return; }
-  const latin = {};
+  catch (_) { ids.forEach(id => ASKED.delete(id)); return false; }       // a failed read may be asked again
   (rows || []).forEach(r => {
     const n = ((r.first_name || '') + ' ' + (r.last_name || '')).replace(/\s+/g, ' ').trim();
-    if (n && !NON_LATIN.test(n)) latin[r.id] = n;
+    if (n && !NON_LATIN.test(n)) LATIN[r.id] = n;
   });
-  teams.forEach(t => (t.players || []).forEach(p => { if (latin[p.id]) p.name = latin[p.id]; }));
+  return applyLatin(teams);
 }
 
 /* ------------------------------------------------------ colours that clash ---
@@ -2754,6 +2771,11 @@ function mergeLive(game, events, removed, full) {
       /* what the page is already wearing wins, because resolveClash may have moved one side to
          its second colour; the club row is the fallback for a frame that arrived before a load */
       window.S.teams.forEach((t, i) => { const c = held[i] || club(i); if (c) t.color = c; });
+      /* THE NAMES SURVIVE THE FRAME TOO. The transport's roster is the snapshot's, in the feed's
+         own script, so the romanised names found at load go straight back on (applyLatin runs
+         before romanise's first await, so the redraw after this frame already has them); a
+         player this page has not seen before is asked about once and drawn again when known. */
+      romanise(window.S.teams).then(changed => { if (changed) render(); }, () => {});
     }
     if (game.starters) window.S.starters = game.starters;
     if (game.period != null) window.S.period = game.period;
