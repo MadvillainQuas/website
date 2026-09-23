@@ -151,13 +151,13 @@ function outHTML(inst) {
   /* HOW IT ADDS UP TO THE WHOLE GAME. Everything above is the FIRST chance of each possession,
      so its points fall short of the box score's by whatever came after offensive rebounds --
      Cheshire read 0.60 a chance here beside 0.75 in the full stats (2026-09-23), and neither
-     was wrong. Said once, in numbers, with the possessions counted the way the full stats count
-     them, so the two tabs visibly meet. */
+     was wrong. Said once, in points, which are the box score's to the unit. (Not in possessions:
+     the full stats estimate theirs from the box score, 0.96 x (FGA + TOV + 0.44 FTA - OREB),
+     and a counted number beside an estimated one would be two answers to one question.) */
   const firstAll = S.summary(firsts);
   const total = firstAll.pts + secondChances.pts;
   const whole = '<p class="scx-whole">' + (inst.opts.unit === 'season' ? 'This season' : 'The whole game') + ': ' +
-    firstAll.pts + ' on first chances + ' + secondChances.pts + ' after offensive rebounds = <b>' + total + ' points</b> in ' +
-    firsts.length + ' possession' + (firsts.length === 1 ? '' : 's') + ' (' + dec2(total / firsts.length) + ' each).</p>';
+    firstAll.pts + ' on first chances + ' + secondChances.pts + ' after offensive rebounds = <b>' + total + ' points</b>.</p>';
   const ff = '<div class="scx-ff">' +
     factorHTML('eFG%', w.efg, all.efg, true, pct, 'Effective field goal %: (FGM + ½·3PM) / FGA · ' + w.fgm + '/' + w.fga + ' FG, ' + w.p3m + '/' + w.p3a + ' 3PT') +
     factorHTML('TOV%', w.tovPct, all.tovPct, false, pct, 'Turnovers per possession · ' + w.tov + ' in ' + w.n) +
