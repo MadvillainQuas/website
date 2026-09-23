@@ -320,7 +320,7 @@
       match: /\/epinoia\/injuries\// },
     { href: 'news/',       ic: '❑', tx: 'news',       lg: true, key: 'news',
       match: /\/epinoia\/news\// },
-    /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0148). Probed like the video
+    /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0150). Probed like the video
        hub: a league appears here once its first weekly vote has opened, and not
        before, so no league is offered an empty page. */
     { href: 'votes/',      ic: '★', tx: 'fans’ vote', lg: true, key: 'votes', probe: 'votes',
@@ -1939,7 +1939,7 @@
   /* the listing epinoia/video/videohub.js draws, reduced to "does one exist" */
   function probeQuery(kind, slug) {
     /* the fans' vote: has this league had a round yet (fanvote_rounds is readable
-       wherever its league is, 0148) */
+       wherever its league is, 0150) */
     if (kind === 'votes') {
       return 'fanvote_rounds?select=id,leagues!inner(slug)&leagues.slug=eq.' +
         encodeURIComponent(slug) + '&limit=1';

@@ -862,7 +862,7 @@ async function stars() {
 }
 
 /* ------------------------------------------------------- the fans' vote ---
-   MAKE YOUR VOICE HEARD (epinoia/fanvote.js, migration 0148): the panel that
+   MAKE YOUR VOICE HEARD (epinoia/fanvote.js, migration 0150): the panel that
    unrolls out of the hero's rule once a voting week, and last week's fans'
    picks above the Stars. Everything it shows comes from fanvote_state, asked as
    the reader when they are signed in (so their ballot is their account's and

@@ -253,7 +253,7 @@ jobs:
       - name: The weekly fans' vote
         # the once-a-week rule and the podium's moves; the ballot being the Stars
         # podium's own week (the fanvote function runs stars.js, checked on the BCB
-        # capture) and every club that won; fifteen players in 0148
+        # capture) and every club that won; fifteen players in 0150
         run: node --experimental-strip-types supabase/tests/fanvote.test.mjs
 
       - name: Print files

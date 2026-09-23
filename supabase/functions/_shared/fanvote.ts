@@ -1,5 +1,5 @@
 // ============================================================================
-// WHO IS ON THE WEEK'S BALLOT (migration 0148, docs/fanvote.md).
+// WHO IS ON THE WEEK'S BALLOT (migration 0150, docs/fanvote.md).
 //
 // The players are the Stars podium's own answer for the week: stars.js
 // computeWindow + pick with its 'week' window (a game and twenty minutes, best

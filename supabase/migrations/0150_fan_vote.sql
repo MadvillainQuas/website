@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0148 — MAKE YOUR VOICE HEARD: THE WEEKLY FANS' VOTE.
+-- 0150 — MAKE YOUR VOICE HEARD: THE WEEKLY FANS' VOTE.
 --
 -- Every week a league played, its front page asks the fans two questions about
 -- the week just gone:
@@ -69,7 +69,7 @@ set local lock_timeout = '5s';
 -- ----------------------------------------------------------------------------
 alter table public.fan_prefs add column if not exists want_fanvote boolean not null default true;
 comment on column public.fan_prefs.want_fanvote is
-  'Open the weekly fans'' vote panel on league pages (0148). The panel can still be opened by hand.';
+  'Open the weekly fans'' vote panel on league pages (0150). The panel can still be opened by hand.';
 
 -- ----------------------------------------------------------------------------
 -- 2. THE TABLES.
@@ -768,7 +768,7 @@ end $$;
 -- ----------------------------------------------------------------------------
 -- 8. THE FAN'S SWITCH REACHES set_fan_prefs (latest: 0145), and 'fanvote' is a
 -- section a league may turn off (set_league_appearance, latest: 0053). Each is
--- its predecessor plus lines tagged -- 0148.
+-- its predecessor plus lines tagged -- 0150.
 -- ----------------------------------------------------------------------------
 create or replace function public.set_fan_prefs(p jsonb)
 returns public.fan_prefs language plpgsql security invoker set search_path = public as $$
@@ -795,7 +795,7 @@ begin
     want_lineups       = coalesce((p->>'want_lineups')::boolean, want_lineups),
     want_player_games  = coalesce((p->>'want_player_games')::boolean, want_player_games),
     want_halftime      = coalesce((p->>'want_halftime')::boolean, want_halftime),
-    want_fanvote       = coalesce((p->>'want_fanvote')::boolean, want_fanvote),         -- 0148
+    want_fanvote       = coalesce((p->>'want_fanvote')::boolean, want_fanvote),         -- 0150
     time_zone          = case when nullif(btrim(coalesce(p->>'time_zone', '')), '') is not null
                                then public.notify_valid_tz(p->>'time_zone') else time_zone end,
     updated_at         = now()
@@ -836,7 +836,7 @@ declare
   clean_nav jsonb := '{}'::jsonb;
   clean_theme jsonb := '{}'::jsonb;
 begin
-  ok_sections := ok_sections || array['fanvote'];                                 -- 0148
+  ok_sections := ok_sections || array['fanvote'];                                 -- 0150
   if not public.is_league_admin(p_league) then
     raise exception 'you do not administer that league' using errcode = '42501';
   end if;
@@ -931,7 +931,7 @@ alter function public.fanvote_admin(uuid, text) owner to postgres;
 alter function public.set_league_appearance(uuid, text, jsonb, jsonb, jsonb) owner to postgres;
 
 -- ============================================================================
--- SELF-TEST. One block, always ended by a private code (P0148) its own handler
+-- SELF-TEST. One block, always ended by a private code (P0150) its own handler
 -- swallows, so every row, role, claim and setting it touches is rolled back; any
 -- other error fails the migration. It asserts only about what it seeds, and it
 -- runs at any hour of any day: the round is opened AS OF a moment inside its
@@ -960,10 +960,10 @@ declare
   n       int;
   i       int;
   v_err   text;
-  key_a   text := 't148-browser-a-0000000001';
-  key_b   text := 't148-browser-b-0000000002';
-  key_c   text := 't148-browser-c-0000000003';
-  key_d   text := 't148-browser-d-0000000004';
+  key_a   text := 't150-browser-a-0000000001';
+  key_b   text := 't150-browser-b-0000000002';
+  key_c   text := 't150-browser-c-0000000003';
+  key_d   text := 't150-browser-d-0000000004';
 begin
   begin
     perform set_config('request.jwt.claims', '', true);
@@ -971,27 +971,27 @@ begin
     execute format('set local role %I', orig);
 
     -- ============================================================ seeded as the owner
-    insert into leagues (slug, name, country) values ('zz-t148-league', 'T148 League', 'GB') returning id into lg;
-    insert into seasons (league_id, name) values (lg, '0148') returning id into se;
-    insert into competitions (season_id, name) values (se, 'T148 League') returning id into cp;
-    insert into teams (league_id, slug, name) values (lg, 'zz-t148-hawks', 'T148 Hawks') returning id into ta;
-    insert into teams (league_id, slug, name) values (lg, 'zz-t148-owls',  'T148 Owls')  returning id into tb;
-    insert into teams (league_id, slug, name) values (lg, 'zz-t148-wrens', 'T148 Wrens') returning id into tc;
-    insert into teams (league_id, slug, name) values (lg, 'zz-t148-kites', 'T148 Kites') returning id into td;
-    insert into players (slug, first_name, last_name) values ('zz-t148-a', 'Ada', 'Ash')   returning id into pa;
-    insert into players (slug, first_name, last_name) values ('zz-t148-b', 'Bo', 'Birch')  returning id into pb;
-    insert into players (slug, first_name, last_name) values ('zz-t148-c', 'Cy', 'Cedar') returning id into pc;
-    insert into players (slug, first_name, last_name) values ('zz-t148-d', 'Di', 'Dogwood') returning id into pd;
+    insert into leagues (slug, name, country) values ('zz-t150-league', 'T150 League', 'GB') returning id into lg;
+    insert into seasons (league_id, name) values (lg, '0150') returning id into se;
+    insert into competitions (season_id, name) values (se, 'T150 League') returning id into cp;
+    insert into teams (league_id, slug, name) values (lg, 'zz-t150-hawks', 'T150 Hawks') returning id into ta;
+    insert into teams (league_id, slug, name) values (lg, 'zz-t150-owls',  'T150 Owls')  returning id into tb;
+    insert into teams (league_id, slug, name) values (lg, 'zz-t150-wrens', 'T150 Wrens') returning id into tc;
+    insert into teams (league_id, slug, name) values (lg, 'zz-t150-kites', 'T150 Kites') returning id into td;
+    insert into players (slug, first_name, last_name) values ('zz-t150-a', 'Ada', 'Ash')   returning id into pa;
+    insert into players (slug, first_name, last_name) values ('zz-t150-b', 'Bo', 'Birch')  returning id into pb;
+    insert into players (slug, first_name, last_name) values ('zz-t150-c', 'Cy', 'Cedar') returning id into pc;
+    insert into players (slug, first_name, last_name) values ('zz-t150-d', 'Di', 'Dogwood') returning id into pd;
     insert into players (slug, first_name, last_name, is_minor, public_consent)
-      values ('zz-t148-kid', 'Kit', 'Young', true, false) returning id into pk;
+      values ('zz-t150-kid', 'Kit', 'Young', true, false) returning id into pk;
 
     select * into w from public.fanvote_window(lg, now());
     if w.week_start is null or extract(isodow from w.week_start) <> 1 then
-      raise exception '0148: the week does not start on a Monday (%)', w.week_start;
+      raise exception '0150: the week does not start on a Monday (%)', w.week_start;
     end if;
     if w.opens_at <> ((w.week_start + 7)::timestamp + interval '6 hours') at time zone 'Europe/London'
        or w.closes_at <> ((w.week_start + 11)::timestamp) at time zone 'Europe/London' then
-      raise exception '0148: the window is not Monday 06:00 to the end of Thursday in London (% to %)', w.opens_at, w.closes_at;
+      raise exception '0150: the window is not Monday 06:00 to the end of Thursday in London (% to %)', w.opens_at, w.closes_at;
     end if;
     v_at := w.opens_at + interval '7 hours';          -- Monday 13:00 of the voting week
 
@@ -1002,21 +1002,21 @@ begin
 
     -- 1. due only inside the window, and only with games
     if public.fanvote_due(lg, v_at) is null then
-      raise exception '0148: a round is not due on the Monday after a week with games';
+      raise exception '0150: a round is not due on the Monday after a week with games';
     end if;
     if public.fanvote_due(lg, w.opens_at - interval '1 minute') is not null then
-      raise exception '0148: a round was due before Monday 06:00';
+      raise exception '0150: a round was due before Monday 06:00';
     end if;
     if public.fanvote_due(lg, w.closes_at) is not null then
-      raise exception '0148: a round was due after Thursday ended';
+      raise exception '0150: a round was due after Thursday ended';
     end if;
     insert into games (competition_id, home_team_id, away_team_id, tipoff_at, status)
       values (cp, tb, td, w.starts_at + interval '6 days 20 hours', 'live') returning id into v_live;
     if public.fanvote_due(lg, w.opens_at + interval '1 hour') is not null then
-      raise exception '0148: a round was due while a game of the week was still live';
+      raise exception '0150: a round was due while a game of the week was still live';
     end if;
     if public.fanvote_due(lg, v_at) is null then
-      raise exception '0148: a game stuck live held the round past six hours';
+      raise exception '0150: a game stuck live held the round past six hours';
     end if;
     delete from games where id = v_live;
 
@@ -1035,62 +1035,62 @@ begin
                         jsonb_build_object('id', ta, 'line', jsonb_build_object('wins', 1, 'diff', 10)),
                         jsonb_build_object('id', gen_random_uuid())),
       v_at);
-    if v_round is null then raise exception '0148: fanvote_open opened nothing'; end if;
+    if v_round is null then raise exception '0150: fanvote_open opened nothing'; end if;
     select count(*) into n from fanvote_candidates where round_id = v_round and kind = 'player';
-    if n <> 4 then raise exception '0148: expected 4 player cards with the minor and the stranger and the repeat dropped but got %', n; end if;
+    if n <> 4 then raise exception '0150: expected 4 player cards with the minor and the stranger and the repeat dropped but got %', n; end if;
     if exists (select 1 from fanvote_candidates where round_id = v_round and subject_id = pk) then
-      raise exception '0148: a withheld minor is on the ballot';
+      raise exception '0150: a withheld minor is on the ballot';
     end if;
     if (select rank from fanvote_candidates where round_id = v_round and subject_id = pb) is distinct from 2 then
-      raise exception '0148: the ranks are not renumbered in order';
+      raise exception '0150: the ranks are not renumbered in order';
     end if;
     select count(*) into n from fanvote_candidates where round_id = v_round and kind = 'team';
-    if n <> 2 then raise exception '0148: expected 2 club cards, got %', n; end if;
+    if n <> 2 then raise exception '0150: expected 2 club cards, got %', n; end if;
     if public.fanvote_open(lg, w.week_start, '[]'::jsonb, '[]'::jsonb, v_at) is distinct from v_round then
-      raise exception '0148: opening the same round twice did not give back the same round';
+      raise exception '0150: opening the same round twice did not give back the same round';
     end if;
     select count(*) into n from fanvote_candidates where round_id = v_round;
-    if n <> 6 then raise exception '0148: opening it again changed its cards (% now)', n; end if;
+    if n <> 6 then raise exception '0150: opening it again changed its cards (% now)', n; end if;
     if public.fanvote_due(lg, v_at) is not null then
-      raise exception '0148: a round is still due once it exists';
+      raise exception '0150: a round is still due once it exists';
     end if;
     begin
       perform public.fanvote_open(lg, w.week_start - 7, '[]'::jsonb, '[]'::jsonb, v_at);
-      raise exception '0148: a round for another week was opened';
+      raise exception '0150: a round for another week was opened';
     exception when sqlstate '22023' then null;
     end;
 
     -- 2b. the ballot holds fifteen players, not one more: seventeen offered on a league of its own
-    insert into leagues (slug, name, country) values ('zz-t148-cap', 'T148 Cap', 'GB') returning id into lg2;
-    insert into seasons (league_id, name) values (lg2, '0148') returning id into se2;
-    insert into competitions (season_id, name) values (se2, 'T148 Cap') returning id into cp2;
-    insert into teams (league_id, slug, name) values (lg2, 'zz-t148-cap-larks', 'T148 Larks') returning id into t2a;
-    insert into teams (league_id, slug, name) values (lg2, 'zz-t148-cap-rooks', 'T148 Rooks') returning id into t2b;
+    insert into leagues (slug, name, country) values ('zz-t150-cap', 'T150 Cap', 'GB') returning id into lg2;
+    insert into seasons (league_id, name) values (lg2, '0150') returning id into se2;
+    insert into competitions (season_id, name) values (se2, 'T150 Cap') returning id into cp2;
+    insert into teams (league_id, slug, name) values (lg2, 'zz-t150-cap-larks', 'T150 Larks') returning id into t2a;
+    insert into teams (league_id, slug, name) values (lg2, 'zz-t150-cap-rooks', 'T150 Rooks') returning id into t2b;
     insert into games (competition_id, home_team_id, away_team_id, tipoff_at, status, home_score, away_score)
       values (cp2, t2a, t2b, w.starts_at + interval '3 days 19 hours', 'final', 70, 60);
     j := '[]'::jsonb;
     for i in 1 .. 17 loop
-      insert into players (slug, first_name, last_name) values ('zz-t148-cap-' || i, 'Cap', 'Player ' || i)
+      insert into players (slug, first_name, last_name) values ('zz-t150-cap-' || i, 'Cap', 'Player ' || i)
         returning id into v_pid;
       j := j || jsonb_build_array(jsonb_build_object('id', v_pid, 'team_id', t2a));
     end loop;
     v_cap := public.fanvote_open(lg2, w.week_start, j, jsonb_build_array(jsonb_build_object('id', t2a)), v_at);
     select count(*) into n from fanvote_candidates where round_id = v_cap and kind = 'player';
-    if n <> 15 then raise exception '0148: the ballot held % players where fifteen is the most', n; end if;
+    if n <> 15 then raise exception '0150: the ballot held % players where fifteen is the most', n; end if;
     if (select max(rank) from fanvote_candidates where round_id = v_cap and kind = 'player') is distinct from 15 then
-      raise exception '0148: the fifteen are not ranked 1 to 15';
+      raise exception '0150: the fifteen are not ranked 1 to 15';
     end if;
 
     -- the people
     insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
     select x.id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', x.email, '', now(), now(), now()
-      from (values (gen_random_uuid(), 't148-fan@example.invalid'), (gen_random_uuid(), 't148-out@example.invalid'),
-                   (gen_random_uuid(), 't148-guest@example.invalid'), (gen_random_uuid(), 't148-admin@example.invalid'))
+      from (values (gen_random_uuid(), 't150-fan@example.invalid'), (gen_random_uuid(), 't150-out@example.invalid'),
+                   (gen_random_uuid(), 't150-guest@example.invalid'), (gen_random_uuid(), 't150-admin@example.invalid'))
            as x(id, email);
-    select id into u_fan   from auth.users where email = 't148-fan@example.invalid';
-    select id into u_out   from auth.users where email = 't148-out@example.invalid';
-    select id into u_guest from auth.users where email = 't148-guest@example.invalid';
-    select id into u_admin from auth.users where email = 't148-admin@example.invalid';
+    select id into u_fan   from auth.users where email = 't150-fan@example.invalid';
+    select id into u_out   from auth.users where email = 't150-out@example.invalid';
+    select id into u_guest from auth.users where email = 't150-guest@example.invalid';
+    select id into u_admin from auth.users where email = 't150-admin@example.invalid';
     insert into memberships (user_id, role, scope_type, scope_id) values (u_admin, 'league_admin', 'league', lg);
     insert into league_guests (league_id, user_id) values (lg, u_guest);
 
@@ -1102,32 +1102,32 @@ begin
     if j -> 'open' is null or jsonb_array_length(j -> 'open' -> 'players') is distinct from 4
        or jsonb_array_length(j -> 'open' -> 'teams') is distinct from 2
        or (j -> 'open' -> 'ballot') is distinct from 'null'::jsonb then
-      raise exception '0148: signed out, the open round reads wrong: %', j;
+      raise exception '0150: signed out, the open round reads wrong: %', j;
     end if;
     if (j -> 'open' -> 'players' -> 0 ->> 'name') is distinct from 'Ada Ash'
-       or (j -> 'open' -> 'players' -> 0 -> 'team' ->> 'name') is distinct from 'T148 Hawks' then
-      raise exception '0148: the first card is not Ada Ash of T148 Hawks: %', j -> 'open' -> 'players' -> 0;
+       or (j -> 'open' -> 'players' -> 0 -> 'team' ->> 'name') is distinct from 'T150 Hawks' then
+      raise exception '0150: the first card is not Ada Ash of T150 Hawks: %', j -> 'open' -> 'players' -> 0;
     end if;
     if (j -> 'prompt') is distinct from 'null'::jsonb or coalesce((j ->> 'due')::boolean, true) then
-      raise exception '0148: signed out there is no account switch and nothing due: %', j;
+      raise exception '0150: signed out there is no account switch and nothing due: %', j;
     end if;
 
     j := public.fanvote_cast(v_round, key_a, array[pa, pb, pc], ta);
     j := public.fanvote_cast(v_round, key_b, array[pb, pa, pc], ta);
     j := public.fanvote_cast(v_round, key_c, array[pa, pc, pb], null, true);
     j := public.fanvote_cast(v_round, key_d, array[pc, pb, pa]);          -- this browser, before signing in
-    if (j -> 'ballot' ->> 'team') is not null then raise exception '0148: a players-only ballot picked a club'; end if;
+    if (j -> 'ballot' ->> 'team') is not null then raise exception '0150: a players-only ballot picked a club'; end if;
     j := public.fanvote_cast(v_round, key_d, null, tc);                    -- ...and its club, later
     if (j -> 'ballot' -> 'players') is distinct from to_jsonb(array[pc, pb, pa]) then
-      raise exception '0148: adding the club lost the players already picked: %', j;
+      raise exception '0150: adding the club lost the players already picked: %', j;
     end if;
     j := public.fanvote_state(lg, key_a);
     if (j -> 'open' -> 'ballot' -> 'players') is distinct from to_jsonb(array[pa, pb, pc])
        or (j -> 'open' -> 'ballot' ->> 'team')::uuid is distinct from ta then
-      raise exception '0148: a browser does not see its own ballot: %', j -> 'open' -> 'ballot';
+      raise exception '0150: a browser does not see its own ballot: %', j -> 'open' -> 'ballot';
     end if;
     if (j -> 'last') is distinct from 'null'::jsonb or jsonb_array_length(public.fanvote_winners(lg)) is distinct from 0 then
-      raise exception '0148: a round still open already shows winners: %', public.fanvote_winners(lg);
+      raise exception '0150: a round still open already shows winners: %', public.fanvote_winners(lg);
     end if;
 
     -- 4. what is refused
@@ -1141,7 +1141,7 @@ begin
           when 'nokey'    then perform public.fanvote_cast(v_round, 'short', array[pa, pb, pc]);
           else                 perform public.fanvote_cast(v_round, key_a);
         end case;
-        raise exception '0148: a bad ballot (%) was accepted', v_err;
+        raise exception '0150: a bad ballot (%) was accepted', v_err;
       exception when sqlstate '22023' then null;
       end;
     end loop;
@@ -1153,23 +1153,23 @@ begin
     j := public.fanvote_state(lg, key_d);
     if (j -> 'open' -> 'ballot' -> 'players') is distinct from to_jsonb(array[pc, pb, pa])
        or (j ->> 'prompt')::boolean is not true then
-      raise exception '0148: signed in this browser''s earlier ballot or the switch is missing: %', j;
+      raise exception '0150: signed in this browser''s earlier ballot or the switch is missing: %', j;
     end if;
     j := public.fanvote_cast(v_round, key_d, array[pa, pb, pc]);
     if (j -> 'ballot' ->> 'team')::uuid is distinct from tc then
-      raise exception '0148: the absorbed ballot lost its club: %', j;
+      raise exception '0150: the absorbed ballot lost its club: %', j;
     end if;
     perform public.set_fan_prefs(jsonb_build_object('want_fanvote', false));
     j := public.fanvote_state(lg, key_d);
     if (j ->> 'prompt')::boolean is not false then
-      raise exception '0148: "don''t show this again" did not reach fanvote_state: %', j ->> 'prompt';
+      raise exception '0150: "don''t show this again" did not reach fanvote_state: %', j ->> 'prompt';
     end if;
     execute format('set local role %I', orig);
     perform set_config('request.jwt.claims', '', true);
     select count(*) into n from fanvote_ballots where round_id = v_round;
-    if n <> 4 then raise exception '0148: signing in made a second ballot (% ballots where 4 were expected)', n; end if;
+    if n <> 4 then raise exception '0150: signing in made a second ballot (% ballots where 4 were expected)', n; end if;
     if not exists (select 1 from fanvote_ballots where round_id = v_round and voter = 'u:' || u_fan and user_id = u_fan) then
-      raise exception '0148: the signed-in ballot is not keyed to the account';
+      raise exception '0150: the signed-in ballot is not keyed to the account';
     end if;
 
     -- 6. the count: Ada 3+2+3+3 = 11, Bo 2+3+1+2 = 8, Cy 1+1+2+1 = 5; Hawks 2, Wrens 1
@@ -1182,42 +1182,42 @@ begin
        or (j -> 'teams' -> 0 ->> 'votes')::int is distinct from 2
        or (j ->> 'ballots')::int is distinct from 4 or (j ->> 'accounts')::int is distinct from 1
        or (j ->> 'skipped')::int is distinct from 1 then
-      raise exception '0148: the tally is wrong: %', j;
+      raise exception '0150: the tally is wrong: %', j;
     end if;
 
     -- 7. the throttle: 30 new signed-out ballots from one address in ten minutes, not 31
     perform set_config('request.headers', json_build_object('x-forwarded-for', '198.51.100.148')::text, true);
     set local role anon;
     for i in 1 .. 30 loop
-      perform public.fanvote_cast(v_round, 't148-flood-' || lpad(i::text, 8, '0'), array[pd, pc, pb]);
+      perform public.fanvote_cast(v_round, 't150-flood-' || lpad(i::text, 8, '0'), array[pd, pc, pb]);
     end loop;
     begin
-      perform public.fanvote_cast(v_round, 't148-flood-00000031', array[pd, pc, pb]);
-      raise exception '0148: the 31st new ballot from one address in ten minutes was taken';
+      perform public.fanvote_cast(v_round, 't150-flood-00000031', array[pd, pc, pb]);
+      raise exception '0150: the 31st new ballot from one address in ten minutes was taken';
     exception when sqlstate 'PT429' then null;
     end;
-    perform public.fanvote_cast(v_round, 't148-flood-00000001', array[pc, pd, pb]);   -- changing one is not new
+    perform public.fanvote_cast(v_round, 't150-flood-00000001', array[pc, pd, pb]);   -- changing one is not new
     execute format('set local role %I', orig);
     perform set_config('request.headers', '{}', true);
     delete from fanvote_ballots where round_id = v_round and voter in
-      (select public.fanvote_key('t148-flood-' || lpad(g::text, 8, '0')) from generate_series(1, 31) g);
+      (select public.fanvote_key('t150-flood-' || lpad(g::text, 8, '0')) from generate_series(1, 31) g);
 
     -- 8. closed: nobody votes, and the winners are Ada and the Hawks
     update fanvote_rounds set opens_at = now() - interval '2 hours', closes_at = now() - interval '1 minute' where id = v_round;
     set local role anon;
     begin
       perform public.fanvote_cast(v_round, key_a, array[pc, pb, pa]);
-      raise exception '0148: a vote was taken after the round closed';
+      raise exception '0150: a vote was taken after the round closed';
     exception when sqlstate '22023' then null;
     end;
     j := public.fanvote_winners(lg);
     if jsonb_array_length(j) is distinct from 1 or (j -> 0 -> 'player' ->> 'id')::uuid is distinct from pa
        or (j -> 0 -> 'team' ->> 'id')::uuid is distinct from ta or (j -> 0 ->> 'ballots')::int is distinct from 4 then
-      raise exception '0148: the winners are wrong: %', j;
+      raise exception '0150: the winners are wrong: %', j;
     end if;
     j := public.fanvote_state(lg, key_a);
     if (j -> 'last' -> 'player' ->> 'name') is distinct from 'Ada Ash' or (j -> 'open') is distinct from 'null'::jsonb then
-      raise exception '0148: the page does not show last week''s winner: %', j;
+      raise exception '0150: the page does not show last week''s winner: %', j;
     end if;
     execute format('set local role %I', orig);
 
@@ -1236,7 +1236,7 @@ begin
     update fanvote_rounds set closes_at = now() - interval '2 minutes' where id = v_r2;
     j := public.fanvote_result_json(v_r2);
     if (j -> 'player' ->> 'id')::uuid is distinct from pc or (j -> 'team') is distinct from 'null'::jsonb then
-      raise exception '0148: the tie did not go to the better BPM rank or a club won with no votes: %', j;
+      raise exception '0150: the tie did not go to the better BPM rank or a club won with no votes: %', j;
     end if;
 
     -- 10. the console: its admin, not a stranger; the season's weekly wins
@@ -1244,7 +1244,7 @@ begin
     set local role authenticated;
     begin
       perform public.fanvote_admin(lg);
-      raise exception '0148: a stranger read the league''s votes';
+      raise exception '0150: a stranger read the league''s votes';
     exception when insufficient_privilege then null;
     end;
     execute format('set local role %I', orig);
@@ -1256,7 +1256,7 @@ begin
     if jsonb_array_length(j -> 'rounds') is distinct from 2 or (j -> 'players' -> 0 ->> 'weekly_wins')::int is distinct from 1
        or (select count(*) from jsonb_array_elements(j -> 'players') e where (e ->> 'weekly_wins')::int = 1) <> 2
        or (j -> 'rounds' -> 0 -> 'players' -> 0 ->> 'name') is null then
-      raise exception '0148: the console''s view is wrong: %', j;
+      raise exception '0150: the console''s view is wrong: %', j;
     end if;
 
     -- 11. private: the vote is the invited fans' only
@@ -1266,20 +1266,20 @@ begin
     update fanvote_rounds set opens_at = now() - interval '1 hour', closes_at = now() + interval '1 hour' where id = v_round;
     set local role anon;
     if public.fanvote_state(lg, key_a) is not null or public.fanvote_winners(lg) is not null then
-      raise exception '0148: a private league''s vote is readable signed out';
+      raise exception '0150: a private league''s vote is readable signed out';
     end if;
     begin
       perform public.fanvote_cast(v_round, key_a, array[pa, pb, pc]);
-      raise exception '0148: a stranger voted in a private league';
+      raise exception '0150: a stranger voted in a private league';
     exception when sqlstate '22023' then null;
     end;
     select count(*) into n from fanvote_rounds where league_id = lg;
-    if n <> 0 then raise exception '0148: a private league''s rounds are listed signed out'; end if;
+    if n <> 0 then raise exception '0150: a private league''s rounds are listed signed out'; end if;
     execute format('set local role %I', orig);
     perform set_config('request.jwt.claims', json_build_object('sub', u_guest, 'role', 'authenticated')::text, true);
     set local role authenticated;
     j := public.fanvote_state(lg, key_a);
-    if j -> 'open' is null then raise exception '0148: a guest of a private league cannot see its vote'; end if;
+    if j -> 'open' is null then raise exception '0150: a guest of a private league cannot see its vote'; end if;
     perform public.fanvote_cast(v_round, key_a, array[pa, pb, pc], ta);
     execute format('set local role %I', orig);
     perform set_config('request.jwt.claims', '', true);
@@ -1294,20 +1294,20 @@ begin
     execute format('set local role %I', orig);
     perform set_config('request.jwt.claims', '', true);
     if (select sections ->> 'fanvote' from leagues where id = lg) is distinct from 'false' then
-      raise exception '0148: set_league_appearance does not keep the fanvote switch';
+      raise exception '0150: set_league_appearance does not keep the fanvote switch';
     end if;
     set local role anon;
     j := public.fanvote_state(lg, key_a);
-    if (j ->> 'off')::boolean is not true then raise exception '0148: a league with the vote off still offers it: %', j; end if;
+    if (j ->> 'off')::boolean is not true then raise exception '0150: a league with the vote off still offers it: %', j; end if;
     begin
       perform public.fanvote_cast(v_round, key_a, array[pc, pb, pa]);
-      raise exception '0148: a league with the vote off still took a vote';
+      raise exception '0150: a league with the vote off still took a vote';
     exception when sqlstate '22023' then null;
     end;
     execute format('set local role %I', orig);
     delete from fanvote_rounds where league_id = lg and week_start = w.week_start;
     if public.fanvote_due(lg, v_at) is not null then
-      raise exception '0148: a round is due in a league that turned the vote off';
+      raise exception '0150: a round is due in a league that turned the vote off';
     end if;
 
     -- 13. what a browser may touch
@@ -1323,19 +1323,19 @@ begin
        or not has_function_privilege('anon', 'public.fanvote_cast(uuid, text, uuid[], uuid, boolean)', 'execute')
        or not has_function_privilege('anon', 'public.fanvote_winners(uuid, int)', 'execute')
        or not has_function_privilege('service_role', 'public.fanvote_open(uuid, date, jsonb, jsonb, timestamptz)', 'execute') then
-      raise exception '0148: the grants are not what the header says';
+      raise exception '0150: the grants are not what the header says';
     end if;
 
-    raise exception using errcode = 'P0148', message = '0148 passed; rolling its test rows back';
+    raise exception using errcode = 'P0150', message = '0150 passed; rolling its test rows back';
   exception
-    when sqlstate 'P0148' then null;
+    when sqlstate 'P0150' then null;
     when others then raise exception '% [ran as %]', sqlerrm, who;
   end;
   execute format('set local role %I', orig);
   perform set_config('request.jwt.claims', '', true);
 
-  if exists (select 1 from leagues where slug like 'zz-t148-%') or exists (select 1 from players where slug like 'zz-t148-%') then
-    raise exception '0148: the test rows outlived their rollback';
+  if exists (select 1 from leagues where slug like 'zz-t150-%') or exists (select 1 from players where slug like 'zz-t150-%') then
+    raise exception '0150: the test rows outlived their rollback';
   end if;
-  raise notice '0148 ok: the week is the league''s own (Mon 06:00 to Thu end), a round opens once with the server''s cards (no minor, no stranger, fifteen at most; a live game holds it six hours at most), anyone votes once per browser and signing in absorbs it, 3-2-1 with its tie-breaks, the throttle, the winners, the console, a private league''s vote is its guests'' only, and a league can turn it off';
+  raise notice '0150 ok: the week is the league''s own (Mon 06:00 to Thu end), a round opens once with the server''s cards (no minor, no stranger, fifteen at most; a live game holds it six hours at most), anyone votes once per browser and signing in absorbs it, 3-2-1 with its tie-breaks, the throttle, the winners, the console, a private league''s vote is its guests'' only, and a league can turn it off';
 end $test$;

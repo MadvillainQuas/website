@@ -120,7 +120,7 @@ const FILES = [
     names: ['compute', 'toStored', 'finish', 'howEnded', 'surname', 'KEYS', 'STAMPED',
             'FIELDS', 'AFIELDS', 'VERSION', 'cumEl', 'inGameOrder']
   },
-  /* THE STARS' RULE, for the weekly fans' vote (0148). The fanvote function puts the
+  /* THE STARS' RULE, for the weekly fans' vote (0150). The fanvote function puts the
      week's ten best players by BPM on the ballot, and "best" has to mean what the
      Stars podium on the same page means: the same window minimum and the same
      ordering, from the same file. computeWindow reads EpinoiaSeason (and through it

@@ -1,5 +1,5 @@
 // ============================================================================
-// fanvote — OPENS THE WEEK'S FANS' VOTE (migration 0148, docs/fanvote.md).
+// fanvote — OPENS THE WEEK'S FANS' VOTE (migration 0150, docs/fanvote.md).
 //
 //   POST { league: <uuid> }   anyone. Answers { opened: boolean } and nothing else.
 //

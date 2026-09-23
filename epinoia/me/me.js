@@ -45,7 +45,7 @@ function collect() {
     want_lineups: $('#wLineups').checked, want_player_games: $('#wPlayerGames').checked,
     /* half-time (0124) */
     want_halftime: $('#wHalftime').checked,
-    /* the weekly fans' vote panel on league pages (0148); ignored by a database without it */
+    /* the weekly fans' vote panel on league pages (0150); ignored by a database without it */
     want_fanvote: $('#wFanvote').checked,
     /* the reminder clock (0144); omitted rather than sent empty when Intl has nothing to say */
     ...(tz ? { time_zone: tz } : {})
@@ -954,7 +954,7 @@ function wireTabs() {
   $('#wFix2d').checked = prefs.want_fixture_2d !== false; $('#wFix2h').checked = prefs.want_fixture_2h !== false;
   $('#wLineups').checked = prefs.want_lineups !== false; $('#wPlayerGames').checked = prefs.want_player_games !== false;
   $('#wHalftime').checked = prefs.want_halftime !== false;
-  /* the fans' vote panel (0148): on unless this account said "don't show this again" */
+  /* the fans' vote panel (0150): on unless this account said "don't show this again" */
   $('#wFanvote').checked = prefs.want_fanvote !== false;
   paintFixtureSubs();
   ['#nInapp', '#nEmail', '#wResults', '#wPlayers', '#wFixtures', '#wAnn',

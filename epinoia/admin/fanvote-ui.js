@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   FANS' VOTE — every tally, for the league's own admins (migration 0148).
+   FANS' VOTE — every tally, for the league's own admins (migration 0150).
 
    What the league page shows is the winners; this is the count behind them.
    Per week: how many voted (and how many of those were signed in), every player
@@ -73,9 +73,9 @@ function mount(o) {
     const { data, error } = await o.sb.rpc('fanvote_admin', { p_league: league.id, p_season: season || null });
     out.textContent = '';
     if (error) {
-      /* a database without 0148 */
+      /* a database without 0150 */
       out.appendChild(el('div', 'empty', /fanvote_admin/.test(error.message || '')
-        ? 'The fans’ vote is not on this database yet (migration 0148).'
+        ? 'The fans’ vote is not on this database yet (migration 0150).'
         : 'Could not read the votes: ' + error.message));
       return;
     }

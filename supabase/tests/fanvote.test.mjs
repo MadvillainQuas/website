@@ -1,5 +1,5 @@
 /* ============================================================================
-   THE WEEKLY FANS' VOTE (migration 0148, docs/fanvote.md).
+   THE WEEKLY FANS' VOTE (migration 0150, docs/fanvote.md).
 
    Three things, none of them needing a database:
 
@@ -14,7 +14,7 @@
       showed, in the same order, and the rest follow on the same rule. The clubs
       are every club that won, best week first.
 
-   3. THE WIRING, read from the files: fifteen players and no more in 0148, the
+   3. THE WIRING, read from the files: fifteen players and no more in 0150, the
       section above the Stars, the nav row, the profile switch, the admin panel,
       the function's config.
 
@@ -211,10 +211,10 @@ console.log('\nthe clubs: every club that won');
 /* ========================================================== 3. THE WIRING === */
 console.log('\nthe wiring');
 {
-  const sql = read('supabase', 'migrations', '0148_fan_vote.sql');
-  ok('0148 keeps fifteen players', (sql.match(/exit when v_n >= 15;/g) || []).length === 1);
-  ok('0148 keeps every winning club, up to a guard of 32', /exit when v_t >= 32;/.test(sql));
-  ok('0148’s self-test proves the fifteen', /zz-t148-cap/.test(sql));
+  const sql = read('supabase', 'migrations', '0150_fan_vote.sql');
+  ok('0150 keeps fifteen players', (sql.match(/exit when v_n >= 15;/g) || []).length === 1);
+  ok('0150 keeps every winning club, up to a guard of 32', /exit when v_t >= 32;/.test(sql));
+  ok('0150’s self-test proves the fifteen', /zz-t150-cap/.test(sql));
   ok('the ballot is opened only by the service role',
      /grant execute on function public\.fanvote_open\([^)]*\) to service_role;/.test(sql) &&
      /revoke all on function public\.fanvote_open\([^)]*\) from public, anon, authenticated;/.test(sql) &&

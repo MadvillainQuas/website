@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   THE FANS' VOTE, WEEK BY WEEK (migration 0148, docs/fanvote.md).
+   THE FANS' VOTE, WEEK BY WEEK (migration 0150, docs/fanvote.md).
 
    One row a finished week, newest first: the fans' player of the week and club
    of the week, with the points and votes they won by, and the season's most

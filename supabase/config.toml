@@ -76,7 +76,7 @@ verify_jwt = false
 [functions.notify]
 verify_jwt = false
 
-# fanvote (migration 0148) is asked by a signed-out league page to open the week's
+# fanvote (migration 0150) is asked by a signed-out league page to open the week's
 # fans' vote. It takes nothing on trust: the database says whether a round is due,
 # the ballot comes from the league's own box scores, a round opens once, and the
 # answer is only { opened: true|false }.

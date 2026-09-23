@@ -1,7 +1,7 @@
 'use strict';
 /* ============================================================================
    MAKE YOUR VOICE HEARD — the weekly fans' vote on a league's front page
-   (migration 0148, docs/fanvote.md).
+   (migration 0150, docs/fanvote.md).
 
    Two things on the page:
 

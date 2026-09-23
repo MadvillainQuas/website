@@ -4,7 +4,7 @@
 2nd, 3rd) and the club with the best performance. The winners go above the Stars, every week's
 winners have their own page, and the league's admins see every tally.
 
-Migration `0148_fan_vote.sql`; the Edge Function `supabase/functions/fanvote`; the page is
+Migration `0150_fan_vote.sql`; the Edge Function `supabase/functions/fanvote`; the page is
 `epinoia/fanvote.js` + `epinoia/kit/fanvote.css`. Tests: the migration's own self-test, and
 `supabase/tests/fanvote.test.mjs` (the page's rules, the ballot picker, the wiring).
 
@@ -108,7 +108,7 @@ functions. No ballot is ever shown to anybody but the browser or account that ca
 
 ## Deploying
 
-1. `npx supabase@latest db push` (0148 after 0147).
+1. `npx supabase@latest db push` (0150 after 0147).
 2. `npx supabase@latest functions deploy fanvote` (it is `verify_jwt = false` in `config.toml`:
    a signed-out page calls it, and it decides everything itself).
 3. The site.
