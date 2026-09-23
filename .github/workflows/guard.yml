@@ -377,6 +377,14 @@ jobs:
         # reconciles with the site's own figures
         run: python scripts/ingest/usports_test.py
 
+      - name: ORLEN Basket Liga (Poland) from plk.pl's own API
+        # plk.py over cached schedule and game replies: the cup and the Superpuchar are never
+        # discovered, the PLK game id is the key and the club id the code (a renamed club stays one
+        # club), a fixture with no time yet keeps its date, and every box, team total, score, 5v5
+        # stint and event-log line reconciles with the league's own figures - including a
+        # substitution split around a free throw and one player logged under two ids
+        run: python scripts/ingest/plk_test.py
+
       - name: Groups, conferences and divisions from config/groups
         # groups.py (0144): a source with a groups file enters its clubs under their group or
         # conference (and division); a source without one writes exactly what it always did; and
