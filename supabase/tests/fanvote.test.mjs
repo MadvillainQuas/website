@@ -233,6 +233,14 @@ console.log('\nthe wiring');
      /\.fv-ghost\.fv-card\.small \.club-plate\{aspect-ratio:4\/3\}/.test(fvcss));
   ok('a player’s whole name is shown: it wraps rather than being cut with an ellipsis',
      /\.fv \.fv-card \.star-name,\.fv-ghost\.fv-card \.star-name\{white-space:normal;overflow:visible;text-overflow:clip/.test(fvcss));
+  ok('the rule under the hero is a button that brings the panel back',
+     /btn\('fv-rule'/.test(fvjs) && /o\.anchor\.appendChild\(rule\)/.test(fvjs) && /openPanel\(true\)/.test(fvjs) &&
+     /\.fv-rule\{appearance:none;position:absolute/.test(fvcss) && /\.fv-live > \.fv-rule\{display:none\}/.test(fvcss));
+  const homejs = read('epinoia', 'home.js');
+  ok('a slow database cannot hang the fans\u2019 vote or hold the page up',
+     /const DEADLINE_MS = 10000/.test(fvjs) && /new root\.AbortController\(\)/.test(fvjs) &&
+     (fvjs.match(/timed\(/g) || []).length >= 3 &&
+     /if \(!wall\.walled\) fanVote\(\)\.catch/.test(homejs) && !/wall\.walled \? null : fanVote\(\)/.test(homejs));
   ok('a player card carries points, rebounds and assists', /function statRow/.test(fvjs) && /foot\.append\(who, statRow\(p\.line\)\)/.test(fvjs) &&
      /\['PTS'.*\['REB'.*\['AST'/.test(fvjs));
 
@@ -244,7 +252,7 @@ console.log('\nthe wiring');
 
   const home = read('epinoia', 'home.js');
   ok('the Appearance switch covers it', /fanvote:\s*'#fvSec'/.test(home) && /sectionOn\('fanvote'\)/.test(home));
-  ok('the front page mounts it, not behind a private league’s wall', /wall\.walled \? null : fanVote\(\)/.test(home));
+  ok('the front page mounts it, not behind a private league’s wall', /if \(!wall\.walled\) fanVote\(\)/.test(home));
   ok('the panel unrolls from the rule under the hero', /#hub \.hero/.test(home));
 
   const nav = read('epinoia', 'nav.js');

@@ -1635,13 +1635,15 @@ function renumber() {
     const gamesP = ast.known && ast.accessMode === 'members' && ast.membershipsEnabled !== false
       ? gamesFirst.then(() => { gamesKey = ''; return games(); }).catch(() => null)
       : gamesFirst;
+    /* the fans' vote starts now and is NOT waited for: it is the one section whose panel can appear
+       late, and a slow database must never hold the rest of the page's set-up behind it */
+    if (!wall.walled) fanVote().catch(() => null);
     const [, roster, star] = await Promise.all([
       gamesP,
       clubsP,
       wall.walled ? null : stars().catch(() => null),
       wall.walled ? null : news().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
-      wall.walled ? null : fanVote().catch(() => null),
       socialsP
     ]);
     await merch(roster, star).catch(() => null);

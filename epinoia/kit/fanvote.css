@@ -176,6 +176,22 @@
 .fv-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;margin:0;
   box-shadow:0 22px 44px rgba(0,0,0,.38);transition:none;cursor:grabbing}
 
+/* ---- the rule under the hero, as the way back in ---- */
+.fv-rule{appearance:none;position:absolute;left:0;right:0;bottom:0;height:16px;z-index:3;padding:0;border:0;
+  background:transparent;cursor:pointer;font:inherit;color:inherit}
+.fv-rule::before{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--fv-a,var(--league-a,currentColor));
+  transform-origin:bottom;transition:transform .18s cubic-bezier(.2,.8,.3,1),filter .18s ease}
+.fv-rule:hover::before,.fv-rule:focus-visible::before{transform:scaleY(2);filter:brightness(1.12)}
+.fv-rule-tab{position:absolute;left:50%;bottom:3px;transform:translate(-50%,6px);opacity:0;pointer-events:none;white-space:nowrap;
+  padding:5px 12px;background:var(--fv-a,var(--league-a,#000));color:var(--fv-on,var(--league-on-a,#fff));
+  font:800 10px/1 var(--f-micro,var(--f-ui));letter-spacing:.14em;text-transform:uppercase;
+  transition:opacity .18s ease,transform .18s cubic-bezier(.2,.8,.3,1)}
+.fv-rule:hover .fv-rule-tab,.fv-rule:focus-visible .fv-rule-tab{opacity:1;transform:translate(-50%,0)}
+.fv-rule:focus-visible{outline:3px solid var(--fv-a,var(--league-a,currentColor));outline-offset:-3px}
+/* while the panel is out, the line is the panel's edge and no button */
+.fv-live > .fv-rule{display:none}
+@media (hover:none){ .fv-rule{height:24px} }
+
 /* ---- actions ---- */
 .fv-acts{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;
   margin-top:calc(var(--u)*1.25)}

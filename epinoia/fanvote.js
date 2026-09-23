@@ -36,6 +36,7 @@
 const STORE = 'epinoia.fanvote';
 const VOTER_KEY = 'epinoia.ballot.voter';          // the Team of the Year ballot's (toty.js)
 const LATER_MS = 6 * 3600 * 1000;                  // "remind me later": the next visit six hours on
+const DEADLINE_MS = 10000;                         // a request to the database or the function gives up after this
 const KEEP_MS = 60 * 86400 * 1000;                 // a round's note is forgotten after two months
 const PLACES = ['1st', '2nd', '3rd'];
 
@@ -732,9 +733,17 @@ function client(cfg, token) {
     if (tok) h.Authorization = 'Bearer ' + tok;
     return h;
   };
+  /* A SLOW DATABASE MUST NOT HANG THIS: every request has a deadline, after which it fails like
+     any other error and the panel simply does not appear. (The browser's own would be minutes.) */
+  function timed(url, init, ms) {
+    let ctl = null, timer = null;
+    try { ctl = new root.AbortController(); timer = setTimeout(() => ctl.abort(), ms); } catch (_) { /* no abort: no deadline */ }
+    return fetch(url, ctl ? Object.assign({ signal: ctl.signal }, init) : init)
+      .finally(() => clearTimeout(timer));
+  }
   async function rpc(fn, args) {
-    const r = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/' + fn,
-      { method: 'POST', cache: 'no-store', headers: headers(), body: JSON.stringify(args || {}) });
+    const r = await timed(cfg.supabaseUrl + '/rest/v1/rpc/' + fn,
+      { method: 'POST', cache: 'no-store', headers: headers(), body: JSON.stringify(args || {}) }, DEADLINE_MS);
     if (r.status === 401 && tok) { tok = null; return rpc(fn, args); }   // a stale token: ask as nobody
     const j = await r.json().catch(() => null);
     if (!r.ok) {
@@ -745,11 +754,11 @@ function client(cfg, token) {
     return j;
   }
   async function openRound(leagueId) {
-    const r = await fetch(cfg.supabaseUrl + '/functions/v1/fanvote', {
+    const r = await timed(cfg.supabaseUrl + '/functions/v1/fanvote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey },
       body: JSON.stringify({ league: leagueId })
-    });
+    }, DEADLINE_MS * 2);
     const j = await r.json().catch(() => null);
     return !!(r.ok && j && j.opened);
   }
@@ -929,6 +938,23 @@ async function mount(o) {
     setTimeout(() => { try { P.x.focus({ preventScroll: true }); } catch (_) { /* focus is a courtesy */ } }, 400);
   }
   ctx.openPanel = openPanel;
+
+  /* THE RULE UNDER THE HERO IS THE HANDLE. Once the panel has been closed (the x, remind me
+     later, or a finished vote) the line it rolled out of is a button that rolls it back: a tab
+     on the line says so on hover or focus. It is there only while a round is open, and hidden
+     while the panel is (a click on it then rolls the panel up again). */
+  if (o.anchor && state.open) {
+    const rule = btn('fv-rule', '', 'Make your voice heard: open this week\u2019s vote');
+    rule.title = 'Make your voice heard';
+    rule.appendChild(el('span', 'fv-rule-tab', 'Make your voice heard \u25be'));
+    rule.addEventListener('click', () => {
+      const P = ctx.panel;
+      if (P && P.sec.classList.contains('open')) close('x');
+      else openPanel(true);
+    });
+    o.anchor.appendChild(rule);
+    ctx.rule = rule;
+  }
 
   renderSection(ctx);
   if (shouldAutoOpen(state, readStore(), Date.now())) {
