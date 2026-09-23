@@ -13,19 +13,27 @@
 -- from the subscriber's own browser (Intl.DateTimeFormat().resolvedOptions().timeZone),
 -- with 'Europe/London' the default for a row that has not told us yet — so nobody's
 -- reminders change until their own browser says otherwise. notify_valid_tz falls back to
--- that default for anything pg_timezone_names does not recognise, so a malformed or stale
--- string from a browser can never break a write; it only means that one row keeps reading
--- London's clock until it sends a real one.
+-- that default for any name Postgres cannot convert a time with, so a malformed or stale
+-- string from a browser can never break a write or a fan-out; it only means that one row
+-- keeps reading London's clock until it sends a real one.
 --
--- WHAT MOVES. notify_audience (0127) gains time_zone, validated, beside its other columns,
--- so both fan-outs that print a time of day already have it wherever they read the
--- audience. notif_when takes the zone as its second argument now (default kept, so any
--- caller this migration missed still behaves exactly as before). notify_fixture_windows and
--- notify_lineups stop computing one v_tip per game and format the hour inside the same
--- per-recipient SELECT instead — the only structural change either function makes.
--- notify_halftime and notify_game_final print no time of day (half-time state, a final
--- score) and are untouched. set_fan_prefs and notify_device_follow gain the same field, so
--- the profile page and the league-website notification button can both send it.
+-- WHAT MOVES. notify_audience (latest 0133, which folds a followed league's clubs into
+-- fav_team_ids and carries fav_league_ids for 0138's result notice) gains time_zone as its
+-- LAST column — the only change CREATE OR REPLACE VIEW allows; the first push of this file
+-- rebuilt it from 0127's copy and Postgres refused (42P16), which is also what stopped it
+-- silently dropping league follows. notif_when takes the zone as its second argument now
+-- (default kept). notify_fixture_windows and notify_lineups stop computing one v_tip per game
+-- and format the hour inside the same per-recipient SELECT instead — the only structural
+-- change either function makes. notify_halftime and notify_game_final print no time of day
+-- and are untouched. set_fan_prefs and notify_device_follow gain the same field, so the
+-- profile page and the league-website notification button can both send it.
+--
+-- TWO SIGNATURES CHANGE, SO THE OLD ONES ARE DROPPED. A trailing default parameter does not
+-- replace a function, it adds an overload beside it — and then every call without the new
+-- argument matches both ("is not unique"; PostgREST PGRST203), which would break every
+-- button still on the old page. notif_when(timestamptz) has no caller left once the two
+-- fan-outs below are replaced; notify_device_follow's 7-argument form is only ever called
+-- over REST. Each new signature is given exactly the grants its old one had.
 --
 -- WHAT THIS DOES NOT TOUCH. The calendar feed (_shared/icsfeed.js) already avoids this
 -- trap on purpose: DTSTART/DTEND end in Z, so any calendar app converts to the phone's own
@@ -43,28 +51,51 @@ set local lock_timeout = '5s';
 -- ----------------------------------------------------------------------------
 -- 1. THE COLUMN, AND A VALIDATOR EVERY WRITER SHARES.
 --
--- Free text, not a foreign key to pg_timezone_names: that catalogue can differ between
--- Postgres versions and is not something a migration should pin a constraint to. Validity
--- is instead checked, best-effort, at the moment anything is written — never at read, so a
--- name that stops being recognised after an upgrade degrades to the London default rather
--- than making an old row unreadable.
+-- Free text, not a foreign key: the time zone database can change under a Postgres upgrade,
+-- and a name it stops knowing must degrade to London's clock, never break a write or a
+-- fan-out. So the check is made where a zone is written AND where it is read (the view).
+--
+-- NOT pg_timezone_names. That view rescans the whole zone database on every call, and the
+-- audience view calls this once per subscriber per fan-out, every minute. Asking Postgres to
+-- convert a timestamp with the name costs microseconds; a name it cannot use raises, and the
+-- exception block turns that into the default. 64 characters is twice the longest IANA name.
 -- ----------------------------------------------------------------------------
 alter table public.fan_prefs    add column if not exists time_zone text not null default 'Europe/London';
 alter table public.push_devices add column if not exists time_zone text not null default 'Europe/London';
 
 create or replace function public.notify_valid_tz(p_tz text)
-returns text language sql stable set search_path = public as $$
-  select coalesce((select name from pg_timezone_names where name = p_tz), 'Europe/London');
-$$;
+returns text language plpgsql stable set search_path = public as $$
+begin
+  if p_tz is null or btrim(p_tz) = '' or length(p_tz) > 64 then
+    return 'Europe/London';
+  end if;
+  perform now() at time zone p_tz;
+  return p_tz;
+exception when others then
+  return 'Europe/London';
+end $$;
+-- set_fan_prefs is SECURITY INVOKER and calls this as the signed-in fan; everything else
+-- that calls it runs as its owner
+revoke all on function public.notify_valid_tz(text) from public, anon;
+grant execute on function public.notify_valid_tz(text) to authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
--- 2. THE AUDIENCE, WITH A ZONE ON EVERY ROW (latest: 0127).
+-- 2. THE AUDIENCE, WITH A ZONE ON EVERY ROW (latest: 0133). Character for character 0133's
+--    view, time_zone appended last in both branches.
 -- ----------------------------------------------------------------------------
 create or replace view public.notify_audience as
   select p.user_id, null::uuid as device_id, p.user_id as sub,
-         p.fav_team_ids, p.fav_player_ids, p.fav_game_ids,
+         case when cardinality(p.fav_league_ids) = 0 then p.fav_team_ids
+              else array(select distinct y
+                           from unnest(p.fav_team_ids ||
+                                       coalesce((select array_agg(t.id) from teams t
+                                                  where t.league_id = any (p.fav_league_ids)),
+                                                '{}'::uuid[])) y)
+         end as fav_team_ids,
+         p.fav_player_ids, p.fav_game_ids,
          p.want_results, p.want_players, p.want_fixtures, p.want_announcements,
          p.want_fixture_2d, p.want_fixture_2h, p.want_lineups, p.want_player_games, p.want_halftime,
+         p.fav_league_ids,
          public.notify_valid_tz(p.time_zone) as time_zone
     from public.fan_prefs p
   union all
@@ -72,19 +103,24 @@ create or replace view public.notify_audience as
          d.fav_team_ids, d.fav_player_ids, d.fav_game_ids,
          d.want_results, d.want_players, true, d.want_announcements,
          d.want_fixture_2d, d.want_fixture_2h, d.want_lineups, true, d.want_halftime,
-         public.notify_valid_tz(d.time_zone) as time_zone
+         '{}'::uuid[],
+         public.notify_valid_tz(d.time_zone)
     from public.push_devices d;
 revoke all on table public.notify_audience from public, anon, authenticated;
 alter view public.notify_audience owner to postgres;
 
 -- ----------------------------------------------------------------------------
--- 3. notif_when TAKES THE ZONE (latest: 0121). p_tz defaults to London so a caller this
---    migration missed keeps its old answer rather than erroring.
+-- 3. notif_when TAKES THE ZONE (latest: 0121). The one-argument form is dropped (see the
+--    header); a one-argument call still resolves to this one through the default.
 -- ----------------------------------------------------------------------------
+drop function if exists public.notif_when(timestamptz);
 create or replace function public.notif_when(p_at timestamptz, p_tz text default 'Europe/London')
 returns text language sql stable set search_path = public as $$
   select to_char(p_at at time zone public.notify_valid_tz(p_tz), 'Dy FMDD Mon, HH24:MI');
 $$;
+-- 0121's grants: the fan-outs call it as their owner; no browser role does
+revoke all on function public.notif_when(timestamptz, text) from public, anon, authenticated;
+grant execute on function public.notif_when(timestamptz, text) to service_role;
 
 -- ----------------------------------------------------------------------------
 -- 4. notify_fixture_windows (latest: 0127) — v_tip moves from a once-per-game session
@@ -458,10 +494,13 @@ begin
 end $$;
 
 -- ----------------------------------------------------------------------------
--- 7. notify_device_follow (latest: 0127) gains p_tz, trailing so every existing positional
---    or named call keeps working unchanged. null (the default) leaves the device's zone as
---    it was — a follow that only adds or removes a club must not reset it.
+-- 7. notify_device_follow (latest: 0127) gains p_tz, trailing, and the 7-argument form is
+--    dropped (see the header) so a call without p_tz — the old page, or the button's own
+--    retry — resolves to this one through the default instead of matching two. null (the
+--    default) leaves the device's zone as it was: a follow that only adds or removes a club
+--    must not reset it.
 -- ----------------------------------------------------------------------------
+drop function if exists public.notify_device_follow(text, text, text, text, jsonb, jsonb, jsonb);
 create or replace function public.notify_device_follow(p_league text, p_endpoint text, p_p256dh text, p_auth text,
                                                        p_add jsonb default '{}'::jsonb, p_remove jsonb default '{}'::jsonb,
                                                        p_prefs jsonb default '{}'::jsonb, p_tz text default null)
@@ -578,6 +617,9 @@ alter function public.notif_when(timestamptz, text) owner to postgres;
 alter function public.notify_fixture_windows() owner to postgres;
 alter function public.notify_lineups(uuid) owner to postgres;
 alter function public.notify_device_follow(text, text, text, text, jsonb, jsonb, jsonb, text) owner to postgres;
+-- 0127's grants on the 7-argument form, onto the 8: the button calls it signed out
+revoke all on function public.notify_device_follow(text, text, text, text, jsonb, jsonb, jsonb, text) from public;
+grant execute on function public.notify_device_follow(text, text, text, text, jsonb, jsonb, jsonb, text) to anon, authenticated, service_role;
 
 -- ============================================================================
 -- SELF-TEST — rolled back (0143's P0-per-migration pattern).
@@ -622,11 +664,11 @@ begin
   begin
     perform set_config('request.jwt.claims', '', true);
     perform set_config('request.headers', '{}', true);
-    set local role postgres;
+    execute format('set local role %I', orig);
 
-    insert into leagues (slug, name, country, access_mode) values ('zz-t145-open', 'ZZ T144 League', 'GB', 'open') returning id into lg;
-    insert into seasons (league_id, name, starts_on) values (lg, '2026-27', current_date) returning id into se;
-    insert into competitions (league_id, season_id, name, kind) values (lg, se, 'League', 'league') returning id into cp;
+    insert into leagues (slug, name, public_live) values ('zz-t145-open', '0145 Open', true) returning id into lg;
+    insert into seasons (league_id, name) values (lg, '0145') returning id into se;
+    insert into competitions (season_id, name) values (se, 'T145 League') returning id into cp;
     insert into teams (league_id, slug, name, short_name) values (lg, 'zz-t145-home', 'Reading Rockets', 'RR') returning id into t_h;
     insert into teams (league_id, slug, name, short_name) values (lg, 'zz-t145-away', 'London Lions', 'LON') returning id into t_a;
     insert into players (slug, first_name, last_name) values ('zz-t145-baker', 'Ben', 'Baker') returning id into pl_baker;
@@ -677,7 +719,7 @@ begin
     -- cannot pass by accident of the player-only path happening to keep the default
     perform public.notify_device_follow('zz-t145-open', e_dp, k_p, k_a, jsonb_build_object('players', jsonb_build_array(pl_baker)),
                                         '{}'::jsonb, '{}'::jsonb, 'America/New_York');
-    set local role postgres;
+    execute format('set local role %I', orig);
     select id into d_dj from push_devices where endpoint = e_dj;
     if (select time_zone from push_devices where id = d_dj) <> 'Asia/Tokyo' then
       raise exception '0145: notify_device_follow did not save a valid zone';
@@ -686,7 +728,7 @@ begin
     -- an invalid zone is swallowed, not stored, on both writers
     set local role anon;
     perform public.notify_device_follow('zz-t145-open', e_dj, k_p, k_a, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, 'Not/AZone');
-    set local role postgres;
+    execute format('set local role %I', orig);
     if (select time_zone from push_devices where id = d_dj) <> 'Europe/London' then
       raise exception '0145: an invalid zone from notify_device_follow was not swallowed to the default';
     end if;
@@ -724,21 +766,21 @@ begin
     perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     set local role authenticated;
     perform public.set_fan_prefs(jsonb_build_object('time_zone', ''));
-    set local role postgres;
+    execute format('set local role %I', orig);
     if (select time_zone from fan_prefs where user_id = u) <> 'Europe/London' then
       raise exception '0145: an empty time_zone in set_fan_prefs changed the row';
     end if;
     perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     set local role authenticated;
     perform public.set_fan_prefs(jsonb_build_object('time_zone', 'Asia/Tokyo'));
-    set local role postgres;
+    execute format('set local role %I', orig);
     if (select time_zone from fan_prefs where user_id = u) <> 'Asia/Tokyo' then
       raise exception '0145: set_fan_prefs did not save a valid time_zone';
     end if;
     perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     set local role authenticated;
     perform public.set_fan_prefs(jsonb_build_object('time_zone', 'Not/AZone'));
-    set local role postgres;
+    execute format('set local role %I', orig);
     if (select time_zone from fan_prefs where user_id = u) <> 'Europe/London' then
       raise exception '0145: an invalid time_zone from set_fan_prefs was not swallowed to the default';
     end if;
