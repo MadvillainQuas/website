@@ -231,6 +231,8 @@ console.log('\nthe wiring');
      /r\.width \/ drag\.k/.test(fvjs));
   ok('the ghost keeps the strip’s plate shape, above the page’s square-plate rule',
      /\.fv-ghost\.fv-card\.small \.club-plate\{aspect-ratio:4\/3\}/.test(fvcss));
+  ok('a player’s whole name is shown: it wraps rather than being cut with an ellipsis',
+     /\.fv \.fv-card \.star-name,\.fv-ghost\.fv-card \.star-name\{white-space:normal;overflow:visible;text-overflow:clip/.test(fvcss));
   ok('a player card carries points, rebounds and assists', /function statRow/.test(fvjs) && /foot\.append\(who, statRow\(p\.line\)\)/.test(fvjs) &&
      /\['PTS'.*\['REB'.*\['AST'/.test(fvjs));
 

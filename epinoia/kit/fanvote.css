@@ -144,6 +144,15 @@
 .fv-card .club-reg{width:7px;height:7px}
 .fv-card .club-foot{padding:6px 1px 0;gap:4px}
 .fv-card .star-name,.fv-card .club-name{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* a player's whole name, never clipped: the foot is a column (name over club over stats), the name wraps to
+   a second line where it must. Ghost and strip alike (the ghost lives on <body>, outside .fv). */
+.fv .fv-card.star .club-foot,.fv-ghost.fv-card.star .club-foot{flex-direction:column;align-items:stretch;gap:3px;flex:1 1 auto}
+.fv .fv-card .star-who,.fv-ghost.fv-card .star-who{gap:2px;min-width:0}
+.fv .fv-card .star-name,.fv-ghost.fv-card .star-name{white-space:normal;overflow:visible;text-overflow:clip;
+  overflow-wrap:anywhere;line-height:1.12;font-size:10.5px}
+.fv .fv-card .star-team,.fv-ghost.fv-card .star-team{white-space:normal;overflow-wrap:anywhere;line-height:1.1}
+.fv .fv-card.star,.fv-ghost.fv-card.star{display:flex;flex-direction:column}
+.fv .fv-card .fv-stats,.fv-ghost.fv-card .fv-stats{margin-top:auto}
 .fv-card .star-team{font-size:7.5px}
 .fv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:3px;padding-top:4px;
   border-top:1px solid color-mix(in srgb,var(--ink) 18%,transparent)}
