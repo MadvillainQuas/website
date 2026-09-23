@@ -96,5 +96,58 @@ ok("polling starts at least two minutes before the listed tip-off",
 ok("...and keeps going long enough to cover a whole game",
    RI.LIVE_AFTER_TIP >= 2 * 3600, RI.LIVE_AFTER_TIP)
 
+print("\n-- a period that has ended is written at 0:00, not at the feed's reset clock")
+# Reported 2026-09-23 (London Lions v Cheshire Phoenix): through the break after the first
+# quarter the game page read "Q1 · 10:00". LiveStats resets its clock to the next period's full
+# length and moves its own `period` on when a quarter ends, while the log still ends in that
+# quarter, so game_state paired the log's period with the reset clock. The saved feed below is a
+# real LiveStats payload caught at exactly that moment (half-time: its period already reads 3,
+# its clock 10:00, its log ends on the second quarter's "period end").
+import json  # noqa: E402
+
+FEED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "supabase", "tests", "fixtures",
+                    "feedtiming", "feed.json")
+with open(FEED, encoding="utf-8") as fh:
+    real = json.load(fh)
+ok("the saved feed really is a break: its own clock is the full 10:00 of the next period",
+   real.get("clock") == "10:00" and int(real.get("period")) == 3, (real.get("clock"), real.get("period")))
+log_period = max(RI.period_of(a) for a in real["pbp"])
+ok("...while its log still ends in the second quarter", log_period == 2, log_period)
+ok("so the second quarter is over", RI._period_over(real, 2) is True)
+
+
+def act(n, at, sub, period, ptype="REGULAR"):
+    return {"actionNumber": n, "actionType": at, "subType": sub, "period": period, "periodType": ptype, "gt": "05:00"}
+
+
+q1 = [act(1, "game", "start", 1), act(2, "period", "start", 1), act(3, "2pt", "jumpshot", 1)]
+ok("mid-quarter: nothing says the first quarter is over", RI._period_over({"period": 1, "pbp": q1}, 1) is False)
+ok("the operator's own 'period end' says it is",
+   RI._period_over({"period": 1, "pbp": q1 + [act(4, "period", "end", 1)]}, 1) is True)
+ok("...and so does the feed's own period moving on before the log has a 'period end'",
+   RI._period_over({"period": 2, "pbp": q1}, 1) is True)
+q2 = q1 + [act(4, "period", "end", 1), act(5, "period", "start", 2)]
+ok("once the second quarter has started, the first quarter's end is not the second's",
+   RI._period_over({"period": 2, "pbp": q2}, 2) is False)
+ok("subs entered for the second quarter during the break count as the second quarter, not over",
+   RI._period_over({"period": 2, "pbp": q1 + [act(4, "period", "end", 1), act(5, "substitution", "in", 2)]}, 2) is False)
+q4 = [act(1, "period", "start", 4), act(2, "3pt", "jumpshot", 4), act(3, "period", "end", 4)]
+ok("the end of the fourth before overtime is an end like any other", RI._period_over({"period": 4, "pbp": q4}, 4) is True)
+ok("a feed that numbers overtime 1 + OVERTIME is past the fourth, not behind it",
+   RI._period_over({"period": 1, "periodType": "OVERTIME", "pbp": q4[:2]}, 4) is True)
+ok("an overtime 'period end' numbered that way ends overtime, not the first quarter",
+   RI._period_over({"period": 1, "periodType": "OVERTIME", "pbp": [act(9, "period", "end", 1, "OVERTIME")]}, 5) is True
+   and RI._period_over({"period": 1, "pbp": [act(9, "period", "end", 1, "OVERTIME")]}, 1) is False)
+ok("a payload an adapter rebuilt (its period set from its own log) is never ahead of it",
+   RI._period_over({"period": 3, "pbp": [act(1, "2pt", "layup", 3)]}, 3) is False)
+ok("a period the feed cannot spell is not a period that has ended",
+   RI._period_over({"period": "third", "pbp": q1}, 1) is False)
+
+src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
+state = src[src.index("# scoreboard state: FIBA's clock"):src.index('sb.upsert("game_state"')]
+ok("write_platform zeroes the clock of a period that has ended, before game_state is written",
+   'if live and _period_over(b.raw, T["period"]):\n        clock_ms = 0' in state)
+ok("...and a clock at 0:00 is never written as running", "clock_ms > 0" in state.split("moving = ", 1)[1])
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

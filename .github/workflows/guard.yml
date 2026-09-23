@@ -214,6 +214,12 @@ jobs:
         # log; a length-based high-water mark could see none of them
         run: node supabase/tests/live.test.mjs
 
+      - name: The scoreboard clock is a time in the game that happened
+        # a full clock at a break is the END of the period just played, never the start of it
+        # ("Q1 · 10:00" through the first break), and a live box score never counts minutes
+        # from a placeholder 0:00 (ten for every starter two minutes in)
+        run: node supabase/tests/periodpill.test.mjs
+
       - name: Round-robin scheduling
         # a fixture list is the artefact everybody plans around: everybody
         # plays everybody once, nobody twice in a round, and the home/away

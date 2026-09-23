@@ -182,7 +182,22 @@ async function loadStored() {
     } catch (_) { /* no 0083 yet, or no channel recorded — nothing to show */ }
   }
 
-  const events = await fetchLog();
+  /* THE CLOCK THE GAME IS AT, BEFORE THE FIRST DRAW. The page opened on 0:00 and learned the
+     real clock from the live transport a moment later -- and 0:00 is the END of a period, which
+     the engine reads as everyone on the floor having played all of it: two minutes into the
+     first quarter the starters read ten minutes each, and kept them until the next play was
+     logged, because a clock alone never redraws the tables (reported 2026-09-23). */
+  const [events, state] = await Promise.all([
+    fetchLog(),
+    g.status === 'live'
+      ? api(`game_state?game_id=eq.${encodeURIComponent(gameId)}&select=period,clock_ms,last_seq&limit=1`)
+          .then(r => r[0] || null, () => null)
+      : null
+  ]);
+  const evs = events.map(rowToEvent);
+  const period = (state && +state.period > 0) ? +state.period : (g.period || 1);
+  const clockMs = g.status !== 'live' ? 0
+    : settleClock(evs, period, state ? state.clock_ms : null, state ? state.last_seq : null);
 
   const snap = g.roster_snapshot;
   /* CAPITALS, PROPERLY. The snapshots the ingest wrote carry names in lower case ("jax
@@ -223,9 +238,8 @@ async function loadStored() {
   return {
     teams,
     starters: g.starters || [[], []],
-    events: events.map(rowToEvent),
-    period: g.period || 1,
-    clockMs: 0,
+    events: evs,
+    period, clockMs,
     tipWinner: g.tip_winner, arrowInit: g.arrow_init,
     phase: g.status === 'final' ? 'final' : 'game',
     status: g.status,
@@ -2174,9 +2188,12 @@ function renderHead(d) {
 
 function renderBody(d) {
   d = d || window.derive();
-  /* the log length and the score are enough to know whether anything the body
-     shows can have changed; the clock alone never changes a table */
-  const key = fTab + ':' + window.S.events.length + ':' + d.score.join('-');
+  /* the log length and the score say whether anything the body shows has changed. The clock
+     moves the minutes too, but a table redrawn with every tick is rebuilt under the reader, so
+     only the two moments a stint gains a whole stretch at once redraw it: a new period, and the
+     end of one (0:00 -- the buzzer, or a break) */
+  const S0 = window.S;
+  const key = fTab + ':' + S0.events.length + ':' + d.score.join('-') + ':' + S0.period + (S0.clockMs === 0 ? 'e' : '');
   if (key === lastBodyKey) return;
   lastBodyKey = key;
   const el = $('#csBody');
@@ -2432,12 +2449,13 @@ function goLive() {
     onSnapshot(snap) {
       if (snap.game) mergeLive(snap.game, snap.events);
       else if (snap.events) mergeLive(null, snap.events);
+      syncClock();
       render();
       /* the snapshot is the log as the transport sees it; reconcile against
          the table too, since the boot fetch may have run before the tip */
       backfill('snapshot');
     },
-    onFrame(f) { mergeLive(f.game, f.events, f.removed, f.full); render(); checkGap(); },
+    onFrame(f) { mergeLive(f.game, f.events, f.removed, f.full); syncClock(); render(); checkGap(); },
     /* A FED GAME HAS NO SCORER BROADCASTING, so no frame ever arrives and the
        watchdog would call it "delayed" for the whole game. Its heartbeat is the
        state row the ingest worker rewrites every poll: fresh = live. */
@@ -2471,17 +2489,13 @@ function goLive() {
   liveClock = setInterval(() => {
     if (!sub || !sub.state || !window.S) return;
     const S = window.S;
-    /* A fed clock never ticks here: it is whatever the last payload said
-       (the worker writes it stopped), and it moves when the next poll lands —
-       exactly what the FIBA LiveStats page does. */
-    S.clockMs = S.fed ? (+sub.state.clock_ms || 0) : sub.clockMs();
+    const moved = syncClock();
     if (S.fed && statusVal !== 'final' && S.status !== 'final') {
       const want = feedFresh() ? 'live' : 'delayed';
       if (statusVal !== want) setStatus(want);
     }
-    if (sub.state.period != null && +sub.state.period > 0 && +sub.state.period !== +S.period) {
-      S.period = +sub.state.period;
-      renderHead();                              // a new period is worth a rebuild
+    if (moved) {
+      render();                                  // a new period is worth a rebuild
       return;
     }
     const pill = document.querySelector('#csHead .pacepill');
@@ -2499,6 +2513,55 @@ function goLive() {
   }, 500);
 }
 
+/* THE CLOCK THE ENGINE IS GIVEN, from a reading that may not be one yet. Every player's
+   minutes, pace and the per-minute rates are the engine running each stint up to this clock,
+   and the scoreboard pill reads it too.
+     - No reading: where the log has got to in the period (the least time left of anything in
+       it), or its full length when nothing is. Never 0:00, which is the END of the period.
+     - A played period is not at its full length. A feed that resets its clock the moment a
+       quarter ends (LiveStats does) is at the end of that quarter: read as its start, the pill
+       said "Q1 · 10:00" through the break after the first quarter (reported 2026-09-23) and
+       every stint on the floor lost the quarter just played until the next one began.
+   "Played" is something in the period with time off its clock -- a period_start, a sub or a
+   timeout entered at its full length are the break before it -- and only what the reading
+   itself had seen counts (seq <= its last_seq): a poll that caught the first play of a
+   period before the state row written with it is the START of that period, not its end. */
+function settleClock(events, period, clockMs, lastSeq) {
+  const p = +period, full = B.PLEN(p);
+  let clk = (clockMs == null || !isFinite(+clockMs)) ? null : +clockMs;
+  if (clk == null) {
+    (events || []).forEach(e => {
+      if (+(e.period || 1) === p && e.clock != null && (clk == null || e.clock < clk)) clk = e.clock;
+    });
+    return clk == null ? full : clk;
+  }
+  if (clk < full) return clk;
+  const seen = (lastSeq == null || !isFinite(+lastSeq)) ? Infinity : +lastSeq;
+  const played = (events || []).some(e => +(e.period || 1) === p && e.t !== 'period_start' &&
+    e.clock != null && e.clock < full && (e.id == null || e.id <= seen));
+  return played ? 0 : clk;
+}
+
+/* THE PERIOD AND THE CLOCK ARE ONE READING, and both are the live state row's. The games row's
+   period is written by other hands at other moments -- the ingest patches it before the plays
+   and the state row, the scorer only at the tip -- so a poll that took its period from there
+   paired Q2 with the last clock of Q1 (twenty minutes for everyone on the floor), or a scorer
+   game's Q1 with its Q3 clock. Called before anything is drawn from a live frame. Returns true
+   when the period moved. */
+function syncClock() {
+  const S = window.S;
+  if (!S || !sub || !sub.state) return false;
+  const st = sub.state;
+  const period = +st.period > 0 ? +st.period : (+S.period || 1);
+  /* A fed clock never ticks here: it is whatever the last payload said (the worker writes it
+     stopped), and it moves when the next poll lands -- exactly what the FIBA LiveStats page does. */
+  const raw = S.fed ? (st.clock_ms == null ? S.clockMs : st.clock_ms) : sub.clockMs();
+  const moved = period !== +S.period;
+  S.period = period;
+  S.clockMs = settleClock(S.events, period, raw, st.last_seq);
+  return moved;
+}
+
 /* IS THIS A FED GAME? One anonymous read of external_games at connect time.
    The answer changes two things above: the clock stops ticking locally, and
    "live" means the worker's state row is fresh rather than a scorer's frame. */
@@ -2511,7 +2574,7 @@ async function detectFed() {
   } catch (_) { window.S.fed = false; }
   /* the header was drawn with a ticking clock before this was known — redraw
      it from the feed's own clock so pace and minutes agree with the state row */
-  if (window.S.fed && sub && sub.state) { window.S.clockMs = +sub.state.clock_ms || 0; render(); }
+  if (window.S.fed && sub && sub.state) { syncClock(); render(); }
 }
 function feedFresh() {
   if (!sub || !sub.state || !sub.state.updated_at) return false;
@@ -2778,7 +2841,9 @@ function mergeLive(game, events, removed, full) {
       romanise(window.S.teams).then(changed => { if (changed) render(); }, () => {});
     }
     if (game.starters) window.S.starters = game.starters;
-    if (game.period != null) window.S.period = game.period;
+    /* the period is the state row's, paired with its clock (syncClock); the fixture's own
+       only stands in until there is a state row to read */
+    if (game.period != null && !(sub && sub.state && +sub.state.period > 0)) window.S.period = game.period;
     if (game.tipWinner != null) window.S.tipWinner = game.tipWinner;
     if (game.arrowInit != null) window.S.arrowInit = game.arrowInit;
     if (game.status) {

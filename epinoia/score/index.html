@@ -15,7 +15,7 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=343" data-no-ground></script>
+<script src="../appmode.js?v=344" data-no-ground></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -5111,14 +5111,13 @@ function showScreen(n){
    one case where what comes next is not simply the next period. */
 function periodPill(S) {
   if (S.phase === 'final') return 'final';
-  /* A clock already at the NEXT period's full length is the SAME break as a zero clock
-     (2026-09-18, notify_halftime.sql 0124 documents both readings) -- but only once there is
-     a previous period for that reading to mean "just ended". Period 1 has none: a fresh
-     period_start ALSO preloads the clock to the period's full length, and a feed slow to
-     report its first real tick (B.LEAGUE, 2026-09-23) left tip-off itself reading as
-     "end of q1" at 0-0, full clock showing, for as long as the feed sat still. */
-  const over = S.clockMs === 0 || (S.period > 1 && S.clockMs >= PLEN(S.period));
-  if (over && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  /* 0:00 IS THE END OF A PERIOD, A FULL CLOCK IS THE START OF ONE: period_start preloads it
+     before a second is played, and reading it as a break left B.LEAGUE's tip-off saying "end of
+     q1" at 0-0 (2026-09-23). A feed that resets its clock the moment a quarter ends shows the
+     same full clock through the break after it (notify_halftime.sql 0124 documents both
+     readings); the game page settles that reading to 0:00 before it gets here (settleClock,
+     epinoia/game/game.js), because only the log can say which end of the period a full clock is. */
+  if (S.clockMs === 0 && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
   return perName(S.period) + ' · ' + fmtClock(S.clockMs);
 }
 
@@ -6947,15 +6946,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=343">
-<link rel="stylesheet" href="../video.css?v=343">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=343">
-<script src="../config.js?v=343" defer></script>
-<script src="../vendor/supabase.js?v=343" defer></script>
-<script src="../live.js?v=343" defer></script>
-<script src="../video.js?v=343" defer></script>
-<script src="sync.js?v=343" defer></script>
-<script src="bootstrap.js?v=343" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=344">
+<link rel="stylesheet" href="../video.css?v=344">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=344">
+<script src="../config.js?v=344" defer></script>
+<script src="../vendor/supabase.js?v=344" defer></script>
+<script src="../live.js?v=344" defer></script>
+<script src="../video.js?v=344" defer></script>
+<script src="sync.js?v=344" defer></script>
+<script src="bootstrap.js?v=344" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it
