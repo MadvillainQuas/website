@@ -406,10 +406,16 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
                 print(f"   {src.get('code')}: no {season} competition published yet - skipped")
                 continue
             out.append(src); continue
-        print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{c['name']} [{kind_of(c['name'], ac.get('competition_kinds'))}]" for c in picked))
-        for c in picked:
-            out.append({**src, "schedule_url": whole_season_url(c["url"]), "competition_label": c["name"],
-                        "competition_kind": kind_of(c["name"], ac.get("competition_kinds")), "competition_id": None,
+        # A season that is ONE competition, play-offs included (CIBACOPA), comes as two sources - the
+        # regular season and the play-offs - split by phase in FibaLiveStatsAdapter.stage_games. The
+        # play-off source's games are a competition of their own, named for the season's.
+        playoff_stage = bool(ac.get("playoff_phases")) and str(ac.get("stage") or "").lower().startswith("playoff")
+        named = [(c, f"{c['name']} Playoffs" if playoff_stage else c["name"],
+                  "playoff" if playoff_stage else kind_of(c["name"], ac.get("competition_kinds"))) for c in picked]
+        print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{label} [{kind}]" for _, label, kind in named))
+        for c, label, kind in named:
+            out.append({**src, "schedule_url": whole_season_url(c["url"]), "competition_label": label,
+                        "competition_kind": kind, "competition_id": None,
                         "label": src.get("label"), "_parent_url": url})
     return out
 
@@ -1886,7 +1892,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba", "lkl"}
+                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 

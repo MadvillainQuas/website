@@ -1545,7 +1545,7 @@
      bigger one than this.
 
      Returns a NODE, because one of the two answers is an <img>. */
-  const HAVE_FLAG = ['AU', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'IT', 'JP', 'LT', 'PL', 'SK'];
+  const HAVE_FLAG = ['AU', 'CA', 'CZ', 'DE', 'ES', 'EU', 'FR', 'GB', 'IT', 'JP', 'LT', 'MX', 'PL', 'SK'];
 
   function flagNode(code) {
     const c = /^[A-Za-z]{2}$/.test(code || '') ? code.toUpperCase() : '';

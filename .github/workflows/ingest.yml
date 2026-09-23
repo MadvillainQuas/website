@@ -130,7 +130,7 @@ jobs:
           SCRAPER_DIR: ${{ github.workspace }}/scraper
           PYTHONPATH: ${{ github.workspace }}/scraper
         run: |
-          for code in $(python -c "import json;print(' '.join(s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s['adapter']=='fiba_livestats' and s['scheduleUrls']))"); do
+          for code in $(python -c "import json;print(' '.join(dict.fromkeys(s['code'] for s in json.load(open('config/ingest-sources.json'))['sources'] if s['adapter']=='fiba_livestats' and s['scheduleUrls'])))"); do
             python scripts/ingest/build_dataset.py --source "$code" || echo "dataset build failed for $code"
           done
       - name: Commit feed + datasets

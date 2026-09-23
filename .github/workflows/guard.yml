@@ -412,6 +412,20 @@ jobs:
         # on the payload so a club is one club from fixture to final
         run: python scripts/ingest/nkl_test.py
 
+      - name: CIBACOPA (Mexico) on FIBA LiveStats, one competition split by phase
+        # the shared hosted-schedule code over CIBA's own pages: day-first dates, each game read in
+        # its venue's zone (three in one league), the play-off phases' games kept out of the
+        # regular season and filed as a playoff competition, and a phase that cannot be read
+        # filing nothing rather than a play-off game in the league table
+        run: python scripts/ingest/cibacopa_test.py
+
+      - name: LNBP (Mexico) from lnbp.mx's Sportradar embed
+        # lnbp.py over cached fixtures pages and game replies: the season found by competition id
+        # and calendar year, the play-offs split off by fixtureType, full club names although the
+        # game feed gives codes, and every box, score, 5v5 stint and event-log line reconciling -
+        # overtime and a basket the league logged with no player included
+        run: python scripts/ingest/lnbp_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals
