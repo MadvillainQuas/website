@@ -683,7 +683,13 @@ function lineupAgg(d,t){
 
 function periodPill(S) {
   if (S.phase === 'final') return 'final';
-  const over = S.clockMs === 0 || S.clockMs >= PLEN(S.period);
+  /* A clock already at the NEXT period's full length is the SAME break as a zero clock
+     (2026-09-18, notify_halftime.sql 0124 documents both readings) -- but only once there is
+     a previous period for that reading to mean "just ended". Period 1 has none: a fresh
+     period_start ALSO preloads the clock to the period's full length, and a feed slow to
+     report its first real tick (B.LEAGUE, 2026-09-23) left tip-off itself reading as
+     "end of q1" at 0-0, full clock showing, for as long as the feed sat still. */
+  const over = S.clockMs === 0 || (S.period > 1 && S.clockMs >= PLEN(S.period));
   if (over && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
   return perName(S.period) + ' · ' + fmtClock(S.clockMs);
 }

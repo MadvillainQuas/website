@@ -51,6 +51,14 @@ ok('...past the full length (a feed rounding up) reads the same way',
 ok('...and it is q3 that ends this way, not q2 again, when q3 is the one that is full',
    pill(3, 600000) === 'end of q3', pill(3, 600000));
 
+/* Q1 HAS NO PREVIOUS PERIOD for a full clock to mean "just ended" -- a period_start event
+   ALSO preloads the clock to the period's full length, at the true start of the game, not a
+   break in it. Reported 2026-09-23: B.LEAGUE's feed sat still for a few minutes right after
+   tip-off (period_start, clock 10:00, no plays yet), and Nagasaki v Shimane read "end of q1"
+   at 0-0 with a full clock for as long as it did. */
+ok('a full clock at period 1 is the tip-off itself, never "the end of" a period before it',
+   pill(1, 600000) === 'q1 · 10:00', pill(1, 600000));
+
 /* the fourth period is never "the end of" anything: what follows is not simply
    the next quarter, so the raw clock (however it reads) is left alone */
 ok('period 4 at zero still shows the raw clock — nothing "ends" into overtime by default',
