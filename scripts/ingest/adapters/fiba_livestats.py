@@ -183,25 +183,33 @@ class FibaLiveStatsAdapter(BaseAdapter):
             out.append({"id": m.group(2), "url": url, "name": m.group(4).strip(), "selected": "selected" in m.group(3).lower()})
         return out
 
-    def parse_schedule(self, html: str, tz_name: str = "Europe/London") -> list[ScheduleGame]:
+    def parse_schedule(self, html: str, tz_name: str = "Europe/London",
+                       venue_timezones: Optional[dict] = None) -> list[ScheduleGame]:
+        """`venue_timezones` ({regex on the venue name: zone}) is for a league that spans zones.
+        The page prints each game in its VENUE's local time: CIBACOPA's usual 8:15 pm is 8:15 pm in
+        Tijuana, Hermosillo and Mexico City alike, three different instants. First match wins; a
+        venue matching none is read in tz_name."""
         tz = ZoneInfo(tz_name) if ZoneInfo else None
+        zones = [(re.compile(p, re.I), ZoneInfo(z)) for p, z in (venue_timezones or {}).items()] if ZoneInfo else []
         out = []
         for m in self._BLOCK.finditer(html):
             classes, gid, body = m.group(1), m.group(2), m.group(3)
             status = "final" if "COMPLETE" in classes else ("live" if ("INPROGRESS" in classes or "LIVE" in classes.upper()) else "scheduled")
+            venue = (self._VENUE.search(body) or [None, None])[1]
+            game_tz = next((z for rx, z in zones if rx.search(venue or "")), tz)
             tip = None
             tm = self._TIME.search(body)
             if tm:
                 txt = tm.group(1).strip().replace("\xa0", " ")
-                for fmt in ("%b %d, %Y, %I:%M %p", "%b %d, %Y %I:%M %p", "%d %b %Y, %H:%M", "%b %d, %Y"):
+                # "%d %b %Y, %I:%M %p" is CIBA's "14 Feb 2026, 7:00 pm": day first, 12-hour clock
+                for fmt in ("%b %d, %Y, %I:%M %p", "%b %d, %Y %I:%M %p", "%d %b %Y, %H:%M", "%d %b %Y, %I:%M %p", "%b %d, %Y"):
                     try:
                         dt = datetime.strptime(txt, fmt)
-                        dt = dt.replace(tzinfo=tz) if tz else dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=game_tz) if game_tz else dt.replace(tzinfo=timezone.utc)
                         tip = dt.astimezone(timezone.utc).isoformat()
                         break
                     except ValueError:
                         continue
-            venue = (self._VENUE.search(body) or [None, None])[1]
             sides = {}
             for sm in self._SIDE.finditer(body):
                 sides[sm.group(1)] = {"name": sm.group(2).strip(), "code": sm.group(3).strip(), "score": sm.group(4)}
@@ -226,7 +234,8 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 r = requests.get(hu, headers={"User-Agent": UA}, timeout=40)
                 if r.status_code != 200:
                     continue
-                parsed = self.parse_schedule(r.text, config.get("timezone") or "Europe/London")
+                parsed = self.parse_schedule(r.text, config.get("timezone") or "Europe/London",
+                                             config.get("venue_timezones"))
                 for g in parsed:
                     games[g.external_id] = g
                 try:
@@ -240,6 +249,13 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 if games:
                     dated = sum(1 for g in games.values() if g.tipoff_at)
                     print(f"     hosted schedule: {len(games)} games, {dated} with a tip-off time ({hu[:80]}…)")
+                    if config.get("playoff_phases") and config.get("stage") and "/competition/" in hu:
+                        staged = self.stage_games(games, r.text, config)
+                        if staged is None:
+                            return                              # a phase went unread: file nothing this pass
+                        for gid in sorted(staged, key=lambda x: int(x)):
+                            yield staged[gid]
+                        return                                  # none is an answer here (no play-offs yet), not a miss
                     break
             except Exception as exc:
                 print(f"     hosted schedule failed ({exc}); trying the next candidate")
@@ -250,6 +266,46 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 games[str(x)] = ScheduleGame(external_id=str(x))
         for gid in sorted(games, key=lambda x: int(x)):
             yield games[gid]
+
+    # ONE COMPETITION CAN HOLD THE PLAY-OFFS TOO. Basketball England and SLB give their play-offs
+    # a Genius competition of their own; CIBACOPA runs its whole year as one ("CIBACOPA 2026":
+    # Primera Vuelta, Segunda Vuelta, PlayOff Ronda 1, Semifinal, Final), so filed as it comes every
+    # play-off win would count in the league table. The phases are told apart by the page's own
+    # phase menu (?phaseName=...). A source says which phases are the play-offs
+    # (adapter_config.playoff_phases, regexes on the phase name) and which stage it is (stage:
+    # regular | playoffs), and is handed only its own games.
+    _PHASE_LINK = re.compile(r'href="([^"]*?/competition/\d+/schedule\?phaseName=([^"&]+)[^"]*)"')
+
+    def stage_games(self, games: dict, page: str, config: dict) -> Optional[dict]:
+        """`games` (a whole-season page, parsed) cut to this source's stage: the play-off phases'
+        games, or every game but those. None when a play-off phase's page could not be read, as
+        a regular-season source would otherwise take that phase's games into the league table,
+        and a game filed under a competition is not moved again."""
+        pats = [re.compile(p, re.I) for p in config.get("playoff_phases") or []]
+        playoff_ids: set = set()
+        for href, raw_name in dict.fromkeys(self._PHASE_LINK.findall(page)):
+            name = html.unescape(urllib.parse.unquote_plus(raw_name)).strip()
+            if not any(p.search(name) for p in pats):
+                continue
+            base = html.unescape(href).split("?")[0].replace("hosted.dcd.shared.geniussports.com", "hosted.wh.geniussports.com")
+            try:
+                gap = time.time() - self._last
+                if gap < self.min_request_gap_s:
+                    time.sleep(self.min_request_gap_s - gap)
+                self._last = time.time()
+                # roundNumber=-1 for the same reason as the whole season: without it a phase page
+                # lists one round (Semifinal: 1 game of 9)
+                r = requests.get(base, params={"phaseName": name, "roundNumber": -1}, headers={"User-Agent": UA}, timeout=40)
+                if r.status_code != 200:
+                    raise RuntimeError(f"HTTP {r.status_code}")
+            except Exception as exc:
+                print(f"     phase {name!r} unreadable ({exc}) - nothing filed this pass")
+                return None
+            playoff_ids.update(m.group(2) for m in self._BLOCK.finditer(r.text))
+        playoffs = str(config.get("stage")).lower().startswith("playoff")
+        out = {gid: g for gid, g in games.items() if (gid in playoff_ids) == playoffs}
+        print(f"     {config.get('stage')}: {len(out)} of {len(games)} games ({len(playoff_ids)} in the play-off phases)")
+        return out
 
     _code_hint = None
 

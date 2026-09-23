@@ -175,15 +175,46 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             return None
         return pid
 
-    def flush_subs():
-        for (team, period, clock), g in pending_subs.items():
+    def flush_subs(final=False):
+        """Emit every substitution whose two halves have both arrived.
+
+        A HALF STILL MISSING WAITS FOR ITS PARTNER at the same side, period and clock, however
+        far down the log it is. Operators split one substitution with other actions at its clock
+        (an OUT, the free throws, then the IN), and enter a forgotten half minutes later as a
+        correction stamped with the original clock. Flushing at every non-substitution action
+        paired neither: both halves were dropped as "unpaired", the player who should have gone
+        off stayed on, the one who should have come on never did, and the next ordinary change
+        left a side with four or six on the floor. In 22 of 160 SLB games that ran from 19
+        seconds to 23 minutes, and every minute, plus/minus and on-court figure of those players
+        with it. Only at the end of the log is an unpaired half given up on."""
+        for key in list(pending_subs):
+            team, period, clock = key
+            g = pending_subs[key]
             outs, ins = g["out"], g["in"]
+            if len(outs) != len(ins) and not final:
+                continue
             for o, i, ao, ai in zip(outs, ins, g["out_an"], g["in_an"]):
-                emit("sub", team, None, period, clock, _ans=[ao, ai], **{"in": i, "out": o})
                 on_court[team].discard(o); on_court[team].add(i)
+                # EVERY CHANGE AT ONE INSTANT IS ONE CHANGE. A pair that continues an earlier one
+                # at the same side, period and clock (A off for B, then B off for C; or B off for
+                # C, then A off for B) is that one change: A off, C on. Applied one after the
+                # other, the engine takes B off twice or puts him on twice -- a side of four, and
+                # B's minutes restarted at the second. Seen when a late correction at an old clock
+                # met the live change it amended (2778590: four on the floor for 409 s).
+                prior = next((e for e in reversed(events) if e["t"] == "sub" and e["team"] == team
+                              and e["period"] == period and e["clock"] == clock
+                              and (e["payload"]["in"] == o) != (e["payload"]["out"] == i)), None)
+                if prior is not None:
+                    if prior["payload"]["in"] == o:
+                        prior["payload"]["in"] = i
+                    else:
+                        prior["payload"]["out"] = o
+                    prior["_ans"] = prior["_ans"] + [ao, ai]
+                    continue
+                emit("sub", team, None, period, clock, _ans=[ao, ai], **{"in": i, "out": o})
             if len(outs) != len(ins):
                 report["warnings"].append(f"unpaired substitution at P{period} {clock}ms team {team}: {len(outs)} out / {len(ins)} in")
-        pending_subs.clear()
+            del pending_subs[key]
 
     for ev in pbp:
         at = str(ev.get("actionType") or "").lower()
@@ -298,7 +329,7 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             pass
         else:
             report["dropped"][f"{at}/{sub}"] = report["dropped"].get(f"{at}/{sub}", 0) + 1
-    flush_subs()
+    flush_subs(final=True)
 
     # finalise gate: a player with 5 fouls may not be on court at the end
     for pid, team, period, clock in report.get("fouled_out", []):

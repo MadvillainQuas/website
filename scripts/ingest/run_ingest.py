@@ -50,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from adapters import get_adapter, REGISTRY  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
-from translate.fiba_events import translate, game_rows  # noqa: E402
+from translate.fiba_events import translate, game_rows, period_of  # noqa: E402
 
 # EVERY ADAPTER SHAPED LIKE FIBA LIVESTATS -- derived from the classes themselves, not typed out
 # by hand. fiba_site_schedule, euroleague, acb, lnb and bleague all subclass FibaLiveStatsAdapter
@@ -406,10 +406,16 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
                 print(f"   {src.get('code')}: no {season} competition published yet - skipped")
                 continue
             out.append(src); continue
-        print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{c['name']} [{kind_of(c['name'], ac.get('competition_kinds'))}]" for c in picked))
-        for c in picked:
-            out.append({**src, "schedule_url": whole_season_url(c["url"]), "competition_label": c["name"],
-                        "competition_kind": kind_of(c["name"], ac.get("competition_kinds")), "competition_id": None,
+        # A season that is ONE competition, play-offs included (CIBACOPA), comes as two sources - the
+        # regular season and the play-offs - split by phase in FibaLiveStatsAdapter.stage_games. The
+        # play-off source's games are a competition of their own, named for the season's.
+        playoff_stage = bool(ac.get("playoff_phases")) and str(ac.get("stage") or "").lower().startswith("playoff")
+        named = [(c, f"{c['name']} Playoffs" if playoff_stage else c["name"],
+                  "playoff" if playoff_stage else kind_of(c["name"], ac.get("competition_kinds"))) for c in picked]
+        print(f"-> {src.get('code')}: {len(picked)} competition(s) this season: " + ", ".join(f"{label} [{kind}]" for _, label, kind in named))
+        for c, label, kind in named:
+            out.append({**src, "schedule_url": whole_season_url(c["url"]), "competition_label": label,
+                        "competition_kind": kind, "competition_id": None,
                         "label": src.get("label"), "_parent_url": url})
     return out
 
@@ -773,6 +779,24 @@ def _clock_from_log(actions) -> int | None:
         if best is None or key > best[0]:
             best = (key, ms)
     return best[1] if best else None
+
+
+def _period_over(raw: dict, period: int) -> bool:
+    """Has the log's last period been played to its end?
+
+    Two ways a feed says so, and neither is its clock: the operator's own "period end" action for
+    that period, or the feed's own `period` already past it (LiveStats moves it on when a period
+    ends, before any action of the next one exists). An adapter that rebuilds the payload from its
+    own back end sets `period` from the log it built, so there it can never be ahead."""
+    try:
+        for a in raw.get("pbp") or []:
+            if (str(a.get("actionType") or "").lower() == "period" and str(a.get("subType") or "").lower() == "end"
+                    and period_of(a) == period):
+                return True
+        return period_of(raw) > period
+    except (TypeError, ValueError):
+        return False
+
 
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
                    stamps: dict | None = None) -> bool:
@@ -1337,6 +1361,17 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
         # game showed "Q1 0:00" from tip to final hooter while lnb.fr showed the real clock
         # (reported 2026-09-18). The log knows: every action carries the time it happened at.
         clock_ms = _clock_from_log(b.raw.get("pbp")) or 0
+    # A PERIOD THAT HAS ENDED IS AT 0:00, WHATEVER THE FEED'S OWN CLOCK SAYS. When the operator
+    # ends a quarter, LiveStats resets its clock to the next period's full length (10:00, or 5:00
+    # before overtime) and moves its own `period` on, while the log still ends in the quarter just
+    # played -- nothing of the next one exists yet. Written as it stood, that pairing was "Q1 ·
+    # 10:00" for the whole break after the first quarter (reported 2026-09-23, London Lions v
+    # Cheshire Phoenix), and it took the quarter's minutes off everyone on the floor at its end:
+    # the engine runs each stint up to the clock it is given, and 10:00 of Q1 is its first
+    # second. The log's own period at 0:00 is what a scorer writes at a break, and the reading
+    # notify_halftime (0124) checks first.
+    if live and _period_over(b.raw, T["period"]):
+        clock_ms = 0
     # `running` is FALSE for a fed game on the ordinary cadence: the page would otherwise count
     # the clock down locally between ten-second polls, and a feed clock is only ever as current
     # as its last event. Under the BROADCAST HEARTBEAT (a read every couple of seconds) the
@@ -1351,7 +1386,9 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
     # would make a slow pass look like a fast one and start ticking clocks that
     # are not being read often enough to tick.
     fast = bool(observed and observed[1] is not None and observed[1] <= 6000)
-    moving = bool(live and fast and prev and prev[0] is not None and clock_ms < prev[0] and (time.time() - prev[1]) < 15)
+    # a clock at 0:00 is never running (the end of a period above reads as a drop to zero)
+    moving = bool(live and fast and clock_ms > 0 and prev and prev[0] is not None and clock_ms < prev[0]
+                  and (time.time() - prev[1]) < 15)
     _CLOCK_SEEN[game_id] = (clock_ms if live else None, time.time())
     sb.upsert("game_state", {"game_id": game_id, "period": T["period"], "clock_ms": clock_ms if live else 0, "running": moving,
                              "score_home": T["home_score"], "score_away": T["away_score"], "last_seq": len(rows), "updated_at": now_iso()}, "game_id")
@@ -1855,7 +1892,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba"}
+                         "twobbl", "usports", "plk", "lba", "lkl", "lnbp"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 

@@ -77,7 +77,8 @@ from .fiba_livestats import FibaLiveStatsAdapter
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36",
            "Referer": "https://lnb.fr/", "Origin": "https://lnb.fr"}
 LNB_API = "https://api-prod.lnb.fr"
-EUI = "https://embed-api.eui.connect.sportradar.com/v1/embed/12/fixture_detail"
+#: + /<website id>/<page>. lnb.fr is website 12; lnbp.py is the same embed as website 14.
+EUI_EMBED = "https://embed-api.eui.connect.sportradar.com/v1/embed"
 
 # The EUI box-score row -> FIBA's own stat names. Everything the pipeline reads, nothing it does not.
 PLAYER_STATS = {
@@ -123,13 +124,17 @@ def _season_year(config: dict) -> int:
     return now.year if now.month >= 7 else now.year - 1
 
 
-def _state(season_id: str, fixture_id: str, feed: str) -> str:
+def _state(season_id: str, fixture_id: str, feed: str, locale: str = "fr-FR") -> str:
     """The EUI's whole request, as it wants it: compact JSON -> zlib -> urlsafe base64, '=' stripped.
 
     The padding MUST come off: the embed passes the value on unescaped and a '=' inside a query
     string is read as another parameter boundary."""
-    blob = json.dumps({"s": season_id or "", "l": "fr-FR", "z": feed, "f": fixture_id},
-                      separators=(",", ":")).encode()
+    return page_state({"s": season_id or "", "l": locale, "z": feed, "f": fixture_id})
+
+
+def page_state(fields: dict) -> str:
+    """Any EUI page's state blob from its fields, in the order given (see _state)."""
+    blob = json.dumps(fields, separators=(",", ":")).encode()
     return base64.urlsafe_b64encode(zlib.compress(blob)).decode().rstrip("=")
 
 
@@ -168,6 +173,10 @@ class LnbAdapter(FibaLiveStatsAdapter):
     name = "lnb"
     min_request_gap_s = 0.5
     division = 1                              # overridden per source by adapter_config.division
+    # the EUI embed the game feed is read from: lnbp.py overrides all three
+    eui_site = 12
+    locale = "fr-FR"
+    headers = HEADERS
 
     # ---------------------------------------------------------------- transport ---
     def _req(self, method: str, url: str, **kw):
@@ -187,7 +196,7 @@ class LnbAdapter(FibaLiveStatsAdapter):
             # ingest workflow's runner -- the two calls otherwise byte-for-byte identical -- the
             # kind of thing only a site's own bot protection tells apart by IP). Printed, not
             # raised: one blocked competition must not stop the rest of the pass.
-            print(f"   (lnb: {r.status_code} on {url.split('/')[-1]} -- {(r.text or '')[:200]!r})")
+            print(f"   ({self.name}: {r.status_code} on {url.split('/')[-1]} -- {(r.text or '')[:200]!r})")
             return None
         r.raise_for_status()
         return r.json()
@@ -269,8 +278,9 @@ class LnbAdapter(FibaLiveStatsAdapter):
         season_id, fixture_id = m.group(1), m.group(2)
         feeds = {}
         for feed in ("pbp", "statistics"):
-            d = self._req("GET", EUI, params={"state": _state(season_id, fixture_id, feed),
-                                              "fixtureId": fixture_id}, headers=HEADERS) or {}
+            d = self._req("GET", f"{EUI_EMBED}/{self.eui_site}/fixture_detail",
+                          params={"state": _state(season_id, fixture_id, feed, self.locale),
+                                  "fixtureId": fixture_id}, headers=self.headers) or {}
             feeds[feed] = d.get("data") or {}
         stats = ((feeds["statistics"].get("statistics") or {}).get("data") or {}).get("base") or {}
         fixture = feeds["statistics"].get("fixture") or feeds["pbp"].get("fixture") or {}
@@ -306,7 +316,7 @@ class LnbAdapter(FibaLiveStatsAdapter):
             c, side = comps.get(eid) or {}, by_entity.get(eid) or {}
             qs = quarters.get(eid) or {}
             t = S.team(
-                (c.get("name") or "").strip(), (c.get("code") or "").strip(),
+                self._club_name(c), (c.get("code") or "").strip(),
                 score=c.get("score"),           # the club's official final, not a re-sum
                 quarters=[qs.get(i) for i in (1, 2, 3, 4)],
                 players=rosters.get(eid) or {},
@@ -341,6 +351,10 @@ class LnbAdapter(FibaLiveStatsAdapter):
         return b
 
     # ------------------------------------------------------------------ pieces ---
+    def _club_name(self, competitor: dict) -> str:
+        """The club's name as the game feed spells it (lnbp.py, whose feed gives only the code, overrides this)."""
+        return (competitor.get("name") or "").strip()
+
     @staticmethod
     def _played(fixture: dict, pbp: dict) -> bool:
         """Is this game over? CONFIRMED is the signed-off result; UNCONFIRMED is the window

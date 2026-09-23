@@ -15,12 +15,14 @@ from .fiba_site_schedule import FibaSiteScheduleAdapter
 from .euroleague import EuroLeagueAdapter
 from .acb import ACBAdapter
 from .lnb import LnbAdapter
+from .lnbp import LnbpAdapter
 from .bleague import BLeagueAdapter
 from .bbl import BBLAdapter
 from .twobbl import TwoBBLAdapter
 from .usports import USportsAdapter
 from .plk import PlkAdapter
 from .lba import LbaAdapter
+from .lkl import LklAdapter
 from .nbl import NblAdapter
 
 
@@ -81,12 +83,14 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     EuroLeagueAdapter.name: EuroLeagueAdapter,
     ACBAdapter.name: ACBAdapter,
     LnbAdapter.name: LnbAdapter,
+    LnbpAdapter.name: LnbpAdapter,
     BLeagueAdapter.name: BLeagueAdapter,
     BBLAdapter.name: BBLAdapter,
     TwoBBLAdapter.name: TwoBBLAdapter,
     USportsAdapter.name: USportsAdapter,
     PlkAdapter.name: PlkAdapter,
     LbaAdapter.name: LbaAdapter,
+    LklAdapter.name: LklAdapter,
     NblAdapter.name: NblAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,

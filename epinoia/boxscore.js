@@ -683,14 +683,13 @@ function lineupAgg(d,t){
 
 function periodPill(S) {
   if (S.phase === 'final') return 'final';
-  /* A clock already at the NEXT period's full length is the SAME break as a zero clock
-     (2026-09-18, notify_halftime.sql 0124 documents both readings) -- but only once there is
-     a previous period for that reading to mean "just ended". Period 1 has none: a fresh
-     period_start ALSO preloads the clock to the period's full length, and a feed slow to
-     report its first real tick (B.LEAGUE, 2026-09-23) left tip-off itself reading as
-     "end of q1" at 0-0, full clock showing, for as long as the feed sat still. */
-  const over = S.clockMs === 0 || (S.period > 1 && S.clockMs >= PLEN(S.period));
-  if (over && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
+  /* 0:00 IS THE END OF A PERIOD, A FULL CLOCK IS THE START OF ONE: period_start preloads it
+     before a second is played, and reading it as a break left B.LEAGUE's tip-off saying "end of
+     q1" at 0-0 (2026-09-23). A feed that resets its clock the moment a quarter ends shows the
+     same full clock through the break after it (notify_halftime.sql 0124 documents both
+     readings); the game page settles that reading to 0:00 before it gets here (settleClock,
+     epinoia/game/game.js), because only the log can say which end of the period a full clock is. */
+  if (S.clockMs === 0 && S.period >= 1 && S.period < 4) return 'end of ' + perName(S.period);
   return perName(S.period) + ' · ' + fmtClock(S.clockMs);
 }
 
@@ -907,11 +906,18 @@ function advHTML(d){
     return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); }).join('');
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
-    (rated?'<div class="setup-note gpnote">shading and the small number: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor)</div>':'')+'</div>';
+    /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
+    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip
+  /* TWO FIGURES, TWO LINES. The attempts and the true shooting shared one line with a "·"
+     between them: on a phone it broke after "tsa" and left the dot opening the next line, and
+     the percent sign sat outside the shaded figure it belongs to, half over the shade's edge
+     (reported 2026-09-23 as "confusing marks in TSA"). */
   const tsaCell = t=>{ const T=TA[t]; const win = TA[t].ts>TA[1-t].ts;
     return '<div class="tsacell'+(win?' winner':'')+'"><div class="fflabel" style="color:'+(t?c1:c0)+'">'+esc(tname(t))+'</div>'+
-      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span> · '+gpv(rate('ts',t), f1(T.ts), '', 'true shooting %')+'<span style="font-size:11px;color:var(--dim)">% ts</span></div>'+
+      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span></div>'+
+      '<div style="font-size:15px;margin-top:4px;font-variant-numeric:tabular-nums">'+gpv(rate('ts',t), f1(T.ts)+'%', '', 'true shooting %')+
+        ' <span style="font-size:11px;color:var(--dim);margin-left:4px">true shooting</span></div>'+
       '<div class="fm">'+T.fga+' fga + 0.44 × '+T.fta+' fta</div></div>'; };
   const tsaCard = '<div class="glass ffcard"><h3>true shot attempts</h3><div class="tsastrip">'+tsaCell(0)+tsaCell(1)+'</div></div>';
   // 3. mirrored metric rows (+ shot zones), then situational tug-of-war

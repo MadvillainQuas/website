@@ -221,6 +221,12 @@ jobs:
         # log; a length-based high-water mark could see none of them
         run: node supabase/tests/live.test.mjs
 
+      - name: The scoreboard clock is a time in the game that happened
+        # a full clock at a break is the END of the period just played, never the start of it
+        # ("Q1 · 10:00" through the first break), and a live box score never counts minutes
+        # from a placeholder 0:00 (ten for every starter two minutes in)
+        run: node supabase/tests/periodpill.test.mjs
+
       - name: Round-robin scheduling
         # a fixture list is the artefact everybody plans around: everybody
         # plays everybody once, nobody twice in a round, and the home/away
@@ -399,6 +405,33 @@ jobs:
         # total, score, 5v5 stint and event-log line reconciles with the league's own figures -
         # overtime, double overtime and a play-off final included
         run: python scripts/ingest/lba_test.py
+
+      - name: LKL (Lithuania) from lkl.lt's own calendar and game data
+        # lkl.py over the cached calendar, schedule pages and five games: every club coded by its
+        # league team id, home found even where the feed lists the away side first, starters
+        # inferred for an older box, a split substitution and a one-overtime game put right, every
+        # attempt on the shot chart, and every box, score, 5v5 stint and event-log line reconciling
+        run: python scripts/ingest/lkl_test.py
+
+      - name: NKL (Lithuania) on FIBA LiveStats, scheduled from nkl.lt
+        # the fiba_site_schedule "nkl" site: the season from nkl.lt's own array, the LiveStats id
+        # from the homepage strip or an offset the feed itself must confirm, and nkl.lt's club ids
+        # on the payload so a club is one club from fixture to final
+        run: python scripts/ingest/nkl_test.py
+
+      - name: CIBACOPA (Mexico) on FIBA LiveStats, one competition split by phase
+        # the shared hosted-schedule code over CIBA's own pages: day-first dates, each game read in
+        # its venue's zone (three in one league), the play-off phases' games kept out of the
+        # regular season and filed as a playoff competition, and a phase that cannot be read
+        # filing nothing rather than a play-off game in the league table
+        run: python scripts/ingest/cibacopa_test.py
+
+      - name: LNBP (Mexico) from lnbp.mx's Sportradar embed
+        # lnbp.py over cached fixtures pages and game replies: the season found by competition id
+        # and calendar year, the play-offs split off by fixtureType, full club names although the
+        # game feed gives codes, and every box, score, 5v5 stint and event-log line reconciling -
+        # overtime and a basket the league logged with no player included
+        run: python scripts/ingest/lnbp_test.py
 
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
@@ -611,6 +644,17 @@ jobs:
       - name: Every rotation bar is the box score's minutes
         # epinoia/rotation.js follows the engine's minutes to the millisecond on real games
         run: node supabase/tests/rotation.test.mjs
+
+      - name: A substitution is one change however its two halves were logged
+        # translate/fiba_events.py paired an OUT and an IN only when they arrived back to back;
+        # split by the free throws at their clock, or completed by a late correction, both were
+        # dropped and a side played on with four or six (22 of the 160 saved SLB games)
+        run: python scripts/ingest/translate/subs_test.py
+
+      - name: Five on the floor, and the minutes LiveStats says, in every saved game
+        # all 160 saved SLB games through the translator and the engine: five a side throughout,
+        # and every player's minutes within a minute of the feed's own box where that adds up
+        run: node supabase/tests/lineups-five.test.mjs
 
       - name: The Table page's strength of schedule is index_9's, number for number
         # epinoia/sos.js is index_9.html's SOS tab: index_9's own code is lifted out of the file
