@@ -457,6 +457,24 @@ function marginChart(F, names) {
     periodLines(maxPeriod, maxElapsed) + fillAreas(pts, 'margin', zeroY) + segmentedLines(pts, 'margin') + yTitle('Score Margin'));
 }
 
+/* ROTATIONS: a row per player and a cell per minute, shaded by how much of that minute he was
+   on the floor, both sides with the margin between them (epinoia/rotation.js). Coloured with the
+   same theme-inked club colours as every other chart on this tab. */
+function rotationCard(S, names) {
+  const R = root.EpinoiaRotation;
+  if (!R) return '';
+  const M = R.compute(S);
+  if (!M.teams.some(t => t.rows.some(r => !r.dnp))) return '';
+  return '<section class="gf-card gf-rot">' +
+    '<div class="gf-card-head"><h3 class="gf-title">Rotations</h3>' +
+      legend(esc(names[0]) + ' Lead', esc(names[1]) + ' Lead') + '</div>' +
+    '<div class="gf-note">Each cell is a minute of the game, shaded by how much of it the player was on the floor; ' +
+      'the line between the two sides is the score margin.</div>' +
+    R.html(M, { colours: ['var(--vis-t0, var(--team0))', 'var(--vis-t1, var(--team1))'],
+                marginLabel: 'score margin · above the line ' + names[0] + ' lead' }) +
+  '</section>';
+}
+
 /* the EPA and Scoring Battle charts share one shape: a signed value about zero, an end label */
 function signedChart(opts) {
   const { data, all, key, title, names, note, axisTitle } = opts;
@@ -566,7 +584,8 @@ function render(S) {
   const item = (label, value, cls) =>
     '<div class="gf-stat"><span class="gf-stat-label">' + label + '</span><span class="gf-stat-value' + (cls ? ' ' + cls : '') + '">' + value + '</span></div>';
   return '<div class="gf">' +
-    runsCharts(F, names, hasFootage(S)) + marginChart(F, names) + epaChart(F, names) + battleChart(F, names) + pppChart(F, names) +
+    runsCharts(F, names, hasFootage(S)) + marginChart(F, names) + rotationCard(S, names) +
+    epaChart(F, names) + battleChart(F, names) + pppChart(F, names) +
     '<div class="gf-summary">' +
       item('Final Score', s.homePoints + ' - ' + s.awayPoints, s.homePoints > s.awayPoints ? 'gf-home' : 'gf-away') +
       item('Lead Changes', s.leadChanges) +

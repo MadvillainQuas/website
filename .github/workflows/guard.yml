@@ -547,6 +547,18 @@ jobs:
         # possessions, assists and points assisted must be the engine's to the unit
         run: node supabase/tests/gameflow.test.mjs
 
+      # AHEAD OF events.test ON PURPOSE: that step has been red since ~18 Sep and a failing step
+      # ends this job, so anything placed after it has not been running at all.
+      - name: The shot clock times every possession from the change of hands
+        # epinoia/shotclock.js on possessions.js's gain timing: each rule on a hand-worked log,
+        # and on three real LiveStats games the chances' points, attempts and turnovers are the
+        # engine's box score and the chances are the events tab's
+        run: node supabase/tests/shotclock.test.mjs
+
+      - name: Every rotation bar is the box score's minutes
+        # epinoia/rotation.js follows the engine's minutes to the millisecond on real games
+        run: node supabase/tests/rotation.test.mjs
+
       - name: The events tab's situations are the box score's
         # second-chance, off-turnover and fast-break points by the engine's own windows,
         # on a hand-worked log and three real LiveStats games

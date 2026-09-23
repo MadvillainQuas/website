@@ -206,6 +206,8 @@ function decideAccess(lg) {
                        accessReady.then(() => { try { decideAccess(lg); } catch (_) { /* open */ }
                          return Promise.all([record(team), teamStats(team), games(team)]); })]);
     teamShots(team);
+    teamShotClock(team);
+    teamRotations(team);
     await lineupPanels(team);
     await videoPanel(team);
     weeklyTab(team);
@@ -218,18 +220,41 @@ function decideAccess(lg) {
    with each zone's makes, attempts and percentage. Locations live in the event log, so the
    logs are fetched; the video panel below fetches its own subset for the games with footage.
    --------------------------------------------------------------------------- */
+/* ONE SEASON OF LOGS, FETCHED ONCE. The shot chart, the shot clock and the rotations all read
+   the club's last forty finalised games, and the event logs are the heaviest request this page
+   makes; three sections asking for them separately would be three times that. The starters and
+   the roster snapshot ride along for the rotations. */
+let logsP = null;
+function seasonLogs(team) {
+  if (logsP) return logsP;
+  const D = window.EpinoiaData;
+  logsP = (async () => {
+    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,period,starters,roster_snapshot` +
+      `&order=tipoff_at.desc&limit=40`);
+    const evs = gs.length ? await D.events(gs.map(g => g.id)) : [];
+    const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+    const sideOf = {}; gs.forEach(g => { sideOf[g.id] = g.home_team_id === team.id ? 0 : 1; });
+    return { gs, byG, sideOf };
+  })();
+  logsP.catch(() => { logsP = null; });
+  return logsP;
+}
+
+/* the club's colour as this theme can read it: on the light page a pale kit is inked darker */
+function readableColour(team) {
+  const c = /^#[0-9a-f]{6}$/i.test(String(team.colour || '')) ? team.colour : '#93f2bf';
+  const TC = window.EpinoiaTeamColour;
+  return (TC && TC.ink && document.documentElement.getAttribute('data-theme') === 'light') ? (TC.ink(c) || c) : c;
+}
+
 async function teamShots(team) {
   const host = $('#teamshots');
   if (ACCESS.paywall) return;
   if (!host || !window.EpinoiaShotChart || !window.EpinoiaData) return;
   try {
-    const D = window.EpinoiaData;
-    const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
-      `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at&order=tipoff_at.desc&limit=40`);
+    const { gs, byG, sideOf } = await seasonLogs(team);
     if (!gs.length) { host.appendChild(el('div', 'empty', 'No finalised games yet.')); return; }
-    const evs = await D.events(gs.map(g => g.id));
-    const byG = {}; evs.forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
-    const sideOf = {}; gs.forEach(g => { sideOf[g.id] = g.home_team_id === team.id ? 0 : 1; });
     const shots = await window.EpinoiaShotChart.gather({
       fetchEvents: async () => Object.values(byG), gameIds: gs.map(g => g.id), playerId: null, sideOf: id => sideOf[id]
     });
@@ -242,6 +267,82 @@ async function teamShots(team) {
         lines: ['Twelve zones, each tinted against its own break-even.'] }));
     }
   } catch (e) { host.appendChild(el('div', 'empty', 'The shot chart could not be drawn.')); }
+}
+
+/* ---------------------------------------------------------------------------
+   SHOT CLOCK ANALYSIS, over the season: every possession the club had in those games, and
+   every one its opponents had against it, by how long each ran from the change of possession
+   before it ended (epinoia/shotclock.js). The same slider as the game page's tab; the two
+   tabs here are the club's offence and its defence.
+   --------------------------------------------------------------------------- */
+async function teamShotClock(team) {
+  const host = $('#teamclock');
+  if (ACCESS.paywall || !host) return;
+  const SCk = window.EpinoiaShotClock, V = window.EpinoiaShotClockView;
+  if (!SCk || !V || !window.EpinoiaData) return;
+  if (ACCESS.locked) {
+    host.innerHTML = accessTeaser({ compact: true, title: 'Shot clock analysis',
+      lines: ['The four factors and the shots of the possessions that ended in any stretch of the 24 seconds, at both ends.'] });
+    return;
+  }
+  host.appendChild(el('div', 'empty', 'Timing every possession…'));
+  try {
+    const { gs, byG, sideOf } = await seasonLogs(team);
+    if (!gs.length) { host.innerHTML = ''; host.appendChild(el('div', 'empty', 'No finalised games yet.')); return; }
+    const own = [], opp = [];
+    gs.forEach(g => {
+      const R = SCk.compute({ events: byG[g.id] || [] });
+      const s = sideOf[g.id];
+      R.chances.forEach(r => (r.team === s ? own : opp).push(r));
+    });
+    const name = team.short_name || team.name || 'This club';
+    V.mount(host, 'team', { unit: 'season', sides: [
+      { label: name + ' offence', colour: readableColour(team), chances: own },
+      { label: name + ' defence', colour: '#8a9a92', chances: opp }
+    ] });
+    const note = $('#clockNote');
+    if (note) note.textContent = 'last ' + gs.length + (gs.length === 1 ? ' game' : ' games');
+  } catch (e) {
+    host.innerHTML = '';
+    host.appendChild(el('div', 'empty', 'The shot clock analysis could not be drawn.'));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   ROTATIONS, over the season: each player's share of every minute across the club's games
+   (a game he missed counts as none of it), longest-playing first, with the club's average
+   margin at each minute beneath (epinoia/rotation.js). Names are the players' own rows --
+   the snapshots carry whatever the feed wrote, which on a translated league is katakana.
+   --------------------------------------------------------------------------- */
+async function teamRotations(team) {
+  const host = $('#teamrot');
+  if (ACCESS.paywall || !host) return;
+  const R = window.EpinoiaRotation, D = window.EpinoiaData;
+  if (!R || !D) return;
+  if (ACCESS.locked) {
+    host.innerHTML = accessTeaser({ compact: true, title: 'Rotations',
+      lines: ['Who is on the floor at every minute of a game, across the season.'] });
+    return;
+  }
+  try {
+    const { gs, byG, sideOf } = await seasonLogs(team);
+    const games = gs.filter(g => g.roster_snapshot && g.roster_snapshot.teams && Array.isArray(g.starters)).map(g => ({
+      side: sideOf[g.id],
+      model: R.compute({ status: 'final', period: g.period || 4, clockMs: 0, teams: g.roster_snapshot.teams,
+                         starters: g.starters, events: byG[g.id] || [] })
+    }));
+    if (!games.length) { host.appendChild(el('div', 'empty', 'No finalised games with a lineup yet.')); return; }
+    const name = team.short_name || team.name || '';
+    const M = R.season(games, name);
+    try {
+      const meta = await D.playerMeta(M.teams[0].rows.map(r => r.pid).filter(Boolean));
+      M.teams[0].rows.forEach(r => { const m = meta[r.pid]; if (m && m.name && m.name !== 'Player') r.name = m.name; });
+    } catch (_) { /* the snapshot's names stand */ }
+    host.innerHTML = R.html(M, { colours: [readableColour(team), '#8a9a92'],
+      marginLabel: 'average margin at each minute · above the line ' + name + ' ahead' });
+    const note = $('#rotNote');
+    if (note) note.textContent = games.length + (games.length === 1 ? ' game' : ' games') + ', regulation only';
+  } catch (e) { host.appendChild(el('div', 'empty', 'The rotations could not be drawn.')); }
 }
 
 /* ON VIDEO — every play the club made in every game that has footage the page can

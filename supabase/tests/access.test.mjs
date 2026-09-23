@@ -349,7 +349,7 @@ console.log('\npremium columns against fulltable.js');
   ok('nonsense is free', A.isPremiumColumn(null) === false && A.isPremiumColumn('') === false && A.isPremiumColumn('evening') === false);
   ok('CATALOGUE.columns all exist in the team table', A.CATALOGUE.columns.every(k => Table.TEAM_COLS.some(c => c.k === k)));
   ok('barKeys: the player bars\' events keys only', A.CATALOGUE.barKeys('ev_ast_pts_sh') && A.CATALOGUE.barKeys('ev_rim_astp') && !A.CATALOGUE.barKeys('rim_pct') && !A.CATALOGUE.barKeys(undefined));
-  eq('gameTabs', A.CATALOGUE.gameTabs, ['flow', 'connections', 'events']);
+  eq('gameTabs', A.CATALOGUE.gameTabs, ['flow', 'connections', 'events', 'shotclock']);
   eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_']);
   ok('wowyPreviewMax is 1', A.CATALOGUE.wowyPreviewMax === 1);
 }

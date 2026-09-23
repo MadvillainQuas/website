@@ -73,6 +73,32 @@ const OUTCOME = {
   PERIOD: 'period_end'           // the clock, not the offence
 };
 
+/* ---------------------------------------------------------------------------
+   WHEN A SIDE GAINED THE BALL, AND WHEN EACH CHANCE ENDED. The shot clock's
+   question, and the one thing the fields above could not answer:
+
+     startClock is the FIRST ACTION of a possession -- after a made basket that is
+     the other side's first shot, so a possession's own start and its end were the
+     same event and every one of them lasted no time at all. The clock that matters
+     starts earlier, at the moment the ball changed hands.
+
+   So every possession also carries:
+     gainPeriod, gainClock   when this side gained the ball. The other side's last
+                             moment of play (its made basket, its last free throw,
+                             its turnover or the steal of it), or this side's own
+                             defensive rebound, or the start of the period for the
+                             first possession of one. Never carried across a period.
+     gainedBy                'dreb' | 'change' | 'period', which of those it was
+     lastPeriod, lastClock   the latest moment of play it reached
+
+   and every chance lastPeriod / lastClock, the moment of its last action. A chance
+   that began with an offensive rebound starts at that rebound (startClock), since
+   the rebound is what reset it.
+
+   ADDITIVE ON PURPOSE: nothing that was already here changes value, so the
+   situations, the play types and every stored season line read what they read
+   before. epinoia/shotclock.js is the reader.
+   --------------------------------------------------------------------------- */
 function enumerate(game) {
   const out = { possessions: [], chances: [] };
   if (!game || !Array.isArray(game.events)) return out;
@@ -81,6 +107,14 @@ function enumerate(game) {
   let chance = null;       // the open chance inside it
   let lastFoulKind = null;
   let pendingShot = null;  // a miss waiting on a rebound to say whose it was
+  let handoff = null;      // { period, clock }: when the last possession ended
+
+  /* the latest moment of play the open possession and chance have reached */
+  const touch = ev => {
+    if (!ev || typeof ev.clock !== 'number') return;
+    if (poss) { poss.lastPeriod = ev.period; poss.lastClock = ev.clock; }
+    if (chance) { chance.lastPeriod = ev.period; chance.lastClock = ev.clock; }
+  };
 
   const closeChance = (outcome, ev) => {
     if (!chance) return;
@@ -104,6 +138,7 @@ function enumerate(game) {
     poss.points = out.chances
       .filter(c => c.possession === poss.index)
       .reduce((a, c) => a + c.points, 0);
+    if (poss.lastClock != null) handoff = { period: poss.lastPeriod, clock: poss.lastClock };
     out.possessions.push(poss);
     poss = null;
   };
@@ -111,14 +146,29 @@ function enumerate(game) {
   const openPossession = (team, ev) => {
     closePossession();
     if (team == null) return;
+    const period = ev ? ev.period : 1;
+    /* A defensive rebound starts this side's clock itself. Otherwise it started when
+       the other side's possession ended -- unless that was in another period, in which
+       case this is the first possession of this one and it started at the tip or the
+       inbound, at the period's full length. */
+    const gain = (ev && ev.t === 'reb' && !ev.off && typeof ev.clock === 'number')
+      ? { period: ev.period, clock: ev.clock, by: 'dreb' }
+      : (handoff && handoff.period === period)
+        ? { period: period, clock: handoff.clock, by: 'change' }
+        : { period: period, clock: PLEN(period), by: 'period' };
     poss = {
       index: out.possessions.length,
       team: team,
-      period: ev ? ev.period : 1,
+      period: period,
       startClock: ev ? ev.clock : PLEN(1),
       startEventId: ev ? (ev.seq != null ? ev.seq : ev.id) : null,
       chances: [],
-      points: 0
+      points: 0,
+      gainPeriod: gain.period,
+      gainClock: gain.clock,
+      gainedBy: gain.by,
+      lastPeriod: null,
+      lastClock: null
     };
     openChance(ev, false);
   };
@@ -152,7 +202,9 @@ function enumerate(game) {
       rebounder: secondChance && ev ? (ev.pid || null) : null,
       points: 0,
       finisher: null,
-      outcome: null
+      outcome: null,
+      lastPeriod: null,
+      lastClock: null
     };
     chance.index = out.chances.length;
   };
@@ -219,6 +271,7 @@ function enumerate(game) {
     switch (ev.t) {
       case 'p2_made': case 'p3_made': {
         if (!poss || poss.team !== team) openPossession(team, ev);
+        touch(ev);
         if (chance) {
           chance.points += SHOT_MADE[ev.t];
           chance.finisher = ev.pid || chance.finisher;
@@ -233,6 +286,7 @@ function enumerate(game) {
       }
       case 'p2_miss': case 'p3_miss': {
         if (!poss || poss.team !== team) openPossession(team, ev);
+        touch(ev);
         if (chance) chance.finisher = ev.pid || chance.finisher;
         pendingShot = { made: false, team: team, ev: ev,
                         outcome: ev.t === 'p3_miss' ? OUTCOME.MISS_3 : OUTCOME.MISS_2 };
@@ -240,6 +294,7 @@ function enumerate(game) {
       }
       case 'ft_made': case 'ft_miss': {
         if (!poss || poss.team !== team) openPossession(team, ev);
+        touch(ev);
         if (chance) {
           if (ev.t === 'ft_made') chance.points += 1;
           if (!chance.finisher) chance.finisher = ev.pid || null;
@@ -256,16 +311,25 @@ function enumerate(game) {
            through a missed shot, and it is the reason chances exist at all. */
         if (pendingShot) { closeChance(pendingShot.outcome, pendingShot.ev); pendingShot = null; }
         if (ev.off) {
+          /* A MISSED LAST FREE THROW WON BACK BY THE OFFENCE. The trip to the line was a
+             chance of its own and it ended there -- but with no shot pending there was
+             nothing to settle it, so the rebound's new chance used to replace it without
+             it ever being recorded, and its free throws were counted into whichever
+             chance of that side came before, however long ago. Closed here, as the trip
+             it was (closeChance turns the pending outcome into shooting_foul). */
+          if (poss && chance) closeChance(OUTCOME.PERIOD, null);
           if (poss) openChance(ev, true);
           else if (team != null) openPossession(team, ev);
         } else {
           closePossession();
           if (team != null) openPossession(team, ev);
         }
+        touch(ev);
         break;
       }
       case 'to': {
         if (!poss || poss.team !== team) openPossession(team, ev);
+        touch(ev);
         if (chance) chance.finisher = ev.pid || chance.finisher;
         closeChance(OUTCOME.TURNOVER, ev);
         closePossession();
@@ -277,6 +341,7 @@ function enumerate(game) {
            names the offence. Whichever arrives first, the ball has changed
            hands. */
         if (poss && poss.team !== team) {
+          touch(ev);
           closeChance(OUTCOME.TURNOVER, ev);
           closePossession();
         }

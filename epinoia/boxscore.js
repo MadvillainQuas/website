@@ -874,6 +874,14 @@ function advHTML(d){
     {l:'tov%', k:'tovp', max:30, hb:false, f:f1},
     /* possessions and each team's own pace (per 40); the header carries the game pace */
     {l:'possessions', k:'possessions', max:110, hb:null, f:f0}, {l:'pace / 40', k:'paceOwn', max:100, hb:null, f:f1}];
+  /* AVERAGE TIME OF POSSESSION, under pace: from the moment the ball changed hands to the end of
+     the possession, its second chances inside it (epinoia/shotclock.js). Drawn wherever the page
+     carries that calculator -- the public box score does -- and simply absent where it does not. */
+  const ATOP = globalThis.EpinoiaShotClock ? globalThis.EpinoiaShotClock.averages(S) : null;
+  if (ATOP && ATOP[0] != null && ATOP[1] != null) {
+    TA[0].atop = ATOP[0]; TA[1].atop = ATOP[1];
+    FF.push({l:'avg time of possession', k:'atop', max:24, hb:null, f:v=>v.toFixed(1)+' s'});
+  }
   /* ONE CHART FOR EVERY ROW. The four factors, the additional metrics and the situational
      points all read as the same mirrored pair: the home side grows leftwards from the centre,
      the away side rightwards, each capped at the row's own maximum, with a hard end on each

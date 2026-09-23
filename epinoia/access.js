@@ -151,7 +151,7 @@ const FEATURES = Object.freeze({
    everywhere else. The test (access.test.mjs) recomputes this list from
    fulltable.js, so it cannot drift silently. */
 const CATALOGUE = Object.freeze({
-  gameTabs: Object.freeze(['flow', 'connections', 'events']),
+  gameTabs: Object.freeze(['flow', 'connections', 'events', 'shotclock']),
   columnPrefixes: Object.freeze(['ev_', 'evd_', 'z_']),
   columns: Object.freeze(['pred_efg', 'efg_sh', 'efg_vs', 'morey']),
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',

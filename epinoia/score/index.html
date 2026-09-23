@@ -15,7 +15,7 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=322" data-no-ground></script>
+<script src="../appmode.js?v=328" data-no-ground></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -6087,6 +6087,14 @@ function advHTML(d){
     {l:'tov%', k:'tovp', max:30, hb:false, f:f1},
     /* possessions and each team's own pace (per 40); the header carries the game pace */
     {l:'possessions', k:'possessions', max:110, hb:null, f:f0}, {l:'pace / 40', k:'paceOwn', max:100, hb:null, f:f1}];
+  /* AVERAGE TIME OF POSSESSION, under pace: from the moment the ball changed hands to the end of
+     the possession, its second chances inside it (epinoia/shotclock.js). Drawn wherever the page
+     carries that calculator -- the public box score does -- and simply absent where it does not. */
+  const ATOP = globalThis.EpinoiaShotClock ? globalThis.EpinoiaShotClock.averages(S) : null;
+  if (ATOP && ATOP[0] != null && ATOP[1] != null) {
+    TA[0].atop = ATOP[0]; TA[1].atop = ATOP[1];
+    FF.push({l:'avg time of possession', k:'atop', max:24, hb:null, f:v=>v.toFixed(1)+' s'});
+  }
   /* ONE CHART FOR EVERY ROW. The four factors, the additional metrics and the situational
      points all read as the same mirrored pair: the home side grows leftwards from the centre,
      the away side rightwards, each capped at the row's own maximum, with a hard end on each
@@ -6933,15 +6941,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=322">
-<link rel="stylesheet" href="../video.css?v=322">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=322">
-<script src="../config.js?v=322" defer></script>
-<script src="../vendor/supabase.js?v=322" defer></script>
-<script src="../live.js?v=322" defer></script>
-<script src="../video.js?v=322" defer></script>
-<script src="sync.js?v=322" defer></script>
-<script src="bootstrap.js?v=322" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=328">
+<link rel="stylesheet" href="../video.css?v=328">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=328">
+<script src="../config.js?v=328" defer></script>
+<script src="../vendor/supabase.js?v=328" defer></script>
+<script src="../live.js?v=328" defer></script>
+<script src="../video.js?v=328" defer></script>
+<script src="sync.js?v=328" defer></script>
+<script src="bootstrap.js?v=328" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

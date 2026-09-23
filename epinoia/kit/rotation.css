@@ -1,0 +1,64 @@
+/* ============================================================================
+   ROTATIONS — a row per player, a cell per minute (epinoia/rotation.js).
+
+   Loaded by the game page (tokens.css, no kit) and the team profile (the kit),
+   so it uses only the tokens both carry. --rot-c is the side's colour, set on
+   each .rot-team; --rot-n is the number of minute columns, set on .rot.
+   ============================================================================ */
+.rot{--rot-nw:150px;max-width:1100px;margin:0 auto;padding:calc(var(--u)*2) calc(var(--u)*3);color:var(--ink)}
+.rot-team + .rot-margin, .rot-margin + .rot-team{margin-top:14px}
+.rot-h{display:flex;align-items:center;gap:8px;margin:0 0 8px calc(var(--rot-nw) + 8px)}
+.rot-h i{width:10px;height:10px;background:var(--rot-c);flex:none}
+.rot-h b{font-family:var(--f-ui);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.rot-h small{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
+
+.rot-row{display:grid;grid-template-columns:var(--rot-nw) minmax(0,1fr);gap:8px;align-items:center;min-height:20px}
+.rot-row + .rot-row{margin-top:2px}
+.rot-nm{display:flex;flex-direction:column;align-items:flex-end;min-width:0;text-align:right;line-height:1.15}
+.rot-nm b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--f-ui);
+  font-weight:600;font-size:11.5px;color:var(--ink)}
+.rot-nm small{font-family:var(--f-micro);font-size:8px;letter-spacing:.04em;color:var(--ink-3)}
+
+/* the minutes: one cell each, shaded by the share of the minute on the floor */
+.rot-cells{position:relative;display:grid;grid-template-columns:repeat(var(--rot-n),minmax(0,1fr));gap:1px;height:18px}
+.rot-cells i{background:var(--rot-c);border-radius:1px}
+.rot-cells i.off{background:color-mix(in oklch,var(--rule) 45%,transparent)}
+.rot-row.dnp .rot-cells{display:flex;align-items:center;justify-content:center;
+  background:color-mix(in oklch,var(--rule) 35%,transparent);border-radius:2px}
+.rot-row.dnp em{font-style:normal;font-family:var(--f-micro);font-size:9px;letter-spacing:.2em;color:var(--ink-3)}
+.rot-row.dnp .rot-nm b{color:var(--ink-3)}
+/* the period breaks, drawn over the cells so they read through every row */
+.rot-lines{position:absolute;inset:-2px 0;pointer-events:none}
+.rot-lines i{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:0;background:var(--ink);opacity:.45}
+
+.rot-axis{margin-top:4px;min-height:14px}
+.rot-ax{position:relative;height:14px}
+.rot-ax span{position:absolute;transform:translateX(-50%);font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;color:var(--ink-3)}
+
+/* ---- the margin between the two sides ---- */
+.rot-mh{margin:0 0 4px calc(var(--rot-nw) + 8px);font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+.rot-mrow{align-items:stretch}
+.rot-scale{justify-content:space-between;padding:0}
+.rot-mplot{position:relative;display:block;height:72px}
+.rot-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.rot-m0{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.rot-mq{stroke:var(--ink-3);stroke-width:1;opacity:.4;vector-effect:non-scaling-stroke}
+.rot-mline{stroke:var(--ink);stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+
+.rot-legend{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:16px 0 0 calc(var(--rot-nw) + 8px);
+  font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
+.rot-legend i{width:120px;height:8px;border-radius:2px;
+  background:linear-gradient(90deg,color-mix(in oklch,var(--ink-2) 12%,transparent),var(--ink-2))}
+.rot-legend small{flex-basis:100%;font-size:8.5px}
+
+/* A PHONE GETS A NARROWER NAME COLUMN AND A SIDEWAYS SCROLL rather than cells a pixel wide:
+   forty-odd minutes need about 300px to stay legible, and the names need some of their own. */
+@media (max-width:720px){
+  .rot{--rot-nw:96px;padding:calc(var(--u)*1.5) 12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rot-team,.rot-margin,.rot-legend{min-width:420px}
+  .rot-nm b{font-size:10.5px}
+}
+
+/* inside a game-flow card the card already has its padding */
+.gf-card .rot{padding:10px 0 0}

@@ -212,6 +212,8 @@ async function loadStored() {
      colour (teams.colour_2, read from the crest) -- the away side first, then the home. */
   resolveClash(teams, g.home || {}, g.away || {});
 
+  await romanise(teams);
+
   const comp = g.competitions || {};
   const season = comp.seasons || {};
   const league = season.leagues || {};
@@ -253,6 +255,35 @@ async function loadStored() {
       leagueName: league.name || null, competitionName: comp.name || null
     }
   };
+}
+
+/* ------------------------------------------------ names in the profiles' alphabet ---
+   A translated feed (B.LEAGUE) hands the roster snapshot its players in katakana and kanji,
+   and every tab on this page -- the box score, the court view, the play-by-play, the events,
+   the report -- reads its names from the snapshot. The player's own row already carries the
+   romanised name his profile shows (the ingest keeps the feed's spelling among his aliases),
+   so a snapshot name written in another script is swapped for that one.
+
+   Only then. A league whose feed writes Latin names asks nothing extra; a row without a
+   romanised name keeps the feed's rather than going blank; and a failed read leaves every
+   name as it was, because a box score in katakana is better than no box score. */
+const NON_LATIN = /[぀-ヿㇰ-ㇿ㐀-鿿豈-﫿ｦ-ﾟ가-힯]/;
+const PLAYER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function romanise(teams) {
+  const ids = [];
+  teams.forEach(t => (t.players || []).forEach(p => {
+    if (p && PLAYER_ID.test(String(p.id || '')) && NON_LATIN.test(String(p.name || ''))) ids.push(p.id);
+  }));
+  if (!ids.length) return;
+  let rows = [];
+  try { rows = await api('players?id=in.(' + ids.join(',') + ')&select=id,first_name,last_name'); }
+  catch (_) { return; }
+  const latin = {};
+  (rows || []).forEach(r => {
+    const n = ((r.first_name || '') + ' ' + (r.last_name || '')).replace(/\s+/g, ' ').trim();
+    if (n && !NON_LATIN.test(n)) latin[r.id] = n;
+  });
+  teams.forEach(t => (t.players || []).forEach(p => { if (latin[p.id]) p.name = latin[p.id]; }));
 }
 
 /* ------------------------------------------------------ colours that clash ---
@@ -343,6 +374,19 @@ const BODIES = {
   /* second chances, breaks, turnovers, timeouts and assists, and the shots each produced */
   events:      () => window.EpinoiaEvents ? window.EpinoiaEvents.render(window.S)
                      : '<div class="msg">The events could not be loaded.</div>',
+  /* each side's possessions by how long they ran before they ended, filtered to any stretch
+     of the 24 seconds (epinoia/shotclock.js, drawn by shotclock-view.js) */
+  shotclock:   () => {
+    const SCk = window.EpinoiaShotClock, V = window.EpinoiaShotClockView, S = window.S;
+    if (!SCk || !V) return '<div class="msg">The shot clock analysis could not be loaded.</div>';
+    const R = SCk.forGame(S);
+    /* the ink form on the light theme, as renderShell paints --team0/--team1 */
+    const TC = window.EpinoiaTeamColour;
+    const light = !!(TC && TC.ink && document.documentElement.getAttribute('data-theme') === 'light');
+    const colour = t => { const c = B.safeColour(S.teams[t].color, t ? '#8ff5ff' : '#93f2bf'); return light ? TC.ink(c) : c; };
+    return V.html('game', { unit: 'game', sides: [0, 1].map(t => ({
+      label: S.teams[t].name, colour: colour(t), chances: R.chances.filter(r => r.team === t) })) });
+  },
   /* Rendered rather than returned as a string: the video tab owns a player, a
      set of filters and a scroll position, and handing back HTML for the page
      to insert would throw all three away on every redraw. */
@@ -515,7 +559,8 @@ function bindBoxSwitch(el) {
    screen does not carry (flow.js, connections.js), and events (events.js) */
 const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot charts'],
               ['adv', 'full stats'], ['lineups', 'lineups'],
-              ['flow', 'game flow'], ['connections', 'connections'], ['events', 'events']];
+              ['flow', 'game flow'], ['connections', 'connections'], ['events', 'events'],
+              ['shotclock', 'shot clock analysis']];
 
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
@@ -588,7 +633,7 @@ function checkHalf() {
    without access.js — or a database without the access_state RPC — draws
    exactly what it drew before. The state is cached by access.js and read
    synchronously, because a live game calls renderBody on every play. */
-const GATED_TABS_DEFAULT = ['flow', 'connections', 'events'];
+const GATED_TABS_DEFAULT = ['flow', 'connections', 'events', 'shotclock'];
 let walled = null;                  // the league whose paywall card is showing instead of the game
 let accessWatched = false;
 let drawnLocked = false;            // the analytics lock the body was last drawn under
@@ -640,11 +685,12 @@ function lockedTabHTML() {
   const A = window.EpinoiaAccess, S = window.S || {};
   return A.teaserHTML({
     leagueSlug: S.leagueSlug || null,
-    title: 'Game flow, connections and events are for members',
+    title: 'Game flow, connections, events and shot clock analysis are for members',
     lines: [
-      'Game flow: every scoring run and momentum swing, the margin minute by minute, expected points added and points per possession as the game went.',
+      'Game flow: every scoring run and momentum swing, the margin minute by minute, both rotations, expected points added and points per possession as the game went.',
       'Connections: who assisted whom, how often each pair connected and the points and threes every pairing produced.',
-      'Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.'
+      'Events: what second chances, fast breaks, turnovers and timeouts turned into, with the shots, zones and players behind each.',
+      'Shot clock analysis: the four factors and the shots of the possessions that ended in any stretch of the 24 seconds.'
     ]
   });
 }
