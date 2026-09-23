@@ -86,6 +86,20 @@ XHR = {"User-Agent": UA, "X-Requested-With": "XMLHttpRequest"}
 # with re.M pins the non-greedy match to — without that anchor it stops at the first "}" inside.
 BLOB = re.compile(r"_contexts_s3id\.data\s*=\s*(\{.*?\});?\s*$", re.M)
 
+# THE LIVE FEED. The page only carries the blob once a game is over: while it is being played
+# the page is served without it (~360 KB instead of ~940 KB) and bleague.jp's own script
+# (genius_game_new2208.js) polls this bucket every 30 s instead -- `latestid` names the newest
+# snapshot, `<id>.json` is that snapshot, with exactly the blob's Game / PlayByPlays /
+# HomeBoxscores / AwayBoxscores / Summaries (checked play-for-play against a finished game's
+# page, 22 Sep 2026). Without it no B.LEAGUE game had ever updated while it was on: each was
+# written once, after the final buzzer (Alvark Tokyo v Ryukyu, 23 Sep 2026, seen live in the
+# fourth quarter with nothing on the site). v2 is the Genius contexts B1/B2 use; v1 is the
+# older shape the site keeps for B3, tried second.
+LIVE = ("https://b-league.s3.amazonaws.com/web_json/v2_genius_contexts/{key}/",
+        "https://b-league.s3.amazonaws.com/web_json/v1_contexts/{key}/")
+# the live feed writes the tip-off as a .NET date, "/Date(1790053200000+0900)/"
+NET_DATE = re.compile(r"/Date\((\d+)")
+
 # Box row -> the FIBA stat names. Everything the pipeline reads, nothing it does not. There is no
 # field-goal field in this feed at all: FG is 2pt + 3pt, computed below.
 PLAYER_STATS = {
@@ -405,6 +419,31 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
                    "home_code": _team_code(card, 0), "away_code": _team_code(card, 1),
                    "event": event}), date
 
+    def _live(self, key: str) -> Optional[dict]:
+        """The newest live snapshot of a game (see LIVE), or None when the bucket has none."""
+        for base in LIVE:
+            url = base.format(key=key)
+            try:
+                r = requests.get(url + "latestid", headers=HEADERS, timeout=20)
+                latest = r.text.strip() if r.status_code == 200 else ""
+                if not latest or not re.fullmatch(r"[\w.-]+", latest):
+                    continue
+                r = requests.get(url + latest + ".json", headers=HEADERS, timeout=45)
+                if r.status_code != 200:
+                    continue
+                r.encoding = "utf-8"
+                blob = r.json()
+            except (requests.RequestException, ValueError):
+                continue
+            if not isinstance(blob, dict) or not blob.get("Game"):
+                continue
+            g = blob["Game"]
+            d = NET_DATE.search(str(g.get("GameDateTime") or ""))
+            if d:
+                g["GameDateTime"] = str(int(d.group(1)) // 1000)   # the page blob's own form
+            return blob
+        return None
+
     # --------------------------------------------------------------------- game ---
     def fetch(self, external_id: str, config: dict) -> Optional[GameBundle]:
         key = re.sub(r"\D", "", str(external_id))
@@ -418,11 +457,15 @@ class BLeagueAdapter(FibaLiveStatsAdapter):
         if not page:
             return None
         m = BLOB.search(page)
-        if not m:
-            return None
-        try:
-            blob = json.loads(m.group(1))
-        except ValueError:
+        blob = None
+        if m:
+            try:
+                blob = json.loads(m.group(1))
+            except ValueError:
+                blob = None
+        if blob is None:
+            blob = self._live(key)              # the game is on: the page has no blob yet
+        if not blob:
             return None
         game = blob.get("Game") or {}
         if not game.get("BoxscoreExistsFlg"):
