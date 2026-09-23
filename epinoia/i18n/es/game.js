@@ -429,6 +429,20 @@
         "missed": "fallado",
         "eFG,": "eFG,",
         "turnovers.": "de pérdidas."
+      },
+      gtab: {
+        'match report': 'crónica',
+        'half-time report': 'descanso',
+        'box score': 'estadísticas',
+        'play-by-play': 'jugadas',
+        'shot charts': 'tiros',
+        'full stats': 'avanzadas',
+        'lineups': 'quintetos',
+        'game flow': 'evolución',
+        'connections': 'conexiones',
+        'events': 'situaciones',
+        'shot clock analysis': 'reloj de posesión',
+        'video': 'vídeo'
       }
     },
 

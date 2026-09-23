@@ -192,6 +192,12 @@ jobs:
           TZ=UTC node supabase/tests/i18n.test.mjs
           node supabase/tests/i18n-tool.test.mjs
 
+      # A new league starts without its merchandise shelf (0148), a shouted club is written as a
+      # name in the ingest and in the database (0149; two implementations, one rule), and the game
+      # page's tab strip fits by measurement.
+      - name: League defaults, club names and the tab strip
+        run: node supabase/tests/league-defaults.test.mjs
+
       # The preview writes prose from season aggregates, so it can be
       # confidently wrong in a way a table cannot. edge() is signed so positive
       # always means the attacking side is ahead, whichever way the factor runs

@@ -229,13 +229,53 @@ def person(p, prefer_latin: bool = True) -> tuple[str, str, list[str]]:
     return first, last, aliases[:6]
 
 
-def team_name(raw: str) -> str:
-    """A club's name, latinised but otherwise left alone.
+# Club words that stay capitals when a shouted name is turned back into a name: initials of a
+# university or a sponsor, and clubs whose own spelling is capitals. Anything without a vowel
+# (BC, MBC, KK, SC) is an abbreviation by construction and needs no listing.
+_CLUB_ACRONYMS = {"uat", "uanl", "uag", "uach", "udg", "uabc", "unam", "itson", "iteso", "itesm",
+                  "asvel", "cska", "aek", "paok", "unics", "ewe", "ldlc", "jl", "sig", "ucam",
+                  "cbc", "usa", "uk", "ii", "iii", "iv"}
+_CLUB_LOWER = _LOWER_PARTICLES | {"of", "the", "and", "los", "las", "do", "dos"}
 
-    A club is not a person: "Žalgiris Kaunas" is the club's name and title-casing it would be
-    rewriting somebody's brand. All this does is make it ASCII so the rest of the site can slug,
-    search and sort it."""
-    return re.sub(r"\s+", " ", latinise(raw).strip())
+
+def _cap_club(name: str) -> str:
+    """A SHOUTED club name written the way a club is written: Abejas de Leon, not ABEJAS DE LEON.
+
+    Only ever called on a name that is capitals throughout. Particles (de, del, la…) stay lower
+    case unless they open the name; abbreviations stay capitals; a hyphen or an apostrophe starts
+    a new capital, as it does in a person's name."""
+    out = []
+    for i, w in enumerate(name.split(" ")):
+        low = w.lower()
+        bare = re.sub(r"[^a-z0-9]", "", low)
+        if not bare:
+            out.append(w)
+        elif bare in _CLUB_ACRONYMS or (bare.isalpha() and not re.search(r"[aeiouy]", bare)) \
+                or any(c.isdigit() for c in bare):
+            out.append(w)
+        elif low in _CLUB_LOWER and i > 0:
+            out.append(low)
+        else:
+            w = "-".join(p[:1].upper() + p[1:] for p in low.split("-"))
+            out.append("'".join(p[:1].upper() + p[1:] for p in w.split("'")))
+    return " ".join(out)
+
+
+def team_name(raw: str) -> str:
+    """A club's name, latinised, and turned back into a name if the feed SHOUTED it.
+
+    A club is not a person: "Žalgiris Kaunas" and "BC SLOVAN" are the club's own spellings, and
+    rewriting somebody's brand is not this function's job — so a name with any lower-case letter
+    in it is left exactly as written, and all this does is make it ASCII so the rest of the site
+    can slug, search and sort it. The exception is a name in CAPITALS THROUGHOUT (Liga Nacional
+    de Baloncesto Profesional, the CIBACOPA, some Genius clients), which is a feed's habit rather
+    than a club's spelling and sat beside Title Case names on every page ("ABEJAS DE LEON" v
+    "Fresas de Irapuato"). Those come back as Abejas de Leon. A one-word name of four letters or
+    fewer (CSKA, PAOK, AEK) is an abbreviation and is left alone."""
+    s = re.sub(r"\s+", " ", latinise(raw).strip())
+    if s and _is_shouted(s) and not (" " not in s and len(s) <= 4):
+        return _cap_club(s)
+    return s
 
 
 def short_form(name: str, maxlen: int = 12) -> str:

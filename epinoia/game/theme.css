@@ -33,6 +33,16 @@
    scale off the element, so placement is unchanged. */
 @media (min-width:1000px){ .wrap, .mv-pop{ zoom:.85 } }
 
+/* The tab strip fits on a desktop: game.js fitTabs() sets --tabfs to the largest type size (12px
+   at most) at which every tab shows at once. The padding is in em so it shrinks with the type,
+   and boxscore.css (generated from the scorer, so not edited) keeps the phone's scrolling strip. */
+@media (min-width:821px){
+  /* not `transition:all` (boxscore.css): the size must change at once, or fitTabs() would measure
+     the strip half way through animating it */
+  .tabrow .tabbtn{ font-size:var(--tabfs, 12px); padding:.9em .75em; letter-spacing:.04em;
+    transition:background-color .3s ease, color .3s ease, box-shadow .3s ease }
+}
+
 /* ------------------------------------------------------ the league's colours --- */
 body.league-themed{
   --line:color-mix(in oklch,var(--league-a) 24%,transparent);

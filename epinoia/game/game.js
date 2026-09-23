@@ -593,6 +593,44 @@ const TABS = [['box', 'box score'], ['pbp', 'play-by-play'], ['shots', 'shot cha
               ['flow', 'game flow'], ['connections', 'connections'], ['events', 'events'],
               ['shotclock', 'shot clock analysis']];
 
+/* THE TAB STRIP FITS ON A DESKTOP, whatever the language. Ten to twelve tabs at 12px are wider
+   than the strip on most laptops (and Spanish labels run longer than English), so the last one
+   was cut off and had to be scrolled to. Above the phone breakpoint the tab type is scaled down,
+   just enough for every tab to show at once (--tabfs, read by game/theme.css), never below 9px;
+   below that, or on a phone, the strip scrolls as it always did. It is measured rather than
+   assumed because the labels are whatever the reader's language and the game's tabs make them. */
+let tabFitQueued = false;
+function fitTabs() {
+  tabFitQueued = false;
+  const row = document.querySelector('#view .tabrow');
+  if (!row) return;
+  row.style.removeProperty('--tabfs');
+  if (window.innerWidth <= 820) return;
+  const fits = px => { row.style.setProperty('--tabfs', px + 'px'); return row.scrollWidth <= row.clientWidth; };
+  if (fits(12)) return;
+  /* the largest size between 9 and 12 at which everything shows (the gaps and the strip's
+     padding do not scale with the type, so this is searched for rather than worked out) */
+  let lo = 9, hi = 12;
+  for (let i = 0; i < 7; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid; else hi = mid;
+  }
+  row.style.setProperty('--tabfs', lo.toFixed(2) + 'px');
+}
+const queueTabFit = () => { if (!tabFitQueued) { tabFitQueued = true; setTimeout(fitTabs, 30); } };
+window.addEventListener('resize', queueTabFit);
+/* the type is measured in the faces the page finally uses, not the ones it starts with */
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueTabFit);
+/* a tab that arrives later (video), a label the language changes, a redrawn shell: refit. Only
+   changes on the strip itself count, so a ticking clock elsewhere costs nothing. */
+new MutationObserver(recs => {
+  for (const r of recs) {
+    const t = r.target.nodeType === 1 ? r.target : r.target.parentElement;
+    if (t && t.closest && t.closest('.tabrow')) { queueTabFit(); return; }
+    for (const n of r.addedNodes) if (n.nodeType === 1 && (n.classList.contains('tabrow') || n.querySelector('.tabrow'))) { queueTabFit(); return; }
+  }
+}).observe(document.body, { childList: true, characterData: true, subtree: true });
+
 /* THE MATCH REPORT IS A TAB, and on a finished game it is the FIRST one.
    A box score answers "what were the numbers"; the report answers "what
    happened", which is the question most people arrive with. It is only offered
@@ -865,7 +903,7 @@ function renderShell() {
         ? '<button class="tabbtn" id="csSheet" style="margin-left:auto">scoresheet · pdf</button>'
         : '') + '</div>' +
     '<div id="csHead"></div>' +
-    '<div class="tabrow" style="flex-wrap:wrap">' + tabsFor(S.status).map(t =>
+    '<div class="tabrow" style="flex-wrap:wrap" data-i18n-ctx="gtab">' + tabsFor(S.status).map(t =>
       '<button class="tabbtn' + (fTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' +
       B.esc(t[1]) + '</button>').join('') + '</div>' +
     '<div id="csBody"></div>';

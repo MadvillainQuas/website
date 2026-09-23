@@ -422,6 +422,20 @@
         "missed": "失敗",
         "eFG,": "EFG、",
         "turnovers.": "ターンオーバー率。"
+      },
+      gtab: {
+        'match report': 'レポート',
+        'half-time report': 'ハーフタイムレポート',
+        'box score': 'ボックススコア',
+        'play-by-play': 'テキスト速報',
+        'shot charts': 'ショットチャート',
+        'full stats': '詳細スタッツ',
+        'lineups': 'ラインナップ',
+        'game flow': 'スコアチャート',
+        'connections': 'コンビネーション',
+        'events': '状況別',
+        'shot clock analysis': 'ショットクロック分析',
+        'video': '動画'
       }
     },
 
