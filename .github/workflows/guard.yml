@@ -586,6 +586,14 @@ jobs:
         # the tab's wiring and the rail's "Table / Team Stats" label
         run: node supabase/tests/sos.test.mjs
 
+      - name: A stats table can be one competition, and one conference, at a time
+        # epinoia/scopebar.js: the season's played competitions and a conference league's
+        # conferences (or a league's groups) as buttons on Leaders, Team Stats, Strength of
+        # Schedule and the Statistics page; a view of forty clubs or more opens on its first
+        # conference. Run on leagues shaped like U SPORTS, ProB and BCB, then the buttons
+        # through a stand-in DOM, then the wiring on both pages
+        run: node supabase/tests/scopebar.test.mjs
+
       - name: The events tab's situations are the box score's
         # second-chance, off-turnover and fast-break points by the engine's own windows,
         # on a hand-worked log and three real LiveStats games

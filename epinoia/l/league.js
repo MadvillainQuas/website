@@ -209,7 +209,7 @@ function renderSeasonPicker() {
     onPick: async sn => {
       /* statScope names a competition of the season being left, and a filter
          pointing into last season would have asked for nobody's statistics. */
-      season = sn; comp = null; SEASON = null; statScope = 'all';
+      season = sn; comp = null; SEASON = null; statScope = 'all'; statConf = null;
       $('#seasonName').textContent = season.name;
       $('#ctx').textContent = league.name + ' · ' + season.name;
       /* the URL carries the season so a past table is linkable */
@@ -645,43 +645,69 @@ async function loadSeason() {
   return SEASON;
 }
 
+/* AND WHICH CONFERENCE. A college league is forty-eight clubs in four conferences, and one table
+   of all of them is a table nobody reads, so a league of conferences (or of groups, ProB's Nord
+   and Süd) gets a button for each (scopebar.js), beside the buttons for the season's
+   competitions. The conference is a lens on the rows, not a different read: the season is read
+   once for the scope, and the conference only decides which clubs -- and which clubs' players --
+   are shown. Kept across a change of competition while the new one still has it. */
+let statConf = null;                   // null: not chosen yet, so scopebar.js settles it
+let SCOPE = null;                      // { season, model }: who is in which competition and group
+
+function scopeModel() {
+  const key = season && season.id;
+  if (!SCOPE || SCOPE.season !== key) {
+    const X = window.EpinoiaScopeBar;
+    SCOPE = { season: key, model: X ? X.load(window.EpinoiaData, comps).catch(() => null) : Promise.resolve(null) };
+  }
+  return SCOPE.model;
+}
+
 /* One control, drawn into each stats pane. Two panes rather than one shared
    bar because they are separate tabs and a filter that lives above the tabs
    would look like it governs the Table and the fixtures too, which it does
-   not — those are per-competition by their nature. */
-function scopePicker(onChange) {
-  const wrap = el('div', 'scopebar');
-  wrap.appendChild(el('span', 'scopelab', 'covering'));
-  const sel = document.createElement('select');
-  sel.className = 'ep-input scopesel';
-  const add = (v, label) => { const o = document.createElement('option');
-    o.value = v; o.textContent = label; sel.appendChild(o); };
-  add('all', 'the whole season · ' + comps.length + ' competitions');
-  comps.forEach(c => add(c.id, c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
-  sel.value = statScope;
-  sel.addEventListener('change', () => {
-    statScope = sel.value;
-    SEASON = null;                     // the scope changed, so the numbers did
-    onChange();
+   not — those are per-competition by their nature.
+   Draws the buttons into `host` and resolves to the pane's test of whether a club is shown. */
+async function scopePicker(host, onChange) {
+  const X = window.EpinoiaScopeBar;
+  const M = await scopeModel();
+  if (!X || !M) return () => true;
+  statConf = X.settle(M, scopeIds(), statConf);
+  X.mount({
+    host, model: M, scope: statScope, conf: statConf,
+    scopeIds: s => (s === 'all' ? comps.map(c => c.id).filter(Boolean) : [s]),
+    onScope: s => {
+      statScope = s;
+      SEASON = null;                   // the scope changed, so the numbers did
+      onChange();
+    },
+    onConf: g => { statConf = g; onChange(); }
   });
-  wrap.appendChild(sel);
-  return wrap;
+  return X.keeper(M, scopeIds(), statConf);
 }
+
+/* the club a player's numbers are filed under: where he played (the games), else his roster */
+const clubOf = (S, p) => (S.teamOfPlayer && S.teamOfPlayer.get(p.id)) || p.teamId || null;
 
 async function renderLeaders() {
   const pane = $('#pane-leaders'); pane.textContent = '';
-  pane.appendChild(scopePicker(renderLeaders));
+  const bar = el('div', 'scopehost'); pane.appendChild(bar);
   /* EpinoiaTable.render empties whatever host it is given, so the filter needs
      a host of its own — passing the pane wiped the control that had just been
      put there, which is why it appeared to do nothing. */
   const board = el('div', 'boardhost'); pane.appendChild(board);
-  let S;
-  try { S = await loadSeason(); }
+  let S, keep;
+  try { [S, keep] = await Promise.all([loadSeason(), scopePicker(bar, renderLeaders)]); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
 
   if (!S.players.length) {
     pane.appendChild(el('div', 'empty',
       'No player statistics yet — these fill in as games are finalised in the scorer.'));
+    return;
+  }
+  const rows = S.players.filter(p => keep(clubOf(S, p)));
+  if (!rows.length) {
+    pane.appendChild(el('div', 'empty', 'No player statistics for this conference yet.'));
     return;
   }
   window.EpinoiaTable.render({
@@ -691,7 +717,7 @@ async function renderLeaders() {
     leagueId: league.id, leagueSlug: league.slug,
     /* the same pick-and-compare the season statistics page offers (fulltable.js tray) */
     selectable: { max: 5 },
-    rows: S.players,
+    rows,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
     /* the same on-request RAPM as the season statistics page: every stint in the scope */
     rapm: window.EpinoiaRAPM
@@ -703,15 +729,20 @@ async function renderLeaders() {
 /* ----------------------------------------------------------- team stats --- */
 async function renderTeamStats() {
   const pane = $('#pane-teams'); pane.textContent = '';
-  pane.appendChild(scopePicker(renderTeamStats));
+  const bar = el('div', 'scopehost'); pane.appendChild(bar);
   const board = el('div', 'boardhost'); pane.appendChild(board);
-  let S;
-  try { S = await loadSeason(); }
+  let S, keep;
+  try { [S, keep] = await Promise.all([loadSeason(), scopePicker(bar, renderTeamStats)]); }
   catch (e) { pane.appendChild(el('div', 'empty', 'Could not load: ' + e.message)); return; }
 
   if (!S.teams.length) {
     pane.appendChild(el('div', 'empty',
       'No team statistics yet — these fill in as games are finalised in the scorer.'));
+    return;
+  }
+  const rows = S.teams.filter(t => keep(t.id));
+  if (!rows.length) {
+    pane.appendChild(el('div', 'empty', 'No team statistics for this conference yet.'));
     return;
   }
   /* the shot zones ride on the same rows: the logs are read once (cached) and the table is
@@ -729,7 +760,7 @@ async function renderTeamStats() {
     host: board, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',
     leagueId: league.id, leagueSlug: league.slug,
-    rows: S.teams,
+    rows,
     teamHref: r => r.slug ? '../t/?t=' + encodeURIComponent(r.slug) : null
   });
 }
@@ -746,22 +777,24 @@ async function renderSOS() {
   if (!pane) return;
   const seq = ++sosSeq;
   pane.textContent = '';
-  pane.appendChild(scopePicker(renderSOS));
+  const bar = el('div', 'scopehost'); pane.appendChild(bar);
   const board = el('div', 'boardhost'); pane.appendChild(board);
   const X = window.EpinoiaSOS;
   if (!X) { board.appendChild(el('div', 'empty', 'The strength of schedule could not be loaded.')); return; }
   board.appendChild(el('div', 'empty', 'working out the schedule…'));
-  let S, meetings = null;
+  let S, meetings = null, keep = () => true;
   try {
-    const [season, fixtures] = await Promise.all([
+    const [season, fixtures, k] = await Promise.all([
       loadSeason(),
       /* how often each pair of clubs meets, from the whole fixture list (played and to come).
          Without it the projected record assumes four meetings, which is index_9's SLB. */
       window.EpinoiaData.all(`games?competition_id=in.(${scopeIds().join(',')})` +
-        `&select=home_team_id,away_team_id`).catch(() => [])
+        `&select=home_team_id,away_team_id`).catch(() => []),
+      scopePicker(bar, renderSOS)
     ]);
     S = season;
     meetings = X.meetingsFrom(fixtures);
+    keep = k;
   } catch (e) {
     if (seq !== sosSeq) return;
     board.textContent = '';
@@ -773,6 +806,9 @@ async function renderSOS() {
   const byId = new Map((S.teams || []).map(t => [t.id, t]));
   X.render({
     host: board, games: X.gameLines(S), meetings,
+    /* the conference's clubs are shown; every game in scope still counts, because the games
+       a conference plays outside itself are what make its schedule comparable */
+    only: keep,
     team: id => {
       const t = byId.get(id) || {};
       return { name: t.name || 'Team', short: t.teamShort, colour: t.colour, logo: t.logo,

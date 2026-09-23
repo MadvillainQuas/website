@@ -191,6 +191,27 @@ console.log('\nthe colouring');
      /root\.EpinoiaTable && root\.EpinoiaTable\.heatStyle/.test(rd('epinoia', 'sos.js')));
 }
 
+/* ---- one conference at a time, and no other site's name ---------------------- */
+console.log('\none conference, and nobody else’s name');
+{
+  const R = SOS.compute(games, { meetings: 4 });
+  const two = new Set(['Riders', 'Lions']);
+  const shown = SOS.visible(R.rows, k => two.has(k));
+  ok('a conference view shows its own clubs and nobody else',
+     shown.length === 2 && shown.every(r => two.has(r.key)));
+  ok('...with the numbers worked out over every game in scope, not re-worked for the conference',
+     shown.every(r => r === R.rows.find(x => x.key === r.key)));
+  ok('no filter shows every club', SOS.visible(R.rows, null) === R.rows);
+  const src = rd('epinoia', 'sos.js');
+  const named = ['KenPom', 'Basketball-Reference', 'Basketball Reference', 'FiveThirtyEight', 'Squared Statistics',
+                 'Bill James', 'Synergy', 'Cleaning the Glass', 'Barttorvik', 'BBRef']
+    .filter(n => src.toLowerCase().includes(n.toLowerCase()));
+  ok('the tab names no other site, on the page or in its code', named.length === 0, named.join(', '));
+  ok('...and has no methodology-and-sources section', !/methodology/i.test(src) && !/sos-method/.test(rd('epinoia', 'kit', 'sos.css')));
+  ok('the cells are coloured among the clubs shown', /pools\[k\] = shown\.map\(/.test(src) &&
+     /coloured by percentile rank among the teams shown/.test(src));
+}
+
 /* ---- the page ----------------------------------------------------------------- */
 console.log('\nthe Table page and the navigation');
 const html = rd('epinoia', 'l', 'index.html');
@@ -206,7 +227,7 @@ ok('...and its styles are on the page', /href="\.\.\/kit\/sos\.css\?v=\d+"/.test
 ok('the tab is drawn when it is first opened, not on every visit to the table',
    /if \(name === 'sos' && !sosShown\)/.test(league) && /sosShown \? renderSOS\(\) : null/.test(league));
 ok('...from the same season read as the team statistics, under the same scope control',
-   /async function renderSOS\(\)[\s\S]*?scopePicker\(renderSOS\)[\s\S]*?loadSeason\(\)/.test(league));
+   /async function renderSOS\(\)[\s\S]*?loadSeason\(\)[\s\S]*?scopePicker\(bar, renderSOS\)/.test(league));
 ok('...with the meetings per pair read from the fixture list',
    /meetingsFrom\(/.test(league) && /select=home_team_id,away_team_id/.test(league));
 /* the label as the browser gets it: the string literal from nav.js, evaluated */

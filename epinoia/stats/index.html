@@ -15,12 +15,12 @@
 <title>Season stats · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=338"></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=338">
-<link rel="stylesheet" href="../kit/table.css?v=338">
-<link rel="stylesheet" href="../kit/compare.css?v=338">
-<link rel="stylesheet" href="../kit/nav.css?v=338">
-<link rel="stylesheet" href="../kit/access.css?v=338">
+<script src="../appmode.js?v=339"></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=339">
+<link rel="stylesheet" href="../kit/table.css?v=339">
+<link rel="stylesheet" href="../kit/compare.css?v=339">
+<link rel="stylesheet" href="../kit/nav.css?v=339">
+<link rel="stylesheet" href="../kit/access.css?v=339">
 <style>
   .empty{padding:calc(var(--u)*5) calc(var(--u)*3);text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:11px}
   a.plain{color:inherit;text-decoration:none} a.plain:hover{color:var(--lume)}
@@ -46,6 +46,10 @@
   #seasonRow{gap:12px}
   #seasonPick{display:flex;gap:7px;flex-wrap:wrap}
   #seasonPick .ep-chip{text-decoration:none}
+  /* WHAT THE TABLE COVERS (scopebar.js): the season's competitions, and a league's conferences,
+     as buttons above the table; nothing at all when there is nothing to choose */
+  #tbl > .scopehost{padding:calc(var(--u)*2) calc(var(--u)*3) 0;border-bottom:1px solid var(--rule)}
+  #tbl > .scopehost:empty{display:none}
   #ctx{min-width:0}
 
   /* ON A PHONE (820px and below, where the tab bar is). THE HEADER WRAPS. Its two links
@@ -58,9 +62,9 @@
     .ep-frame > .ep-hdr h2{flex:1 1 calc(100% - 40px);min-width:0;font-size:22px;line-height:1.05;overflow-wrap:anywhere}
     .ep-frame > .ep-hdr .subpage{margin-left:0;padding:0 14px 0 0;min-height:40px;
       display:inline-flex;align-items:center;font-size:10px}
-    /* the covering select gets the page's side gutter; it sat flush against the frame */
-    #tbl > .scopebar{padding:10px 12px;flex-wrap:nowrap;border-bottom:1px solid var(--rule)}
-    #tbl > .scopebar .scopelab{font-size:10px;flex:none}
+    /* the covering and conference buttons get the page's side gutter; they sat flush against the frame */
+    #tbl > .scopehost{padding:10px 12px 0}
+    #tbl > .scopehost .scopelab{font-size:10px;flex:none}
     /* A SAFETY NET, NOT THE FIX: whatever grows too wide later is clipped at the frame
        rather than widening the page. clip, not hidden -- it makes no scroll container,
        so the table's sticky header still sticks to the page. */
@@ -100,17 +104,18 @@
   <div id="tbl"></div>
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=338" defer></script>
-<script src="../access.js?v=338" defer></script>
-<script src="../bpm.js?v=338" defer></script>
-<script src="../season.js?v=338" defer></script>
-<script src="../data.js?v=338" defer></script>
-<script src="../seasonbar.js?v=338" defer></script>
-<script src="../fulltable.js?v=338" defer></script>
-<script src="../compare.js?v=338" defer></script>
-<script src="../rapm.js?v=338" defer></script>
-<script src="stats.js?v=338" defer></script>
-<script src="../nav.js?v=338" defer></script>
-<script src="../xscroll.js?v=338" defer></script>
+<script src="../config.js?v=339" defer></script>
+<script src="../access.js?v=339" defer></script>
+<script src="../bpm.js?v=339" defer></script>
+<script src="../season.js?v=339" defer></script>
+<script src="../data.js?v=339" defer></script>
+<script src="../seasonbar.js?v=339" defer></script>
+<script src="../fulltable.js?v=339" defer></script>
+<script src="../compare.js?v=339" defer></script>
+<script src="../rapm.js?v=339" defer></script>
+<script src="../scopebar.js?v=339" defer></script>
+<script src="stats.js?v=339" defer></script>
+<script src="../nav.js?v=339" defer></script>
+<script src="../xscroll.js?v=339" defer></script>
 </body>
 </html>

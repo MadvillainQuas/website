@@ -79,9 +79,16 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
        single phase and disagreed with itself depending on which phase that was.
        A season is the league, its cup and its playoffs together. */
     let scope = 'all';
-    const scopeIds = () => scope === 'all'
+    const scopeIds = (s = scope) => s === 'all'
       ? (comps || []).map(c => c.id).filter(Boolean)
-      : [scope];
+      : [s];
+    /* AND WHICH CONFERENCE (scopebar.js): the covering choice is buttons, and a league of
+       conferences (or of groups) gets a button for each, so the table can be one conference's
+       players rather than a whole college league's. Who is in which competition and group is
+       read once per season; the conference only decides which clubs' players are shown. */
+    const X = window.EpinoiaScopeBar;
+    let conf = null, facts = null;
+    const factsFor = () => facts || (facts = X ? X.load(D, comps).catch(() => null) : Promise.resolve(null));
 
     /* THE SEASON, in the chips the rest of the platform uses (seasonbar.js).
        Above the table rather than in the "covering" select beside the phases:
@@ -93,11 +100,10 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
         season = sn;
         comps = sn.comps;
         /* the phase filter named a competition of the season being left */
-        scope = 'all';
+        scope = 'all'; conf = null; facts = null;
         SB.syncUrl(sn);
         $('#ctx').textContent = league.name + ' · ' + sn.name;
         if (tl) tl.href = teamsHref();
-        fillScopes();
         draw();
       }
     });
@@ -106,20 +112,38 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
        gets a host of its own — appending both to #tbl wiped the control. */
     const host = $('#tbl');
     host.textContent = '';
-    const bar = el('div', 'scopebar');
+    const bar = el('div', 'scopehost');
     const board = el('div', 'boardhost');
     host.append(bar, board);
 
+    let drawing = 0;
     async function draw() {
+      const my = ++drawing;
       board.textContent = '';
-      const S = await D.season(scopeIds());
+      const [S, M] = await Promise.all([D.season(scopeIds()), factsFor()]);
+      /* a newer choice is already drawing */
+      if (my !== drawing) return;
+      let keep = () => true;
+      if (X && M) {
+        conf = X.settle(M, scopeIds(), conf);
+        X.mount({ host: bar, model: M, scope, conf, scopeIds,
+                  onScope: s => { scope = s; draw(); }, onConf: g => { conf = g; draw(); } });
+        keep = X.keeper(M, scopeIds(), conf);
+      }
       if (!S.players.length) {
         board.appendChild(el('div', 'ft-empty',
           'No statistics for that selection yet — these fill in as games are finalised.'));
         return;
       }
-      const meta = await D.playerMeta(S.players.map(p => p.id));
-      S.players.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
+      /* a player's numbers are filed under the club he played for (the games) */
+      const rows = S.players.filter(p => keep((S.teamOfPlayer && S.teamOfPlayer.get(p.id)) || p.teamId));
+      if (!rows.length) {
+        board.appendChild(el('div', 'ft-empty', 'No statistics for this conference yet.'));
+        return;
+      }
+      const meta = await D.playerMeta(rows.map(p => p.id));
+      if (my !== drawing) return;
+      rows.forEach(p => Object.assign(p, meta[p.id] || { name: 'Player' }));
       window.EpinoiaTable.render({
         host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
         /* fifty rows and a "show more": the whole league is a search away, and building
@@ -132,7 +156,7 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
            this table's percentiles are one league's, which is exactly what the table's own
            comparison ranks over, so it opens the shared chart itself. */
         selectable: { max: 5 },
-        rows: S.players,
+        rows,
         playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
         /* RAPM on request: it needs every stint of the scope, which means reading the
            logs of every game in it, so it is not paid for by somebody who only wanted
@@ -142,24 +166,6 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
           : null
       });
     }
-
-    bar.appendChild(el('span', 'scopelab', 'covering'));
-    const sel = document.createElement('select');
-    sel.className = 'ep-input scopesel';
-    const add = (v, label) => { const o = document.createElement('option');
-      o.value = v; o.textContent = label; sel.appendChild(o); };
-    /* refilled on a change of season: these are that season's phases, and last
-       season's would ask the table for a competition it no longer has */
-    function fillScopes() {
-      sel.textContent = '';
-      add('all', 'the whole season · ' + (comps || []).length + ' competitions');
-      (comps || []).forEach(c => add(c.id,
-        c.name + (c.kind && c.kind !== 'league' ? ' · ' + c.kind : '')));
-      sel.value = scope;
-    }
-    fillScopes();
-    sel.addEventListener('change', () => { scope = sel.value; draw(); });
-    bar.appendChild(sel);
 
     await draw();
   } catch (e) { fail('Could not load: ' + e.message); }

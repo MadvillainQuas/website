@@ -26,30 +26,30 @@
 
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=338"></script>
+<script src="../appmode.js?v=339"></script>
 <!-- The scorer's own stylesheet, generated from it. The renderers below emit
      the scorer's class names, so this is what makes the public box score look
      like the statistician's screen rather than merely contain the same numbers. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=338">
-<link rel="stylesheet" href="../kit/tokens.css?v=338">
-<link rel="stylesheet" href="../boxscore.css?v=338">
-<link rel="stylesheet" href="report.css?v=338">
-<link rel="stylesheet" href="modern.css?v=338">
-<link rel="stylesheet" href="flow.css?v=338">
-<link rel="stylesheet" href="connections.css?v=338">
-<link rel="stylesheet" href="events.css?v=338">
-<link rel="stylesheet" href="../kit/shotclock.css?v=338">
-<link rel="stylesheet" href="../kit/rotation.css?v=338">
-<link rel="stylesheet" href="preview.css?v=338">
+<link rel="stylesheet" href="../kit/fonts.css?v=339">
+<link rel="stylesheet" href="../kit/tokens.css?v=339">
+<link rel="stylesheet" href="../boxscore.css?v=339">
+<link rel="stylesheet" href="report.css?v=339">
+<link rel="stylesheet" href="modern.css?v=339">
+<link rel="stylesheet" href="flow.css?v=339">
+<link rel="stylesheet" href="connections.css?v=339">
+<link rel="stylesheet" href="events.css?v=339">
+<link rel="stylesheet" href="../kit/shotclock.css?v=339">
+<link rel="stylesheet" href="../kit/rotation.css?v=339">
+<link rel="stylesheet" href="preview.css?v=339">
 <!-- the injury report rows, styled once for the wire and the preview alike -->
-<link rel="stylesheet" href="../kit/wire.css?v=338">
-<link rel="stylesheet" href="../video.css?v=338">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=338">
-<link rel="stylesheet" href="../kit/access.css?v=338">
-<link rel="stylesheet" href="../kit/nav.css?v=338">
+<link rel="stylesheet" href="../kit/wire.css?v=339">
+<link rel="stylesheet" href="../video.css?v=339">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=339">
+<link rel="stylesheet" href="../kit/access.css?v=339">
+<link rel="stylesheet" href="../kit/nav.css?v=339">
 <!-- the site's zoom, the league's colours and the percentile shading, which every other page
      gets from the kit; last, so it wins where the scorer's own stylesheet hard-codes its mint -->
-<link rel="stylesheet" href="theme.css?v=338">
+<link rel="stylesheet" href="theme.css?v=339">
 <style>
   /* The way in for whoever is scoring tonight. Hidden by default and revealed
      only once the database has said this account may score THIS game, so a
@@ -204,60 +204,60 @@
   </div>
 </div>
 
-<script src="../config.js?v=338" defer></script>
+<script src="../config.js?v=339" defer></script>
 <!-- memberships (docs/memberships.md): which tabs are the members', and the
      paywall card for a members-only league. Straight after config.js so its
      state and auth headers exist before game.js reads anything. -->
-<script src="../access.js?v=338" defer></script>
-<script src="../teamcolour.js?v=338" defer></script>
-<script src="../follow.js?v=338" defer></script>
-<script src="../vendor/supabase.js?v=338" defer></script>
-<script src="../engine.js?v=338" defer></script>
-<script src="../boxscore.js?v=338" defer></script>
+<script src="../access.js?v=339" defer></script>
+<script src="../teamcolour.js?v=339" defer></script>
+<script src="../follow.js?v=339" defer></script>
+<script src="../vendor/supabase.js?v=339" defer></script>
+<script src="../engine.js?v=339" defer></script>
+<script src="../boxscore.js?v=339" defer></script>
 <!-- how each number compares with real games: a preset built by tools/build-gamepct.mjs, read
      by the full stats, the modern box score's popover and the events tab -->
-<script src="../gamepct-data.js?v=338" defer></script>
-<script src="../gamepct.js?v=338" defer></script>
-<script src="../live.js?v=338" defer></script>
-<script src="../seo.js?v=338" defer></script>
+<script src="../gamepct-data.js?v=339" defer></script>
+<script src="../gamepct.js?v=339" defer></script>
+<script src="../live.js?v=339" defer></script>
+<script src="../seo.js?v=339" defer></script>
 <!-- the preview a SCHEDULED fixture shows instead of an empty box score.
      data.js/season.js are what the statistics pages aggregate with, so the
      preview cannot disagree with them about what a rebound is. -->
-<script src="../season.js?v=338" defer></script>
-<script src="../bpm.js?v=338" defer></script>
-<script src="../data.js?v=338" defer></script>
+<script src="../season.js?v=339" defer></script>
+<script src="../bpm.js?v=339" defer></script>
+<script src="../data.js?v=339" defer></script>
 <!-- the match report: facts, then prose, then the page. Split on purpose —
      story.js decides what is TRUE and is testable, report.js decides how it
      READS, and a language model would slot in at that seam. -->
-<script src="story.js?v=338" defer></script>
-<script src="report.js?v=338" defer></script>
-<script src="reportview.js?v=338" defer></script>
-<script src="gamefacts.js?v=338" defer></script>
+<script src="story.js?v=339" defer></script>
+<script src="report.js?v=339" defer></script>
+<script src="reportview.js?v=339" defer></script>
+<script src="gamefacts.js?v=339" defer></script>
 <!-- who is missing, worked out from the box scores this page already reads -->
-<script src="../injuries.js?v=338" defer></script>
-<script src="preview.js?v=338" defer></script>
-<script src="../video.js?v=338" defer></script>
+<script src="../injuries.js?v=339" defer></script>
+<script src="preview.js?v=339" defer></script>
+<script src="../video.js?v=339" defer></script>
 <!-- finding the tip-off in the footage itself: stream start, file clock, or the
      scoreboard in the picture (OCR, vendored — the CSP allows no CDN script) -->
-<script src="../videoanchor.js?v=338" defer></script>
-<script src="video.js?v=338" defer></script>
-<script src="modern.js?v=338" defer></script>
+<script src="../videoanchor.js?v=339" defer></script>
+<script src="video.js?v=339" defer></script>
+<script src="modern.js?v=339" defer></script>
 <!-- GAMEVIS's Game Flow and Connections tabs -->
-<script src="flow.js?v=338" defer></script>
-<script src="connections.js?v=338" defer></script>
+<script src="flow.js?v=339" defer></script>
+<script src="connections.js?v=339" defer></script>
 <!-- the events tab: what second chances, breaks, turnovers and timeouts turned into -->
-<script src="../possessions.js?v=338" defer></script>
-<script src="../situations.js?v=338" defer></script>
-<script src="events.js?v=338" defer></script>
+<script src="../possessions.js?v=339" defer></script>
+<script src="../situations.js?v=339" defer></script>
+<script src="events.js?v=339" defer></script>
 <!-- the shot clock tab and the full stats' average time of possession (shotclock.js), its
      slider and results (shotclock-view.js), and the zone court it draws the shots on -->
-<script src="../shotchart.js?v=338" defer></script>
-<script src="../shotclock.js?v=338" defer></script>
-<script src="../shotclock-view.js?v=338" defer></script>
+<script src="../shotchart.js?v=339" defer></script>
+<script src="../shotclock.js?v=339" defer></script>
+<script src="../shotclock-view.js?v=339" defer></script>
 <!-- the rotation chart on the game flow tab -->
-<script src="../rotation.js?v=338" defer></script>
-<script src="game.js?v=338" defer></script>
-<script src="../nav.js?v=338" defer></script>
-<script src="../xscroll.js?v=338" defer></script>
+<script src="../rotation.js?v=339" defer></script>
+<script src="game.js?v=339" defer></script>
+<script src="../nav.js?v=339" defer></script>
+<script src="../xscroll.js?v=339" defer></script>
 </body>
 </html>

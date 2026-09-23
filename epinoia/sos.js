@@ -4,7 +4,7 @@
    league's Table page.
 
    compute() below is index_9.html's SOS tab (search "STRENGTH OF SCHEDULE
-   ANALYSIS V2.1") step for step: the same KenPom-style adjusted ratings, the
+   ANALYSIS V2.1") step for step: the same schedule-adjusted ratings, the
    same four factors (raw, schedule-adjusted, z-scored, points added), the same
    ELO, Pythagorean, Log5 and expected-wins methods and the same filters.
    supabase/tests/sos.test.mjs runs index_9's own code beside it on one league
@@ -19,6 +19,11 @@
      * the projected record: each pair of clubs meets as often as the league's
        own fixture list says, where index_9 assumed four meetings (the SLB's
        schedule, and nobody else's). Four stays the fallback.
+   And one thing about the output: render() can show one conference's clubs
+   (`only`, scopebar.js) while every game in scope is still counted.
+
+   NO OTHER SITE IS NAMED, on the page or in this file (Louie, 2026-09-23):
+   the tab is EPINOIA's own, and sos.test.mjs keeps it that way.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -28,13 +33,13 @@
 
 const ITERATIONS = 10;
 const REGRESSION_FACTOR = 0.8;           // regress toward the mean to avoid overfitting
-/* Squared Statistics (2017) regression: eFG% 46.3%, TOV% 35.1%, OREB% 11.9%, FT rate 6.8% */
+/* how much each factor decides a game: eFG% 46.3%, TOV% 35.1%, OREB% 11.9%, FT rate 6.8% */
 const EMPIRICAL_WEIGHTS = { efg: 0.463, tovPct: 0.351, orebPct: 0.119, ftRate: 0.068 };
 /* points per 100 possessions for each 1% of a factor */
 const POINTS_PER_PCT = { efg: 2.0, tovPct: 1.4, orebPct: 0.7, ftRate: 0.4 };
 const K_FACTOR = 20;
 const INITIAL_ELO = 1500;
-const PYTH_EXP = 14;                     // Basketball-Reference
+const PYTH_EXP = 14;                     // the Pythagorean exponent
 const DEFAULT_MEETINGS = 4;
 
 /* ------------------------------------------------------------- the engine ---
@@ -189,7 +194,7 @@ function compute(games, opts) {
     adjDRtgAll = newAdjD;
   }
 
-  // STEP 5: KenPom-style iterative adjustment over the filtered games (additive, per the 2014 update)
+  // STEP 5: the iterative, additive schedule adjustment over the filtered games
   let adjORtg = new Map();
   let adjDRtg = new Map();
   teamRawRatings.forEach((r, name) => { adjORtg.set(name, r.ortg); adjDRtg.set(name, r.drtg); });
@@ -278,7 +283,7 @@ function compute(games, opts) {
   const ffMean = {}, ffStd = {};
   Object.keys(ffArrays).forEach(k => { ffMean[k] = calcMean(ffArrays[k]); ffStd[k] = calcStd(ffArrays[k]); });
 
-  // STEP 8: ELO with a margin-of-victory multiplier (FiveThirtyEight style), game by game in order
+  // STEP 8: ELO with a margin-of-victory multiplier, game by game in order
   const teamElo = new Map();
   teamStats.forEach((_, name) => teamElo.set(name, INITIAL_ELO));
   const sortedGames = [...processedGames].sort((a, b) => {
@@ -527,6 +532,11 @@ function meetingsFrom(fixtures) {
 const STATE = { filter: 'all', dateStart: '', dateEnd: '', lastN: 10, gameStart: 1, gameEnd: 20,
                 sortKey: 'adjNet', sortDir: 'desc' };
 
+/* the rows a view shows: every club, or the clubs `only` keeps (one conference, scopebar.js) */
+function visible(rows, only) {
+  return typeof only === 'function' ? rows.filter(r => only(r.key)) : rows;
+}
+
 /* binary search: the share of the league strictly below the value (index_9's getSosPercentile) */
 function percentile(value, sortedValues, higherBetter) {
   if (!sortedValues || sortedValues.length === 0 || value == null) return 50;
@@ -566,7 +576,7 @@ const T_XW = [
   { k: 'pythExpWins', l: 'PYTH XW', t: 'Pythagorean xW', h: 'Pythagorean expected wins from points scored and allowed.', sep: 1 },
   { k: 'eloExpWins', l: 'ELO VS AVG', t: 'ELO vs average', h: 'Expected wins against a league-average opponent, from the ELO rating.' },
   { k: 'eloExpWinsSchedule', l: 'ELO SCH', t: 'ELO schedule xW', h: 'Expected wins from the ELO win probability against each opponent actually faced.' },
-  { k: 'log5ExpWins', l: 'LOG5', t: 'Log5 xW', h: "Bill James's Log5: expected wins from the two teams' win percentages." },
+  { k: 'log5ExpWins', l: 'LOG5', t: 'Log5 xW', h: "Log5: expected wins from the two teams' win percentages." },
   { k: 'netRtgExpWins', l: 'NET RTG', t: 'Net rating xW', h: 'Expected wins from the adjusted net rating differential against each opponent.' },
   { k: 'pythLuck', l: 'PYTH LUCK', t: 'Pyth luck', h: 'Actual wins minus Pythagorean expected wins.', fmt: sg, sep: 1 },
   { k: 'luck', l: 'ELO LUCK', t: 'ELO luck', h: 'Actual wins minus ELO schedule-adjusted expected wins.', fmt: sg },
@@ -710,9 +720,16 @@ function render(o) {
       el('span', null, ' (' + R.games + ' of ' + R.totalGames + ' games)'));
     out.appendChild(act);
     if (!R.rows.length) { out.appendChild(el('div', 'empty', 'No games in this range.')); return; }
+    /* one conference's clubs, when that is what the page is showing: the numbers are the whole
+       scope's, and the colours rank the clubs on screen, as every other table does */
+    const shown = visible(R.rows, o.only);
+    if (!shown.length) {
+      out.appendChild(el('div', 'empty', 'No club of this conference has a finalised game in this range.'));
+      return;
+    }
 
     const tiles = el('div', 'sos-tiles');
-    [[R.rows.length, 'teams'], [R.games, 'games'], [R.leagueAvg.efg.toFixed(1) + '%', 'lg eFG%'],
+    [[shown.length, 'teams'], [R.games, 'games'], [R.leagueAvg.efg.toFixed(1) + '%', 'lg eFG%'],
      [R.leagueAvg.ortg.toFixed(1), 'lg ORtg']].forEach(([v, l]) => {
       const t = el('div', 'sos-tile');
       t.append(el('div', 'v', String(v)), el('div', 'l', l));
@@ -721,8 +738,8 @@ function render(o) {
     out.appendChild(tiles);
 
     const pools = {};
-    const pool = k => pools[k] || (pools[k] = R.rows.map(r => r[k]).filter(v => v != null && !isNaN(v)).sort((a, b) => a - b));
-    const sorted = R.rows.slice().sort((a, b) => {
+    const pool = k => pools[k] || (pools[k] = shown.map(r => r[k]).filter(v => v != null && !isNaN(v)).sort((a, b) => a - b));
+    const sorted = shown.slice().sort((a, b) => {
       let vA = a[STATE.sortKey], vB = b[STATE.sortKey];
       if (vA == null) vA = -Infinity;
       if (vB == null) vB = -Infinity;
@@ -755,7 +772,7 @@ function render(o) {
       if (v == null || isNaN(v)) { td.textContent = '–'; return td; }
       const p = percentile(v, pool(c.kind === 'wl' ? 'winPct' : c.k), !c.low);
       td.style.cssText = heat(p);
-      td.title = 'percentile ' + Math.round(p) + ' of ' + R.rows.length;
+      td.title = 'percentile ' + Math.round(p) + ' of ' + shown.length;
       td.textContent = c.kind === 'wl' ? r.wins + '-' + r.losses : (c.fmt || f1)(v);
       return td;
     }
@@ -816,7 +833,7 @@ function render(o) {
         R.seasonLength + ' games' + (o.meetings ? ', as this league’s fixture list has them meet' : '; the fixture list could not be read, so four is assumed') +
         '). ELO uses ELO win probabilities; Pyth uses the adjusted net rating differential.',
       'SOS Net and SOS ELO always use every game in scope (' + R.totalGames + ' games), whatever the range filter.',
-      'Tap any column heading to sort. Cells are coloured by percentile rank across all teams.'
+      'Tap any column heading to sort. Cells are coloured by percentile rank among the teams shown.'
     ]);
 
     head('Expected wins — multiple methods');
@@ -826,31 +843,13 @@ function render(o) {
     out.appendChild(table(T_PA));
 
     head('Adjusted four factors — schedule-adjusted');
-    note(['The same KenPom-style iterative adjustment as Adj ORtg and Adj DRtg (' + ITERATIONS +
+    note(['The same iterative schedule adjustment as Adj ORtg and Adj DRtg (' + ITERATIONS +
       ' iterations, regression factor ' + REGRESSION_FACTOR + '), applied to each factor on its own: ' +
       'offensive factors are adjusted by the defences faced, defensive factors by the offences.']);
     out.appendChild(table(T_ADJFF, [{ l: 'offence (adjusted)', span: 4, cls: 'off' }, { l: 'defence (adjusted)', span: 4, cls: 'def' }]));
 
     head('Four factors — weighted z-scores');
     out.appendChild(table(T_Z, [{ l: 'offence (z × weight)', span: 5, cls: 'off' }, { l: 'defence (z × weight)', span: 5, cls: 'def' }]));
-
-    head('Methodology & sources');
-    const m = el('div', 'sos-method');
-    [
-      [['Adjusted ratings (KenPom-style)', 'Iterative, ridge-regression-style additive adjustment per KenPom’s 2014 method: AdjO = RawO + (LgAvg − AvgOppD) × ' + REGRESSION_FACTOR + '.'],
-       ['Four factors weights', 'Empirical weights from regression (Squared Statistics 2017): eFG% 46.3%, TOV% 35.1%, OREB% 11.9%, FT rate 6.8%.']],
-      [['Pythagorean expectation', 'Win% = PF¹⁴ / (PF¹⁴ + PA¹⁴), per Basketball-Reference (RMSE 3.14 wins).'],
-       ['ELO rating', 'FiveThirtyEight-style with a margin-of-victory multiplier: Δ = K × ln(MOV+1) × (2.2 / (eloDiff×0.001 + 2.2)) × (actual − expected), K = ' + K_FACTOR + '.']],
-      [['Expected wins methods', 'Pyth xW: PF¹⁴ / (PF¹⁴ + PA¹⁴) × games. ELO vs avg: 1 / (1 + 10^((1500 − ELO)/400)) × games. ELO schedule: Σ P(win) against each opponent from the two ELOs. Log5: (pA − pA·pB) / (pA + pB − 2·pA·pB). Net rating: 1 / (1 + 10^(−NetDiff/10)).'],
-       ['Luck', 'Actual wins minus schedule-adjusted ELO expected wins.']],
-      [['Projected W-L', 'The win probability against every other team, times the meetings per pair, summed over a full round-robin.'],
-       ['Points added', 'Each factor against the league average, times its points per 100 possessions: eFG% 2.0, TOV% 1.4, OREB% 0.7, FTR 0.4.']]
-    ].forEach(col => {
-      const c = el('div');
-      col.forEach(([t, body]) => { c.append(el('b', null, t), el('p', null, body)); });
-      m.appendChild(c);
-    });
-    out.appendChild(m);
 
     out.querySelectorAll('.ep-tw').forEach((w, i) => { if (keep[i]) w.scrollLeft = keep[i]; });
   }
@@ -859,6 +858,6 @@ function render(o) {
   draw();
 }
 
-return { compute, gameLines, meetingsFrom, render, percentile, STATE,
+return { compute, gameLines, meetingsFrom, render, percentile, visible, STATE,
          ITERATIONS, REGRESSION_FACTOR, POINTS_PER_PCT, EMPIRICAL_WEIGHTS };
 }));
