@@ -42,5 +42,23 @@ res = M.matchPlayer({ name: { first: 'Malcolm', last: 'Delpeche' }, team: BRISTO
   [Object.assign({}, marcus, { number: '21' })]);
 ok('initial-only backed by an actual matching shirt number is trusted', res.status === 'match', res);
 
+/* A NATIVE-SCRIPT ALIAS IS NOT A CRASH (2026-09-23): the mirror of matching_test.py's case.
+   normalize() folds "中村 浩陸" to nothing, and toks[0].length threw on the empty list. */
+const koriku = { id: 'koriku', first_name: 'Koriku', last_name: 'Nakamura', team: 'Shimane Susanoo Magic', aliases: ['中村 浩陸'] };
+try {
+  res = M.matchPlayer({ name: { first: 'Kenji', last: 'Matsumoto' }, team: 'Shimane Susanoo Magic', number: '1' }, [koriku]);
+  ok('a candidate whose alias is kanji only is scored, not crashed on', !!res && typeof res.status === 'string', res);
+  ok('...and a stranger is not matched to him', res.status !== 'match', res);
+} catch (e) {
+  ok('a candidate whose alias is kanji only is scored, not crashed on', false, String(e));
+  ok('...and a stranger is not matched to him', false, 'never reached');
+}
+try {
+  res = M.matchPlayer({ name: { first: 'Koriku', last: 'Nakamura' }, team: 'Shimane Susanoo Magic', number: '4' }, [koriku]);
+  ok('...while his own Latin name still finds him through the same candidate', res.status === 'match', res);
+} catch (e) {
+  ok('...while his own Latin name still finds him through the same candidate', false, String(e));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

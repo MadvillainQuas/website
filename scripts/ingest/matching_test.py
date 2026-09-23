@@ -60,5 +60,30 @@ res = match_player({"name": {"first": "Malcolm", "last": "Delpeche"}, "team": BR
 ok("initial-only backed by an actual matching shirt number is trusted",
    res["status"] == "match", res)
 
+# --- A NATIVE-SCRIPT ALIAS IS NOT A CRASH (2026-09-23). A B.LEAGUE player keeps his kanji name as
+# an alias; normalize() folds it to nothing, and parse_name indexed the empty token list. The
+# matcher runs inside write_platform, so one such alias on a club's roster stopped Nagasaki v
+# Shimane from being written past its first poll. ---
+from matching import parse_name  # noqa: E402
+
+koriku = {"id": "koriku", "first_name": "Koriku", "last_name": "Nakamura", "team": "Shimane Susanoo Magic",
+          "aliases": ["中村 浩陸"]}
+try:
+    res = match_player({"name": {"first": "Kenji", "last": "Matsumoto"}, "team": "Shimane Susanoo Magic",
+                        "number": "1"}, [koriku])
+    ok("a candidate whose alias is kanji only is scored, not crashed on", res["status"] in ("none", "weak", "ambiguous", "match"), res)
+    ok("...and a stranger is not matched to him", res["status"] != "match", res)
+except IndexError as exc:
+    ok("a candidate whose alias is kanji only is scored, not crashed on", False, repr(exc))
+    ok("...and a stranger is not matched to him", False, "never reached")
+try:
+    res = match_player({"name": {"first": "Koriku", "last": "Nakamura"}, "team": "Shimane Susanoo Magic",
+                        "number": "4"}, [koriku])
+    ok("...while his own Latin name still finds him through the same candidate", res["status"] == "match", res)
+except IndexError as exc:
+    ok("...while his own Latin name still finds him through the same candidate", False, repr(exc))
+n = parse_name("中村 浩陸")
+ok("parse_name reads a name with nothing to normalise as no name", (n.first, n.last, n.full) == ("", "", ""), (n.first, n.last))
+
 print(f"\n{pass_n} passed, {fail_n} failed")
 raise SystemExit(1 if fail_n else 0)

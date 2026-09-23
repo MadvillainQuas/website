@@ -112,6 +112,10 @@ function parseName(input) {
     return finish(normalize(capsFirst[2]), normalize(capsFirst[1]));
   }
   const toks = normalize(raw).split(' ').filter(Boolean);
+  // a name normalize() folds away entirely ("中村 浩陸", a native-script alias) is no name at
+  // all, as an empty one is -- toks[0].length below threw on it (matching.py raised the same
+  // IndexError inside the ingest's write, 2026-09-23)
+  if (!toks.length) return finish('', '');
   if (toks.length === 1) return finish('', toks[0]);
   // "m king danchie": an initial then the surname
   if (toks[0].length === 1) return finish(toks[0], toks.slice(1).join(' '));

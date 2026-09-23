@@ -98,6 +98,14 @@ def parse_name(x) -> Name:
     if m and m.group(1) == m.group(1).upper() and m.group(2) != m.group(2).upper():
         return Name(normalize(m.group(2)), normalize(m.group(1)))
     toks = normalize(raw).split()
+    if not toks:
+        # A name written only in a script normalize() folds away ("中村 浩陸", the native spelling a
+        # B.LEAGUE player keeps as an alias so it stays searchable) leaves nothing to score. Read
+        # it as no name, exactly like an empty one. toks[0] below raised IndexError on it, and
+        # because the matcher runs inside write_platform, one such alias on a club's roster
+        # stopped a live game from being written past its first poll (Nagasaki v Shimane,
+        # 2026-09-23: "platform write failed: list index out of range" on every pass).
+        return Name("", "")
     if len(toks) == 1:
         return Name("", toks[0])
     if len(toks[0]) == 1:
