@@ -82,6 +82,14 @@ const player = (p: any) => p ? {
 // league here too. Read once per request, the same rule as the SQL function.
 const membersOnly = (l: any, ctx: Ctx) => ctx.membershipsOn && l?.access_mode === 'members';
 
+// A private league (0139/0147, `visibility = 'private'`) is a different gate
+// from members-only: it does not depend on the memberships switch, and there
+// is no per-caller `league_invited()` here because an API key is not a user —
+// only a key ISSUED FOR that league (leagueScope === the league's own id) may
+// read it at all. Everyone else gets treated exactly like an unknown league:
+// a 404, never a 403, so the reply never confirms the league exists.
+const privateLeague = (l: any) => l?.visibility === 'private';
+
 // Set by a route that served a members-only league's data; serve() then marks
 // the response private so no CDN or shared cache holds it.
 type Ctx = { private: boolean; membershipsOn: boolean };
@@ -103,6 +111,10 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
     if (leagueScope && data.id !== leagueScope) {
       return { err: fail(403, 'your key is not valid for that league') };
     }
+    if (privateLeague(data)) {
+      if (!leagueScope) return { err: fail(404, 'no such league', 'try /v1/leagues') };
+      ctx.private = true;
+    }
     if (membersOnly(data, ctx)) {
       if (!leagueScope) {
         return { err: fail(403, 'that league is for members only',
@@ -119,10 +131,12 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
     if (leagueScope) q = q.eq('id', leagueScope);
     const { data, error } = await q;
     if (error) return fail(500, error.message);
-    // a platform-wide key is not told about members-only leagues' data, and
-    // the list is the door to it; a league's own key sees its own league
-    const rows = (data || []).filter((l: any) => leagueScope || !membersOnly(l, ctx));
-    if (rows.some((l: any) => membersOnly(l, ctx))) ctx.private = true;
+    // a platform-wide key is not told about members-only OR private leagues'
+    // data, and the list is the door to it; a league's own key sees its own
+    // league regardless (it was issued for it)
+    const rows = (data || []).filter((l: any) =>
+      leagueScope || (!membersOnly(l, ctx) && !privateLeague(l)));
+    if (rows.some((l: any) => membersOnly(l, ctx) || privateLeague(l))) ctx.private = true;
     return json({ leagues: rows.map((l: any) =>
       ({ slug: l.slug, name: l.name, colour_a: l.colour_a, colour_b: l.colour_b })) });
   }
@@ -331,6 +345,12 @@ async function route(parts: string[], url: URL, leagueScope: string | null, ctx:
       }
       if (lid) {
         const { data: lg } = await admin.from('leagues').select('*').eq('id', lid).maybeSingle();
+        // leagueScope is either null or already === lid here — a mismatch was
+        // refused above — so "no scope" is the only case left to reject.
+        if (privateLeague(lg)) {
+          if (!leagueScope) return fail(404, 'no such game');
+          ctx.private = true;
+        }
         if (membersOnly(lg, ctx)) {
           if (!leagueScope) {
             return fail(403, 'that game is in a league for members only',

@@ -119,6 +119,20 @@ Deno.serve(async (req) => {
     return json({ error: 'this league has no finalised game to render yet' }, 404);
   }
 
+  // A caller-supplied gameId must belong to THIS feed's league. Without this,
+  // the admin of any league with a data feed could hand any game id (another
+  // league's, including a private or members-only one) to preview/test and
+  // read the whole rendered payload back — mayAdminister above only checked
+  // that they administer feed.league_id, never that the game does too.
+  if (body.gameId) {
+    const { data: chain } = await admin.from('games')
+      .select('competition_id,competitions(seasons(league_id))').eq('id', gameId).maybeSingle();
+    const gameLeague = (chain as any)?.competitions?.seasons?.league_id;
+    if (!chain || gameLeague !== feed.league_id) {
+      return json({ error: 'that game is not in this feed\'s league' }, 404);
+    }
+  }
+
   let built: { body: string; contentType: string };
   try {
     const want: Record<string, boolean> = {};

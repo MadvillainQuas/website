@@ -105,3 +105,46 @@ Three things fixed on the way past, each in `0140`:
   last real one go. It counts people now.
 * `grant_role` took the caller's word for a platform admin's scope. A platform admin scoped to
   a league is not a thing; it is forced to platform scope whatever is sent.
+
+## Edge functions read with the service role, which bypasses RLS
+
+Every function above enforces privacy inside the database, through policies that run AS the
+querying role. The service role is not the querying role in an Edge Function — it is Postgres's
+own bypass-everything role, used because the functions below need to read across leagues (a fan
+notification, a partner feed) in ways RLS would never allow a browser to. That means each one has
+to repeat, in code, the check RLS is doing for everyone else. Audited 2026-09-23:
+
+* **`api`** (`supabase/functions/api/index.ts`) — `membersOnly` only asked about `access_mode`,
+  so a platform-wide key (`api_keys.league_id` null) could list a private league, read its
+  overview/standings/games/players by slug, and read a private-league game's box score by id.
+  Fixed: a private league now behaves like an unknown one to any key not scoped to it —
+  `/v1/leagues` omits it, `/v1/leagues/{slug}/...` and `/v1/games/{id}` answer 404 (never 403,
+  so the response does not confirm the league exists). A key scoped to the league (`leagueScope
+  === league.id`) still reads it, same as it already could for a members-only league.
+* **`feeds`** (`supabase/functions/feeds/index.ts`) — the `preview` and `test` actions rendered
+  `body.gameId` through `loadGame` without checking it belonged to `feed.league_id`, so the
+  admin of any league with a data feed could preview (and send) another league's game, private
+  or members-only. Fixed: a caller-supplied `gameId` is now rejected with 404 unless its
+  competition's season's league matches the feed's own league.
+* **`requeue_feed_delivery`** (migration `0037`, re-created in `0146`) — the same gap one layer
+  down: it checked that the caller administers the feed's league and never checked that
+  `p_game` belonged to it, so it could queue an arbitrary game (any league, private or not) for
+  delivery to a feed the caller merely administers. Fixed in `0146_feed_game_league_scope.sql`.
+* **`finalise-game`** queues every finalised game into `publish_queue` (a static page plus an OG
+  image) unconditionally. Its consumer — whatever job commits those pages — is not in this
+  repository, so it could not be audited or fixed here. **Before that job is pointed at a
+  server that publishes to the open web, it needs its own check that the game's league is not
+  `visibility = 'private'`,** or a private league's results end up statically published outside
+  Epinoia entirely, which no RLS policy or Edge Function guard can then undo.
+* **`contact`** answered a plain 404 for an unknown `team_id` but, for a real one, always
+  disclosed the club's name and whether its form was open — including a private league's club,
+  which the service-role lookup sees exactly like any other. Fixed: a team belonging to a
+  private league now gets the identical 404 a missing team does, so the response never confirms
+  the league or the club exists.
+
+**Not fixed, by design — recorded rather than closed (see "What it does not do" above):**
+`ics` and `broadcast` read with the anon key, so 0139/0147's RLS already hides a private
+league's rows from them exactly as it does from a signed-out browser. The consequence is that it
+hides them from an INVITED user too: a private league's calendar subscriptions and broadcast
+overlays do not work for anyone, member or not, until those two are rewritten to check
+`league_invited()` for the requesting user rather than reading anonymously.

@@ -195,8 +195,16 @@ Deno.serve(async (req) => {
   let clubTo: string | null = null;
   let clubName: string | null = null;
   if (teamId) {
-    const { data: t } = await admin.from('teams').select('id,name').eq('id', teamId).maybeSingle();
-    if (!t) return json({ error: 'That club is not on file.' }, 404);
+    // this reads with the service role, which sees a private league's (0139)
+    // clubs same as any other — RLS is not what hides them from this form, so
+    // the visibility check has to happen here. Answer the SAME 404 as a
+    // missing club: telling the two apart would confirm the private league,
+    // and its club, exist.
+    const { data: t } = await admin.from('teams')
+      .select('id,name,leagues(visibility)').eq('id', teamId).maybeSingle();
+    if (!t || (t as any).leagues?.visibility === 'private') {
+      return json({ error: 'That club is not on file.' }, 404);
+    }
     clubName = t.name;
     const { data: c } = await admin.from('team_contacts')
       .select('email,accepts_form').eq('team_id', teamId).maybeSingle();

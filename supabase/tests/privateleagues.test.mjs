@@ -552,5 +552,41 @@ ok('...and the deck is re-measured when the rows arrive',
 ok('...but not if the reader has slid back out while it was in flight',
    /if \(nav\.dataset\.view === 'follows'\) sizeDeck\(false\);/.test(nav));
 
+/* ---- 24. edge functions read with the service role, and must gate themselves - */
+console.log('\n24. edge functions enforce privacy themselves (they bypass RLS)');
+/* 0139/0147's policies run AS THE QUERYING ROLE. An Edge Function's admin
+   client is the service role, which RLS lets through everything — so every
+   function that reads with it has to repeat the check in code. Audited
+   2026-09-23; see docs/private-leagues.md's "Edge functions read with the
+   service role" section for the reasoning behind each one. */
+{
+  const apiFn = read('supabase', 'functions', 'api', 'index.ts');
+  const feedsFn = read('supabase', 'functions', 'feeds', 'index.ts');
+  const contactFn = read('supabase', 'functions', 'contact', 'index.ts');
+  const m146 = read('supabase', 'migrations', '0146_feed_game_league_scope.sql');
+
+  ok('api: a private league is its own gate, not folded into membersOnly',
+     /const privateLeague = \(l: any\) => l\?\.visibility === 'private';/.test(apiFn));
+  ok('api: an unscoped key gets 404 on a private league by slug, never 403',
+     /if \(privateLeague\(data\)\) \{\s*\n\s*if \(!leagueScope\) return \{ err: fail\(404,/.test(apiFn),
+     'a 403 would itself confirm the league exists');
+  ok('api: the leagues list drops private leagues for an unscoped key',
+     /leagueScope \|\| \(!membersOnly\(l, ctx\) && !privateLeague\(l\)\)/.test(apiFn));
+  ok('api: a box score in a private league 404s for an unscoped key',
+     /if \(privateLeague\(lg\)\) \{\s*\n\s*if \(!leagueScope\) return fail\(404, 'no such game'\);/.test(apiFn));
+
+  ok('feeds: a caller-supplied gameId is checked against the feed’s own league',
+     /if \(body\.gameId\) \{[\s\S]{0,400}gameLeague !== feed\.league_id/.test(feedsFn),
+     'without this, any league’s admin could preview or send another league’s game');
+
+  ok('0146: requeue_feed_delivery now looks up the game’s own league',
+     /v_game_league\s+from games g\s*\n\s*join competitions c on c\.id = g\.competition_id\s*\n\s*join seasons s\s+on s\.id = c\.season_id/.test(m146));
+  ok('0146: and refuses a mismatch rather than trusting the caller’s pairing',
+     /if v_game_league is distinct from v_league then/.test(m146));
+
+  ok('contact: a private league’s club answers the same 404 as a missing one',
+     /leagues\?\.visibility === 'private'\) \{\s*\n\s*return json\(\{ error: 'That club is not on file\.' \}, 404\);/.test(contactFn));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
