@@ -214,9 +214,19 @@ class Platform:
                 # It is deliberately conservative — a leftover word that MARKS a different side (II,
                 # B, Women, Academy) is never treated as a sponsor — and it only ever looks inside
                 # one league.
+                # TWO CODES ARE TWO CLUBS. A club that already carries a real feed code different
+                # from this fixture's is a different club, whatever the names share: the 2BBL's
+                # "Basketball Löwen" (563, ProB Süd) read as "Hertener Löwen" (Nord) wearing a
+                # sponsor, took its row and its code, and welded 28 fixtures onto it (2026-09-23).
+                # A sponsor rename keeps its code and is matched on it above; only a club with no
+                # code yet, or the same code, can be the same club by name.
+                def other_code(row):
+                    have = str((row.get("external_ids") or {}).get("fiba_livestats") or "").strip()
+                    return bool(real_code and have and have != real_code)
                 hits = [row for row in rows
-                        if names.same_club(raw, row.get("name") or "")
-                        or any(names.same_club(raw, a) for a in (row.get("aliases") or []))]
+                        if not other_code(row)
+                        and (names.same_club(raw, row.get("name") or "")
+                             or any(names.same_club(raw, a) for a in (row.get("aliases") or [])))]
                 if len(hits) == 1:
                     r = adopt(hits[0], "sponsor")
                 elif len(hits) > 1:
