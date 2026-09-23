@@ -329,6 +329,23 @@ const labelOf = b => walkText(b.main);
   eq('"Stop" removes that club', stop.body.p_remove, { teams: [LIONS.id] });
 }
 {
+  /* A DATABASE WITHOUT 0145 has no notify_device_follow taking p_tz: PostgREST answers 404
+     (PGRST202) for the whole call. The button retries once without it rather than failing
+     every follow until the migration lands (live 2026-09-23 from 257ae292). */
+  const base = answers({ site: true });
+  const B = buttonBrowser({ respond: (url, body) => (/rpc\/notify_device_follow$/.test(url) && body && 'p_tz' in body)
+    ? { status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.notify_device_follow(...) in the schema cache' } }
+    : base(url, body) });
+  const b = NB.mount(plant(B.doc, { league: 'slb-men', team: 'london-lions', sw: '/epinoia-sw.js' }));
+  await b.ready;
+  b.main.click();
+  await tick(5); await tick(5); await tick(5);
+  const follows = B.calls.fetch.filter(f => /notify_device_follow$/.test(f.url));
+  ok('a database without 0145 refuses p_tz, and the follow is sent again without it',
+     follows.length === 2 && 'p_tz' in follows[0].body && !('p_tz' in follows[1].body), JSON.stringify(follows.map(f => Object.keys(f.body))));
+  eq('...so the button still ends up Following', labelOf(b), 'Following');
+}
+{
   const B = buttonBrowser({ respond: answers({ site: false }) });
   const b = NB.mount(plant(B.doc, { league: 'slb-men', team: 'london-lions', sw: '/epinoia-sw.js' }));
   await b.ready;

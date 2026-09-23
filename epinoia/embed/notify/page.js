@@ -68,6 +68,18 @@ async function rest(path) {
   if (!r.ok) throw new Error('read ' + r.status);
   return r.json();
 }
+/* p_tz (0145) is refused by a database without 0145: PostgREST finds no notify_device_follow
+   taking it and answers 404 (PGRST202) for the whole call, so every follow failed from 257ae292
+   until the migration lands. One retry without it; once 0145 is applied the first call works. */
+async function followRpc(body) {
+  try { return await rpc('notify_device_follow', body); }
+  catch (e) {
+    if (!(e && e.status === 404 && body && 'p_tz' in body)) throw e;
+    const rest = Object.assign({}, body); delete rest.p_tz;
+    return rpc('notify_device_follow', rest);
+  }
+}
+
 async function rpc(name, body) {
   const f = g('fetch');
   const r = await f.call(root, cfg().supabaseUrl + '/rest/v1/rpc/' + name, {
@@ -238,7 +250,7 @@ function boot() {
     const k = subKeys(st.sub);
     st.busy = true; paint();
     try {
-      st.state = await rpc('notify_device_follow', { p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
+      st.state = await followRpc({ p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
                                                      p_add: add, p_remove: remove, p_prefs: prefs, p_tz: myTimeZone() });
       report();
       say(st.state && st.state.device ? 'Saved.' : 'Notifications are off. You can close this window.', 'ok');
@@ -258,7 +270,7 @@ function boot() {
       if (perm !== 'granted') { say('Notifications were not allowed. Try again and choose Allow when the browser asks.', 'bad'); return; }
       st.sub = await subscribe();
       const k = subKeys(st.sub);
-      st.state = await rpc('notify_device_follow', { p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
+      st.state = await followRpc({ p_league: p.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
                                                      p_add: add, p_remove: {}, p_prefs: {}, p_tz: myTimeZone() });
       report();
       say('Notifications are on.' + (g('opener') ? ' You can close this window.' : ''), 'ok');

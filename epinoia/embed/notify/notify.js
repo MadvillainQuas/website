@@ -104,6 +104,18 @@ async function rest(path) {
   if (!r.ok) throw new Error('read ' + r.status);
   return r.json();
 }
+/* p_tz (0145) is refused by a database without 0145: PostgREST finds no notify_device_follow
+   taking it and answers 404 (PGRST202) for the whole call, so every follow failed from 257ae292
+   until the migration lands. One retry without it; once 0145 is applied the first call works. */
+async function followRpc(body) {
+  try { return await rpc('notify_device_follow', body); }
+  catch (e) {
+    if (!(e && e.status === 404 && body && 'p_tz' in body)) throw e;
+    const rest = Object.assign({}, body); delete rest.p_tz;
+    return rpc('notify_device_follow', rest);
+  }
+}
+
 async function rpc(name, body) {
   const f = g('fetch');
   const r = await f.call(root, SUPABASE_URL + '/rest/v1/rpc/' + name, {
@@ -331,8 +343,8 @@ function mount(el) {
     const sub = st.sub || await siteSubscription();
     if (!sub) throw new Error('no subscription');
     const k = subKeys(sub);
-    return rpc('notify_device_follow', { p_league: o.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
-                                         p_add: add || {}, p_remove: remove || {}, p_prefs: {}, p_tz: myTimeZone() });
+    return followRpc({ p_league: o.league, p_endpoint: k.endpoint, p_p256dh: k.p256dh, p_auth: k.auth,
+                       p_add: add || {}, p_remove: remove || {}, p_prefs: {}, p_tz: myTimeZone() });
   }
 
   /* site mode: permission here, in the tap; then the site's worker, the subscription, the follow */
