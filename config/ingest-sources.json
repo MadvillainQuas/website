@@ -760,6 +760,75 @@
         "https://easycredit-bbl.de/saison/aktuelle-spiele"
       ],
       "league_country": "DE"
+    },
+    {
+      "code": "USPORTS",
+      "label": "U SPORTS",
+      "adapter": "usports",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "u-sports",
+      "league_name": "U SPORTS",
+      "league_country": "CA",
+      "groups_file": "config/groups/usports.json",
+      "adapter_config": {
+        "code": "USPORTS",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://en.usports.ca/sports/mbkb/schedule"
+      ]
+    },
+    {
+      "code": "USPORTS",
+      "label": "U SPORTS",
+      "adapter": "usports",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "u-sports",
+      "league_name": "U SPORTS",
+      "league_country": "CA",
+      "groups_file": "config/groups/usports.json",
+      "adapter_config": {
+        "code": "USPORTS",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://en.usports.ca/sports/mbkb/schedule#playoffs"
+      ]
+    },
+    {
+      "code": "USPORTS",
+      "label": "U SPORTS",
+      "adapter": "usports",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "u-sports",
+      "league_name": "U SPORTS",
+      "league_country": "CA",
+      "groups_file": "config/groups/usports.json",
+      "adapter_config": {
+        "code": "USPORTS",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://en.usports.ca/sports/mbkb/schedule#final8"
+      ]
     }
   ]
 }

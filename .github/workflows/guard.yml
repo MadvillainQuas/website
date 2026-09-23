@@ -370,6 +370,13 @@ jobs:
         # both team rows, the score and 5v5 stints reconcile with the league's own figures
         run: python scripts/ingest/twobbl_test.py
 
+      - name: U SPORTS from its own PrestoSports pages
+        # usports.py over cached schedule pages, iCal feeds and game pages: exhibitions are never
+        # discovered, every postseason game is marked not-a-conference-game, the event id is the
+        # key from listing to final, home is team 1, and every box, team row, score and 5v5 stint
+        # reconciles with the site's own figures
+        run: python scripts/ingest/usports_test.py
+
       - name: Groups, conferences and divisions from config/groups
         # groups.py (0144): a source with a groups file enters its clubs under their group or
         # conference (and division); a source without one writes exactly what it always did; and

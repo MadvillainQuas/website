@@ -18,6 +18,7 @@ from .lnb import LnbAdapter
 from .bleague import BLeagueAdapter
 from .bbl import BBLAdapter
 from .twobbl import TwoBBLAdapter
+from .usports import USportsAdapter
 
 
 class _PipelineBridge(BaseAdapter):
@@ -80,6 +81,7 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     BLeagueAdapter.name: BLeagueAdapter,
     BBLAdapter.name: BBLAdapter,
     TwoBBLAdapter.name: TwoBBLAdapter,
+    USportsAdapter.name: USportsAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,
     EurobasketHtmlAdapter.name: EurobasketHtmlAdapter,
