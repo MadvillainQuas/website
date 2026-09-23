@@ -15,7 +15,7 @@
 <title>Epinoia Scoring</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=344" data-no-ground></script>
+<script src="../appmode.js?v=345" data-no-ground></script>
 <style>
 /* ---- Backlit kit typography -------------------------------------------
    The kit's four faces, self-hosted. This replaces a Google Fonts request:
@@ -6119,11 +6119,18 @@ function advHTML(d){
     return mirror(x.l, h, a, x.max, x.f, hWin, aWin, x.k); }).join('');
   const ffCard = '<div class="glass ffcard"><h3>offensive rating & four factors <span style="color:var(--faint);letter-spacing:.14em;font-size:10px">· pace '+f1(TA[0].pace)+' / 40</span></h3>'+
     '<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;padding:0 0 6px;"><span style="color:'+c0+'">'+esc(tname(0))+'</span><span style="color:'+c1+'">'+esc(tname(1))+'</span></div>'+ffRows+
-    (rated?'<div class="setup-note gpnote">shading and the small number: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor)</div>':'')+'</div>';
+    /* the shade, not a digit: the game page (the only page that rates) hides the small number here */
+    (rated?'<div class="setup-note gpnote">shading: each figure’s percentile against '+esc(globalThis.EpinoiaGamePct.against({league:globalThis.EpinoiaGamePct.leagueKey(S.leagueSlug)}))+' (green good, red poor; hover for the number)</div>':'')+'</div>';
   // 2. true shot attempts strip
+  /* TWO FIGURES, TWO LINES. The attempts and the true shooting shared one line with a "·"
+     between them: on a phone it broke after "tsa" and left the dot opening the next line, and
+     the percent sign sat outside the shaded figure it belongs to, half over the shade's edge
+     (reported 2026-09-23 as "confusing marks in TSA"). */
   const tsaCell = t=>{ const T=TA[t]; const win = TA[t].ts>TA[1-t].ts;
     return '<div class="tsacell'+(win?' winner':'')+'"><div class="fflabel" style="color:'+(t?c1:c0)+'">'+esc(tname(t))+'</div>'+
-      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span> · '+gpv(rate('ts',t), f1(T.ts), '', 'true shooting %')+'<span style="font-size:11px;color:var(--dim)">% ts</span></div>'+
+      '<div class="big">'+f1(T.tsa)+' <span style="font-size:11px;color:var(--dim)">tsa</span></div>'+
+      '<div style="font-size:15px;margin-top:4px;font-variant-numeric:tabular-nums">'+gpv(rate('ts',t), f1(T.ts)+'%', '', 'true shooting %')+
+        ' <span style="font-size:11px;color:var(--dim);margin-left:4px">true shooting</span></div>'+
       '<div class="fm">'+T.fga+' fga + 0.44 × '+T.fta+' fta</div></div>'; };
   const tsaCard = '<div class="glass ffcard"><h3>true shot attempts</h3><div class="tsastrip">'+tsaCell(0)+tsaCell(1)+'</div></div>';
   // 3. mirrored metric rows (+ shot zones), then situational tug-of-war
@@ -6946,15 +6953,15 @@ window.describeSaved = function (saved) {
      Loaded after the scorer's own script so the bridge can wrap addEvent,
      pauseClock and resumeClock. Order matters: config, transport, bridge,
      then the bootstrap that waits for a game to actually start. -->
-<link rel="stylesheet" href="../kit/fonts.css?v=344">
-<link rel="stylesheet" href="../video.css?v=344">
-<link rel="stylesheet" href="../kit/scorer-type.css?v=344">
-<script src="../config.js?v=344" defer></script>
-<script src="../vendor/supabase.js?v=344" defer></script>
-<script src="../live.js?v=344" defer></script>
-<script src="../video.js?v=344" defer></script>
-<script src="sync.js?v=344" defer></script>
-<script src="bootstrap.js?v=344" defer></script>
+<link rel="stylesheet" href="../kit/fonts.css?v=345">
+<link rel="stylesheet" href="../video.css?v=345">
+<link rel="stylesheet" href="../kit/scorer-type.css?v=345">
+<script src="../config.js?v=345" defer></script>
+<script src="../vendor/supabase.js?v=345" defer></script>
+<script src="../live.js?v=345" defer></script>
+<script src="../video.js?v=345" defer></script>
+<script src="sync.js?v=345" defer></script>
+<script src="bootstrap.js?v=345" defer></script>
 <!-- ── the scorer keeps itself on the phone ───────────────────────────────────
      /epinoia/sw.js is the push worker and caches nothing on purpose, which is
      right for a page whose job is showing what is happening now. But it

@@ -624,6 +624,17 @@ jobs:
         # epinoia/rotation.js follows the engine's minutes to the millisecond on real games
         run: node supabase/tests/rotation.test.mjs
 
+      - name: A substitution is one change however its two halves were logged
+        # translate/fiba_events.py paired an OUT and an IN only when they arrived back to back;
+        # split by the free throws at their clock, or completed by a late correction, both were
+        # dropped and a side played on with four or six (22 of the 160 saved SLB games)
+        run: python scripts/ingest/translate/subs_test.py
+
+      - name: Five on the floor, and the minutes LiveStats says, in every saved game
+        # all 160 saved SLB games through the translator and the engine: five a side throughout,
+        # and every player's minutes within a minute of the feed's own box where that adds up
+        run: node supabase/tests/lineups-five.test.mjs
+
       - name: The Table page's strength of schedule is index_9's, number for number
         # epinoia/sos.js is index_9.html's SOS tab: index_9's own code is lifted out of the file
         # and run beside it on one league under all four filters, and every number of every team

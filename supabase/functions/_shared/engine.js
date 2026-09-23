@@ -376,10 +376,14 @@ function deriveGame(game) {
       }
       case 'sub': {
         const t = ev.team;
+        /* SOMEBODY SENT ON WHO IS ALREADY ON keeps the stint he is in. A change logged twice, or
+           a correction restating one at a later clock, restarted his minutes at the repeat and
+           lost everything since his real entry (seven SLB games in 160, up to ten minutes). */
+        const already = ev.in !== ev.out && d.onCourt[t].includes(ev.in);
         if (lastIn[ev.out] != null && d.stats[ev.out]) {
           d.stats[ev.out].min += Math.max(0, cum - lastIn[ev.out]); delete lastIn[ev.out];
         }
-        lastIn[ev.in] = cum;
+        if (!already) lastIn[ev.in] = cum;
         close(t, cum);
         d.onCourt[t] = d.onCourt[t].filter(x => x !== ev.out);
         if (!d.onCourt[t].includes(ev.in)) d.onCourt[t].push(ev.in);
