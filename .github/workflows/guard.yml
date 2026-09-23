@@ -651,6 +651,13 @@ jobs:
         # dropped and a side played on with four or six (22 of the 160 saved SLB games)
         run: python scripts/ingest/translate/subs_test.py
 
+      - name: A fouled-out player ends the game off the floor, with five fouls
+        # finalise-game refuses a sixth foul or five on court, and a refused game stays "live" for
+        # good. A foul in the name of a player who already has five is the bench's (a technical
+        # from the bench, CIBACOPA 2817625), and anybody with five on court at the end of the log
+        # is taken off, not only whoever was on at the fifth (LNBP f822ee66)
+        run: python scripts/ingest/translate/fouls_test.py
+
       - name: Five on the floor, and the minutes LiveStats says, in every saved game
         # all 160 saved SLB games through the translator and the engine: five a side throughout,
         # and every player's minutes within a minute of the feed's own box where that adds up

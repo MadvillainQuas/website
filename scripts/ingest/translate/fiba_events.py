@@ -297,6 +297,14 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             if kind == "personal" and "shooting" in quals:
                 kind = "shooting"
             pid = None if sub in FOUL_BENCH else pid_of(ev, team)
+            if pid and pf.get(pid, 0) >= 5:
+                # A PLAYER WITH FIVE FOULS HAS LEFT THE GAME, and FIBA records any further foul in
+                # his name (a technical drawn from the bench) against the bench. Two feeds put it
+                # on him anyway: CIBACOPA 2817625 (a technical after his fifth, sat down)
+                # and an LNBP operator's sixth personal. A sixth foul is one finalise-game's gate
+                # refuses however the rest of the log reads, and the game then sits at "live"
+                # for good. So the foul stays in the log as the team's, without his name.
+                pid = None
             s = emit("foul", team, pid, period, clock, kind=kind, drawn=None)
             seq_of_action[an] = s
             if pid:
@@ -331,10 +339,20 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             report["dropped"][f"{at}/{sub}"] = report["dropped"].get(f"{at}/{sub}", 0) + 1
     flush_subs(final=True)
 
-    # finalise gate: a player with 5 fouls may not be on court at the end
-    for pid, team, period, clock in report.get("fouled_out", []):
+    # finalise gate: a player with 5 fouls may not be on court at the end. Not only the ones on
+    # court at their fifth: a substitution applied late (its missing half arrived long after, as
+    # a correction) can put a fouled-out player back on after it, as in LNBP f822ee66, where the
+    # Diablos' log lost whole changes and the gate found five fouls on court.
+    fouled = list(report.get("fouled_out", []))
+    for side in (0, 1):
+        for pid in sorted(on_court[side]):
+            if pf.get(pid, 0) >= 5 and not any(p == pid for p, *_ in fouled):
+                fouled.append((pid, side, last_period, 0))
+    for pid, team, period, clock in fouled:
         if pid in on_court[team]:
-            bench = [p["id"] for p in snap["teams"][team]["players"] if p["id"] not in on_court[team]]
+            # never another fouled-out player: sent on, he would fail the same gate
+            bench = [p["id"] for p in snap["teams"][team]["players"]
+                     if p["id"] not in on_court[team] and pf.get(p["id"], 0) < 5]
             if bench:
                 emit("sub", team, None, last_period, 0, _ans=[], **{"in": bench[0], "out": pid})
                 on_court[team].discard(pid); on_court[team].add(bench[0])
