@@ -106,7 +106,7 @@ function factorHTML(label, v, ref, up, fmt, tip) {
     '<span class="scx-fl">' + label + '</span>' +
     '<b class="scx-fv">' + fmt(v) + '</b>' +
     '<span class="scx-bar"><i style="width:' + w.toFixed(1) + '%"></i>' + (r == null ? '' : '<em style="left:' + r.toFixed(1) + '%"></em>') + '</span>' +
-    '<small>' + (ref == null ? '&nbsp;' : 'every possession ' + fmt(ref) +
+    '<small>' + (ref == null ? '&nbsp;' : 'all first chances ' + fmt(ref) +
       (good == null ? '' : ' · <span class="' + (good ? 'up' : 'down') + '">' + (dv > 0 ? '+' : '−') + fmt(Math.abs(dv)).replace('%', '') + (fmt === pct ? ' pts' : '') + '</span>')) + '</small>' +
   '</div>';
 }
@@ -144,10 +144,20 @@ function outHTML(inst) {
   const head =
     '<div class="scx-head">' +
       '<div class="scx-big"><b>' + w.n + '</b><small>possession' + (w.n === 1 ? '' : 's') + (share == null ? '' : ' · ' + Math.round(100 * share) + '% of ' + timed.length) + '</small></div>' +
-      '<div class="scx-big"><b>' + w.pts + '</b><small>points</small></div>' +
-      '<div class="scx-big"><b>' + dec2(w.ppp) + '</b><small>points per possession · every possession ' + dec2(all.ppp) + '</small></div>' +
+      '<div class="scx-big"><b>' + w.pts + '</b><small>points on the first chance</small></div>' +
+      '<div class="scx-big"><b>' + dec2(w.ppp) + '</b><small>per first chance · all first chances ' + dec2(all.ppp) + '</small></div>' +
       '<div class="scx-big"><b>' + (w.avgDur == null ? '–' : w.avgDur.toFixed(1) + ' s') + '</b><small>average length</small></div>' +
     '</div>';
+  /* HOW IT ADDS UP TO THE WHOLE GAME. Everything above is the FIRST chance of each possession,
+     so its points fall short of the box score's by whatever came after offensive rebounds --
+     Cheshire read 0.60 a chance here beside 0.75 in the full stats (2026-09-23), and neither
+     was wrong. Said once, in numbers, with the possessions counted the way the full stats count
+     them, so the two tabs visibly meet. */
+  const firstAll = S.summary(firsts);
+  const total = firstAll.pts + secondChances.pts;
+  const whole = '<p class="scx-whole">' + (inst.opts.unit === 'season' ? 'This season' : 'The whole game') + ': ' +
+    firstAll.pts + ' on first chances + ' + secondChances.pts + ' after offensive rebounds = <b>' + total + ' points</b> in ' +
+    firsts.length + ' possession' + (firsts.length === 1 ? '' : 's') + ' (' + dec2(total / firsts.length) + ' each).</p>';
   const ff = '<div class="scx-ff">' +
     factorHTML('eFG%', w.efg, all.efg, true, pct, 'Effective field goal %: (FGM + ½·3PM) / FGA · ' + w.fgm + '/' + w.fga + ' FG, ' + w.p3m + '/' + w.p3a + ' 3PT') +
     factorHTML('TOV%', w.tovPct, all.tovPct, false, pct, 'Turnovers per possession · ' + w.tov + ' in ' + w.n) +
@@ -155,11 +165,11 @@ function outHTML(inst) {
     factorHTML('FTA rate', w.ftr, all.ftr, true, pct, 'Free throw attempts per field goal attempt · ' + w.fta + ' FTA, ' + w.fga + ' FGA') +
   '</div>';
   const small = w.n && w.n < SMALL ? '<p class="scx-small">' + w.n + ' possession' + (w.n === 1 ? '' : 's') + ': read these rates as a sketch.</p>' : '';
-  const note = '<p class="scx-note">Timed from the moment the ball changed hands — the other side\'s made basket, last free throw or turnover, this side\'s defensive rebound, or the start of the period — to the shot, turnover or trip to the line that ended the possession. ' +
-    'Second chances after an offensive rebound restart the clock and are left out: ' + secondChances.n + ' ' + unit + ', ' + secondChances.pts + ' points' +
-    (secondChances.n ? ', ' + dec2(secondChances.ppp) + ' per possession' : '') + '.' +
+  const note = '<p class="scx-note">Timed from the moment the ball changed hands — the other side\'s made basket, last free throw or turnover, this side\'s defensive rebound, or the start of the period — to the shot, turnover or trip to the line that ended the first chance. ' +
+    'A second chance after an offensive rebound restarts the clock, so it is in no window: ' + secondChances.n + ' ' + unit + ', ' + secondChances.pts + ' points' +
+    (secondChances.n ? ', ' + dec2(secondChances.ppp) + ' a chance' : '') + '.' +
     (untimed ? ' ' + untimed + ' possession' + (untimed === 1 ? '' : 's') + ' could not be timed (the log has a gap) and ' + (untimed === 1 ? 'is' : 'are') + ' in no window.' : '') + '</p>';
-  return '<div class="scx-out">' + head + small + ff + shotsHTML(inst, w.shots, side.colour) + note + '</div>';
+  return '<div class="scx-out">' + head + whole + small + ff + shotsHTML(inst, w.shots, side.colour) + note + '</div>';
 }
 
 /* ------------------------------------------------------------------ public --- */
