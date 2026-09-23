@@ -967,6 +967,9 @@ function mountGovernance() {
   mountedFor = league.id;
   window.EpinoiaSocialsUI.mount({ host: '#socialsPanel', sb, league, say,
                                   cfg: window.EPINOIA_CONFIG });
+  /* the weekly fans' vote (0148): read-only tallies. Guarded like the newest
+     panels, so a script that did not load cannot take the block down with it. */
+  if (window.EpinoiaFanVoteUI) window.EpinoiaFanVoteUI.mount({ host: '#fanvotePanel', sb, league, say });
   window.EpinoiaNewsUI.mount({ host: '#newsPanel', sb, league, say,
                                cfg: window.EPINOIA_CONFIG });
   window.EpinoiaAppearance.mount({ host: '#appearancePanel', sb, league, say });

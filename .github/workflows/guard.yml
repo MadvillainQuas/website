@@ -250,6 +250,12 @@ jobs:
         # non-UUID player id being declined rather than failing a finalise
         run: node --experimental-strip-types supabase/tests/awards.test.mjs
 
+      - name: The weekly fans' vote
+        # the once-a-week rule and the podium's moves; the ballot being the Stars
+        # podium's own week (the fanvote function runs stars.js, checked on the BCB
+        # capture) and every club that won; fifteen players in 0148
+        run: node --experimental-strip-types supabase/tests/fanvote.test.mjs
+
       - name: Print files
         # these become physical objects. A sheet at the wrong DPI, a background
         # that prints as a white slab on a black shirt, or a design past the

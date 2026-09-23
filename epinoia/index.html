@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="kit/haze.css?v=348">
 <link rel="stylesheet" href="kit/nav.css?v=348">
 <link rel="stylesheet" href="kit/card.css?v=348">
+<link rel="stylesheet" href="kit/fanvote.css?v=348">
 <link rel="stylesheet" href="kit/news.css?v=348">
 <link rel="stylesheet" href="kit/splash.css?v=348">
 <link rel="stylesheet" href="kit/access.css?v=348">
@@ -653,6 +654,18 @@
     <div id="ballot"></div>
   </div>
 
+  <!-- the fans' vote (league splash only) --------------------------------
+       Last week's fans' player and club of the week, ABOVE the Stars they were
+       chosen from, and the way back into this week's vote (epinoia/fanvote.js,
+       migration 0148). The panel itself unrolls out of the hero's rule the
+       first time somebody visits in a voting week; this is where it can always
+       be opened again. Hidden while there is nothing to show. -->
+  <div class="sec hide fvw-sec" id="fvSec">
+    <div class="sec-h"><span class="idx">01</span><h2>Fans&rsquo; picks</h2>
+      <span class="note" id="fvNote"></span></div>
+    <div id="fvw"></div>
+  </div>
+
   <!-- stars (league splash only) ----------------------------------------- -->
   <div class="sec hide" id="starsSec">
     <div class="sec-h"><span class="idx">01</span><h2>Stars</h2>
@@ -795,6 +808,8 @@
 <!-- the clubs' letters for the fixture rows on a phone (home.js teamName) -->
 <script src="initials.js?v=348" defer></script>
 <script src="stars.js?v=348" defer></script>
+<!-- the weekly fans' vote: the panel under the hero and the picks above the stars -->
+<script src="fanvote.js?v=348" defer></script>
 <!-- which clubs are in which competition, for the Clubs grid -->
 <script src="comps.js?v=348" defer></script>
 <script src="seasonbar.js?v=348" defer></script>

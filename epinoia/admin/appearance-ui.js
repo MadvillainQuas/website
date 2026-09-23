@@ -48,6 +48,7 @@ const SECTIONS = [
   ['news',     'News',            'up to five headline cards'],
   ['clubs',    'Clubs',           'the club plates'],
   ['toty',     'Team of the Year', 'the selected team and the ballot'],
+  ['fanvote',  'Fans\u2019 vote',   'the weekly vote panel and the fans\u2019 picks'],
   ['stars',    'Stars',           'the weekly and monthly podiums'],
   ['games',    'Games',           'live, recent and upcoming'],
   ['season',   'This season',     'the table and leaders, and the full-table links'],
