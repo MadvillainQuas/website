@@ -1,110 +1,110 @@
 {
- "updated": "2026-09-23T00:01:55.439384+00:00",
+ "updated": "2026-09-23T02:30:36.586622+00:00",
  "competitions": [
   {
    "code": "ACB",
    "label": "Liga Endesa",
    "adapter": "acb",
    "games": 306,
-   "updated": "2026-09-22T23:37:57.943655+00:00"
+   "updated": "2026-09-23T02:06:48.822953+00:00"
   },
   {
    "code": "BBL",
    "label": "easyCredit BBL",
    "adapter": "bbl",
    "games": 16,
-   "updated": "2026-09-23T00:01:55.429822+00:00"
+   "updated": "2026-09-23T02:30:36.577039+00:00"
   },
   {
    "code": "BCB",
    "label": "British Championship Basketball",
    "adapter": "fiba_livestats",
    "games": 222,
-   "updated": "2026-09-22T23:19:48.557860+00:00"
+   "updated": "2026-09-23T01:49:50.242748+00:00"
   },
   {
    "code": "BLJ",
    "label": "B.LEAGUE Premier",
    "adapter": "bleague",
    "games": 780,
-   "updated": "2026-09-22T23:49:40.343931+00:00"
+   "updated": "2026-09-23T02:18:15.626523+00:00"
   },
   {
    "code": "BLJ2",
    "label": "B.LEAGUE One",
    "adapter": "bleague",
    "games": 736,
-   "updated": "2026-09-23T00:01:01.390105+00:00"
+   "updated": "2026-09-23T02:29:49.403287+00:00"
   },
   {
    "code": "CBFFE",
    "label": "Czech NBL",
    "adapter": "fiba_site_schedule",
    "games": 138,
-   "updated": "2026-09-22T23:33:06.648391+00:00"
+   "updated": "2026-09-23T02:02:15.473741+00:00"
   },
   {
    "code": "EC",
    "label": "EuroCup",
    "adapter": "euroleague",
    "games": 224,
-   "updated": "2026-09-22T23:28:47.778297+00:00"
+   "updated": "2026-09-23T01:58:19.776576+00:00"
   },
   {
    "code": "EL",
    "label": "EuroLeague",
    "adapter": "euroleague",
    "games": 380,
-   "updated": "2026-09-22T23:25:12.843831+00:00"
+   "updated": "2026-09-23T01:55:02.310323+00:00"
   },
   {
    "code": "LNB",
    "label": "Betclic ÉLITE",
    "adapter": "lnb",
    "games": 242,
-   "updated": "2026-09-22T23:37:59.284566+00:00"
+   "updated": "2026-09-23T02:06:50.160764+00:00"
   },
   {
    "code": "LNB2",
    "label": "ÉLITE 2",
    "adapter": "lnb",
    "games": 380,
-   "updated": "2026-09-22T23:38:00.566965+00:00"
+   "updated": "2026-09-23T02:06:51.363842+00:00"
   },
   {
    "code": "LNBE",
    "label": "Espoirs ÉLITE",
    "adapter": "lnb",
    "games": 240,
-   "updated": "2026-09-22T23:38:01.910158+00:00"
+   "updated": "2026-09-23T02:06:52.583488+00:00"
   },
   {
    "code": "LNBE2",
    "label": "Espoirs ÉLITE 2",
    "adapter": "lnb",
    "games": 80,
-   "updated": "2026-09-22T23:38:03.161723+00:00"
+   "updated": "2026-09-23T02:06:53.745767+00:00"
   },
   {
    "code": "SBA",
    "label": "Slovak SBL",
    "adapter": "fiba_site_schedule",
    "games": 6,
-   "updated": "2026-09-22T23:33:35.613281+00:00"
+   "updated": "2026-09-23T02:02:41.852683+00:00"
   },
   {
    "code": "SLB",
    "label": "Super League Basketball Men",
    "adapter": "fiba_livestats",
    "games": 323,
-   "updated": "2026-09-22T23:15:21.279648+00:00"
+   "updated": "2026-09-23T01:45:50.932683+00:00"
   },
   {
    "code": "SLBW",
    "label": "Super League Basketball Women",
    "adapter": "fiba_livestats",
    "games": 106,
-   "updated": "2026-09-22T23:17:02.251729+00:00"
+   "updated": "2026-09-23T01:47:20.544206+00:00"
   }
  ]
 }
