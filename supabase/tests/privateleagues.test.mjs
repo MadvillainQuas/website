@@ -34,10 +34,15 @@
       admin for one league was offered another league's fixtures and refused
       only after pressing load.
 
+   6. THE GAME TABLES (0147, section 24). They never went through the four
+      gates: games, the five per-game tables, the season views and the
+      notification fan-outs have their own rules, each with the same
+      open-league shortcut, and a private league took it.
+
      node supabase/tests/privateleagues.test.mjs
    ============================================================================ */
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1'));
@@ -551,6 +556,112 @@ ok('...and the deck is re-measured when the rows arrive',
    'setView sizes it before the follows have been fetched');
 ok('...but not if the reader has slid back out while it was in flight',
    /if \(nav\.dataset\.view === 'follows'\) sizeDeck\(false\);/.test(nav));
+
+/* ---- 24. a private league's games are behind its privacy too (0147) ------- */
+/* 0139 moved the four gates and said the game tables were behind them. They
+   were not. games, the five per-game tables and the season views answer to
+   three OLDER rules, and the notifications to four fan-outs, each built on
+   0118's `access_mode = 'open' ... then true` shortcut, which a private league
+   takes. 0147 puts one privacy line in front of each shortcut. Checked here:
+
+   a. every definition 0147 re-states is its predecessor plus lines tagged
+      `-- 0147`, so nothing else moved in the copying;
+   b. the LATEST definition of each, in whatever migration comes after 0147,
+      still asks about privacy. A later file that copies one of these from an
+      older version would quietly undo 0147, which is exactly how 0137 undid
+      0127's audience fix (0138). */
+console.log('\n24. a private league\'s games are behind its privacy too');
+const migFiles = readdirSync(path.join(ROOT, 'supabase', 'migrations'))
+  .filter(f => f.endsWith('.sql')).sort();
+const m47file = migFiles.find(f => f.startsWith('0147_')) || '';
+const m47 = m47file ? read('supabase', 'migrations', m47file) : '';
+ok('0147 is there', !!m47file);
+
+/* One definition's text: a function up to its closing $$;, a view up to its ; */
+function definition(sql, kind, name) {
+  const head = kind === 'view' ? 'create or replace view public.' + name + ' as'
+                               : 'create or replace function public.' + name + '(';
+  const at = sql.lastIndexOf(head);
+  if (at < 0) return '';
+  const end = sql.indexOf(kind === 'view' ? ';' : '$$;', at);
+  return end < 0 ? '' : sql.slice(at, end);
+}
+/* The newest definition in the migrations, or the newest before `before`. */
+function latest(kind, name, before) {
+  for (const f of [...migFiles].reverse()) {
+    if (before && f >= before) continue;
+    const d = definition(read('supabase', 'migrations', f), kind, name);
+    if (d) return { file: f, text: d };
+  }
+  return { file: '', text: '' };
+}
+const collapse = s => s.replace(/\s+/g, ' ').trim();
+const untagged = s => s.split('\n').filter(l => !/--\s*0147\b/.test(l)).join('\n');
+const PRIV = "coalesce(l.visibility is distinct from 'private' or public.league_invited(l.id), false)";
+
+/* league_invited also answers for the service role now, or the lines below would
+   hide a private league from finalise-game's award rebuild, which then deletes
+   the league's awards. The clause is coalesced because auth.role() is NULL for
+   a caller with no JWT, and a NULL from league_invited opens 0139's shop window:
+   league_open_to_me's coalesce(..., true) and can_view_league's fall-through to
+   the open shortcut both read it as yes. */
+{
+  const now = definition(m47, 'function', 'league_invited');
+  const prev = latest('function', 'league_invited', m47file);
+  ok('league_invited is re-stated in 0147', now.length > 40);
+  ok('...and is ' + (prev.file.slice(0, 4) || '?') + '\'s function plus lines tagged -- 0147, and nothing else',
+     !!prev.text && collapse(untagged(now)) === collapse(prev.text));
+  const cur = latest('function', 'league_invited');
+  ok('the latest league_invited (' + cur.file.slice(0, 4) + ') lets the service role in',
+     /coalesce\(auth\.role\(\), ''\) = 'service_role'/.test(cur.text),
+     'a private league\'s awards are deleted by the next final whistle');
+  ok('...and cannot answer NULL for somebody signed out',
+     !/(?<!coalesce\()auth\.role\(\)\s*=/.test(cur.text),
+     'a bare auth.role() = ... is NULL without a JWT, and NULL opens the shop window');
+}
+
+const RULES = [['function', 'can_read_game'], ['function', 'can_read_game_detail'],
+               ['function', 'can_read_game_rows'],
+               ['view', 'player_season_stats'], ['view', 'team_season_stats']];
+const FANOUTS = [['function', 'notify_game_final'], ['function', 'notify_halftime'],
+                 ['function', 'notify_lineups'], ['function', 'notify_fixture_windows']];
+
+for (const [kind, name] of [...RULES, ...FANOUTS]) {
+  const now = definition(m47, kind, name);
+  const prev = latest(kind, name, m47file);
+  ok(name + ' is re-stated in 0147', now.length > 40);
+  ok('...and is ' + (prev.file.slice(0, 4) || '?') + '\'s ' + kind + ' plus lines tagged -- 0147, and nothing else',
+     !!prev.text && collapse(untagged(now)) === collapse(prev.text),
+     'something other than the tagged lines differs from ' + prev.file);
+}
+for (const [kind, name] of RULES) {
+  const now = definition(m47, kind, name);
+  ok(name + ' asks the privacy question', now.includes(PRIV));
+}
+/* In the three functions privacy sits in front of the CASE whose first branch
+   is the shortcut, so it is asked before the shortcut can answer. */
+for (const name of ['can_read_game', 'can_read_game_detail', 'can_read_game_rows']) {
+  const now = definition(m47, 'function', name);
+  ok('...' + name + ' before its open-league shortcut',
+     now.indexOf(PRIV) >= 0 && now.indexOf(PRIV) < now.indexOf("l.access_mode = 'open'"));
+}
+for (const [kind, name] of RULES) {
+  const cur = latest(kind, name);
+  ok('the latest ' + name + ' (' + cur.file.slice(0, 4) + ') still asks about privacy',
+     cur.text.includes(PRIV),
+     'a migration after 0147 re-created it without the privacy line — a private league\'s games are public again');
+}
+/* Every audience a fan-out writes to has 0118's paywall gate; each must now
+   have a privacy gate beside it. Counting the two keeps a new audience added
+   later from arriving with one and not the other. */
+for (const [kind, name] of FANOUTS) {
+  const cur = latest(kind, name);
+  const paywall = (cur.text.match(/can_view_league_for\(/g) || []).length;
+  const privacy = (cur.text.match(/league_invited_for\(/g) || []).length;
+  ok('the latest ' + name + ' (' + cur.file.slice(0, 4) + ') gates every audience on privacy as well as on the paywall',
+     paywall > 0 && privacy === paywall,
+     paywall + ' paywall gate(s), ' + privacy + ' privacy gate(s)');
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
