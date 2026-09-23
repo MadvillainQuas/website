@@ -226,7 +226,10 @@ function listPanel(opts) {
       [f1(l.mins), f1(l.poss), f1(l.ortg), f1(l.drtg)].forEach(v =>
         tr.appendChild(el('td', null, v)));
       const net = el('td', 'lead', sgn(l.net));
-      if (l.net != null) net.classList.add(l.net > 0 ? 'pos' : l.net < 0 ? 'neg' : '');
+      /* a level unit is left uncoloured, with no class at all:
+         classList.add('') throws, and one throw here empties the whole list */
+      if (l.net > 0) net.classList.add('pos');
+      else if (l.net < 0) net.classList.add('neg');
       tr.appendChild(net);
       [f1(l.efg), f1(l.tov), f1(l.oreb), f1(l.ftr),
        f1(l.defg), f1(l.dtov), f1(l.doreb)].forEach(v =>
