@@ -256,15 +256,9 @@
       return;
     }
 
-    /* ON A PHONE EACH COUNTRY IS A DROPDOWN, the same accordion as the rows in MY FOLLOWED:
-       its flag, its name and how many leagues, shut until tapped, so the section reads as a list
-       of countries rather than a screen of rails to scroll past. On anything wider the very
-       same <details> stands open and its summary is simply the heading it always was -- there
-       is room for every grid there, and a heading that folded a whole country away on a
-       desktop would be a trap rather than a tidy-up. One element either way, so turning a
-       tablet round changes the behaviour without rebuilding a card. */
-    const mq = window.matchMedia ? window.matchMedia('(max-width:720px)') : null;
-    const phone = () => !!(mq && mq.matches);
+    /* EACH COUNTRY IS A DROPDOWN, the same accordion as the rows in MY FOLLOWED: its flag,
+       its name and how many leagues, shut until tapped, on any screen width, so the section
+       reads as a list of countries rather than a wall of rails to scroll past. */
 
     /* THE FLAG AS A PICTURE where one is drawn (country.js flagSrc). Windows has no flag emoji
        and prints the two letters instead, and on a row whose whole identity is the flag that
@@ -283,17 +277,13 @@
     const wrap = el('div', 'lgc-wrap');
     const pending = [];
     C.group(ls).forEach(grp => {
-      const box = el('details', 'lgc-country');
+      const box = el('details', 'lgc-country ep-acc');
       box.setAttribute('data-country', grp.code || 'none');
-      box.open = !phone();
-      box.classList.toggle('ep-acc', phone());
 
       const head = el('summary', 'starrow-h lgc-h');
       const t = el('h3', 'starrow-t lgc-cn', grp.name);
       head.append(flagEl(grp), t,
         el('span', 'starrow-s lgc-n', grp.leagues.length + (grp.leagues.length === 1 ? ' league' : ' leagues')));
-      /* wider than a phone the heading does not fold: the click that would shut it is refused */
-      head.addEventListener('click', e => { if (!phone()) e.preventDefault(); });
       box.appendChild(head);
 
       const g = grid(grp.leagues, ctx, { counts, seasons, label: 'Leagues in ' + grp.name });
@@ -301,17 +291,6 @@
       box.appendChild(g.node);
       wrap.appendChild(box);
     });
-
-    /* a window crossing the phone width takes the other form: every country open and a plain
-       heading going wider, every country shut into a dropdown going narrower */
-    if (mq) {
-      const swap = () => wrap.querySelectorAll('details.lgc-country').forEach(d => {
-        d.classList.toggle('ep-acc', phone());
-        d.open = !phone();
-      });
-      if (typeof mq.addEventListener === 'function') mq.addEventListener('change', swap);
-      else if (typeof mq.addListener === 'function') mq.addListener(swap);
-    }
 
     host.appendChild(wrap);
     ctx.fadeIn(wrap);

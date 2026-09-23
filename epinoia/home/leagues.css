@@ -10,29 +10,20 @@
    ============================================================================ */
 
 /* ------------------------------------------------------------ the country --- */
-.lgc-country + .lgc-country{border-top:1px solid var(--rule)}
-.lgc-h{align-items:center}
 .lgc-flag{font-size:18px;line-height:1;flex:none}
 /* a drawn flag, for the countries country.js has one for */
 .lgc-flag-img{display:block;width:22px;height:auto;border-radius:2px;
   box-shadow:0 0 0 1px var(--rule)}
 
-/* EACH COUNTRY IS A <details> (leagues.js). Wider than a phone it stands open and its summary
-   is the heading it always was, so nothing about it may say "click me": no marker, no pointer. */
-.lgc-country>summary{list-style:none;cursor:default}
-.lgc-country>summary::-webkit-details-marker{display:none}
-.lgc-country>summary::marker{content:""}
-
-/* ON A PHONE leagues.js adds the kit's .ep-acc, the accordion MY FOLLOWED uses, and the row
-   takes its look from there. What is left is the league count, which takes the auto margin the
-   kit gave the chevron so the chevron sits after it rather than being pushed to the edge alone,
-   and the rule between countries, which .ep-acc already draws on each row's foot. */
-.lgc-country.ep-acc>summary{cursor:pointer;gap:10px}
-.lgc-country.ep-acc>summary::after{margin-left:10px}
-.lgc-country.ep-acc + .lgc-country.ep-acc{border-top:0}
-.lgc-country.ep-acc:first-child{border-top:1px solid var(--rule)}
-.lgc-country.ep-acc .lgc-flag-img{width:24px}
-.lgc-country.ep-acc>.lgc-grid{padding-top:calc(var(--u)*1.5)}
+/* EACH COUNTRY IS A <details class="ep-acc"> (leagues.js), the same accordion MY FOLLOWED
+   uses, shut until tapped on any screen width. The row takes its look from the kit; what is
+   left here is the league count, which takes the auto margin the kit gave the chevron so the
+   chevron sits after it rather than being pushed to the edge alone. */
+.lgc-country>summary{gap:10px}
+.lgc-country>summary::after{margin-left:10px}
+.lgc-country + .lgc-country{border-top:0}
+.lgc-country:first-child{border-top:1px solid var(--rule)}
+.lgc-country .lgc-flag-img{width:24px}
 /* the country's name is a heading for the grid under it, dressed as the star rows' label */
 .lgc-h .lgc-cn{margin:0;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lgc-h .lgc-n{margin-left:auto;flex:none}
