@@ -37,7 +37,7 @@ from typing import Iterable, Optional
 import requests
 
 from .base import ScheduleGame
-from .fiba_livestats import FibaLiveStatsAdapter, UA, ZoneInfo
+from .fiba_livestats import FIBA_DATA_URL, FibaLiveStatsAdapter, UA, ZoneInfo
 
 CZECH_BASE = "https://nbl.basketball"
 CZECH_SCHEDULE = CZECH_BASE + "/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0"
@@ -76,6 +76,31 @@ _SK_WHEN = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})\s*o\s*(\d{1,2}):(\d{2})")
 _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</span>', re.S)
 
 
+# --- nkl.lt (Lithuania's NKL, on FIBA LiveStats from 2026/27) -------------------------------
+# The schedule page carries the whole season as one inline array:
+#   const allMatches = [{"id":125745,"season":2026,"stage_id":2673,"stage_name":"Reguliarusis
+#   sezonas","stage_type_id":1,"round_no":1,"date_label":"2026-09-28","time":"18:15","arena":...,
+#   "home_team_id":3386,"home_name":"Alytaus Patriotai","home_logo":"http:\/\/nkl.lt\/...png", ...
+#   "is_result":0,"is_running":0, ...}, ...]
+# and the LiveStats id is NOT in it: the homepage's match strip links a window of games to their
+# webcast (www.fibalivestats.com/u/BNW/<id>, behind the TV icon), and on all 15 games of the first
+# strip read (2026-09-23) the LiveStats id was the site id + 2769710 - the season's webcasts were
+# created in the league's own order. So: the strip's links are cached as they appear, and the
+# offset they share is only ever TRIED, and kept once the feed itself names the fixture's clubs.
+NKL_SITE = "https://nkl.lt"
+NKL_MATCHES = NKL_SITE + "/matches/?type=schedule"
+_NKL_ALL = re.compile(r"const allMatches\s*=\s*(\[.*?\]);\s*\n", re.S)
+_NKL_STRIP = re.compile(r"<a\s+href=[\"']?https?://nkl\.lt/matches/(\d+)/[\"']?\s+class=[\"']?nkl-match-item(.*?)"
+                        r"(?=<a\s+href=[\"']?https?://nkl\.lt/matches/|\Z)", re.S)
+_NKL_WEBCAST = re.compile(r"livestats\.com/u/[A-Za-z]+/(\d+)", re.I)
+
+
+def _name_tokens(name) -> set:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode().lower()
+    return {t for t in re.split(r"[^a-z0-9]+", s) if len(t) >= 4}
+
+
 def _utc(tz_name, y, mo, d, h, mi):
     """A local kick-off as an ISO instant, or None where the zone database is unavailable.
 
@@ -99,7 +124,13 @@ def _slug_of(row: str, i: int):
 def _start_year(season: str) -> int:
     """"2026-27" -> 2026. The platform's season name is the one thing every source agrees on."""
     m = re.match(r"(\d{4})", str(season or ""))
-    return int(m.group(1)) if m else time.gmtime().tm_year
+    if m:
+        return int(m.group(1))
+    # NO SEASON CONFIGURED = THE CURRENT ONE, by the platform's own cut-over (August, as
+    # feedplatform.season_name_for): the calendar year alone asked for NEXT season every January
+    # to July - 2027 in March 2027, when the season being played started in 2026
+    now = time.gmtime()
+    return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
 
 
 class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
@@ -153,6 +184,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             if not mid:
                 return None        # the fixture exists, its webcast does not yet
             return super().fetch(mid, config)
+        if site == "nkl":
+            return self._nkl_fetch(str(external_id), config)
         return super().fetch(external_id, config)
 
     # ---------------------------------------------------------------- the sites ---
@@ -162,8 +195,128 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return self._czech(config)
         if site in ("slovakia", "slovakia_sbl", "sba"):
             return self._slovakia(config)
+        if site == "nkl":
+            return self._nkl(config)
         # not one of ours: let the Genius behaviour have it (a hosted URL still works)
         return super().discover(schedule_url, config)
+
+    # ------------------------------------------------------------------ nkl.lt ---
+    _nkl_cache: tuple = (0.0, [])        # (fetched_at, allMatches) - shared: two sources, many fetches
+
+    def _nkl_matches(self) -> list:
+        at, cached = FibaSiteScheduleAdapter._nkl_cache
+        if cached and time.time() - at < 300:
+            return cached
+        m = _NKL_ALL.search(self._page(NKL_MATCHES))
+        rows = json.loads(m.group(1)) if m else []
+        FibaSiteScheduleAdapter._nkl_cache = (time.time(), rows)
+        return rows
+
+    def _nkl(self, config: dict) -> list[ScheduleGame]:
+        """nkl.lt: the season's every game from the schedule page's own array, keyed on the site's
+        match id (a fixture's LiveStats id is not known for most of the season - see _nkl_fiba_id).
+        stage "regular" is stage_type_id 1, "playoffs" everything else."""
+        stage = (config.get("stage") or "").strip().lower()
+        year = _start_year(config.get("season") or "")
+        rows = [r for r in self._nkl_matches() if int(r.get("season") or 0) == year]
+        out = []
+        for r in rows:
+            st = "regular" if int(r.get("stage_type_id") or 0) == 1 else "playoffs"
+            if stage and st != stage:
+                continue
+            d = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(r.get("date_label") or ""))
+            t = re.match(r"(\d{1,2}):(\d{2})", str(r.get("time") or ""))
+            tbc = not t or t.group(0) in ("0:00", "00:00")
+            if d and not tbc:
+                tip = _utc("Europe/Vilnius", *d.groups(), *t.groups())
+            else:
+                tip = f"{d.group(1)}-{d.group(2)}-{d.group(3)}T12:00:00Z" if d else None
+            logo = lambda u: (str(u or "").replace("http://", "https://", 1) or None)  # noqa: E731
+            extra = {"home_code": str(r.get("home_team_id") or "") or None,
+                     "away_code": str(r.get("away_team_id") or "") or None,
+                     "home_logo": logo(r.get("home_logo")), "away_logo": logo(r.get("away_logo")),
+                     "venue": (r.get("arena") or "").strip() or None,
+                     "round": f"{r.get('stage_name') or ''} · {r.get('round_no') or ''}".strip(" ·"), "stage": st}
+            if tbc:
+                extra["time_tbc"] = True
+            out.append(ScheduleGame(
+                external_id=str(r["id"]), home_name=(r.get("home_name") or "").strip(),
+                away_name=(r.get("away_name") or "").strip(), tipoff_at=tip,
+                status="final" if r.get("is_result") else "live" if r.get("is_running") else "scheduled",
+                extra=extra))
+        print(f"     NKL {year}/{year + 1} {stage or 'all stages'}: {len(out)} games "
+              f"({sum(1 for g in out if g.status == 'final')} final)")
+        return out
+
+    def _nkl_fiba_id(self, sid: str, fixture: Optional[dict], config: dict) -> Optional[str]:
+        """The LiveStats id behind an nkl.lt match id: remembered, else read off the homepage's
+        match strip, else the offset the known pairs share - tried, and kept only when the feed
+        itself names the fixture's two clubs."""
+        known = self._idmap(config)
+        if known.get(sid):
+            return known[sid]
+        try:
+            home = self._page(NKL_SITE + "/")
+        except Exception:
+            home = ""
+        found = {}
+        for m in _NKL_STRIP.finditer(home):
+            w = _NKL_WEBCAST.search(m.group(2)[:8000])
+            if w:
+                found[m.group(1)] = w.group(1)
+        if found:
+            known.update(found)
+            self._save_idmap(config, known)
+        if known.get(sid):
+            return known[sid]
+        if not fixture:
+            return None
+        from collections import Counter
+        offsets = Counter(int(f) - int(s) for s, f in known.items() if str(s).isdigit() and str(f).isdigit())
+        if not offsets:
+            return None
+        offset, votes = offsets.most_common(1)[0]
+        if votes < 3:
+            return None
+        cand = str(int(sid) + offset)
+        raw, _ = self._get_meta(FIBA_DATA_URL.format(game_id=cand))
+        if not raw or not self._nkl_same_clubs(raw, fixture):
+            return None
+        known[sid] = cand
+        self._save_idmap(config, known)
+        return cand
+
+    @staticmethod
+    def _nkl_same_clubs(raw: dict, fixture: dict) -> bool:
+        """Does a data.json name the fixture's home club as home and away club as away?"""
+        tm = raw.get("tm") or {}
+        for tno, side in (("1", "home"), ("2", "away")):
+            t = tm.get(tno) or {}
+            feed = _name_tokens(t.get("name")) | _name_tokens(t.get("nameInternational")) | _name_tokens(t.get("shortName"))
+            if not (feed & _name_tokens(fixture.get(f"{side}_name"))):
+                return False
+        return True
+
+    def _nkl_fetch(self, sid: str, config: dict):
+        """The FIBA fetch for an nkl.lt fixture, with the league's own club ids and names put on the
+        payload - so a club is the same club from the fixture list to the final box."""
+        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
+        fid = self._nkl_fiba_id(sid, fixture, config)
+        if not fid:
+            return None               # no webcast known for this fixture yet
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
+        if not raw or "tm" not in raw:
+            return None
+        if fixture:
+            for tno, side in (("1", "home"), ("2", "away")):
+                if isinstance(raw["tm"].get(tno), dict):
+                    raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
+                    raw["tm"][tno]["name"] = fixture.get(f"{side}_name") or raw["tm"][tno].get("name") or ""
+        b = self.bundle_from_raw(raw, sid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
 
     def _czech(self, config: dict) -> list[ScheduleGame]:
         """nbl.basketball: one <tr> per fixture — id, both clubs and the kick-off, in one request.

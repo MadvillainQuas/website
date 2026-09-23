@@ -1855,7 +1855,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
-                         "twobbl", "usports", "plk", "lba"}
+                         "twobbl", "usports", "plk", "lba", "lkl"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 

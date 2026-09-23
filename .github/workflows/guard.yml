@@ -393,6 +393,19 @@ jobs:
         # overtime, double overtime and a play-off final included
         run: python scripts/ingest/lba_test.py
 
+      - name: LKL (Lithuania) from lkl.lt's own calendar and game data
+        # lkl.py over the cached calendar, schedule pages and five games: every club coded by its
+        # league team id, home found even where the feed lists the away side first, starters
+        # inferred for an older box, a split substitution and a one-overtime game put right, every
+        # attempt on the shot chart, and every box, score, 5v5 stint and event-log line reconciling
+        run: python scripts/ingest/lkl_test.py
+
+      - name: NKL (Lithuania) on FIBA LiveStats, scheduled from nkl.lt
+        # the fiba_site_schedule "nkl" site: the season from nkl.lt's own array, the LiveStats id
+        # from the homepage strip or an offset the feed itself must confirm, and nkl.lt's club ids
+        # on the payload so a club is one club from fixture to final
+        run: python scripts/ingest/nkl_test.py
+
       - name: NBL, WNBL and NBL1 (Australia) from the NBL's own data service
         # nbl.py over cached season lists, schedules and game replies: only each league's main
         # season is discovered (never the pre-season, the Blitz or a cup final), the WNBL's finals

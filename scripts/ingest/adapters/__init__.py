@@ -21,6 +21,7 @@ from .twobbl import TwoBBLAdapter
 from .usports import USportsAdapter
 from .plk import PlkAdapter
 from .lba import LbaAdapter
+from .lkl import LklAdapter
 from .nbl import NblAdapter
 
 
@@ -87,6 +88,7 @@ REGISTRY: dict[str, type[BaseAdapter]] = {
     USportsAdapter.name: USportsAdapter,
     PlkAdapter.name: PlkAdapter,
     LbaAdapter.name: LbaAdapter,
+    LklAdapter.name: LklAdapter,
     NblAdapter.name: NblAdapter,
     Bbl2BblAdapter.name: Bbl2BblAdapter,
     EuroLeagueApiAdapter.name: EuroLeagueApiAdapter,
