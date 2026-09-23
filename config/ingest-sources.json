@@ -126,20 +126,117 @@
       "league_country": "GB"
     },
     {
-      "code": "2BBL",
-      "label": "ProA / ProB (2. Basketball Bundesliga)",
-      "adapter": "bbl_2bbl",
+      "code": "PROA",
+      "label": "ProA",
+      "adapter": "twobbl",
       "league_id": null,
       "competition_id": null,
       "poll_minutes": 60,
       "active_window": [
-        14,
+        12,
         24
       ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "proa",
+      "league_name": "ProA",
+      "league_country": "DE",
       "adapter_config": {
-        "archive_raw": true
+        "code": "PROA",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
       },
-      "scheduleUrls": []
+      "scheduleUrls": [
+        "https://www.2basketballbundesliga.de/spielplan/"
+      ]
+    },
+    {
+      "code": "PROA",
+      "label": "ProA",
+      "adapter": "twobbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "proa",
+      "league_name": "ProA",
+      "league_country": "DE",
+      "competition_label": "ProA Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "PROA",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.2basketballbundesliga.de/spielplan/#playoffs"
+      ]
+    },
+    {
+      "code": "PROB",
+      "label": "ProB",
+      "adapter": "twobbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "prob",
+      "league_name": "ProB",
+      "league_country": "DE",
+      "groups_file": "config/groups/prob.json",
+      "adapter_config": {
+        "code": "PROB",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.2basketballbundesliga.de/spielplaene-prob/"
+      ]
+    },
+    {
+      "code": "PROB",
+      "label": "ProB",
+      "adapter": "twobbl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        12,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "prob",
+      "league_name": "ProB",
+      "league_country": "DE",
+      "competition_label": "ProB Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "PROB",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.2basketballbundesliga.de/spielplaene-prob/#playoffs"
+      ]
     },
     {
       "code": "EL",

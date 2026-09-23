@@ -336,11 +336,19 @@ async function renderTable() {
 
 /* the standings for one competition, drawn into a given element */
 async function renderStandingsInto(pane, competition) {
+  const ST = window.EpinoiaStandings;
+  const teamCols = 'name,short_name,colour,slug,logo_path';
+  const cols = ST ? ST.columns(competition, teamCols)
+    : `rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(${teamCols})`;
   const rows = await api(
     `standings?competition_id=eq.${competition.id}` +
-    `&select=rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(name,short_name,colour,slug,logo_path)` +
+    `&select=${cols}` +
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
+
+  /* A CONFERENCE LEAGUE (0144) is read the college way: a table per
+     conference, the division inside it, and two records per club. */
+  if (ST && ST.isConferences(competition)) { renderConferences(pane, rows, ST, competition); return; }
 
   /* A competition may run as one table or as several groups side by side.
      Grouping here rather than in a second renderer means an ungrouped league
@@ -367,30 +375,12 @@ function groupTable(rows) {
 
   const tb = el('tbody');
   rows.forEach(r => {
-    const tm = r.teams || {};
     const tr = el('tr');
     tr.appendChild(el('td', null, r.rank ?? ''));
-
-    const nameTd = el('td');
-    const cell = el('div', 'tname-cell');
-    const crest = el('span', 'crest', tm.short_name || '');
-    crest.style.background = tm.colour || 'var(--lume)';
-    const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(tm.logo_path) : null;
-    if (crestUrl) {
-      const img = document.createElement('img');
-      img.src = crestUrl; img.alt = '';
-      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
-      img.addEventListener('error', () => img.remove());
-      crest.textContent = ''; crest.appendChild(img);
-    }
-    const a = el('a', null, tm.name || '');
-    a.href = '../t/?t=' + encodeURIComponent(tm.slug || '');
-    cell.append(crest, a); nameTd.appendChild(cell); tr.appendChild(nameTd);
+    tr.appendChild(teamCell(r.teams));
 
     [r.gp, r.w, r.l, r.pts_for, r.pts_against].forEach(v => tr.appendChild(el('td', null, v)));
-    const d = el('td', null, (r.diff > 0 ? '+' : '') + r.diff);
-    d.style.color = r.diff > 0 ? 'var(--good)' : (r.diff < 0 ? 'var(--bad)' : '');
-    tr.appendChild(d);
+    tr.appendChild(diffCell(r.diff));
     /* A DOCKED TOTAL HAS TO SAY SO. Without the marker the points column
        simply does not follow from the W-L beside it, and the first thing
        anybody does with a table that does not add up is assume it is broken. */
@@ -401,9 +391,151 @@ function groupTable(rows) {
       pts.appendChild(d);
     }
     tr.appendChild(pts);
-    const st = el('td', null, r.streak || '');
-    st.style.color = (r.streak || '').startsWith('W') ? 'var(--good)' : 'var(--bad)';
-    tr.appendChild(st);
+    tr.appendChild(streakCell(r.streak));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+
+/* the club's crest and name, linked to its page */
+function teamCell(teams) {
+  const tm = teams || {};
+  const nameTd = el('td');
+  const cell = el('div', 'tname-cell');
+  const crest = el('span', 'crest', tm.short_name || '');
+  crest.style.background = tm.colour || 'var(--lume)';
+  const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(tm.logo_path) : null;
+  if (crestUrl) {
+    const img = document.createElement('img');
+    img.src = crestUrl; img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
+    img.addEventListener('error', () => img.remove());
+    crest.textContent = ''; crest.appendChild(img);
+  }
+  const a = el('a', null, tm.name || '');
+  a.href = '../t/?t=' + encodeURIComponent(tm.slug || '');
+  cell.append(crest, a); nameTd.appendChild(cell);
+  return nameTd;
+}
+
+function diffCell(diff) {
+  const d = el('td', null, (diff > 0 ? '+' : '') + diff);
+  d.style.color = diff > 0 ? 'var(--good)' : (diff < 0 ? 'var(--bad)' : '');
+  return d;
+}
+
+function streakCell(streak) {
+  const st = el('td', null, streak || '');
+  st.style.color = (streak || '').startsWith('W') ? 'var(--good)' : 'var(--bad)';
+  return st;
+}
+
+/* ------------------------------------------------------ conference tables --- */
+/* THE COLLEGE TABLE (0144). A conference league is not read as one ladder:
+   each club's standing is read inside its own conference, and it carries two
+   records — CONFERENCE (only the games against its own conference) and
+   OVERALL (the complete schedule, non-conference games and playoffs
+   included). The conference record comes first and decides the order, because
+   it is what seeds a conference's playoffs; recompute_standings has already
+   ranked it so, within each division where a conference has them.
+
+   OVERALL is the other question a reader brings to a college league — who has
+   the best record in the whole thing — so it is one click away, as one table
+   ranked by the complete schedule. */
+let confView = 'conf';
+
+function renderConferences(pane, rows, ST, competition) {
+  const host = el('div');
+  const pick = el('div', 'phasepick');
+  pick.style.margin = '0 0 12px';
+  [['conf', 'By conference'], ['all', 'Overall']].forEach(([k, label]) => {
+    const b = el('button', 'ep-chip' + (confView === k ? ' on' : ''), label);
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      if (confView === k) return;
+      confView = k;
+      pane.textContent = '';
+      renderConferences(pane, rows, ST, competition);
+    });
+    pick.appendChild(b);
+  });
+  host.appendChild(pick);
+
+  if (confView === 'all') {
+    host.appendChild(overallTable(ST.overall(rows), ST));
+  } else {
+    ST.split(rows).forEach(g => {
+      host.appendChild(el('div', 'grouphead', ST.groupLabel(g.name, competition)));
+      g.divisions.forEach(d => {
+        if (d.name) host.appendChild(el('div', 'divhead', d.name));
+        host.appendChild(conferenceTable(d.rows, ST));
+      });
+    });
+    host.appendChild(el('div', 'tblnote',
+      'Conference: games against the club\'s own conference only, which decides the order. ' +
+      'Overall: the complete schedule, non-conference games and playoffs included.'));
+  }
+  pane.appendChild(host);
+}
+
+function recordCells(tr, w, l, gp, ST, strong) {
+  const rec = el('td', 'rec', ST.record(w, l));
+  if (strong) rec.style.color = 'var(--ink)';
+  tr.appendChild(rec);
+  tr.appendChild(el('td', null, ST.pct(w, gp)));
+}
+
+function conferenceTable(rows, ST) {
+  const wrap = el('div', 'ep-tw');
+  const t = el('table', 'ep-tbl'); t.style.minWidth = '640px';
+  const thead = el('thead');
+  const top = el('tr');
+  [['', 2], ['CONFERENCE', 2], ['OVERALL', 2], ['', 4]].forEach(([h, n]) => {
+    const th = el('th', 'spanhead', h); th.colSpan = n; top.appendChild(th);
+  });
+  const hr = el('tr');
+  ['#', 'TEAM', 'W-L', 'PCT', 'W-L', 'PCT', 'PF', 'PA', 'DIFF', 'STREAK']
+    .forEach(h => hr.appendChild(el('th', null, h)));
+  thead.append(top, hr); t.appendChild(thead);
+
+  const tb = el('tbody');
+  rows.forEach(r => {
+    const tr = el('tr');
+    tr.appendChild(el('td', null, r.rank ?? ''));
+    tr.appendChild(teamCell(r.teams));
+    recordCells(tr, r.conf_w, r.conf_l, r.conf_gp, ST, true);
+    recordCells(tr, r.w, r.l, r.gp, ST, false);
+    tr.appendChild(el('td', null, r.pts_for));
+    tr.appendChild(el('td', null, r.pts_against));
+    tr.appendChild(diffCell(r.diff));
+    tr.appendChild(streakCell(r.streak));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+
+function overallTable(rows, ST) {
+  const wrap = el('div', 'ep-tw');
+  const t = el('table', 'ep-tbl'); t.style.minWidth = '680px';
+  const thead = el('thead'); const hr = el('tr');
+  ['#', 'TEAM', 'CONF.', 'W-L', 'PCT', 'CONF. W-L', 'PF', 'PA', 'DIFF', 'STREAK']
+    .forEach(h => hr.appendChild(el('th', null, h)));
+  thead.appendChild(hr); t.appendChild(thead);
+
+  const tb = el('tbody');
+  rows.forEach(r => {
+    const tr = el('tr');
+    tr.appendChild(el('td', null, r.overall_rank));
+    tr.appendChild(teamCell(r.teams));
+    tr.appendChild(el('td', null, [r.group_name, r.division_name].filter(Boolean).join(' · ')));
+    recordCells(tr, r.w, r.l, r.gp, ST, true);
+    tr.appendChild(el('td', 'rec', ST.record(r.conf_w, r.conf_l)));
+    tr.appendChild(el('td', null, r.pts_for));
+    tr.appendChild(el('td', null, r.pts_against));
+    tr.appendChild(diffCell(r.diff));
+    tr.appendChild(streakCell(r.streak));
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrap.appendChild(t);

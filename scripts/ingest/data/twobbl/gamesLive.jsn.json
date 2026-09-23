@@ -1,0 +1,80 @@
+[
+{
+"g": "2006130",
+"n": "1",
+"q": "Q0",
+"l": "s",
+"d": "27.09.2026",
+"s": "16:00",
+"t": "",
+"t1": "575",
+"t2": "559",
+"c1": "Porsche BBA Ludwigsburg",
+"c2": "BBC Coburg",
+"p1": "--",
+"p2": "--",
+"top1": {
+"num": "6",
+"name": "Knödel",
+"points": "0"
+},
+"top2": {
+"num": "13",
+"name": "Mendl",
+"points": "0"
+},
+"h": "0"
+},
+{
+"g": "2006132",
+"n": "1",
+"q": "E",
+"l": "s",
+"d": "27.09.2026",
+"s": "16:00",
+"t": "",
+"t1": "564",
+"t2": "416",
+"c1": "TSV Oberhaching Tropics",
+"c2": "Bayer Giants Leverkusen",
+"p1": "5",
+"p2": "0",
+"top1": {
+"num": "12",
+"name": "Muratovic",
+"points": "3"
+},
+"top2": {
+"num": "4",
+"name": "Wur",
+"points": "0"
+},
+"h": "0"
+},
+{
+"g": "2006340",
+"n": "1",
+"q": "E",
+"l": "n",
+"d": "27.09.2026",
+"s": "16:00",
+"t": "",
+"t1": "548",
+"t2": "513",
+"c1": "Baskets Juniors TSG Westerstede",
+"c2": "LOK BERNAU",
+"p1": "10",
+"p2": "3",
+"top1": {
+"num": "22",
+"name": "Drijencic",
+"points": "6"
+},
+"top2": {
+"num": "10",
+"name": "Borczanowski",
+"points": "3"
+},
+"h": "0"
+}
+]

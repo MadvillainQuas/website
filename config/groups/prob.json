@@ -1,0 +1,109 @@
+{
+  "_about": "ProB (2. Basketball Bundesliga) plays its main round in two groups, Nord and Süd, each ranked on its own. Read from the league's own schedule pages, which list each group's Hauptrunde under its own heading: https://www.2basketballbundesliga.de/spielplaene-prob/?season=YYYY/YYYY (captured 2026-09-23). The 2025-26 Süd section also carried the cross-group playoffs after the main round, so its membership is Süd less Nord. A new season: add a block under seasons, read the same way. See scripts/ingest/groups.py.",
+  "format": "groups",
+  "default": {
+    "Nord": [
+      "ART Giants Düsseldorf",
+      "BBA Hagen",
+      "BSW Sixers",
+      "Baskets Juniors TSG Westerstede",
+      "EN BASKETS Schwelm",
+      "Hertener Löwen",
+      "Iserlohn Kangaroos",
+      "Itzehoe Eagles",
+      "LOK BERNAU",
+      "SC Rist Wedel",
+      "SG Braunschweig",
+      "Seawolves Academy",
+      "TSV Neustadt temps Shooters",
+      "Uni Baskets Münster"
+    ],
+    "Süd": [
+      "Ahorn Camp Baskets",
+      "BBC Coburg",
+      "BG Hessing Leitershofen",
+      "Basketball Löwen",
+      "Bayer Giants Leverkusen",
+      "Culture City Weimar",
+      "Dragons Rhöndorf",
+      "Dresden Titans",
+      "FC Bayern Basketball II",
+      "Porsche BBA Ludwigsburg",
+      "SKYLINERS Juniors",
+      "SV Fellbach Flashers",
+      "TSG Schöller SI Ravens Reutlingen",
+      "TSV Oberhaching Tropics",
+      "TV Langen"
+    ]
+  },
+  "seasons": {
+    "2025-26": {
+      "Nord": [
+        "BSW Sixers",
+        "Baskets Juniors TSG Westerstede",
+        "Dragons Rhöndorf",
+        "EN BASKETS Schwelm",
+        "ETB Miners",
+        "Hertener Löwen",
+        "Iserlohn Kangaroos",
+        "Itzehoe Eagles",
+        "LOK BERNAU",
+        "RASTA Vechta II",
+        "SC Rist Wedel",
+        "Seawolves Academy",
+        "TKS 49ers",
+        "TSV Neustadt temps Shooters"
+      ],
+      "Süd": [
+        "Ahorn Camp Baskets",
+        "BBC Coburg",
+        "BG Hessing Leitershofen",
+        "CATL Basketball Löwen",
+        "Dresden Titans",
+        "FC Bayern Basketball II",
+        "OrangeAcademy",
+        "Porsche BBA Ludwigsburg",
+        "SKYLINERS Juniors",
+        "SV Fellbach Flashers",
+        "TSV Oberhaching Tropics",
+        "TV Langen",
+        "VR-Bank Würzburg Baskets Akademie"
+      ]
+    },
+    "2026-27": {
+      "Nord": [
+        "ART Giants Düsseldorf",
+        "BBA Hagen",
+        "BSW Sixers",
+        "Baskets Juniors TSG Westerstede",
+        "EN BASKETS Schwelm",
+        "Hertener Löwen",
+        "Iserlohn Kangaroos",
+        "Itzehoe Eagles",
+        "LOK BERNAU",
+        "SC Rist Wedel",
+        "SG Braunschweig",
+        "Seawolves Academy",
+        "TSV Neustadt temps Shooters",
+        "Uni Baskets Münster"
+      ],
+      "Süd": [
+        "Ahorn Camp Baskets",
+        "BBC Coburg",
+        "BG Hessing Leitershofen",
+        "Basketball Löwen",
+        "Bayer Giants Leverkusen",
+        "Culture City Weimar",
+        "Dragons Rhöndorf",
+        "Dresden Titans",
+        "FC Bayern Basketball II",
+        "Porsche BBA Ludwigsburg",
+        "SKYLINERS Juniors",
+        "SV Fellbach Flashers",
+        "TSG Schöller SI Ravens Reutlingen",
+        "TSV Oberhaching Tropics",
+        "TV Langen"
+      ]
+    }
+  }
+}

@@ -53,6 +53,14 @@
   /* ---- groups ---- */
   .grouphead{font-family:var(--f-ui);font-weight:800;font-size:12px;text-transform:uppercase;
     letter-spacing:.08em;color:var(--lume);padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u));}
+  /* ---- conferences (0144): a division inside a conference, the CONFERENCE / OVERALL spans ---- */
+  .divhead{font-family:var(--f-micro);font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--ink-2);padding:calc(var(--u)*2) calc(var(--u)*3) calc(var(--u))}
+  .ep-tbl th.spanhead{font-size:9.5px;letter-spacing:.12em;color:var(--ink-3);text-align:center;
+    border-bottom:1px solid var(--rule)}
+  .tblnote{font-size:11.5px;color:var(--ink-3);padding:calc(var(--u)*2) calc(var(--u)*3)}
+  /* a record is one token: "19-10" must not break at its hyphen */
+  .ep-tbl td.rec{white-space:nowrap}
 
   /* ---- knockout bracket ---- */
   .bracket{display:flex;gap:calc(var(--u)*3);align-items:flex-start;overflow-x:auto;
@@ -194,6 +202,7 @@
 <script src="bracket.js?v=332" defer></script>
 <script src="../boxscore.js?v=332" defer></script>
 <script src="../shotchart.js?v=332" defer></script>
+<script src="../standings.js?v=332" defer></script>
 <script src="league.js?v=332" defer></script>
 <script src="../nav.js?v=332" defer></script>
 <script src="../xscroll.js?v=332" defer></script>

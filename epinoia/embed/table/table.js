@@ -143,18 +143,43 @@ const stat = Object.prototype.hasOwnProperty.call(STATS, qp.get('stat') || '') ?
       $('#sub').textContent = 'standings';
       $('#more').href = new URL('../../l/?l=' + encodeURIComponent(league.slug),
                                 location.href).href;
-      const st = await D.all(`standings?competition_id=eq.${comp.id}` +
-        `&select=rank,gp,w,l,diff,league_points,streak,teams(name,short_name,colour,slug,logo_path)` +
-        `&order=rank`);
+      /* A TABLE IN GROUPS IS SEVERAL TABLES. Ordered by rank alone, a two-group league
+         interleaved its groups (1, 1, 2, 2 …) into one list nobody could read. Each group —
+         or conference, and each division inside one (0144) — is drawn as its own small table
+         under its name, n rows each; ?g=<name> shows one of them. An ungrouped league is the
+         case of one unnamed group and gets exactly the table it always had. */
+      const ST = window.EpinoiaStandings;
+      const teamCols = 'name,short_name,colour,slug,logo_path';
+      const conf = !!(ST && ST.isConferences(comp));
+      let st = await D.all(`standings?competition_id=eq.${comp.id}` +
+        `&select=${ST ? ST.columns(comp, teamCols) : 'rank,gp,w,l,diff,league_points,streak,group_name,teams(' + teamCols + ')'}` +
+        `&order=group_name.asc,rank.asc`);
+      const onlyGroup = qp.get('g');
+      if (onlyGroup) st = st.filter(r => (r.group_name || '') === onlyGroup);
       if (!st.length) return fail('No games played yet');
       $('#host').textContent = '';
-      $('#host').appendChild(table(
-        ['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
-        st.slice(0, rows).map(r => {
-          const t = r.teams || {};
-          return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
-                  r.gp, r.w, r.l, (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
-        })));
+      const parts = ST ? ST.split(st) : [{ name: '', divisions: [{ name: '', rows: st }] }];
+      const grouped = parts.length > 1 || parts[0].name !== '';
+      parts.forEach(g => {
+        if (grouped) $('#host').appendChild(el('div', 'ep-grp', ST ? ST.groupLabel(g.name, comp) : g.name));
+        g.divisions.forEach(d => {
+          if (d.name) $('#host').appendChild(el('div', 'ep-div', d.name));
+          $('#host').appendChild(conf
+            ? table(['#', 'TEAM', 'CONF', 'OVR', 'PCT', 'DIFF'],
+                d.rows.slice(0, rows).map(r => {
+                  const t = r.teams || {};
+                  return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
+                          ST.record(r.conf_w, r.conf_l), ST.record(r.w, r.l), ST.pct(r.w, r.gp),
+                          (r.diff > 0 ? '+' : '') + r.diff];
+                }))
+            : table(['#', 'TEAM', 'GP', 'W', 'L', 'DIFF', 'PTS'],
+                d.rows.slice(0, rows).map(r => {
+                  const t = r.teams || {};
+                  return [r.rank ?? '', nameCell(t.name || '—', t.colour, t.short_name, t.logo_path),
+                          r.gp, r.w, r.l, (r.diff > 0 ? '+' : '') + r.diff, r.league_points];
+                })));
+        });
+      });
     } else {
       const [label, get] = STATS[stat];
       $('#sub').textContent = label + ' leaders';

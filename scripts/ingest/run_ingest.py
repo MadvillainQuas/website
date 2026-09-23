@@ -77,6 +77,7 @@ LIVE_ADAPTERS = {name for name, cls in REGISTRY.items() if issubclass(cls, FibaL
 # conditional GET; the rest reach their own league's back end through their adapter's fetch().
 CDN_ADAPTERS = {"fiba_livestats"}
 from feedplatform import Platform, season_name_for  # noqa: E402
+import groups  # noqa: E402
 from fetchwindow import worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
 
@@ -428,7 +429,71 @@ def source_competition(sb: Supabase, plat, src: dict, league_id: str, ac: dict) 
             sb.patch("schedule_sources", f"id=eq.{src['id']}", {"competition_id": comp["id"]})
         except Exception:
             pass
+    set_competition_format(sb, src, comp["id"])
     return comp
+
+
+_FORMAT_SET: set = set()
+
+
+def set_competition_format(sb: Supabase, src: dict, comp_id: str) -> None:
+    """A source that plays in groups or conferences says so (groups.py), and its competition is
+    given that format once per run: 'groups' (0018) draws a table per group, 'conferences' (0144)
+    a table per conference with the conference record beside the overall one. A source that says
+    nothing leaves the competition exactly as it is - including a format set in the console."""
+    fmt = groups.competition_format(src)
+    if not fmt or comp_id in _FORMAT_SET:
+        return
+    _FORMAT_SET.add(comp_id)
+    try:
+        cur = sb.select("competitions", f"id=eq.{comp_id}&select=format")
+        if cur and cur[0].get("format") != fmt:
+            sb.patch("competitions", f"id=eq.{comp_id}", {"format": fmt})
+            print(f"   competition format -> {fmt}")
+    except Exception as exc:
+        # 'conferences' is refused by the format check until 0144 is applied
+        print(f"   ! could not set the competition's format to {fmt} ({exc}) - is migration 0144 applied?")
+
+
+def group_fields(src: dict, *names: str) -> dict:
+    """{group_name, division_name} for a club's entry in this source's competition, or {} for a
+    source without a groups file (groups.py)."""
+    ac = src.get("adapter_config") or {}
+    return groups.entry(src, ac.get("season") or season_name_for(), *names)
+
+
+def enter_teams(sb: Supabase, src: dict, comp_id: str, pairs, run: dict) -> None:
+    """Enter clubs in the competition - once per club per run - with their group and division
+    where the source has a groups file. pairs: ((team row, the name the feed used), ...)."""
+    done = run.setdefault("_entered", set())
+    spec = groups.spec_for(src)
+    current = None
+    if spec:
+        # the competition's entries as they stand, read once per run, so a club already filed where
+        # the file says costs no write - and one that moves group triggers a recompute, because a
+        # standings row carries its group only from the last rebuild
+        cache = run.setdefault("_entries", {})
+        if comp_id not in cache:
+            cols = "team_id,group_name" + (",division_name" if groups.has_divisions(spec) else "")
+            try:
+                cache[comp_id] = {r["team_id"]: r for r in sb.select("competition_teams", f"competition_id=eq.{comp_id}&select={cols}")}
+            except Exception:
+                cache[comp_id] = {}
+        current = cache[comp_id]
+    for tm, fed in pairs:
+        if not tm or (comp_id, tm["id"]) in done:
+            continue
+        done.add((comp_id, tm["id"]))
+        fields = group_fields(src, fed, tm.get("name") or "")
+        if current is not None:
+            have = current.get(tm["id"])
+            if have is not None and all(have.get(k) == v for k, v in fields.items()):
+                continue
+        sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tm["id"], **fields},
+                  "competition_id,team_id")
+        if current is not None and fields:
+            current[tm["id"]] = {"team_id": tm["id"], **fields}
+            run.setdefault("_recompute", set()).add(comp_id)
 
 
 def default_competition_id(plat, src: dict, league_id: str, ac: dict) -> str | None:
@@ -612,19 +677,31 @@ def write_fixture(sb: Supabase, src: dict, g: ScheduleGame, run: dict) -> None:
     existing = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{g.external_id}&select=game_id")
     game_id = existing[0]["game_id"] if existing and existing[0].get("game_id") else None
     row = {"tipoff_at": g.tipoff_at, "venue": ex.get("venue")}
+    # WHETHER THIS GAME COUNTS IN THE CONFERENCE TABLE (0144), when the adapter knows: False for a
+    # conference playoff (two members of one conference, not a conference game), True/False where
+    # the feed flags it. Absent = the database works it out from the clubs' groups. Kept out of
+    # `row`, whose filter drops falsy values - and False is exactly the value that matters here.
+    conf = {"conference_game": ex["conference_game"]} if "conference_game" in ex else {}
     if game_id:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,venue")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,venue" + (",conference_game" if conf else ""))
         if cur and cur[0].get("status") in ("scheduled", None) and (cur[0].get("tipoff_at") != g.tipoff_at or (ex.get("venue") and cur[0].get("venue") != ex.get("venue"))):
             sb.patch("games", f"id=eq.{game_id}", {k: v for k, v in row.items() if v})
+        if conf and cur and cur[0].get("conference_game") != conf["conference_game"]:
+            # a game the schedule has since re-labelled; a finished one moves two tables
+            sb.patch("games", f"id=eq.{game_id}", conf)
+            if cur[0].get("status") == "final":
+                run.setdefault("_recompute", set()).add(comp_id)
+        if groups.spec_for(src):
+            # a club already entered still takes a group the file has since learnt
+            enter_teams(sb, src, comp_id, ((home, g.home_name), (away, g.away_name)), run)
         return
-    gm = sb.upsert("games", {"competition_id": comp_id, "home_team_id": home["id"], "away_team_id": away["id"], "status": "scheduled", **{k: v for k, v in row.items() if v}}, "id")
+    gm = sb.upsert("games", {"competition_id": comp_id, "home_team_id": home["id"], "away_team_id": away["id"], "status": "scheduled", **{k: v for k, v in row.items() if v}, **conf}, "id")
     if src.get("competition_label") and gm and gm[0].get("competition_id") not in (None, comp_id):
         dflt = default_competition_id(plat, src, league_id, ac)
         if dflt and gm[0]["competition_id"] == dflt:
             sb.patch("games", f"id=eq.{gm[0]['id']}", {"competition_id": comp_id})
             run.setdefault("_recompute", set()).update({dflt, comp_id})
-    for tid in (home["id"], away["id"]):
-        sb.upsert("competition_teams", {"competition_id": comp_id, "team_id": tid}, "competition_id,team_id")
+    enter_teams(sb, src, comp_id, ((home, g.home_name), (away, g.away_name)), run)
     sb.upsert("external_games", {"adapter": src["adapter"], "external_id": g.external_id, "competition_code": src["code"], "game_id": gm[0]["id"],
                                  "home_name": g.home_name, "away_name": g.away_name, "external_status": "scheduled",
                                  "tipoff_at": g.tipoff_at, "game_date": (g.tipoff_at or "")[:10] or None}, "adapter,external_id")
@@ -710,7 +787,8 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
     comp = source_competition(sb, plat, src, league_id, ac)
     srow = sb.select("competitions", f"id=eq.{comp['id']}&select=season_id")
     season_id = srow[0]["season_id"] if srow else None
-    people = plat.ensure_game_people(league_id, comp, season_id, b.raw)
+    people = plat.ensure_game_people(league_id, comp, season_id, b.raw,
+                                     group_of=(lambda *n: group_fields(src, *n)) if groups.spec_for(src) else None)
     home, away = people.get("1"), people.get("2")
     if not (home and away):
         sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}",
@@ -1768,7 +1846,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # worst thing this feature could do — last season's table filled with this
 # season's games, and no error anywhere. A source whose adapter is not on this
 # list is skipped with a reason printed, never run on trust.
-SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague"}
+SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
+                         "twobbl"}
 
 _BEAT: dict | None = None      # set while a claimed backfill is running; see beat()
 

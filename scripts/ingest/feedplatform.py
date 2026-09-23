@@ -459,7 +459,7 @@ class Platform:
         self.insert("roster_entries", {"team_id": team["id"], "player_id": player["id"], "season_id": season_id,
                                        "jersey": str(p.get("shirtNumber") or ""), "position": p.get("playingPosition") or None, "active": True})
 
-    def ensure_game_people(self, league_id: str, comp: dict, season_id: str, raw: dict) -> dict:
+    def ensure_game_people(self, league_id: str, comp: dict, season_id: str, raw: dict, group_of=None) -> dict:
         """Both clubs + every listed player of one payload. Returns {'1': team, '2': team, 'pids': {ext: uuid}}.
 
         ONE PERSON, ONE SLOT. Everything downstream keys a game's stats on the platform player id:
@@ -478,7 +478,11 @@ class Platform:
             if not team:
                 continue
             if not self.dry and self.sb:
-                self.sb.upsert("competition_teams", {"competition_id": comp["id"], "team_id": team["id"]}, "competition_id,team_id")
+                # group_of: the club's group / division from the source's groups file (groups.py),
+                # {} for every source without one - so their rows are written as they always were
+                fields = group_of(t.get("name") or "", team.get("name") or "") if group_of else {}
+                self.sb.upsert("competition_teams", {"competition_id": comp["id"], "team_id": team["id"], **fields},
+                               "competition_id,team_id")
             tcode = (t.get("code") or "").strip() or slugify(t.get("name", ""))
             for pno, p in (t.get("pl") or {}).items():
                 pl = self.player(team, tcode, str(pno), p, avoid=set(taken))

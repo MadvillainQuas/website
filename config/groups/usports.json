@@ -1,0 +1,372 @@
+{
+  "_about": "U SPORTS men's basketball. CONFERENCES (the four blocks, and so which games are conference games) from masseyratings.com's conference pages (https://masseyratings.com/cb/u-sports/ratings?c=1), captured 2026-09-23, identical for 2025-26 and 2026-27 - and identical club for club to U SPORTS' own 2025-26 standings (https://en.usports.ca/sports/mbkb/2025-26/standings). DIVISIONS from U SPORTS' own standings: Canada West Pacific / Prairie, OUA Central / East / West, AUS and RSEQ undivided. masseyratings' own sub-groups (OUA East/West of 9, AUS Baldwin/Nelson) are not the league's and are not used; their names are kept as spellings. The 2026-27 standings page was not yet populated on 2026-09-23 - check the divisions again once it is. Bare nicknames two universities share (Cougars, Huskies, Thunderbirds) are deliberately absent. Each club is listed with every spelling a feed or ratings site uses, the first being the reader's name; names are matched folded. A conference game is a game between two clubs of the same conference in the regular season - divisions only split the table. A new season with different membership gets its own block under seasons. See scripts/ingest/groups.py and docs/conferences.md.",
+  "format": "conferences",
+  "default": {
+    "Canada West": {
+      "divisions": {
+        "Pacific": [
+          [
+            "Fraser Valley",
+            "UFV",
+            "University of the Fraser Valley",
+            "Fraser Valley Cascades",
+            "Fraser Val",
+            "Cascades"
+          ],
+          [
+            "Thompson Rivers",
+            "Thompson Rivers University",
+            "Thompson Riv",
+            "TRU",
+            "Thompson Rivers WolfPack",
+            "WolfPack"
+          ],
+          [
+            "Trinity Western",
+            "Trinity Western University",
+            "TWU",
+            "Trinity Western Spartans",
+            "Spartans"
+          ],
+          [
+            "UBC",
+            "University of British Columbia",
+            "Brit Columbia",
+            "British Columbia",
+            "UBC Thunderbirds"
+          ],
+          [
+            "UBC Okanagan",
+            "UBC-Okanagan",
+            "UBCO",
+            "UBC Okanagan Heat",
+            "Heat"
+          ],
+          [
+            "UNBC",
+            "Northern BC",
+            "Northern British Columbia",
+            "University of Northern British Columbia",
+            "UNBC Timberwolves",
+            "Timberwolves"
+          ],
+          [
+            "Victoria",
+            "University of Victoria",
+            "UVic",
+            "Victoria Vikes",
+            "Vikes"
+          ]
+        ],
+        "Prairie": [
+          [
+            "Alberta",
+            "University of Alberta",
+            "Alberta Golden Bears",
+            "Golden Bears",
+            "UAlberta"
+          ],
+          [
+            "Brandon",
+            "Brandon University",
+            "Brandon Bobcats",
+            "Bobcats"
+          ],
+          [
+            "Calgary",
+            "University of Calgary",
+            "Calgary Dinos",
+            "Dinos",
+            "UCalgary"
+          ],
+          [
+            "Lethbridge",
+            "University of Lethbridge",
+            "Univ Lethbridge",
+            "Lethbridge Pronghorns",
+            "Pronghorns",
+            "ULeth"
+          ],
+          [
+            "MacEwan",
+            "MacEwan University",
+            "Grant MacEwan",
+            "MacEwan Griffins",
+            "Griffins"
+          ],
+          [
+            "Manitoba",
+            "University of Manitoba",
+            "Manitoba Bisons",
+            "Bisons",
+            "UManitoba"
+          ],
+          [
+            "Mount Royal",
+            "Mount Royal University",
+            "Mt Royal",
+            "Mount Royal Cougars",
+            "MRU"
+          ],
+          [
+            "Regina",
+            "University of Regina",
+            "Regina Cougars",
+            "URegina"
+          ],
+          [
+            "Saskatchewan",
+            "University of Saskatchewan",
+            "Saskatchewan Huskies",
+            "USask"
+          ],
+          [
+            "Winnipeg",
+            "University of Winnipeg",
+            "Winnipeg Wesmen",
+            "Wesmen",
+            "UWinnipeg"
+          ]
+        ]
+      }
+    },
+    "OUA": {
+      "divisions": {
+        "Central": [
+          [
+            "Toronto",
+            "University of Toronto",
+            "U of T",
+            "UofT",
+            "Toronto Varsity Blues",
+            "Varsity Blues"
+          ],
+          [
+            "Toronto Metropolitan",
+            "TMU",
+            "Toronto Met",
+            "Toronto Metropolitan University",
+            "TMU Bold",
+            "Bold",
+            "Ryerson"
+          ],
+          [
+            "York",
+            "York University",
+            "York ON",
+            "York Lions",
+            "Lions"
+          ],
+          [
+            "Brock",
+            "Brock University",
+            "Brock Badgers",
+            "Badgers"
+          ],
+          [
+            "Lakehead",
+            "Lakehead University",
+            "Lakehead Thunderwolves",
+            "Thunderwolves"
+          ],
+          [
+            "McMaster",
+            "McMaster University",
+            "Mac",
+            "McMaster Marauders",
+            "Marauders"
+          ]
+        ],
+        "East": [
+          [
+            "Carleton",
+            "Carleton University",
+            "Carleton ON",
+            "Carleton Ravens",
+            "Ravens"
+          ],
+          [
+            "Laurentian",
+            "Laurentian University",
+            "Laurentian Voyageurs",
+            "Voyageurs"
+          ],
+          [
+            "Ontario Tech",
+            "Ontario Tech University",
+            "Ontario Tech Ridgebacks",
+            "Ridgebacks",
+            "UOIT"
+          ],
+          [
+            "Ottawa",
+            "University of Ottawa",
+            "uOttawa",
+            "Ottawa ON",
+            "Ottawa Gee-Gees",
+            "Gee-Gees",
+            "Gee Gees"
+          ],
+          [
+            "Queen's",
+            "Queen's University",
+            "Queens",
+            "Queen's ON",
+            "Queen's Gaels",
+            "Gaels"
+          ],
+          [
+            "Nipissing",
+            "Nipissing University",
+            "Nipissing Lakers",
+            "Lakers"
+          ]
+        ],
+        "West": [
+          [
+            "Algoma",
+            "Algoma University",
+            "Algoma Thunderbirds"
+          ],
+          [
+            "Guelph",
+            "University of Guelph",
+            "Guelph Gryphons",
+            "Gryphons"
+          ],
+          [
+            "Laurier",
+            "Wilfrid Laurier",
+            "Wilfrid Laurier University",
+            "WLU",
+            "Laurier Golden Hawks",
+            "Golden Hawks"
+          ],
+          [
+            "Waterloo",
+            "University of Waterloo",
+            "UWaterloo",
+            "Waterloo Warriors",
+            "Warriors"
+          ],
+          [
+            "Western",
+            "Western University",
+            "Western ON",
+            "Western Ontario",
+            "Western Mustangs",
+            "Mustangs"
+          ],
+          [
+            "Windsor",
+            "University of Windsor",
+            "UWindsor",
+            "Windsor Lancers",
+            "Lancers"
+          ]
+        ]
+      }
+    },
+    "RSEQ": {
+      "teams": [
+        [
+          "Bishop's",
+          "Bishop's University",
+          "Bishops",
+          "Bishop's Gaiters",
+          "Gaiters"
+        ],
+        [
+          "Concordia",
+          "Concordia University",
+          "Concordia QC",
+          "Concordia Stingers",
+          "Stingers"
+        ],
+        [
+          "Laval",
+          "Université Laval",
+          "Universite Laval",
+          "Laval Rouge et Or",
+          "Rouge et Or"
+        ],
+        [
+          "McGill",
+          "McGill University",
+          "McGill Redbirds",
+          "McGill Redmen",
+          "Redbirds"
+        ],
+        [
+          "UQAM",
+          "Université du Québec à Montréal",
+          "UQAM Citadins",
+          "Citadins"
+        ]
+      ]
+    },
+    "AUS": {
+      "teams": [
+        [
+          "Acadia",
+          "Acadia University",
+          "Acadia Axemen",
+          "Axemen"
+        ],
+        [
+          "Dalhousie",
+          "Dalhousie University",
+          "Dal",
+          "Dalhousie Tigers",
+          "Tigers"
+        ],
+        [
+          "Memorial",
+          "Memorial University",
+          "MUN",
+          "Memorial Sea-Hawks",
+          "Sea-Hawks",
+          "Seahawks"
+        ],
+        [
+          "St. Francis Xavier",
+          "StFX",
+          "St Fran Xavier",
+          "St. F.X.",
+          "St FX",
+          "St. Francis Xavier University",
+          "StFX X-Men",
+          "X-Men"
+        ],
+        [
+          "Cape Breton",
+          "Cape Breton University",
+          "CBU",
+          "Cape Breton Capers",
+          "Capers"
+        ],
+        [
+          "New Brunswick",
+          "UNB",
+          "University of New Brunswick",
+          "UNB Reds",
+          "Reds"
+        ],
+        [
+          "Saint Mary's",
+          "St Mary's NS",
+          "Saint Mary's University",
+          "SMU",
+          "Saint Mary's Huskies"
+        ],
+        [
+          "UPEI",
+          "University of Prince Edward Island",
+          "Prince Edward Island",
+          "UPEI Panthers",
+          "Panthers"
+        ]
+      ]
+    }
+  }
+}

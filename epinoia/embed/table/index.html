@@ -17,6 +17,10 @@
      full table — that is a link. Eight columns at most, and it says so. */
   .ep-tbl{ width:100%; border-collapse:separate; border-spacing:0;
     font-variant-numeric:tabular-nums lining-nums }
+  /* a group or conference heading, and a division inside a conference (0144) */
+  .ep-grp{ font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--lume, #93f2bf); padding:10px 8px 4px }
+  .ep-div{ font-size:10px; text-transform:uppercase; letter-spacing:.1em; opacity:.7; padding:6px 8px 2px }
   .ep-tbl th{
     font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
     letter-spacing:.11em; text-transform:uppercase; font-weight:400;
@@ -77,6 +81,7 @@
 <script src="../theme.js?v=332" defer></script>
 <script src="../../season.js?v=332" defer></script>
 <script src="../../data.js?v=332" defer></script>
+<script src="../../standings.js?v=332" defer></script>
 <script src="table.js?v=332" defer></script>
 </body>
 </html>

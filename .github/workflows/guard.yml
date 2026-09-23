@@ -363,6 +363,19 @@ jobs:
           python scripts/ingest/placeholders_test.py
           node supabase/tests/placeholders.test.mjs
 
+      - name: ProA / ProB from the 2. Basketball Bundesliga's own feed
+        # twobbl.py over cached schedule pages and game feeds: a fixture's key survives a
+        # re-dating and a result, cup games are never discovered, #00 and #0 are two players,
+        # every period opens with the five that actually played it, and every player's box,
+        # both team rows, the score and 5v5 stints reconcile with the league's own figures
+        run: python scripts/ingest/twobbl_test.py
+
+      - name: Groups, conferences and divisions from config/groups
+        # groups.py (0144): a source with a groups file enters its clubs under their group or
+        # conference (and division); a source without one writes exactly what it always did; and
+        # no file may put a club in two groups of one season or name a format the database refuses
+        run: python scripts/ingest/groups_test.py
+
       - name: The console's fixture list
         # overlapping loads draw once, an empty competition still gets its import and
         # generator panels, cup opponents are named, 200+ games fold away and open
@@ -608,6 +621,13 @@ jobs:
         # because its draw is half made), and a competition with entries but no fixtures is
         # never offered at all
         run: node supabase/tests/comps.test.mjs
+
+      - name: Conference tables and grouped standings
+        # standings.js (0144): a table in groups is several tables, a conference league reads
+        # a conference record and an overall record per club, the conference columns are asked
+        # for only on a 'conferences' competition (a column PostgREST does not know fails the
+        # whole read), and the Overall view ranks the whole league by the complete schedule
+        run: node supabase/tests/standings.test.mjs
 
       - name: Club initials on phones, and the phone fixes (news dates and game links, the league tap, EPINOIΛ)
         # initials.js gives every club in a league its own letters (a snapshot of the platform's

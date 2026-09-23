@@ -3,4 +3,7 @@ requests>=2.31.0
 pillow>=10.0
 numpy>=1.26
 cairosvg>=2.7.0
+# ProA/ProB (scripts/ingest/adapters/twobbl.py): the 2BBL live ticker serves each game as a
+# socket.io v4 history replay; [client] pulls in websocket-client for the websocket transport
+python-socketio[client]>=5.8
 
